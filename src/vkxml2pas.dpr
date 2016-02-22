@@ -3018,14 +3018,16 @@ begin
  for i:=0 to ExtensionEnums.Count-1 do begin
   ExtensionEnum:=TExtensionEnum(ExtensionEnums.Objects[i]);
   Extension:=ExtensionEnum.Extension;
-  if length(ExtensionEnum.Value)<>0 then begin
-   if pos('"',ExtensionEnum.Value)=0 then begin
-    ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Value+';');
-   end else begin
-    ENumConstants.Add('      '+ExtensionEnum.Name+'='+StringReplace(ExtensionEnum.Value,'"','''',[rfReplaceAll])+';');
+  if length(ExtensionEnum.Extends)=0 then begin
+   if length(ExtensionEnum.Value)<>0 then begin
+    if pos('"',ExtensionEnum.Value)=0 then begin
+     ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Value+';');
+    end else begin
+     ENumConstants.Add('      '+ExtensionEnum.Name+'='+StringReplace(ExtensionEnum.Value,'"','''',[rfReplaceAll])+';');
+    end;
+   end else if ExtensionEnum.Offset>=0 then begin
+    ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionEnum.Offset)+';');
    end;
-  end else if ExtensionEnum.Offset>=0 then begin
-   ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionEnum.Offset)+';');
   end;
  end;
 end;
@@ -3499,6 +3501,8 @@ var i,j,lv,hv,CountValueItems:longint;
     ValueItems:TValueItems;
     ValueItem:PValueItem;
     TempValueItem:TValueItem;
+    ExtensionEnum:TExtensionEnum;
+    Extension:TExtension;
 begin
  ValueItems:=nil;
  try
@@ -3603,9 +3607,27 @@ begin
      ValueItem^.Comment:='';
     end;
    end;
+   for i:=0 to ExtensionEnums.Count-1 do begin
+    ExtensionEnum:=TExtensionEnum(ExtensionEnums.Objects[i]);
+    Extension:=ExtensionEnum.Extension;
+    if (length(ExtensionEnum.Extends)>0) and (ExtensionEnum.Extends=Name) then begin
+     if length(ValueItems)<(CountValueItems+1) then begin
+      SetLength(ValueItems,(CountValueItems+1)*2);
+     end;
+     ValueItem:=@ValueItems[CountValueItems];
+     inc(CountValueItems);
+     ValueItem^.Name:=ExtensionEnum.Name;
+     if length(ExtensionEnum.Value)<>0 then begin
+      ValueItem^.ValueStr:=ExtensionEnum.Value;
+     end else if ExtensionEnum.Offset>=0 then begin
+      ValueItem^.ValueStr:=ExtensionEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionEnum.Offset);
+     end;
+     ValueItem^.ValueInt64:=StrToIntDef(ValueItem^.ValueStr,0);
+     ValueItem^.Comment:='';
+    end;
+   end;
+   SetLength(ValueItems,CountValueItems);
    if (Type_='enum') or (Type_='bitmask') then begin
-{   ENumTypes.Add('     P'+Name+'=^T'+Name+';');
-    ENumTypes.Add('     T'+Name+'=TVkEnum;');{}
     ENumTypes.Add('     P'+Name+'=^T'+Name+';');
     ENumTypes.Add('     T'+Name+'=');
     ENumTypes.Add('      (');
