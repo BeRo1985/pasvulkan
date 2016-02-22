@@ -3604,18 +3604,8 @@ begin
     end;
    end;
    if (Type_='enum') or (Type_='bitmask') then begin
-    ENumTypes.Add('     P'+Name+'=^T'+Name+';');
-    ENumTypes.Add('     T'+Name+'=TVkEnum;');
-   end;
-   for i:=0 to CountValueItems-1 do begin
-    ValueItem:=@ValueItems[i];
-    if length(ValueItem^.Comment)>0 then begin
-     ENumConstants.Add('      '+ValueItem^.Name+'='+ValueItem^.ValueStr+'; // '+ValueItem^.Comment);
-    end else begin
-     ENumConstants.Add('      '+ValueItem^.Name+'='+ValueItem^.ValueStr+';');
-    end;
-   end;
-{  if Type_='bitmask' then begin
+{   ENumTypes.Add('     P'+Name+'=^T'+Name+';');
+    ENumTypes.Add('     T'+Name+'=TVkEnum;');{}
     ENumTypes.Add('     P'+Name+'=^T'+Name+';');
     ENumTypes.Add('     T'+Name+'=');
     ENumTypes.Add('      (');
@@ -3651,7 +3641,16 @@ begin
      end;
     end;
     ENumTypes.Add('      );');
-   end;}
+   end else begin
+    for i:=0 to CountValueItems-1 do begin
+     ValueItem:=@ValueItems[i];
+     if length(ValueItem^.Comment)>0 then begin
+      ENumConstants.Add('      '+ValueItem^.Name+'='+ValueItem^.ValueStr+'; // '+ValueItem^.Comment);
+     end else begin
+      ENumConstants.Add('      '+ValueItem^.Name+'='+ValueItem^.ValueStr+';');
+     end;
+    end;
+   end;
   finally
    Values.Free;
   end;
