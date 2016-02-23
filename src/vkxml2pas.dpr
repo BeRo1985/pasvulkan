@@ -4183,6 +4183,8 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('function LoadVulkanLibrary(const LibraryName:string=VK_DEFAULT_LIB_NAME):boolean;');
    OutputPAS.Add('function LoadVulkanCommands:boolean;');
+   OutputPAS.Add('function LoadVulkanInstanceCommands(const GetInstanceProcAddr:TvkGetInstanceProcAddr;const Instance:TVkInstance;out InstanceCommands:TVulkanCommands):boolean;');
+   OutputPAS.Add('function LoadVulkanDeviceCommands(const GetDeviceProcAddr:TvkGetDeviceProcAddr;const Device:TVkDevice;out DeviceCommands:TVulkanCommands):boolean;');
    OutputPAS.Add('');
    OutputPAS.Add('implementation');
    OutputPAS.Add('');
@@ -4280,6 +4282,52 @@ begin
     if s<>'vkGetInstanceProcAddr' then begin
      OutputPAS.Add('  @'+s+':=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('''+s+''')));');
     end;
+    if length(s2)>0 then begin
+     OutputPAS.Add('{$endif}');
+    end;
+   end;
+   OutputPAS.Add(' end;');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
+   OutputPAS.Add('function LoadVulkanInstanceCommands(const GetInstanceProcAddr:TvkGetInstanceProcAddr;const Instance:TVkInstance;out InstanceCommands:TVulkanCommands):boolean;');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' FillChar(InstanceCommands,SizeOf(TVulkanCommands),#0);');
+   OutputPAS.Add(' result:=assigned(GetInstanceProcAddr);');
+   OutputPAS.Add(' if result then begin');
+   for i:=0 to AllCommands.Count-1 do begin
+    s:=AllCommands.Strings[i];
+    j:=pos('=',s);
+    if j>0 then begin
+     s2:=copy(s,j+1,length(s)-j);
+     s:=copy(s,1,j-1);
+    end;
+    if length(s2)>0 then begin
+     OutputPAS.Add('{$ifdef '+s2+'}');
+    end;
+    OutputPAS.Add('  @InstanceCommands.'+s+':=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('''+s+''')));');
+    if length(s2)>0 then begin
+     OutputPAS.Add('{$endif}');
+    end;
+   end;
+   OutputPAS.Add(' end;');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
+   OutputPAS.Add('function LoadVulkanDeviceCommands(const GetDeviceProcAddr:TvkGetDeviceProcAddr;const Device:TVkDevice;out DeviceCommands:TVulkanCommands):boolean;');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' FillChar(DeviceCommands,SizeOf(TVulkanCommands),#0);');
+   OutputPAS.Add(' result:=assigned(GetDeviceProcAddr);');
+   OutputPAS.Add(' if result then begin');
+   for i:=0 to AllDeviceCommands.Count-1 do begin
+    s:=AllDeviceCommands.Strings[i];
+    j:=pos('=',s);
+    if j>0 then begin
+     s2:=copy(s,j+1,length(s)-j);
+     s:=copy(s,1,j-1);
+    end;
+    if length(s2)>0 then begin
+     OutputPAS.Add('{$ifdef '+s2+'}');
+    end;
+    OutputPAS.Add('  @DeviceCommands.'+s+':=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('''+s+''')));');
     if length(s2)>0 then begin
      OutputPAS.Add('{$endif}');
     end;
