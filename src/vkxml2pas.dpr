@@ -135,6 +135,8 @@ uses SysUtils,Classes,Contnrs;
 // On other platforms, use the default calling convention
 const CallingConventions='{$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}';
 
+      CommentPadding=80;
+
 {$ifdef fpc}
  {$undef OldDelphi}
 {$else}
@@ -2739,6 +2741,14 @@ begin
  end;
 end;
 
+function AlignPaddingString(const s:ansistring;const PaddingColumn:longint):ansistring;
+begin
+ result:=s;
+ while length(result)<PaddingColumn do begin
+  result:=result+' ';
+ end;
+end;
+
 type TVendorID=class
       public
        Name:ansistring;
@@ -3681,9 +3691,9 @@ begin
      ValueItem:=@ValueItems[i];
      if length(ValueItem^.Comment)>0 then begin
       if (i+1)<CountValueItems then begin
-       ENumTypes.Add('       '+ValueItem^.Name+'='+ValueItem^.ValueStr+', // '+ValueItem^.Comment);
+       ENumTypes.Add(AlignPaddingString('       '+ValueItem^.Name+'='+ValueItem^.ValueStr+',',CommentPadding)+' // '+ValueItem^.Comment);
       end else begin
-       ENumTypes.Add('       '+ValueItem^.Name+'='+ValueItem^.ValueStr+' // '+ValueItem^.Comment);
+       ENumTypes.Add(AlignPaddingString('       '+ValueItem^.Name+'='+ValueItem^.ValueStr,CommentPadding)+' // '+ValueItem^.Comment);
       end;
      end else begin
       if (i+1)<CountValueItems then begin
@@ -3699,7 +3709,7 @@ begin
     for i:=0 to CountValueItems-1 do begin
      ValueItem:=@ValueItems[i];
      if length(ValueItem^.Comment)>0 then begin
-      ENumConstants.Add('      '+ValueItem^.Name+'='+ValueItem^.ValueStr+'; // '+ValueItem^.Comment);
+      ENumConstants.Add(AlignPaddingString('      '+ValueItem^.Name+'='+ValueItem^.ValueStr+';',CommentPadding)+' // '+ValueItem^.Comment);
      end else begin
       ENumConstants.Add('      '+ValueItem^.Name+'='+ValueItem^.ValueStr+';');
      end;

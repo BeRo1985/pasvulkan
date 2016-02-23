@@ -636,18 +636,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkImageLayout=^TVkImageLayout;
      TVkImageLayout=
       (
-       VK_IMAGE_LAYOUT_UNDEFINED=0, // Implicit layout an image is when its contents are undefined due to various reasons (e.g. right after creation)
-       VK_IMAGE_LAYOUT_BEGIN_RANGE=0, // VK_IMAGE_LAYOUT_UNDEFINED
-       VK_IMAGE_LAYOUT_GENERAL=1, // General layout when image can be used for any kind of access
-       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL=2, // Optimal layout when image is only used for color attachment read/write
-       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL=3, // Optimal layout when image is only used for depth/stencil attachment read/write
-       VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL=4, // Optimal layout when image is used for read only depth/stencil attachment and shader access
-       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL=5, // Optimal layout when image is used for read only shader access
-       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL=6, // Optimal layout when image is used only as source of transfer operations
-       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL=7, // Optimal layout when image is used only as destination of transfer operations
-       VK_IMAGE_LAYOUT_PREINITIALIZED=8, // Initial layout used when the data is populated by the CPU
-       VK_IMAGE_LAYOUT_END_RANGE=8, // VK_IMAGE_LAYOUT_PREINITIALIZED
-       VK_IMAGE_LAYOUT_RANGE_SIZE=9, // (VK_IMAGE_LAYOUT_PREINITIALIZED-VK_IMAGE_LAYOUT_UNDEFINED)+1
+       VK_IMAGE_LAYOUT_UNDEFINED=0,                                              // Implicit layout an image is when its contents are undefined due to various reasons (e.g. right after creation)
+       VK_IMAGE_LAYOUT_BEGIN_RANGE=0,                                            // VK_IMAGE_LAYOUT_UNDEFINED
+       VK_IMAGE_LAYOUT_GENERAL=1,                                                // General layout when image can be used for any kind of access
+       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL=2,                               // Optimal layout when image is only used for color attachment read/write
+       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL=3,                       // Optimal layout when image is only used for depth/stencil attachment read/write
+       VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL=4,                        // Optimal layout when image is used for read only depth/stencil attachment and shader access
+       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL=5,                               // Optimal layout when image is used for read only shader access
+       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL=6,                                   // Optimal layout when image is used only as source of transfer operations
+       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL=7,                                   // Optimal layout when image is used only as destination of transfer operations
+       VK_IMAGE_LAYOUT_PREINITIALIZED=8,                                         // Initial layout used when the data is populated by the CPU
+       VK_IMAGE_LAYOUT_END_RANGE=8,                                              // VK_IMAGE_LAYOUT_PREINITIALIZED
+       VK_IMAGE_LAYOUT_RANGE_SIZE=9,                                             // (VK_IMAGE_LAYOUT_PREINITIALIZED-VK_IMAGE_LAYOUT_UNDEFINED)+1
        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR=1000001002,
        VK_IMAGE_LAYOUT_MAX_ENUM=$7fffffff
       );
@@ -657,11 +657,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkAttachmentLoadOp=
       (
        VK_ATTACHMENT_LOAD_OP_LOAD=0,
-       VK_ATTACHMENT_LOAD_OP_BEGIN_RANGE=0, // VK_ATTACHMENT_LOAD_OP_LOAD
+       VK_ATTACHMENT_LOAD_OP_BEGIN_RANGE=0,                                      // VK_ATTACHMENT_LOAD_OP_LOAD
        VK_ATTACHMENT_LOAD_OP_CLEAR=1,
        VK_ATTACHMENT_LOAD_OP_DONT_CARE=2,
-       VK_ATTACHMENT_LOAD_OP_END_RANGE=2, // VK_ATTACHMENT_LOAD_OP_DONT_CARE
-       VK_ATTACHMENT_LOAD_OP_RANGE_SIZE=3, // (VK_ATTACHMENT_LOAD_OP_DONT_CARE-VK_ATTACHMENT_LOAD_OP_LOAD)+1
+       VK_ATTACHMENT_LOAD_OP_END_RANGE=2,                                        // VK_ATTACHMENT_LOAD_OP_DONT_CARE
+       VK_ATTACHMENT_LOAD_OP_RANGE_SIZE=3,                                       // (VK_ATTACHMENT_LOAD_OP_DONT_CARE-VK_ATTACHMENT_LOAD_OP_LOAD)+1
        VK_ATTACHMENT_LOAD_OP_MAX_ENUM=$7fffffff
       );
 
@@ -670,10 +670,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkAttachmentStoreOp=
       (
        VK_ATTACHMENT_STORE_OP_STORE=0,
-       VK_ATTACHMENT_STORE_OP_BEGIN_RANGE=0, // VK_ATTACHMENT_STORE_OP_STORE
+       VK_ATTACHMENT_STORE_OP_BEGIN_RANGE=0,                                     // VK_ATTACHMENT_STORE_OP_STORE
        VK_ATTACHMENT_STORE_OP_DONT_CARE=1,
-       VK_ATTACHMENT_STORE_OP_END_RANGE=1, // VK_ATTACHMENT_STORE_OP_DONT_CARE
-       VK_ATTACHMENT_STORE_OP_RANGE_SIZE=2, // (VK_ATTACHMENT_STORE_OP_DONT_CARE-VK_ATTACHMENT_STORE_OP_STORE)+1
+       VK_ATTACHMENT_STORE_OP_END_RANGE=1,                                       // VK_ATTACHMENT_STORE_OP_DONT_CARE
+       VK_ATTACHMENT_STORE_OP_RANGE_SIZE=2,                                      // (VK_ATTACHMENT_STORE_OP_DONT_CARE-VK_ATTACHMENT_STORE_OP_STORE)+1
        VK_ATTACHMENT_STORE_OP_MAX_ENUM=$7fffffff
       );
 
@@ -682,11 +682,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkImageType=
       (
        VK_IMAGE_TYPE_1D=0,
-       VK_IMAGE_TYPE_BEGIN_RANGE=0, // VK_IMAGE_TYPE_1D
+       VK_IMAGE_TYPE_BEGIN_RANGE=0,                                              // VK_IMAGE_TYPE_1D
        VK_IMAGE_TYPE_2D=1,
        VK_IMAGE_TYPE_3D=2,
-       VK_IMAGE_TYPE_END_RANGE=2, // VK_IMAGE_TYPE_3D
-       VK_IMAGE_TYPE_RANGE_SIZE=3, // (VK_IMAGE_TYPE_3D-VK_IMAGE_TYPE_1D)+1
+       VK_IMAGE_TYPE_END_RANGE=2,                                                // VK_IMAGE_TYPE_3D
+       VK_IMAGE_TYPE_RANGE_SIZE=3,                                               // (VK_IMAGE_TYPE_3D-VK_IMAGE_TYPE_1D)+1
        VK_IMAGE_TYPE_MAX_ENUM=$7fffffff
       );
 
@@ -695,10 +695,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkImageTiling=
       (
        VK_IMAGE_TILING_OPTIMAL=0,
-       VK_IMAGE_TILING_BEGIN_RANGE=0, // VK_IMAGE_TILING_OPTIMAL
+       VK_IMAGE_TILING_BEGIN_RANGE=0,                                            // VK_IMAGE_TILING_OPTIMAL
        VK_IMAGE_TILING_LINEAR=1,
-       VK_IMAGE_TILING_END_RANGE=1, // VK_IMAGE_TILING_LINEAR
-       VK_IMAGE_TILING_RANGE_SIZE=2, // (VK_IMAGE_TILING_LINEAR-VK_IMAGE_TILING_OPTIMAL)+1
+       VK_IMAGE_TILING_END_RANGE=1,                                              // VK_IMAGE_TILING_LINEAR
+       VK_IMAGE_TILING_RANGE_SIZE=2,                                             // (VK_IMAGE_TILING_LINEAR-VK_IMAGE_TILING_OPTIMAL)+1
        VK_IMAGE_TILING_MAX_ENUM=$7fffffff
       );
 
@@ -707,15 +707,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkImageViewType=
       (
        VK_IMAGE_VIEW_TYPE_1D=0,
-       VK_IMAGE_VIEW_TYPE_BEGIN_RANGE=0, // VK_IMAGE_VIEW_TYPE_1D
+       VK_IMAGE_VIEW_TYPE_BEGIN_RANGE=0,                                         // VK_IMAGE_VIEW_TYPE_1D
        VK_IMAGE_VIEW_TYPE_2D=1,
        VK_IMAGE_VIEW_TYPE_3D=2,
        VK_IMAGE_VIEW_TYPE_CUBE=3,
        VK_IMAGE_VIEW_TYPE_1D_ARRAY=4,
        VK_IMAGE_VIEW_TYPE_2D_ARRAY=5,
        VK_IMAGE_VIEW_TYPE_CUBE_ARRAY=6,
-       VK_IMAGE_VIEW_TYPE_END_RANGE=6, // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
-       VK_IMAGE_VIEW_TYPE_RANGE_SIZE=7, // (VK_IMAGE_VIEW_TYPE_CUBE_ARRAY-VK_IMAGE_VIEW_TYPE_1D)+1
+       VK_IMAGE_VIEW_TYPE_END_RANGE=6,                                           // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
+       VK_IMAGE_VIEW_TYPE_RANGE_SIZE=7,                                          // (VK_IMAGE_VIEW_TYPE_CUBE_ARRAY-VK_IMAGE_VIEW_TYPE_1D)+1
        VK_IMAGE_VIEW_TYPE_MAX_ENUM=$7fffffff
       );
 
@@ -724,10 +724,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkCommandBufferLevel=
       (
        VK_COMMAND_BUFFER_LEVEL_PRIMARY=0,
-       VK_COMMAND_BUFFER_LEVEL_BEGIN_RANGE=0, // VK_COMMAND_BUFFER_LEVEL_PRIMARY
+       VK_COMMAND_BUFFER_LEVEL_BEGIN_RANGE=0,                                    // VK_COMMAND_BUFFER_LEVEL_PRIMARY
        VK_COMMAND_BUFFER_LEVEL_SECONDARY=1,
-       VK_COMMAND_BUFFER_LEVEL_END_RANGE=1, // VK_COMMAND_BUFFER_LEVEL_SECONDARY
-       VK_COMMAND_BUFFER_LEVEL_RANGE_SIZE=2, // (VK_COMMAND_BUFFER_LEVEL_SECONDARY-VK_COMMAND_BUFFER_LEVEL_PRIMARY)+1
+       VK_COMMAND_BUFFER_LEVEL_END_RANGE=1,                                      // VK_COMMAND_BUFFER_LEVEL_SECONDARY
+       VK_COMMAND_BUFFER_LEVEL_RANGE_SIZE=2,                                     // (VK_COMMAND_BUFFER_LEVEL_SECONDARY-VK_COMMAND_BUFFER_LEVEL_PRIMARY)+1
        VK_COMMAND_BUFFER_LEVEL_MAX_ENUM=$7fffffff
       );
 
@@ -736,15 +736,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkComponentSwizzle=
       (
        VK_COMPONENT_SWIZZLE_IDENTITY=0,
-       VK_COMPONENT_SWIZZLE_BEGIN_RANGE=0, // VK_COMPONENT_SWIZZLE_IDENTITY
+       VK_COMPONENT_SWIZZLE_BEGIN_RANGE=0,                                       // VK_COMPONENT_SWIZZLE_IDENTITY
        VK_COMPONENT_SWIZZLE_ZERO=1,
        VK_COMPONENT_SWIZZLE_ONE=2,
        VK_COMPONENT_SWIZZLE_R=3,
        VK_COMPONENT_SWIZZLE_G=4,
        VK_COMPONENT_SWIZZLE_B=5,
        VK_COMPONENT_SWIZZLE_A=6,
-       VK_COMPONENT_SWIZZLE_END_RANGE=6, // VK_COMPONENT_SWIZZLE_A
-       VK_COMPONENT_SWIZZLE_RANGE_SIZE=7, // (VK_COMPONENT_SWIZZLE_A-VK_COMPONENT_SWIZZLE_IDENTITY)+1
+       VK_COMPONENT_SWIZZLE_END_RANGE=6,                                         // VK_COMPONENT_SWIZZLE_A
+       VK_COMPONENT_SWIZZLE_RANGE_SIZE=7,                                        // (VK_COMPONENT_SWIZZLE_A-VK_COMPONENT_SWIZZLE_IDENTITY)+1
        VK_COMPONENT_SWIZZLE_MAX_ENUM=$7fffffff
       );
 
@@ -753,7 +753,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkDescriptorType=
       (
        VK_DESCRIPTOR_TYPE_SAMPLER=0,
-       VK_DESCRIPTOR_TYPE_BEGIN_RANGE=0, // VK_DESCRIPTOR_TYPE_SAMPLER
+       VK_DESCRIPTOR_TYPE_BEGIN_RANGE=0,                                         // VK_DESCRIPTOR_TYPE_SAMPLER
        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER=1,
        VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE=2,
        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE=3,
@@ -764,8 +764,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC=8,
        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC=9,
        VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT=10,
-       VK_DESCRIPTOR_TYPE_END_RANGE=10, // VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
-       VK_DESCRIPTOR_TYPE_RANGE_SIZE=11, // (VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT-VK_DESCRIPTOR_TYPE_SAMPLER)+1
+       VK_DESCRIPTOR_TYPE_END_RANGE=10,                                          // VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
+       VK_DESCRIPTOR_TYPE_RANGE_SIZE=11,                                         // (VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT-VK_DESCRIPTOR_TYPE_SAMPLER)+1
        VK_DESCRIPTOR_TYPE_MAX_ENUM=$7fffffff
       );
 
@@ -774,11 +774,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkQueryType=
       (
        VK_QUERY_TYPE_OCCLUSION=0,
-       VK_QUERY_TYPE_BEGIN_RANGE=0, // VK_QUERY_TYPE_OCCLUSION
-       VK_QUERY_TYPE_PIPELINE_STATISTICS=1, // Optional
+       VK_QUERY_TYPE_BEGIN_RANGE=0,                                              // VK_QUERY_TYPE_OCCLUSION
+       VK_QUERY_TYPE_PIPELINE_STATISTICS=1,                                      // Optional
        VK_QUERY_TYPE_TIMESTAMP=2,
-       VK_QUERY_TYPE_END_RANGE=2, // VK_QUERY_TYPE_TIMESTAMP
-       VK_QUERY_TYPE_RANGE_SIZE=3, // (VK_QUERY_TYPE_TIMESTAMP-VK_QUERY_TYPE_OCCLUSION)+1
+       VK_QUERY_TYPE_END_RANGE=2,                                                // VK_QUERY_TYPE_TIMESTAMP
+       VK_QUERY_TYPE_RANGE_SIZE=3,                                               // (VK_QUERY_TYPE_TIMESTAMP-VK_QUERY_TYPE_OCCLUSION)+1
        VK_QUERY_TYPE_MAX_ENUM=$7fffffff
       );
 
@@ -787,14 +787,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkBorderColor=
       (
        VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK=0,
-       VK_BORDER_COLOR_BEGIN_RANGE=0, // VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK
+       VK_BORDER_COLOR_BEGIN_RANGE=0,                                            // VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK
        VK_BORDER_COLOR_INT_TRANSPARENT_BLACK=1,
        VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK=2,
        VK_BORDER_COLOR_INT_OPAQUE_BLACK=3,
        VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE=4,
        VK_BORDER_COLOR_INT_OPAQUE_WHITE=5,
-       VK_BORDER_COLOR_END_RANGE=5, // VK_BORDER_COLOR_INT_OPAQUE_WHITE
-       VK_BORDER_COLOR_RANGE_SIZE=6, // (VK_BORDER_COLOR_INT_OPAQUE_WHITE-VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK)+1
+       VK_BORDER_COLOR_END_RANGE=5,                                              // VK_BORDER_COLOR_INT_OPAQUE_WHITE
+       VK_BORDER_COLOR_RANGE_SIZE=6,                                             // (VK_BORDER_COLOR_INT_OPAQUE_WHITE-VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK)+1
        VK_BORDER_COLOR_MAX_ENUM=$7fffffff
       );
 
@@ -803,10 +803,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPipelineBindPoint=
       (
        VK_PIPELINE_BIND_POINT_GRAPHICS=0,
-       VK_PIPELINE_BIND_POINT_BEGIN_RANGE=0, // VK_PIPELINE_BIND_POINT_GRAPHICS
+       VK_PIPELINE_BIND_POINT_BEGIN_RANGE=0,                                     // VK_PIPELINE_BIND_POINT_GRAPHICS
        VK_PIPELINE_BIND_POINT_COMPUTE=1,
-       VK_PIPELINE_BIND_POINT_END_RANGE=1, // VK_PIPELINE_BIND_POINT_COMPUTE
-       VK_PIPELINE_BIND_POINT_RANGE_SIZE=2, // (VK_PIPELINE_BIND_POINT_COMPUTE-VK_PIPELINE_BIND_POINT_GRAPHICS)+1
+       VK_PIPELINE_BIND_POINT_END_RANGE=1,                                       // VK_PIPELINE_BIND_POINT_COMPUTE
+       VK_PIPELINE_BIND_POINT_RANGE_SIZE=2,                                      // (VK_PIPELINE_BIND_POINT_COMPUTE-VK_PIPELINE_BIND_POINT_GRAPHICS)+1
        VK_PIPELINE_BIND_POINT_MAX_ENUM=$7fffffff
       );
 
@@ -815,9 +815,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPipelineCacheHeaderVersion=
       (
        VK_PIPELINE_CACHE_HEADER_VERSION_ONE=1,
-       VK_PIPELINE_CACHE_HEADER_VERSION_BEGIN_RANGE=1, // VK_PIPELINE_CACHE_HEADER_VERSION_ONE
-       VK_PIPELINE_CACHE_HEADER_VERSION_END_RANGE=1, // VK_PIPELINE_CACHE_HEADER_VERSION_ONE
-       VK_PIPELINE_CACHE_HEADER_VERSION_RANGE_SIZE=1, // (VK_PIPELINE_CACHE_HEADER_VERSION_ONE-VK_PIPELINE_CACHE_HEADER_VERSION_ONE)+1
+       VK_PIPELINE_CACHE_HEADER_VERSION_BEGIN_RANGE=1,                           // VK_PIPELINE_CACHE_HEADER_VERSION_ONE
+       VK_PIPELINE_CACHE_HEADER_VERSION_END_RANGE=1,                             // VK_PIPELINE_CACHE_HEADER_VERSION_ONE
+       VK_PIPELINE_CACHE_HEADER_VERSION_RANGE_SIZE=1,                            // (VK_PIPELINE_CACHE_HEADER_VERSION_ONE-VK_PIPELINE_CACHE_HEADER_VERSION_ONE)+1
        VK_PIPELINE_CACHE_HEADER_VERSION_MAX_ENUM=$7fffffff
       );
 
@@ -826,7 +826,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPrimitiveTopology=
       (
        VK_PRIMITIVE_TOPOLOGY_POINT_LIST=0,
-       VK_PRIMITIVE_TOPOLOGY_BEGIN_RANGE=0, // VK_PRIMITIVE_TOPOLOGY_POINT_LIST
+       VK_PRIMITIVE_TOPOLOGY_BEGIN_RANGE=0,                                      // VK_PRIMITIVE_TOPOLOGY_POINT_LIST
        VK_PRIMITIVE_TOPOLOGY_LINE_LIST=1,
        VK_PRIMITIVE_TOPOLOGY_LINE_STRIP=2,
        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST=3,
@@ -837,8 +837,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY=8,
        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY=9,
        VK_PRIMITIVE_TOPOLOGY_PATCH_LIST=10,
-       VK_PRIMITIVE_TOPOLOGY_END_RANGE=10, // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-       VK_PRIMITIVE_TOPOLOGY_RANGE_SIZE=11, // (VK_PRIMITIVE_TOPOLOGY_PATCH_LIST-VK_PRIMITIVE_TOPOLOGY_POINT_LIST)+1
+       VK_PRIMITIVE_TOPOLOGY_END_RANGE=10,                                       // VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+       VK_PRIMITIVE_TOPOLOGY_RANGE_SIZE=11,                                      // (VK_PRIMITIVE_TOPOLOGY_PATCH_LIST-VK_PRIMITIVE_TOPOLOGY_POINT_LIST)+1
        VK_PRIMITIVE_TOPOLOGY_MAX_ENUM=$7fffffff
       );
 
@@ -847,10 +847,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSharingMode=
       (
        VK_SHARING_MODE_EXCLUSIVE=0,
-       VK_SHARING_MODE_BEGIN_RANGE=0, // VK_SHARING_MODE_EXCLUSIVE
+       VK_SHARING_MODE_BEGIN_RANGE=0,                                            // VK_SHARING_MODE_EXCLUSIVE
        VK_SHARING_MODE_CONCURRENT=1,
-       VK_SHARING_MODE_END_RANGE=1, // VK_SHARING_MODE_CONCURRENT
-       VK_SHARING_MODE_RANGE_SIZE=2, // (VK_SHARING_MODE_CONCURRENT-VK_SHARING_MODE_EXCLUSIVE)+1
+       VK_SHARING_MODE_END_RANGE=1,                                              // VK_SHARING_MODE_CONCURRENT
+       VK_SHARING_MODE_RANGE_SIZE=2,                                             // (VK_SHARING_MODE_CONCURRENT-VK_SHARING_MODE_EXCLUSIVE)+1
        VK_SHARING_MODE_MAX_ENUM=$7fffffff
       );
 
@@ -859,10 +859,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkIndexType=
       (
        VK_INDEX_TYPE_UINT16=0,
-       VK_INDEX_TYPE_BEGIN_RANGE=0, // VK_INDEX_TYPE_UINT16
+       VK_INDEX_TYPE_BEGIN_RANGE=0,                                              // VK_INDEX_TYPE_UINT16
        VK_INDEX_TYPE_UINT32=1,
-       VK_INDEX_TYPE_END_RANGE=1, // VK_INDEX_TYPE_UINT32
-       VK_INDEX_TYPE_RANGE_SIZE=2, // (VK_INDEX_TYPE_UINT32-VK_INDEX_TYPE_UINT16)+1
+       VK_INDEX_TYPE_END_RANGE=1,                                                // VK_INDEX_TYPE_UINT32
+       VK_INDEX_TYPE_RANGE_SIZE=2,                                               // (VK_INDEX_TYPE_UINT32-VK_INDEX_TYPE_UINT16)+1
        VK_INDEX_TYPE_MAX_ENUM=$7fffffff
       );
 
@@ -871,10 +871,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkFilter=
       (
        VK_FILTER_NEAREST=0,
-       VK_FILTER_BEGIN_RANGE=0, // VK_FILTER_NEAREST
+       VK_FILTER_BEGIN_RANGE=0,                                                  // VK_FILTER_NEAREST
        VK_FILTER_LINEAR=1,
-       VK_FILTER_END_RANGE=1, // VK_FILTER_LINEAR
-       VK_FILTER_RANGE_SIZE=2, // (VK_FILTER_LINEAR-VK_FILTER_NEAREST)+1
+       VK_FILTER_END_RANGE=1,                                                    // VK_FILTER_LINEAR
+       VK_FILTER_RANGE_SIZE=2,                                                   // (VK_FILTER_LINEAR-VK_FILTER_NEAREST)+1
        VK_FILTER_MAX_ENUM=$7fffffff
       );
 
@@ -882,11 +882,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkSamplerMipmapMode=^TVkSamplerMipmapMode;
      TVkSamplerMipmapMode=
       (
-       VK_SAMPLER_MIPMAP_MODE_NEAREST=0, // Choose nearest mip level
-       VK_SAMPLER_MIPMAP_MODE_BEGIN_RANGE=0, // VK_SAMPLER_MIPMAP_MODE_NEAREST
-       VK_SAMPLER_MIPMAP_MODE_LINEAR=1, // Linear filter between mip levels
-       VK_SAMPLER_MIPMAP_MODE_END_RANGE=1, // VK_SAMPLER_MIPMAP_MODE_LINEAR
-       VK_SAMPLER_MIPMAP_MODE_RANGE_SIZE=2, // (VK_SAMPLER_MIPMAP_MODE_LINEAR-VK_SAMPLER_MIPMAP_MODE_NEAREST)+1
+       VK_SAMPLER_MIPMAP_MODE_NEAREST=0,                                         // Choose nearest mip level
+       VK_SAMPLER_MIPMAP_MODE_BEGIN_RANGE=0,                                     // VK_SAMPLER_MIPMAP_MODE_NEAREST
+       VK_SAMPLER_MIPMAP_MODE_LINEAR=1,                                          // Linear filter between mip levels
+       VK_SAMPLER_MIPMAP_MODE_END_RANGE=1,                                       // VK_SAMPLER_MIPMAP_MODE_LINEAR
+       VK_SAMPLER_MIPMAP_MODE_RANGE_SIZE=2,                                      // (VK_SAMPLER_MIPMAP_MODE_LINEAR-VK_SAMPLER_MIPMAP_MODE_NEAREST)+1
        VK_SAMPLER_MIPMAP_MODE_MAX_ENUM=$7fffffff
       );
 
@@ -895,13 +895,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSamplerAddressMode=
       (
        VK_SAMPLER_ADDRESS_MODE_REPEAT=0,
-       VK_SAMPLER_ADDRESS_MODE_BEGIN_RANGE=0, // VK_SAMPLER_ADDRESS_MODE_REPEAT
+       VK_SAMPLER_ADDRESS_MODE_BEGIN_RANGE=0,                                    // VK_SAMPLER_ADDRESS_MODE_REPEAT
        VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT=1,
        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE=2,
        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER=3,
        VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE=4,
-       VK_SAMPLER_ADDRESS_MODE_END_RANGE=4, // VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
-       VK_SAMPLER_ADDRESS_MODE_RANGE_SIZE=5, // (VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE-VK_SAMPLER_ADDRESS_MODE_REPEAT)+1
+       VK_SAMPLER_ADDRESS_MODE_END_RANGE=4,                                      // VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
+       VK_SAMPLER_ADDRESS_MODE_RANGE_SIZE=5,                                     // (VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE-VK_SAMPLER_ADDRESS_MODE_REPEAT)+1
        VK_SAMPLER_ADDRESS_MODE_MAX_ENUM=$7fffffff
       );
 
@@ -910,7 +910,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkCompareOp=
       (
        VK_COMPARE_OP_NEVER=0,
-       VK_COMPARE_OP_BEGIN_RANGE=0, // VK_COMPARE_OP_NEVER
+       VK_COMPARE_OP_BEGIN_RANGE=0,                                              // VK_COMPARE_OP_NEVER
        VK_COMPARE_OP_LESS=1,
        VK_COMPARE_OP_EQUAL=2,
        VK_COMPARE_OP_LESS_OR_EQUAL=3,
@@ -918,8 +918,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_COMPARE_OP_NOT_EQUAL=5,
        VK_COMPARE_OP_GREATER_OR_EQUAL=6,
        VK_COMPARE_OP_ALWAYS=7,
-       VK_COMPARE_OP_END_RANGE=7, // VK_COMPARE_OP_ALWAYS
-       VK_COMPARE_OP_RANGE_SIZE=8, // (VK_COMPARE_OP_ALWAYS-VK_COMPARE_OP_NEVER)+1
+       VK_COMPARE_OP_END_RANGE=7,                                                // VK_COMPARE_OP_ALWAYS
+       VK_COMPARE_OP_RANGE_SIZE=8,                                               // (VK_COMPARE_OP_ALWAYS-VK_COMPARE_OP_NEVER)+1
        VK_COMPARE_OP_MAX_ENUM=$7fffffff
       );
 
@@ -928,11 +928,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPolygonMode=
       (
        VK_POLYGON_MODE_FILL=0,
-       VK_POLYGON_MODE_BEGIN_RANGE=0, // VK_POLYGON_MODE_FILL
+       VK_POLYGON_MODE_BEGIN_RANGE=0,                                            // VK_POLYGON_MODE_FILL
        VK_POLYGON_MODE_LINE=1,
        VK_POLYGON_MODE_POINT=2,
-       VK_POLYGON_MODE_END_RANGE=2, // VK_POLYGON_MODE_POINT
-       VK_POLYGON_MODE_RANGE_SIZE=3, // (VK_POLYGON_MODE_POINT-VK_POLYGON_MODE_FILL)+1
+       VK_POLYGON_MODE_END_RANGE=2,                                              // VK_POLYGON_MODE_POINT
+       VK_POLYGON_MODE_RANGE_SIZE=3,                                             // (VK_POLYGON_MODE_POINT-VK_POLYGON_MODE_FILL)+1
        VK_POLYGON_MODE_MAX_ENUM=$7fffffff
       );
 
@@ -951,10 +951,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkFrontFace=
       (
        VK_FRONT_FACE_COUNTER_CLOCKWISE=0,
-       VK_FRONT_FACE_BEGIN_RANGE=0, // VK_FRONT_FACE_COUNTER_CLOCKWISE
+       VK_FRONT_FACE_BEGIN_RANGE=0,                                              // VK_FRONT_FACE_COUNTER_CLOCKWISE
        VK_FRONT_FACE_CLOCKWISE=1,
-       VK_FRONT_FACE_END_RANGE=1, // VK_FRONT_FACE_CLOCKWISE
-       VK_FRONT_FACE_RANGE_SIZE=2, // (VK_FRONT_FACE_CLOCKWISE-VK_FRONT_FACE_COUNTER_CLOCKWISE)+1
+       VK_FRONT_FACE_END_RANGE=1,                                                // VK_FRONT_FACE_CLOCKWISE
+       VK_FRONT_FACE_RANGE_SIZE=2,                                               // (VK_FRONT_FACE_CLOCKWISE-VK_FRONT_FACE_COUNTER_CLOCKWISE)+1
        VK_FRONT_FACE_MAX_ENUM=$7fffffff
       );
 
@@ -963,7 +963,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkBlendFactor=
       (
        VK_BLEND_FACTOR_ZERO=0,
-       VK_BLEND_FACTOR_BEGIN_RANGE=0, // VK_BLEND_FACTOR_ZERO
+       VK_BLEND_FACTOR_BEGIN_RANGE=0,                                            // VK_BLEND_FACTOR_ZERO
        VK_BLEND_FACTOR_ONE=1,
        VK_BLEND_FACTOR_SRC_COLOR=2,
        VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR=3,
@@ -982,8 +982,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR=16,
        VK_BLEND_FACTOR_SRC1_ALPHA=17,
        VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA=18,
-       VK_BLEND_FACTOR_END_RANGE=18, // VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
-       VK_BLEND_FACTOR_RANGE_SIZE=19, // (VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA-VK_BLEND_FACTOR_ZERO)+1
+       VK_BLEND_FACTOR_END_RANGE=18,                                             // VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
+       VK_BLEND_FACTOR_RANGE_SIZE=19,                                            // (VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA-VK_BLEND_FACTOR_ZERO)+1
        VK_BLEND_FACTOR_MAX_ENUM=$7fffffff
       );
 
@@ -992,13 +992,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkBlendOp=
       (
        VK_BLEND_OP_ADD=0,
-       VK_BLEND_OP_BEGIN_RANGE=0, // VK_BLEND_OP_ADD
+       VK_BLEND_OP_BEGIN_RANGE=0,                                                // VK_BLEND_OP_ADD
        VK_BLEND_OP_SUBTRACT=1,
        VK_BLEND_OP_REVERSE_SUBTRACT=2,
        VK_BLEND_OP_MIN=3,
        VK_BLEND_OP_MAX=4,
-       VK_BLEND_OP_END_RANGE=4, // VK_BLEND_OP_MAX
-       VK_BLEND_OP_RANGE_SIZE=5, // (VK_BLEND_OP_MAX-VK_BLEND_OP_ADD)+1
+       VK_BLEND_OP_END_RANGE=4,                                                  // VK_BLEND_OP_MAX
+       VK_BLEND_OP_RANGE_SIZE=5,                                                 // (VK_BLEND_OP_MAX-VK_BLEND_OP_ADD)+1
        VK_BLEND_OP_MAX_ENUM=$7fffffff
       );
 
@@ -1007,7 +1007,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkStencilOp=
       (
        VK_STENCIL_OP_KEEP=0,
-       VK_STENCIL_OP_BEGIN_RANGE=0, // VK_STENCIL_OP_KEEP
+       VK_STENCIL_OP_BEGIN_RANGE=0,                                              // VK_STENCIL_OP_KEEP
        VK_STENCIL_OP_ZERO=1,
        VK_STENCIL_OP_REPLACE=2,
        VK_STENCIL_OP_INCREMENT_AND_CLAMP=3,
@@ -1015,8 +1015,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STENCIL_OP_INVERT=5,
        VK_STENCIL_OP_INCREMENT_AND_WRAP=6,
        VK_STENCIL_OP_DECREMENT_AND_WRAP=7,
-       VK_STENCIL_OP_END_RANGE=7, // VK_STENCIL_OP_DECREMENT_AND_WRAP
-       VK_STENCIL_OP_RANGE_SIZE=8, // (VK_STENCIL_OP_DECREMENT_AND_WRAP-VK_STENCIL_OP_KEEP)+1
+       VK_STENCIL_OP_END_RANGE=7,                                                // VK_STENCIL_OP_DECREMENT_AND_WRAP
+       VK_STENCIL_OP_RANGE_SIZE=8,                                               // (VK_STENCIL_OP_DECREMENT_AND_WRAP-VK_STENCIL_OP_KEEP)+1
        VK_STENCIL_OP_MAX_ENUM=$7fffffff
       );
 
@@ -1025,7 +1025,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkLogicOp=
       (
        VK_LOGIC_OP_CLEAR=0,
-       VK_LOGIC_OP_BEGIN_RANGE=0, // VK_LOGIC_OP_CLEAR
+       VK_LOGIC_OP_BEGIN_RANGE=0,                                                // VK_LOGIC_OP_CLEAR
        VK_LOGIC_OP_AND=1,
        VK_LOGIC_OP_AND_REVERSE=2,
        VK_LOGIC_OP_COPY=3,
@@ -1041,8 +1041,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_LOGIC_OP_OR_INVERTED=13,
        VK_LOGIC_OP_NAND=14,
        VK_LOGIC_OP_SET=15,
-       VK_LOGIC_OP_END_RANGE=15, // VK_LOGIC_OP_SET
-       VK_LOGIC_OP_RANGE_SIZE=16, // (VK_LOGIC_OP_SET-VK_LOGIC_OP_CLEAR)+1
+       VK_LOGIC_OP_END_RANGE=15,                                                 // VK_LOGIC_OP_SET
+       VK_LOGIC_OP_RANGE_SIZE=16,                                                // (VK_LOGIC_OP_SET-VK_LOGIC_OP_CLEAR)+1
        VK_LOGIC_OP_MAX_ENUM=$7fffffff
       );
 
@@ -1051,9 +1051,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkInternalAllocationType=
       (
        VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE=0,
-       VK_INTERNAL_ALLOCATION_TYPE_BEGIN_RANGE=0, // VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE
-       VK_INTERNAL_ALLOCATION_TYPE_END_RANGE=0, // VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE
-       VK_INTERNAL_ALLOCATION_TYPE_RANGE_SIZE=1, // (VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE-VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE)+1
+       VK_INTERNAL_ALLOCATION_TYPE_BEGIN_RANGE=0,                                // VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE
+       VK_INTERNAL_ALLOCATION_TYPE_END_RANGE=0,                                  // VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE
+       VK_INTERNAL_ALLOCATION_TYPE_RANGE_SIZE=1,                                 // (VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE-VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE)+1
        VK_INTERNAL_ALLOCATION_TYPE_MAX_ENUM=$7fffffff
       );
 
@@ -1062,13 +1062,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSystemAllocationScope=
       (
        VK_SYSTEM_ALLOCATION_SCOPE_COMMAND=0,
-       VK_SYSTEM_ALLOCATION_SCOPE_BEGIN_RANGE=0, // VK_SYSTEM_ALLOCATION_SCOPE_COMMAND
+       VK_SYSTEM_ALLOCATION_SCOPE_BEGIN_RANGE=0,                                 // VK_SYSTEM_ALLOCATION_SCOPE_COMMAND
        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT=1,
        VK_SYSTEM_ALLOCATION_SCOPE_CACHE=2,
        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE=3,
        VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE=4,
-       VK_SYSTEM_ALLOCATION_SCOPE_END_RANGE=4, // VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE
-       VK_SYSTEM_ALLOCATION_SCOPE_RANGE_SIZE=5, // (VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE-VK_SYSTEM_ALLOCATION_SCOPE_COMMAND)+1
+       VK_SYSTEM_ALLOCATION_SCOPE_END_RANGE=4,                                   // VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE
+       VK_SYSTEM_ALLOCATION_SCOPE_RANGE_SIZE=5,                                  // (VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE-VK_SYSTEM_ALLOCATION_SCOPE_COMMAND)+1
        VK_SYSTEM_ALLOCATION_SCOPE_MAX_ENUM=$7fffffff
       );
 
@@ -1077,13 +1077,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPhysicalDeviceType=
       (
        VK_PHYSICAL_DEVICE_TYPE_OTHER=0,
-       VK_PHYSICAL_DEVICE_TYPE_BEGIN_RANGE=0, // VK_PHYSICAL_DEVICE_TYPE_OTHER
+       VK_PHYSICAL_DEVICE_TYPE_BEGIN_RANGE=0,                                    // VK_PHYSICAL_DEVICE_TYPE_OTHER
        VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU=1,
        VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU=2,
        VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU=3,
        VK_PHYSICAL_DEVICE_TYPE_CPU=4,
-       VK_PHYSICAL_DEVICE_TYPE_END_RANGE=4, // VK_PHYSICAL_DEVICE_TYPE_CPU
-       VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE=5, // (VK_PHYSICAL_DEVICE_TYPE_CPU-VK_PHYSICAL_DEVICE_TYPE_OTHER)+1
+       VK_PHYSICAL_DEVICE_TYPE_END_RANGE=4,                                      // VK_PHYSICAL_DEVICE_TYPE_CPU
+       VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE=5,                                     // (VK_PHYSICAL_DEVICE_TYPE_CPU-VK_PHYSICAL_DEVICE_TYPE_OTHER)+1
        VK_PHYSICAL_DEVICE_TYPE_MAX_ENUM=$7fffffff
       );
 
@@ -1092,10 +1092,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkVertexInputRate=
       (
        VK_VERTEX_INPUT_RATE_VERTEX=0,
-       VK_VERTEX_INPUT_RATE_BEGIN_RANGE=0, // VK_VERTEX_INPUT_RATE_VERTEX
+       VK_VERTEX_INPUT_RATE_BEGIN_RANGE=0,                                       // VK_VERTEX_INPUT_RATE_VERTEX
        VK_VERTEX_INPUT_RATE_INSTANCE=1,
-       VK_VERTEX_INPUT_RATE_END_RANGE=1, // VK_VERTEX_INPUT_RATE_INSTANCE
-       VK_VERTEX_INPUT_RATE_RANGE_SIZE=2, // (VK_VERTEX_INPUT_RATE_INSTANCE-VK_VERTEX_INPUT_RATE_VERTEX)+1
+       VK_VERTEX_INPUT_RATE_END_RANGE=1,                                         // VK_VERTEX_INPUT_RATE_INSTANCE
+       VK_VERTEX_INPUT_RATE_RANGE_SIZE=2,                                        // (VK_VERTEX_INPUT_RATE_INSTANCE-VK_VERTEX_INPUT_RATE_VERTEX)+1
        VK_VERTEX_INPUT_RATE_MAX_ENUM=$7fffffff
       );
 
@@ -1104,7 +1104,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkFormat=
       (
        VK_FORMAT_UNDEFINED=0,
-       VK_FORMAT_BEGIN_RANGE=0, // VK_FORMAT_UNDEFINED
+       VK_FORMAT_BEGIN_RANGE=0,                                                  // VK_FORMAT_UNDEFINED
        VK_FORMAT_R4G4_UNORM_PACK8=1,
        VK_FORMAT_R4G4B4A4_UNORM_PACK16=2,
        VK_FORMAT_B4G4R4A4_UNORM_PACK16=3,
@@ -1289,8 +1289,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_ASTC_12x10_SRGB_BLOCK=182,
        VK_FORMAT_ASTC_12x12_UNORM_BLOCK=183,
        VK_FORMAT_ASTC_12x12_SRGB_BLOCK=184,
-       VK_FORMAT_END_RANGE=184, // VK_FORMAT_ASTC_12x12_SRGB_BLOCK
-       VK_FORMAT_RANGE_SIZE=185, // (VK_FORMAT_ASTC_12x12_SRGB_BLOCK-VK_FORMAT_UNDEFINED)+1
+       VK_FORMAT_END_RANGE=184,                                                  // VK_FORMAT_ASTC_12x12_SRGB_BLOCK
+       VK_FORMAT_RANGE_SIZE=185,                                                 // (VK_FORMAT_ASTC_12x12_SRGB_BLOCK-VK_FORMAT_UNDEFINED)+1
        VK_FORMAT_MAX_ENUM=$7fffffff
       );
 
@@ -1299,7 +1299,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkStructureType=
       (
        VK_STRUCTURE_TYPE_APPLICATION_INFO=0,
-       VK_STRUCTURE_TYPE_BEGIN_RANGE=0, // VK_STRUCTURE_TYPE_APPLICATION_INFO
+       VK_STRUCTURE_TYPE_BEGIN_RANGE=0,                                          // VK_STRUCTURE_TYPE_APPLICATION_INFO
        VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO=1,
        VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO=2,
        VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO=3,
@@ -1348,8 +1348,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_MEMORY_BARRIER=46,
        VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO=47,
        VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO=48,
-       VK_STRUCTURE_TYPE_END_RANGE=48, // VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO
-       VK_STRUCTURE_TYPE_RANGE_SIZE=49, // (VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO-VK_STRUCTURE_TYPE_APPLICATION_INFO)+1
+       VK_STRUCTURE_TYPE_END_RANGE=48,                                           // VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO
+       VK_STRUCTURE_TYPE_RANGE_SIZE=49,                                          // (VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO-VK_STRUCTURE_TYPE_APPLICATION_INFO)+1
        VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR=1000001000,
        VK_STRUCTURE_TYPE_PRESENT_INFO_KHR=1000001001,
        VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR=1000002000,
@@ -1370,10 +1370,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSubpassContents=
       (
        VK_SUBPASS_CONTENTS_INLINE=0,
-       VK_SUBPASS_CONTENTS_BEGIN_RANGE=0, // VK_SUBPASS_CONTENTS_INLINE
+       VK_SUBPASS_CONTENTS_BEGIN_RANGE=0,                                        // VK_SUBPASS_CONTENTS_INLINE
        VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS=1,
-       VK_SUBPASS_CONTENTS_END_RANGE=1, // VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
-       VK_SUBPASS_CONTENTS_RANGE_SIZE=2, // (VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS-VK_SUBPASS_CONTENTS_INLINE)+1
+       VK_SUBPASS_CONTENTS_END_RANGE=1,                                          // VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
+       VK_SUBPASS_CONTENTS_RANGE_SIZE=2,                                         // (VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS-VK_SUBPASS_CONTENTS_INLINE)+1
        VK_SUBPASS_CONTENTS_MAX_ENUM=$7fffffff
       );
 
@@ -1389,26 +1389,26 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ERROR_NATIVE_WINDOW_IN_USE_KHR=-1000000001,
        VK_ERROR_SURFACE_LOST_KHR=-1000000000,
        VK_RESULT_UNUSED_START=-12,
-       VK_RESULT_BEGIN_RANGE=-12, // VK_RESULT_UNUSED_START
-       VK_ERROR_FORMAT_NOT_SUPPORTED=-11, // Requested format is not supported on this device
-       VK_ERROR_TOO_MANY_OBJECTS=-10, // Too many objects of the type have already been created
-       VK_ERROR_INCOMPATIBLE_DRIVER=-9, // Unable to find a Vulkan driver
-       VK_ERROR_FEATURE_NOT_PRESENT=-8, // Requested feature is not available on this device
-       VK_ERROR_EXTENSION_NOT_PRESENT=-7, // Extension specified does not exist
-       VK_ERROR_LAYER_NOT_PRESENT=-6, // Layer specified does not exist
-       VK_ERROR_MEMORY_MAP_FAILED=-5, // Mapping of a memory object has failed
-       VK_ERROR_DEVICE_LOST=-4, // Initialization of a object has failed
-       VK_ERROR_INITIALIZATION_FAILED=-3, // The logical device has been lost. See <<devsandqueues-lost-device>>
-       VK_ERROR_OUT_OF_DEVICE_MEMORY=-2, // A device memory allocation has failed
-       VK_ERROR_OUT_OF_HOST_MEMORY=-1, // A host memory allocation has failed
-       VK_SUCCESS=0, // Command completed successfully
-       VK_NOT_READY=1, // A fence or query has not yet completed
-       VK_TIMEOUT=2, // A wait operation has not completed in the specified time
-       VK_EVENT_SET=3, // An event is signaled
-       VK_EVENT_RESET=4, // An event is unsignalled
-       VK_INCOMPLETE=5, // A return array was too small for the resul
-       VK_RESULT_END_RANGE=5, // VK_INCOMPLETE
-       VK_RESULT_RANGE_SIZE=18, // (VK_INCOMPLETE-VK_RESULT_UNUSED_START)+1
+       VK_RESULT_BEGIN_RANGE=-12,                                                // VK_RESULT_UNUSED_START
+       VK_ERROR_FORMAT_NOT_SUPPORTED=-11,                                        // Requested format is not supported on this device
+       VK_ERROR_TOO_MANY_OBJECTS=-10,                                            // Too many objects of the type have already been created
+       VK_ERROR_INCOMPATIBLE_DRIVER=-9,                                          // Unable to find a Vulkan driver
+       VK_ERROR_FEATURE_NOT_PRESENT=-8,                                          // Requested feature is not available on this device
+       VK_ERROR_EXTENSION_NOT_PRESENT=-7,                                        // Extension specified does not exist
+       VK_ERROR_LAYER_NOT_PRESENT=-6,                                            // Layer specified does not exist
+       VK_ERROR_MEMORY_MAP_FAILED=-5,                                            // Mapping of a memory object has failed
+       VK_ERROR_DEVICE_LOST=-4,                                                  // Initialization of a object has failed
+       VK_ERROR_INITIALIZATION_FAILED=-3,                                        // The logical device has been lost. See <<devsandqueues-lost-device>>
+       VK_ERROR_OUT_OF_DEVICE_MEMORY=-2,                                         // A device memory allocation has failed
+       VK_ERROR_OUT_OF_HOST_MEMORY=-1,                                           // A host memory allocation has failed
+       VK_SUCCESS=0,                                                             // Command completed successfully
+       VK_NOT_READY=1,                                                           // A fence or query has not yet completed
+       VK_TIMEOUT=2,                                                             // A wait operation has not completed in the specified time
+       VK_EVENT_SET=3,                                                           // An event is signaled
+       VK_EVENT_RESET=4,                                                         // An event is unsignalled
+       VK_INCOMPLETE=5,                                                          // A return array was too small for the resul
+       VK_RESULT_END_RANGE=5,                                                    // VK_INCOMPLETE
+       VK_RESULT_RANGE_SIZE=18,                                                  // (VK_INCOMPLETE-VK_RESULT_UNUSED_START)+1
        VK_SUBOPTIMAL_KHR=1000001003,
        VK_RESULT_MAX_ENUM=$7fffffff
       );
@@ -1418,7 +1418,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkDynamicState=
       (
        VK_DYNAMIC_STATE_VIEWPORT=0,
-       VK_DYNAMIC_STATE_BEGIN_RANGE=0, // VK_DYNAMIC_STATE_VIEWPORT
+       VK_DYNAMIC_STATE_BEGIN_RANGE=0,                                           // VK_DYNAMIC_STATE_VIEWPORT
        VK_DYNAMIC_STATE_SCISSOR=1,
        VK_DYNAMIC_STATE_LINE_WIDTH=2,
        VK_DYNAMIC_STATE_DEPTH_BIAS=3,
@@ -1427,8 +1427,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK=6,
        VK_DYNAMIC_STATE_STENCIL_WRITE_MASK=7,
        VK_DYNAMIC_STATE_STENCIL_REFERENCE=8,
-       VK_DYNAMIC_STATE_END_RANGE=8, // VK_DYNAMIC_STATE_STENCIL_REFERENCE
-       VK_DYNAMIC_STATE_RANGE_SIZE=9, // (VK_DYNAMIC_STATE_STENCIL_REFERENCE-VK_DYNAMIC_STATE_VIEWPORT)+1
+       VK_DYNAMIC_STATE_END_RANGE=8,                                             // VK_DYNAMIC_STATE_STENCIL_REFERENCE
+       VK_DYNAMIC_STATE_RANGE_SIZE=9,                                            // (VK_DYNAMIC_STATE_STENCIL_REFERENCE-VK_DYNAMIC_STATE_VIEWPORT)+1
        VK_DYNAMIC_STATE_MAX_ENUM=$7fffffff
       );
 
@@ -1436,75 +1436,75 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkQueueFlagBits=^TVkQueueFlagBits;
      TVkQueueFlagBits=
       (
-       VK_QUEUE_GRAPHICS_BIT=$00000001, // Queue supports graphics operations
-       VK_QUEUE_COMPUTE_BIT=$00000002, // Queue supports compute operations
-       VK_QUEUE_TRANSFER_BIT=$00000004, // Queue supports transfer operations
-       VK_QUEUE_SPARSE_BINDING_BIT=$00000008 // Queue supports sparse resource memory management operations
+       VK_QUEUE_GRAPHICS_BIT=$00000001,                                          // Queue supports graphics operations
+       VK_QUEUE_COMPUTE_BIT=$00000002,                                           // Queue supports compute operations
+       VK_QUEUE_TRANSFER_BIT=$00000004,                                          // Queue supports transfer operations
+       VK_QUEUE_SPARSE_BINDING_BIT=$00000008                                     // Queue supports sparse resource memory management operations
       );
 
      PPVkMemoryPropertyFlagBits=^PVkMemoryPropertyFlagBits;
      PVkMemoryPropertyFlagBits=^TVkMemoryPropertyFlagBits;
      TVkMemoryPropertyFlagBits=
       (
-       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT=$00000001, // If otherwise stated, then allocate memory on device
-       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT=$00000002, // Memory is mappable by host
-       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT=$00000004, // Memory will have i/o coherency. If not set, application may need to use vkFlushMappedMemoryRanges and vkInvalidateMappedMemoryRanges to flush/invalidate host cache
-       VK_MEMORY_PROPERTY_HOST_CACHED_BIT=$00000008, // Memory will be cached by the host
-       VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT=$00000010 // Memory may be allocated by the driver when it is required
+       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT=$00000001,                            // If otherwise stated, then allocate memory on device
+       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT=$00000002,                            // Memory is mappable by host
+       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT=$00000004,                           // Memory will have i/o coherency. If not set, application may need to use vkFlushMappedMemoryRanges and vkInvalidateMappedMemoryRanges to flush/invalidate host cache
+       VK_MEMORY_PROPERTY_HOST_CACHED_BIT=$00000008,                             // Memory will be cached by the host
+       VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT=$00000010                         // Memory may be allocated by the driver when it is required
       );
 
      PPVkMemoryHeapFlagBits=^PVkMemoryHeapFlagBits;
      PVkMemoryHeapFlagBits=^TVkMemoryHeapFlagBits;
      TVkMemoryHeapFlagBits=
       (
-       VK_MEMORY_HEAP_DEVICE_LOCAL_BIT=$00000001 // If set, heap represents device memory
+       VK_MEMORY_HEAP_DEVICE_LOCAL_BIT=$00000001                                 // If set, heap represents device memory
       );
 
      PPVkAccessFlagBits=^PVkAccessFlagBits;
      PVkAccessFlagBits=^TVkAccessFlagBits;
      TVkAccessFlagBits=
       (
-       VK_ACCESS_INDIRECT_COMMAND_READ_BIT=$00000001, // Controls coherency of indirect command reads
-       VK_ACCESS_INDEX_READ_BIT=$00000002, // Controls coherency of index reads
-       VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT=$00000004, // Controls coherency of vertex attribute reads
-       VK_ACCESS_UNIFORM_READ_BIT=$00000008, // Controls coherency of uniform buffer reads
-       VK_ACCESS_INPUT_ATTACHMENT_READ_BIT=$00000010, // Controls coherency of input attachment reads
-       VK_ACCESS_SHADER_READ_BIT=$00000020, // Controls coherency of shader reads
-       VK_ACCESS_SHADER_WRITE_BIT=$00000040, // Controls coherency of shader writes
-       VK_ACCESS_COLOR_ATTACHMENT_READ_BIT=$00000080, // Controls coherency of color attachment reads
-       VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT=$00000100, // Controls coherency of color attachment writes
-       VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT=$00000200, // Controls coherency of depth/stencil attachment reads
-       VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT=$00000400, // Controls coherency of depth/stencil attachment writes
-       VK_ACCESS_TRANSFER_READ_BIT=$00000800, // Controls coherency of transfer reads
-       VK_ACCESS_TRANSFER_WRITE_BIT=$00001000, // Controls coherency of transfer writes
-       VK_ACCESS_HOST_READ_BIT=$00002000, // Controls coherency of host reads
-       VK_ACCESS_HOST_WRITE_BIT=$00004000, // Controls coherency of host writes
-       VK_ACCESS_MEMORY_READ_BIT=$00008000, // Controls coherency of memory reads
-       VK_ACCESS_MEMORY_WRITE_BIT=$00010000 // Controls coherency of memory writes
+       VK_ACCESS_INDIRECT_COMMAND_READ_BIT=$00000001,                            // Controls coherency of indirect command reads
+       VK_ACCESS_INDEX_READ_BIT=$00000002,                                       // Controls coherency of index reads
+       VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT=$00000004,                            // Controls coherency of vertex attribute reads
+       VK_ACCESS_UNIFORM_READ_BIT=$00000008,                                     // Controls coherency of uniform buffer reads
+       VK_ACCESS_INPUT_ATTACHMENT_READ_BIT=$00000010,                            // Controls coherency of input attachment reads
+       VK_ACCESS_SHADER_READ_BIT=$00000020,                                      // Controls coherency of shader reads
+       VK_ACCESS_SHADER_WRITE_BIT=$00000040,                                     // Controls coherency of shader writes
+       VK_ACCESS_COLOR_ATTACHMENT_READ_BIT=$00000080,                            // Controls coherency of color attachment reads
+       VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT=$00000100,                           // Controls coherency of color attachment writes
+       VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT=$00000200,                    // Controls coherency of depth/stencil attachment reads
+       VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT=$00000400,                   // Controls coherency of depth/stencil attachment writes
+       VK_ACCESS_TRANSFER_READ_BIT=$00000800,                                    // Controls coherency of transfer reads
+       VK_ACCESS_TRANSFER_WRITE_BIT=$00001000,                                   // Controls coherency of transfer writes
+       VK_ACCESS_HOST_READ_BIT=$00002000,                                        // Controls coherency of host reads
+       VK_ACCESS_HOST_WRITE_BIT=$00004000,                                       // Controls coherency of host writes
+       VK_ACCESS_MEMORY_READ_BIT=$00008000,                                      // Controls coherency of memory reads
+       VK_ACCESS_MEMORY_WRITE_BIT=$00010000                                      // Controls coherency of memory writes
       );
 
      PPVkBufferUsageFlagBits=^PVkBufferUsageFlagBits;
      PVkBufferUsageFlagBits=^TVkBufferUsageFlagBits;
      TVkBufferUsageFlagBits=
       (
-       VK_BUFFER_USAGE_TRANSFER_SRC_BIT=$00000001, // Can be used as a source of transfer operations
-       VK_BUFFER_USAGE_TRANSFER_DST_BIT=$00000002, // Can be used as a destination of transfer operations
-       VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT=$00000004, // Can be used as TBO
-       VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT=$00000008, // Can be used as IBO
-       VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT=$00000010, // Can be used as UBO
-       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT=$00000020, // Can be used as SSBO
-       VK_BUFFER_USAGE_INDEX_BUFFER_BIT=$00000040, // Can be used as source of fixed-function index fetch (index buffer)
-       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT=$00000080, // Can be used as source of fixed-function vertex fetch (VBO)
-       VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT=$00000100 // Can be the source of indirect parameters (e.g. indirect buffer, parameter buffer)
+       VK_BUFFER_USAGE_TRANSFER_SRC_BIT=$00000001,                               // Can be used as a source of transfer operations
+       VK_BUFFER_USAGE_TRANSFER_DST_BIT=$00000002,                               // Can be used as a destination of transfer operations
+       VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT=$00000004,                       // Can be used as TBO
+       VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT=$00000008,                       // Can be used as IBO
+       VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT=$00000010,                             // Can be used as UBO
+       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT=$00000020,                             // Can be used as SSBO
+       VK_BUFFER_USAGE_INDEX_BUFFER_BIT=$00000040,                               // Can be used as source of fixed-function index fetch (index buffer)
+       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT=$00000080,                              // Can be used as source of fixed-function vertex fetch (VBO)
+       VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT=$00000100                             // Can be the source of indirect parameters (e.g. indirect buffer, parameter buffer)
       );
 
      PPVkBufferCreateFlagBits=^PVkBufferCreateFlagBits;
      PVkBufferCreateFlagBits=^TVkBufferCreateFlagBits;
      TVkBufferCreateFlagBits=
       (
-       VK_BUFFER_CREATE_SPARSE_BINDING_BIT=$00000001, // Buffer should support sparse backing
-       VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT=$00000002, // Buffer should support sparse backing with partial residency
-       VK_BUFFER_CREATE_SPARSE_ALIASED_BIT=$00000004 // Buffer should support constent data access to physical memory blocks mapped into multiple locations of sparse buffers
+       VK_BUFFER_CREATE_SPARSE_BINDING_BIT=$00000001,                            // Buffer should support sparse backing
+       VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT=$00000002,                          // Buffer should support sparse backing with partial residency
+       VK_BUFFER_CREATE_SPARSE_ALIASED_BIT=$00000004                             // Buffer should support constent data access to physical memory blocks mapped into multiple locations of sparse buffers
       );
 
      PPVkShaderStageFlagBits=^PVkShaderStageFlagBits;
@@ -1525,25 +1525,25 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkImageUsageFlagBits=^TVkImageUsageFlagBits;
      TVkImageUsageFlagBits=
       (
-       VK_IMAGE_USAGE_TRANSFER_SRC_BIT=$00000001, // Can be used as a source of transfer operations
-       VK_IMAGE_USAGE_TRANSFER_DST_BIT=$00000002, // Can be used as a destination of transfer operations
-       VK_IMAGE_USAGE_SAMPLED_BIT=$00000004, // Can be sampled from (SAMPLED_IMAGE and COMBINED_IMAGE_SAMPLER descriptor types)
-       VK_IMAGE_USAGE_STORAGE_BIT=$00000008, // Can be used as storage image (STORAGE_IMAGE descriptor type)
-       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT=$00000010, // Can be used as framebuffer color attachment
-       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT=$00000020, // Can be used as framebuffer depth/stencil attachment
-       VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT=$00000040, // Image data not needed outside of rendering
-       VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT=$00000080 // Can be used as framebuffer input attachment
+       VK_IMAGE_USAGE_TRANSFER_SRC_BIT=$00000001,                                // Can be used as a source of transfer operations
+       VK_IMAGE_USAGE_TRANSFER_DST_BIT=$00000002,                                // Can be used as a destination of transfer operations
+       VK_IMAGE_USAGE_SAMPLED_BIT=$00000004,                                     // Can be sampled from (SAMPLED_IMAGE and COMBINED_IMAGE_SAMPLER descriptor types)
+       VK_IMAGE_USAGE_STORAGE_BIT=$00000008,                                     // Can be used as storage image (STORAGE_IMAGE descriptor type)
+       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT=$00000010,                            // Can be used as framebuffer color attachment
+       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT=$00000020,                    // Can be used as framebuffer depth/stencil attachment
+       VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT=$00000040,                        // Image data not needed outside of rendering
+       VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT=$00000080                             // Can be used as framebuffer input attachment
       );
 
      PPVkImageCreateFlagBits=^PVkImageCreateFlagBits;
      PVkImageCreateFlagBits=^TVkImageCreateFlagBits;
      TVkImageCreateFlagBits=
       (
-       VK_IMAGE_CREATE_SPARSE_BINDING_BIT=$00000001, // Image should support sparse backing
-       VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT=$00000002, // Image should support sparse backing with partial residency
-       VK_IMAGE_CREATE_SPARSE_ALIASED_BIT=$00000004, // Image should support constent data access to physical memory blocks mapped into multiple locations of sparse images
-       VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT=$00000008, // Allows image views to have different format than the base image
-       VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT=$00000010 // Allows creating image views with cube type from the created image
+       VK_IMAGE_CREATE_SPARSE_BINDING_BIT=$00000001,                             // Image should support sparse backing
+       VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT=$00000002,                           // Image should support sparse backing with partial residency
+       VK_IMAGE_CREATE_SPARSE_ALIASED_BIT=$00000004,                             // Image should support constent data access to physical memory blocks mapped into multiple locations of sparse images
+       VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT=$00000008,                             // Allows image views to have different format than the base image
+       VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT=$00000010                             // Allows creating image views with cube type from the created image
       );
 
      PPVkPipelineCreateFlagBits=^PVkPipelineCreateFlagBits;
@@ -1576,36 +1576,36 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkFormatFeatureFlagBits=^TVkFormatFeatureFlagBits;
      TVkFormatFeatureFlagBits=
       (
-       VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT=$00000001, // Format can be used for sampled images (SAMPLED_IMAGE and COMBINED_IMAGE_SAMPLER descriptor types)
-       VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT=$00000002, // Format can be used for storage images (STORAGE_IMAGE descriptor type)
-       VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT=$00000004, // Format supports atomic operations in case it's used for storage images
-       VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT=$00000008, // Format can be used for uniform texel buffers (TBOs)
-       VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT=$00000010, // Format can be used for storage texel buffers (IBOs)
-       VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT=$00000020, // Format supports atomic operations in case it's used for storage texel buffers
-       VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT=$00000040, // Format can be used for vertex buffers (VBOs)
-       VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT=$00000080, // Format can be used for color attachment images
-       VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT=$00000100, // Format supports blending in case it's used for color attachment images
-       VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT=$00000200, // Format can be used for depth/stencil attachment images
-       VK_FORMAT_FEATURE_BLIT_SRC_BIT=$00000400, // Format can be used as the source image of blits with vkCmdBlitImage
-       VK_FORMAT_FEATURE_BLIT_DST_BIT=$00000800, // Format can be used as the destination image of blits with vkCmdBlitImage
-       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT=$00001000 // Format can be filtered with VK_FILTER_LINEAR when being sampled
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT=$00000001,                            // Format can be used for sampled images (SAMPLED_IMAGE and COMBINED_IMAGE_SAMPLER descriptor types)
+       VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT=$00000002,                            // Format can be used for storage images (STORAGE_IMAGE descriptor type)
+       VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT=$00000004,                     // Format supports atomic operations in case it's used for storage images
+       VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT=$00000008,                     // Format can be used for uniform texel buffers (TBOs)
+       VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT=$00000010,                     // Format can be used for storage texel buffers (IBOs)
+       VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT=$00000020,              // Format supports atomic operations in case it's used for storage texel buffers
+       VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT=$00000040,                            // Format can be used for vertex buffers (VBOs)
+       VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT=$00000080,                         // Format can be used for color attachment images
+       VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT=$00000100,                   // Format supports blending in case it's used for color attachment images
+       VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT=$00000200,                 // Format can be used for depth/stencil attachment images
+       VK_FORMAT_FEATURE_BLIT_SRC_BIT=$00000400,                                 // Format can be used as the source image of blits with vkCmdBlitImage
+       VK_FORMAT_FEATURE_BLIT_DST_BIT=$00000800,                                 // Format can be used as the destination image of blits with vkCmdBlitImage
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT=$00001000               // Format can be filtered with VK_FILTER_LINEAR when being sampled
       );
 
      PPVkQueryControlFlagBits=^PVkQueryControlFlagBits;
      PVkQueryControlFlagBits=^TVkQueryControlFlagBits;
      TVkQueryControlFlagBits=
       (
-       VK_QUERY_CONTROL_PRECISE_BIT=$00000001 // Require precise results to be collected by the query
+       VK_QUERY_CONTROL_PRECISE_BIT=$00000001                                    // Require precise results to be collected by the query
       );
 
      PPVkQueryResultFlagBits=^PVkQueryResultFlagBits;
      PVkQueryResultFlagBits=^TVkQueryResultFlagBits;
      TVkQueryResultFlagBits=
       (
-       VK_QUERY_RESULT_64_BIT=$00000001, // Results of the queries are written to the destination buffer as 64-bit values
-       VK_QUERY_RESULT_WAIT_BIT=$00000002, // Results of the queries are waited on before proceeding with the result copy
-       VK_QUERY_RESULT_WITH_AVAILABILITY_BIT=$00000004, // Besides the results of the query, the availability of the results is also written
-       VK_QUERY_RESULT_PARTIAL_BIT=$00000008 // Copy the partial results of the query even if the final results aren't available
+       VK_QUERY_RESULT_64_BIT=$00000001,                                         // Results of the queries are written to the destination buffer as 64-bit values
+       VK_QUERY_RESULT_WAIT_BIT=$00000002,                                       // Results of the queries are waited on before proceeding with the result copy
+       VK_QUERY_RESULT_WITH_AVAILABILITY_BIT=$00000004,                          // Besides the results of the query, the availability of the results is also written
+       VK_QUERY_RESULT_PARTIAL_BIT=$00000008                                     // Copy the partial results of the query even if the final results aren't available
       );
 
      PPVkCommandBufferUsageFlagBits=^PVkCommandBufferUsageFlagBits;
@@ -1614,24 +1614,24 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT=$00000001,
        VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT=$00000002,
-       VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT=$00000004 // Command buffer may be submitted/executed more than once simultaneously
+       VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT=$00000004                    // Command buffer may be submitted/executed more than once simultaneously
       );
 
      PPVkQueryPipelineStatisticFlagBits=^PVkQueryPipelineStatisticFlagBits;
      PVkQueryPipelineStatisticFlagBits=^TVkQueryPipelineStatisticFlagBits;
      TVkQueryPipelineStatisticFlagBits=
       (
-       VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT=$00000001, // Optional
-       VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT=$00000002, // Optional
-       VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT=$00000004, // Optional
-       VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT=$00000008, // Optional
-       VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT=$00000010, // Optional
-       VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT=$00000020, // Optional
-       VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT=$00000040, // Optional
-       VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT=$00000080, // Optional
+       VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT=$00000001,        // Optional
+       VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT=$00000002,      // Optional
+       VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT=$00000004,      // Optional
+       VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT=$00000008,    // Optional
+       VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT=$00000010,     // Optional
+       VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT=$00000020,           // Optional
+       VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT=$00000040,            // Optional
+       VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT=$00000080,    // Optional
        VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT=$00000100, // Optional
        VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT=$00000200, // Optional
-       VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT=$00000400 // Optional
+       VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT=$00000400      // Optional
       );
 
      PPVkImageAspectFlagBits=^PVkImageAspectFlagBits;
@@ -1648,104 +1648,104 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkSparseImageFormatFlagBits=^TVkSparseImageFormatFlagBits;
      TVkSparseImageFormatFlagBits=
       (
-       VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT=$00000001, // Image uses a single miptail region for all array layers
-       VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT=$00000002, // Image requires mip levels to be an exact multiple of the sparse image block size for non-miptail levels.
-       VK_SPARSE_IMAGE_FORMAT_NONSTANDARD_BLOCK_SIZE_BIT=$00000004 // Image uses a non-standard sparse block size
+       VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT=$00000001,                      // Image uses a single miptail region for all array layers
+       VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT=$00000002,                    // Image requires mip levels to be an exact multiple of the sparse image block size for non-miptail levels.
+       VK_SPARSE_IMAGE_FORMAT_NONSTANDARD_BLOCK_SIZE_BIT=$00000004               // Image uses a non-standard sparse block size
       );
 
      PPVkSparseMemoryBindFlagBits=^PVkSparseMemoryBindFlagBits;
      PVkSparseMemoryBindFlagBits=^TVkSparseMemoryBindFlagBits;
      TVkSparseMemoryBindFlagBits=
       (
-       VK_SPARSE_MEMORY_BIND_METADATA_BIT=$00000001 // Operation binds resource metadata to memory
+       VK_SPARSE_MEMORY_BIND_METADATA_BIT=$00000001                              // Operation binds resource metadata to memory
       );
 
      PPVkPipelineStageFlagBits=^PVkPipelineStageFlagBits;
      PVkPipelineStageFlagBits=^TVkPipelineStageFlagBits;
      TVkPipelineStageFlagBits=
       (
-       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT=$00000001, // Before subsequent commands are processed
-       VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT=$00000002, // Draw/DispatchIndirect command fetch
-       VK_PIPELINE_STAGE_VERTEX_INPUT_BIT=$00000004, // Vertex/index fetch
-       VK_PIPELINE_STAGE_VERTEX_SHADER_BIT=$00000008, // Vertex shading
-       VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT=$00000010, // Tessellation control shading
-       VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT=$00000020, // Tessellation evaluation shading
-       VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT=$00000040, // Geometry shading
-       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT=$00000080, // Fragment shading
-       VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT=$00000100, // Early fragment (depth and stencil) tests
-       VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT=$00000200, // Late fragment (depth and stencil) tests
-       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT=$00000400, // Color attachment writes
-       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT=$00000800, // Compute shading
-       VK_PIPELINE_STAGE_TRANSFER_BIT=$00001000, // Transfer/copy operations
-       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT=$00002000, // After previous commands have completed
-       VK_PIPELINE_STAGE_HOST_BIT=$00004000, // Indicates host (CPU) is a source/sink of the dependency
-       VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT=$00008000, // All stages of the graphics pipeline
-       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT=$00010000 // All stages supported on the queue
+       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT=$00000001,                              // Before subsequent commands are processed
+       VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT=$00000002,                            // Draw/DispatchIndirect command fetch
+       VK_PIPELINE_STAGE_VERTEX_INPUT_BIT=$00000004,                             // Vertex/index fetch
+       VK_PIPELINE_STAGE_VERTEX_SHADER_BIT=$00000008,                            // Vertex shading
+       VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT=$00000010,              // Tessellation control shading
+       VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT=$00000020,           // Tessellation evaluation shading
+       VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT=$00000040,                          // Geometry shading
+       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT=$00000080,                          // Fragment shading
+       VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT=$00000100,                     // Early fragment (depth and stencil) tests
+       VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT=$00000200,                      // Late fragment (depth and stencil) tests
+       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT=$00000400,                  // Color attachment writes
+       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT=$00000800,                           // Compute shading
+       VK_PIPELINE_STAGE_TRANSFER_BIT=$00001000,                                 // Transfer/copy operations
+       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT=$00002000,                           // After previous commands have completed
+       VK_PIPELINE_STAGE_HOST_BIT=$00004000,                                     // Indicates host (CPU) is a source/sink of the dependency
+       VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT=$00008000,                             // All stages of the graphics pipeline
+       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT=$00010000                              // All stages supported on the queue
       );
 
      PPVkCommandPoolCreateFlagBits=^PVkCommandPoolCreateFlagBits;
      PVkCommandPoolCreateFlagBits=^TVkCommandPoolCreateFlagBits;
      TVkCommandPoolCreateFlagBits=
       (
-       VK_COMMAND_POOL_CREATE_TRANSIENT_BIT=$00000001, // Command buffers have a short lifetime
-       VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT=$00000002 // Command buffers may release their memory individually
+       VK_COMMAND_POOL_CREATE_TRANSIENT_BIT=$00000001,                           // Command buffers have a short lifetime
+       VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT=$00000002                 // Command buffers may release their memory individually
       );
 
      PPVkCommandPoolResetFlagBits=^PVkCommandPoolResetFlagBits;
      PVkCommandPoolResetFlagBits=^TVkCommandPoolResetFlagBits;
      TVkCommandPoolResetFlagBits=
       (
-       VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT=$00000001 // Release resources owned by the pool
+       VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT=$00000001                     // Release resources owned by the pool
       );
 
      PPVkCommandBufferResetFlagBits=^PVkCommandBufferResetFlagBits;
      PVkCommandBufferResetFlagBits=^TVkCommandBufferResetFlagBits;
      TVkCommandBufferResetFlagBits=
       (
-       VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT=$00000001 // Release resources owned by the buffer
+       VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT=$00000001                   // Release resources owned by the buffer
       );
 
      PPVkSampleCountFlagBits=^PVkSampleCountFlagBits;
      PVkSampleCountFlagBits=^TVkSampleCountFlagBits;
      TVkSampleCountFlagBits=
       (
-       VK_SAMPLE_COUNT_1_BIT=$00000001, // Sample count 1 supported
-       VK_SAMPLE_COUNT_2_BIT=$00000002, // Sample count 2 supported
-       VK_SAMPLE_COUNT_4_BIT=$00000004, // Sample count 4 supported
-       VK_SAMPLE_COUNT_8_BIT=$00000008, // Sample count 8 supported
-       VK_SAMPLE_COUNT_16_BIT=$00000010, // Sample count 16 supported
-       VK_SAMPLE_COUNT_32_BIT=$00000020, // Sample count 32 supported
-       VK_SAMPLE_COUNT_64_BIT=$00000040 // Sample count 64 supported
+       VK_SAMPLE_COUNT_1_BIT=$00000001,                                          // Sample count 1 supported
+       VK_SAMPLE_COUNT_2_BIT=$00000002,                                          // Sample count 2 supported
+       VK_SAMPLE_COUNT_4_BIT=$00000004,                                          // Sample count 4 supported
+       VK_SAMPLE_COUNT_8_BIT=$00000008,                                          // Sample count 8 supported
+       VK_SAMPLE_COUNT_16_BIT=$00000010,                                         // Sample count 16 supported
+       VK_SAMPLE_COUNT_32_BIT=$00000020,                                         // Sample count 32 supported
+       VK_SAMPLE_COUNT_64_BIT=$00000040                                          // Sample count 64 supported
       );
 
      PPVkAttachmentDescriptionFlagBits=^PVkAttachmentDescriptionFlagBits;
      PVkAttachmentDescriptionFlagBits=^TVkAttachmentDescriptionFlagBits;
      TVkAttachmentDescriptionFlagBits=
       (
-       VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT=$00000001 // The attachment may alias physical memory of another attachment in the same render pass
+       VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT=$00000001                         // The attachment may alias physical memory of another attachment in the same render pass
       );
 
      PPVkStencilFaceFlagBits=^PVkStencilFaceFlagBits;
      PVkStencilFaceFlagBits=^TVkStencilFaceFlagBits;
      TVkStencilFaceFlagBits=
       (
-       VK_STENCIL_FACE_FRONT_BIT=$00000001, // Front face
-       VK_STENCIL_FRONT_AND_BACK=$00000001, // Front and back faces
-       VK_STENCIL_FACE_BACK_BIT=$00000002 // Back face
+       VK_STENCIL_FACE_FRONT_BIT=$00000001,                                      // Front face
+       VK_STENCIL_FRONT_AND_BACK=$00000001,                                      // Front and back faces
+       VK_STENCIL_FACE_BACK_BIT=$00000002                                        // Back face
       );
 
      PPVkDescriptorPoolCreateFlagBits=^PVkDescriptorPoolCreateFlagBits;
      PVkDescriptorPoolCreateFlagBits=^TVkDescriptorPoolCreateFlagBits;
      TVkDescriptorPoolCreateFlagBits=
       (
-       VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT=$00000001 // Descriptor sets may be freed individually
+       VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT=$00000001               // Descriptor sets may be freed individually
       );
 
      PPVkDependencyFlagBits=^PVkDependencyFlagBits;
      PVkDependencyFlagBits=^TVkDependencyFlagBits;
      TVkDependencyFlagBits=
       (
-       VK_DEPENDENCY_BY_REGION_BIT=$00000001 // Dependency is per pixel region 
+       VK_DEPENDENCY_BY_REGION_BIT=$00000001                                     // Dependency is per pixel region 
       );
 
      PPVkPresentModeKHR=^PVkPresentModeKHR;
@@ -1753,12 +1753,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPresentModeKHR=
       (
        VK_PRESENT_MODE_IMMEDIATE_KHR=0,
-       VK_PRESENT_MODE_BEGIN_RANGE=0, // VK_PRESENT_MODE_IMMEDIATE_KHR
+       VK_PRESENT_MODE_BEGIN_RANGE=0,                                            // VK_PRESENT_MODE_IMMEDIATE_KHR
        VK_PRESENT_MODE_MAILBOX_KHR=1,
        VK_PRESENT_MODE_FIFO_KHR=2,
        VK_PRESENT_MODE_FIFO_RELAXED_KHR=3,
-       VK_PRESENT_MODE_END_RANGE=3, // VK_PRESENT_MODE_FIFO_RELAXED_KHR
-       VK_PRESENT_MODE_RANGE_SIZE=4, // (VK_PRESENT_MODE_FIFO_RELAXED_KHR-VK_PRESENT_MODE_IMMEDIATE_KHR)+1
+       VK_PRESENT_MODE_END_RANGE=3,                                              // VK_PRESENT_MODE_FIFO_RELAXED_KHR
+       VK_PRESENT_MODE_RANGE_SIZE=4,                                             // (VK_PRESENT_MODE_FIFO_RELAXED_KHR-VK_PRESENT_MODE_IMMEDIATE_KHR)+1
        VK_PRESENT_MODE_MAX_ENUM=$7fffffff
       );
 
@@ -1767,9 +1767,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkColorSpaceKHR=
       (
        VK_COLORSPACE_SRGB_NONLINEAR_KHR=0,
-       VK_COLORSPACE_BEGIN_RANGE=0, // VK_COLORSPACE_SRGB_NONLINEAR_KHR
-       VK_COLORSPACE_END_RANGE=0, // VK_COLORSPACE_SRGB_NONLINEAR_KHR
-       VK_COLORSPACE_RANGE_SIZE=1, // (VK_COLORSPACE_SRGB_NONLINEAR_KHR-VK_COLORSPACE_SRGB_NONLINEAR_KHR)+1
+       VK_COLORSPACE_BEGIN_RANGE=0,                                              // VK_COLORSPACE_SRGB_NONLINEAR_KHR
+       VK_COLORSPACE_END_RANGE=0,                                                // VK_COLORSPACE_SRGB_NONLINEAR_KHR
+       VK_COLORSPACE_RANGE_SIZE=1,                                               // (VK_COLORSPACE_SRGB_NONLINEAR_KHR-VK_COLORSPACE_SRGB_NONLINEAR_KHR)+1
        VK_COLORSPACE_MAX_ENUM=$7fffffff
       );
 
