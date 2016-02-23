@@ -31,6 +31,7 @@ unit vulkan;
  {$z4}
  {$packrecords c}
  {$define CAN_INLINE}
+ {$notes off}
 {$else}
  {$z4}
  {$undef CAN_INLINE}

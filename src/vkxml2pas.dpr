@@ -3955,6 +3955,7 @@ begin
    OutputPAS.Add(' {$z4}');
    OutputPAS.Add(' {$packrecords c}');
    OutputPAS.Add(' {$define CAN_INLINE}');
+   OutputPAS.Add(' {$notes off}');
    OutputPAS.Add('{$else}');
    OutputPAS.Add(' {$z4}');
    OutputPAS.Add(' {$undef CAN_INLINE}');
