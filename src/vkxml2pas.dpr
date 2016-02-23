@@ -3120,7 +3120,7 @@ var i,j,k,ArraySize,CountTypeDefinitions:longint;
   begin
    result:=false;
    for i:=0 to TypeDefinition^.CountMembers-1 do begin
-    if (TypeDefinition^.Members[i].Type_=OtherTypeDefinition^.Name) and not TypeDefinition^.Members[i].Ptr then begin
+    if TypeDefinition^.Members[i].Type_=OtherTypeDefinition^.Name then begin
      result:=true;
      break;
     end;
@@ -3243,18 +3243,24 @@ begin
      end else if Category='basetype' then begin
       Type_:=ParseText(ChildTag.FindTag('type'));
       Name:=ParseText(ChildTag.FindTag('name'));
+      BaseTypes.Add('     PP'+Name+'=^P'+Name+';');
       BaseTypes.Add('     P'+Name+'=^T'+Name+';');
       BaseTypes.Add('     T'+Name+'='+TranslateType(Type_,false)+';');
+      BaseTypes.Add('');
      end else if Category='bitmask' then begin
       Type_:=ParseText(ChildTag.FindTag('type'));
       Name:=ParseText(ChildTag.FindTag('name'));
+      BitMaskTypes.Add('     PP'+Name+'=^P'+Name+';');
       BitMaskTypes.Add('     P'+Name+'=^T'+Name+';');
       BitMaskTypes.Add('     T'+Name+'='+TranslateType(Type_,false)+';');
+      BitMaskTypes.Add('');
      end else if Category='handle' then begin
       Type_:=ParseText(ChildTag.FindTag('type'));
       Name:=ParseText(ChildTag.FindTag('name'));
+      HandleTypes.Add('     PP'+Name+'=^P'+Name+';');
       HandleTypes.Add('     P'+Name+'=^T'+Name+';');
       HandleTypes.Add('     T'+Name+'='+TranslateType(Type_,false)+';');
+      HandleTypes.Add('');
      end else if Category='enum' then begin
       Name:=ChildTag.GetParameter('name');
      end else if Category='funcpointer' then begin
@@ -3427,21 +3433,25 @@ begin
    TypeDefinitionList.AddObject(TypeDefinitions[i].Name,pointer(SortedTypeDefinitions[i]));
   end;
   ResolveTypeDefinitionDependencies;
-  for i:=0 to CountTypeDefinitions-1 do begin
+(*for i:=0 to CountTypeDefinitions-1 do begin
    TypeDefinition:=SortedTypeDefinitions[i];
    if length(TypeDefinition^.Define)>0 then begin
     TypeDefinitionTypes.Add('{$ifdef '+TypeDefinition^.Define+'}');
    end;
+   TypeDefinitionTypes.Add('     PP'+TypeDefinition^.Name+'=^P'+TypeDefinition^.Name+';');
    TypeDefinitionTypes.Add('     P'+TypeDefinition^.Name+'=^T'+TypeDefinition^.Name+';');
    if length(TypeDefinition^.Define)>0 then begin
     TypeDefinitionTypes.Add('{$endif}');
    end;
-  end;
+   TypeDefinitionTypes.Add('');
+  end;(**)
   for i:=0 to CountTypeDefinitions-1 do begin
    TypeDefinition:=SortedTypeDefinitions[i];
    if length(TypeDefinition^.Define)>0 then begin
     TypeDefinitionTypes.Add('{$ifdef '+TypeDefinition^.Define+'}');
    end;
+   TypeDefinitionTypes.Add('     PP'+TypeDefinition^.Name+'=^P'+TypeDefinition^.Name+';');
+   TypeDefinitionTypes.Add('     P'+TypeDefinition^.Name+'=^T'+TypeDefinition^.Name+';');
    case TypeDefinition^.Kind of
     tdkSTRUCT:begin
      TypeDefinitionTypes.Add('     T'+TypeDefinition^.Name+'=record');
@@ -3494,6 +3504,7 @@ begin
    if length(TypeDefinition^.Define)>0 then begin
     TypeDefinitionTypes.Add('{$endif}');
    end;
+   TypeDefinitionTypes.Add('');
   end;
  finally
   SetLength(TypeDefinitions,0);
@@ -3647,6 +3658,7 @@ begin
    end;
    SetLength(ValueItems,CountValueItems);
    if (Type_='enum') or (Type_='bitmask') then begin
+    ENumTypes.Add('     PP'+Name+'=^P'+Name+';');
     ENumTypes.Add('     P'+Name+'=^T'+Name+';');
     ENumTypes.Add('     T'+Name+'=');
     ENumTypes.Add('      (');
@@ -3682,6 +3694,7 @@ begin
      end;
     end;
     ENumTypes.Add('      );');
+    ENumTypes.Add('');
    end else begin
     for i:=0 to CountValueItems-1 do begin
      ValueItem:=@ValueItems[i];
@@ -3707,6 +3720,7 @@ var i,j,k,ArraySize,CountTypeDefinitions:longint;
     ProtoName,ProtoType,ParamName,ParamType,Text,Line,Define:ansistring;
     ProtoPtr,ParamPtr:boolean;
 begin
+ AllCommandType.Add('     PPVulkan=^PVulkan;');
  AllCommandType.Add('     PVulkan=^TVulkan;');
  AllCommandType.Add('     TVulkan=record');
  for i:=0 to Tag.Items.Count-1 do begin
@@ -4000,32 +4014,61 @@ begin
    OutputPAS.Add('{$ifdef Windows}');
    OutputPAS.Add(' {$define VK_USE_PLATFORM_WIN32_KHR}');
    OutputPAS.Add('{$endif}');
+   OutputPAS.Add('');
    OutputPAS.Add('interface');
+   OutputPAS.Add('');
    OutputPAS.Add('uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef X11}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils;');
-   OutputPAS.Add('type PVkInt8=^TVkInt8;');
+   OutputPAS.Add('');
+   OutputPAS.Add('type PPVkInt8=^PVkInt8;');
+   OutputPAS.Add('     PVkInt8=^TVkInt8;');
    OutputPAS.Add('     TVkInt8=shortint;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkUInt8=^PVkUInt8;');
    OutputPAS.Add('     PVkUInt8=^TVkUInt8;');
    OutputPAS.Add('     TVkUInt8=byte;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkInt16=^PVkInt16;');
    OutputPAS.Add('     PVkInt16=^TVkInt16;');
    OutputPAS.Add('     TVkInt16=smallint;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkUInt16=^PVkUInt16;');
    OutputPAS.Add('     PVkUInt16=^TVkUInt16;');
    OutputPAS.Add('     TVkUInt16=word;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkInt32=^PVkInt32;');
    OutputPAS.Add('     PVkInt32=^TVkInt32;');
    OutputPAS.Add('     TVkInt32=longint;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkUInt32=^PVkUInt32;');
    OutputPAS.Add('     PVkUInt32=^TVkUInt32;');
    OutputPAS.Add('     TVkUInt32=longword;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkInt64=^PVkInt64;');
    OutputPAS.Add('     PVkInt64=^TVkInt64;');
    OutputPAS.Add('     TVkInt64=int64;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkUInt64=^PVkUInt64;');
    OutputPAS.Add('     PVkUInt64=^TVkUInt64;');
    OutputPAS.Add('     TVkUInt64=uint64;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkChar=^PVkChar;');
    OutputPAS.Add('     PVkChar=^TVkChar;');
    OutputPAS.Add('     TVkChar=ansichar;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkPointer=^PVkPointer;');
    OutputPAS.Add('     PVkPointer=^TVkPointer;');
    OutputPAS.Add('     TVkPointer=pointer;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkFloat=^PVkFloat;');
    OutputPAS.Add('     PVkFloat=^TVkFloat;');
    OutputPAS.Add('     TVkFloat=single;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkDouble=^PVkDouble;');
    OutputPAS.Add('     PVkDouble=^TVkDouble;');
    OutputPAS.Add('     TVkDouble=double;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkPtrUInt=^PVkPtrUInt;');
+   OutputPAS.Add('     PPVkPtrInt=^PVkPtrInt;');
    OutputPAS.Add('     PVkPtrUInt=^TVkPtrUInt;');
    OutputPAS.Add('     PVkPtrInt=^TVkPtrInt;');
    OutputPAS.Add('{$ifdef fpc}');
@@ -4054,55 +4097,81 @@ begin
    OutputPAS.Add('     TVkPtrInt=longint;');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('{$endif}');
+   OutputPAS.Add('');
    OutputPAS.Add('const VK_API_VERSION=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
+   OutputPAS.Add('');
    OutputPAS.Add('      VK_NULL_HANDLE=0;');
+   OutputPAS.Add('');
    OutputPAS.AddStrings(ENumConstants);
-   OutputPAS.Add('type PVkDispatchableHandle=^TVkDispatchableHandle;');
+   OutputPAS.Add('');
+   OutputPAS.Add('type PPVkDispatchableHandle=^PVkDispatchableHandle;');
+   OutputPAS.Add('     PVkDispatchableHandle=^TVkDispatchableHandle;');
    OutputPAS.Add('     TVkDispatchableHandle=TVkPtrInt;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkNonDispatchableHandle=^PVkNonDispatchableHandle;');
    OutputPAS.Add('     PVkNonDispatchableHandle=^TVkNonDispatchableHandle;');
    OutputPAS.Add('     TVkNonDispatchableHandle=TVkUInt64;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkEnum=^PVkEnum;');
    OutputPAS.Add('     PVkEnum=^TVkEnum;');
    OutputPAS.Add('     TVkEnum=TVkInt32;');
+   OutputPAS.Add('');
    OutputPAS.Add('{$ifdef Windows}');
+   OutputPAS.Add('     PPVkHINSTANCE=^PVkHINSTANCE;');
    OutputPAS.Add('     PVkHINSTANCE=^TVkHINSTANCE;');
    OutputPAS.Add('     TVkHINSTANCE=TVkPtrUInt;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkHWND=^PVkHWND;');
    OutputPAS.Add('     PVkHWND=^TVkHWND;');
    OutputPAS.Add('     TVkHWND=HWND;');
    OutputPAS.Add('{$endif}');
+   OutputPAS.Add('');
    OutputPAS.AddStrings(BaseTypes);
    OutputPAS.AddStrings(BitMaskTypes);
    OutputPAS.AddStrings(HandleTypes);
    OutputPAS.AddStrings(EnumTypes);
    OutputPAS.AddStrings(TypeDefinitionTypes);
    OutputPAS.AddStrings(CommandTypes);
+   OutputPAS.Add('');
    OutputPAS.AddStrings(AllCommandType);
+   OutputPAS.Add('');
    OutputPAS.Add('var LibVulkan:pointer=nil;');
+   OutputPAS.Add('');
    OutputPAS.AddStrings(CommandVariables);
+   OutputPAS.Add('');
    OutputPAS.Add('function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('function VK_VERSION_MAJOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('function VK_VERSION_MINOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('function VK_VERSION_PATCH(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('');
    OutputPAS.Add('function vkLoadLibrary(const LibraryName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('function vkFreeLibrary(LibraryHandle:pointer):boolean; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('function vkGetProcAddress(LibraryHandle:pointer;const ProcName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('');
    OutputPAS.Add('function LoadVulkanLibrary:boolean;');
+   OutputPAS.Add('');
    OutputPAS.Add('implementation');
+   OutputPAS.Add('');
    OutputPAS.Add('function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('begin');
    OutputPAS.Add(' result:=(VersionMajor shl 22) or (VersionMinor shl 12) or (VersionPatch shl 0);');
    OutputPAS.Add('end;');
+   OutputPAS.Add('');
    OutputPAS.Add('function VK_VERSION_MAJOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('begin');
    OutputPAS.Add(' result:=Version shr 22;');
    OutputPAS.Add('end;');
+   OutputPAS.Add('');
    OutputPAS.Add('function VK_VERSION_MINOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('begin');
    OutputPAS.Add(' result:=(Version shr 12) and $3ff;');
    OutputPAS.Add('end;');
+   OutputPAS.Add('');
    OutputPAS.Add('function VK_VERSION_PATCH(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('begin');
    OutputPAS.Add(' result:=(Version shr 0) and $fff;');
    OutputPAS.Add('end;');
+   OutputPAS.Add('');
    OutputPAS.Add('function vkLoadLibrary(const LibraryName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('begin');
    OutputPAS.Add('{$ifdef Windows}');
@@ -4115,6 +4184,7 @@ begin
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('end;');
+   OutputPAS.Add('');
    OutputPAS.Add('function vkFreeLibrary(LibraryHandle:pointer):boolean; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('begin');
    OutputPAS.Add(' result:=assigned(LibraryHandle);');
@@ -4130,6 +4200,7 @@ begin
    OutputPAS.Add('{$endif}');
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
+   OutputPAS.Add('');
    OutputPAS.Add('function vkGetProcAddress(LibraryHandle:pointer;const ProcName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('begin');
    OutputPAS.Add('{$ifdef Windows}');
@@ -4142,6 +4213,7 @@ begin
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('end;');
+   OutputPAS.Add('');
    OutputPAS.Add('function LoadVulkanLibrary:boolean;');
    OutputPAS.Add('begin');
    OutputPAS.Add('{$ifdef Windows}');
@@ -4167,6 +4239,7 @@ begin
    OutputPAS.Add('          assigned(vkGetDeviceProcAddr);');
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
+   OutputPAS.Add('');
    OutputPAS.Add('end.');
    OutputPAS.SaveToFile('vulkan.pas');
   finally

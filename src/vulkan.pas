@@ -57,32 +57,61 @@ unit vulkan;
 {$ifdef Windows}
  {$define VK_USE_PLATFORM_WIN32_KHR}
 {$endif}
+
 interface
+
 uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef X11}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils;
-type PVkInt8=^TVkInt8;
+
+type PPVkInt8=^PVkInt8;
+     PVkInt8=^TVkInt8;
      TVkInt8=shortint;
+
+     PPVkUInt8=^PVkUInt8;
      PVkUInt8=^TVkUInt8;
      TVkUInt8=byte;
+
+     PPVkInt16=^PVkInt16;
      PVkInt16=^TVkInt16;
      TVkInt16=smallint;
+
+     PPVkUInt16=^PVkUInt16;
      PVkUInt16=^TVkUInt16;
      TVkUInt16=word;
+
+     PPVkInt32=^PVkInt32;
      PVkInt32=^TVkInt32;
      TVkInt32=longint;
+
+     PPVkUInt32=^PVkUInt32;
      PVkUInt32=^TVkUInt32;
      TVkUInt32=longword;
+
+     PPVkInt64=^PVkInt64;
      PVkInt64=^TVkInt64;
      TVkInt64=int64;
+
+     PPVkUInt64=^PVkUInt64;
      PVkUInt64=^TVkUInt64;
      TVkUInt64=uint64;
+
+     PPVkChar=^PVkChar;
      PVkChar=^TVkChar;
      TVkChar=ansichar;
+
+     PPVkPointer=^PVkPointer;
      PVkPointer=^TVkPointer;
      TVkPointer=pointer;
+
+     PPVkFloat=^PVkFloat;
      PVkFloat=^TVkFloat;
      TVkFloat=single;
+
+     PPVkDouble=^PVkDouble;
      PVkDouble=^TVkDouble;
      TVkDouble=double;
+
+     PPVkPtrUInt=^PVkPtrUInt;
+     PPVkPtrInt=^PVkPtrInt;
      PVkPtrUInt=^TVkPtrUInt;
      PVkPtrInt=^TVkPtrInt;
 {$ifdef fpc}
@@ -111,8 +140,11 @@ type PVkInt8=^TVkInt8;
      TVkPtrInt=longint;
 {$endif}
 {$endif}
+
 const VK_API_VERSION=(1 shl 22) or (0 shl 12) or (3 shl 0);
+
       VK_NULL_HANDLE=0;
+
       VK_KHR_SURFACE_SPEC_VERSION=25;
       VK_KHR_SURFACE_EXTENSION_NAME='VK_KHR_surface';
       VK_KHR_SWAPCHAIN_SPEC_VERSION=67;
@@ -157,228 +189,450 @@ const VK_API_VERSION=(1 shl 22) or (0 shl 12) or (3 shl 0);
       VK_FALSE=0;
       VK_QUEUE_FAMILY_IGNORED=TVkUInt32($ffffffff);
       VK_SUBPASS_EXTERNAL=TVkUInt32($ffffffff);
-type PVkDispatchableHandle=^TVkDispatchableHandle;
+
+type PPVkDispatchableHandle=^PVkDispatchableHandle;
+     PVkDispatchableHandle=^TVkDispatchableHandle;
      TVkDispatchableHandle=TVkPtrInt;
+
+     PPVkNonDispatchableHandle=^PVkNonDispatchableHandle;
      PVkNonDispatchableHandle=^TVkNonDispatchableHandle;
      TVkNonDispatchableHandle=TVkUInt64;
+
+     PPVkEnum=^PVkEnum;
      PVkEnum=^TVkEnum;
      TVkEnum=TVkInt32;
+
 {$ifdef Windows}
+     PPVkHINSTANCE=^PVkHINSTANCE;
      PVkHINSTANCE=^TVkHINSTANCE;
      TVkHINSTANCE=TVkPtrUInt;
+
+     PPVkHWND=^PVkHWND;
      PVkHWND=^TVkHWND;
      TVkHWND=HWND;
 {$endif}
+
+     PPVkSampleMask=^PVkSampleMask;
      PVkSampleMask=^TVkSampleMask;
      TVkSampleMask=TVkUInt32;
+
+     PPVkBool32=^PVkBool32;
      PVkBool32=^TVkBool32;
      TVkBool32=TVkUInt32;
+
+     PPVkFlags=^PVkFlags;
      PVkFlags=^TVkFlags;
      TVkFlags=TVkUInt32;
+
+     PPVkDeviceSize=^PVkDeviceSize;
      PVkDeviceSize=^TVkDeviceSize;
      TVkDeviceSize=TVkUInt64;
+
+     PPVkFramebufferCreateFlags=^PVkFramebufferCreateFlags;
      PVkFramebufferCreateFlags=^TVkFramebufferCreateFlags;
      TVkFramebufferCreateFlags=TVkFlags;
+
+     PPVkQueryPoolCreateFlags=^PVkQueryPoolCreateFlags;
      PVkQueryPoolCreateFlags=^TVkQueryPoolCreateFlags;
      TVkQueryPoolCreateFlags=TVkFlags;
+
+     PPVkRenderPassCreateFlags=^PVkRenderPassCreateFlags;
      PVkRenderPassCreateFlags=^TVkRenderPassCreateFlags;
      TVkRenderPassCreateFlags=TVkFlags;
+
+     PPVkSamplerCreateFlags=^PVkSamplerCreateFlags;
      PVkSamplerCreateFlags=^TVkSamplerCreateFlags;
      TVkSamplerCreateFlags=TVkFlags;
+
+     PPVkPipelineLayoutCreateFlags=^PVkPipelineLayoutCreateFlags;
      PVkPipelineLayoutCreateFlags=^TVkPipelineLayoutCreateFlags;
      TVkPipelineLayoutCreateFlags=TVkFlags;
+
+     PPVkPipelineCacheCreateFlags=^PVkPipelineCacheCreateFlags;
      PVkPipelineCacheCreateFlags=^TVkPipelineCacheCreateFlags;
      TVkPipelineCacheCreateFlags=TVkFlags;
+
+     PPVkPipelineDepthStencilStateCreateFlags=^PVkPipelineDepthStencilStateCreateFlags;
      PVkPipelineDepthStencilStateCreateFlags=^TVkPipelineDepthStencilStateCreateFlags;
      TVkPipelineDepthStencilStateCreateFlags=TVkFlags;
+
+     PPVkPipelineDynamicStateCreateFlags=^PVkPipelineDynamicStateCreateFlags;
      PVkPipelineDynamicStateCreateFlags=^TVkPipelineDynamicStateCreateFlags;
      TVkPipelineDynamicStateCreateFlags=TVkFlags;
+
+     PPVkPipelineColorBlendStateCreateFlags=^PVkPipelineColorBlendStateCreateFlags;
      PVkPipelineColorBlendStateCreateFlags=^TVkPipelineColorBlendStateCreateFlags;
      TVkPipelineColorBlendStateCreateFlags=TVkFlags;
+
+     PPVkPipelineMultisampleStateCreateFlags=^PVkPipelineMultisampleStateCreateFlags;
      PVkPipelineMultisampleStateCreateFlags=^TVkPipelineMultisampleStateCreateFlags;
      TVkPipelineMultisampleStateCreateFlags=TVkFlags;
+
+     PPVkPipelineRasterizationStateCreateFlags=^PVkPipelineRasterizationStateCreateFlags;
      PVkPipelineRasterizationStateCreateFlags=^TVkPipelineRasterizationStateCreateFlags;
      TVkPipelineRasterizationStateCreateFlags=TVkFlags;
+
+     PPVkPipelineViewportStateCreateFlags=^PVkPipelineViewportStateCreateFlags;
      PVkPipelineViewportStateCreateFlags=^TVkPipelineViewportStateCreateFlags;
      TVkPipelineViewportStateCreateFlags=TVkFlags;
+
+     PPVkPipelineTessellationStateCreateFlags=^PVkPipelineTessellationStateCreateFlags;
      PVkPipelineTessellationStateCreateFlags=^TVkPipelineTessellationStateCreateFlags;
      TVkPipelineTessellationStateCreateFlags=TVkFlags;
+
+     PPVkPipelineInputAssemblyStateCreateFlags=^PVkPipelineInputAssemblyStateCreateFlags;
      PVkPipelineInputAssemblyStateCreateFlags=^TVkPipelineInputAssemblyStateCreateFlags;
      TVkPipelineInputAssemblyStateCreateFlags=TVkFlags;
+
+     PPVkPipelineVertexInputStateCreateFlags=^PVkPipelineVertexInputStateCreateFlags;
      PVkPipelineVertexInputStateCreateFlags=^TVkPipelineVertexInputStateCreateFlags;
      TVkPipelineVertexInputStateCreateFlags=TVkFlags;
+
+     PPVkPipelineShaderStageCreateFlags=^PVkPipelineShaderStageCreateFlags;
      PVkPipelineShaderStageCreateFlags=^TVkPipelineShaderStageCreateFlags;
      TVkPipelineShaderStageCreateFlags=TVkFlags;
+
+     PPVkDescriptorSetLayoutCreateFlags=^PVkDescriptorSetLayoutCreateFlags;
      PVkDescriptorSetLayoutCreateFlags=^TVkDescriptorSetLayoutCreateFlags;
      TVkDescriptorSetLayoutCreateFlags=TVkFlags;
+
+     PPVkBufferViewCreateFlags=^PVkBufferViewCreateFlags;
      PVkBufferViewCreateFlags=^TVkBufferViewCreateFlags;
      TVkBufferViewCreateFlags=TVkFlags;
+
+     PPVkInstanceCreateFlags=^PVkInstanceCreateFlags;
      PVkInstanceCreateFlags=^TVkInstanceCreateFlags;
      TVkInstanceCreateFlags=TVkFlags;
+
+     PPVkDeviceCreateFlags=^PVkDeviceCreateFlags;
      PVkDeviceCreateFlags=^TVkDeviceCreateFlags;
      TVkDeviceCreateFlags=TVkFlags;
+
+     PPVkDeviceQueueCreateFlags=^PVkDeviceQueueCreateFlags;
      PVkDeviceQueueCreateFlags=^TVkDeviceQueueCreateFlags;
      TVkDeviceQueueCreateFlags=TVkFlags;
+
+     PPVkQueueFlags=^PVkQueueFlags;
      PVkQueueFlags=^TVkQueueFlags;
      TVkQueueFlags=TVkFlags;
+
+     PPVkMemoryPropertyFlags=^PVkMemoryPropertyFlags;
      PVkMemoryPropertyFlags=^TVkMemoryPropertyFlags;
      TVkMemoryPropertyFlags=TVkFlags;
+
+     PPVkMemoryHeapFlags=^PVkMemoryHeapFlags;
      PVkMemoryHeapFlags=^TVkMemoryHeapFlags;
      TVkMemoryHeapFlags=TVkFlags;
+
+     PPVkAccessFlags=^PVkAccessFlags;
      PVkAccessFlags=^TVkAccessFlags;
      TVkAccessFlags=TVkFlags;
+
+     PPVkBufferUsageFlags=^PVkBufferUsageFlags;
      PVkBufferUsageFlags=^TVkBufferUsageFlags;
      TVkBufferUsageFlags=TVkFlags;
+
+     PPVkBufferCreateFlags=^PVkBufferCreateFlags;
      PVkBufferCreateFlags=^TVkBufferCreateFlags;
      TVkBufferCreateFlags=TVkFlags;
+
+     PPVkShaderStageFlags=^PVkShaderStageFlags;
      PVkShaderStageFlags=^TVkShaderStageFlags;
      TVkShaderStageFlags=TVkFlags;
+
+     PPVkImageUsageFlags=^PVkImageUsageFlags;
      PVkImageUsageFlags=^TVkImageUsageFlags;
      TVkImageUsageFlags=TVkFlags;
+
+     PPVkImageCreateFlags=^PVkImageCreateFlags;
      PVkImageCreateFlags=^TVkImageCreateFlags;
      TVkImageCreateFlags=TVkFlags;
+
+     PPVkImageViewCreateFlags=^PVkImageViewCreateFlags;
      PVkImageViewCreateFlags=^TVkImageViewCreateFlags;
      TVkImageViewCreateFlags=TVkFlags;
+
+     PPVkPipelineCreateFlags=^PVkPipelineCreateFlags;
      PVkPipelineCreateFlags=^TVkPipelineCreateFlags;
      TVkPipelineCreateFlags=TVkFlags;
+
+     PPVkColorComponentFlags=^PVkColorComponentFlags;
      PVkColorComponentFlags=^TVkColorComponentFlags;
      TVkColorComponentFlags=TVkFlags;
+
+     PPVkFenceCreateFlags=^PVkFenceCreateFlags;
      PVkFenceCreateFlags=^TVkFenceCreateFlags;
      TVkFenceCreateFlags=TVkFlags;
+
+     PPVkSemaphoreCreateFlags=^PVkSemaphoreCreateFlags;
      PVkSemaphoreCreateFlags=^TVkSemaphoreCreateFlags;
      TVkSemaphoreCreateFlags=TVkFlags;
+
+     PPVkFormatFeatureFlags=^PVkFormatFeatureFlags;
      PVkFormatFeatureFlags=^TVkFormatFeatureFlags;
      TVkFormatFeatureFlags=TVkFlags;
+
+     PPVkQueryControlFlags=^PVkQueryControlFlags;
      PVkQueryControlFlags=^TVkQueryControlFlags;
      TVkQueryControlFlags=TVkFlags;
+
+     PPVkQueryResultFlags=^PVkQueryResultFlags;
      PVkQueryResultFlags=^TVkQueryResultFlags;
      TVkQueryResultFlags=TVkFlags;
+
+     PPVkShaderModuleCreateFlags=^PVkShaderModuleCreateFlags;
      PVkShaderModuleCreateFlags=^TVkShaderModuleCreateFlags;
      TVkShaderModuleCreateFlags=TVkFlags;
+
+     PPVkEventCreateFlags=^PVkEventCreateFlags;
      PVkEventCreateFlags=^TVkEventCreateFlags;
      TVkEventCreateFlags=TVkFlags;
+
+     PPVkCommandPoolCreateFlags=^PVkCommandPoolCreateFlags;
      PVkCommandPoolCreateFlags=^TVkCommandPoolCreateFlags;
      TVkCommandPoolCreateFlags=TVkFlags;
+
+     PPVkCommandPoolResetFlags=^PVkCommandPoolResetFlags;
      PVkCommandPoolResetFlags=^TVkCommandPoolResetFlags;
      TVkCommandPoolResetFlags=TVkFlags;
+
+     PPVkCommandBufferResetFlags=^PVkCommandBufferResetFlags;
      PVkCommandBufferResetFlags=^TVkCommandBufferResetFlags;
      TVkCommandBufferResetFlags=TVkFlags;
+
+     PPVkCommandBufferUsageFlags=^PVkCommandBufferUsageFlags;
      PVkCommandBufferUsageFlags=^TVkCommandBufferUsageFlags;
      TVkCommandBufferUsageFlags=TVkFlags;
+
+     PPVkQueryPipelineStatisticFlags=^PVkQueryPipelineStatisticFlags;
      PVkQueryPipelineStatisticFlags=^TVkQueryPipelineStatisticFlags;
      TVkQueryPipelineStatisticFlags=TVkFlags;
+
+     PPVkMemoryMapFlags=^PVkMemoryMapFlags;
      PVkMemoryMapFlags=^TVkMemoryMapFlags;
      TVkMemoryMapFlags=TVkFlags;
+
+     PPVkImageAspectFlags=^PVkImageAspectFlags;
      PVkImageAspectFlags=^TVkImageAspectFlags;
      TVkImageAspectFlags=TVkFlags;
+
+     PPVkSparseMemoryBindFlags=^PVkSparseMemoryBindFlags;
      PVkSparseMemoryBindFlags=^TVkSparseMemoryBindFlags;
      TVkSparseMemoryBindFlags=TVkFlags;
+
+     PPVkSparseImageFormatFlags=^PVkSparseImageFormatFlags;
      PVkSparseImageFormatFlags=^TVkSparseImageFormatFlags;
      TVkSparseImageFormatFlags=TVkFlags;
+
+     PPVkSubpassDescriptionFlags=^PVkSubpassDescriptionFlags;
      PVkSubpassDescriptionFlags=^TVkSubpassDescriptionFlags;
      TVkSubpassDescriptionFlags=TVkFlags;
+
+     PPVkPipelineStageFlags=^PVkPipelineStageFlags;
      PVkPipelineStageFlags=^TVkPipelineStageFlags;
      TVkPipelineStageFlags=TVkFlags;
+
+     PPVkSampleCountFlags=^PVkSampleCountFlags;
      PVkSampleCountFlags=^TVkSampleCountFlags;
      TVkSampleCountFlags=TVkFlags;
+
+     PPVkAttachmentDescriptionFlags=^PVkAttachmentDescriptionFlags;
      PVkAttachmentDescriptionFlags=^TVkAttachmentDescriptionFlags;
      TVkAttachmentDescriptionFlags=TVkFlags;
+
+     PPVkStencilFaceFlags=^PVkStencilFaceFlags;
      PVkStencilFaceFlags=^TVkStencilFaceFlags;
      TVkStencilFaceFlags=TVkFlags;
+
+     PPVkCullModeFlags=^PVkCullModeFlags;
      PVkCullModeFlags=^TVkCullModeFlags;
      TVkCullModeFlags=TVkFlags;
+
+     PPVkDescriptorPoolCreateFlags=^PVkDescriptorPoolCreateFlags;
      PVkDescriptorPoolCreateFlags=^TVkDescriptorPoolCreateFlags;
      TVkDescriptorPoolCreateFlags=TVkFlags;
+
+     PPVkDescriptorPoolResetFlags=^PVkDescriptorPoolResetFlags;
      PVkDescriptorPoolResetFlags=^TVkDescriptorPoolResetFlags;
      TVkDescriptorPoolResetFlags=TVkFlags;
+
+     PPVkDependencyFlags=^PVkDependencyFlags;
      PVkDependencyFlags=^TVkDependencyFlags;
      TVkDependencyFlags=TVkFlags;
+
+     PPVkCompositeAlphaFlagsKHR=^PVkCompositeAlphaFlagsKHR;
      PVkCompositeAlphaFlagsKHR=^TVkCompositeAlphaFlagsKHR;
      TVkCompositeAlphaFlagsKHR=TVkFlags;
+
+     PPVkDisplayPlaneAlphaFlagsKHR=^PVkDisplayPlaneAlphaFlagsKHR;
      PVkDisplayPlaneAlphaFlagsKHR=^TVkDisplayPlaneAlphaFlagsKHR;
      TVkDisplayPlaneAlphaFlagsKHR=TVkFlags;
+
+     PPVkSurfaceTransformFlagsKHR=^PVkSurfaceTransformFlagsKHR;
      PVkSurfaceTransformFlagsKHR=^TVkSurfaceTransformFlagsKHR;
      TVkSurfaceTransformFlagsKHR=TVkFlags;
+
+     PPVkSwapchainCreateFlagsKHR=^PVkSwapchainCreateFlagsKHR;
      PVkSwapchainCreateFlagsKHR=^TVkSwapchainCreateFlagsKHR;
      TVkSwapchainCreateFlagsKHR=TVkFlags;
+
+     PPVkDisplayModeCreateFlagsKHR=^PVkDisplayModeCreateFlagsKHR;
      PVkDisplayModeCreateFlagsKHR=^TVkDisplayModeCreateFlagsKHR;
      TVkDisplayModeCreateFlagsKHR=TVkFlags;
+
+     PPVkDisplaySurfaceCreateFlagsKHR=^PVkDisplaySurfaceCreateFlagsKHR;
      PVkDisplaySurfaceCreateFlagsKHR=^TVkDisplaySurfaceCreateFlagsKHR;
      TVkDisplaySurfaceCreateFlagsKHR=TVkFlags;
+
+     PPVkAndroidSurfaceCreateFlagsKHR=^PVkAndroidSurfaceCreateFlagsKHR;
      PVkAndroidSurfaceCreateFlagsKHR=^TVkAndroidSurfaceCreateFlagsKHR;
      TVkAndroidSurfaceCreateFlagsKHR=TVkFlags;
+
+     PPVkMirSurfaceCreateFlagsKHR=^PVkMirSurfaceCreateFlagsKHR;
      PVkMirSurfaceCreateFlagsKHR=^TVkMirSurfaceCreateFlagsKHR;
      TVkMirSurfaceCreateFlagsKHR=TVkFlags;
+
+     PPVkWaylandSurfaceCreateFlagsKHR=^PVkWaylandSurfaceCreateFlagsKHR;
      PVkWaylandSurfaceCreateFlagsKHR=^TVkWaylandSurfaceCreateFlagsKHR;
      TVkWaylandSurfaceCreateFlagsKHR=TVkFlags;
+
+     PPVkWin32SurfaceCreateFlagsKHR=^PVkWin32SurfaceCreateFlagsKHR;
      PVkWin32SurfaceCreateFlagsKHR=^TVkWin32SurfaceCreateFlagsKHR;
      TVkWin32SurfaceCreateFlagsKHR=TVkFlags;
+
+     PPVkXlibSurfaceCreateFlagsKHR=^PVkXlibSurfaceCreateFlagsKHR;
      PVkXlibSurfaceCreateFlagsKHR=^TVkXlibSurfaceCreateFlagsKHR;
      TVkXlibSurfaceCreateFlagsKHR=TVkFlags;
+
+     PPVkXcbSurfaceCreateFlagsKHR=^PVkXcbSurfaceCreateFlagsKHR;
      PVkXcbSurfaceCreateFlagsKHR=^TVkXcbSurfaceCreateFlagsKHR;
      TVkXcbSurfaceCreateFlagsKHR=TVkFlags;
+
+     PPVkDebugReportFlagsEXT=^PVkDebugReportFlagsEXT;
      PVkDebugReportFlagsEXT=^TVkDebugReportFlagsEXT;
      TVkDebugReportFlagsEXT=TVkFlags;
+
+     PPVkInstance=^PVkInstance;
      PVkInstance=^TVkInstance;
      TVkInstance=TVkDispatchableHandle;
+
+     PPVkPhysicalDevice=^PVkPhysicalDevice;
      PVkPhysicalDevice=^TVkPhysicalDevice;
      TVkPhysicalDevice=TVkDispatchableHandle;
+
+     PPVkDevice=^PVkDevice;
      PVkDevice=^TVkDevice;
      TVkDevice=TVkDispatchableHandle;
+
+     PPVkQueue=^PVkQueue;
      PVkQueue=^TVkQueue;
      TVkQueue=TVkDispatchableHandle;
+
+     PPVkCommandBuffer=^PVkCommandBuffer;
      PVkCommandBuffer=^TVkCommandBuffer;
      TVkCommandBuffer=TVkDispatchableHandle;
+
+     PPVkDeviceMemory=^PVkDeviceMemory;
      PVkDeviceMemory=^TVkDeviceMemory;
      TVkDeviceMemory=TVkNonDispatchableHandle;
+
+     PPVkCommandPool=^PVkCommandPool;
      PVkCommandPool=^TVkCommandPool;
      TVkCommandPool=TVkNonDispatchableHandle;
+
+     PPVkBuffer=^PVkBuffer;
      PVkBuffer=^TVkBuffer;
      TVkBuffer=TVkNonDispatchableHandle;
+
+     PPVkBufferView=^PVkBufferView;
      PVkBufferView=^TVkBufferView;
      TVkBufferView=TVkNonDispatchableHandle;
+
+     PPVkImage=^PVkImage;
      PVkImage=^TVkImage;
      TVkImage=TVkNonDispatchableHandle;
+
+     PPVkImageView=^PVkImageView;
      PVkImageView=^TVkImageView;
      TVkImageView=TVkNonDispatchableHandle;
+
+     PPVkShaderModule=^PVkShaderModule;
      PVkShaderModule=^TVkShaderModule;
      TVkShaderModule=TVkNonDispatchableHandle;
+
+     PPVkPipeline=^PVkPipeline;
      PVkPipeline=^TVkPipeline;
      TVkPipeline=TVkNonDispatchableHandle;
+
+     PPVkPipelineLayout=^PVkPipelineLayout;
      PVkPipelineLayout=^TVkPipelineLayout;
      TVkPipelineLayout=TVkNonDispatchableHandle;
+
+     PPVkSampler=^PVkSampler;
      PVkSampler=^TVkSampler;
      TVkSampler=TVkNonDispatchableHandle;
+
+     PPVkDescriptorSet=^PVkDescriptorSet;
      PVkDescriptorSet=^TVkDescriptorSet;
      TVkDescriptorSet=TVkNonDispatchableHandle;
+
+     PPVkDescriptorSetLayout=^PVkDescriptorSetLayout;
      PVkDescriptorSetLayout=^TVkDescriptorSetLayout;
      TVkDescriptorSetLayout=TVkNonDispatchableHandle;
+
+     PPVkDescriptorPool=^PVkDescriptorPool;
      PVkDescriptorPool=^TVkDescriptorPool;
      TVkDescriptorPool=TVkNonDispatchableHandle;
+
+     PPVkFence=^PVkFence;
      PVkFence=^TVkFence;
      TVkFence=TVkNonDispatchableHandle;
+
+     PPVkSemaphore=^PVkSemaphore;
      PVkSemaphore=^TVkSemaphore;
      TVkSemaphore=TVkNonDispatchableHandle;
+
+     PPVkEvent=^PVkEvent;
      PVkEvent=^TVkEvent;
      TVkEvent=TVkNonDispatchableHandle;
+
+     PPVkQueryPool=^PVkQueryPool;
      PVkQueryPool=^TVkQueryPool;
      TVkQueryPool=TVkNonDispatchableHandle;
+
+     PPVkFramebuffer=^PVkFramebuffer;
      PVkFramebuffer=^TVkFramebuffer;
      TVkFramebuffer=TVkNonDispatchableHandle;
+
+     PPVkRenderPass=^PVkRenderPass;
      PVkRenderPass=^TVkRenderPass;
      TVkRenderPass=TVkNonDispatchableHandle;
+
+     PPVkPipelineCache=^PVkPipelineCache;
      PVkPipelineCache=^TVkPipelineCache;
      TVkPipelineCache=TVkNonDispatchableHandle;
+
+     PPVkDisplayKHR=^PVkDisplayKHR;
      PVkDisplayKHR=^TVkDisplayKHR;
      TVkDisplayKHR=TVkNonDispatchableHandle;
+
+     PPVkDisplayModeKHR=^PVkDisplayModeKHR;
      PVkDisplayModeKHR=^TVkDisplayModeKHR;
      TVkDisplayModeKHR=TVkNonDispatchableHandle;
+
+     PPVkSurfaceKHR=^PVkSurfaceKHR;
      PVkSurfaceKHR=^TVkSurfaceKHR;
      TVkSurfaceKHR=TVkNonDispatchableHandle;
+
+     PPVkSwapchainKHR=^PVkSwapchainKHR;
      PVkSwapchainKHR=^TVkSwapchainKHR;
      TVkSwapchainKHR=TVkNonDispatchableHandle;
+
+     PPVkDebugReportCallbackEXT=^PVkDebugReportCallbackEXT;
      PVkDebugReportCallbackEXT=^TVkDebugReportCallbackEXT;
      TVkDebugReportCallbackEXT=TVkNonDispatchableHandle;
+
+     PPVkImageLayout=^PVkImageLayout;
      PVkImageLayout=^TVkImageLayout;
      TVkImageLayout=
       (
@@ -397,6 +651,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR=1000001002,
        VK_IMAGE_LAYOUT_MAX_ENUM=$7fffffff
       );
+
+     PPVkAttachmentLoadOp=^PVkAttachmentLoadOp;
      PVkAttachmentLoadOp=^TVkAttachmentLoadOp;
      TVkAttachmentLoadOp=
       (
@@ -408,6 +664,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_ATTACHMENT_LOAD_OP_RANGE_SIZE=3, // (VK_ATTACHMENT_LOAD_OP_DONT_CARE-VK_ATTACHMENT_LOAD_OP_LOAD)+1
        VK_ATTACHMENT_LOAD_OP_MAX_ENUM=$7fffffff
       );
+
+     PPVkAttachmentStoreOp=^PVkAttachmentStoreOp;
      PVkAttachmentStoreOp=^TVkAttachmentStoreOp;
      TVkAttachmentStoreOp=
       (
@@ -418,6 +676,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_ATTACHMENT_STORE_OP_RANGE_SIZE=2, // (VK_ATTACHMENT_STORE_OP_DONT_CARE-VK_ATTACHMENT_STORE_OP_STORE)+1
        VK_ATTACHMENT_STORE_OP_MAX_ENUM=$7fffffff
       );
+
+     PPVkImageType=^PVkImageType;
      PVkImageType=^TVkImageType;
      TVkImageType=
       (
@@ -429,6 +689,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_IMAGE_TYPE_RANGE_SIZE=3, // (VK_IMAGE_TYPE_3D-VK_IMAGE_TYPE_1D)+1
        VK_IMAGE_TYPE_MAX_ENUM=$7fffffff
       );
+
+     PPVkImageTiling=^PVkImageTiling;
      PVkImageTiling=^TVkImageTiling;
      TVkImageTiling=
       (
@@ -439,6 +701,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_IMAGE_TILING_RANGE_SIZE=2, // (VK_IMAGE_TILING_LINEAR-VK_IMAGE_TILING_OPTIMAL)+1
        VK_IMAGE_TILING_MAX_ENUM=$7fffffff
       );
+
+     PPVkImageViewType=^PVkImageViewType;
      PVkImageViewType=^TVkImageViewType;
      TVkImageViewType=
       (
@@ -454,6 +718,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_IMAGE_VIEW_TYPE_RANGE_SIZE=7, // (VK_IMAGE_VIEW_TYPE_CUBE_ARRAY-VK_IMAGE_VIEW_TYPE_1D)+1
        VK_IMAGE_VIEW_TYPE_MAX_ENUM=$7fffffff
       );
+
+     PPVkCommandBufferLevel=^PVkCommandBufferLevel;
      PVkCommandBufferLevel=^TVkCommandBufferLevel;
      TVkCommandBufferLevel=
       (
@@ -464,6 +730,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_COMMAND_BUFFER_LEVEL_RANGE_SIZE=2, // (VK_COMMAND_BUFFER_LEVEL_SECONDARY-VK_COMMAND_BUFFER_LEVEL_PRIMARY)+1
        VK_COMMAND_BUFFER_LEVEL_MAX_ENUM=$7fffffff
       );
+
+     PPVkComponentSwizzle=^PVkComponentSwizzle;
      PVkComponentSwizzle=^TVkComponentSwizzle;
      TVkComponentSwizzle=
       (
@@ -479,6 +747,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_COMPONENT_SWIZZLE_RANGE_SIZE=7, // (VK_COMPONENT_SWIZZLE_A-VK_COMPONENT_SWIZZLE_IDENTITY)+1
        VK_COMPONENT_SWIZZLE_MAX_ENUM=$7fffffff
       );
+
+     PPVkDescriptorType=^PVkDescriptorType;
      PVkDescriptorType=^TVkDescriptorType;
      TVkDescriptorType=
       (
@@ -498,6 +768,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_DESCRIPTOR_TYPE_RANGE_SIZE=11, // (VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT-VK_DESCRIPTOR_TYPE_SAMPLER)+1
        VK_DESCRIPTOR_TYPE_MAX_ENUM=$7fffffff
       );
+
+     PPVkQueryType=^PVkQueryType;
      PVkQueryType=^TVkQueryType;
      TVkQueryType=
       (
@@ -509,6 +781,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_QUERY_TYPE_RANGE_SIZE=3, // (VK_QUERY_TYPE_TIMESTAMP-VK_QUERY_TYPE_OCCLUSION)+1
        VK_QUERY_TYPE_MAX_ENUM=$7fffffff
       );
+
+     PPVkBorderColor=^PVkBorderColor;
      PVkBorderColor=^TVkBorderColor;
      TVkBorderColor=
       (
@@ -523,6 +797,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_BORDER_COLOR_RANGE_SIZE=6, // (VK_BORDER_COLOR_INT_OPAQUE_WHITE-VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK)+1
        VK_BORDER_COLOR_MAX_ENUM=$7fffffff
       );
+
+     PPVkPipelineBindPoint=^PVkPipelineBindPoint;
      PVkPipelineBindPoint=^TVkPipelineBindPoint;
      TVkPipelineBindPoint=
       (
@@ -533,6 +809,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_PIPELINE_BIND_POINT_RANGE_SIZE=2, // (VK_PIPELINE_BIND_POINT_COMPUTE-VK_PIPELINE_BIND_POINT_GRAPHICS)+1
        VK_PIPELINE_BIND_POINT_MAX_ENUM=$7fffffff
       );
+
+     PPVkPipelineCacheHeaderVersion=^PVkPipelineCacheHeaderVersion;
      PVkPipelineCacheHeaderVersion=^TVkPipelineCacheHeaderVersion;
      TVkPipelineCacheHeaderVersion=
       (
@@ -542,6 +820,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_PIPELINE_CACHE_HEADER_VERSION_RANGE_SIZE=1, // (VK_PIPELINE_CACHE_HEADER_VERSION_ONE-VK_PIPELINE_CACHE_HEADER_VERSION_ONE)+1
        VK_PIPELINE_CACHE_HEADER_VERSION_MAX_ENUM=$7fffffff
       );
+
+     PPVkPrimitiveTopology=^PVkPrimitiveTopology;
      PVkPrimitiveTopology=^TVkPrimitiveTopology;
      TVkPrimitiveTopology=
       (
@@ -561,6 +841,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_PRIMITIVE_TOPOLOGY_RANGE_SIZE=11, // (VK_PRIMITIVE_TOPOLOGY_PATCH_LIST-VK_PRIMITIVE_TOPOLOGY_POINT_LIST)+1
        VK_PRIMITIVE_TOPOLOGY_MAX_ENUM=$7fffffff
       );
+
+     PPVkSharingMode=^PVkSharingMode;
      PVkSharingMode=^TVkSharingMode;
      TVkSharingMode=
       (
@@ -571,6 +853,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_SHARING_MODE_RANGE_SIZE=2, // (VK_SHARING_MODE_CONCURRENT-VK_SHARING_MODE_EXCLUSIVE)+1
        VK_SHARING_MODE_MAX_ENUM=$7fffffff
       );
+
+     PPVkIndexType=^PVkIndexType;
      PVkIndexType=^TVkIndexType;
      TVkIndexType=
       (
@@ -581,6 +865,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_INDEX_TYPE_RANGE_SIZE=2, // (VK_INDEX_TYPE_UINT32-VK_INDEX_TYPE_UINT16)+1
        VK_INDEX_TYPE_MAX_ENUM=$7fffffff
       );
+
+     PPVkFilter=^PVkFilter;
      PVkFilter=^TVkFilter;
      TVkFilter=
       (
@@ -591,6 +877,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_FILTER_RANGE_SIZE=2, // (VK_FILTER_LINEAR-VK_FILTER_NEAREST)+1
        VK_FILTER_MAX_ENUM=$7fffffff
       );
+
+     PPVkSamplerMipmapMode=^PVkSamplerMipmapMode;
      PVkSamplerMipmapMode=^TVkSamplerMipmapMode;
      TVkSamplerMipmapMode=
       (
@@ -601,6 +889,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_SAMPLER_MIPMAP_MODE_RANGE_SIZE=2, // (VK_SAMPLER_MIPMAP_MODE_LINEAR-VK_SAMPLER_MIPMAP_MODE_NEAREST)+1
        VK_SAMPLER_MIPMAP_MODE_MAX_ENUM=$7fffffff
       );
+
+     PPVkSamplerAddressMode=^PVkSamplerAddressMode;
      PVkSamplerAddressMode=^TVkSamplerAddressMode;
      TVkSamplerAddressMode=
       (
@@ -614,6 +904,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_SAMPLER_ADDRESS_MODE_RANGE_SIZE=5, // (VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE-VK_SAMPLER_ADDRESS_MODE_REPEAT)+1
        VK_SAMPLER_ADDRESS_MODE_MAX_ENUM=$7fffffff
       );
+
+     PPVkCompareOp=^PVkCompareOp;
      PVkCompareOp=^TVkCompareOp;
      TVkCompareOp=
       (
@@ -630,6 +922,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_COMPARE_OP_RANGE_SIZE=8, // (VK_COMPARE_OP_ALWAYS-VK_COMPARE_OP_NEVER)+1
        VK_COMPARE_OP_MAX_ENUM=$7fffffff
       );
+
+     PPVkPolygonMode=^PVkPolygonMode;
      PVkPolygonMode=^TVkPolygonMode;
      TVkPolygonMode=
       (
@@ -641,6 +935,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_POLYGON_MODE_RANGE_SIZE=3, // (VK_POLYGON_MODE_POINT-VK_POLYGON_MODE_FILL)+1
        VK_POLYGON_MODE_MAX_ENUM=$7fffffff
       );
+
+     PPVkCullModeFlagBits=^PVkCullModeFlagBits;
      PVkCullModeFlagBits=^TVkCullModeFlagBits;
      TVkCullModeFlagBits=
       (
@@ -649,6 +945,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_CULL_MODE_FRONT_AND_BACK=$00000001,
        VK_CULL_MODE_BACK_BIT=$00000002
       );
+
+     PPVkFrontFace=^PVkFrontFace;
      PVkFrontFace=^TVkFrontFace;
      TVkFrontFace=
       (
@@ -659,6 +957,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_FRONT_FACE_RANGE_SIZE=2, // (VK_FRONT_FACE_CLOCKWISE-VK_FRONT_FACE_COUNTER_CLOCKWISE)+1
        VK_FRONT_FACE_MAX_ENUM=$7fffffff
       );
+
+     PPVkBlendFactor=^PVkBlendFactor;
      PVkBlendFactor=^TVkBlendFactor;
      TVkBlendFactor=
       (
@@ -686,6 +986,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_BLEND_FACTOR_RANGE_SIZE=19, // (VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA-VK_BLEND_FACTOR_ZERO)+1
        VK_BLEND_FACTOR_MAX_ENUM=$7fffffff
       );
+
+     PPVkBlendOp=^PVkBlendOp;
      PVkBlendOp=^TVkBlendOp;
      TVkBlendOp=
       (
@@ -699,6 +1001,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_BLEND_OP_RANGE_SIZE=5, // (VK_BLEND_OP_MAX-VK_BLEND_OP_ADD)+1
        VK_BLEND_OP_MAX_ENUM=$7fffffff
       );
+
+     PPVkStencilOp=^PVkStencilOp;
      PVkStencilOp=^TVkStencilOp;
      TVkStencilOp=
       (
@@ -715,6 +1019,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_STENCIL_OP_RANGE_SIZE=8, // (VK_STENCIL_OP_DECREMENT_AND_WRAP-VK_STENCIL_OP_KEEP)+1
        VK_STENCIL_OP_MAX_ENUM=$7fffffff
       );
+
+     PPVkLogicOp=^PVkLogicOp;
      PVkLogicOp=^TVkLogicOp;
      TVkLogicOp=
       (
@@ -739,6 +1045,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_LOGIC_OP_RANGE_SIZE=16, // (VK_LOGIC_OP_SET-VK_LOGIC_OP_CLEAR)+1
        VK_LOGIC_OP_MAX_ENUM=$7fffffff
       );
+
+     PPVkInternalAllocationType=^PVkInternalAllocationType;
      PVkInternalAllocationType=^TVkInternalAllocationType;
      TVkInternalAllocationType=
       (
@@ -748,6 +1056,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_INTERNAL_ALLOCATION_TYPE_RANGE_SIZE=1, // (VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE-VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE)+1
        VK_INTERNAL_ALLOCATION_TYPE_MAX_ENUM=$7fffffff
       );
+
+     PPVkSystemAllocationScope=^PVkSystemAllocationScope;
      PVkSystemAllocationScope=^TVkSystemAllocationScope;
      TVkSystemAllocationScope=
       (
@@ -761,6 +1071,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_SYSTEM_ALLOCATION_SCOPE_RANGE_SIZE=5, // (VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE-VK_SYSTEM_ALLOCATION_SCOPE_COMMAND)+1
        VK_SYSTEM_ALLOCATION_SCOPE_MAX_ENUM=$7fffffff
       );
+
+     PPVkPhysicalDeviceType=^PVkPhysicalDeviceType;
      PVkPhysicalDeviceType=^TVkPhysicalDeviceType;
      TVkPhysicalDeviceType=
       (
@@ -774,6 +1086,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE=5, // (VK_PHYSICAL_DEVICE_TYPE_CPU-VK_PHYSICAL_DEVICE_TYPE_OTHER)+1
        VK_PHYSICAL_DEVICE_TYPE_MAX_ENUM=$7fffffff
       );
+
+     PPVkVertexInputRate=^PVkVertexInputRate;
      PVkVertexInputRate=^TVkVertexInputRate;
      TVkVertexInputRate=
       (
@@ -784,6 +1098,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_VERTEX_INPUT_RATE_RANGE_SIZE=2, // (VK_VERTEX_INPUT_RATE_INSTANCE-VK_VERTEX_INPUT_RATE_VERTEX)+1
        VK_VERTEX_INPUT_RATE_MAX_ENUM=$7fffffff
       );
+
+     PPVkFormat=^PVkFormat;
      PVkFormat=^TVkFormat;
      TVkFormat=
       (
@@ -977,6 +1293,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_FORMAT_RANGE_SIZE=185, // (VK_FORMAT_ASTC_12x12_SRGB_BLOCK-VK_FORMAT_UNDEFINED)+1
        VK_FORMAT_MAX_ENUM=$7fffffff
       );
+
+     PPVkStructureType=^PVkStructureType;
      PVkStructureType=^TVkStructureType;
      TVkStructureType=
       (
@@ -1046,6 +1364,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT=1000011000,
        VK_STRUCTURE_TYPE_MAX_ENUM=$7fffffff
       );
+
+     PPVkSubpassContents=^PVkSubpassContents;
      PVkSubpassContents=^TVkSubpassContents;
      TVkSubpassContents=
       (
@@ -1056,6 +1376,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_SUBPASS_CONTENTS_RANGE_SIZE=2, // (VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS-VK_SUBPASS_CONTENTS_INLINE)+1
        VK_SUBPASS_CONTENTS_MAX_ENUM=$7fffffff
       );
+
+     PPVkResult=^PVkResult;
      PVkResult=^TVkResult;
      TVkResult=
       (
@@ -1090,6 +1412,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_SUBOPTIMAL_KHR=1000001003,
        VK_RESULT_MAX_ENUM=$7fffffff
       );
+
+     PPVkDynamicState=^PVkDynamicState;
      PVkDynamicState=^TVkDynamicState;
      TVkDynamicState=
       (
@@ -1107,6 +1431,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_DYNAMIC_STATE_RANGE_SIZE=9, // (VK_DYNAMIC_STATE_STENCIL_REFERENCE-VK_DYNAMIC_STATE_VIEWPORT)+1
        VK_DYNAMIC_STATE_MAX_ENUM=$7fffffff
       );
+
+     PPVkQueueFlagBits=^PVkQueueFlagBits;
      PVkQueueFlagBits=^TVkQueueFlagBits;
      TVkQueueFlagBits=
       (
@@ -1115,6 +1441,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_QUEUE_TRANSFER_BIT=$00000004, // Queue supports transfer operations
        VK_QUEUE_SPARSE_BINDING_BIT=$00000008 // Queue supports sparse resource memory management operations
       );
+
+     PPVkMemoryPropertyFlagBits=^PVkMemoryPropertyFlagBits;
      PVkMemoryPropertyFlagBits=^TVkMemoryPropertyFlagBits;
      TVkMemoryPropertyFlagBits=
       (
@@ -1124,11 +1452,15 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_MEMORY_PROPERTY_HOST_CACHED_BIT=$00000008, // Memory will be cached by the host
        VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT=$00000010 // Memory may be allocated by the driver when it is required
       );
+
+     PPVkMemoryHeapFlagBits=^PVkMemoryHeapFlagBits;
      PVkMemoryHeapFlagBits=^TVkMemoryHeapFlagBits;
      TVkMemoryHeapFlagBits=
       (
        VK_MEMORY_HEAP_DEVICE_LOCAL_BIT=$00000001 // If set, heap represents device memory
       );
+
+     PPVkAccessFlagBits=^PVkAccessFlagBits;
      PVkAccessFlagBits=^TVkAccessFlagBits;
      TVkAccessFlagBits=
       (
@@ -1150,6 +1482,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_ACCESS_MEMORY_READ_BIT=$00008000, // Controls coherency of memory reads
        VK_ACCESS_MEMORY_WRITE_BIT=$00010000 // Controls coherency of memory writes
       );
+
+     PPVkBufferUsageFlagBits=^PVkBufferUsageFlagBits;
      PVkBufferUsageFlagBits=^TVkBufferUsageFlagBits;
      TVkBufferUsageFlagBits=
       (
@@ -1163,6 +1497,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT=$00000080, // Can be used as source of fixed-function vertex fetch (VBO)
        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT=$00000100 // Can be the source of indirect parameters (e.g. indirect buffer, parameter buffer)
       );
+
+     PPVkBufferCreateFlagBits=^PVkBufferCreateFlagBits;
      PVkBufferCreateFlagBits=^TVkBufferCreateFlagBits;
      TVkBufferCreateFlagBits=
       (
@@ -1170,6 +1506,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT=$00000002, // Buffer should support sparse backing with partial residency
        VK_BUFFER_CREATE_SPARSE_ALIASED_BIT=$00000004 // Buffer should support constent data access to physical memory blocks mapped into multiple locations of sparse buffers
       );
+
+     PPVkShaderStageFlagBits=^PVkShaderStageFlagBits;
      PVkShaderStageFlagBits=^TVkShaderStageFlagBits;
      TVkShaderStageFlagBits=
       (
@@ -1182,6 +1520,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_SHADER_STAGE_FRAGMENT_BIT=$00000010,
        VK_SHADER_STAGE_COMPUTE_BIT=$00000020
       );
+
+     PPVkImageUsageFlagBits=^PVkImageUsageFlagBits;
      PVkImageUsageFlagBits=^TVkImageUsageFlagBits;
      TVkImageUsageFlagBits=
       (
@@ -1194,6 +1534,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT=$00000040, // Image data not needed outside of rendering
        VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT=$00000080 // Can be used as framebuffer input attachment
       );
+
+     PPVkImageCreateFlagBits=^PVkImageCreateFlagBits;
      PVkImageCreateFlagBits=^TVkImageCreateFlagBits;
      TVkImageCreateFlagBits=
       (
@@ -1203,6 +1545,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT=$00000008, // Allows image views to have different format than the base image
        VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT=$00000010 // Allows creating image views with cube type from the created image
       );
+
+     PPVkPipelineCreateFlagBits=^PVkPipelineCreateFlagBits;
      PVkPipelineCreateFlagBits=^TVkPipelineCreateFlagBits;
      TVkPipelineCreateFlagBits=
       (
@@ -1210,6 +1554,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT=$00000002,
        VK_PIPELINE_CREATE_DERIVATIVE_BIT=$00000004
       );
+
+     PPVkColorComponentFlagBits=^PVkColorComponentFlagBits;
      PVkColorComponentFlagBits=^TVkColorComponentFlagBits;
      TVkColorComponentFlagBits=
       (
@@ -1218,11 +1564,15 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_COLOR_COMPONENT_B_BIT=$00000004,
        VK_COLOR_COMPONENT_A_BIT=$00000008
       );
+
+     PPVkFenceCreateFlagBits=^PVkFenceCreateFlagBits;
      PVkFenceCreateFlagBits=^TVkFenceCreateFlagBits;
      TVkFenceCreateFlagBits=
       (
        VK_FENCE_CREATE_SIGNALED_BIT=$00000001
       );
+
+     PPVkFormatFeatureFlagBits=^PVkFormatFeatureFlagBits;
      PVkFormatFeatureFlagBits=^TVkFormatFeatureFlagBits;
      TVkFormatFeatureFlagBits=
       (
@@ -1240,11 +1590,15 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_FORMAT_FEATURE_BLIT_DST_BIT=$00000800, // Format can be used as the destination image of blits with vkCmdBlitImage
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT=$00001000 // Format can be filtered with VK_FILTER_LINEAR when being sampled
       );
+
+     PPVkQueryControlFlagBits=^PVkQueryControlFlagBits;
      PVkQueryControlFlagBits=^TVkQueryControlFlagBits;
      TVkQueryControlFlagBits=
       (
        VK_QUERY_CONTROL_PRECISE_BIT=$00000001 // Require precise results to be collected by the query
       );
+
+     PPVkQueryResultFlagBits=^PVkQueryResultFlagBits;
      PVkQueryResultFlagBits=^TVkQueryResultFlagBits;
      TVkQueryResultFlagBits=
       (
@@ -1253,6 +1607,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_QUERY_RESULT_WITH_AVAILABILITY_BIT=$00000004, // Besides the results of the query, the availability of the results is also written
        VK_QUERY_RESULT_PARTIAL_BIT=$00000008 // Copy the partial results of the query even if the final results aren't available
       );
+
+     PPVkCommandBufferUsageFlagBits=^PVkCommandBufferUsageFlagBits;
      PVkCommandBufferUsageFlagBits=^TVkCommandBufferUsageFlagBits;
      TVkCommandBufferUsageFlagBits=
       (
@@ -1260,6 +1616,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT=$00000002,
        VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT=$00000004 // Command buffer may be submitted/executed more than once simultaneously
       );
+
+     PPVkQueryPipelineStatisticFlagBits=^PVkQueryPipelineStatisticFlagBits;
      PVkQueryPipelineStatisticFlagBits=^TVkQueryPipelineStatisticFlagBits;
      TVkQueryPipelineStatisticFlagBits=
       (
@@ -1275,6 +1633,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT=$00000200, // Optional
        VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT=$00000400 // Optional
       );
+
+     PPVkImageAspectFlagBits=^PVkImageAspectFlagBits;
      PVkImageAspectFlagBits=^TVkImageAspectFlagBits;
      TVkImageAspectFlagBits=
       (
@@ -1283,6 +1643,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_IMAGE_ASPECT_STENCIL_BIT=$00000004,
        VK_IMAGE_ASPECT_METADATA_BIT=$00000008
       );
+
+     PPVkSparseImageFormatFlagBits=^PVkSparseImageFormatFlagBits;
      PVkSparseImageFormatFlagBits=^TVkSparseImageFormatFlagBits;
      TVkSparseImageFormatFlagBits=
       (
@@ -1290,11 +1652,15 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT=$00000002, // Image requires mip levels to be an exact multiple of the sparse image block size for non-miptail levels.
        VK_SPARSE_IMAGE_FORMAT_NONSTANDARD_BLOCK_SIZE_BIT=$00000004 // Image uses a non-standard sparse block size
       );
+
+     PPVkSparseMemoryBindFlagBits=^PVkSparseMemoryBindFlagBits;
      PVkSparseMemoryBindFlagBits=^TVkSparseMemoryBindFlagBits;
      TVkSparseMemoryBindFlagBits=
       (
        VK_SPARSE_MEMORY_BIND_METADATA_BIT=$00000001 // Operation binds resource metadata to memory
       );
+
+     PPVkPipelineStageFlagBits=^PVkPipelineStageFlagBits;
      PVkPipelineStageFlagBits=^TVkPipelineStageFlagBits;
      TVkPipelineStageFlagBits=
       (
@@ -1316,22 +1682,30 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT=$00008000, // All stages of the graphics pipeline
        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT=$00010000 // All stages supported on the queue
       );
+
+     PPVkCommandPoolCreateFlagBits=^PVkCommandPoolCreateFlagBits;
      PVkCommandPoolCreateFlagBits=^TVkCommandPoolCreateFlagBits;
      TVkCommandPoolCreateFlagBits=
       (
        VK_COMMAND_POOL_CREATE_TRANSIENT_BIT=$00000001, // Command buffers have a short lifetime
        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT=$00000002 // Command buffers may release their memory individually
       );
+
+     PPVkCommandPoolResetFlagBits=^PVkCommandPoolResetFlagBits;
      PVkCommandPoolResetFlagBits=^TVkCommandPoolResetFlagBits;
      TVkCommandPoolResetFlagBits=
       (
        VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT=$00000001 // Release resources owned by the pool
       );
+
+     PPVkCommandBufferResetFlagBits=^PVkCommandBufferResetFlagBits;
      PVkCommandBufferResetFlagBits=^TVkCommandBufferResetFlagBits;
      TVkCommandBufferResetFlagBits=
       (
        VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT=$00000001 // Release resources owned by the buffer
       );
+
+     PPVkSampleCountFlagBits=^PVkSampleCountFlagBits;
      PVkSampleCountFlagBits=^TVkSampleCountFlagBits;
      TVkSampleCountFlagBits=
       (
@@ -1343,11 +1717,15 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_SAMPLE_COUNT_32_BIT=$00000020, // Sample count 32 supported
        VK_SAMPLE_COUNT_64_BIT=$00000040 // Sample count 64 supported
       );
+
+     PPVkAttachmentDescriptionFlagBits=^PVkAttachmentDescriptionFlagBits;
      PVkAttachmentDescriptionFlagBits=^TVkAttachmentDescriptionFlagBits;
      TVkAttachmentDescriptionFlagBits=
       (
        VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT=$00000001 // The attachment may alias physical memory of another attachment in the same render pass
       );
+
+     PPVkStencilFaceFlagBits=^PVkStencilFaceFlagBits;
      PVkStencilFaceFlagBits=^TVkStencilFaceFlagBits;
      TVkStencilFaceFlagBits=
       (
@@ -1355,16 +1733,22 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_STENCIL_FRONT_AND_BACK=$00000001, // Front and back faces
        VK_STENCIL_FACE_BACK_BIT=$00000002 // Back face
       );
+
+     PPVkDescriptorPoolCreateFlagBits=^PVkDescriptorPoolCreateFlagBits;
      PVkDescriptorPoolCreateFlagBits=^TVkDescriptorPoolCreateFlagBits;
      TVkDescriptorPoolCreateFlagBits=
       (
        VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT=$00000001 // Descriptor sets may be freed individually
       );
+
+     PPVkDependencyFlagBits=^PVkDependencyFlagBits;
      PVkDependencyFlagBits=^TVkDependencyFlagBits;
      TVkDependencyFlagBits=
       (
        VK_DEPENDENCY_BY_REGION_BIT=$00000001 // Dependency is per pixel region 
       );
+
+     PPVkPresentModeKHR=^PVkPresentModeKHR;
      PVkPresentModeKHR=^TVkPresentModeKHR;
      TVkPresentModeKHR=
       (
@@ -1377,6 +1761,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_PRESENT_MODE_RANGE_SIZE=4, // (VK_PRESENT_MODE_FIFO_RELAXED_KHR-VK_PRESENT_MODE_IMMEDIATE_KHR)+1
        VK_PRESENT_MODE_MAX_ENUM=$7fffffff
       );
+
+     PPVkColorSpaceKHR=^PVkColorSpaceKHR;
      PVkColorSpaceKHR=^TVkColorSpaceKHR;
      TVkColorSpaceKHR=
       (
@@ -1386,6 +1772,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_COLORSPACE_RANGE_SIZE=1, // (VK_COLORSPACE_SRGB_NONLINEAR_KHR-VK_COLORSPACE_SRGB_NONLINEAR_KHR)+1
        VK_COLORSPACE_MAX_ENUM=$7fffffff
       );
+
+     PPVkDisplayPlaneAlphaFlagBitsKHR=^PVkDisplayPlaneAlphaFlagBitsKHR;
      PVkDisplayPlaneAlphaFlagBitsKHR=^TVkDisplayPlaneAlphaFlagBitsKHR;
      TVkDisplayPlaneAlphaFlagBitsKHR=
       (
@@ -1394,6 +1782,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_DISPLAY_PLANE_ALPHA_PER_PIXEL_BIT_KHR=$00000004,
        VK_DISPLAY_PLANE_ALPHA_PER_PIXEL_PREMULTIPLIED_BIT_KHR=$00000008
       );
+
+     PPVkCompositeAlphaFlagBitsKHR=^PVkCompositeAlphaFlagBitsKHR;
      PVkCompositeAlphaFlagBitsKHR=^TVkCompositeAlphaFlagBitsKHR;
      TVkCompositeAlphaFlagBitsKHR=
       (
@@ -1402,6 +1792,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR=$00000004,
        VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR=$00000008
       );
+
+     PPVkSurfaceTransformFlagBitsKHR=^PVkSurfaceTransformFlagBitsKHR;
      PVkSurfaceTransformFlagBitsKHR=^TVkSurfaceTransformFlagBitsKHR;
      TVkSurfaceTransformFlagBitsKHR=
       (
@@ -1415,6 +1807,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR=$00000080,
        VK_SURFACE_TRANSFORM_INHERIT_BIT_KHR=$00000100
       );
+
+     PPVkDebugReportFlagBitsEXT=^PVkDebugReportFlagBitsEXT;
      PVkDebugReportFlagBitsEXT=^TVkDebugReportFlagBitsEXT;
      TVkDebugReportFlagBitsEXT=
       (
@@ -1424,6 +1818,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_DEBUG_REPORT_ERROR_BIT_EXT=$00000008,
        VK_DEBUG_REPORT_DEBUG_BIT_EXT=$00000010
       );
+
+     PPVkDebugReportObjectTypeEXT=^PVkDebugReportObjectTypeEXT;
      PVkDebugReportObjectTypeEXT=^TVkDebugReportObjectTypeEXT;
      TVkDebugReportObjectTypeEXT=
       (
@@ -1457,183 +1853,75 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
        VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT=27,
        VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT=28
       );
+
+     PPVkDebugReportErrorEXT=^PVkDebugReportErrorEXT;
      PVkDebugReportErrorEXT=^TVkDebugReportErrorEXT;
      TVkDebugReportErrorEXT=
       (
        VK_DEBUG_REPORT_ERROR_NONE_EXT=0,
        VK_DEBUG_REPORT_ERROR_CALLBACK_REF_EXT=1
       );
+
+     PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
      PPFN_vkInternalAllocationNotification=^TPFN_vkInternalAllocationNotification;
-     PPFN_vkInternalFreeNotification=^TPFN_vkInternalFreeNotification;
-     PPFN_vkReallocationFunction=^TPFN_vkReallocationFunction;
-     PPFN_vkAllocationFunction=^TPFN_vkAllocationFunction;
-     PPFN_vkFreeFunction=^TPFN_vkFreeFunction;
-     PPFN_vkVoidFunction=^TPFN_vkVoidFunction;
-     PPFN_vkDebugReportCallbackEXT=^TPFN_vkDebugReportCallbackEXT;
-     PVkOffset2D=^TVkOffset2D;
-     PVkOffset3D=^TVkOffset3D;
-     PVkExtent2D=^TVkExtent2D;
-     PVkExtent3D=^TVkExtent3D;
-     PVkViewport=^TVkViewport;
-     PVkRect2D=^TVkRect2D;
-     PVkRect3D=^TVkRect3D;
-     PVkClearRect=^TVkClearRect;
-     PVkComponentMapping=^TVkComponentMapping;
-     PVkPhysicalDeviceSparseProperties=^TVkPhysicalDeviceSparseProperties;
-     PVkExtensionProperties=^TVkExtensionProperties;
-     PVkLayerProperties=^TVkLayerProperties;
-     PVkApplicationInfo=^TVkApplicationInfo;
-     PVkAllocationCallbacks=^TVkAllocationCallbacks;
-     PVkDeviceQueueCreateInfo=^TVkDeviceQueueCreateInfo;
-     PVkDeviceCreateInfo=^TVkDeviceCreateInfo;
-     PVkInstanceCreateInfo=^TVkInstanceCreateInfo;
-     PVkQueueFamilyProperties=^TVkQueueFamilyProperties;
-     PVkMemoryType=^TVkMemoryType;
-     PVkMemoryAllocateInfo=^TVkMemoryAllocateInfo;
-     PVkMemoryRequirements=^TVkMemoryRequirements;
-     PVkSparseImageFormatProperties=^TVkSparseImageFormatProperties;
-     PVkSparseImageMemoryRequirements=^TVkSparseImageMemoryRequirements;
-     PVkMemoryHeap=^TVkMemoryHeap;
-     PVkPhysicalDeviceMemoryProperties=^TVkPhysicalDeviceMemoryProperties;
-     PVkMappedMemoryRange=^TVkMappedMemoryRange;
-     PVkFormatProperties=^TVkFormatProperties;
-     PVkImageFormatProperties=^TVkImageFormatProperties;
-     PVkDescriptorBufferInfo=^TVkDescriptorBufferInfo;
-     PVkDescriptorImageInfo=^TVkDescriptorImageInfo;
-     PVkWriteDescriptorSet=^TVkWriteDescriptorSet;
-     PVkCopyDescriptorSet=^TVkCopyDescriptorSet;
-     PVkBufferCreateInfo=^TVkBufferCreateInfo;
-     PVkBufferViewCreateInfo=^TVkBufferViewCreateInfo;
-     PVkImageSubresource=^TVkImageSubresource;
-     PVkImageSubresourceLayers=^TVkImageSubresourceLayers;
-     PVkImageSubresourceRange=^TVkImageSubresourceRange;
-     PVkMemoryBarrier=^TVkMemoryBarrier;
-     PVkBufferMemoryBarrier=^TVkBufferMemoryBarrier;
-     PVkImageMemoryBarrier=^TVkImageMemoryBarrier;
-     PVkImageCreateInfo=^TVkImageCreateInfo;
-     PVkSubresourceLayout=^TVkSubresourceLayout;
-     PVkImageViewCreateInfo=^TVkImageViewCreateInfo;
-     PVkBufferCopy=^TVkBufferCopy;
-     PVkSparseMemoryBind=^TVkSparseMemoryBind;
-     PVkSparseImageMemoryBind=^TVkSparseImageMemoryBind;
-     PVkSparseBufferMemoryBindInfo=^TVkSparseBufferMemoryBindInfo;
-     PVkSparseImageOpaqueMemoryBindInfo=^TVkSparseImageOpaqueMemoryBindInfo;
-     PVkSparseImageMemoryBindInfo=^TVkSparseImageMemoryBindInfo;
-     PVkBindSparseInfo=^TVkBindSparseInfo;
-     PVkImageCopy=^TVkImageCopy;
-     PVkImageBlit=^TVkImageBlit;
-     PVkBufferImageCopy=^TVkBufferImageCopy;
-     PVkImageResolve=^TVkImageResolve;
-     PVkShaderModuleCreateInfo=^TVkShaderModuleCreateInfo;
-     PVkDescriptorSetLayoutBinding=^TVkDescriptorSetLayoutBinding;
-     PVkDescriptorSetLayoutCreateInfo=^TVkDescriptorSetLayoutCreateInfo;
-     PVkDescriptorPoolSize=^TVkDescriptorPoolSize;
-     PVkDescriptorPoolCreateInfo=^TVkDescriptorPoolCreateInfo;
-     PVkDescriptorSetAllocateInfo=^TVkDescriptorSetAllocateInfo;
-     PVkSpecializationMapEntry=^TVkSpecializationMapEntry;
-     PVkSpecializationInfo=^TVkSpecializationInfo;
-     PVkPipelineShaderStageCreateInfo=^TVkPipelineShaderStageCreateInfo;
-     PVkComputePipelineCreateInfo=^TVkComputePipelineCreateInfo;
-     PVkVertexInputBindingDescription=^TVkVertexInputBindingDescription;
-     PVkVertexInputAttributeDescription=^TVkVertexInputAttributeDescription;
-     PVkPipelineVertexInputStateCreateInfo=^TVkPipelineVertexInputStateCreateInfo;
-     PVkPipelineInputAssemblyStateCreateInfo=^TVkPipelineInputAssemblyStateCreateInfo;
-     PVkPipelineTessellationStateCreateInfo=^TVkPipelineTessellationStateCreateInfo;
-     PVkPipelineViewportStateCreateInfo=^TVkPipelineViewportStateCreateInfo;
-     PVkPipelineRasterizationStateCreateInfo=^TVkPipelineRasterizationStateCreateInfo;
-     PVkPipelineMultisampleStateCreateInfo=^TVkPipelineMultisampleStateCreateInfo;
-     PVkPipelineColorBlendAttachmentState=^TVkPipelineColorBlendAttachmentState;
-     PVkPipelineColorBlendStateCreateInfo=^TVkPipelineColorBlendStateCreateInfo;
-     PVkPipelineDynamicStateCreateInfo=^TVkPipelineDynamicStateCreateInfo;
-     PVkStencilOpState=^TVkStencilOpState;
-     PVkPipelineDepthStencilStateCreateInfo=^TVkPipelineDepthStencilStateCreateInfo;
-     PVkGraphicsPipelineCreateInfo=^TVkGraphicsPipelineCreateInfo;
-     PVkPipelineCacheCreateInfo=^TVkPipelineCacheCreateInfo;
-     PVkPushConstantRange=^TVkPushConstantRange;
-     PVkPipelineLayoutCreateInfo=^TVkPipelineLayoutCreateInfo;
-     PVkSamplerCreateInfo=^TVkSamplerCreateInfo;
-     PVkCommandPoolCreateInfo=^TVkCommandPoolCreateInfo;
-     PVkCommandBufferAllocateInfo=^TVkCommandBufferAllocateInfo;
-     PVkCommandBufferInheritanceInfo=^TVkCommandBufferInheritanceInfo;
-     PVkCommandBufferBeginInfo=^TVkCommandBufferBeginInfo;
-     PVkRenderPassBeginInfo=^TVkRenderPassBeginInfo;
-     PVkClearColorValue=^TVkClearColorValue;
-     PVkClearDepthStencilValue=^TVkClearDepthStencilValue;
-     PVkClearValue=^TVkClearValue;
-     PVkClearAttachment=^TVkClearAttachment;
-     PVkAttachmentDescription=^TVkAttachmentDescription;
-     PVkAttachmentReference=^TVkAttachmentReference;
-     PVkSubpassDescription=^TVkSubpassDescription;
-     PVkSubpassDependency=^TVkSubpassDependency;
-     PVkRenderPassCreateInfo=^TVkRenderPassCreateInfo;
-     PVkEventCreateInfo=^TVkEventCreateInfo;
-     PVkFenceCreateInfo=^TVkFenceCreateInfo;
-     PVkPhysicalDeviceFeatures=^TVkPhysicalDeviceFeatures;
-     PVkPhysicalDeviceLimits=^TVkPhysicalDeviceLimits;
-     PVkPhysicalDeviceProperties=^TVkPhysicalDeviceProperties;
-     PVkSemaphoreCreateInfo=^TVkSemaphoreCreateInfo;
-     PVkQueryPoolCreateInfo=^TVkQueryPoolCreateInfo;
-     PVkFramebufferCreateInfo=^TVkFramebufferCreateInfo;
-     PVkDrawIndirectCommand=^TVkDrawIndirectCommand;
-     PVkDrawIndexedIndirectCommand=^TVkDrawIndexedIndirectCommand;
-     PVkDispatchIndirectCommand=^TVkDispatchIndirectCommand;
-     PVkSubmitInfo=^TVkSubmitInfo;
-     PVkDisplayPropertiesKHR=^TVkDisplayPropertiesKHR;
-     PVkDisplayPlanePropertiesKHR=^TVkDisplayPlanePropertiesKHR;
-     PVkDisplayModeParametersKHR=^TVkDisplayModeParametersKHR;
-     PVkDisplayModePropertiesKHR=^TVkDisplayModePropertiesKHR;
-     PVkDisplayModeCreateInfoKHR=^TVkDisplayModeCreateInfoKHR;
-     PVkDisplayPlaneCapabilitiesKHR=^TVkDisplayPlaneCapabilitiesKHR;
-     PVkDisplaySurfaceCreateInfoKHR=^TVkDisplaySurfaceCreateInfoKHR;
-     PVkDisplayPresentInfoKHR=^TVkDisplayPresentInfoKHR;
-     PVkSurfaceCapabilitiesKHR=^TVkSurfaceCapabilitiesKHR;
-{$ifdef Android}
-     PVkAndroidSurfaceCreateInfoKHR=^TVkAndroidSurfaceCreateInfoKHR;
-{$endif}
-{$ifdef Mir}
-     PVkMirSurfaceCreateInfoKHR=^TVkMirSurfaceCreateInfoKHR;
-{$endif}
-{$ifdef Wayland}
-     PVkWaylandSurfaceCreateInfoKHR=^TVkWaylandSurfaceCreateInfoKHR;
-{$endif}
-{$ifdef Windows}
-     PVkWin32SurfaceCreateInfoKHR=^TVkWin32SurfaceCreateInfoKHR;
-{$endif}
-{$ifdef X11}
-     PVkXlibSurfaceCreateInfoKHR=^TVkXlibSurfaceCreateInfoKHR;
-{$endif}
-{$ifdef XCB}
-     PVkXcbSurfaceCreateInfoKHR=^TVkXcbSurfaceCreateInfoKHR;
-{$endif}
-     PVkSurfaceFormatKHR=^TVkSurfaceFormatKHR;
-     PVkSwapchainCreateInfoKHR=^TVkSwapchainCreateInfoKHR;
-     PVkPresentInfoKHR=^TVkPresentInfoKHR;
-     PVkDebugReportCallbackCreateInfoEXT=^TVkDebugReportCallbackCreateInfoEXT;
      TPFN_vkInternalAllocationNotification=procedure(pUserData:TVkPointer;size:TVkPtrInt;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
+
+     PPPFN_vkInternalFreeNotification=^PPFN_vkInternalFreeNotification;
+     PPFN_vkInternalFreeNotification=^TPFN_vkInternalFreeNotification;
      TPFN_vkInternalFreeNotification=procedure(pUserData:TVkPointer;size:TVkPtrInt;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
+
+     PPPFN_vkReallocationFunction=^PPFN_vkReallocationFunction;
+     PPFN_vkReallocationFunction=^TPFN_vkReallocationFunction;
      TPFN_vkReallocationFunction=function(pUserData:TVkPointer;pOriginal:TVkPointer;size:TVkPtrInt;alignment:TVkPtrInt;allocationScope:TVkSystemAllocationScope):TVkPointer; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
+
+     PPPFN_vkAllocationFunction=^PPFN_vkAllocationFunction;
+     PPFN_vkAllocationFunction=^TPFN_vkAllocationFunction;
      TPFN_vkAllocationFunction=function(pUserData:TVkPointer;size:TVkPtrInt;alignment:TVkPtrInt;allocationScope:TVkSystemAllocationScope):TVkPointer; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
+
+     PPPFN_vkFreeFunction=^PPFN_vkFreeFunction;
+     PPFN_vkFreeFunction=^TPFN_vkFreeFunction;
      TPFN_vkFreeFunction=procedure(pUserData:TVkPointer;pMemory:TVkPointer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
+
+     PPPFN_vkVoidFunction=^PPFN_vkVoidFunction;
+     PPFN_vkVoidFunction=^TPFN_vkVoidFunction;
      TPFN_vkVoidFunction=procedure(); {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
+
+     PPPFN_vkDebugReportCallbackEXT=^PPFN_vkDebugReportCallbackEXT;
+     PPFN_vkDebugReportCallbackEXT=^TPFN_vkDebugReportCallbackEXT;
      TPFN_vkDebugReportCallbackEXT=function(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar;pUserData:TVkPointer):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
+
+     PPVkOffset2D=^PVkOffset2D;
+     PVkOffset2D=^TVkOffset2D;
      TVkOffset2D=record
       x:TVkInt32;
       y:TVkInt32;
      end;
+
+     PPVkOffset3D=^PVkOffset3D;
+     PVkOffset3D=^TVkOffset3D;
      TVkOffset3D=record
       x:TVkInt32;
       y:TVkInt32;
       z:TVkInt32;
      end;
+
+     PPVkExtent2D=^PVkExtent2D;
+     PVkExtent2D=^TVkExtent2D;
      TVkExtent2D=record
       width:TVkUInt32;
       height:TVkUInt32;
      end;
+
+     PPVkExtent3D=^PVkExtent3D;
+     PVkExtent3D=^TVkExtent3D;
      TVkExtent3D=record
       width:TVkUInt32;
       height:TVkUInt32;
       depth:TVkUInt32;
      end;
+
+     PPVkViewport=^PVkViewport;
+     PVkViewport=^TVkViewport;
      TVkViewport=record
       x:TVkFloat;
       y:TVkFloat;
@@ -1642,25 +1930,40 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       minDepth:TVkFloat;
       maxDepth:TVkFloat;
      end;
+
+     PPVkRect2D=^PVkRect2D;
+     PVkRect2D=^TVkRect2D;
      TVkRect2D=record
       offset:TVkOffset2D;
       extent:TVkExtent2D;
      end;
+
+     PPVkRect3D=^PVkRect3D;
+     PVkRect3D=^TVkRect3D;
      TVkRect3D=record
       offset:TVkOffset3D;
       extent:TVkExtent3D;
      end;
+
+     PPVkClearRect=^PVkClearRect;
+     PVkClearRect=^TVkClearRect;
      TVkClearRect=record
       rect:TVkRect2D;
       baseArrayLayer:TVkUInt32;
       layerCount:TVkUInt32;
      end;
+
+     PPVkComponentMapping=^PVkComponentMapping;
+     PVkComponentMapping=^TVkComponentMapping;
      TVkComponentMapping=record
       r:TVkComponentSwizzle;
       g:TVkComponentSwizzle;
       b:TVkComponentSwizzle;
       a:TVkComponentSwizzle;
      end;
+
+     PPVkPhysicalDeviceSparseProperties=^PVkPhysicalDeviceSparseProperties;
+     PVkPhysicalDeviceSparseProperties=^TVkPhysicalDeviceSparseProperties;
      TVkPhysicalDeviceSparseProperties=record
       residencyStandard2DBlockShape:TVkBool32;
       residencyStandard2DMultisampleBlockShape:TVkBool32;
@@ -1668,16 +1971,25 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       residencyAlignedMipSize:TVkBool32;
       residencyNonResidentStrict:TVkBool32;
      end;
+
+     PPVkExtensionProperties=^PVkExtensionProperties;
+     PVkExtensionProperties=^TVkExtensionProperties;
      TVkExtensionProperties=record
       extensionName:array[0..VK_MAX_EXTENSION_NAME_SIZE-1] of TVkChar;
       specVersion:TVkUInt32;
      end;
+
+     PPVkLayerProperties=^PVkLayerProperties;
+     PVkLayerProperties=^TVkLayerProperties;
      TVkLayerProperties=record
       layerName:array[0..VK_MAX_EXTENSION_NAME_SIZE-1] of TVkChar;
       specVersion:TVkUInt32;
       implementationVersion:TVkUInt32;
       description:array[0..VK_MAX_DESCRIPTION_SIZE-1] of TVkChar;
      end;
+
+     PPVkApplicationInfo=^PVkApplicationInfo;
+     PVkApplicationInfo=^TVkApplicationInfo;
      TVkApplicationInfo=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -1687,6 +1999,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       engineVersion:TVkUInt32;
       apiVersion:TVkUInt32;
      end;
+
+     PPVkAllocationCallbacks=^PVkAllocationCallbacks;
+     PVkAllocationCallbacks=^TVkAllocationCallbacks;
      TVkAllocationCallbacks=record
       pUserData:TVkPointer;
       pfnAllocation:TPFN_vkAllocationFunction;
@@ -1695,6 +2010,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       pfnInternalAllocation:TPFN_vkInternalAllocationNotification;
       pfnInternalFree:TPFN_vkInternalFreeNotification;
      end;
+
+     PPVkDeviceQueueCreateInfo=^PVkDeviceQueueCreateInfo;
+     PVkDeviceQueueCreateInfo=^TVkDeviceQueueCreateInfo;
      TVkDeviceQueueCreateInfo=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -1703,674 +2021,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       queueCount:TVkUInt32;
       pQueuePriorities:PVkFloat;
      end;
-     TVkDeviceCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkDeviceCreateFlags;
-      queueCreateInfoCount:TVkUInt32;
-      pQueueCreateInfos:PVkDeviceQueueCreateInfo;
-      enabledLayerCount:TVkUInt32;
-      ppEnabledLayerNames:PVkChar;
-      enabledExtensionCount:TVkUInt32;
-      ppEnabledExtensionNames:PVkChar;
-      pEnabledFeatures:PVkPhysicalDeviceFeatures;
-     end;
-     TVkInstanceCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkInstanceCreateFlags;
-      pApplicationInfo:PVkApplicationInfo;
-      enabledLayerCount:TVkUInt32;
-      ppEnabledLayerNames:PVkChar;
-      enabledExtensionCount:TVkUInt32;
-      ppEnabledExtensionNames:PVkChar;
-     end;
-     TVkQueueFamilyProperties=record
-      queueFlags:TVkQueueFlags;
-      queueCount:TVkUInt32;
-      timestampValidBits:TVkUInt32;
-      minImageTransferGranularity:TVkExtent3D;
-     end;
-     TVkMemoryType=record
-      propertyFlags:TVkMemoryPropertyFlags;
-      heapIndex:TVkUInt32;
-     end;
-     TVkMemoryAllocateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      allocationSize:TVkDeviceSize;
-      memoryTypeIndex:TVkUInt32;
-     end;
-     TVkMemoryRequirements=record
-      size:TVkDeviceSize;
-      alignment:TVkDeviceSize;
-      memoryTypeBits:TVkUInt32;
-     end;
-     TVkSparseImageFormatProperties=record
-      aspectMask:TVkImageAspectFlags;
-      imageGranularity:TVkExtent3D;
-      flags:TVkSparseImageFormatFlags;
-     end;
-     TVkSparseImageMemoryRequirements=record
-      formatProperties:TVkSparseImageFormatProperties;
-      imageMipTailFirstLod:TVkUInt32;
-      imageMipTailSize:TVkDeviceSize;
-      imageMipTailOffset:TVkDeviceSize;
-      imageMipTailStride:TVkDeviceSize;
-     end;
-     TVkMemoryHeap=record
-      size:TVkDeviceSize;
-      flags:TVkMemoryHeapFlags;
-     end;
-     TVkPhysicalDeviceMemoryProperties=record
-      memoryTypeCount:TVkUInt32;
-      memoryTypes:array[0..VK_MAX_MEMORY_TYPES-1] of TVkMemoryType;
-      memoryHeapCount:TVkUInt32;
-      memoryHeaps:array[0..VK_MAX_MEMORY_HEAPS-1] of TVkMemoryHeap;
-     end;
-     TVkMappedMemoryRange=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      memory:TVkDeviceMemory;
-      offset:TVkDeviceSize;
-      size:TVkDeviceSize;
-     end;
-     TVkFormatProperties=record
-      linearTilingFeatures:TVkFormatFeatureFlags;
-      optimalTilingFeatures:TVkFormatFeatureFlags;
-      bufferFeatures:TVkFormatFeatureFlags;
-     end;
-     TVkImageFormatProperties=record
-      maxExtent:TVkExtent3D;
-      maxMipLevels:TVkUInt32;
-      maxArrayLayers:TVkUInt32;
-      sampleCounts:TVkSampleCountFlags;
-      maxResourceSize:TVkDeviceSize;
-     end;
-     TVkDescriptorBufferInfo=record
-      buffer:TVkBuffer;
-      offset:TVkDeviceSize;
-      range:TVkDeviceSize;
-     end;
-     TVkDescriptorImageInfo=record
-      sampler:TVkSampler;
-      imageView:TVkImageView;
-      imageLayout:TVkImageLayout;
-     end;
-     TVkWriteDescriptorSet=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      dstSet:TVkDescriptorSet;
-      dstBinding:TVkUInt32;
-      dstArrayElement:TVkUInt32;
-      descriptorCount:TVkUInt32;
-      descriptorType:TVkDescriptorType;
-      pImageInfo:PVkDescriptorImageInfo;
-      pBufferInfo:PVkDescriptorBufferInfo;
-      pTexelBufferView:PVkBufferView;
-     end;
-     TVkCopyDescriptorSet=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      srcSet:TVkDescriptorSet;
-      srcBinding:TVkUInt32;
-      srcArrayElement:TVkUInt32;
-      dstSet:TVkDescriptorSet;
-      dstBinding:TVkUInt32;
-      dstArrayElement:TVkUInt32;
-      descriptorCount:TVkUInt32;
-     end;
-     TVkBufferCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkBufferCreateFlags;
-      size:TVkDeviceSize;
-      usage:TVkBufferUsageFlags;
-      sharingMode:TVkSharingMode;
-      queueFamilyIndexCount:TVkUInt32;
-      pQueueFamilyIndices:PVkUInt32;
-     end;
-     TVkBufferViewCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkBufferViewCreateFlags;
-      buffer:TVkBuffer;
-      format:TVkFormat;
-      offset:TVkDeviceSize;
-      range:TVkDeviceSize;
-     end;
-     TVkImageSubresource=record
-      aspectMask:TVkImageAspectFlags;
-      mipLevel:TVkUInt32;
-      arrayLayer:TVkUInt32;
-     end;
-     TVkImageSubresourceLayers=record
-      aspectMask:TVkImageAspectFlags;
-      mipLevel:TVkUInt32;
-      baseArrayLayer:TVkUInt32;
-      layerCount:TVkUInt32;
-     end;
-     TVkImageSubresourceRange=record
-      aspectMask:TVkImageAspectFlags;
-      baseMipLevel:TVkUInt32;
-      levelCount:TVkUInt32;
-      baseArrayLayer:TVkUInt32;
-      layerCount:TVkUInt32;
-     end;
-     TVkMemoryBarrier=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      srcAccessMask:TVkAccessFlags;
-      dstAccessMask:TVkAccessFlags;
-     end;
-     TVkBufferMemoryBarrier=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      srcAccessMask:TVkAccessFlags;
-      dstAccessMask:TVkAccessFlags;
-      srcQueueFamilyIndex:TVkUInt32;
-      dstQueueFamilyIndex:TVkUInt32;
-      buffer:TVkBuffer;
-      offset:TVkDeviceSize;
-      size:TVkDeviceSize;
-     end;
-     TVkImageMemoryBarrier=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      srcAccessMask:TVkAccessFlags;
-      dstAccessMask:TVkAccessFlags;
-      oldLayout:TVkImageLayout;
-      newLayout:TVkImageLayout;
-      srcQueueFamilyIndex:TVkUInt32;
-      dstQueueFamilyIndex:TVkUInt32;
-      image:TVkImage;
-      subresourceRange:TVkImageSubresourceRange;
-     end;
-     TVkImageCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkImageCreateFlags;
-      imageType:TVkImageType;
-      format:TVkFormat;
-      extent:TVkExtent3D;
-      mipLevels:TVkUInt32;
-      arrayLayers:TVkUInt32;
-      samples:TVkSampleCountFlagBits;
-      tiling:TVkImageTiling;
-      usage:TVkImageUsageFlags;
-      sharingMode:TVkSharingMode;
-      queueFamilyIndexCount:TVkUInt32;
-      pQueueFamilyIndices:PVkUInt32;
-      initialLayout:TVkImageLayout;
-     end;
-     TVkSubresourceLayout=record
-      offset:TVkDeviceSize;
-      size:TVkDeviceSize;
-      rowPitch:TVkDeviceSize;
-      arrayPitch:TVkDeviceSize;
-      depthPitch:TVkDeviceSize;
-     end;
-     TVkImageViewCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkImageViewCreateFlags;
-      image:TVkImage;
-      viewType:TVkImageViewType;
-      format:TVkFormat;
-      components:TVkComponentMapping;
-      subresourceRange:TVkImageSubresourceRange;
-     end;
-     TVkBufferCopy=record
-      srcOffset:TVkDeviceSize;
-      dstOffset:TVkDeviceSize;
-      size:TVkDeviceSize;
-     end;
-     TVkSparseMemoryBind=record
-      resourceOffset:TVkDeviceSize;
-      size:TVkDeviceSize;
-      memory:TVkDeviceMemory;
-      memoryOffset:TVkDeviceSize;
-      flags:TVkSparseMemoryBindFlags;
-     end;
-     TVkSparseImageMemoryBind=record
-      subresource:TVkImageSubresource;
-      offset:TVkOffset3D;
-      extent:TVkExtent3D;
-      memory:TVkDeviceMemory;
-      memoryOffset:TVkDeviceSize;
-      flags:TVkSparseMemoryBindFlags;
-     end;
-     TVkSparseBufferMemoryBindInfo=record
-      buffer:TVkBuffer;
-      bindCount:TVkUInt32;
-      pBinds:PVkSparseMemoryBind;
-     end;
-     TVkSparseImageOpaqueMemoryBindInfo=record
-      image:TVkImage;
-      bindCount:TVkUInt32;
-      pBinds:PVkSparseMemoryBind;
-     end;
-     TVkSparseImageMemoryBindInfo=record
-      image:TVkImage;
-      bindCount:TVkUInt32;
-      pBinds:PVkSparseImageMemoryBind;
-     end;
-     TVkBindSparseInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      waitSemaphoreCount:TVkUInt32;
-      pWaitSemaphores:PVkSemaphore;
-      bufferBindCount:TVkUInt32;
-      pBufferBinds:PVkSparseBufferMemoryBindInfo;
-      imageOpaqueBindCount:TVkUInt32;
-      pImageOpaqueBinds:PVkSparseImageOpaqueMemoryBindInfo;
-      imageBindCount:TVkUInt32;
-      pImageBinds:PVkSparseImageMemoryBindInfo;
-      signalSemaphoreCount:TVkUInt32;
-      pSignalSemaphores:PVkSemaphore;
-     end;
-     TVkImageCopy=record
-      srcSubresource:TVkImageSubresourceLayers;
-      srcOffset:TVkOffset3D;
-      dstSubresource:TVkImageSubresourceLayers;
-      dstOffset:TVkOffset3D;
-      extent:TVkExtent3D;
-     end;
-     TVkImageBlit=record
-      srcSubresource:TVkImageSubresourceLayers;
-      srcOffsets:array[0..1] of TVkOffset3D;
-      dstSubresource:TVkImageSubresourceLayers;
-      dstOffsets:array[0..1] of TVkOffset3D;
-     end;
-     TVkBufferImageCopy=record
-      bufferOffset:TVkDeviceSize;
-      bufferRowLength:TVkUInt32;
-      bufferImageHeight:TVkUInt32;
-      imageSubresource:TVkImageSubresourceLayers;
-      imageOffset:TVkOffset3D;
-      imageExtent:TVkExtent3D;
-     end;
-     TVkImageResolve=record
-      srcSubresource:TVkImageSubresourceLayers;
-      srcOffset:TVkOffset3D;
-      dstSubresource:TVkImageSubresourceLayers;
-      dstOffset:TVkOffset3D;
-      extent:TVkExtent3D;
-     end;
-     TVkShaderModuleCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkShaderModuleCreateFlags;
-      codeSize:TVkPtrInt;
-      pCode:PVkUInt32;
-     end;
-     TVkDescriptorSetLayoutBinding=record
-      binding:TVkUInt32;
-      descriptorType:TVkDescriptorType;
-      descriptorCount:TVkUInt32;
-      stageFlags:TVkShaderStageFlags;
-      pImmutableSamplers:PVkSampler;
-     end;
-     TVkDescriptorSetLayoutCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkDescriptorSetLayoutCreateFlags;
-      bindingCount:TVkUInt32;
-      pBindings:PVkDescriptorSetLayoutBinding;
-     end;
-     TVkDescriptorPoolSize=record
-      type_:TVkDescriptorType;
-      descriptorCount:TVkUInt32;
-     end;
-     TVkDescriptorPoolCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkDescriptorPoolCreateFlags;
-      maxSets:TVkUInt32;
-      poolSizeCount:TVkUInt32;
-      pPoolSizes:PVkDescriptorPoolSize;
-     end;
-     TVkDescriptorSetAllocateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      descriptorPool:TVkDescriptorPool;
-      descriptorSetCount:TVkUInt32;
-      pSetLayouts:PVkDescriptorSetLayout;
-     end;
-     TVkSpecializationMapEntry=record
-      constantID:TVkUInt32;
-      offset:TVkUInt32;
-      size:TVkPtrInt;
-     end;
-     TVkSpecializationInfo=record
-      mapEntryCount:TVkUInt32;
-      pMapEntries:PVkSpecializationMapEntry;
-      dataSize:TVkPtrInt;
-      pData:TVkPointer;
-     end;
-     TVkPipelineShaderStageCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineShaderStageCreateFlags;
-      stage:TVkShaderStageFlagBits;
-      module:TVkShaderModule;
-      pName:PVkChar;
-      pSpecializationInfo:PVkSpecializationInfo;
-     end;
-     TVkComputePipelineCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineCreateFlags;
-      stage:TVkPipelineShaderStageCreateInfo;
-      layout:TVkPipelineLayout;
-      basePipelineHandle:TVkPipeline;
-      basePipelineIndex:TVkInt32;
-     end;
-     TVkVertexInputBindingDescription=record
-      binding:TVkUInt32;
-      stride:TVkUInt32;
-      inputRate:TVkVertexInputRate;
-     end;
-     TVkVertexInputAttributeDescription=record
-      location:TVkUInt32;
-      binding:TVkUInt32;
-      format:TVkFormat;
-      offset:TVkUInt32;
-     end;
-     TVkPipelineVertexInputStateCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineVertexInputStateCreateFlags;
-      vertexBindingDescriptionCount:TVkUInt32;
-      pVertexBindingDescriptions:PVkVertexInputBindingDescription;
-      vertexAttributeDescriptionCount:TVkUInt32;
-      pVertexAttributeDescriptions:PVkVertexInputAttributeDescription;
-     end;
-     TVkPipelineInputAssemblyStateCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineInputAssemblyStateCreateFlags;
-      topology:TVkPrimitiveTopology;
-      primitiveRestartEnable:TVkBool32;
-     end;
-     TVkPipelineTessellationStateCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineTessellationStateCreateFlags;
-      patchControlPoints:TVkUInt32;
-     end;
-     TVkPipelineViewportStateCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineViewportStateCreateFlags;
-      viewportCount:TVkUInt32;
-      pViewports:PVkViewport;
-      scissorCount:TVkUInt32;
-      pScissors:PVkRect2D;
-     end;
-     TVkPipelineRasterizationStateCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineRasterizationStateCreateFlags;
-      depthClampEnable:TVkBool32;
-      rasterizerDiscardEnable:TVkBool32;
-      polygonMode:TVkPolygonMode;
-      cullMode:TVkCullModeFlags;
-      frontFace:TVkFrontFace;
-      depthBiasEnable:TVkBool32;
-      depthBiasConstantFactor:TVkFloat;
-      depthBiasClamp:TVkFloat;
-      depthBiasSlopeFactor:TVkFloat;
-      lineWidth:TVkFloat;
-     end;
-     TVkPipelineMultisampleStateCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineMultisampleStateCreateFlags;
-      rasterizationSamples:TVkSampleCountFlagBits;
-      sampleShadingEnable:TVkBool32;
-      minSampleShading:TVkFloat;
-      pSampleMask:PVkSampleMask;
-      alphaToCoverageEnable:TVkBool32;
-      alphaToOneEnable:TVkBool32;
-     end;
-     TVkPipelineColorBlendAttachmentState=record
-      blendEnable:TVkBool32;
-      srcColorBlendFactor:TVkBlendFactor;
-      dstColorBlendFactor:TVkBlendFactor;
-      colorBlendOp:TVkBlendOp;
-      srcAlphaBlendFactor:TVkBlendFactor;
-      dstAlphaBlendFactor:TVkBlendFactor;
-      alphaBlendOp:TVkBlendOp;
-      colorWriteMask:TVkColorComponentFlags;
-     end;
-     TVkPipelineColorBlendStateCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineColorBlendStateCreateFlags;
-      logicOpEnable:TVkBool32;
-      logicOp:TVkLogicOp;
-      attachmentCount:TVkUInt32;
-      pAttachments:PVkPipelineColorBlendAttachmentState;
-      blendConstants:array[0..3] of TVkFloat;
-     end;
-     TVkPipelineDynamicStateCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineDynamicStateCreateFlags;
-      dynamicStateCount:TVkUInt32;
-      pDynamicStates:PVkDynamicState;
-     end;
-     TVkStencilOpState=record
-      failOp:TVkStencilOp;
-      passOp:TVkStencilOp;
-      depthFailOp:TVkStencilOp;
-      compareOp:TVkCompareOp;
-      compareMask:TVkUInt32;
-      writeMask:TVkUInt32;
-      reference:TVkUInt32;
-     end;
-     TVkPipelineDepthStencilStateCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineDepthStencilStateCreateFlags;
-      depthTestEnable:TVkBool32;
-      depthWriteEnable:TVkBool32;
-      depthCompareOp:TVkCompareOp;
-      depthBoundsTestEnable:TVkBool32;
-      stencilTestEnable:TVkBool32;
-      front:TVkStencilOpState;
-      back:TVkStencilOpState;
-      minDepthBounds:TVkFloat;
-      maxDepthBounds:TVkFloat;
-     end;
-     TVkGraphicsPipelineCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineCreateFlags;
-      stageCount:TVkUInt32;
-      pStages:PVkPipelineShaderStageCreateInfo;
-      pVertexInputState:PVkPipelineVertexInputStateCreateInfo;
-      pInputAssemblyState:PVkPipelineInputAssemblyStateCreateInfo;
-      pTessellationState:PVkPipelineTessellationStateCreateInfo;
-      pViewportState:PVkPipelineViewportStateCreateInfo;
-      pRasterizationState:PVkPipelineRasterizationStateCreateInfo;
-      pMultisampleState:PVkPipelineMultisampleStateCreateInfo;
-      pDepthStencilState:PVkPipelineDepthStencilStateCreateInfo;
-      pColorBlendState:PVkPipelineColorBlendStateCreateInfo;
-      pDynamicState:PVkPipelineDynamicStateCreateInfo;
-      layout:TVkPipelineLayout;
-      renderPass:TVkRenderPass;
-      subpass:TVkUInt32;
-      basePipelineHandle:TVkPipeline;
-      basePipelineIndex:TVkInt32;
-     end;
-     TVkPipelineCacheCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineCacheCreateFlags;
-      initialDataSize:TVkPtrInt;
-      pInitialData:TVkPointer;
-     end;
-     TVkPushConstantRange=record
-      stageFlags:TVkShaderStageFlags;
-      offset:TVkUInt32;
-      size:TVkUInt32;
-     end;
-     TVkPipelineLayoutCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkPipelineLayoutCreateFlags;
-      setLayoutCount:TVkUInt32;
-      pSetLayouts:PVkDescriptorSetLayout;
-      pushConstantRangeCount:TVkUInt32;
-      pPushConstantRanges:PVkPushConstantRange;
-     end;
-     TVkSamplerCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkSamplerCreateFlags;
-      magFilter:TVkFilter;
-      minFilter:TVkFilter;
-      mipmapMode:TVkSamplerMipmapMode;
-      addressModeU:TVkSamplerAddressMode;
-      addressModeV:TVkSamplerAddressMode;
-      addressModeW:TVkSamplerAddressMode;
-      mipLodBias:TVkFloat;
-      anisotropyEnable:TVkBool32;
-      maxAnisotropy:TVkFloat;
-      compareEnable:TVkBool32;
-      compareOp:TVkCompareOp;
-      minLod:TVkFloat;
-      maxLod:TVkFloat;
-      borderColor:TVkBorderColor;
-      unnormalizedCoordinates:TVkBool32;
-     end;
-     TVkCommandPoolCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkCommandPoolCreateFlags;
-      queueFamilyIndex:TVkUInt32;
-     end;
-     TVkCommandBufferAllocateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      commandPool:TVkCommandPool;
-      level:TVkCommandBufferLevel;
-      commandBufferCount:TVkUInt32;
-     end;
-     TVkCommandBufferInheritanceInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      renderPass:TVkRenderPass;
-      subpass:TVkUInt32;
-      framebuffer:TVkFramebuffer;
-      occlusionQueryEnable:TVkBool32;
-      queryFlags:TVkQueryControlFlags;
-      pipelineStatistics:TVkQueryPipelineStatisticFlags;
-     end;
-     TVkCommandBufferBeginInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkCommandBufferUsageFlags;
-      pInheritanceInfo:PVkCommandBufferInheritanceInfo;
-     end;
-     TVkRenderPassBeginInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      renderPass:TVkRenderPass;
-      framebuffer:TVkFramebuffer;
-      renderArea:TVkRect2D;
-      clearValueCount:TVkUInt32;
-      pClearValues:PVkClearValue;
-     end;
-     TVkClearColorValue=record
-      case longint of
-       0:(
-        float32:array[0..3] of TVkFloat;
-       );
-       1:(
-        int32:array[0..3] of TVkInt32;
-       );
-       2:(
-        uint32:array[0..3] of TVkUInt32;
-       );
-     end;
-     TVkClearDepthStencilValue=record
-      depth:TVkFloat;
-      stencil:TVkUInt32;
-     end;
-     TVkClearValue=record
-      case longint of
-       0:(
-        color:TVkClearColorValue;
-       );
-       1:(
-        depthStencil:TVkClearDepthStencilValue;
-       );
-     end;
-     TVkClearAttachment=record
-      aspectMask:TVkImageAspectFlags;
-      colorAttachment:TVkUInt32;
-      clearValue:TVkClearValue;
-     end;
-     TVkAttachmentDescription=record
-      flags:TVkAttachmentDescriptionFlags;
-      format:TVkFormat;
-      samples:TVkSampleCountFlagBits;
-      loadOp:TVkAttachmentLoadOp;
-      storeOp:TVkAttachmentStoreOp;
-      stencilLoadOp:TVkAttachmentLoadOp;
-      stencilStoreOp:TVkAttachmentStoreOp;
-      initialLayout:TVkImageLayout;
-      finalLayout:TVkImageLayout;
-     end;
-     TVkAttachmentReference=record
-      attachment:TVkUInt32;
-      layout:TVkImageLayout;
-     end;
-     TVkSubpassDescription=record
-      flags:TVkSubpassDescriptionFlags;
-      pipelineBindPoint:TVkPipelineBindPoint;
-      inputAttachmentCount:TVkUInt32;
-      pInputAttachments:PVkAttachmentReference;
-      colorAttachmentCount:TVkUInt32;
-      pColorAttachments:PVkAttachmentReference;
-      pResolveAttachments:PVkAttachmentReference;
-      pDepthStencilAttachment:PVkAttachmentReference;
-      preserveAttachmentCount:TVkUInt32;
-      pPreserveAttachments:PVkUInt32;
-     end;
-     TVkSubpassDependency=record
-      srcSubpass:TVkUInt32;
-      dstSubpass:TVkUInt32;
-      srcStageMask:TVkPipelineStageFlags;
-      dstStageMask:TVkPipelineStageFlags;
-      srcAccessMask:TVkAccessFlags;
-      dstAccessMask:TVkAccessFlags;
-      dependencyFlags:TVkDependencyFlags;
-     end;
-     TVkRenderPassCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkRenderPassCreateFlags;
-      attachmentCount:TVkUInt32;
-      pAttachments:PVkAttachmentDescription;
-      subpassCount:TVkUInt32;
-      pSubpasses:PVkSubpassDescription;
-      dependencyCount:TVkUInt32;
-      pDependencies:PVkSubpassDependency;
-     end;
-     TVkEventCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkEventCreateFlags;
-     end;
-     TVkFenceCreateInfo=record
-      sType:TVkStructureType;
-      pNext:TVkPointer;
-      flags:TVkFenceCreateFlags;
-     end;
+
+     PPVkPhysicalDeviceFeatures=^PVkPhysicalDeviceFeatures;
+     PVkPhysicalDeviceFeatures=^TVkPhysicalDeviceFeatures;
      TVkPhysicalDeviceFeatures=record
       robustBufferAccess:TVkBool32;
       fullDrawIndexUint32:TVkBool32;
@@ -2428,6 +2081,926 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       variableMultisampleRate:TVkBool32;
       inheritedQueries:TVkBool32;
      end;
+
+     PPVkInstanceCreateInfo=^PVkInstanceCreateInfo;
+     PVkInstanceCreateInfo=^TVkInstanceCreateInfo;
+     TVkInstanceCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkInstanceCreateFlags;
+      pApplicationInfo:PVkApplicationInfo;
+      enabledLayerCount:TVkUInt32;
+      ppEnabledLayerNames:PVkChar;
+      enabledExtensionCount:TVkUInt32;
+      ppEnabledExtensionNames:PVkChar;
+     end;
+
+     PPVkQueueFamilyProperties=^PVkQueueFamilyProperties;
+     PVkQueueFamilyProperties=^TVkQueueFamilyProperties;
+     TVkQueueFamilyProperties=record
+      queueFlags:TVkQueueFlags;
+      queueCount:TVkUInt32;
+      timestampValidBits:TVkUInt32;
+      minImageTransferGranularity:TVkExtent3D;
+     end;
+
+     PPVkMemoryType=^PVkMemoryType;
+     PVkMemoryType=^TVkMemoryType;
+     TVkMemoryType=record
+      propertyFlags:TVkMemoryPropertyFlags;
+      heapIndex:TVkUInt32;
+     end;
+
+     PPVkMemoryAllocateInfo=^PVkMemoryAllocateInfo;
+     PVkMemoryAllocateInfo=^TVkMemoryAllocateInfo;
+     TVkMemoryAllocateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      allocationSize:TVkDeviceSize;
+      memoryTypeIndex:TVkUInt32;
+     end;
+
+     PPVkMemoryRequirements=^PVkMemoryRequirements;
+     PVkMemoryRequirements=^TVkMemoryRequirements;
+     TVkMemoryRequirements=record
+      size:TVkDeviceSize;
+      alignment:TVkDeviceSize;
+      memoryTypeBits:TVkUInt32;
+     end;
+
+     PPVkSparseImageFormatProperties=^PVkSparseImageFormatProperties;
+     PVkSparseImageFormatProperties=^TVkSparseImageFormatProperties;
+     TVkSparseImageFormatProperties=record
+      aspectMask:TVkImageAspectFlags;
+      imageGranularity:TVkExtent3D;
+      flags:TVkSparseImageFormatFlags;
+     end;
+
+     PPVkSparseImageMemoryRequirements=^PVkSparseImageMemoryRequirements;
+     PVkSparseImageMemoryRequirements=^TVkSparseImageMemoryRequirements;
+     TVkSparseImageMemoryRequirements=record
+      formatProperties:TVkSparseImageFormatProperties;
+      imageMipTailFirstLod:TVkUInt32;
+      imageMipTailSize:TVkDeviceSize;
+      imageMipTailOffset:TVkDeviceSize;
+      imageMipTailStride:TVkDeviceSize;
+     end;
+
+     PPVkMemoryHeap=^PVkMemoryHeap;
+     PVkMemoryHeap=^TVkMemoryHeap;
+     TVkMemoryHeap=record
+      size:TVkDeviceSize;
+      flags:TVkMemoryHeapFlags;
+     end;
+
+     PPVkPhysicalDeviceMemoryProperties=^PVkPhysicalDeviceMemoryProperties;
+     PVkPhysicalDeviceMemoryProperties=^TVkPhysicalDeviceMemoryProperties;
+     TVkPhysicalDeviceMemoryProperties=record
+      memoryTypeCount:TVkUInt32;
+      memoryTypes:array[0..VK_MAX_MEMORY_TYPES-1] of TVkMemoryType;
+      memoryHeapCount:TVkUInt32;
+      memoryHeaps:array[0..VK_MAX_MEMORY_HEAPS-1] of TVkMemoryHeap;
+     end;
+
+     PPVkMappedMemoryRange=^PVkMappedMemoryRange;
+     PVkMappedMemoryRange=^TVkMappedMemoryRange;
+     TVkMappedMemoryRange=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      memory:TVkDeviceMemory;
+      offset:TVkDeviceSize;
+      size:TVkDeviceSize;
+     end;
+
+     PPVkFormatProperties=^PVkFormatProperties;
+     PVkFormatProperties=^TVkFormatProperties;
+     TVkFormatProperties=record
+      linearTilingFeatures:TVkFormatFeatureFlags;
+      optimalTilingFeatures:TVkFormatFeatureFlags;
+      bufferFeatures:TVkFormatFeatureFlags;
+     end;
+
+     PPVkImageFormatProperties=^PVkImageFormatProperties;
+     PVkImageFormatProperties=^TVkImageFormatProperties;
+     TVkImageFormatProperties=record
+      maxExtent:TVkExtent3D;
+      maxMipLevels:TVkUInt32;
+      maxArrayLayers:TVkUInt32;
+      sampleCounts:TVkSampleCountFlags;
+      maxResourceSize:TVkDeviceSize;
+     end;
+
+     PPVkDescriptorBufferInfo=^PVkDescriptorBufferInfo;
+     PVkDescriptorBufferInfo=^TVkDescriptorBufferInfo;
+     TVkDescriptorBufferInfo=record
+      buffer:TVkBuffer;
+      offset:TVkDeviceSize;
+      range:TVkDeviceSize;
+     end;
+
+     PPVkDescriptorImageInfo=^PVkDescriptorImageInfo;
+     PVkDescriptorImageInfo=^TVkDescriptorImageInfo;
+     TVkDescriptorImageInfo=record
+      sampler:TVkSampler;
+      imageView:TVkImageView;
+      imageLayout:TVkImageLayout;
+     end;
+
+     PPVkWriteDescriptorSet=^PVkWriteDescriptorSet;
+     PVkWriteDescriptorSet=^TVkWriteDescriptorSet;
+     TVkWriteDescriptorSet=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      dstSet:TVkDescriptorSet;
+      dstBinding:TVkUInt32;
+      dstArrayElement:TVkUInt32;
+      descriptorCount:TVkUInt32;
+      descriptorType:TVkDescriptorType;
+      pImageInfo:PVkDescriptorImageInfo;
+      pBufferInfo:PVkDescriptorBufferInfo;
+      pTexelBufferView:PVkBufferView;
+     end;
+
+     PPVkCopyDescriptorSet=^PVkCopyDescriptorSet;
+     PVkCopyDescriptorSet=^TVkCopyDescriptorSet;
+     TVkCopyDescriptorSet=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      srcSet:TVkDescriptorSet;
+      srcBinding:TVkUInt32;
+      srcArrayElement:TVkUInt32;
+      dstSet:TVkDescriptorSet;
+      dstBinding:TVkUInt32;
+      dstArrayElement:TVkUInt32;
+      descriptorCount:TVkUInt32;
+     end;
+
+     PPVkBufferCreateInfo=^PVkBufferCreateInfo;
+     PVkBufferCreateInfo=^TVkBufferCreateInfo;
+     TVkBufferCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkBufferCreateFlags;
+      size:TVkDeviceSize;
+      usage:TVkBufferUsageFlags;
+      sharingMode:TVkSharingMode;
+      queueFamilyIndexCount:TVkUInt32;
+      pQueueFamilyIndices:PVkUInt32;
+     end;
+
+     PPVkBufferViewCreateInfo=^PVkBufferViewCreateInfo;
+     PVkBufferViewCreateInfo=^TVkBufferViewCreateInfo;
+     TVkBufferViewCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkBufferViewCreateFlags;
+      buffer:TVkBuffer;
+      format:TVkFormat;
+      offset:TVkDeviceSize;
+      range:TVkDeviceSize;
+     end;
+
+     PPVkImageSubresource=^PVkImageSubresource;
+     PVkImageSubresource=^TVkImageSubresource;
+     TVkImageSubresource=record
+      aspectMask:TVkImageAspectFlags;
+      mipLevel:TVkUInt32;
+      arrayLayer:TVkUInt32;
+     end;
+
+     PPVkImageSubresourceLayers=^PVkImageSubresourceLayers;
+     PVkImageSubresourceLayers=^TVkImageSubresourceLayers;
+     TVkImageSubresourceLayers=record
+      aspectMask:TVkImageAspectFlags;
+      mipLevel:TVkUInt32;
+      baseArrayLayer:TVkUInt32;
+      layerCount:TVkUInt32;
+     end;
+
+     PPVkImageSubresourceRange=^PVkImageSubresourceRange;
+     PVkImageSubresourceRange=^TVkImageSubresourceRange;
+     TVkImageSubresourceRange=record
+      aspectMask:TVkImageAspectFlags;
+      baseMipLevel:TVkUInt32;
+      levelCount:TVkUInt32;
+      baseArrayLayer:TVkUInt32;
+      layerCount:TVkUInt32;
+     end;
+
+     PPVkMemoryBarrier=^PVkMemoryBarrier;
+     PVkMemoryBarrier=^TVkMemoryBarrier;
+     TVkMemoryBarrier=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      srcAccessMask:TVkAccessFlags;
+      dstAccessMask:TVkAccessFlags;
+     end;
+
+     PPVkBufferMemoryBarrier=^PVkBufferMemoryBarrier;
+     PVkBufferMemoryBarrier=^TVkBufferMemoryBarrier;
+     TVkBufferMemoryBarrier=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      srcAccessMask:TVkAccessFlags;
+      dstAccessMask:TVkAccessFlags;
+      srcQueueFamilyIndex:TVkUInt32;
+      dstQueueFamilyIndex:TVkUInt32;
+      buffer:TVkBuffer;
+      offset:TVkDeviceSize;
+      size:TVkDeviceSize;
+     end;
+
+     PPVkImageMemoryBarrier=^PVkImageMemoryBarrier;
+     PVkImageMemoryBarrier=^TVkImageMemoryBarrier;
+     TVkImageMemoryBarrier=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      srcAccessMask:TVkAccessFlags;
+      dstAccessMask:TVkAccessFlags;
+      oldLayout:TVkImageLayout;
+      newLayout:TVkImageLayout;
+      srcQueueFamilyIndex:TVkUInt32;
+      dstQueueFamilyIndex:TVkUInt32;
+      image:TVkImage;
+      subresourceRange:TVkImageSubresourceRange;
+     end;
+
+     PPVkImageCreateInfo=^PVkImageCreateInfo;
+     PVkImageCreateInfo=^TVkImageCreateInfo;
+     TVkImageCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkImageCreateFlags;
+      imageType:TVkImageType;
+      format:TVkFormat;
+      extent:TVkExtent3D;
+      mipLevels:TVkUInt32;
+      arrayLayers:TVkUInt32;
+      samples:TVkSampleCountFlagBits;
+      tiling:TVkImageTiling;
+      usage:TVkImageUsageFlags;
+      sharingMode:TVkSharingMode;
+      queueFamilyIndexCount:TVkUInt32;
+      pQueueFamilyIndices:PVkUInt32;
+      initialLayout:TVkImageLayout;
+     end;
+
+     PPVkSubresourceLayout=^PVkSubresourceLayout;
+     PVkSubresourceLayout=^TVkSubresourceLayout;
+     TVkSubresourceLayout=record
+      offset:TVkDeviceSize;
+      size:TVkDeviceSize;
+      rowPitch:TVkDeviceSize;
+      arrayPitch:TVkDeviceSize;
+      depthPitch:TVkDeviceSize;
+     end;
+
+     PPVkImageViewCreateInfo=^PVkImageViewCreateInfo;
+     PVkImageViewCreateInfo=^TVkImageViewCreateInfo;
+     TVkImageViewCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkImageViewCreateFlags;
+      image:TVkImage;
+      viewType:TVkImageViewType;
+      format:TVkFormat;
+      components:TVkComponentMapping;
+      subresourceRange:TVkImageSubresourceRange;
+     end;
+
+     PPVkBufferCopy=^PVkBufferCopy;
+     PVkBufferCopy=^TVkBufferCopy;
+     TVkBufferCopy=record
+      srcOffset:TVkDeviceSize;
+      dstOffset:TVkDeviceSize;
+      size:TVkDeviceSize;
+     end;
+
+     PPVkSparseMemoryBind=^PVkSparseMemoryBind;
+     PVkSparseMemoryBind=^TVkSparseMemoryBind;
+     TVkSparseMemoryBind=record
+      resourceOffset:TVkDeviceSize;
+      size:TVkDeviceSize;
+      memory:TVkDeviceMemory;
+      memoryOffset:TVkDeviceSize;
+      flags:TVkSparseMemoryBindFlags;
+     end;
+
+     PPVkSparseImageMemoryBind=^PVkSparseImageMemoryBind;
+     PVkSparseImageMemoryBind=^TVkSparseImageMemoryBind;
+     TVkSparseImageMemoryBind=record
+      subresource:TVkImageSubresource;
+      offset:TVkOffset3D;
+      extent:TVkExtent3D;
+      memory:TVkDeviceMemory;
+      memoryOffset:TVkDeviceSize;
+      flags:TVkSparseMemoryBindFlags;
+     end;
+
+     PPVkSparseBufferMemoryBindInfo=^PVkSparseBufferMemoryBindInfo;
+     PVkSparseBufferMemoryBindInfo=^TVkSparseBufferMemoryBindInfo;
+     TVkSparseBufferMemoryBindInfo=record
+      buffer:TVkBuffer;
+      bindCount:TVkUInt32;
+      pBinds:PVkSparseMemoryBind;
+     end;
+
+     PPVkSparseImageOpaqueMemoryBindInfo=^PVkSparseImageOpaqueMemoryBindInfo;
+     PVkSparseImageOpaqueMemoryBindInfo=^TVkSparseImageOpaqueMemoryBindInfo;
+     TVkSparseImageOpaqueMemoryBindInfo=record
+      image:TVkImage;
+      bindCount:TVkUInt32;
+      pBinds:PVkSparseMemoryBind;
+     end;
+
+     PPVkSparseImageMemoryBindInfo=^PVkSparseImageMemoryBindInfo;
+     PVkSparseImageMemoryBindInfo=^TVkSparseImageMemoryBindInfo;
+     TVkSparseImageMemoryBindInfo=record
+      image:TVkImage;
+      bindCount:TVkUInt32;
+      pBinds:PVkSparseImageMemoryBind;
+     end;
+
+     PPVkBindSparseInfo=^PVkBindSparseInfo;
+     PVkBindSparseInfo=^TVkBindSparseInfo;
+     TVkBindSparseInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      waitSemaphoreCount:TVkUInt32;
+      pWaitSemaphores:PVkSemaphore;
+      bufferBindCount:TVkUInt32;
+      pBufferBinds:PVkSparseBufferMemoryBindInfo;
+      imageOpaqueBindCount:TVkUInt32;
+      pImageOpaqueBinds:PVkSparseImageOpaqueMemoryBindInfo;
+      imageBindCount:TVkUInt32;
+      pImageBinds:PVkSparseImageMemoryBindInfo;
+      signalSemaphoreCount:TVkUInt32;
+      pSignalSemaphores:PVkSemaphore;
+     end;
+
+     PPVkImageCopy=^PVkImageCopy;
+     PVkImageCopy=^TVkImageCopy;
+     TVkImageCopy=record
+      srcSubresource:TVkImageSubresourceLayers;
+      srcOffset:TVkOffset3D;
+      dstSubresource:TVkImageSubresourceLayers;
+      dstOffset:TVkOffset3D;
+      extent:TVkExtent3D;
+     end;
+
+     PPVkImageBlit=^PVkImageBlit;
+     PVkImageBlit=^TVkImageBlit;
+     TVkImageBlit=record
+      srcSubresource:TVkImageSubresourceLayers;
+      srcOffsets:array[0..1] of TVkOffset3D;
+      dstSubresource:TVkImageSubresourceLayers;
+      dstOffsets:array[0..1] of TVkOffset3D;
+     end;
+
+     PPVkBufferImageCopy=^PVkBufferImageCopy;
+     PVkBufferImageCopy=^TVkBufferImageCopy;
+     TVkBufferImageCopy=record
+      bufferOffset:TVkDeviceSize;
+      bufferRowLength:TVkUInt32;
+      bufferImageHeight:TVkUInt32;
+      imageSubresource:TVkImageSubresourceLayers;
+      imageOffset:TVkOffset3D;
+      imageExtent:TVkExtent3D;
+     end;
+
+     PPVkImageResolve=^PVkImageResolve;
+     PVkImageResolve=^TVkImageResolve;
+     TVkImageResolve=record
+      srcSubresource:TVkImageSubresourceLayers;
+      srcOffset:TVkOffset3D;
+      dstSubresource:TVkImageSubresourceLayers;
+      dstOffset:TVkOffset3D;
+      extent:TVkExtent3D;
+     end;
+
+     PPVkShaderModuleCreateInfo=^PVkShaderModuleCreateInfo;
+     PVkShaderModuleCreateInfo=^TVkShaderModuleCreateInfo;
+     TVkShaderModuleCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkShaderModuleCreateFlags;
+      codeSize:TVkPtrInt;
+      pCode:PVkUInt32;
+     end;
+
+     PPVkDescriptorSetLayoutBinding=^PVkDescriptorSetLayoutBinding;
+     PVkDescriptorSetLayoutBinding=^TVkDescriptorSetLayoutBinding;
+     TVkDescriptorSetLayoutBinding=record
+      binding:TVkUInt32;
+      descriptorType:TVkDescriptorType;
+      descriptorCount:TVkUInt32;
+      stageFlags:TVkShaderStageFlags;
+      pImmutableSamplers:PVkSampler;
+     end;
+
+     PPVkDescriptorSetLayoutCreateInfo=^PVkDescriptorSetLayoutCreateInfo;
+     PVkDescriptorSetLayoutCreateInfo=^TVkDescriptorSetLayoutCreateInfo;
+     TVkDescriptorSetLayoutCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkDescriptorSetLayoutCreateFlags;
+      bindingCount:TVkUInt32;
+      pBindings:PVkDescriptorSetLayoutBinding;
+     end;
+
+     PPVkDescriptorPoolSize=^PVkDescriptorPoolSize;
+     PVkDescriptorPoolSize=^TVkDescriptorPoolSize;
+     TVkDescriptorPoolSize=record
+      type_:TVkDescriptorType;
+      descriptorCount:TVkUInt32;
+     end;
+
+     PPVkDescriptorPoolCreateInfo=^PVkDescriptorPoolCreateInfo;
+     PVkDescriptorPoolCreateInfo=^TVkDescriptorPoolCreateInfo;
+     TVkDescriptorPoolCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkDescriptorPoolCreateFlags;
+      maxSets:TVkUInt32;
+      poolSizeCount:TVkUInt32;
+      pPoolSizes:PVkDescriptorPoolSize;
+     end;
+
+     PPVkDescriptorSetAllocateInfo=^PVkDescriptorSetAllocateInfo;
+     PVkDescriptorSetAllocateInfo=^TVkDescriptorSetAllocateInfo;
+     TVkDescriptorSetAllocateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      descriptorPool:TVkDescriptorPool;
+      descriptorSetCount:TVkUInt32;
+      pSetLayouts:PVkDescriptorSetLayout;
+     end;
+
+     PPVkSpecializationMapEntry=^PVkSpecializationMapEntry;
+     PVkSpecializationMapEntry=^TVkSpecializationMapEntry;
+     TVkSpecializationMapEntry=record
+      constantID:TVkUInt32;
+      offset:TVkUInt32;
+      size:TVkPtrInt;
+     end;
+
+     PPVkSpecializationInfo=^PVkSpecializationInfo;
+     PVkSpecializationInfo=^TVkSpecializationInfo;
+     TVkSpecializationInfo=record
+      mapEntryCount:TVkUInt32;
+      pMapEntries:PVkSpecializationMapEntry;
+      dataSize:TVkPtrInt;
+      pData:TVkPointer;
+     end;
+
+     PPVkPipelineShaderStageCreateInfo=^PVkPipelineShaderStageCreateInfo;
+     PVkPipelineShaderStageCreateInfo=^TVkPipelineShaderStageCreateInfo;
+     TVkPipelineShaderStageCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineShaderStageCreateFlags;
+      stage:TVkShaderStageFlagBits;
+      module:TVkShaderModule;
+      pName:PVkChar;
+      pSpecializationInfo:PVkSpecializationInfo;
+     end;
+
+     PPVkComputePipelineCreateInfo=^PVkComputePipelineCreateInfo;
+     PVkComputePipelineCreateInfo=^TVkComputePipelineCreateInfo;
+     TVkComputePipelineCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineCreateFlags;
+      stage:TVkPipelineShaderStageCreateInfo;
+      layout:TVkPipelineLayout;
+      basePipelineHandle:TVkPipeline;
+      basePipelineIndex:TVkInt32;
+     end;
+
+     PPVkVertexInputBindingDescription=^PVkVertexInputBindingDescription;
+     PVkVertexInputBindingDescription=^TVkVertexInputBindingDescription;
+     TVkVertexInputBindingDescription=record
+      binding:TVkUInt32;
+      stride:TVkUInt32;
+      inputRate:TVkVertexInputRate;
+     end;
+
+     PPVkVertexInputAttributeDescription=^PVkVertexInputAttributeDescription;
+     PVkVertexInputAttributeDescription=^TVkVertexInputAttributeDescription;
+     TVkVertexInputAttributeDescription=record
+      location:TVkUInt32;
+      binding:TVkUInt32;
+      format:TVkFormat;
+      offset:TVkUInt32;
+     end;
+
+     PPVkPipelineVertexInputStateCreateInfo=^PVkPipelineVertexInputStateCreateInfo;
+     PVkPipelineVertexInputStateCreateInfo=^TVkPipelineVertexInputStateCreateInfo;
+     TVkPipelineVertexInputStateCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineVertexInputStateCreateFlags;
+      vertexBindingDescriptionCount:TVkUInt32;
+      pVertexBindingDescriptions:PVkVertexInputBindingDescription;
+      vertexAttributeDescriptionCount:TVkUInt32;
+      pVertexAttributeDescriptions:PVkVertexInputAttributeDescription;
+     end;
+
+     PPVkPipelineInputAssemblyStateCreateInfo=^PVkPipelineInputAssemblyStateCreateInfo;
+     PVkPipelineInputAssemblyStateCreateInfo=^TVkPipelineInputAssemblyStateCreateInfo;
+     TVkPipelineInputAssemblyStateCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineInputAssemblyStateCreateFlags;
+      topology:TVkPrimitiveTopology;
+      primitiveRestartEnable:TVkBool32;
+     end;
+
+     PPVkPipelineTessellationStateCreateInfo=^PVkPipelineTessellationStateCreateInfo;
+     PVkPipelineTessellationStateCreateInfo=^TVkPipelineTessellationStateCreateInfo;
+     TVkPipelineTessellationStateCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineTessellationStateCreateFlags;
+      patchControlPoints:TVkUInt32;
+     end;
+
+     PPVkPipelineViewportStateCreateInfo=^PVkPipelineViewportStateCreateInfo;
+     PVkPipelineViewportStateCreateInfo=^TVkPipelineViewportStateCreateInfo;
+     TVkPipelineViewportStateCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineViewportStateCreateFlags;
+      viewportCount:TVkUInt32;
+      pViewports:PVkViewport;
+      scissorCount:TVkUInt32;
+      pScissors:PVkRect2D;
+     end;
+
+     PPVkPipelineRasterizationStateCreateInfo=^PVkPipelineRasterizationStateCreateInfo;
+     PVkPipelineRasterizationStateCreateInfo=^TVkPipelineRasterizationStateCreateInfo;
+     TVkPipelineRasterizationStateCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineRasterizationStateCreateFlags;
+      depthClampEnable:TVkBool32;
+      rasterizerDiscardEnable:TVkBool32;
+      polygonMode:TVkPolygonMode;
+      cullMode:TVkCullModeFlags;
+      frontFace:TVkFrontFace;
+      depthBiasEnable:TVkBool32;
+      depthBiasConstantFactor:TVkFloat;
+      depthBiasClamp:TVkFloat;
+      depthBiasSlopeFactor:TVkFloat;
+      lineWidth:TVkFloat;
+     end;
+
+     PPVkPipelineMultisampleStateCreateInfo=^PVkPipelineMultisampleStateCreateInfo;
+     PVkPipelineMultisampleStateCreateInfo=^TVkPipelineMultisampleStateCreateInfo;
+     TVkPipelineMultisampleStateCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineMultisampleStateCreateFlags;
+      rasterizationSamples:TVkSampleCountFlagBits;
+      sampleShadingEnable:TVkBool32;
+      minSampleShading:TVkFloat;
+      pSampleMask:PVkSampleMask;
+      alphaToCoverageEnable:TVkBool32;
+      alphaToOneEnable:TVkBool32;
+     end;
+
+     PPVkPipelineColorBlendAttachmentState=^PVkPipelineColorBlendAttachmentState;
+     PVkPipelineColorBlendAttachmentState=^TVkPipelineColorBlendAttachmentState;
+     TVkPipelineColorBlendAttachmentState=record
+      blendEnable:TVkBool32;
+      srcColorBlendFactor:TVkBlendFactor;
+      dstColorBlendFactor:TVkBlendFactor;
+      colorBlendOp:TVkBlendOp;
+      srcAlphaBlendFactor:TVkBlendFactor;
+      dstAlphaBlendFactor:TVkBlendFactor;
+      alphaBlendOp:TVkBlendOp;
+      colorWriteMask:TVkColorComponentFlags;
+     end;
+
+     PPVkPipelineColorBlendStateCreateInfo=^PVkPipelineColorBlendStateCreateInfo;
+     PVkPipelineColorBlendStateCreateInfo=^TVkPipelineColorBlendStateCreateInfo;
+     TVkPipelineColorBlendStateCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineColorBlendStateCreateFlags;
+      logicOpEnable:TVkBool32;
+      logicOp:TVkLogicOp;
+      attachmentCount:TVkUInt32;
+      pAttachments:PVkPipelineColorBlendAttachmentState;
+      blendConstants:array[0..3] of TVkFloat;
+     end;
+
+     PPVkPipelineDynamicStateCreateInfo=^PVkPipelineDynamicStateCreateInfo;
+     PVkPipelineDynamicStateCreateInfo=^TVkPipelineDynamicStateCreateInfo;
+     TVkPipelineDynamicStateCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineDynamicStateCreateFlags;
+      dynamicStateCount:TVkUInt32;
+      pDynamicStates:PVkDynamicState;
+     end;
+
+     PPVkStencilOpState=^PVkStencilOpState;
+     PVkStencilOpState=^TVkStencilOpState;
+     TVkStencilOpState=record
+      failOp:TVkStencilOp;
+      passOp:TVkStencilOp;
+      depthFailOp:TVkStencilOp;
+      compareOp:TVkCompareOp;
+      compareMask:TVkUInt32;
+      writeMask:TVkUInt32;
+      reference:TVkUInt32;
+     end;
+
+     PPVkPipelineDepthStencilStateCreateInfo=^PVkPipelineDepthStencilStateCreateInfo;
+     PVkPipelineDepthStencilStateCreateInfo=^TVkPipelineDepthStencilStateCreateInfo;
+     TVkPipelineDepthStencilStateCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineDepthStencilStateCreateFlags;
+      depthTestEnable:TVkBool32;
+      depthWriteEnable:TVkBool32;
+      depthCompareOp:TVkCompareOp;
+      depthBoundsTestEnable:TVkBool32;
+      stencilTestEnable:TVkBool32;
+      front:TVkStencilOpState;
+      back:TVkStencilOpState;
+      minDepthBounds:TVkFloat;
+      maxDepthBounds:TVkFloat;
+     end;
+
+     PPVkGraphicsPipelineCreateInfo=^PVkGraphicsPipelineCreateInfo;
+     PVkGraphicsPipelineCreateInfo=^TVkGraphicsPipelineCreateInfo;
+     TVkGraphicsPipelineCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineCreateFlags;
+      stageCount:TVkUInt32;
+      pStages:PVkPipelineShaderStageCreateInfo;
+      pVertexInputState:PVkPipelineVertexInputStateCreateInfo;
+      pInputAssemblyState:PVkPipelineInputAssemblyStateCreateInfo;
+      pTessellationState:PVkPipelineTessellationStateCreateInfo;
+      pViewportState:PVkPipelineViewportStateCreateInfo;
+      pRasterizationState:PVkPipelineRasterizationStateCreateInfo;
+      pMultisampleState:PVkPipelineMultisampleStateCreateInfo;
+      pDepthStencilState:PVkPipelineDepthStencilStateCreateInfo;
+      pColorBlendState:PVkPipelineColorBlendStateCreateInfo;
+      pDynamicState:PVkPipelineDynamicStateCreateInfo;
+      layout:TVkPipelineLayout;
+      renderPass:TVkRenderPass;
+      subpass:TVkUInt32;
+      basePipelineHandle:TVkPipeline;
+      basePipelineIndex:TVkInt32;
+     end;
+
+     PPVkPipelineCacheCreateInfo=^PVkPipelineCacheCreateInfo;
+     PVkPipelineCacheCreateInfo=^TVkPipelineCacheCreateInfo;
+     TVkPipelineCacheCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineCacheCreateFlags;
+      initialDataSize:TVkPtrInt;
+      pInitialData:TVkPointer;
+     end;
+
+     PPVkPushConstantRange=^PVkPushConstantRange;
+     PVkPushConstantRange=^TVkPushConstantRange;
+     TVkPushConstantRange=record
+      stageFlags:TVkShaderStageFlags;
+      offset:TVkUInt32;
+      size:TVkUInt32;
+     end;
+
+     PPVkPipelineLayoutCreateInfo=^PVkPipelineLayoutCreateInfo;
+     PVkPipelineLayoutCreateInfo=^TVkPipelineLayoutCreateInfo;
+     TVkPipelineLayoutCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkPipelineLayoutCreateFlags;
+      setLayoutCount:TVkUInt32;
+      pSetLayouts:PVkDescriptorSetLayout;
+      pushConstantRangeCount:TVkUInt32;
+      pPushConstantRanges:PVkPushConstantRange;
+     end;
+
+     PPVkSamplerCreateInfo=^PVkSamplerCreateInfo;
+     PVkSamplerCreateInfo=^TVkSamplerCreateInfo;
+     TVkSamplerCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkSamplerCreateFlags;
+      magFilter:TVkFilter;
+      minFilter:TVkFilter;
+      mipmapMode:TVkSamplerMipmapMode;
+      addressModeU:TVkSamplerAddressMode;
+      addressModeV:TVkSamplerAddressMode;
+      addressModeW:TVkSamplerAddressMode;
+      mipLodBias:TVkFloat;
+      anisotropyEnable:TVkBool32;
+      maxAnisotropy:TVkFloat;
+      compareEnable:TVkBool32;
+      compareOp:TVkCompareOp;
+      minLod:TVkFloat;
+      maxLod:TVkFloat;
+      borderColor:TVkBorderColor;
+      unnormalizedCoordinates:TVkBool32;
+     end;
+
+     PPVkCommandPoolCreateInfo=^PVkCommandPoolCreateInfo;
+     PVkCommandPoolCreateInfo=^TVkCommandPoolCreateInfo;
+     TVkCommandPoolCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkCommandPoolCreateFlags;
+      queueFamilyIndex:TVkUInt32;
+     end;
+
+     PPVkCommandBufferAllocateInfo=^PVkCommandBufferAllocateInfo;
+     PVkCommandBufferAllocateInfo=^TVkCommandBufferAllocateInfo;
+     TVkCommandBufferAllocateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      commandPool:TVkCommandPool;
+      level:TVkCommandBufferLevel;
+      commandBufferCount:TVkUInt32;
+     end;
+
+     PPVkCommandBufferInheritanceInfo=^PVkCommandBufferInheritanceInfo;
+     PVkCommandBufferInheritanceInfo=^TVkCommandBufferInheritanceInfo;
+     TVkCommandBufferInheritanceInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      renderPass:TVkRenderPass;
+      subpass:TVkUInt32;
+      framebuffer:TVkFramebuffer;
+      occlusionQueryEnable:TVkBool32;
+      queryFlags:TVkQueryControlFlags;
+      pipelineStatistics:TVkQueryPipelineStatisticFlags;
+     end;
+
+     PPVkCommandBufferBeginInfo=^PVkCommandBufferBeginInfo;
+     PVkCommandBufferBeginInfo=^TVkCommandBufferBeginInfo;
+     TVkCommandBufferBeginInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkCommandBufferUsageFlags;
+      pInheritanceInfo:PVkCommandBufferInheritanceInfo;
+     end;
+
+     PPVkClearColorValue=^PVkClearColorValue;
+     PVkClearColorValue=^TVkClearColorValue;
+     TVkClearColorValue=record
+      case longint of
+       0:(
+        float32:array[0..3] of TVkFloat;
+       );
+       1:(
+        int32:array[0..3] of TVkInt32;
+       );
+       2:(
+        uint32:array[0..3] of TVkUInt32;
+       );
+     end;
+
+     PPVkClearDepthStencilValue=^PVkClearDepthStencilValue;
+     PVkClearDepthStencilValue=^TVkClearDepthStencilValue;
+     TVkClearDepthStencilValue=record
+      depth:TVkFloat;
+      stencil:TVkUInt32;
+     end;
+
+     PPVkClearValue=^PVkClearValue;
+     PVkClearValue=^TVkClearValue;
+     TVkClearValue=record
+      case longint of
+       0:(
+        color:TVkClearColorValue;
+       );
+       1:(
+        depthStencil:TVkClearDepthStencilValue;
+       );
+     end;
+
+     PPVkRenderPassBeginInfo=^PVkRenderPassBeginInfo;
+     PVkRenderPassBeginInfo=^TVkRenderPassBeginInfo;
+     TVkRenderPassBeginInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      renderPass:TVkRenderPass;
+      framebuffer:TVkFramebuffer;
+      renderArea:TVkRect2D;
+      clearValueCount:TVkUInt32;
+      pClearValues:PVkClearValue;
+     end;
+
+     PPVkClearAttachment=^PVkClearAttachment;
+     PVkClearAttachment=^TVkClearAttachment;
+     TVkClearAttachment=record
+      aspectMask:TVkImageAspectFlags;
+      colorAttachment:TVkUInt32;
+      clearValue:TVkClearValue;
+     end;
+
+     PPVkAttachmentDescription=^PVkAttachmentDescription;
+     PVkAttachmentDescription=^TVkAttachmentDescription;
+     TVkAttachmentDescription=record
+      flags:TVkAttachmentDescriptionFlags;
+      format:TVkFormat;
+      samples:TVkSampleCountFlagBits;
+      loadOp:TVkAttachmentLoadOp;
+      storeOp:TVkAttachmentStoreOp;
+      stencilLoadOp:TVkAttachmentLoadOp;
+      stencilStoreOp:TVkAttachmentStoreOp;
+      initialLayout:TVkImageLayout;
+      finalLayout:TVkImageLayout;
+     end;
+
+     PPVkAttachmentReference=^PVkAttachmentReference;
+     PVkAttachmentReference=^TVkAttachmentReference;
+     TVkAttachmentReference=record
+      attachment:TVkUInt32;
+      layout:TVkImageLayout;
+     end;
+
+     PPVkSubpassDescription=^PVkSubpassDescription;
+     PVkSubpassDescription=^TVkSubpassDescription;
+     TVkSubpassDescription=record
+      flags:TVkSubpassDescriptionFlags;
+      pipelineBindPoint:TVkPipelineBindPoint;
+      inputAttachmentCount:TVkUInt32;
+      pInputAttachments:PVkAttachmentReference;
+      colorAttachmentCount:TVkUInt32;
+      pColorAttachments:PVkAttachmentReference;
+      pResolveAttachments:PVkAttachmentReference;
+      pDepthStencilAttachment:PVkAttachmentReference;
+      preserveAttachmentCount:TVkUInt32;
+      pPreserveAttachments:PVkUInt32;
+     end;
+
+     PPVkSubpassDependency=^PVkSubpassDependency;
+     PVkSubpassDependency=^TVkSubpassDependency;
+     TVkSubpassDependency=record
+      srcSubpass:TVkUInt32;
+      dstSubpass:TVkUInt32;
+      srcStageMask:TVkPipelineStageFlags;
+      dstStageMask:TVkPipelineStageFlags;
+      srcAccessMask:TVkAccessFlags;
+      dstAccessMask:TVkAccessFlags;
+      dependencyFlags:TVkDependencyFlags;
+     end;
+
+     PPVkRenderPassCreateInfo=^PVkRenderPassCreateInfo;
+     PVkRenderPassCreateInfo=^TVkRenderPassCreateInfo;
+     TVkRenderPassCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkRenderPassCreateFlags;
+      attachmentCount:TVkUInt32;
+      pAttachments:PVkAttachmentDescription;
+      subpassCount:TVkUInt32;
+      pSubpasses:PVkSubpassDescription;
+      dependencyCount:TVkUInt32;
+      pDependencies:PVkSubpassDependency;
+     end;
+
+     PPVkEventCreateInfo=^PVkEventCreateInfo;
+     PVkEventCreateInfo=^TVkEventCreateInfo;
+     TVkEventCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkEventCreateFlags;
+     end;
+
+     PPVkFenceCreateInfo=^PVkFenceCreateInfo;
+     PVkFenceCreateInfo=^TVkFenceCreateInfo;
+     TVkFenceCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkFenceCreateFlags;
+     end;
+
+     PPVkDeviceCreateInfo=^PVkDeviceCreateInfo;
+     PVkDeviceCreateInfo=^TVkDeviceCreateInfo;
+     TVkDeviceCreateInfo=record
+      sType:TVkStructureType;
+      pNext:TVkPointer;
+      flags:TVkDeviceCreateFlags;
+      queueCreateInfoCount:TVkUInt32;
+      pQueueCreateInfos:PVkDeviceQueueCreateInfo;
+      enabledLayerCount:TVkUInt32;
+      ppEnabledLayerNames:PVkChar;
+      enabledExtensionCount:TVkUInt32;
+      ppEnabledExtensionNames:PVkChar;
+      pEnabledFeatures:PVkPhysicalDeviceFeatures;
+     end;
+
+     PPVkPhysicalDeviceLimits=^PVkPhysicalDeviceLimits;
+     PVkPhysicalDeviceLimits=^TVkPhysicalDeviceLimits;
      TVkPhysicalDeviceLimits=record
       maxImageDimension1D:TVkUInt32;
       maxImageDimension2D:TVkUInt32;
@@ -2536,6 +3109,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       optimalBufferCopyRowPitchAlignment:TVkDeviceSize;
       nonCoherentAtomSize:TVkDeviceSize;
      end;
+
+     PPVkPhysicalDeviceProperties=^PVkPhysicalDeviceProperties;
+     PVkPhysicalDeviceProperties=^TVkPhysicalDeviceProperties;
      TVkPhysicalDeviceProperties=record
       apiVersion:TVkUInt32;
       driverVersion:TVkUInt32;
@@ -2547,11 +3123,17 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       limits:TVkPhysicalDeviceLimits;
       sparseProperties:TVkPhysicalDeviceSparseProperties;
      end;
+
+     PPVkSemaphoreCreateInfo=^PVkSemaphoreCreateInfo;
+     PVkSemaphoreCreateInfo=^TVkSemaphoreCreateInfo;
      TVkSemaphoreCreateInfo=record
       sType:TVkStructureType;
       pNext:TVkPointer;
       flags:TVkSemaphoreCreateFlags;
      end;
+
+     PPVkQueryPoolCreateInfo=^PVkQueryPoolCreateInfo;
+     PVkQueryPoolCreateInfo=^TVkQueryPoolCreateInfo;
      TVkQueryPoolCreateInfo=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2560,6 +3142,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       queryCount:TVkUInt32;
       pipelineStatistics:TVkQueryPipelineStatisticFlags;
      end;
+
+     PPVkFramebufferCreateInfo=^PVkFramebufferCreateInfo;
+     PVkFramebufferCreateInfo=^TVkFramebufferCreateInfo;
      TVkFramebufferCreateInfo=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2571,12 +3156,18 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       height:TVkUInt32;
       layers:TVkUInt32;
      end;
+
+     PPVkDrawIndirectCommand=^PVkDrawIndirectCommand;
+     PVkDrawIndirectCommand=^TVkDrawIndirectCommand;
      TVkDrawIndirectCommand=record
       vertexCount:TVkUInt32;
       instanceCount:TVkUInt32;
       firstVertex:TVkUInt32;
       firstInstance:TVkUInt32;
      end;
+
+     PPVkDrawIndexedIndirectCommand=^PVkDrawIndexedIndirectCommand;
+     PVkDrawIndexedIndirectCommand=^TVkDrawIndexedIndirectCommand;
      TVkDrawIndexedIndirectCommand=record
       indexCount:TVkUInt32;
       instanceCount:TVkUInt32;
@@ -2584,11 +3175,17 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       vertexOffset:TVkInt32;
       firstInstance:TVkUInt32;
      end;
+
+     PPVkDispatchIndirectCommand=^PVkDispatchIndirectCommand;
+     PVkDispatchIndirectCommand=^TVkDispatchIndirectCommand;
      TVkDispatchIndirectCommand=record
       x:TVkUInt32;
       y:TVkUInt32;
       z:TVkUInt32;
      end;
+
+     PPVkSubmitInfo=^PVkSubmitInfo;
+     PVkSubmitInfo=^TVkSubmitInfo;
      TVkSubmitInfo=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2600,6 +3197,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       signalSemaphoreCount:TVkUInt32;
       pSignalSemaphores:PVkSemaphore;
      end;
+
+     PPVkDisplayPropertiesKHR=^PVkDisplayPropertiesKHR;
+     PVkDisplayPropertiesKHR=^TVkDisplayPropertiesKHR;
      TVkDisplayPropertiesKHR=record
       display:TVkDisplayKHR;
       displayName:PVkChar;
@@ -2609,24 +3209,39 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       planeReorderPossible:TVkBool32;
       persistentContent:TVkBool32;
      end;
+
+     PPVkDisplayPlanePropertiesKHR=^PVkDisplayPlanePropertiesKHR;
+     PVkDisplayPlanePropertiesKHR=^TVkDisplayPlanePropertiesKHR;
      TVkDisplayPlanePropertiesKHR=record
       currentDisplay:TVkDisplayKHR;
       currentStackIndex:TVkUInt32;
      end;
+
+     PPVkDisplayModeParametersKHR=^PVkDisplayModeParametersKHR;
+     PVkDisplayModeParametersKHR=^TVkDisplayModeParametersKHR;
      TVkDisplayModeParametersKHR=record
       visibleRegion:TVkExtent2D;
       refreshRate:TVkUInt32;
      end;
+
+     PPVkDisplayModePropertiesKHR=^PVkDisplayModePropertiesKHR;
+     PVkDisplayModePropertiesKHR=^TVkDisplayModePropertiesKHR;
      TVkDisplayModePropertiesKHR=record
       displayMode:TVkDisplayModeKHR;
       parameters:TVkDisplayModeParametersKHR;
      end;
+
+     PPVkDisplayModeCreateInfoKHR=^PVkDisplayModeCreateInfoKHR;
+     PVkDisplayModeCreateInfoKHR=^TVkDisplayModeCreateInfoKHR;
      TVkDisplayModeCreateInfoKHR=record
       sType:TVkStructureType;
       pNext:TVkPointer;
       flags:TVkDisplayModeCreateFlagsKHR;
       parameters:TVkDisplayModeParametersKHR;
      end;
+
+     PPVkDisplayPlaneCapabilitiesKHR=^PVkDisplayPlaneCapabilitiesKHR;
+     PVkDisplayPlaneCapabilitiesKHR=^TVkDisplayPlaneCapabilitiesKHR;
      TVkDisplayPlaneCapabilitiesKHR=record
       supportedAlpha:TVkDisplayPlaneAlphaFlagsKHR;
       minSrcPosition:TVkOffset2D;
@@ -2638,6 +3253,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       minDstExtent:TVkExtent2D;
       maxDstExtent:TVkExtent2D;
      end;
+
+     PPVkDisplaySurfaceCreateInfoKHR=^PVkDisplaySurfaceCreateInfoKHR;
+     PVkDisplaySurfaceCreateInfoKHR=^TVkDisplaySurfaceCreateInfoKHR;
      TVkDisplaySurfaceCreateInfoKHR=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2650,6 +3268,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       alphaMode:TVkDisplayPlaneAlphaFlagBitsKHR;
       imageExtent:TVkExtent2D;
      end;
+
+     PPVkDisplayPresentInfoKHR=^PVkDisplayPresentInfoKHR;
+     PVkDisplayPresentInfoKHR=^TVkDisplayPresentInfoKHR;
      TVkDisplayPresentInfoKHR=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2657,6 +3278,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       dstRect:TVkRect2D;
       persistent:TVkBool32;
      end;
+
+     PPVkSurfaceCapabilitiesKHR=^PVkSurfaceCapabilitiesKHR;
+     PVkSurfaceCapabilitiesKHR=^TVkSurfaceCapabilitiesKHR;
      TVkSurfaceCapabilitiesKHR=record
       minImageCount:TVkUInt32;
       maxImageCount:TVkUInt32;
@@ -2669,7 +3293,10 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       supportedCompositeAlpha:TVkCompositeAlphaFlagsKHR;
       supportedUsageFlags:TVkImageUsageFlags;
      end;
+
 {$ifdef Android}
+     PPVkAndroidSurfaceCreateInfoKHR=^PVkAndroidSurfaceCreateInfoKHR;
+     PVkAndroidSurfaceCreateInfoKHR=^TVkAndroidSurfaceCreateInfoKHR;
      TVkAndroidSurfaceCreateInfoKHR=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2677,7 +3304,10 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       window:PANativeWindow;
      end;
 {$endif}
+
 {$ifdef Mir}
+     PPVkMirSurfaceCreateInfoKHR=^PVkMirSurfaceCreateInfoKHR;
+     PVkMirSurfaceCreateInfoKHR=^TVkMirSurfaceCreateInfoKHR;
      TVkMirSurfaceCreateInfoKHR=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2686,7 +3316,10 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       mirSurface:PMirSurface;
      end;
 {$endif}
+
 {$ifdef Wayland}
+     PPVkWaylandSurfaceCreateInfoKHR=^PVkWaylandSurfaceCreateInfoKHR;
+     PVkWaylandSurfaceCreateInfoKHR=^TVkWaylandSurfaceCreateInfoKHR;
      TVkWaylandSurfaceCreateInfoKHR=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2695,7 +3328,10 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       surface:Pwl_surface;
      end;
 {$endif}
+
 {$ifdef Windows}
+     PPVkWin32SurfaceCreateInfoKHR=^PVkWin32SurfaceCreateInfoKHR;
+     PVkWin32SurfaceCreateInfoKHR=^TVkWin32SurfaceCreateInfoKHR;
      TVkWin32SurfaceCreateInfoKHR=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2704,7 +3340,10 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       hwnd_:TVkHWND;
      end;
 {$endif}
+
 {$ifdef X11}
+     PPVkXlibSurfaceCreateInfoKHR=^PVkXlibSurfaceCreateInfoKHR;
+     PVkXlibSurfaceCreateInfoKHR=^TVkXlibSurfaceCreateInfoKHR;
      TVkXlibSurfaceCreateInfoKHR=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2713,7 +3352,10 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       window:TWindow;
      end;
 {$endif}
+
 {$ifdef XCB}
+     PPVkXcbSurfaceCreateInfoKHR=^PVkXcbSurfaceCreateInfoKHR;
+     PVkXcbSurfaceCreateInfoKHR=^TVkXcbSurfaceCreateInfoKHR;
      TVkXcbSurfaceCreateInfoKHR=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2722,10 +3364,16 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       window:Txcb_window;
      end;
 {$endif}
+
+     PPVkSurfaceFormatKHR=^PVkSurfaceFormatKHR;
+     PVkSurfaceFormatKHR=^TVkSurfaceFormatKHR;
      TVkSurfaceFormatKHR=record
       format:TVkFormat;
       colorSpace:TVkColorSpaceKHR;
      end;
+
+     PPVkSwapchainCreateInfoKHR=^PVkSwapchainCreateInfoKHR;
+     PVkSwapchainCreateInfoKHR=^TVkSwapchainCreateInfoKHR;
      TVkSwapchainCreateInfoKHR=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2746,6 +3394,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       clipped:TVkBool32;
       oldSwapchain:TVkSwapchainKHR;
      end;
+
+     PPVkPresentInfoKHR=^PVkPresentInfoKHR;
+     PVkPresentInfoKHR=^TVkPresentInfoKHR;
      TVkPresentInfoKHR=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2756,6 +3407,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       pImageIndices:PVkUInt32;
       pResults:PVkResult;
      end;
+
+     PPVkDebugReportCallbackCreateInfoEXT=^PVkDebugReportCallbackCreateInfoEXT;
+     PVkDebugReportCallbackCreateInfoEXT=^TVkDebugReportCallbackCreateInfoEXT;
      TVkDebugReportCallbackCreateInfoEXT=record
       sType:TVkStructureType;
       pNext:TVkPointer;
@@ -2763,6 +3417,7 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       pfnCallback:TPFN_vkDebugReportCallbackEXT;
       pUserData:TVkPointer;
      end;
+
      TvkCreateInstance=function(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
      TvkDestroyInstance=procedure(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
      TvkEnumeratePhysicalDevices=function(instance:TVkInstance;pPhysicalDeviceCount:PVkUInt32;pPhysicalDevices:PVkPhysicalDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
@@ -2950,6 +3605,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
      TvkCreateDebugReportCallbackEXT=function(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
      TvkDestroyDebugReportCallbackEXT=procedure(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
      TvkDebugReportMessageEXT=procedure(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
+
+     PPVulkan=^PVulkan;
      PVulkan=^TVulkan;
      TVulkan=record
       vkCreateInstance:TvkCreateInstance;
@@ -3140,7 +3797,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       vkDestroyDebugReportCallbackEXT:TvkDestroyDebugReportCallbackEXT;
       vkDebugReportMessageEXT:TvkDebugReportMessageEXT;
      end;
+
 var LibVulkan:pointer=nil;
+
     vkCreateInstance:TvkCreateInstance=nil;
     vkDestroyInstance:TvkDestroyInstance=nil;
     vkEnumeratePhysicalDevices:TvkEnumeratePhysicalDevices=nil;
@@ -3328,31 +3987,40 @@ var LibVulkan:pointer=nil;
     vkCreateDebugReportCallbackEXT:TvkCreateDebugReportCallbackEXT=nil;
     vkDestroyDebugReportCallbackEXT:TvkDestroyDebugReportCallbackEXT=nil;
     vkDebugReportMessageEXT:TvkDebugReportMessageEXT=nil;
+
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
 function VK_VERSION_MAJOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
 function VK_VERSION_MINOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
 function VK_VERSION_PATCH(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
+
 function vkLoadLibrary(const LibraryName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}
 function vkFreeLibrary(LibraryHandle:pointer):boolean; {$ifdef CAN_INLINE}inline;{$endif}
 function vkGetProcAddress(LibraryHandle:pointer;const ProcName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}
+
 function LoadVulkanLibrary:boolean;
+
 implementation
+
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(VersionMajor shl 22) or (VersionMinor shl 12) or (VersionPatch shl 0);
 end;
+
 function VK_VERSION_MAJOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=Version shr 22;
 end;
+
 function VK_VERSION_MINOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Version shr 12) and $3ff;
 end;
+
 function VK_VERSION_PATCH(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Version shr 0) and $fff;
 end;
+
 function vkLoadLibrary(const LibraryName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}
 begin
 {$ifdef Windows}
@@ -3365,6 +4033,7 @@ begin
 {$endif}
 {$endif}
 end;
+
 function vkFreeLibrary(LibraryHandle:pointer):boolean; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=assigned(LibraryHandle);
@@ -3380,6 +4049,7 @@ begin
 {$endif}
  end;
 end;
+
 function vkGetProcAddress(LibraryHandle:pointer;const ProcName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}
 begin
 {$ifdef Windows}
@@ -3392,6 +4062,7 @@ begin
 {$endif}
 {$endif}
 end;
+
 function LoadVulkanLibrary:boolean;
 begin
 {$ifdef Windows}
@@ -3417,4 +4088,5 @@ begin
           assigned(vkGetDeviceProcAddr);
  end;
 end;
+
 end.
