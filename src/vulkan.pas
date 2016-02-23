@@ -2152,7 +2152,7 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       logicOp:TVkLogicOp;
       attachmentCount:TVkUInt32;
       pAttachments:PVkPipelineColorBlendAttachmentState;
-      blendConstants:TVkFloat;
+      blendConstants:array[0..3] of TVkFloat;
      end;
      TVkPipelineDynamicStateCreateInfo=record
       sType:TVkStructureType;
@@ -2287,13 +2287,13 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
      TVkClearColorValue=record
       case longint of
        0:(
-        float32:TVkFloat;
+        float32:array[0..3] of TVkFloat;
        );
        1:(
-        int32:TVkInt32;
+        int32:array[0..3] of TVkInt32;
        );
        2:(
-        uint32:TVkUInt32;
+        uint32:array[0..3] of TVkUInt32;
        );
      end;
      TVkClearDepthStencilValue=record
@@ -2481,9 +2481,9 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       maxFragmentDualSrcAttachments:TVkUInt32;
       maxFragmentCombinedOutputResources:TVkUInt32;
       maxComputeSharedMemorySize:TVkUInt32;
-      maxComputeWorkGroupCount:TVkUInt32;
+      maxComputeWorkGroupCount:array[0..2] of TVkUInt32;
       maxComputeWorkGroupInvocations:TVkUInt32;
-      maxComputeWorkGroupSize:TVkUInt32;
+      maxComputeWorkGroupSize:array[0..2] of TVkUInt32;
       subPixelPrecisionBits:TVkUInt32;
       subTexelPrecisionBits:TVkUInt32;
       mipmapPrecisionBits:TVkUInt32;
@@ -2492,8 +2492,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       maxSamplerLodBias:TVkFloat;
       maxSamplerAnisotropy:TVkFloat;
       maxViewports:TVkUInt32;
-      maxViewportDimensions:TVkUInt32;
-      viewportBoundsRange:TVkFloat;
+      maxViewportDimensions:array[0..1] of TVkUInt32;
+      viewportBoundsRange:array[0..1] of TVkFloat;
       viewportSubPixelBits:TVkUInt32;
       minMemoryMapAlignment:TVkPtrInt;
       minTexelBufferOffsetAlignment:TVkDeviceSize;
@@ -2526,8 +2526,8 @@ type PVkDispatchableHandle=^TVkDispatchableHandle;
       maxCullDistances:TVkUInt32;
       maxCombinedClipAndCullDistances:TVkUInt32;
       discreteQueuePriorities:TVkUInt32;
-      pointSizeRange:TVkFloat;
-      lineWidthRange:TVkFloat;
+      pointSizeRange:array[0..1] of TVkFloat;
+      lineWidthRange:array[0..1] of TVkFloat;
       pointSizeGranularity:TVkFloat;
       lineWidthGranularity:TVkFloat;
       strictLines:TVkBool32;

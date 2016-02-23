@@ -3082,9 +3082,9 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
      PTypeDefinitionMember=^TTypeDefinitionMember;
      TTypeDefinitionMember=record
       Name:ansistring;
-      ArraySize:longint;
       Type_:ansistring;
-      Enum:ansistring;
+      ArraySizeInt:longint;
+      ArraySizeStr:ansistring;
       Comment:ansistring;
       TypeDefinitionIndex:longint;
       Ptr:longbool;
@@ -3107,7 +3107,7 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
 var i,j,k,ArraySize,CountTypeDefinitions:longint;
     ChildItem,ChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
-    Category,Type_,Name,Text,NextText:ansistring;
+    Category,Type_,Name,Text,NextText,ArraySizeStr:ansistring;
     TypeDefinitions:TTypeDefinitions;
     SortedTypeDefinitions:TPTypeDefinitions;
     TypeDefinition:PTypeDefinition;
@@ -3323,8 +3323,8 @@ begin
             Text:='object_';
            end;
            TypeDefinitionMember^.Name:=Text;
-           TypeDefinitionMember^.ArraySize:=0;
-           TypeDefinitionMember^.Enum:='';
+           TypeDefinitionMember^.ArraySizeInt:=0;
+           TypeDefinitionMember^.ArraySizeStr:='';
            TypeDefinitionMember^.Comment:='';
            Type_:='';
           end;
@@ -3355,12 +3355,31 @@ begin
         ChildChildTag:=TXMLTag(ChildChildItem);
         if ChildChildTag.Name='member' then begin
          Name:=ParseText(ChildChildTag.FindTag('name'));
+         ArraySizeStr:=ParseText(ChildChildTag.FindTag('enum'));
          k:=pos('[',Name);
+         ArraySize:=-1;
          if k>0 then begin
-          ArraySize:=StrToIntDef(copy(Name,k+1,length(Name)-(k+1)),1);
+          Text:=copy(Name,k+1,length(Name)-k);
           Name:=copy(Name,1,k-1);
-         end else begin
-          ArraySize:=-1;
+          k:=pos(']',Text);
+          if k>0 then begin
+           ArraySize:=StrToIntDef(copy(Text,1,k-1),1);
+          end;
+         end;
+         if ArraySize<0 then begin
+          Text:=ParseText(ChildChildTag);
+          k:=pos('[',Text);
+          if k>0 then begin
+           Delete(Text,1,k);
+           k:=pos(']',Text);
+           if k>0 then begin
+            Text:=trim(copy(Text,1,k-1));
+            ArraySize:=StrToIntDef(Text,-1);
+            if ArraySize<0 then begin
+             ArraySizeStr:=Text;
+            end;
+           end; 
+          end;
          end;
          if Name='type' then begin
           Name:='type_';
@@ -3372,10 +3391,10 @@ begin
          TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
          inc(TypeDefinition^.CountMembers);
          TypeDefinitionMember^.Name:=Name;
-         TypeDefinitionMember^.ArraySize:=ArraySize;
+         TypeDefinitionMember^.ArraySizeInt:=ArraySize;
          Type_:=ParseText(ChildChildTag.FindTag('type'));
          TypeDefinitionMember^.Type_:=Type_;
-         TypeDefinitionMember^.Enum:=ParseText(ChildChildTag.FindTag('enum'));
+         TypeDefinitionMember^.ArraySizeStr:=ArraySizeStr;
          TypeDefinitionMember^.Comment:=ChildChildTag.GetParameter('comment');
          TypeDefinitionMember^.TypeDefinitionIndex:=-1;
          TypeDefinitionMember^.Ptr:=pos('*',ParseText(ChildChildTag))>0;
@@ -3427,10 +3446,10 @@ begin
     tdkSTRUCT:begin
      TypeDefinitionTypes.Add('     T'+TypeDefinition^.Name+'=record');
      for j:=0 to TypeDefinition^.CountMembers-1 do begin
-      if length(TypeDefinition^.Members[j].Enum)>0 then begin
-       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].Enum+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
-      end else if TypeDefinition^.Members[j].ArraySize>=0 then begin
-       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySize-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
+      if length(TypeDefinition^.Members[j].ArraySizeStr)>0 then begin
+       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].ArraySizeStr+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
+      end else if TypeDefinition^.Members[j].ArraySizeInt>=0 then begin
+       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
       end else begin
        TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':'+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
       end;
@@ -3442,10 +3461,10 @@ begin
      TypeDefinitionTypes.Add('      case longint of');
      for j:=0 to TypeDefinition^.CountMembers-1 do begin
       TypeDefinitionTypes.Add('       '+IntToStr(j)+':(');
-      if length(TypeDefinition^.Members[j].Enum)>0 then begin
-       TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].Enum+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
-      end else if TypeDefinition^.Members[j].ArraySize>=0 then begin
-       TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySize-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
+      if length(TypeDefinition^.Members[j].ArraySizeStr)>0 then begin
+       TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].ArraySizeStr+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
+      end else if TypeDefinition^.Members[j].ArraySizeInt>=0 then begin
+       TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
       end else begin
        TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':'+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
       end;
