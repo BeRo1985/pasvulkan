@@ -62,6 +62,8 @@ interface
 
 uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef X11}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils;
 
+const VK_DEFAULT_LIB_NAME={$ifdef Windows}'vulkan.dll'{$else}{$ifdef Unix}'libvulkan.so'{$else}'libvulkan'{$endif}{$endif};
+
 type PPVkInt8=^PVkInt8;
      PVkInt8=^TVkInt8;
      TVkInt8=shortint;
@@ -95,8 +97,8 @@ type PPVkInt8=^PVkInt8;
      TVkUInt64=uint64;
 
      PPVkChar=^PVkChar;
-     PVkChar=^TVkChar;
-     TVkChar=ansichar;
+     PVkChar=PAnsiChar;
+     TVkChar=AnsiChar;
 
      PPVkPointer=^PVkPointer;
      PVkPointer=^TVkPointer;
@@ -144,6 +146,8 @@ type PPVkInt8=^PVkInt8;
 const VK_API_VERSION=(1 shl 22) or (0 shl 12) or (3 shl 0);
 
       VK_NULL_HANDLE=0;
+
+      VK_NULL_INSTANCE=0;
 
       VK_KHR_SURFACE_SPEC_VERSION=25;
       VK_KHR_SURFACE_EXTENSION_NAME='VK_KHR_surface';
@@ -3606,9 +3610,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkDestroyDebugReportCallbackEXT=procedure(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
      TvkDebugReportMessageEXT=procedure(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
 
-     PPVulkan=^PVulkan;
-     PVulkan=^TVulkan;
-     TVulkan=record
+     PPVulkanCommands=^PVulkanCommands;
+     PVulkanCommands=^TVulkanCommands;
+     TVulkanCommands=record
       vkCreateInstance:TvkCreateInstance;
       vkDestroyInstance:TvkDestroyInstance;
       vkEnumeratePhysicalDevices:TvkEnumeratePhysicalDevices;
@@ -3796,6 +3800,138 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       vkCreateDebugReportCallbackEXT:TvkCreateDebugReportCallbackEXT;
       vkDestroyDebugReportCallbackEXT:TvkDestroyDebugReportCallbackEXT;
       vkDebugReportMessageEXT:TvkDebugReportMessageEXT;
+     end;
+
+     PPVulkanDeviceCommands=^PVulkanDeviceCommands;
+     PVulkanDeviceCommands=^TVulkanDeviceCommands;
+     TVulkanDeviceCommands=record
+      vkGetDeviceProcAddr:TvkGetDeviceProcAddr;
+      vkDestroyDevice:TvkDestroyDevice;
+      vkGetDeviceQueue:TvkGetDeviceQueue;
+      vkQueueSubmit:TvkQueueSubmit;
+      vkQueueWaitIdle:TvkQueueWaitIdle;
+      vkDeviceWaitIdle:TvkDeviceWaitIdle;
+      vkAllocateMemory:TvkAllocateMemory;
+      vkFreeMemory:TvkFreeMemory;
+      vkMapMemory:TvkMapMemory;
+      vkUnmapMemory:TvkUnmapMemory;
+      vkFlushMappedMemoryRanges:TvkFlushMappedMemoryRanges;
+      vkInvalidateMappedMemoryRanges:TvkInvalidateMappedMemoryRanges;
+      vkGetDeviceMemoryCommitment:TvkGetDeviceMemoryCommitment;
+      vkGetBufferMemoryRequirements:TvkGetBufferMemoryRequirements;
+      vkBindBufferMemory:TvkBindBufferMemory;
+      vkGetImageMemoryRequirements:TvkGetImageMemoryRequirements;
+      vkBindImageMemory:TvkBindImageMemory;
+      vkGetImageSparseMemoryRequirements:TvkGetImageSparseMemoryRequirements;
+      vkQueueBindSparse:TvkQueueBindSparse;
+      vkCreateFence:TvkCreateFence;
+      vkDestroyFence:TvkDestroyFence;
+      vkResetFences:TvkResetFences;
+      vkGetFenceStatus:TvkGetFenceStatus;
+      vkWaitForFences:TvkWaitForFences;
+      vkCreateSemaphore:TvkCreateSemaphore;
+      vkDestroySemaphore:TvkDestroySemaphore;
+      vkCreateEvent:TvkCreateEvent;
+      vkDestroyEvent:TvkDestroyEvent;
+      vkGetEventStatus:TvkGetEventStatus;
+      vkSetEvent:TvkSetEvent;
+      vkResetEvent:TvkResetEvent;
+      vkCreateQueryPool:TvkCreateQueryPool;
+      vkDestroyQueryPool:TvkDestroyQueryPool;
+      vkGetQueryPoolResults:TvkGetQueryPoolResults;
+      vkCreateBuffer:TvkCreateBuffer;
+      vkDestroyBuffer:TvkDestroyBuffer;
+      vkCreateBufferView:TvkCreateBufferView;
+      vkDestroyBufferView:TvkDestroyBufferView;
+      vkCreateImage:TvkCreateImage;
+      vkDestroyImage:TvkDestroyImage;
+      vkGetImageSubresourceLayout:TvkGetImageSubresourceLayout;
+      vkCreateImageView:TvkCreateImageView;
+      vkDestroyImageView:TvkDestroyImageView;
+      vkCreateShaderModule:TvkCreateShaderModule;
+      vkDestroyShaderModule:TvkDestroyShaderModule;
+      vkCreatePipelineCache:TvkCreatePipelineCache;
+      vkDestroyPipelineCache:TvkDestroyPipelineCache;
+      vkGetPipelineCacheData:TvkGetPipelineCacheData;
+      vkMergePipelineCaches:TvkMergePipelineCaches;
+      vkCreateGraphicsPipelines:TvkCreateGraphicsPipelines;
+      vkCreateComputePipelines:TvkCreateComputePipelines;
+      vkDestroyPipeline:TvkDestroyPipeline;
+      vkCreatePipelineLayout:TvkCreatePipelineLayout;
+      vkDestroyPipelineLayout:TvkDestroyPipelineLayout;
+      vkCreateSampler:TvkCreateSampler;
+      vkDestroySampler:TvkDestroySampler;
+      vkCreateDescriptorSetLayout:TvkCreateDescriptorSetLayout;
+      vkDestroyDescriptorSetLayout:TvkDestroyDescriptorSetLayout;
+      vkCreateDescriptorPool:TvkCreateDescriptorPool;
+      vkDestroyDescriptorPool:TvkDestroyDescriptorPool;
+      vkResetDescriptorPool:TvkResetDescriptorPool;
+      vkAllocateDescriptorSets:TvkAllocateDescriptorSets;
+      vkFreeDescriptorSets:TvkFreeDescriptorSets;
+      vkUpdateDescriptorSets:TvkUpdateDescriptorSets;
+      vkCreateFramebuffer:TvkCreateFramebuffer;
+      vkDestroyFramebuffer:TvkDestroyFramebuffer;
+      vkCreateRenderPass:TvkCreateRenderPass;
+      vkDestroyRenderPass:TvkDestroyRenderPass;
+      vkGetRenderAreaGranularity:TvkGetRenderAreaGranularity;
+      vkCreateCommandPool:TvkCreateCommandPool;
+      vkDestroyCommandPool:TvkDestroyCommandPool;
+      vkResetCommandPool:TvkResetCommandPool;
+      vkAllocateCommandBuffers:TvkAllocateCommandBuffers;
+      vkFreeCommandBuffers:TvkFreeCommandBuffers;
+      vkBeginCommandBuffer:TvkBeginCommandBuffer;
+      vkEndCommandBuffer:TvkEndCommandBuffer;
+      vkResetCommandBuffer:TvkResetCommandBuffer;
+      vkCmdBindPipeline:TvkCmdBindPipeline;
+      vkCmdSetViewport:TvkCmdSetViewport;
+      vkCmdSetScissor:TvkCmdSetScissor;
+      vkCmdSetLineWidth:TvkCmdSetLineWidth;
+      vkCmdSetDepthBias:TvkCmdSetDepthBias;
+      vkCmdSetBlendConstants:TvkCmdSetBlendConstants;
+      vkCmdSetDepthBounds:TvkCmdSetDepthBounds;
+      vkCmdSetStencilCompareMask:TvkCmdSetStencilCompareMask;
+      vkCmdSetStencilWriteMask:TvkCmdSetStencilWriteMask;
+      vkCmdSetStencilReference:TvkCmdSetStencilReference;
+      vkCmdBindDescriptorSets:TvkCmdBindDescriptorSets;
+      vkCmdBindIndexBuffer:TvkCmdBindIndexBuffer;
+      vkCmdBindVertexBuffers:TvkCmdBindVertexBuffers;
+      vkCmdDraw:TvkCmdDraw;
+      vkCmdDrawIndexed:TvkCmdDrawIndexed;
+      vkCmdDrawIndirect:TvkCmdDrawIndirect;
+      vkCmdDrawIndexedIndirect:TvkCmdDrawIndexedIndirect;
+      vkCmdDispatch:TvkCmdDispatch;
+      vkCmdDispatchIndirect:TvkCmdDispatchIndirect;
+      vkCmdCopyBuffer:TvkCmdCopyBuffer;
+      vkCmdCopyImage:TvkCmdCopyImage;
+      vkCmdBlitImage:TvkCmdBlitImage;
+      vkCmdCopyBufferToImage:TvkCmdCopyBufferToImage;
+      vkCmdCopyImageToBuffer:TvkCmdCopyImageToBuffer;
+      vkCmdUpdateBuffer:TvkCmdUpdateBuffer;
+      vkCmdFillBuffer:TvkCmdFillBuffer;
+      vkCmdClearColorImage:TvkCmdClearColorImage;
+      vkCmdClearDepthStencilImage:TvkCmdClearDepthStencilImage;
+      vkCmdClearAttachments:TvkCmdClearAttachments;
+      vkCmdResolveImage:TvkCmdResolveImage;
+      vkCmdSetEvent:TvkCmdSetEvent;
+      vkCmdResetEvent:TvkCmdResetEvent;
+      vkCmdWaitEvents:TvkCmdWaitEvents;
+      vkCmdPipelineBarrier:TvkCmdPipelineBarrier;
+      vkCmdBeginQuery:TvkCmdBeginQuery;
+      vkCmdEndQuery:TvkCmdEndQuery;
+      vkCmdResetQueryPool:TvkCmdResetQueryPool;
+      vkCmdWriteTimestamp:TvkCmdWriteTimestamp;
+      vkCmdCopyQueryPoolResults:TvkCmdCopyQueryPoolResults;
+      vkCmdPushConstants:TvkCmdPushConstants;
+      vkCmdBeginRenderPass:TvkCmdBeginRenderPass;
+      vkCmdNextSubpass:TvkCmdNextSubpass;
+      vkCmdEndRenderPass:TvkCmdEndRenderPass;
+      vkCmdExecuteCommands:TvkCmdExecuteCommands;
+      vkCreateSharedSwapchainsKHR:TvkCreateSharedSwapchainsKHR;
+      vkCreateSwapchainKHR:TvkCreateSwapchainKHR;
+      vkDestroySwapchainKHR:TvkDestroySwapchainKHR;
+      vkGetSwapchainImagesKHR:TvkGetSwapchainImagesKHR;
+      vkAcquireNextImageKHR:TvkAcquireNextImageKHR;
+      vkQueuePresentKHR:TvkQueuePresentKHR;
      end;
 
 var LibVulkan:pointer=nil;
@@ -3997,7 +4133,10 @@ function vkLoadLibrary(const LibraryName:string):pointer; {$ifdef CAN_INLINE}inl
 function vkFreeLibrary(LibraryHandle:pointer):boolean; {$ifdef CAN_INLINE}inline;{$endif}
 function vkGetProcAddress(LibraryHandle:pointer;const ProcName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}
 
-function LoadVulkanLibrary:boolean;
+function vkVoidFunctionToPointer(const VoidFunction:TPFN_vkVoidFunction):pointer; {$ifdef CAN_INLINE}inline;{$endif}
+
+function LoadVulkanLibrary(const LibraryName:string=VK_DEFAULT_LIB_NAME):boolean;
+function LoadVulkanCommands:boolean;
 
 implementation
 
@@ -4063,29 +4202,211 @@ begin
 {$endif}
 end;
 
-function LoadVulkanLibrary:boolean;
+function vkVoidFunctionToPointer(const VoidFunction:TPFN_vkVoidFunction):pointer; {$ifdef CAN_INLINE}inline;{$endif}
 begin
-{$ifdef Windows}
- LibVulkan:=vkLoadLibrary('vulkan.dll');
-{$else}
-{$ifdef Unix}
- LibVulkan:=vkLoadLibrary('libvulkan.so');
-{$else}
- LibVulkan:=nil;
-{$endif}
-{$endif}
+ result:=addr(VoidFunction);
+end;
+
+function LoadVulkanLibrary(const LibraryName:string=VK_DEFAULT_LIB_NAME):boolean;
+begin
+ LibVulkan:=vkLoadLibrary(LibraryName);
  result:=assigned(LibVulkan);
  if result then begin
-  vkEnumerateInstanceExtensionProperties:=vkGetProcAddress(LibVulkan,'vkEnumerateInstanceExtensionProperties');
-  vkEnumerateInstanceLayerProperties:=vkGetProcAddress(LibVulkan,'vkEnumerateInstanceLayerProperties');
-  vkCreateInstance:=vkGetProcAddress(LibVulkan,'vkCreateInstance');
   vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,'vkGetInstanceProcAddr');
-  vkGetDeviceProcAddr:=vkGetProcAddress(LibVulkan,'vkGetDeviceProcAddr');
-  result:=assigned(vkEnumerateInstanceExtensionProperties) and
-          assigned(vkEnumerateInstanceLayerProperties) and
-          assigned(vkCreateInstance) and
-          assigned(vkGetInstanceProcAddr) and
-          assigned(vkGetDeviceProcAddr);
+  result:=assigned(vkGetInstanceProcAddr);
+ end;
+end;
+
+function LoadVulkanCommands:boolean;
+begin
+ result:=assigned(vkGetInstanceProcAddr);
+ if result then begin
+  @vkCreateInstance:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateInstance')));
+  @vkDestroyInstance:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyInstance')));
+  @vkEnumeratePhysicalDevices:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumeratePhysicalDevices')));
+  @vkGetDeviceProcAddr:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDeviceProcAddr')));
+  @vkGetPhysicalDeviceProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceProperties')));
+  @vkGetPhysicalDeviceQueueFamilyProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceQueueFamilyProperties')));
+  @vkGetPhysicalDeviceMemoryProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceMemoryProperties')));
+  @vkGetPhysicalDeviceFeatures:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceFeatures')));
+  @vkGetPhysicalDeviceFormatProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceFormatProperties')));
+  @vkGetPhysicalDeviceImageFormatProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceImageFormatProperties')));
+  @vkCreateDevice:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDevice')));
+  @vkDestroyDevice:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyDevice')));
+  @vkEnumerateInstanceLayerProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumerateInstanceLayerProperties')));
+  @vkEnumerateInstanceExtensionProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumerateInstanceExtensionProperties')));
+  @vkEnumerateDeviceLayerProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumerateDeviceLayerProperties')));
+  @vkEnumerateDeviceExtensionProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumerateDeviceExtensionProperties')));
+  @vkGetDeviceQueue:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDeviceQueue')));
+  @vkQueueSubmit:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkQueueSubmit')));
+  @vkQueueWaitIdle:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkQueueWaitIdle')));
+  @vkDeviceWaitIdle:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDeviceWaitIdle')));
+  @vkAllocateMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkAllocateMemory')));
+  @vkFreeMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkFreeMemory')));
+  @vkMapMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkMapMemory')));
+  @vkUnmapMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkUnmapMemory')));
+  @vkFlushMappedMemoryRanges:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkFlushMappedMemoryRanges')));
+  @vkInvalidateMappedMemoryRanges:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkInvalidateMappedMemoryRanges')));
+  @vkGetDeviceMemoryCommitment:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDeviceMemoryCommitment')));
+  @vkGetBufferMemoryRequirements:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetBufferMemoryRequirements')));
+  @vkBindBufferMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkBindBufferMemory')));
+  @vkGetImageMemoryRequirements:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetImageMemoryRequirements')));
+  @vkBindImageMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkBindImageMemory')));
+  @vkGetImageSparseMemoryRequirements:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetImageSparseMemoryRequirements')));
+  @vkGetPhysicalDeviceSparseImageFormatProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceSparseImageFormatProperties')));
+  @vkQueueBindSparse:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkQueueBindSparse')));
+  @vkCreateFence:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateFence')));
+  @vkDestroyFence:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyFence')));
+  @vkResetFences:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkResetFences')));
+  @vkGetFenceStatus:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetFenceStatus')));
+  @vkWaitForFences:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkWaitForFences')));
+  @vkCreateSemaphore:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateSemaphore')));
+  @vkDestroySemaphore:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroySemaphore')));
+  @vkCreateEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateEvent')));
+  @vkDestroyEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyEvent')));
+  @vkGetEventStatus:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetEventStatus')));
+  @vkSetEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkSetEvent')));
+  @vkResetEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkResetEvent')));
+  @vkCreateQueryPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateQueryPool')));
+  @vkDestroyQueryPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyQueryPool')));
+  @vkGetQueryPoolResults:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetQueryPoolResults')));
+  @vkCreateBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateBuffer')));
+  @vkDestroyBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyBuffer')));
+  @vkCreateBufferView:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateBufferView')));
+  @vkDestroyBufferView:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyBufferView')));
+  @vkCreateImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateImage')));
+  @vkDestroyImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyImage')));
+  @vkGetImageSubresourceLayout:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetImageSubresourceLayout')));
+  @vkCreateImageView:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateImageView')));
+  @vkDestroyImageView:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyImageView')));
+  @vkCreateShaderModule:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateShaderModule')));
+  @vkDestroyShaderModule:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyShaderModule')));
+  @vkCreatePipelineCache:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreatePipelineCache')));
+  @vkDestroyPipelineCache:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyPipelineCache')));
+  @vkGetPipelineCacheData:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPipelineCacheData')));
+  @vkMergePipelineCaches:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkMergePipelineCaches')));
+  @vkCreateGraphicsPipelines:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateGraphicsPipelines')));
+  @vkCreateComputePipelines:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateComputePipelines')));
+  @vkDestroyPipeline:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyPipeline')));
+  @vkCreatePipelineLayout:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreatePipelineLayout')));
+  @vkDestroyPipelineLayout:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyPipelineLayout')));
+  @vkCreateSampler:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateSampler')));
+  @vkDestroySampler:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroySampler')));
+  @vkCreateDescriptorSetLayout:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDescriptorSetLayout')));
+  @vkDestroyDescriptorSetLayout:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyDescriptorSetLayout')));
+  @vkCreateDescriptorPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDescriptorPool')));
+  @vkDestroyDescriptorPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyDescriptorPool')));
+  @vkResetDescriptorPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkResetDescriptorPool')));
+  @vkAllocateDescriptorSets:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkAllocateDescriptorSets')));
+  @vkFreeDescriptorSets:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkFreeDescriptorSets')));
+  @vkUpdateDescriptorSets:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkUpdateDescriptorSets')));
+  @vkCreateFramebuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateFramebuffer')));
+  @vkDestroyFramebuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyFramebuffer')));
+  @vkCreateRenderPass:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateRenderPass')));
+  @vkDestroyRenderPass:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyRenderPass')));
+  @vkGetRenderAreaGranularity:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetRenderAreaGranularity')));
+  @vkCreateCommandPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateCommandPool')));
+  @vkDestroyCommandPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyCommandPool')));
+  @vkResetCommandPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkResetCommandPool')));
+  @vkAllocateCommandBuffers:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkAllocateCommandBuffers')));
+  @vkFreeCommandBuffers:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkFreeCommandBuffers')));
+  @vkBeginCommandBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkBeginCommandBuffer')));
+  @vkEndCommandBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEndCommandBuffer')));
+  @vkResetCommandBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkResetCommandBuffer')));
+  @vkCmdBindPipeline:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBindPipeline')));
+  @vkCmdSetViewport:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetViewport')));
+  @vkCmdSetScissor:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetScissor')));
+  @vkCmdSetLineWidth:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetLineWidth')));
+  @vkCmdSetDepthBias:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetDepthBias')));
+  @vkCmdSetBlendConstants:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetBlendConstants')));
+  @vkCmdSetDepthBounds:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetDepthBounds')));
+  @vkCmdSetStencilCompareMask:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetStencilCompareMask')));
+  @vkCmdSetStencilWriteMask:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetStencilWriteMask')));
+  @vkCmdSetStencilReference:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetStencilReference')));
+  @vkCmdBindDescriptorSets:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBindDescriptorSets')));
+  @vkCmdBindIndexBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBindIndexBuffer')));
+  @vkCmdBindVertexBuffers:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBindVertexBuffers')));
+  @vkCmdDraw:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDraw')));
+  @vkCmdDrawIndexed:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDrawIndexed')));
+  @vkCmdDrawIndirect:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDrawIndirect')));
+  @vkCmdDrawIndexedIndirect:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDrawIndexedIndirect')));
+  @vkCmdDispatch:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDispatch')));
+  @vkCmdDispatchIndirect:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDispatchIndirect')));
+  @vkCmdCopyBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdCopyBuffer')));
+  @vkCmdCopyImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdCopyImage')));
+  @vkCmdBlitImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBlitImage')));
+  @vkCmdCopyBufferToImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdCopyBufferToImage')));
+  @vkCmdCopyImageToBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdCopyImageToBuffer')));
+  @vkCmdUpdateBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdUpdateBuffer')));
+  @vkCmdFillBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdFillBuffer')));
+  @vkCmdClearColorImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdClearColorImage')));
+  @vkCmdClearDepthStencilImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdClearDepthStencilImage')));
+  @vkCmdClearAttachments:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdClearAttachments')));
+  @vkCmdResolveImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdResolveImage')));
+  @vkCmdSetEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetEvent')));
+  @vkCmdResetEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdResetEvent')));
+  @vkCmdWaitEvents:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdWaitEvents')));
+  @vkCmdPipelineBarrier:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdPipelineBarrier')));
+  @vkCmdBeginQuery:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBeginQuery')));
+  @vkCmdEndQuery:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdEndQuery')));
+  @vkCmdResetQueryPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdResetQueryPool')));
+  @vkCmdWriteTimestamp:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdWriteTimestamp')));
+  @vkCmdCopyQueryPoolResults:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdCopyQueryPoolResults')));
+  @vkCmdPushConstants:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdPushConstants')));
+  @vkCmdBeginRenderPass:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBeginRenderPass')));
+  @vkCmdNextSubpass:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdNextSubpass')));
+  @vkCmdEndRenderPass:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdEndRenderPass')));
+  @vkCmdExecuteCommands:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdExecuteCommands')));
+{$ifdef Android}
+  @vkCreateAndroidSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateAndroidSurfaceKHR')));
+{$endif}
+  @vkGetPhysicalDeviceDisplayPropertiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceDisplayPropertiesKHR')));
+  @vkGetPhysicalDeviceDisplayPlanePropertiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceDisplayPlanePropertiesKHR')));
+  @vkGetDisplayPlaneSupportedDisplaysKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDisplayPlaneSupportedDisplaysKHR')));
+  @vkGetDisplayModePropertiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDisplayModePropertiesKHR')));
+  @vkCreateDisplayModeKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDisplayModeKHR')));
+  @vkGetDisplayPlaneCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDisplayPlaneCapabilitiesKHR')));
+  @vkCreateDisplayPlaneSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDisplayPlaneSurfaceKHR')));
+  @vkCreateSharedSwapchainsKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateSharedSwapchainsKHR')));
+{$ifdef Mir}
+  @vkCreateMirSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateMirSurfaceKHR')));
+{$endif}
+{$ifdef Mir}
+  @vkGetPhysicalDeviceMirPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceMirPresentationSupportKHR')));
+{$endif}
+  @vkDestroySurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroySurfaceKHR')));
+  @vkGetPhysicalDeviceSurfaceSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceSurfaceSupportKHR')));
+  @vkGetPhysicalDeviceSurfaceCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceSurfaceCapabilitiesKHR')));
+  @vkGetPhysicalDeviceSurfaceFormatsKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceSurfaceFormatsKHR')));
+  @vkGetPhysicalDeviceSurfacePresentModesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceSurfacePresentModesKHR')));
+  @vkCreateSwapchainKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateSwapchainKHR')));
+  @vkDestroySwapchainKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroySwapchainKHR')));
+  @vkGetSwapchainImagesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetSwapchainImagesKHR')));
+  @vkAcquireNextImageKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkAcquireNextImageKHR')));
+  @vkQueuePresentKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkQueuePresentKHR')));
+{$ifdef Wayland}
+  @vkCreateWaylandSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateWaylandSurfaceKHR')));
+{$endif}
+{$ifdef Wayland}
+  @vkGetPhysicalDeviceWaylandPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceWaylandPresentationSupportKHR')));
+{$endif}
+  @vkCreateWin32SurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateWin32SurfaceKHR')));
+  @vkGetPhysicalDeviceWin32PresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceWin32PresentationSupportKHR')));
+{$ifdef X11}
+  @vkCreateXlibSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateXlibSurfaceKHR')));
+{$endif}
+{$ifdef X11}
+  @vkGetPhysicalDeviceXlibPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceXlibPresentationSupportKHR')));
+{$endif}
+{$ifdef XCB}
+  @vkCreateXcbSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateXcbSurfaceKHR')));
+{$endif}
+{$ifdef XCB}
+  @vkGetPhysicalDeviceXcbPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceXcbPresentationSupportKHR')));
+{$endif}
+  @vkCreateDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDebugReportCallbackEXT')));
+  @vkDestroyDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyDebugReportCallbackEXT')));
+  @vkDebugReportMessageEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDebugReportMessageEXT')));
  end;
 end;
 

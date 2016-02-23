@@ -2838,6 +2838,9 @@ var Comment:ansistring;
     CommandTypes:TStringList;
     CommandVariables:TStringList;
     AllCommandType:TStringList;
+    AllDeviceCommandType:TStringList;
+    AllCommands:TStringList;
+    AllDeviceCommands:TStringList;
     VersionMajor,VersionMinor,VersionPatch:longint;
 
 function TranslateType(Type_:ansistring;const Ptr:boolean):ansistring;
@@ -3443,18 +3446,6 @@ begin
    TypeDefinitionList.AddObject(TypeDefinitions[i].Name,pointer(SortedTypeDefinitions[i]));
   end;
   ResolveTypeDefinitionDependencies;
-(*for i:=0 to CountTypeDefinitions-1 do begin
-   TypeDefinition:=SortedTypeDefinitions[i];
-   if length(TypeDefinition^.Define)>0 then begin
-    TypeDefinitionTypes.Add('{$ifdef '+TypeDefinition^.Define+'}');
-   end;
-   TypeDefinitionTypes.Add('     PP'+TypeDefinition^.Name+'=^P'+TypeDefinition^.Name+';');
-   TypeDefinitionTypes.Add('     P'+TypeDefinition^.Name+'=^T'+TypeDefinition^.Name+';');
-   if length(TypeDefinition^.Define)>0 then begin
-    TypeDefinitionTypes.Add('{$endif}');
-   end;
-   TypeDefinitionTypes.Add('');
-  end;(**)
   for i:=0 to CountTypeDefinitions-1 do begin
    TypeDefinition:=SortedTypeDefinitions[i];
    if length(TypeDefinition^.Define)>0 then begin
@@ -3728,11 +3719,14 @@ var i,j,k,ArraySize,CountTypeDefinitions:longint;
     ChildItem,ChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
     ProtoName,ProtoType,ParamName,ParamType,Text,Line,Define:ansistring;
-    ProtoPtr,ParamPtr:boolean;
+    ProtoPtr,ParamPtr,IsDeviceCommand:boolean;
 begin
- AllCommandType.Add('     PPVulkan=^PVulkan;');
- AllCommandType.Add('     PVulkan=^TVulkan;');
- AllCommandType.Add('     TVulkan=record');
+ AllCommandType.Add('     PPVulkanCommands=^PVulkanCommands;');
+ AllCommandType.Add('     PVulkanCommands=^TVulkanCommands;');
+ AllCommandType.Add('     TVulkanCommands=record');
+ AllDeviceCommandType.Add('     PPVulkanDeviceCommands=^PVulkanDeviceCommands;');
+ AllDeviceCommandType.Add('     PVulkanDeviceCommands=^TVulkanDeviceCommands;');
+ AllDeviceCommandType.Add('     TVulkanDeviceCommands=record');
  for i:=0 to Tag.Items.Count-1 do begin
   ChildItem:=Tag.Items[i];
   if ChildItem is TXMLTag then begin
@@ -3744,6 +3738,7 @@ begin
     ParamName:='';
     ParamType:='';
     ParamPtr:=false;
+    IsDeviceCommand:=false;
     Line:='';
     Define:='';
     for j:=0 to ChildTag.Items.Count-1 do begin
@@ -3761,6 +3756,10 @@ begin
        ParamPtr:=Pos('*',Text)>0;
        if length(Line)>0 then begin
         Line:=Line+';'
+       end else begin
+        if (ParamType='VkDevice') or (ParamType='VkQueue') or (ParamType='VkCommandBuffer') then begin
+         IsDeviceCommand:=true;
+        end;
        end;
        if ParamName='type' then begin
         ParamName:='type_';
@@ -3792,6 +3791,9 @@ begin
      CommandTypes.Add('{$ifdef '+Define+'}');
      CommandVariables.Add('{$ifdef '+Define+'}');
      AllCommandType.Add('{$ifdef '+Define+'}');
+     if IsDeviceCommand then begin
+      AllDeviceCommandType.Add('{$ifdef '+Define+'}');
+     end;
     end;
     if (ProtoType='void') and not ProtoPtr then begin
      CommandTypes.Add('     T'+ProtoName+'=procedure('+Line+'); '+CallingConventions);
@@ -3800,15 +3802,24 @@ begin
     end;
     CommandVariables.Add('    '+ProtoName+':T'+ProtoName+'=nil;');
     AllCommandType.Add('      '+ProtoName+':T'+ProtoName+';');
+    AllCommands.Add(ProtoName+'='+Define);
+    if IsDeviceCommand then begin
+     AllDeviceCommandType.Add('      '+ProtoName+':T'+ProtoName+';');
+     AllDeviceCommands.Add(ProtoName+'='+Define);
+    end;
     if length(Define)>0 then begin
      CommandTypes.Add('{$endif}');
      CommandVariables.Add('{$endif}');
      AllCommandType.Add('{$endif}');
+     if IsDeviceCommand then begin
+      AllDeviceCommandType.Add('{$endif}');
+     end;
     end;
    end;
   end;
  end;
  AllCommandType.Add('     end;');
+ AllDeviceCommandType.Add('     end;');
 end;
 
 procedure ParseRegistryTag(Tag:TXMLTag);
@@ -3886,8 +3897,9 @@ var VKXMLFileStream:TMemoryStream;
     RegistryTag:TXMLTag;
     OutputPAS:TStringList;
 
-var i:longint;
+var i,j:longint;
     ExtensionEnum:TExtensionEnum;
+    s,s2:ansistring;
 begin
  Comment:='';
  VendorIDList:=TObjectList.Create(true);
@@ -3905,6 +3917,9 @@ begin
  CommandTypes:=TStringList.Create;
  CommandVariables:=TStringList.Create;
  AllCommandType:=TStringList.Create;
+ AllDeviceCommandType:=TStringList.Create;
+ AllCommands:=TStringList.Create;
+ AllDeviceCommands:=TStringList.Create;
 
  VersionMajor:=1;
  VersionMinor:=0;
@@ -4029,6 +4044,8 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef X11}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils;');
    OutputPAS.Add('');
+   OutputPAS.Add('const VK_DEFAULT_LIB_NAME={$ifdef Windows}''vulkan.dll''{$else}{$ifdef Unix}''libvulkan.so''{$else}''libvulkan''{$endif}{$endif};');
+   OutputPAS.Add('');
    OutputPAS.Add('type PPVkInt8=^PVkInt8;');
    OutputPAS.Add('     PVkInt8=^TVkInt8;');
    OutputPAS.Add('     TVkInt8=shortint;');
@@ -4062,8 +4079,8 @@ begin
    OutputPAS.Add('     TVkUInt64=uint64;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkChar=^PVkChar;');
-   OutputPAS.Add('     PVkChar=^TVkChar;');
-   OutputPAS.Add('     TVkChar=ansichar;');
+   OutputPAS.Add('     PVkChar=PAnsiChar;');
+   OutputPAS.Add('     TVkChar=AnsiChar;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkPointer=^PVkPointer;');
    OutputPAS.Add('     PVkPointer=^TVkPointer;');
@@ -4112,6 +4129,8 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('      VK_NULL_HANDLE=0;');
    OutputPAS.Add('');
+   OutputPAS.Add('      VK_NULL_INSTANCE=0;');
+   OutputPAS.Add('');
    OutputPAS.AddStrings(ENumConstants);
    OutputPAS.Add('');
    OutputPAS.Add('type PPVkDispatchableHandle=^PVkDispatchableHandle;');
@@ -4145,6 +4164,8 @@ begin
    OutputPAS.Add('');
    OutputPAS.AddStrings(AllCommandType);
    OutputPAS.Add('');
+   OutputPAS.AddStrings(AllDeviceCommandType);
+   OutputPAS.Add('');
    OutputPAS.Add('var LibVulkan:pointer=nil;');
    OutputPAS.Add('');
    OutputPAS.AddStrings(CommandVariables);
@@ -4158,7 +4179,10 @@ begin
    OutputPAS.Add('function vkFreeLibrary(LibraryHandle:pointer):boolean; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('function vkGetProcAddress(LibraryHandle:pointer;const ProcName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('');
-   OutputPAS.Add('function LoadVulkanLibrary:boolean;');
+   OutputPAS.Add('function vkVoidFunctionToPointer(const VoidFunction:TPFN_vkVoidFunction):pointer; {$ifdef CAN_INLINE}inline;{$endif}');
+   OutputPAS.Add('');
+   OutputPAS.Add('function LoadVulkanLibrary(const LibraryName:string=VK_DEFAULT_LIB_NAME):boolean;');
+   OutputPAS.Add('function LoadVulkanCommands:boolean;');
    OutputPAS.Add('');
    OutputPAS.Add('implementation');
    OutputPAS.Add('');
@@ -4224,29 +4248,42 @@ begin
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
-   OutputPAS.Add('function LoadVulkanLibrary:boolean;');
+   OutputPAS.Add('function vkVoidFunctionToPointer(const VoidFunction:TPFN_vkVoidFunction):pointer; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('begin');
-   OutputPAS.Add('{$ifdef Windows}');
-   OutputPAS.Add(' LibVulkan:=vkLoadLibrary(''vulkan.dll'');');
-   OutputPAS.Add('{$else}');
-   OutputPAS.Add('{$ifdef Unix}');
-   OutputPAS.Add(' LibVulkan:=vkLoadLibrary(''libvulkan.so'');');
-   OutputPAS.Add('{$else}');
-   OutputPAS.Add(' LibVulkan:=nil;');
-   OutputPAS.Add('{$endif}');
-   OutputPAS.Add('{$endif}');
+   OutputPAS.Add(' result:=addr(VoidFunction);');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
+   OutputPAS.Add('function LoadVulkanLibrary(const LibraryName:string=VK_DEFAULT_LIB_NAME):boolean;');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' LibVulkan:=vkLoadLibrary(LibraryName);');
    OutputPAS.Add(' result:=assigned(LibVulkan);');
    OutputPAS.Add(' if result then begin');
-   OutputPAS.Add('  vkEnumerateInstanceExtensionProperties:=vkGetProcAddress(LibVulkan,''vkEnumerateInstanceExtensionProperties'');');
-   OutputPAS.Add('  vkEnumerateInstanceLayerProperties:=vkGetProcAddress(LibVulkan,''vkEnumerateInstanceLayerProperties'');');
-   OutputPAS.Add('  vkCreateInstance:=vkGetProcAddress(LibVulkan,''vkCreateInstance'');');
    OutputPAS.Add('  vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,''vkGetInstanceProcAddr'');');
-   OutputPAS.Add('  vkGetDeviceProcAddr:=vkGetProcAddress(LibVulkan,''vkGetDeviceProcAddr'');');
-   OutputPAS.Add('  result:=assigned(vkEnumerateInstanceExtensionProperties) and');
-   OutputPAS.Add('          assigned(vkEnumerateInstanceLayerProperties) and');
-   OutputPAS.Add('          assigned(vkCreateInstance) and');
-   OutputPAS.Add('          assigned(vkGetInstanceProcAddr) and');
-   OutputPAS.Add('          assigned(vkGetDeviceProcAddr);');
+   OutputPAS.Add('  result:=assigned(vkGetInstanceProcAddr);');
+   OutputPAS.Add(' end;');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
+   OutputPAS.Add('function LoadVulkanCommands:boolean;');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' result:=assigned(vkGetInstanceProcAddr);');
+   OutputPAS.Add(' if result then begin');
+   for i:=0 to AllCommands.Count-1 do begin
+    s:=AllCommands.Strings[i];
+    j:=pos('=',s);
+    if j>0 then begin
+     s2:=copy(s,j+1,length(s)-j);
+     s:=copy(s,1,j-1);
+    end;
+    if length(s2)>0 then begin
+     OutputPAS.Add('{$ifdef '+s2+'}');
+    end;
+    if s<>'vkGetInstanceProcAddr' then begin
+     OutputPAS.Add('  @'+s+':=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('''+s+''')));');
+    end;
+    if length(s2)>0 then begin
+     OutputPAS.Add('{$endif}');
+    end;
+   end;
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
@@ -4274,6 +4311,9 @@ begin
   CommandTypes.Free;
   CommandVariables.Free;
   AllCommandType.Free;
+  AllDeviceCommandType.Free;
+  AllCommands.Free;
+  AllDeviceCommands.Free;
  end;
 
  readln;
