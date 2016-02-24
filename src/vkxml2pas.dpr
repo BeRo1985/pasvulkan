@@ -2841,6 +2841,8 @@ var Comment:ansistring;
     AllDeviceCommandType:TStringList;
     AllCommands:TStringList;
     AllDeviceCommands:TStringList;
+    AllCommandClassDefinitions:TStringList;
+    AllCommandClassImplementations:TStringList;
     VersionMajor,VersionMinor,VersionPatch:longint;
 
 function TranslateType(Type_:ansistring;const Ptr:boolean):ansistring;
@@ -3718,7 +3720,7 @@ procedure ParseCommandsTag(Tag:TXMLTag);
 var i,j,k,ArraySize,CountTypeDefinitions:longint;
     ChildItem,ChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
-    ProtoName,ProtoType,ParamName,ParamType,Text,Line,Define:ansistring;
+    ProtoName,ProtoType,ParamName,ParamType,Text,Line,Parameters,Define:ansistring;
     ProtoPtr,ParamPtr,IsDeviceCommand:boolean;
 begin
  AllCommandType.Add('     PPVulkanCommands=^PVulkanCommands;');
@@ -3740,6 +3742,7 @@ begin
     ParamPtr:=false;
     IsDeviceCommand:=false;
     Line:='';
+    Parameters:='';
     Define:='';
     for j:=0 to ChildTag.Items.Count-1 do begin
      ChildChildItem:=ChildTag.Items[j];
@@ -3755,7 +3758,7 @@ begin
        Text:=ParseText(ChildChildTag);
        ParamPtr:=Pos('*',Text)>0;
        if length(Line)>0 then begin
-        Line:=Line+';'
+        Line:=Line+';';
        end else begin
         if (ParamType='VkDevice') or (ParamType='VkQueue') or (ParamType='VkCommandBuffer') then begin
          IsDeviceCommand:=true;
@@ -3771,6 +3774,10 @@ begin
         Line:=Line+'const ';
        end;
        Line:=Line+ParamName+':'+TranslateType(ParamType,ParamPtr);
+       if length(Parameters)>0 then begin
+        Parameters:=Parameters+',';
+       end;
+       Parameters:=Parameters+ParamName;
        if (ParamType='HWND') or (ParamType='HINSTANCE') then begin
         Define:='Windows';
        end else if (ParamType='Display') or (ParamType='VisualID') or (ParamType='Window') or (pos('Xlib',ParamType)>0) then begin
@@ -3791,6 +3798,8 @@ begin
      CommandTypes.Add('{$ifdef '+Define+'}');
      CommandVariables.Add('{$ifdef '+Define+'}');
      AllCommandType.Add('{$ifdef '+Define+'}');
+     AllCommandClassDefinitions.Add('{$ifdef '+Define+'}');
+     AllCommandClassImplementations.Add('{$ifdef '+Define+'}');
      if IsDeviceCommand then begin
       AllDeviceCommandType.Add('{$ifdef '+Define+'}');
      end;
@@ -3802,6 +3811,19 @@ begin
     end;
     CommandVariables.Add('    '+ProtoName+':T'+ProtoName+'=nil;');
     AllCommandType.Add('      '+copy(ProtoName,3,length(ProtoName)-2)+':T'+ProtoName+';');
+    if (ProtoType='void') and not ProtoPtr then begin
+     AllCommandClassDefinitions.Add('       procedure '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'); virtual;');
+     AllCommandClassImplementations.Add('procedure TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+');');
+     AllCommandClassImplementations.Add('begin');
+     AllCommandClassImplementations.Add(' fVulkanCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
+     AllCommandClassImplementations.Add('end;');
+    end else begin
+     AllCommandClassDefinitions.Add('       function '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; virtual;');
+     AllCommandClassImplementations.Add('function TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+';');
+     AllCommandClassImplementations.Add('begin');
+     AllCommandClassImplementations.Add(' result:=fVulkanCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
+     AllCommandClassImplementations.Add('end;');
+    end;
     AllCommands.Add(ProtoName+'='+Define);
     if IsDeviceCommand then begin
      AllDeviceCommandType.Add('      '+copy(ProtoName,3,length(ProtoName)-2)+':T'+ProtoName+';');
@@ -3811,10 +3833,13 @@ begin
      CommandTypes.Add('{$endif}');
      CommandVariables.Add('{$endif}');
      AllCommandType.Add('{$endif}');
+     AllCommandClassDefinitions.Add('{$endif}');
+     AllCommandClassImplementations.Add('{$endif}');
      if IsDeviceCommand then begin
       AllDeviceCommandType.Add('{$endif}');
      end;
     end;
+    AllCommandClassImplementations.Add('');
    end;
   end;
  end;
@@ -3919,6 +3944,8 @@ begin
  AllCommandType:=TStringList.Create;
  AllDeviceCommandType:=TStringList.Create;
  AllCommands:=TStringList.Create;
+ AllCommandClassDefinitions:=TStringList.Create;
+ AllCommandClassImplementations:=TStringList.Create;
  AllDeviceCommands:=TStringList.Create;
 
  VersionMajor:=1;
@@ -4166,6 +4193,16 @@ begin
    OutputPAS.Add('');
    OutputPAS.AddStrings(AllDeviceCommandType);
    OutputPAS.Add('');
+   OutputPAS.Add('     TVulkan=class');
+   OutputPAS.Add('      private');
+   OutputPAS.Add('       fVulkanCommands:TVulkanCommands;');
+   OutputPAS.Add('      public');
+   OutputPAS.Add('       constructor Create(const AVulkanCommands:TVulkanCommands);');
+   OutputPAS.Add('       destructor Destroy; override;');
+   OutputPAS.AddStrings(AllCommandClassDefinitions);
+   OutputPAS.Add('       property VulkanCommands:TVulkanCommands read fVulkanCommands;');
+   OutputPAS.Add('     end;');
+   OutputPAS.Add('');
    OutputPAS.Add('var LibVulkan:pointer=nil;');
    OutputPAS.Add('');
    OutputPAS.Add('    vk:TVulkanCommands;');
@@ -4367,6 +4404,18 @@ begin
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
+   OutputPAS.Add('constructor TVulkan.Create(const AVulkanCommands:TVulkanCommands);');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' inherited Create;');
+   OutputPAS.Add(' fVulkanCommands:=AVulkanCommands;');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
+   OutputPAS.Add('destructor TVulkan.Destroy;');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' inherited Destroy;');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
+   OutputPAS.AddStrings(AllCommandClassImplementations);
    OutputPAS.Add('initialization');
    OutputPAS.Add(' FillChar(vk,SizeOf(TVulkanCommands),#0);');
    OutputPAS.Add('finalization');
@@ -4399,6 +4448,8 @@ begin
   AllCommandType.Free;
   AllDeviceCommandType.Free;
   AllCommands.Free;
+  AllCommandClassDefinitions.Free;
+  AllCommandClassImplementations.Free;
   AllDeviceCommands.Free;
  end;
 
