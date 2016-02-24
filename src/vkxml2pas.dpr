@@ -3815,13 +3815,13 @@ begin
      AllCommandClassDefinitions.Add('       procedure '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'); virtual;');
      AllCommandClassImplementations.Add('procedure TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+');');
      AllCommandClassImplementations.Add('begin');
-     AllCommandClassImplementations.Add(' fVulkanCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
+     AllCommandClassImplementations.Add(' fCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
      AllCommandClassImplementations.Add('end;');
     end else begin
      AllCommandClassDefinitions.Add('       function '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; virtual;');
      AllCommandClassImplementations.Add('function TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+';');
      AllCommandClassImplementations.Add('begin');
-     AllCommandClassImplementations.Add(' result:=fVulkanCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
+     AllCommandClassImplementations.Add(' result:=fCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
      AllCommandClassImplementations.Add('end;');
     end;
     AllCommands.Add(ProtoName+'='+Define);
@@ -4195,17 +4195,18 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('     TVulkan=class');
    OutputPAS.Add('      private');
-   OutputPAS.Add('       fVulkanCommands:TVulkanCommands;');
+   OutputPAS.Add('       fCommands:TVulkanCommands;');
    OutputPAS.Add('      public');
-   OutputPAS.Add('       constructor Create(const AVulkanCommands:TVulkanCommands);');
+   OutputPAS.Add('       constructor Create; reintroduce; overload;');
+   OutputPAS.Add('       constructor Create(const AVulkanCommands:TVulkanCommands); reintroduce; overload;');
    OutputPAS.Add('       destructor Destroy; override;');
    OutputPAS.AddStrings(AllCommandClassDefinitions);
-   OutputPAS.Add('       property VulkanCommands:TVulkanCommands read fVulkanCommands;');
+   OutputPAS.Add('       property Commands:TVulkanCommands read fCommands;');
    OutputPAS.Add('     end;');
    OutputPAS.Add('');
    OutputPAS.Add('var LibVulkan:pointer=nil;');
    OutputPAS.Add('');
-   OutputPAS.Add('    vk:TVulkanCommands;');
+   OutputPAS.Add('    vk:TVulkan=nil;');
    OutputPAS.Add('');
    OutputPAS.AddStrings(CommandVariables);
    OutputPAS.Add('');
@@ -4301,7 +4302,7 @@ begin
    OutputPAS.Add(' result:=assigned(LibVulkan);');
    OutputPAS.Add(' if result then begin');
    OutputPAS.Add('  vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,''vkGetInstanceProcAddr'');');
-   OutputPAS.Add('  @vk.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);');
+   OutputPAS.Add('  @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);');
    OutputPAS.Add('  result:=assigned(vkGetInstanceProcAddr);');
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
@@ -4311,7 +4312,7 @@ begin
    OutputPAS.Add(' FillChar(vk,SizeOf(TVulkanCommands),#0);');
    OutputPAS.Add(' result:=assigned(vkGetInstanceProcAddr);');
    OutputPAS.Add(' if result then begin');
-   OutputPAS.Add('  @vk.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);');
+   OutputPAS.Add('  @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);');
    for i:=0 to AllCommands.Count-1 do begin
     s:=AllCommands.Strings[i];
     j:=pos('=',s);
@@ -4324,7 +4325,7 @@ begin
     end;
     if s<>'vkGetInstanceProcAddr' then begin
      OutputPAS.Add('  @'+s+':=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('''+s+''')));');
-     OutputPAS.Add('  @vk.'+copy(s,3,length(s)-2)+':=addr('+s+');');
+     OutputPAS.Add('  @vk.fCommands.'+copy(s,3,length(s)-2)+':=addr('+s+');');
     end;
     if length(s2)>0 then begin
      OutputPAS.Add('{$endif}');
@@ -4404,10 +4405,16 @@ begin
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
+   OutputPAS.Add('constructor TVulkan.Create;');
+   OutputPAS.Add('begin');
+   OutputPAS.Add(' inherited Create;');
+   OutputPAS.Add(' FillChar(fCommands,SizeOf(TVulkanCommands),#0);');
+   OutputPAS.Add('end;');
+   OutputPAS.Add('');
    OutputPAS.Add('constructor TVulkan.Create(const AVulkanCommands:TVulkanCommands);');
    OutputPAS.Add('begin');
    OutputPAS.Add(' inherited Create;');
-   OutputPAS.Add(' fVulkanCommands:=AVulkanCommands;');
+   OutputPAS.Add(' fCommands:=AVulkanCommands;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
    OutputPAS.Add('destructor TVulkan.Destroy;');
@@ -4417,11 +4424,12 @@ begin
    OutputPAS.Add('');
    OutputPAS.AddStrings(AllCommandClassImplementations);
    OutputPAS.Add('initialization');
-   OutputPAS.Add(' FillChar(vk,SizeOf(TVulkanCommands),#0);');
+   OutputPAS.Add(' vk:=TVulkan.Create;');
    OutputPAS.Add('finalization');
    OutputPAS.Add(' if assigned(LibVulkan) then begin');
    OutputPAS.Add('  vkFreeLibrary(LibVulkan);');
    OutputPAS.Add(' end;');
+   OutputPAS.Add(' vk.Free;');
    OutputPAS.Add('end.');
    OutputPAS.SaveToFile('vulkan.pas');
   finally

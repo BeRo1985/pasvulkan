@@ -3936,9 +3936,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TVulkan=class
       private
-       fVulkanCommands:TVulkanCommands;
+       fCommands:TVulkanCommands;
       public
-       constructor Create(const AVulkanCommands:TVulkanCommands);
+       constructor Create; reintroduce; overload;
+       constructor Create(const AVulkanCommands:TVulkanCommands); reintroduce; overload;
        destructor Destroy; override;
        function CreateInstance(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; virtual;
        procedure DestroyInstance(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); virtual;
@@ -4127,12 +4128,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function CreateDebugReportCallbackEXT(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; virtual;
        procedure DestroyDebugReportCallbackEXT(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks); virtual;
        procedure DebugReportMessageEXT(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); virtual;
-       property VulkanCommands:TVulkanCommands read fVulkanCommands;
+       property Commands:TVulkanCommands read fCommands;
      end;
 
 var LibVulkan:pointer=nil;
 
-    vk:TVulkanCommands;
+    vk:TVulkan=nil;
 
     vkCreateInstance:TvkCreateInstance=nil;
     vkDestroyInstance:TvkDestroyInstance=nil;
@@ -4414,7 +4415,7 @@ begin
  result:=assigned(LibVulkan);
  if result then begin
   vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,'vkGetInstanceProcAddr');
-  @vk.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);
+  @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);
   result:=assigned(vkGetInstanceProcAddr);
  end;
 end;
@@ -4424,361 +4425,361 @@ begin
  FillChar(vk,SizeOf(TVulkanCommands),#0);
  result:=assigned(vkGetInstanceProcAddr);
  if result then begin
-  @vk.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);
+  @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);
   @vkCreateInstance:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateInstance')));
-  @vk.CreateInstance:=addr(vkCreateInstance);
+  @vk.fCommands.CreateInstance:=addr(vkCreateInstance);
   @vkDestroyInstance:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyInstance')));
-  @vk.DestroyInstance:=addr(vkDestroyInstance);
+  @vk.fCommands.DestroyInstance:=addr(vkDestroyInstance);
   @vkEnumeratePhysicalDevices:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumeratePhysicalDevices')));
-  @vk.EnumeratePhysicalDevices:=addr(vkEnumeratePhysicalDevices);
+  @vk.fCommands.EnumeratePhysicalDevices:=addr(vkEnumeratePhysicalDevices);
   @vkGetDeviceProcAddr:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDeviceProcAddr')));
-  @vk.GetDeviceProcAddr:=addr(vkGetDeviceProcAddr);
+  @vk.fCommands.GetDeviceProcAddr:=addr(vkGetDeviceProcAddr);
   @vkGetPhysicalDeviceProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceProperties')));
-  @vk.GetPhysicalDeviceProperties:=addr(vkGetPhysicalDeviceProperties);
+  @vk.fCommands.GetPhysicalDeviceProperties:=addr(vkGetPhysicalDeviceProperties);
   @vkGetPhysicalDeviceQueueFamilyProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceQueueFamilyProperties')));
-  @vk.GetPhysicalDeviceQueueFamilyProperties:=addr(vkGetPhysicalDeviceQueueFamilyProperties);
+  @vk.fCommands.GetPhysicalDeviceQueueFamilyProperties:=addr(vkGetPhysicalDeviceQueueFamilyProperties);
   @vkGetPhysicalDeviceMemoryProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceMemoryProperties')));
-  @vk.GetPhysicalDeviceMemoryProperties:=addr(vkGetPhysicalDeviceMemoryProperties);
+  @vk.fCommands.GetPhysicalDeviceMemoryProperties:=addr(vkGetPhysicalDeviceMemoryProperties);
   @vkGetPhysicalDeviceFeatures:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceFeatures')));
-  @vk.GetPhysicalDeviceFeatures:=addr(vkGetPhysicalDeviceFeatures);
+  @vk.fCommands.GetPhysicalDeviceFeatures:=addr(vkGetPhysicalDeviceFeatures);
   @vkGetPhysicalDeviceFormatProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceFormatProperties')));
-  @vk.GetPhysicalDeviceFormatProperties:=addr(vkGetPhysicalDeviceFormatProperties);
+  @vk.fCommands.GetPhysicalDeviceFormatProperties:=addr(vkGetPhysicalDeviceFormatProperties);
   @vkGetPhysicalDeviceImageFormatProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceImageFormatProperties')));
-  @vk.GetPhysicalDeviceImageFormatProperties:=addr(vkGetPhysicalDeviceImageFormatProperties);
+  @vk.fCommands.GetPhysicalDeviceImageFormatProperties:=addr(vkGetPhysicalDeviceImageFormatProperties);
   @vkCreateDevice:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDevice')));
-  @vk.CreateDevice:=addr(vkCreateDevice);
+  @vk.fCommands.CreateDevice:=addr(vkCreateDevice);
   @vkDestroyDevice:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyDevice')));
-  @vk.DestroyDevice:=addr(vkDestroyDevice);
+  @vk.fCommands.DestroyDevice:=addr(vkDestroyDevice);
   @vkEnumerateInstanceLayerProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumerateInstanceLayerProperties')));
-  @vk.EnumerateInstanceLayerProperties:=addr(vkEnumerateInstanceLayerProperties);
+  @vk.fCommands.EnumerateInstanceLayerProperties:=addr(vkEnumerateInstanceLayerProperties);
   @vkEnumerateInstanceExtensionProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumerateInstanceExtensionProperties')));
-  @vk.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
+  @vk.fCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   @vkEnumerateDeviceLayerProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumerateDeviceLayerProperties')));
-  @vk.EnumerateDeviceLayerProperties:=addr(vkEnumerateDeviceLayerProperties);
+  @vk.fCommands.EnumerateDeviceLayerProperties:=addr(vkEnumerateDeviceLayerProperties);
   @vkEnumerateDeviceExtensionProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumerateDeviceExtensionProperties')));
-  @vk.EnumerateDeviceExtensionProperties:=addr(vkEnumerateDeviceExtensionProperties);
+  @vk.fCommands.EnumerateDeviceExtensionProperties:=addr(vkEnumerateDeviceExtensionProperties);
   @vkGetDeviceQueue:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDeviceQueue')));
-  @vk.GetDeviceQueue:=addr(vkGetDeviceQueue);
+  @vk.fCommands.GetDeviceQueue:=addr(vkGetDeviceQueue);
   @vkQueueSubmit:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkQueueSubmit')));
-  @vk.QueueSubmit:=addr(vkQueueSubmit);
+  @vk.fCommands.QueueSubmit:=addr(vkQueueSubmit);
   @vkQueueWaitIdle:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkQueueWaitIdle')));
-  @vk.QueueWaitIdle:=addr(vkQueueWaitIdle);
+  @vk.fCommands.QueueWaitIdle:=addr(vkQueueWaitIdle);
   @vkDeviceWaitIdle:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDeviceWaitIdle')));
-  @vk.DeviceWaitIdle:=addr(vkDeviceWaitIdle);
+  @vk.fCommands.DeviceWaitIdle:=addr(vkDeviceWaitIdle);
   @vkAllocateMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkAllocateMemory')));
-  @vk.AllocateMemory:=addr(vkAllocateMemory);
+  @vk.fCommands.AllocateMemory:=addr(vkAllocateMemory);
   @vkFreeMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkFreeMemory')));
-  @vk.FreeMemory:=addr(vkFreeMemory);
+  @vk.fCommands.FreeMemory:=addr(vkFreeMemory);
   @vkMapMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkMapMemory')));
-  @vk.MapMemory:=addr(vkMapMemory);
+  @vk.fCommands.MapMemory:=addr(vkMapMemory);
   @vkUnmapMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkUnmapMemory')));
-  @vk.UnmapMemory:=addr(vkUnmapMemory);
+  @vk.fCommands.UnmapMemory:=addr(vkUnmapMemory);
   @vkFlushMappedMemoryRanges:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkFlushMappedMemoryRanges')));
-  @vk.FlushMappedMemoryRanges:=addr(vkFlushMappedMemoryRanges);
+  @vk.fCommands.FlushMappedMemoryRanges:=addr(vkFlushMappedMemoryRanges);
   @vkInvalidateMappedMemoryRanges:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkInvalidateMappedMemoryRanges')));
-  @vk.InvalidateMappedMemoryRanges:=addr(vkInvalidateMappedMemoryRanges);
+  @vk.fCommands.InvalidateMappedMemoryRanges:=addr(vkInvalidateMappedMemoryRanges);
   @vkGetDeviceMemoryCommitment:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDeviceMemoryCommitment')));
-  @vk.GetDeviceMemoryCommitment:=addr(vkGetDeviceMemoryCommitment);
+  @vk.fCommands.GetDeviceMemoryCommitment:=addr(vkGetDeviceMemoryCommitment);
   @vkGetBufferMemoryRequirements:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetBufferMemoryRequirements')));
-  @vk.GetBufferMemoryRequirements:=addr(vkGetBufferMemoryRequirements);
+  @vk.fCommands.GetBufferMemoryRequirements:=addr(vkGetBufferMemoryRequirements);
   @vkBindBufferMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkBindBufferMemory')));
-  @vk.BindBufferMemory:=addr(vkBindBufferMemory);
+  @vk.fCommands.BindBufferMemory:=addr(vkBindBufferMemory);
   @vkGetImageMemoryRequirements:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetImageMemoryRequirements')));
-  @vk.GetImageMemoryRequirements:=addr(vkGetImageMemoryRequirements);
+  @vk.fCommands.GetImageMemoryRequirements:=addr(vkGetImageMemoryRequirements);
   @vkBindImageMemory:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkBindImageMemory')));
-  @vk.BindImageMemory:=addr(vkBindImageMemory);
+  @vk.fCommands.BindImageMemory:=addr(vkBindImageMemory);
   @vkGetImageSparseMemoryRequirements:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetImageSparseMemoryRequirements')));
-  @vk.GetImageSparseMemoryRequirements:=addr(vkGetImageSparseMemoryRequirements);
+  @vk.fCommands.GetImageSparseMemoryRequirements:=addr(vkGetImageSparseMemoryRequirements);
   @vkGetPhysicalDeviceSparseImageFormatProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceSparseImageFormatProperties')));
-  @vk.GetPhysicalDeviceSparseImageFormatProperties:=addr(vkGetPhysicalDeviceSparseImageFormatProperties);
+  @vk.fCommands.GetPhysicalDeviceSparseImageFormatProperties:=addr(vkGetPhysicalDeviceSparseImageFormatProperties);
   @vkQueueBindSparse:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkQueueBindSparse')));
-  @vk.QueueBindSparse:=addr(vkQueueBindSparse);
+  @vk.fCommands.QueueBindSparse:=addr(vkQueueBindSparse);
   @vkCreateFence:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateFence')));
-  @vk.CreateFence:=addr(vkCreateFence);
+  @vk.fCommands.CreateFence:=addr(vkCreateFence);
   @vkDestroyFence:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyFence')));
-  @vk.DestroyFence:=addr(vkDestroyFence);
+  @vk.fCommands.DestroyFence:=addr(vkDestroyFence);
   @vkResetFences:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkResetFences')));
-  @vk.ResetFences:=addr(vkResetFences);
+  @vk.fCommands.ResetFences:=addr(vkResetFences);
   @vkGetFenceStatus:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetFenceStatus')));
-  @vk.GetFenceStatus:=addr(vkGetFenceStatus);
+  @vk.fCommands.GetFenceStatus:=addr(vkGetFenceStatus);
   @vkWaitForFences:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkWaitForFences')));
-  @vk.WaitForFences:=addr(vkWaitForFences);
+  @vk.fCommands.WaitForFences:=addr(vkWaitForFences);
   @vkCreateSemaphore:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateSemaphore')));
-  @vk.CreateSemaphore:=addr(vkCreateSemaphore);
+  @vk.fCommands.CreateSemaphore:=addr(vkCreateSemaphore);
   @vkDestroySemaphore:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroySemaphore')));
-  @vk.DestroySemaphore:=addr(vkDestroySemaphore);
+  @vk.fCommands.DestroySemaphore:=addr(vkDestroySemaphore);
   @vkCreateEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateEvent')));
-  @vk.CreateEvent:=addr(vkCreateEvent);
+  @vk.fCommands.CreateEvent:=addr(vkCreateEvent);
   @vkDestroyEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyEvent')));
-  @vk.DestroyEvent:=addr(vkDestroyEvent);
+  @vk.fCommands.DestroyEvent:=addr(vkDestroyEvent);
   @vkGetEventStatus:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetEventStatus')));
-  @vk.GetEventStatus:=addr(vkGetEventStatus);
+  @vk.fCommands.GetEventStatus:=addr(vkGetEventStatus);
   @vkSetEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkSetEvent')));
-  @vk.SetEvent:=addr(vkSetEvent);
+  @vk.fCommands.SetEvent:=addr(vkSetEvent);
   @vkResetEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkResetEvent')));
-  @vk.ResetEvent:=addr(vkResetEvent);
+  @vk.fCommands.ResetEvent:=addr(vkResetEvent);
   @vkCreateQueryPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateQueryPool')));
-  @vk.CreateQueryPool:=addr(vkCreateQueryPool);
+  @vk.fCommands.CreateQueryPool:=addr(vkCreateQueryPool);
   @vkDestroyQueryPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyQueryPool')));
-  @vk.DestroyQueryPool:=addr(vkDestroyQueryPool);
+  @vk.fCommands.DestroyQueryPool:=addr(vkDestroyQueryPool);
   @vkGetQueryPoolResults:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetQueryPoolResults')));
-  @vk.GetQueryPoolResults:=addr(vkGetQueryPoolResults);
+  @vk.fCommands.GetQueryPoolResults:=addr(vkGetQueryPoolResults);
   @vkCreateBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateBuffer')));
-  @vk.CreateBuffer:=addr(vkCreateBuffer);
+  @vk.fCommands.CreateBuffer:=addr(vkCreateBuffer);
   @vkDestroyBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyBuffer')));
-  @vk.DestroyBuffer:=addr(vkDestroyBuffer);
+  @vk.fCommands.DestroyBuffer:=addr(vkDestroyBuffer);
   @vkCreateBufferView:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateBufferView')));
-  @vk.CreateBufferView:=addr(vkCreateBufferView);
+  @vk.fCommands.CreateBufferView:=addr(vkCreateBufferView);
   @vkDestroyBufferView:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyBufferView')));
-  @vk.DestroyBufferView:=addr(vkDestroyBufferView);
+  @vk.fCommands.DestroyBufferView:=addr(vkDestroyBufferView);
   @vkCreateImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateImage')));
-  @vk.CreateImage:=addr(vkCreateImage);
+  @vk.fCommands.CreateImage:=addr(vkCreateImage);
   @vkDestroyImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyImage')));
-  @vk.DestroyImage:=addr(vkDestroyImage);
+  @vk.fCommands.DestroyImage:=addr(vkDestroyImage);
   @vkGetImageSubresourceLayout:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetImageSubresourceLayout')));
-  @vk.GetImageSubresourceLayout:=addr(vkGetImageSubresourceLayout);
+  @vk.fCommands.GetImageSubresourceLayout:=addr(vkGetImageSubresourceLayout);
   @vkCreateImageView:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateImageView')));
-  @vk.CreateImageView:=addr(vkCreateImageView);
+  @vk.fCommands.CreateImageView:=addr(vkCreateImageView);
   @vkDestroyImageView:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyImageView')));
-  @vk.DestroyImageView:=addr(vkDestroyImageView);
+  @vk.fCommands.DestroyImageView:=addr(vkDestroyImageView);
   @vkCreateShaderModule:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateShaderModule')));
-  @vk.CreateShaderModule:=addr(vkCreateShaderModule);
+  @vk.fCommands.CreateShaderModule:=addr(vkCreateShaderModule);
   @vkDestroyShaderModule:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyShaderModule')));
-  @vk.DestroyShaderModule:=addr(vkDestroyShaderModule);
+  @vk.fCommands.DestroyShaderModule:=addr(vkDestroyShaderModule);
   @vkCreatePipelineCache:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreatePipelineCache')));
-  @vk.CreatePipelineCache:=addr(vkCreatePipelineCache);
+  @vk.fCommands.CreatePipelineCache:=addr(vkCreatePipelineCache);
   @vkDestroyPipelineCache:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyPipelineCache')));
-  @vk.DestroyPipelineCache:=addr(vkDestroyPipelineCache);
+  @vk.fCommands.DestroyPipelineCache:=addr(vkDestroyPipelineCache);
   @vkGetPipelineCacheData:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPipelineCacheData')));
-  @vk.GetPipelineCacheData:=addr(vkGetPipelineCacheData);
+  @vk.fCommands.GetPipelineCacheData:=addr(vkGetPipelineCacheData);
   @vkMergePipelineCaches:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkMergePipelineCaches')));
-  @vk.MergePipelineCaches:=addr(vkMergePipelineCaches);
+  @vk.fCommands.MergePipelineCaches:=addr(vkMergePipelineCaches);
   @vkCreateGraphicsPipelines:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateGraphicsPipelines')));
-  @vk.CreateGraphicsPipelines:=addr(vkCreateGraphicsPipelines);
+  @vk.fCommands.CreateGraphicsPipelines:=addr(vkCreateGraphicsPipelines);
   @vkCreateComputePipelines:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateComputePipelines')));
-  @vk.CreateComputePipelines:=addr(vkCreateComputePipelines);
+  @vk.fCommands.CreateComputePipelines:=addr(vkCreateComputePipelines);
   @vkDestroyPipeline:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyPipeline')));
-  @vk.DestroyPipeline:=addr(vkDestroyPipeline);
+  @vk.fCommands.DestroyPipeline:=addr(vkDestroyPipeline);
   @vkCreatePipelineLayout:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreatePipelineLayout')));
-  @vk.CreatePipelineLayout:=addr(vkCreatePipelineLayout);
+  @vk.fCommands.CreatePipelineLayout:=addr(vkCreatePipelineLayout);
   @vkDestroyPipelineLayout:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyPipelineLayout')));
-  @vk.DestroyPipelineLayout:=addr(vkDestroyPipelineLayout);
+  @vk.fCommands.DestroyPipelineLayout:=addr(vkDestroyPipelineLayout);
   @vkCreateSampler:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateSampler')));
-  @vk.CreateSampler:=addr(vkCreateSampler);
+  @vk.fCommands.CreateSampler:=addr(vkCreateSampler);
   @vkDestroySampler:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroySampler')));
-  @vk.DestroySampler:=addr(vkDestroySampler);
+  @vk.fCommands.DestroySampler:=addr(vkDestroySampler);
   @vkCreateDescriptorSetLayout:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDescriptorSetLayout')));
-  @vk.CreateDescriptorSetLayout:=addr(vkCreateDescriptorSetLayout);
+  @vk.fCommands.CreateDescriptorSetLayout:=addr(vkCreateDescriptorSetLayout);
   @vkDestroyDescriptorSetLayout:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyDescriptorSetLayout')));
-  @vk.DestroyDescriptorSetLayout:=addr(vkDestroyDescriptorSetLayout);
+  @vk.fCommands.DestroyDescriptorSetLayout:=addr(vkDestroyDescriptorSetLayout);
   @vkCreateDescriptorPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDescriptorPool')));
-  @vk.CreateDescriptorPool:=addr(vkCreateDescriptorPool);
+  @vk.fCommands.CreateDescriptorPool:=addr(vkCreateDescriptorPool);
   @vkDestroyDescriptorPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyDescriptorPool')));
-  @vk.DestroyDescriptorPool:=addr(vkDestroyDescriptorPool);
+  @vk.fCommands.DestroyDescriptorPool:=addr(vkDestroyDescriptorPool);
   @vkResetDescriptorPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkResetDescriptorPool')));
-  @vk.ResetDescriptorPool:=addr(vkResetDescriptorPool);
+  @vk.fCommands.ResetDescriptorPool:=addr(vkResetDescriptorPool);
   @vkAllocateDescriptorSets:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkAllocateDescriptorSets')));
-  @vk.AllocateDescriptorSets:=addr(vkAllocateDescriptorSets);
+  @vk.fCommands.AllocateDescriptorSets:=addr(vkAllocateDescriptorSets);
   @vkFreeDescriptorSets:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkFreeDescriptorSets')));
-  @vk.FreeDescriptorSets:=addr(vkFreeDescriptorSets);
+  @vk.fCommands.FreeDescriptorSets:=addr(vkFreeDescriptorSets);
   @vkUpdateDescriptorSets:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkUpdateDescriptorSets')));
-  @vk.UpdateDescriptorSets:=addr(vkUpdateDescriptorSets);
+  @vk.fCommands.UpdateDescriptorSets:=addr(vkUpdateDescriptorSets);
   @vkCreateFramebuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateFramebuffer')));
-  @vk.CreateFramebuffer:=addr(vkCreateFramebuffer);
+  @vk.fCommands.CreateFramebuffer:=addr(vkCreateFramebuffer);
   @vkDestroyFramebuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyFramebuffer')));
-  @vk.DestroyFramebuffer:=addr(vkDestroyFramebuffer);
+  @vk.fCommands.DestroyFramebuffer:=addr(vkDestroyFramebuffer);
   @vkCreateRenderPass:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateRenderPass')));
-  @vk.CreateRenderPass:=addr(vkCreateRenderPass);
+  @vk.fCommands.CreateRenderPass:=addr(vkCreateRenderPass);
   @vkDestroyRenderPass:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyRenderPass')));
-  @vk.DestroyRenderPass:=addr(vkDestroyRenderPass);
+  @vk.fCommands.DestroyRenderPass:=addr(vkDestroyRenderPass);
   @vkGetRenderAreaGranularity:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetRenderAreaGranularity')));
-  @vk.GetRenderAreaGranularity:=addr(vkGetRenderAreaGranularity);
+  @vk.fCommands.GetRenderAreaGranularity:=addr(vkGetRenderAreaGranularity);
   @vkCreateCommandPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateCommandPool')));
-  @vk.CreateCommandPool:=addr(vkCreateCommandPool);
+  @vk.fCommands.CreateCommandPool:=addr(vkCreateCommandPool);
   @vkDestroyCommandPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyCommandPool')));
-  @vk.DestroyCommandPool:=addr(vkDestroyCommandPool);
+  @vk.fCommands.DestroyCommandPool:=addr(vkDestroyCommandPool);
   @vkResetCommandPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkResetCommandPool')));
-  @vk.ResetCommandPool:=addr(vkResetCommandPool);
+  @vk.fCommands.ResetCommandPool:=addr(vkResetCommandPool);
   @vkAllocateCommandBuffers:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkAllocateCommandBuffers')));
-  @vk.AllocateCommandBuffers:=addr(vkAllocateCommandBuffers);
+  @vk.fCommands.AllocateCommandBuffers:=addr(vkAllocateCommandBuffers);
   @vkFreeCommandBuffers:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkFreeCommandBuffers')));
-  @vk.FreeCommandBuffers:=addr(vkFreeCommandBuffers);
+  @vk.fCommands.FreeCommandBuffers:=addr(vkFreeCommandBuffers);
   @vkBeginCommandBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkBeginCommandBuffer')));
-  @vk.BeginCommandBuffer:=addr(vkBeginCommandBuffer);
+  @vk.fCommands.BeginCommandBuffer:=addr(vkBeginCommandBuffer);
   @vkEndCommandBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEndCommandBuffer')));
-  @vk.EndCommandBuffer:=addr(vkEndCommandBuffer);
+  @vk.fCommands.EndCommandBuffer:=addr(vkEndCommandBuffer);
   @vkResetCommandBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkResetCommandBuffer')));
-  @vk.ResetCommandBuffer:=addr(vkResetCommandBuffer);
+  @vk.fCommands.ResetCommandBuffer:=addr(vkResetCommandBuffer);
   @vkCmdBindPipeline:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBindPipeline')));
-  @vk.CmdBindPipeline:=addr(vkCmdBindPipeline);
+  @vk.fCommands.CmdBindPipeline:=addr(vkCmdBindPipeline);
   @vkCmdSetViewport:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetViewport')));
-  @vk.CmdSetViewport:=addr(vkCmdSetViewport);
+  @vk.fCommands.CmdSetViewport:=addr(vkCmdSetViewport);
   @vkCmdSetScissor:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetScissor')));
-  @vk.CmdSetScissor:=addr(vkCmdSetScissor);
+  @vk.fCommands.CmdSetScissor:=addr(vkCmdSetScissor);
   @vkCmdSetLineWidth:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetLineWidth')));
-  @vk.CmdSetLineWidth:=addr(vkCmdSetLineWidth);
+  @vk.fCommands.CmdSetLineWidth:=addr(vkCmdSetLineWidth);
   @vkCmdSetDepthBias:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetDepthBias')));
-  @vk.CmdSetDepthBias:=addr(vkCmdSetDepthBias);
+  @vk.fCommands.CmdSetDepthBias:=addr(vkCmdSetDepthBias);
   @vkCmdSetBlendConstants:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetBlendConstants')));
-  @vk.CmdSetBlendConstants:=addr(vkCmdSetBlendConstants);
+  @vk.fCommands.CmdSetBlendConstants:=addr(vkCmdSetBlendConstants);
   @vkCmdSetDepthBounds:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetDepthBounds')));
-  @vk.CmdSetDepthBounds:=addr(vkCmdSetDepthBounds);
+  @vk.fCommands.CmdSetDepthBounds:=addr(vkCmdSetDepthBounds);
   @vkCmdSetStencilCompareMask:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetStencilCompareMask')));
-  @vk.CmdSetStencilCompareMask:=addr(vkCmdSetStencilCompareMask);
+  @vk.fCommands.CmdSetStencilCompareMask:=addr(vkCmdSetStencilCompareMask);
   @vkCmdSetStencilWriteMask:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetStencilWriteMask')));
-  @vk.CmdSetStencilWriteMask:=addr(vkCmdSetStencilWriteMask);
+  @vk.fCommands.CmdSetStencilWriteMask:=addr(vkCmdSetStencilWriteMask);
   @vkCmdSetStencilReference:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetStencilReference')));
-  @vk.CmdSetStencilReference:=addr(vkCmdSetStencilReference);
+  @vk.fCommands.CmdSetStencilReference:=addr(vkCmdSetStencilReference);
   @vkCmdBindDescriptorSets:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBindDescriptorSets')));
-  @vk.CmdBindDescriptorSets:=addr(vkCmdBindDescriptorSets);
+  @vk.fCommands.CmdBindDescriptorSets:=addr(vkCmdBindDescriptorSets);
   @vkCmdBindIndexBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBindIndexBuffer')));
-  @vk.CmdBindIndexBuffer:=addr(vkCmdBindIndexBuffer);
+  @vk.fCommands.CmdBindIndexBuffer:=addr(vkCmdBindIndexBuffer);
   @vkCmdBindVertexBuffers:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBindVertexBuffers')));
-  @vk.CmdBindVertexBuffers:=addr(vkCmdBindVertexBuffers);
+  @vk.fCommands.CmdBindVertexBuffers:=addr(vkCmdBindVertexBuffers);
   @vkCmdDraw:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDraw')));
-  @vk.CmdDraw:=addr(vkCmdDraw);
+  @vk.fCommands.CmdDraw:=addr(vkCmdDraw);
   @vkCmdDrawIndexed:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDrawIndexed')));
-  @vk.CmdDrawIndexed:=addr(vkCmdDrawIndexed);
+  @vk.fCommands.CmdDrawIndexed:=addr(vkCmdDrawIndexed);
   @vkCmdDrawIndirect:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDrawIndirect')));
-  @vk.CmdDrawIndirect:=addr(vkCmdDrawIndirect);
+  @vk.fCommands.CmdDrawIndirect:=addr(vkCmdDrawIndirect);
   @vkCmdDrawIndexedIndirect:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDrawIndexedIndirect')));
-  @vk.CmdDrawIndexedIndirect:=addr(vkCmdDrawIndexedIndirect);
+  @vk.fCommands.CmdDrawIndexedIndirect:=addr(vkCmdDrawIndexedIndirect);
   @vkCmdDispatch:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDispatch')));
-  @vk.CmdDispatch:=addr(vkCmdDispatch);
+  @vk.fCommands.CmdDispatch:=addr(vkCmdDispatch);
   @vkCmdDispatchIndirect:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdDispatchIndirect')));
-  @vk.CmdDispatchIndirect:=addr(vkCmdDispatchIndirect);
+  @vk.fCommands.CmdDispatchIndirect:=addr(vkCmdDispatchIndirect);
   @vkCmdCopyBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdCopyBuffer')));
-  @vk.CmdCopyBuffer:=addr(vkCmdCopyBuffer);
+  @vk.fCommands.CmdCopyBuffer:=addr(vkCmdCopyBuffer);
   @vkCmdCopyImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdCopyImage')));
-  @vk.CmdCopyImage:=addr(vkCmdCopyImage);
+  @vk.fCommands.CmdCopyImage:=addr(vkCmdCopyImage);
   @vkCmdBlitImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBlitImage')));
-  @vk.CmdBlitImage:=addr(vkCmdBlitImage);
+  @vk.fCommands.CmdBlitImage:=addr(vkCmdBlitImage);
   @vkCmdCopyBufferToImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdCopyBufferToImage')));
-  @vk.CmdCopyBufferToImage:=addr(vkCmdCopyBufferToImage);
+  @vk.fCommands.CmdCopyBufferToImage:=addr(vkCmdCopyBufferToImage);
   @vkCmdCopyImageToBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdCopyImageToBuffer')));
-  @vk.CmdCopyImageToBuffer:=addr(vkCmdCopyImageToBuffer);
+  @vk.fCommands.CmdCopyImageToBuffer:=addr(vkCmdCopyImageToBuffer);
   @vkCmdUpdateBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdUpdateBuffer')));
-  @vk.CmdUpdateBuffer:=addr(vkCmdUpdateBuffer);
+  @vk.fCommands.CmdUpdateBuffer:=addr(vkCmdUpdateBuffer);
   @vkCmdFillBuffer:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdFillBuffer')));
-  @vk.CmdFillBuffer:=addr(vkCmdFillBuffer);
+  @vk.fCommands.CmdFillBuffer:=addr(vkCmdFillBuffer);
   @vkCmdClearColorImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdClearColorImage')));
-  @vk.CmdClearColorImage:=addr(vkCmdClearColorImage);
+  @vk.fCommands.CmdClearColorImage:=addr(vkCmdClearColorImage);
   @vkCmdClearDepthStencilImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdClearDepthStencilImage')));
-  @vk.CmdClearDepthStencilImage:=addr(vkCmdClearDepthStencilImage);
+  @vk.fCommands.CmdClearDepthStencilImage:=addr(vkCmdClearDepthStencilImage);
   @vkCmdClearAttachments:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdClearAttachments')));
-  @vk.CmdClearAttachments:=addr(vkCmdClearAttachments);
+  @vk.fCommands.CmdClearAttachments:=addr(vkCmdClearAttachments);
   @vkCmdResolveImage:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdResolveImage')));
-  @vk.CmdResolveImage:=addr(vkCmdResolveImage);
+  @vk.fCommands.CmdResolveImage:=addr(vkCmdResolveImage);
   @vkCmdSetEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdSetEvent')));
-  @vk.CmdSetEvent:=addr(vkCmdSetEvent);
+  @vk.fCommands.CmdSetEvent:=addr(vkCmdSetEvent);
   @vkCmdResetEvent:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdResetEvent')));
-  @vk.CmdResetEvent:=addr(vkCmdResetEvent);
+  @vk.fCommands.CmdResetEvent:=addr(vkCmdResetEvent);
   @vkCmdWaitEvents:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdWaitEvents')));
-  @vk.CmdWaitEvents:=addr(vkCmdWaitEvents);
+  @vk.fCommands.CmdWaitEvents:=addr(vkCmdWaitEvents);
   @vkCmdPipelineBarrier:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdPipelineBarrier')));
-  @vk.CmdPipelineBarrier:=addr(vkCmdPipelineBarrier);
+  @vk.fCommands.CmdPipelineBarrier:=addr(vkCmdPipelineBarrier);
   @vkCmdBeginQuery:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBeginQuery')));
-  @vk.CmdBeginQuery:=addr(vkCmdBeginQuery);
+  @vk.fCommands.CmdBeginQuery:=addr(vkCmdBeginQuery);
   @vkCmdEndQuery:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdEndQuery')));
-  @vk.CmdEndQuery:=addr(vkCmdEndQuery);
+  @vk.fCommands.CmdEndQuery:=addr(vkCmdEndQuery);
   @vkCmdResetQueryPool:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdResetQueryPool')));
-  @vk.CmdResetQueryPool:=addr(vkCmdResetQueryPool);
+  @vk.fCommands.CmdResetQueryPool:=addr(vkCmdResetQueryPool);
   @vkCmdWriteTimestamp:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdWriteTimestamp')));
-  @vk.CmdWriteTimestamp:=addr(vkCmdWriteTimestamp);
+  @vk.fCommands.CmdWriteTimestamp:=addr(vkCmdWriteTimestamp);
   @vkCmdCopyQueryPoolResults:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdCopyQueryPoolResults')));
-  @vk.CmdCopyQueryPoolResults:=addr(vkCmdCopyQueryPoolResults);
+  @vk.fCommands.CmdCopyQueryPoolResults:=addr(vkCmdCopyQueryPoolResults);
   @vkCmdPushConstants:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdPushConstants')));
-  @vk.CmdPushConstants:=addr(vkCmdPushConstants);
+  @vk.fCommands.CmdPushConstants:=addr(vkCmdPushConstants);
   @vkCmdBeginRenderPass:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdBeginRenderPass')));
-  @vk.CmdBeginRenderPass:=addr(vkCmdBeginRenderPass);
+  @vk.fCommands.CmdBeginRenderPass:=addr(vkCmdBeginRenderPass);
   @vkCmdNextSubpass:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdNextSubpass')));
-  @vk.CmdNextSubpass:=addr(vkCmdNextSubpass);
+  @vk.fCommands.CmdNextSubpass:=addr(vkCmdNextSubpass);
   @vkCmdEndRenderPass:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdEndRenderPass')));
-  @vk.CmdEndRenderPass:=addr(vkCmdEndRenderPass);
+  @vk.fCommands.CmdEndRenderPass:=addr(vkCmdEndRenderPass);
   @vkCmdExecuteCommands:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCmdExecuteCommands')));
-  @vk.CmdExecuteCommands:=addr(vkCmdExecuteCommands);
+  @vk.fCommands.CmdExecuteCommands:=addr(vkCmdExecuteCommands);
 {$ifdef Android}
   @vkCreateAndroidSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateAndroidSurfaceKHR')));
-  @vk.CreateAndroidSurfaceKHR:=addr(vkCreateAndroidSurfaceKHR);
+  @vk.fCommands.CreateAndroidSurfaceKHR:=addr(vkCreateAndroidSurfaceKHR);
 {$endif}
   @vkGetPhysicalDeviceDisplayPropertiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceDisplayPropertiesKHR')));
-  @vk.GetPhysicalDeviceDisplayPropertiesKHR:=addr(vkGetPhysicalDeviceDisplayPropertiesKHR);
+  @vk.fCommands.GetPhysicalDeviceDisplayPropertiesKHR:=addr(vkGetPhysicalDeviceDisplayPropertiesKHR);
   @vkGetPhysicalDeviceDisplayPlanePropertiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceDisplayPlanePropertiesKHR')));
-  @vk.GetPhysicalDeviceDisplayPlanePropertiesKHR:=addr(vkGetPhysicalDeviceDisplayPlanePropertiesKHR);
+  @vk.fCommands.GetPhysicalDeviceDisplayPlanePropertiesKHR:=addr(vkGetPhysicalDeviceDisplayPlanePropertiesKHR);
   @vkGetDisplayPlaneSupportedDisplaysKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDisplayPlaneSupportedDisplaysKHR')));
-  @vk.GetDisplayPlaneSupportedDisplaysKHR:=addr(vkGetDisplayPlaneSupportedDisplaysKHR);
+  @vk.fCommands.GetDisplayPlaneSupportedDisplaysKHR:=addr(vkGetDisplayPlaneSupportedDisplaysKHR);
   @vkGetDisplayModePropertiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDisplayModePropertiesKHR')));
-  @vk.GetDisplayModePropertiesKHR:=addr(vkGetDisplayModePropertiesKHR);
+  @vk.fCommands.GetDisplayModePropertiesKHR:=addr(vkGetDisplayModePropertiesKHR);
   @vkCreateDisplayModeKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDisplayModeKHR')));
-  @vk.CreateDisplayModeKHR:=addr(vkCreateDisplayModeKHR);
+  @vk.fCommands.CreateDisplayModeKHR:=addr(vkCreateDisplayModeKHR);
   @vkGetDisplayPlaneCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetDisplayPlaneCapabilitiesKHR')));
-  @vk.GetDisplayPlaneCapabilitiesKHR:=addr(vkGetDisplayPlaneCapabilitiesKHR);
+  @vk.fCommands.GetDisplayPlaneCapabilitiesKHR:=addr(vkGetDisplayPlaneCapabilitiesKHR);
   @vkCreateDisplayPlaneSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDisplayPlaneSurfaceKHR')));
-  @vk.CreateDisplayPlaneSurfaceKHR:=addr(vkCreateDisplayPlaneSurfaceKHR);
+  @vk.fCommands.CreateDisplayPlaneSurfaceKHR:=addr(vkCreateDisplayPlaneSurfaceKHR);
   @vkCreateSharedSwapchainsKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateSharedSwapchainsKHR')));
-  @vk.CreateSharedSwapchainsKHR:=addr(vkCreateSharedSwapchainsKHR);
+  @vk.fCommands.CreateSharedSwapchainsKHR:=addr(vkCreateSharedSwapchainsKHR);
 {$ifdef Mir}
   @vkCreateMirSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateMirSurfaceKHR')));
-  @vk.CreateMirSurfaceKHR:=addr(vkCreateMirSurfaceKHR);
+  @vk.fCommands.CreateMirSurfaceKHR:=addr(vkCreateMirSurfaceKHR);
 {$endif}
 {$ifdef Mir}
   @vkGetPhysicalDeviceMirPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceMirPresentationSupportKHR')));
-  @vk.GetPhysicalDeviceMirPresentationSupportKHR:=addr(vkGetPhysicalDeviceMirPresentationSupportKHR);
+  @vk.fCommands.GetPhysicalDeviceMirPresentationSupportKHR:=addr(vkGetPhysicalDeviceMirPresentationSupportKHR);
 {$endif}
   @vkDestroySurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroySurfaceKHR')));
-  @vk.DestroySurfaceKHR:=addr(vkDestroySurfaceKHR);
+  @vk.fCommands.DestroySurfaceKHR:=addr(vkDestroySurfaceKHR);
   @vkGetPhysicalDeviceSurfaceSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceSurfaceSupportKHR')));
-  @vk.GetPhysicalDeviceSurfaceSupportKHR:=addr(vkGetPhysicalDeviceSurfaceSupportKHR);
+  @vk.fCommands.GetPhysicalDeviceSurfaceSupportKHR:=addr(vkGetPhysicalDeviceSurfaceSupportKHR);
   @vkGetPhysicalDeviceSurfaceCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceSurfaceCapabilitiesKHR')));
-  @vk.GetPhysicalDeviceSurfaceCapabilitiesKHR:=addr(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
+  @vk.fCommands.GetPhysicalDeviceSurfaceCapabilitiesKHR:=addr(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
   @vkGetPhysicalDeviceSurfaceFormatsKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceSurfaceFormatsKHR')));
-  @vk.GetPhysicalDeviceSurfaceFormatsKHR:=addr(vkGetPhysicalDeviceSurfaceFormatsKHR);
+  @vk.fCommands.GetPhysicalDeviceSurfaceFormatsKHR:=addr(vkGetPhysicalDeviceSurfaceFormatsKHR);
   @vkGetPhysicalDeviceSurfacePresentModesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceSurfacePresentModesKHR')));
-  @vk.GetPhysicalDeviceSurfacePresentModesKHR:=addr(vkGetPhysicalDeviceSurfacePresentModesKHR);
+  @vk.fCommands.GetPhysicalDeviceSurfacePresentModesKHR:=addr(vkGetPhysicalDeviceSurfacePresentModesKHR);
   @vkCreateSwapchainKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateSwapchainKHR')));
-  @vk.CreateSwapchainKHR:=addr(vkCreateSwapchainKHR);
+  @vk.fCommands.CreateSwapchainKHR:=addr(vkCreateSwapchainKHR);
   @vkDestroySwapchainKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroySwapchainKHR')));
-  @vk.DestroySwapchainKHR:=addr(vkDestroySwapchainKHR);
+  @vk.fCommands.DestroySwapchainKHR:=addr(vkDestroySwapchainKHR);
   @vkGetSwapchainImagesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetSwapchainImagesKHR')));
-  @vk.GetSwapchainImagesKHR:=addr(vkGetSwapchainImagesKHR);
+  @vk.fCommands.GetSwapchainImagesKHR:=addr(vkGetSwapchainImagesKHR);
   @vkAcquireNextImageKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkAcquireNextImageKHR')));
-  @vk.AcquireNextImageKHR:=addr(vkAcquireNextImageKHR);
+  @vk.fCommands.AcquireNextImageKHR:=addr(vkAcquireNextImageKHR);
   @vkQueuePresentKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkQueuePresentKHR')));
-  @vk.QueuePresentKHR:=addr(vkQueuePresentKHR);
+  @vk.fCommands.QueuePresentKHR:=addr(vkQueuePresentKHR);
 {$ifdef Wayland}
   @vkCreateWaylandSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateWaylandSurfaceKHR')));
-  @vk.CreateWaylandSurfaceKHR:=addr(vkCreateWaylandSurfaceKHR);
+  @vk.fCommands.CreateWaylandSurfaceKHR:=addr(vkCreateWaylandSurfaceKHR);
 {$endif}
 {$ifdef Wayland}
   @vkGetPhysicalDeviceWaylandPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceWaylandPresentationSupportKHR')));
-  @vk.GetPhysicalDeviceWaylandPresentationSupportKHR:=addr(vkGetPhysicalDeviceWaylandPresentationSupportKHR);
+  @vk.fCommands.GetPhysicalDeviceWaylandPresentationSupportKHR:=addr(vkGetPhysicalDeviceWaylandPresentationSupportKHR);
 {$endif}
   @vkCreateWin32SurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateWin32SurfaceKHR')));
-  @vk.CreateWin32SurfaceKHR:=addr(vkCreateWin32SurfaceKHR);
+  @vk.fCommands.CreateWin32SurfaceKHR:=addr(vkCreateWin32SurfaceKHR);
   @vkGetPhysicalDeviceWin32PresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceWin32PresentationSupportKHR')));
-  @vk.GetPhysicalDeviceWin32PresentationSupportKHR:=addr(vkGetPhysicalDeviceWin32PresentationSupportKHR);
+  @vk.fCommands.GetPhysicalDeviceWin32PresentationSupportKHR:=addr(vkGetPhysicalDeviceWin32PresentationSupportKHR);
 {$ifdef X11}
   @vkCreateXlibSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateXlibSurfaceKHR')));
-  @vk.CreateXlibSurfaceKHR:=addr(vkCreateXlibSurfaceKHR);
+  @vk.fCommands.CreateXlibSurfaceKHR:=addr(vkCreateXlibSurfaceKHR);
 {$endif}
 {$ifdef X11}
   @vkGetPhysicalDeviceXlibPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceXlibPresentationSupportKHR')));
-  @vk.GetPhysicalDeviceXlibPresentationSupportKHR:=addr(vkGetPhysicalDeviceXlibPresentationSupportKHR);
+  @vk.fCommands.GetPhysicalDeviceXlibPresentationSupportKHR:=addr(vkGetPhysicalDeviceXlibPresentationSupportKHR);
 {$endif}
 {$ifdef XCB}
   @vkCreateXcbSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateXcbSurfaceKHR')));
-  @vk.CreateXcbSurfaceKHR:=addr(vkCreateXcbSurfaceKHR);
+  @vk.fCommands.CreateXcbSurfaceKHR:=addr(vkCreateXcbSurfaceKHR);
 {$endif}
 {$ifdef XCB}
   @vkGetPhysicalDeviceXcbPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkGetPhysicalDeviceXcbPresentationSupportKHR')));
-  @vk.GetPhysicalDeviceXcbPresentationSupportKHR:=addr(vkGetPhysicalDeviceXcbPresentationSupportKHR);
+  @vk.fCommands.GetPhysicalDeviceXcbPresentationSupportKHR:=addr(vkGetPhysicalDeviceXcbPresentationSupportKHR);
 {$endif}
   @vkCreateDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateDebugReportCallbackEXT')));
-  @vk.CreateDebugReportCallbackEXT:=addr(vkCreateDebugReportCallbackEXT);
+  @vk.fCommands.CreateDebugReportCallbackEXT:=addr(vkCreateDebugReportCallbackEXT);
   @vkDestroyDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDestroyDebugReportCallbackEXT')));
-  @vk.DestroyDebugReportCallbackEXT:=addr(vkDestroyDebugReportCallbackEXT);
+  @vk.fCommands.DestroyDebugReportCallbackEXT:=addr(vkDestroyDebugReportCallbackEXT);
   @vkDebugReportMessageEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkDebugReportMessageEXT')));
-  @vk.DebugReportMessageEXT:=addr(vkDebugReportMessageEXT);
+  @vk.fCommands.DebugReportMessageEXT:=addr(vkDebugReportMessageEXT);
  end;
 end;
 
@@ -5249,10 +5250,16 @@ begin
  end;
 end;
 
+constructor TVulkan.Create;
+begin
+ inherited Create;
+ FillChar(fCommands,SizeOf(TVulkanCommands),#0);
+end;
+
 constructor TVulkan.Create(const AVulkanCommands:TVulkanCommands);
 begin
  inherited Create;
- fVulkanCommands:=AVulkanCommands;
+ fCommands:=AVulkanCommands;
 end;
 
 destructor TVulkan.Destroy;
@@ -5262,871 +5269,872 @@ end;
 
 function TVulkan.CreateInstance(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult;
 begin
- result:=fVulkanCommands.CreateInstance(pCreateInfo,pAllocator,pInstance);
+ result:=fCommands.CreateInstance(pCreateInfo,pAllocator,pInstance);
 end;
 
 procedure TVulkan.DestroyInstance(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyInstance(instance,pAllocator);
+ fCommands.DestroyInstance(instance,pAllocator);
 end;
 
 function TVulkan.EnumeratePhysicalDevices(instance:TVkInstance;pPhysicalDeviceCount:PVkUInt32;pPhysicalDevices:PVkPhysicalDevice):TVkResult;
 begin
- result:=fVulkanCommands.EnumeratePhysicalDevices(instance,pPhysicalDeviceCount,pPhysicalDevices);
+ result:=fCommands.EnumeratePhysicalDevices(instance,pPhysicalDeviceCount,pPhysicalDevices);
 end;
 
 function TVulkan.GetDeviceProcAddr(device:TVkDevice;const pName:PVkChar):TPFN_vkVoidFunction;
 begin
- result:=fVulkanCommands.GetDeviceProcAddr(device,pName);
+ result:=fCommands.GetDeviceProcAddr(device,pName);
 end;
 
 function TVulkan.GetInstanceProcAddr(instance:TVkInstance;const pName:PVkChar):TPFN_vkVoidFunction;
 begin
- result:=fVulkanCommands.GetInstanceProcAddr(instance,pName);
+ result:=fCommands.GetInstanceProcAddr(instance,pName);
 end;
 
 procedure TVulkan.GetPhysicalDeviceProperties(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties);
 begin
- fVulkanCommands.GetPhysicalDeviceProperties(physicalDevice,pProperties);
+ fCommands.GetPhysicalDeviceProperties(physicalDevice,pProperties);
 end;
 
 procedure TVulkan.GetPhysicalDeviceQueueFamilyProperties(physicalDevice:TVkPhysicalDevice;pQueueFamilyPropertyCount:PVkUInt32;pQueueFamilyProperties:PVkQueueFamilyProperties);
 begin
- fVulkanCommands.GetPhysicalDeviceQueueFamilyProperties(physicalDevice,pQueueFamilyPropertyCount,pQueueFamilyProperties);
+ fCommands.GetPhysicalDeviceQueueFamilyProperties(physicalDevice,pQueueFamilyPropertyCount,pQueueFamilyProperties);
 end;
 
 procedure TVulkan.GetPhysicalDeviceMemoryProperties(physicalDevice:TVkPhysicalDevice;pMemoryProperties:PVkPhysicalDeviceMemoryProperties);
 begin
- fVulkanCommands.GetPhysicalDeviceMemoryProperties(physicalDevice,pMemoryProperties);
+ fCommands.GetPhysicalDeviceMemoryProperties(physicalDevice,pMemoryProperties);
 end;
 
 procedure TVulkan.GetPhysicalDeviceFeatures(physicalDevice:TVkPhysicalDevice;pFeatures:PVkPhysicalDeviceFeatures);
 begin
- fVulkanCommands.GetPhysicalDeviceFeatures(physicalDevice,pFeatures);
+ fCommands.GetPhysicalDeviceFeatures(physicalDevice,pFeatures);
 end;
 
 procedure TVulkan.GetPhysicalDeviceFormatProperties(physicalDevice:TVkPhysicalDevice;format:TVkFormat;pFormatProperties:PVkFormatProperties);
 begin
- fVulkanCommands.GetPhysicalDeviceFormatProperties(physicalDevice,format,pFormatProperties);
+ fCommands.GetPhysicalDeviceFormatProperties(physicalDevice,format,pFormatProperties);
 end;
 
 function TVulkan.GetPhysicalDeviceImageFormatProperties(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;pImageFormatProperties:PVkImageFormatProperties):TVkResult;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceImageFormatProperties(physicalDevice,format,type_,tiling,usage,flags,pImageFormatProperties);
+ result:=fCommands.GetPhysicalDeviceImageFormatProperties(physicalDevice,format,type_,tiling,usage,flags,pImageFormatProperties);
 end;
 
 function TVulkan.CreateDevice(physicalDevice:TVkPhysicalDevice;const pCreateInfo:PVkDeviceCreateInfo;const pAllocator:PVkAllocationCallbacks;pDevice:PVkDevice):TVkResult;
 begin
- result:=fVulkanCommands.CreateDevice(physicalDevice,pCreateInfo,pAllocator,pDevice);
+ result:=fCommands.CreateDevice(physicalDevice,pCreateInfo,pAllocator,pDevice);
 end;
 
 procedure TVulkan.DestroyDevice(device:TVkDevice;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyDevice(device,pAllocator);
+ fCommands.DestroyDevice(device,pAllocator);
 end;
 
 function TVulkan.EnumerateInstanceLayerProperties(pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult;
 begin
- result:=fVulkanCommands.EnumerateInstanceLayerProperties(pPropertyCount,pProperties);
+ result:=fCommands.EnumerateInstanceLayerProperties(pPropertyCount,pProperties);
 end;
 
 function TVulkan.EnumerateInstanceExtensionProperties(const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult;
 begin
- result:=fVulkanCommands.EnumerateInstanceExtensionProperties(pLayerName,pPropertyCount,pProperties);
+ result:=fCommands.EnumerateInstanceExtensionProperties(pLayerName,pPropertyCount,pProperties);
 end;
 
 function TVulkan.EnumerateDeviceLayerProperties(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult;
 begin
- result:=fVulkanCommands.EnumerateDeviceLayerProperties(physicalDevice,pPropertyCount,pProperties);
+ result:=fCommands.EnumerateDeviceLayerProperties(physicalDevice,pPropertyCount,pProperties);
 end;
 
 function TVulkan.EnumerateDeviceExtensionProperties(physicalDevice:TVkPhysicalDevice;const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult;
 begin
- result:=fVulkanCommands.EnumerateDeviceExtensionProperties(physicalDevice,pLayerName,pPropertyCount,pProperties);
+ result:=fCommands.EnumerateDeviceExtensionProperties(physicalDevice,pLayerName,pPropertyCount,pProperties);
 end;
 
 procedure TVulkan.GetDeviceQueue(device:TVkDevice;queueFamilyIndex:TVkUInt32;queueIndex:TVkUInt32;pQueue:PVkQueue);
 begin
- fVulkanCommands.GetDeviceQueue(device,queueFamilyIndex,queueIndex,pQueue);
+ fCommands.GetDeviceQueue(device,queueFamilyIndex,queueIndex,pQueue);
 end;
 
 function TVulkan.QueueSubmit(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;fence:TVkFence):TVkResult;
 begin
- result:=fVulkanCommands.QueueSubmit(queue,submitCount,pSubmits,fence);
+ result:=fCommands.QueueSubmit(queue,submitCount,pSubmits,fence);
 end;
 
 function TVulkan.QueueWaitIdle(queue:TVkQueue):TVkResult;
 begin
- result:=fVulkanCommands.QueueWaitIdle(queue);
+ result:=fCommands.QueueWaitIdle(queue);
 end;
 
 function TVulkan.DeviceWaitIdle(device:TVkDevice):TVkResult;
 begin
- result:=fVulkanCommands.DeviceWaitIdle(device);
+ result:=fCommands.DeviceWaitIdle(device);
 end;
 
 function TVulkan.AllocateMemory(device:TVkDevice;const pAllocateInfo:PVkMemoryAllocateInfo;const pAllocator:PVkAllocationCallbacks;pMemory:PVkDeviceMemory):TVkResult;
 begin
- result:=fVulkanCommands.AllocateMemory(device,pAllocateInfo,pAllocator,pMemory);
+ result:=fCommands.AllocateMemory(device,pAllocateInfo,pAllocator,pMemory);
 end;
 
 procedure TVulkan.FreeMemory(device:TVkDevice;memory:TVkDeviceMemory;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.FreeMemory(device,memory,pAllocator);
+ fCommands.FreeMemory(device,memory,pAllocator);
 end;
 
 function TVulkan.MapMemory(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:TVkPointer):TVkResult;
 begin
- result:=fVulkanCommands.MapMemory(device,memory,offset,size,flags,ppData);
+ result:=fCommands.MapMemory(device,memory,offset,size,flags,ppData);
 end;
 
 procedure TVulkan.UnmapMemory(device:TVkDevice;memory:TVkDeviceMemory);
 begin
- fVulkanCommands.UnmapMemory(device,memory);
+ fCommands.UnmapMemory(device,memory);
 end;
 
 function TVulkan.FlushMappedMemoryRanges(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult;
 begin
- result:=fVulkanCommands.FlushMappedMemoryRanges(device,memoryRangeCount,pMemoryRanges);
+ result:=fCommands.FlushMappedMemoryRanges(device,memoryRangeCount,pMemoryRanges);
 end;
 
 function TVulkan.InvalidateMappedMemoryRanges(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult;
 begin
- result:=fVulkanCommands.InvalidateMappedMemoryRanges(device,memoryRangeCount,pMemoryRanges);
+ result:=fCommands.InvalidateMappedMemoryRanges(device,memoryRangeCount,pMemoryRanges);
 end;
 
 procedure TVulkan.GetDeviceMemoryCommitment(device:TVkDevice;memory:TVkDeviceMemory;pCommittedMemoryInBytes:PVkDeviceSize);
 begin
- fVulkanCommands.GetDeviceMemoryCommitment(device,memory,pCommittedMemoryInBytes);
+ fCommands.GetDeviceMemoryCommitment(device,memory,pCommittedMemoryInBytes);
 end;
 
 procedure TVulkan.GetBufferMemoryRequirements(device:TVkDevice;buffer:TVkBuffer;pMemoryRequirements:PVkMemoryRequirements);
 begin
- fVulkanCommands.GetBufferMemoryRequirements(device,buffer,pMemoryRequirements);
+ fCommands.GetBufferMemoryRequirements(device,buffer,pMemoryRequirements);
 end;
 
 function TVulkan.BindBufferMemory(device:TVkDevice;buffer:TVkBuffer;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult;
 begin
- result:=fVulkanCommands.BindBufferMemory(device,buffer,memory,memoryOffset);
+ result:=fCommands.BindBufferMemory(device,buffer,memory,memoryOffset);
 end;
 
 procedure TVulkan.GetImageMemoryRequirements(device:TVkDevice;image:TVkImage;pMemoryRequirements:PVkMemoryRequirements);
 begin
- fVulkanCommands.GetImageMemoryRequirements(device,image,pMemoryRequirements);
+ fCommands.GetImageMemoryRequirements(device,image,pMemoryRequirements);
 end;
 
 function TVulkan.BindImageMemory(device:TVkDevice;image:TVkImage;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult;
 begin
- result:=fVulkanCommands.BindImageMemory(device,image,memory,memoryOffset);
+ result:=fCommands.BindImageMemory(device,image,memory,memoryOffset);
 end;
 
 procedure TVulkan.GetImageSparseMemoryRequirements(device:TVkDevice;image:TVkImage;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements);
 begin
- fVulkanCommands.GetImageSparseMemoryRequirements(device,image,pSparseMemoryRequirementCount,pSparseMemoryRequirements);
+ fCommands.GetImageSparseMemoryRequirements(device,image,pSparseMemoryRequirementCount,pSparseMemoryRequirements);
 end;
 
 procedure TVulkan.GetPhysicalDeviceSparseImageFormatProperties(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;samples:TVkSampleCountFlagBits;usage:TVkImageUsageFlags;tiling:TVkImageTiling;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties);
 begin
- fVulkanCommands.GetPhysicalDeviceSparseImageFormatProperties(physicalDevice,format,type_,samples,usage,tiling,pPropertyCount,pProperties);
+ fCommands.GetPhysicalDeviceSparseImageFormatProperties(physicalDevice,format,type_,samples,usage,tiling,pPropertyCount,pProperties);
 end;
 
 function TVulkan.QueueBindSparse(queue:TVkQueue;bindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;fence:TVkFence):TVkResult;
 begin
- result:=fVulkanCommands.QueueBindSparse(queue,bindInfoCount,pBindInfo,fence);
+ result:=fCommands.QueueBindSparse(queue,bindInfoCount,pBindInfo,fence);
 end;
 
 function TVulkan.CreateFence(device:TVkDevice;const pCreateInfo:PVkFenceCreateInfo;const pAllocator:PVkAllocationCallbacks;pFence:PVkFence):TVkResult;
 begin
- result:=fVulkanCommands.CreateFence(device,pCreateInfo,pAllocator,pFence);
+ result:=fCommands.CreateFence(device,pCreateInfo,pAllocator,pFence);
 end;
 
 procedure TVulkan.DestroyFence(device:TVkDevice;fence:TVkFence;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyFence(device,fence,pAllocator);
+ fCommands.DestroyFence(device,fence,pAllocator);
 end;
 
 function TVulkan.ResetFences(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence):TVkResult;
 begin
- result:=fVulkanCommands.ResetFences(device,fenceCount,pFences);
+ result:=fCommands.ResetFences(device,fenceCount,pFences);
 end;
 
 function TVulkan.GetFenceStatus(device:TVkDevice;fence:TVkFence):TVkResult;
 begin
- result:=fVulkanCommands.GetFenceStatus(device,fence);
+ result:=fCommands.GetFenceStatus(device,fence);
 end;
 
 function TVulkan.WaitForFences(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence;waitAll:TVkBool32;timeout:TVkUInt64):TVkResult;
 begin
- result:=fVulkanCommands.WaitForFences(device,fenceCount,pFences,waitAll,timeout);
+ result:=fCommands.WaitForFences(device,fenceCount,pFences,waitAll,timeout);
 end;
 
 function TVulkan.CreateSemaphore(device:TVkDevice;const pCreateInfo:PVkSemaphoreCreateInfo;const pAllocator:PVkAllocationCallbacks;pSemaphore:PVkSemaphore):TVkResult;
 begin
- result:=fVulkanCommands.CreateSemaphore(device,pCreateInfo,pAllocator,pSemaphore);
+ result:=fCommands.CreateSemaphore(device,pCreateInfo,pAllocator,pSemaphore);
 end;
 
 procedure TVulkan.DestroySemaphore(device:TVkDevice;semaphore:TVkSemaphore;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroySemaphore(device,semaphore,pAllocator);
+ fCommands.DestroySemaphore(device,semaphore,pAllocator);
 end;
 
 function TVulkan.CreateEvent(device:TVkDevice;const pCreateInfo:PVkEventCreateInfo;const pAllocator:PVkAllocationCallbacks;pEvent:PVkEvent):TVkResult;
 begin
- result:=fVulkanCommands.CreateEvent(device,pCreateInfo,pAllocator,pEvent);
+ result:=fCommands.CreateEvent(device,pCreateInfo,pAllocator,pEvent);
 end;
 
 procedure TVulkan.DestroyEvent(device:TVkDevice;event:TVkEvent;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyEvent(device,event,pAllocator);
+ fCommands.DestroyEvent(device,event,pAllocator);
 end;
 
 function TVulkan.GetEventStatus(device:TVkDevice;event:TVkEvent):TVkResult;
 begin
- result:=fVulkanCommands.GetEventStatus(device,event);
+ result:=fCommands.GetEventStatus(device,event);
 end;
 
 function TVulkan.SetEvent(device:TVkDevice;event:TVkEvent):TVkResult;
 begin
- result:=fVulkanCommands.SetEvent(device,event);
+ result:=fCommands.SetEvent(device,event);
 end;
 
 function TVulkan.ResetEvent(device:TVkDevice;event:TVkEvent):TVkResult;
 begin
- result:=fVulkanCommands.ResetEvent(device,event);
+ result:=fCommands.ResetEvent(device,event);
 end;
 
 function TVulkan.CreateQueryPool(device:TVkDevice;const pCreateInfo:PVkQueryPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pQueryPool:PVkQueryPool):TVkResult;
 begin
- result:=fVulkanCommands.CreateQueryPool(device,pCreateInfo,pAllocator,pQueryPool);
+ result:=fCommands.CreateQueryPool(device,pCreateInfo,pAllocator,pQueryPool);
 end;
 
 procedure TVulkan.DestroyQueryPool(device:TVkDevice;queryPool:TVkQueryPool;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyQueryPool(device,queryPool,pAllocator);
+ fCommands.DestroyQueryPool(device,queryPool,pAllocator);
 end;
 
 function TVulkan.GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:TVkPointer;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult;
 begin
- result:=fVulkanCommands.GetQueryPoolResults(device,queryPool,firstQuery,queryCount,dataSize,pData,stride,flags);
+ result:=fCommands.GetQueryPoolResults(device,queryPool,firstQuery,queryCount,dataSize,pData,stride,flags);
 end;
 
 function TVulkan.CreateBuffer(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult;
 begin
- result:=fVulkanCommands.CreateBuffer(device,pCreateInfo,pAllocator,pBuffer);
+ result:=fCommands.CreateBuffer(device,pCreateInfo,pAllocator,pBuffer);
 end;
 
 procedure TVulkan.DestroyBuffer(device:TVkDevice;buffer:TVkBuffer;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyBuffer(device,buffer,pAllocator);
+ fCommands.DestroyBuffer(device,buffer,pAllocator);
 end;
 
 function TVulkan.CreateBufferView(device:TVkDevice;const pCreateInfo:PVkBufferViewCreateInfo;const pAllocator:PVkAllocationCallbacks;pView:PVkBufferView):TVkResult;
 begin
- result:=fVulkanCommands.CreateBufferView(device,pCreateInfo,pAllocator,pView);
+ result:=fCommands.CreateBufferView(device,pCreateInfo,pAllocator,pView);
 end;
 
 procedure TVulkan.DestroyBufferView(device:TVkDevice;bufferView:TVkBufferView;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyBufferView(device,bufferView,pAllocator);
+ fCommands.DestroyBufferView(device,bufferView,pAllocator);
 end;
 
 function TVulkan.CreateImage(device:TVkDevice;const pCreateInfo:PVkImageCreateInfo;const pAllocator:PVkAllocationCallbacks;pImage:PVkImage):TVkResult;
 begin
- result:=fVulkanCommands.CreateImage(device,pCreateInfo,pAllocator,pImage);
+ result:=fCommands.CreateImage(device,pCreateInfo,pAllocator,pImage);
 end;
 
 procedure TVulkan.DestroyImage(device:TVkDevice;image:TVkImage;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyImage(device,image,pAllocator);
+ fCommands.DestroyImage(device,image,pAllocator);
 end;
 
 procedure TVulkan.GetImageSubresourceLayout(device:TVkDevice;image:TVkImage;const pSubresource:PVkImageSubresource;pLayout:PVkSubresourceLayout);
 begin
- fVulkanCommands.GetImageSubresourceLayout(device,image,pSubresource,pLayout);
+ fCommands.GetImageSubresourceLayout(device,image,pSubresource,pLayout);
 end;
 
 function TVulkan.CreateImageView(device:TVkDevice;const pCreateInfo:PVkImageViewCreateInfo;const pAllocator:PVkAllocationCallbacks;pView:PVkImageView):TVkResult;
 begin
- result:=fVulkanCommands.CreateImageView(device,pCreateInfo,pAllocator,pView);
+ result:=fCommands.CreateImageView(device,pCreateInfo,pAllocator,pView);
 end;
 
 procedure TVulkan.DestroyImageView(device:TVkDevice;imageView:TVkImageView;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyImageView(device,imageView,pAllocator);
+ fCommands.DestroyImageView(device,imageView,pAllocator);
 end;
 
 function TVulkan.CreateShaderModule(device:TVkDevice;const pCreateInfo:PVkShaderModuleCreateInfo;const pAllocator:PVkAllocationCallbacks;pShaderModule:PVkShaderModule):TVkResult;
 begin
- result:=fVulkanCommands.CreateShaderModule(device,pCreateInfo,pAllocator,pShaderModule);
+ result:=fCommands.CreateShaderModule(device,pCreateInfo,pAllocator,pShaderModule);
 end;
 
 procedure TVulkan.DestroyShaderModule(device:TVkDevice;shaderModule:TVkShaderModule;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyShaderModule(device,shaderModule,pAllocator);
+ fCommands.DestroyShaderModule(device,shaderModule,pAllocator);
 end;
 
 function TVulkan.CreatePipelineCache(device:TVkDevice;const pCreateInfo:PVkPipelineCacheCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelineCache:PVkPipelineCache):TVkResult;
 begin
- result:=fVulkanCommands.CreatePipelineCache(device,pCreateInfo,pAllocator,pPipelineCache);
+ result:=fCommands.CreatePipelineCache(device,pCreateInfo,pAllocator,pPipelineCache);
 end;
 
 procedure TVulkan.DestroyPipelineCache(device:TVkDevice;pipelineCache:TVkPipelineCache;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyPipelineCache(device,pipelineCache,pAllocator);
+ fCommands.DestroyPipelineCache(device,pipelineCache,pAllocator);
 end;
 
 function TVulkan.GetPipelineCacheData(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:TVkPointer):TVkResult;
 begin
- result:=fVulkanCommands.GetPipelineCacheData(device,pipelineCache,pDataSize,pData);
+ result:=fCommands.GetPipelineCacheData(device,pipelineCache,pDataSize,pData);
 end;
 
 function TVulkan.MergePipelineCaches(device:TVkDevice;dstCache:TVkPipelineCache;srcCacheCount:TVkUInt32;const pSrcCaches:PVkPipelineCache):TVkResult;
 begin
- result:=fVulkanCommands.MergePipelineCaches(device,dstCache,srcCacheCount,pSrcCaches);
+ result:=fCommands.MergePipelineCaches(device,dstCache,srcCacheCount,pSrcCaches);
 end;
 
 function TVulkan.CreateGraphicsPipelines(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkGraphicsPipelineCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult;
 begin
- result:=fVulkanCommands.CreateGraphicsPipelines(device,pipelineCache,createInfoCount,pCreateInfos,pAllocator,pPipelines);
+ result:=fCommands.CreateGraphicsPipelines(device,pipelineCache,createInfoCount,pCreateInfos,pAllocator,pPipelines);
 end;
 
 function TVulkan.CreateComputePipelines(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkComputePipelineCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult;
 begin
- result:=fVulkanCommands.CreateComputePipelines(device,pipelineCache,createInfoCount,pCreateInfos,pAllocator,pPipelines);
+ result:=fCommands.CreateComputePipelines(device,pipelineCache,createInfoCount,pCreateInfos,pAllocator,pPipelines);
 end;
 
 procedure TVulkan.DestroyPipeline(device:TVkDevice;pipeline:TVkPipeline;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyPipeline(device,pipeline,pAllocator);
+ fCommands.DestroyPipeline(device,pipeline,pAllocator);
 end;
 
 function TVulkan.CreatePipelineLayout(device:TVkDevice;const pCreateInfo:PVkPipelineLayoutCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelineLayout:PVkPipelineLayout):TVkResult;
 begin
- result:=fVulkanCommands.CreatePipelineLayout(device,pCreateInfo,pAllocator,pPipelineLayout);
+ result:=fCommands.CreatePipelineLayout(device,pCreateInfo,pAllocator,pPipelineLayout);
 end;
 
 procedure TVulkan.DestroyPipelineLayout(device:TVkDevice;pipelineLayout:TVkPipelineLayout;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyPipelineLayout(device,pipelineLayout,pAllocator);
+ fCommands.DestroyPipelineLayout(device,pipelineLayout,pAllocator);
 end;
 
 function TVulkan.CreateSampler(device:TVkDevice;const pCreateInfo:PVkSamplerCreateInfo;const pAllocator:PVkAllocationCallbacks;pSampler:PVkSampler):TVkResult;
 begin
- result:=fVulkanCommands.CreateSampler(device,pCreateInfo,pAllocator,pSampler);
+ result:=fCommands.CreateSampler(device,pCreateInfo,pAllocator,pSampler);
 end;
 
 procedure TVulkan.DestroySampler(device:TVkDevice;sampler:TVkSampler;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroySampler(device,sampler,pAllocator);
+ fCommands.DestroySampler(device,sampler,pAllocator);
 end;
 
 function TVulkan.CreateDescriptorSetLayout(device:TVkDevice;const pCreateInfo:PVkDescriptorSetLayoutCreateInfo;const pAllocator:PVkAllocationCallbacks;pSetLayout:PVkDescriptorSetLayout):TVkResult;
 begin
- result:=fVulkanCommands.CreateDescriptorSetLayout(device,pCreateInfo,pAllocator,pSetLayout);
+ result:=fCommands.CreateDescriptorSetLayout(device,pCreateInfo,pAllocator,pSetLayout);
 end;
 
 procedure TVulkan.DestroyDescriptorSetLayout(device:TVkDevice;descriptorSetLayout:TVkDescriptorSetLayout;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyDescriptorSetLayout(device,descriptorSetLayout,pAllocator);
+ fCommands.DestroyDescriptorSetLayout(device,descriptorSetLayout,pAllocator);
 end;
 
 function TVulkan.CreateDescriptorPool(device:TVkDevice;const pCreateInfo:PVkDescriptorPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pDescriptorPool:PVkDescriptorPool):TVkResult;
 begin
- result:=fVulkanCommands.CreateDescriptorPool(device,pCreateInfo,pAllocator,pDescriptorPool);
+ result:=fCommands.CreateDescriptorPool(device,pCreateInfo,pAllocator,pDescriptorPool);
 end;
 
 procedure TVulkan.DestroyDescriptorPool(device:TVkDevice;descriptorPool:TVkDescriptorPool;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyDescriptorPool(device,descriptorPool,pAllocator);
+ fCommands.DestroyDescriptorPool(device,descriptorPool,pAllocator);
 end;
 
 function TVulkan.ResetDescriptorPool(device:TVkDevice;descriptorPool:TVkDescriptorPool;flags:TVkDescriptorPoolResetFlags):TVkResult;
 begin
- result:=fVulkanCommands.ResetDescriptorPool(device,descriptorPool,flags);
+ result:=fCommands.ResetDescriptorPool(device,descriptorPool,flags);
 end;
 
 function TVulkan.AllocateDescriptorSets(device:TVkDevice;const pAllocateInfo:PVkDescriptorSetAllocateInfo;pDescriptorSets:PVkDescriptorSet):TVkResult;
 begin
- result:=fVulkanCommands.AllocateDescriptorSets(device,pAllocateInfo,pDescriptorSets);
+ result:=fCommands.AllocateDescriptorSets(device,pAllocateInfo,pDescriptorSets);
 end;
 
 function TVulkan.FreeDescriptorSets(device:TVkDevice;descriptorPool:TVkDescriptorPool;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet):TVkResult;
 begin
- result:=fVulkanCommands.FreeDescriptorSets(device,descriptorPool,descriptorSetCount,pDescriptorSets);
+ result:=fCommands.FreeDescriptorSets(device,descriptorPool,descriptorSetCount,pDescriptorSets);
 end;
 
 procedure TVulkan.UpdateDescriptorSets(device:TVkDevice;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet;descriptorCopyCount:TVkUInt32;const pDescriptorCopies:PVkCopyDescriptorSet);
 begin
- fVulkanCommands.UpdateDescriptorSets(device,descriptorWriteCount,pDescriptorWrites,descriptorCopyCount,pDescriptorCopies);
+ fCommands.UpdateDescriptorSets(device,descriptorWriteCount,pDescriptorWrites,descriptorCopyCount,pDescriptorCopies);
 end;
 
 function TVulkan.CreateFramebuffer(device:TVkDevice;const pCreateInfo:PVkFramebufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pFramebuffer:PVkFramebuffer):TVkResult;
 begin
- result:=fVulkanCommands.CreateFramebuffer(device,pCreateInfo,pAllocator,pFramebuffer);
+ result:=fCommands.CreateFramebuffer(device,pCreateInfo,pAllocator,pFramebuffer);
 end;
 
 procedure TVulkan.DestroyFramebuffer(device:TVkDevice;framebuffer:TVkFramebuffer;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyFramebuffer(device,framebuffer,pAllocator);
+ fCommands.DestroyFramebuffer(device,framebuffer,pAllocator);
 end;
 
 function TVulkan.CreateRenderPass(device:TVkDevice;const pCreateInfo:PVkRenderPassCreateInfo;const pAllocator:PVkAllocationCallbacks;pRenderPass:PVkRenderPass):TVkResult;
 begin
- result:=fVulkanCommands.CreateRenderPass(device,pCreateInfo,pAllocator,pRenderPass);
+ result:=fCommands.CreateRenderPass(device,pCreateInfo,pAllocator,pRenderPass);
 end;
 
 procedure TVulkan.DestroyRenderPass(device:TVkDevice;renderPass:TVkRenderPass;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyRenderPass(device,renderPass,pAllocator);
+ fCommands.DestroyRenderPass(device,renderPass,pAllocator);
 end;
 
 procedure TVulkan.GetRenderAreaGranularity(device:TVkDevice;renderPass:TVkRenderPass;pGranularity:PVkExtent2D);
 begin
- fVulkanCommands.GetRenderAreaGranularity(device,renderPass,pGranularity);
+ fCommands.GetRenderAreaGranularity(device,renderPass,pGranularity);
 end;
 
 function TVulkan.CreateCommandPool(device:TVkDevice;const pCreateInfo:PVkCommandPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pCommandPool:PVkCommandPool):TVkResult;
 begin
- result:=fVulkanCommands.CreateCommandPool(device,pCreateInfo,pAllocator,pCommandPool);
+ result:=fCommands.CreateCommandPool(device,pCreateInfo,pAllocator,pCommandPool);
 end;
 
 procedure TVulkan.DestroyCommandPool(device:TVkDevice;commandPool:TVkCommandPool;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyCommandPool(device,commandPool,pAllocator);
+ fCommands.DestroyCommandPool(device,commandPool,pAllocator);
 end;
 
 function TVulkan.ResetCommandPool(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolResetFlags):TVkResult;
 begin
- result:=fVulkanCommands.ResetCommandPool(device,commandPool,flags);
+ result:=fCommands.ResetCommandPool(device,commandPool,flags);
 end;
 
 function TVulkan.AllocateCommandBuffers(device:TVkDevice;const pAllocateInfo:PVkCommandBufferAllocateInfo;pCommandBuffers:PVkCommandBuffer):TVkResult;
 begin
- result:=fVulkanCommands.AllocateCommandBuffers(device,pAllocateInfo,pCommandBuffers);
+ result:=fCommands.AllocateCommandBuffers(device,pAllocateInfo,pCommandBuffers);
 end;
 
 procedure TVulkan.FreeCommandBuffers(device:TVkDevice;commandPool:TVkCommandPool;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer);
 begin
- fVulkanCommands.FreeCommandBuffers(device,commandPool,commandBufferCount,pCommandBuffers);
+ fCommands.FreeCommandBuffers(device,commandPool,commandBufferCount,pCommandBuffers);
 end;
 
 function TVulkan.BeginCommandBuffer(commandBuffer:TVkCommandBuffer;const pBeginInfo:PVkCommandBufferBeginInfo):TVkResult;
 begin
- result:=fVulkanCommands.BeginCommandBuffer(commandBuffer,pBeginInfo);
+ result:=fCommands.BeginCommandBuffer(commandBuffer,pBeginInfo);
 end;
 
 function TVulkan.EndCommandBuffer(commandBuffer:TVkCommandBuffer):TVkResult;
 begin
- result:=fVulkanCommands.EndCommandBuffer(commandBuffer);
+ result:=fCommands.EndCommandBuffer(commandBuffer);
 end;
 
 function TVulkan.ResetCommandBuffer(commandBuffer:TVkCommandBuffer;flags:TVkCommandBufferResetFlags):TVkResult;
 begin
- result:=fVulkanCommands.ResetCommandBuffer(commandBuffer,flags);
+ result:=fCommands.ResetCommandBuffer(commandBuffer,flags);
 end;
 
 procedure TVulkan.CmdBindPipeline(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline);
 begin
- fVulkanCommands.CmdBindPipeline(commandBuffer,pipelineBindPoint,pipeline);
+ fCommands.CmdBindPipeline(commandBuffer,pipelineBindPoint,pipeline);
 end;
 
 procedure TVulkan.CmdSetViewport(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewports:PVkViewport);
 begin
- fVulkanCommands.CmdSetViewport(commandBuffer,firstViewport,viewportCount,pViewports);
+ fCommands.CmdSetViewport(commandBuffer,firstViewport,viewportCount,pViewports);
 end;
 
 procedure TVulkan.CmdSetScissor(commandBuffer:TVkCommandBuffer;firstScissor:TVkUInt32;scissorCount:TVkUInt32;const pScissors:PVkRect2D);
 begin
- fVulkanCommands.CmdSetScissor(commandBuffer,firstScissor,scissorCount,pScissors);
+ fCommands.CmdSetScissor(commandBuffer,firstScissor,scissorCount,pScissors);
 end;
 
 procedure TVulkan.CmdSetLineWidth(commandBuffer:TVkCommandBuffer;lineWidth:TVkFloat);
 begin
- fVulkanCommands.CmdSetLineWidth(commandBuffer,lineWidth);
+ fCommands.CmdSetLineWidth(commandBuffer,lineWidth);
 end;
 
 procedure TVulkan.CmdSetDepthBias(commandBuffer:TVkCommandBuffer;depthBiasConstantFactor:TVkFloat;depthBiasClamp:TVkFloat;depthBiasSlopeFactor:TVkFloat);
 begin
- fVulkanCommands.CmdSetDepthBias(commandBuffer,depthBiasConstantFactor,depthBiasClamp,depthBiasSlopeFactor);
+ fCommands.CmdSetDepthBias(commandBuffer,depthBiasConstantFactor,depthBiasClamp,depthBiasSlopeFactor);
 end;
 
 procedure TVulkan.CmdSetBlendConstants(commandBuffer:TVkCommandBuffer;const blendConstants:TVkFloat);
 begin
- fVulkanCommands.CmdSetBlendConstants(commandBuffer,blendConstants);
+ fCommands.CmdSetBlendConstants(commandBuffer,blendConstants);
 end;
 
 procedure TVulkan.CmdSetDepthBounds(commandBuffer:TVkCommandBuffer;minDepthBounds:TVkFloat;maxDepthBounds:TVkFloat);
 begin
- fVulkanCommands.CmdSetDepthBounds(commandBuffer,minDepthBounds,maxDepthBounds);
+ fCommands.CmdSetDepthBounds(commandBuffer,minDepthBounds,maxDepthBounds);
 end;
 
 procedure TVulkan.CmdSetStencilCompareMask(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;compareMask:TVkUInt32);
 begin
- fVulkanCommands.CmdSetStencilCompareMask(commandBuffer,faceMask,compareMask);
+ fCommands.CmdSetStencilCompareMask(commandBuffer,faceMask,compareMask);
 end;
 
 procedure TVulkan.CmdSetStencilWriteMask(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;writeMask:TVkUInt32);
 begin
- fVulkanCommands.CmdSetStencilWriteMask(commandBuffer,faceMask,writeMask);
+ fCommands.CmdSetStencilWriteMask(commandBuffer,faceMask,writeMask);
 end;
 
 procedure TVulkan.CmdSetStencilReference(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;reference:TVkUInt32);
 begin
- fVulkanCommands.CmdSetStencilReference(commandBuffer,faceMask,reference);
+ fCommands.CmdSetStencilReference(commandBuffer,faceMask,reference);
 end;
 
 procedure TVulkan.CmdBindDescriptorSets(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const pDynamicOffsets:PVkUInt32);
 begin
- fVulkanCommands.CmdBindDescriptorSets(commandBuffer,pipelineBindPoint,layout,firstSet,descriptorSetCount,pDescriptorSets,dynamicOffsetCount,pDynamicOffsets);
+ fCommands.CmdBindDescriptorSets(commandBuffer,pipelineBindPoint,layout,firstSet,descriptorSetCount,pDescriptorSets,dynamicOffsetCount,pDynamicOffsets);
 end;
 
 procedure TVulkan.CmdBindIndexBuffer(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;indexType:TVkIndexType);
 begin
- fVulkanCommands.CmdBindIndexBuffer(commandBuffer,buffer,offset,indexType);
+ fCommands.CmdBindIndexBuffer(commandBuffer,buffer,offset,indexType);
 end;
 
 procedure TVulkan.CmdBindVertexBuffers(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize);
 begin
- fVulkanCommands.CmdBindVertexBuffers(commandBuffer,firstBinding,bindingCount,pBuffers,pOffsets);
+ fCommands.CmdBindVertexBuffers(commandBuffer,firstBinding,bindingCount,pBuffers,pOffsets);
 end;
 
 procedure TVulkan.CmdDraw(commandBuffer:TVkCommandBuffer;vertexCount:TVkUInt32;instanceCount:TVkUInt32;firstVertex:TVkUInt32;firstInstance:TVkUInt32);
 begin
- fVulkanCommands.CmdDraw(commandBuffer,vertexCount,instanceCount,firstVertex,firstInstance);
+ fCommands.CmdDraw(commandBuffer,vertexCount,instanceCount,firstVertex,firstInstance);
 end;
 
 procedure TVulkan.CmdDrawIndexed(commandBuffer:TVkCommandBuffer;indexCount:TVkUInt32;instanceCount:TVkUInt32;firstIndex:TVkUInt32;vertexOffset:TVkInt32;firstInstance:TVkUInt32);
 begin
- fVulkanCommands.CmdDrawIndexed(commandBuffer,indexCount,instanceCount,firstIndex,vertexOffset,firstInstance);
+ fCommands.CmdDrawIndexed(commandBuffer,indexCount,instanceCount,firstIndex,vertexOffset,firstInstance);
 end;
 
 procedure TVulkan.CmdDrawIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32);
 begin
- fVulkanCommands.CmdDrawIndirect(commandBuffer,buffer,offset,drawCount,stride);
+ fCommands.CmdDrawIndirect(commandBuffer,buffer,offset,drawCount,stride);
 end;
 
 procedure TVulkan.CmdDrawIndexedIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32);
 begin
- fVulkanCommands.CmdDrawIndexedIndirect(commandBuffer,buffer,offset,drawCount,stride);
+ fCommands.CmdDrawIndexedIndirect(commandBuffer,buffer,offset,drawCount,stride);
 end;
 
 procedure TVulkan.CmdDispatch(commandBuffer:TVkCommandBuffer;x:TVkUInt32;y:TVkUInt32;z:TVkUInt32);
 begin
- fVulkanCommands.CmdDispatch(commandBuffer,x,y,z);
+ fCommands.CmdDispatch(commandBuffer,x,y,z);
 end;
 
 procedure TVulkan.CmdDispatchIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize);
 begin
- fVulkanCommands.CmdDispatchIndirect(commandBuffer,buffer,offset);
+ fCommands.CmdDispatchIndirect(commandBuffer,buffer,offset);
 end;
 
 procedure TVulkan.CmdCopyBuffer(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferCopy);
 begin
- fVulkanCommands.CmdCopyBuffer(commandBuffer,srcBuffer,dstBuffer,regionCount,pRegions);
+ fCommands.CmdCopyBuffer(commandBuffer,srcBuffer,dstBuffer,regionCount,pRegions);
 end;
 
 procedure TVulkan.CmdCopyImage(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageCopy);
 begin
- fVulkanCommands.CmdCopyImage(commandBuffer,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,pRegions);
+ fCommands.CmdCopyImage(commandBuffer,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,pRegions);
 end;
 
 procedure TVulkan.CmdBlitImage(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageBlit;filter:TVkFilter);
 begin
- fVulkanCommands.CmdBlitImage(commandBuffer,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,pRegions,filter);
+ fCommands.CmdBlitImage(commandBuffer,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,pRegions,filter);
 end;
 
 procedure TVulkan.CmdCopyBufferToImage(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy);
 begin
- fVulkanCommands.CmdCopyBufferToImage(commandBuffer,srcBuffer,dstImage,dstImageLayout,regionCount,pRegions);
+ fCommands.CmdCopyBufferToImage(commandBuffer,srcBuffer,dstImage,dstImageLayout,regionCount,pRegions);
 end;
 
 procedure TVulkan.CmdCopyImageToBuffer(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy);
 begin
- fVulkanCommands.CmdCopyImageToBuffer(commandBuffer,srcImage,srcImageLayout,dstBuffer,regionCount,pRegions);
+ fCommands.CmdCopyImageToBuffer(commandBuffer,srcImage,srcImageLayout,dstBuffer,regionCount,pRegions);
 end;
 
 procedure TVulkan.CmdUpdateBuffer(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkUInt32);
 begin
- fVulkanCommands.CmdUpdateBuffer(commandBuffer,dstBuffer,dstOffset,dataSize,pData);
+ fCommands.CmdUpdateBuffer(commandBuffer,dstBuffer,dstOffset,dataSize,pData);
 end;
 
 procedure TVulkan.CmdFillBuffer(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TVkUInt32);
 begin
- fVulkanCommands.CmdFillBuffer(commandBuffer,dstBuffer,dstOffset,size,data);
+ fCommands.CmdFillBuffer(commandBuffer,dstBuffer,dstOffset,size,data);
 end;
 
 procedure TVulkan.CmdClearColorImage(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pColor:PVkClearColorValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange);
 begin
- fVulkanCommands.CmdClearColorImage(commandBuffer,image,imageLayout,pColor,rangeCount,pRanges);
+ fCommands.CmdClearColorImage(commandBuffer,image,imageLayout,pColor,rangeCount,pRanges);
 end;
 
 procedure TVulkan.CmdClearDepthStencilImage(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange);
 begin
- fVulkanCommands.CmdClearDepthStencilImage(commandBuffer,image,imageLayout,pDepthStencil,rangeCount,pRanges);
+ fCommands.CmdClearDepthStencilImage(commandBuffer,image,imageLayout,pDepthStencil,rangeCount,pRanges);
 end;
 
 procedure TVulkan.CmdClearAttachments(commandBuffer:TVkCommandBuffer;attachmentCount:TVkUInt32;const pAttachments:PVkClearAttachment;rectCount:TVkUInt32;const pRects:PVkClearRect);
 begin
- fVulkanCommands.CmdClearAttachments(commandBuffer,attachmentCount,pAttachments,rectCount,pRects);
+ fCommands.CmdClearAttachments(commandBuffer,attachmentCount,pAttachments,rectCount,pRects);
 end;
 
 procedure TVulkan.CmdResolveImage(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageResolve);
 begin
- fVulkanCommands.CmdResolveImage(commandBuffer,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,pRegions);
+ fCommands.CmdResolveImage(commandBuffer,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,pRegions);
 end;
 
 procedure TVulkan.CmdSetEvent(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags);
 begin
- fVulkanCommands.CmdSetEvent(commandBuffer,event,stageMask);
+ fCommands.CmdSetEvent(commandBuffer,event,stageMask);
 end;
 
 procedure TVulkan.CmdResetEvent(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags);
 begin
- fVulkanCommands.CmdResetEvent(commandBuffer,event,stageMask);
+ fCommands.CmdResetEvent(commandBuffer,event,stageMask);
 end;
 
 procedure TVulkan.CmdWaitEvents(commandBuffer:TVkCommandBuffer;eventCount:TVkUInt32;const pEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier);
 begin
- fVulkanCommands.CmdWaitEvents(commandBuffer,eventCount,pEvents,srcStageMask,dstStageMask,memoryBarrierCount,pMemoryBarriers,bufferMemoryBarrierCount,pBufferMemoryBarriers,imageMemoryBarrierCount,pImageMemoryBarriers);
+ fCommands.CmdWaitEvents(commandBuffer,eventCount,pEvents,srcStageMask,dstStageMask,memoryBarrierCount,pMemoryBarriers,bufferMemoryBarrierCount,pBufferMemoryBarriers,imageMemoryBarrierCount,pImageMemoryBarriers);
 end;
 
 procedure TVulkan.CmdPipelineBarrier(commandBuffer:TVkCommandBuffer;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier);
 begin
- fVulkanCommands.CmdPipelineBarrier(commandBuffer,srcStageMask,dstStageMask,dependencyFlags,memoryBarrierCount,pMemoryBarriers,bufferMemoryBarrierCount,pBufferMemoryBarriers,imageMemoryBarrierCount,pImageMemoryBarriers);
+ fCommands.CmdPipelineBarrier(commandBuffer,srcStageMask,dstStageMask,dependencyFlags,memoryBarrierCount,pMemoryBarriers,bufferMemoryBarrierCount,pBufferMemoryBarriers,imageMemoryBarrierCount,pImageMemoryBarriers);
 end;
 
 procedure TVulkan.CmdBeginQuery(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags);
 begin
- fVulkanCommands.CmdBeginQuery(commandBuffer,queryPool,query,flags);
+ fCommands.CmdBeginQuery(commandBuffer,queryPool,query,flags);
 end;
 
 procedure TVulkan.CmdEndQuery(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32);
 begin
- fVulkanCommands.CmdEndQuery(commandBuffer,queryPool,query);
+ fCommands.CmdEndQuery(commandBuffer,queryPool,query);
 end;
 
 procedure TVulkan.CmdResetQueryPool(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32);
 begin
- fVulkanCommands.CmdResetQueryPool(commandBuffer,queryPool,firstQuery,queryCount);
+ fCommands.CmdResetQueryPool(commandBuffer,queryPool,firstQuery,queryCount);
 end;
 
 procedure TVulkan.CmdWriteTimestamp(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;queryPool:TVkQueryPool;query:TVkUInt32);
 begin
- fVulkanCommands.CmdWriteTimestamp(commandBuffer,pipelineStage,queryPool,query);
+ fCommands.CmdWriteTimestamp(commandBuffer,pipelineStage,queryPool,query);
 end;
 
 procedure TVulkan.CmdCopyQueryPoolResults(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags);
 begin
- fVulkanCommands.CmdCopyQueryPoolResults(commandBuffer,queryPool,firstQuery,queryCount,dstBuffer,dstOffset,stride,flags);
+ fCommands.CmdCopyQueryPoolResults(commandBuffer,queryPool,firstQuery,queryCount,dstBuffer,dstOffset,stride,flags);
 end;
 
 procedure TVulkan.CmdPushConstants(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:TVkPointer);
 begin
- fVulkanCommands.CmdPushConstants(commandBuffer,layout,stageFlags,offset,size,pValues);
+ fCommands.CmdPushConstants(commandBuffer,layout,stageFlags,offset,size,pValues);
 end;
 
 procedure TVulkan.CmdBeginRenderPass(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents);
 begin
- fVulkanCommands.CmdBeginRenderPass(commandBuffer,pRenderPassBegin,contents);
+ fCommands.CmdBeginRenderPass(commandBuffer,pRenderPassBegin,contents);
 end;
 
 procedure TVulkan.CmdNextSubpass(commandBuffer:TVkCommandBuffer;contents:TVkSubpassContents);
 begin
- fVulkanCommands.CmdNextSubpass(commandBuffer,contents);
+ fCommands.CmdNextSubpass(commandBuffer,contents);
 end;
 
 procedure TVulkan.CmdEndRenderPass(commandBuffer:TVkCommandBuffer);
 begin
- fVulkanCommands.CmdEndRenderPass(commandBuffer);
+ fCommands.CmdEndRenderPass(commandBuffer);
 end;
 
 procedure TVulkan.CmdExecuteCommands(commandBuffer:TVkCommandBuffer;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer);
 begin
- fVulkanCommands.CmdExecuteCommands(commandBuffer,commandBufferCount,pCommandBuffers);
+ fCommands.CmdExecuteCommands(commandBuffer,commandBufferCount,pCommandBuffers);
 end;
 
 {$ifdef Android}
 function TVulkan.CreateAndroidSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkAndroidSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
- result:=fVulkanCommands.CreateAndroidSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
+ result:=fCommands.CreateAndroidSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
 end;
 {$endif}
 
 function TVulkan.GetPhysicalDeviceDisplayPropertiesKHR(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPropertiesKHR):TVkResult;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceDisplayPropertiesKHR(physicalDevice,pPropertyCount,pProperties);
+ result:=fCommands.GetPhysicalDeviceDisplayPropertiesKHR(physicalDevice,pPropertyCount,pProperties);
 end;
 
 function TVulkan.GetPhysicalDeviceDisplayPlanePropertiesKHR(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPlanePropertiesKHR):TVkResult;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceDisplayPlanePropertiesKHR(physicalDevice,pPropertyCount,pProperties);
+ result:=fCommands.GetPhysicalDeviceDisplayPlanePropertiesKHR(physicalDevice,pPropertyCount,pProperties);
 end;
 
 function TVulkan.GetDisplayPlaneSupportedDisplaysKHR(physicalDevice:TVkPhysicalDevice;planeIndex:TVkUInt32;pDisplayCount:PVkUInt32;pDisplays:PVkDisplayKHR):TVkResult;
 begin
- result:=fVulkanCommands.GetDisplayPlaneSupportedDisplaysKHR(physicalDevice,planeIndex,pDisplayCount,pDisplays);
+ result:=fCommands.GetDisplayPlaneSupportedDisplaysKHR(physicalDevice,planeIndex,pDisplayCount,pDisplays);
 end;
 
 function TVulkan.GetDisplayModePropertiesKHR(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;pPropertyCount:PVkUInt32;pProperties:PVkDisplayModePropertiesKHR):TVkResult;
 begin
- result:=fVulkanCommands.GetDisplayModePropertiesKHR(physicalDevice,display,pPropertyCount,pProperties);
+ result:=fCommands.GetDisplayModePropertiesKHR(physicalDevice,display,pPropertyCount,pProperties);
 end;
 
 function TVulkan.CreateDisplayModeKHR(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;const pCreateInfo:PVkDisplayModeCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pMode:PVkDisplayModeKHR):TVkResult;
 begin
- result:=fVulkanCommands.CreateDisplayModeKHR(physicalDevice,display,pCreateInfo,pAllocator,pMode);
+ result:=fCommands.CreateDisplayModeKHR(physicalDevice,display,pCreateInfo,pAllocator,pMode);
 end;
 
 function TVulkan.GetDisplayPlaneCapabilitiesKHR(physicalDevice:TVkPhysicalDevice;mode:TVkDisplayModeKHR;planeIndex:TVkUInt32;pCapabilities:PVkDisplayPlaneCapabilitiesKHR):TVkResult;
 begin
- result:=fVulkanCommands.GetDisplayPlaneCapabilitiesKHR(physicalDevice,mode,planeIndex,pCapabilities);
+ result:=fCommands.GetDisplayPlaneCapabilitiesKHR(physicalDevice,mode,planeIndex,pCapabilities);
 end;
 
 function TVulkan.CreateDisplayPlaneSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkDisplaySurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
- result:=fVulkanCommands.CreateDisplayPlaneSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
+ result:=fCommands.CreateDisplayPlaneSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
 end;
 
 function TVulkan.CreateSharedSwapchainsKHR(device:TVkDevice;swapchainCount:TVkUInt32;const pCreateInfos:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchains:PVkSwapchainKHR):TVkResult;
 begin
- result:=fVulkanCommands.CreateSharedSwapchainsKHR(device,swapchainCount,pCreateInfos,pAllocator,pSwapchains);
+ result:=fCommands.CreateSharedSwapchainsKHR(device,swapchainCount,pCreateInfos,pAllocator,pSwapchains);
 end;
 
 {$ifdef Mir}
 function TVulkan.CreateMirSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkMirSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
- result:=fVulkanCommands.CreateMirSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
+ result:=fCommands.CreateMirSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
 end;
 {$endif}
 
 {$ifdef Mir}
 function TVulkan.GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PMirConnection):TVkBool32;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice,queueFamilyIndex,connection);
+ result:=fCommands.GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice,queueFamilyIndex,connection);
 end;
 {$endif}
 
 procedure TVulkan.DestroySurfaceKHR(instance:TVkInstance;surface:TVkSurfaceKHR;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroySurfaceKHR(instance,surface,pAllocator);
+ fCommands.DestroySurfaceKHR(instance,surface,pAllocator);
 end;
 
 function TVulkan.GetPhysicalDeviceSurfaceSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;surface:TVkSurfaceKHR;pSupported:PVkBool32):TVkResult;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceSurfaceSupportKHR(physicalDevice,queueFamilyIndex,surface,pSupported);
+ result:=fCommands.GetPhysicalDeviceSurfaceSupportKHR(physicalDevice,queueFamilyIndex,surface,pSupported);
 end;
 
 function TVulkan.GetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceCapabilities:PVkSurfaceCapabilitiesKHR):TVkResult;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice,surface,pSurfaceCapabilities);
+ result:=fCommands.GetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice,surface,pSurfaceCapabilities);
 end;
 
 function TVulkan.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormatKHR):TVkResult;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice,surface,pSurfaceFormatCount,pSurfaceFormats);
+ result:=fCommands.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice,surface,pSurfaceFormatCount,pSurfaceFormats);
 end;
 
 function TVulkan.GetPhysicalDeviceSurfacePresentModesKHR(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pPresentModeCount:PVkUInt32;pPresentModes:PVkPresentModeKHR):TVkResult;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceSurfacePresentModesKHR(physicalDevice,surface,pPresentModeCount,pPresentModes);
+ result:=fCommands.GetPhysicalDeviceSurfacePresentModesKHR(physicalDevice,surface,pPresentModeCount,pPresentModes);
 end;
 
 function TVulkan.CreateSwapchainKHR(device:TVkDevice;const pCreateInfo:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchain:PVkSwapchainKHR):TVkResult;
 begin
- result:=fVulkanCommands.CreateSwapchainKHR(device,pCreateInfo,pAllocator,pSwapchain);
+ result:=fCommands.CreateSwapchainKHR(device,pCreateInfo,pAllocator,pSwapchain);
 end;
 
 procedure TVulkan.DestroySwapchainKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroySwapchainKHR(device,swapchain,pAllocator);
+ fCommands.DestroySwapchainKHR(device,swapchain,pAllocator);
 end;
 
 function TVulkan.GetSwapchainImagesKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainImageCount:PVkUInt32;pSwapchainImages:PVkImage):TVkResult;
 begin
- result:=fVulkanCommands.GetSwapchainImagesKHR(device,swapchain,pSwapchainImageCount,pSwapchainImages);
+ result:=fCommands.GetSwapchainImagesKHR(device,swapchain,pSwapchainImageCount,pSwapchainImages);
 end;
 
 function TVulkan.AcquireNextImageKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;timeout:TVkUInt64;semaphore:TVkSemaphore;fence:TVkFence;pImageIndex:PVkUInt32):TVkResult;
 begin
- result:=fVulkanCommands.AcquireNextImageKHR(device,swapchain,timeout,semaphore,fence,pImageIndex);
+ result:=fCommands.AcquireNextImageKHR(device,swapchain,timeout,semaphore,fence,pImageIndex);
 end;
 
 function TVulkan.QueuePresentKHR(queue:TVkQueue;const pPresentInfo:PVkPresentInfoKHR):TVkResult;
 begin
- result:=fVulkanCommands.QueuePresentKHR(queue,pPresentInfo);
+ result:=fCommands.QueuePresentKHR(queue,pPresentInfo);
 end;
 
 {$ifdef Wayland}
 function TVulkan.CreateWaylandSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkWaylandSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
- result:=fVulkanCommands.CreateWaylandSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
+ result:=fCommands.CreateWaylandSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
 end;
 {$endif}
 
 {$ifdef Wayland}
 function TVulkan.GetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:Pwl_display):TVkBool32;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice,queueFamilyIndex,display);
+ result:=fCommands.GetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice,queueFamilyIndex,display);
 end;
 {$endif}
 
 function TVulkan.CreateWin32SurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkWin32SurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
- result:=fVulkanCommands.CreateWin32SurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
+ result:=fCommands.CreateWin32SurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
 end;
 
 function TVulkan.GetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32):TVkBool32;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice,queueFamilyIndex);
+ result:=fCommands.GetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice,queueFamilyIndex);
 end;
 
 {$ifdef X11}
 function TVulkan.CreateXlibSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkXlibSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
- result:=fVulkanCommands.CreateXlibSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
+ result:=fCommands.CreateXlibSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
 end;
 {$endif}
 
 {$ifdef X11}
 function TVulkan.GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PDisplay;visualID:TVisualID):TVkBool32;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice,queueFamilyIndex,dpy,visualID);
+ result:=fCommands.GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice,queueFamilyIndex,dpy,visualID);
 end;
 {$endif}
 
 {$ifdef XCB}
 function TVulkan.CreateXcbSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkXcbSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
- result:=fVulkanCommands.CreateXcbSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
+ result:=fCommands.CreateXcbSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
 end;
 {$endif}
 
 {$ifdef XCB}
 function TVulkan.GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:Pxcb_connection;visual_id:Txcb_visualid):TVkBool32;
 begin
- result:=fVulkanCommands.GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice,queueFamilyIndex,connection,visual_id);
+ result:=fCommands.GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice,queueFamilyIndex,connection,visual_id);
 end;
 {$endif}
 
 function TVulkan.CreateDebugReportCallbackEXT(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult;
 begin
- result:=fVulkanCommands.CreateDebugReportCallbackEXT(instance,pCreateInfo,pAllocator,pCallback);
+ result:=fCommands.CreateDebugReportCallbackEXT(instance,pCreateInfo,pAllocator,pCallback);
 end;
 
 procedure TVulkan.DestroyDebugReportCallbackEXT(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks);
 begin
- fVulkanCommands.DestroyDebugReportCallbackEXT(instance,callback,pAllocator);
+ fCommands.DestroyDebugReportCallbackEXT(instance,callback,pAllocator);
 end;
 
 procedure TVulkan.DebugReportMessageEXT(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar);
 begin
- fVulkanCommands.DebugReportMessageEXT(instance,flags,objectType,object_,location,messageCode,pLayerPrefix,pMessage);
+ fCommands.DebugReportMessageEXT(instance,flags,objectType,object_,location,messageCode,pLayerPrefix,pMessage);
 end;
 
 initialization
- FillChar(vk,SizeOf(TVulkanCommands),#0);
+ vk:=TVulkan.Create;
 finalization
  if assigned(LibVulkan) then begin
   vkFreeLibrary(LibVulkan);
  end;
+ vk.Free;
 end.
