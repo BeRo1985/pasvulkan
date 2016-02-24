@@ -149,6 +149,9 @@ begin
        writeln('VulkanInstance.EnumeratePhysicalDevices had failed . . .');
       end;
 
+      VulkanInstance.DestroyInstance(inst,nil);
+      writeln('VulkanInstance.DestroyInstance was successfully . . .');
+
      finally
       VulkanInstance.Free;
      end;
