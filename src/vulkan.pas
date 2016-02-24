@@ -2094,9 +2094,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       flags:TVkInstanceCreateFlags;
       pApplicationInfo:PVkApplicationInfo;
       enabledLayerCount:TVkUInt32;
-      ppEnabledLayerNames:PVkChar;
+      ppEnabledLayerNames:PPVkChar;
       enabledExtensionCount:TVkUInt32;
-      ppEnabledExtensionNames:PVkChar;
+      ppEnabledExtensionNames:PPVkChar;
      end;
 
      PPVkQueueFamilyProperties=^PVkQueueFamilyProperties;
@@ -2997,9 +2997,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       queueCreateInfoCount:TVkUInt32;
       pQueueCreateInfos:PVkDeviceQueueCreateInfo;
       enabledLayerCount:TVkUInt32;
-      ppEnabledLayerNames:PVkChar;
+      ppEnabledLayerNames:PPVkChar;
       enabledExtensionCount:TVkUInt32;
-      ppEnabledExtensionNames:PVkChar;
+      ppEnabledExtensionNames:PPVkChar;
       pEnabledFeatures:PVkPhysicalDeviceFeatures;
      end;
 
@@ -3445,7 +3445,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkDeviceWaitIdle=function(device:TVkDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
      TvkAllocateMemory=function(device:TVkDevice;const pAllocateInfo:PVkMemoryAllocateInfo;const pAllocator:PVkAllocationCallbacks;pMemory:PVkDeviceMemory):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
      TvkFreeMemory=procedure(device:TVkDevice;memory:TVkDeviceMemory;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
-     TvkMapMemory=function(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:TVkPointer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
+     TvkMapMemory=function(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PVkPointer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
      TvkUnmapMemory=procedure(device:TVkDevice;memory:TVkDeviceMemory); {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
      TvkFlushMappedMemoryRanges=function(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
      TvkInvalidateMappedMemoryRanges=function(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}
@@ -3832,7 +3832,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function DeviceWaitIdle(device:TVkDevice):TVkResult; virtual;
        function AllocateMemory(device:TVkDevice;const pAllocateInfo:PVkMemoryAllocateInfo;const pAllocator:PVkAllocationCallbacks;pMemory:PVkDeviceMemory):TVkResult; virtual;
        procedure FreeMemory(device:TVkDevice;memory:TVkDeviceMemory;const pAllocator:PVkAllocationCallbacks); virtual;
-       function MapMemory(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:TVkPointer):TVkResult; virtual;
+       function MapMemory(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PVkPointer):TVkResult; virtual;
        procedure UnmapMemory(device:TVkDevice;memory:TVkDeviceMemory); virtual;
        function FlushMappedMemoryRanges(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; virtual;
        function InvalidateMappedMemoryRanges(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; virtual;
@@ -5113,7 +5113,7 @@ begin
  fCommands.FreeMemory(device,memory,pAllocator);
 end;
 
-function TVulkan.MapMemory(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:TVkPointer):TVkResult;
+function TVulkan.MapMemory(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PVkPointer):TVkResult;
 begin
  result:=fCommands.MapMemory(device,memory,offset,size,flags,ppData);
 end;

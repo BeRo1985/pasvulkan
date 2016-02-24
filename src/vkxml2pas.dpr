@@ -2844,127 +2844,191 @@ var Comment:ansistring;
     AllCommandClassImplementations:TStringList;
     VersionMajor,VersionMinor,VersionPatch:longint;
 
-function TranslateType(Type_:ansistring;const Ptr:boolean):ansistring;
+function TranslateType(Type_:ansistring;const Ptr:longint=0):ansistring;
 begin
- if Ptr then begin
-  if Type_='void' then begin
-   result:='TVkPointer';
-  end else if Type_='char' then begin
-   result:='PVkChar';
-  end else if Type_='float' then begin
-   result:='PVkFloat';
-  end else if Type_='double' then begin
-   result:='PVkDouble';
-  end else if Type_='int8_t' then begin
-   result:='PVkInt8';
-  end else if Type_='uint8_t' then begin
-   result:='PVkUInt8';
-  end else if Type_='int16_t' then begin
-   result:='PVkInt16';
-  end else if Type_='uint16_t' then begin
-   result:='PVkUInt16';
-  end else if Type_='int32_t' then begin
-   result:='PVkInt32';
-  end else if Type_='uint32_t' then begin
-   result:='PVkUInt32';
-  end else if Type_='int64_t' then begin
-   result:='PVkInt64';
-  end else if Type_='uint64_t' then begin
-   result:='PVkUInt64';
-  end else if Type_='size_t' then begin
-   result:='PVkPtrInt';
-  end else if Type_='VK_DEFINE_HANDLE' then begin
-   result:='PVkDispatchableHandle';
-  end else if Type_='VK_DEFINE_NON_DISPATCHABLE_HANDLE' then begin
-   result:='PVkNonDispatchableHandle';
-  end else if Type_='HINSTANCE' then begin
-   result:='PVkHINSTANCE';
-  end else if Type_='HWND' then begin
-   result:='PVkHWND';
-  end else if Type_='Display' then begin
-   result:='PDisplay';
-  end else if Type_='VisualID' then begin
-   result:='PVisualID';
-  end else if Type_='Window' then begin
-   result:='PWindow';
-  end else if Type_='xcb_connection_t' then begin
-   result:='Pxcb_connection';
-  end else if Type_='xcb_visualid_t' then begin
-   result:='Pxcb_visualid';
-  end else if Type_='xcb_window_t' then begin
-   result:='Pxcb_window';
-  end else if Type_='wl_display' then begin
-   result:='Pwl_display';
-  end else if Type_='wl_surface' then begin
-   result:='Pwl_surface';
-  end else if Type_='MirConnection' then begin
-   result:='PMirConnection';
-  end else if Type_='MirSurface' then begin
-   result:='PMirSurface';
-  end else if Type_='ANativeWindow' then begin
-   result:='PANativeWindow';
-  end else begin
-   result:='P'+Type_;
+ case Ptr of
+  1:begin
+   if Type_='void' then begin
+    result:='TVkPointer';
+   end else if Type_='char' then begin
+    result:='PVkChar';
+   end else if Type_='float' then begin
+    result:='PVkFloat';
+   end else if Type_='double' then begin
+    result:='PVkDouble';
+   end else if Type_='int8_t' then begin
+    result:='PVkInt8';
+   end else if Type_='uint8_t' then begin
+    result:='PVkUInt8';
+   end else if Type_='int16_t' then begin
+    result:='PVkInt16';
+   end else if Type_='uint16_t' then begin
+    result:='PVkUInt16';
+   end else if Type_='int32_t' then begin
+    result:='PVkInt32';
+   end else if Type_='uint32_t' then begin
+    result:='PVkUInt32';
+   end else if Type_='int64_t' then begin
+    result:='PVkInt64';
+   end else if Type_='uint64_t' then begin
+    result:='PVkUInt64';
+   end else if Type_='size_t' then begin
+    result:='PVkPtrInt';
+   end else if Type_='VK_DEFINE_HANDLE' then begin
+    result:='PVkDispatchableHandle';
+   end else if Type_='VK_DEFINE_NON_DISPATCHABLE_HANDLE' then begin
+    result:='PVkNonDispatchableHandle';
+   end else if Type_='HINSTANCE' then begin
+    result:='PVkHINSTANCE';
+   end else if Type_='HWND' then begin
+    result:='PVkHWND';
+   end else if Type_='Display' then begin
+    result:='PDisplay';
+   end else if Type_='VisualID' then begin
+    result:='PVisualID';
+   end else if Type_='Window' then begin
+    result:='PWindow';
+   end else if Type_='xcb_connection_t' then begin
+    result:='Pxcb_connection';
+   end else if Type_='xcb_visualid_t' then begin
+    result:='Pxcb_visualid';
+   end else if Type_='xcb_window_t' then begin
+    result:='Pxcb_window';
+   end else if Type_='wl_display' then begin
+    result:='Pwl_display';
+   end else if Type_='wl_surface' then begin
+    result:='Pwl_surface';
+   end else if Type_='MirConnection' then begin
+    result:='PMirConnection';
+   end else if Type_='MirSurface' then begin
+    result:='PMirSurface';
+   end else if Type_='ANativeWindow' then begin
+    result:='PANativeWindow';
+   end else begin
+    result:='P'+Type_;
+   end;
   end;
- end else begin
-  if Type_='void' then begin
-   result:='TVkPointer';
-  end else if Type_='char' then begin
-   result:='TVkChar';
-  end else if Type_='float' then begin
-   result:='TVkFloat';
-  end else if Type_='double' then begin
-   result:='TVkDouble';
-  end else if Type_='int8_t' then begin
-   result:='TVkInt8';
-  end else if Type_='uint8_t' then begin
-   result:='TVkUInt8';
-  end else if Type_='int16_t' then begin
-   result:='TVkInt16';
-  end else if Type_='uint16_t' then begin
-   result:='TVkUInt16';
-  end else if Type_='int32_t' then begin
-   result:='TVkInt32';
-  end else if Type_='uint32_t' then begin
-   result:='TVkUInt32';
-  end else if Type_='int64_t' then begin
-   result:='TVkInt64';
-  end else if Type_='uint64_t' then begin
-   result:='TVkUInt64';
-  end else if Type_='size_t' then begin
-   result:='TVkPtrInt';
-  end else if Type_='VK_DEFINE_HANDLE' then begin
-   result:='TVkDispatchableHandle';
-  end else if Type_='VK_DEFINE_NON_DISPATCHABLE_HANDLE' then begin
-   result:='TVkNonDispatchableHandle';
-  end else if Type_='HINSTANCE' then begin
-   result:='TVkHINSTANCE';
-  end else if Type_='HWND' then begin
-   result:='TVkHWND';
-  end else if Type_='Display' then begin
-   result:='TDisplay';
-  end else if Type_='VisualID' then begin
-   result:='TVisualID';
-  end else if Type_='Window' then begin
-   result:='TWindow';
-  end else if Type_='xcb_connection_t' then begin
-   result:='Txcb_connection';
-  end else if Type_='xcb_visualid_t' then begin
-   result:='Txcb_visualid';
-  end else if Type_='xcb_window_t' then begin
-   result:='Txcb_window';
-  end else if Type_='wl_display' then begin
-   result:='Twl_display';
-  end else if Type_='wl_surface' then begin
-   result:='Twl_surface';
-  end else if Type_='MirConnection' then begin
-   result:='TMirConnection';
-  end else if Type_='MirSurface' then begin
-   result:='TMirSurface';
-  end else if Type_='ANativeWindow' then begin
-   result:='TANativeWindow';
-  end else begin
-   result:='T'+Type_;
+  2:begin
+   if Type_='void' then begin
+    result:='PVkPointer';
+   end else if Type_='char' then begin
+    result:='PPVkChar';
+   end else if Type_='float' then begin
+    result:='PPVkFloat';
+   end else if Type_='double' then begin
+    result:='PPVkDouble';
+   end else if Type_='int8_t' then begin
+    result:='PPVkInt8';
+   end else if Type_='uint8_t' then begin
+    result:='PPVkUInt8';
+   end else if Type_='int16_t' then begin
+    result:='PPVkInt16';
+   end else if Type_='uint16_t' then begin
+    result:='PPVkUInt16';
+   end else if Type_='int32_t' then begin
+    result:='PPVkInt32';
+   end else if Type_='uint32_t' then begin
+    result:='PPVkUInt32';
+   end else if Type_='int64_t' then begin
+    result:='PPVkInt64';
+   end else if Type_='uint64_t' then begin
+    result:='PPVkUInt64';
+   end else if Type_='size_t' then begin
+    result:='PPVkPtrInt';
+   end else if Type_='VK_DEFINE_HANDLE' then begin
+    result:='PPVkDispatchableHandle';
+   end else if Type_='VK_DEFINE_NON_DISPATCHABLE_HANDLE' then begin
+    result:='PPVkNonDispatchableHandle';
+   end else if Type_='HINSTANCE' then begin
+    result:='PPVkHINSTANCE';
+   end else if Type_='HWND' then begin
+    result:='PPVkHWND';
+   end else if Type_='Display' then begin
+    result:='PPDisplay';
+   end else if Type_='VisualID' then begin
+    result:='PPVisualID';
+   end else if Type_='Window' then begin
+    result:='PPWindow';
+   end else if Type_='xcb_connection_t' then begin
+    result:='PPxcb_connection';
+   end else if Type_='xcb_visualid_t' then begin
+    result:='PPxcb_visualid';
+   end else if Type_='xcb_window_t' then begin
+    result:='PPxcb_window';
+   end else if Type_='wl_display' then begin
+    result:='PPwl_display';
+   end else if Type_='wl_surface' then begin
+    result:='PPwl_surface';
+   end else if Type_='MirConnection' then begin
+    result:='PPMirConnection';
+   end else if Type_='MirSurface' then begin
+    result:='PPMirSurface';
+   end else if Type_='ANativeWindow' then begin
+    result:='PPANativeWindow';
+   end else begin
+    result:='PP'+Type_;
+   end;
+  end;
+  else begin
+   if Type_='void' then begin
+    result:='TVkPointer';
+   end else if Type_='char' then begin
+    result:='TVkChar';
+   end else if Type_='float' then begin
+    result:='TVkFloat';
+   end else if Type_='double' then begin
+    result:='TVkDouble';
+   end else if Type_='int8_t' then begin
+    result:='TVkInt8';
+   end else if Type_='uint8_t' then begin
+    result:='TVkUInt8';
+   end else if Type_='int16_t' then begin
+    result:='TVkInt16';
+   end else if Type_='uint16_t' then begin
+    result:='TVkUInt16';
+   end else if Type_='int32_t' then begin
+    result:='TVkInt32';
+   end else if Type_='uint32_t' then begin
+    result:='TVkUInt32';
+   end else if Type_='int64_t' then begin
+    result:='TVkInt64';
+   end else if Type_='uint64_t' then begin
+    result:='TVkUInt64';
+   end else if Type_='size_t' then begin
+    result:='TVkPtrInt';
+   end else if Type_='VK_DEFINE_HANDLE' then begin
+    result:='TVkDispatchableHandle';
+   end else if Type_='VK_DEFINE_NON_DISPATCHABLE_HANDLE' then begin
+    result:='TVkNonDispatchableHandle';
+   end else if Type_='HINSTANCE' then begin
+    result:='TVkHINSTANCE';
+   end else if Type_='HWND' then begin
+    result:='TVkHWND';
+   end else if Type_='Display' then begin
+    result:='TDisplay';
+   end else if Type_='VisualID' then begin
+    result:='TVisualID';
+   end else if Type_='Window' then begin
+    result:='TWindow';
+   end else if Type_='xcb_connection_t' then begin
+    result:='Txcb_connection';
+   end else if Type_='xcb_visualid_t' then begin
+    result:='Txcb_visualid';
+   end else if Type_='xcb_window_t' then begin
+    result:='Txcb_window';
+   end else if Type_='wl_display' then begin
+    result:='Twl_display';
+   end else if Type_='wl_surface' then begin
+    result:='Twl_surface';
+   end else if Type_='MirConnection' then begin
+    result:='TMirConnection';
+   end else if Type_='MirSurface' then begin
+    result:='TMirSurface';
+   end else if Type_='ANativeWindow' then begin
+    result:='TANativeWindow';
+   end else begin
+    result:='T'+Type_;
+   end;
   end;
  end;
 end;
@@ -3101,7 +3165,7 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
       ArraySizeStr:ansistring;
       Comment:ansistring;
       TypeDefinitionIndex:longint;
-      Ptr:longbool;
+      Ptr:longint;
       Constant:longbool;
      end;
      TTypeDefinitionMembers=array of TTypeDefinitionMember;
@@ -3114,7 +3178,7 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
       CountMembers:longint;
       Define:ansistring;
       Type_:ansistring;
-      Ptr:longbool;
+      Ptr:longint;
      end;
      TTypeDefinitions=array of TTypeDefinition;
      TPTypeDefinitions=array of PTypeDefinition;
@@ -3158,7 +3222,7 @@ var i,j,k,ArraySize,CountTypeDefinitions:longint;
        VisitedList.Add(CurrentTypeDefinition);
        for Index:=0 to CurrentTypeDefinition.CountMembers-1 do begin
         RequiredTypeDefinition:=nil;
-        if not CurrentTypeDefinition^.Members[Index].Ptr then begin
+        if CurrentTypeDefinition^.Members[Index].Ptr=0 then begin
          TypeDefinitionIndex:=TypeDefinitionList.IndexOf(CurrentTypeDefinition^.Members[Index].Type_);
          if TypeDefinitionIndex>=0 then begin
           RequiredTypeDefinition:=pointer(TypeDefinitionList.Objects[TypeDefinitionIndex]);
@@ -3259,21 +3323,21 @@ begin
       Name:=ParseText(ChildTag.FindTag('name'));
       BaseTypes.Add('     PP'+Name+'=^P'+Name+';');
       BaseTypes.Add('     P'+Name+'=^T'+Name+';');
-      BaseTypes.Add('     T'+Name+'='+TranslateType(Type_,false)+';');
+      BaseTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
       BaseTypes.Add('');
      end else if Category='bitmask' then begin
       Type_:=ParseText(ChildTag.FindTag('type'));
       Name:=ParseText(ChildTag.FindTag('name'));
       BitMaskTypes.Add('     PP'+Name+'=^P'+Name+';');
       BitMaskTypes.Add('     P'+Name+'=^T'+Name+';');
-      BitMaskTypes.Add('     T'+Name+'='+TranslateType(Type_,false)+';');
+      BitMaskTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
       BitMaskTypes.Add('');
      end else if Category='handle' then begin
       Type_:=ParseText(ChildTag.FindTag('type'));
       Name:=ParseText(ChildTag.FindTag('name'));
       HandleTypes.Add('     PP'+Name+'=^P'+Name+';');
       HandleTypes.Add('     P'+Name+'=^T'+Name+';');
-      HandleTypes.Add('     T'+Name+'='+TranslateType(Type_,false)+';');
+      HandleTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
       HandleTypes.Add('');
      end else if Category='enum' then begin
       Name:=ChildTag.GetParameter('name');
@@ -3286,7 +3350,7 @@ begin
       TypeDefinition^.Members:=nil;
       TypeDefinition^.Define:='';
       TypeDefinition^.Type_:='';
-      TypeDefinition^.Ptr:=false;
+      TypeDefinition^.Ptr:=0;
       Name:='';
       Type_:='';
       Text:='';
@@ -3299,7 +3363,7 @@ begin
         if ChildChildTag.Name='name' then begin
          TypeDefinition^.Name:=ParseText(ChildChildTag);
          if pos('void*',Text)>0 then begin
-          TypeDefinition^.Ptr:=true;
+          TypeDefinition^.Ptr:=1;
           TypeDefinition^.Type_:='void';
          end else begin
           Text:=trim(StringReplace(Text,'typedef','',[rfReplaceAll]));
@@ -3332,10 +3396,12 @@ begin
            end;
            Text:=trim(StringReplace(Text,');','',[rfReplaceAll]));
            if pos('*',Text)>0 then begin
-            TypeDefinitionMember^.Ptr:=true;
+            for k:=1 to length(Text) do begin
+             if Text[k]='*' then begin
+              inc(TypeDefinitionMember^.Ptr);
+             end;
+            end;
             Text:=trim(StringReplace(Text,'*','',[rfReplaceAll]));
-           end else begin
-            TypeDefinitionMember^.Ptr:=false;
            end;
            TypeDefinitionMember^.Constant:=Constant;
            Constant:=false;
@@ -3417,7 +3483,13 @@ begin
          TypeDefinitionMember^.ArraySizeStr:=ArraySizeStr;
          TypeDefinitionMember^.Comment:=ChildChildTag.GetParameter('comment');
          TypeDefinitionMember^.TypeDefinitionIndex:=-1;
-         TypeDefinitionMember^.Ptr:=pos('*',ParseText(ChildChildTag))>0;
+         TypeDefinitionMember^.Ptr:=0;
+         Text:=ParseText(ChildChildTag);
+         for k:=1 to length(Text) do begin
+          if Text[k]='*' then begin
+           inc(TypeDefinitionMember^.Ptr);
+          end;
+         end;
          if (Type_='HWND') or (Type_='HINSTANCE') then begin
           TypeDefinition^.Define:='Windows';
          end else if (Type_='Display') or (Type_='VisualID') or (Type_='Window') then begin
@@ -3496,7 +3568,7 @@ begin
       end;
       Text:=Text+TypeDefinitionMember^.Name+':'+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr);
      end;
-     if (TypeDefinition^.Type_='void') and not TypeDefinition^.Ptr then begin
+     if (TypeDefinition^.Type_='void') and (TypeDefinition^.Ptr=0) then begin
       TypeDefinitionTypes.Add('     T'+TypeDefinition^.Name+'=procedure('+Text+'); '+CallingConventions);
      end else begin
       TypeDefinitionTypes.Add('     T'+TypeDefinition^.Name+'=function('+Text+'):'+TranslateType(TypeDefinition^.Type_,TypeDefinition^.Ptr)+'; '+CallingConventions);
@@ -3720,7 +3792,8 @@ var i,j,k,ArraySize,CountTypeDefinitions:longint;
     ChildItem,ChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
     ProtoName,ProtoType,ParamName,ParamType,Text,Line,Parameters,Define:ansistring;
-    ProtoPtr,ParamPtr,IsDeviceCommand:boolean;
+    ProtoPtr,ParamPtr:longint;
+    IsDeviceCommand:boolean;
 begin
  AllCommandType.Add('     PPVulkanCommands=^PVulkanCommands;');
  AllCommandType.Add('     PVulkanCommands=^TVulkanCommands;');
@@ -3732,10 +3805,10 @@ begin
    if ChildTag.Name='command' then begin
     ProtoName:='';
     ProtoType:='';
-    ProtoPtr:=false;
+    ProtoPtr:=0;
     ParamName:='';
     ParamType:='';
-    ParamPtr:=false;
+    ParamPtr:=0;
     IsDeviceCommand:=false;
     Line:='';
     Parameters:='';
@@ -3747,12 +3820,24 @@ begin
       if ChildChildTag.Name='proto' then begin
        ProtoName:=ParseText(ChildChildTag.FindTag('name'));
        ProtoType:=ParseText(ChildChildTag.FindTag('type'));
-       ProtoPtr:=Pos('*',ParseText(ChildChildTag))>0;
+       ProtoPtr:=0;
+       Text:=ParseText(ChildChildTag);
+       for k:=1 to length(Text)-1 do begin
+        if Text[k]='*' then begin
+         inc(ProtoPtr);
+        end;
+       end;
       end else if ChildChildTag.Name='param' then begin
        ParamName:=ParseText(ChildChildTag.FindTag('name'));
        ParamType:=ParseText(ChildChildTag.FindTag('type'));
        Text:=ParseText(ChildChildTag);
-       ParamPtr:=Pos('*',Text)>0;
+       ParamPtr:=0;
+       Text:=ParseText(ChildChildTag);
+       for k:=1 to length(Text)-1 do begin
+        if Text[k]='*' then begin
+         inc(ParamPtr);
+        end;
+       end;
        if length(Line)>0 then begin
         Line:=Line+';';
        end else begin
@@ -3797,14 +3882,14 @@ begin
      AllCommandClassDefinitions.Add('{$ifdef '+Define+'}');
      AllCommandClassImplementations.Add('{$ifdef '+Define+'}');
     end;
-    if (ProtoType='void') and not ProtoPtr then begin
+    if (ProtoType='void') and (ProtoPtr=0) then begin
      CommandTypes.Add('     T'+ProtoName+'=procedure('+Line+'); '+CallingConventions);
     end else begin
      CommandTypes.Add('     T'+ProtoName+'=function('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; '+CallingConventions);
     end;
     CommandVariables.Add('    '+ProtoName+':T'+ProtoName+'=nil;');
     AllCommandType.Add('      '+copy(ProtoName,3,length(ProtoName)-2)+':T'+ProtoName+';');
-    if (ProtoType='void') and not ProtoPtr then begin
+    if (ProtoType='void') and (ProtoPtr=0) then begin
      AllCommandClassDefinitions.Add('       procedure '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'); virtual;');
      AllCommandClassImplementations.Add('procedure TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+');');
      AllCommandClassImplementations.Add('begin');
