@@ -62,7 +62,7 @@ interface
 
 uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef X11}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils;
 
-const VK_DEFAULT_LIB_NAME={$ifdef Windows}'vulkan.dll'{$else}{$ifdef Unix}'libvulkan.so'{$else}'libvulkan'{$endif}{$endif};
+const VK_DEFAULT_LIB_NAME={$ifdef Windows}'vulkan-1.dll'{$else}{$ifdef Unix}'libvulkan.so'{$else}'libvulkan'{$endif}{$endif};
 
 type PPVkInt8=^PVkInt8;
      PVkInt8=^TVkInt8;
