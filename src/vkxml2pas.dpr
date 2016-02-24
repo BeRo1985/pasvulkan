@@ -4393,7 +4393,8 @@ begin
      OutputPAS.Add('{$ifdef '+s2+'}');
     end;
     if s<>'vkGetInstanceProcAddr' then begin
-     OutputPAS.Add('  @'+s+':=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('''+s+''')));');
+     OutputPAS.Add('  @'+s+':=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'''+s+'''));');
+//   OutputPAS.Add('  @'+s+':=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('''+s+''')));');
      OutputPAS.Add('  @vk.fCommands.'+copy(s,3,length(s)-2)+':=addr('+s+');');
     end;
     if length(s2)>0 then begin
