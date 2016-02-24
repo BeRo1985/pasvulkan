@@ -3801,10 +3801,10 @@ begin
      CommandTypes.Add('     T'+ProtoName+'=function('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; '+CallingConventions);
     end;
     CommandVariables.Add('    '+ProtoName+':T'+ProtoName+'=nil;');
-    AllCommandType.Add('      '+ProtoName+':T'+ProtoName+';');
+    AllCommandType.Add('      '+copy(ProtoName,3,length(ProtoName)-2)+':T'+ProtoName+';');
     AllCommands.Add(ProtoName+'='+Define);
     if IsDeviceCommand then begin
-     AllDeviceCommandType.Add('      '+ProtoName+':T'+ProtoName+';');
+     AllDeviceCommandType.Add('      '+copy(ProtoName,3,length(ProtoName)-2)+':T'+ProtoName+';');
      AllDeviceCommands.Add(ProtoName+'='+Define);
     end;
     if length(Define)>0 then begin
@@ -4168,6 +4168,8 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('var LibVulkan:pointer=nil;');
    OutputPAS.Add('');
+   OutputPAS.Add('    vk:TVulkanCommands;');
+   OutputPAS.Add('');
    OutputPAS.AddStrings(CommandVariables);
    OutputPAS.Add('');
    OutputPAS.Add('function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}');
@@ -4268,8 +4270,10 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('function LoadVulkanGlobalCommands:boolean;');
    OutputPAS.Add('begin');
+   OutputPAS.Add(' FillChar(vk,SizeOf(TVulkanCommands),#0);');
    OutputPAS.Add(' result:=assigned(vkGetInstanceProcAddr);');
    OutputPAS.Add(' if result then begin');
+   OutputPAS.Add('  @vk.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);');
    for i:=0 to AllCommands.Count-1 do begin
     s:=AllCommands.Strings[i];
     j:=pos('=',s);
@@ -4282,6 +4286,7 @@ begin
     end;
     if s<>'vkGetInstanceProcAddr' then begin
      OutputPAS.Add('  @'+s+':=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('''+s+''')));');
+     OutputPAS.Add('  @vk.'+copy(s,3,length(s)-2)+':=addr('+s+');');
     end;
     if length(s2)>0 then begin
      OutputPAS.Add('{$endif}');
@@ -4305,7 +4310,7 @@ begin
     if length(s2)>0 then begin
      OutputPAS.Add('{$ifdef '+s2+'}');
     end;
-    OutputPAS.Add('  @InstanceCommands.'+s+':=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('''+s+''')));');
+    OutputPAS.Add('  @InstanceCommands.'+copy(s,3,length(s)-2)+':=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('''+s+''')));');
     if length(s2)>0 then begin
      OutputPAS.Add('{$endif}');
     end;
@@ -4329,7 +4334,7 @@ begin
     if length(s2)>0 then begin
      OutputPAS.Add('{$ifdef '+s2+'}');
     end;
-    OutputPAS.Add('  @DeviceCommands.'+s+':=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('''+s+''')));');
+    OutputPAS.Add('  @DeviceCommands.'+copy(s,3,length(s)-2)+':=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('''+s+''')));');
     if length(s2)>0 then begin
      OutputPAS.Add('{$endif}');
     end;
@@ -4353,7 +4358,7 @@ begin
     if length(s2)>0 then begin
      OutputPAS.Add('{$ifdef '+s2+'}');
     end;
-    OutputPAS.Add('  @DeviceCommands.'+s+':=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('''+s+''')));');
+    OutputPAS.Add('  @DeviceCommands.'+copy(s,3,length(s)-2)+':=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('''+s+''')));');
     if length(s2)>0 then begin
      OutputPAS.Add('{$endif}');
     end;
@@ -4361,6 +4366,8 @@ begin
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
+   OutputPAS.Add('initialization');
+   OutputPAS.Add(' FillChar(vk,SizeOf(TVulkanCommands),#0);');
    OutputPAS.Add('finalization');
    OutputPAS.Add(' if assigned(LibVulkan) then begin');
    OutputPAS.Add('  vkFreeLibrary(LibVulkan);');
