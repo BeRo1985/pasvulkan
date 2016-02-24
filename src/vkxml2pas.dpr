@@ -4361,6 +4361,10 @@ begin
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
+   OutputPAS.Add('finalization');
+   OutputPAS.Add(' if assigned(LibVulkan) then begin');
+   OutputPAS.Add('  vkFreeLibrary(LibVulkan);');
+   OutputPAS.Add(' end;');
    OutputPAS.Add('end.');
    OutputPAS.SaveToFile('vulkan.pas');
   finally

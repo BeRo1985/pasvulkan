@@ -4880,4 +4880,8 @@ begin
  end;
 end;
 
+finalization
+ if assigned(LibVulkan) then begin
+  vkFreeLibrary(LibVulkan);
+ end;
 end.
