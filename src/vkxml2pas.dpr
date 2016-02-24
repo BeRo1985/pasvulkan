@@ -4435,6 +4435,9 @@ begin
      OutputPAS.Add('{$endif}');
     end;
    end;
+   OutputPAS.Add('  if not assigned(InstanceCommands.CreateInstance) then begin');
+   OutputPAS.Add('   InstanceCommands.CreateInstance:=addr(vkCreateInstance);');
+   OutputPAS.Add('  end;');
    OutputPAS.Add('  result:=assigned(InstanceCommands.DestroyInstance);');
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');

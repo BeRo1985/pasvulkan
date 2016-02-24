@@ -5192,6 +5192,9 @@ begin
   @InstanceCommands.CreateDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateDebugReportCallbackEXT')));
   @InstanceCommands.DestroyDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyDebugReportCallbackEXT')));
   @InstanceCommands.DebugReportMessageEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDebugReportMessageEXT')));
+  if not assigned(InstanceCommands.CreateInstance) then begin
+   InstanceCommands.CreateInstance:=addr(vkCreateInstance);
+  end;
   result:=assigned(InstanceCommands.DestroyInstance);
  end;
 end;
