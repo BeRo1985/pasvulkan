@@ -4289,7 +4289,6 @@ end;
 
 function LoadVulkanGlobalCommands:boolean;
 begin
- FillChar(vk,SizeOf(TVulkanCommands),#0);
  result:=assigned(vkGetInstanceProcAddr);
  if result then begin
   @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);

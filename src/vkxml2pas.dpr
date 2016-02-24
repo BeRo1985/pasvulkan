@@ -4378,7 +4378,7 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('function LoadVulkanGlobalCommands:boolean;');
    OutputPAS.Add('begin');
-   OutputPAS.Add(' FillChar(vk,SizeOf(TVulkanCommands),#0);');
+// OutputPAS.Add(' FillChar(vk.fCommands,SizeOf(TVulkanCommands),#0);');
    OutputPAS.Add(' result:=assigned(vkGetInstanceProcAddr);');
    OutputPAS.Add(' if result then begin');
    OutputPAS.Add('  @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);');
