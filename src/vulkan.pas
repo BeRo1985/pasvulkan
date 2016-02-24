@@ -4281,9 +4281,21 @@ begin
  LibVulkan:=vkLoadLibrary(LibraryName);
  result:=assigned(LibVulkan);
  if result then begin
+  vkEnumerateInstanceExtensionProperties:=vkGetProcAddress(LibVulkan,'vkEnumerateInstanceExtensionProperties');
+  @vk.fCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
+  vkEnumerateInstanceLayerProperties:=vkGetProcAddress(LibVulkan,'vkEnumerateInstanceLayerProperties');
+  @vk.fCommands.EnumerateInstanceLayerProperties:=addr(vkEnumerateInstanceLayerProperties);
+  vkCreateInstance:=vkGetProcAddress(LibVulkan,'vkCreateInstance');
+  @vk.fCommands.CreateInstance:=addr(vkCreateInstance);
   vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,'vkGetInstanceProcAddr');
   @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);
-  result:=assigned(vkGetInstanceProcAddr);
+  vkGetDeviceProcAddr:=vkGetProcAddress(LibVulkan,'vkGetDeviceProcAddr');
+  @vk.fCommands.GetDeviceProcAddr:=addr(vkGetDeviceProcAddr);
+  result:=assigned(vkEnumerateInstanceExtensionProperties) and
+          assigned(vkEnumerateInstanceLayerProperties) and 
+          assigned(vkCreateInstance) and 
+          assigned(vkGetInstanceProcAddr) and
+          assigned(vkGetDeviceProcAddr);
  end;
 end;
 
@@ -4291,7 +4303,6 @@ function LoadVulkanGlobalCommands:boolean;
 begin
  result:=assigned(vkGetInstanceProcAddr);
  if result then begin
-  @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);
   @vkCreateInstance:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateInstance'));
   @vk.fCommands.CreateInstance:=addr(vkCreateInstance);
   @vkDestroyInstance:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyInstance'));
@@ -4300,6 +4311,8 @@ begin
   @vk.fCommands.EnumeratePhysicalDevices:=addr(vkEnumeratePhysicalDevices);
   @vkGetDeviceProcAddr:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceProcAddr'));
   @vk.fCommands.GetDeviceProcAddr:=addr(vkGetDeviceProcAddr);
+  @vkGetInstanceProcAddr:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetInstanceProcAddr'));
+  @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);
   @vkGetPhysicalDeviceProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceProperties'));
   @vk.fCommands.GetPhysicalDeviceProperties:=addr(vkGetPhysicalDeviceProperties);
   @vkGetPhysicalDeviceQueueFamilyProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceQueueFamilyProperties'));

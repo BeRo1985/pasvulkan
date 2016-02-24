@@ -4370,9 +4370,21 @@ begin
    OutputPAS.Add(' LibVulkan:=vkLoadLibrary(LibraryName);');
    OutputPAS.Add(' result:=assigned(LibVulkan);');
    OutputPAS.Add(' if result then begin');
+   OutputPAS.Add('  vkEnumerateInstanceExtensionProperties:=vkGetProcAddress(LibVulkan,''vkEnumerateInstanceExtensionProperties'');');
+   OutputPAS.Add('  @vk.fCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);');
+   OutputPAS.Add('  vkEnumerateInstanceLayerProperties:=vkGetProcAddress(LibVulkan,''vkEnumerateInstanceLayerProperties'');');
+   OutputPAS.Add('  @vk.fCommands.EnumerateInstanceLayerProperties:=addr(vkEnumerateInstanceLayerProperties);');
+   OutputPAS.Add('  vkCreateInstance:=vkGetProcAddress(LibVulkan,''vkCreateInstance'');');
+   OutputPAS.Add('  @vk.fCommands.CreateInstance:=addr(vkCreateInstance);');
    OutputPAS.Add('  vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,''vkGetInstanceProcAddr'');');
    OutputPAS.Add('  @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);');
-   OutputPAS.Add('  result:=assigned(vkGetInstanceProcAddr);');
+   OutputPAS.Add('  vkGetDeviceProcAddr:=vkGetProcAddress(LibVulkan,''vkGetDeviceProcAddr'');');
+   OutputPAS.Add('  @vk.fCommands.GetDeviceProcAddr:=addr(vkGetDeviceProcAddr);');
+   OutputPAS.Add('  result:=assigned(vkEnumerateInstanceExtensionProperties) and');
+   OutputPAS.Add('          assigned(vkEnumerateInstanceLayerProperties) and ');
+   OutputPAS.Add('          assigned(vkCreateInstance) and ');
+   OutputPAS.Add('          assigned(vkGetInstanceProcAddr) and');
+   OutputPAS.Add('          assigned(vkGetDeviceProcAddr);');
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
@@ -4381,7 +4393,6 @@ begin
 // OutputPAS.Add(' FillChar(vk.fCommands,SizeOf(TVulkanCommands),#0);');
    OutputPAS.Add(' result:=assigned(vkGetInstanceProcAddr);');
    OutputPAS.Add(' if result then begin');
-   OutputPAS.Add('  @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);');
    for i:=0 to AllCommands.Count-1 do begin
     s:=AllCommands.Strings[i];
     j:=pos('=',s);
@@ -4392,11 +4403,9 @@ begin
     if length(s2)>0 then begin
      OutputPAS.Add('{$ifdef '+s2+'}');
     end;
-    if s<>'vkGetInstanceProcAddr' then begin
-     OutputPAS.Add('  @'+s+':=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'''+s+'''));');
-//   OutputPAS.Add('  @'+s+':=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('''+s+''')));');
-     OutputPAS.Add('  @vk.fCommands.'+copy(s,3,length(s)-2)+':=addr('+s+');');
-    end;
+    OutputPAS.Add('  @'+s+':=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'''+s+'''));');
+//  OutputPAS.Add('  @'+s+':=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('''+s+''')));');
+    OutputPAS.Add('  @vk.fCommands.'+copy(s,3,length(s)-2)+':=addr('+s+');');
     if length(s2)>0 then begin
      OutputPAS.Add('{$endif}');
     end;
