@@ -4302,362 +4302,700 @@ function LoadVulkanGlobalCommands:boolean;
 begin
  result:=assigned(vkGetInstanceProcAddr);
  if result then begin
-  @vkCreateInstance:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateInstance'));
-  @vk.fCommands.CreateInstance:=addr(vkCreateInstance);
-  @vkDestroyInstance:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyInstance'));
-  @vk.fCommands.DestroyInstance:=addr(vkDestroyInstance);
-  @vkEnumeratePhysicalDevices:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEnumeratePhysicalDevices'));
-  @vk.fCommands.EnumeratePhysicalDevices:=addr(vkEnumeratePhysicalDevices);
-  @vkGetDeviceProcAddr:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceProcAddr'));
-  @vk.fCommands.GetDeviceProcAddr:=addr(vkGetDeviceProcAddr);
-  @vkGetInstanceProcAddr:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetInstanceProcAddr'));
-  @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);
-  @vkGetPhysicalDeviceProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceProperties'));
-  @vk.fCommands.GetPhysicalDeviceProperties:=addr(vkGetPhysicalDeviceProperties);
-  @vkGetPhysicalDeviceQueueFamilyProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceQueueFamilyProperties'));
-  @vk.fCommands.GetPhysicalDeviceQueueFamilyProperties:=addr(vkGetPhysicalDeviceQueueFamilyProperties);
-  @vkGetPhysicalDeviceMemoryProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceMemoryProperties'));
-  @vk.fCommands.GetPhysicalDeviceMemoryProperties:=addr(vkGetPhysicalDeviceMemoryProperties);
-  @vkGetPhysicalDeviceFeatures:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceFeatures'));
-  @vk.fCommands.GetPhysicalDeviceFeatures:=addr(vkGetPhysicalDeviceFeatures);
-  @vkGetPhysicalDeviceFormatProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceFormatProperties'));
-  @vk.fCommands.GetPhysicalDeviceFormatProperties:=addr(vkGetPhysicalDeviceFormatProperties);
-  @vkGetPhysicalDeviceImageFormatProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceImageFormatProperties'));
-  @vk.fCommands.GetPhysicalDeviceImageFormatProperties:=addr(vkGetPhysicalDeviceImageFormatProperties);
-  @vkCreateDevice:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDevice'));
-  @vk.fCommands.CreateDevice:=addr(vkCreateDevice);
-  @vkDestroyDevice:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyDevice'));
-  @vk.fCommands.DestroyDevice:=addr(vkDestroyDevice);
-  @vkEnumerateInstanceLayerProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEnumerateInstanceLayerProperties'));
-  @vk.fCommands.EnumerateInstanceLayerProperties:=addr(vkEnumerateInstanceLayerProperties);
-  @vkEnumerateInstanceExtensionProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEnumerateInstanceExtensionProperties'));
-  @vk.fCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
-  @vkEnumerateDeviceLayerProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEnumerateDeviceLayerProperties'));
-  @vk.fCommands.EnumerateDeviceLayerProperties:=addr(vkEnumerateDeviceLayerProperties);
-  @vkEnumerateDeviceExtensionProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEnumerateDeviceExtensionProperties'));
-  @vk.fCommands.EnumerateDeviceExtensionProperties:=addr(vkEnumerateDeviceExtensionProperties);
-  @vkGetDeviceQueue:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceQueue'));
-  @vk.fCommands.GetDeviceQueue:=addr(vkGetDeviceQueue);
-  @vkQueueSubmit:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkQueueSubmit'));
-  @vk.fCommands.QueueSubmit:=addr(vkQueueSubmit);
-  @vkQueueWaitIdle:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkQueueWaitIdle'));
-  @vk.fCommands.QueueWaitIdle:=addr(vkQueueWaitIdle);
-  @vkDeviceWaitIdle:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDeviceWaitIdle'));
-  @vk.fCommands.DeviceWaitIdle:=addr(vkDeviceWaitIdle);
-  @vkAllocateMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAllocateMemory'));
-  @vk.fCommands.AllocateMemory:=addr(vkAllocateMemory);
-  @vkFreeMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkFreeMemory'));
-  @vk.fCommands.FreeMemory:=addr(vkFreeMemory);
-  @vkMapMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkMapMemory'));
-  @vk.fCommands.MapMemory:=addr(vkMapMemory);
-  @vkUnmapMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkUnmapMemory'));
-  @vk.fCommands.UnmapMemory:=addr(vkUnmapMemory);
-  @vkFlushMappedMemoryRanges:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkFlushMappedMemoryRanges'));
-  @vk.fCommands.FlushMappedMemoryRanges:=addr(vkFlushMappedMemoryRanges);
-  @vkInvalidateMappedMemoryRanges:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkInvalidateMappedMemoryRanges'));
-  @vk.fCommands.InvalidateMappedMemoryRanges:=addr(vkInvalidateMappedMemoryRanges);
-  @vkGetDeviceMemoryCommitment:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceMemoryCommitment'));
-  @vk.fCommands.GetDeviceMemoryCommitment:=addr(vkGetDeviceMemoryCommitment);
-  @vkGetBufferMemoryRequirements:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetBufferMemoryRequirements'));
-  @vk.fCommands.GetBufferMemoryRequirements:=addr(vkGetBufferMemoryRequirements);
-  @vkBindBufferMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindBufferMemory'));
-  @vk.fCommands.BindBufferMemory:=addr(vkBindBufferMemory);
-  @vkGetImageMemoryRequirements:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetImageMemoryRequirements'));
-  @vk.fCommands.GetImageMemoryRequirements:=addr(vkGetImageMemoryRequirements);
-  @vkBindImageMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindImageMemory'));
-  @vk.fCommands.BindImageMemory:=addr(vkBindImageMemory);
-  @vkGetImageSparseMemoryRequirements:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetImageSparseMemoryRequirements'));
-  @vk.fCommands.GetImageSparseMemoryRequirements:=addr(vkGetImageSparseMemoryRequirements);
-  @vkGetPhysicalDeviceSparseImageFormatProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSparseImageFormatProperties'));
-  @vk.fCommands.GetPhysicalDeviceSparseImageFormatProperties:=addr(vkGetPhysicalDeviceSparseImageFormatProperties);
-  @vkQueueBindSparse:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkQueueBindSparse'));
-  @vk.fCommands.QueueBindSparse:=addr(vkQueueBindSparse);
-  @vkCreateFence:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateFence'));
-  @vk.fCommands.CreateFence:=addr(vkCreateFence);
-  @vkDestroyFence:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyFence'));
-  @vk.fCommands.DestroyFence:=addr(vkDestroyFence);
-  @vkResetFences:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkResetFences'));
-  @vk.fCommands.ResetFences:=addr(vkResetFences);
-  @vkGetFenceStatus:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetFenceStatus'));
-  @vk.fCommands.GetFenceStatus:=addr(vkGetFenceStatus);
-  @vkWaitForFences:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkWaitForFences'));
-  @vk.fCommands.WaitForFences:=addr(vkWaitForFences);
-  @vkCreateSemaphore:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateSemaphore'));
-  @vk.fCommands.CreateSemaphore:=addr(vkCreateSemaphore);
-  @vkDestroySemaphore:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroySemaphore'));
-  @vk.fCommands.DestroySemaphore:=addr(vkDestroySemaphore);
-  @vkCreateEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateEvent'));
-  @vk.fCommands.CreateEvent:=addr(vkCreateEvent);
-  @vkDestroyEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyEvent'));
-  @vk.fCommands.DestroyEvent:=addr(vkDestroyEvent);
-  @vkGetEventStatus:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetEventStatus'));
-  @vk.fCommands.GetEventStatus:=addr(vkGetEventStatus);
-  @vkSetEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkSetEvent'));
-  @vk.fCommands.SetEvent:=addr(vkSetEvent);
-  @vkResetEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkResetEvent'));
-  @vk.fCommands.ResetEvent:=addr(vkResetEvent);
-  @vkCreateQueryPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateQueryPool'));
-  @vk.fCommands.CreateQueryPool:=addr(vkCreateQueryPool);
-  @vkDestroyQueryPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyQueryPool'));
-  @vk.fCommands.DestroyQueryPool:=addr(vkDestroyQueryPool);
-  @vkGetQueryPoolResults:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetQueryPoolResults'));
-  @vk.fCommands.GetQueryPoolResults:=addr(vkGetQueryPoolResults);
-  @vkCreateBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateBuffer'));
-  @vk.fCommands.CreateBuffer:=addr(vkCreateBuffer);
-  @vkDestroyBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyBuffer'));
-  @vk.fCommands.DestroyBuffer:=addr(vkDestroyBuffer);
-  @vkCreateBufferView:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateBufferView'));
-  @vk.fCommands.CreateBufferView:=addr(vkCreateBufferView);
-  @vkDestroyBufferView:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyBufferView'));
-  @vk.fCommands.DestroyBufferView:=addr(vkDestroyBufferView);
-  @vkCreateImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateImage'));
-  @vk.fCommands.CreateImage:=addr(vkCreateImage);
-  @vkDestroyImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyImage'));
-  @vk.fCommands.DestroyImage:=addr(vkDestroyImage);
-  @vkGetImageSubresourceLayout:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetImageSubresourceLayout'));
-  @vk.fCommands.GetImageSubresourceLayout:=addr(vkGetImageSubresourceLayout);
-  @vkCreateImageView:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateImageView'));
-  @vk.fCommands.CreateImageView:=addr(vkCreateImageView);
-  @vkDestroyImageView:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyImageView'));
-  @vk.fCommands.DestroyImageView:=addr(vkDestroyImageView);
-  @vkCreateShaderModule:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateShaderModule'));
-  @vk.fCommands.CreateShaderModule:=addr(vkCreateShaderModule);
-  @vkDestroyShaderModule:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyShaderModule'));
-  @vk.fCommands.DestroyShaderModule:=addr(vkDestroyShaderModule);
-  @vkCreatePipelineCache:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreatePipelineCache'));
-  @vk.fCommands.CreatePipelineCache:=addr(vkCreatePipelineCache);
-  @vkDestroyPipelineCache:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyPipelineCache'));
-  @vk.fCommands.DestroyPipelineCache:=addr(vkDestroyPipelineCache);
-  @vkGetPipelineCacheData:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPipelineCacheData'));
-  @vk.fCommands.GetPipelineCacheData:=addr(vkGetPipelineCacheData);
-  @vkMergePipelineCaches:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkMergePipelineCaches'));
-  @vk.fCommands.MergePipelineCaches:=addr(vkMergePipelineCaches);
-  @vkCreateGraphicsPipelines:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateGraphicsPipelines'));
-  @vk.fCommands.CreateGraphicsPipelines:=addr(vkCreateGraphicsPipelines);
-  @vkCreateComputePipelines:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateComputePipelines'));
-  @vk.fCommands.CreateComputePipelines:=addr(vkCreateComputePipelines);
-  @vkDestroyPipeline:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyPipeline'));
-  @vk.fCommands.DestroyPipeline:=addr(vkDestroyPipeline);
-  @vkCreatePipelineLayout:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreatePipelineLayout'));
-  @vk.fCommands.CreatePipelineLayout:=addr(vkCreatePipelineLayout);
-  @vkDestroyPipelineLayout:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyPipelineLayout'));
-  @vk.fCommands.DestroyPipelineLayout:=addr(vkDestroyPipelineLayout);
-  @vkCreateSampler:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateSampler'));
-  @vk.fCommands.CreateSampler:=addr(vkCreateSampler);
-  @vkDestroySampler:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroySampler'));
-  @vk.fCommands.DestroySampler:=addr(vkDestroySampler);
-  @vkCreateDescriptorSetLayout:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDescriptorSetLayout'));
-  @vk.fCommands.CreateDescriptorSetLayout:=addr(vkCreateDescriptorSetLayout);
-  @vkDestroyDescriptorSetLayout:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyDescriptorSetLayout'));
-  @vk.fCommands.DestroyDescriptorSetLayout:=addr(vkDestroyDescriptorSetLayout);
-  @vkCreateDescriptorPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDescriptorPool'));
-  @vk.fCommands.CreateDescriptorPool:=addr(vkCreateDescriptorPool);
-  @vkDestroyDescriptorPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyDescriptorPool'));
-  @vk.fCommands.DestroyDescriptorPool:=addr(vkDestroyDescriptorPool);
-  @vkResetDescriptorPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkResetDescriptorPool'));
-  @vk.fCommands.ResetDescriptorPool:=addr(vkResetDescriptorPool);
-  @vkAllocateDescriptorSets:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAllocateDescriptorSets'));
-  @vk.fCommands.AllocateDescriptorSets:=addr(vkAllocateDescriptorSets);
-  @vkFreeDescriptorSets:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkFreeDescriptorSets'));
-  @vk.fCommands.FreeDescriptorSets:=addr(vkFreeDescriptorSets);
-  @vkUpdateDescriptorSets:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkUpdateDescriptorSets'));
-  @vk.fCommands.UpdateDescriptorSets:=addr(vkUpdateDescriptorSets);
-  @vkCreateFramebuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateFramebuffer'));
-  @vk.fCommands.CreateFramebuffer:=addr(vkCreateFramebuffer);
-  @vkDestroyFramebuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyFramebuffer'));
-  @vk.fCommands.DestroyFramebuffer:=addr(vkDestroyFramebuffer);
-  @vkCreateRenderPass:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateRenderPass'));
-  @vk.fCommands.CreateRenderPass:=addr(vkCreateRenderPass);
-  @vkDestroyRenderPass:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyRenderPass'));
-  @vk.fCommands.DestroyRenderPass:=addr(vkDestroyRenderPass);
-  @vkGetRenderAreaGranularity:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetRenderAreaGranularity'));
-  @vk.fCommands.GetRenderAreaGranularity:=addr(vkGetRenderAreaGranularity);
-  @vkCreateCommandPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateCommandPool'));
-  @vk.fCommands.CreateCommandPool:=addr(vkCreateCommandPool);
-  @vkDestroyCommandPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyCommandPool'));
-  @vk.fCommands.DestroyCommandPool:=addr(vkDestroyCommandPool);
-  @vkResetCommandPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkResetCommandPool'));
-  @vk.fCommands.ResetCommandPool:=addr(vkResetCommandPool);
-  @vkAllocateCommandBuffers:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAllocateCommandBuffers'));
-  @vk.fCommands.AllocateCommandBuffers:=addr(vkAllocateCommandBuffers);
-  @vkFreeCommandBuffers:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkFreeCommandBuffers'));
-  @vk.fCommands.FreeCommandBuffers:=addr(vkFreeCommandBuffers);
-  @vkBeginCommandBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBeginCommandBuffer'));
-  @vk.fCommands.BeginCommandBuffer:=addr(vkBeginCommandBuffer);
-  @vkEndCommandBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEndCommandBuffer'));
-  @vk.fCommands.EndCommandBuffer:=addr(vkEndCommandBuffer);
-  @vkResetCommandBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkResetCommandBuffer'));
-  @vk.fCommands.ResetCommandBuffer:=addr(vkResetCommandBuffer);
-  @vkCmdBindPipeline:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBindPipeline'));
-  @vk.fCommands.CmdBindPipeline:=addr(vkCmdBindPipeline);
-  @vkCmdSetViewport:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetViewport'));
-  @vk.fCommands.CmdSetViewport:=addr(vkCmdSetViewport);
-  @vkCmdSetScissor:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetScissor'));
-  @vk.fCommands.CmdSetScissor:=addr(vkCmdSetScissor);
-  @vkCmdSetLineWidth:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetLineWidth'));
-  @vk.fCommands.CmdSetLineWidth:=addr(vkCmdSetLineWidth);
-  @vkCmdSetDepthBias:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetDepthBias'));
-  @vk.fCommands.CmdSetDepthBias:=addr(vkCmdSetDepthBias);
-  @vkCmdSetBlendConstants:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetBlendConstants'));
-  @vk.fCommands.CmdSetBlendConstants:=addr(vkCmdSetBlendConstants);
-  @vkCmdSetDepthBounds:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetDepthBounds'));
-  @vk.fCommands.CmdSetDepthBounds:=addr(vkCmdSetDepthBounds);
-  @vkCmdSetStencilCompareMask:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetStencilCompareMask'));
-  @vk.fCommands.CmdSetStencilCompareMask:=addr(vkCmdSetStencilCompareMask);
-  @vkCmdSetStencilWriteMask:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetStencilWriteMask'));
-  @vk.fCommands.CmdSetStencilWriteMask:=addr(vkCmdSetStencilWriteMask);
-  @vkCmdSetStencilReference:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetStencilReference'));
-  @vk.fCommands.CmdSetStencilReference:=addr(vkCmdSetStencilReference);
-  @vkCmdBindDescriptorSets:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBindDescriptorSets'));
-  @vk.fCommands.CmdBindDescriptorSets:=addr(vkCmdBindDescriptorSets);
-  @vkCmdBindIndexBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBindIndexBuffer'));
-  @vk.fCommands.CmdBindIndexBuffer:=addr(vkCmdBindIndexBuffer);
-  @vkCmdBindVertexBuffers:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBindVertexBuffers'));
-  @vk.fCommands.CmdBindVertexBuffers:=addr(vkCmdBindVertexBuffers);
-  @vkCmdDraw:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDraw'));
-  @vk.fCommands.CmdDraw:=addr(vkCmdDraw);
-  @vkCmdDrawIndexed:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndexed'));
-  @vk.fCommands.CmdDrawIndexed:=addr(vkCmdDrawIndexed);
-  @vkCmdDrawIndirect:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndirect'));
-  @vk.fCommands.CmdDrawIndirect:=addr(vkCmdDrawIndirect);
-  @vkCmdDrawIndexedIndirect:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndexedIndirect'));
-  @vk.fCommands.CmdDrawIndexedIndirect:=addr(vkCmdDrawIndexedIndirect);
-  @vkCmdDispatch:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDispatch'));
-  @vk.fCommands.CmdDispatch:=addr(vkCmdDispatch);
-  @vkCmdDispatchIndirect:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDispatchIndirect'));
-  @vk.fCommands.CmdDispatchIndirect:=addr(vkCmdDispatchIndirect);
-  @vkCmdCopyBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyBuffer'));
-  @vk.fCommands.CmdCopyBuffer:=addr(vkCmdCopyBuffer);
-  @vkCmdCopyImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyImage'));
-  @vk.fCommands.CmdCopyImage:=addr(vkCmdCopyImage);
-  @vkCmdBlitImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBlitImage'));
-  @vk.fCommands.CmdBlitImage:=addr(vkCmdBlitImage);
-  @vkCmdCopyBufferToImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyBufferToImage'));
-  @vk.fCommands.CmdCopyBufferToImage:=addr(vkCmdCopyBufferToImage);
-  @vkCmdCopyImageToBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyImageToBuffer'));
-  @vk.fCommands.CmdCopyImageToBuffer:=addr(vkCmdCopyImageToBuffer);
-  @vkCmdUpdateBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdUpdateBuffer'));
-  @vk.fCommands.CmdUpdateBuffer:=addr(vkCmdUpdateBuffer);
-  @vkCmdFillBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdFillBuffer'));
-  @vk.fCommands.CmdFillBuffer:=addr(vkCmdFillBuffer);
-  @vkCmdClearColorImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdClearColorImage'));
-  @vk.fCommands.CmdClearColorImage:=addr(vkCmdClearColorImage);
-  @vkCmdClearDepthStencilImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdClearDepthStencilImage'));
-  @vk.fCommands.CmdClearDepthStencilImage:=addr(vkCmdClearDepthStencilImage);
-  @vkCmdClearAttachments:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdClearAttachments'));
-  @vk.fCommands.CmdClearAttachments:=addr(vkCmdClearAttachments);
-  @vkCmdResolveImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdResolveImage'));
-  @vk.fCommands.CmdResolveImage:=addr(vkCmdResolveImage);
-  @vkCmdSetEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetEvent'));
-  @vk.fCommands.CmdSetEvent:=addr(vkCmdSetEvent);
-  @vkCmdResetEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdResetEvent'));
-  @vk.fCommands.CmdResetEvent:=addr(vkCmdResetEvent);
-  @vkCmdWaitEvents:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdWaitEvents'));
-  @vk.fCommands.CmdWaitEvents:=addr(vkCmdWaitEvents);
-  @vkCmdPipelineBarrier:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdPipelineBarrier'));
-  @vk.fCommands.CmdPipelineBarrier:=addr(vkCmdPipelineBarrier);
-  @vkCmdBeginQuery:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBeginQuery'));
-  @vk.fCommands.CmdBeginQuery:=addr(vkCmdBeginQuery);
-  @vkCmdEndQuery:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdEndQuery'));
-  @vk.fCommands.CmdEndQuery:=addr(vkCmdEndQuery);
-  @vkCmdResetQueryPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdResetQueryPool'));
-  @vk.fCommands.CmdResetQueryPool:=addr(vkCmdResetQueryPool);
-  @vkCmdWriteTimestamp:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdWriteTimestamp'));
-  @vk.fCommands.CmdWriteTimestamp:=addr(vkCmdWriteTimestamp);
-  @vkCmdCopyQueryPoolResults:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyQueryPoolResults'));
-  @vk.fCommands.CmdCopyQueryPoolResults:=addr(vkCmdCopyQueryPoolResults);
-  @vkCmdPushConstants:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdPushConstants'));
-  @vk.fCommands.CmdPushConstants:=addr(vkCmdPushConstants);
-  @vkCmdBeginRenderPass:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBeginRenderPass'));
-  @vk.fCommands.CmdBeginRenderPass:=addr(vkCmdBeginRenderPass);
-  @vkCmdNextSubpass:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdNextSubpass'));
-  @vk.fCommands.CmdNextSubpass:=addr(vkCmdNextSubpass);
-  @vkCmdEndRenderPass:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdEndRenderPass'));
-  @vk.fCommands.CmdEndRenderPass:=addr(vkCmdEndRenderPass);
-  @vkCmdExecuteCommands:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdExecuteCommands'));
-  @vk.fCommands.CmdExecuteCommands:=addr(vkCmdExecuteCommands);
+  if not assigned(vkCreateInstance) then begin
+   @vkCreateInstance:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateInstance'));
+   @vk.fCommands.CreateInstance:=addr(vkCreateInstance);
+  end;
+  if not assigned(vkDestroyInstance) then begin
+   @vkDestroyInstance:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyInstance'));
+   @vk.fCommands.DestroyInstance:=addr(vkDestroyInstance);
+  end;
+  if not assigned(vkEnumeratePhysicalDevices) then begin
+   @vkEnumeratePhysicalDevices:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEnumeratePhysicalDevices'));
+   @vk.fCommands.EnumeratePhysicalDevices:=addr(vkEnumeratePhysicalDevices);
+  end;
+  if not assigned(vkGetDeviceProcAddr) then begin
+   @vkGetDeviceProcAddr:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceProcAddr'));
+   @vk.fCommands.GetDeviceProcAddr:=addr(vkGetDeviceProcAddr);
+  end;
+  if not assigned(vkGetInstanceProcAddr) then begin
+   @vkGetInstanceProcAddr:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetInstanceProcAddr'));
+   @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);
+  end;
+  if not assigned(vkGetPhysicalDeviceProperties) then begin
+   @vkGetPhysicalDeviceProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceProperties'));
+   @vk.fCommands.GetPhysicalDeviceProperties:=addr(vkGetPhysicalDeviceProperties);
+  end;
+  if not assigned(vkGetPhysicalDeviceQueueFamilyProperties) then begin
+   @vkGetPhysicalDeviceQueueFamilyProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceQueueFamilyProperties'));
+   @vk.fCommands.GetPhysicalDeviceQueueFamilyProperties:=addr(vkGetPhysicalDeviceQueueFamilyProperties);
+  end;
+  if not assigned(vkGetPhysicalDeviceMemoryProperties) then begin
+   @vkGetPhysicalDeviceMemoryProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceMemoryProperties'));
+   @vk.fCommands.GetPhysicalDeviceMemoryProperties:=addr(vkGetPhysicalDeviceMemoryProperties);
+  end;
+  if not assigned(vkGetPhysicalDeviceFeatures) then begin
+   @vkGetPhysicalDeviceFeatures:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceFeatures'));
+   @vk.fCommands.GetPhysicalDeviceFeatures:=addr(vkGetPhysicalDeviceFeatures);
+  end;
+  if not assigned(vkGetPhysicalDeviceFormatProperties) then begin
+   @vkGetPhysicalDeviceFormatProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceFormatProperties'));
+   @vk.fCommands.GetPhysicalDeviceFormatProperties:=addr(vkGetPhysicalDeviceFormatProperties);
+  end;
+  if not assigned(vkGetPhysicalDeviceImageFormatProperties) then begin
+   @vkGetPhysicalDeviceImageFormatProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceImageFormatProperties'));
+   @vk.fCommands.GetPhysicalDeviceImageFormatProperties:=addr(vkGetPhysicalDeviceImageFormatProperties);
+  end;
+  if not assigned(vkCreateDevice) then begin
+   @vkCreateDevice:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDevice'));
+   @vk.fCommands.CreateDevice:=addr(vkCreateDevice);
+  end;
+  if not assigned(vkDestroyDevice) then begin
+   @vkDestroyDevice:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyDevice'));
+   @vk.fCommands.DestroyDevice:=addr(vkDestroyDevice);
+  end;
+  if not assigned(vkEnumerateInstanceLayerProperties) then begin
+   @vkEnumerateInstanceLayerProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEnumerateInstanceLayerProperties'));
+   @vk.fCommands.EnumerateInstanceLayerProperties:=addr(vkEnumerateInstanceLayerProperties);
+  end;
+  if not assigned(vkEnumerateInstanceExtensionProperties) then begin
+   @vkEnumerateInstanceExtensionProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEnumerateInstanceExtensionProperties'));
+   @vk.fCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
+  end;
+  if not assigned(vkEnumerateDeviceLayerProperties) then begin
+   @vkEnumerateDeviceLayerProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEnumerateDeviceLayerProperties'));
+   @vk.fCommands.EnumerateDeviceLayerProperties:=addr(vkEnumerateDeviceLayerProperties);
+  end;
+  if not assigned(vkEnumerateDeviceExtensionProperties) then begin
+   @vkEnumerateDeviceExtensionProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEnumerateDeviceExtensionProperties'));
+   @vk.fCommands.EnumerateDeviceExtensionProperties:=addr(vkEnumerateDeviceExtensionProperties);
+  end;
+  if not assigned(vkGetDeviceQueue) then begin
+   @vkGetDeviceQueue:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceQueue'));
+   @vk.fCommands.GetDeviceQueue:=addr(vkGetDeviceQueue);
+  end;
+  if not assigned(vkQueueSubmit) then begin
+   @vkQueueSubmit:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkQueueSubmit'));
+   @vk.fCommands.QueueSubmit:=addr(vkQueueSubmit);
+  end;
+  if not assigned(vkQueueWaitIdle) then begin
+   @vkQueueWaitIdle:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkQueueWaitIdle'));
+   @vk.fCommands.QueueWaitIdle:=addr(vkQueueWaitIdle);
+  end;
+  if not assigned(vkDeviceWaitIdle) then begin
+   @vkDeviceWaitIdle:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDeviceWaitIdle'));
+   @vk.fCommands.DeviceWaitIdle:=addr(vkDeviceWaitIdle);
+  end;
+  if not assigned(vkAllocateMemory) then begin
+   @vkAllocateMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAllocateMemory'));
+   @vk.fCommands.AllocateMemory:=addr(vkAllocateMemory);
+  end;
+  if not assigned(vkFreeMemory) then begin
+   @vkFreeMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkFreeMemory'));
+   @vk.fCommands.FreeMemory:=addr(vkFreeMemory);
+  end;
+  if not assigned(vkMapMemory) then begin
+   @vkMapMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkMapMemory'));
+   @vk.fCommands.MapMemory:=addr(vkMapMemory);
+  end;
+  if not assigned(vkUnmapMemory) then begin
+   @vkUnmapMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkUnmapMemory'));
+   @vk.fCommands.UnmapMemory:=addr(vkUnmapMemory);
+  end;
+  if not assigned(vkFlushMappedMemoryRanges) then begin
+   @vkFlushMappedMemoryRanges:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkFlushMappedMemoryRanges'));
+   @vk.fCommands.FlushMappedMemoryRanges:=addr(vkFlushMappedMemoryRanges);
+  end;
+  if not assigned(vkInvalidateMappedMemoryRanges) then begin
+   @vkInvalidateMappedMemoryRanges:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkInvalidateMappedMemoryRanges'));
+   @vk.fCommands.InvalidateMappedMemoryRanges:=addr(vkInvalidateMappedMemoryRanges);
+  end;
+  if not assigned(vkGetDeviceMemoryCommitment) then begin
+   @vkGetDeviceMemoryCommitment:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceMemoryCommitment'));
+   @vk.fCommands.GetDeviceMemoryCommitment:=addr(vkGetDeviceMemoryCommitment);
+  end;
+  if not assigned(vkGetBufferMemoryRequirements) then begin
+   @vkGetBufferMemoryRequirements:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetBufferMemoryRequirements'));
+   @vk.fCommands.GetBufferMemoryRequirements:=addr(vkGetBufferMemoryRequirements);
+  end;
+  if not assigned(vkBindBufferMemory) then begin
+   @vkBindBufferMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindBufferMemory'));
+   @vk.fCommands.BindBufferMemory:=addr(vkBindBufferMemory);
+  end;
+  if not assigned(vkGetImageMemoryRequirements) then begin
+   @vkGetImageMemoryRequirements:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetImageMemoryRequirements'));
+   @vk.fCommands.GetImageMemoryRequirements:=addr(vkGetImageMemoryRequirements);
+  end;
+  if not assigned(vkBindImageMemory) then begin
+   @vkBindImageMemory:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindImageMemory'));
+   @vk.fCommands.BindImageMemory:=addr(vkBindImageMemory);
+  end;
+  if not assigned(vkGetImageSparseMemoryRequirements) then begin
+   @vkGetImageSparseMemoryRequirements:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetImageSparseMemoryRequirements'));
+   @vk.fCommands.GetImageSparseMemoryRequirements:=addr(vkGetImageSparseMemoryRequirements);
+  end;
+  if not assigned(vkGetPhysicalDeviceSparseImageFormatProperties) then begin
+   @vkGetPhysicalDeviceSparseImageFormatProperties:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSparseImageFormatProperties'));
+   @vk.fCommands.GetPhysicalDeviceSparseImageFormatProperties:=addr(vkGetPhysicalDeviceSparseImageFormatProperties);
+  end;
+  if not assigned(vkQueueBindSparse) then begin
+   @vkQueueBindSparse:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkQueueBindSparse'));
+   @vk.fCommands.QueueBindSparse:=addr(vkQueueBindSparse);
+  end;
+  if not assigned(vkCreateFence) then begin
+   @vkCreateFence:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateFence'));
+   @vk.fCommands.CreateFence:=addr(vkCreateFence);
+  end;
+  if not assigned(vkDestroyFence) then begin
+   @vkDestroyFence:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyFence'));
+   @vk.fCommands.DestroyFence:=addr(vkDestroyFence);
+  end;
+  if not assigned(vkResetFences) then begin
+   @vkResetFences:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkResetFences'));
+   @vk.fCommands.ResetFences:=addr(vkResetFences);
+  end;
+  if not assigned(vkGetFenceStatus) then begin
+   @vkGetFenceStatus:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetFenceStatus'));
+   @vk.fCommands.GetFenceStatus:=addr(vkGetFenceStatus);
+  end;
+  if not assigned(vkWaitForFences) then begin
+   @vkWaitForFences:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkWaitForFences'));
+   @vk.fCommands.WaitForFences:=addr(vkWaitForFences);
+  end;
+  if not assigned(vkCreateSemaphore) then begin
+   @vkCreateSemaphore:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateSemaphore'));
+   @vk.fCommands.CreateSemaphore:=addr(vkCreateSemaphore);
+  end;
+  if not assigned(vkDestroySemaphore) then begin
+   @vkDestroySemaphore:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroySemaphore'));
+   @vk.fCommands.DestroySemaphore:=addr(vkDestroySemaphore);
+  end;
+  if not assigned(vkCreateEvent) then begin
+   @vkCreateEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateEvent'));
+   @vk.fCommands.CreateEvent:=addr(vkCreateEvent);
+  end;
+  if not assigned(vkDestroyEvent) then begin
+   @vkDestroyEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyEvent'));
+   @vk.fCommands.DestroyEvent:=addr(vkDestroyEvent);
+  end;
+  if not assigned(vkGetEventStatus) then begin
+   @vkGetEventStatus:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetEventStatus'));
+   @vk.fCommands.GetEventStatus:=addr(vkGetEventStatus);
+  end;
+  if not assigned(vkSetEvent) then begin
+   @vkSetEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkSetEvent'));
+   @vk.fCommands.SetEvent:=addr(vkSetEvent);
+  end;
+  if not assigned(vkResetEvent) then begin
+   @vkResetEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkResetEvent'));
+   @vk.fCommands.ResetEvent:=addr(vkResetEvent);
+  end;
+  if not assigned(vkCreateQueryPool) then begin
+   @vkCreateQueryPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateQueryPool'));
+   @vk.fCommands.CreateQueryPool:=addr(vkCreateQueryPool);
+  end;
+  if not assigned(vkDestroyQueryPool) then begin
+   @vkDestroyQueryPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyQueryPool'));
+   @vk.fCommands.DestroyQueryPool:=addr(vkDestroyQueryPool);
+  end;
+  if not assigned(vkGetQueryPoolResults) then begin
+   @vkGetQueryPoolResults:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetQueryPoolResults'));
+   @vk.fCommands.GetQueryPoolResults:=addr(vkGetQueryPoolResults);
+  end;
+  if not assigned(vkCreateBuffer) then begin
+   @vkCreateBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateBuffer'));
+   @vk.fCommands.CreateBuffer:=addr(vkCreateBuffer);
+  end;
+  if not assigned(vkDestroyBuffer) then begin
+   @vkDestroyBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyBuffer'));
+   @vk.fCommands.DestroyBuffer:=addr(vkDestroyBuffer);
+  end;
+  if not assigned(vkCreateBufferView) then begin
+   @vkCreateBufferView:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateBufferView'));
+   @vk.fCommands.CreateBufferView:=addr(vkCreateBufferView);
+  end;
+  if not assigned(vkDestroyBufferView) then begin
+   @vkDestroyBufferView:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyBufferView'));
+   @vk.fCommands.DestroyBufferView:=addr(vkDestroyBufferView);
+  end;
+  if not assigned(vkCreateImage) then begin
+   @vkCreateImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateImage'));
+   @vk.fCommands.CreateImage:=addr(vkCreateImage);
+  end;
+  if not assigned(vkDestroyImage) then begin
+   @vkDestroyImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyImage'));
+   @vk.fCommands.DestroyImage:=addr(vkDestroyImage);
+  end;
+  if not assigned(vkGetImageSubresourceLayout) then begin
+   @vkGetImageSubresourceLayout:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetImageSubresourceLayout'));
+   @vk.fCommands.GetImageSubresourceLayout:=addr(vkGetImageSubresourceLayout);
+  end;
+  if not assigned(vkCreateImageView) then begin
+   @vkCreateImageView:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateImageView'));
+   @vk.fCommands.CreateImageView:=addr(vkCreateImageView);
+  end;
+  if not assigned(vkDestroyImageView) then begin
+   @vkDestroyImageView:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyImageView'));
+   @vk.fCommands.DestroyImageView:=addr(vkDestroyImageView);
+  end;
+  if not assigned(vkCreateShaderModule) then begin
+   @vkCreateShaderModule:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateShaderModule'));
+   @vk.fCommands.CreateShaderModule:=addr(vkCreateShaderModule);
+  end;
+  if not assigned(vkDestroyShaderModule) then begin
+   @vkDestroyShaderModule:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyShaderModule'));
+   @vk.fCommands.DestroyShaderModule:=addr(vkDestroyShaderModule);
+  end;
+  if not assigned(vkCreatePipelineCache) then begin
+   @vkCreatePipelineCache:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreatePipelineCache'));
+   @vk.fCommands.CreatePipelineCache:=addr(vkCreatePipelineCache);
+  end;
+  if not assigned(vkDestroyPipelineCache) then begin
+   @vkDestroyPipelineCache:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyPipelineCache'));
+   @vk.fCommands.DestroyPipelineCache:=addr(vkDestroyPipelineCache);
+  end;
+  if not assigned(vkGetPipelineCacheData) then begin
+   @vkGetPipelineCacheData:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPipelineCacheData'));
+   @vk.fCommands.GetPipelineCacheData:=addr(vkGetPipelineCacheData);
+  end;
+  if not assigned(vkMergePipelineCaches) then begin
+   @vkMergePipelineCaches:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkMergePipelineCaches'));
+   @vk.fCommands.MergePipelineCaches:=addr(vkMergePipelineCaches);
+  end;
+  if not assigned(vkCreateGraphicsPipelines) then begin
+   @vkCreateGraphicsPipelines:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateGraphicsPipelines'));
+   @vk.fCommands.CreateGraphicsPipelines:=addr(vkCreateGraphicsPipelines);
+  end;
+  if not assigned(vkCreateComputePipelines) then begin
+   @vkCreateComputePipelines:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateComputePipelines'));
+   @vk.fCommands.CreateComputePipelines:=addr(vkCreateComputePipelines);
+  end;
+  if not assigned(vkDestroyPipeline) then begin
+   @vkDestroyPipeline:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyPipeline'));
+   @vk.fCommands.DestroyPipeline:=addr(vkDestroyPipeline);
+  end;
+  if not assigned(vkCreatePipelineLayout) then begin
+   @vkCreatePipelineLayout:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreatePipelineLayout'));
+   @vk.fCommands.CreatePipelineLayout:=addr(vkCreatePipelineLayout);
+  end;
+  if not assigned(vkDestroyPipelineLayout) then begin
+   @vkDestroyPipelineLayout:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyPipelineLayout'));
+   @vk.fCommands.DestroyPipelineLayout:=addr(vkDestroyPipelineLayout);
+  end;
+  if not assigned(vkCreateSampler) then begin
+   @vkCreateSampler:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateSampler'));
+   @vk.fCommands.CreateSampler:=addr(vkCreateSampler);
+  end;
+  if not assigned(vkDestroySampler) then begin
+   @vkDestroySampler:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroySampler'));
+   @vk.fCommands.DestroySampler:=addr(vkDestroySampler);
+  end;
+  if not assigned(vkCreateDescriptorSetLayout) then begin
+   @vkCreateDescriptorSetLayout:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDescriptorSetLayout'));
+   @vk.fCommands.CreateDescriptorSetLayout:=addr(vkCreateDescriptorSetLayout);
+  end;
+  if not assigned(vkDestroyDescriptorSetLayout) then begin
+   @vkDestroyDescriptorSetLayout:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyDescriptorSetLayout'));
+   @vk.fCommands.DestroyDescriptorSetLayout:=addr(vkDestroyDescriptorSetLayout);
+  end;
+  if not assigned(vkCreateDescriptorPool) then begin
+   @vkCreateDescriptorPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDescriptorPool'));
+   @vk.fCommands.CreateDescriptorPool:=addr(vkCreateDescriptorPool);
+  end;
+  if not assigned(vkDestroyDescriptorPool) then begin
+   @vkDestroyDescriptorPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyDescriptorPool'));
+   @vk.fCommands.DestroyDescriptorPool:=addr(vkDestroyDescriptorPool);
+  end;
+  if not assigned(vkResetDescriptorPool) then begin
+   @vkResetDescriptorPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkResetDescriptorPool'));
+   @vk.fCommands.ResetDescriptorPool:=addr(vkResetDescriptorPool);
+  end;
+  if not assigned(vkAllocateDescriptorSets) then begin
+   @vkAllocateDescriptorSets:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAllocateDescriptorSets'));
+   @vk.fCommands.AllocateDescriptorSets:=addr(vkAllocateDescriptorSets);
+  end;
+  if not assigned(vkFreeDescriptorSets) then begin
+   @vkFreeDescriptorSets:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkFreeDescriptorSets'));
+   @vk.fCommands.FreeDescriptorSets:=addr(vkFreeDescriptorSets);
+  end;
+  if not assigned(vkUpdateDescriptorSets) then begin
+   @vkUpdateDescriptorSets:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkUpdateDescriptorSets'));
+   @vk.fCommands.UpdateDescriptorSets:=addr(vkUpdateDescriptorSets);
+  end;
+  if not assigned(vkCreateFramebuffer) then begin
+   @vkCreateFramebuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateFramebuffer'));
+   @vk.fCommands.CreateFramebuffer:=addr(vkCreateFramebuffer);
+  end;
+  if not assigned(vkDestroyFramebuffer) then begin
+   @vkDestroyFramebuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyFramebuffer'));
+   @vk.fCommands.DestroyFramebuffer:=addr(vkDestroyFramebuffer);
+  end;
+  if not assigned(vkCreateRenderPass) then begin
+   @vkCreateRenderPass:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateRenderPass'));
+   @vk.fCommands.CreateRenderPass:=addr(vkCreateRenderPass);
+  end;
+  if not assigned(vkDestroyRenderPass) then begin
+   @vkDestroyRenderPass:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyRenderPass'));
+   @vk.fCommands.DestroyRenderPass:=addr(vkDestroyRenderPass);
+  end;
+  if not assigned(vkGetRenderAreaGranularity) then begin
+   @vkGetRenderAreaGranularity:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetRenderAreaGranularity'));
+   @vk.fCommands.GetRenderAreaGranularity:=addr(vkGetRenderAreaGranularity);
+  end;
+  if not assigned(vkCreateCommandPool) then begin
+   @vkCreateCommandPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateCommandPool'));
+   @vk.fCommands.CreateCommandPool:=addr(vkCreateCommandPool);
+  end;
+  if not assigned(vkDestroyCommandPool) then begin
+   @vkDestroyCommandPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyCommandPool'));
+   @vk.fCommands.DestroyCommandPool:=addr(vkDestroyCommandPool);
+  end;
+  if not assigned(vkResetCommandPool) then begin
+   @vkResetCommandPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkResetCommandPool'));
+   @vk.fCommands.ResetCommandPool:=addr(vkResetCommandPool);
+  end;
+  if not assigned(vkAllocateCommandBuffers) then begin
+   @vkAllocateCommandBuffers:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAllocateCommandBuffers'));
+   @vk.fCommands.AllocateCommandBuffers:=addr(vkAllocateCommandBuffers);
+  end;
+  if not assigned(vkFreeCommandBuffers) then begin
+   @vkFreeCommandBuffers:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkFreeCommandBuffers'));
+   @vk.fCommands.FreeCommandBuffers:=addr(vkFreeCommandBuffers);
+  end;
+  if not assigned(vkBeginCommandBuffer) then begin
+   @vkBeginCommandBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBeginCommandBuffer'));
+   @vk.fCommands.BeginCommandBuffer:=addr(vkBeginCommandBuffer);
+  end;
+  if not assigned(vkEndCommandBuffer) then begin
+   @vkEndCommandBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEndCommandBuffer'));
+   @vk.fCommands.EndCommandBuffer:=addr(vkEndCommandBuffer);
+  end;
+  if not assigned(vkResetCommandBuffer) then begin
+   @vkResetCommandBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkResetCommandBuffer'));
+   @vk.fCommands.ResetCommandBuffer:=addr(vkResetCommandBuffer);
+  end;
+  if not assigned(vkCmdBindPipeline) then begin
+   @vkCmdBindPipeline:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBindPipeline'));
+   @vk.fCommands.CmdBindPipeline:=addr(vkCmdBindPipeline);
+  end;
+  if not assigned(vkCmdSetViewport) then begin
+   @vkCmdSetViewport:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetViewport'));
+   @vk.fCommands.CmdSetViewport:=addr(vkCmdSetViewport);
+  end;
+  if not assigned(vkCmdSetScissor) then begin
+   @vkCmdSetScissor:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetScissor'));
+   @vk.fCommands.CmdSetScissor:=addr(vkCmdSetScissor);
+  end;
+  if not assigned(vkCmdSetLineWidth) then begin
+   @vkCmdSetLineWidth:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetLineWidth'));
+   @vk.fCommands.CmdSetLineWidth:=addr(vkCmdSetLineWidth);
+  end;
+  if not assigned(vkCmdSetDepthBias) then begin
+   @vkCmdSetDepthBias:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetDepthBias'));
+   @vk.fCommands.CmdSetDepthBias:=addr(vkCmdSetDepthBias);
+  end;
+  if not assigned(vkCmdSetBlendConstants) then begin
+   @vkCmdSetBlendConstants:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetBlendConstants'));
+   @vk.fCommands.CmdSetBlendConstants:=addr(vkCmdSetBlendConstants);
+  end;
+  if not assigned(vkCmdSetDepthBounds) then begin
+   @vkCmdSetDepthBounds:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetDepthBounds'));
+   @vk.fCommands.CmdSetDepthBounds:=addr(vkCmdSetDepthBounds);
+  end;
+  if not assigned(vkCmdSetStencilCompareMask) then begin
+   @vkCmdSetStencilCompareMask:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetStencilCompareMask'));
+   @vk.fCommands.CmdSetStencilCompareMask:=addr(vkCmdSetStencilCompareMask);
+  end;
+  if not assigned(vkCmdSetStencilWriteMask) then begin
+   @vkCmdSetStencilWriteMask:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetStencilWriteMask'));
+   @vk.fCommands.CmdSetStencilWriteMask:=addr(vkCmdSetStencilWriteMask);
+  end;
+  if not assigned(vkCmdSetStencilReference) then begin
+   @vkCmdSetStencilReference:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetStencilReference'));
+   @vk.fCommands.CmdSetStencilReference:=addr(vkCmdSetStencilReference);
+  end;
+  if not assigned(vkCmdBindDescriptorSets) then begin
+   @vkCmdBindDescriptorSets:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBindDescriptorSets'));
+   @vk.fCommands.CmdBindDescriptorSets:=addr(vkCmdBindDescriptorSets);
+  end;
+  if not assigned(vkCmdBindIndexBuffer) then begin
+   @vkCmdBindIndexBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBindIndexBuffer'));
+   @vk.fCommands.CmdBindIndexBuffer:=addr(vkCmdBindIndexBuffer);
+  end;
+  if not assigned(vkCmdBindVertexBuffers) then begin
+   @vkCmdBindVertexBuffers:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBindVertexBuffers'));
+   @vk.fCommands.CmdBindVertexBuffers:=addr(vkCmdBindVertexBuffers);
+  end;
+  if not assigned(vkCmdDraw) then begin
+   @vkCmdDraw:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDraw'));
+   @vk.fCommands.CmdDraw:=addr(vkCmdDraw);
+  end;
+  if not assigned(vkCmdDrawIndexed) then begin
+   @vkCmdDrawIndexed:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndexed'));
+   @vk.fCommands.CmdDrawIndexed:=addr(vkCmdDrawIndexed);
+  end;
+  if not assigned(vkCmdDrawIndirect) then begin
+   @vkCmdDrawIndirect:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndirect'));
+   @vk.fCommands.CmdDrawIndirect:=addr(vkCmdDrawIndirect);
+  end;
+  if not assigned(vkCmdDrawIndexedIndirect) then begin
+   @vkCmdDrawIndexedIndirect:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndexedIndirect'));
+   @vk.fCommands.CmdDrawIndexedIndirect:=addr(vkCmdDrawIndexedIndirect);
+  end;
+  if not assigned(vkCmdDispatch) then begin
+   @vkCmdDispatch:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDispatch'));
+   @vk.fCommands.CmdDispatch:=addr(vkCmdDispatch);
+  end;
+  if not assigned(vkCmdDispatchIndirect) then begin
+   @vkCmdDispatchIndirect:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDispatchIndirect'));
+   @vk.fCommands.CmdDispatchIndirect:=addr(vkCmdDispatchIndirect);
+  end;
+  if not assigned(vkCmdCopyBuffer) then begin
+   @vkCmdCopyBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyBuffer'));
+   @vk.fCommands.CmdCopyBuffer:=addr(vkCmdCopyBuffer);
+  end;
+  if not assigned(vkCmdCopyImage) then begin
+   @vkCmdCopyImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyImage'));
+   @vk.fCommands.CmdCopyImage:=addr(vkCmdCopyImage);
+  end;
+  if not assigned(vkCmdBlitImage) then begin
+   @vkCmdBlitImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBlitImage'));
+   @vk.fCommands.CmdBlitImage:=addr(vkCmdBlitImage);
+  end;
+  if not assigned(vkCmdCopyBufferToImage) then begin
+   @vkCmdCopyBufferToImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyBufferToImage'));
+   @vk.fCommands.CmdCopyBufferToImage:=addr(vkCmdCopyBufferToImage);
+  end;
+  if not assigned(vkCmdCopyImageToBuffer) then begin
+   @vkCmdCopyImageToBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyImageToBuffer'));
+   @vk.fCommands.CmdCopyImageToBuffer:=addr(vkCmdCopyImageToBuffer);
+  end;
+  if not assigned(vkCmdUpdateBuffer) then begin
+   @vkCmdUpdateBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdUpdateBuffer'));
+   @vk.fCommands.CmdUpdateBuffer:=addr(vkCmdUpdateBuffer);
+  end;
+  if not assigned(vkCmdFillBuffer) then begin
+   @vkCmdFillBuffer:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdFillBuffer'));
+   @vk.fCommands.CmdFillBuffer:=addr(vkCmdFillBuffer);
+  end;
+  if not assigned(vkCmdClearColorImage) then begin
+   @vkCmdClearColorImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdClearColorImage'));
+   @vk.fCommands.CmdClearColorImage:=addr(vkCmdClearColorImage);
+  end;
+  if not assigned(vkCmdClearDepthStencilImage) then begin
+   @vkCmdClearDepthStencilImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdClearDepthStencilImage'));
+   @vk.fCommands.CmdClearDepthStencilImage:=addr(vkCmdClearDepthStencilImage);
+  end;
+  if not assigned(vkCmdClearAttachments) then begin
+   @vkCmdClearAttachments:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdClearAttachments'));
+   @vk.fCommands.CmdClearAttachments:=addr(vkCmdClearAttachments);
+  end;
+  if not assigned(vkCmdResolveImage) then begin
+   @vkCmdResolveImage:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdResolveImage'));
+   @vk.fCommands.CmdResolveImage:=addr(vkCmdResolveImage);
+  end;
+  if not assigned(vkCmdSetEvent) then begin
+   @vkCmdSetEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetEvent'));
+   @vk.fCommands.CmdSetEvent:=addr(vkCmdSetEvent);
+  end;
+  if not assigned(vkCmdResetEvent) then begin
+   @vkCmdResetEvent:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdResetEvent'));
+   @vk.fCommands.CmdResetEvent:=addr(vkCmdResetEvent);
+  end;
+  if not assigned(vkCmdWaitEvents) then begin
+   @vkCmdWaitEvents:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdWaitEvents'));
+   @vk.fCommands.CmdWaitEvents:=addr(vkCmdWaitEvents);
+  end;
+  if not assigned(vkCmdPipelineBarrier) then begin
+   @vkCmdPipelineBarrier:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdPipelineBarrier'));
+   @vk.fCommands.CmdPipelineBarrier:=addr(vkCmdPipelineBarrier);
+  end;
+  if not assigned(vkCmdBeginQuery) then begin
+   @vkCmdBeginQuery:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBeginQuery'));
+   @vk.fCommands.CmdBeginQuery:=addr(vkCmdBeginQuery);
+  end;
+  if not assigned(vkCmdEndQuery) then begin
+   @vkCmdEndQuery:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdEndQuery'));
+   @vk.fCommands.CmdEndQuery:=addr(vkCmdEndQuery);
+  end;
+  if not assigned(vkCmdResetQueryPool) then begin
+   @vkCmdResetQueryPool:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdResetQueryPool'));
+   @vk.fCommands.CmdResetQueryPool:=addr(vkCmdResetQueryPool);
+  end;
+  if not assigned(vkCmdWriteTimestamp) then begin
+   @vkCmdWriteTimestamp:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdWriteTimestamp'));
+   @vk.fCommands.CmdWriteTimestamp:=addr(vkCmdWriteTimestamp);
+  end;
+  if not assigned(vkCmdCopyQueryPoolResults) then begin
+   @vkCmdCopyQueryPoolResults:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyQueryPoolResults'));
+   @vk.fCommands.CmdCopyQueryPoolResults:=addr(vkCmdCopyQueryPoolResults);
+  end;
+  if not assigned(vkCmdPushConstants) then begin
+   @vkCmdPushConstants:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdPushConstants'));
+   @vk.fCommands.CmdPushConstants:=addr(vkCmdPushConstants);
+  end;
+  if not assigned(vkCmdBeginRenderPass) then begin
+   @vkCmdBeginRenderPass:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBeginRenderPass'));
+   @vk.fCommands.CmdBeginRenderPass:=addr(vkCmdBeginRenderPass);
+  end;
+  if not assigned(vkCmdNextSubpass) then begin
+   @vkCmdNextSubpass:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdNextSubpass'));
+   @vk.fCommands.CmdNextSubpass:=addr(vkCmdNextSubpass);
+  end;
+  if not assigned(vkCmdEndRenderPass) then begin
+   @vkCmdEndRenderPass:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdEndRenderPass'));
+   @vk.fCommands.CmdEndRenderPass:=addr(vkCmdEndRenderPass);
+  end;
+  if not assigned(vkCmdExecuteCommands) then begin
+   @vkCmdExecuteCommands:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdExecuteCommands'));
+   @vk.fCommands.CmdExecuteCommands:=addr(vkCmdExecuteCommands);
+  end;
 {$ifdef Android}
-  @vkCreateAndroidSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateAndroidSurfaceKHR'));
-  @vk.fCommands.CreateAndroidSurfaceKHR:=addr(vkCreateAndroidSurfaceKHR);
+  if not assigned(vkCreateAndroidSurfaceKHR) then begin
+   @vkCreateAndroidSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateAndroidSurfaceKHR'));
+   @vk.fCommands.CreateAndroidSurfaceKHR:=addr(vkCreateAndroidSurfaceKHR);
+  end;
 {$endif}
-  @vkGetPhysicalDeviceDisplayPropertiesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceDisplayPropertiesKHR'));
-  @vk.fCommands.GetPhysicalDeviceDisplayPropertiesKHR:=addr(vkGetPhysicalDeviceDisplayPropertiesKHR);
-  @vkGetPhysicalDeviceDisplayPlanePropertiesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceDisplayPlanePropertiesKHR'));
-  @vk.fCommands.GetPhysicalDeviceDisplayPlanePropertiesKHR:=addr(vkGetPhysicalDeviceDisplayPlanePropertiesKHR);
-  @vkGetDisplayPlaneSupportedDisplaysKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDisplayPlaneSupportedDisplaysKHR'));
-  @vk.fCommands.GetDisplayPlaneSupportedDisplaysKHR:=addr(vkGetDisplayPlaneSupportedDisplaysKHR);
-  @vkGetDisplayModePropertiesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDisplayModePropertiesKHR'));
-  @vk.fCommands.GetDisplayModePropertiesKHR:=addr(vkGetDisplayModePropertiesKHR);
-  @vkCreateDisplayModeKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDisplayModeKHR'));
-  @vk.fCommands.CreateDisplayModeKHR:=addr(vkCreateDisplayModeKHR);
-  @vkGetDisplayPlaneCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDisplayPlaneCapabilitiesKHR'));
-  @vk.fCommands.GetDisplayPlaneCapabilitiesKHR:=addr(vkGetDisplayPlaneCapabilitiesKHR);
-  @vkCreateDisplayPlaneSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDisplayPlaneSurfaceKHR'));
-  @vk.fCommands.CreateDisplayPlaneSurfaceKHR:=addr(vkCreateDisplayPlaneSurfaceKHR);
-  @vkCreateSharedSwapchainsKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateSharedSwapchainsKHR'));
-  @vk.fCommands.CreateSharedSwapchainsKHR:=addr(vkCreateSharedSwapchainsKHR);
+  if not assigned(vkGetPhysicalDeviceDisplayPropertiesKHR) then begin
+   @vkGetPhysicalDeviceDisplayPropertiesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceDisplayPropertiesKHR'));
+   @vk.fCommands.GetPhysicalDeviceDisplayPropertiesKHR:=addr(vkGetPhysicalDeviceDisplayPropertiesKHR);
+  end;
+  if not assigned(vkGetPhysicalDeviceDisplayPlanePropertiesKHR) then begin
+   @vkGetPhysicalDeviceDisplayPlanePropertiesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceDisplayPlanePropertiesKHR'));
+   @vk.fCommands.GetPhysicalDeviceDisplayPlanePropertiesKHR:=addr(vkGetPhysicalDeviceDisplayPlanePropertiesKHR);
+  end;
+  if not assigned(vkGetDisplayPlaneSupportedDisplaysKHR) then begin
+   @vkGetDisplayPlaneSupportedDisplaysKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDisplayPlaneSupportedDisplaysKHR'));
+   @vk.fCommands.GetDisplayPlaneSupportedDisplaysKHR:=addr(vkGetDisplayPlaneSupportedDisplaysKHR);
+  end;
+  if not assigned(vkGetDisplayModePropertiesKHR) then begin
+   @vkGetDisplayModePropertiesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDisplayModePropertiesKHR'));
+   @vk.fCommands.GetDisplayModePropertiesKHR:=addr(vkGetDisplayModePropertiesKHR);
+  end;
+  if not assigned(vkCreateDisplayModeKHR) then begin
+   @vkCreateDisplayModeKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDisplayModeKHR'));
+   @vk.fCommands.CreateDisplayModeKHR:=addr(vkCreateDisplayModeKHR);
+  end;
+  if not assigned(vkGetDisplayPlaneCapabilitiesKHR) then begin
+   @vkGetDisplayPlaneCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDisplayPlaneCapabilitiesKHR'));
+   @vk.fCommands.GetDisplayPlaneCapabilitiesKHR:=addr(vkGetDisplayPlaneCapabilitiesKHR);
+  end;
+  if not assigned(vkCreateDisplayPlaneSurfaceKHR) then begin
+   @vkCreateDisplayPlaneSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDisplayPlaneSurfaceKHR'));
+   @vk.fCommands.CreateDisplayPlaneSurfaceKHR:=addr(vkCreateDisplayPlaneSurfaceKHR);
+  end;
+  if not assigned(vkCreateSharedSwapchainsKHR) then begin
+   @vkCreateSharedSwapchainsKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateSharedSwapchainsKHR'));
+   @vk.fCommands.CreateSharedSwapchainsKHR:=addr(vkCreateSharedSwapchainsKHR);
+  end;
 {$ifdef Mir}
-  @vkCreateMirSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateMirSurfaceKHR'));
-  @vk.fCommands.CreateMirSurfaceKHR:=addr(vkCreateMirSurfaceKHR);
+  if not assigned(vkCreateMirSurfaceKHR) then begin
+   @vkCreateMirSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateMirSurfaceKHR'));
+   @vk.fCommands.CreateMirSurfaceKHR:=addr(vkCreateMirSurfaceKHR);
+  end;
 {$endif}
 {$ifdef Mir}
-  @vkGetPhysicalDeviceMirPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceMirPresentationSupportKHR'));
-  @vk.fCommands.GetPhysicalDeviceMirPresentationSupportKHR:=addr(vkGetPhysicalDeviceMirPresentationSupportKHR);
+  if not assigned(vkGetPhysicalDeviceMirPresentationSupportKHR) then begin
+   @vkGetPhysicalDeviceMirPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceMirPresentationSupportKHR'));
+   @vk.fCommands.GetPhysicalDeviceMirPresentationSupportKHR:=addr(vkGetPhysicalDeviceMirPresentationSupportKHR);
+  end;
 {$endif}
-  @vkDestroySurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroySurfaceKHR'));
-  @vk.fCommands.DestroySurfaceKHR:=addr(vkDestroySurfaceKHR);
-  @vkGetPhysicalDeviceSurfaceSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfaceSupportKHR'));
-  @vk.fCommands.GetPhysicalDeviceSurfaceSupportKHR:=addr(vkGetPhysicalDeviceSurfaceSupportKHR);
-  @vkGetPhysicalDeviceSurfaceCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfaceCapabilitiesKHR'));
-  @vk.fCommands.GetPhysicalDeviceSurfaceCapabilitiesKHR:=addr(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
-  @vkGetPhysicalDeviceSurfaceFormatsKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfaceFormatsKHR'));
-  @vk.fCommands.GetPhysicalDeviceSurfaceFormatsKHR:=addr(vkGetPhysicalDeviceSurfaceFormatsKHR);
-  @vkGetPhysicalDeviceSurfacePresentModesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfacePresentModesKHR'));
-  @vk.fCommands.GetPhysicalDeviceSurfacePresentModesKHR:=addr(vkGetPhysicalDeviceSurfacePresentModesKHR);
-  @vkCreateSwapchainKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateSwapchainKHR'));
-  @vk.fCommands.CreateSwapchainKHR:=addr(vkCreateSwapchainKHR);
-  @vkDestroySwapchainKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroySwapchainKHR'));
-  @vk.fCommands.DestroySwapchainKHR:=addr(vkDestroySwapchainKHR);
-  @vkGetSwapchainImagesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetSwapchainImagesKHR'));
-  @vk.fCommands.GetSwapchainImagesKHR:=addr(vkGetSwapchainImagesKHR);
-  @vkAcquireNextImageKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAcquireNextImageKHR'));
-  @vk.fCommands.AcquireNextImageKHR:=addr(vkAcquireNextImageKHR);
-  @vkQueuePresentKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkQueuePresentKHR'));
-  @vk.fCommands.QueuePresentKHR:=addr(vkQueuePresentKHR);
+  if not assigned(vkDestroySurfaceKHR) then begin
+   @vkDestroySurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroySurfaceKHR'));
+   @vk.fCommands.DestroySurfaceKHR:=addr(vkDestroySurfaceKHR);
+  end;
+  if not assigned(vkGetPhysicalDeviceSurfaceSupportKHR) then begin
+   @vkGetPhysicalDeviceSurfaceSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfaceSupportKHR'));
+   @vk.fCommands.GetPhysicalDeviceSurfaceSupportKHR:=addr(vkGetPhysicalDeviceSurfaceSupportKHR);
+  end;
+  if not assigned(vkGetPhysicalDeviceSurfaceCapabilitiesKHR) then begin
+   @vkGetPhysicalDeviceSurfaceCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfaceCapabilitiesKHR'));
+   @vk.fCommands.GetPhysicalDeviceSurfaceCapabilitiesKHR:=addr(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
+  end;
+  if not assigned(vkGetPhysicalDeviceSurfaceFormatsKHR) then begin
+   @vkGetPhysicalDeviceSurfaceFormatsKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfaceFormatsKHR'));
+   @vk.fCommands.GetPhysicalDeviceSurfaceFormatsKHR:=addr(vkGetPhysicalDeviceSurfaceFormatsKHR);
+  end;
+  if not assigned(vkGetPhysicalDeviceSurfacePresentModesKHR) then begin
+   @vkGetPhysicalDeviceSurfacePresentModesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfacePresentModesKHR'));
+   @vk.fCommands.GetPhysicalDeviceSurfacePresentModesKHR:=addr(vkGetPhysicalDeviceSurfacePresentModesKHR);
+  end;
+  if not assigned(vkCreateSwapchainKHR) then begin
+   @vkCreateSwapchainKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateSwapchainKHR'));
+   @vk.fCommands.CreateSwapchainKHR:=addr(vkCreateSwapchainKHR);
+  end;
+  if not assigned(vkDestroySwapchainKHR) then begin
+   @vkDestroySwapchainKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroySwapchainKHR'));
+   @vk.fCommands.DestroySwapchainKHR:=addr(vkDestroySwapchainKHR);
+  end;
+  if not assigned(vkGetSwapchainImagesKHR) then begin
+   @vkGetSwapchainImagesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetSwapchainImagesKHR'));
+   @vk.fCommands.GetSwapchainImagesKHR:=addr(vkGetSwapchainImagesKHR);
+  end;
+  if not assigned(vkAcquireNextImageKHR) then begin
+   @vkAcquireNextImageKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAcquireNextImageKHR'));
+   @vk.fCommands.AcquireNextImageKHR:=addr(vkAcquireNextImageKHR);
+  end;
+  if not assigned(vkQueuePresentKHR) then begin
+   @vkQueuePresentKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkQueuePresentKHR'));
+   @vk.fCommands.QueuePresentKHR:=addr(vkQueuePresentKHR);
+  end;
 {$ifdef Wayland}
-  @vkCreateWaylandSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateWaylandSurfaceKHR'));
-  @vk.fCommands.CreateWaylandSurfaceKHR:=addr(vkCreateWaylandSurfaceKHR);
+  if not assigned(vkCreateWaylandSurfaceKHR) then begin
+   @vkCreateWaylandSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateWaylandSurfaceKHR'));
+   @vk.fCommands.CreateWaylandSurfaceKHR:=addr(vkCreateWaylandSurfaceKHR);
+  end;
 {$endif}
 {$ifdef Wayland}
-  @vkGetPhysicalDeviceWaylandPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceWaylandPresentationSupportKHR'));
-  @vk.fCommands.GetPhysicalDeviceWaylandPresentationSupportKHR:=addr(vkGetPhysicalDeviceWaylandPresentationSupportKHR);
+  if not assigned(vkGetPhysicalDeviceWaylandPresentationSupportKHR) then begin
+   @vkGetPhysicalDeviceWaylandPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceWaylandPresentationSupportKHR'));
+   @vk.fCommands.GetPhysicalDeviceWaylandPresentationSupportKHR:=addr(vkGetPhysicalDeviceWaylandPresentationSupportKHR);
+  end;
 {$endif}
-  @vkCreateWin32SurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateWin32SurfaceKHR'));
-  @vk.fCommands.CreateWin32SurfaceKHR:=addr(vkCreateWin32SurfaceKHR);
-  @vkGetPhysicalDeviceWin32PresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceWin32PresentationSupportKHR'));
-  @vk.fCommands.GetPhysicalDeviceWin32PresentationSupportKHR:=addr(vkGetPhysicalDeviceWin32PresentationSupportKHR);
+  if not assigned(vkCreateWin32SurfaceKHR) then begin
+   @vkCreateWin32SurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateWin32SurfaceKHR'));
+   @vk.fCommands.CreateWin32SurfaceKHR:=addr(vkCreateWin32SurfaceKHR);
+  end;
+  if not assigned(vkGetPhysicalDeviceWin32PresentationSupportKHR) then begin
+   @vkGetPhysicalDeviceWin32PresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceWin32PresentationSupportKHR'));
+   @vk.fCommands.GetPhysicalDeviceWin32PresentationSupportKHR:=addr(vkGetPhysicalDeviceWin32PresentationSupportKHR);
+  end;
 {$ifdef X11}
-  @vkCreateXlibSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateXlibSurfaceKHR'));
-  @vk.fCommands.CreateXlibSurfaceKHR:=addr(vkCreateXlibSurfaceKHR);
+  if not assigned(vkCreateXlibSurfaceKHR) then begin
+   @vkCreateXlibSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateXlibSurfaceKHR'));
+   @vk.fCommands.CreateXlibSurfaceKHR:=addr(vkCreateXlibSurfaceKHR);
+  end;
 {$endif}
 {$ifdef X11}
-  @vkGetPhysicalDeviceXlibPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceXlibPresentationSupportKHR'));
-  @vk.fCommands.GetPhysicalDeviceXlibPresentationSupportKHR:=addr(vkGetPhysicalDeviceXlibPresentationSupportKHR);
+  if not assigned(vkGetPhysicalDeviceXlibPresentationSupportKHR) then begin
+   @vkGetPhysicalDeviceXlibPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceXlibPresentationSupportKHR'));
+   @vk.fCommands.GetPhysicalDeviceXlibPresentationSupportKHR:=addr(vkGetPhysicalDeviceXlibPresentationSupportKHR);
+  end;
 {$endif}
 {$ifdef XCB}
-  @vkCreateXcbSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateXcbSurfaceKHR'));
-  @vk.fCommands.CreateXcbSurfaceKHR:=addr(vkCreateXcbSurfaceKHR);
+  if not assigned(vkCreateXcbSurfaceKHR) then begin
+   @vkCreateXcbSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateXcbSurfaceKHR'));
+   @vk.fCommands.CreateXcbSurfaceKHR:=addr(vkCreateXcbSurfaceKHR);
+  end;
 {$endif}
 {$ifdef XCB}
-  @vkGetPhysicalDeviceXcbPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceXcbPresentationSupportKHR'));
-  @vk.fCommands.GetPhysicalDeviceXcbPresentationSupportKHR:=addr(vkGetPhysicalDeviceXcbPresentationSupportKHR);
+  if not assigned(vkGetPhysicalDeviceXcbPresentationSupportKHR) then begin
+   @vkGetPhysicalDeviceXcbPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceXcbPresentationSupportKHR'));
+   @vk.fCommands.GetPhysicalDeviceXcbPresentationSupportKHR:=addr(vkGetPhysicalDeviceXcbPresentationSupportKHR);
+  end;
 {$endif}
-  @vkCreateDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDebugReportCallbackEXT'));
-  @vk.fCommands.CreateDebugReportCallbackEXT:=addr(vkCreateDebugReportCallbackEXT);
-  @vkDestroyDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyDebugReportCallbackEXT'));
-  @vk.fCommands.DestroyDebugReportCallbackEXT:=addr(vkDestroyDebugReportCallbackEXT);
-  @vkDebugReportMessageEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDebugReportMessageEXT'));
-  @vk.fCommands.DebugReportMessageEXT:=addr(vkDebugReportMessageEXT);
+  if not assigned(vkCreateDebugReportCallbackEXT) then begin
+   @vkCreateDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDebugReportCallbackEXT'));
+   @vk.fCommands.CreateDebugReportCallbackEXT:=addr(vkCreateDebugReportCallbackEXT);
+  end;
+  if not assigned(vkDestroyDebugReportCallbackEXT) then begin
+   @vkDestroyDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyDebugReportCallbackEXT'));
+   @vk.fCommands.DestroyDebugReportCallbackEXT:=addr(vkDestroyDebugReportCallbackEXT);
+  end;
+  if not assigned(vkDebugReportMessageEXT) then begin
+   @vkDebugReportMessageEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDebugReportMessageEXT'));
+   @vk.fCommands.DebugReportMessageEXT:=addr(vkDebugReportMessageEXT);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
