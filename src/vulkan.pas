@@ -4218,6 +4218,7 @@ begin
  result:=assigned(LibVulkan);
  if result then begin
   vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,'vkGetInstanceProcAddr');
+  @vk.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);
   result:=assigned(vkGetInstanceProcAddr);
  end;
 end;

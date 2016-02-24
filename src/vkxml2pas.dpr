@@ -4264,6 +4264,7 @@ begin
    OutputPAS.Add(' result:=assigned(LibVulkan);');
    OutputPAS.Add(' if result then begin');
    OutputPAS.Add('  vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,''vkGetInstanceProcAddr'');');
+   OutputPAS.Add('  @vk.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);');
    OutputPAS.Add('  result:=assigned(vkGetInstanceProcAddr);');
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
