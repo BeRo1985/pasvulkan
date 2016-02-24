@@ -2838,7 +2838,6 @@ var Comment:ansistring;
     CommandTypes:TStringList;
     CommandVariables:TStringList;
     AllCommandType:TStringList;
-    AllDeviceCommandType:TStringList;
     AllCommands:TStringList;
     AllDeviceCommands:TStringList;
     AllCommandClassDefinitions:TStringList;
@@ -3726,9 +3725,6 @@ begin
  AllCommandType.Add('     PPVulkanCommands=^PVulkanCommands;');
  AllCommandType.Add('     PVulkanCommands=^TVulkanCommands;');
  AllCommandType.Add('     TVulkanCommands=record');
- AllDeviceCommandType.Add('     PPVulkanDeviceCommands=^PVulkanDeviceCommands;');
- AllDeviceCommandType.Add('     PVulkanDeviceCommands=^TVulkanDeviceCommands;');
- AllDeviceCommandType.Add('     TVulkanDeviceCommands=record');
  for i:=0 to Tag.Items.Count-1 do begin
   ChildItem:=Tag.Items[i];
   if ChildItem is TXMLTag then begin
@@ -3800,9 +3796,6 @@ begin
      AllCommandType.Add('{$ifdef '+Define+'}');
      AllCommandClassDefinitions.Add('{$ifdef '+Define+'}');
      AllCommandClassImplementations.Add('{$ifdef '+Define+'}');
-     if IsDeviceCommand then begin
-      AllDeviceCommandType.Add('{$ifdef '+Define+'}');
-     end;
     end;
     if (ProtoType='void') and not ProtoPtr then begin
      CommandTypes.Add('     T'+ProtoName+'=procedure('+Line+'); '+CallingConventions);
@@ -3826,7 +3819,6 @@ begin
     end;
     AllCommands.Add(ProtoName+'='+Define);
     if IsDeviceCommand then begin
-     AllDeviceCommandType.Add('      '+copy(ProtoName,3,length(ProtoName)-2)+':T'+ProtoName+';');
      AllDeviceCommands.Add(ProtoName+'='+Define);
     end;
     if length(Define)>0 then begin
@@ -3835,16 +3827,12 @@ begin
      AllCommandType.Add('{$endif}');
      AllCommandClassDefinitions.Add('{$endif}');
      AllCommandClassImplementations.Add('{$endif}');
-     if IsDeviceCommand then begin
-      AllDeviceCommandType.Add('{$endif}');
-     end;
     end;
     AllCommandClassImplementations.Add('');
    end;
   end;
  end;
  AllCommandType.Add('     end;');
- AllDeviceCommandType.Add('     end;');
 end;
 
 procedure ParseRegistryTag(Tag:TXMLTag);
@@ -3942,7 +3930,6 @@ begin
  CommandTypes:=TStringList.Create;
  CommandVariables:=TStringList.Create;
  AllCommandType:=TStringList.Create;
- AllDeviceCommandType:=TStringList.Create;
  AllCommands:=TStringList.Create;
  AllCommandClassDefinitions:=TStringList.Create;
  AllCommandClassImplementations:=TStringList.Create;
@@ -4191,8 +4178,6 @@ begin
    OutputPAS.Add('');
    OutputPAS.AddStrings(AllCommandType);
    OutputPAS.Add('');
-   OutputPAS.AddStrings(AllDeviceCommandType);
-   OutputPAS.Add('');
    OutputPAS.Add('     TVulkan=class');
    OutputPAS.Add('      private');
    OutputPAS.Add('       fCommands:TVulkanCommands;');
@@ -4224,8 +4209,7 @@ begin
    OutputPAS.Add('function LoadVulkanLibrary(const LibraryName:string=VK_DEFAULT_LIB_NAME):boolean;');
    OutputPAS.Add('function LoadVulkanGlobalCommands:boolean;');
    OutputPAS.Add('function LoadVulkanInstanceCommands(const GetInstanceProcAddr:TvkGetInstanceProcAddr;const Instance:TVkInstance;out InstanceCommands:TVulkanCommands):boolean;');
-   OutputPAS.Add('function LoadVulkanDeviceCommands(const GetDeviceProcAddr:TvkGetDeviceProcAddr;const Device:TVkDevice;out DeviceCommands:TVulkanCommands):boolean; overload;');
-   OutputPAS.Add('function LoadVulkanDeviceCommands(const GetDeviceProcAddr:TvkGetDeviceProcAddr;const Device:TVkDevice;out DeviceCommands:TVulkanDeviceCommands):boolean; overload;');
+   OutputPAS.Add('function LoadVulkanDeviceCommands(const GetDeviceProcAddr:TvkGetDeviceProcAddr;const Device:TVkDevice;out DeviceCommands:TVulkanCommands):boolean;');
    OutputPAS.Add('');
    OutputPAS.Add('implementation');
    OutputPAS.Add('');
@@ -4357,33 +4341,9 @@ begin
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
-   OutputPAS.Add('function LoadVulkanDeviceCommands(const GetDeviceProcAddr:TvkGetDeviceProcAddr;const Device:TVkDevice;out DeviceCommands:TVulkanCommands):boolean; overload;');
+   OutputPAS.Add('function LoadVulkanDeviceCommands(const GetDeviceProcAddr:TvkGetDeviceProcAddr;const Device:TVkDevice;out DeviceCommands:TVulkanCommands):boolean;');
    OutputPAS.Add('begin');
    OutputPAS.Add(' FillChar(DeviceCommands,SizeOf(TVulkanCommands),#0);');
-   OutputPAS.Add(' result:=assigned(GetDeviceProcAddr);');
-   OutputPAS.Add(' if result then begin');
-   OutputPAS.Add('  // Device commands of any Vulkan command whose first parameter is one of: vkDevice, VkQueue, VkCommandBuffer');
-   for i:=0 to AllDeviceCommands.Count-1 do begin
-    s:=AllDeviceCommands.Strings[i];
-    j:=pos('=',s);
-    if j>0 then begin
-     s2:=copy(s,j+1,length(s)-j);
-     s:=copy(s,1,j-1);
-    end;
-    if length(s2)>0 then begin
-     OutputPAS.Add('{$ifdef '+s2+'}');
-    end;
-    OutputPAS.Add('  @DeviceCommands.'+copy(s,3,length(s)-2)+':=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('''+s+''')));');
-    if length(s2)>0 then begin
-     OutputPAS.Add('{$endif}');
-    end;
-   end;
-   OutputPAS.Add(' end;');
-   OutputPAS.Add('end;');
-   OutputPAS.Add('');
-   OutputPAS.Add('function LoadVulkanDeviceCommands(const GetDeviceProcAddr:TvkGetDeviceProcAddr;const Device:TVkDevice;out DeviceCommands:TVulkanDeviceCommands):boolean; overload;');
-   OutputPAS.Add('begin');
-   OutputPAS.Add(' FillChar(DeviceCommands,SizeOf(TVulkanDeviceCommands),#0);');
    OutputPAS.Add(' result:=assigned(GetDeviceProcAddr);');
    OutputPAS.Add(' if result then begin');
    OutputPAS.Add('  // Device commands of any Vulkan command whose first parameter is one of: vkDevice, VkQueue, VkCommandBuffer');
@@ -4426,10 +4386,10 @@ begin
    OutputPAS.Add('initialization');
    OutputPAS.Add(' vk:=TVulkan.Create;');
    OutputPAS.Add('finalization');
+   OutputPAS.Add(' vk.Free;');
    OutputPAS.Add(' if assigned(LibVulkan) then begin');
    OutputPAS.Add('  vkFreeLibrary(LibVulkan);');
    OutputPAS.Add(' end;');
-   OutputPAS.Add(' vk.Free;');
    OutputPAS.Add('end.');
    OutputPAS.SaveToFile('vulkan.pas');
   finally
@@ -4454,7 +4414,6 @@ begin
   CommandTypes.Free;
   CommandVariables.Free;
   AllCommandType.Free;
-  AllDeviceCommandType.Free;
   AllCommands.Free;
   AllCommandClassDefinitions.Free;
   AllCommandClassImplementations.Free;
