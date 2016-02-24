@@ -121,6 +121,7 @@ begin
   writeln('LoadVulkanLibrary was successfully . . .');
 
   if LoadVulkanGlobalCommands then begin
+   writeln('LoadVulkanGlobalCommands was successfully . . .');
 
    FillChar(instanceCreateInfo,SizeOf(TVkInstanceCreateInfo),#0);
    instanceCreateInfo.sType:=VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -164,6 +165,8 @@ begin
     writeln('vk.CreateInstance had failed . . .');
    end;
 
+  end else begin
+   writeln('LoadVulkanGlobalCommands had failed . . .');
   end;
 
  end else begin
