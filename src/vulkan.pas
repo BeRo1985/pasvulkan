@@ -4646,6 +4646,7 @@ begin
   @vk.fCommands.DestroyDebugReportCallbackEXT:=addr(vkDestroyDebugReportCallbackEXT);
   @vkDebugReportMessageEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDebugReportMessageEXT'));
   @vk.fCommands.DebugReportMessageEXT:=addr(vkDebugReportMessageEXT);
+  result:=assigned(vkCreateInstance);
  end;
 end;
 
@@ -4841,6 +4842,7 @@ begin
   @InstanceCommands.CreateDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateDebugReportCallbackEXT')));
   @InstanceCommands.DestroyDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyDebugReportCallbackEXT')));
   @InstanceCommands.DebugReportMessageEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDebugReportMessageEXT')));
+  result:=assigned(InstanceCommands.DestroyInstance);
  end;
 end;
 
@@ -4977,6 +4979,7 @@ begin
   @DeviceCommands.GetSwapchainImagesKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetSwapchainImagesKHR')));
   @DeviceCommands.AcquireNextImageKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkAcquireNextImageKHR')));
   @DeviceCommands.QueuePresentKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkQueuePresentKHR')));
+  result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
 

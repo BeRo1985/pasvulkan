@@ -4401,6 +4401,7 @@ begin
      OutputPAS.Add('{$endif}');
     end;
    end;
+   OutputPAS.Add('  result:=assigned(vkCreateInstance);');
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
@@ -4424,6 +4425,7 @@ begin
      OutputPAS.Add('{$endif}');
     end;
    end;
+   OutputPAS.Add('  result:=assigned(InstanceCommands.DestroyInstance);');
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
@@ -4448,6 +4450,7 @@ begin
      OutputPAS.Add('{$endif}');
     end;
    end;
+   OutputPAS.Add('  result:=assigned(DeviceCommands.DestroyDevice);');
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
