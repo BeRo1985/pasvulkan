@@ -120,53 +120,46 @@ begin
  if LoadVulkanLibrary then begin
   writeln('LoadVulkanLibrary was successfully . . .');
 
-  if LoadVulkanGlobalCommands then begin
-   writeln('LoadVulkanGlobalCommands was successfully . . .');
+  FillChar(instanceCreateInfo,SizeOf(TVkInstanceCreateInfo),#0);
+  instanceCreateInfo.sType:=VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+  instanceCreateInfo.enabledExtensionCount:=2;
+  instanceCreateInfo.ppEnabledExtensionNames:=PPVkChar(pointer(@extensionNames));
 
-   FillChar(instanceCreateInfo,SizeOf(TVkInstanceCreateInfo),#0);
-   instanceCreateInfo.sType:=VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-   instanceCreateInfo.enabledExtensionCount:=2;
-   instanceCreateInfo.ppEnabledExtensionNames:=PPVkChar(pointer(@extensionNames));
+  if vk.CreateInstance(@instanceCreateInfo,nil,@inst)=VK_SUCCESS then begin
+   writeln('vk.CreateInstance was successfully . . .');
 
-   if vk.CreateInstance(@instanceCreateInfo,nil,@inst)=VK_SUCCESS then begin
-    writeln('vk.CreateInstance was successfully . . .');
+   if (inst<>VK_NULL_INSTANCE) and LoadVulkanInstanceCommands(vk.Commands.GetInstanceProcAddr,inst,VulkanInstanceCommands) then begin
+    writeln('LoadVulkanInstanceCommands was successfully . . .');
 
-    if (inst<>VK_NULL_INSTANCE) and LoadVulkanInstanceCommands(vk.Commands.GetInstanceProcAddr,inst,VulkanInstanceCommands) then begin
-     writeln('LoadVulkanInstanceCommands was successfully . . .');
+    VulkanInstance:=TVulkan.Create(VulkanInstanceCommands);
+    try
 
-     VulkanInstance:=TVulkan.Create(VulkanInstanceCommands);
-     try
+     physCount:=4;
+     if VulkanInstance.EnumeratePhysicalDevices(inst,@physCount,pointer(@phys))=VK_SUCCESS then begin
+      writeln('VulkanInstance.EnumeratePhysicalDevices was successfully . . .');
 
-      physCount:=4;
-      if VulkanInstance.EnumeratePhysicalDevices(inst,@physCount,pointer(@phys))=VK_SUCCESS then begin
-       writeln('VulkanInstance.EnumeratePhysicalDevices was successfully . . .');
+      writeln(physCount,' physical device(s) found . . .');
+      if physCount>0 then begin
 
-       writeln(physCount,' physical device(s) found . . .');
-       if physCount>0 then begin
-
-       end;
-
-      end else begin
-       writeln('VulkanInstance.EnumeratePhysicalDevices had failed . . .');
       end;
 
-      VulkanInstance.DestroyInstance(inst,nil);
-      writeln('VulkanInstance.DestroyInstance was successfully . . .');
-
-     finally
-      VulkanInstance.Free;
+     end else begin
+      writeln('VulkanInstance.EnumeratePhysicalDevices had failed . . .');
      end;
 
-    end else begin
-     writeln('LoadVulkanInstanceCommands had failed . . .');
+     VulkanInstance.DestroyInstance(inst,nil);
+     writeln('VulkanInstance.DestroyInstance was successfully . . .');
+
+    finally
+     VulkanInstance.Free;
     end;
 
    end else begin
-    writeln('vk.CreateInstance had failed . . .');
+    writeln('LoadVulkanInstanceCommands had failed . . .');
    end;
 
   end else begin
-   writeln('LoadVulkanGlobalCommands had failed . . .');
+   writeln('vk.CreateInstance had failed . . .');
   end;
 
  end else begin
