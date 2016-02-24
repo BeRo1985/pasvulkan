@@ -4281,21 +4281,20 @@ begin
  LibVulkan:=vkLoadLibrary(LibraryName);
  result:=assigned(LibVulkan);
  if result then begin
-  vkEnumerateInstanceExtensionProperties:=vkGetProcAddress(LibVulkan,'vkEnumerateInstanceExtensionProperties');
-  @vk.fCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
-  vkEnumerateInstanceLayerProperties:=vkGetProcAddress(LibVulkan,'vkEnumerateInstanceLayerProperties');
-  @vk.fCommands.EnumerateInstanceLayerProperties:=addr(vkEnumerateInstanceLayerProperties);
-  vkCreateInstance:=vkGetProcAddress(LibVulkan,'vkCreateInstance');
-  @vk.fCommands.CreateInstance:=addr(vkCreateInstance);
   vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,'vkGetInstanceProcAddr');
   @vk.fCommands.GetInstanceProcAddr:=addr(vkGetInstanceProcAddr);
-  vkGetDeviceProcAddr:=vkGetProcAddress(LibVulkan,'vkGetDeviceProcAddr');
-  @vk.fCommands.GetDeviceProcAddr:=addr(vkGetDeviceProcAddr);
-  result:=assigned(vkEnumerateInstanceExtensionProperties) and
-          assigned(vkEnumerateInstanceLayerProperties) and 
-          assigned(vkCreateInstance) and 
-          assigned(vkGetInstanceProcAddr) and
-          assigned(vkGetDeviceProcAddr);
+  result:=assigned(vkGetInstanceProcAddr);
+  if result then begin
+   vkEnumerateInstanceExtensionProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumerateInstanceExtensionProperties')));
+   @vk.fCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
+   vkEnumerateInstanceLayerProperties:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkEnumerateInstanceLayerProperties')));
+   @vk.fCommands.EnumerateInstanceLayerProperties:=addr(vkEnumerateInstanceLayerProperties);
+   vkCreateInstance:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(VK_NULL_INSTANCE,PVkChar('vkCreateInstance')));
+   @vk.fCommands.CreateInstance:=addr(vkCreateInstance);
+   result:=assigned(vkEnumerateInstanceExtensionProperties) and
+           assigned(vkEnumerateInstanceLayerProperties) and 
+           assigned(vkCreateInstance);
+  end;
  end;
 end;
 
