@@ -3105,19 +3105,21 @@ begin
  for i:=0 to ExtensionEnums.Count-1 do begin
   ExtensionEnum:=TExtensionEnum(ExtensionEnums.Objects[i]);
   Extension:=ExtensionEnum.Extension;
-  ExtensionEnumValue:=EnumValues.Values[ExtensionEnum.Value];
-  if length(ExtensionEnumValue)>0 then begin
-   ExtensionEnum.Value:=ExtensionEnumValue;
-  end;
-  if length(ExtensionEnum.Extends)=0 then begin
-   if length(ExtensionEnum.Value)<>0 then begin
-    if pos('"',ExtensionEnum.Value)=0 then begin
-     ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Value+';');
-    end else begin
-     ENumConstants.Add('      '+ExtensionEnum.Name+'='+StringReplace(ExtensionEnum.Value,'"','''',[rfReplaceAll])+';');
+  if length(ExtensionEnum.Name)>0 then begin
+   ExtensionEnumValue:=EnumValues.Values[ExtensionEnum.Value];
+   if length(ExtensionEnumValue)>0 then begin
+    ExtensionEnum.Value:=ExtensionEnumValue;
+   end;
+   if length(ExtensionEnum.Extends)=0 then begin
+    if length(ExtensionEnum.Value)<>0 then begin
+     if pos('"',ExtensionEnum.Value)=0 then begin
+      ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Value+';');
+     end else begin
+      ENumConstants.Add('      '+ExtensionEnum.Name+'='+StringReplace(ExtensionEnum.Value,'"','''',[rfReplaceAll])+';');
+     end;
+    end else if ExtensionEnum.Offset>=0 then begin
+     ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionEnum.Offset)+';');
     end;
-   end else if ExtensionEnum.Offset>=0 then begin
-    ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionEnum.Offset)+';');
    end;
   end;
  end;
@@ -3739,6 +3741,23 @@ begin
      end;
      ValueItem^.ValueInt64:=StrToIntDef(ValueItem^.ValueStr,0);
      ValueItem^.Comment:='';
+    end;
+   end;
+   for i:=0 to CountValueItems-1 do begin
+    for j:=0 to ExtensionEnums.Count-1 do begin
+     ExtensionEnum:=TExtensionEnum(ExtensionEnums.Objects[j]);
+     Extension:=ExtensionEnum.Extension;
+     if (length(ExtensionEnum.Extends)=0) and (ExtensionEnum.Value=ValueItems[i].Name) then begin
+      if length(ValueItems)<(CountValueItems+1) then begin
+       SetLength(ValueItems,(CountValueItems+1)*2);
+      end;
+      ValueItem:=@ValueItems[CountValueItems];
+      inc(CountValueItems);
+      ValueItem^:=ValueItems[i];
+      ValueItem^.Name:=ExtensionEnum.Name;
+      ExtensionEnum.Name:='';
+      break;
+     end;
     end;
    end;
    SetLength(ValueItems,CountValueItems);
