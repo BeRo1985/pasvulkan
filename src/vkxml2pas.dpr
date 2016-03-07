@@ -2834,6 +2834,7 @@ var Comment:ansistring;
     HandleTypes:TStringList;
     ENumTypes:TStringList;
     ENumConstants:TStringList;
+    ENumValues:TStringList;
     TypeDefinitionTypes:TStringList;
     CommandTypes:TStringList;
     CommandVariables:TStringList;
@@ -3093,9 +3094,21 @@ begin
    end;
   end;
  end;
+end;
+
+procedure ProcessExtensions;
+var i:longint;
+    Extension:TExtension;
+    ExtensionEnum:TExtensionEnum;
+    ExtensionEnumValue:string;
+begin
  for i:=0 to ExtensionEnums.Count-1 do begin
   ExtensionEnum:=TExtensionEnum(ExtensionEnums.Objects[i]);
   Extension:=ExtensionEnum.Extension;
+  ExtensionEnumValue:=EnumValues.Values[ExtensionEnum.Value];
+  if length(ExtensionEnumValue)>0 then begin
+   ExtensionEnum.Value:=ExtensionEnumValue;
+  end;
   if length(ExtensionEnum.Extends)=0 then begin
    if length(ExtensionEnum.Value)<>0 then begin
     if pos('"',ExtensionEnum.Value)=0 then begin
@@ -3751,6 +3764,7 @@ begin
     end;
     for i:=0 to CountValueItems-1 do begin
      ValueItem:=@ValueItems[i];
+     ENumValues.Add(ValueItem^.Name+ENumValues.NameValueSeparator+ValueItem^.ValueStr);
      if length(ValueItem^.Comment)>0 then begin
       if (i+1)<CountValueItems then begin
        ENumTypes.Add(AlignPaddingString('       '+ValueItem^.Name+'='+ValueItem^.ValueStr+',',CommentPadding)+' // '+ValueItem^.Comment);
@@ -3770,6 +3784,7 @@ begin
    end else begin
     for i:=0 to CountValueItems-1 do begin
      ValueItem:=@ValueItems[i];
+     ENumValues.Add(ValueItem^.Name+ENumValues.NameValueSeparator+ValueItem^.ValueStr);
      if length(ValueItem^.Comment)>0 then begin
       ENumConstants.Add(AlignPaddingString('      '+ValueItem^.Name+'='+ValueItem^.ValueStr+';',CommentPadding)+' // '+ValueItem^.Comment);
      end else begin
@@ -4009,6 +4024,7 @@ begin
  HandleTypes:=TStringList.Create;
  ENumTypes:=TStringList.Create;
  ENumConstants:=TStringList.Create;
+ ENumValues:=TStringList.Create;
  TypeDefinitionTypes:=TStringList.Create;
  CommandTypes:=TStringList.Create;
  CommandVariables:=TStringList.Create;
@@ -4075,6 +4091,7 @@ begin
   end;
 
   write('Generating "vulkan.pas" . . . ');
+  ProcessExtensions;
   OutputPAS:=TStringList.Create;
   try
    OutputPAS.Add('(*');
@@ -4516,6 +4533,7 @@ begin
   HandleTypes.Free;
   ENumTypes.Free;
   ENumConstants.Free;
+  ENumValues.Free;
   TypeDefinitionTypes.Free;
   CommandTypes.Free;
   CommandVariables.Free;
