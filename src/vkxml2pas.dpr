@@ -133,7 +133,7 @@ uses SysUtils,Classes,Contnrs;
 // On Windows, Vulkan commands use the stdcall convention
 // On Android/ARMv7a, Vulkan functions use the armeabi-v7a-hard calling convention, even if the application's native code is compiled with the armeabi-v7a calling convention.
 // On other platforms, use the default calling convention
-const CallingConventions='{$ifdef Windows}stdcall;{$else}{$ifdef Android}cdecl;{TODO-for-FPC-Devs:armeabi-v7a-hard-calling-convention}{$else}cdecl;{$endif}{$endif}';
+const CallingConventions='{$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}';
 
       CommentPadding=80;
 
@@ -2797,7 +2797,7 @@ type TVendorID=class
        Types:TObjectList;
        Commands:TObjectList;
        constructor Create;
-       destructor Destroy;
+       destructor Destroy; override;
      end;
 
 constructor TExtension.Create;
@@ -3618,8 +3618,6 @@ begin
   Values:=TStringList.Create;
   try
    j:=-1;
-   lv:=$7fffffffffffffff;
-   hv:=-$7fffffffffffffff;
    SetLength(ValueItems,Tag.Items.Count);
    CountValueItems:=0;
    for i:=0 to Tag.Items.Count-1 do begin
