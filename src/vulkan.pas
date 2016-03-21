@@ -143,11 +143,15 @@ type PPVkInt8=^PVkInt8;
 {$endif}
 {$endif}
 
-const VK_API_VERSION=(1 shl 22) or (0 shl 12) or (5 shl 0);
-
-      VK_NULL_HANDLE=0;
+const VK_NULL_HANDLE=0;
 
       VK_NULL_INSTANCE=0;
+
+      VK_API_VERSION=(1 shl 22) or (0 shl 12) or (0 shl 0);
+
+      VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
+
+      VK_HEADER_VERSION=6;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -195,6 +199,8 @@ const VK_API_VERSION=(1 shl 22) or (0 shl 12) or (5 shl 0);
       VK_NV_EXTENSION_1_EXTENSION_NAME='VK_NV_extension_1';
       VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_SPEC_VERSION=1;
       VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME='VK_KHR_sampler_mirror_clamp_to_edge';
+      VK_IMG_FILTER_CUBIC_SPEC_VERSION=1;
+      VK_IMG_FILTER_CUBIC_EXTENSION_NAME='VK_IMG_filter_cubic';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -881,6 +887,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FILTER_LINEAR=1,
        VK_FILTER_END_RANGE=1,                                                    // VK_FILTER_LINEAR
        VK_FILTER_RANGE_SIZE=2,                                                   // (VK_FILTER_LINEAR-VK_FILTER_NEAREST)+1
+       VK_FILTER_CUBIC_IMG=1000015000,
        VK_FILTER_MAX_ENUM=$7fffffff
       );
 
@@ -1595,7 +1602,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT=$00000200,                 // Format can be used for depth/stencil attachment images
        VK_FORMAT_FEATURE_BLIT_SRC_BIT=$00000400,                                 // Format can be used as the source image of blits with vkCmdBlitImage
        VK_FORMAT_FEATURE_BLIT_DST_BIT=$00000800,                                 // Format can be used as the destination image of blits with vkCmdBlitImage
-       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT=$00001000               // Format can be filtered with VK_FILTER_LINEAR when being sampled
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT=$00001000,              // Format can be filtered with VK_FILTER_LINEAR when being sampled
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_IMG=$00002000
       );
 
      PPVkQueryControlFlagBits=^PVkQueryControlFlagBits;

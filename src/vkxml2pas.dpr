@@ -2771,6 +2771,7 @@ type TVendorID=class
        Name:ansistring;
        Value:ansistring;
        Offset:longint;
+       BitPos:longint;
        Dir:ansistring;
        Extends:ansistring;
      end;
@@ -2829,6 +2830,7 @@ var Comment:ansistring;
     ExtensionEnums:TStringList;
     ExtensionTypes:TStringList;
     ExtensionCommands:TStringList;
+    VersionConstants:TStringList;
     BaseTypes:TStringList;
     BitMaskTypes:TStringList;
     HandleTypes:TStringList;
@@ -2843,7 +2845,6 @@ var Comment:ansistring;
     AllDeviceCommands:TStringList;
     AllCommandClassDefinitions:TStringList;
     AllCommandClassImplementations:TStringList;
-    VersionMajor,VersionMinor,VersionPatch:longint;
 
 function TranslateType(Type_:ansistring;const Ptr:longint=0):ansistring;
 begin
@@ -3074,6 +3075,7 @@ begin
         ExtensionEnum.Name:=ChildChildChildTag.GetParameter('name','');
         ExtensionEnum.Value:=ChildChildChildTag.GetParameter('value','');
         ExtensionEnum.Offset:=StrToIntDef(ChildChildChildTag.GetParameter('offset','-1'),-1);
+        ExtensionEnum.BitPos:=StrToIntDef(ChildChildChildTag.GetParameter('bitpos','-1'),-1);
         ExtensionEnum.Dir:=ChildChildChildTag.GetParameter('dir','');
         ExtensionEnum.Extends:=ChildChildChildTag.GetParameter('extends','');
         ExtensionEnums.AddObject(ExtensionEnum.Name,ExtensionEnum);
@@ -3119,6 +3121,8 @@ begin
      end;
     end else if ExtensionEnum.Offset>=0 then begin
      ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionEnum.Offset)+';');
+    end else if ExtensionEnum.BitPos>=0 then begin
+     ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionEnum.BitPos,8)+';');
     end;
    end;
   end;
@@ -3197,7 +3201,7 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
      end;
      TTypeDefinitions=array of TTypeDefinition;
      TPTypeDefinitions=array of PTypeDefinition;
-var i,j,k,ArraySize,CountTypeDefinitions:longint;
+var i,j,k,ArraySize,CountTypeDefinitions,VersionMajor,VersionMinor,VersionPatch:longint;
     ChildItem,ChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
     Category,Type_,Name,Text,NextText,ArraySizeStr:ansistring;
@@ -3307,7 +3311,10 @@ begin
      if Category='include' then begin
      end else if Category='define' then begin
       Name:=ParseText(ChildTag.FindTag('name'));
-      if Name='VK_API_VERSION' then begin
+      if pos('VK_API_VERSION',Name)=1 then begin
+       VersionMajor:=1;
+       VersionMinor:=0;
+       VersionPatch:=0;
        Text:=ParseText(ChildTag);
        if length(Text)>0 then begin
         j:=pos('(',Text);
@@ -3331,6 +3338,17 @@ begin
           end;
          end;
         end;
+       end;
+       VersionConstants.Add('      '+Name+'=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
+       VersionConstants.Add('');
+      end else if pos('VK_HEADER_VERSION',Name)=1 then begin
+       Text:=ParseText(ChildTag);
+       j:=pos(Name,Text);
+       if j>0 then begin
+        Delete(Text,1,(j+length(Name))-1);
+        Text:=trim(Text);
+        VersionConstants.Add('      '+Name+'='+Text+';');
+        VersionConstants.Add('');
        end;
       end;
      end else if Category='basetype' then begin
@@ -3738,6 +3756,8 @@ begin
       ValueItem^.ValueStr:=ExtensionEnum.Value;
      end else if ExtensionEnum.Offset>=0 then begin
       ValueItem^.ValueStr:=ExtensionEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionEnum.Offset);
+     end else if ExtensionEnum.BitPos>=0 then begin
+      ValueItem^.ValueStr:=ExtensionEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionEnum.BitPos,8);
      end;
      ValueItem^.ValueInt64:=StrToIntDef(ValueItem^.ValueStr,0);
      ValueItem^.Comment:='';
@@ -4038,6 +4058,7 @@ begin
  ExtensionEnums:=TStringList.Create;
  ExtensionTypes:=TStringList.Create;
  ExtensionCommands:=TStringList.Create;
+ VersionConstants:=TStringList.Create;
  BaseTypes:=TStringList.Create;
  BitMaskTypes:=TStringList.Create;
  HandleTypes:=TStringList.Create;
@@ -4052,10 +4073,6 @@ begin
  AllCommandClassDefinitions:=TStringList.Create;
  AllCommandClassImplementations:=TStringList.Create;
  AllDeviceCommands:=TStringList.Create;
-
- VersionMajor:=1;
- VersionMinor:=0;
- VersionPatch:=0;
 
  InitializeEntites;
  try
@@ -4258,12 +4275,11 @@ begin
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('');
-   OutputPAS.Add('const VK_API_VERSION=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
-   OutputPAS.Add('');
-   OutputPAS.Add('      VK_NULL_HANDLE=0;');
+   OutputPAS.Add('const VK_NULL_HANDLE=0;');
    OutputPAS.Add('');
    OutputPAS.Add('      VK_NULL_INSTANCE=0;');
    OutputPAS.Add('');
+   OutputPAS.AddStrings(VersionConstants);
    OutputPAS.AddStrings(ENumConstants);
    OutputPAS.Add('');
    OutputPAS.Add('type PPVkDispatchableHandle=^PVkDispatchableHandle;');
@@ -4548,6 +4564,7 @@ begin
   ExtensionTypes.Free;
   ExtensionCommands.Free;
   BitMaskTypes.Free;
+  VersionConstants.Free;
   BaseTypes.Free;
   HandleTypes.Free;
   ENumTypes.Free;
