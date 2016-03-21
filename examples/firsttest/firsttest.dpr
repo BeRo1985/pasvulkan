@@ -112,8 +112,8 @@ const extensionNames:array[0..1] of PVkChar=('VK_KHR_surface'{$ifdef windows},'V
 
 var instanceCreateInfo:TVkInstanceCreateInfo;
     inst:TVkInstance;
-    phys:array[0..3] of TVkPhysicalDevice;
-    physCount:TVKUInt32;
+    phys:array of TVkPhysicalDevice;
+    physCount,FamilyCount:TVKUInt32;
     VulkanInstanceCommands:TVulkanCommands;
     VulkanInstance:TVulkan;
 begin
@@ -135,12 +135,33 @@ begin
     try
 
      physCount:=4;
-     if VulkanInstance.EnumeratePhysicalDevices(inst,@physCount,pointer(@phys))=VK_SUCCESS then begin
+     if VulkanInstance.EnumeratePhysicalDevices(inst,@physCount,nil)=VK_SUCCESS then begin
+
       writeln('VulkanInstance.EnumeratePhysicalDevices was successfully . . .');
 
-      writeln(physCount,' physical device(s) found . . .');
-      if physCount>0 then begin
+      phys:=nil;
+      try
+       SetLength(phys,physCount);
 
+       writeln(physCount,' physical device(s) found . . .');
+       if physCount>0 then begin
+
+        if VulkanInstance.EnumeratePhysicalDevices(inst,@physCount,pointer(@phys[0]))=VK_SUCCESS then begin
+
+         writeln('VulkanInstance.EnumeratePhysicalDevices was successfully . . .');
+
+         FamilyCount:=0;
+         VulkanInstance.GetPhysicalDeviceQueueFamilyProperties(phys[0],@FamilyCount,nil);
+         writeln(FamilyCount,' physical device family properties found . . .');
+
+        end else begin
+         writeln('VulkanInstance.EnumeratePhysicalDevices had failed . . .');
+        end;
+
+       end;
+
+      finally
+       SetLength(phys,0);
       end;
 
      end else begin
