@@ -1,0 +1,10 @@
+DiGraph Uses {
+  "vulkan" -> "Windows"
+  "vulkan" -> "BaseUnix"
+  "vulkan" -> "UnixType"
+  "vulkan" -> "dl"
+  "vulkan" -> "x"
+  "vulkan" -> "xlib"
+  "vulkan" -> "SysUtils"
+  "vulkan" [href="vulkan.html"]
+}
