@@ -2749,6 +2749,36 @@ begin
  end;
 end;
 
+function WrapString(const InputString,LineBreak:ansistring;const MaxLineWidth:longint):ansistring;
+var  i,j:longint;
+     c:ansichar;
+begin
+ result:='';
+ j:=0;
+ for i:=1 to length(InputString) do begin
+  c:=InputString[i];
+  case c of
+   #9,#32:begin
+    if j>=MaxLineWidth then begin
+     result:=result+LineBreak;
+     j:=0;
+    end else begin
+     result:=result+c;
+     inc(j);
+    end;
+   end;
+   #13,#10:begin
+    result:=result+c;
+    j:=0;
+   end;
+   else begin
+    result:=result+c;
+    inc(j);
+   end;
+  end;
+ end;
+end;
+
 type TVendorID=class
       public
        Name:ansistring;
@@ -3221,9 +3251,9 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
      TTypeDefinitions=array of TTypeDefinition;
      TPTypeDefinitions=array of PTypeDefinition;
 var i,j,k,ArraySize,CountTypeDefinitions,VersionMajor,VersionMinor,VersionPatch:longint;
-    ChildItem,ChildChildItem:TXMLItem;
+    ChildItem,ChildChildItem,NextChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
-    Category,Type_,Name,Text,NextText,ArraySizeStr:ansistring;
+    Category,Type_,Name,Text,NextText,ArraySizeStr,Comment:ansistring;
     TypeDefinitions:TTypeDefinitions;
     SortedTypeDefinitions:TPTypeDefinitions;
     TypeDefinition:PTypeDefinition;
@@ -3314,6 +3344,46 @@ var i,j,k,ArraySize,CountTypeDefinitions,VersionMajor,VersionMinor,VersionPatch:
     end;
    end;
   until Done;
+ end;
+ function MemberComment(s:ansistring):ansistring;
+ begin
+  s:=StringReplace(s,#13#10,' ',[rfReplaceAll,rfIgnoreCase]);
+  s:=StringReplace(s,#13,' ',[rfReplaceAll,rfIgnoreCase]);
+  s:=StringReplace(s,#10,' ',[rfReplaceAll,rfIgnoreCase]);
+  s:=StringReplace(s,#9,' ',[rfReplaceAll,rfIgnoreCase]);
+  while pos('  ',s)>0 do begin
+   s:=StringReplace(s,'  ',' ',[rfReplaceAll,rfIgnoreCase]);
+  end;
+  s:=WrapString(s,sLineBreak,512);
+  s:=trim(s);
+  if length(s)>0 then begin
+   if (pos(#13,s)>0) or (pos(#10,s)>0) then begin
+    s:=StringReplace(s,'{','(',[rfReplaceAll,rfIgnoreCase]);
+    s:=StringReplace(s,'}',')',[rfReplaceAll,rfIgnoreCase]);
+    result:=' {< '+s+' }';
+   end else begin
+    result:=' //< '+s;
+   end;
+  end else begin
+   result:='';
+  end;
+ end;
+ function ParamMemberComment(s:ansistring):ansistring;
+ begin
+  s:=StringReplace(s,#13#10,' ',[rfReplaceAll,rfIgnoreCase]);
+  s:=StringReplace(s,#13,' ',[rfReplaceAll,rfIgnoreCase]);
+  s:=StringReplace(s,#10,' ',[rfReplaceAll,rfIgnoreCase]);
+  s:=StringReplace(s,#9,' ',[rfReplaceAll,rfIgnoreCase]);
+  while pos('  ',s)>0 do begin
+   s:=StringReplace(s,'  ',' ',[rfReplaceAll,rfIgnoreCase]);
+  end;
+  s:=WrapString(s,sLineBreak,512);
+  s:=trim(s);
+  if length(s)>0 then begin
+   result:='{< '+s+' }';
+  end else begin
+   result:='';
+  end;
  end;
 begin
  TypeDefinitions:=nil;
@@ -3496,6 +3566,21 @@ begin
         if ChildChildItem is TXMLTag then begin
          ChildChildTag:=TXMLTag(ChildChildItem);
          if ChildChildTag.Name='member' then begin
+          Comment:='';
+          if (j+1)<ChildTag.Items.Count then begin
+           k:=j+1;
+           while k<ChildTag.Items.Count do begin
+            NextChildChildItem:=ChildTag.Items[k];
+            if NextChildChildItem is TXMLCommentTag then begin
+             Comment:=trim(TXMLCommentTag(NextChildChildItem).Text);
+             break;
+            end else if NextChildChildItem is TXMLText then begin
+             inc(k);
+            end else begin
+             break;
+            end;
+           end;
+          end;
           Name:=ParseText(ChildChildTag.FindTag('name'));
           ArraySizeStr:=ParseText(ChildChildTag.FindTag('enum'));
           k:=pos('[',Name);
@@ -3537,7 +3622,14 @@ begin
           Type_:=ParseText(ChildChildTag.FindTag('type'));
           TypeDefinitionMember^.Type_:=Type_;
           TypeDefinitionMember^.ArraySizeStr:=ArraySizeStr;
-          TypeDefinitionMember^.Comment:=ChildChildTag.GetParameter('comment');
+          TypeDefinitionMember^.Comment:=trim(ChildChildTag.GetParameter('comment')+' '+Comment);
+{         k:=0;
+          while k<ValidityStringList.Count do begin
+           if pos('pname:'+Name,ValidityStringList[k])>0 then begin
+            TypeDefinitionMember^.Comment:=trim(TypeDefinitionMember^.Comment+' '+StringReplace(ValidityStringList[k],'pname:','',[rfReplaceAll]));
+           end;
+           inc(k);
+          end;{}
           TypeDefinitionMember^.TypeDefinitionIndex:=-1;
           TypeDefinitionMember^.Ptr:=0;
           Text:=ParseText(ChildChildTag);
@@ -3585,6 +3677,11 @@ begin
     TypeDefinitionTypes.Add('{$ifdef '+TypeDefinition^.Define+'}');
    end;
    if assigned(TypeDefinition^.ValidityStringList) and (TypeDefinition^.ValidityStringList.Count>0) then begin
+    TypeDefinition^.ValidityStringList.Text:=StringReplace(TypeDefinition^.ValidityStringList.Text,'pname:','',[rfReplaceAll]);
+    TypeDefinition^.ValidityStringList.Text:=StringReplace(TypeDefinition^.ValidityStringList.Text,'sname:','T',[rfReplaceAll]);
+    TypeDefinition^.ValidityStringList.Text:=StringReplace(TypeDefinition^.ValidityStringList.Text,'ename:','T',[rfReplaceAll]);
+    TypeDefinition^.ValidityStringList.Text:=StringReplace(TypeDefinition^.ValidityStringList.Text,'fname:','',[rfReplaceAll]);
+    TypeDefinition^.ValidityStringList.Text:=WrapString(TypeDefinition^.ValidityStringList.Text,sLineBreak,512);
     for j:=0 to TypeDefinition^.ValidityStringList.Count-1 do begin
      TypeDefinitionTypes.Add('     // '+TypeDefinition^.ValidityStringList.Strings[j]);
     end;
@@ -3596,11 +3693,11 @@ begin
      TypeDefinitionTypes.Add('     T'+TypeDefinition^.Name+'=record');
      for j:=0 to TypeDefinition^.CountMembers-1 do begin
       if length(TypeDefinition^.Members[j].ArraySizeStr)>0 then begin
-       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].ArraySizeStr+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
+       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].ArraySizeStr+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
       end else if TypeDefinition^.Members[j].ArraySizeInt>=0 then begin
-       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
+       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
       end else begin
-       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':'+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
+       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':'+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
       end;
      end;
      TypeDefinitionTypes.Add('     end;');
@@ -3611,11 +3708,11 @@ begin
      for j:=0 to TypeDefinition^.CountMembers-1 do begin
       TypeDefinitionTypes.Add('       '+IntToStr(j)+':(');
       if length(TypeDefinition^.Members[j].ArraySizeStr)>0 then begin
-       TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].ArraySizeStr+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
+       TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].ArraySizeStr+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
       end else if TypeDefinition^.Members[j].ArraySizeInt>=0 then begin
-       TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
+       TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
       end else begin
-       TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':'+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';');
+       TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':'+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
       end;
       TypeDefinitionTypes.Add('       );');
      end;
@@ -3625,13 +3722,17 @@ begin
      Text:='';
      for j:=0 to TypeDefinition^.CountMembers-1 do begin
       TypeDefinitionMember:=@TypeDefinition^.Members[j];
-      if j>0 then begin
-       Text:=Text+';';
-      end;
       if TypeDefinitionMember^.Constant then begin
        Text:=Text+'const ';
       end;
       Text:=Text+TypeDefinitionMember^.Name+':'+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr);
+      if (j+1)<TypeDefinition^.CountMembers then begin
+       Text:=Text+';';
+      end;
+      if length(TypeDefinition^.Members[j].Comment)>0 then begin
+       Text:=Text+ParamMemberComment(TypeDefinition^.Members[j].Comment);
+//     Text:=Text+#13#10;
+      end;
      end;
      if (TypeDefinition^.Type_='void') and (TypeDefinition^.Ptr=0) then begin
       TypeDefinitionTypes.Add('     T'+TypeDefinition^.Name+'=procedure('+Text+'); '+CallingConventions);
@@ -3839,9 +3940,9 @@ begin
      ENumValues.Add(ValueItem^.Name+ENumValues.NameValueSeparator+ValueItem^.ValueStr);
      if length(ValueItem^.Comment)>0 then begin
       if (i+1)<CountValueItems then begin
-       ENumTypes.Add(AlignPaddingString('       '+ValueItem^.Name+'='+ValueItem^.ValueStr+',',CommentPadding)+' // '+ValueItem^.Comment);
+       ENumTypes.Add(AlignPaddingString('       '+ValueItem^.Name+'='+ValueItem^.ValueStr+',',CommentPadding)+' //< '+ValueItem^.Comment);
       end else begin
-       ENumTypes.Add(AlignPaddingString('       '+ValueItem^.Name+'='+ValueItem^.ValueStr,CommentPadding)+' // '+ValueItem^.Comment);
+       ENumTypes.Add(AlignPaddingString('       '+ValueItem^.Name+'='+ValueItem^.ValueStr,CommentPadding)+' //< '+ValueItem^.Comment);
       end;
      end else begin
       if (i+1)<CountValueItems then begin
@@ -3858,7 +3959,7 @@ begin
      ValueItem:=@ValueItems[i];
      ENumValues.Add(ValueItem^.Name+ENumValues.NameValueSeparator+ValueItem^.ValueStr);
      if length(ValueItem^.Comment)>0 then begin
-      ENumConstants.Add(AlignPaddingString('      '+ValueItem^.Name+'='+ValueItem^.ValueStr+';',CommentPadding)+' // '+ValueItem^.Comment);
+      ENumConstants.Add(AlignPaddingString('      '+ValueItem^.Name+'='+ValueItem^.ValueStr+';',CommentPadding)+' //< '+ValueItem^.Comment);
      end else begin
       ENumConstants.Add('      '+ValueItem^.Name+'='+ValueItem^.ValueStr+';');
      end;
@@ -3972,6 +4073,11 @@ begin
       AllCommandClassImplementations.Add('{$ifdef '+Define+'}');
      end;
      if assigned(ValidityStringList) and (ValidityStringList.Count>0) then begin
+      ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'pname:','',[rfReplaceAll]);
+      ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'sname:','T',[rfReplaceAll]);
+      ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'ename:','T',[rfReplaceAll]);
+      ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'fname:','',[rfReplaceAll]);
+      ValidityStringList.Text:=WrapString(ValidityStringList.Text,sLineBreak,512);
       for j:=0 to ValidityStringList.Count-1 do begin
        CommandTypes.Add('     // '+ValidityStringList.Strings[j]);
        CommandVariables.Add('    // '+ValidityStringList.Strings[j]);
