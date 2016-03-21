@@ -1935,6 +1935,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       depth:TVkUInt32;
      end;
 
+     // pname:width must: be greater than `0.0` and less than or equal to sname:VkPhysicalDeviceLimits::pname:maxViewportDimensions[0]
+     // pname:height must: be greater than `0.0` and less than or equal to sname:VkPhysicalDeviceLimits::pname:maxViewportDimensions[1]
+     // pname:x and pname:y must: each be between pname:viewportBoundsRange[0] and pname:viewportBoundsRange[1], inclusive
+     // pname:x + pname:width must: be less than or equal to pname:viewportBoundsRange[1]
+     // pname:y + pname:height must: be less than or equal to pname:viewportBoundsRange[1]
+     // pname:minDepth must: be between `0.0` and `1.0`, inclusive
+     // pname:maxDepth must: be between `0.0` and `1.0`, inclusive
      PPVkViewport=^PVkViewport;
      PVkViewport=^TVkViewport;
      TVkViewport=record
@@ -2003,6 +2010,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       description:array[0..VK_MAX_DESCRIPTION_SIZE-1] of TVkChar;
      end;
 
+     // pname:apiVersion must: be zero, or otherwise it must: be a version that the implementation supports, or supports an effective substitute for
      PPVkApplicationInfo=^PVkApplicationInfo;
      PVkApplicationInfo=^TVkApplicationInfo;
      TVkApplicationInfo=record
@@ -2015,6 +2023,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       apiVersion:TVkUInt32;
      end;
 
+     // pname:pfnAllocation must: be a pointer to a valid user-defined PFN_vkAllocationFunction
+     // pname:pfnReallocation must: be a pointer to a valid user-defined PFN_vkReallocationFunction
+     // pname:pfnFree must: be a pointer to a valid user-defined PFN_vkFreeFunction
+     // If either of pname:pfnInternalAllocatione or pname:pfnInternalFree is not `NULL`, both must: be valid callbacks
      PPVkAllocationCallbacks=^PVkAllocationCallbacks;
      PVkAllocationCallbacks=^TVkAllocationCallbacks;
      TVkAllocationCallbacks=record
@@ -2026,6 +2038,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pfnInternalFree:TPFN_vkInternalFreeNotification;
      end;
 
+     // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties
+     // pname:queueCount must: be less than or equal to the pname:queueCount member of the sname:VkQueueFamilyProperties structure, as returned by fname:vkGetPhysicalDeviceQueueFamilyProperties in the pname:pQueueFamilyProperties[pname:queueFamilyIndex]
+     // Each element of pname:pQueuePriorities must: be between `0.0` and `1.0` inclusive
      PPVkDeviceQueueCreateInfo=^PVkDeviceQueueCreateInfo;
      PVkDeviceQueueCreateInfo=^TVkDeviceQueueCreateInfo;
      TVkDeviceQueueCreateInfo=record
@@ -2037,6 +2052,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pQueuePriorities:PVkFloat;
      end;
 
+     // If any member of this structure is ename:VK_FALSE, as returned by flink:vkGetPhysicalDeviceFeatures, then it must: be ename:VK_FALSE when passed as part of the sname:VkDeviceCreateInfo struct when creating a device
      PPVkPhysicalDeviceFeatures=^PVkPhysicalDeviceFeatures;
      PVkPhysicalDeviceFeatures=^TVkPhysicalDeviceFeatures;
      TVkPhysicalDeviceFeatures=record
@@ -2097,6 +2113,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       inheritedQueries:TVkBool32;
      end;
 
+     // Any given element of pname:ppEnabledLayerNames must: be the name of a layer present on the system, exactly matching a string returned in the sname:VkLayerProperties structure by fname:vkEnumerateInstanceLayerProperties
+     // Any given element of pname:ppEnabledExtensionNames must: be the name of an extension present on the system, exactly matching a string returned in the sname:VkExtensionProperties structure by fname:vkEnumerateInstanceExtensionProperties
+     // If an extension listed in pname:ppEnabledExtensionNames is provided as part of a layer, then both the layer and extension must: be enabled to enable that extension
      PPVkInstanceCreateInfo=^PVkInstanceCreateInfo;
      PVkInstanceCreateInfo=^TVkInstanceCreateInfo;
      TVkInstanceCreateInfo=record
@@ -2126,6 +2145,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       heapIndex:TVkUInt32;
      end;
 
+     // pname:allocationSize must: be less than or equal to the amount of memory available to the sname:VkMemoryHeap specified by pname:memoryTypeIndex and the calling command's sname:VkDevice
+     // pname:allocationSize must: be greater than `0`
      PPVkMemoryAllocateInfo=^PVkMemoryAllocateInfo;
      PVkMemoryAllocateInfo=^TVkMemoryAllocateInfo;
      TVkMemoryAllocateInfo=record
@@ -2177,6 +2198,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       memoryHeaps:array[0..VK_MAX_MEMORY_HEAPS-1] of TVkMemoryHeap;
      end;
 
+     // pname:memory must: currently be mapped
+     // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:offset and pname:size must: specify a range contained within the currently mapped range of pname:memory
+     // If pname:size is equal to ename:VK_WHOLE_SIZE, pname:offset must: be within the currently mapped range of pname:memory
+     // pname:offset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:nonCoherentAtomSize
+     // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be a multiple of sname:VkPhysicalDeviceLimits::pname:nonCoherentAtomSize
      PPVkMappedMemoryRange=^PVkMappedMemoryRange;
      PVkMappedMemoryRange=^TVkMappedMemoryRange;
      TVkMappedMemoryRange=record
@@ -2205,6 +2231,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       maxResourceSize:TVkDeviceSize;
      end;
 
+     // pname:offset must: be less than the size of pname:buffer
+     // If pname:range is not equal to ename:VK_WHOLE_SIZE, pname:range must: be greater than `0`
+     // If pname:range is not equal to ename:VK_WHOLE_SIZE, pname:range must: be less than or equal to the size of pname:buffer minus pname:offset
      PPVkDescriptorBufferInfo=^PVkDescriptorBufferInfo;
      PVkDescriptorBufferInfo=^TVkDescriptorBufferInfo;
      TVkDescriptorBufferInfo=record
@@ -2221,6 +2250,23 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       imageLayout:TVkImageLayout;
      end;
 
+     // pname:dstBinding must: be a valid binding point within pname:dstSet
+     // pname:descriptorType must: match the type of pname:dstBinding within pname:dstSet
+     // The sum of pname:dstArrayElement and pname:descriptorCount must: be less than or equal to the number of array elements in the descriptor set binding specified by pname:dstBinding, and all applicable consecutive bindings, as described by <<descriptorsets-updates-consecutive>>
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_SAMPLER, ename:VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, ename:VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, ename:VK_DESCRIPTOR_TYPE_STORAGE_IMAGE or ename:VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, pname:pImageInfo must: be a pointer to an array of pname:descriptorCount valid sname:VkDescriptorImageInfo structures
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER or ename:VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, pname:pTexelBufferView must: be a pointer to an array of pname:descriptorCount valid sname:VkBufferView handles
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, ename:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, ename:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC or ename:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, pname:pBufferInfo must: be a pointer to an array of pname:descriptorCount valid sname:VkDescriptorBufferInfo structures
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_SAMPLER or ename:VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, and pname:dstSet was not created with a layout that included immutable samplers for pname:dstBinding with pname:descriptorType, the pname:sampler member of any given element of pname:pImageInfo must: be a valid sname:VkSampler object
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, ename:VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, ename:VK_DESCRIPTOR_TYPE_STORAGE_IMAGE or ename:VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, the pname:imageView and pname:imageLayout members of any given element of pname:pImageInfo must: be a valid sname:VkImageView and elink:VkImageLayout, respectively
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or ename:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, the pname:offset member of any given element of pname:pBufferInfo must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minUniformBufferOffsetAlignment
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER or ename:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, the pname:offset member of any given element of pname:pBufferInfo must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minStorageBufferOffsetAlignment
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or ename:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, the pname:buffer member of any given element of pname:pBufferInfo must: have been created with ename:VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT set
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER or ename:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, the pname:buffer member of any given element of pname:pBufferInfo must: have been created with ename:VK_BUFFER_USAGE_STORAGE_BUFFER_BIT set
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or ename:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, the pname:range member of any given element of pname:pBufferInfo must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxUniformBufferRange
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER or ename:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, the pname:range member of any given element of pname:pBufferInfo must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxStorageBufferRange
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, the sname:VkBuffer that any given element of pname:pTexelBufferView was created from must: have been created with ename:VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT set
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, the sname:VkBuffer that any given element of pname:pTexelBufferView was created from must: have been created with ename:VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT set
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_STORAGE_IMAGE or ename:VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, the pname:imageView member of any given element of pname:pImageInfo must: have been created with the identity swizzle
      PPVkWriteDescriptorSet=^PVkWriteDescriptorSet;
      PVkWriteDescriptorSet=^TVkWriteDescriptorSet;
      TVkWriteDescriptorSet=record
@@ -2236,6 +2282,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pTexelBufferView:PVkBufferView;
      end;
 
+     // pname:srcBinding must: be a valid binding within pname:srcSet
+     // The sum of pname:srcArrayElement and pname:descriptorCount must: be less than or equal to the number of array elements in the descriptor set binding specified by pname:srcBinding, and all applicable consecutive bindings, as described by <<descriptorsets-updates-consecutive>>
+     // pname:dstBinding must: be a valid binding within pname:dstSet
+     // The sum of pname:dstArrayElement and pname:descriptorCount must: be less than or equal to the number of array elements in the descriptor set binding specified by pname:dstBinding, and all applicable consecutive bindings, as described by <<descriptorsets-updates-consecutive>>
+     // If pname:srcSet is equal to pname:dstSet, then the source and destination ranges of descriptors mustnot: overlap, where the ranges may: include array elements from consecutive bindings as described by <<descriptorsets-updates-consecutive>>
      PPVkCopyDescriptorSet=^PVkCopyDescriptorSet;
      PVkCopyDescriptorSet=^TVkCopyDescriptorSet;
      TVkCopyDescriptorSet=record
@@ -2250,6 +2301,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       descriptorCount:TVkUInt32;
      end;
 
+     // pname:size must: be greater than `0`
+     // If pname:sharingMode is ename:VK_SHARING_MODE_CONCURRENT, pname:pQueueFamilyIndices must: be a pointer to an array of pname:queueFamilyIndexCount basetype:uint32_t values
+     // If pname:sharingMode is ename:VK_SHARING_MODE_CONCURRENT, pname:queueFamilyIndexCount must: be greater than `1`
+     // If the <<features-features-sparseBinding,sparse bindings>> feature is not enabled, pname:flags mustnot: contain ename:VK_BUFFER_CREATE_SPARSE_BINDING_BIT
+     // If the <<features-features-sparseResidencyBuffer,sparse buffer residency>> feature is not enabled, pname:flags mustnot: contain ename:VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidencyAliased,sparse aliased residency>> feature is not enabled, pname:flags mustnot: contain ename:VK_BUFFER_CREATE_SPARSE_ALIASED_BIT
+     // If pname:flags contains ename:VK_BUFFER_CREATE_SPARSE_ALIASED_BIT, it must: also contain at least one of ename:VK_BUFFER_CREATE_SPARSE_BINDING_BIT or ename:VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT
      PPVkBufferCreateInfo=^PVkBufferCreateInfo;
      PVkBufferCreateInfo=^TVkBufferCreateInfo;
      TVkBufferCreateInfo=record
@@ -2263,6 +2321,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pQueueFamilyIndices:PVkUInt32;
      end;
 
+     // pname:offset must: be less than the size of pname:buffer
+     // pname:offset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minTexelBufferOffsetAlignment
+     // If pname:range is not equal to ename:VK_WHOLE_SIZE:
+     // pname:range must: be greater than `0`
+     // pname:range must: be a multiple of the element size of pname:format
+     // pname:range divided by the size of an element of pname:format, must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxTexelBufferElements
+     // the sum of pname:offset and pname:range must: be less than or equal to the size of pname:buffer
+     // pname:buffer must: have been created with a pname:usage value containing at least one of ename:VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT or ename:VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
+     // If pname:buffer was created with pname:usage containing ename:VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT, pname:format must: be supported for uniform texel buffers, as specified by the ename:VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT flag in sname:VkFormatProperties::pname:bufferFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+     // If pname:buffer was created with pname:usage containing ename:VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, pname:format must: be supported for storage texel buffers, as specified by the ename:VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT flag in sname:VkFormatProperties::pname:bufferFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
      PPVkBufferViewCreateInfo=^PVkBufferViewCreateInfo;
      PVkBufferViewCreateInfo=^TVkBufferViewCreateInfo;
      TVkBufferViewCreateInfo=record
@@ -2275,6 +2343,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       range:TVkDeviceSize;
      end;
 
+     // pname:mipLevel must: be less than the pname:mipLevels specified in slink:VkImageCreateInfo when the image was created
+     // pname:arrayLayer must: be less than the pname:arrayLayers specified in slink:VkImageCreateInfo when the image was created
      PPVkImageSubresource=^PVkImageSubresource;
      PVkImageSubresource=^TVkImageSubresource;
      TVkImageSubresource=record
@@ -2283,6 +2353,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       arrayLayer:TVkUInt32;
      end;
 
+     // If pname:aspectMask contains ename:VK_IMAGE_ASPECT_COLOR_BIT, it mustnot: contain either of ename:VK_IMAGE_ASPECT_DEPTH_BIT or ename:VK_IMAGE_ASPECT_STENCIL_BIT
+     // pname:aspectMask mustnot: contain ename:VK_IMAGE_ASPECT_METADATA_BIT
+     // pname:mipLevel must: be less than the pname:mipLevels specified in slink:VkImageCreateInfo when the image was created
+     // latexmath:[$(baseArrayLayer + layerCount)$] must: be less than or equal to the pname:arrayLayers specified in slink:VkImageCreateInfo when the image was created
      PPVkImageSubresourceLayers=^PVkImageSubresourceLayers;
      PVkImageSubresourceLayers=^TVkImageSubresourceLayers;
      TVkImageSubresourceLayers=record
@@ -2292,6 +2366,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       layerCount:TVkUInt32;
      end;
 
+     // If pname:levelCount is not ename:VK_REMAINING_MIP_LEVELS, latexmath:[$(baseMipLevel + levelCount)$] must: be less than or equal to the pname:mipLevels specified in slink:VkImageCreateInfo when the image was created
+     // If pname:layerCount is not ename:VK_REMAINING_ARRAY_LAYERS, latexmath:[$(baseArrayLayer + layerCount)$] must: be less than or equal to the pname:arrayLayers specified in slink:VkImageCreateInfo when the image was created
      PPVkImageSubresourceRange=^PVkImageSubresourceRange;
      PVkImageSubresourceRange=^TVkImageSubresourceRange;
      TVkImageSubresourceRange=record
@@ -2311,6 +2387,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       dstAccessMask:TVkAccessFlags;
      end;
 
+     // pname:offset must: be less than the size of pname:buffer
+     // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be greater than `0`
+     // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be less than or equal to than the size of pname:buffer minus pname:offset
+     // If pname:buffer was created with a sharing mode of ename:VK_SHARING_MODE_CONCURRENT, pname:srcQueueFamilyIndex and pname:dstQueueFamilyIndex must: both be ename:VK_QUEUE_FAMILY_IGNORED
+     // If pname:buffer was created with a sharing mode of ename:VK_SHARING_MODE_EXCLUSIVE, pname:srcQueueFamilyIndex and pname:dstQueueFamilyIndex must: either both be ename:VK_QUEUE_FAMILY_IGNORED, or both be a valid queue family (see <<devsandqueues-queueprops>>)
+     // If pname:buffer was created with a sharing mode of ename:VK_SHARING_MODE_EXCLUSIVE, and pname:srcQueueFamilyIndex and pname:dstQueueFamilyIndex are valid queue families, at least one of them must: be the same as the family of the queue that will execute this barrier
      PPVkBufferMemoryBarrier=^PVkBufferMemoryBarrier;
      PVkBufferMemoryBarrier=^TVkBufferMemoryBarrier;
      TVkBufferMemoryBarrier=record
@@ -2325,6 +2407,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       size:TVkDeviceSize;
      end;
 
+     // pname:oldLayout must: be ename:VK_IMAGE_LAYOUT_UNDEFINED, ename:VK_IMAGE_LAYOUT_PREINITIALIZED or the current layout of the image region affected by the barrier
+     // pname:newLayout mustnot: be ename:VK_IMAGE_LAYOUT_UNDEFINED or ename:VK_IMAGE_LAYOUT_PREINITIALIZED
+     // If pname:image was created with a sharing mode of ename:VK_SHARING_MODE_CONCURRENT, pname:srcQueueFamilyIndex and pname:dstQueueFamilyIndex must: both be ename:VK_QUEUE_FAMILY_IGNORED
+     // If pname:image was created with a sharing mode of ename:VK_SHARING_MODE_EXCLUSIVE, pname:srcQueueFamilyIndex and pname:dstQueueFamilyIndex must: either both be ename:VK_QUEUE_FAMILY_IGNORED, or both be a valid queue family (see <<devsandqueues-queueprops>>)
+     // If pname:image was created with a sharing mode of ename:VK_SHARING_MODE_EXCLUSIVE, and pname:srcQueueFamilyIndex and pname:dstQueueFamilyIndex are valid queue families, at least one of them must: be the same as the family of the queue that will execute this barrier
+     // pname:subresourceRange must: be a valid subresource range for the image (see <<resources-image-views>>)
+     // If pname:image has a depth/stencil format with both depth and stencil components, then pname:aspectMask member of pname:subresourceRange must: include both ename:VK_IMAGE_ASPECT_DEPTH_BIT and ename:VK_IMAGE_ASPECT_STENCIL_BIT
+     // If either pname:oldLayout or pname:newLayout is ename:VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then pname:image must: have been created with ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
+     // If either pname:oldLayout or pname:newLayout is ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL then pname:image must: have been created with ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT set
+     // If either pname:oldLayout or pname:newLayout is ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then pname:image must: have been created with ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT set
+     // If either pname:oldLayout or pname:newLayout is ename:VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then pname:image must: have been created with ename:VK_IMAGE_USAGE_SAMPLED_BIT or ename:VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT set
+     // If either pname:oldLayout or pname:newLayout is ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then pname:image must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT set
+     // If either pname:oldLayout or pname:newLayout is ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then pname:image must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT set
      PPVkImageMemoryBarrier=^PVkImageMemoryBarrier;
      PVkImageMemoryBarrier=^TVkImageMemoryBarrier;
      TVkImageMemoryBarrier=record
@@ -2340,6 +2435,50 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       subresourceRange:TVkImageSubresourceRange;
      end;
 
+     // If pname:sharingMode is ename:VK_SHARING_MODE_CONCURRENT, pname:pQueueFamilyIndices must: be a pointer to an array of pname:queueFamilyIndexCount basetype:uint32_t values
+     // If pname:sharingMode is ename:VK_SHARING_MODE_CONCURRENT, pname:queueFamilyIndexCount must: be greater than `1`
+     // pname:format mustnot: be ename:VK_FORMAT_UNDEFINED
+     // The pname:width, pname:height, and pname:depth members of pname:extent must: all be greater than `0`
+     // pname:mipLevels must: be greater than `0`
+     // pname:arrayLayers must: be greater than `0`
+     // If pname:imageType is ename:VK_IMAGE_TYPE_1D, pname:extent.width must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxImageDimension1D, or sname:VkImageFormatProperties::pname:maxExtent.width (as returned by fname:vkGetPhysicalDeviceImageFormatProperties with pname:format, pname:type, pname:tiling, pname:usage and pname:flags equal to those in this structure) - whichever is higher
+     // If pname:imageType is ename:VK_IMAGE_TYPE_2D and pname:flags does not contain ename:VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, pname:extent.width and pname:extent.height must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxImageDimension2D, or sname:VkImageFormatProperties::pname:maxExtent.width/height (as returned by fname:vkGetPhysicalDeviceImageFormatProperties with pname:format, pname:type, pname:tiling, pname:usage and pname:flags equal to those in this structure) - whichever is higher
+     // If pname:imageType is ename:VK_IMAGE_TYPE_2D and pname:flags contains ename:VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, pname:extent.width and pname:extent.height must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxImageDimensionCube, or sname:VkImageFormatProperties::pname:maxExtent.width/height (as returned by fname:vkGetPhysicalDeviceImageFormatProperties with pname:format, pname:type, pname:tiling, pname:usage and pname:flags equal to those in this structure) - whichever is higher
+     // If pname:imageType is ename:VK_IMAGE_TYPE_2D and pname:flags contains ename:VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, pname:extent.width and pname:extent.height must: be equal
+     // If pname:imageType is ename:VK_IMAGE_TYPE_3D, pname:extent.width, pname:extent.height and pname:extent.depth must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxImageDimension3D, or sname:VkImageFormatProperties::pname:maxExtent.width/height/depth (as returned by fname:vkGetPhysicalDeviceImageFormatProperties with pname:format, pname:type, pname:tiling, pname:usage and pname:flags equal to those in this structure) - whichever is higher
+     // pname:mipLevels must: be less than or equal to latexmath:[$\lfloor\log_2(\max(\mathit{extent.width}, \mathit{extent.height}, \mathit{extent.depth}))\rfloor + 1$]
+     // If any of pname:extent.width, pname:extent.height or pname:extent.depth are greater than the equivalently named members of sname:VkPhysicalDeviceLimits::pname:maxImageDimension3D, pname:mipLevels must: be less than or equal to sname:VkImageFormatProperties::pname:maxMipLevels (as returned by fname:vkGetPhysicalDeviceImageFormatProperties with pname:format, pname:type, pname:tiling, pname:usage and pname:flags equal to those in this structure)
+     // pname:arrayLayers must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxImageArrayLayers, or sname:VkImageFormatProperties::pname:maxArrayLayers (as returned by fname:vkGetPhysicalDeviceImageFormatProperties with pname:format, pname:type, pname:tiling, pname:usage and pname:flags equal to those in this structure) - whichever is higher
+     // pname:samples must: be a bit value that is set in sname:VkPhysicalDeviceLimits::pname:sampleCounts returned by flink:vkGetPhysicalDeviceProperties, or sname:VkImageFormatProperties::pname:maxExtent.sampleCounts returned by fname:vkGetPhysicalDeviceImageFormatProperties with pname:format, pname:type, pname:tiling, pname:usage and pname:flags equal to those in this structure
+     // If pname:usage includes ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, ename:VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT or ename:VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, pname:extent.width must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxFramebufferWidth
+     // If pname:usage includes ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, ename:VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT or ename:VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, pname:extent.height must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxFramebufferHeight
+     // If pname:usage includes ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, pname:samples must: be a bit value that is set in sname:VkPhysicalDeviceLimits::pname:maxFramebufferColorSamples
+     // If pname:usage includes ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, and pname:format includes a depth aspect, pname:samples must: be a bit value that is set in sname:VkPhysicalDeviceLimits::pname:maxFramebufferDepthSamples
+     // If pname:usage includes ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, and pname:format includes a stencil aspect, pname:samples must: be a bit value that is set in sname:VkPhysicalDeviceLimits::pname:maxFramebufferStencilSamples
+     // If pname:usage includes ename:VK_IMAGE_USAGE_SAMPLED_BIT, and pname:format includes a color aspect, pname:samples must: be a bit value that is set in sname:VkPhysicalDeviceLimits::pname:maxSampledImageColorSamples
+     // If pname:usage includes ename:VK_IMAGE_USAGE_SAMPLED_BIT, and pname:format includes a depth aspect, pname:samples must: be a bit value that is set in sname:VkPhysicalDeviceLimits::pname:maxSampledImageDepthSamples
+     // If pname:usage includes ename:VK_IMAGE_USAGE_SAMPLED_BIT, and pname:format is an integer format, pname:samples must: be a bit value that is set in sname:VkPhysicalDeviceLimits::pname:maxSampledImageIntegerSamples
+     // If pname:usage includes ename:VK_IMAGE_USAGE_STORAGE_BIT, pname:samples must: be a bit value that is set in sname:VkPhysicalDeviceLimits::pname:maxStorageImageSamples
+     // If the <<features-features-textureCompressionETC2,ETC2 texture compression>> feature is not enabled, pname:format mustnot: be ename:VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK, ename:VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK, ename:VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK, ename:VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK, ename:VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK, ename:VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK, ename:VK_FORMAT_EAC_R11_UNORM_BLOCK, ename:VK_FORMAT_EAC_R11_SNORM_BLOCK, ename:VK_FORMAT_EAC_R11G11_UNORM_BLOCK, or ename:VK_FORMAT_EAC_R11G11_SNORM_BLOCK
+     // If the <<features-features-textureCompressionASTC_LDR,ASTC LDR texture compression>> feature is not enabled, pname:format mustnot: be ename:VK_FORMAT_ASTC_4x4_UNORM_BLOCK, ename:VK_FORMAT_ASTC_4x4_SRGB_BLOCK, ename:VK_FORMAT_ASTC_5x4_UNORM_BLOCK, ename:VK_FORMAT_ASTC_5x4_SRGB_BLOCK, ename:VK_FORMAT_ASTC_5x5_UNORM_BLOCK, ename:VK_FORMAT_ASTC_5x5_SRGB_BLOCK, ename:VK_FORMAT_ASTC_6x5_UNORM_BLOCK, ename:VK_FORMAT_ASTC_6x5_SRGB_BLOCK, ename:VK_FORMAT_ASTC_6x6_UNORM_BLOCK, ename:VK_FORMAT_ASTC_6x6_SRGB_BLOCK, ename:VK_FORMAT_ASTC_8x5_UNORM_BLOCK, ename:VK_FORMAT_ASTC_8x5_SRGB_BLOCK, ename:VK_FORMAT_ASTC_8x6_UNORM_BLOCK, ename:VK_FORMAT_ASTC_8x6_SRGB_BLOCK, ename:VK_FORMAT_ASTC_8x8_UNORM_BLOCK, ename:VK_FORMAT_ASTC_8x8_SRGB_BLOCK, ename:VK_FORMAT_ASTC_10x5_UNORM_BLOCK, ename:VK_FORMAT_ASTC_10x5_SRGB_BLOCK, ename:VK_FORMAT_ASTC_10x6_UNORM_BLOCK, ename:VK_FORMAT_ASTC_10x6_SRGB_BLOCK, ename:VK_FORMAT_ASTC_10x8_UNORM_BLOCK, ename:VK_FORMAT_ASTC_10x8_SRGB_BLOCK, ename:VK_FORMAT_ASTC_10x10_UNORM_BLOCK, ename:VK_FORMAT_ASTC_10x10_SRGB_BLOCK, ename:VK_FORMAT_ASTC_12x10_UNORM_BLOCK, ename:VK_FORMAT_ASTC_12x10_SRGB_BLOCK, ename:VK_FORMAT_ASTC_12x12_UNORM_BLOCK, or ename:VK_FORMAT_ASTC_12x12_SRGB_BLOCK
+     // If the <<features-features-textureCompressionBC,BC texture compression>> feature is not enabled, pname:format mustnot: be ename:VK_FORMAT_BC1_RGB_UNORM_BLOCK, ename:VK_FORMAT_BC1_RGB_SRGB_BLOCK, ename:VK_FORMAT_BC1_RGBA_UNORM_BLOCK, ename:VK_FORMAT_BC1_RGBA_SRGB_BLOCK, ename:VK_FORMAT_BC2_UNORM_BLOCK, ename:VK_FORMAT_BC2_SRGB_BLOCK, ename:VK_FORMAT_BC3_UNORM_BLOCK, ename:VK_FORMAT_BC3_SRGB_BLOCK, ename:VK_FORMAT_BC4_UNORM_BLOCK, ename:VK_FORMAT_BC4_SNORM_BLOCK, ename:VK_FORMAT_BC5_UNORM_BLOCK, ename:VK_FORMAT_BC5_SNORM_BLOCK, ename:VK_FORMAT_BC6H_UFLOAT_BLOCK, ename:VK_FORMAT_BC6H_SFLOAT_BLOCK, ename:VK_FORMAT_BC7_UNORM_BLOCK, or ename:VK_FORMAT_BC7_SRGB_BLOCK
+     // If the <<features-features-shaderStorageImageMultisample,multisampled storage images>> feature is not enabled, and pname:usage contains ename:VK_IMAGE_USAGE_STORAGE_BIT, pname:samples must: be ename:VK_SAMPLE_COUNT_1_BIT
+     // If the <<features-features-sparseBinding,sparse bindings>> feature is not enabled, pname:flags mustnot: contain ename:VK_IMAGE_CREATE_SPARSE_BINDING_BIT
+     // If the <<features-features-sparseResidencyImage2D,sparse residency for 2D images>> feature is not enabled, and pname:imageType is ename:VK_IMAGE_TYPE_2D, pname:flags mustnot: contain ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidencyImage3D,sparse residency for 3D images>> feature is not enabled, and pname:imageType is ename:VK_IMAGE_TYPE_3D, pname:flags mustnot: contain ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidency2Samples,sparse residency for images with 2 samples>> feature is not enabled, pname:imageType is ename:VK_IMAGE_TYPE_2D, and pname:samples is ename:VK_SAMPLE_COUNT_2_BIT, pname:flags mustnot: contain ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidency4Samples,sparse residency for images with 4 samples>> feature is not enabled, pname:imageType is ename:VK_IMAGE_TYPE_2D, and pname:samples is ename:VK_SAMPLE_COUNT_4_BIT, pname:flags mustnot: contain ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidency8Samples,sparse residency for images with 8 samples>> feature is not enabled, pname:imageType is ename:VK_IMAGE_TYPE_2D, and pname:samples is ename:VK_SAMPLE_COUNT_8_BIT, pname:flags mustnot: contain ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidency16Samples,sparse residency for images with 16 samples>> feature is not enabled, pname:imageType is ename:VK_IMAGE_TYPE_2D, and pname:samples is ename:VK_SAMPLE_COUNT_16_BIT, pname:flags mustnot: contain ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If pname:tiling is ename:VK_IMAGE_TILING_LINEAR, and sname:VkFormatProperties::pname:linearTilingFeatures (as returned by fname:vkGetPhysicalDeviceFormatProperties with the same value of pname:format) does not include ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, pname:usage mustnot: contain ename:VK_IMAGE_USAGE_SAMPLED_BIT
+     // If pname:tiling is ename:VK_IMAGE_TILING_LINEAR, and sname:VkFormatProperties::pname:linearTilingFeatures (as returned by fname:vkGetPhysicalDeviceFormatProperties with the same value of pname:format) does not include ename:VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, pname:usage mustnot: contain ename:VK_IMAGE_USAGE_STORAGE_BIT
+     // If pname:tiling is ename:VK_IMAGE_TILING_LINEAR, and sname:VkFormatProperties::pname:linearTilingFeatures (as returned by fname:vkGetPhysicalDeviceFormatProperties with the same value of pname:format) does not include ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, pname:usage mustnot: contain ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+     // If pname:tiling is ename:VK_IMAGE_TILING_LINEAR, and sname:VkFormatProperties::pname:linearTilingFeatures (as returned by fname:vkGetPhysicalDeviceFormatProperties with the same value of pname:format) does not include ename:VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, pname:usage mustnot: contain ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+     // If pname:tiling is ename:VK_IMAGE_TILING_OPTIMAL, and sname:VkFormatProperties::pname:optimalTilingFeatures (as returned by fname:vkGetPhysicalDeviceFormatProperties with the same value of pname:format) does not include ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, pname:usage mustnot: contain ename:VK_IMAGE_USAGE_SAMPLED_BIT
+     // If pname:tiling is ename:VK_IMAGE_TILING_OPTIMAL, and sname:VkFormatProperties::pname:optimalTilingFeatures (as returned by fname:vkGetPhysicalDeviceFormatProperties with the same value of pname:format) does not include ename:VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, pname:usage mustnot: contain ename:VK_IMAGE_USAGE_STORAGE_BIT
+     // If pname:tiling is ename:VK_IMAGE_TILING_OPTIMAL, and sname:VkFormatProperties::pname:optimalTilingFeatures (as returned by fname:vkGetPhysicalDeviceFormatProperties with the same value of pname:format) does not include ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, pname:usage mustnot: contain ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+     // If pname:tiling is ename:VK_IMAGE_TILING_OPTIMAL, and sname:VkFormatProperties::pname:optimalTilingFeatures (as returned by fname:vkGetPhysicalDeviceFormatProperties with the same value of pname:format) does not include ename:VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, pname:usage mustnot: contain ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+     // If pname:flags contains ename:VK_IMAGE_CREATE_SPARSE_ALIASED_BIT, it must: also contain at least one of ename:VK_IMAGE_CREATE_SPARSE_BINDING_BIT or ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
      PPVkImageCreateInfo=^PVkImageCreateInfo;
      PVkImageCreateInfo=^TVkImageCreateInfo;
      TVkImageCreateInfo=record
@@ -2370,6 +2509,23 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       depthPitch:TVkDeviceSize;
      end;
 
+     // If pname:image was not created with ename:VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT then pname:viewType mustnot: be ename:VK_IMAGE_VIEW_TYPE_CUBE or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
+     // If the <<features-features-imageCubeArray,image cubemap arrays>> feature is not enabled, pname:viewType mustnot: be ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
+     // If the <<features-features-textureCompressionETC2,ETC2 texture compression>> feature is not enabled, pname:format mustnot: be ename:VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK, ename:VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK, ename:VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK, ename:VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK, ename:VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK, ename:VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK, ename:VK_FORMAT_EAC_R11_UNORM_BLOCK, ename:VK_FORMAT_EAC_R11_SNORM_BLOCK, ename:VK_FORMAT_EAC_R11G11_UNORM_BLOCK, or ename:VK_FORMAT_EAC_R11G11_SNORM_BLOCK
+     // If the <<features-features-textureCompressionASTC_LDR,ASTC LDR texture compression>> feature is not enabled, pname:format mustnot: be ename:VK_FORMAT_ASTC_4x4_UNORM_BLOCK, ename:VK_FORMAT_ASTC_4x4_SRGB_BLOCK, ename:VK_FORMAT_ASTC_5x4_UNORM_BLOCK, ename:VK_FORMAT_ASTC_5x4_SRGB_BLOCK, ename:VK_FORMAT_ASTC_5x5_UNORM_BLOCK, ename:VK_FORMAT_ASTC_5x5_SRGB_BLOCK, ename:VK_FORMAT_ASTC_6x5_UNORM_BLOCK, ename:VK_FORMAT_ASTC_6x5_SRGB_BLOCK, ename:VK_FORMAT_ASTC_6x6_UNORM_BLOCK, ename:VK_FORMAT_ASTC_6x6_SRGB_BLOCK, ename:VK_FORMAT_ASTC_8x5_UNORM_BLOCK, ename:VK_FORMAT_ASTC_8x5_SRGB_BLOCK, ename:VK_FORMAT_ASTC_8x6_UNORM_BLOCK, ename:VK_FORMAT_ASTC_8x6_SRGB_BLOCK, ename:VK_FORMAT_ASTC_8x8_UNORM_BLOCK, ename:VK_FORMAT_ASTC_8x8_SRGB_BLOCK, ename:VK_FORMAT_ASTC_10x5_UNORM_BLOCK, ename:VK_FORMAT_ASTC_10x5_SRGB_BLOCK, ename:VK_FORMAT_ASTC_10x6_UNORM_BLOCK, ename:VK_FORMAT_ASTC_10x6_SRGB_BLOCK, ename:VK_FORMAT_ASTC_10x8_UNORM_BLOCK, ename:VK_FORMAT_ASTC_10x8_SRGB_BLOCK, ename:VK_FORMAT_ASTC_10x10_UNORM_BLOCK, ename:VK_FORMAT_ASTC_10x10_SRGB_BLOCK, ename:VK_FORMAT_ASTC_12x10_UNORM_BLOCK, ename:VK_FORMAT_ASTC_12x10_SRGB_BLOCK, ename:VK_FORMAT_ASTC_12x12_UNORM_BLOCK, or ename:VK_FORMAT_ASTC_12x12_SRGB_BLOCK
+     // If the <<features-features-textureCompressionBC,BC texture compression>> feature is not enabled, pname:format mustnot: be ename:VK_FORMAT_BC1_RGB_UNORM_BLOCK, ename:VK_FORMAT_BC1_RGB_SRGB_BLOCK, ename:VK_FORMAT_BC1_RGBA_UNORM_BLOCK, ename:VK_FORMAT_BC1_RGBA_SRGB_BLOCK, ename:VK_FORMAT_BC2_UNORM_BLOCK, ename:VK_FORMAT_BC2_SRGB_BLOCK, ename:VK_FORMAT_BC3_UNORM_BLOCK, ename:VK_FORMAT_BC3_SRGB_BLOCK, ename:VK_FORMAT_BC4_UNORM_BLOCK, ename:VK_FORMAT_BC4_SNORM_BLOCK, ename:VK_FORMAT_BC5_UNORM_BLOCK, ename:VK_FORMAT_BC5_SNORM_BLOCK, ename:VK_FORMAT_BC6H_UFLOAT_BLOCK, ename:VK_FORMAT_BC6H_SFLOAT_BLOCK, ename:VK_FORMAT_BC7_UNORM_BLOCK, or ename:VK_FORMAT_BC7_SRGB_BLOCK
+     // If pname:image was created with ename:VK_IMAGE_TILING_LINEAR and pname:usage containing ename:VK_IMAGE_USAGE_SAMPLED_BIT, pname:format must: be supported for sampled images, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+     // If pname:image was created with ename:VK_IMAGE_TILING_LINEAR and pname:usage containing ename:VK_IMAGE_USAGE_STORAGE_BIT, pname:format must: be supported for storage images, as specified by the ename:VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+     // If pname:image was created with ename:VK_IMAGE_TILING_LINEAR and pname:usage containing ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, pname:format must: be supported for color attachments, as specified by the ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+     // If pname:image was created with ename:VK_IMAGE_TILING_LINEAR and pname:usage containing ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, pname:format must: be supported for depth/stencil attachments, as specified by the ename:VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+     // If pname:image was created with ename:VK_IMAGE_TILING_OPTIMAL and pname:usage containing ename:VK_IMAGE_USAGE_SAMPLED_BIT, pname:format must: be supported for sampled images, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT flag in sname:VkFormatProperties::pname:optimalTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+     // If pname:image was created with ename:VK_IMAGE_TILING_OPTIMAL and pname:usage containing ename:VK_IMAGE_USAGE_STORAGE_BIT, pname:format must: be supported for storage images, as specified by the ename:VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT flag in sname:VkFormatProperties::pname:optimalTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+     // If pname:image was created with ename:VK_IMAGE_TILING_OPTIMAL and pname:usage containing ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, pname:format must: be supported for color attachments, as specified by the ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:optimalTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+     // If pname:image was created with ename:VK_IMAGE_TILING_OPTIMAL and pname:usage containing ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, pname:format must: be supported for depth/stencil attachments, as specified by the ename:VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:optimalTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+     // pname:subresourceRange must: be a valid subresource range for pname:image (see <<resources-image-views>>)
+     // If pname:image was created with the ename:VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT flag, pname:format must: be compatible with the pname:format used to create pname:image, as defined in <<features-formats-compatibility-classes,Format Compatibility Classes>>
+     // If pname:image was not created with the ename:VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT flag, pname:format must: be identical to the pname:format used to create pname:image
+     // pname:subResourceRange and pname:viewType must: be compatible with the image, as described in the <<resources-image-views-compatibility,table below>>
      PPVkImageViewCreateInfo=^PVkImageViewCreateInfo;
      PVkImageViewCreateInfo=^TVkImageViewCreateInfo;
      TVkImageViewCreateInfo=record
@@ -2391,6 +2547,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       size:TVkDeviceSize;
      end;
 
+     // If pname:memory is not sname:VK_NULL_HANDLE, pname:memory and pname:memoryOffset must: match the memory requirements of the resource, as described in section <<resources-association>>
+     // If pname:memory is not sname:VK_NULL_HANDLE, pname:memory mustnot: have been created with a memory type that reports ename:VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT bit set
+     // pname:size must: be greater than `0`
+     // pname:resourceOffset must: be less than the size of the resource
+     // pname:size must: be less than or equal to the size of the resource minus pname:resourceOffset
+     // pname:memoryOffset must: be less than the size of pname:memory
+     // pname:size must: be less than or equal to the size of pname:memory minus pname:memoryOffset
      PPVkSparseMemoryBind=^PVkSparseMemoryBind;
      PVkSparseMemoryBind=^TVkSparseMemoryBind;
      TVkSparseMemoryBind=record
@@ -2401,6 +2564,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       flags:TVkSparseMemoryBindFlags;
      end;
 
+     // If the <<features-features-sparseResidencyAliased,sparse aliased residency>> feature is not enabled, and if any other resources are bound to ranges of pname:memory, the range of pname:memory being bound mustnot: overlap with those bound ranges
+     // pname:memory and pname:memoryOffset must: match the memory requirements of the calling command's pname:image, as described in section <<resources-association>>
+     // pname:subresource must: be a valid subresource for pname:image (see <<resources-image-views>>)
+     // pname:offset.x must: be a multiple of the block width (sname:VkSparseImageFormatProperties::pname:imageGranularity.width) of the image
+     // pname:extent.width must: either be a multiple of the block width of the image, or else pname:extent.width + pname:offset.x must: equal the width of the image subresource
+     // pname:offset.y must: be a multiple of the block height (sname:VkSparseImageFormatProperties::pname:imageGranularity.height) of the image
+     // pname:extent.height must: either be a multiple of the block height of the image, or else pname:extent.height + pname:offset.y must: equal the height of the image subresource
+     // pname:offset.z must: be a multiple of the block depth (sname:VkSparseImageFormatProperties::pname:imageGranularity.depth) of the image
+     // pname:extent.depth must: either be a multiple of the block depth of the image, or else pname:extent.depth + pname:offset.z must: equal the depth of the image subresource
      PPVkSparseImageMemoryBind=^PVkSparseImageMemoryBind;
      PVkSparseImageMemoryBind=^TVkSparseImageMemoryBind;
      TVkSparseImageMemoryBind=record
@@ -2420,6 +2592,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pBinds:PVkSparseMemoryBind;
      end;
 
+     // For any given element of pname:pBinds, if the pname:flags member of that element contains ename:VK_SPARSE_MEMORY_BIND_METADATA_BIT, the binding range defined must: be within the mip tail region of the metadata aspect of pname:image
      PPVkSparseImageOpaqueMemoryBindInfo=^PVkSparseImageOpaqueMemoryBindInfo;
      PVkSparseImageOpaqueMemoryBindInfo=^TVkSparseImageOpaqueMemoryBindInfo;
      TVkSparseImageOpaqueMemoryBindInfo=record
@@ -2453,6 +2626,28 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pSignalSemaphores:PVkSemaphore;
      end;
 
+     // The pname:aspectMask member of pname:srcSubresource and pname:dstSubresource must: match
+     // The pname:layerCount member of pname:srcSubresource and pname:dstSubresource must: match
+     // If either of the calling command's pname:srcImage or pname:dstImage parameters are of elink:VkImageType ename:VK_IMAGE_TYPE_3D, the pname:baseArrayLayer and pname:layerCount members of both pname:srcSubresource and pname:dstSubresource must: be `0` and `1`, respectively
+     // The pname:aspectMask member of pname:srcSubresource must: specify aspects present in the calling command's pname:srcImage
+     // The pname:aspectMask member of pname:dstSubresource must: specify aspects present in the calling command's pname:dstImage
+     // pname:srcOffset.x and (pname:extent.width + pname:srcOffset.x) must: both be greater than or equal to `0` and less than or equal to the source image subresource width
+     // pname:srcOffset.y and (pname:extent.height + pname:srcOffset.y) must: both be greater than or equal to `0` and less than or equal to the source image subresource height
+     // pname:srcOffset.z and (pname:extent.depth + pname:srcOffset.z) must: both be greater than or equal to `0` and less than or equal to the source image subresource depth
+     // pname:dstOffset.x and (pname:extent.width + pname:dstOffset.x) must: both be greater than or equal to `0` and less than or equal to the destination image subresource width
+     // pname:dstOffset.y and (pname:extent.height + pname:dstOffset.y) must: both be greater than or equal to `0` and less than or equal to the destination image subresource height
+     // pname:dstOffset.z and (pname:extent.depth + pname:dstOffset.z) must: both be greater than or equal to `0` and less than or equal to the destination image subresource depth
+     // If the calling command's pname:srcImage is a compressed format image:
+     // all members of pname:srcOffset must: be a multiple of the block size in the relevant dimensions
+     // pname:extent.width must: be a multiple of the block width or (pname:extent.width + pname:srcOffset.x) must: equal the source image subresource width
+     // pname:extent.height must: be a multiple of the block height or (pname:extent.height + pname:srcOffset.y) must: equal the source image subresource height
+     // pname:extent.depth must: be a multiple of the block depth or (pname:extent.depth + pname:srcOffset.z) must: equal the source image subresource depth
+     // If the calling command's pname:dstImage is a compressed format image:
+     // all members of pname:dstOffset must: be a multiple of the block size in the relevant dimensions
+     // pname:extent.width must: be a multiple of the block width or (pname:extent.width + pname:dstOffset.x) must: equal the destination image subresource width
+     // pname:extent.height must: be a multiple of the block height or (pname:extent.height + pname:dstOffset.y) must: equal the destination image subresource height
+     // pname:extent.depth must: be a multiple of the block depth or (pname:extent.depth + pname:dstOffset.z) must: equal the destination image subresource depth
+     // pname:srcOffset, pname:dstOffset, and pname:extent must: respect the image transfer granularity requirements of the queue family that it will be submitted against, as described in <<execution-physical-device-enumeration,Physical Device Enumeration>>
      PPVkImageCopy=^PVkImageCopy;
      PVkImageCopy=^TVkImageCopy;
      TVkImageCopy=record
@@ -2463,6 +2658,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       extent:TVkExtent3D;
      end;
 
+     // The pname:aspectMask member of pname:srcSubresource and pname:dstSubresource must: match
+     // The pname:layerCount member of pname:srcSubresource and pname:dstSubresource must: match
+     // If either of the calling command's pname:srcImage or pname:dstImage parameters are of elink:VkImageType ename:VK_IMAGE_TYPE_3D, the pname:baseArrayLayer and pname:layerCount members of both pname:srcSubresource and pname:dstSubresource must: be `0` and `1`, respectively
+     // The pname:aspectMask member of pname:srcSubresource must: specify aspects present in the calling command's pname:srcImage
+     // The pname:aspectMask member of pname:dstSubresource must: specify aspects present in the calling command's pname:dstImage
+     // pname:srcOffset[0].x and pname:srcOffset[1].x must: both be greater than or equal to `0` and less than or equal to the source image subresource width
+     // pname:srcOffset[0].y and pname:srcOffset[1].y must: both be greater than or equal to `0` and less than or equal to the source image subresource height
+     // pname:srcOffset[0].z and pname:srcOffset[1].z must: both be greater than or equal to `0` and less than or equal to the source image subresource depth
+     // pname:dstOffset[0].x and pname:dstOffset[1].x must: both be greater than or equal to `0` and less than or equal to the destination image subresource width
+     // pname:dstOffset[0].y and pname:dstOffset[1].y must: both be greater than or equal to `0` and less than or equal to the destination image subresource height
+     // pname:dstOffset[0].z and pname:dstOffset[1].z must: both be greater than or equal to `0` and less than or equal to the destination image subresource depth
      PPVkImageBlit=^PVkImageBlit;
      PVkImageBlit=^TVkImageBlit;
      TVkImageBlit=record
@@ -2472,6 +2678,23 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       dstOffsets:array[0..1] of TVkOffset3D;
      end;
 
+     // pname:bufferOffset must: be a multiple of the calling command's sname:VkImage parameter's texel size
+     // pname:bufferOffset must: be a multiple of `4`
+     // pname:bufferRowLength must: be `0`, or greater than or equal to the pname:width member of pname:imageExtent
+     // pname:bufferImageHeight must: be `0`, or greater than or equal to the pname:height member of pname:imageExtent
+     // pname:imageOffset.x and (pname:imageExtent.width + pname:imageOffset.x) must: both be greater than or equal to `0` and less than or equal to the image subresource width
+     // pname:imageOffset.y and (imageExtent.height + pname:imageOffset.y) must: both be greater than or equal to `0` and less than or equal to the image subresource height
+     // pname:imageOffset.z and (imageExtent.depth + pname:imageOffset.z) must: both be greater than or equal to `0` and less than or equal to the image subresource depth
+     // If the calling command's sname:VkImage parameter is a compressed format image:
+     // pname:bufferRowLength, pname:bufferImageHeight and all members of pname:imageOffset must: be a multiple of the block size in the relevant dimensions
+     // pname:bufferOffset must: be a multiple of the block size in bytes
+     // pname:imageExtent.width must: be a multiple of the block width or (pname:imageExtent.width + pname:imageOffset.x) must: equal the image subresource width
+     // pname:imageExtent.height must: be a multiple of the block height or (pname:imageExtent.height + pname:imageOffset.y) must: equal the image subresource height
+     // pname:imageExtent.depth must: be a multiple of the block depth or (pname:imageExtent.depth + pname:imageOffset.z) must: equal the image subresource depth
+     // pname:bufferOffset, pname:bufferRowLength, pname:bufferImageHeight and all members of pname:imageOffset and pname:imageExtent must: respect the image transfer granularity requirements of the queue family that it will be submitted against, as described in <<execution-physical-device-enumeration,Physical Device Enumeration>>
+     // The pname:aspectMask member of pname:imageSubresource must: specify aspects present in the calling command's sname:VkImage parameter
+     // The pname:aspectMask member of pname:imageSubresource must: only have a single bit set
+     // If the calling command's sname:VkImage parameter is of elink:VkImageType ename:VK_IMAGE_TYPE_3D, the pname:baseArrayLayer and pname:layerCount members of pname:imageSubresource must: be `0` and `1`, respectively
      PPVkBufferImageCopy=^PVkBufferImageCopy;
      PVkBufferImageCopy=^TVkBufferImageCopy;
      TVkBufferImageCopy=record
@@ -2483,6 +2706,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       imageExtent:TVkExtent3D;
      end;
 
+     // The pname:aspectMask member of pname:srcSubresource and pname:dstSubresource must: only contain ename:VK_IMAGE_ASPECT_COLOR_BIT
+     // The pname:layerCount member of pname:srcSubresource and pname:dstSubresource must: match
+     // If either of the calling command's pname:srcImage or pname:dstImage parameters are of elink:VkImageType ename:VK_IMAGE_TYPE_3D, the pname:baseArrayLayer and pname:layerCount members of both pname:srcSubresource and pname:dstSubresource must: be `0` and `1`, respectively
      PPVkImageResolve=^PVkImageResolve;
      PVkImageResolve=^TVkImageResolve;
      TVkImageResolve=record
@@ -2493,6 +2719,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       extent:TVkExtent3D;
      end;
 
+     // pname:codeSize must: be greater than 0
+     // pname:codeSize must: be a multiple of 4
+     // pname:pCode must: point to valid SPIR-V code, formatted and packed as described by https://www.khronos.org/registry/spir-v/specs/1.0/SPIRV.html[the SPIR-V Specification v1.0]
+     // pname:pCode must: adhere to the validation rules described by the <<spirvenv-module-validation, Validation Rules within a Module>> section of the <<spirvenv-capabilities,SPIR-V Environment>> appendix
+     // pname:pCode must: declare the code:Shader capability
+     // pname:pCode mustnot: declare any capability that is not supported by the API, as described by the <<spirvenv-module-validation, Capabilities>> section of the <<spirvenv-capabilities,SPIR-V Environment>> appendix
+     // If pname:pCode declares any of the capabilities that are listed as not required by the implementation, the relevant feature must: be enabled, as listed in the <<spirvenv-capabilities-table,SPIR-V Environment>> appendix
      PPVkShaderModuleCreateInfo=^PVkShaderModuleCreateInfo;
      PVkShaderModuleCreateInfo=^TVkShaderModuleCreateInfo;
      TVkShaderModuleCreateInfo=record
@@ -2503,6 +2736,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pCode:PVkUInt32;
      end;
 
+     // If pname:descriptorType is ename:VK_DESCRIPTOR_TYPE_SAMPLER or ename:VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, and pname:descriptorCount is not `0` and pname:pImmutableSamplers is not `NULL`, pname:pImmutableSamplers must: be a pointer to an array of pname:descriptorCount valid sname:VkSampler handles
+     // If pname:descriptorCount is not `0`, pname:stageFlags must: be a valid combination of elink:VkShaderStageFlagBits values
      PPVkDescriptorSetLayoutBinding=^PVkDescriptorSetLayoutBinding;
      PVkDescriptorSetLayoutBinding=^TVkDescriptorSetLayoutBinding;
      TVkDescriptorSetLayoutBinding=record
@@ -2523,6 +2758,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pBindings:PVkDescriptorSetLayoutBinding;
      end;
 
+     // pname:descriptorCount must: be greater than `0`
      PPVkDescriptorPoolSize=^PVkDescriptorPoolSize;
      PVkDescriptorPoolSize=^TVkDescriptorPoolSize;
      TVkDescriptorPoolSize=record
@@ -2530,6 +2766,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       descriptorCount:TVkUInt32;
      end;
 
+     // pname:maxSets must: be greater than `0`
      PPVkDescriptorPoolCreateInfo=^PVkDescriptorPoolCreateInfo;
      PVkDescriptorPoolCreateInfo=^TVkDescriptorPoolCreateInfo;
      TVkDescriptorPoolCreateInfo=record
@@ -2541,6 +2778,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pPoolSizes:PVkDescriptorPoolSize;
      end;
 
+     // pname:descriptorSetCount mustnot: be greater than the number of sets that are currently available for allocation in pname:descriptorPool
+     // pname:descriptorPool must: have enough free descriptor capacity remaining to allocate the descriptor sets of the specified layouts
      PPVkDescriptorSetAllocateInfo=^PVkDescriptorSetAllocateInfo;
      PVkDescriptorSetAllocateInfo=^TVkDescriptorSetAllocateInfo;
      TVkDescriptorSetAllocateInfo=record
@@ -2559,6 +2798,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       size:TVkPtrInt;
      end;
 
+     // The pname:offset member of any given element of pname:pMapEntries must: be less than pname:dataSize
+     // For any given element of pname:pMapEntries, pname:size must be less than or equal to pname:dataSize minus pname:offset
      PPVkSpecializationInfo=^PVkSpecializationInfo;
      PVkSpecializationInfo=^TVkSpecializationInfo;
      TVkSpecializationInfo=record
@@ -2568,6 +2809,22 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pData:TVkPointer;
      end;
 
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:stage mustnot: be ename:VK_SHADER_STAGE_GEOMETRY_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:stage mustnot: be ename:VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT or ename:VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT
+     // pname:stage mustnot: be ename:VK_SHADER_STAGE_ALL_GRAPHICS, or ename:VK_SHADER_STAGE_ALL
+     // pname:pName must: be the name of an code:OpEntryPoint in pname:module with an execution model that matches pname:stage
+     // If the identified entry point includes any variable in its interface that is declared with the code:ClipDistance code:BuiltIn decoration, that variable mustnot: have an array size greater than sname:VkPhysicalDeviceLimits::pname:maxClipDistances
+     // If the identified entry point includes any variable in its interface that is declared with the code:CullDistance code:BuiltIn decoration, that variable mustnot: have an array size greater than sname:VkPhysicalDeviceLimits::pname:maxCullDistances
+     // If the identified entry point includes any variables in its interface that are declared with the code:ClipDistance or code:CullDistance code:BuiltIn decoration, those variables mustnot: have array sizes which sum to more than sname:VkPhysicalDeviceLimits::pname:maxCombinedClipAndCullDistances
+     // If the identified entry point includes any variable in its interface that is declared with the code:SampleMask code:BuiltIn decoration, that variable mustnot: have an array size greater than sname:VkPhysicalDeviceLimits::pname:maxSampleMaskWords
+     // If pname:stage is ename:VK_SHADER_STAGE_VERTEX_BIT, the identified entry point mustnot: include any input variable in its interface that is decorated with code:CullDistance
+     // If pname:stage is ename:VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT or ename:VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, and the identified entry point has an code:OpExecutionMode instruction that specifies a patch size with code:OutputVertices, the patch size must: be greater than `0` and less than or equal to sname:VkPhysicalDeviceLimits::pname:maxTessellationPatchSize
+     // If pname:stage is ename:VK_SHADER_STAGE_GEOMETRY_BIT, the identified entry point must: have an code:OpExecutionMode instruction that specifies a maximum output vertex count that is greater than `0` and less than or equal to sname:VkPhysicalDeviceLimits::pname:maxGeometryOutputVertices
+     // If pname:stage is ename:VK_SHADER_STAGE_GEOMETRY_BIT, the identified entry point must: have an code:OpExecutionMode instruction that specifies an invocation count that is greater than `0` and less than or equal to sname:VkPhysicalDeviceLimits::pname:maxGeometryShaderInvocations
+     // If pname:stage is ename:VK_SHADER_STAGE_GEOMETRY_BIT, and the identified entry point writes to code:Layer for any primitive, it must: write the same value to code:Layer for all vertices of a given primitive
+     // If pname:stage is ename:VK_SHADER_STAGE_GEOMETRY_BIT, and the identified entry point writes to code:ViewportIndex for any primitive, it must: write the same value to code:ViewportIndex for all vertices of a given primitive
+     // If pname:stage is ename:VK_SHADER_STAGE_FRAGMENT_BIT, the identified entry point mustnot: include any output variables in its interface decorated with code:CullDistance
+     // If pname:stage is ename:VK_SHADER_STAGE_FRAGMENT_BIT, and the identified entry point writes to code:FragDepth in any execution path, it must: write to code:FragDepth in all execution paths
      PPVkPipelineShaderStageCreateInfo=^PVkPipelineShaderStageCreateInfo;
      PVkPipelineShaderStageCreateInfo=^TVkPipelineShaderStageCreateInfo;
      TVkPipelineShaderStageCreateInfo=record
@@ -2580,6 +2837,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pSpecializationInfo:PVkSpecializationInfo;
      end;
 
+     // If pname:flags contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and pname:basePipelineIndex is not `-1`, pname:basePipelineHandle must: be sname:VK_NULL_HANDLE
+     // If pname:flags contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and pname:basePipelineIndex is not `-1`, it must: be a valid index into the calling command's pname:pCreateInfos parameter
+     // If pname:flags contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and pname:basePipelineHandle is not sname:VK_NULL_HANDLE, pname:basePipelineIndex must: be `-1`
+     // If pname:flags contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and pname:basePipelineHandle is not sname:VK_NULL_HANDLE, pname:basePipelineHandle must: be a valid sname:VkPipeline handle
+     // If pname:flags contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and pname:basePipelineHandle is not sname:VK_NULL_HANDLE, it must: be a valid handle to a compute sname:VkPipeline
+     // The pname:stage member of pname:stage must: be ename:VK_SHADER_STAGE_COMPUTE_BIT
+     // The shader code for the entry point identified by pname:stage and the rest of the state identified by this structure must: adhere to the pipeline linking rules described in the <<interfaces,Shader Interfaces>> chapter
+     // pname:layout must: be <<descriptorsets-pipelinelayout-consistency,consistent>> with all shaders specified in pname:pStages
      PPVkComputePipelineCreateInfo=^PVkComputePipelineCreateInfo;
      PVkComputePipelineCreateInfo=^TVkComputePipelineCreateInfo;
      TVkComputePipelineCreateInfo=record
@@ -2592,6 +2857,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       basePipelineIndex:TVkInt32;
      end;
 
+     // pname:binding must: be less than sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindings
+     // pname:stride must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindingStride
      PPVkVertexInputBindingDescription=^PVkVertexInputBindingDescription;
      PVkVertexInputBindingDescription=^TVkVertexInputBindingDescription;
      TVkVertexInputBindingDescription=record
@@ -2600,6 +2867,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       inputRate:TVkVertexInputRate;
      end;
 
+     // pname:location must: be less than sname:VkPhysicalDeviceLimits::pname:maxVertexInputAttributes
+     // pname:binding must: be less than sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindings
+     // pname:offset must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxVertexInputAttributeOffset
+     // pname:format must: be allowed as a vertex buffer format, as specified by the ename:VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT flag in sname:VkFormatProperties::pname:bufferFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
      PPVkVertexInputAttributeDescription=^PVkVertexInputAttributeDescription;
      PVkVertexInputAttributeDescription=^TVkVertexInputAttributeDescription;
      TVkVertexInputAttributeDescription=record
@@ -2609,6 +2880,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       offset:TVkUInt32;
      end;
 
+     // pname:vertexBindingDescriptionCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindings
+     // pname:vertexAttributeDescriptionCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxVertexInputAttributes
+     // For every pname:binding specified by any given element of pname:pVertexAttributeDescriptions, a sname:VkVertexInputBindingDescription must: exist in pname:pVertexBindingDescriptions with the same value of pname:binding
+     // All elements of pname:pVertexBindingDescriptions must: describe distinct binding numbers
+     // All elements of pname:pVertexAttributeDescriptions must: describe distinct attribute locations
      PPVkPipelineVertexInputStateCreateInfo=^PVkPipelineVertexInputStateCreateInfo;
      PVkPipelineVertexInputStateCreateInfo=^TVkPipelineVertexInputStateCreateInfo;
      TVkPipelineVertexInputStateCreateInfo=record
@@ -2621,6 +2897,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pVertexAttributeDescriptions:PVkVertexInputAttributeDescription;
      end;
 
+     // If pname:topology is ename:VK_PRIMITIVE_TOPOLOGY_POINT_LIST, ename:VK_PRIMITIVE_TOPOLOGY_LINE_LIST, ename:VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, ename:VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY, ename:VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY or ename:VK_PRIMITIVE_TOPOLOGY_PATCH_LIST, pname:primitiveRestartEnable must: be ename:VK_FALSE
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:topology mustnot: be any of ename:VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY, ename:VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY, ename:VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY or ename:VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:topology mustnot: be ename:VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
      PPVkPipelineInputAssemblyStateCreateInfo=^PVkPipelineInputAssemblyStateCreateInfo;
      PVkPipelineInputAssemblyStateCreateInfo=^TVkPipelineInputAssemblyStateCreateInfo;
      TVkPipelineInputAssemblyStateCreateInfo=record
@@ -2631,6 +2910,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       primitiveRestartEnable:TVkBool32;
      end;
 
+     // pname:patchControlPoints must: be greater than zero and less than or equal to sname:VkPhysicalDeviceLimits::pname:maxTessellationPatchSize
      PPVkPipelineTessellationStateCreateInfo=^PVkPipelineTessellationStateCreateInfo;
      PVkPipelineTessellationStateCreateInfo=^TVkPipelineTessellationStateCreateInfo;
      TVkPipelineTessellationStateCreateInfo=record
@@ -2640,6 +2920,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       patchControlPoints:TVkUInt32;
      end;
 
+     // If the <<features-features-multiViewport,multiple viewports>> feature is not enabled, pname:viewportCount must: be `1`
+     // If the <<features-features-multiViewport,multiple viewports>> feature is not enabled, pname:scissorCount must: be `1`
+     // pname:viewportCount must: be between `1` and sname:VkPhysicalDeviceLimits::pname:maxViewports, inclusive
+     // pname:scissorCount must: be between `1` and sname:VkPhysicalDeviceLimits::pname:maxViewports, inclusive
+     // pname:scissorCount and pname:viewportCount must: be identical
      PPVkPipelineViewportStateCreateInfo=^PVkPipelineViewportStateCreateInfo;
      PVkPipelineViewportStateCreateInfo=^TVkPipelineViewportStateCreateInfo;
      TVkPipelineViewportStateCreateInfo=record
@@ -2652,6 +2937,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pScissors:PVkRect2D;
      end;
 
+     // If the <<features-features-depthClamp,depth clamping>> feature is not enabled, pname:depthClampEnable must: be ename:VK_FALSE
+     // If the <<features-features-fillModeNonSolid,non-solid fill modes>> feature is not enabled, pname:polygonMode must: be ename:VK_POLYGON_MODE_FILL
      PPVkPipelineRasterizationStateCreateInfo=^PVkPipelineRasterizationStateCreateInfo;
      PVkPipelineRasterizationStateCreateInfo=^TVkPipelineRasterizationStateCreateInfo;
      TVkPipelineRasterizationStateCreateInfo=record
@@ -2670,6 +2957,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       lineWidth:TVkFloat;
      end;
 
+     // If the <<features-features-sampleRateShading,sample rate shading>> feature is not enabled, pname:sampleShadingEnable must: be ename:VK_FALSE
+     // If the <<features-features-alphaToOne,alpha to one>> feature is not enabled, pname:alphaToOneEnable must: be ename:VK_FALSE
+     // pname:minSampleShading must: be in the range latexmath:[$[0,1\]$]
      PPVkPipelineMultisampleStateCreateInfo=^PVkPipelineMultisampleStateCreateInfo;
      PVkPipelineMultisampleStateCreateInfo=^TVkPipelineMultisampleStateCreateInfo;
      TVkPipelineMultisampleStateCreateInfo=record
@@ -2684,6 +2974,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       alphaToOneEnable:TVkBool32;
      end;
 
+     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, pname:srcColorBlendFactor mustnot: be ename:VK_BLEND_SRC1_COLOR, ename:VK_BLEND_ONE_MINUS_SRC1_COLOR, ename:VK_BLEND_SRC1_ALPHA, or ename:VK_BLEND_ONE_MINUS_SRC1_ALPHA
+     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, pname:dstColorBlendFactor mustnot: be ename:VK_BLEND_SRC1_COLOR, ename:VK_BLEND_ONE_MINUS_SRC1_COLOR, ename:VK_BLEND_SRC1_ALPHA, or ename:VK_BLEND_ONE_MINUS_SRC1_ALPHA
+     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, pname:srcAlphaBlendFactor mustnot: be ename:VK_BLEND_SRC1_COLOR, ename:VK_BLEND_ONE_MINUS_SRC1_COLOR, ename:VK_BLEND_SRC1_ALPHA, or ename:VK_BLEND_ONE_MINUS_SRC1_ALPHA
+     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, pname:dstAlphaBlendFactor mustnot: be ename:VK_BLEND_SRC1_COLOR, ename:VK_BLEND_ONE_MINUS_SRC1_COLOR, ename:VK_BLEND_SRC1_ALPHA, or ename:VK_BLEND_ONE_MINUS_SRC1_ALPHA
      PPVkPipelineColorBlendAttachmentState=^PVkPipelineColorBlendAttachmentState;
      PVkPipelineColorBlendAttachmentState=^TVkPipelineColorBlendAttachmentState;
      TVkPipelineColorBlendAttachmentState=record
@@ -2697,6 +2991,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       colorWriteMask:TVkColorComponentFlags;
      end;
 
+     // If the <<features-features-independentBlend,independent blending>> feature is not enabled, all elements of pname:pAttachments must: be identical
+     // If the <<features-features-logicOp,logic operations>> feature is not enabled, pname:logicOpEnable must: be ename:VK_FALSE
+     // If pname:logicOpEnable is ename:VK_TRUE, pname:logicOp must: be a valid elink:VkLogicOp value
      PPVkPipelineColorBlendStateCreateInfo=^PVkPipelineColorBlendStateCreateInfo;
      PVkPipelineColorBlendStateCreateInfo=^TVkPipelineColorBlendStateCreateInfo;
      TVkPipelineColorBlendStateCreateInfo=record
@@ -2732,6 +3029,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       reference:TVkUInt32;
      end;
 
+     // If the <<features-features-depthBounds,depth bounds testing>> feature is not enabled, pname:depthBoundsTestEnable must: be ename:VK_FALSE
      PPVkPipelineDepthStencilStateCreateInfo=^PVkPipelineDepthStencilStateCreateInfo;
      PVkPipelineDepthStencilStateCreateInfo=^TVkPipelineDepthStencilStateCreateInfo;
      TVkPipelineDepthStencilStateCreateInfo=record
@@ -2749,6 +3047,44 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       maxDepthBounds:TVkFloat;
      end;
 
+     // If pname:flags contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and pname:basePipelineIndex is not `-1`, pname:basePipelineHandle must: be sname:VK_NULL_HANDLE
+     // If pname:flags contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and pname:basePipelineIndex is not `-1`, it must: be a valid index into the calling command's pname:pCreateInfos parameter
+     // If pname:flags contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and pname:basePipelineHandle is not sname:VK_NULL_HANDLE, pname:basePipelineIndex must: be `-1`
+     // If pname:flags contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and pname:basePipelineHandle is not sname:VK_NULL_HANDLE, pname:basePipelineHandle must: be a valid sname:VkPipeline handle
+     // If pname:flags contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and pname:basePipelineHandle is not sname:VK_NULL_HANDLE, it must: be a valid handle to a graphics sname:VkPipeline
+     // The pname:stage member of each element of pname:pStages must: be unique
+     // The pname:stage member of one element of pname:pStages must: be ename:VK_SHADER_STAGE_VERTEX_BIT
+     // The pname:stage member of any given element of pname:pStages mustnot: be ename:VK_SHADER_STAGE_COMPUTE_BIT
+     // If pname:pStages includes a tessellation control shader stage, it must: include a tessellation evaluation shader stage
+     // If pname:pStages includes a tessellation evaluation shader stage, it must: include a tessellation control shader stage
+     // If pname:pStages includes a tessellation control shader stage and a tessellation evaluation shader stage, pname:pTessellationState mustnot: be `NULL`
+     // If pname:pStages includes both a tessellation control shader stage and a tessellation evaluation shader stage, the shader code of at least one must: contain an code:OpExecutionMode instruction that specifies the type of subdivision in the pipeline
+     // If pname:pStages includes both a tessellation control shader stage and a tessellation evaluation shader stage, and the shader code of both contain an code:OpExecutionMode instruction that specifies the type of subdivision in the pipeline, they must: both specify the same subdivision mode
+     // If pname:pStages includes both a tessellation control shader stage and a tessellation evaluation shader stage, the shader code of at least one must: contain an code:OpExecutionMode instruction that specifies the output patch size in the pipeline
+     // If pname:pStages includes both a tessellation control shader stage and a tessellation evaluation shader stage, and the shader code of both contain an code:OpExecutionMode instruction that specifies the out patch size in the pipeline, they must: both specify the same patch size
+     // If pname:pStages includes tessellation shader stages, the pname:topology member of pname:pInputAssembly must: be ename:VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+     // If pname:pStages includes a geometry shader stage, and doesn't include any tessellation shader stages, its shader code must: contain an code:OpExecutionMode instruction that specifies an input primitive type that is <<shaders-geometry-execution, compatible>> with the primitive topology specified in pname:pInputAssembly
+     // If pname:pStages includes a geometry shader stage, and also includes tessellation shader stages, its shader code must: contain an code:OpExecutionMode instruction that specifies an input primitive type that is <<shaders-geometry-execution, compatible>> with the primitive topology that is output by the tessellation stages
+     // If pname:pStages includes a fragment shader stage and a geometry shader stage, and the fragment shader code reads from an input variable that is decorated with code:PrimitiveID, then the geometry shader code must: write to a matching output variable, decorated with code:PrimitiveID, in all execution paths
+     // If pname:pStages includes a fragment shader stage, its shader code mustnot: read from any input attachment that is defined as ename:VK_ATTACHMENT_UNUSED in pname:subpass
+     // The shader code for the entry points identified by pname:pStages, and the rest of the state identified by this structure must: adhere to the pipeline linking rules described in the <<interfaces,Shader Interfaces>> chapter
+     // If pname:subpass uses a depth/stencil attachment in pname:renderpass that has a layout of ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL in the sname:VkAttachmentReference defined by pname:subpass, and pname:pDepthStencilState is not `NULL`, the pname:depthWriteEnable member of pname:pDepthStencilState must: be ename:VK_FALSE
+     // If pname:subpass uses a depth/stencil attachment in pname:renderpass that has a layout of ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL in the sname:VkAttachmentReference defined by pname:subpass, and pname:pDepthStencilState is not `NULL`, the pname:failOp, pname:passOp and pname:depthFailOp members of each of the pname:front and pname:back members of pname:pDepthStencilState must: be ename:VK_STENCIL_OP_KEEP
+     // If pname:pColorBlendState is not `NULL`, the pname:blendEnable member of each element of the pname:pAttachment member of pname:pColorBlendState must: be ename:VK_FALSE if the pname:format of the attachment referred to in pname:subpass of pname:renderPass does not support color blend operations, as specified by the ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures or sname:VkFormatProperties::pname:optimalTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+     // If pname:pColorBlendState is not `NULL`, The pname:attachmentCount member of pname:pColorBlendState must: be equal to the pname:colorAttachmentCount used to create pname:subpass
+     // If no element of the pname:pDynamicStates member of pname:pDynamicState is ename:VK_DYNAMIC_STATE_VIEWPORT, the pname:pViewports member of pname:pViewportState must: be a pointer to an array of pname:pViewportState->viewportCount sname:VkViewport structures
+     // If no element of the pname:pDynamicStates member of pname:pDynamicState is ename:VK_DYNAMIC_STATE_SCISSOR, the pname:pScissors member of pname:pViewportState must: be a pointer to an array of pname:pViewportState->scissorCount sname:VkRect2D structures
+     // If the wide lines feature is not enabled, and no element of the pname:pDynamicStates member of pname:pDynamicState is ename:VK_DYNAMIC_STATE_LINE_WIDTH, the pname:lineWidth member of pname:pRasterizationState must: be `1.0`
+     // If the pname:rasterizerDiscardEnable member of pname:pRasterizationState is ename:VK_FALSE, pname:pViewportState must: be a pointer to a valid sname:VkPipelineViewportStateCreateInfo structure
+     // If the pname:rasterizerDiscardEnable member of pname:pRasterizationState is ename:VK_FALSE, pname:pMultisampleState must: be a pointer to a valid sname:VkPipelineMultisampleStateCreateInfo structure
+     // If the pname:rasterizerDiscardEnable member of pname:pRasterizationState is ename:VK_FALSE, and pname:subpass uses a depth/stencil attachment, pname:pDepthStencilState must: be a pointer to a valid sname:VkPipelineDepthStencilStateCreateInfo structure
+     // If the pname:rasterizerDiscardEnable member of pname:pRasterizationState is ename:VK_FALSE, and pname:subpass uses color attachments, pname:pColorBlendState must: be a pointer to a valid sname:VkPipelineColorBlendStateCreateInfo structure
+     // If the depth bias clamping feature is not enabled, no element of the pname:pDynamicStates member of pname:pDynamicState is ename:VK_DYNAMIC_STATE_DEPTH_BIAS, and the pname:depthBiasEnable member of pname:pDepthStencil is ename:VK_TRUE, the pname:depthBiasClamp member of pname:pDepthStencil must: be `0.0`
+     // If no element of the pname:pDynamicStates member of pname:pDynamicState is ename:VK_DYNAMIC_STATE_DEPTH_BOUNDS, and the pname:depthBoundsTestEnable member of pname:pDepthStencil is ename:VK_TRUE, the pname:minDepthBounds and pname:maxDepthBounds members of pname:pDepthStencil must: be between `0.0` and `1.0`, inclusive
+     // pname:layout must: be <<descriptorsets-pipelinelayout-consistency,consistent>> with all shaders specified in pname:pStages
+     // If pname:subpass uses color and/or depth/stencil attachments, then the pname:rasterizationSamples member of pname:pMultisampleState must: be the same as the sample count for those subpass attachments
+     // If pname:subpass does not use any color and/or depth/stencil attachments, then the pname:rasterizationSamples member of pname:pMultisampleState must: follow the rules for a <<renderpass-noattachments, zero-attachment subpass>>
+     // pname:subpass must: be a valid subpass within pname:renderpass
      PPVkGraphicsPipelineCreateInfo=^PVkGraphicsPipelineCreateInfo;
      PVkGraphicsPipelineCreateInfo=^TVkGraphicsPipelineCreateInfo;
      TVkGraphicsPipelineCreateInfo=record
@@ -2773,6 +3109,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       basePipelineIndex:TVkInt32;
      end;
 
+     // If pname:initialDataSize is not `0`, it must: be equal to the size of pname:pInitialData, as returned by fname:vkGetPipelineCacheData when pname:pInitialData was originally retrieved
+     // If pname:initialDataSize is not `0`, pname:pInitialData must: have been retrieved from a previous call to fname:vkGetPipelineCacheData
      PPVkPipelineCacheCreateInfo=^PVkPipelineCacheCreateInfo;
      PVkPipelineCacheCreateInfo=^TVkPipelineCacheCreateInfo;
      TVkPipelineCacheCreateInfo=record
@@ -2783,6 +3121,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pInitialData:TVkPointer;
      end;
 
+     // pname:offset must: be less than sname:VkPhysicalDeviceLimits::pname:maxPushConstantsSize
+     // pname:size must: be greater than `0`
+     // pname:size must: be a multiple of `4`
+     // pname:size must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxPushConstantsSize minus pname:offset
      PPVkPushConstantRange=^PVkPushConstantRange;
      PVkPushConstantRange=^TVkPushConstantRange;
      TVkPushConstantRange=record
@@ -2791,6 +3133,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       size:TVkUInt32;
      end;
 
+     // pname:setLayoutCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxBoundDescriptorSets
+     // The total number of descriptors of the type ename:VK_DESCRIPTOR_TYPE_SAMPLER and ename:VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER accessible to any given shader stage across all elements of pname:pSetLayouts must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxPerStageDescriptorSamplers
+     // The total number of descriptors of the type ename:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER and ename:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC accessible to any given shader stage across all elements of pname:pSetLayouts must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxPerStageDescriptorUniformBuffers
+     // The total number of descriptors of the type ename:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER and ename:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC accessible to any given shader stage across all elements of pname:pSetLayouts must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxPerStageDescriptorStorageBuffers
+     // The total number of descriptors of the type ename:VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, ename:VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, and ename:VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER accessible to any given shader stage across all elements of pname:pSetLayouts must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxPerStageDescriptorSampledImages
+     // The total number of descriptors of the type ename:VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, and ename:VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER accessible to any given shader stage across all elements of pname:pSetLayouts must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxPerStageDescriptorStorageImages
      PPVkPipelineLayoutCreateInfo=^PVkPipelineLayoutCreateInfo;
      PVkPipelineLayoutCreateInfo=^TVkPipelineLayoutCreateInfo;
      TVkPipelineLayoutCreateInfo=record
@@ -2803,6 +3151,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pPushConstantRanges:PVkPushConstantRange;
      end;
 
+     // The absolute value of pname:mipLodBias must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxSamplerLodBias
+     // If the <<features-features-samplerAnisotropy,anisotropic sampling>> feature is not enabled, pname:anisotropyEnable must: be ename:VK_FALSE
+     // If pname:anisotropyEnable is ename:VK_TRUE, pname:maxAnisotropy must: be between `1.0` and sname:VkPhysicalDeviceLimits::pname:maxSamplerAnisotropy, inclusive
+     // If pname:unnormalizedCoordinates is ename:VK_TRUE, pname:minFilter and pname:magFilter must: be equal
+     // If pname:unnormalizedCoordinates is ename:VK_TRUE, pname:mipmapMode must: be ename:VK_SAMPLER_MIPMAP_MODE_NEAREST
+     // If pname:unnormalizedCoordinates is ename:VK_TRUE, pname:minLod and pname:maxLod must: be zero
+     // If pname:unnormalizedCoordinates is ename:VK_TRUE, pname:addressModeU and pname:addressModeV must: each be either ename:VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE or ename:VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
+     // If pname:unnormalizedCoordinates is ename:VK_TRUE, pname:anisotropyEnable must: be ename:VK_FALSE
+     // If pname:unnormalizedCoordinates is ename:VK_TRUE, pname:compareEnable must: be ename:VK_FALSE
+     // If any of pname:addressModeU, pname:addressModeV or pname:addressModeW are ename:VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER, pname:borderColor must: be a valid elink:VkBorderColor value
+     // If the VK_KHR_mirror_clamp_to_edge extension is not enabled, pname:addressModeU, pname:addressModeV and pname:addressModeW mustnot: be ename:VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
+     // If pname:compareEnable is ename:VK_TRUE, pname:compareOp must: be a valid elink:VkCompareOp value
      PPVkSamplerCreateInfo=^PVkSamplerCreateInfo;
      PVkSamplerCreateInfo=^TVkSamplerCreateInfo;
      TVkSamplerCreateInfo=record
@@ -2826,6 +3186,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       unnormalizedCoordinates:TVkBool32;
      end;
 
+     // pname:queueFamilyIndex must: be the index of a queue family available in the calling command's pname:device parameter
      PPVkCommandPoolCreateInfo=^PVkCommandPoolCreateInfo;
      PVkCommandPoolCreateInfo=^TVkCommandPoolCreateInfo;
      TVkCommandPoolCreateInfo=record
@@ -2845,6 +3206,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       commandBufferCount:TVkUInt32;
      end;
 
+     // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, pname:occlusionQueryEnable must: be ename:VK_FALSE
+     // If the <<features-features-inheritedQueries,inherited queries>> feature is enabled, pname:queryFlags must: be a valid combination of elink:VkQueryControlFlagBits values
+     // If the <<features-features-pipelineStatisticsQuery,pipeline statistics queries>> feature is not enabled, pname:pipelineStatistics must: be code:0
      PPVkCommandBufferInheritanceInfo=^PVkCommandBufferInheritanceInfo;
      PVkCommandBufferInheritanceInfo=^TVkCommandBufferInheritanceInfo;
      TVkCommandBufferInheritanceInfo=record
@@ -2858,6 +3222,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pipelineStatistics:TVkQueryPipelineStatisticFlags;
      end;
 
+     // If pname:flags contains ename:VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, the pname:renderPass member of pname:pInheritanceInfo must: be a valid sname:VkRenderPass
+     // If pname:flags contains ename:VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, the pname:subpass member of pname:pInheritanceInfo must: be a valid subpass index within the pname:renderPass member of pname:pInheritanceInfo
+     // If pname:flags contains ename:VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, the pname:framebuffer member of pname:pInheritanceInfo must: be either sname:VK_NULL_HANDLE, or a valid sname:VkFramebuffer that is compatible with the pname:renderPass member of pname:pInheritanceInfo
      PPVkCommandBufferBeginInfo=^PVkCommandBufferBeginInfo;
      PVkCommandBufferBeginInfo=^TVkCommandBufferBeginInfo;
      TVkCommandBufferBeginInfo=record
@@ -2901,6 +3268,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        );
      end;
 
+     // pname:clearValueCount must: be greater than or equal to the number of attachments in pname:renderPass that specify a pname:loadOp of ename:VK_ATTACHMENT_LOAD_OP_CLEAR
      PPVkRenderPassBeginInfo=^PVkRenderPassBeginInfo;
      PVkRenderPassBeginInfo=^TVkRenderPassBeginInfo;
      TVkRenderPassBeginInfo=record
@@ -2913,6 +3281,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pClearValues:PVkClearValue;
      end;
 
+     // If pname:aspectMask includes ename:VK_IMAGE_ASPECT_COLOR_BIT, it mustnot: include ename:VK_IMAGE_ASPECT_DEPTH_BIT or ename:VK_IMAGE_ASPECT_STENCIL_BIT
+     // pname:aspectMask mustnot: include ename:VK_IMAGE_ASPECT_METADATA_BIT
      PPVkClearAttachment=^PVkClearAttachment;
      PVkClearAttachment=^TVkClearAttachment;
      TVkClearAttachment=record
@@ -2942,6 +3312,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       layout:TVkImageLayout;
      end;
 
+     // pname:pipelineBindPoint must: be ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+     // pname:colorCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxColorAttachments
+     // If the first use of an attachment in this render pass is as an input attachment, and the attachment is not also used as a color or depth/stencil attachment in the same subpass, then pname:loadOp mustnot: be ename:VK_ATTACHMENT_LOAD_OP_CLEAR
+     // If pname:pResolveAttachments is not `NULL`, for each resolve attachment that does not have the value ename:VK_ATTACHMENT_UNUSED, the corresponding color attachment mustnot: have the value ename:VK_ATTACHMENT_UNUSED
+     // If pname:pResolveAttachments is not `NULL`, the sample count of each element of pname:pColorAttachments must: be anything other than ename:VK_SAMPLE_COUNT_1_BIT
+     // Any given element of pname:pResolveAttachments must: have a sample count of ename:VK_SAMPLE_COUNT_1_BIT
+     // Any given element of pname:pResolveAttachments must: have the same elink:VkFormat as its corresponding color attachment
+     // All attachments in pname:pColorAttachments and pname:pDepthStencilAttachment that are not ename:VK_ATTACHMENT_UNUSED must: have the same sample count
+     // If any input attachments are ename:VK_ATTACHMENT_UNUSED, then any pipelines bound during the subpass mustnot: accesss those input attachments from the fragment shader
+     // The pname:attachment member of any element of pname:pPreserveAttachments mustnot: be ename:VK_ATTACHMENT_UNUSED
+     // Any given element of pname:pPreserveAttachments mustnot: also be an element of any other member of the subpass description
+     // If any attachment is used as both an input attachment and a color or depth/stencil attachment, then each use must use the same pname:layout
      PPVkSubpassDescription=^PVkSubpassDescription;
      PVkSubpassDescription=^TVkSubpassDescription;
      TVkSubpassDescription=record
@@ -2957,6 +3339,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pPreserveAttachments:PVkUInt32;
      end;
 
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // pname:srcSubpass must: be less than or equal to pname:dstSubpass, unless one of them is ename:VK_SUBPASS_EXTERNAL, to avoid cyclic dependencies and ensure a valid execution order
+     // pname:srcSubpass and pname:dstSubpass mustnot: both be equal to ename:VK_SUBPASS_EXTERNAL
      PPVkSubpassDependency=^PVkSubpassDependency;
      PVkSubpassDependency=^TVkSubpassDependency;
      TVkSubpassDependency=record
@@ -2969,6 +3357,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       dependencyFlags:TVkDependencyFlags;
      end;
 
+     // If any two subpasses operate on attachments with overlapping ranges of the same sname:VkDeviceMemory object, and at least one subpass writes to that area of sname:VkDeviceMemory, a subpass dependency must: be included (either directly or via some intermediate subpasses) between them
+     // If the pname:attachment member of any element of pname:pInputAttachments, pname:pColorAttachments, pname:pResolveAttachments or pname:pDepthStencilAttachment, or the attachment indexed by any element of pname:pPreserveAttachments in any given element of pname:pSubpasses is bound to a range of a sname:VkDeviceMemory object that overlaps with any other attachment in any subpass (including the same subpass), the sname:VkAttachmentDescription structures describing them must: include ename:VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT in pname:flags
+     // If the pname:attachment member of any element of pname:pInputAttachments, pname:pColorAttachments, pname:pResolveAttachments or pname:pDepthStencilAttachment, or any element of pname:pPreserveAttachments in any given element of pname:pSubpasses is not ename:VK_ATTACHMENT_UNUSED, it must: be less than pname:attachmentCount
+     // The value of any element of the pname:pPreserveAttachments member in any given element of pname:pSubpasses mustnot: be ename:VK_ATTACHMENT_UNUSED
      PPVkRenderPassCreateInfo=^PVkRenderPassCreateInfo;
      PVkRenderPassCreateInfo=^TVkRenderPassCreateInfo;
      TVkRenderPassCreateInfo=record
@@ -2999,6 +3391,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       flags:TVkFenceCreateFlags;
      end;
 
+     // Any given element of pname:ppEnabledLayerNames must: be the name of a layer present on the system, exactly matching a string returned in the sname:VkLayerProperties structure by fname:vkEnumerateDeviceLayerProperties
+     // Any given element of pname:ppEnabledExtensionNames must: be the name of an extension present on the system, exactly matching a string returned in the sname:VkExtensionProperties structure by fname:vkEnumerateDeviceExtensionProperties
+     // If an extension listed in pname:ppEnabledExtensionNames is provided as part of a layer, then both the layer and extension must: be enabled to enable that extension
+     // The pname:queueFamilyIndex member of any given element of pname:pQueueCreateInfos must: be unique within pname:pQueueCreateInfos
      PPVkDeviceCreateInfo=^PVkDeviceCreateInfo;
      PVkDeviceCreateInfo=^TVkDeviceCreateInfo;
      TVkDeviceCreateInfo=record
@@ -3147,6 +3543,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       flags:TVkSemaphoreCreateFlags;
      end;
 
+     // If the <<features-features-pipelineStatisticsQuery,pipeline statistics queries>> feature is not enabled, pname:queryType mustnot: be ename:VK_QUERY_TYPE_PIPELINE_STATISTICS
+     // If pname:queryType is ename:VK_QUERY_TYPE_PIPELINE_STATISTICS, pname:pipelineStatistics must: be a valid combination of elink:VkQueryPipelineStatisticFlagBits values
      PPVkQueryPoolCreateInfo=^PVkQueryPoolCreateInfo;
      PVkQueryPoolCreateInfo=^TVkQueryPoolCreateInfo;
      TVkQueryPoolCreateInfo=record
@@ -3158,6 +3556,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pipelineStatistics:TVkQueryPipelineStatisticFlags;
      end;
 
+     // pname:attachmentCount must: be equal to the attachment count specified in pname:renderPass
+     // Any given element of pname:pAttachments that is used as a color attachment or resolve attachment by pname:renderPass must: have been created with a pname:usage value including ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+     // Any given element of pname:pAttachments that is used as a depth/stencil attachment by pname:renderPass must: have been created with a pname:usage value including ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+     // Any given element of pname:pAttachments that is used as an input attachment by pname:renderPass must: have been created with a pname:usage value including ename:VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+     // Any given element of pname:pAttachments must: have been created with an elink:VkFormat value that matches the elink:VkFormat specified by the corresponding sname:VkAttachmentDescription in pname:renderPass
+     // Any given element of pname:pAttachments must: have been created with a pname:samples value that matches the pname:samples value specified by the corresponding sname:VkAttachmentDescription in pname:renderPass
+     // Any given element of pname:pAttachments must: have dimensions at least as large as the corresponding framebuffer dimension
+     // Any given element of pname:pAttachments must: only specify a single mip-level
+     // Any given element of pname:pAttachments must: have been created with the identity swizzle
+     // pname:width must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxFramebufferWidth
+     // pname:height must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxFramebufferHeight
+     // pname:layers must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxFramebufferLayers
      PPVkFramebufferCreateInfo=^PVkFramebufferCreateInfo;
      PVkFramebufferCreateInfo=^TVkFramebufferCreateInfo;
      TVkFramebufferCreateInfo=record
@@ -3172,6 +3582,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       layers:TVkUInt32;
      end;
 
+     // For a given vertex buffer binding, any attribute data fetched must: be entirely contained within the corresponding vertex buffer binding, as described in <<fxvertex-input>>
+     // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, pname:firstInstance must: be code:0
      PPVkDrawIndirectCommand=^PVkDrawIndirectCommand;
      PVkDrawIndirectCommand=^TVkDrawIndirectCommand;
      TVkDrawIndirectCommand=record
@@ -3181,6 +3593,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       firstInstance:TVkUInt32;
      end;
 
+     // For a given vertex buffer binding, any attribute data fetched must: be entirely contained within the corresponding vertex buffer binding, as described in <<fxvertex-input>>
+     // (pname:indexSize * (pname:firstIndex + pname:indexCount) + pname:offset) must: be less than or equal to the size of the currently bound index buffer, with pname:indexSize being based on the type specified by pname:indexType, where the index buffer, pname:indexType, and pname:offset are specified via fname:vkCmdBindIndexBuffer
+     // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, pname:firstInstance must: be code:0
      PPVkDrawIndexedIndirectCommand=^PVkDrawIndexedIndirectCommand;
      PVkDrawIndexedIndirectCommand=^TVkDrawIndexedIndirectCommand;
      TVkDrawIndexedIndirectCommand=record
@@ -3191,6 +3606,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       firstInstance:TVkUInt32;
      end;
 
+     // pname:x must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[0]
+     // pname:y must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[1]
+     // pname:z must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[2]
      PPVkDispatchIndirectCommand=^PVkDispatchIndirectCommand;
      PVkDispatchIndirectCommand=^TVkDispatchIndirectCommand;
      TVkDispatchIndirectCommand=record
@@ -3199,6 +3617,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       z:TVkUInt32;
      end;
 
+     // Any given element of pname:pSignalSemaphores must: currently be unsignalled
+     // Any given element of pname:pCommandBuffers must: either have been recorded with the ename:VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT, or not currently be executing on the device
+     // Any given element of pname:pCommandBuffers must: be in the executable state
+     // If any given element of pname:pCommandBuffers contains commands that execute secondary command buffers, those secondary command buffers must: have been recorded with the ename:VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT, or not currently be executing on the device
+     // If any given element of pname:pCommandBuffers was created with ename:VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, it mustnot: have been previously submitted without re-recording that command buffer
+     // If any given element of pname:pCommandBuffers contains commands that execute secondary command buffers created with ename:VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, each such secondary command buffer mustnot: have been previously submitted without re-recording that command buffer
+     // Any given element of pname:pCommandBuffers mustnot: contain commands that execute a secondary command buffer, if that secondary command buffer has been recorded in another primary command buffer after it was recorded into this sname:VkCommandBuffer
+     // Any given element of pname:pCommandBuffers must: have been created on a sname:VkCommandPool that was created for the same queue family that the calling command's pname:queue belongs to
+     // Any given element of pname:pCommandBuffers mustnot: have been created with ename:VK_COMMAND_BUFFER_LEVEL_SECONDARY
+     // Any given element of sname:VkSemaphore in pname:pWaitSemaphores must: refer to a prior signal of that sname:VkSemaphore that won't be consumed by any other wait on that semaphore
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, any given element of pname:pWaitDstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, any given element of pname:pWaitDstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
      PPVkSubmitInfo=^PVkSubmitInfo;
      PVkSubmitInfo=^TVkSubmitInfo;
      TVkSubmitInfo=record
@@ -3246,6 +3676,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       parameters:TVkDisplayModeParametersKHR;
      end;
 
+     // The pname:width and pname:height members of the pname:visibleRegion member of pname:parameters must be greater than `0`
+     // The pname:refreshRate member of pname:parameters must be greater than `0`
      PPVkDisplayModeCreateInfoKHR=^PVkDisplayModeCreateInfoKHR;
      PVkDisplayModeCreateInfoKHR=^TVkDisplayModeCreateInfoKHR;
      TVkDisplayModeCreateInfoKHR=record
@@ -3269,6 +3701,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       maxDstExtent:TVkExtent2D;
      end;
 
+     // pname:planeIndex must: be less than the number of display planes supported by the device as determined by calling fname:vkGetPhysicalDeviceDisplayPlanePropertiesKHR
+     // If the pname:planeReorderPossible member of the sname:VkDisplayPropertiesKHR structure returned by fname:vkGetPhysicalDeviceDisplayPropertiesKHR for the display corresponding to pname:displayMode is ename:VK_TRUE then pname:planeStackIndex must: be less than the number of display planes supported by the device as determined by calling fname:vkGetPhysicalDeviceDisplayPlanePropertiesKHR; otherwise pname:planeStackIndex must: equal the pname:currentStackIndex member of sname:VkDisplayPlanePropertiesKHR returned by fname:vkGetPhysicalDeviceDisplayPlanePropertiesKHR for the display plane corresponding to pname:displayMode
+     // If pname:alphaMode is ename:VK_DISPLAY_PLANE_ALPHA_GLOBAL_BIT_KHR then pname:globalAlpha must: be between `0` and `1`, inclusive
+     // pname:alphaMode must: be `0` or one of the bits present in the pname:supportedAlpha member of sname:VkDisplayPlaneCapabilitiesKHR returned by fname:vkGetDisplayPlaneCapabilitiesKHR for the display plane corresponding to pname:displayMode
+     // The pname:width and pname:height members of pname:imageExtent must be less than the pname:maxImageDimensions2D member of sname:VkPhysicalDeviceLimits
      PPVkDisplaySurfaceCreateInfoKHR=^PVkDisplaySurfaceCreateInfoKHR;
      PVkDisplaySurfaceCreateInfoKHR=^TVkDisplaySurfaceCreateInfoKHR;
      TVkDisplaySurfaceCreateInfoKHR=record
@@ -3284,6 +3721,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       imageExtent:TVkExtent2D;
      end;
 
+     // pname:srcRect must: specify a rectangular region that is a subset of the image being presented
+     // pname:dstRect must: specify a rectangular region that is a subset of the pname:visibleRegion parameter of the display mode the swapchain being presented uses
+     // If the pname:persistentContent member of the sname:VkDisplayPropertiesKHR structure returned by fname:vkGetPhysicalDeviceDisplayPropertiesKHR for the display the present operation targets then pname:persistent must: be ename:VK_FALSE
      PPVkDisplayPresentInfoKHR=^PVkDisplayPresentInfoKHR;
      PVkDisplayPresentInfoKHR=^TVkDisplayPresentInfoKHR;
      TVkDisplayPresentInfoKHR=record
@@ -3310,6 +3750,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 
 {$ifdef Android}
+     // pname:window mustnot: be in a connected state
      PPVkAndroidSurfaceCreateInfoKHR=^PVkAndroidSurfaceCreateInfoKHR;
      PVkAndroidSurfaceCreateInfoKHR=^TVkAndroidSurfaceCreateInfoKHR;
      TVkAndroidSurfaceCreateInfoKHR=record
@@ -3387,6 +3828,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       colorSpace:TVkColorSpaceKHR;
      end;
 
+     // pname:surface must: be a surface that is supported by the device as determined using fname:vkGetPhysicalDeviceSurfaceSupportKHR
+     // The native window referred to by pname:surface mustnot: already be associated with a swapchain other than pname:oldSwapchain, or with a non-{apiname} graphics API surface
+     // pname:minImageCount must: be greater than or equal to the value returned in the pname:minImageCount member of the sname:VkSurfaceCapabilitiesKHR structure returned by fname:vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface
+     // pname:minImageCount must: be less than or equal to the value returned in the pname:maxImageCount member of the sname:VkSurfaceCapabilitiesKHR structure returned by fname:vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface if the returned pname:maxImageCount is not zero
+     // pname:imageFormat and pname:imageColorspace must: match the pname:format and pname:colorSpace members, respectively, of one of the sname:VkSurfaceFormatKHR structures returned by fname:vkGetPhysicalDeviceSurfaceFormatsKHR for the surface
+     // pname:imageExtent must: be between pname:minImageExtent and pname:maxImageExtent, inclusive, where pname:minImageExtent and pname:maxImageExtent are members of the sname:VkSurfaceCapabilitiesKHR structure returned by fname:vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface
+     // pname:imageArrayLayers must: be greater than `0` and less than or equal to the pname:maxImageArrayLayers member of the sname:VkSurfaceCapabilitiesKHR structure returned by fname:vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface
+     // pname:imageUsage must: be a subset of the supported usage flags present in the pname:supportedUsageFlags member of the sname:VkSurfaceCapabilitiesKHR structure returned by fname:vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface
+     // If pname:imageSharingMode is ename:VK_SHARING_MODE_CONCURRENT, pname:pQueueFamilyIndices must: be a pointer to an array of pname:queueFamilyIndexCount basetype:uint32_t values
+     // If pname:imageSharingMode is ename:VK_SHARING_MODE_CONCURRENT, pname:queueFamilyIndexCount must: be greater than `1`
+     // pname:preTransform must: be one of the bits present in the pname:supportedTransforms member of the sname:VkSurfaceCapabilitiesKHR structure returned by fname:vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface
+     // pname:compositeAlpha must: be one of the bits present in the pname:supportedCompositeAlpha member of the sname:VkSurfaceCapabilitiesKHR structure returned by fname:vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface
+     // pname:presentMode must: be one of the ename:VkPresentModeKHR values returned by fname:vkGetPhysicalDeviceSurfacePresentModesKHR for the surface
      PPVkSwapchainCreateInfoKHR=^PVkSwapchainCreateInfoKHR;
      PVkSwapchainCreateInfoKHR=^TVkSwapchainCreateInfoKHR;
      TVkSwapchainCreateInfoKHR=record
@@ -3410,6 +3864,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       oldSwapchain:TVkSwapchainKHR;
      end;
 
+     // Any given element of pname:pImageIndices must: be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pname:pSwapchains array that is owned by the application
+     // Any given element of sname:VkSemaphore in pname:pWaitSemaphores must: refer to a prior signal of that sname:VkSemaphore that won't be consumed by any other wait on that semaphore
      PPVkPresentInfoKHR=^PVkPresentInfoKHR;
      PVkPresentInfoKHR=^TVkPresentInfoKHR;
      TVkPresentInfoKHR=record
@@ -3434,383 +3890,1565 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 
      TvkCreateInstance=function(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All child objects created using pname:instance must: have been destroyed prior to destroying pname:instance
+     // If sname:VkAllocationCallbacks were provided when pname:instance was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:instance was created, pname:pAllocator must: be `NULL`
      TvkDestroyInstance=procedure(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkEnumeratePhysicalDevices=function(instance:TVkInstance;pPhysicalDeviceCount:PVkUInt32;pPhysicalDevices:PVkPhysicalDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:pName must: be the name of a supported command that has a first parameter of type sname:VkDevice, sname:VkQueue or sname:VkCommandBuffer, either in the core API or an enabled extension
      TvkGetDeviceProcAddr=function(device:TVkDevice;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If pname:instance is `NULL`, pname:pName must: be one of: fname:vkEnumerateInstanceExtensionProperties, fname:vkEnumerateInstanceLayerProperties or fname:vkCreateInstance
+     // If pname:instance is not `NULL`, pname:pName must: be the name of a core command or a command from an enabled extension, other than: fname:vkEnumerateInstanceExtensionProperties, fname:vkEnumerateInstanceLayerProperties or fname:vkCreateInstance
      TvkGetInstanceProcAddr=function(instance:TVkInstance;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPhysicalDeviceProperties=procedure(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPhysicalDeviceQueueFamilyProperties=procedure(physicalDevice:TVkPhysicalDevice;pQueueFamilyPropertyCount:PVkUInt32;pQueueFamilyProperties:PVkQueueFamilyProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPhysicalDeviceMemoryProperties=procedure(physicalDevice:TVkPhysicalDevice;pMemoryProperties:PVkPhysicalDeviceMemoryProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPhysicalDeviceFeatures=procedure(physicalDevice:TVkPhysicalDevice;pFeatures:PVkPhysicalDeviceFeatures); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPhysicalDeviceFormatProperties=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;pFormatProperties:PVkFormatProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPhysicalDeviceImageFormatProperties=function(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;pImageFormatProperties:PVkImageFormatProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateDevice=function(physicalDevice:TVkPhysicalDevice;const pCreateInfo:PVkDeviceCreateInfo;const pAllocator:PVkAllocationCallbacks;pDevice:PVkDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All child objects created on pname:device must: have been destroyed prior to destroying pname:device
+     // If sname:VkAllocationCallbacks were provided when pname:device was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:device was created, pname:pAllocator must: be `NULL`
      TvkDestroyDevice=procedure(device:TVkDevice;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkEnumerateInstanceLayerProperties=function(pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If pname:pLayerName is not `NULL`, it must: be the name of an instance layer returned by flink:vkEnumerateInstanceLayerProperties
      TvkEnumerateInstanceExtensionProperties=function(const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkEnumerateDeviceLayerProperties=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If pname:pLayerName is not `NULL`, it must: be the name of a device layer returned by flink:vkEnumerateDeviceLayerProperties
      TvkEnumerateDeviceExtensionProperties=function(physicalDevice:TVkPhysicalDevice;const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:queueFamilyIndex must: be one of the queue family indices specified when pname:device was created, via the sname:VkDeviceQueueCreateInfo structure
+     // pname:queueIndex must: be less than the number of queues created for the specified queue family index when pname:device was created, via the pname:queueCount member of the sname:VkDeviceQueueCreateInfo structure
      TvkGetDeviceQueue=procedure(device:TVkDevice;queueFamilyIndex:TVkUInt32;queueIndex:TVkUInt32;pQueue:PVkQueue); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:fence must: be unsignalled
+     // pname:fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
      TvkQueueSubmit=function(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkQueueWaitIdle=function(queue:TVkQueue):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkDeviceWaitIdle=function(device:TVkDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The number of currently valid memory objects, allocated from pname:device, must: be less than sname:VkPhysicalDeviceLimits::pname:maxMemoryAllocationCount
      TvkAllocateMemory=function(device:TVkDevice;const pAllocateInfo:PVkMemoryAllocateInfo;const pAllocator:PVkAllocationCallbacks;pMemory:PVkDeviceMemory):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:memory (via images or buffers) must: have completed execution
      TvkFreeMemory=procedure(device:TVkDevice;memory:TVkDeviceMemory;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:memory mustnot: currently be mapped
+     // pname:offset must: be less than the size of pname:memory
+     // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be greater than `0`
+     // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be less than or equal to the size of the pname:memory minus pname:offset
+     // pname:memory must: have been created with a memory type that reports ename:VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
      TvkMapMemory=function(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PVkPointer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:memory must: currently be mapped
      TvkUnmapMemory=procedure(device:TVkDevice;memory:TVkDeviceMemory); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkFlushMappedMemoryRanges=function(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkInvalidateMappedMemoryRanges=function(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:memory must: have been created with a memory type that reports ename:VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT
      TvkGetDeviceMemoryCommitment=procedure(device:TVkDevice;memory:TVkDeviceMemory;pCommittedMemoryInBytes:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetBufferMemoryRequirements=procedure(device:TVkDevice;buffer:TVkBuffer;pMemoryRequirements:PVkMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:buffer mustnot: already be backed by a memory object
+     // pname:buffer mustnot: have been created with any sparse memory binding flags
+     // pname:memoryOffset must: be less than the size of pname:memory
+     // If pname:buffer was created with the ename:VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT or ename:VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minTexelBufferOffsetAlignment
+     // If pname:buffer was created with the ename:VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minUniformBufferOffsetAlignment
+     // If pname:buffer was created with the ename:VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minStorageBufferOffsetAlignment
+     // pname:memory must: have been allocated using one of the memory types allowed in the pname:memoryTypeBits member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetBufferMemoryRequirements with pname:buffer
+     // The size of pname:buffer must: be less than or equal to the size of pname:memory minus pname:memoryOffset
+     // pname:memoryOffset must: be an integer multiple of the pname:alignment member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetBufferMemoryRequirements with pname:buffer
      TvkBindBufferMemory=function(device:TVkDevice;buffer:TVkBuffer;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetImageMemoryRequirements=procedure(device:TVkDevice;image:TVkImage;pMemoryRequirements:PVkMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:image mustnot: already be backed by a memory object
+     // pname:image mustnot: have been created with any sparse memory binding flags
+     // pname:memoryOffset must: be less than the size of pname:memory
+     // pname:memory must: have been allocated using one of the memory types allowed in the pname:memoryTypeBits member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image
+     // pname:memoryOffset must: be an integer multiple of the pname:alignment member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image
+     // The pname:size member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image must: be less than or equal to the size of pname:memory minus pname:memoryOffset
      TvkBindImageMemory=function(device:TVkDevice;image:TVkImage;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:image must: have been created with the ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT flag
      TvkGetImageSparseMemoryRequirements=procedure(device:TVkDevice;image:TVkImage;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If pname:format is an integer format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageIntegerSampleCounts
+     // If pname:format is a non-integer color format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageColorSampleCounts
+     // If pname:format is a depth format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageDepthSampleCounts
+     // If pname:format is a stencil format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageStencilSampleCounts
+     // If pname:usage includes ename:VK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:storageImageSampleCounts
      TvkGetPhysicalDeviceSparseImageFormatProperties=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;samples:TVkSampleCountFlagBits;usage:TVkImageUsageFlags;tiling:TVkImageTiling;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:fence must: be unsignalled
+     // pname:fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
      TvkQueueBindSparse=function(queue:TVkQueue;bindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateFence=function(device:TVkDevice;const pCreateInfo:PVkFenceCreateInfo;const pAllocator:PVkAllocationCallbacks;pFence:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:fence mustnot: be associated with any queue command that has not yet completed execution on that queue
+     // If sname:VkAllocationCallbacks were provided when pname:fence was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:fence was created, pname:pAllocator must: be `NULL`
      TvkDestroyFence=procedure(device:TVkDevice;fence:TVkFence;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // Any given element of pname:pFences mustnot: currently be associated with any queue command that has not yet completed execution on that queue
      TvkResetFences=function(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetFenceStatus=function(device:TVkDevice;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkWaitForFences=function(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence;waitAll:TVkBool32;timeout:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateSemaphore=function(device:TVkDevice;const pCreateInfo:PVkSemaphoreCreateInfo;const pAllocator:PVkAllocationCallbacks;pSemaphore:PVkSemaphore):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:semaphore mustnot: be associated with any queue command that has not yet completed execution on that queue
+     // If sname:VkAllocationCallbacks were provided when pname:semaphore was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:semaphore was created, pname:pAllocator must: be `NULL`
      TvkDestroySemaphore=procedure(device:TVkDevice;semaphore:TVkSemaphore;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateEvent=function(device:TVkDevice;const pCreateInfo:PVkEventCreateInfo;const pAllocator:PVkAllocationCallbacks;pEvent:PVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:event must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:event was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:event was created, pname:pAllocator must: be `NULL`
      TvkDestroyEvent=procedure(device:TVkDevice;event:TVkEvent;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetEventStatus=function(device:TVkDevice;event:TVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkSetEvent=function(device:TVkDevice;event:TVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkResetEvent=function(device:TVkDevice;event:TVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateQueryPool=function(device:TVkDevice;const pCreateInfo:PVkQueryPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pQueryPool:PVkQueryPool):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:queryPool must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:queryPool was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:queryPool was created, pname:pAllocator must: be `NULL`
      TvkDestroyQueryPool=procedure(device:TVkDevice;queryPool:TVkQueryPool;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:firstQuery must: be less than the number of queries in pname:queryPool
+     // If ename:VK_QUERY_RESULT_64_BIT is not set in pname:flags then pname:pData and pname:stride must be multiples of `4`
+     // If ename:VK_QUERY_RESULT_64_BIT is set in pname:flags then pname:pData and pname:stride must be multiples of `8`
+     // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
+     // pname:dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+     // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_TIMESTAMP, pname:flags mustnot: contain ename:VK_QUERY_RESULT_PARTIAL_BIT
      TvkGetQueryPoolResults=function(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:TVkPointer;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If the pname:flags member of pname:pCreateInfo includes ename:VK_BUFFER_CREATE_SPARSE_BINDING_BIT or ename:VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT, creating this sname:VkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed sname:VkPhysicalDeviceLimits::pname:sparseAddressSpaceSize
      TvkCreateBuffer=function(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:buffer, either directly or via a sname:VkBufferView, must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:buffer was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:buffer was created, pname:pAllocator must: be `NULL`
      TvkDestroyBuffer=procedure(device:TVkDevice;buffer:TVkBuffer;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateBufferView=function(device:TVkDevice;const pCreateInfo:PVkBufferViewCreateInfo;const pAllocator:PVkAllocationCallbacks;pView:PVkBufferView):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:bufferView must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:bufferView was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:bufferView was created, pname:pAllocator must: be `NULL`
      TvkDestroyBufferView=procedure(device:TVkDevice;bufferView:TVkBufferView;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If the pname:flags member of pname:pCreateInfo includes ename:VK_IMAGE_CREATE_SPARSE_BINDING_BIT or ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, creating this sname:VkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed sname:VkPhysicalDeviceLimits::pname:sparseAddressSpaceSize
      TvkCreateImage=function(device:TVkDevice;const pCreateInfo:PVkImageCreateInfo;const pAllocator:PVkAllocationCallbacks;pImage:PVkImage):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:image, either directly or via a sname:VkImageView, must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:image was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:image was created, pname:pAllocator must: be `NULL`
      TvkDestroyImage=procedure(device:TVkDevice;image:TVkImage;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:image must: have been created with pname:tiling equal to ename:VK_IMAGE_TILING_LINEAR
+     // The pname:aspectMask member of pname:pSubresource must: only have a single bit set
      TvkGetImageSubresourceLayout=procedure(device:TVkDevice;image:TVkImage;const pSubresource:PVkImageSubresource;pLayout:PVkSubresourceLayout); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateImageView=function(device:TVkDevice;const pCreateInfo:PVkImageViewCreateInfo;const pAllocator:PVkAllocationCallbacks;pView:PVkImageView):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:imageView must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:imageView was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:imageView was created, pname:pAllocator must: be `NULL`
      TvkDestroyImageView=procedure(device:TVkDevice;imageView:TVkImageView;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateShaderModule=function(device:TVkDevice;const pCreateInfo:PVkShaderModuleCreateInfo;const pAllocator:PVkAllocationCallbacks;pShaderModule:PVkShaderModule):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If sname:VkAllocationCallbacks were provided when pname:shaderModule was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:shaderModule was created, pname:pAllocator must: be `NULL`
      TvkDestroyShaderModule=procedure(device:TVkDevice;shaderModule:TVkShaderModule;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreatePipelineCache=function(device:TVkDevice;const pCreateInfo:PVkPipelineCacheCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelineCache:PVkPipelineCache):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If sname:VkAllocationCallbacks were provided when pname:pipelineCache was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:pipelineCache was created, pname:pAllocator must: be `NULL`
      TvkDestroyPipelineCache=procedure(device:TVkDevice;pipelineCache:TVkPipelineCache;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPipelineCacheData=function(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:TVkPointer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:dstCache mustnot: appear in the list of source caches
      TvkMergePipelineCaches=function(device:TVkDevice;dstCache:TVkPipelineCache;srcCacheCount:TVkUInt32;const pSrcCaches:PVkPipelineCache):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If the pname:flags member of any given element of pname:pCreateInfos contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the pname:basePipelineIndex member of that same element is not `-1`, pname:basePipelineIndex must: be less than the index into pname:pCreateInfos that corresponds to that element
      TvkCreateGraphicsPipelines=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkGraphicsPipelineCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If the pname:flags member of any given element of pname:pCreateInfos contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the pname:basePipelineIndex member of that same element is not `-1`, pname:basePipelineIndex must: be less than the index into pname:pCreateInfos that corresponds to that element
      TvkCreateComputePipelines=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkComputePipelineCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:pipeline must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:pipeline was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:pipeline was created, pname:pAllocator must: be `NULL`
      TvkDestroyPipeline=procedure(device:TVkDevice;pipeline:TVkPipeline;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreatePipelineLayout=function(device:TVkDevice;const pCreateInfo:PVkPipelineLayoutCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelineLayout:PVkPipelineLayout):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If sname:VkAllocationCallbacks were provided when pname:pipelineLayout was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:pipelineLayout was created, pname:pAllocator must: be `NULL`
      TvkDestroyPipelineLayout=procedure(device:TVkDevice;pipelineLayout:TVkPipelineLayout;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateSampler=function(device:TVkDevice;const pCreateInfo:PVkSamplerCreateInfo;const pAllocator:PVkAllocationCallbacks;pSampler:PVkSampler):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:sampler must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:sampler was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:sampler was created, pname:pAllocator must: be `NULL`
      TvkDestroySampler=procedure(device:TVkDevice;sampler:TVkSampler;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateDescriptorSetLayout=function(device:TVkDevice;const pCreateInfo:PVkDescriptorSetLayoutCreateInfo;const pAllocator:PVkAllocationCallbacks;pSetLayout:PVkDescriptorSetLayout):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If sname:VkAllocationCallbacks were provided when pname:descriptorSetLayout was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:descriptorSetLayout was created, pname:pAllocator must: be `NULL`
      TvkDestroyDescriptorSetLayout=procedure(device:TVkDevice;descriptorSetLayout:TVkDescriptorSetLayout;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateDescriptorPool=function(device:TVkDevice;const pCreateInfo:PVkDescriptorPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pDescriptorPool:PVkDescriptorPool):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:descriptorPool (via any allocated descriptor sets) must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:descriptorPool was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:descriptorPool was created, pname:pAllocator must: be `NULL`
      TvkDestroyDescriptorPool=procedure(device:TVkDevice;descriptorPool:TVkDescriptorPool;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All uses of pname:descriptorPool (via any allocated descriptor sets) must: have completed execution
      TvkResetDescriptorPool=function(device:TVkDevice;descriptorPool:TVkDescriptorPool;flags:TVkDescriptorPoolResetFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkAllocateDescriptorSets=function(device:TVkDevice;const pAllocateInfo:PVkDescriptorSetAllocateInfo;pDescriptorSets:PVkDescriptorSet):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to any element of pname:pDescriptorSets must: have completed execution
+     // pname:pDescriptorSets must: be a pointer to an array of pname:descriptorSetCount sname:VkDescriptorSet handles, each element of which must: either be a valid handle or sname:VK_NULL_HANDLE
+     // pname:descriptorPool must: have been created with the ename:VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT flag
      TvkFreeDescriptorSets=function(device:TVkDevice;descriptorPool:TVkDescriptorPool;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkUpdateDescriptorSets=procedure(device:TVkDevice;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet;descriptorCopyCount:TVkUInt32;const pDescriptorCopies:PVkCopyDescriptorSet); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateFramebuffer=function(device:TVkDevice;const pCreateInfo:PVkFramebufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pFramebuffer:PVkFramebuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:framebuffer must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:framebuffer was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:framebuffer was created, pname:pAllocator must: be `NULL`
      TvkDestroyFramebuffer=procedure(device:TVkDevice;framebuffer:TVkFramebuffer;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateRenderPass=function(device:TVkDevice;const pCreateInfo:PVkRenderPassCreateInfo;const pAllocator:PVkAllocationCallbacks;pRenderPass:PVkRenderPass):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All submitted commands that refer to pname:renderPass must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:renderPass was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:renderPass was created, pname:pAllocator must: be `NULL`
      TvkDestroyRenderPass=procedure(device:TVkDevice;renderPass:TVkRenderPass;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetRenderAreaGranularity=procedure(device:TVkDevice;renderPass:TVkRenderPass;pGranularity:PVkExtent2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateCommandPool=function(device:TVkDevice;const pCreateInfo:PVkCommandPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pCommandPool:PVkCommandPool):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All sname:VkCommandBuffer objects allocated from pname:commandPool mustnot: be pending execution
+     // If sname:VkAllocationCallbacks were provided when pname:commandPool was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:commandPool was created, pname:pAllocator must: be `NULL`
      TvkDestroyCommandPool=procedure(device:TVkDevice;commandPool:TVkCommandPool;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All sname:VkCommandBuffer objects allocated from pname:commandPool mustnot: currently be pending execution
      TvkResetCommandPool=function(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolResetFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkAllocateCommandBuffers=function(device:TVkDevice;const pAllocateInfo:PVkCommandBufferAllocateInfo;pCommandBuffers:PVkCommandBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All elements of pname:pCommandBuffers mustnot: be pending execution
+     // pname:pCommandBuffers must: be a pointer to an array of pname:commandBufferCount sname:VkCommandBuffer handles, each element of which must: either be a valid handle or sname:VK_NULL_HANDLE
      TvkFreeCommandBuffers=procedure(device:TVkDevice;commandPool:TVkCommandPool;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:commandBuffer mustnot: be in the recording state
+     // If pname:commandBuffer was allocated from a sname:VkCommandPool which did not have the ename:VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, pname:commandBuffer must: be in the initial state.
+     // If pname:commandBuffer is a secondary command buffer, the pname:pInheritanceInfo member of pname:pBeginInfo must: be a valid sname:VkCommandBufferInheritanceInfo structure
+     // If pname:commandBuffer is a secondary command buffer and either the pname:occlusionQueryEnable member of the pname:pInheritanceInfo member of pname:pBeginInfo is ename:VK_FALSE, or the precise occlusion queries feature is not enabled, the pname:queryFlags member of the pname:pInheritanceInfo member pname:pBeginInfo mustnot: contain ename:VK_QUERY_CONTROL_PRECISE_BIT
      TvkBeginCommandBuffer=function(commandBuffer:TVkCommandBuffer;const pBeginInfo:PVkCommandBufferBeginInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:commandBuffer must: be in the recording state
+     // fname:vkEndCommandBuffer mustnot: be called inside a render pass instance
+     // All queries made <<queries-operation-active,active>> during the recording of pname:commandBuffer must: have been made inactive
      TvkEndCommandBuffer=function(commandBuffer:TVkCommandBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:commandBuffer mustnot: currently be pending execution
+     // pname:commandBuffer must: have been allocated from a pool that was created with the ename:VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
      TvkResetCommandBuffer=function(commandBuffer:TVkCommandBuffer;flags:TVkCommandBufferResetFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_COMPUTE, the sname:VkCommandPool that pname:commandBuffer was allocated from must: support compute operations
+     // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_GRAPHICS, the sname:VkCommandPool that pname:commandBuffer was allocated from must: support graphics operations
+     // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_COMPUTE, pname:pipeline must: be a compute pipeline
+     // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_GRAPHICS, pname:pipeline must: be a graphics pipeline
+     // If the <<features-features-variableMultisampleRate,variable multisample rate>> feature is not supported, pname:pipeline is a graphics pipeline, the current subpass has no attachments, and this is not the first call to this function with a graphics pipeline after transitioning to the current subpass, then the sample count specified by this pipeline must: match that set in the previous pipeline
      TvkCmdBindPipeline=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:firstViewport must: be less than sname:VkPhysicalDeviceLimits::pname:maxViewports
+     // The sum of pname:firstViewport and pname:viewportCount must: be between `1` and sname:VkPhysicalDeviceLimits::pname:maxViewports, inclusive
      TvkCmdSetViewport=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewports:PVkViewport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:firstScissor must: be less than sname:VkPhysicalDeviceLimits::pname:maxViewports
+     // The sum of pname:firstScissor and pname:scissorCount must: be between `1` and sname:VkPhysicalDeviceLimits::pname:maxViewports, inclusive
+     // The pname:x and pname:y members of pname:offset must: be greater than or equal to `0`
+     // Evaluation of (pname:offset.x + pname:extent.width) mustnot: cause a signed integer addition overflow
+     // Evaluation of (pname:offset.y + pname:extent.height) mustnot: cause a signed integer addition overflow
      TvkCmdSetScissor=procedure(commandBuffer:TVkCommandBuffer;firstScissor:TVkUInt32;scissorCount:TVkUInt32;const pScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If the <<features-features-wideLines,wide lines>> feature is not enabled, pname:lineWidth must: be `1.0`
      TvkCmdSetLineWidth=procedure(commandBuffer:TVkCommandBuffer;lineWidth:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If the <<features-features-depthBiasClamp,depth bias clamping>> feature is not enabled, pname:depthBiasClamp must: be code:0.0
      TvkCmdSetDepthBias=procedure(commandBuffer:TVkCommandBuffer;depthBiasConstantFactor:TVkFloat;depthBiasClamp:TVkFloat;depthBiasSlopeFactor:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCmdSetBlendConstants=procedure(commandBuffer:TVkCommandBuffer;const blendConstants:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:minDepthBounds must: be between `0.0` and `1.0`, inclusive
+     // pname:maxDepthBounds must: be between `0.0` and `1.0`, inclusive
      TvkCmdSetDepthBounds=procedure(commandBuffer:TVkCommandBuffer;minDepthBounds:TVkFloat;maxDepthBounds:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCmdSetStencilCompareMask=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;compareMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCmdSetStencilWriteMask=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;writeMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCmdSetStencilReference=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;reference:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // Any given element of pname:pDescriptorSets must: have been created with a sname:VkDescriptorSetLayout that matches the sname:VkDescriptorSetLayout at set _n_ in pname:layout, where _n_ is the sum of the index into pname:pDescriptorSets and pname:firstSet
+     // pname:dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pname:pDescriptorSets
+     // pname:pipelineBindPoint must: be supported by the pname:commandBuffer's parent sname:VkCommandPool's queue family
+     // Any given element of pname:pDynamicOffsets must: satisfy the required alignment for the corresponding descriptor binding's descriptor type
      TvkCmdBindDescriptorSets=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const pDynamicOffsets:PVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:offset must: be less than the size of pname:buffer
+     // The sum of pname:offset, and the address of the range of sname:VkDeviceMemory object that's backing pname:buffer, must: be a multiple of the type indicated by pname:indexType
+     // pname:buffer must: have been created with the ename:VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag
      TvkCmdBindIndexBuffer=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;indexType:TVkIndexType); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:firstBinding must: be less than sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindings
+     // The sum of pname:firstBinding and pname:bindingCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindings
+     // All elements of pname:pOffsets must: be less than the size of the corresponding element in pname:pBuffers
+     // All elements of pname:pBuffers must: have been created with the ename:VK_BUFFER_USAGE_VERTEX_BUFFER_BIT flag
      TvkCmdBindVertexBuffers=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+     // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+     // For a given vertex buffer binding, any attribute data fetched must: be entirely contained within the corresponding vertex buffer binding, as described in <<fxvertex-input>>
+     // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+     // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+     // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
      TvkCmdDraw=procedure(commandBuffer:TVkCommandBuffer;vertexCount:TVkUInt32;instanceCount:TVkUInt32;firstVertex:TVkUInt32;firstInstance:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+     // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+     // For a given vertex buffer binding, any attribute data fetched must: be entirely contained within the corresponding vertex buffer binding, as described in <<fxvertex-input>>
+     // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+     // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+     // (pname:indexSize * (pname:firstIndex + pname:indexCount) + pname:offset) must: be less than or equal to the size of the currently bound index buffer, with indexSize being based on the type specified by pname:indexType, where the index buffer, pname:indexType, and pname:offset are specified via fname:vkCmdBindIndexBuffer
+     // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
      TvkCmdDrawIndexed=procedure(commandBuffer:TVkCommandBuffer;indexCount:TVkUInt32;instanceCount:TVkUInt32;firstIndex:TVkUInt32;vertexOffset:TVkInt32;firstInstance:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:offset must: be a multiple of `4`
+     // If pname:drawCount is greater than `1`, pname:stride must: be a multiple of `4` and must: be greater than or equal to sizeof(sname:VkDrawIndirectCommand)
+     // If the <<features-features-multiDrawIndirect,multi-draw indirect>> feature is not enabled, pname:drawCount must: be `0` or `1`
+     // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the pname:firstInstance members of the sname:VkDrawIndirectCommand structures accessed by this command must: be code:0
+     // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+     // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+     // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+     // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+     // If pname:drawCount is equal to `1`, (pname:offset + sizeof(sname:VkDrawIndirectCommand)) must: be less than or equal to the size of pname:buffer
+     // If pname:drawCount is greater than `1`, (pname:stride x (pname:drawCount - 1) + pname:offset + sizeof(sname:VkDrawIndirectCommand)) must: be less than or equal to the size of pname:buffer
+     // pname:drawCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxDrawIndirectCount
+     // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
      TvkCmdDrawIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:offset must: be a multiple of `4`
+     // If pname:drawCount is greater than `1`, pname:stride must: be a multiple of `4` and must: be greater than or equal to sizeof(sname:VkDrawIndexedIndirectCommand)
+     // If the <<features-features-multiDrawIndirect,multi-draw indirect>> feature is not enabled, pname:drawCount must: be `0` or `1`
+     // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the pname:firstInstance members of the sname:VkDrawIndexedIndirectCommand structures accessed by this command must: be code:0
+     // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+     // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+     // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+     // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+     // If pname:drawCount is equal to `1`, (pname:offset + sizeof(sname:VkDrawIndexedIndirectCommand)) must: be less than or equal to the size of pname:buffer
+     // If pname:drawCount is greater than `1`, (pname:stride x (pname:drawCount - 1) + pname:offset + sizeof(sname:VkDrawIndexedIndirectCommand)) must: be less than or equal to the size of pname:buffer
+     // pname:drawCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxDrawIndirectCount
+     // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
      TvkCmdDrawIndexedIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:x must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[0]
+     // pname:y must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[1]
+     // pname:z must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[2]
+     // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+     // A valid compute pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_COMPUTE
+     // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for push constants with the one used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
      TvkCmdDispatch=procedure(commandBuffer:TVkCommandBuffer;x:TVkUInt32;y:TVkUInt32;z:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+     // A valid compute pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_COMPUTE
+     // pname:buffer must: have been created with the ename:VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT bit set
+     // pname:offset must: be a multiple of `4`
+     // The sum of pname:offset and the size of sname:VkDispatchIndirectCommand must: be less than or equal to the size of pname:buffer
+     // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for push constants with the one used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
      TvkCmdDispatchIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The pname:copySize member of a given element of pname:pRegions must: be greater than `0`
+     // The pname:srcOffset member of a given element of pname:pRegions must: be less than the size of pname:srcBuffer
+     // The pname:dstOffset member of a given element of pname:pRegions must: be less than the size of pname:dstBuffer
+     // The pname:copySize member of a given element of pname:pRegions must: be less than or equal to the size of pname:srcBuffer minus pname:srcOffset
+     // The pname:copySize member of a given element of pname:pRegions must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+     // The union of the source regions, and the union of the destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+     // pname:srcBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
+     // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
      TvkCmdCopyBuffer=procedure(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+     // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+     // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+     // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+     // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+     // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+     // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+     // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+     // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+     // The elink:VkFormat of each of pname:srcImage and pname:dstImage must: be compatible, as defined <<copies-images-format-compatibility, below>>
+     // The sample count of pname:srcImage and pname:dstImage must: match
      TvkCmdCopyImage=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+     // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+     // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+     // pname:srcImage must: use a format that supports ename:VK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by sname:VkFormatProperties::pname:linearTilingFeatures (for linear tiled images) or sname:VkFormatProperties::pname:optimalTilingFeatures (for optimally tiled images) - as returned by fname:vkGetPhysicalDeviceFormatProperties
+     // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+     // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+     // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+     // pname:dstImage must: use a format that supports ename:VK_FORMAT_FEATURE_BLIT_DST_BIT, which is indicated by sname:VkFormatProperties::pname:linearTilingFeatures (for linear tiled images) or sname:VkFormatProperties::pname:optimalTilingFeatures (for optimally tiled images) - as returned by fname:vkGetPhysicalDeviceFormatProperties
+     // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+     // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+     // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+     // The sample count of pname:srcImage and pname:dstImage must: both be equal to ename:VK_SAMPLE_COUNT_1_BIT
+     // If either of pname:srcImage or pname:dstImage was created with a signed integer elink:VkFormat, the other must: also have been created with a signed integer elink:VkFormat
+     // If either of pname:srcImage or pname:dstImage was created with an unsigned integer elink:VkFormat, the other must: also have been created with an unsigned integer elink:VkFormat
+     // If either of pname:srcImage or pname:dstImage was created with a depth/stencil format, the other must: have exactly the same format
+     // If pname:srcImage was created with a depth/stencil format, pname:filter must: be ename:VK_FILTER_NEAREST
      TvkCmdBlitImage=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageBlit;filter:TVkFilter); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The buffer region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcBuffer
+     // The image region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+     // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+     // pname:srcBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
+     // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+     // pname:dstImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+     // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+     // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
      TvkCmdCopyBufferToImage=procedure(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The image region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+     // The buffer region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstBuffer
+     // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+     // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+     // pname:srcImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+     // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+     // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+     // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
      TvkCmdCopyImageToBuffer=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:dataSize must: be greater than `0`
+     // pname:dstOffset must: be less than the size of pname:dstBuffer
+     // pname:dataSize must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+     // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
+     // pname:dstOffset must: be a multiple of `4`
+     // pname:dataSize must: be less than or equal to `65536`
+     // pname:dataSize must: be a multiple of `4`
      TvkCmdUpdateBuffer=procedure(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:dstOffset must: be less than the size of pname:dstBuffer
+     // pname:dstOffset must: be a multiple of `4`
+     // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be greater than `0`
+     // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+     // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be a multiple of `4`
+     // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
      TvkCmdFillBuffer=procedure(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:image must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+     // pname:imageLayout must: specify the layout of the subresource ranges of pname:image specified in pname:pRanges at the time this command is executed on a sname:VkDevice
+     // pname:imageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+     // The image range of any given element of pname:pRanges must: be a subresource range that is contained within pname:image
      TvkCmdClearColorImage=procedure(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pColor:PVkClearColorValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:image must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+     // pname:imageLayout must: specify the layout of the subresource ranges of pname:image specified in pname:pRanges at the time this command is executed on a sname:VkDevice
+     // pname:imageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+     // The image range of any given element of pname:pRanges must: be a subresource range that is contained within pname:image
      TvkCmdClearDepthStencilImage=procedure(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If the pname:aspectMask member of any given element of pname:pAttachments contains ename:VK_IMAGE_ASPECT_COLOR_BIT, the pname:colorAttachment member of those elements must: refer to a valid color attachment in the current subpass
+     // The rectangular region specified by a given element of pname:pRects must: be contained within the render area of the current render pass instance
+     // The layers specified by a given element of pname:pRects must: be contained within every attachment that pname:pAttachments refers to
      TvkCmdClearAttachments=procedure(commandBuffer:TVkCommandBuffer;attachmentCount:TVkUInt32;const pAttachments:PVkClearAttachment;rectCount:TVkUInt32;const pRects:PVkClearRect); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+     // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+     // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+     // pname:srcImage must: have a sample count equal to any valid sample count value other than ename:VK_SAMPLE_COUNT_1_BIT
+     // pname:dstImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+     // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+     // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+     // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+     // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+     // If pname:dstImage was created with pname:tiling equal to ename:VK_IMAGE_TILING_LINEAR, pname:dstImage must: have been created with a pname:format that supports being a color attachment, as specified by the ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+     // If pname:dstImage was created with pname:tiling equal to ename:VK_IMAGE_TILING_OPTIMAL, pname:dstImage must: have been created with a pname:format that supports being a color attachment, as specified by the ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:optimalTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
      TvkCmdResolveImage=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageResolve); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
      TvkCmdSetEvent=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
      TvkCmdResetEvent=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:srcStageMask must: be the bitwise OR of the pname:stageMask parameter used in previous calls to fname:vkCmdSetEvent with any of the members of pname:pEvents and ename:VK_PIPELINE_STAGE_HOST_BIT if any of the members of pname:pEvents was set using fname:vkSetEvent
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If pname:pEvents includes one or more events that will be signaled by fname:vkSetEvent after pname:commandBuffer has been submitted to a queue, then fname:vkCmdWaitEvents mustnot: be called inside a render pass instance
      TvkCmdWaitEvents=procedure(commandBuffer:TVkCommandBuffer;eventCount:TVkUInt32;const pEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or pname:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If fname:vkCmdPipelineBarrier is called within a render pass instance, the render pass must: declare at least one self-dependency from the current subpass to itself - see <<synchronization-pipeline-barriers-subpass-self-dependencies,Subpass Self-dependency>>
      TvkCmdPipelineBarrier=procedure(commandBuffer:TVkCommandBuffer;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The query identified by pname:queryPool and pname:query must: currently not be <<queries-operation-active,active>>
+     // The query identified by pname:queryPool and pname:query must: be unavailable
+     // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the pname:queryType used to create pname:queryPool was not ename:VK_QUERY_TYPE_OCCLUSION, pname:flags mustnot: contain ename:VK_QUERY_CONTROL_PRECISE_BIT
+     // pname:queryPool must: have been created with a pname:queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within pname:commandBuffer
+     // pname:query must: be less than the number of queries in pname:queryPool
+     // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_OCCLUSION, the sname:VkCommandPool that pname:commandBuffer was created from must: support graphics operations
+     // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pname:pipelineStatistics indicate graphics operations, the sname:VkCommandPool that pname:commandBuffer was created from must: support graphics operations
+     // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pname:pipelineStatistics indicate compute operations, the sname:VkCommandPool that pname:commandBuffer was created from must: support compute operations
      TvkCmdBeginQuery=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The query identified by pname:queryPool and pname:query must: currently be <<queries-operation-active,active>>
+     // pname:query must: be less than the number of queries in pname:queryPool
      TvkCmdEndQuery=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:firstQuery must: be less than the number of queries in pname:queryPool
+     // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
      TvkCmdResetQueryPool=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The query identified by pname:queryPool and pname:query must: be _unavailable_
+     // The command pool's queue family must: support a non-zero pname:timestampValidBits
      TvkCmdWriteTimestamp=procedure(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:dstOffset must: be less than the size of pname:dstBuffer
+     // pname:firstQuery must: be less than the number of queries in pname:queryPool
+     // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
+     // If ename:VK_QUERY_RESULT_64_BIT is not set in pname:flags then pname:dstOffset and pname:stride must be multiples of `4`
+     // If ename:VK_QUERY_RESULT_64_BIT is set in pname:flags then pname:dstOffset and pname:stride must be multiples of `8`
+     // pname:dstBuffer must: have enough storage, from pname:dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+     // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_TIMESTAMP, pname:flags mustnot: contain ename:VK_QUERY_RESULT_PARTIAL_BIT
      TvkCmdCopyQueryPoolResults=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:stageFlags must: match exactly the shader stages used in pname:layout for the range specified by pname:offset and pname:size
+     // pname:offset must: be a multiple of `4`
+     // pname:size must: be a multiple of `4`
+     // pname:offset must: be less than sname:VkPhysicalDeviceLimits::pname:maxPushConstantsSize
+     // pname:size must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxPushConstantsSize minus pname:offset
      TvkCmdPushConstants=procedure(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:TVkPointer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
+     // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT set
+     // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_SAMPLED_BIT or ename:VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT set
+     // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_BIT then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT set
+     // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_TRANSFER_DST_BIT then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT set
      TvkCmdBeginRenderPass=procedure(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The current subpass index must: be less than the number of subpasses in the render pass minus one
      TvkCmdNextSubpass=procedure(commandBuffer:TVkCommandBuffer;contents:TVkSubpassContents); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // The current subpass index must: be equal to the number of subpasses in the render pass minus one
      TvkCmdEndRenderPass=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:commandBuffer must: have been created with a pname:level of ename:VK_COMMAND_BUFFER_LEVEL_PRIMARY
+     // Any given element of pname:pCommandBuffers must: have been created with a pname:level of ename:VK_COMMAND_BUFFER_LEVEL_SECONDARY
+     // Any given element of pname:pCommandBuffers mustnot: be already pending execution in pname:commandBuffer, or appear twice in pname:pCommandBuffers, unless it was created with the ename:VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+     // Any given element of pname:pCommandBuffers mustnot: be already pending execution in any other sname:VkCommandBuffer, unless it was created with the ename:VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+     // Any given element of pname:pCommandBuffers must: be in the executable state
+     // If fname:vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the pname:contents parameter of fname:vkCmdBeginRenderPass set to ename:VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
+     // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with the ename:VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+     // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with the pname:subpass member of the pname:inheritanceInfo structure set to the index of the subpass which the given command buffer will be executed in
+     // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
+     // If fname:vkCmdExecuteCommands is being called within a render pass instance, and any given element of pname:pCommandBuffers was recorded with the pname:framebuffer member of the sname:VkCommandBufferInheritanceInfo structure not equal to sname:VK_NULL_HANDLE, that sname:VkFramebuffer must: be compatible with the sname:VkFramebuffer used in the current render pass instance
+     // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, pname:commandBuffer mustnot: have any queries <<queries-operation-active,active>>
+     // If pname:commandBuffer has a ename:VK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:occlusionQueryEnable set to ename:VK_TRUE
+     // If pname:commandBuffer has a ename:VK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:queryFlags having all bits set that are set for the query
+     // If pname:commandBuffer has a ename:VK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:pipelineStatistics having all bits set that are set in the sname:VkQueryPool the query uses
+     // Any given element of pname:pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in pname:commandBuffer
      TvkCmdExecuteCommands=procedure(commandBuffer:TVkCommandBuffer;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
 {$ifdef Android}
      TvkCreateAndroidSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkAndroidSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
+
      TvkGetPhysicalDeviceDisplayPropertiesKHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPhysicalDeviceDisplayPlanePropertiesKHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPlanePropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:planeIndex must: be less than the number of display planes supported by the device as determined by calling fname:vkGetPhysicalDeviceDisplayPlanePropertiesKHR
      TvkGetDisplayPlaneSupportedDisplaysKHR=function(physicalDevice:TVkPhysicalDevice;planeIndex:TVkUInt32;pDisplayCount:PVkUInt32;pDisplays:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetDisplayModePropertiesKHR=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;pPropertyCount:PVkUInt32;pProperties:PVkDisplayModePropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateDisplayModeKHR=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;const pCreateInfo:PVkDisplayModeCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pMode:PVkDisplayModeKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetDisplayPlaneCapabilitiesKHR=function(physicalDevice:TVkPhysicalDevice;mode:TVkDisplayModeKHR;planeIndex:TVkUInt32;pCapabilities:PVkDisplayPlaneCapabilitiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateDisplayPlaneSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkDisplaySurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateSharedSwapchainsKHR=function(device:TVkDevice;swapchainCount:TVkUInt32;const pCreateInfos:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchains:PVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
 {$ifdef Mir}
      TvkCreateMirSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkMirSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
+
 {$ifdef Mir}
+     // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
      TvkGetPhysicalDeviceMirPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PMirConnection):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
+
+     // All sname:VkSwapchainKHR objects created for pname:surface must: have been destroyed prior to destroying pname:surface
+     // If sname:VkAllocationCallbacks were provided when pname:surface was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:surface was created, pname:pAllocator must: be `NULL`
      TvkDestroySurfaceKHR=procedure(instance:TVkInstance;surface:TVkSurfaceKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
      TvkGetPhysicalDeviceSurfaceSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;surface:TVkSurfaceKHR;pSupported:PVkBool32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPhysicalDeviceSurfaceCapabilitiesKHR=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceCapabilities:PVkSurfaceCapabilitiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPhysicalDeviceSurfaceFormatsKHR=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormatKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPhysicalDeviceSurfacePresentModesKHR=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pPresentModeCount:PVkUInt32;pPresentModes:PVkPresentModeKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkCreateSwapchainKHR=function(device:TVkDevice;const pCreateInfo:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchain:PVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // All uses of presentable images acquired from pname:swapchain and owned by the application must: have completed execution
+     // If sname:VkAllocationCallbacks were provided when pname:swapchain was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:swapchain was created, pname:pAllocator must: be `NULL`
      TvkDestroySwapchainKHR=procedure(device:TVkDevice;swapchain:TVkSwapchainKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetSwapchainImagesKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainImageCount:PVkUInt32;pSwapchainImages:PVkImage):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If pname:semaphore is not sname:VK_NULL_HANDLE it must: be unsignalled
+     // If pname:fence is not sname:VK_NULL_HANDLE it must: be unsignalled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
      TvkAcquireNextImageKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;timeout:TVkUInt64;semaphore:TVkSemaphore;fence:TVkFence;pImageIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // Any given element of pname:pSwapchains member of pname:pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from pname:queue as determined using a call to fname:vkGetPhysicalDeviceSurfaceSupportKHR
      TvkQueuePresentKHR=function(queue:TVkQueue;const pPresentInfo:PVkPresentInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
 {$ifdef Wayland}
      TvkCreateWaylandSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkWaylandSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
+
 {$ifdef Wayland}
+     // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
      TvkGetPhysicalDeviceWaylandPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:Pwl_display):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
+
      TvkCreateWin32SurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkWin32SurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
      TvkGetPhysicalDeviceWin32PresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
 {$ifdef X11}
      TvkCreateXlibSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkXlibSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
+
 {$ifdef X11}
+     // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
      TvkGetPhysicalDeviceXlibPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PDisplay;visualID:TVisualID):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
+
 {$ifdef XCB}
      TvkCreateXcbSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkXcbSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
+
 {$ifdef XCB}
+     // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
      TvkGetPhysicalDeviceXcbPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:Pxcb_connection;visual_id:Txcb_visualid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
+
      TvkCreateDebugReportCallbackEXT=function(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // If sname:VkAllocationCallbacks were provided when pname:instance was created, a compatible set of callbacks must: be provided here
+     // If no sname:VkAllocationCallbacks were provided when pname:instance was created, pname:pAllocator must: be `NULL`
      TvkDestroyDebugReportCallbackEXT=procedure(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // pname:instance must: be a valid sname:VkInstance handle
+     // pname:flags must be a combination of one or more of sname:VkDebugReportFlagBitsEXT
+     // pname:objType must be one of sname:VkDebugReportObjectTypeEXT, ename:VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if pname:object is `NULL`
+     // pname:object may be a {apiname} object
+     // pname:pLayerPrefix must: be a `NULL` terminated string.
+     // pname:pMsg must: be a `NULL` terminated string.
      TvkDebugReportMessageEXT=procedure(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
 
      PPVulkanCommands=^PVulkanCommands;
      PVulkanCommands=^TVulkanCommands;
      TVulkanCommands=record
       CreateInstance:TvkCreateInstance;
+
+      // All child objects created using pname:instance must: have been destroyed prior to destroying pname:instance
+      // If sname:VkAllocationCallbacks were provided when pname:instance was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:instance was created, pname:pAllocator must: be `NULL`
       DestroyInstance:TvkDestroyInstance;
+
       EnumeratePhysicalDevices:TvkEnumeratePhysicalDevices;
+
+      // pname:pName must: be the name of a supported command that has a first parameter of type sname:VkDevice, sname:VkQueue or sname:VkCommandBuffer, either in the core API or an enabled extension
       GetDeviceProcAddr:TvkGetDeviceProcAddr;
+
+      // If pname:instance is `NULL`, pname:pName must: be one of: fname:vkEnumerateInstanceExtensionProperties, fname:vkEnumerateInstanceLayerProperties or fname:vkCreateInstance
+      // If pname:instance is not `NULL`, pname:pName must: be the name of a core command or a command from an enabled extension, other than: fname:vkEnumerateInstanceExtensionProperties, fname:vkEnumerateInstanceLayerProperties or fname:vkCreateInstance
       GetInstanceProcAddr:TvkGetInstanceProcAddr;
+
       GetPhysicalDeviceProperties:TvkGetPhysicalDeviceProperties;
+
       GetPhysicalDeviceQueueFamilyProperties:TvkGetPhysicalDeviceQueueFamilyProperties;
+
       GetPhysicalDeviceMemoryProperties:TvkGetPhysicalDeviceMemoryProperties;
+
       GetPhysicalDeviceFeatures:TvkGetPhysicalDeviceFeatures;
+
       GetPhysicalDeviceFormatProperties:TvkGetPhysicalDeviceFormatProperties;
+
       GetPhysicalDeviceImageFormatProperties:TvkGetPhysicalDeviceImageFormatProperties;
+
       CreateDevice:TvkCreateDevice;
+
+      // All child objects created on pname:device must: have been destroyed prior to destroying pname:device
+      // If sname:VkAllocationCallbacks were provided when pname:device was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:device was created, pname:pAllocator must: be `NULL`
       DestroyDevice:TvkDestroyDevice;
+
       EnumerateInstanceLayerProperties:TvkEnumerateInstanceLayerProperties;
+
+      // If pname:pLayerName is not `NULL`, it must: be the name of an instance layer returned by flink:vkEnumerateInstanceLayerProperties
       EnumerateInstanceExtensionProperties:TvkEnumerateInstanceExtensionProperties;
+
       EnumerateDeviceLayerProperties:TvkEnumerateDeviceLayerProperties;
+
+      // If pname:pLayerName is not `NULL`, it must: be the name of a device layer returned by flink:vkEnumerateDeviceLayerProperties
       EnumerateDeviceExtensionProperties:TvkEnumerateDeviceExtensionProperties;
+
+      // pname:queueFamilyIndex must: be one of the queue family indices specified when pname:device was created, via the sname:VkDeviceQueueCreateInfo structure
+      // pname:queueIndex must: be less than the number of queues created for the specified queue family index when pname:device was created, via the pname:queueCount member of the sname:VkDeviceQueueCreateInfo structure
       GetDeviceQueue:TvkGetDeviceQueue;
+
+      // pname:fence must: be unsignalled
+      // pname:fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
       QueueSubmit:TvkQueueSubmit;
+
       QueueWaitIdle:TvkQueueWaitIdle;
+
       DeviceWaitIdle:TvkDeviceWaitIdle;
+
+      // The number of currently valid memory objects, allocated from pname:device, must: be less than sname:VkPhysicalDeviceLimits::pname:maxMemoryAllocationCount
       AllocateMemory:TvkAllocateMemory;
+
+      // All submitted commands that refer to pname:memory (via images or buffers) must: have completed execution
       FreeMemory:TvkFreeMemory;
+
+      // pname:memory mustnot: currently be mapped
+      // pname:offset must: be less than the size of pname:memory
+      // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be greater than `0`
+      // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be less than or equal to the size of the pname:memory minus pname:offset
+      // pname:memory must: have been created with a memory type that reports ename:VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
       MapMemory:TvkMapMemory;
+
+      // pname:memory must: currently be mapped
       UnmapMemory:TvkUnmapMemory;
+
       FlushMappedMemoryRanges:TvkFlushMappedMemoryRanges;
+
       InvalidateMappedMemoryRanges:TvkInvalidateMappedMemoryRanges;
+
+      // pname:memory must: have been created with a memory type that reports ename:VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT
       GetDeviceMemoryCommitment:TvkGetDeviceMemoryCommitment;
+
       GetBufferMemoryRequirements:TvkGetBufferMemoryRequirements;
+
+      // pname:buffer mustnot: already be backed by a memory object
+      // pname:buffer mustnot: have been created with any sparse memory binding flags
+      // pname:memoryOffset must: be less than the size of pname:memory
+      // If pname:buffer was created with the ename:VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT or ename:VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minTexelBufferOffsetAlignment
+      // If pname:buffer was created with the ename:VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minUniformBufferOffsetAlignment
+      // If pname:buffer was created with the ename:VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minStorageBufferOffsetAlignment
+      // pname:memory must: have been allocated using one of the memory types allowed in the pname:memoryTypeBits member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetBufferMemoryRequirements with pname:buffer
+      // The size of pname:buffer must: be less than or equal to the size of pname:memory minus pname:memoryOffset
+      // pname:memoryOffset must: be an integer multiple of the pname:alignment member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetBufferMemoryRequirements with pname:buffer
       BindBufferMemory:TvkBindBufferMemory;
+
       GetImageMemoryRequirements:TvkGetImageMemoryRequirements;
+
+      // pname:image mustnot: already be backed by a memory object
+      // pname:image mustnot: have been created with any sparse memory binding flags
+      // pname:memoryOffset must: be less than the size of pname:memory
+      // pname:memory must: have been allocated using one of the memory types allowed in the pname:memoryTypeBits member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image
+      // pname:memoryOffset must: be an integer multiple of the pname:alignment member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image
+      // The pname:size member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image must: be less than or equal to the size of pname:memory minus pname:memoryOffset
       BindImageMemory:TvkBindImageMemory;
+
+      // pname:image must: have been created with the ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT flag
       GetImageSparseMemoryRequirements:TvkGetImageSparseMemoryRequirements;
+
+      // If pname:format is an integer format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageIntegerSampleCounts
+      // If pname:format is a non-integer color format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageColorSampleCounts
+      // If pname:format is a depth format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageDepthSampleCounts
+      // If pname:format is a stencil format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageStencilSampleCounts
+      // If pname:usage includes ename:VK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:storageImageSampleCounts
       GetPhysicalDeviceSparseImageFormatProperties:TvkGetPhysicalDeviceSparseImageFormatProperties;
+
+      // pname:fence must: be unsignalled
+      // pname:fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
       QueueBindSparse:TvkQueueBindSparse;
+
       CreateFence:TvkCreateFence;
+
+      // pname:fence mustnot: be associated with any queue command that has not yet completed execution on that queue
+      // If sname:VkAllocationCallbacks were provided when pname:fence was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:fence was created, pname:pAllocator must: be `NULL`
       DestroyFence:TvkDestroyFence;
+
+      // Any given element of pname:pFences mustnot: currently be associated with any queue command that has not yet completed execution on that queue
       ResetFences:TvkResetFences;
+
       GetFenceStatus:TvkGetFenceStatus;
+
       WaitForFences:TvkWaitForFences;
+
       CreateSemaphore:TvkCreateSemaphore;
+
+      // pname:semaphore mustnot: be associated with any queue command that has not yet completed execution on that queue
+      // If sname:VkAllocationCallbacks were provided when pname:semaphore was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:semaphore was created, pname:pAllocator must: be `NULL`
       DestroySemaphore:TvkDestroySemaphore;
+
       CreateEvent:TvkCreateEvent;
+
+      // All submitted commands that refer to pname:event must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:event was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:event was created, pname:pAllocator must: be `NULL`
       DestroyEvent:TvkDestroyEvent;
+
       GetEventStatus:TvkGetEventStatus;
+
       SetEvent:TvkSetEvent;
+
       ResetEvent:TvkResetEvent;
+
       CreateQueryPool:TvkCreateQueryPool;
+
+      // All submitted commands that refer to pname:queryPool must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:queryPool was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:queryPool was created, pname:pAllocator must: be `NULL`
       DestroyQueryPool:TvkDestroyQueryPool;
+
+      // pname:firstQuery must: be less than the number of queries in pname:queryPool
+      // If ename:VK_QUERY_RESULT_64_BIT is not set in pname:flags then pname:pData and pname:stride must be multiples of `4`
+      // If ename:VK_QUERY_RESULT_64_BIT is set in pname:flags then pname:pData and pname:stride must be multiples of `8`
+      // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
+      // pname:dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+      // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_TIMESTAMP, pname:flags mustnot: contain ename:VK_QUERY_RESULT_PARTIAL_BIT
       GetQueryPoolResults:TvkGetQueryPoolResults;
+
+      // If the pname:flags member of pname:pCreateInfo includes ename:VK_BUFFER_CREATE_SPARSE_BINDING_BIT or ename:VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT, creating this sname:VkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed sname:VkPhysicalDeviceLimits::pname:sparseAddressSpaceSize
       CreateBuffer:TvkCreateBuffer;
+
+      // All submitted commands that refer to pname:buffer, either directly or via a sname:VkBufferView, must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:buffer was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:buffer was created, pname:pAllocator must: be `NULL`
       DestroyBuffer:TvkDestroyBuffer;
+
       CreateBufferView:TvkCreateBufferView;
+
+      // All submitted commands that refer to pname:bufferView must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:bufferView was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:bufferView was created, pname:pAllocator must: be `NULL`
       DestroyBufferView:TvkDestroyBufferView;
+
+      // If the pname:flags member of pname:pCreateInfo includes ename:VK_IMAGE_CREATE_SPARSE_BINDING_BIT or ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, creating this sname:VkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed sname:VkPhysicalDeviceLimits::pname:sparseAddressSpaceSize
       CreateImage:TvkCreateImage;
+
+      // All submitted commands that refer to pname:image, either directly or via a sname:VkImageView, must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:image was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:image was created, pname:pAllocator must: be `NULL`
       DestroyImage:TvkDestroyImage;
+
+      // pname:image must: have been created with pname:tiling equal to ename:VK_IMAGE_TILING_LINEAR
+      // The pname:aspectMask member of pname:pSubresource must: only have a single bit set
       GetImageSubresourceLayout:TvkGetImageSubresourceLayout;
+
       CreateImageView:TvkCreateImageView;
+
+      // All submitted commands that refer to pname:imageView must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:imageView was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:imageView was created, pname:pAllocator must: be `NULL`
       DestroyImageView:TvkDestroyImageView;
+
       CreateShaderModule:TvkCreateShaderModule;
+
+      // If sname:VkAllocationCallbacks were provided when pname:shaderModule was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:shaderModule was created, pname:pAllocator must: be `NULL`
       DestroyShaderModule:TvkDestroyShaderModule;
+
       CreatePipelineCache:TvkCreatePipelineCache;
+
+      // If sname:VkAllocationCallbacks were provided when pname:pipelineCache was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:pipelineCache was created, pname:pAllocator must: be `NULL`
       DestroyPipelineCache:TvkDestroyPipelineCache;
+
       GetPipelineCacheData:TvkGetPipelineCacheData;
+
+      // pname:dstCache mustnot: appear in the list of source caches
       MergePipelineCaches:TvkMergePipelineCaches;
+
+      // If the pname:flags member of any given element of pname:pCreateInfos contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the pname:basePipelineIndex member of that same element is not `-1`, pname:basePipelineIndex must: be less than the index into pname:pCreateInfos that corresponds to that element
       CreateGraphicsPipelines:TvkCreateGraphicsPipelines;
+
+      // If the pname:flags member of any given element of pname:pCreateInfos contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the pname:basePipelineIndex member of that same element is not `-1`, pname:basePipelineIndex must: be less than the index into pname:pCreateInfos that corresponds to that element
       CreateComputePipelines:TvkCreateComputePipelines;
+
+      // All submitted commands that refer to pname:pipeline must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:pipeline was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:pipeline was created, pname:pAllocator must: be `NULL`
       DestroyPipeline:TvkDestroyPipeline;
+
       CreatePipelineLayout:TvkCreatePipelineLayout;
+
+      // If sname:VkAllocationCallbacks were provided when pname:pipelineLayout was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:pipelineLayout was created, pname:pAllocator must: be `NULL`
       DestroyPipelineLayout:TvkDestroyPipelineLayout;
+
       CreateSampler:TvkCreateSampler;
+
+      // All submitted commands that refer to pname:sampler must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:sampler was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:sampler was created, pname:pAllocator must: be `NULL`
       DestroySampler:TvkDestroySampler;
+
       CreateDescriptorSetLayout:TvkCreateDescriptorSetLayout;
+
+      // If sname:VkAllocationCallbacks were provided when pname:descriptorSetLayout was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:descriptorSetLayout was created, pname:pAllocator must: be `NULL`
       DestroyDescriptorSetLayout:TvkDestroyDescriptorSetLayout;
+
       CreateDescriptorPool:TvkCreateDescriptorPool;
+
+      // All submitted commands that refer to pname:descriptorPool (via any allocated descriptor sets) must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:descriptorPool was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:descriptorPool was created, pname:pAllocator must: be `NULL`
       DestroyDescriptorPool:TvkDestroyDescriptorPool;
+
+      // All uses of pname:descriptorPool (via any allocated descriptor sets) must: have completed execution
       ResetDescriptorPool:TvkResetDescriptorPool;
+
       AllocateDescriptorSets:TvkAllocateDescriptorSets;
+
+      // All submitted commands that refer to any element of pname:pDescriptorSets must: have completed execution
+      // pname:pDescriptorSets must: be a pointer to an array of pname:descriptorSetCount sname:VkDescriptorSet handles, each element of which must: either be a valid handle or sname:VK_NULL_HANDLE
+      // pname:descriptorPool must: have been created with the ename:VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT flag
       FreeDescriptorSets:TvkFreeDescriptorSets;
+
       UpdateDescriptorSets:TvkUpdateDescriptorSets;
+
       CreateFramebuffer:TvkCreateFramebuffer;
+
+      // All submitted commands that refer to pname:framebuffer must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:framebuffer was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:framebuffer was created, pname:pAllocator must: be `NULL`
       DestroyFramebuffer:TvkDestroyFramebuffer;
+
       CreateRenderPass:TvkCreateRenderPass;
+
+      // All submitted commands that refer to pname:renderPass must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:renderPass was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:renderPass was created, pname:pAllocator must: be `NULL`
       DestroyRenderPass:TvkDestroyRenderPass;
+
       GetRenderAreaGranularity:TvkGetRenderAreaGranularity;
+
       CreateCommandPool:TvkCreateCommandPool;
+
+      // All sname:VkCommandBuffer objects allocated from pname:commandPool mustnot: be pending execution
+      // If sname:VkAllocationCallbacks were provided when pname:commandPool was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:commandPool was created, pname:pAllocator must: be `NULL`
       DestroyCommandPool:TvkDestroyCommandPool;
+
+      // All sname:VkCommandBuffer objects allocated from pname:commandPool mustnot: currently be pending execution
       ResetCommandPool:TvkResetCommandPool;
+
       AllocateCommandBuffers:TvkAllocateCommandBuffers;
+
+      // All elements of pname:pCommandBuffers mustnot: be pending execution
+      // pname:pCommandBuffers must: be a pointer to an array of pname:commandBufferCount sname:VkCommandBuffer handles, each element of which must: either be a valid handle or sname:VK_NULL_HANDLE
       FreeCommandBuffers:TvkFreeCommandBuffers;
+
+      // pname:commandBuffer mustnot: be in the recording state
+      // If pname:commandBuffer was allocated from a sname:VkCommandPool which did not have the ename:VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, pname:commandBuffer must: be in the initial state.
+      // If pname:commandBuffer is a secondary command buffer, the pname:pInheritanceInfo member of pname:pBeginInfo must: be a valid sname:VkCommandBufferInheritanceInfo structure
+      // If pname:commandBuffer is a secondary command buffer and either the pname:occlusionQueryEnable member of the pname:pInheritanceInfo member of pname:pBeginInfo is ename:VK_FALSE, or the precise occlusion queries feature is not enabled, the pname:queryFlags member of the pname:pInheritanceInfo member pname:pBeginInfo mustnot: contain ename:VK_QUERY_CONTROL_PRECISE_BIT
       BeginCommandBuffer:TvkBeginCommandBuffer;
+
+      // pname:commandBuffer must: be in the recording state
+      // fname:vkEndCommandBuffer mustnot: be called inside a render pass instance
+      // All queries made <<queries-operation-active,active>> during the recording of pname:commandBuffer must: have been made inactive
       EndCommandBuffer:TvkEndCommandBuffer;
+
+      // pname:commandBuffer mustnot: currently be pending execution
+      // pname:commandBuffer must: have been allocated from a pool that was created with the ename:VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
       ResetCommandBuffer:TvkResetCommandBuffer;
+
+      // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_COMPUTE, the sname:VkCommandPool that pname:commandBuffer was allocated from must: support compute operations
+      // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_GRAPHICS, the sname:VkCommandPool that pname:commandBuffer was allocated from must: support graphics operations
+      // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_COMPUTE, pname:pipeline must: be a compute pipeline
+      // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_GRAPHICS, pname:pipeline must: be a graphics pipeline
+      // If the <<features-features-variableMultisampleRate,variable multisample rate>> feature is not supported, pname:pipeline is a graphics pipeline, the current subpass has no attachments, and this is not the first call to this function with a graphics pipeline after transitioning to the current subpass, then the sample count specified by this pipeline must: match that set in the previous pipeline
       CmdBindPipeline:TvkCmdBindPipeline;
+
+      // pname:firstViewport must: be less than sname:VkPhysicalDeviceLimits::pname:maxViewports
+      // The sum of pname:firstViewport and pname:viewportCount must: be between `1` and sname:VkPhysicalDeviceLimits::pname:maxViewports, inclusive
       CmdSetViewport:TvkCmdSetViewport;
+
+      // pname:firstScissor must: be less than sname:VkPhysicalDeviceLimits::pname:maxViewports
+      // The sum of pname:firstScissor and pname:scissorCount must: be between `1` and sname:VkPhysicalDeviceLimits::pname:maxViewports, inclusive
+      // The pname:x and pname:y members of pname:offset must: be greater than or equal to `0`
+      // Evaluation of (pname:offset.x + pname:extent.width) mustnot: cause a signed integer addition overflow
+      // Evaluation of (pname:offset.y + pname:extent.height) mustnot: cause a signed integer addition overflow
       CmdSetScissor:TvkCmdSetScissor;
+
+      // If the <<features-features-wideLines,wide lines>> feature is not enabled, pname:lineWidth must: be `1.0`
       CmdSetLineWidth:TvkCmdSetLineWidth;
+
+      // If the <<features-features-depthBiasClamp,depth bias clamping>> feature is not enabled, pname:depthBiasClamp must: be code:0.0
       CmdSetDepthBias:TvkCmdSetDepthBias;
+
       CmdSetBlendConstants:TvkCmdSetBlendConstants;
+
+      // pname:minDepthBounds must: be between `0.0` and `1.0`, inclusive
+      // pname:maxDepthBounds must: be between `0.0` and `1.0`, inclusive
       CmdSetDepthBounds:TvkCmdSetDepthBounds;
+
       CmdSetStencilCompareMask:TvkCmdSetStencilCompareMask;
+
       CmdSetStencilWriteMask:TvkCmdSetStencilWriteMask;
+
       CmdSetStencilReference:TvkCmdSetStencilReference;
+
+      // Any given element of pname:pDescriptorSets must: have been created with a sname:VkDescriptorSetLayout that matches the sname:VkDescriptorSetLayout at set _n_ in pname:layout, where _n_ is the sum of the index into pname:pDescriptorSets and pname:firstSet
+      // pname:dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pname:pDescriptorSets
+      // pname:pipelineBindPoint must: be supported by the pname:commandBuffer's parent sname:VkCommandPool's queue family
+      // Any given element of pname:pDynamicOffsets must: satisfy the required alignment for the corresponding descriptor binding's descriptor type
       CmdBindDescriptorSets:TvkCmdBindDescriptorSets;
+
+      // pname:offset must: be less than the size of pname:buffer
+      // The sum of pname:offset, and the address of the range of sname:VkDeviceMemory object that's backing pname:buffer, must: be a multiple of the type indicated by pname:indexType
+      // pname:buffer must: have been created with the ename:VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag
       CmdBindIndexBuffer:TvkCmdBindIndexBuffer;
+
+      // pname:firstBinding must: be less than sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindings
+      // The sum of pname:firstBinding and pname:bindingCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindings
+      // All elements of pname:pOffsets must: be less than the size of the corresponding element in pname:pBuffers
+      // All elements of pname:pBuffers must: have been created with the ename:VK_BUFFER_USAGE_VERTEX_BUFFER_BIT flag
       CmdBindVertexBuffers:TvkCmdBindVertexBuffers;
+
+      // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+      // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+      // For a given vertex buffer binding, any attribute data fetched must: be entirely contained within the corresponding vertex buffer binding, as described in <<fxvertex-input>>
+      // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+      // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+      // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
       CmdDraw:TvkCmdDraw;
+
+      // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+      // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+      // For a given vertex buffer binding, any attribute data fetched must: be entirely contained within the corresponding vertex buffer binding, as described in <<fxvertex-input>>
+      // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+      // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+      // (pname:indexSize * (pname:firstIndex + pname:indexCount) + pname:offset) must: be less than or equal to the size of the currently bound index buffer, with indexSize being based on the type specified by pname:indexType, where the index buffer, pname:indexType, and pname:offset are specified via fname:vkCmdBindIndexBuffer
+      // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
       CmdDrawIndexed:TvkCmdDrawIndexed;
+
+      // pname:offset must: be a multiple of `4`
+      // If pname:drawCount is greater than `1`, pname:stride must: be a multiple of `4` and must: be greater than or equal to sizeof(sname:VkDrawIndirectCommand)
+      // If the <<features-features-multiDrawIndirect,multi-draw indirect>> feature is not enabled, pname:drawCount must: be `0` or `1`
+      // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the pname:firstInstance members of the sname:VkDrawIndirectCommand structures accessed by this command must: be code:0
+      // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+      // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+      // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+      // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+      // If pname:drawCount is equal to `1`, (pname:offset + sizeof(sname:VkDrawIndirectCommand)) must: be less than or equal to the size of pname:buffer
+      // If pname:drawCount is greater than `1`, (pname:stride x (pname:drawCount - 1) + pname:offset + sizeof(sname:VkDrawIndirectCommand)) must: be less than or equal to the size of pname:buffer
+      // pname:drawCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxDrawIndirectCount
+      // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
       CmdDrawIndirect:TvkCmdDrawIndirect;
+
+      // pname:offset must: be a multiple of `4`
+      // If pname:drawCount is greater than `1`, pname:stride must: be a multiple of `4` and must: be greater than or equal to sizeof(sname:VkDrawIndexedIndirectCommand)
+      // If the <<features-features-multiDrawIndirect,multi-draw indirect>> feature is not enabled, pname:drawCount must: be `0` or `1`
+      // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the pname:firstInstance members of the sname:VkDrawIndexedIndirectCommand structures accessed by this command must: be code:0
+      // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+      // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+      // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+      // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+      // If pname:drawCount is equal to `1`, (pname:offset + sizeof(sname:VkDrawIndexedIndirectCommand)) must: be less than or equal to the size of pname:buffer
+      // If pname:drawCount is greater than `1`, (pname:stride x (pname:drawCount - 1) + pname:offset + sizeof(sname:VkDrawIndexedIndirectCommand)) must: be less than or equal to the size of pname:buffer
+      // pname:drawCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxDrawIndirectCount
+      // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
       CmdDrawIndexedIndirect:TvkCmdDrawIndexedIndirect;
+
+      // pname:x must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[0]
+      // pname:y must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[1]
+      // pname:z must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[2]
+      // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+      // A valid compute pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_COMPUTE
+      // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for push constants with the one used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
       CmdDispatch:TvkCmdDispatch;
+
+      // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+      // A valid compute pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_COMPUTE
+      // pname:buffer must: have been created with the ename:VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT bit set
+      // pname:offset must: be a multiple of `4`
+      // The sum of pname:offset and the size of sname:VkDispatchIndirectCommand must: be less than or equal to the size of pname:buffer
+      // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for push constants with the one used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
       CmdDispatchIndirect:TvkCmdDispatchIndirect;
+
+      // The pname:copySize member of a given element of pname:pRegions must: be greater than `0`
+      // The pname:srcOffset member of a given element of pname:pRegions must: be less than the size of pname:srcBuffer
+      // The pname:dstOffset member of a given element of pname:pRegions must: be less than the size of pname:dstBuffer
+      // The pname:copySize member of a given element of pname:pRegions must: be less than or equal to the size of pname:srcBuffer minus pname:srcOffset
+      // The pname:copySize member of a given element of pname:pRegions must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+      // The union of the source regions, and the union of the destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+      // pname:srcBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
+      // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
       CmdCopyBuffer:TvkCmdCopyBuffer;
+
+      // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+      // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+      // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+      // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+      // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+      // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+      // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+      // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+      // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+      // The elink:VkFormat of each of pname:srcImage and pname:dstImage must: be compatible, as defined <<copies-images-format-compatibility, below>>
+      // The sample count of pname:srcImage and pname:dstImage must: match
       CmdCopyImage:TvkCmdCopyImage;
+
+      // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+      // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+      // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+      // pname:srcImage must: use a format that supports ename:VK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by sname:VkFormatProperties::pname:linearTilingFeatures (for linear tiled images) or sname:VkFormatProperties::pname:optimalTilingFeatures (for optimally tiled images) - as returned by fname:vkGetPhysicalDeviceFormatProperties
+      // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+      // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+      // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+      // pname:dstImage must: use a format that supports ename:VK_FORMAT_FEATURE_BLIT_DST_BIT, which is indicated by sname:VkFormatProperties::pname:linearTilingFeatures (for linear tiled images) or sname:VkFormatProperties::pname:optimalTilingFeatures (for optimally tiled images) - as returned by fname:vkGetPhysicalDeviceFormatProperties
+      // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+      // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+      // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+      // The sample count of pname:srcImage and pname:dstImage must: both be equal to ename:VK_SAMPLE_COUNT_1_BIT
+      // If either of pname:srcImage or pname:dstImage was created with a signed integer elink:VkFormat, the other must: also have been created with a signed integer elink:VkFormat
+      // If either of pname:srcImage or pname:dstImage was created with an unsigned integer elink:VkFormat, the other must: also have been created with an unsigned integer elink:VkFormat
+      // If either of pname:srcImage or pname:dstImage was created with a depth/stencil format, the other must: have exactly the same format
+      // If pname:srcImage was created with a depth/stencil format, pname:filter must: be ename:VK_FILTER_NEAREST
       CmdBlitImage:TvkCmdBlitImage;
+
+      // The buffer region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcBuffer
+      // The image region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+      // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+      // pname:srcBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
+      // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+      // pname:dstImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+      // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+      // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
       CmdCopyBufferToImage:TvkCmdCopyBufferToImage;
+
+      // The image region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+      // The buffer region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstBuffer
+      // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+      // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+      // pname:srcImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+      // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+      // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+      // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
       CmdCopyImageToBuffer:TvkCmdCopyImageToBuffer;
+
+      // pname:dataSize must: be greater than `0`
+      // pname:dstOffset must: be less than the size of pname:dstBuffer
+      // pname:dataSize must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+      // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
+      // pname:dstOffset must: be a multiple of `4`
+      // pname:dataSize must: be less than or equal to `65536`
+      // pname:dataSize must: be a multiple of `4`
       CmdUpdateBuffer:TvkCmdUpdateBuffer;
+
+      // pname:dstOffset must: be less than the size of pname:dstBuffer
+      // pname:dstOffset must: be a multiple of `4`
+      // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be greater than `0`
+      // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+      // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be a multiple of `4`
+      // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
       CmdFillBuffer:TvkCmdFillBuffer;
+
+      // pname:image must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+      // pname:imageLayout must: specify the layout of the subresource ranges of pname:image specified in pname:pRanges at the time this command is executed on a sname:VkDevice
+      // pname:imageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+      // The image range of any given element of pname:pRanges must: be a subresource range that is contained within pname:image
       CmdClearColorImage:TvkCmdClearColorImage;
+
+      // pname:image must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+      // pname:imageLayout must: specify the layout of the subresource ranges of pname:image specified in pname:pRanges at the time this command is executed on a sname:VkDevice
+      // pname:imageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+      // The image range of any given element of pname:pRanges must: be a subresource range that is contained within pname:image
       CmdClearDepthStencilImage:TvkCmdClearDepthStencilImage;
+
+      // If the pname:aspectMask member of any given element of pname:pAttachments contains ename:VK_IMAGE_ASPECT_COLOR_BIT, the pname:colorAttachment member of those elements must: refer to a valid color attachment in the current subpass
+      // The rectangular region specified by a given element of pname:pRects must: be contained within the render area of the current render pass instance
+      // The layers specified by a given element of pname:pRects must: be contained within every attachment that pname:pAttachments refers to
       CmdClearAttachments:TvkCmdClearAttachments;
+
+      // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+      // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+      // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+      // pname:srcImage must: have a sample count equal to any valid sample count value other than ename:VK_SAMPLE_COUNT_1_BIT
+      // pname:dstImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+      // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+      // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+      // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+      // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+      // If pname:dstImage was created with pname:tiling equal to ename:VK_IMAGE_TILING_LINEAR, pname:dstImage must: have been created with a pname:format that supports being a color attachment, as specified by the ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+      // If pname:dstImage was created with pname:tiling equal to ename:VK_IMAGE_TILING_OPTIMAL, pname:dstImage must: have been created with a pname:format that supports being a color attachment, as specified by the ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:optimalTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
       CmdResolveImage:TvkCmdResolveImage;
+
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
       CmdSetEvent:TvkCmdSetEvent;
+
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
       CmdResetEvent:TvkCmdResetEvent;
+
+      // pname:srcStageMask must: be the bitwise OR of the pname:stageMask parameter used in previous calls to fname:vkCmdSetEvent with any of the members of pname:pEvents and ename:VK_PIPELINE_STAGE_HOST_BIT if any of the members of pname:pEvents was set using fname:vkSetEvent
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+      // If pname:pEvents includes one or more events that will be signaled by fname:vkSetEvent after pname:commandBuffer has been submitted to a queue, then fname:vkCmdWaitEvents mustnot: be called inside a render pass instance
       CmdWaitEvents:TvkCmdWaitEvents;
+
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or pname:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+      // If fname:vkCmdPipelineBarrier is called within a render pass instance, the render pass must: declare at least one self-dependency from the current subpass to itself - see <<synchronization-pipeline-barriers-subpass-self-dependencies,Subpass Self-dependency>>
       CmdPipelineBarrier:TvkCmdPipelineBarrier;
+
+      // The query identified by pname:queryPool and pname:query must: currently not be <<queries-operation-active,active>>
+      // The query identified by pname:queryPool and pname:query must: be unavailable
+      // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the pname:queryType used to create pname:queryPool was not ename:VK_QUERY_TYPE_OCCLUSION, pname:flags mustnot: contain ename:VK_QUERY_CONTROL_PRECISE_BIT
+      // pname:queryPool must: have been created with a pname:queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within pname:commandBuffer
+      // pname:query must: be less than the number of queries in pname:queryPool
+      // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_OCCLUSION, the sname:VkCommandPool that pname:commandBuffer was created from must: support graphics operations
+      // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pname:pipelineStatistics indicate graphics operations, the sname:VkCommandPool that pname:commandBuffer was created from must: support graphics operations
+      // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pname:pipelineStatistics indicate compute operations, the sname:VkCommandPool that pname:commandBuffer was created from must: support compute operations
       CmdBeginQuery:TvkCmdBeginQuery;
+
+      // The query identified by pname:queryPool and pname:query must: currently be <<queries-operation-active,active>>
+      // pname:query must: be less than the number of queries in pname:queryPool
       CmdEndQuery:TvkCmdEndQuery;
+
+      // pname:firstQuery must: be less than the number of queries in pname:queryPool
+      // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
       CmdResetQueryPool:TvkCmdResetQueryPool;
+
+      // The query identified by pname:queryPool and pname:query must: be _unavailable_
+      // The command pool's queue family must: support a non-zero pname:timestampValidBits
       CmdWriteTimestamp:TvkCmdWriteTimestamp;
+
+      // pname:dstOffset must: be less than the size of pname:dstBuffer
+      // pname:firstQuery must: be less than the number of queries in pname:queryPool
+      // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
+      // If ename:VK_QUERY_RESULT_64_BIT is not set in pname:flags then pname:dstOffset and pname:stride must be multiples of `4`
+      // If ename:VK_QUERY_RESULT_64_BIT is set in pname:flags then pname:dstOffset and pname:stride must be multiples of `8`
+      // pname:dstBuffer must: have enough storage, from pname:dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+      // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_TIMESTAMP, pname:flags mustnot: contain ename:VK_QUERY_RESULT_PARTIAL_BIT
       CmdCopyQueryPoolResults:TvkCmdCopyQueryPoolResults;
+
+      // pname:stageFlags must: match exactly the shader stages used in pname:layout for the range specified by pname:offset and pname:size
+      // pname:offset must: be a multiple of `4`
+      // pname:size must: be a multiple of `4`
+      // pname:offset must: be less than sname:VkPhysicalDeviceLimits::pname:maxPushConstantsSize
+      // pname:size must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxPushConstantsSize minus pname:offset
       CmdPushConstants:TvkCmdPushConstants;
+
+      // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
+      // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT set
+      // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_SAMPLED_BIT or ename:VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT set
+      // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_BIT then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT set
+      // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_TRANSFER_DST_BIT then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT set
       CmdBeginRenderPass:TvkCmdBeginRenderPass;
+
+      // The current subpass index must: be less than the number of subpasses in the render pass minus one
       CmdNextSubpass:TvkCmdNextSubpass;
+
+      // The current subpass index must: be equal to the number of subpasses in the render pass minus one
       CmdEndRenderPass:TvkCmdEndRenderPass;
+
+      // pname:commandBuffer must: have been created with a pname:level of ename:VK_COMMAND_BUFFER_LEVEL_PRIMARY
+      // Any given element of pname:pCommandBuffers must: have been created with a pname:level of ename:VK_COMMAND_BUFFER_LEVEL_SECONDARY
+      // Any given element of pname:pCommandBuffers mustnot: be already pending execution in pname:commandBuffer, or appear twice in pname:pCommandBuffers, unless it was created with the ename:VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+      // Any given element of pname:pCommandBuffers mustnot: be already pending execution in any other sname:VkCommandBuffer, unless it was created with the ename:VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+      // Any given element of pname:pCommandBuffers must: be in the executable state
+      // If fname:vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the pname:contents parameter of fname:vkCmdBeginRenderPass set to ename:VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
+      // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with the ename:VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+      // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with the pname:subpass member of the pname:inheritanceInfo structure set to the index of the subpass which the given command buffer will be executed in
+      // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
+      // If fname:vkCmdExecuteCommands is being called within a render pass instance, and any given element of pname:pCommandBuffers was recorded with the pname:framebuffer member of the sname:VkCommandBufferInheritanceInfo structure not equal to sname:VK_NULL_HANDLE, that sname:VkFramebuffer must: be compatible with the sname:VkFramebuffer used in the current render pass instance
+      // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, pname:commandBuffer mustnot: have any queries <<queries-operation-active,active>>
+      // If pname:commandBuffer has a ename:VK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:occlusionQueryEnable set to ename:VK_TRUE
+      // If pname:commandBuffer has a ename:VK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:queryFlags having all bits set that are set for the query
+      // If pname:commandBuffer has a ename:VK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:pipelineStatistics having all bits set that are set in the sname:VkQueryPool the query uses
+      // Any given element of pname:pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in pname:commandBuffer
       CmdExecuteCommands:TvkCmdExecuteCommands;
+
 {$ifdef Android}
       CreateAndroidSurfaceKHR:TvkCreateAndroidSurfaceKHR;
 {$endif}
+
       GetPhysicalDeviceDisplayPropertiesKHR:TvkGetPhysicalDeviceDisplayPropertiesKHR;
+
       GetPhysicalDeviceDisplayPlanePropertiesKHR:TvkGetPhysicalDeviceDisplayPlanePropertiesKHR;
+
+      // pname:planeIndex must: be less than the number of display planes supported by the device as determined by calling fname:vkGetPhysicalDeviceDisplayPlanePropertiesKHR
       GetDisplayPlaneSupportedDisplaysKHR:TvkGetDisplayPlaneSupportedDisplaysKHR;
+
       GetDisplayModePropertiesKHR:TvkGetDisplayModePropertiesKHR;
+
       CreateDisplayModeKHR:TvkCreateDisplayModeKHR;
+
       GetDisplayPlaneCapabilitiesKHR:TvkGetDisplayPlaneCapabilitiesKHR;
+
       CreateDisplayPlaneSurfaceKHR:TvkCreateDisplayPlaneSurfaceKHR;
+
       CreateSharedSwapchainsKHR:TvkCreateSharedSwapchainsKHR;
+
 {$ifdef Mir}
       CreateMirSurfaceKHR:TvkCreateMirSurfaceKHR;
 {$endif}
+
 {$ifdef Mir}
+      // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
       GetPhysicalDeviceMirPresentationSupportKHR:TvkGetPhysicalDeviceMirPresentationSupportKHR;
 {$endif}
+
+      // All sname:VkSwapchainKHR objects created for pname:surface must: have been destroyed prior to destroying pname:surface
+      // If sname:VkAllocationCallbacks were provided when pname:surface was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:surface was created, pname:pAllocator must: be `NULL`
       DestroySurfaceKHR:TvkDestroySurfaceKHR;
+
+      // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
       GetPhysicalDeviceSurfaceSupportKHR:TvkGetPhysicalDeviceSurfaceSupportKHR;
+
       GetPhysicalDeviceSurfaceCapabilitiesKHR:TvkGetPhysicalDeviceSurfaceCapabilitiesKHR;
+
       GetPhysicalDeviceSurfaceFormatsKHR:TvkGetPhysicalDeviceSurfaceFormatsKHR;
+
       GetPhysicalDeviceSurfacePresentModesKHR:TvkGetPhysicalDeviceSurfacePresentModesKHR;
+
       CreateSwapchainKHR:TvkCreateSwapchainKHR;
+
+      // All uses of presentable images acquired from pname:swapchain and owned by the application must: have completed execution
+      // If sname:VkAllocationCallbacks were provided when pname:swapchain was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:swapchain was created, pname:pAllocator must: be `NULL`
       DestroySwapchainKHR:TvkDestroySwapchainKHR;
+
       GetSwapchainImagesKHR:TvkGetSwapchainImagesKHR;
+
+      // If pname:semaphore is not sname:VK_NULL_HANDLE it must: be unsignalled
+      // If pname:fence is not sname:VK_NULL_HANDLE it must: be unsignalled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
       AcquireNextImageKHR:TvkAcquireNextImageKHR;
+
+      // Any given element of pname:pSwapchains member of pname:pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from pname:queue as determined using a call to fname:vkGetPhysicalDeviceSurfaceSupportKHR
       QueuePresentKHR:TvkQueuePresentKHR;
+
 {$ifdef Wayland}
       CreateWaylandSurfaceKHR:TvkCreateWaylandSurfaceKHR;
 {$endif}
+
 {$ifdef Wayland}
+      // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
       GetPhysicalDeviceWaylandPresentationSupportKHR:TvkGetPhysicalDeviceWaylandPresentationSupportKHR;
 {$endif}
+
       CreateWin32SurfaceKHR:TvkCreateWin32SurfaceKHR;
+
+      // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
       GetPhysicalDeviceWin32PresentationSupportKHR:TvkGetPhysicalDeviceWin32PresentationSupportKHR;
+
 {$ifdef X11}
       CreateXlibSurfaceKHR:TvkCreateXlibSurfaceKHR;
 {$endif}
+
 {$ifdef X11}
+      // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
       GetPhysicalDeviceXlibPresentationSupportKHR:TvkGetPhysicalDeviceXlibPresentationSupportKHR;
 {$endif}
+
 {$ifdef XCB}
       CreateXcbSurfaceKHR:TvkCreateXcbSurfaceKHR;
 {$endif}
+
 {$ifdef XCB}
+      // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
       GetPhysicalDeviceXcbPresentationSupportKHR:TvkGetPhysicalDeviceXcbPresentationSupportKHR;
 {$endif}
+
       CreateDebugReportCallbackEXT:TvkCreateDebugReportCallbackEXT;
+
+      // If sname:VkAllocationCallbacks were provided when pname:instance was created, a compatible set of callbacks must: be provided here
+      // If no sname:VkAllocationCallbacks were provided when pname:instance was created, pname:pAllocator must: be `NULL`
       DestroyDebugReportCallbackEXT:TvkDestroyDebugReportCallbackEXT;
+
+      // pname:instance must: be a valid sname:VkInstance handle
+      // pname:flags must be a combination of one or more of sname:VkDebugReportFlagBitsEXT
+      // pname:objType must be one of sname:VkDebugReportObjectTypeEXT, ename:VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if pname:object is `NULL`
+      // pname:object may be a {apiname} object
+      // pname:pLayerPrefix must: be a `NULL` terminated string.
+      // pname:pMsg must: be a `NULL` terminated string.
       DebugReportMessageEXT:TvkDebugReportMessageEXT;
+
      end;
 
      TVulkan=class
@@ -3821,192 +5459,783 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const AVulkanCommands:TVulkanCommands); reintroduce; overload;
        destructor Destroy; override;
        function CreateInstance(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; virtual;
+
+       // All child objects created using pname:instance must: have been destroyed prior to destroying pname:instance
+       // If sname:VkAllocationCallbacks were provided when pname:instance was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:instance was created, pname:pAllocator must: be `NULL`
        procedure DestroyInstance(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function EnumeratePhysicalDevices(instance:TVkInstance;pPhysicalDeviceCount:PVkUInt32;pPhysicalDevices:PVkPhysicalDevice):TVkResult; virtual;
+
+       // pname:pName must: be the name of a supported command that has a first parameter of type sname:VkDevice, sname:VkQueue or sname:VkCommandBuffer, either in the core API or an enabled extension
        function GetDeviceProcAddr(device:TVkDevice;const pName:PVkChar):TPFN_vkVoidFunction; virtual;
+
+       // If pname:instance is `NULL`, pname:pName must: be one of: fname:vkEnumerateInstanceExtensionProperties, fname:vkEnumerateInstanceLayerProperties or fname:vkCreateInstance
+       // If pname:instance is not `NULL`, pname:pName must: be the name of a core command or a command from an enabled extension, other than: fname:vkEnumerateInstanceExtensionProperties, fname:vkEnumerateInstanceLayerProperties or fname:vkCreateInstance
        function GetInstanceProcAddr(instance:TVkInstance;const pName:PVkChar):TPFN_vkVoidFunction; virtual;
+
        procedure GetPhysicalDeviceProperties(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties); virtual;
+
        procedure GetPhysicalDeviceQueueFamilyProperties(physicalDevice:TVkPhysicalDevice;pQueueFamilyPropertyCount:PVkUInt32;pQueueFamilyProperties:PVkQueueFamilyProperties); virtual;
+
        procedure GetPhysicalDeviceMemoryProperties(physicalDevice:TVkPhysicalDevice;pMemoryProperties:PVkPhysicalDeviceMemoryProperties); virtual;
+
        procedure GetPhysicalDeviceFeatures(physicalDevice:TVkPhysicalDevice;pFeatures:PVkPhysicalDeviceFeatures); virtual;
+
        procedure GetPhysicalDeviceFormatProperties(physicalDevice:TVkPhysicalDevice;format:TVkFormat;pFormatProperties:PVkFormatProperties); virtual;
+
        function GetPhysicalDeviceImageFormatProperties(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;pImageFormatProperties:PVkImageFormatProperties):TVkResult; virtual;
+
        function CreateDevice(physicalDevice:TVkPhysicalDevice;const pCreateInfo:PVkDeviceCreateInfo;const pAllocator:PVkAllocationCallbacks;pDevice:PVkDevice):TVkResult; virtual;
+
+       // All child objects created on pname:device must: have been destroyed prior to destroying pname:device
+       // If sname:VkAllocationCallbacks were provided when pname:device was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:device was created, pname:pAllocator must: be `NULL`
        procedure DestroyDevice(device:TVkDevice;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function EnumerateInstanceLayerProperties(pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; virtual;
+
+       // If pname:pLayerName is not `NULL`, it must: be the name of an instance layer returned by flink:vkEnumerateInstanceLayerProperties
        function EnumerateInstanceExtensionProperties(const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; virtual;
+
        function EnumerateDeviceLayerProperties(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; virtual;
+
+       // If pname:pLayerName is not `NULL`, it must: be the name of a device layer returned by flink:vkEnumerateDeviceLayerProperties
        function EnumerateDeviceExtensionProperties(physicalDevice:TVkPhysicalDevice;const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; virtual;
+
+       // pname:queueFamilyIndex must: be one of the queue family indices specified when pname:device was created, via the sname:VkDeviceQueueCreateInfo structure
+       // pname:queueIndex must: be less than the number of queues created for the specified queue family index when pname:device was created, via the pname:queueCount member of the sname:VkDeviceQueueCreateInfo structure
        procedure GetDeviceQueue(device:TVkDevice;queueFamilyIndex:TVkUInt32;queueIndex:TVkUInt32;pQueue:PVkQueue); virtual;
+
+       // pname:fence must: be unsignalled
+       // pname:fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
        function QueueSubmit(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;fence:TVkFence):TVkResult; virtual;
+
        function QueueWaitIdle(queue:TVkQueue):TVkResult; virtual;
+
        function DeviceWaitIdle(device:TVkDevice):TVkResult; virtual;
+
+       // The number of currently valid memory objects, allocated from pname:device, must: be less than sname:VkPhysicalDeviceLimits::pname:maxMemoryAllocationCount
        function AllocateMemory(device:TVkDevice;const pAllocateInfo:PVkMemoryAllocateInfo;const pAllocator:PVkAllocationCallbacks;pMemory:PVkDeviceMemory):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:memory (via images or buffers) must: have completed execution
        procedure FreeMemory(device:TVkDevice;memory:TVkDeviceMemory;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       // pname:memory mustnot: currently be mapped
+       // pname:offset must: be less than the size of pname:memory
+       // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be greater than `0`
+       // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be less than or equal to the size of the pname:memory minus pname:offset
+       // pname:memory must: have been created with a memory type that reports ename:VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
        function MapMemory(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PVkPointer):TVkResult; virtual;
+
+       // pname:memory must: currently be mapped
        procedure UnmapMemory(device:TVkDevice;memory:TVkDeviceMemory); virtual;
+
        function FlushMappedMemoryRanges(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; virtual;
+
        function InvalidateMappedMemoryRanges(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; virtual;
+
+       // pname:memory must: have been created with a memory type that reports ename:VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT
        procedure GetDeviceMemoryCommitment(device:TVkDevice;memory:TVkDeviceMemory;pCommittedMemoryInBytes:PVkDeviceSize); virtual;
+
        procedure GetBufferMemoryRequirements(device:TVkDevice;buffer:TVkBuffer;pMemoryRequirements:PVkMemoryRequirements); virtual;
+
+       // pname:buffer mustnot: already be backed by a memory object
+       // pname:buffer mustnot: have been created with any sparse memory binding flags
+       // pname:memoryOffset must: be less than the size of pname:memory
+       // If pname:buffer was created with the ename:VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT or ename:VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minTexelBufferOffsetAlignment
+       // If pname:buffer was created with the ename:VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minUniformBufferOffsetAlignment
+       // If pname:buffer was created with the ename:VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minStorageBufferOffsetAlignment
+       // pname:memory must: have been allocated using one of the memory types allowed in the pname:memoryTypeBits member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetBufferMemoryRequirements with pname:buffer
+       // The size of pname:buffer must: be less than or equal to the size of pname:memory minus pname:memoryOffset
+       // pname:memoryOffset must: be an integer multiple of the pname:alignment member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetBufferMemoryRequirements with pname:buffer
        function BindBufferMemory(device:TVkDevice;buffer:TVkBuffer;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; virtual;
+
        procedure GetImageMemoryRequirements(device:TVkDevice;image:TVkImage;pMemoryRequirements:PVkMemoryRequirements); virtual;
+
+       // pname:image mustnot: already be backed by a memory object
+       // pname:image mustnot: have been created with any sparse memory binding flags
+       // pname:memoryOffset must: be less than the size of pname:memory
+       // pname:memory must: have been allocated using one of the memory types allowed in the pname:memoryTypeBits member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image
+       // pname:memoryOffset must: be an integer multiple of the pname:alignment member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image
+       // The pname:size member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image must: be less than or equal to the size of pname:memory minus pname:memoryOffset
        function BindImageMemory(device:TVkDevice;image:TVkImage;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; virtual;
+
+       // pname:image must: have been created with the ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT flag
        procedure GetImageSparseMemoryRequirements(device:TVkDevice;image:TVkImage;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements); virtual;
+
+       // If pname:format is an integer format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageIntegerSampleCounts
+       // If pname:format is a non-integer color format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageColorSampleCounts
+       // If pname:format is a depth format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageDepthSampleCounts
+       // If pname:format is a stencil format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageStencilSampleCounts
+       // If pname:usage includes ename:VK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:storageImageSampleCounts
        procedure GetPhysicalDeviceSparseImageFormatProperties(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;samples:TVkSampleCountFlagBits;usage:TVkImageUsageFlags;tiling:TVkImageTiling;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties); virtual;
+
+       // pname:fence must: be unsignalled
+       // pname:fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
        function QueueBindSparse(queue:TVkQueue;bindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;fence:TVkFence):TVkResult; virtual;
+
        function CreateFence(device:TVkDevice;const pCreateInfo:PVkFenceCreateInfo;const pAllocator:PVkAllocationCallbacks;pFence:PVkFence):TVkResult; virtual;
+
+       // pname:fence mustnot: be associated with any queue command that has not yet completed execution on that queue
+       // If sname:VkAllocationCallbacks were provided when pname:fence was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:fence was created, pname:pAllocator must: be `NULL`
        procedure DestroyFence(device:TVkDevice;fence:TVkFence;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       // Any given element of pname:pFences mustnot: currently be associated with any queue command that has not yet completed execution on that queue
        function ResetFences(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence):TVkResult; virtual;
+
        function GetFenceStatus(device:TVkDevice;fence:TVkFence):TVkResult; virtual;
+
        function WaitForFences(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence;waitAll:TVkBool32;timeout:TVkUInt64):TVkResult; virtual;
+
        function CreateSemaphore(device:TVkDevice;const pCreateInfo:PVkSemaphoreCreateInfo;const pAllocator:PVkAllocationCallbacks;pSemaphore:PVkSemaphore):TVkResult; virtual;
+
+       // pname:semaphore mustnot: be associated with any queue command that has not yet completed execution on that queue
+       // If sname:VkAllocationCallbacks were provided when pname:semaphore was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:semaphore was created, pname:pAllocator must: be `NULL`
        procedure DestroySemaphore(device:TVkDevice;semaphore:TVkSemaphore;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function CreateEvent(device:TVkDevice;const pCreateInfo:PVkEventCreateInfo;const pAllocator:PVkAllocationCallbacks;pEvent:PVkEvent):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:event must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:event was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:event was created, pname:pAllocator must: be `NULL`
        procedure DestroyEvent(device:TVkDevice;event:TVkEvent;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function GetEventStatus(device:TVkDevice;event:TVkEvent):TVkResult; virtual;
+
        function SetEvent(device:TVkDevice;event:TVkEvent):TVkResult; virtual;
+
        function ResetEvent(device:TVkDevice;event:TVkEvent):TVkResult; virtual;
+
        function CreateQueryPool(device:TVkDevice;const pCreateInfo:PVkQueryPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pQueryPool:PVkQueryPool):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:queryPool must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:queryPool was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:queryPool was created, pname:pAllocator must: be `NULL`
        procedure DestroyQueryPool(device:TVkDevice;queryPool:TVkQueryPool;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       // pname:firstQuery must: be less than the number of queries in pname:queryPool
+       // If ename:VK_QUERY_RESULT_64_BIT is not set in pname:flags then pname:pData and pname:stride must be multiples of `4`
+       // If ename:VK_QUERY_RESULT_64_BIT is set in pname:flags then pname:pData and pname:stride must be multiples of `8`
+       // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
+       // pname:dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+       // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_TIMESTAMP, pname:flags mustnot: contain ename:VK_QUERY_RESULT_PARTIAL_BIT
        function GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:TVkPointer;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; virtual;
+
+       // If the pname:flags member of pname:pCreateInfo includes ename:VK_BUFFER_CREATE_SPARSE_BINDING_BIT or ename:VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT, creating this sname:VkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed sname:VkPhysicalDeviceLimits::pname:sparseAddressSpaceSize
        function CreateBuffer(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:buffer, either directly or via a sname:VkBufferView, must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:buffer was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:buffer was created, pname:pAllocator must: be `NULL`
        procedure DestroyBuffer(device:TVkDevice;buffer:TVkBuffer;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function CreateBufferView(device:TVkDevice;const pCreateInfo:PVkBufferViewCreateInfo;const pAllocator:PVkAllocationCallbacks;pView:PVkBufferView):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:bufferView must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:bufferView was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:bufferView was created, pname:pAllocator must: be `NULL`
        procedure DestroyBufferView(device:TVkDevice;bufferView:TVkBufferView;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       // If the pname:flags member of pname:pCreateInfo includes ename:VK_IMAGE_CREATE_SPARSE_BINDING_BIT or ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, creating this sname:VkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed sname:VkPhysicalDeviceLimits::pname:sparseAddressSpaceSize
        function CreateImage(device:TVkDevice;const pCreateInfo:PVkImageCreateInfo;const pAllocator:PVkAllocationCallbacks;pImage:PVkImage):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:image, either directly or via a sname:VkImageView, must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:image was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:image was created, pname:pAllocator must: be `NULL`
        procedure DestroyImage(device:TVkDevice;image:TVkImage;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       // pname:image must: have been created with pname:tiling equal to ename:VK_IMAGE_TILING_LINEAR
+       // The pname:aspectMask member of pname:pSubresource must: only have a single bit set
        procedure GetImageSubresourceLayout(device:TVkDevice;image:TVkImage;const pSubresource:PVkImageSubresource;pLayout:PVkSubresourceLayout); virtual;
+
        function CreateImageView(device:TVkDevice;const pCreateInfo:PVkImageViewCreateInfo;const pAllocator:PVkAllocationCallbacks;pView:PVkImageView):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:imageView must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:imageView was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:imageView was created, pname:pAllocator must: be `NULL`
        procedure DestroyImageView(device:TVkDevice;imageView:TVkImageView;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function CreateShaderModule(device:TVkDevice;const pCreateInfo:PVkShaderModuleCreateInfo;const pAllocator:PVkAllocationCallbacks;pShaderModule:PVkShaderModule):TVkResult; virtual;
+
+       // If sname:VkAllocationCallbacks were provided when pname:shaderModule was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:shaderModule was created, pname:pAllocator must: be `NULL`
        procedure DestroyShaderModule(device:TVkDevice;shaderModule:TVkShaderModule;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function CreatePipelineCache(device:TVkDevice;const pCreateInfo:PVkPipelineCacheCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelineCache:PVkPipelineCache):TVkResult; virtual;
+
+       // If sname:VkAllocationCallbacks were provided when pname:pipelineCache was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:pipelineCache was created, pname:pAllocator must: be `NULL`
        procedure DestroyPipelineCache(device:TVkDevice;pipelineCache:TVkPipelineCache;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function GetPipelineCacheData(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:TVkPointer):TVkResult; virtual;
+
+       // pname:dstCache mustnot: appear in the list of source caches
        function MergePipelineCaches(device:TVkDevice;dstCache:TVkPipelineCache;srcCacheCount:TVkUInt32;const pSrcCaches:PVkPipelineCache):TVkResult; virtual;
+
+       // If the pname:flags member of any given element of pname:pCreateInfos contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the pname:basePipelineIndex member of that same element is not `-1`, pname:basePipelineIndex must: be less than the index into pname:pCreateInfos that corresponds to that element
        function CreateGraphicsPipelines(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkGraphicsPipelineCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; virtual;
+
+       // If the pname:flags member of any given element of pname:pCreateInfos contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the pname:basePipelineIndex member of that same element is not `-1`, pname:basePipelineIndex must: be less than the index into pname:pCreateInfos that corresponds to that element
        function CreateComputePipelines(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkComputePipelineCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:pipeline must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:pipeline was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:pipeline was created, pname:pAllocator must: be `NULL`
        procedure DestroyPipeline(device:TVkDevice;pipeline:TVkPipeline;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function CreatePipelineLayout(device:TVkDevice;const pCreateInfo:PVkPipelineLayoutCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelineLayout:PVkPipelineLayout):TVkResult; virtual;
+
+       // If sname:VkAllocationCallbacks were provided when pname:pipelineLayout was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:pipelineLayout was created, pname:pAllocator must: be `NULL`
        procedure DestroyPipelineLayout(device:TVkDevice;pipelineLayout:TVkPipelineLayout;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function CreateSampler(device:TVkDevice;const pCreateInfo:PVkSamplerCreateInfo;const pAllocator:PVkAllocationCallbacks;pSampler:PVkSampler):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:sampler must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:sampler was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:sampler was created, pname:pAllocator must: be `NULL`
        procedure DestroySampler(device:TVkDevice;sampler:TVkSampler;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function CreateDescriptorSetLayout(device:TVkDevice;const pCreateInfo:PVkDescriptorSetLayoutCreateInfo;const pAllocator:PVkAllocationCallbacks;pSetLayout:PVkDescriptorSetLayout):TVkResult; virtual;
+
+       // If sname:VkAllocationCallbacks were provided when pname:descriptorSetLayout was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:descriptorSetLayout was created, pname:pAllocator must: be `NULL`
        procedure DestroyDescriptorSetLayout(device:TVkDevice;descriptorSetLayout:TVkDescriptorSetLayout;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function CreateDescriptorPool(device:TVkDevice;const pCreateInfo:PVkDescriptorPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pDescriptorPool:PVkDescriptorPool):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:descriptorPool (via any allocated descriptor sets) must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:descriptorPool was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:descriptorPool was created, pname:pAllocator must: be `NULL`
        procedure DestroyDescriptorPool(device:TVkDevice;descriptorPool:TVkDescriptorPool;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       // All uses of pname:descriptorPool (via any allocated descriptor sets) must: have completed execution
        function ResetDescriptorPool(device:TVkDevice;descriptorPool:TVkDescriptorPool;flags:TVkDescriptorPoolResetFlags):TVkResult; virtual;
+
        function AllocateDescriptorSets(device:TVkDevice;const pAllocateInfo:PVkDescriptorSetAllocateInfo;pDescriptorSets:PVkDescriptorSet):TVkResult; virtual;
+
+       // All submitted commands that refer to any element of pname:pDescriptorSets must: have completed execution
+       // pname:pDescriptorSets must: be a pointer to an array of pname:descriptorSetCount sname:VkDescriptorSet handles, each element of which must: either be a valid handle or sname:VK_NULL_HANDLE
+       // pname:descriptorPool must: have been created with the ename:VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT flag
        function FreeDescriptorSets(device:TVkDevice;descriptorPool:TVkDescriptorPool;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet):TVkResult; virtual;
+
        procedure UpdateDescriptorSets(device:TVkDevice;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet;descriptorCopyCount:TVkUInt32;const pDescriptorCopies:PVkCopyDescriptorSet); virtual;
+
        function CreateFramebuffer(device:TVkDevice;const pCreateInfo:PVkFramebufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pFramebuffer:PVkFramebuffer):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:framebuffer must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:framebuffer was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:framebuffer was created, pname:pAllocator must: be `NULL`
        procedure DestroyFramebuffer(device:TVkDevice;framebuffer:TVkFramebuffer;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function CreateRenderPass(device:TVkDevice;const pCreateInfo:PVkRenderPassCreateInfo;const pAllocator:PVkAllocationCallbacks;pRenderPass:PVkRenderPass):TVkResult; virtual;
+
+       // All submitted commands that refer to pname:renderPass must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:renderPass was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:renderPass was created, pname:pAllocator must: be `NULL`
        procedure DestroyRenderPass(device:TVkDevice;renderPass:TVkRenderPass;const pAllocator:PVkAllocationCallbacks); virtual;
+
        procedure GetRenderAreaGranularity(device:TVkDevice;renderPass:TVkRenderPass;pGranularity:PVkExtent2D); virtual;
+
        function CreateCommandPool(device:TVkDevice;const pCreateInfo:PVkCommandPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pCommandPool:PVkCommandPool):TVkResult; virtual;
+
+       // All sname:VkCommandBuffer objects allocated from pname:commandPool mustnot: be pending execution
+       // If sname:VkAllocationCallbacks were provided when pname:commandPool was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:commandPool was created, pname:pAllocator must: be `NULL`
        procedure DestroyCommandPool(device:TVkDevice;commandPool:TVkCommandPool;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       // All sname:VkCommandBuffer objects allocated from pname:commandPool mustnot: currently be pending execution
        function ResetCommandPool(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolResetFlags):TVkResult; virtual;
+
        function AllocateCommandBuffers(device:TVkDevice;const pAllocateInfo:PVkCommandBufferAllocateInfo;pCommandBuffers:PVkCommandBuffer):TVkResult; virtual;
+
+       // All elements of pname:pCommandBuffers mustnot: be pending execution
+       // pname:pCommandBuffers must: be a pointer to an array of pname:commandBufferCount sname:VkCommandBuffer handles, each element of which must: either be a valid handle or sname:VK_NULL_HANDLE
        procedure FreeCommandBuffers(device:TVkDevice;commandPool:TVkCommandPool;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); virtual;
+
+       // pname:commandBuffer mustnot: be in the recording state
+       // If pname:commandBuffer was allocated from a sname:VkCommandPool which did not have the ename:VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, pname:commandBuffer must: be in the initial state.
+       // If pname:commandBuffer is a secondary command buffer, the pname:pInheritanceInfo member of pname:pBeginInfo must: be a valid sname:VkCommandBufferInheritanceInfo structure
+       // If pname:commandBuffer is a secondary command buffer and either the pname:occlusionQueryEnable member of the pname:pInheritanceInfo member of pname:pBeginInfo is ename:VK_FALSE, or the precise occlusion queries feature is not enabled, the pname:queryFlags member of the pname:pInheritanceInfo member pname:pBeginInfo mustnot: contain ename:VK_QUERY_CONTROL_PRECISE_BIT
        function BeginCommandBuffer(commandBuffer:TVkCommandBuffer;const pBeginInfo:PVkCommandBufferBeginInfo):TVkResult; virtual;
+
+       // pname:commandBuffer must: be in the recording state
+       // fname:vkEndCommandBuffer mustnot: be called inside a render pass instance
+       // All queries made <<queries-operation-active,active>> during the recording of pname:commandBuffer must: have been made inactive
        function EndCommandBuffer(commandBuffer:TVkCommandBuffer):TVkResult; virtual;
+
+       // pname:commandBuffer mustnot: currently be pending execution
+       // pname:commandBuffer must: have been allocated from a pool that was created with the ename:VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
        function ResetCommandBuffer(commandBuffer:TVkCommandBuffer;flags:TVkCommandBufferResetFlags):TVkResult; virtual;
+
+       // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_COMPUTE, the sname:VkCommandPool that pname:commandBuffer was allocated from must: support compute operations
+       // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_GRAPHICS, the sname:VkCommandPool that pname:commandBuffer was allocated from must: support graphics operations
+       // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_COMPUTE, pname:pipeline must: be a compute pipeline
+       // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_GRAPHICS, pname:pipeline must: be a graphics pipeline
+       // If the <<features-features-variableMultisampleRate,variable multisample rate>> feature is not supported, pname:pipeline is a graphics pipeline, the current subpass has no attachments, and this is not the first call to this function with a graphics pipeline after transitioning to the current subpass, then the sample count specified by this pipeline must: match that set in the previous pipeline
        procedure CmdBindPipeline(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline); virtual;
+
+       // pname:firstViewport must: be less than sname:VkPhysicalDeviceLimits::pname:maxViewports
+       // The sum of pname:firstViewport and pname:viewportCount must: be between `1` and sname:VkPhysicalDeviceLimits::pname:maxViewports, inclusive
        procedure CmdSetViewport(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewports:PVkViewport); virtual;
+
+       // pname:firstScissor must: be less than sname:VkPhysicalDeviceLimits::pname:maxViewports
+       // The sum of pname:firstScissor and pname:scissorCount must: be between `1` and sname:VkPhysicalDeviceLimits::pname:maxViewports, inclusive
+       // The pname:x and pname:y members of pname:offset must: be greater than or equal to `0`
+       // Evaluation of (pname:offset.x + pname:extent.width) mustnot: cause a signed integer addition overflow
+       // Evaluation of (pname:offset.y + pname:extent.height) mustnot: cause a signed integer addition overflow
        procedure CmdSetScissor(commandBuffer:TVkCommandBuffer;firstScissor:TVkUInt32;scissorCount:TVkUInt32;const pScissors:PVkRect2D); virtual;
+
+       // If the <<features-features-wideLines,wide lines>> feature is not enabled, pname:lineWidth must: be `1.0`
        procedure CmdSetLineWidth(commandBuffer:TVkCommandBuffer;lineWidth:TVkFloat); virtual;
+
+       // If the <<features-features-depthBiasClamp,depth bias clamping>> feature is not enabled, pname:depthBiasClamp must: be code:0.0
        procedure CmdSetDepthBias(commandBuffer:TVkCommandBuffer;depthBiasConstantFactor:TVkFloat;depthBiasClamp:TVkFloat;depthBiasSlopeFactor:TVkFloat); virtual;
+
        procedure CmdSetBlendConstants(commandBuffer:TVkCommandBuffer;const blendConstants:TVkFloat); virtual;
+
+       // pname:minDepthBounds must: be between `0.0` and `1.0`, inclusive
+       // pname:maxDepthBounds must: be between `0.0` and `1.0`, inclusive
        procedure CmdSetDepthBounds(commandBuffer:TVkCommandBuffer;minDepthBounds:TVkFloat;maxDepthBounds:TVkFloat); virtual;
+
        procedure CmdSetStencilCompareMask(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;compareMask:TVkUInt32); virtual;
+
        procedure CmdSetStencilWriteMask(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;writeMask:TVkUInt32); virtual;
+
        procedure CmdSetStencilReference(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;reference:TVkUInt32); virtual;
+
+       // Any given element of pname:pDescriptorSets must: have been created with a sname:VkDescriptorSetLayout that matches the sname:VkDescriptorSetLayout at set _n_ in pname:layout, where _n_ is the sum of the index into pname:pDescriptorSets and pname:firstSet
+       // pname:dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pname:pDescriptorSets
+       // pname:pipelineBindPoint must: be supported by the pname:commandBuffer's parent sname:VkCommandPool's queue family
+       // Any given element of pname:pDynamicOffsets must: satisfy the required alignment for the corresponding descriptor binding's descriptor type
        procedure CmdBindDescriptorSets(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const pDynamicOffsets:PVkUInt32); virtual;
+
+       // pname:offset must: be less than the size of pname:buffer
+       // The sum of pname:offset, and the address of the range of sname:VkDeviceMemory object that's backing pname:buffer, must: be a multiple of the type indicated by pname:indexType
+       // pname:buffer must: have been created with the ename:VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag
        procedure CmdBindIndexBuffer(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;indexType:TVkIndexType); virtual;
+
+       // pname:firstBinding must: be less than sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindings
+       // The sum of pname:firstBinding and pname:bindingCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindings
+       // All elements of pname:pOffsets must: be less than the size of the corresponding element in pname:pBuffers
+       // All elements of pname:pBuffers must: have been created with the ename:VK_BUFFER_USAGE_VERTEX_BUFFER_BIT flag
        procedure CmdBindVertexBuffers(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize); virtual;
+
+       // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+       // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+       // For a given vertex buffer binding, any attribute data fetched must: be entirely contained within the corresponding vertex buffer binding, as described in <<fxvertex-input>>
+       // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+       // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+       // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
        procedure CmdDraw(commandBuffer:TVkCommandBuffer;vertexCount:TVkUInt32;instanceCount:TVkUInt32;firstVertex:TVkUInt32;firstInstance:TVkUInt32); virtual;
+
+       // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+       // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+       // For a given vertex buffer binding, any attribute data fetched must: be entirely contained within the corresponding vertex buffer binding, as described in <<fxvertex-input>>
+       // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+       // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+       // (pname:indexSize * (pname:firstIndex + pname:indexCount) + pname:offset) must: be less than or equal to the size of the currently bound index buffer, with indexSize being based on the type specified by pname:indexType, where the index buffer, pname:indexType, and pname:offset are specified via fname:vkCmdBindIndexBuffer
+       // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
        procedure CmdDrawIndexed(commandBuffer:TVkCommandBuffer;indexCount:TVkUInt32;instanceCount:TVkUInt32;firstIndex:TVkUInt32;vertexOffset:TVkInt32;firstInstance:TVkUInt32); virtual;
+
+       // pname:offset must: be a multiple of `4`
+       // If pname:drawCount is greater than `1`, pname:stride must: be a multiple of `4` and must: be greater than or equal to sizeof(sname:VkDrawIndirectCommand)
+       // If the <<features-features-multiDrawIndirect,multi-draw indirect>> feature is not enabled, pname:drawCount must: be `0` or `1`
+       // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the pname:firstInstance members of the sname:VkDrawIndirectCommand structures accessed by this command must: be code:0
+       // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+       // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+       // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+       // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+       // If pname:drawCount is equal to `1`, (pname:offset + sizeof(sname:VkDrawIndirectCommand)) must: be less than or equal to the size of pname:buffer
+       // If pname:drawCount is greater than `1`, (pname:stride x (pname:drawCount - 1) + pname:offset + sizeof(sname:VkDrawIndirectCommand)) must: be less than or equal to the size of pname:buffer
+       // pname:drawCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxDrawIndirectCount
+       // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
        procedure CmdDrawIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); virtual;
+
+       // pname:offset must: be a multiple of `4`
+       // If pname:drawCount is greater than `1`, pname:stride must: be a multiple of `4` and must: be greater than or equal to sizeof(sname:VkDrawIndexedIndirectCommand)
+       // If the <<features-features-multiDrawIndirect,multi-draw indirect>> feature is not enabled, pname:drawCount must: be `0` or `1`
+       // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the pname:firstInstance members of the sname:VkDrawIndexedIndirectCommand structures accessed by this command must: be code:0
+       // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+       // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+       // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+       // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+       // If pname:drawCount is equal to `1`, (pname:offset + sizeof(sname:VkDrawIndexedIndirectCommand)) must: be less than or equal to the size of pname:buffer
+       // If pname:drawCount is greater than `1`, (pname:stride x (pname:drawCount - 1) + pname:offset + sizeof(sname:VkDrawIndexedIndirectCommand)) must: be less than or equal to the size of pname:buffer
+       // pname:drawCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxDrawIndirectCount
+       // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
        procedure CmdDrawIndexedIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); virtual;
+
+       // pname:x must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[0]
+       // pname:y must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[1]
+       // pname:z must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[2]
+       // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+       // A valid compute pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_COMPUTE
+       // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for push constants with the one used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
        procedure CmdDispatch(commandBuffer:TVkCommandBuffer;x:TVkUInt32;y:TVkUInt32;z:TVkUInt32); virtual;
+
+       // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+       // A valid compute pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_COMPUTE
+       // pname:buffer must: have been created with the ename:VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT bit set
+       // pname:offset must: be a multiple of `4`
+       // The sum of pname:offset and the size of sname:VkDispatchIndirectCommand must: be less than or equal to the size of pname:buffer
+       // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for push constants with the one used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
        procedure CmdDispatchIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); virtual;
+
+       // The pname:copySize member of a given element of pname:pRegions must: be greater than `0`
+       // The pname:srcOffset member of a given element of pname:pRegions must: be less than the size of pname:srcBuffer
+       // The pname:dstOffset member of a given element of pname:pRegions must: be less than the size of pname:dstBuffer
+       // The pname:copySize member of a given element of pname:pRegions must: be less than or equal to the size of pname:srcBuffer minus pname:srcOffset
+       // The pname:copySize member of a given element of pname:pRegions must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+       // The union of the source regions, and the union of the destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+       // pname:srcBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
+       // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
        procedure CmdCopyBuffer(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferCopy); virtual;
+
+       // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+       // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+       // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+       // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+       // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+       // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+       // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+       // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+       // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+       // The elink:VkFormat of each of pname:srcImage and pname:dstImage must: be compatible, as defined <<copies-images-format-compatibility, below>>
+       // The sample count of pname:srcImage and pname:dstImage must: match
        procedure CmdCopyImage(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageCopy); virtual;
+
+       // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+       // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+       // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+       // pname:srcImage must: use a format that supports ename:VK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by sname:VkFormatProperties::pname:linearTilingFeatures (for linear tiled images) or sname:VkFormatProperties::pname:optimalTilingFeatures (for optimally tiled images) - as returned by fname:vkGetPhysicalDeviceFormatProperties
+       // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+       // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+       // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+       // pname:dstImage must: use a format that supports ename:VK_FORMAT_FEATURE_BLIT_DST_BIT, which is indicated by sname:VkFormatProperties::pname:linearTilingFeatures (for linear tiled images) or sname:VkFormatProperties::pname:optimalTilingFeatures (for optimally tiled images) - as returned by fname:vkGetPhysicalDeviceFormatProperties
+       // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+       // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+       // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+       // The sample count of pname:srcImage and pname:dstImage must: both be equal to ename:VK_SAMPLE_COUNT_1_BIT
+       // If either of pname:srcImage or pname:dstImage was created with a signed integer elink:VkFormat, the other must: also have been created with a signed integer elink:VkFormat
+       // If either of pname:srcImage or pname:dstImage was created with an unsigned integer elink:VkFormat, the other must: also have been created with an unsigned integer elink:VkFormat
+       // If either of pname:srcImage or pname:dstImage was created with a depth/stencil format, the other must: have exactly the same format
+       // If pname:srcImage was created with a depth/stencil format, pname:filter must: be ename:VK_FILTER_NEAREST
        procedure CmdBlitImage(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageBlit;filter:TVkFilter); virtual;
+
+       // The buffer region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcBuffer
+       // The image region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+       // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+       // pname:srcBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
+       // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+       // pname:dstImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+       // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+       // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
        procedure CmdCopyBufferToImage(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); virtual;
+
+       // The image region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+       // The buffer region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstBuffer
+       // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+       // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+       // pname:srcImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+       // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+       // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+       // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
        procedure CmdCopyImageToBuffer(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); virtual;
+
+       // pname:dataSize must: be greater than `0`
+       // pname:dstOffset must: be less than the size of pname:dstBuffer
+       // pname:dataSize must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+       // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
+       // pname:dstOffset must: be a multiple of `4`
+       // pname:dataSize must: be less than or equal to `65536`
+       // pname:dataSize must: be a multiple of `4`
        procedure CmdUpdateBuffer(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkUInt32); virtual;
+
+       // pname:dstOffset must: be less than the size of pname:dstBuffer
+       // pname:dstOffset must: be a multiple of `4`
+       // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be greater than `0`
+       // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+       // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be a multiple of `4`
+       // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
        procedure CmdFillBuffer(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TVkUInt32); virtual;
+
+       // pname:image must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+       // pname:imageLayout must: specify the layout of the subresource ranges of pname:image specified in pname:pRanges at the time this command is executed on a sname:VkDevice
+       // pname:imageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+       // The image range of any given element of pname:pRanges must: be a subresource range that is contained within pname:image
        procedure CmdClearColorImage(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pColor:PVkClearColorValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); virtual;
+
+       // pname:image must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+       // pname:imageLayout must: specify the layout of the subresource ranges of pname:image specified in pname:pRanges at the time this command is executed on a sname:VkDevice
+       // pname:imageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+       // The image range of any given element of pname:pRanges must: be a subresource range that is contained within pname:image
        procedure CmdClearDepthStencilImage(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); virtual;
+
+       // If the pname:aspectMask member of any given element of pname:pAttachments contains ename:VK_IMAGE_ASPECT_COLOR_BIT, the pname:colorAttachment member of those elements must: refer to a valid color attachment in the current subpass
+       // The rectangular region specified by a given element of pname:pRects must: be contained within the render area of the current render pass instance
+       // The layers specified by a given element of pname:pRects must: be contained within every attachment that pname:pAttachments refers to
        procedure CmdClearAttachments(commandBuffer:TVkCommandBuffer;attachmentCount:TVkUInt32;const pAttachments:PVkClearAttachment;rectCount:TVkUInt32;const pRects:PVkClearRect); virtual;
+
+       // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+       // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+       // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+       // pname:srcImage must: have a sample count equal to any valid sample count value other than ename:VK_SAMPLE_COUNT_1_BIT
+       // pname:dstImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+       // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+       // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+       // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+       // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+       // If pname:dstImage was created with pname:tiling equal to ename:VK_IMAGE_TILING_LINEAR, pname:dstImage must: have been created with a pname:format that supports being a color attachment, as specified by the ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+       // If pname:dstImage was created with pname:tiling equal to ename:VK_IMAGE_TILING_OPTIMAL, pname:dstImage must: have been created with a pname:format that supports being a color attachment, as specified by the ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:optimalTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
        procedure CmdResolveImage(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageResolve); virtual;
+
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
        procedure CmdSetEvent(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); virtual;
+
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
        procedure CmdResetEvent(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); virtual;
+
+       // pname:srcStageMask must: be the bitwise OR of the pname:stageMask parameter used in previous calls to fname:vkCmdSetEvent with any of the members of pname:pEvents and ename:VK_PIPELINE_STAGE_HOST_BIT if any of the members of pname:pEvents was set using fname:vkSetEvent
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+       // If pname:pEvents includes one or more events that will be signaled by fname:vkSetEvent after pname:commandBuffer has been submitted to a queue, then fname:vkCmdWaitEvents mustnot: be called inside a render pass instance
        procedure CmdWaitEvents(commandBuffer:TVkCommandBuffer;eventCount:TVkUInt32;const pEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); virtual;
+
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or pname:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+       // If fname:vkCmdPipelineBarrier is called within a render pass instance, the render pass must: declare at least one self-dependency from the current subpass to itself - see <<synchronization-pipeline-barriers-subpass-self-dependencies,Subpass Self-dependency>>
        procedure CmdPipelineBarrier(commandBuffer:TVkCommandBuffer;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); virtual;
+
+       // The query identified by pname:queryPool and pname:query must: currently not be <<queries-operation-active,active>>
+       // The query identified by pname:queryPool and pname:query must: be unavailable
+       // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the pname:queryType used to create pname:queryPool was not ename:VK_QUERY_TYPE_OCCLUSION, pname:flags mustnot: contain ename:VK_QUERY_CONTROL_PRECISE_BIT
+       // pname:queryPool must: have been created with a pname:queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within pname:commandBuffer
+       // pname:query must: be less than the number of queries in pname:queryPool
+       // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_OCCLUSION, the sname:VkCommandPool that pname:commandBuffer was created from must: support graphics operations
+       // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pname:pipelineStatistics indicate graphics operations, the sname:VkCommandPool that pname:commandBuffer was created from must: support graphics operations
+       // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pname:pipelineStatistics indicate compute operations, the sname:VkCommandPool that pname:commandBuffer was created from must: support compute operations
        procedure CmdBeginQuery(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags); virtual;
+
+       // The query identified by pname:queryPool and pname:query must: currently be <<queries-operation-active,active>>
+       // pname:query must: be less than the number of queries in pname:queryPool
        procedure CmdEndQuery(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32); virtual;
+
+       // pname:firstQuery must: be less than the number of queries in pname:queryPool
+       // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
        procedure CmdResetQueryPool(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32); virtual;
+
+       // The query identified by pname:queryPool and pname:query must: be _unavailable_
+       // The command pool's queue family must: support a non-zero pname:timestampValidBits
        procedure CmdWriteTimestamp(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;queryPool:TVkQueryPool;query:TVkUInt32); virtual;
+
+       // pname:dstOffset must: be less than the size of pname:dstBuffer
+       // pname:firstQuery must: be less than the number of queries in pname:queryPool
+       // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
+       // If ename:VK_QUERY_RESULT_64_BIT is not set in pname:flags then pname:dstOffset and pname:stride must be multiples of `4`
+       // If ename:VK_QUERY_RESULT_64_BIT is set in pname:flags then pname:dstOffset and pname:stride must be multiples of `8`
+       // pname:dstBuffer must: have enough storage, from pname:dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+       // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_TIMESTAMP, pname:flags mustnot: contain ename:VK_QUERY_RESULT_PARTIAL_BIT
        procedure CmdCopyQueryPoolResults(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags); virtual;
+
+       // pname:stageFlags must: match exactly the shader stages used in pname:layout for the range specified by pname:offset and pname:size
+       // pname:offset must: be a multiple of `4`
+       // pname:size must: be a multiple of `4`
+       // pname:offset must: be less than sname:VkPhysicalDeviceLimits::pname:maxPushConstantsSize
+       // pname:size must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxPushConstantsSize minus pname:offset
        procedure CmdPushConstants(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:TVkPointer); virtual;
+
+       // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
+       // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT set
+       // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_SAMPLED_BIT or ename:VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT set
+       // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_BIT then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT set
+       // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_TRANSFER_DST_BIT then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT set
        procedure CmdBeginRenderPass(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents); virtual;
+
+       // The current subpass index must: be less than the number of subpasses in the render pass minus one
        procedure CmdNextSubpass(commandBuffer:TVkCommandBuffer;contents:TVkSubpassContents); virtual;
+
+       // The current subpass index must: be equal to the number of subpasses in the render pass minus one
        procedure CmdEndRenderPass(commandBuffer:TVkCommandBuffer); virtual;
+
+       // pname:commandBuffer must: have been created with a pname:level of ename:VK_COMMAND_BUFFER_LEVEL_PRIMARY
+       // Any given element of pname:pCommandBuffers must: have been created with a pname:level of ename:VK_COMMAND_BUFFER_LEVEL_SECONDARY
+       // Any given element of pname:pCommandBuffers mustnot: be already pending execution in pname:commandBuffer, or appear twice in pname:pCommandBuffers, unless it was created with the ename:VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+       // Any given element of pname:pCommandBuffers mustnot: be already pending execution in any other sname:VkCommandBuffer, unless it was created with the ename:VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+       // Any given element of pname:pCommandBuffers must: be in the executable state
+       // If fname:vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the pname:contents parameter of fname:vkCmdBeginRenderPass set to ename:VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
+       // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with the ename:VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+       // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with the pname:subpass member of the pname:inheritanceInfo structure set to the index of the subpass which the given command buffer will be executed in
+       // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
+       // If fname:vkCmdExecuteCommands is being called within a render pass instance, and any given element of pname:pCommandBuffers was recorded with the pname:framebuffer member of the sname:VkCommandBufferInheritanceInfo structure not equal to sname:VK_NULL_HANDLE, that sname:VkFramebuffer must: be compatible with the sname:VkFramebuffer used in the current render pass instance
+       // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, pname:commandBuffer mustnot: have any queries <<queries-operation-active,active>>
+       // If pname:commandBuffer has a ename:VK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:occlusionQueryEnable set to ename:VK_TRUE
+       // If pname:commandBuffer has a ename:VK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:queryFlags having all bits set that are set for the query
+       // If pname:commandBuffer has a ename:VK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:pipelineStatistics having all bits set that are set in the sname:VkQueryPool the query uses
+       // Any given element of pname:pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in pname:commandBuffer
        procedure CmdExecuteCommands(commandBuffer:TVkCommandBuffer;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); virtual;
+
 {$ifdef Android}
        function CreateAndroidSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkAndroidSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
 {$endif}
+
        function GetPhysicalDeviceDisplayPropertiesKHR(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPropertiesKHR):TVkResult; virtual;
+
        function GetPhysicalDeviceDisplayPlanePropertiesKHR(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPlanePropertiesKHR):TVkResult; virtual;
+
+       // pname:planeIndex must: be less than the number of display planes supported by the device as determined by calling fname:vkGetPhysicalDeviceDisplayPlanePropertiesKHR
        function GetDisplayPlaneSupportedDisplaysKHR(physicalDevice:TVkPhysicalDevice;planeIndex:TVkUInt32;pDisplayCount:PVkUInt32;pDisplays:PVkDisplayKHR):TVkResult; virtual;
+
        function GetDisplayModePropertiesKHR(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;pPropertyCount:PVkUInt32;pProperties:PVkDisplayModePropertiesKHR):TVkResult; virtual;
+
        function CreateDisplayModeKHR(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;const pCreateInfo:PVkDisplayModeCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pMode:PVkDisplayModeKHR):TVkResult; virtual;
+
        function GetDisplayPlaneCapabilitiesKHR(physicalDevice:TVkPhysicalDevice;mode:TVkDisplayModeKHR;planeIndex:TVkUInt32;pCapabilities:PVkDisplayPlaneCapabilitiesKHR):TVkResult; virtual;
+
        function CreateDisplayPlaneSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkDisplaySurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
+
        function CreateSharedSwapchainsKHR(device:TVkDevice;swapchainCount:TVkUInt32;const pCreateInfos:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchains:PVkSwapchainKHR):TVkResult; virtual;
+
 {$ifdef Mir}
        function CreateMirSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkMirSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
 {$endif}
+
 {$ifdef Mir}
+       // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
        function GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PMirConnection):TVkBool32; virtual;
 {$endif}
+
+       // All sname:VkSwapchainKHR objects created for pname:surface must: have been destroyed prior to destroying pname:surface
+       // If sname:VkAllocationCallbacks were provided when pname:surface was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:surface was created, pname:pAllocator must: be `NULL`
        procedure DestroySurfaceKHR(instance:TVkInstance;surface:TVkSurfaceKHR;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
        function GetPhysicalDeviceSurfaceSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;surface:TVkSurfaceKHR;pSupported:PVkBool32):TVkResult; virtual;
+
        function GetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceCapabilities:PVkSurfaceCapabilitiesKHR):TVkResult; virtual;
+
        function GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormatKHR):TVkResult; virtual;
+
        function GetPhysicalDeviceSurfacePresentModesKHR(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pPresentModeCount:PVkUInt32;pPresentModes:PVkPresentModeKHR):TVkResult; virtual;
+
        function CreateSwapchainKHR(device:TVkDevice;const pCreateInfo:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchain:PVkSwapchainKHR):TVkResult; virtual;
+
+       // All uses of presentable images acquired from pname:swapchain and owned by the application must: have completed execution
+       // If sname:VkAllocationCallbacks were provided when pname:swapchain was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:swapchain was created, pname:pAllocator must: be `NULL`
        procedure DestroySwapchainKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;const pAllocator:PVkAllocationCallbacks); virtual;
+
        function GetSwapchainImagesKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainImageCount:PVkUInt32;pSwapchainImages:PVkImage):TVkResult; virtual;
+
+       // If pname:semaphore is not sname:VK_NULL_HANDLE it must: be unsignalled
+       // If pname:fence is not sname:VK_NULL_HANDLE it must: be unsignalled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
        function AcquireNextImageKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;timeout:TVkUInt64;semaphore:TVkSemaphore;fence:TVkFence;pImageIndex:PVkUInt32):TVkResult; virtual;
+
+       // Any given element of pname:pSwapchains member of pname:pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from pname:queue as determined using a call to fname:vkGetPhysicalDeviceSurfaceSupportKHR
        function QueuePresentKHR(queue:TVkQueue;const pPresentInfo:PVkPresentInfoKHR):TVkResult; virtual;
+
 {$ifdef Wayland}
        function CreateWaylandSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkWaylandSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
 {$endif}
+
 {$ifdef Wayland}
+       // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
        function GetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:Pwl_display):TVkBool32; virtual;
 {$endif}
+
        function CreateWin32SurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkWin32SurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
+
+       // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
        function GetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32):TVkBool32; virtual;
+
 {$ifdef X11}
        function CreateXlibSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkXlibSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
 {$endif}
+
 {$ifdef X11}
+       // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
        function GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PDisplay;visualID:TVisualID):TVkBool32; virtual;
 {$endif}
+
 {$ifdef XCB}
        function CreateXcbSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkXcbSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
 {$endif}
+
 {$ifdef XCB}
+       // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
        function GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:Pxcb_connection;visual_id:Txcb_visualid):TVkBool32; virtual;
 {$endif}
+
        function CreateDebugReportCallbackEXT(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; virtual;
+
+       // If sname:VkAllocationCallbacks were provided when pname:instance was created, a compatible set of callbacks must: be provided here
+       // If no sname:VkAllocationCallbacks were provided when pname:instance was created, pname:pAllocator must: be `NULL`
        procedure DestroyDebugReportCallbackEXT(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       // pname:instance must: be a valid sname:VkInstance handle
+       // pname:flags must be a combination of one or more of sname:VkDebugReportFlagBitsEXT
+       // pname:objType must be one of sname:VkDebugReportObjectTypeEXT, ename:VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if pname:object is `NULL`
+       // pname:object may be a {apiname} object
+       // pname:pLayerPrefix must: be a `NULL` terminated string.
+       // pname:pMsg must: be a `NULL` terminated string.
        procedure DebugReportMessageEXT(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); virtual;
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -4015,192 +6244,783 @@ var LibVulkan:pointer=nil;
     vk:TVulkan=nil;
 
     vkCreateInstance:TvkCreateInstance=nil;
+
+    // All child objects created using pname:instance must: have been destroyed prior to destroying pname:instance
+    // If sname:VkAllocationCallbacks were provided when pname:instance was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:instance was created, pname:pAllocator must: be `NULL`
     vkDestroyInstance:TvkDestroyInstance=nil;
+
     vkEnumeratePhysicalDevices:TvkEnumeratePhysicalDevices=nil;
+
+    // pname:pName must: be the name of a supported command that has a first parameter of type sname:VkDevice, sname:VkQueue or sname:VkCommandBuffer, either in the core API or an enabled extension
     vkGetDeviceProcAddr:TvkGetDeviceProcAddr=nil;
+
+    // If pname:instance is `NULL`, pname:pName must: be one of: fname:vkEnumerateInstanceExtensionProperties, fname:vkEnumerateInstanceLayerProperties or fname:vkCreateInstance
+    // If pname:instance is not `NULL`, pname:pName must: be the name of a core command or a command from an enabled extension, other than: fname:vkEnumerateInstanceExtensionProperties, fname:vkEnumerateInstanceLayerProperties or fname:vkCreateInstance
     vkGetInstanceProcAddr:TvkGetInstanceProcAddr=nil;
+
     vkGetPhysicalDeviceProperties:TvkGetPhysicalDeviceProperties=nil;
+
     vkGetPhysicalDeviceQueueFamilyProperties:TvkGetPhysicalDeviceQueueFamilyProperties=nil;
+
     vkGetPhysicalDeviceMemoryProperties:TvkGetPhysicalDeviceMemoryProperties=nil;
+
     vkGetPhysicalDeviceFeatures:TvkGetPhysicalDeviceFeatures=nil;
+
     vkGetPhysicalDeviceFormatProperties:TvkGetPhysicalDeviceFormatProperties=nil;
+
     vkGetPhysicalDeviceImageFormatProperties:TvkGetPhysicalDeviceImageFormatProperties=nil;
+
     vkCreateDevice:TvkCreateDevice=nil;
+
+    // All child objects created on pname:device must: have been destroyed prior to destroying pname:device
+    // If sname:VkAllocationCallbacks were provided when pname:device was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:device was created, pname:pAllocator must: be `NULL`
     vkDestroyDevice:TvkDestroyDevice=nil;
+
     vkEnumerateInstanceLayerProperties:TvkEnumerateInstanceLayerProperties=nil;
+
+    // If pname:pLayerName is not `NULL`, it must: be the name of an instance layer returned by flink:vkEnumerateInstanceLayerProperties
     vkEnumerateInstanceExtensionProperties:TvkEnumerateInstanceExtensionProperties=nil;
+
     vkEnumerateDeviceLayerProperties:TvkEnumerateDeviceLayerProperties=nil;
+
+    // If pname:pLayerName is not `NULL`, it must: be the name of a device layer returned by flink:vkEnumerateDeviceLayerProperties
     vkEnumerateDeviceExtensionProperties:TvkEnumerateDeviceExtensionProperties=nil;
+
+    // pname:queueFamilyIndex must: be one of the queue family indices specified when pname:device was created, via the sname:VkDeviceQueueCreateInfo structure
+    // pname:queueIndex must: be less than the number of queues created for the specified queue family index when pname:device was created, via the pname:queueCount member of the sname:VkDeviceQueueCreateInfo structure
     vkGetDeviceQueue:TvkGetDeviceQueue=nil;
+
+    // pname:fence must: be unsignalled
+    // pname:fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
     vkQueueSubmit:TvkQueueSubmit=nil;
+
     vkQueueWaitIdle:TvkQueueWaitIdle=nil;
+
     vkDeviceWaitIdle:TvkDeviceWaitIdle=nil;
+
+    // The number of currently valid memory objects, allocated from pname:device, must: be less than sname:VkPhysicalDeviceLimits::pname:maxMemoryAllocationCount
     vkAllocateMemory:TvkAllocateMemory=nil;
+
+    // All submitted commands that refer to pname:memory (via images or buffers) must: have completed execution
     vkFreeMemory:TvkFreeMemory=nil;
+
+    // pname:memory mustnot: currently be mapped
+    // pname:offset must: be less than the size of pname:memory
+    // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be greater than `0`
+    // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be less than or equal to the size of the pname:memory minus pname:offset
+    // pname:memory must: have been created with a memory type that reports ename:VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
     vkMapMemory:TvkMapMemory=nil;
+
+    // pname:memory must: currently be mapped
     vkUnmapMemory:TvkUnmapMemory=nil;
+
     vkFlushMappedMemoryRanges:TvkFlushMappedMemoryRanges=nil;
+
     vkInvalidateMappedMemoryRanges:TvkInvalidateMappedMemoryRanges=nil;
+
+    // pname:memory must: have been created with a memory type that reports ename:VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT
     vkGetDeviceMemoryCommitment:TvkGetDeviceMemoryCommitment=nil;
+
     vkGetBufferMemoryRequirements:TvkGetBufferMemoryRequirements=nil;
+
+    // pname:buffer mustnot: already be backed by a memory object
+    // pname:buffer mustnot: have been created with any sparse memory binding flags
+    // pname:memoryOffset must: be less than the size of pname:memory
+    // If pname:buffer was created with the ename:VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT or ename:VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minTexelBufferOffsetAlignment
+    // If pname:buffer was created with the ename:VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minUniformBufferOffsetAlignment
+    // If pname:buffer was created with the ename:VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, pname:memoryOffset must: be a multiple of sname:VkPhysicalDeviceLimits::pname:minStorageBufferOffsetAlignment
+    // pname:memory must: have been allocated using one of the memory types allowed in the pname:memoryTypeBits member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetBufferMemoryRequirements with pname:buffer
+    // The size of pname:buffer must: be less than or equal to the size of pname:memory minus pname:memoryOffset
+    // pname:memoryOffset must: be an integer multiple of the pname:alignment member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetBufferMemoryRequirements with pname:buffer
     vkBindBufferMemory:TvkBindBufferMemory=nil;
+
     vkGetImageMemoryRequirements:TvkGetImageMemoryRequirements=nil;
+
+    // pname:image mustnot: already be backed by a memory object
+    // pname:image mustnot: have been created with any sparse memory binding flags
+    // pname:memoryOffset must: be less than the size of pname:memory
+    // pname:memory must: have been allocated using one of the memory types allowed in the pname:memoryTypeBits member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image
+    // pname:memoryOffset must: be an integer multiple of the pname:alignment member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image
+    // The pname:size member of the sname:VkMemoryRequirements structure returned from a call to fname:vkGetImageMemoryRequirements with pname:image must: be less than or equal to the size of pname:memory minus pname:memoryOffset
     vkBindImageMemory:TvkBindImageMemory=nil;
+
+    // pname:image must: have been created with the ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT flag
     vkGetImageSparseMemoryRequirements:TvkGetImageSparseMemoryRequirements=nil;
+
+    // If pname:format is an integer format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageIntegerSampleCounts
+    // If pname:format is a non-integer color format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageColorSampleCounts
+    // If pname:format is a depth format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageDepthSampleCounts
+    // If pname:format is a stencil format, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:sampledImageStencilSampleCounts
+    // If pname:usage includes ename:VK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in sname:VkPhysicalDeviceLimits::pname:storageImageSampleCounts
     vkGetPhysicalDeviceSparseImageFormatProperties:TvkGetPhysicalDeviceSparseImageFormatProperties=nil;
+
+    // pname:fence must: be unsignalled
+    // pname:fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
     vkQueueBindSparse:TvkQueueBindSparse=nil;
+
     vkCreateFence:TvkCreateFence=nil;
+
+    // pname:fence mustnot: be associated with any queue command that has not yet completed execution on that queue
+    // If sname:VkAllocationCallbacks were provided when pname:fence was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:fence was created, pname:pAllocator must: be `NULL`
     vkDestroyFence:TvkDestroyFence=nil;
+
+    // Any given element of pname:pFences mustnot: currently be associated with any queue command that has not yet completed execution on that queue
     vkResetFences:TvkResetFences=nil;
+
     vkGetFenceStatus:TvkGetFenceStatus=nil;
+
     vkWaitForFences:TvkWaitForFences=nil;
+
     vkCreateSemaphore:TvkCreateSemaphore=nil;
+
+    // pname:semaphore mustnot: be associated with any queue command that has not yet completed execution on that queue
+    // If sname:VkAllocationCallbacks were provided when pname:semaphore was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:semaphore was created, pname:pAllocator must: be `NULL`
     vkDestroySemaphore:TvkDestroySemaphore=nil;
+
     vkCreateEvent:TvkCreateEvent=nil;
+
+    // All submitted commands that refer to pname:event must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:event was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:event was created, pname:pAllocator must: be `NULL`
     vkDestroyEvent:TvkDestroyEvent=nil;
+
     vkGetEventStatus:TvkGetEventStatus=nil;
+
     vkSetEvent:TvkSetEvent=nil;
+
     vkResetEvent:TvkResetEvent=nil;
+
     vkCreateQueryPool:TvkCreateQueryPool=nil;
+
+    // All submitted commands that refer to pname:queryPool must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:queryPool was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:queryPool was created, pname:pAllocator must: be `NULL`
     vkDestroyQueryPool:TvkDestroyQueryPool=nil;
+
+    // pname:firstQuery must: be less than the number of queries in pname:queryPool
+    // If ename:VK_QUERY_RESULT_64_BIT is not set in pname:flags then pname:pData and pname:stride must be multiples of `4`
+    // If ename:VK_QUERY_RESULT_64_BIT is set in pname:flags then pname:pData and pname:stride must be multiples of `8`
+    // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
+    // pname:dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+    // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_TIMESTAMP, pname:flags mustnot: contain ename:VK_QUERY_RESULT_PARTIAL_BIT
     vkGetQueryPoolResults:TvkGetQueryPoolResults=nil;
+
+    // If the pname:flags member of pname:pCreateInfo includes ename:VK_BUFFER_CREATE_SPARSE_BINDING_BIT or ename:VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT, creating this sname:VkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed sname:VkPhysicalDeviceLimits::pname:sparseAddressSpaceSize
     vkCreateBuffer:TvkCreateBuffer=nil;
+
+    // All submitted commands that refer to pname:buffer, either directly or via a sname:VkBufferView, must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:buffer was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:buffer was created, pname:pAllocator must: be `NULL`
     vkDestroyBuffer:TvkDestroyBuffer=nil;
+
     vkCreateBufferView:TvkCreateBufferView=nil;
+
+    // All submitted commands that refer to pname:bufferView must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:bufferView was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:bufferView was created, pname:pAllocator must: be `NULL`
     vkDestroyBufferView:TvkDestroyBufferView=nil;
+
+    // If the pname:flags member of pname:pCreateInfo includes ename:VK_IMAGE_CREATE_SPARSE_BINDING_BIT or ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, creating this sname:VkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed sname:VkPhysicalDeviceLimits::pname:sparseAddressSpaceSize
     vkCreateImage:TvkCreateImage=nil;
+
+    // All submitted commands that refer to pname:image, either directly or via a sname:VkImageView, must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:image was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:image was created, pname:pAllocator must: be `NULL`
     vkDestroyImage:TvkDestroyImage=nil;
+
+    // pname:image must: have been created with pname:tiling equal to ename:VK_IMAGE_TILING_LINEAR
+    // The pname:aspectMask member of pname:pSubresource must: only have a single bit set
     vkGetImageSubresourceLayout:TvkGetImageSubresourceLayout=nil;
+
     vkCreateImageView:TvkCreateImageView=nil;
+
+    // All submitted commands that refer to pname:imageView must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:imageView was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:imageView was created, pname:pAllocator must: be `NULL`
     vkDestroyImageView:TvkDestroyImageView=nil;
+
     vkCreateShaderModule:TvkCreateShaderModule=nil;
+
+    // If sname:VkAllocationCallbacks were provided when pname:shaderModule was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:shaderModule was created, pname:pAllocator must: be `NULL`
     vkDestroyShaderModule:TvkDestroyShaderModule=nil;
+
     vkCreatePipelineCache:TvkCreatePipelineCache=nil;
+
+    // If sname:VkAllocationCallbacks were provided when pname:pipelineCache was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:pipelineCache was created, pname:pAllocator must: be `NULL`
     vkDestroyPipelineCache:TvkDestroyPipelineCache=nil;
+
     vkGetPipelineCacheData:TvkGetPipelineCacheData=nil;
+
+    // pname:dstCache mustnot: appear in the list of source caches
     vkMergePipelineCaches:TvkMergePipelineCaches=nil;
+
+    // If the pname:flags member of any given element of pname:pCreateInfos contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the pname:basePipelineIndex member of that same element is not `-1`, pname:basePipelineIndex must: be less than the index into pname:pCreateInfos that corresponds to that element
     vkCreateGraphicsPipelines:TvkCreateGraphicsPipelines=nil;
+
+    // If the pname:flags member of any given element of pname:pCreateInfos contains the ename:VK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the pname:basePipelineIndex member of that same element is not `-1`, pname:basePipelineIndex must: be less than the index into pname:pCreateInfos that corresponds to that element
     vkCreateComputePipelines:TvkCreateComputePipelines=nil;
+
+    // All submitted commands that refer to pname:pipeline must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:pipeline was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:pipeline was created, pname:pAllocator must: be `NULL`
     vkDestroyPipeline:TvkDestroyPipeline=nil;
+
     vkCreatePipelineLayout:TvkCreatePipelineLayout=nil;
+
+    // If sname:VkAllocationCallbacks were provided when pname:pipelineLayout was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:pipelineLayout was created, pname:pAllocator must: be `NULL`
     vkDestroyPipelineLayout:TvkDestroyPipelineLayout=nil;
+
     vkCreateSampler:TvkCreateSampler=nil;
+
+    // All submitted commands that refer to pname:sampler must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:sampler was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:sampler was created, pname:pAllocator must: be `NULL`
     vkDestroySampler:TvkDestroySampler=nil;
+
     vkCreateDescriptorSetLayout:TvkCreateDescriptorSetLayout=nil;
+
+    // If sname:VkAllocationCallbacks were provided when pname:descriptorSetLayout was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:descriptorSetLayout was created, pname:pAllocator must: be `NULL`
     vkDestroyDescriptorSetLayout:TvkDestroyDescriptorSetLayout=nil;
+
     vkCreateDescriptorPool:TvkCreateDescriptorPool=nil;
+
+    // All submitted commands that refer to pname:descriptorPool (via any allocated descriptor sets) must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:descriptorPool was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:descriptorPool was created, pname:pAllocator must: be `NULL`
     vkDestroyDescriptorPool:TvkDestroyDescriptorPool=nil;
+
+    // All uses of pname:descriptorPool (via any allocated descriptor sets) must: have completed execution
     vkResetDescriptorPool:TvkResetDescriptorPool=nil;
+
     vkAllocateDescriptorSets:TvkAllocateDescriptorSets=nil;
+
+    // All submitted commands that refer to any element of pname:pDescriptorSets must: have completed execution
+    // pname:pDescriptorSets must: be a pointer to an array of pname:descriptorSetCount sname:VkDescriptorSet handles, each element of which must: either be a valid handle or sname:VK_NULL_HANDLE
+    // pname:descriptorPool must: have been created with the ename:VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT flag
     vkFreeDescriptorSets:TvkFreeDescriptorSets=nil;
+
     vkUpdateDescriptorSets:TvkUpdateDescriptorSets=nil;
+
     vkCreateFramebuffer:TvkCreateFramebuffer=nil;
+
+    // All submitted commands that refer to pname:framebuffer must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:framebuffer was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:framebuffer was created, pname:pAllocator must: be `NULL`
     vkDestroyFramebuffer:TvkDestroyFramebuffer=nil;
+
     vkCreateRenderPass:TvkCreateRenderPass=nil;
+
+    // All submitted commands that refer to pname:renderPass must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:renderPass was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:renderPass was created, pname:pAllocator must: be `NULL`
     vkDestroyRenderPass:TvkDestroyRenderPass=nil;
+
     vkGetRenderAreaGranularity:TvkGetRenderAreaGranularity=nil;
+
     vkCreateCommandPool:TvkCreateCommandPool=nil;
+
+    // All sname:VkCommandBuffer objects allocated from pname:commandPool mustnot: be pending execution
+    // If sname:VkAllocationCallbacks were provided when pname:commandPool was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:commandPool was created, pname:pAllocator must: be `NULL`
     vkDestroyCommandPool:TvkDestroyCommandPool=nil;
+
+    // All sname:VkCommandBuffer objects allocated from pname:commandPool mustnot: currently be pending execution
     vkResetCommandPool:TvkResetCommandPool=nil;
+
     vkAllocateCommandBuffers:TvkAllocateCommandBuffers=nil;
+
+    // All elements of pname:pCommandBuffers mustnot: be pending execution
+    // pname:pCommandBuffers must: be a pointer to an array of pname:commandBufferCount sname:VkCommandBuffer handles, each element of which must: either be a valid handle or sname:VK_NULL_HANDLE
     vkFreeCommandBuffers:TvkFreeCommandBuffers=nil;
+
+    // pname:commandBuffer mustnot: be in the recording state
+    // If pname:commandBuffer was allocated from a sname:VkCommandPool which did not have the ename:VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, pname:commandBuffer must: be in the initial state.
+    // If pname:commandBuffer is a secondary command buffer, the pname:pInheritanceInfo member of pname:pBeginInfo must: be a valid sname:VkCommandBufferInheritanceInfo structure
+    // If pname:commandBuffer is a secondary command buffer and either the pname:occlusionQueryEnable member of the pname:pInheritanceInfo member of pname:pBeginInfo is ename:VK_FALSE, or the precise occlusion queries feature is not enabled, the pname:queryFlags member of the pname:pInheritanceInfo member pname:pBeginInfo mustnot: contain ename:VK_QUERY_CONTROL_PRECISE_BIT
     vkBeginCommandBuffer:TvkBeginCommandBuffer=nil;
+
+    // pname:commandBuffer must: be in the recording state
+    // fname:vkEndCommandBuffer mustnot: be called inside a render pass instance
+    // All queries made <<queries-operation-active,active>> during the recording of pname:commandBuffer must: have been made inactive
     vkEndCommandBuffer:TvkEndCommandBuffer=nil;
+
+    // pname:commandBuffer mustnot: currently be pending execution
+    // pname:commandBuffer must: have been allocated from a pool that was created with the ename:VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
     vkResetCommandBuffer:TvkResetCommandBuffer=nil;
+
+    // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_COMPUTE, the sname:VkCommandPool that pname:commandBuffer was allocated from must: support compute operations
+    // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_GRAPHICS, the sname:VkCommandPool that pname:commandBuffer was allocated from must: support graphics operations
+    // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_COMPUTE, pname:pipeline must: be a compute pipeline
+    // If pname:pipelineBindPoint is ename:VK_PIPELINE_BIND_POINT_GRAPHICS, pname:pipeline must: be a graphics pipeline
+    // If the <<features-features-variableMultisampleRate,variable multisample rate>> feature is not supported, pname:pipeline is a graphics pipeline, the current subpass has no attachments, and this is not the first call to this function with a graphics pipeline after transitioning to the current subpass, then the sample count specified by this pipeline must: match that set in the previous pipeline
     vkCmdBindPipeline:TvkCmdBindPipeline=nil;
+
+    // pname:firstViewport must: be less than sname:VkPhysicalDeviceLimits::pname:maxViewports
+    // The sum of pname:firstViewport and pname:viewportCount must: be between `1` and sname:VkPhysicalDeviceLimits::pname:maxViewports, inclusive
     vkCmdSetViewport:TvkCmdSetViewport=nil;
+
+    // pname:firstScissor must: be less than sname:VkPhysicalDeviceLimits::pname:maxViewports
+    // The sum of pname:firstScissor and pname:scissorCount must: be between `1` and sname:VkPhysicalDeviceLimits::pname:maxViewports, inclusive
+    // The pname:x and pname:y members of pname:offset must: be greater than or equal to `0`
+    // Evaluation of (pname:offset.x + pname:extent.width) mustnot: cause a signed integer addition overflow
+    // Evaluation of (pname:offset.y + pname:extent.height) mustnot: cause a signed integer addition overflow
     vkCmdSetScissor:TvkCmdSetScissor=nil;
+
+    // If the <<features-features-wideLines,wide lines>> feature is not enabled, pname:lineWidth must: be `1.0`
     vkCmdSetLineWidth:TvkCmdSetLineWidth=nil;
+
+    // If the <<features-features-depthBiasClamp,depth bias clamping>> feature is not enabled, pname:depthBiasClamp must: be code:0.0
     vkCmdSetDepthBias:TvkCmdSetDepthBias=nil;
+
     vkCmdSetBlendConstants:TvkCmdSetBlendConstants=nil;
+
+    // pname:minDepthBounds must: be between `0.0` and `1.0`, inclusive
+    // pname:maxDepthBounds must: be between `0.0` and `1.0`, inclusive
     vkCmdSetDepthBounds:TvkCmdSetDepthBounds=nil;
+
     vkCmdSetStencilCompareMask:TvkCmdSetStencilCompareMask=nil;
+
     vkCmdSetStencilWriteMask:TvkCmdSetStencilWriteMask=nil;
+
     vkCmdSetStencilReference:TvkCmdSetStencilReference=nil;
+
+    // Any given element of pname:pDescriptorSets must: have been created with a sname:VkDescriptorSetLayout that matches the sname:VkDescriptorSetLayout at set _n_ in pname:layout, where _n_ is the sum of the index into pname:pDescriptorSets and pname:firstSet
+    // pname:dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pname:pDescriptorSets
+    // pname:pipelineBindPoint must: be supported by the pname:commandBuffer's parent sname:VkCommandPool's queue family
+    // Any given element of pname:pDynamicOffsets must: satisfy the required alignment for the corresponding descriptor binding's descriptor type
     vkCmdBindDescriptorSets:TvkCmdBindDescriptorSets=nil;
+
+    // pname:offset must: be less than the size of pname:buffer
+    // The sum of pname:offset, and the address of the range of sname:VkDeviceMemory object that's backing pname:buffer, must: be a multiple of the type indicated by pname:indexType
+    // pname:buffer must: have been created with the ename:VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag
     vkCmdBindIndexBuffer:TvkCmdBindIndexBuffer=nil;
+
+    // pname:firstBinding must: be less than sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindings
+    // The sum of pname:firstBinding and pname:bindingCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxVertexInputBindings
+    // All elements of pname:pOffsets must: be less than the size of the corresponding element in pname:pBuffers
+    // All elements of pname:pBuffers must: have been created with the ename:VK_BUFFER_USAGE_VERTEX_BUFFER_BIT flag
     vkCmdBindVertexBuffers:TvkCmdBindVertexBuffers=nil;
+
+    // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+    // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+    // For a given vertex buffer binding, any attribute data fetched must: be entirely contained within the corresponding vertex buffer binding, as described in <<fxvertex-input>>
+    // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+    // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+    // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
     vkCmdDraw:TvkCmdDraw=nil;
+
+    // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+    // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+    // For a given vertex buffer binding, any attribute data fetched must: be entirely contained within the corresponding vertex buffer binding, as described in <<fxvertex-input>>
+    // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+    // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+    // (pname:indexSize * (pname:firstIndex + pname:indexCount) + pname:offset) must: be less than or equal to the size of the currently bound index buffer, with indexSize being based on the type specified by pname:indexType, where the index buffer, pname:indexType, and pname:offset are specified via fname:vkCmdBindIndexBuffer
+    // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
     vkCmdDrawIndexed:TvkCmdDrawIndexed=nil;
+
+    // pname:offset must: be a multiple of `4`
+    // If pname:drawCount is greater than `1`, pname:stride must: be a multiple of `4` and must: be greater than or equal to sizeof(sname:VkDrawIndirectCommand)
+    // If the <<features-features-multiDrawIndirect,multi-draw indirect>> feature is not enabled, pname:drawCount must: be `0` or `1`
+    // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the pname:firstInstance members of the sname:VkDrawIndirectCommand structures accessed by this command must: be code:0
+    // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+    // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+    // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+    // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+    // If pname:drawCount is equal to `1`, (pname:offset + sizeof(sname:VkDrawIndirectCommand)) must: be less than or equal to the size of pname:buffer
+    // If pname:drawCount is greater than `1`, (pname:stride x (pname:drawCount - 1) + pname:offset + sizeof(sname:VkDrawIndirectCommand)) must: be less than or equal to the size of pname:buffer
+    // pname:drawCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxDrawIndirectCount
+    // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
     vkCmdDrawIndirect:TvkCmdDrawIndirect=nil;
+
+    // pname:offset must: be a multiple of `4`
+    // If pname:drawCount is greater than `1`, pname:stride must: be a multiple of `4` and must: be greater than or equal to sizeof(sname:VkDrawIndexedIndirectCommand)
+    // If the <<features-features-multiDrawIndirect,multi-draw indirect>> feature is not enabled, pname:drawCount must: be `0` or `1`
+    // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the pname:firstInstance members of the sname:VkDrawIndexedIndirectCommand structures accessed by this command must: be code:0
+    // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_GRAPHICS, with a sname:VkPipelineLayout that is compatible for push constants, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+    // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+    // A valid graphics pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_GRAPHICS
+    // If the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+    // If pname:drawCount is equal to `1`, (pname:offset + sizeof(sname:VkDrawIndexedIndirectCommand)) must: be less than or equal to the size of pname:buffer
+    // If pname:drawCount is greater than `1`, (pname:stride x (pname:drawCount - 1) + pname:offset + sizeof(sname:VkDrawIndexedIndirectCommand)) must: be less than or equal to the size of pname:buffer
+    // pname:drawCount must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxDrawIndirectCount
+    // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
     vkCmdDrawIndexedIndirect:TvkCmdDrawIndexedIndirect=nil;
+
+    // pname:x must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[0]
+    // pname:y must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[1]
+    // pname:z must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxComputeWorkGroupCount[2]
+    // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+    // A valid compute pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_COMPUTE
+    // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for push constants with the one used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
     vkCmdDispatch:TvkCmdDispatch=nil;
+
+    // For each set _n_ that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a descriptor set must: have been bound to _n_ at ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for set _n_, with the sname:VkPipelineLayout used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // Descriptors in each bound descriptor set, specified via fname:vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound sname:VkPipeline object, specified via fname:vkCmdBindPipeline
+    // A valid compute pipeline must: be bound to the current command buffer with ename:VK_PIPELINE_BIND_POINT_COMPUTE
+    // pname:buffer must: have been created with the ename:VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT bit set
+    // pname:offset must: be a multiple of `4`
+    // The sum of pname:offset and the size of sname:VkDispatchIndirectCommand must: be less than or equal to the size of pname:buffer
+    // For each push constant that is statically used by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for ename:VK_PIPELINE_BIND_POINT_COMPUTE, with a sname:VkPipelineLayout that is compatible for push constants with the one used to create the current sname:VkPipeline, as described in <<descriptorsets-compatibility>>
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any sname:VkImage with a sname:VkImageView of the type ename:VK_IMAGE_VIEW_TYPE_3D, ename:VK_IMAGE_VIEW_TYPE_CUBE, ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY, ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY or ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any sname:VkSampler object that is accessed from a shader by the sname:VkPipeline currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the sname:VkPipeline object currently bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // Any slink:VkImage being sampled with ename:VK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the ename:VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
     vkCmdDispatchIndirect:TvkCmdDispatchIndirect=nil;
+
+    // The pname:copySize member of a given element of pname:pRegions must: be greater than `0`
+    // The pname:srcOffset member of a given element of pname:pRegions must: be less than the size of pname:srcBuffer
+    // The pname:dstOffset member of a given element of pname:pRegions must: be less than the size of pname:dstBuffer
+    // The pname:copySize member of a given element of pname:pRegions must: be less than or equal to the size of pname:srcBuffer minus pname:srcOffset
+    // The pname:copySize member of a given element of pname:pRegions must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+    // The union of the source regions, and the union of the destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+    // pname:srcBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
+    // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
     vkCmdCopyBuffer:TvkCmdCopyBuffer=nil;
+
+    // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+    // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+    // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+    // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+    // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+    // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+    // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+    // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+    // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+    // The elink:VkFormat of each of pname:srcImage and pname:dstImage must: be compatible, as defined <<copies-images-format-compatibility, below>>
+    // The sample count of pname:srcImage and pname:dstImage must: match
     vkCmdCopyImage:TvkCmdCopyImage=nil;
+
+    // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+    // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+    // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+    // pname:srcImage must: use a format that supports ename:VK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by sname:VkFormatProperties::pname:linearTilingFeatures (for linear tiled images) or sname:VkFormatProperties::pname:optimalTilingFeatures (for optimally tiled images) - as returned by fname:vkGetPhysicalDeviceFormatProperties
+    // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+    // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+    // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+    // pname:dstImage must: use a format that supports ename:VK_FORMAT_FEATURE_BLIT_DST_BIT, which is indicated by sname:VkFormatProperties::pname:linearTilingFeatures (for linear tiled images) or sname:VkFormatProperties::pname:optimalTilingFeatures (for optimally tiled images) - as returned by fname:vkGetPhysicalDeviceFormatProperties
+    // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+    // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+    // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+    // The sample count of pname:srcImage and pname:dstImage must: both be equal to ename:VK_SAMPLE_COUNT_1_BIT
+    // If either of pname:srcImage or pname:dstImage was created with a signed integer elink:VkFormat, the other must: also have been created with a signed integer elink:VkFormat
+    // If either of pname:srcImage or pname:dstImage was created with an unsigned integer elink:VkFormat, the other must: also have been created with an unsigned integer elink:VkFormat
+    // If either of pname:srcImage or pname:dstImage was created with a depth/stencil format, the other must: have exactly the same format
+    // If pname:srcImage was created with a depth/stencil format, pname:filter must: be ename:VK_FILTER_NEAREST
     vkCmdBlitImage:TvkCmdBlitImage=nil;
+
+    // The buffer region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcBuffer
+    // The image region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+    // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+    // pname:srcBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
+    // pname:dstImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+    // pname:dstImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+    // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+    // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
     vkCmdCopyBufferToImage:TvkCmdCopyBufferToImage=nil;
+
+    // The image region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+    // The buffer region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstBuffer
+    // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+    // pname:srcImage must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
+    // pname:srcImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+    // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+    // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+    // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
     vkCmdCopyImageToBuffer:TvkCmdCopyImageToBuffer=nil;
+
+    // pname:dataSize must: be greater than `0`
+    // pname:dstOffset must: be less than the size of pname:dstBuffer
+    // pname:dataSize must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+    // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
+    // pname:dstOffset must: be a multiple of `4`
+    // pname:dataSize must: be less than or equal to `65536`
+    // pname:dataSize must: be a multiple of `4`
     vkCmdUpdateBuffer:TvkCmdUpdateBuffer=nil;
+
+    // pname:dstOffset must: be less than the size of pname:dstBuffer
+    // pname:dstOffset must: be a multiple of `4`
+    // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be greater than `0`
+    // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be less than or equal to the size of pname:dstBuffer minus pname:dstOffset
+    // If pname:size is not equal to ename:VK_WHOLE_SIZE, pname:size must: be a multiple of `4`
+    // pname:dstBuffer must: have been created with ename:VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
     vkCmdFillBuffer:TvkCmdFillBuffer=nil;
+
+    // pname:image must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+    // pname:imageLayout must: specify the layout of the subresource ranges of pname:image specified in pname:pRanges at the time this command is executed on a sname:VkDevice
+    // pname:imageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+    // The image range of any given element of pname:pRanges must: be a subresource range that is contained within pname:image
     vkCmdClearColorImage:TvkCmdClearColorImage=nil;
+
+    // pname:image must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
+    // pname:imageLayout must: specify the layout of the subresource ranges of pname:image specified in pname:pRanges at the time this command is executed on a sname:VkDevice
+    // pname:imageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+    // The image range of any given element of pname:pRanges must: be a subresource range that is contained within pname:image
     vkCmdClearDepthStencilImage:TvkCmdClearDepthStencilImage=nil;
+
+    // If the pname:aspectMask member of any given element of pname:pAttachments contains ename:VK_IMAGE_ASPECT_COLOR_BIT, the pname:colorAttachment member of those elements must: refer to a valid color attachment in the current subpass
+    // The rectangular region specified by a given element of pname:pRects must: be contained within the render area of the current render pass instance
+    // The layers specified by a given element of pname:pRects must: be contained within every attachment that pname:pAttachments refers to
     vkCmdClearAttachments:TvkCmdClearAttachments=nil;
+
+    // The source region specified by a given element of pname:pRegions must: be a region that is contained within pname:srcImage
+    // The destination region specified by a given element of pname:pRegions must: be a region that is contained within pname:dstImage
+    // The union of all source regions, and the union of all destination regions, specified by the elements of pname:pRegions, mustnot: overlap in memory
+    // pname:srcImage must: have a sample count equal to any valid sample count value other than ename:VK_SAMPLE_COUNT_1_BIT
+    // pname:dstImage must: have a sample count equal to ename:VK_SAMPLE_COUNT_1_BIT
+    // pname:srcImageLayout must: specify the layout of the subresources of pname:srcImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+    // pname:srcImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+    // pname:dstImageLayout must: specify the layout of the subresources of pname:dstImage specified in pname:pRegions at the time this command is executed on a sname:VkDevice
+    // pname:dstImageLayout must: be either of ename:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or ename:VK_IMAGE_LAYOUT_GENERAL
+    // If pname:dstImage was created with pname:tiling equal to ename:VK_IMAGE_TILING_LINEAR, pname:dstImage must: have been created with a pname:format that supports being a color attachment, as specified by the ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:linearTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
+    // If pname:dstImage was created with pname:tiling equal to ename:VK_IMAGE_TILING_OPTIMAL, pname:dstImage must: have been created with a pname:format that supports being a color attachment, as specified by the ename:VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in sname:VkFormatProperties::pname:optimalTilingFeatures returned by fname:vkGetPhysicalDeviceFormatProperties
     vkCmdResolveImage:TvkCmdResolveImage=nil;
+
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
     vkCmdSetEvent:TvkCmdSetEvent=nil;
+
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:stageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
     vkCmdResetEvent:TvkCmdResetEvent=nil;
+
+    // pname:srcStageMask must: be the bitwise OR of the pname:stageMask parameter used in previous calls to fname:vkCmdSetEvent with any of the members of pname:pEvents and ename:VK_PIPELINE_STAGE_HOST_BIT if any of the members of pname:pEvents was set using fname:vkSetEvent
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+    // If pname:pEvents includes one or more events that will be signaled by fname:vkSetEvent after pname:commandBuffer has been submitted to a queue, then fname:vkCmdWaitEvents mustnot: be called inside a render pass instance
     vkCmdWaitEvents:TvkCmdWaitEvents=nil;
+
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:srcStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or ename:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, pname:dstStageMask mustnot: contain ename:VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or pname:VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+    // If fname:vkCmdPipelineBarrier is called within a render pass instance, the render pass must: declare at least one self-dependency from the current subpass to itself - see <<synchronization-pipeline-barriers-subpass-self-dependencies,Subpass Self-dependency>>
     vkCmdPipelineBarrier:TvkCmdPipelineBarrier=nil;
+
+    // The query identified by pname:queryPool and pname:query must: currently not be <<queries-operation-active,active>>
+    // The query identified by pname:queryPool and pname:query must: be unavailable
+    // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the pname:queryType used to create pname:queryPool was not ename:VK_QUERY_TYPE_OCCLUSION, pname:flags mustnot: contain ename:VK_QUERY_CONTROL_PRECISE_BIT
+    // pname:queryPool must: have been created with a pname:queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within pname:commandBuffer
+    // pname:query must: be less than the number of queries in pname:queryPool
+    // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_OCCLUSION, the sname:VkCommandPool that pname:commandBuffer was created from must: support graphics operations
+    // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pname:pipelineStatistics indicate graphics operations, the sname:VkCommandPool that pname:commandBuffer was created from must: support graphics operations
+    // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pname:pipelineStatistics indicate compute operations, the sname:VkCommandPool that pname:commandBuffer was created from must: support compute operations
     vkCmdBeginQuery:TvkCmdBeginQuery=nil;
+
+    // The query identified by pname:queryPool and pname:query must: currently be <<queries-operation-active,active>>
+    // pname:query must: be less than the number of queries in pname:queryPool
     vkCmdEndQuery:TvkCmdEndQuery=nil;
+
+    // pname:firstQuery must: be less than the number of queries in pname:queryPool
+    // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
     vkCmdResetQueryPool:TvkCmdResetQueryPool=nil;
+
+    // The query identified by pname:queryPool and pname:query must: be _unavailable_
+    // The command pool's queue family must: support a non-zero pname:timestampValidBits
     vkCmdWriteTimestamp:TvkCmdWriteTimestamp=nil;
+
+    // pname:dstOffset must: be less than the size of pname:dstBuffer
+    // pname:firstQuery must: be less than the number of queries in pname:queryPool
+    // The sum of pname:firstQuery and pname:queryCount must: be less than or equal to the number of queries in pname:queryPool
+    // If ename:VK_QUERY_RESULT_64_BIT is not set in pname:flags then pname:dstOffset and pname:stride must be multiples of `4`
+    // If ename:VK_QUERY_RESULT_64_BIT is set in pname:flags then pname:dstOffset and pname:stride must be multiples of `8`
+    // pname:dstBuffer must: have enough storage, from pname:dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+    // If the pname:queryType used to create pname:queryPool was ename:VK_QUERY_TYPE_TIMESTAMP, pname:flags mustnot: contain ename:VK_QUERY_RESULT_PARTIAL_BIT
     vkCmdCopyQueryPoolResults:TvkCmdCopyQueryPoolResults=nil;
+
+    // pname:stageFlags must: match exactly the shader stages used in pname:layout for the range specified by pname:offset and pname:size
+    // pname:offset must: be a multiple of `4`
+    // pname:size must: be a multiple of `4`
+    // pname:offset must: be less than sname:VkPhysicalDeviceLimits::pname:maxPushConstantsSize
+    // pname:size must: be less than or equal to sname:VkPhysicalDeviceLimits::pname:maxPushConstantsSize minus pname:offset
     vkCmdPushConstants:TvkCmdPushConstants=nil;
+
+    // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
+    // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or ename:VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT set
+    // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_SAMPLED_BIT or ename:VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT set
+    // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_TRANSFER_SRC_BIT then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_SRC_BIT set
+    // If any of the pname:initialLayout or pname:finalLayout member of the sname:VkAttachmentDescription structures or the pname:layout member of the sname:VkAttachmentReference structures specified when creating the render pass specified in the pname:renderPass member of pname:pRenderPassBegin is ename:VK_IMAGE_LAYOUT_TRANSFER_DST_BIT then the corresponding attachment image of the framebuffer specified in the pname:framebuffer member of pname:pRenderPassBegin must: have been created with ename:VK_IMAGE_USAGE_TRANSFER_DST_BIT set
     vkCmdBeginRenderPass:TvkCmdBeginRenderPass=nil;
+
+    // The current subpass index must: be less than the number of subpasses in the render pass minus one
     vkCmdNextSubpass:TvkCmdNextSubpass=nil;
+
+    // The current subpass index must: be equal to the number of subpasses in the render pass minus one
     vkCmdEndRenderPass:TvkCmdEndRenderPass=nil;
+
+    // pname:commandBuffer must: have been created with a pname:level of ename:VK_COMMAND_BUFFER_LEVEL_PRIMARY
+    // Any given element of pname:pCommandBuffers must: have been created with a pname:level of ename:VK_COMMAND_BUFFER_LEVEL_SECONDARY
+    // Any given element of pname:pCommandBuffers mustnot: be already pending execution in pname:commandBuffer, or appear twice in pname:pCommandBuffers, unless it was created with the ename:VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+    // Any given element of pname:pCommandBuffers mustnot: be already pending execution in any other sname:VkCommandBuffer, unless it was created with the ename:VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+    // Any given element of pname:pCommandBuffers must: be in the executable state
+    // If fname:vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the pname:contents parameter of fname:vkCmdBeginRenderPass set to ename:VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
+    // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with the ename:VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+    // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with the pname:subpass member of the pname:inheritanceInfo structure set to the index of the subpass which the given command buffer will be executed in
+    // If fname:vkCmdExecuteCommands is being called within a render pass instance, any given element of pname:pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
+    // If fname:vkCmdExecuteCommands is being called within a render pass instance, and any given element of pname:pCommandBuffers was recorded with the pname:framebuffer member of the sname:VkCommandBufferInheritanceInfo structure not equal to sname:VK_NULL_HANDLE, that sname:VkFramebuffer must: be compatible with the sname:VkFramebuffer used in the current render pass instance
+    // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, pname:commandBuffer mustnot: have any queries <<queries-operation-active,active>>
+    // If pname:commandBuffer has a ename:VK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:occlusionQueryEnable set to ename:VK_TRUE
+    // If pname:commandBuffer has a ename:VK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:queryFlags having all bits set that are set for the query
+    // If pname:commandBuffer has a ename:VK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pname:pCommandBuffers must: have been recorded with sname:VkCommandBufferBeginInfo::pname:pipelineStatistics having all bits set that are set in the sname:VkQueryPool the query uses
+    // Any given element of pname:pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in pname:commandBuffer
     vkCmdExecuteCommands:TvkCmdExecuteCommands=nil;
+
 {$ifdef Android}
     vkCreateAndroidSurfaceKHR:TvkCreateAndroidSurfaceKHR=nil;
 {$endif}
+
     vkGetPhysicalDeviceDisplayPropertiesKHR:TvkGetPhysicalDeviceDisplayPropertiesKHR=nil;
+
     vkGetPhysicalDeviceDisplayPlanePropertiesKHR:TvkGetPhysicalDeviceDisplayPlanePropertiesKHR=nil;
+
+    // pname:planeIndex must: be less than the number of display planes supported by the device as determined by calling fname:vkGetPhysicalDeviceDisplayPlanePropertiesKHR
     vkGetDisplayPlaneSupportedDisplaysKHR:TvkGetDisplayPlaneSupportedDisplaysKHR=nil;
+
     vkGetDisplayModePropertiesKHR:TvkGetDisplayModePropertiesKHR=nil;
+
     vkCreateDisplayModeKHR:TvkCreateDisplayModeKHR=nil;
+
     vkGetDisplayPlaneCapabilitiesKHR:TvkGetDisplayPlaneCapabilitiesKHR=nil;
+
     vkCreateDisplayPlaneSurfaceKHR:TvkCreateDisplayPlaneSurfaceKHR=nil;
+
     vkCreateSharedSwapchainsKHR:TvkCreateSharedSwapchainsKHR=nil;
+
 {$ifdef Mir}
     vkCreateMirSurfaceKHR:TvkCreateMirSurfaceKHR=nil;
 {$endif}
+
 {$ifdef Mir}
+    // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
     vkGetPhysicalDeviceMirPresentationSupportKHR:TvkGetPhysicalDeviceMirPresentationSupportKHR=nil;
 {$endif}
+
+    // All sname:VkSwapchainKHR objects created for pname:surface must: have been destroyed prior to destroying pname:surface
+    // If sname:VkAllocationCallbacks were provided when pname:surface was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:surface was created, pname:pAllocator must: be `NULL`
     vkDestroySurfaceKHR:TvkDestroySurfaceKHR=nil;
+
+    // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
     vkGetPhysicalDeviceSurfaceSupportKHR:TvkGetPhysicalDeviceSurfaceSupportKHR=nil;
+
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR:TvkGetPhysicalDeviceSurfaceCapabilitiesKHR=nil;
+
     vkGetPhysicalDeviceSurfaceFormatsKHR:TvkGetPhysicalDeviceSurfaceFormatsKHR=nil;
+
     vkGetPhysicalDeviceSurfacePresentModesKHR:TvkGetPhysicalDeviceSurfacePresentModesKHR=nil;
+
     vkCreateSwapchainKHR:TvkCreateSwapchainKHR=nil;
+
+    // All uses of presentable images acquired from pname:swapchain and owned by the application must: have completed execution
+    // If sname:VkAllocationCallbacks were provided when pname:swapchain was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:swapchain was created, pname:pAllocator must: be `NULL`
     vkDestroySwapchainKHR:TvkDestroySwapchainKHR=nil;
+
     vkGetSwapchainImagesKHR:TvkGetSwapchainImagesKHR=nil;
+
+    // If pname:semaphore is not sname:VK_NULL_HANDLE it must: be unsignalled
+    // If pname:fence is not sname:VK_NULL_HANDLE it must: be unsignalled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
     vkAcquireNextImageKHR:TvkAcquireNextImageKHR=nil;
+
+    // Any given element of pname:pSwapchains member of pname:pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from pname:queue as determined using a call to fname:vkGetPhysicalDeviceSurfaceSupportKHR
     vkQueuePresentKHR:TvkQueuePresentKHR=nil;
+
 {$ifdef Wayland}
     vkCreateWaylandSurfaceKHR:TvkCreateWaylandSurfaceKHR=nil;
 {$endif}
+
 {$ifdef Wayland}
+    // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
     vkGetPhysicalDeviceWaylandPresentationSupportKHR:TvkGetPhysicalDeviceWaylandPresentationSupportKHR=nil;
 {$endif}
+
     vkCreateWin32SurfaceKHR:TvkCreateWin32SurfaceKHR=nil;
+
+    // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
     vkGetPhysicalDeviceWin32PresentationSupportKHR:TvkGetPhysicalDeviceWin32PresentationSupportKHR=nil;
+
 {$ifdef X11}
     vkCreateXlibSurfaceKHR:TvkCreateXlibSurfaceKHR=nil;
 {$endif}
+
 {$ifdef X11}
+    // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
     vkGetPhysicalDeviceXlibPresentationSupportKHR:TvkGetPhysicalDeviceXlibPresentationSupportKHR=nil;
 {$endif}
+
 {$ifdef XCB}
     vkCreateXcbSurfaceKHR:TvkCreateXcbSurfaceKHR=nil;
 {$endif}
+
 {$ifdef XCB}
+    // pname:queueFamilyIndex must: be less than pname:pQueueFamilyPropertyCount returned by fname:vkGetPhysicalDeviceQueueFamilyProperties for the given pname:physicalDevice
     vkGetPhysicalDeviceXcbPresentationSupportKHR:TvkGetPhysicalDeviceXcbPresentationSupportKHR=nil;
 {$endif}
+
     vkCreateDebugReportCallbackEXT:TvkCreateDebugReportCallbackEXT=nil;
+
+    // If sname:VkAllocationCallbacks were provided when pname:instance was created, a compatible set of callbacks must: be provided here
+    // If no sname:VkAllocationCallbacks were provided when pname:instance was created, pname:pAllocator must: be `NULL`
     vkDestroyDebugReportCallbackEXT:TvkDestroyDebugReportCallbackEXT=nil;
+
+    // pname:instance must: be a valid sname:VkInstance handle
+    // pname:flags must be a combination of one or more of sname:VkDebugReportFlagBitsEXT
+    // pname:objType must be one of sname:VkDebugReportObjectTypeEXT, ename:VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if pname:object is `NULL`
+    // pname:object may be a {apiname} object
+    // pname:pLayerPrefix must: be a `NULL` terminated string.
+    // pname:pMsg must: be a `NULL` terminated string.
     vkDebugReportMessageEXT:TvkDebugReportMessageEXT=nil;
+
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
 function VK_VERSION_MAJOR(const Version:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}

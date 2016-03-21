@@ -3035,6 +3035,24 @@ begin
  end;
 end;
 
+procedure ParseValidityTag(Tag:TXMLTag;const StringList:TStringList);
+var i:longint;
+    ChildItem:TXMLItem;
+    ChildTag:TXMLTag;
+begin
+ if assigned(Tag) then begin
+  for i:=0 to Tag.Items.Count-1 do begin
+   ChildItem:=Tag.Items[i];
+   if ChildItem is TXMLTag then begin
+    ChildTag:=TXMLTag(ChildItem);
+    if ChildTag.Name='usage' then begin
+     StringList.Add(ParseText(ChildTag));
+    end;
+   end;
+  end;
+ end;
+end;
+
 procedure ParseCommentTag(Tag:TXMLTag);
 begin
  Comment:=ParseText(Tag);
@@ -3198,6 +3216,7 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
       Define:ansistring;
       Type_:ansistring;
       Ptr:longint;
+      ValidityStringList:TStringList;
      end;
      TTypeDefinitions=array of TTypeDefinition;
      TPTypeDefinitions=array of PTypeDefinition;
@@ -3210,6 +3229,7 @@ var i,j,k,ArraySize,CountTypeDefinitions,VersionMajor,VersionMinor,VersionPatch:
     TypeDefinition:PTypeDefinition;
     TypeDefinitionMember:PTypeDefinitionMember;
     TypeDefinitionList:TStringList;
+    ValidityStringList:TStringList;
     Ptr,Constant:boolean;
  procedure ResolveTypeDefinitionDependencies;
   function HaveDependencyOnTypeDefinition(const TypeDefinition,OtherTypeDefinition:PTypeDefinition):boolean;
@@ -3307,240 +3327,247 @@ begin
    if ChildItem is TXMLTag then begin
     ChildTag:=TXMLTag(ChildItem);
     if ChildTag.Name='type' then begin
-     Category:=ChildTag.GetParameter('category');
-     if Category='include' then begin
-     end else if Category='define' then begin
-      Name:=ParseText(ChildTag.FindTag('name'));
-      if pos('VK_API_VERSION',Name)=1 then begin
-       VersionMajor:=1;
-       VersionMinor:=0;
-       VersionPatch:=0;
-       Text:=ParseText(ChildTag);
-       if length(Text)>0 then begin
-        j:=pos('(',Text);
-        if j>0 then begin
-         delete(Text,1,j);
-         j:=pos(')',Text);
+     ValidityStringList:=TStringList.Create;
+     try
+      ParseValidityTag(ChildTag.FindTag('validity'),ValidityStringList);
+      Category:=ChildTag.GetParameter('category');
+      if Category='include' then begin
+      end else if Category='define' then begin
+       Name:=ParseText(ChildTag.FindTag('name'));
+       if pos('VK_API_VERSION',Name)=1 then begin
+        VersionMajor:=1;
+        VersionMinor:=0;
+        VersionPatch:=0;
+        Text:=ParseText(ChildTag);
+        if length(Text)>0 then begin
+         j:=pos('(',Text);
          if j>0 then begin
-          Text:=copy(Text,1,j-1);
-          j:=pos(',',Text);
+          delete(Text,1,j);
+          j:=pos(')',Text);
           if j>0 then begin
-           VersionMajor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
-           delete(Text,1,j);
-           Text:=trim(Text);
+           Text:=copy(Text,1,j-1);
            j:=pos(',',Text);
            if j>0 then begin
-            VersionMinor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
+            VersionMajor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
             delete(Text,1,j);
             Text:=trim(Text);
-            VersionPatch:=StrToIntDef(Text,0);
-           end;
-          end;
-         end;
-        end;
-       end;
-       VersionConstants.Add('      '+Name+'=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
-       VersionConstants.Add('');
-      end else if pos('VK_HEADER_VERSION',Name)=1 then begin
-       Text:=ParseText(ChildTag);
-       j:=pos(Name,Text);
-       if j>0 then begin
-        Delete(Text,1,(j+length(Name))-1);
-        Text:=trim(Text);
-        VersionConstants.Add('      '+Name+'='+Text+';');
-        VersionConstants.Add('');
-       end;
-      end;
-     end else if Category='basetype' then begin
-      Type_:=ParseText(ChildTag.FindTag('type'));
-      Name:=ParseText(ChildTag.FindTag('name'));
-      BaseTypes.Add('     PP'+Name+'=^P'+Name+';');
-      BaseTypes.Add('     P'+Name+'=^T'+Name+';');
-      BaseTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
-      BaseTypes.Add('');
-     end else if Category='bitmask' then begin
-      Type_:=ParseText(ChildTag.FindTag('type'));
-      Name:=ParseText(ChildTag.FindTag('name'));
-      BitMaskTypes.Add('     PP'+Name+'=^P'+Name+';');
-      BitMaskTypes.Add('     P'+Name+'=^T'+Name+';');
-      BitMaskTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
-      BitMaskTypes.Add('');
-     end else if Category='handle' then begin
-      Type_:=ParseText(ChildTag.FindTag('type'));
-      Name:=ParseText(ChildTag.FindTag('name'));
-      HandleTypes.Add('     PP'+Name+'=^P'+Name+';');
-      HandleTypes.Add('     P'+Name+'=^T'+Name+';');
-      HandleTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
-      HandleTypes.Add('');
-     end else if Category='enum' then begin
-      Name:=ChildTag.GetParameter('name');
-     end else if Category='funcpointer' then begin
-      TypeDefinition:=@TypeDefinitions[CountTypeDefinitions];
-      inc(CountTypeDefinitions);
-      TypeDefinition^.Kind:=tdkFUNCPOINTER;
-      TypeDefinition^.Name:='';
-      TypeDefinition^.Comment:=ChildTag.GetParameter('comment');
-      TypeDefinition^.Members:=nil;
-      TypeDefinition^.Define:='';
-      TypeDefinition^.Type_:='';
-      TypeDefinition^.Ptr:=0;
-      Name:='';
-      Type_:='';
-      Text:='';
-      Ptr:=false;
-      Constant:=false;
-      for j:=0 to ChildTag.Items.Count-1 do begin
-       ChildChildItem:=ChildTag.Items[j];
-       if ChildChildItem is TXMLTag then begin
-        ChildChildTag:=TXMLTag(ChildChildItem);
-        if ChildChildTag.Name='name' then begin
-         TypeDefinition^.Name:=ParseText(ChildChildTag);
-         if pos('void*',Text)>0 then begin
-          TypeDefinition^.Ptr:=1;
-          TypeDefinition^.Type_:='void';
-         end else begin
-          Text:=trim(StringReplace(Text,'typedef','',[rfReplaceAll]));
-          Text:=trim(StringReplace(Text,'VKAPI_PTR','',[rfReplaceAll]));
-          Text:=trim(StringReplace(Text,'(','',[rfReplaceAll]));
-          Text:=trim(StringReplace(Text,'*','',[rfReplaceAll]));
-          TypeDefinition^.Type_:=Text;
-         end;
-        end else if ChildChildTag.Name='type' then begin
-         Type_:=ParseText(ChildChildTag);
-        end;
-       end else if ChildChildItem is TXMLText then begin
-        Text:=TXMLText(ChildChildItem).Text;
-        if length(TypeDefinition^.Name)>0 then begin
-         while length(Text)>0 do begin
-          NextText:='';
-          if trim(Text)='const' then begin
-           Constant:=true;
-          end else if length(Type_)>0 then begin
-           if length(TypeDefinition^.Members)<TypeDefinition^.CountMembers+1 then begin
-            SetLength(TypeDefinition^.Members,(TypeDefinition^.CountMembers+1)*2);
-           end;
-           TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
-           inc(TypeDefinition^.CountMembers);
-           TypeDefinitionMember^.Type_:=Type_;
-           k:=pos(',',Text);
-           if k>0 then begin
-            NextText:=trim(copy(Text,k+1,(length(Text)-k)+1));
-            Text:=trim(copy(Text,1,k-1));
-           end;
-           Text:=trim(StringReplace(Text,');','',[rfReplaceAll]));
-           if pos('*',Text)>0 then begin
-            for k:=1 to length(Text) do begin
-             if Text[k]='*' then begin
-              inc(TypeDefinitionMember^.Ptr);
-             end;
+            j:=pos(',',Text);
+            if j>0 then begin
+             VersionMinor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
+             delete(Text,1,j);
+             Text:=trim(Text);
+             VersionPatch:=StrToIntDef(Text,0);
             end;
-            Text:=trim(StringReplace(Text,'*','',[rfReplaceAll]));
            end;
-           TypeDefinitionMember^.Constant:=Constant;
-           Constant:=false;
-           if Text='object' then begin
-            Text:='object_';
-           end;
-           TypeDefinitionMember^.Name:=Text;
-           TypeDefinitionMember^.ArraySizeInt:=0;
-           TypeDefinitionMember^.ArraySizeStr:='';
-           TypeDefinitionMember^.Comment:='';
-           Type_:='';
           end;
-          Text:=NextText;
+         end;
+        end;
+        VersionConstants.Add('      '+Name+'=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
+        VersionConstants.Add('');
+       end else if pos('VK_HEADER_VERSION',Name)=1 then begin
+        Text:=ParseText(ChildTag);
+        j:=pos(Name,Text);
+        if j>0 then begin
+         Delete(Text,1,(j+length(Name))-1);
+         Text:=trim(Text);
+         VersionConstants.Add('      '+Name+'='+Text+';');
+         VersionConstants.Add('');
+        end;
+       end;
+      end else if Category='basetype' then begin
+       Type_:=ParseText(ChildTag.FindTag('type'));
+       Name:=ParseText(ChildTag.FindTag('name'));
+       BaseTypes.Add('     PP'+Name+'=^P'+Name+';');
+       BaseTypes.Add('     P'+Name+'=^T'+Name+';');
+       BaseTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
+       BaseTypes.Add('');
+      end else if Category='bitmask' then begin
+       Type_:=ParseText(ChildTag.FindTag('type'));
+       Name:=ParseText(ChildTag.FindTag('name'));
+       BitMaskTypes.Add('     PP'+Name+'=^P'+Name+';');
+       BitMaskTypes.Add('     P'+Name+'=^T'+Name+';');
+       BitMaskTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
+       BitMaskTypes.Add('');
+      end else if Category='handle' then begin
+       Type_:=ParseText(ChildTag.FindTag('type'));
+       Name:=ParseText(ChildTag.FindTag('name'));
+       HandleTypes.Add('     PP'+Name+'=^P'+Name+';');
+       HandleTypes.Add('     P'+Name+'=^T'+Name+';');
+       HandleTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
+       HandleTypes.Add('');
+      end else if Category='enum' then begin
+       Name:=ChildTag.GetParameter('name');
+      end else if Category='funcpointer' then begin
+       TypeDefinition:=@TypeDefinitions[CountTypeDefinitions];
+       inc(CountTypeDefinitions);
+       TypeDefinition^.Kind:=tdkFUNCPOINTER;
+       TypeDefinition^.Name:='';
+       TypeDefinition^.Comment:=ChildTag.GetParameter('comment');
+       TypeDefinition^.Members:=nil;
+       TypeDefinition^.Define:='';
+       TypeDefinition^.Type_:='';
+       TypeDefinition^.Ptr:=0;
+       Name:='';
+       Type_:='';
+       Text:='';
+       Ptr:=false;
+       Constant:=false;
+       for j:=0 to ChildTag.Items.Count-1 do begin
+        ChildChildItem:=ChildTag.Items[j];
+        if ChildChildItem is TXMLTag then begin
+         ChildChildTag:=TXMLTag(ChildChildItem);
+         if ChildChildTag.Name='name' then begin
+          TypeDefinition^.Name:=ParseText(ChildChildTag);
+          if pos('void*',Text)>0 then begin
+           TypeDefinition^.Ptr:=1;
+           TypeDefinition^.Type_:='void';
+          end else begin
+           Text:=trim(StringReplace(Text,'typedef','',[rfReplaceAll]));
+           Text:=trim(StringReplace(Text,'VKAPI_PTR','',[rfReplaceAll]));
+           Text:=trim(StringReplace(Text,'(','',[rfReplaceAll]));
+           Text:=trim(StringReplace(Text,'*','',[rfReplaceAll]));
+           TypeDefinition^.Type_:=Text;
+          end;
+         end else if ChildChildTag.Name='type' then begin
+          Type_:=ParseText(ChildChildTag);
+         end;
+        end else if ChildChildItem is TXMLText then begin
+         Text:=TXMLText(ChildChildItem).Text;
+         if length(TypeDefinition^.Name)>0 then begin
+          while length(Text)>0 do begin
+           NextText:='';
+           if trim(Text)='const' then begin
+            Constant:=true;
+           end else if length(Type_)>0 then begin
+            if length(TypeDefinition^.Members)<TypeDefinition^.CountMembers+1 then begin
+             SetLength(TypeDefinition^.Members,(TypeDefinition^.CountMembers+1)*2);
+            end;
+            TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
+            inc(TypeDefinition^.CountMembers);
+            TypeDefinitionMember^.Type_:=Type_;
+            k:=pos(',',Text);
+            if k>0 then begin
+             NextText:=trim(copy(Text,k+1,(length(Text)-k)+1));
+             Text:=trim(copy(Text,1,k-1));
+            end;
+            Text:=trim(StringReplace(Text,');','',[rfReplaceAll]));
+            if pos('*',Text)>0 then begin
+             for k:=1 to length(Text) do begin
+              if Text[k]='*' then begin
+               inc(TypeDefinitionMember^.Ptr);
+              end;
+             end;
+             Text:=trim(StringReplace(Text,'*','',[rfReplaceAll]));
+            end;
+            TypeDefinitionMember^.Constant:=Constant;
+            Constant:=false;
+            if Text='object' then begin
+             Text:='object_';
+            end;
+            TypeDefinitionMember^.Name:=Text;
+            TypeDefinitionMember^.ArraySizeInt:=0;
+            TypeDefinitionMember^.ArraySizeStr:='';
+            TypeDefinitionMember^.Comment:='';
+            Type_:='';
+           end;
+           Text:=NextText;
+          end;
          end;
         end;
        end;
-      end;
-      SetLength(TypeDefinition^.Members,TypeDefinition^.CountMembers);
-     end else if (Category='struct') or (Category='union') then begin
-      Name:=ChildTag.GetParameter('name');
-      TypeDefinition:=@TypeDefinitions[CountTypeDefinitions];
-      inc(CountTypeDefinitions);
-      if Category='union' then begin
-       TypeDefinition^.Kind:=tdkUNION;
-      end else begin
-       TypeDefinition^.Kind:=tdkSTRUCT;
-      end;
-      TypeDefinition^.Name:=Name;
-      TypeDefinition^.Comment:=ChildTag.GetParameter('comment');
-      TypeDefinition^.Members:=nil;
-      TypeDefinition^.Define:='';
-      SetLength(TypeDefinition^.Members,ChildTag.Items.Count);
-      TypeDefinition^.CountMembers:=0;
-      for j:=0 to ChildTag.Items.Count-1 do begin
-       ChildChildItem:=ChildTag.Items[j];
-       if ChildChildItem is TXMLTag then begin
-        ChildChildTag:=TXMLTag(ChildChildItem);
-        if ChildChildTag.Name='member' then begin
-         Name:=ParseText(ChildChildTag.FindTag('name'));
-         ArraySizeStr:=ParseText(ChildChildTag.FindTag('enum'));
-         k:=pos('[',Name);
-         ArraySize:=-1;
-         if k>0 then begin
-          Text:=copy(Name,k+1,length(Name)-k);
-          Name:=copy(Name,1,k-1);
-          k:=pos(']',Text);
+       SetLength(TypeDefinition^.Members,TypeDefinition^.CountMembers);
+      end else if (Category='struct') or (Category='union') then begin
+       Name:=ChildTag.GetParameter('name');
+       TypeDefinition:=@TypeDefinitions[CountTypeDefinitions];
+       inc(CountTypeDefinitions);
+       if Category='union' then begin
+        TypeDefinition^.Kind:=tdkUNION;
+       end else begin
+        TypeDefinition^.Kind:=tdkSTRUCT;
+       end;
+       TypeDefinition^.Name:=Name;
+       TypeDefinition^.Comment:=ChildTag.GetParameter('comment');
+       TypeDefinition^.Members:=nil;
+       TypeDefinition^.Define:='';
+       SetLength(TypeDefinition^.Members,ChildTag.Items.Count);
+       TypeDefinition^.CountMembers:=0;
+       for j:=0 to ChildTag.Items.Count-1 do begin
+        ChildChildItem:=ChildTag.Items[j];
+        if ChildChildItem is TXMLTag then begin
+         ChildChildTag:=TXMLTag(ChildChildItem);
+         if ChildChildTag.Name='member' then begin
+          Name:=ParseText(ChildChildTag.FindTag('name'));
+          ArraySizeStr:=ParseText(ChildChildTag.FindTag('enum'));
+          k:=pos('[',Name);
+          ArraySize:=-1;
           if k>0 then begin
-           ArraySize:=StrToIntDef(copy(Text,1,k-1),1);
-          end;
-         end;
-         if ArraySize<0 then begin
-          Text:=ParseText(ChildChildTag);
-          k:=pos('[',Text);
-          if k>0 then begin
-           Delete(Text,1,k);
+           Text:=copy(Name,k+1,length(Name)-k);
+           Name:=copy(Name,1,k-1);
            k:=pos(']',Text);
            if k>0 then begin
-            Text:=trim(copy(Text,1,k-1));
-            ArraySize:=StrToIntDef(Text,-1);
-            if ArraySize<0 then begin
-             ArraySizeStr:=Text;
+            ArraySize:=StrToIntDef(copy(Text,1,k-1),1);
+           end;
+          end;
+          if ArraySize<0 then begin
+           Text:=ParseText(ChildChildTag);
+           k:=pos('[',Text);
+           if k>0 then begin
+            Delete(Text,1,k);
+            k:=pos(']',Text);
+            if k>0 then begin
+             Text:=trim(copy(Text,1,k-1));
+             ArraySize:=StrToIntDef(Text,-1);
+             if ArraySize<0 then begin
+              ArraySizeStr:=Text;
+             end;
             end;
-           end; 
+           end;
           end;
-         end;
-         if Name='type' then begin
-          Name:='type_';
-         end else if Name='hinstance' then begin
-          Name:='hinstance_';
-         end else if Name='hwnd' then begin
-          Name:='hwnd_';
-         end;
-         TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
-         inc(TypeDefinition^.CountMembers);
-         TypeDefinitionMember^.Name:=Name;
-         TypeDefinitionMember^.ArraySizeInt:=ArraySize;
-         Type_:=ParseText(ChildChildTag.FindTag('type'));
-         TypeDefinitionMember^.Type_:=Type_;
-         TypeDefinitionMember^.ArraySizeStr:=ArraySizeStr;
-         TypeDefinitionMember^.Comment:=ChildChildTag.GetParameter('comment');
-         TypeDefinitionMember^.TypeDefinitionIndex:=-1;
-         TypeDefinitionMember^.Ptr:=0;
-         Text:=ParseText(ChildChildTag);
-         for k:=1 to length(Text) do begin
-          if Text[k]='*' then begin
-           inc(TypeDefinitionMember^.Ptr);
+          if Name='type' then begin
+           Name:='type_';
+          end else if Name='hinstance' then begin
+           Name:='hinstance_';
+          end else if Name='hwnd' then begin
+           Name:='hwnd_';
           end;
-         end;
-         if (Type_='HWND') or (Type_='HINSTANCE') then begin
-          TypeDefinition^.Define:='Windows';
-         end else if (Type_='Display') or (Type_='VisualID') or (Type_='Window') then begin
-          TypeDefinition^.Define:='X11';
-         end else if (Type_='xcb_connection_t') or (Type_='xcb_visualid_t') or (Type_='xcb_window_t') then begin
-          TypeDefinition^.Define:='XCB';
-         end else if (Type_='wl_display') or (Type_='wl_surface') then begin
-          TypeDefinition^.Define:='Wayland';
-         end else if (Type_='MirConnection') or (Type_='MirSurface') then begin
-          TypeDefinition^.Define:='Mir';
-         end else if Type_='ANativeWindow' then begin
-          TypeDefinition^.Define:='Android';
+          TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
+          inc(TypeDefinition^.CountMembers);
+          TypeDefinitionMember^.Name:=Name;
+          TypeDefinitionMember^.ArraySizeInt:=ArraySize;
+          Type_:=ParseText(ChildChildTag.FindTag('type'));
+          TypeDefinitionMember^.Type_:=Type_;
+          TypeDefinitionMember^.ArraySizeStr:=ArraySizeStr;
+          TypeDefinitionMember^.Comment:=ChildChildTag.GetParameter('comment');
+          TypeDefinitionMember^.TypeDefinitionIndex:=-1;
+          TypeDefinitionMember^.Ptr:=0;
+          Text:=ParseText(ChildChildTag);
+          for k:=1 to length(Text) do begin
+           if Text[k]='*' then begin
+            inc(TypeDefinitionMember^.Ptr);
+           end;
+          end;
+          if (Type_='HWND') or (Type_='HINSTANCE') then begin
+           TypeDefinition^.Define:='Windows';
+          end else if (Type_='Display') or (Type_='VisualID') or (Type_='Window') then begin
+           TypeDefinition^.Define:='X11';
+          end else if (Type_='xcb_connection_t') or (Type_='xcb_visualid_t') or (Type_='xcb_window_t') then begin
+           TypeDefinition^.Define:='XCB';
+          end else if (Type_='wl_display') or (Type_='wl_surface') then begin
+           TypeDefinition^.Define:='Wayland';
+          end else if (Type_='MirConnection') or (Type_='MirSurface') then begin
+           TypeDefinition^.Define:='Mir';
+          end else if Type_='ANativeWindow' then begin
+           TypeDefinition^.Define:='Android';
+          end;
          end;
         end;
        end;
+       SetLength(TypeDefinition^.Members,TypeDefinition^.CountMembers);
+       TypeDefinition^.ValidityStringList:=ValidityStringList;
+       ValidityStringList:=nil;
       end;
-      SetLength(TypeDefinition^.Members,TypeDefinition^.CountMembers);
-     end else begin
+     finally
+      FreeAndNil(ValidityStringList);
      end;
     end;
    end;
@@ -3556,6 +3583,11 @@ begin
    TypeDefinition:=SortedTypeDefinitions[i];
    if length(TypeDefinition^.Define)>0 then begin
     TypeDefinitionTypes.Add('{$ifdef '+TypeDefinition^.Define+'}');
+   end;
+   if assigned(TypeDefinition^.ValidityStringList) and (TypeDefinition^.ValidityStringList.Count>0) then begin
+    for j:=0 to TypeDefinition^.ValidityStringList.Count-1 do begin
+     TypeDefinitionTypes.Add('     // '+TypeDefinition^.ValidityStringList.Strings[j]);
+    end;
    end;
    TypeDefinitionTypes.Add('     PP'+TypeDefinition^.Name+'=^P'+TypeDefinition^.Name+';');
    TypeDefinitionTypes.Add('     P'+TypeDefinition^.Name+'=^T'+TypeDefinition^.Name+';');
@@ -3612,6 +3644,7 @@ begin
     TypeDefinitionTypes.Add('{$endif}');
    end;
    TypeDefinitionTypes.Add('');
+   FreeAndNil(TypeDefinition^.ValidityStringList);
   end;
  finally
   SetLength(TypeDefinitions,0);
@@ -3846,6 +3879,7 @@ var i,j,k,ArraySize,CountTypeDefinitions:longint;
     ProtoName,ProtoType,ParamName,ParamType,Text,Line,Parameters,Define:ansistring;
     ProtoPtr,ParamPtr:longint;
     IsDeviceCommand:boolean;
+    ValidityStringList:TStringList;
 begin
  AllCommandType.Add('     PPVulkanCommands=^PVulkanCommands;');
  AllCommandType.Add('     PVulkanCommands=^TVulkanCommands;');
@@ -3855,117 +3889,135 @@ begin
   if ChildItem is TXMLTag then begin
    ChildTag:=TXMLTag(ChildItem);
    if ChildTag.Name='command' then begin
-    ProtoName:='';
-    ProtoType:='';
-    ProtoPtr:=0;
-    ParamName:='';
-    ParamType:='';
-    ParamPtr:=0;
-    IsDeviceCommand:=false;
-    Line:='';
-    Parameters:='';
-    Define:='';
-    for j:=0 to ChildTag.Items.Count-1 do begin
-     ChildChildItem:=ChildTag.Items[j];
-     if ChildChildItem is TXMLTag then begin
-      ChildChildTag:=TXMLTag(ChildChildItem);
-      if ChildChildTag.Name='proto' then begin
-       ProtoName:=ParseText(ChildChildTag.FindTag('name'));
-       ProtoType:=ParseText(ChildChildTag.FindTag('type'));
-       ProtoPtr:=0;
-       Text:=ParseText(ChildChildTag);
-       for k:=1 to length(Text)-1 do begin
-        if Text[k]='*' then begin
-         inc(ProtoPtr);
+    ValidityStringList:=TStringList.Create;
+    try
+     ParseValidityTag(ChildTag.FindTag('validity'),ValidityStringList);
+     ProtoName:='';
+     ProtoType:='';
+     ProtoPtr:=0;
+     ParamName:='';
+     ParamType:='';
+     ParamPtr:=0;
+     IsDeviceCommand:=false;
+     Line:='';
+     Parameters:='';
+     Define:='';
+     for j:=0 to ChildTag.Items.Count-1 do begin
+      ChildChildItem:=ChildTag.Items[j];
+      if ChildChildItem is TXMLTag then begin
+       ChildChildTag:=TXMLTag(ChildChildItem);
+       if ChildChildTag.Name='proto' then begin
+        ProtoName:=ParseText(ChildChildTag.FindTag('name'));
+        ProtoType:=ParseText(ChildChildTag.FindTag('type'));
+        ProtoPtr:=0;
+        Text:=ParseText(ChildChildTag);
+        for k:=1 to length(Text)-1 do begin
+         if Text[k]='*' then begin
+          inc(ProtoPtr);
+         end;
         end;
-       end;
-      end else if ChildChildTag.Name='param' then begin
-       ParamName:=ParseText(ChildChildTag.FindTag('name'));
-       ParamType:=ParseText(ChildChildTag.FindTag('type'));
-       Text:=ParseText(ChildChildTag);
-       ParamPtr:=0;
-       Text:=ParseText(ChildChildTag);
-       for k:=1 to length(Text)-1 do begin
-        if Text[k]='*' then begin
-         inc(ParamPtr);
+       end else if ChildChildTag.Name='param' then begin
+        ParamName:=ParseText(ChildChildTag.FindTag('name'));
+        ParamType:=ParseText(ChildChildTag.FindTag('type'));
+        Text:=ParseText(ChildChildTag);
+        ParamPtr:=0;
+        Text:=ParseText(ChildChildTag);
+        for k:=1 to length(Text)-1 do begin
+         if Text[k]='*' then begin
+          inc(ParamPtr);
+         end;
         end;
-       end;
-       if length(Line)>0 then begin
-        Line:=Line+';';
-       end else begin
-        if (ParamType='VkDevice') or (ParamType='VkQueue') or (ParamType='VkCommandBuffer') then begin
-         IsDeviceCommand:=true;
+        if length(Line)>0 then begin
+         Line:=Line+';';
+        end else begin
+         if (ParamType='VkDevice') or (ParamType='VkQueue') or (ParamType='VkCommandBuffer') then begin
+          IsDeviceCommand:=true;
+         end;
         end;
-       end;
-       if ParamName='type' then begin
-        ParamName:='type_';
-       end;
-       if ParamName='object' then begin
-        ParamName:='object_';
-       end;
-       if pos('const ',trim(Text))=1 then begin
-        Line:=Line+'const ';
-       end;
-       Line:=Line+ParamName+':'+TranslateType(ParamType,ParamPtr);
-       if length(Parameters)>0 then begin
-        Parameters:=Parameters+',';
-       end;
-       Parameters:=Parameters+ParamName;
-       if (ParamType='HWND') or (ParamType='HINSTANCE') then begin
-        Define:='Windows';
-       end else if (ParamType='Display') or (ParamType='VisualID') or (ParamType='Window') or (pos('Xlib',ParamType)>0) then begin
-        Define:='X11';
-       end else if (ParamType='xcb_connection_t') or (ParamType='xcb_visualid_t') or (ParamType='xcb_window_t') or (pos('Xcb',ParamType)>0) then begin
-        Define:='XCB';
-       end else if (ParamType='wl_display') or (ParamType='wl_surface') or (pos('Wayland',ParamType)>0) then begin
-        Define:='Wayland';
-       end else if (ParamType='MirConnection') or (ParamType='MirSurface') or (pos('Mir',ParamType)>0) then begin
-        Define:='Mir';
-       end else if (ParamType='ANativeWindow') or (pos('Android',ParamType)>0) then begin
-        Define:='Android';
+        if ParamName='type' then begin
+         ParamName:='type_';
+        end;
+        if ParamName='object' then begin
+         ParamName:='object_';
+        end;
+        if pos('const ',trim(Text))=1 then begin
+         Line:=Line+'const ';
+        end;
+        Line:=Line+ParamName+':'+TranslateType(ParamType,ParamPtr);
+        if length(Parameters)>0 then begin
+         Parameters:=Parameters+',';
+        end;
+        Parameters:=Parameters+ParamName;
+        if (ParamType='HWND') or (ParamType='HINSTANCE') then begin
+         Define:='Windows';
+        end else if (ParamType='Display') or (ParamType='VisualID') or (ParamType='Window') or (pos('Xlib',ParamType)>0) then begin
+         Define:='X11';
+        end else if (ParamType='xcb_connection_t') or (ParamType='xcb_visualid_t') or (ParamType='xcb_window_t') or (pos('Xcb',ParamType)>0) then begin
+         Define:='XCB';
+        end else if (ParamType='wl_display') or (ParamType='wl_surface') or (pos('Wayland',ParamType)>0) then begin
+         Define:='Wayland';
+        end else if (ParamType='MirConnection') or (ParamType='MirSurface') or (pos('Mir',ParamType)>0) then begin
+         Define:='Mir';
+        end else if (ParamType='ANativeWindow') or (pos('Android',ParamType)>0) then begin
+         Define:='Android';
+        end;
        end;
       end;
      end;
+     if length(Define)>0 then begin
+      CommandTypes.Add('{$ifdef '+Define+'}');
+      CommandVariables.Add('{$ifdef '+Define+'}');
+      AllCommandType.Add('{$ifdef '+Define+'}');
+      AllCommandClassDefinitions.Add('{$ifdef '+Define+'}');
+      AllCommandClassImplementations.Add('{$ifdef '+Define+'}');
+     end;
+     if assigned(ValidityStringList) and (ValidityStringList.Count>0) then begin
+      for j:=0 to ValidityStringList.Count-1 do begin
+       CommandTypes.Add('     // '+ValidityStringList.Strings[j]);
+       CommandVariables.Add('    // '+ValidityStringList.Strings[j]);
+       AllCommandType.Add('      // '+ValidityStringList.Strings[j]);
+       AllCommandClassDefinitions.Add('       // '+ValidityStringList.Strings[j]);
+      end;
+     end;
+     if (ProtoType='void') and (ProtoPtr=0) then begin
+      CommandTypes.Add('     T'+ProtoName+'=procedure('+Line+'); '+CallingConventions);
+     end else begin
+      CommandTypes.Add('     T'+ProtoName+'=function('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; '+CallingConventions);
+     end;
+     CommandVariables.Add('    '+ProtoName+':T'+ProtoName+'=nil;');
+     AllCommandType.Add('      '+copy(ProtoName,3,length(ProtoName)-2)+':T'+ProtoName+';');
+     if (ProtoType='void') and (ProtoPtr=0) then begin
+      AllCommandClassDefinitions.Add('       procedure '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'); virtual;');
+      AllCommandClassImplementations.Add('procedure TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+');');
+      AllCommandClassImplementations.Add('begin');
+      AllCommandClassImplementations.Add(' fCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
+      AllCommandClassImplementations.Add('end;');
+     end else begin
+      AllCommandClassDefinitions.Add('       function '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; virtual;');
+      AllCommandClassImplementations.Add('function TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+';');
+      AllCommandClassImplementations.Add('begin');
+      AllCommandClassImplementations.Add(' result:=fCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
+      AllCommandClassImplementations.Add('end;');
+     end;
+     AllCommands.Add(ProtoName+'='+Define);
+     if IsDeviceCommand then begin
+      AllDeviceCommands.Add(ProtoName+'='+Define);
+     end;
+     if length(Define)>0 then begin
+      CommandTypes.Add('{$endif}');
+      CommandVariables.Add('{$endif}');
+      AllCommandType.Add('{$endif}');
+      AllCommandClassDefinitions.Add('{$endif}');
+      AllCommandClassImplementations.Add('{$endif}');
+     end;
+     CommandTypes.Add('');
+     CommandVariables.Add('');
+     AllCommandType.Add('');
+     AllCommandClassDefinitions.Add('');
+     AllCommandClassImplementations.Add('');
+    finally
+     ValidityStringList.Free;
     end;
-    if length(Define)>0 then begin
-     CommandTypes.Add('{$ifdef '+Define+'}');
-     CommandVariables.Add('{$ifdef '+Define+'}');
-     AllCommandType.Add('{$ifdef '+Define+'}');
-     AllCommandClassDefinitions.Add('{$ifdef '+Define+'}');
-     AllCommandClassImplementations.Add('{$ifdef '+Define+'}');
-    end;
-    if (ProtoType='void') and (ProtoPtr=0) then begin
-     CommandTypes.Add('     T'+ProtoName+'=procedure('+Line+'); '+CallingConventions);
-    end else begin
-     CommandTypes.Add('     T'+ProtoName+'=function('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; '+CallingConventions);
-    end;
-    CommandVariables.Add('    '+ProtoName+':T'+ProtoName+'=nil;');
-    AllCommandType.Add('      '+copy(ProtoName,3,length(ProtoName)-2)+':T'+ProtoName+';');
-    if (ProtoType='void') and (ProtoPtr=0) then begin
-     AllCommandClassDefinitions.Add('       procedure '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'); virtual;');
-     AllCommandClassImplementations.Add('procedure TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+');');
-     AllCommandClassImplementations.Add('begin');
-     AllCommandClassImplementations.Add(' fCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
-     AllCommandClassImplementations.Add('end;');
-    end else begin
-     AllCommandClassDefinitions.Add('       function '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; virtual;');
-     AllCommandClassImplementations.Add('function TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+';');
-     AllCommandClassImplementations.Add('begin');
-     AllCommandClassImplementations.Add(' result:=fCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
-     AllCommandClassImplementations.Add('end;');
-    end;
-    AllCommands.Add(ProtoName+'='+Define);
-    if IsDeviceCommand then begin
-     AllDeviceCommands.Add(ProtoName+'='+Define);
-    end;
-    if length(Define)>0 then begin
-     CommandTypes.Add('{$endif}');
-     CommandVariables.Add('{$endif}');
-     AllCommandType.Add('{$endif}');
-     AllCommandClassDefinitions.Add('{$endif}');
-     AllCommandClassImplementations.Add('{$endif}');
-    end;
-    AllCommandClassImplementations.Add('');
    end;
   end;
  end;
