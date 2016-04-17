@@ -1910,7 +1910,7 @@ var Errors:boolean;
   j:=0;
   Content:='';
   while not IsEOFOrErrors do begin
-   if (length(TerminateToken)>0) and (TerminateToken[1]=CurrentChar) and ((Stream.Size-Stream.Position+1)>=length(TerminateToken)) then begin
+   if (length(TerminateToken)>0) and (TerminateToken[1]=CurrentChar) and (((Stream.Size-Stream.Position)+1)>=length(TerminateToken)) then begin
     OldPosition:=Stream.Position;
     OldEOF:=StreamEOF;
     OldChar:=CurrentChar;
@@ -1918,6 +1918,7 @@ var Errors:boolean;
      if TerminateToken[i]=CurrentChar then begin
       if i=length(TerminateToken) then begin
        NextChar;
+       SetLength(Content,j);
        result:=true;
        exit;
       end;

@@ -151,7 +151,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=6;
+      VK_HEADER_VERSION=10;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -201,6 +201,18 @@ const VK_NULL_HANDLE=0;
       VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME='VK_KHR_sampler_mirror_clamp_to_edge';
       VK_IMG_FILTER_CUBIC_SPEC_VERSION=1;
       VK_IMG_FILTER_CUBIC_EXTENSION_NAME='VK_IMG_filter_cubic';
+      VK_AMD_EXTENSION_1_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_1_EXTENSION_NAME='VK_AMD_extension_1';
+      VK_AMD_EXTENSION_2_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_2_EXTENSION_NAME='VK_AMD_extension_2';
+      VK_AMD_EXTENSION_3_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_3_EXTENSION_NAME='VK_AMD_extension_3';
+      VK_AMD_EXTENSION_4_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_4_EXTENSION_NAME='VK_AMD_extension_4';
+      VK_AMD_EXTENSION_5_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_5_EXTENSION_NAME='VK_AMD_extension_5';
+      VK_AMD_EXTENSION_6_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_6_EXTENSION_NAME='VK_AMD_extension_6';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -649,7 +661,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkImageLayout=
       (
        VK_IMAGE_LAYOUT_UNDEFINED=0,                                              //< Implicit layout an image is when its contents are undefined due to various reasons (e.g. right after creation)
-       VK_IMAGE_LAYOUT_BEGIN_RANGE=0,                                            //< VK_IMAGE_LAYOUT_UNDEFINED
        VK_IMAGE_LAYOUT_GENERAL=1,                                                //< General layout when image can be used for any kind of access
        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL=2,                               //< Optimal layout when image is only used for color attachment read/write
        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL=3,                       //< Optimal layout when image is only used for depth/stencil attachment read/write
@@ -658,10 +669,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL=6,                                   //< Optimal layout when image is used only as source of transfer operations
        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL=7,                                   //< Optimal layout when image is used only as destination of transfer operations
        VK_IMAGE_LAYOUT_PREINITIALIZED=8,                                         //< Initial layout used when the data is populated by the CPU
-       VK_IMAGE_LAYOUT_END_RANGE=8,                                              //< VK_IMAGE_LAYOUT_PREINITIALIZED
-       VK_IMAGE_LAYOUT_RANGE_SIZE=9,                                             //< (VK_IMAGE_LAYOUT_PREINITIALIZED-VK_IMAGE_LAYOUT_UNDEFINED)+1
-       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR=1000001002,
-       VK_IMAGE_LAYOUT_MAX_ENUM=$7fffffff
+       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR=1000001002
       );
 
      PPVkAttachmentLoadOp=^PVkAttachmentLoadOp;
@@ -669,12 +677,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkAttachmentLoadOp=
       (
        VK_ATTACHMENT_LOAD_OP_LOAD=0,
-       VK_ATTACHMENT_LOAD_OP_BEGIN_RANGE=0,                                      //< VK_ATTACHMENT_LOAD_OP_LOAD
        VK_ATTACHMENT_LOAD_OP_CLEAR=1,
-       VK_ATTACHMENT_LOAD_OP_DONT_CARE=2,
-       VK_ATTACHMENT_LOAD_OP_END_RANGE=2,                                        //< VK_ATTACHMENT_LOAD_OP_DONT_CARE
-       VK_ATTACHMENT_LOAD_OP_RANGE_SIZE=3,                                       //< (VK_ATTACHMENT_LOAD_OP_DONT_CARE-VK_ATTACHMENT_LOAD_OP_LOAD)+1
-       VK_ATTACHMENT_LOAD_OP_MAX_ENUM=$7fffffff
+       VK_ATTACHMENT_LOAD_OP_DONT_CARE=2
       );
 
      PPVkAttachmentStoreOp=^PVkAttachmentStoreOp;
@@ -682,11 +686,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkAttachmentStoreOp=
       (
        VK_ATTACHMENT_STORE_OP_STORE=0,
-       VK_ATTACHMENT_STORE_OP_BEGIN_RANGE=0,                                     //< VK_ATTACHMENT_STORE_OP_STORE
-       VK_ATTACHMENT_STORE_OP_DONT_CARE=1,
-       VK_ATTACHMENT_STORE_OP_END_RANGE=1,                                       //< VK_ATTACHMENT_STORE_OP_DONT_CARE
-       VK_ATTACHMENT_STORE_OP_RANGE_SIZE=2,                                      //< (VK_ATTACHMENT_STORE_OP_DONT_CARE-VK_ATTACHMENT_STORE_OP_STORE)+1
-       VK_ATTACHMENT_STORE_OP_MAX_ENUM=$7fffffff
+       VK_ATTACHMENT_STORE_OP_DONT_CARE=1
       );
 
      PPVkImageType=^PVkImageType;
@@ -694,12 +694,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkImageType=
       (
        VK_IMAGE_TYPE_1D=0,
-       VK_IMAGE_TYPE_BEGIN_RANGE=0,                                              //< VK_IMAGE_TYPE_1D
        VK_IMAGE_TYPE_2D=1,
-       VK_IMAGE_TYPE_3D=2,
-       VK_IMAGE_TYPE_END_RANGE=2,                                                //< VK_IMAGE_TYPE_3D
-       VK_IMAGE_TYPE_RANGE_SIZE=3,                                               //< (VK_IMAGE_TYPE_3D-VK_IMAGE_TYPE_1D)+1
-       VK_IMAGE_TYPE_MAX_ENUM=$7fffffff
+       VK_IMAGE_TYPE_3D=2
       );
 
      PPVkImageTiling=^PVkImageTiling;
@@ -707,11 +703,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkImageTiling=
       (
        VK_IMAGE_TILING_OPTIMAL=0,
-       VK_IMAGE_TILING_BEGIN_RANGE=0,                                            //< VK_IMAGE_TILING_OPTIMAL
-       VK_IMAGE_TILING_LINEAR=1,
-       VK_IMAGE_TILING_END_RANGE=1,                                              //< VK_IMAGE_TILING_LINEAR
-       VK_IMAGE_TILING_RANGE_SIZE=2,                                             //< (VK_IMAGE_TILING_LINEAR-VK_IMAGE_TILING_OPTIMAL)+1
-       VK_IMAGE_TILING_MAX_ENUM=$7fffffff
+       VK_IMAGE_TILING_LINEAR=1
       );
 
      PPVkImageViewType=^PVkImageViewType;
@@ -719,16 +711,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkImageViewType=
       (
        VK_IMAGE_VIEW_TYPE_1D=0,
-       VK_IMAGE_VIEW_TYPE_BEGIN_RANGE=0,                                         //< VK_IMAGE_VIEW_TYPE_1D
        VK_IMAGE_VIEW_TYPE_2D=1,
        VK_IMAGE_VIEW_TYPE_3D=2,
        VK_IMAGE_VIEW_TYPE_CUBE=3,
        VK_IMAGE_VIEW_TYPE_1D_ARRAY=4,
        VK_IMAGE_VIEW_TYPE_2D_ARRAY=5,
-       VK_IMAGE_VIEW_TYPE_CUBE_ARRAY=6,
-       VK_IMAGE_VIEW_TYPE_END_RANGE=6,                                           //< VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
-       VK_IMAGE_VIEW_TYPE_RANGE_SIZE=7,                                          //< (VK_IMAGE_VIEW_TYPE_CUBE_ARRAY-VK_IMAGE_VIEW_TYPE_1D)+1
-       VK_IMAGE_VIEW_TYPE_MAX_ENUM=$7fffffff
+       VK_IMAGE_VIEW_TYPE_CUBE_ARRAY=6
       );
 
      PPVkCommandBufferLevel=^PVkCommandBufferLevel;
@@ -736,11 +724,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkCommandBufferLevel=
       (
        VK_COMMAND_BUFFER_LEVEL_PRIMARY=0,
-       VK_COMMAND_BUFFER_LEVEL_BEGIN_RANGE=0,                                    //< VK_COMMAND_BUFFER_LEVEL_PRIMARY
-       VK_COMMAND_BUFFER_LEVEL_SECONDARY=1,
-       VK_COMMAND_BUFFER_LEVEL_END_RANGE=1,                                      //< VK_COMMAND_BUFFER_LEVEL_SECONDARY
-       VK_COMMAND_BUFFER_LEVEL_RANGE_SIZE=2,                                     //< (VK_COMMAND_BUFFER_LEVEL_SECONDARY-VK_COMMAND_BUFFER_LEVEL_PRIMARY)+1
-       VK_COMMAND_BUFFER_LEVEL_MAX_ENUM=$7fffffff
+       VK_COMMAND_BUFFER_LEVEL_SECONDARY=1
       );
 
      PPVkComponentSwizzle=^PVkComponentSwizzle;
@@ -748,16 +732,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkComponentSwizzle=
       (
        VK_COMPONENT_SWIZZLE_IDENTITY=0,
-       VK_COMPONENT_SWIZZLE_BEGIN_RANGE=0,                                       //< VK_COMPONENT_SWIZZLE_IDENTITY
        VK_COMPONENT_SWIZZLE_ZERO=1,
        VK_COMPONENT_SWIZZLE_ONE=2,
        VK_COMPONENT_SWIZZLE_R=3,
        VK_COMPONENT_SWIZZLE_G=4,
        VK_COMPONENT_SWIZZLE_B=5,
-       VK_COMPONENT_SWIZZLE_A=6,
-       VK_COMPONENT_SWIZZLE_END_RANGE=6,                                         //< VK_COMPONENT_SWIZZLE_A
-       VK_COMPONENT_SWIZZLE_RANGE_SIZE=7,                                        //< (VK_COMPONENT_SWIZZLE_A-VK_COMPONENT_SWIZZLE_IDENTITY)+1
-       VK_COMPONENT_SWIZZLE_MAX_ENUM=$7fffffff
+       VK_COMPONENT_SWIZZLE_A=6
       );
 
      PPVkDescriptorType=^PVkDescriptorType;
@@ -765,7 +745,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkDescriptorType=
       (
        VK_DESCRIPTOR_TYPE_SAMPLER=0,
-       VK_DESCRIPTOR_TYPE_BEGIN_RANGE=0,                                         //< VK_DESCRIPTOR_TYPE_SAMPLER
        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER=1,
        VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE=2,
        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE=3,
@@ -775,10 +754,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER=7,
        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC=8,
        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC=9,
-       VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT=10,
-       VK_DESCRIPTOR_TYPE_END_RANGE=10,                                          //< VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
-       VK_DESCRIPTOR_TYPE_RANGE_SIZE=11,                                         //< (VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT-VK_DESCRIPTOR_TYPE_SAMPLER)+1
-       VK_DESCRIPTOR_TYPE_MAX_ENUM=$7fffffff
+       VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT=10
       );
 
      PPVkQueryType=^PVkQueryType;
@@ -786,12 +762,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkQueryType=
       (
        VK_QUERY_TYPE_OCCLUSION=0,
-       VK_QUERY_TYPE_BEGIN_RANGE=0,                                              //< VK_QUERY_TYPE_OCCLUSION
        VK_QUERY_TYPE_PIPELINE_STATISTICS=1,                                      //< Optional
-       VK_QUERY_TYPE_TIMESTAMP=2,
-       VK_QUERY_TYPE_END_RANGE=2,                                                //< VK_QUERY_TYPE_TIMESTAMP
-       VK_QUERY_TYPE_RANGE_SIZE=3,                                               //< (VK_QUERY_TYPE_TIMESTAMP-VK_QUERY_TYPE_OCCLUSION)+1
-       VK_QUERY_TYPE_MAX_ENUM=$7fffffff
+       VK_QUERY_TYPE_TIMESTAMP=2
       );
 
      PPVkBorderColor=^PVkBorderColor;
@@ -799,15 +771,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkBorderColor=
       (
        VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK=0,
-       VK_BORDER_COLOR_BEGIN_RANGE=0,                                            //< VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK
        VK_BORDER_COLOR_INT_TRANSPARENT_BLACK=1,
        VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK=2,
        VK_BORDER_COLOR_INT_OPAQUE_BLACK=3,
        VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE=4,
-       VK_BORDER_COLOR_INT_OPAQUE_WHITE=5,
-       VK_BORDER_COLOR_END_RANGE=5,                                              //< VK_BORDER_COLOR_INT_OPAQUE_WHITE
-       VK_BORDER_COLOR_RANGE_SIZE=6,                                             //< (VK_BORDER_COLOR_INT_OPAQUE_WHITE-VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK)+1
-       VK_BORDER_COLOR_MAX_ENUM=$7fffffff
+       VK_BORDER_COLOR_INT_OPAQUE_WHITE=5
       );
 
      PPVkPipelineBindPoint=^PVkPipelineBindPoint;
@@ -815,22 +783,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPipelineBindPoint=
       (
        VK_PIPELINE_BIND_POINT_GRAPHICS=0,
-       VK_PIPELINE_BIND_POINT_BEGIN_RANGE=0,                                     //< VK_PIPELINE_BIND_POINT_GRAPHICS
-       VK_PIPELINE_BIND_POINT_COMPUTE=1,
-       VK_PIPELINE_BIND_POINT_END_RANGE=1,                                       //< VK_PIPELINE_BIND_POINT_COMPUTE
-       VK_PIPELINE_BIND_POINT_RANGE_SIZE=2,                                      //< (VK_PIPELINE_BIND_POINT_COMPUTE-VK_PIPELINE_BIND_POINT_GRAPHICS)+1
-       VK_PIPELINE_BIND_POINT_MAX_ENUM=$7fffffff
+       VK_PIPELINE_BIND_POINT_COMPUTE=1
       );
 
      PPVkPipelineCacheHeaderVersion=^PVkPipelineCacheHeaderVersion;
      PVkPipelineCacheHeaderVersion=^TVkPipelineCacheHeaderVersion;
      TVkPipelineCacheHeaderVersion=
       (
-       VK_PIPELINE_CACHE_HEADER_VERSION_ONE=1,
-       VK_PIPELINE_CACHE_HEADER_VERSION_BEGIN_RANGE=1,                           //< VK_PIPELINE_CACHE_HEADER_VERSION_ONE
-       VK_PIPELINE_CACHE_HEADER_VERSION_END_RANGE=1,                             //< VK_PIPELINE_CACHE_HEADER_VERSION_ONE
-       VK_PIPELINE_CACHE_HEADER_VERSION_RANGE_SIZE=1,                            //< (VK_PIPELINE_CACHE_HEADER_VERSION_ONE-VK_PIPELINE_CACHE_HEADER_VERSION_ONE)+1
-       VK_PIPELINE_CACHE_HEADER_VERSION_MAX_ENUM=$7fffffff
+       VK_PIPELINE_CACHE_HEADER_VERSION_ONE=1
       );
 
      PPVkPrimitiveTopology=^PVkPrimitiveTopology;
@@ -838,7 +798,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPrimitiveTopology=
       (
        VK_PRIMITIVE_TOPOLOGY_POINT_LIST=0,
-       VK_PRIMITIVE_TOPOLOGY_BEGIN_RANGE=0,                                      //< VK_PRIMITIVE_TOPOLOGY_POINT_LIST
        VK_PRIMITIVE_TOPOLOGY_LINE_LIST=1,
        VK_PRIMITIVE_TOPOLOGY_LINE_STRIP=2,
        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST=3,
@@ -848,10 +807,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY=7,
        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY=8,
        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY=9,
-       VK_PRIMITIVE_TOPOLOGY_PATCH_LIST=10,
-       VK_PRIMITIVE_TOPOLOGY_END_RANGE=10,                                       //< VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-       VK_PRIMITIVE_TOPOLOGY_RANGE_SIZE=11,                                      //< (VK_PRIMITIVE_TOPOLOGY_PATCH_LIST-VK_PRIMITIVE_TOPOLOGY_POINT_LIST)+1
-       VK_PRIMITIVE_TOPOLOGY_MAX_ENUM=$7fffffff
+       VK_PRIMITIVE_TOPOLOGY_PATCH_LIST=10
       );
 
      PPVkSharingMode=^PVkSharingMode;
@@ -859,11 +815,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSharingMode=
       (
        VK_SHARING_MODE_EXCLUSIVE=0,
-       VK_SHARING_MODE_BEGIN_RANGE=0,                                            //< VK_SHARING_MODE_EXCLUSIVE
-       VK_SHARING_MODE_CONCURRENT=1,
-       VK_SHARING_MODE_END_RANGE=1,                                              //< VK_SHARING_MODE_CONCURRENT
-       VK_SHARING_MODE_RANGE_SIZE=2,                                             //< (VK_SHARING_MODE_CONCURRENT-VK_SHARING_MODE_EXCLUSIVE)+1
-       VK_SHARING_MODE_MAX_ENUM=$7fffffff
+       VK_SHARING_MODE_CONCURRENT=1
       );
 
      PPVkIndexType=^PVkIndexType;
@@ -871,11 +823,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkIndexType=
       (
        VK_INDEX_TYPE_UINT16=0,
-       VK_INDEX_TYPE_BEGIN_RANGE=0,                                              //< VK_INDEX_TYPE_UINT16
-       VK_INDEX_TYPE_UINT32=1,
-       VK_INDEX_TYPE_END_RANGE=1,                                                //< VK_INDEX_TYPE_UINT32
-       VK_INDEX_TYPE_RANGE_SIZE=2,                                               //< (VK_INDEX_TYPE_UINT32-VK_INDEX_TYPE_UINT16)+1
-       VK_INDEX_TYPE_MAX_ENUM=$7fffffff
+       VK_INDEX_TYPE_UINT32=1
       );
 
      PPVkFilter=^PVkFilter;
@@ -883,12 +831,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkFilter=
       (
        VK_FILTER_NEAREST=0,
-       VK_FILTER_BEGIN_RANGE=0,                                                  //< VK_FILTER_NEAREST
        VK_FILTER_LINEAR=1,
-       VK_FILTER_END_RANGE=1,                                                    //< VK_FILTER_LINEAR
-       VK_FILTER_RANGE_SIZE=2,                                                   //< (VK_FILTER_LINEAR-VK_FILTER_NEAREST)+1
-       VK_FILTER_CUBIC_IMG=1000015000,
-       VK_FILTER_MAX_ENUM=$7fffffff
+       VK_FILTER_CUBIC_IMG=1000015000
       );
 
      PPVkSamplerMipmapMode=^PVkSamplerMipmapMode;
@@ -896,11 +840,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSamplerMipmapMode=
       (
        VK_SAMPLER_MIPMAP_MODE_NEAREST=0,                                         //< Choose nearest mip level
-       VK_SAMPLER_MIPMAP_MODE_BEGIN_RANGE=0,                                     //< VK_SAMPLER_MIPMAP_MODE_NEAREST
-       VK_SAMPLER_MIPMAP_MODE_LINEAR=1,                                          //< Linear filter between mip levels
-       VK_SAMPLER_MIPMAP_MODE_END_RANGE=1,                                       //< VK_SAMPLER_MIPMAP_MODE_LINEAR
-       VK_SAMPLER_MIPMAP_MODE_RANGE_SIZE=2,                                      //< (VK_SAMPLER_MIPMAP_MODE_LINEAR-VK_SAMPLER_MIPMAP_MODE_NEAREST)+1
-       VK_SAMPLER_MIPMAP_MODE_MAX_ENUM=$7fffffff
+       VK_SAMPLER_MIPMAP_MODE_LINEAR=1                                           //< Linear filter between mip levels
       );
 
      PPVkSamplerAddressMode=^PVkSamplerAddressMode;
@@ -908,14 +848,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSamplerAddressMode=
       (
        VK_SAMPLER_ADDRESS_MODE_REPEAT=0,
-       VK_SAMPLER_ADDRESS_MODE_BEGIN_RANGE=0,                                    //< VK_SAMPLER_ADDRESS_MODE_REPEAT
        VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT=1,
        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE=2,
        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER=3,
-       VK_SAMPLER_ADDRESS_MODE_END_RANGE=3,                                      //< VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
-       VK_SAMPLER_ADDRESS_MODE_RANGE_SIZE=4,                                     //< (VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER-VK_SAMPLER_ADDRESS_MODE_REPEAT)+1
-       VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE=4,
-       VK_SAMPLER_ADDRESS_MODE_MAX_ENUM=$7fffffff
+       VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE=4
       );
 
      PPVkCompareOp=^PVkCompareOp;
@@ -923,17 +859,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkCompareOp=
       (
        VK_COMPARE_OP_NEVER=0,
-       VK_COMPARE_OP_BEGIN_RANGE=0,                                              //< VK_COMPARE_OP_NEVER
        VK_COMPARE_OP_LESS=1,
        VK_COMPARE_OP_EQUAL=2,
        VK_COMPARE_OP_LESS_OR_EQUAL=3,
        VK_COMPARE_OP_GREATER=4,
        VK_COMPARE_OP_NOT_EQUAL=5,
        VK_COMPARE_OP_GREATER_OR_EQUAL=6,
-       VK_COMPARE_OP_ALWAYS=7,
-       VK_COMPARE_OP_END_RANGE=7,                                                //< VK_COMPARE_OP_ALWAYS
-       VK_COMPARE_OP_RANGE_SIZE=8,                                               //< (VK_COMPARE_OP_ALWAYS-VK_COMPARE_OP_NEVER)+1
-       VK_COMPARE_OP_MAX_ENUM=$7fffffff
+       VK_COMPARE_OP_ALWAYS=7
       );
 
      PPVkPolygonMode=^PVkPolygonMode;
@@ -941,12 +873,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPolygonMode=
       (
        VK_POLYGON_MODE_FILL=0,
-       VK_POLYGON_MODE_BEGIN_RANGE=0,                                            //< VK_POLYGON_MODE_FILL
        VK_POLYGON_MODE_LINE=1,
-       VK_POLYGON_MODE_POINT=2,
-       VK_POLYGON_MODE_END_RANGE=2,                                              //< VK_POLYGON_MODE_POINT
-       VK_POLYGON_MODE_RANGE_SIZE=3,                                             //< (VK_POLYGON_MODE_POINT-VK_POLYGON_MODE_FILL)+1
-       VK_POLYGON_MODE_MAX_ENUM=$7fffffff
+       VK_POLYGON_MODE_POINT=2
       );
 
      PPVkCullModeFlagBits=^PVkCullModeFlagBits;
@@ -964,11 +892,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkFrontFace=
       (
        VK_FRONT_FACE_COUNTER_CLOCKWISE=0,
-       VK_FRONT_FACE_BEGIN_RANGE=0,                                              //< VK_FRONT_FACE_COUNTER_CLOCKWISE
-       VK_FRONT_FACE_CLOCKWISE=1,
-       VK_FRONT_FACE_END_RANGE=1,                                                //< VK_FRONT_FACE_CLOCKWISE
-       VK_FRONT_FACE_RANGE_SIZE=2,                                               //< (VK_FRONT_FACE_CLOCKWISE-VK_FRONT_FACE_COUNTER_CLOCKWISE)+1
-       VK_FRONT_FACE_MAX_ENUM=$7fffffff
+       VK_FRONT_FACE_CLOCKWISE=1
       );
 
      PPVkBlendFactor=^PVkBlendFactor;
@@ -976,7 +900,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkBlendFactor=
       (
        VK_BLEND_FACTOR_ZERO=0,
-       VK_BLEND_FACTOR_BEGIN_RANGE=0,                                            //< VK_BLEND_FACTOR_ZERO
        VK_BLEND_FACTOR_ONE=1,
        VK_BLEND_FACTOR_SRC_COLOR=2,
        VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR=3,
@@ -994,10 +917,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_BLEND_FACTOR_SRC1_COLOR=15,
        VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR=16,
        VK_BLEND_FACTOR_SRC1_ALPHA=17,
-       VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA=18,
-       VK_BLEND_FACTOR_END_RANGE=18,                                             //< VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
-       VK_BLEND_FACTOR_RANGE_SIZE=19,                                            //< (VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA-VK_BLEND_FACTOR_ZERO)+1
-       VK_BLEND_FACTOR_MAX_ENUM=$7fffffff
+       VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA=18
       );
 
      PPVkBlendOp=^PVkBlendOp;
@@ -1005,14 +925,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkBlendOp=
       (
        VK_BLEND_OP_ADD=0,
-       VK_BLEND_OP_BEGIN_RANGE=0,                                                //< VK_BLEND_OP_ADD
        VK_BLEND_OP_SUBTRACT=1,
        VK_BLEND_OP_REVERSE_SUBTRACT=2,
        VK_BLEND_OP_MIN=3,
-       VK_BLEND_OP_MAX=4,
-       VK_BLEND_OP_END_RANGE=4,                                                  //< VK_BLEND_OP_MAX
-       VK_BLEND_OP_RANGE_SIZE=5,                                                 //< (VK_BLEND_OP_MAX-VK_BLEND_OP_ADD)+1
-       VK_BLEND_OP_MAX_ENUM=$7fffffff
+       VK_BLEND_OP_MAX=4
       );
 
      PPVkStencilOp=^PVkStencilOp;
@@ -1020,17 +936,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkStencilOp=
       (
        VK_STENCIL_OP_KEEP=0,
-       VK_STENCIL_OP_BEGIN_RANGE=0,                                              //< VK_STENCIL_OP_KEEP
        VK_STENCIL_OP_ZERO=1,
        VK_STENCIL_OP_REPLACE=2,
        VK_STENCIL_OP_INCREMENT_AND_CLAMP=3,
        VK_STENCIL_OP_DECREMENT_AND_CLAMP=4,
        VK_STENCIL_OP_INVERT=5,
        VK_STENCIL_OP_INCREMENT_AND_WRAP=6,
-       VK_STENCIL_OP_DECREMENT_AND_WRAP=7,
-       VK_STENCIL_OP_END_RANGE=7,                                                //< VK_STENCIL_OP_DECREMENT_AND_WRAP
-       VK_STENCIL_OP_RANGE_SIZE=8,                                               //< (VK_STENCIL_OP_DECREMENT_AND_WRAP-VK_STENCIL_OP_KEEP)+1
-       VK_STENCIL_OP_MAX_ENUM=$7fffffff
+       VK_STENCIL_OP_DECREMENT_AND_WRAP=7
       );
 
      PPVkLogicOp=^PVkLogicOp;
@@ -1038,7 +950,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkLogicOp=
       (
        VK_LOGIC_OP_CLEAR=0,
-       VK_LOGIC_OP_BEGIN_RANGE=0,                                                //< VK_LOGIC_OP_CLEAR
        VK_LOGIC_OP_AND=1,
        VK_LOGIC_OP_AND_REVERSE=2,
        VK_LOGIC_OP_COPY=3,
@@ -1053,21 +964,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_LOGIC_OP_COPY_INVERTED=12,
        VK_LOGIC_OP_OR_INVERTED=13,
        VK_LOGIC_OP_NAND=14,
-       VK_LOGIC_OP_SET=15,
-       VK_LOGIC_OP_END_RANGE=15,                                                 //< VK_LOGIC_OP_SET
-       VK_LOGIC_OP_RANGE_SIZE=16,                                                //< (VK_LOGIC_OP_SET-VK_LOGIC_OP_CLEAR)+1
-       VK_LOGIC_OP_MAX_ENUM=$7fffffff
+       VK_LOGIC_OP_SET=15
       );
 
      PPVkInternalAllocationType=^PVkInternalAllocationType;
      PVkInternalAllocationType=^TVkInternalAllocationType;
      TVkInternalAllocationType=
       (
-       VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE=0,
-       VK_INTERNAL_ALLOCATION_TYPE_BEGIN_RANGE=0,                                //< VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE
-       VK_INTERNAL_ALLOCATION_TYPE_END_RANGE=0,                                  //< VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE
-       VK_INTERNAL_ALLOCATION_TYPE_RANGE_SIZE=1,                                 //< (VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE-VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE)+1
-       VK_INTERNAL_ALLOCATION_TYPE_MAX_ENUM=$7fffffff
+       VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE=0
       );
 
      PPVkSystemAllocationScope=^PVkSystemAllocationScope;
@@ -1075,14 +979,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSystemAllocationScope=
       (
        VK_SYSTEM_ALLOCATION_SCOPE_COMMAND=0,
-       VK_SYSTEM_ALLOCATION_SCOPE_BEGIN_RANGE=0,                                 //< VK_SYSTEM_ALLOCATION_SCOPE_COMMAND
        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT=1,
        VK_SYSTEM_ALLOCATION_SCOPE_CACHE=2,
        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE=3,
-       VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE=4,
-       VK_SYSTEM_ALLOCATION_SCOPE_END_RANGE=4,                                   //< VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE
-       VK_SYSTEM_ALLOCATION_SCOPE_RANGE_SIZE=5,                                  //< (VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE-VK_SYSTEM_ALLOCATION_SCOPE_COMMAND)+1
-       VK_SYSTEM_ALLOCATION_SCOPE_MAX_ENUM=$7fffffff
+       VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE=4
       );
 
      PPVkPhysicalDeviceType=^PVkPhysicalDeviceType;
@@ -1090,14 +990,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPhysicalDeviceType=
       (
        VK_PHYSICAL_DEVICE_TYPE_OTHER=0,
-       VK_PHYSICAL_DEVICE_TYPE_BEGIN_RANGE=0,                                    //< VK_PHYSICAL_DEVICE_TYPE_OTHER
        VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU=1,
        VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU=2,
        VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU=3,
-       VK_PHYSICAL_DEVICE_TYPE_CPU=4,
-       VK_PHYSICAL_DEVICE_TYPE_END_RANGE=4,                                      //< VK_PHYSICAL_DEVICE_TYPE_CPU
-       VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE=5,                                     //< (VK_PHYSICAL_DEVICE_TYPE_CPU-VK_PHYSICAL_DEVICE_TYPE_OTHER)+1
-       VK_PHYSICAL_DEVICE_TYPE_MAX_ENUM=$7fffffff
+       VK_PHYSICAL_DEVICE_TYPE_CPU=4
       );
 
      PPVkVertexInputRate=^PVkVertexInputRate;
@@ -1105,11 +1001,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkVertexInputRate=
       (
        VK_VERTEX_INPUT_RATE_VERTEX=0,
-       VK_VERTEX_INPUT_RATE_BEGIN_RANGE=0,                                       //< VK_VERTEX_INPUT_RATE_VERTEX
-       VK_VERTEX_INPUT_RATE_INSTANCE=1,
-       VK_VERTEX_INPUT_RATE_END_RANGE=1,                                         //< VK_VERTEX_INPUT_RATE_INSTANCE
-       VK_VERTEX_INPUT_RATE_RANGE_SIZE=2,                                        //< (VK_VERTEX_INPUT_RATE_INSTANCE-VK_VERTEX_INPUT_RATE_VERTEX)+1
-       VK_VERTEX_INPUT_RATE_MAX_ENUM=$7fffffff
+       VK_VERTEX_INPUT_RATE_INSTANCE=1
       );
 
      PPVkFormat=^PVkFormat;
@@ -1117,7 +1009,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkFormat=
       (
        VK_FORMAT_UNDEFINED=0,
-       VK_FORMAT_BEGIN_RANGE=0,                                                  //< VK_FORMAT_UNDEFINED
        VK_FORMAT_R4G4_UNORM_PACK8=1,
        VK_FORMAT_R4G4B4A4_UNORM_PACK16=2,
        VK_FORMAT_B4G4R4A4_UNORM_PACK16=3,
@@ -1301,10 +1192,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_ASTC_12x10_UNORM_BLOCK=181,
        VK_FORMAT_ASTC_12x10_SRGB_BLOCK=182,
        VK_FORMAT_ASTC_12x12_UNORM_BLOCK=183,
-       VK_FORMAT_ASTC_12x12_SRGB_BLOCK=184,
-       VK_FORMAT_END_RANGE=184,                                                  //< VK_FORMAT_ASTC_12x12_SRGB_BLOCK
-       VK_FORMAT_RANGE_SIZE=185,                                                 //< (VK_FORMAT_ASTC_12x12_SRGB_BLOCK-VK_FORMAT_UNDEFINED)+1
-       VK_FORMAT_MAX_ENUM=$7fffffff
+       VK_FORMAT_ASTC_12x12_SRGB_BLOCK=184
       );
 
      PPVkStructureType=^PVkStructureType;
@@ -1312,7 +1200,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkStructureType=
       (
        VK_STRUCTURE_TYPE_APPLICATION_INFO=0,
-       VK_STRUCTURE_TYPE_BEGIN_RANGE=0,                                          //< VK_STRUCTURE_TYPE_APPLICATION_INFO
        VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO=1,
        VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO=2,
        VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO=3,
@@ -1361,8 +1248,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_MEMORY_BARRIER=46,
        VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO=47,
        VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO=48,
-       VK_STRUCTURE_TYPE_END_RANGE=48,                                           //< VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO
-       VK_STRUCTURE_TYPE_RANGE_SIZE=49,                                          //< (VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO-VK_STRUCTURE_TYPE_APPLICATION_INFO)+1
        VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR=1000001000,
        VK_STRUCTURE_TYPE_PRESENT_INFO_KHR=1000001001,
        VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR=1000002000,
@@ -1375,8 +1260,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR=1000008000,
        VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR=1000009000,
        VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT=1000011000,
-       VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT=1000011000,
-       VK_STRUCTURE_TYPE_MAX_ENUM=$7fffffff
+       VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT=1000011000
       );
 
      PPVkSubpassContents=^PVkSubpassContents;
@@ -1384,11 +1268,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSubpassContents=
       (
        VK_SUBPASS_CONTENTS_INLINE=0,
-       VK_SUBPASS_CONTENTS_BEGIN_RANGE=0,                                        //< VK_SUBPASS_CONTENTS_INLINE
-       VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS=1,
-       VK_SUBPASS_CONTENTS_END_RANGE=1,                                          //< VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
-       VK_SUBPASS_CONTENTS_RANGE_SIZE=2,                                         //< (VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS-VK_SUBPASS_CONTENTS_INLINE)+1
-       VK_SUBPASS_CONTENTS_MAX_ENUM=$7fffffff
+       VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS=1
       );
 
      PPVkResult=^PVkResult;
@@ -1402,8 +1282,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ERROR_OUT_OF_DATE_KHR=-1000001004,
        VK_ERROR_NATIVE_WINDOW_IN_USE_KHR=-1000000001,
        VK_ERROR_SURFACE_LOST_KHR=-1000000000,
-       VK_RESULT_UNUSED_START=-12,
-       VK_RESULT_BEGIN_RANGE=-12,                                                //< VK_RESULT_UNUSED_START
+       _UNUSED_START=-12,
        VK_ERROR_FORMAT_NOT_SUPPORTED=-11,                                        //< Requested format is not supported on this device
        VK_ERROR_TOO_MANY_OBJECTS=-10,                                            //< Too many objects of the type have already been created
        VK_ERROR_INCOMPATIBLE_DRIVER=-9,                                          //< Unable to find a Vulkan driver
@@ -1421,10 +1300,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_EVENT_SET=3,                                                           //< An event is signaled
        VK_EVENT_RESET=4,                                                         //< An event is unsignalled
        VK_INCOMPLETE=5,                                                          //< A return array was too small for the resul
-       VK_RESULT_END_RANGE=5,                                                    //< VK_INCOMPLETE
-       VK_RESULT_RANGE_SIZE=18,                                                  //< (VK_INCOMPLETE-VK_RESULT_UNUSED_START)+1
-       VK_SUBOPTIMAL_KHR=1000001003,
-       VK_RESULT_MAX_ENUM=$7fffffff
+       VK_SUBOPTIMAL_KHR=1000001003
       );
 
      PPVkDynamicState=^PVkDynamicState;
@@ -1432,7 +1308,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkDynamicState=
       (
        VK_DYNAMIC_STATE_VIEWPORT=0,
-       VK_DYNAMIC_STATE_BEGIN_RANGE=0,                                           //< VK_DYNAMIC_STATE_VIEWPORT
        VK_DYNAMIC_STATE_SCISSOR=1,
        VK_DYNAMIC_STATE_LINE_WIDTH=2,
        VK_DYNAMIC_STATE_DEPTH_BIAS=3,
@@ -1440,10 +1315,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DYNAMIC_STATE_DEPTH_BOUNDS=5,
        VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK=6,
        VK_DYNAMIC_STATE_STENCIL_WRITE_MASK=7,
-       VK_DYNAMIC_STATE_STENCIL_REFERENCE=8,
-       VK_DYNAMIC_STATE_END_RANGE=8,                                             //< VK_DYNAMIC_STATE_STENCIL_REFERENCE
-       VK_DYNAMIC_STATE_RANGE_SIZE=9,                                            //< (VK_DYNAMIC_STATE_STENCIL_REFERENCE-VK_DYNAMIC_STATE_VIEWPORT)+1
-       VK_DYNAMIC_STATE_MAX_ENUM=$7fffffff
+       VK_DYNAMIC_STATE_STENCIL_REFERENCE=8
       );
 
      PPVkQueueFlagBits=^PVkQueueFlagBits;
@@ -1518,7 +1390,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_BUFFER_CREATE_SPARSE_BINDING_BIT=$00000001,                            //< Buffer should support sparse backing
        VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT=$00000002,                          //< Buffer should support sparse backing with partial residency
-       VK_BUFFER_CREATE_SPARSE_ALIASED_BIT=$00000004                             //< Buffer should support constent data access to physical memory blocks mapped into multiple locations of sparse buffers
+       VK_BUFFER_CREATE_SPARSE_ALIASED_BIT=$00000004                             //< Buffer should support constent data access to physical memory ranges mapped into multiple locations of sparse buffers
       );
 
      PPVkShaderStageFlagBits=^PVkShaderStageFlagBits;
@@ -1555,7 +1427,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_IMAGE_CREATE_SPARSE_BINDING_BIT=$00000001,                             //< Image should support sparse backing
        VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT=$00000002,                           //< Image should support sparse backing with partial residency
-       VK_IMAGE_CREATE_SPARSE_ALIASED_BIT=$00000004,                             //< Image should support constent data access to physical memory blocks mapped into multiple locations of sparse images
+       VK_IMAGE_CREATE_SPARSE_ALIASED_BIT=$00000004,                             //< Image should support constent data access to physical memory ranges mapped into multiple locations of sparse images
        VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT=$00000008,                             //< Allows image views to have different format than the base image
        VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT=$00000010                             //< Allows creating image views with cube type from the created image
       );
@@ -1664,8 +1536,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSparseImageFormatFlagBits=
       (
        VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT=$00000001,                      //< Image uses a single miptail region for all array layers
-       VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT=$00000002,                    //< Image requires mip levels to be an exact multiple of the sparse image block size for non-miptail levels.
-       VK_SPARSE_IMAGE_FORMAT_NONSTANDARD_BLOCK_SIZE_BIT=$00000004               //< Image uses a non-standard sparse block size
+       VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT=$00000002,                    //< Image requires mip level dimensions to be an integer multiple of the sparse image block dimensions for non-miptail levels.
+       VK_SPARSE_IMAGE_FORMAT_NONSTANDARD_BLOCK_SIZE_BIT=$00000004               //< Image uses a non-standard sparse image block dimensions
       );
 
      PPVkSparseMemoryBindFlagBits=^PVkSparseMemoryBindFlagBits;
@@ -1768,24 +1640,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPresentModeKHR=
       (
        VK_PRESENT_MODE_IMMEDIATE_KHR=0,
-       VK_PRESENT_MODE_BEGIN_RANGE=0,                                            //< VK_PRESENT_MODE_IMMEDIATE_KHR
        VK_PRESENT_MODE_MAILBOX_KHR=1,
        VK_PRESENT_MODE_FIFO_KHR=2,
-       VK_PRESENT_MODE_FIFO_RELAXED_KHR=3,
-       VK_PRESENT_MODE_END_RANGE=3,                                              //< VK_PRESENT_MODE_FIFO_RELAXED_KHR
-       VK_PRESENT_MODE_RANGE_SIZE=4,                                             //< (VK_PRESENT_MODE_FIFO_RELAXED_KHR-VK_PRESENT_MODE_IMMEDIATE_KHR)+1
-       VK_PRESENT_MODE_MAX_ENUM=$7fffffff
+       VK_PRESENT_MODE_FIFO_RELAXED_KHR=3
       );
 
      PPVkColorSpaceKHR=^PVkColorSpaceKHR;
      PVkColorSpaceKHR=^TVkColorSpaceKHR;
      TVkColorSpaceKHR=
       (
-       VK_COLORSPACE_SRGB_NONLINEAR_KHR=0,
-       VK_COLORSPACE_BEGIN_RANGE=0,                                              //< VK_COLORSPACE_SRGB_NONLINEAR_KHR
-       VK_COLORSPACE_END_RANGE=0,                                                //< VK_COLORSPACE_SRGB_NONLINEAR_KHR
-       VK_COLORSPACE_RANGE_SIZE=1,                                               //< (VK_COLORSPACE_SRGB_NONLINEAR_KHR-VK_COLORSPACE_SRGB_NONLINEAR_KHR)+1
-       VK_COLORSPACE_MAX_ENUM=$7fffffff
+       VK_COLORSPACE_SRGB_NONLINEAR_KHR=0
       );
 
      PPVkDisplayPlaneAlphaFlagBitsKHR=^PVkDisplayPlaneAlphaFlagBitsKHR;
@@ -1987,10 +1851,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkPhysicalDeviceSparseProperties=^PVkPhysicalDeviceSparseProperties;
      PVkPhysicalDeviceSparseProperties=^TVkPhysicalDeviceSparseProperties;
      TVkPhysicalDeviceSparseProperties=record
-      residencyStandard2DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (single sample) sparse resources using the standard block shapes (based on pixel format)
-      residencyStandard2DMultisampleBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (multisample) sparse resources using the standard block shapes (based on pixel format)
-      residencyStandard3DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 3D sparse resources using the standard block shapes (based on pixel format) pixe
-      residencyAlignedMipSize:TVkBool32; //< Sparse resources support: Images with mip-level dimensions that are NOT a multiple of the block size will be placed in the mip tail
+      residencyStandard2DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (single sample) sparse resources using the standard sparse image block shapes (based on pixel format)
+      residencyStandard2DMultisampleBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (multisample) sparse resources using the standard sparse image block shapes (based on pixel format)
+      residencyStandard3DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 3D sparse resources using the standard sparse image block shapes (based on pixel format)
+      residencyAlignedMipSize:TVkBool32; //< Sparse resources support: Images with mip-level dimensions that are NOT a multiple of the sparse image block dimensions will be placed in the mip tail
       residencyNonResidentStrict:TVkBool32; //< Sparse resources support: GPU can consistently access non-resident regions of a resource, all reads return as if data is 0, writes are discarded
      end;
 
@@ -2026,7 +1890,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // pfnAllocation must: be a pointer to a valid user-defined PFN_vkAllocationFunction
      // pfnReallocation must: be a pointer to a valid user-defined PFN_vkReallocationFunction
      // pfnFree must: be a pointer to a valid user-defined PFN_vkFreeFunction
-     // If either of pfnInternalAllocatione or pfnInternalFree is not `NULL`, both must: be valid callbacks
+     // If either of pfnInternalAllocation or pfnInternalFree is not `NULL`, both must: be valid callbacks
      PPVkAllocationCallbacks=^PVkAllocationCallbacks;
      PVkAllocationCallbacks=^TVkAllocationCallbacks;
      TVkAllocationCallbacks=record
@@ -2177,9 +2041,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSparseImageMemoryRequirements=record
       formatProperties:TVkSparseImageFormatProperties;
       imageMipTailFirstLod:TVkUInt32;
-      imageMipTailSize:TVkDeviceSize; //< Specified in bytes, must be a multiple of image block size / alignment
-      imageMipTailOffset:TVkDeviceSize; //< Specified in bytes, must be a multiple of image block size / alignment
-      imageMipTailStride:TVkDeviceSize; //< Specified in bytes, must be a multiple of image block size / alignment
+      imageMipTailSize:TVkDeviceSize; //< Specified in bytes, must be a multiple of sparse block size in bytes / alignment
+      imageMipTailOffset:TVkDeviceSize; //< Specified in bytes, must be a multiple of sparse block size in bytes / alignment
+      imageMipTailStride:TVkDeviceSize; //< Specified in bytes, must be a multiple of sparse block size in bytes / alignment
      end;
 
      PPVkMemoryHeap=^PVkMemoryHeap;
@@ -2238,7 +2102,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDescriptorBufferInfo=^TVkDescriptorBufferInfo;
      TVkDescriptorBufferInfo=record
       buffer:TVkBuffer; //< Buffer used for this descriptor slot when the descriptor is UNIFORM_BUFFER[_DYNAMIC] or STORAGE_BUFFER[_DYNAMIC]. VK_NULL_HANDLE otherwise.
-      offset:TVkDeviceSize; //< Base offset from buffer start in bytes to update in the descriptor set. ER[_DYNAMIC] or STORAGE_BUFFER[_DYNAMIC]. VK_NULL_HAND
+      offset:TVkDeviceSize; //< Base offset from buffer start in bytes to update in the descriptor set.
       range:TVkDeviceSize; //< Size in bytes of the buffer resource for this descriptor update.
      end;
 
@@ -2247,7 +2111,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkDescriptorImageInfo=record
       sampler:TVkSampler; //< Sampler to write to the descriptor in case it's a SAMPLER or COMBINED_IMAGE_SAMPLER descriptor. Ignored otherwise.
       imageView:TVkImageView; //< Image view to write to the descriptor in case it's a SAMPLED_IMAGE, STORAGE_IMAGE, COMBINED_IMAGE_SAMPLER, or INPUT_ATTACHMENT descriptor. Ignored otherwise.
-      imageLayout:TVkImageLayout; //< Layout the image is expected to be in when accessed using this descriptor (only used if imageView is not VK_NULL_HANDLE). MENT
+      imageLayout:TVkImageLayout; //< Layout the image is expected to be in when accessed using this descriptor (only used if imageView is not VK_NULL_HANDLE).
      end;
 
      // dstBinding must: be a valid binding point within dstSet
@@ -2278,7 +2142,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       descriptorCount:TVkUInt32; //< Number of descriptors to write (determines the size of the array pointed by pDescriptors)
       descriptorType:TVkDescriptorType; //< Descriptor type to write (determines which members of the array pointed by pDescriptors are going to be used)
       pImageInfo:PVkDescriptorImageInfo; //< Sampler, image view, and layout for SAMPLER, COMBINED_IMAGE_SAMPLER, {SAMPLED,STORAGE}_IMAGE, and INPUT_ATTACHMENT descriptor types.
-      pBufferInfo:PVkDescriptorBufferInfo; //< Raw buffer, size, and offset for {UNIFORM,STORAGE}_BUFFER[_DYNAMIC] descriptor types. _IMAGE, and INPUT_ATTACHMENT descriptor
+      pBufferInfo:PVkDescriptorBufferInfo; //< Raw buffer, size, and offset for {UNIFORM,STORAGE}_BUFFER[_DYNAMIC] descriptor types.
       pTexelBufferView:PVkBufferView; //< Buffer view to write to the descriptor for {UNIFORM,STORAGE}_TEXEL_BUFFER descriptor types.
      end;
 
@@ -2307,7 +2171,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If the <<features-features-sparseBinding,sparse bindings>> feature is not enabled, flags mustnot: contain TVK_BUFFER_CREATE_SPARSE_BINDING_BIT
      // If the <<features-features-sparseResidencyBuffer,sparse buffer residency>> feature is not enabled, flags mustnot: contain TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT
      // If the <<features-features-sparseResidencyAliased,sparse aliased residency>> feature is not enabled, flags mustnot: contain TVK_BUFFER_CREATE_SPARSE_ALIASED_BIT
-     // If flags contains TVK_BUFFER_CREATE_SPARSE_ALIASED_BIT, it must: also contain at least one of TVK_BUFFER_CREATE_SPARSE_BINDING_BIT or TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT
+     // If flags contains TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT or TVK_BUFFER_CREATE_SPARSE_ALIASED_BIT, it must: also contain TVK_BUFFER_CREATE_SPARSE_BINDING_BIT
      PPVkBufferCreateInfo=^PVkBufferCreateInfo;
      PVkBufferCreateInfo=^TVkBufferCreateInfo;
      TVkBufferCreateInfo=record
@@ -2412,7 +2276,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If image was created with a sharing mode of TVK_SHARING_MODE_CONCURRENT, srcQueueFamilyIndex and dstQueueFamilyIndex must: both be TVK_QUEUE_FAMILY_IGNORED
      // If image was created with a sharing mode of TVK_SHARING_MODE_EXCLUSIVE, srcQueueFamilyIndex and dstQueueFamilyIndex must: either both be TVK_QUEUE_FAMILY_IGNORED, or both be a valid queue family (see <<devsandqueues-queueprops>>)
      // If image was created with a sharing mode of TVK_SHARING_MODE_EXCLUSIVE, and srcQueueFamilyIndex and dstQueueFamilyIndex are valid queue families, at least one of them must: be the same as the family of the queue that will execute this barrier
-     // subresourceRange must: be a valid subresource range for the image (see <<resources-image-views>>)
+     // subresourceRange must: be a valid image subresource range for the image (see <<resources-image-views>>)
      // If image has a depth/stencil format with both depth and stencil components, then aspectMask member of subresourceRange must: include both TVK_IMAGE_ASPECT_DEPTH_BIT and TVK_IMAGE_ASPECT_STENCIL_BIT
      // If either oldLayout or newLayout is TVK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then image must: have been created with TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
      // If either oldLayout or newLayout is TVK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL then image must: have been created with TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT set
@@ -2446,10 +2310,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If imageType is TVK_IMAGE_TYPE_2D and flags contains TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimensionCube, or TVkImageFormatProperties::maxExtent.width/height (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure) - whichever is higher
      // If imageType is TVK_IMAGE_TYPE_2D and flags contains TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be equal
      // If imageType is TVK_IMAGE_TYPE_3D, extent.width, extent.height and extent.depth must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension3D, or TVkImageFormatProperties::maxExtent.width/height/depth (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure) - whichever is higher
+     // If imageType is TVK_IMAGE_TYPE_1D, both extent.height and extent.depth must: be `1`
+     // If imageType is TVK_IMAGE_TYPE_2D, extent.depth must: be `1`
      // mipLevels must: be less than or equal to latexmath:[$\lfloor\log_2(\max(\mathit{extent.width}, \mathit{extent.height}, \mathit{extent.depth}))\rfloor + 1$]
      // If any of extent.width, extent.height or extent.depth are greater than the equivalently named members of TVkPhysicalDeviceLimits::maxImageDimension3D, mipLevels must: be less than or equal to TVkImageFormatProperties::maxMipLevels (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure)
      // arrayLayers must: be less than or equal to TVkPhysicalDeviceLimits::maxImageArrayLayers, or TVkImageFormatProperties::maxArrayLayers (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure) - whichever is higher
-     // samples must: be a bit value that is set in TVkPhysicalDeviceLimits::sampleCounts returned by flink:vkGetPhysicalDeviceProperties, or TVkImageFormatProperties::maxExtent.sampleCounts returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure
+     // samples must: be a bit value that is set in TVkPhysicalDeviceLimits::sampleCounts returned by flink:vkGetPhysicalDeviceProperties, or TVkImageFormatProperties::sampleCounts returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure
      // If usage includes TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, TVK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, extent.width must: be less than or equal to TVkPhysicalDeviceLimits::maxFramebufferWidth
      // If usage includes TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, TVK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxFramebufferHeight
      // If usage includes TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, samples must: be a bit value that is set in TVkPhysicalDeviceLimits::maxFramebufferColorSamples
@@ -2480,7 +2346,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, usage mustnot: contain TVK_IMAGE_USAGE_STORAGE_BIT
      // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, usage mustnot: contain TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
      // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, usage mustnot: contain TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-     // If flags contains TVK_IMAGE_CREATE_SPARSE_ALIASED_BIT, it must: also contain at least one of TVK_IMAGE_CREATE_SPARSE_BINDING_BIT or TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If flags contains TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT or TVK_IMAGE_CREATE_SPARSE_ALIASED_BIT, it must: also contain TVK_IMAGE_CREATE_SPARSE_BINDING_BIT
      PPVkImageCreateInfo=^PVkImageCreateInfo;
      PVkImageCreateInfo=^TVkImageCreateInfo;
      TVkImageCreateInfo=record
@@ -2526,7 +2392,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If image was created with TVK_IMAGE_TILING_OPTIMAL and usage containing TVK_IMAGE_USAGE_STORAGE_BIT, format must: be supported for storage images, as specified by the TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
      // If image was created with TVK_IMAGE_TILING_OPTIMAL and usage containing TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, format must: be supported for color attachments, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
      // If image was created with TVK_IMAGE_TILING_OPTIMAL and usage containing TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, format must: be supported for depth/stencil attachments, as specified by the TVK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
-     // subresourceRange must: be a valid subresource range for image (see <<resources-image-views>>)
+     // subresourceRange must: be a valid image subresource range for image (see <<resources-image-views>>)
      // If image was created with the TVK_IMAGE_CREATE_MUTABLE_FORMAT_BIT flag, format must: be compatible with the format used to create image, as defined in <<features-formats-compatibility-classes,Format Compatibility Classes>>
      // If image was not created with the TVK_IMAGE_CREATE_MUTABLE_FORMAT_BIT flag, format must: be identical to the format used to create image
      // subResourceRange and viewType must: be compatible with the image, as described in the <<resources-image-views-compatibility,table below>>
@@ -2570,13 +2436,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      // If the <<features-features-sparseResidencyAliased,sparse aliased residency>> feature is not enabled, and if any other resources are bound to ranges of memory, the range of memory being bound mustnot: overlap with those bound ranges
      // memory and memoryOffset must: match the memory requirements of the calling command's image, as described in section <<resources-association>>
-     // subresource must: be a valid subresource for image (see <<resources-image-views>>)
-     // offset.x must: be a multiple of the block width (TVkSparseImageFormatProperties::imageGranularity.width) of the image
-     // extent.width must: either be a multiple of the block width of the image, or else extent.width + offset.x must: equal the width of the image subresource
-     // offset.y must: be a multiple of the block height (TVkSparseImageFormatProperties::imageGranularity.height) of the image
-     // extent.height must: either be a multiple of the block height of the image, or else extent.height + offset.y must: equal the height of the image subresource
-     // offset.z must: be a multiple of the block depth (TVkSparseImageFormatProperties::imageGranularity.depth) of the image
-     // extent.depth must: either be a multiple of the block depth of the image, or else extent.depth + offset.z must: equal the depth of the image subresource
+     // subresource must: be a valid image subresource for image (see <<resources-image-views>>)
+     // offset.x must: be a multiple of the sparse image block width (TVkSparseImageFormatProperties::imageGranularity.width) of the image
+     // extent.width must: either be a multiple of the sparse image block width of the image, or else extent.width + offset.x must: equal the width of the image subresource
+     // offset.y must: be a multiple of the sparse image block height (TVkSparseImageFormatProperties::imageGranularity.height) of the image
+     // extent.height must: either be a multiple of the sparse image block height of the image, or else extent.height + offset.y must: equal the height of the image subresource
+     // offset.z must: be a multiple of the sparse image block depth (TVkSparseImageFormatProperties::imageGranularity.depth) of the image
+     // extent.depth must: either be a multiple of the sparse image block depth of the image, or else extent.depth + offset.z must: equal the depth of the image subresource
      PPVkSparseImageMemoryBind=^PVkSparseImageMemoryBind;
      PVkSparseImageMemoryBind=^TVkSparseImageMemoryBind;
      TVkSparseImageMemoryBind=record
@@ -2642,15 +2508,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // dstOffset.y and (extent.height + dstOffset.y) must: both be greater than or equal to `0` and less than or equal to the destination image subresource height
      // dstOffset.z and (extent.depth + dstOffset.z) must: both be greater than or equal to `0` and less than or equal to the destination image subresource depth
      // If the calling command's srcImage is a compressed format image:
-     // all members of srcOffset must: be a multiple of the block size in the relevant dimensions
-     // extent.width must: be a multiple of the block width or (extent.width + srcOffset.x) must: equal the source image subresource width
-     // extent.height must: be a multiple of the block height or (extent.height + srcOffset.y) must: equal the source image subresource height
-     // extent.depth must: be a multiple of the block depth or (extent.depth + srcOffset.z) must: equal the source image subresource depth
+     // all members of srcOffset must: be a multiple of the corresponding dimensions of the compressed texel block
+     // extent.width must: be a multiple of the compressed texel block width or (extent.width + srcOffset.x) must: equal the source image subresource width
+     // extent.height must: be a multiple of the compressed texel block height or (extent.height + srcOffset.y) must: equal the source image subresource height
+     // extent.depth must: be a multiple of the compressed texel block depth or (extent.depth + srcOffset.z) must: equal the source image subresource depth
      // If the calling command's dstImage is a compressed format image:
-     // all members of dstOffset must: be a multiple of the block size in the relevant dimensions
-     // extent.width must: be a multiple of the block width or (extent.width + dstOffset.x) must: equal the destination image subresource width
-     // extent.height must: be a multiple of the block height or (extent.height + dstOffset.y) must: equal the destination image subresource height
-     // extent.depth must: be a multiple of the block depth or (extent.depth + dstOffset.z) must: equal the destination image subresource depth
+     // all members of dstOffset must: be a multiple of the corresponding dimensions of the compressed texel block
+     // extent.width must: be a multiple of the compressed texel block width or (extent.width + dstOffset.x) must: equal the destination image subresource width
+     // extent.height must: be a multiple of the compressed texel block height or (extent.height + dstOffset.y) must: equal the destination image subresource height
+     // extent.depth must: be a multiple of the compressed texel block depth or (extent.depth + dstOffset.z) must: equal the destination image subresource depth
      // srcOffset, dstOffset, and extent must: respect the image transfer granularity requirements of the queue family that it will be submitted against, as described in <<execution-physical-device-enumeration,Physical Device Enumeration>>
      PPVkImageCopy=^PVkImageCopy;
      PVkImageCopy=^TVkImageCopy;
@@ -2690,11 +2556,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // imageOffset.y and (imageExtent.height + imageOffset.y) must: both be greater than or equal to `0` and less than or equal to the image subresource height
      // imageOffset.z and (imageExtent.depth + imageOffset.z) must: both be greater than or equal to `0` and less than or equal to the image subresource depth
      // If the calling command's TVkImage parameter is a compressed format image:
-     // bufferRowLength, bufferImageHeight and all members of imageOffset must: be a multiple of the block size in the relevant dimensions
-     // bufferOffset must: be a multiple of the block size in bytes
-     // imageExtent.width must: be a multiple of the block width or (imageExtent.width + imageOffset.x) must: equal the image subresource width
-     // imageExtent.height must: be a multiple of the block height or (imageExtent.height + imageOffset.y) must: equal the image subresource height
-     // imageExtent.depth must: be a multiple of the block depth or (imageExtent.depth + imageOffset.z) must: equal the image subresource depth
+     // bufferRowLength must: be a multiple of the compressed texel block width
+     // bufferImageHeight must: be a multiple of the compressed texel block height
+     // all members of imageOffset must: be a multiple of the corresponding dimensions of the compressed texel block
+     // bufferOffset must: be a multiple of the compressed texel block size in bytes
+     // imageExtent.width must: be a multiple of the compressed texel block width or (imageExtent.width + imageOffset.x) must: equal the image subresource width
+     // imageExtent.height must: be a multiple of the compressed texel block height or (imageExtent.height + imageOffset.y) must: equal the image subresource height
+     // imageExtent.depth must: be a multiple of the compressed texel block depth or (imageExtent.depth + imageOffset.z) must: equal the image subresource depth
      // bufferOffset, bufferRowLength, bufferImageHeight and all members of imageOffset and imageExtent must: respect the image transfer granularity requirements of the queue family that it will be submitted against, as described in <<execution-physical-device-enumeration,Physical Device Enumeration>>
      // The aspectMask member of imageSubresource must: specify aspects present in the calling command's TVkImage parameter
      // The aspectMask member of imageSubresource must: only have a single bit set
@@ -3720,7 +3588,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       displayMode:TVkDisplayModeKHR; //< The mode to use when displaying this surface
       planeIndex:TVkUInt32; //< The plane on which this surface appears. Must be between 0 and the value returned by vkGetPhysicalDeviceDisplayPlanePropertiesKHR() in pPropertyCount.
       planeStackIndex:TVkUInt32; //< The z-order of the plane.
-      transform:TVkSurfaceTransformFlagBitsKHR; //< Transform to apply to the images as part of the scannout operation value returned by vkGetPhysicalDeviceDisplayPlanePropertie
+      transform:TVkSurfaceTransformFlagBitsKHR; //< Transform to apply to the images as part of the scannout operation
       globalAlpha:TVkFloat; //< Global alpha value. Must be between 0 and 1, inclusive. Ignored if alphaMode is not VK_DISPLAY_PLANE_ALPHA_GLOBAL_BIT_KHR
       alphaMode:TVkDisplayPlaneAlphaFlagBitsKHR; //< What type of alpha blending to use. Must be a bit from vkGetDisplayPlanePropertiesKHR::supportedAlpha.
       imageExtent:TVkExtent2D; //< size of the images to use with this surface
@@ -3997,7 +3865,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The size member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image must: be less than or equal to the size of memory minus memoryOffset
      TvkBindImageMemory=function(device:TVkDevice;image:TVkImage;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // image must: have been created with the TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT flag
      TvkGetImageSparseMemoryRequirements=procedure(device:TVkDevice;image:TVkImage;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // If format is an integer format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageIntegerSampleCounts
@@ -4060,7 +3927,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
      TvkGetQueryPoolResults=function(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:TVkPointer;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT or TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+     // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
      TvkCreateBuffer=function(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // All submitted commands that refer to buffer, either directly or via a TVkBufferView, must: have completed execution
@@ -4075,7 +3942,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If no TVkAllocationCallbacks were provided when bufferView was created, pAllocator must: be `NULL`
      TvkDestroyBufferView=procedure(device:TVkDevice;bufferView:TVkBufferView;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT or TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+     // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
      TvkCreateImage=function(device:TVkDevice;const pCreateInfo:PVkImageCreateInfo;const pAllocator:PVkAllocationCallbacks;pImage:PVkImage):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // All submitted commands that refer to image, either directly or via a TVkImageView, must: have completed execution
@@ -4193,6 +4060,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkFreeCommandBuffers=procedure(device:TVkDevice;commandPool:TVkCommandPool;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // commandBuffer mustnot: be in the recording state
+     // commandBuffer mustnot: currently be pending execution
      // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state.
      // If commandBuffer is a secondary command buffer, the pInheritanceInfo member of pBeginInfo must: be a valid TVkCommandBufferInheritanceInfo structure
      // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
@@ -4243,7 +4111,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkCmdSetStencilReference=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;reference:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of the index into pDescriptorSets and firstSet
+     // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
      // dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pDescriptorSets
      // pipelineBindPoint must: be supported by the commandBuffer's parent TVkCommandPool's queue family
      // Any given element of pDynamicOffsets must: satisfy the required alignment for the corresponding descriptor binding's descriptor type
@@ -4367,11 +4235,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // Any slink:VkImage being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
      TvkCmdDispatchIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // The copySize member of a given element of pRegions must: be greater than `0`
+     // The size member of a given element of pRegions must: be greater than `0`
      // The srcOffset member of a given element of pRegions must: be less than the size of srcBuffer
      // The dstOffset member of a given element of pRegions must: be less than the size of dstBuffer
-     // The copySize member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
-     // The copySize member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
+     // The size member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
+     // The size member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
      // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, mustnot: overlap in memory
      // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
      // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
@@ -4381,10 +4249,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
      // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
-     // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+     // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
      // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
      // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-     // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+     // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
      // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
      // The elink:VkFormat of each of srcImage and dstImage must: be compatible, as defined <<copies-images-format-compatibility, below>>
      // The sample count of srcImage and dstImage must: match
@@ -4395,11 +4263,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
      // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
      // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
-     // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+     // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
      // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
      // dstImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_DST_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
      // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-     // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+     // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
      // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
      // The sample count of srcImage and dstImage must: both be equal to TVK_SAMPLE_COUNT_1_BIT
      // If either of srcImage or dstImage was created with a signed integer elink:VkFormat, the other must: also have been created with a signed integer elink:VkFormat
@@ -4414,7 +4282,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
      // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
      // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-     // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+     // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
      // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
      TvkCmdCopyBufferToImage=procedure(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -4423,7 +4291,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
      // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
      // srcImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-     // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+     // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
      // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
      // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
      TvkCmdCopyImageToBuffer=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -4446,15 +4314,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCmdFillBuffer=procedure(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-     // imageLayout must: specify the layout of the subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
+     // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
      // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-     // The image range of any given element of pRanges must: be a subresource range that is contained within image
+     // The image range of any given element of pRanges must: be a image subresource range that is contained within image
      TvkCmdClearColorImage=procedure(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pColor:PVkClearColorValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-     // imageLayout must: specify the layout of the subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
+     // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
      // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-     // The image range of any given element of pRanges must: be a subresource range that is contained within image
+     // The image range of any given element of pRanges must: be a image subresource range that is contained within image
      TvkCmdClearDepthStencilImage=procedure(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // If the aspectMask member of any given element of pAttachments contains TVK_IMAGE_ASPECT_COLOR_BIT, the colorAttachment member of those elements must: refer to a valid color attachment in the current subpass
@@ -4467,9 +4335,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
      // srcImage must: have a sample count equal to any valid sample count value other than TVK_SAMPLE_COUNT_1_BIT
      // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-     // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+     // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
      // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-     // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+     // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
      // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
      // If dstImage was created with tiling equal to TVK_IMAGE_TILING_LINEAR, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
      // If dstImage was created with tiling equal to TVK_IMAGE_TILING_OPTIMAL, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
@@ -4526,6 +4394,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If TVK_QUERY_RESULT_64_BIT is not set in flags then dstOffset and stride must be multiples of `4`
      // If TVK_QUERY_RESULT_64_BIT is set in flags then dstOffset and stride must be multiples of `8`
      // dstBuffer must: have enough storage, from dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+     // dstBuffer must: have been created with VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
      // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
      TvkCmdCopyQueryPoolResults=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -4563,7 +4432,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::occlusionQueryEnable set to TVK_TRUE
      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::queryFlags having all bits set that are set for the query
-     // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
+     // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
      // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
      TvkCmdExecuteCommands=procedure(commandBuffer:TVkCommandBuffer;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -4780,7 +4649,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // The size member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image must: be less than or equal to the size of memory minus memoryOffset
       BindImageMemory:TvkBindImageMemory;
 
-      // image must: have been created with the TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT flag
       GetImageSparseMemoryRequirements:TvkGetImageSparseMemoryRequirements;
 
       // If format is an integer format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageIntegerSampleCounts
@@ -4843,7 +4711,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
       GetQueryPoolResults:TvkGetQueryPoolResults;
 
-      // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT or TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+      // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
       CreateBuffer:TvkCreateBuffer;
 
       // All submitted commands that refer to buffer, either directly or via a TVkBufferView, must: have completed execution
@@ -4858,7 +4726,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If no TVkAllocationCallbacks were provided when bufferView was created, pAllocator must: be `NULL`
       DestroyBufferView:TvkDestroyBufferView;
 
-      // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT or TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+      // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
       CreateImage:TvkCreateImage;
 
       // All submitted commands that refer to image, either directly or via a TVkImageView, must: have completed execution
@@ -4976,6 +4844,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       FreeCommandBuffers:TvkFreeCommandBuffers;
 
       // commandBuffer mustnot: be in the recording state
+      // commandBuffer mustnot: currently be pending execution
       // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state.
       // If commandBuffer is a secondary command buffer, the pInheritanceInfo member of pBeginInfo must: be a valid TVkCommandBufferInheritanceInfo structure
       // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
@@ -5026,7 +4895,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       CmdSetStencilReference:TvkCmdSetStencilReference;
 
-      // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of the index into pDescriptorSets and firstSet
+      // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
       // dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pDescriptorSets
       // pipelineBindPoint must: be supported by the commandBuffer's parent TVkCommandPool's queue family
       // Any given element of pDynamicOffsets must: satisfy the required alignment for the corresponding descriptor binding's descriptor type
@@ -5150,11 +5019,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // Any slink:VkImage being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
       CmdDispatchIndirect:TvkCmdDispatchIndirect;
 
-      // The copySize member of a given element of pRegions must: be greater than `0`
+      // The size member of a given element of pRegions must: be greater than `0`
       // The srcOffset member of a given element of pRegions must: be less than the size of srcBuffer
       // The dstOffset member of a given element of pRegions must: be less than the size of dstBuffer
-      // The copySize member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
-      // The copySize member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
+      // The size member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
+      // The size member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
       // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, mustnot: overlap in memory
       // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
       // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
@@ -5164,10 +5033,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
       // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
-      // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+      // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
       // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
       // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-      // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+      // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
       // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
       // The elink:VkFormat of each of srcImage and dstImage must: be compatible, as defined <<copies-images-format-compatibility, below>>
       // The sample count of srcImage and dstImage must: match
@@ -5178,11 +5047,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
       // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
       // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
-      // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+      // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
       // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
       // dstImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_DST_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
       // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-      // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+      // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
       // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
       // The sample count of srcImage and dstImage must: both be equal to TVK_SAMPLE_COUNT_1_BIT
       // If either of srcImage or dstImage was created with a signed integer elink:VkFormat, the other must: also have been created with a signed integer elink:VkFormat
@@ -5197,7 +5066,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
       // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
       // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-      // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+      // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
       // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
       CmdCopyBufferToImage:TvkCmdCopyBufferToImage;
 
@@ -5206,7 +5075,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
       // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
       // srcImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-      // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+      // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
       // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
       // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
       CmdCopyImageToBuffer:TvkCmdCopyImageToBuffer;
@@ -5229,15 +5098,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CmdFillBuffer:TvkCmdFillBuffer;
 
       // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-      // imageLayout must: specify the layout of the subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
+      // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
       // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-      // The image range of any given element of pRanges must: be a subresource range that is contained within image
+      // The image range of any given element of pRanges must: be a image subresource range that is contained within image
       CmdClearColorImage:TvkCmdClearColorImage;
 
       // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-      // imageLayout must: specify the layout of the subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
+      // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
       // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-      // The image range of any given element of pRanges must: be a subresource range that is contained within image
+      // The image range of any given element of pRanges must: be a image subresource range that is contained within image
       CmdClearDepthStencilImage:TvkCmdClearDepthStencilImage;
 
       // If the aspectMask member of any given element of pAttachments contains TVK_IMAGE_ASPECT_COLOR_BIT, the colorAttachment member of those elements must: refer to a valid color attachment in the current subpass
@@ -5250,9 +5119,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
       // srcImage must: have a sample count equal to any valid sample count value other than TVK_SAMPLE_COUNT_1_BIT
       // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-      // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+      // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
       // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-      // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+      // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
       // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
       // If dstImage was created with tiling equal to TVK_IMAGE_TILING_LINEAR, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
       // If dstImage was created with tiling equal to TVK_IMAGE_TILING_OPTIMAL, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
@@ -5309,6 +5178,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If TVK_QUERY_RESULT_64_BIT is not set in flags then dstOffset and stride must be multiples of `4`
       // If TVK_QUERY_RESULT_64_BIT is set in flags then dstOffset and stride must be multiples of `8`
       // dstBuffer must: have enough storage, from dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+      // dstBuffer must: have been created with VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
       // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
       CmdCopyQueryPoolResults:TvkCmdCopyQueryPoolResults;
 
@@ -5346,7 +5216,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::occlusionQueryEnable set to TVK_TRUE
       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::queryFlags having all bits set that are set for the query
-      // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
+      // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
       // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
       CmdExecuteCommands:TvkCmdExecuteCommands;
 
@@ -5568,7 +5438,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // The size member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image must: be less than or equal to the size of memory minus memoryOffset
        function BindImageMemory(device:TVkDevice;image:TVkImage;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; virtual;
 
-       // image must: have been created with the TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT flag
        procedure GetImageSparseMemoryRequirements(device:TVkDevice;image:TVkImage;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements); virtual;
 
        // If format is an integer format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageIntegerSampleCounts
@@ -5631,7 +5500,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
        function GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:TVkPointer;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; virtual;
 
-       // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT or TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+       // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
        function CreateBuffer(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; virtual;
 
        // All submitted commands that refer to buffer, either directly or via a TVkBufferView, must: have completed execution
@@ -5646,7 +5515,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If no TVkAllocationCallbacks were provided when bufferView was created, pAllocator must: be `NULL`
        procedure DestroyBufferView(device:TVkDevice;bufferView:TVkBufferView;const pAllocator:PVkAllocationCallbacks); virtual;
 
-       // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT or TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+       // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
        function CreateImage(device:TVkDevice;const pCreateInfo:PVkImageCreateInfo;const pAllocator:PVkAllocationCallbacks;pImage:PVkImage):TVkResult; virtual;
 
        // All submitted commands that refer to image, either directly or via a TVkImageView, must: have completed execution
@@ -5764,6 +5633,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        procedure FreeCommandBuffers(device:TVkDevice;commandPool:TVkCommandPool;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); virtual;
 
        // commandBuffer mustnot: be in the recording state
+       // commandBuffer mustnot: currently be pending execution
        // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state.
        // If commandBuffer is a secondary command buffer, the pInheritanceInfo member of pBeginInfo must: be a valid TVkCommandBufferInheritanceInfo structure
        // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
@@ -5814,7 +5684,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure CmdSetStencilReference(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;reference:TVkUInt32); virtual;
 
-       // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of the index into pDescriptorSets and firstSet
+       // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
        // dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pDescriptorSets
        // pipelineBindPoint must: be supported by the commandBuffer's parent TVkCommandPool's queue family
        // Any given element of pDynamicOffsets must: satisfy the required alignment for the corresponding descriptor binding's descriptor type
@@ -5938,11 +5808,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // Any slink:VkImage being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
        procedure CmdDispatchIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); virtual;
 
-       // The copySize member of a given element of pRegions must: be greater than `0`
+       // The size member of a given element of pRegions must: be greater than `0`
        // The srcOffset member of a given element of pRegions must: be less than the size of srcBuffer
        // The dstOffset member of a given element of pRegions must: be less than the size of dstBuffer
-       // The copySize member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
-       // The copySize member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
+       // The size member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
+       // The size member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
        // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, mustnot: overlap in memory
        // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
        // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
@@ -5952,10 +5822,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
        // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
        // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
-       // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+       // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
        // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
        // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-       // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+       // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
        // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
        // The elink:VkFormat of each of srcImage and dstImage must: be compatible, as defined <<copies-images-format-compatibility, below>>
        // The sample count of srcImage and dstImage must: match
@@ -5966,11 +5836,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
        // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
        // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
-       // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+       // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
        // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
        // dstImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_DST_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
        // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-       // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+       // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
        // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
        // The sample count of srcImage and dstImage must: both be equal to TVK_SAMPLE_COUNT_1_BIT
        // If either of srcImage or dstImage was created with a signed integer elink:VkFormat, the other must: also have been created with a signed integer elink:VkFormat
@@ -5985,7 +5855,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
        // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
        // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-       // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+       // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
        // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
        procedure CmdCopyBufferToImage(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); virtual;
 
@@ -5994,7 +5864,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
        // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
        // srcImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-       // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+       // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
        // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
        // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
        procedure CmdCopyImageToBuffer(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); virtual;
@@ -6017,15 +5887,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        procedure CmdFillBuffer(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TVkUInt32); virtual;
 
        // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-       // imageLayout must: specify the layout of the subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
+       // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
        // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-       // The image range of any given element of pRanges must: be a subresource range that is contained within image
+       // The image range of any given element of pRanges must: be a image subresource range that is contained within image
        procedure CmdClearColorImage(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pColor:PVkClearColorValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); virtual;
 
        // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-       // imageLayout must: specify the layout of the subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
+       // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
        // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-       // The image range of any given element of pRanges must: be a subresource range that is contained within image
+       // The image range of any given element of pRanges must: be a image subresource range that is contained within image
        procedure CmdClearDepthStencilImage(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); virtual;
 
        // If the aspectMask member of any given element of pAttachments contains TVK_IMAGE_ASPECT_COLOR_BIT, the colorAttachment member of those elements must: refer to a valid color attachment in the current subpass
@@ -6038,9 +5908,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
        // srcImage must: have a sample count equal to any valid sample count value other than TVK_SAMPLE_COUNT_1_BIT
        // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-       // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+       // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
        // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-       // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+       // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
        // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
        // If dstImage was created with tiling equal to TVK_IMAGE_TILING_LINEAR, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
        // If dstImage was created with tiling equal to TVK_IMAGE_TILING_OPTIMAL, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
@@ -6097,6 +5967,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If TVK_QUERY_RESULT_64_BIT is not set in flags then dstOffset and stride must be multiples of `4`
        // If TVK_QUERY_RESULT_64_BIT is set in flags then dstOffset and stride must be multiples of `8`
        // dstBuffer must: have enough storage, from dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+       // dstBuffer must: have been created with VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
        // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
        procedure CmdCopyQueryPoolResults(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags); virtual;
 
@@ -6134,7 +6005,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
        // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::occlusionQueryEnable set to TVK_TRUE
        // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::queryFlags having all bits set that are set for the query
-       // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
+       // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
        // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
        procedure CmdExecuteCommands(commandBuffer:TVkCommandBuffer;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); virtual;
 
@@ -6354,7 +6225,6 @@ var LibVulkan:pointer=nil;
     // The size member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image must: be less than or equal to the size of memory minus memoryOffset
     vkBindImageMemory:TvkBindImageMemory=nil;
 
-    // image must: have been created with the TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT flag
     vkGetImageSparseMemoryRequirements:TvkGetImageSparseMemoryRequirements=nil;
 
     // If format is an integer format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageIntegerSampleCounts
@@ -6417,7 +6287,7 @@ var LibVulkan:pointer=nil;
     // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
     vkGetQueryPoolResults:TvkGetQueryPoolResults=nil;
 
-    // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT or TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+    // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
     vkCreateBuffer:TvkCreateBuffer=nil;
 
     // All submitted commands that refer to buffer, either directly or via a TVkBufferView, must: have completed execution
@@ -6432,7 +6302,7 @@ var LibVulkan:pointer=nil;
     // If no TVkAllocationCallbacks were provided when bufferView was created, pAllocator must: be `NULL`
     vkDestroyBufferView:TvkDestroyBufferView=nil;
 
-    // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT or TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+    // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
     vkCreateImage:TvkCreateImage=nil;
 
     // All submitted commands that refer to image, either directly or via a TVkImageView, must: have completed execution
@@ -6550,6 +6420,7 @@ var LibVulkan:pointer=nil;
     vkFreeCommandBuffers:TvkFreeCommandBuffers=nil;
 
     // commandBuffer mustnot: be in the recording state
+    // commandBuffer mustnot: currently be pending execution
     // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state.
     // If commandBuffer is a secondary command buffer, the pInheritanceInfo member of pBeginInfo must: be a valid TVkCommandBufferInheritanceInfo structure
     // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
@@ -6600,7 +6471,7 @@ var LibVulkan:pointer=nil;
 
     vkCmdSetStencilReference:TvkCmdSetStencilReference=nil;
 
-    // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of the index into pDescriptorSets and firstSet
+    // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
     // dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pDescriptorSets
     // pipelineBindPoint must: be supported by the commandBuffer's parent TVkCommandPool's queue family
     // Any given element of pDynamicOffsets must: satisfy the required alignment for the corresponding descriptor binding's descriptor type
@@ -6724,11 +6595,11 @@ var LibVulkan:pointer=nil;
     // Any slink:VkImage being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
     vkCmdDispatchIndirect:TvkCmdDispatchIndirect=nil;
 
-    // The copySize member of a given element of pRegions must: be greater than `0`
+    // The size member of a given element of pRegions must: be greater than `0`
     // The srcOffset member of a given element of pRegions must: be less than the size of srcBuffer
     // The dstOffset member of a given element of pRegions must: be less than the size of dstBuffer
-    // The copySize member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
-    // The copySize member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
+    // The size member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
+    // The size member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
     // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, mustnot: overlap in memory
     // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
     // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
@@ -6738,10 +6609,10 @@ var LibVulkan:pointer=nil;
     // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
     // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
-    // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+    // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
     // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
     // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-    // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+    // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
     // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
     // The elink:VkFormat of each of srcImage and dstImage must: be compatible, as defined <<copies-images-format-compatibility, below>>
     // The sample count of srcImage and dstImage must: match
@@ -6752,11 +6623,11 @@ var LibVulkan:pointer=nil;
     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
     // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
     // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
-    // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+    // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
     // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
     // dstImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_DST_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
     // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-    // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+    // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
     // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
     // The sample count of srcImage and dstImage must: both be equal to TVK_SAMPLE_COUNT_1_BIT
     // If either of srcImage or dstImage was created with a signed integer elink:VkFormat, the other must: also have been created with a signed integer elink:VkFormat
@@ -6771,7 +6642,7 @@ var LibVulkan:pointer=nil;
     // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
     // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
     // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-    // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+    // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
     // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
     vkCmdCopyBufferToImage:TvkCmdCopyBufferToImage=nil;
 
@@ -6780,7 +6651,7 @@ var LibVulkan:pointer=nil;
     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
     // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
     // srcImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-    // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+    // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
     // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
     // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
     vkCmdCopyImageToBuffer:TvkCmdCopyImageToBuffer=nil;
@@ -6803,15 +6674,15 @@ var LibVulkan:pointer=nil;
     vkCmdFillBuffer:TvkCmdFillBuffer=nil;
 
     // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-    // imageLayout must: specify the layout of the subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
+    // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
     // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-    // The image range of any given element of pRanges must: be a subresource range that is contained within image
+    // The image range of any given element of pRanges must: be a image subresource range that is contained within image
     vkCmdClearColorImage:TvkCmdClearColorImage=nil;
 
     // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
-    // imageLayout must: specify the layout of the subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
+    // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
     // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-    // The image range of any given element of pRanges must: be a subresource range that is contained within image
+    // The image range of any given element of pRanges must: be a image subresource range that is contained within image
     vkCmdClearDepthStencilImage:TvkCmdClearDepthStencilImage=nil;
 
     // If the aspectMask member of any given element of pAttachments contains TVK_IMAGE_ASPECT_COLOR_BIT, the colorAttachment member of those elements must: refer to a valid color attachment in the current subpass
@@ -6824,9 +6695,9 @@ var LibVulkan:pointer=nil;
     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
     // srcImage must: have a sample count equal to any valid sample count value other than TVK_SAMPLE_COUNT_1_BIT
     // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
-    // srcImageLayout must: specify the layout of the subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
+    // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
     // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
-    // dstImageLayout must: specify the layout of the subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
+    // dstImageLayout must: specify the layout of the image subresources of dstImage specified in pRegions at the time this command is executed on a TVkDevice
     // dstImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
     // If dstImage was created with tiling equal to TVK_IMAGE_TILING_LINEAR, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
     // If dstImage was created with tiling equal to TVK_IMAGE_TILING_OPTIMAL, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
@@ -6883,6 +6754,7 @@ var LibVulkan:pointer=nil;
     // If TVK_QUERY_RESULT_64_BIT is not set in flags then dstOffset and stride must be multiples of `4`
     // If TVK_QUERY_RESULT_64_BIT is set in flags then dstOffset and stride must be multiples of `8`
     // dstBuffer must: have enough storage, from dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
+    // dstBuffer must: have been created with VK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
     // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
     vkCmdCopyQueryPoolResults:TvkCmdCopyQueryPoolResults=nil;
 
@@ -6920,7 +6792,7 @@ var LibVulkan:pointer=nil;
     // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::occlusionQueryEnable set to TVK_TRUE
     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::queryFlags having all bits set that are set for the query
-    // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
+    // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
     // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
     vkCmdExecuteCommands:TvkCmdExecuteCommands=nil;
 
