@@ -151,7 +151,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=12;
+      VK_HEADER_VERSION=14;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -1304,7 +1304,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_NOT_READY=1,                                                           //< A fence or query has not yet completed
        VK_TIMEOUT=2,                                                             //< A wait operation has not completed in the specified time
        VK_EVENT_SET=3,                                                           //< An event is signaled
-       VK_EVENT_RESET=4,                                                         //< An event is unsignalled
+       VK_EVENT_RESET=4,                                                         //< An event is unsignaled
        VK_INCOMPLETE=5,                                                          //< A return array was too small for the result
        VK_SUBOPTIMAL_KHR=1000001003
       );
@@ -1655,6 +1655,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkColorSpaceKHR=^TVkColorSpaceKHR;
      TVkColorSpaceKHR=
       (
+       VK_COLOR_SPACE_SRGB_NONLINEAR_KHR=0,
        VK_COLORSPACE_SRGB_NONLINEAR_KHR=0
       );
 
@@ -3082,6 +3083,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       queueFamilyIndex:TVkUInt32;
      end;
 
+     // commandBufferCount must: be greater than `0`
      PPVkCommandBufferAllocateInfo=^PVkCommandBufferAllocateInfo;
      PVkCommandBufferAllocateInfo=^TVkCommandBufferAllocateInfo;
      TVkCommandBufferAllocateInfo=record
@@ -3277,7 +3279,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       flags:TVkFenceCreateFlags; //< Fence creation flags
      end;
 
-     // Any given element of ppEnabledLayerNames must: be the name of a layer present on the system, exactly matching a string returned in the TVkLayerProperties structure by vkEnumerateDeviceLayerProperties
+     // ppEnabledLayerNames must: either be TNULL or contain the same sequence of layer names that was enabled when creating the parent instance
      // Any given element of ppEnabledExtensionNames must: be the name of an extension present on the system, exactly matching a string returned in the TVkExtensionProperties structure by vkEnumerateDeviceExtensionProperties
      // If an extension listed in ppEnabledExtensionNames is provided as part of a layer, then both the layer and extension must: be enabled to enable that extension
      // The queueFamilyIndex member of any given element of pQueueCreateInfos must: be unique within pQueueCreateInfos
@@ -3503,7 +3505,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       z:TVkUInt32;
      end;
 
-     // Any given element of pSignalSemaphores must: currently be unsignalled
+     // Any given element of pSignalSemaphores must: currently be unsignaled
      // Any given element of pCommandBuffers must: either have been recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT, or not currently be executing on the device
      // Any given element of pCommandBuffers must: be in the executable state
      // If any given element of pCommandBuffers contains commands that execute secondary command buffers, those secondary command buffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT, or not currently be executing on the device
@@ -3716,7 +3718,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 
      // surface must: be a surface that is supported by the device as determined using vkGetPhysicalDeviceSurfaceSupportKHR
-     // The native window referred to by surface mustnot: already be associated with a swapchain other than oldSwapchain, or with a non-{apiname} graphics API surface
+     // The native window referred to by surface mustnot: already be associated with a swapchain other than oldSwapchain, or with a non-Vulkan graphics API surface
      // minImageCount must: be greater than or equal to the value returned in the minImageCount member of the TVkSurfaceCapabilitiesKHR structure returned by vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface
      // minImageCount must: be less than or equal to the value returned in the maxImageCount member of the TVkSurfaceCapabilitiesKHR structure returned by vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface if the returned maxImageCount is not zero
      // imageFormat and imageColorspace must: match the format and colorSpace members, respectively, of one of the TVkSurfaceFormatKHR structures returned by vkGetPhysicalDeviceSurfaceFormatsKHR for the surface
@@ -3852,19 +3854,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkEnumerateInstanceLayerProperties=function(pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If pLayerName is not `NULL`, it must: be the name of an instance layer returned by flink:vkEnumerateInstanceLayerProperties
+     // If pLayerName is not `NULL`, it must: be the name of a layer returned by flink:vkEnumerateInstanceLayerProperties
      TvkEnumerateInstanceExtensionProperties=function(const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkEnumerateDeviceLayerProperties=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If pLayerName is not `NULL`, it must: be the name of a device layer returned by flink:vkEnumerateDeviceLayerProperties
+     // If pLayerName is not `NULL`, it must: be the name of a layer returned by flink:vkEnumerateDeviceLayerProperties
      TvkEnumerateDeviceExtensionProperties=function(physicalDevice:TVkPhysicalDevice;const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // queueFamilyIndex must: be one of the queue family indices specified when device was created, via the TVkDeviceQueueCreateInfo structure
      // queueIndex must: be less than the number of queues created for the specified queue family index when device was created, via the queueCount member of the TVkDeviceQueueCreateInfo structure
      TvkGetDeviceQueue=procedure(device:TVkDevice;queueFamilyIndex:TVkUInt32;queueIndex:TVkUInt32;pQueue:PVkQueue); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If fence is not TVK_NULL_HANDLE, fence must: be unsignalled
+     // If fence is not TVK_NULL_HANDLE, fence must: be unsignaled
      // If fence is not TVK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
      TvkQueueSubmit=function(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -3927,7 +3929,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If usage includes TVK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::storageImageSampleCounts
      TvkGetPhysicalDeviceSparseImageFormatProperties=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;samples:TVkSampleCountFlagBits;usage:TVkImageUsageFlags;tiling:TVkImageTiling;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // fence must: be unsignalled
+     // fence must: be unsignaled
      // fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
      TvkQueueBindSparse=function(queue:TVkQueue;bindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -4484,12 +4486,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // Any given element of pCommandBuffers must: be in the executable state
      // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the subpass member of the inheritanceInfo structure set to the index of the subpass which the given command buffer will be executed in
+     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-     // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with the framebuffer member of the TVkCommandBufferInheritanceInfo structure not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
+     // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
      // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
-     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::occlusionQueryEnable set to TVK_TRUE
-     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::queryFlags having all bits set that are set for the query
+     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
+     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
      // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
      // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
      TvkCmdExecuteCommands=procedure(commandBuffer:TVkCommandBuffer;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -4547,8 +4549,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetSwapchainImagesKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainImageCount:PVkUInt32;pSwapchainImages:PVkImage):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If semaphore is not TVK_NULL_HANDLE it must: be unsignalled
-     // If fence is not TVK_NULL_HANDLE it must: be unsignalled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+     // If semaphore is not TVK_NULL_HANDLE it must: be unsignaled
+     // If fence is not TVK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
      TvkAcquireNextImageKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;timeout:TVkUInt64;semaphore:TVkSemaphore;fence:TVkFence;pImageIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
@@ -4595,7 +4597,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // instance must: be a valid TVkInstance handle
      // flags must: be a combination of one or more of TVkDebugReportFlagBitsEXT
      // objType must: be one of TVkDebugReportObjectTypeEXT, TVK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if object is `NULL`
-     // object may: be a {apiname} object
+     // object may: be a Vulkan object
      // pLayerPrefix must: be a `NULL` terminated string.
      // pMsg must: be a `NULL` terminated string.
      TvkDebugReportMessageEXT=procedure(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -4656,19 +4658,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       EnumerateInstanceLayerProperties:TvkEnumerateInstanceLayerProperties;
 
-      // If pLayerName is not `NULL`, it must: be the name of an instance layer returned by flink:vkEnumerateInstanceLayerProperties
+      // If pLayerName is not `NULL`, it must: be the name of a layer returned by flink:vkEnumerateInstanceLayerProperties
       EnumerateInstanceExtensionProperties:TvkEnumerateInstanceExtensionProperties;
 
       EnumerateDeviceLayerProperties:TvkEnumerateDeviceLayerProperties;
 
-      // If pLayerName is not `NULL`, it must: be the name of a device layer returned by flink:vkEnumerateDeviceLayerProperties
+      // If pLayerName is not `NULL`, it must: be the name of a layer returned by flink:vkEnumerateDeviceLayerProperties
       EnumerateDeviceExtensionProperties:TvkEnumerateDeviceExtensionProperties;
 
       // queueFamilyIndex must: be one of the queue family indices specified when device was created, via the TVkDeviceQueueCreateInfo structure
       // queueIndex must: be less than the number of queues created for the specified queue family index when device was created, via the queueCount member of the TVkDeviceQueueCreateInfo structure
       GetDeviceQueue:TvkGetDeviceQueue;
 
-      // If fence is not TVK_NULL_HANDLE, fence must: be unsignalled
+      // If fence is not TVK_NULL_HANDLE, fence must: be unsignaled
       // If fence is not TVK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
       QueueSubmit:TvkQueueSubmit;
 
@@ -4731,7 +4733,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If usage includes TVK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::storageImageSampleCounts
       GetPhysicalDeviceSparseImageFormatProperties:TvkGetPhysicalDeviceSparseImageFormatProperties;
 
-      // fence must: be unsignalled
+      // fence must: be unsignaled
       // fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
       QueueBindSparse:TvkQueueBindSparse;
 
@@ -5288,12 +5290,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // Any given element of pCommandBuffers must: be in the executable state
       // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the subpass member of the inheritanceInfo structure set to the index of the subpass which the given command buffer will be executed in
+      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-      // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with the framebuffer member of the TVkCommandBufferInheritanceInfo structure not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
+      // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
       // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
-      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::occlusionQueryEnable set to TVK_TRUE
-      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::queryFlags having all bits set that are set for the query
+      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
+      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
       // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
       // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
       CmdExecuteCommands:TvkCmdExecuteCommands;
@@ -5351,8 +5353,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetSwapchainImagesKHR:TvkGetSwapchainImagesKHR;
 
-      // If semaphore is not TVK_NULL_HANDLE it must: be unsignalled
-      // If fence is not TVK_NULL_HANDLE it must: be unsignalled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+      // If semaphore is not TVK_NULL_HANDLE it must: be unsignaled
+      // If fence is not TVK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
       AcquireNextImageKHR:TvkAcquireNextImageKHR;
 
       // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
@@ -5399,7 +5401,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // instance must: be a valid TVkInstance handle
       // flags must: be a combination of one or more of TVkDebugReportFlagBitsEXT
       // objType must: be one of TVkDebugReportObjectTypeEXT, TVK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if object is `NULL`
-      // object may: be a {apiname} object
+      // object may: be a Vulkan object
       // pLayerPrefix must: be a `NULL` terminated string.
       // pMsg must: be a `NULL` terminated string.
       DebugReportMessageEXT:TvkDebugReportMessageEXT;
@@ -5465,19 +5467,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function EnumerateInstanceLayerProperties(pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; virtual;
 
-       // If pLayerName is not `NULL`, it must: be the name of an instance layer returned by flink:vkEnumerateInstanceLayerProperties
+       // If pLayerName is not `NULL`, it must: be the name of a layer returned by flink:vkEnumerateInstanceLayerProperties
        function EnumerateInstanceExtensionProperties(const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; virtual;
 
        function EnumerateDeviceLayerProperties(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; virtual;
 
-       // If pLayerName is not `NULL`, it must: be the name of a device layer returned by flink:vkEnumerateDeviceLayerProperties
+       // If pLayerName is not `NULL`, it must: be the name of a layer returned by flink:vkEnumerateDeviceLayerProperties
        function EnumerateDeviceExtensionProperties(physicalDevice:TVkPhysicalDevice;const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; virtual;
 
        // queueFamilyIndex must: be one of the queue family indices specified when device was created, via the TVkDeviceQueueCreateInfo structure
        // queueIndex must: be less than the number of queues created for the specified queue family index when device was created, via the queueCount member of the TVkDeviceQueueCreateInfo structure
        procedure GetDeviceQueue(device:TVkDevice;queueFamilyIndex:TVkUInt32;queueIndex:TVkUInt32;pQueue:PVkQueue); virtual;
 
-       // If fence is not TVK_NULL_HANDLE, fence must: be unsignalled
+       // If fence is not TVK_NULL_HANDLE, fence must: be unsignaled
        // If fence is not TVK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
        function QueueSubmit(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;fence:TVkFence):TVkResult; virtual;
 
@@ -5540,7 +5542,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If usage includes TVK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::storageImageSampleCounts
        procedure GetPhysicalDeviceSparseImageFormatProperties(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;samples:TVkSampleCountFlagBits;usage:TVkImageUsageFlags;tiling:TVkImageTiling;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties); virtual;
 
-       // fence must: be unsignalled
+       // fence must: be unsignaled
        // fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
        function QueueBindSparse(queue:TVkQueue;bindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;fence:TVkFence):TVkResult; virtual;
 
@@ -6097,12 +6099,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // Any given element of pCommandBuffers must: be in the executable state
        // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the subpass member of the inheritanceInfo structure set to the index of the subpass which the given command buffer will be executed in
+       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-       // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with the framebuffer member of the TVkCommandBufferInheritanceInfo structure not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
+       // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
        // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
-       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::occlusionQueryEnable set to TVK_TRUE
-       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::queryFlags having all bits set that are set for the query
+       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
+       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
        // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
        // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
        procedure CmdExecuteCommands(commandBuffer:TVkCommandBuffer;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); virtual;
@@ -6160,8 +6162,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function GetSwapchainImagesKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainImageCount:PVkUInt32;pSwapchainImages:PVkImage):TVkResult; virtual;
 
-       // If semaphore is not TVK_NULL_HANDLE it must: be unsignalled
-       // If fence is not TVK_NULL_HANDLE it must: be unsignalled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+       // If semaphore is not TVK_NULL_HANDLE it must: be unsignaled
+       // If fence is not TVK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
        function AcquireNextImageKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;timeout:TVkUInt64;semaphore:TVkSemaphore;fence:TVkFence;pImageIndex:PVkUInt32):TVkResult; virtual;
 
        // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
@@ -6208,7 +6210,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // instance must: be a valid TVkInstance handle
        // flags must: be a combination of one or more of TVkDebugReportFlagBitsEXT
        // objType must: be one of TVkDebugReportObjectTypeEXT, TVK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if object is `NULL`
-       // object may: be a {apiname} object
+       // object may: be a Vulkan object
        // pLayerPrefix must: be a `NULL` terminated string.
        // pMsg must: be a `NULL` terminated string.
        procedure DebugReportMessageEXT(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); virtual;
@@ -6272,19 +6274,19 @@ var LibVulkan:pointer=nil;
 
     vkEnumerateInstanceLayerProperties:TvkEnumerateInstanceLayerProperties=nil;
 
-    // If pLayerName is not `NULL`, it must: be the name of an instance layer returned by flink:vkEnumerateInstanceLayerProperties
+    // If pLayerName is not `NULL`, it must: be the name of a layer returned by flink:vkEnumerateInstanceLayerProperties
     vkEnumerateInstanceExtensionProperties:TvkEnumerateInstanceExtensionProperties=nil;
 
     vkEnumerateDeviceLayerProperties:TvkEnumerateDeviceLayerProperties=nil;
 
-    // If pLayerName is not `NULL`, it must: be the name of a device layer returned by flink:vkEnumerateDeviceLayerProperties
+    // If pLayerName is not `NULL`, it must: be the name of a layer returned by flink:vkEnumerateDeviceLayerProperties
     vkEnumerateDeviceExtensionProperties:TvkEnumerateDeviceExtensionProperties=nil;
 
     // queueFamilyIndex must: be one of the queue family indices specified when device was created, via the TVkDeviceQueueCreateInfo structure
     // queueIndex must: be less than the number of queues created for the specified queue family index when device was created, via the queueCount member of the TVkDeviceQueueCreateInfo structure
     vkGetDeviceQueue:TvkGetDeviceQueue=nil;
 
-    // If fence is not TVK_NULL_HANDLE, fence must: be unsignalled
+    // If fence is not TVK_NULL_HANDLE, fence must: be unsignaled
     // If fence is not TVK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
     vkQueueSubmit:TvkQueueSubmit=nil;
 
@@ -6347,7 +6349,7 @@ var LibVulkan:pointer=nil;
     // If usage includes TVK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::storageImageSampleCounts
     vkGetPhysicalDeviceSparseImageFormatProperties:TvkGetPhysicalDeviceSparseImageFormatProperties=nil;
 
-    // fence must: be unsignalled
+    // fence must: be unsignaled
     // fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
     vkQueueBindSparse:TvkQueueBindSparse=nil;
 
@@ -6904,12 +6906,12 @@ var LibVulkan:pointer=nil;
     // Any given element of pCommandBuffers must: be in the executable state
     // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-    // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the subpass member of the inheritanceInfo structure set to the index of the subpass which the given command buffer will be executed in
+    // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-    // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with the framebuffer member of the TVkCommandBufferInheritanceInfo structure not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
+    // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
     // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
-    // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::occlusionQueryEnable set to TVK_TRUE
-    // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferBeginInfo::queryFlags having all bits set that are set for the query
+    // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
+    // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
     // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
     // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
     vkCmdExecuteCommands:TvkCmdExecuteCommands=nil;
@@ -6967,8 +6969,8 @@ var LibVulkan:pointer=nil;
 
     vkGetSwapchainImagesKHR:TvkGetSwapchainImagesKHR=nil;
 
-    // If semaphore is not TVK_NULL_HANDLE it must: be unsignalled
-    // If fence is not TVK_NULL_HANDLE it must: be unsignalled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+    // If semaphore is not TVK_NULL_HANDLE it must: be unsignaled
+    // If fence is not TVK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
     vkAcquireNextImageKHR:TvkAcquireNextImageKHR=nil;
 
     // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
@@ -7015,7 +7017,7 @@ var LibVulkan:pointer=nil;
     // instance must: be a valid TVkInstance handle
     // flags must: be a combination of one or more of TVkDebugReportFlagBitsEXT
     // objType must: be one of TVkDebugReportObjectTypeEXT, TVK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if object is `NULL`
-    // object may: be a {apiname} object
+    // object may: be a Vulkan object
     // pLayerPrefix must: be a `NULL` terminated string.
     // pMsg must: be a `NULL` terminated string.
     vkDebugReportMessageEXT:TvkDebugReportMessageEXT=nil;
