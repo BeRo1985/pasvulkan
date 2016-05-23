@@ -3615,6 +3615,8 @@ begin
            Name:='hinstance_';
           end else if Name='hwnd' then begin
            Name:='hwnd_';
+          end else if Name='object' then begin
+           Name:='object_';
           end;
           TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
           inc(TypeDefinition^.CountMembers);
