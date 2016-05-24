@@ -143,6 +143,22 @@ type PPVkInt8=^PVkInt8;
 {$endif}
 {$endif}
 
+     PPVkSizeUInt=^PVkSizeUInt;
+     PVkSizeUInt=^TVkSizeUInt;
+     TVkSizeUInt=TVkPtrUInt;
+
+     PPVkSizeInt=^PVkSizeInt;
+     PVkSizeInt=^TVkSizeInt;
+     TVkSizeInt=TVkPtrInt;
+
+     PPVkSize=^PVkSizeUInt;
+     PVkSize=^TVkSizeUInt;
+     TVkSize=TVkPtrUInt;
+
+     PPVkPtrDiff=^PVkPtrDiff;
+     PVkPtrDiff=^TVkPtrDiff;
+     TVkPtrDiff=TVkPtrInt;
+
 const VK_NULL_HANDLE=0;
 
       VK_NULL_INSTANCE=0;
