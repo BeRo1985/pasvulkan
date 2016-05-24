@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-05-24-14-40-0000                       *
+ *                        Version 2016-05-24-15-17-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -163,6 +163,9 @@ type EVulkanException=class(Exception);
 
      TVulkanObject=class(TObject);
 
+     TVulkanCharString=AnsiString;
+
+     TVulkanCharStringArray=array of TVulkanCharString;
      TPVkCharArray=array of PVkChar;
      TVkPhysicalDeviceArray=array of TVkPhysicalDevice;
      TVkQueueFamilyPropertiesArray=array of TVkQueueFamilyProperties;
@@ -472,35 +475,59 @@ type EVulkanException=class(Exception);
      TVulkanApplicationInfo=class(TVulkanObject)
       private
        fApplicationInfo:TVkApplicationInfo;
-       fApplicationName:ansistring;
-       fEngineName:ansistring;
+       fApplicationName:TVulkanCharString;
+       fEngineName:TVulkanCharString;
        procedure SetApplicationInfo(const NewApplicationInfo:TVkApplicationInfo);
-       function GetApplicationName:ansistring;
-       procedure SetApplicationName(const NewApplicationName:ansistring);
+       function GetApplicationName:TVulkanCharString;
+       procedure SetApplicationName(const NewApplicationName:TVulkanCharString);
        function GetApplicationVersion:TVkUInt32;
        procedure SetApplicationVersion(const NewApplicationVersion:TVkUInt32);
-       function GetEngineName:ansistring;
-       procedure SetEngineName(const NewEngineName:ansistring);
+       function GetEngineName:TVulkanCharString;
+       procedure SetEngineName(const NewEngineName:TVulkanCharString);
        function GetEngineVersion:TVkUInt32;
        procedure SetEngineVersion(const NewEngineVersion:TVkUInt32);
        function GetAPIVersion:TVkUInt32;
        procedure SetAPIVersion(const NewAPIVersion:TVkUInt32);
       public
-       constructor Create(const pApplicationName:ansistring='Vulkan application';
-                           const pApplicationVersion:TVkUInt32=1;
-                           const pEngineName:ansistring='Vulkan engine';
-                           const pEngineVersion:TVkUInt32=1;
-                           const pAPIVersion:TVkUInt32=VK_API_VERSION_1_0);
+       constructor Create(const pApplicationName:TVulkanCharString='Vulkan application';
+                          const pApplicationVersion:TVkUInt32=1;
+                          const pEngineName:TVulkanCharString='Vulkan engine';
+                          const pEngineVersion:TVkUInt32=1;
+                          const pAPIVersion:TVkUInt32=VK_API_VERSION_1_0);
        destructor Destroy; override;
        property ApplicationInfo:TVkApplicationInfo read fApplicationInfo write SetApplicationInfo;
       published
-       property ApplicationName:ansistring read GetApplicationName write SetApplicationName;
+       property ApplicationName:TVulkanCharString read GetApplicationName write SetApplicationName;
        property ApplicationVersion:TVkUInt32 read GetApplicationVersion write SetApplicationVersion;
-       property EngineName:ansistring read GetEngineName write SetEngineName;
+       property EngineName:TVulkanCharString read GetEngineName write SetEngineName;
        property EngineVersion:TVkUInt32 read GetEngineVersion write SetEngineVersion;
        property APIVersion:TVkUInt32 read GetAPIVersion write SetAPIVersion;
      end;
 
+     TVulkanInstance=class(TVulkanObject)
+      private
+       fVulkan:TVulkan;
+       fApplicationInfo:TVulkanApplicationInfo;
+       fInstanceCreateInfo:TVkInstanceCreateInfo;
+       fEnabledLayerNames:array of TVulkanCharString;
+       fEnabledExtensionNames:array of TVulkanCharString;
+       fRawEnabledLayerNames:array of PVkChar;
+       fRawEnabledExtensionNames:array of PVkChar;
+       fAllocationManager:TVulkanAllocationManager;
+       fAllocationCallbacks:PVkAllocationCallbacks;
+       fInstance:TVkInstance;
+      public
+       constructor Create(const pVulkan:TVulkan;
+                          const pFlags:TVkInstanceCreateFlags;
+                          const pApplicationInfo:TVulkanApplicationInfo;
+                          const pEnabledLayerNames:array of TVulkanCharString;
+                          const pEnabledExtensionNames:array of TVulkanCharString;
+                          const pAllocationManager:TVulkanAllocationManager);
+       destructor Destroy; override;
+       property Instance:TVkInstance read fInstance;
+     end;
+
+{
      TVulkanResource=class
       private
        fDevice:TVkDevice;
@@ -551,10 +578,12 @@ type EVulkanException=class(Exception);
        property Instance:TVkDevice read fInstance write fInstance;
        property EnableValidation:boolean read fEnableValidation;
      end;
-
+ }
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
 
-function VulkanErrorToString(const ErrorCode:TVkResult):string;
+function VulkanErrorToString(const ErrorCode:TVkResult):TVulkanCharString;
+
+function StringListToVulkanCharStringArray(const StringList:TStringList):TVulkanCharStringArray;
 
 implementation
 
@@ -572,7 +601,7 @@ begin
  result:=Value+1;
 end;
 
-function VulkanErrorToString(const ErrorCode:TVkResult):string;
+function VulkanErrorToString(const ErrorCode:TVkResult):TVulkanCharString;
 begin
  case ErrorCode of
   VK_SUCCESS:begin
@@ -650,6 +679,16 @@ begin
   else begin
    result:='Unknown error code detected ('+IntToStr(longint(ErrorCode))+')';
   end;
+ end;
+end;
+
+function StringListToVulkanCharStringArray(const StringList:TStringList):TVulkanCharStringArray;
+var i:TVkInt32;
+begin
+ result:=nil;
+ SetLength(result,StringList.Count);
+ for i:=0 to StringList.Count-1 do begin
+  result[i]:=StringList.Strings[i];
  end;
 end;
 
@@ -1741,9 +1780,9 @@ procedure TVulkanAllocationManager.InternalFreeCallback(const Size:TVkSize;const
 begin
 end;
 
-constructor TVulkanApplicationInfo.Create(const pApplicationName:ansistring='Vulkan application';
+constructor TVulkanApplicationInfo.Create(const pApplicationName:TVulkanCharString='Vulkan application';
                                           const pApplicationVersion:TVkUInt32=1;
-                                          const pEngineName:ansistring='Vulkan engine';
+                                          const pEngineName:TVulkanCharString='Vulkan engine';
                                           const pEngineVersion:TVkUInt32=1;
                                           const pAPIVersion:TVkUInt32=VK_API_VERSION_1_0);
 begin
@@ -1779,12 +1818,12 @@ begin
  fApplicationInfo.pEngineName:=PVkChar(fEngineName);
 end;
 
-function TVulkanApplicationInfo.GetApplicationName:ansistring;
+function TVulkanApplicationInfo.GetApplicationName:TVulkanCharString;
 begin
  result:=fApplicationName;
 end;
 
-procedure TVulkanApplicationInfo.SetApplicationName(const NewApplicationName:ansistring);
+procedure TVulkanApplicationInfo.SetApplicationName(const NewApplicationName:TVulkanCharString);
 begin
  fApplicationName:=NewApplicationName;
  fApplicationInfo.pApplicationName:=PVkChar(fApplicationName);
@@ -1800,12 +1839,12 @@ begin
  fApplicationInfo.applicationVersion:=NewApplicationVersion;
 end;
 
-function TVulkanApplicationInfo.GetEngineName:ansistring;
+function TVulkanApplicationInfo.GetEngineName:TVulkanCharString;
 begin
  result:=fEngineName;
 end;
 
-procedure TVulkanApplicationInfo.SetEngineName(const NewEngineName:ansistring);
+procedure TVulkanApplicationInfo.SetEngineName(const NewEngineName:TVulkanCharString);
 begin
  fEngineName:=NewEngineName;
  fApplicationInfo.pEngineName:=PVkChar(fEngineName);
@@ -1831,6 +1870,68 @@ begin
  fApplicationInfo.apiVersion:=NewAPIVersion;
 end;
 
+constructor TVulkanInstance.Create(const pVulkan:TVulkan;
+                                   const pFlags:TVkInstanceCreateFlags;
+                                   const pApplicationInfo:TVulkanApplicationInfo;
+                                   const pEnabledLayerNames:array of TVulkanCharString;
+                                   const pEnabledExtensionNames:array of TVulkanCharString;
+                                   const pAllocationManager:TVulkanAllocationManager);
+var i:TVkInt32;
+begin
+ inherited Create;
+
+ fInstance:=VK_NULL_INSTANCE;
+
+ fVulkan:=pVulkan;
+
+ fApplicationInfo:=pApplicationInfo;
+
+ fAllocationManager:=pAllocationManager;
+
+ if assigned(fAllocationManager) then begin
+  fAllocationCallbacks:=@fAllocationManager.fAllocationCallbacks;
+ end else begin
+  fAllocationCallbacks:=nil;
+ end;
+
+ SetLength(fEnabledLayerNames,length(pEnabledLayerNames));
+ SetLength(fRawEnabledLayerNames,length(pEnabledLayerNames));
+ for i:=0 to length(pEnabledLayerNames)-1 do begin
+  fEnabledLayerNames[i]:=pEnabledLayerNames[i];
+  fRawEnabledLayerNames[i]:=PVkChar(fEnabledLayerNames[i]);
+ end;
+
+ SetLength(fEnabledExtensionNames,length(pEnabledExtensionNames));
+ SetLength(fRawEnabledExtensionNames,length(pEnabledExtensionNames));
+ for i:=0 to length(pEnabledExtensionNames)-1 do begin
+  fEnabledExtensionNames[i]:=pEnabledExtensionNames[i];
+  fRawEnabledExtensionNames[i]:=PVkChar(fEnabledExtensionNames[i]);
+ end;
+
+ FillChar(fInstanceCreateInfo,SizeOf(TVkInstanceCreateInfo),#0);
+ fInstanceCreateInfo.sType:=VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+ if length(pEnabledLayerNames)>0 then begin
+  fInstanceCreateInfo.enabledLayerCount:=length(pEnabledLayerNames);
+  fInstanceCreateInfo.ppEnabledLayerNames:=@fRawEnabledLayerNames[0];
+ end;
+ if length(pEnabledExtensionNames)>0 then begin
+  fInstanceCreateInfo.enabledExtensionCount:=length(pEnabledExtensionNames);
+  fInstanceCreateInfo.ppEnabledExtensionNames:=@fRawEnabledExtensionNames[0];
+ end;
+
+ HandleResultCode(fVulkan.CreateInstance(@fInstanceCreateInfo,fAllocationCallbacks,@Instance));
+
+end;
+
+destructor TVulkanInstance.Destroy;
+begin
+ if fInstance<>VK_NULL_INSTANCE then begin
+  fVulkan.DestroyInstance(fInstance,fAllocationCallbacks);
+ end;
+ inherited Destroy;
+end;
+
+{
 constructor TVulkanResource.Create;
 begin
  inherited Create;
@@ -2020,5 +2121,6 @@ destructor TVulkanInstance.Destroy;
 begin
  inherited Destroy;
 end;
+}
 
 end.
