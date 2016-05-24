@@ -236,7 +236,7 @@ type TXMLClass=class
        destructor Destroy; override;
      end;
 
-const MaxListSize=2147483647 div sizeof(TXMLClass);
+const MaxListSize=2147483647 div SizeOf(TXMLClass);
 
 type PEngineListClasses=^TXMLClasses;
      TXMLClasses=array[0..MaxListSize-1] of TXMLClass;
@@ -527,7 +527,7 @@ begin
  if not EntityInitialized then begin
   EntityInitialized:=true;
   EntityStringTree:=TXMLStringTree.Create;
-  FillChar(EntitiesCharLookUp,sizeof(TEntitiesCharLookUpTable),#0);
+  FillChar(EntitiesCharLookUp,SizeOf(TEntitiesCharLookUpTable),#0);
   for EntityCounter:=low(EntityChars) to high(EntityChars) do begin
    EntityStringTree.Add(EntityChars[EntityCounter,1],EntityCounter,true);
    with EntitiesCharLookUp[ord(EntityChars[EntityCounter,2][1])] do begin
@@ -611,7 +611,7 @@ destructor TXMLClassList.Destroy;
 begin
  Clear;
  if assigned(InternalList) and (InternalCapacity<>0) then begin
-  FREEMEM(InternalList);
+  FreeMem(InternalList);
  end;
  inherited Destroy;
 end;
@@ -648,9 +648,9 @@ procedure TXMLClassList.SetCapacity(NewCapacity:longint);
 begin
  if (InternalCapacity<>NewCapacity) and
     ((NewCapacity>=0) and (NewCapacity<MaxListSize)) then begin
-  REALLOCMEM(InternalList,NewCapacity*sizeof(TXMLClass));
+  ReallocMem(InternalList,NewCapacity*SizeOf(TXMLClass));
   if InternalCapacity<NewCapacity then begin
-   FillChar(InternalList^[InternalCapacity],(NewCapacity-InternalCapacity)*sizeof(TXMLClass),#0);
+   FillChar(InternalList^[InternalCapacity],(NewCapacity-InternalCapacity)*SizeOf(TXMLClass),#0);
   end;
   InternalCapacity:=NewCapacity;
  end;
@@ -682,7 +682,7 @@ begin
  if (NewCount>=0) and (NewCount<MaxListSize) then begin
   SetOptimalCapacity(NewCount);
   if InternalCount<NewCount then begin
-   FillChar(InternalList^[InternalCount],(NewCount-InternalCount)*sizeof(TXMLClass),#0);
+   FillChar(InternalList^[InternalCount],(NewCount-InternalCount)*SizeOf(TXMLClass),#0);
   end;
   InternalCount:=NewCount;
  end;
@@ -748,7 +748,7 @@ begin
  if (Index>=0) and (Index<InternalCount) then begin
   j:=InternalCount-1;
   i:=Index;
-  MOVE(InternalList^[i+1],InternalList^[i],(j-i)*sizeof(TXMLClass));
+  Move(InternalList^[i+1],InternalList^[i],(j-i)*SizeOf(TXMLClass));
   SetCount(j);
  end;
 end;
@@ -760,13 +760,10 @@ begin
   j:=InternalCount-1;
   i:=Index;
   if assigned(InternalList^[i]) then begin
-   try
-    InternalList^[i].Destroy;
-   except
-   end;
+   InternalList^[i].Free;
    InternalList^[i]:=nil;
   end;
-  MOVE(InternalList^[i+1],InternalList^[i],(j-i)*sizeof(TXMLClass));
+  Move(InternalList^[i+1],InternalList^[i],(j-i)*SizeOf(TXMLClass));
   SetCount(j);
  end;
 end;
@@ -785,7 +782,7 @@ begin
  end;
  if j>=0 then begin
   dec(k);
-  MOVE(InternalList^[j+1],InternalList^[j],(k-j)*sizeof(TXMLClass));
+  Move(InternalList^[j+1],InternalList^[j],(k-j)*SizeOf(TXMLClass));
   SetCount(k);
   result:=j;
  end;
@@ -805,14 +802,9 @@ begin
  end;
  if j>=0 then begin
   dec(k);
-  MOVE(InternalList^[j+1],InternalList^[j],(k-j)*sizeof(TXMLClass));
+  Move(InternalList^[j+1],InternalList^[j],(k-j)*SizeOf(TXMLClass));
   SetCount(k);
-  if assigned(Item) then begin
-   try
-    Item.Destroy;
-   except
-   end;
-  end;
+  Item.Free;
   result:=j;
  end;
 end;
@@ -1215,7 +1207,7 @@ begin
     if NodeChar=StringChar then begin
      LastNode:=Node;
      Node:=Node^.Next;
-   end else begin
+    end else begin
      while (NodeChar<StringChar) and assigned(Node^.Down) do begin
       Node:=Node^.Down;
       NodeChar:=Node^.TheChar;
@@ -1846,7 +1838,7 @@ var Errors:boolean;
 
  function NextChar:ansichar;
  begin
-  if Stream.Read(CurrentChar,sizeof(ansichar))<>sizeof(ansichar) then begin
+  if Stream.Read(CurrentChar,SizeOf(ansichar))<>SizeOf(ansichar) then begin
    StreamEOF:=true;
    CurrentChar:=#0;
   end;
