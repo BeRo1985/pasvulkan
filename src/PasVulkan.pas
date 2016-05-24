@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-05-24-11-27-0000                       *
+ *                        Version 2016-05-24-14-40-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -158,6 +158,8 @@ interface
 uses SysUtils,Classes,Vulkan;
 
 type EVulkanException=class(Exception);
+
+     EVulkanErrorException=class(EVulkanException);
 
      TVulkanObject=class(TObject);
 
@@ -370,6 +372,66 @@ type EVulkanException=class(Exception);
        property Items[const Index:TVkSizeInt]:TVkSampleMask read GetItem write SetItem; default;
      end;
 
+     TVkDynamicStateList=class(TVulkanBaseList)
+      private
+       function GetItem(const Index:TVkSizeInt):TVkDynamicState;
+       procedure SetItem(const Index:TVkSizeInt;const Item:TVkDynamicState);
+      protected
+       procedure InitializeItem(var Item); override;
+       procedure FinalizeItem(var Item); override;
+       procedure CopyItem(const Source;var Destination); override;
+       procedure ExchangeItem(var Source,Destination); override;
+       function CompareItem(const Source,Destination):longint; override;
+      public
+       constructor Create;
+       destructor Destroy; override;
+       function Add(const Item:TVkDynamicState):TVkSizeInt; reintroduce;
+       function Find(const Item:TVkDynamicState):TVkSizeInt; reintroduce;
+       procedure Insert(const Index:TVkSizeInt;const Item:TVkDynamicState); reintroduce;
+       procedure Remove(const Item:TVkDynamicState); reintroduce;
+       property Items[const Index:TVkSizeInt]:TVkDynamicState read GetItem write SetItem; default;
+     end;
+
+     TVkBufferViewList=class(TVulkanBaseList)
+      private
+       function GetItem(const Index:TVkSizeInt):TVkBufferView;
+       procedure SetItem(const Index:TVkSizeInt;const Item:TVkBufferView);
+      protected
+       procedure InitializeItem(var Item); override;
+       procedure FinalizeItem(var Item); override;
+       procedure CopyItem(const Source;var Destination); override;
+       procedure ExchangeItem(var Source,Destination); override;
+       function CompareItem(const Source,Destination):longint; override;
+      public
+       constructor Create;
+       destructor Destroy; override;
+       function Add(const Item:TVkBufferView):TVkSizeInt; reintroduce;
+       function Find(const Item:TVkBufferView):TVkSizeInt; reintroduce;
+       procedure Insert(const Index:TVkSizeInt;const Item:TVkBufferView); reintroduce;
+       procedure Remove(const Item:TVkBufferView); reintroduce;
+       property Items[const Index:TVkSizeInt]:TVkBufferView read GetItem write SetItem; default;
+     end;
+
+     TVkClearValueList=class(TVulkanBaseList)
+      private
+       function GetItem(const Index:TVkSizeInt):TVkClearValue;
+       procedure SetItem(const Index:TVkSizeInt;const Item:TVkClearValue);
+      protected
+       procedure InitializeItem(var Item); override;
+       procedure FinalizeItem(var Item); override;
+       procedure CopyItem(const Source;var Destination); override;
+       procedure ExchangeItem(var Source,Destination); override;
+       function CompareItem(const Source,Destination):longint; override;
+      public
+       constructor Create;
+       destructor Destroy; override;
+       function Add(const Item:TVkClearValue):TVkSizeInt; reintroduce;
+       function Find(const Item:TVkClearValue):TVkSizeInt; reintroduce;
+       procedure Insert(const Index:TVkSizeInt;const Item:TVkClearValue); reintroduce;
+       procedure Remove(const Item:TVkClearValue); reintroduce;
+       property Items[const Index:TVkSizeInt]:TVkClearValue read GetItem write SetItem; default;
+     end;
+
      TVulkanHandle=class(TVulkanObject)
       private
        fOwnsHandle:boolean;
@@ -405,6 +467,38 @@ type EVulkanException=class(Exception);
        constructor Create;
        destructor Destroy; override;
        property AllocationCallbacks:TVkAllocationCallbacks read fAllocationCallbacks;
+     end;
+
+     TVulkanApplicationInfo=class(TVulkanObject)
+      private
+       fApplicationInfo:TVkApplicationInfo;
+       fApplicationName:ansistring;
+       fEngineName:ansistring;
+       procedure SetApplicationInfo(const NewApplicationInfo:TVkApplicationInfo);
+       function GetApplicationName:ansistring;
+       procedure SetApplicationName(const NewApplicationName:ansistring);
+       function GetApplicationVersion:TVkUInt32;
+       procedure SetApplicationVersion(const NewApplicationVersion:TVkUInt32);
+       function GetEngineName:ansistring;
+       procedure SetEngineName(const NewEngineName:ansistring);
+       function GetEngineVersion:TVkUInt32;
+       procedure SetEngineVersion(const NewEngineVersion:TVkUInt32);
+       function GetAPIVersion:TVkUInt32;
+       procedure SetAPIVersion(const NewAPIVersion:TVkUInt32);
+      public
+       constructor Create(const pApplicationName:ansistring='Vulkan application';
+                           const pApplicationVersion:TVkUInt32=1;
+                           const pEngineName:ansistring='Vulkan engine';
+                           const pEngineVersion:TVkUInt32=1;
+                           const pAPIVersion:TVkUInt32=VK_API_VERSION_1_0);
+       destructor Destroy; override;
+       property ApplicationInfo:TVkApplicationInfo read fApplicationInfo write SetApplicationInfo;
+      published
+       property ApplicationName:ansistring read GetApplicationName write SetApplicationName;
+       property ApplicationVersion:TVkUInt32 read GetApplicationVersion write SetApplicationVersion;
+       property EngineName:ansistring read GetEngineName write SetEngineName;
+       property EngineVersion:TVkUInt32 read GetEngineVersion write SetEngineVersion;
+       property APIVersion:TVkUInt32 read GetAPIVersion write SetAPIVersion;
      end;
 
      TVulkanResource=class
@@ -1321,6 +1415,228 @@ begin
  inherited Remove(Item);
 end;
 
+constructor TVkDynamicStateList.Create;
+begin
+ inherited Create(SizeOf(TVkDynamicState));
+end;
+
+destructor TVkDynamicStateList.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TVkDynamicStateList.GetItem(const Index:TVkSizeInt):TVkDynamicState;
+begin
+ if (Index>=0) and (Index<fCount) then begin
+  result:=TVkDynamicState(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+ end else begin
+  result:=TVkDynamicState(0);
+ end;
+end;
+
+procedure TVkDynamicStateList.SetItem(const Index:TVkSizeInt;const Item:TVkDynamicState);
+begin
+ if (Index>=0) and (Index<fCount) then begin
+  TVkDynamicState(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+ end;
+end;
+
+procedure TVkDynamicStateList.InitializeItem(var Item);
+begin
+ Initialize(TVkDynamicState(Item));
+end;
+
+procedure TVkDynamicStateList.FinalizeItem(var Item);
+begin
+ Finalize(TVkDynamicState(Item));
+end;
+
+procedure TVkDynamicStateList.CopyItem(const Source;var Destination);
+begin
+ TVkDynamicState(Destination):=TVkDynamicState(Source);
+end;
+
+procedure TVkDynamicStateList.ExchangeItem(var Source,Destination);
+var Temporary:TVkDynamicState;
+begin
+ Temporary:=TVkDynamicState(Source);
+ TVkDynamicState(Source):=TVkDynamicState(Destination);
+ TVkDynamicState(Destination):=Temporary;
+end;
+
+function TVkDynamicStateList.CompareItem(const Source,Destination):longint;
+begin
+ result:=TVkSize(TVkDynamicState(Source))-TVkSize(TVkDynamicState(Destination));
+end;
+
+function TVkDynamicStateList.Add(const Item:TVkDynamicState):TVkSizeInt;
+begin
+ result:=inherited Add(Item);
+end;
+
+function TVkDynamicStateList.Find(const Item:TVkDynamicState):TVkSizeInt;
+begin
+ result:=inherited Find(Item);
+end;
+
+procedure TVkDynamicStateList.Insert(const Index:TVkSizeInt;const Item:TVkDynamicState);
+begin
+ inherited Insert(Index,Item);
+end;
+
+procedure TVkDynamicStateList.Remove(const Item:TVkDynamicState);
+begin
+ inherited Remove(Item);
+end;
+
+constructor TVkBufferViewList.Create;
+begin
+ inherited Create(SizeOf(TVkBufferView));
+end;
+
+destructor TVkBufferViewList.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TVkBufferViewList.GetItem(const Index:TVkSizeInt):TVkBufferView;
+begin
+ if (Index>=0) and (Index<fCount) then begin
+  result:=TVkBufferView(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+ end else begin
+  result:=TVkBufferView(0);
+ end;
+end;
+
+procedure TVkBufferViewList.SetItem(const Index:TVkSizeInt;const Item:TVkBufferView);
+begin
+ if (Index>=0) and (Index<fCount) then begin
+  TVkBufferView(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+ end;
+end;
+
+procedure TVkBufferViewList.InitializeItem(var Item);
+begin
+ Initialize(TVkBufferView(Item));
+end;
+
+procedure TVkBufferViewList.FinalizeItem(var Item);
+begin
+ Finalize(TVkBufferView(Item));
+end;
+
+procedure TVkBufferViewList.CopyItem(const Source;var Destination);
+begin
+ TVkBufferView(Destination):=TVkBufferView(Source);
+end;
+
+procedure TVkBufferViewList.ExchangeItem(var Source,Destination);
+var Temporary:TVkBufferView;
+begin
+ Temporary:=TVkBufferView(Source);
+ TVkBufferView(Source):=TVkBufferView(Destination);
+ TVkBufferView(Destination):=Temporary;
+end;
+
+function TVkBufferViewList.CompareItem(const Source,Destination):longint;
+begin
+ result:=TVkSize(TVkBufferView(Source))-TVkSize(TVkBufferView(Destination));
+end;
+
+function TVkBufferViewList.Add(const Item:TVkBufferView):TVkSizeInt;
+begin
+ result:=inherited Add(Item);
+end;
+
+function TVkBufferViewList.Find(const Item:TVkBufferView):TVkSizeInt;
+begin
+ result:=inherited Find(Item);
+end;
+
+procedure TVkBufferViewList.Insert(const Index:TVkSizeInt;const Item:TVkBufferView);
+begin
+ inherited Insert(Index,Item);
+end;
+
+procedure TVkBufferViewList.Remove(const Item:TVkBufferView);
+begin
+ inherited Remove(Item);
+end;
+
+constructor TVkClearValueList.Create;
+begin
+ inherited Create(SizeOf(TVkClearValue));
+end;
+
+destructor TVkClearValueList.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TVkClearValueList.GetItem(const Index:TVkSizeInt):TVkClearValue;
+begin
+ if (Index>=0) and (Index<fCount) then begin
+  result:=TVkClearValue(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+ end else begin
+  FillChar(result,SizeOf(TVkClearValue),#0);
+ end;
+end;
+
+procedure TVkClearValueList.SetItem(const Index:TVkSizeInt;const Item:TVkClearValue);
+begin
+ if (Index>=0) and (Index<fCount) then begin
+  TVkClearValue(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+ end;
+end;
+
+procedure TVkClearValueList.InitializeItem(var Item);
+begin
+ Initialize(TVkClearValue(Item));
+end;
+
+procedure TVkClearValueList.FinalizeItem(var Item);
+begin
+ Finalize(TVkClearValue(Item));
+end;
+
+procedure TVkClearValueList.CopyItem(const Source;var Destination);
+begin
+ TVkClearValue(Destination):=TVkClearValue(Source);
+end;
+
+procedure TVkClearValueList.ExchangeItem(var Source,Destination);
+var Temporary:TVkClearValue;
+begin
+ Temporary:=TVkClearValue(Source);
+ TVkClearValue(Source):=TVkClearValue(Destination);
+ TVkClearValue(Destination):=Temporary;
+end;
+
+function TVkClearValueList.CompareItem(const Source,Destination):longint;
+begin
+ result:=inherited CompareItem(Source,Destination);
+end;
+
+function TVkClearValueList.Add(const Item:TVkClearValue):TVkSizeInt;
+begin
+ result:=inherited Add(Item);
+end;
+
+function TVkClearValueList.Find(const Item:TVkClearValue):TVkSizeInt;
+begin
+ result:=inherited Find(Item);
+end;
+
+procedure TVkClearValueList.Insert(const Index:TVkSizeInt;const Item:TVkClearValue);
+begin
+ inherited Insert(Index,Item);
+end;
+
+procedure TVkClearValueList.Remove(const Item:TVkClearValue);
+begin
+ inherited Remove(Item);
+end;
+
 constructor TVulkanHandle.Create;
 begin
  inherited Create;
@@ -1423,6 +1739,96 @@ end;
 
 procedure TVulkanAllocationManager.InternalFreeCallback(const Size:TVkSize;const Type_:TVkInternalAllocationType;const Scope:TVkSystemAllocationScope);
 begin
+end;
+
+constructor TVulkanApplicationInfo.Create(const pApplicationName:ansistring='Vulkan application';
+                                          const pApplicationVersion:TVkUInt32=1;
+                                          const pEngineName:ansistring='Vulkan engine';
+                                          const pEngineVersion:TVkUInt32=1;
+                                          const pAPIVersion:TVkUInt32=VK_API_VERSION_1_0);
+begin
+ inherited Create;
+
+ fApplicationName:=pApplicationName;
+ fEngineName:=pEngineName;
+
+ FillChar(fApplicationInfo,SizeOf(TVkApplicationInfo),#0);
+ fApplicationInfo.sType:=VK_STRUCTURE_TYPE_APPLICATION_INFO;
+ fApplicationInfo.pNext:=nil;
+ fApplicationInfo.pApplicationName:=PVkChar(fApplicationName);
+ fApplicationInfo.applicationVersion:=pApplicationVersion;
+ fApplicationInfo.pEngineName:=PVkChar(fEngineName);
+ fApplicationInfo.engineVersion:=pEngineVersion;
+ fApplicationInfo.apiVersion:=pAPIVersion;
+
+end;
+
+destructor TVulkanApplicationInfo.Destroy;
+begin
+ fApplicationName:='';
+ fEngineName:='';
+ inherited Destroy;
+end;
+
+procedure TVulkanApplicationInfo.SetApplicationInfo(const NewApplicationInfo:TVkApplicationInfo);
+begin
+ fApplicationInfo:=NewApplicationInfo;
+ fApplicationName:=fApplicationInfo.pApplicationName;
+ fEngineName:=fApplicationInfo.pEngineName;
+ fApplicationInfo.pApplicationName:=PVkChar(fApplicationName);
+ fApplicationInfo.pEngineName:=PVkChar(fEngineName);
+end;
+
+function TVulkanApplicationInfo.GetApplicationName:ansistring;
+begin
+ result:=fApplicationName;
+end;
+
+procedure TVulkanApplicationInfo.SetApplicationName(const NewApplicationName:ansistring);
+begin
+ fApplicationName:=NewApplicationName;
+ fApplicationInfo.pApplicationName:=PVkChar(fApplicationName);
+end;
+
+function TVulkanApplicationInfo.GetApplicationVersion:TVkUInt32;
+begin
+ result:=fApplicationInfo.applicationVersion;
+end;
+
+procedure TVulkanApplicationInfo.SetApplicationVersion(const NewApplicationVersion:TVkUInt32);
+begin
+ fApplicationInfo.applicationVersion:=NewApplicationVersion;
+end;
+
+function TVulkanApplicationInfo.GetEngineName:ansistring;
+begin
+ result:=fEngineName;
+end;
+
+procedure TVulkanApplicationInfo.SetEngineName(const NewEngineName:ansistring);
+begin
+ fEngineName:=NewEngineName;
+ fApplicationInfo.pEngineName:=PVkChar(fEngineName);
+end;
+
+function TVulkanApplicationInfo.GetEngineVersion:TVkUInt32;
+begin
+ result:=fApplicationInfo.engineVersion;
+end;
+
+procedure TVulkanApplicationInfo.SetEngineVersion(const NewEngineVersion:TVkUInt32);
+begin
+ fApplicationInfo.engineVersion:=NewEngineVersion;
+end;
+
+function TVulkanApplicationInfo.GetAPIVersion:TVkUInt32;
+begin
+ result:=fApplicationInfo.apiVersion;
+end;
+
+procedure TVulkanApplicationInfo.SetAPIVersion(const NewAPIVersion:TVkUInt32);
+begin
+ fApplicationInfo.apiVersion:=NewAPIVersion;
 end;
 
 constructor TVulkanResource.Create;
