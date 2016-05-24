@@ -2906,7 +2906,7 @@ begin
    end else if Type_='uint64_t' then begin
     result:='PVkUInt64';
    end else if Type_='size_t' then begin
-    result:='PVkPtrInt';
+    result:='PVkSize';
    end else if Type_='VK_DEFINE_HANDLE' then begin
     result:='PVkDispatchableHandle';
    end else if Type_='VK_DEFINE_NON_DISPATCHABLE_HANDLE' then begin
@@ -2967,7 +2967,7 @@ begin
    end else if Type_='uint64_t' then begin
     result:='PPVkUInt64';
    end else if Type_='size_t' then begin
-    result:='PPVkPtrInt';
+    result:='PPVkSize';
    end else if Type_='VK_DEFINE_HANDLE' then begin
     result:='PPVkDispatchableHandle';
    end else if Type_='VK_DEFINE_NON_DISPATCHABLE_HANDLE' then begin
@@ -3029,7 +3029,7 @@ begin
    end else if Type_='uint64_t' then begin
     result:='TVkUInt64';
    end else if Type_='size_t' then begin
-    result:='TVkPtrInt';
+    result:='TVkSize';
    end else if Type_='VK_DEFINE_HANDLE' then begin
     result:='TVkDispatchableHandle';
    end else if Type_='VK_DEFINE_NON_DISPATCHABLE_HANDLE' then begin

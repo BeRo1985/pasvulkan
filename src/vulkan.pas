@@ -1777,19 +1777,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
      PPFN_vkInternalAllocationNotification=^TPFN_vkInternalAllocationNotification;
-     TPFN_vkInternalAllocationNotification=procedure(pUserData:PVkVoid;size:TVkPtrInt;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkInternalAllocationNotification=procedure(pUserData:PVkVoid;size:TVkSize;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkInternalFreeNotification=^PPFN_vkInternalFreeNotification;
      PPFN_vkInternalFreeNotification=^TPFN_vkInternalFreeNotification;
-     TPFN_vkInternalFreeNotification=procedure(pUserData:PVkVoid;size:TVkPtrInt;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkInternalFreeNotification=procedure(pUserData:PVkVoid;size:TVkSize;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkReallocationFunction=^PPFN_vkReallocationFunction;
      PPFN_vkReallocationFunction=^TPFN_vkReallocationFunction;
-     TPFN_vkReallocationFunction=function(pUserData:PVkVoid;pOriginal:PVkVoid;size:TVkPtrInt;alignment:TVkPtrInt;allocationScope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkReallocationFunction=function(pUserData:PVkVoid;pOriginal:PVkVoid;size:TVkSize;alignment:TVkSize;allocationScope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkAllocationFunction=^PPFN_vkAllocationFunction;
      PPFN_vkAllocationFunction=^TPFN_vkAllocationFunction;
-     TPFN_vkAllocationFunction=function(pUserData:PVkVoid;size:TVkPtrInt;alignment:TVkPtrInt;allocationScope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkAllocationFunction=function(pUserData:PVkVoid;size:TVkSize;alignment:TVkSize;allocationScope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkFreeFunction=^PPFN_vkFreeFunction;
      PPFN_vkFreeFunction=^TPFN_vkFreeFunction;
@@ -1801,7 +1801,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      PPPFN_vkDebugReportCallbackEXT=^PPFN_vkDebugReportCallbackEXT;
      PPFN_vkDebugReportCallbackEXT=^TPFN_vkDebugReportCallbackEXT;
-     TPFN_vkDebugReportCallbackEXT=function(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar;pUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkDebugReportCallbackEXT=function(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar;pUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPVkOffset2D=^PVkOffset2D;
      PVkOffset2D=^TVkOffset2D;
@@ -2638,7 +2638,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
       pNext:PVkVoid; //< Pointer to next structure
       flags:TVkShaderModuleCreateFlags; //< Reserved
-      codeSize:TVkPtrInt; //< Specified in bytes
+      codeSize:TVkSize; //< Specified in bytes
       pCode:PVkUInt32; //< Binary code of size codeSize
      end;
 
@@ -2701,7 +2701,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSpecializationMapEntry=record
       constantID:TVkUInt32; //< The SpecConstant ID specified in the BIL
       offset:TVkUInt32; //< Offset of the value in the data block
-      size:TVkPtrInt; //< Size in bytes of the SpecConstant
+      size:TVkSize; //< Size in bytes of the SpecConstant
      end;
 
      // The offset member of any given element of pMapEntries must: be less than dataSize
@@ -2711,7 +2711,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkSpecializationInfo=record
       mapEntryCount:TVkUInt32; //< Number of entries in the map
       pMapEntries:PVkSpecializationMapEntry; //< Array of map entries
-      dataSize:TVkPtrInt; //< Size in bytes of pData
+      dataSize:TVkSize; //< Size in bytes of pData
       pData:PVkVoid; //< Pointer to SpecConstant data
      end;
 
@@ -3023,7 +3023,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO
       pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineCacheCreateFlags; //< Reserved
-      initialDataSize:TVkPtrInt; //< Size of initial data to populate cache, in bytes
+      initialDataSize:TVkSize; //< Size of initial data to populate cache, in bytes
       pInitialData:PVkVoid; //< Initial data to populate cache
      end;
 
@@ -3386,7 +3386,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       maxViewportDimensions:array[0..1] of TVkUInt32; //< max viewport dimensions (x,y)
       viewportBoundsRange:array[0..1] of TVkFloat; //< viewport bounds range (min,max)
       viewportSubPixelBits:TVkUInt32; //< number bits of subpixel precision for viewport
-      minMemoryMapAlignment:TVkPtrInt; //< min required alignment of pointers returned by MapMemory (bytes)
+      minMemoryMapAlignment:TVkSize; //< min required alignment of pointers returned by MapMemory (bytes)
       minTexelBufferOffsetAlignment:TVkDeviceSize; //< min required alignment for texel buffer offsets (bytes)
       minUniformBufferOffsetAlignment:TVkDeviceSize; //< min required alignment for uniform buffer sizes and offsets (bytes)
       minStorageBufferOffsetAlignment:TVkDeviceSize; //< min required alignment for storage buffer offsets (bytes)
@@ -3823,7 +3823,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       objectType:TVkDebugReportObjectTypeEXT; //< The type of the object
       object_:TVkUInt64; //< The handle of the object, cast to uint64_t
       tagName:TVkUInt64; //< The name of the tag to set on the object
-      tagSize:TVkPtrInt; //< The length in bytes of the tag data
+      tagSize:TVkSize; //< The length in bytes of the tag data
       pTag:PVkVoid; //< Tag data to attach to the object
      end;
 
@@ -4000,7 +4000,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The sum of firstQuery and queryCount must: be less than or equal to the number of queries in queryPool
      // dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
      // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
-     TvkGetQueryPoolResults=function(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetQueryPoolResults=function(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
      TvkCreateBuffer=function(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -4048,7 +4048,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If no TVkAllocationCallbacks were provided when pipelineCache was created, pAllocator must: be `NULL`
      TvkDestroyPipelineCache=procedure(device:TVkDevice;pipelineCache:TVkPipelineCache;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPipelineCacheData=function(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPipelineCacheData=function(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // dstCache mustnot: appear in the list of source caches
      TvkMergePipelineCaches=function(device:TVkDevice;dstCache:TVkPipelineCache;srcCacheCount:TVkUInt32;const pSrcCaches:PVkPipelineCache):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -4619,7 +4619,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // object may: be a Vulkan object
      // pLayerPrefix must: be a `NULL` terminated string.
      // pMsg must: be a `NULL` terminated string.
-     TvkDebugReportMessageEXT=procedure(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDebugReportMessageEXT=procedure(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // pNameInfo.object must: be a Vulkan object
      TvkDebugMarkerSetObjectNameEXT=function(device:TVkDevice;pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -5613,7 +5613,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // The sum of firstQuery and queryCount must: be less than or equal to the number of queries in queryPool
        // dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
        // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
-       function GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; virtual;
+       function GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; virtual;
 
        // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
        function CreateBuffer(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; virtual;
@@ -5661,7 +5661,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If no TVkAllocationCallbacks were provided when pipelineCache was created, pAllocator must: be `NULL`
        procedure DestroyPipelineCache(device:TVkDevice;pipelineCache:TVkPipelineCache;const pAllocator:PVkAllocationCallbacks); virtual;
 
-       function GetPipelineCacheData(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:PVkVoid):TVkResult; virtual;
+       function GetPipelineCacheData(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkSize;pData:PVkVoid):TVkResult; virtual;
 
        // dstCache mustnot: appear in the list of source caches
        function MergePipelineCaches(device:TVkDevice;dstCache:TVkPipelineCache;srcCacheCount:TVkUInt32;const pSrcCaches:PVkPipelineCache):TVkResult; virtual;
@@ -6232,7 +6232,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // object may: be a Vulkan object
        // pLayerPrefix must: be a `NULL` terminated string.
        // pMsg must: be a `NULL` terminated string.
-       procedure DebugReportMessageEXT(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); virtual;
+       procedure DebugReportMessageEXT(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); virtual;
 
        // pNameInfo.object must: be a Vulkan object
        function DebugMarkerSetObjectNameEXT(device:TVkDevice;pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult; virtual;
@@ -8500,7 +8500,7 @@ begin
  fCommands.DestroyQueryPool(device,queryPool,pAllocator);
 end;
 
-function TVulkan.GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult;
+function TVulkan.GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult;
 begin
  result:=fCommands.GetQueryPoolResults(device,queryPool,firstQuery,queryCount,dataSize,pData,stride,flags);
 end;
@@ -8570,7 +8570,7 @@ begin
  fCommands.DestroyPipelineCache(device,pipelineCache,pAllocator);
 end;
 
-function TVulkan.GetPipelineCacheData(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:PVkVoid):TVkResult;
+function TVulkan.GetPipelineCacheData(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkSize;pData:PVkVoid):TVkResult;
 begin
  result:=fCommands.GetPipelineCacheData(device,pipelineCache,pDataSize,pData);
 end;
@@ -9113,7 +9113,7 @@ begin
  fCommands.DestroyDebugReportCallbackEXT(instance,callback,pAllocator);
 end;
 
-procedure TVulkan.DebugReportMessageEXT(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar);
+procedure TVulkan.DebugReportMessageEXT(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar);
 begin
  fCommands.DebugReportMessageEXT(instance,flags,objectType,object_,location,messageCode,pLayerPrefix,pMessage);
 end;
