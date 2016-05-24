@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-05-24-15-17-0000                       *
+ *                        Version 2016-05-24-15-43-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -516,6 +516,9 @@ type EVulkanException=class(Exception);
        fAllocationManager:TVulkanAllocationManager;
        fAllocationCallbacks:PVkAllocationCallbacks;
        fInstance:TVkInstance;
+       fCommands:TVulkanCommands;
+       fInstanceVulkan:TVulkan;
+      protected
       public
        constructor Create(const pVulkan:TVulkan;
                           const pFlags:TVkInstanceCreateFlags;
@@ -524,7 +527,27 @@ type EVulkanException=class(Exception);
                           const pEnabledExtensionNames:array of TVulkanCharString;
                           const pAllocationManager:TVulkanAllocationManager);
        destructor Destroy; override;
+       function EnumeratePhysicalDevices:TVkPhysicalDeviceArray;
+      published
        property Instance:TVkInstance read fInstance;
+       property Commands:TVulkanCommands read fCommands;
+       property InstanceVulkan:TVulkan read fInstanceVulkan;
+     end;
+
+     TVulkanPhysicalDevice=class(TVulkanObject)
+      private
+       fVulkan:TVulkan;
+       fPhysicalDevice:TVkPhysicalDevice;
+      protected
+      public
+       constructor Create(const pVulkan:TVulkan;
+                          const pPhysicalDevice:TVkPhysicalDevice);
+       destructor Destroy; override;
+       function GetQueueFamilyProperties:TVkQueueFamilyPropertiesArray;
+       function GetMemoryProperties:TVkPhysicalDeviceMemoryProperties;
+       function GetFeatures:TVkPhysicalDeviceFeatures;
+      published
+       property PhysicalDevice:TVkPhysicalDevice read fPhysicalDevice;
      end;
 
 {
@@ -1869,7 +1892,7 @@ procedure TVulkanApplicationInfo.SetAPIVersion(const NewAPIVersion:TVkUInt32);
 begin
  fApplicationInfo.apiVersion:=NewAPIVersion;
 end;
-
+                          
 constructor TVulkanInstance.Create(const pVulkan:TVulkan;
                                    const pFlags:TVkInstanceCreateFlags;
                                    const pApplicationInfo:TVulkanApplicationInfo;
@@ -1919,7 +1942,13 @@ begin
   fInstanceCreateInfo.ppEnabledExtensionNames:=@fRawEnabledExtensionNames[0];
  end;
 
- HandleResultCode(fVulkan.CreateInstance(@fInstanceCreateInfo,fAllocationCallbacks,@Instance));
+ HandleResultCode(fVulkan.CreateInstance(@fInstanceCreateInfo,fAllocationCallbacks,@fInstance));
+
+ if (fInstance<>VK_NULL_INSTANCE) and LoadVulkanInstanceCommands(fVulkan.Commands.GetInstanceProcAddr,fInstance,fCommands) then begin
+  fInstanceVulkan:=TVulkan.Create(fCommands);
+ end else begin
+  fInstanceVulkan:=fVulkan;
+ end;
 
 end;
 
@@ -1928,7 +1957,70 @@ begin
  if fInstance<>VK_NULL_INSTANCE then begin
   fVulkan.DestroyInstance(fInstance,fAllocationCallbacks);
  end;
+ if fInstanceVulkan<>fVulkan then begin
+  fInstanceVulkan.Free;
+ end;
  inherited Destroy;
+end;
+
+function TVulkanInstance.EnumeratePhysicalDevices:TVkPhysicalDeviceArray;
+var Count:TVkUInt32;
+begin
+ result:=nil;
+
+ Count:=0;
+
+ HandleResultCode(fVulkan.EnumeratePhysicalDevices(fInstance,@Count,nil));
+
+ if Count>0 then begin
+  try
+   SetLength(result,Count);
+   HandleResultCode(fVulkan.EnumeratePhysicalDevices(fInstance,@Count,@result[0]));
+  except
+   SetLength(result,0);
+   raise;
+  end;
+ end;
+end;
+
+constructor TVulkanPhysicalDevice.Create(const pVulkan:TVulkan;
+                                         const pPhysicalDevice:TVkPhysicalDevice);
+begin
+ inherited Create;
+ fVulkan:=pVulkan;
+ fPhysicalDevice:=pPhysicalDevice;
+end;
+
+destructor TVulkanPhysicalDevice.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TVulkanPhysicalDevice.GetQueueFamilyProperties:TVkQueueFamilyPropertiesArray;
+var Count:TVkUInt32;
+begin
+ result:=nil;
+ Count:=0;
+ fVulkan.GetPhysicalDeviceQueueFamilyProperties(fPhysicalDevice,@Count,nil);
+ if Count>0 then begin
+  try
+   SetLength(result,Count);
+   fVulkan.GetPhysicalDeviceQueueFamilyProperties(fPhysicalDevice,@Count,@result[0]);
+  except
+   SetLength(result,0);
+   raise;
+  end;
+ end;
+end;
+
+function TVulkanPhysicalDevice.GetMemoryProperties:TVkPhysicalDeviceMemoryProperties;
+begin
+ fVulkan.GetPhysicalDeviceMemoryProperties(fPhysicalDevice,@result);
+end;
+
+function TVulkanPhysicalDevice.GetFeatures:TVkPhysicalDeviceFeatures;
+begin
+ fVulkan.GetPhysicalDeviceFeatures(fPhysicalDevice,@result);
 end;
 
 {
