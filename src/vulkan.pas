@@ -104,6 +104,9 @@ type PPVkInt8=^PVkInt8;
      PVkPointer=^TVkPointer;
      TVkPointer=pointer;
 
+     PPVkVoid=^PVkVoid;
+     PVkVoid=pointer;
+
      PPVkFloat=^PVkFloat;
      PVkFloat=^TVkFloat;
      TVkFloat=single;
@@ -1774,23 +1777,23 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
      PPFN_vkInternalAllocationNotification=^TPFN_vkInternalAllocationNotification;
-     TPFN_vkInternalAllocationNotification=procedure(pUserData:TVkPointer;size:TVkPtrInt;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkInternalAllocationNotification=procedure(pUserData:PVkVoid;size:TVkPtrInt;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkInternalFreeNotification=^PPFN_vkInternalFreeNotification;
      PPFN_vkInternalFreeNotification=^TPFN_vkInternalFreeNotification;
-     TPFN_vkInternalFreeNotification=procedure(pUserData:TVkPointer;size:TVkPtrInt;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkInternalFreeNotification=procedure(pUserData:PVkVoid;size:TVkPtrInt;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkReallocationFunction=^PPFN_vkReallocationFunction;
      PPFN_vkReallocationFunction=^TPFN_vkReallocationFunction;
-     TPFN_vkReallocationFunction=function(pUserData:TVkPointer;pOriginal:TVkPointer;size:TVkPtrInt;alignment:TVkPtrInt;allocationScope:TVkSystemAllocationScope):TVkPointer; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkReallocationFunction=function(pUserData:PVkVoid;pOriginal:PVkVoid;size:TVkPtrInt;alignment:TVkPtrInt;allocationScope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkAllocationFunction=^PPFN_vkAllocationFunction;
      PPFN_vkAllocationFunction=^TPFN_vkAllocationFunction;
-     TPFN_vkAllocationFunction=function(pUserData:TVkPointer;size:TVkPtrInt;alignment:TVkPtrInt;allocationScope:TVkSystemAllocationScope):TVkPointer; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkAllocationFunction=function(pUserData:PVkVoid;size:TVkPtrInt;alignment:TVkPtrInt;allocationScope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkFreeFunction=^PPFN_vkFreeFunction;
      PPFN_vkFreeFunction=^TPFN_vkFreeFunction;
-     TPFN_vkFreeFunction=procedure(pUserData:TVkPointer;pMemory:TVkPointer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkFreeFunction=procedure(pUserData:PVkVoid;pMemory:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkVoidFunction=^PPFN_vkVoidFunction;
      PPFN_vkVoidFunction=^TPFN_vkVoidFunction;
@@ -1798,7 +1801,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      PPPFN_vkDebugReportCallbackEXT=^PPFN_vkDebugReportCallbackEXT;
      PPFN_vkDebugReportCallbackEXT=^TPFN_vkDebugReportCallbackEXT;
-     TPFN_vkDebugReportCallbackEXT=function(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar;pUserData:TVkPointer):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkDebugReportCallbackEXT=function(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkPtrInt;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar;pUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPVkOffset2D=^PVkOffset2D;
      PVkOffset2D=^TVkOffset2D;
@@ -1910,7 +1913,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkApplicationInfo=^TVkApplicationInfo;
      TVkApplicationInfo=record
       sType:TVkStructureType; //< Type of structure. Should be VK_STRUCTURE_TYPE_APPLICATION_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       pApplicationName:PVkChar;
       applicationVersion:TVkUInt32;
       pEngineName:PVkChar;
@@ -1925,7 +1928,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkAllocationCallbacks=^PVkAllocationCallbacks;
      PVkAllocationCallbacks=^TVkAllocationCallbacks;
      TVkAllocationCallbacks=record
-      pUserData:TVkPointer;
+      pUserData:PVkVoid;
       pfnAllocation:TPFN_vkAllocationFunction;
       pfnReallocation:TPFN_vkReallocationFunction;
       pfnFree:TPFN_vkFreeFunction;
@@ -1940,7 +1943,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDeviceQueueCreateInfo=^TVkDeviceQueueCreateInfo;
      TVkDeviceQueueCreateInfo=record
       sType:TVkStructureType; //< Should be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkDeviceQueueCreateFlags; //< Reserved
       queueFamilyIndex:TVkUInt32;
       queueCount:TVkUInt32;
@@ -2015,7 +2018,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkInstanceCreateInfo=^TVkInstanceCreateInfo;
      TVkInstanceCreateInfo=record
       sType:TVkStructureType; //< Should be VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkInstanceCreateFlags; //< Reserved
       pApplicationInfo:PVkApplicationInfo;
       enabledLayerCount:TVkUInt32;
@@ -2046,7 +2049,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkMemoryAllocateInfo=^TVkMemoryAllocateInfo;
      TVkMemoryAllocateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       allocationSize:TVkDeviceSize; //< Size of memory allocation
       memoryTypeIndex:TVkUInt32; //< Index of the of the memory type to allocate from
      end;
@@ -2102,7 +2105,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkMappedMemoryRange=^TVkMappedMemoryRange;
      TVkMappedMemoryRange=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       memory:TVkDeviceMemory; //< Mapped memory object
       offset:TVkDeviceSize; //< Offset within the memory object where the range starts
       size:TVkDeviceSize; //< Size of the range within the memory object
@@ -2166,7 +2169,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkWriteDescriptorSet=^TVkWriteDescriptorSet;
      TVkWriteDescriptorSet=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       dstSet:TVkDescriptorSet; //< Destination descriptor set
       dstBinding:TVkUInt32; //< Binding within the destination descriptor set to write
       dstArrayElement:TVkUInt32; //< Array element within the destination binding to write
@@ -2186,7 +2189,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkCopyDescriptorSet=^TVkCopyDescriptorSet;
      TVkCopyDescriptorSet=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       srcSet:TVkDescriptorSet; //< Source descriptor set
       srcBinding:TVkUInt32; //< Binding within the source descriptor set to copy from
       srcArrayElement:TVkUInt32; //< Array element within the source binding to copy from
@@ -2207,7 +2210,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkBufferCreateInfo=^TVkBufferCreateInfo;
      TVkBufferCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure.
+      pNext:PVkVoid; //< Pointer to next structure.
       flags:TVkBufferCreateFlags; //< Buffer creation flags
       size:TVkDeviceSize; //< Specified in bytes
       usage:TVkBufferUsageFlags; //< Buffer usage flags
@@ -2230,7 +2233,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkBufferViewCreateInfo=^TVkBufferViewCreateInfo;
      TVkBufferViewCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure.
+      pNext:PVkVoid; //< Pointer to next structure.
       flags:TVkBufferViewCreateFlags; //< Reserved
       buffer:TVkBuffer;
       format:TVkFormat; //< Optionally specifies format of elements
@@ -2277,7 +2280,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkMemoryBarrier=^TVkMemoryBarrier;
      TVkMemoryBarrier=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_BARRIER
-      pNext:TVkPointer; //< Pointer to next structure.
+      pNext:PVkVoid; //< Pointer to next structure.
       srcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
       dstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
      end;
@@ -2292,7 +2295,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkBufferMemoryBarrier=^TVkBufferMemoryBarrier;
      TVkBufferMemoryBarrier=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER
-      pNext:TVkPointer; //< Pointer to next structure.
+      pNext:PVkVoid; //< Pointer to next structure.
       srcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
       dstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
       srcQueueFamilyIndex:TVkUInt32; //< Queue family to transition ownership from
@@ -2319,7 +2322,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkImageMemoryBarrier=^TVkImageMemoryBarrier;
      TVkImageMemoryBarrier=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER
-      pNext:TVkPointer; //< Pointer to next structure.
+      pNext:PVkVoid; //< Pointer to next structure.
       srcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
       dstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
       oldLayout:TVkImageLayout; //< Current layout of the image
@@ -2382,7 +2385,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkImageCreateInfo=^TVkImageCreateInfo;
      TVkImageCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure.
+      pNext:PVkVoid; //< Pointer to next structure.
       flags:TVkImageCreateFlags; //< Image creation flags
       imageType:TVkImageType;
       format:TVkFormat;
@@ -2431,7 +2434,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkImageViewCreateInfo=^TVkImageViewCreateInfo;
      TVkImageViewCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkImageViewCreateFlags; //< Reserved
       image:TVkImage;
       viewType:TVkImageViewType;
@@ -2514,7 +2517,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkBindSparseInfo=^TVkBindSparseInfo;
      TVkBindSparseInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_SPARSE_INFO
-      pNext:TVkPointer; //< Pointer to next structure.
+      pNext:PVkVoid; //< Pointer to next structure.
       waitSemaphoreCount:TVkUInt32;
       pWaitSemaphores:PVkSemaphore;
       bufferBindCount:TVkUInt32;
@@ -2633,7 +2636,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkShaderModuleCreateInfo=^TVkShaderModuleCreateInfo;
      TVkShaderModuleCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkShaderModuleCreateFlags; //< Reserved
       codeSize:TVkPtrInt; //< Specified in bytes
       pCode:PVkUInt32; //< Binary code of size codeSize
@@ -2655,7 +2658,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDescriptorSetLayoutCreateInfo=^TVkDescriptorSetLayoutCreateInfo;
      TVkDescriptorSetLayoutCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkDescriptorSetLayoutCreateFlags; //< Reserved
       bindingCount:TVkUInt32; //< Number of bindings in the descriptor set layout
       pBindings:PVkDescriptorSetLayoutBinding; //< Array of descriptor set layout bindings
@@ -2674,7 +2677,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDescriptorPoolCreateInfo=^TVkDescriptorPoolCreateInfo;
      TVkDescriptorPoolCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkDescriptorPoolCreateFlags;
       maxSets:TVkUInt32;
       poolSizeCount:TVkUInt32;
@@ -2687,7 +2690,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDescriptorSetAllocateInfo=^TVkDescriptorSetAllocateInfo;
      TVkDescriptorSetAllocateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       descriptorPool:TVkDescriptorPool;
       descriptorSetCount:TVkUInt32;
       pSetLayouts:PVkDescriptorSetLayout;
@@ -2709,7 +2712,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       mapEntryCount:TVkUInt32; //< Number of entries in the map
       pMapEntries:PVkSpecializationMapEntry; //< Array of map entries
       dataSize:TVkPtrInt; //< Size in bytes of pData
-      pData:TVkPointer; //< Pointer to SpecConstant data
+      pData:PVkVoid; //< Pointer to SpecConstant data
      end;
 
      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stage mustnot: be TVK_SHADER_STAGE_GEOMETRY_BIT
@@ -2732,7 +2735,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineShaderStageCreateInfo=^TVkPipelineShaderStageCreateInfo;
      TVkPipelineShaderStageCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineShaderStageCreateFlags; //< Reserved
       stage:TVkShaderStageFlagBits; //< Shader stage
       module:TVkShaderModule; //< Module containing entry point
@@ -2752,7 +2755,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkComputePipelineCreateInfo=^TVkComputePipelineCreateInfo;
      TVkComputePipelineCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineCreateFlags; //< Pipeline creation flags
       stage:TVkPipelineShaderStageCreateInfo;
       layout:TVkPipelineLayout; //< Interface layout of the pipeline
@@ -2792,7 +2795,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineVertexInputStateCreateInfo=^TVkPipelineVertexInputStateCreateInfo;
      TVkPipelineVertexInputStateCreateInfo=record
       sType:TVkStructureType; //< Should be VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineVertexInputStateCreateFlags; //< Reserved
       vertexBindingDescriptionCount:TVkUInt32; //< number of bindings
       pVertexBindingDescriptions:PVkVertexInputBindingDescription;
@@ -2807,7 +2810,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineInputAssemblyStateCreateInfo=^TVkPipelineInputAssemblyStateCreateInfo;
      TVkPipelineInputAssemblyStateCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_IINPUT_ASSEMBLY_STATE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineInputAssemblyStateCreateFlags; //< Reserved
       topology:TVkPrimitiveTopology;
       primitiveRestartEnable:TVkBool32;
@@ -2818,7 +2821,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineTessellationStateCreateInfo=^TVkPipelineTessellationStateCreateInfo;
      TVkPipelineTessellationStateCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineTessellationStateCreateFlags; //< Reserved
       patchControlPoints:TVkUInt32;
      end;
@@ -2832,7 +2835,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineViewportStateCreateInfo=^TVkPipelineViewportStateCreateInfo;
      TVkPipelineViewportStateCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineViewportStateCreateFlags; //< Reserved
       viewportCount:TVkUInt32;
       pViewports:PVkViewport;
@@ -2846,7 +2849,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineRasterizationStateCreateInfo=^TVkPipelineRasterizationStateCreateInfo;
      TVkPipelineRasterizationStateCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineRasterizationStateCreateFlags; //< Reserved
       depthClampEnable:TVkBool32;
       rasterizerDiscardEnable:TVkBool32;
@@ -2867,7 +2870,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineMultisampleStateCreateInfo=^TVkPipelineMultisampleStateCreateInfo;
      TVkPipelineMultisampleStateCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineMultisampleStateCreateFlags; //< Reserved
       rasterizationSamples:TVkSampleCountFlagBits; //< Number of samples used for rasterization
       sampleShadingEnable:TVkBool32; //< optional (GL45)
@@ -2901,7 +2904,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineColorBlendStateCreateInfo=^TVkPipelineColorBlendStateCreateInfo;
      TVkPipelineColorBlendStateCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineColorBlendStateCreateFlags; //< Reserved
       logicOpEnable:TVkBool32;
       logicOp:TVkLogicOp;
@@ -2914,7 +2917,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineDynamicStateCreateInfo=^TVkPipelineDynamicStateCreateInfo;
      TVkPipelineDynamicStateCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineDynamicStateCreateFlags; //< Reserved
       dynamicStateCount:TVkUInt32;
       pDynamicStates:PVkDynamicState;
@@ -2937,7 +2940,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineDepthStencilStateCreateInfo=^TVkPipelineDepthStencilStateCreateInfo;
      TVkPipelineDepthStencilStateCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineDepthStencilStateCreateFlags; //< Reserved
       depthTestEnable:TVkBool32;
       depthWriteEnable:TVkBool32;
@@ -2992,7 +2995,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkGraphicsPipelineCreateInfo=^TVkGraphicsPipelineCreateInfo;
      TVkGraphicsPipelineCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineCreateFlags; //< Pipeline creation flags
       stageCount:TVkUInt32;
       pStages:PVkPipelineShaderStageCreateInfo; //< One entry for each active shader stage
@@ -3018,10 +3021,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineCacheCreateInfo=^TVkPipelineCacheCreateInfo;
      TVkPipelineCacheCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineCacheCreateFlags; //< Reserved
       initialDataSize:TVkPtrInt; //< Size of initial data to populate cache, in bytes
-      pInitialData:TVkPointer; //< Initial data to populate cache
+      pInitialData:PVkVoid; //< Initial data to populate cache
      end;
 
      // offset must: be less than TVkPhysicalDeviceLimits::maxPushConstantsSize
@@ -3046,7 +3049,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineLayoutCreateInfo=^TVkPipelineLayoutCreateInfo;
      TVkPipelineLayoutCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkPipelineLayoutCreateFlags; //< Reserved
       setLayoutCount:TVkUInt32; //< Number of descriptor sets interfaced by the pipeline
       pSetLayouts:PVkDescriptorSetLayout; //< Array of setCount number of descriptor set layout objects defining the layout of the
@@ -3070,7 +3073,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkSamplerCreateInfo=^TVkSamplerCreateInfo;
      TVkSamplerCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkSamplerCreateFlags; //< Reserved
       magFilter:TVkFilter; //< Filter mode for magnification
       minFilter:TVkFilter; //< Filter mode for minifiation
@@ -3094,7 +3097,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkCommandPoolCreateInfo=^TVkCommandPoolCreateInfo;
      TVkCommandPoolCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkCommandPoolCreateFlags; //< Command pool creation flags
       queueFamilyIndex:TVkUInt32;
      end;
@@ -3104,7 +3107,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkCommandBufferAllocateInfo=^TVkCommandBufferAllocateInfo;
      TVkCommandBufferAllocateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       commandPool:TVkCommandPool;
       level:TVkCommandBufferLevel;
       commandBufferCount:TVkUInt32;
@@ -3117,7 +3120,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkCommandBufferInheritanceInfo=^TVkCommandBufferInheritanceInfo;
      TVkCommandBufferInheritanceInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       renderPass:TVkRenderPass; //< Render pass for secondary command buffers
       subpass:TVkUInt32;
       framebuffer:TVkFramebuffer; //< Framebuffer for secondary command buffers
@@ -3133,7 +3136,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkCommandBufferBeginInfo=^TVkCommandBufferBeginInfo;
      TVkCommandBufferBeginInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkCommandBufferUsageFlags; //< Command buffer usage flags
       pInheritanceInfo:PVkCommandBufferInheritanceInfo; //< Pointer to inheritance info for secondary command buffers
      end;
@@ -3177,7 +3180,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkRenderPassBeginInfo=^TVkRenderPassBeginInfo;
      TVkRenderPassBeginInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       renderPass:TVkRenderPass;
       framebuffer:TVkFramebuffer;
       renderArea:TVkRect2D;
@@ -3269,7 +3272,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkRenderPassCreateInfo=^TVkRenderPassCreateInfo;
      TVkRenderPassCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkRenderPassCreateFlags; //< Reserved
       attachmentCount:TVkUInt32;
       pAttachments:PVkAttachmentDescription;
@@ -3283,7 +3286,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkEventCreateInfo=^TVkEventCreateInfo;
      TVkEventCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EVENT_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkEventCreateFlags; //< Event creation flags
      end;
 
@@ -3291,7 +3294,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkFenceCreateInfo=^TVkFenceCreateInfo;
      TVkFenceCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkFenceCreateFlags; //< Fence creation flags
      end;
 
@@ -3303,7 +3306,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDeviceCreateInfo=^TVkDeviceCreateInfo;
      TVkDeviceCreateInfo=record
       sType:TVkStructureType; //< Should be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkDeviceCreateFlags; //< Reserved
       queueCreateInfoCount:TVkUInt32;
       pQueueCreateInfos:PVkDeviceQueueCreateInfo;
@@ -3443,7 +3446,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkSemaphoreCreateInfo=^TVkSemaphoreCreateInfo;
      TVkSemaphoreCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkSemaphoreCreateFlags; //< Semaphore creation flags
      end;
 
@@ -3453,7 +3456,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkQueryPoolCreateInfo=^TVkQueryPoolCreateInfo;
      TVkQueryPoolCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkQueryPoolCreateFlags; //< Reserved
       queryType:TVkQueryType;
       queryCount:TVkUInt32;
@@ -3476,7 +3479,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkFramebufferCreateInfo=^TVkFramebufferCreateInfo;
      TVkFramebufferCreateInfo=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkFramebufferCreateFlags; //< Reserved
       renderPass:TVkRenderPass;
       attachmentCount:TVkUInt32;
@@ -3537,7 +3540,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkSubmitInfo=^TVkSubmitInfo;
      TVkSubmitInfo=record
       sType:TVkStructureType; //< Type of structure. Should be VK_STRUCTURE_TYPE_SUBMIT_INFO
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       waitSemaphoreCount:TVkUInt32;
       pWaitSemaphores:PVkSemaphore;
       pWaitDstStageMask:PVkPipelineStageFlags;
@@ -3586,7 +3589,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDisplayModeCreateInfoKHR=^TVkDisplayModeCreateInfoKHR;
      TVkDisplayModeCreateInfoKHR=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkDisplayModeCreateFlagsKHR; //< Reserved
       parameters:TVkDisplayModeParametersKHR; //< The parameters this mode uses.
      end;
@@ -3615,7 +3618,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDisplaySurfaceCreateInfoKHR=^TVkDisplaySurfaceCreateInfoKHR;
      TVkDisplaySurfaceCreateInfoKHR=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkDisplaySurfaceCreateFlagsKHR; //< Reserved
       displayMode:TVkDisplayModeKHR; //< The mode to use when displaying this surface
       planeIndex:TVkUInt32; //< The plane on which this surface appears. Must be between 0 and the value returned by vkGetPhysicalDeviceDisplayPlanePropertiesKHR() in pPropertyCount.
@@ -3633,7 +3636,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDisplayPresentInfoKHR=^TVkDisplayPresentInfoKHR;
      TVkDisplayPresentInfoKHR=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_PRESENT_INFO_KHR
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       srcRect:TVkRect2D; //< Rectangle within the presentable image to read pixel data from when presenting to the display.
       dstRect:TVkRect2D; //< Rectangle within the current display mode's visible region to display srcRectangle in.
       persistent:TVkBool32; //< For smart displays, use buffered mode. If the display properties member "persistentMode" is VK_FALSE, this member must always be VK_FALSE.
@@ -3660,7 +3663,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkAndroidSurfaceCreateInfoKHR=^TVkAndroidSurfaceCreateInfoKHR;
      TVkAndroidSurfaceCreateInfoKHR=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkAndroidSurfaceCreateFlagsKHR; //< Reserved
       window:PANativeWindow;
      end;
@@ -3671,7 +3674,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkMirSurfaceCreateInfoKHR=^TVkMirSurfaceCreateInfoKHR;
      TVkMirSurfaceCreateInfoKHR=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkMirSurfaceCreateFlagsKHR; //< Reserved
       connection:PMirConnection;
       mirSurface:PMirSurface;
@@ -3683,7 +3686,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkWaylandSurfaceCreateInfoKHR=^TVkWaylandSurfaceCreateInfoKHR;
      TVkWaylandSurfaceCreateInfoKHR=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkWaylandSurfaceCreateFlagsKHR; //< Reserved
       display:Pwl_display;
       surface:Pwl_surface;
@@ -3695,7 +3698,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkWin32SurfaceCreateInfoKHR=^TVkWin32SurfaceCreateInfoKHR;
      TVkWin32SurfaceCreateInfoKHR=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkWin32SurfaceCreateFlagsKHR; //< Reserved
       hinstance_:TVkHINSTANCE;
       hwnd_:TVkHWND;
@@ -3707,7 +3710,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkXlibSurfaceCreateInfoKHR=^TVkXlibSurfaceCreateInfoKHR;
      TVkXlibSurfaceCreateInfoKHR=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkXlibSurfaceCreateFlagsKHR; //< Reserved
       dpy:PDisplay;
       window:TWindow;
@@ -3719,7 +3722,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkXcbSurfaceCreateInfoKHR=^TVkXcbSurfaceCreateInfoKHR;
      TVkXcbSurfaceCreateInfoKHR=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkXcbSurfaceCreateFlagsKHR; //< Reserved
       connection:Pxcb_connection;
       window:Txcb_window;
@@ -3750,7 +3753,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkSwapchainCreateInfoKHR=^TVkSwapchainCreateInfoKHR;
      TVkSwapchainCreateInfoKHR=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkSwapchainCreateFlagsKHR; //< Reserved
       surface:TVkSurfaceKHR; //< The swapchain's target surface
       minImageCount:TVkUInt32; //< Minimum number of presentation images the application needs
@@ -3775,7 +3778,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPresentInfoKHR=^TVkPresentInfoKHR;
      TVkPresentInfoKHR=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       waitSemaphoreCount:TVkUInt32; //< Number of semaphores to wait for before presenting
       pWaitSemaphores:PVkSemaphore; //< Semaphores to wait for before presenting
       swapchainCount:TVkUInt32; //< Number of swap chains to present in this call
@@ -3788,17 +3791,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDebugReportCallbackCreateInfoEXT=^TVkDebugReportCallbackCreateInfoEXT;
      TVkDebugReportCallbackCreateInfoEXT=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       flags:TVkDebugReportFlagsEXT; //< Indicates which events call this callback
       pfnCallback:TPFN_vkDebugReportCallbackEXT; //< Function pointer of a callback function
-      pUserData:TVkPointer; //< User data provided to callback function
+      pUserData:PVkVoid; //< User data provided to callback function
      end;
 
      PPVkPipelineRasterizationStateRasterizationOrderAMD=^PVkPipelineRasterizationStateRasterizationOrderAMD;
      PVkPipelineRasterizationStateRasterizationOrderAMD=^TVkPipelineRasterizationStateRasterizationOrderAMD;
      TVkPipelineRasterizationStateRasterizationOrderAMD=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       rasterizationOrder:TVkRasterizationOrderAMD; //< Rasterization order to use for the pipeline
      end;
 
@@ -3806,7 +3809,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDebugMarkerObjectNameInfoEXT=^TVkDebugMarkerObjectNameInfoEXT;
      TVkDebugMarkerObjectNameInfoEXT=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       objectType:TVkDebugReportObjectTypeEXT; //< The type of the object
       object_:TVkUInt64; //< The handle of the object, cast to uint64_t
       pObjectName:PVkChar; //< Name to apply to the object
@@ -3816,19 +3819,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDebugMarkerObjectTagInfoEXT=^TVkDebugMarkerObjectTagInfoEXT;
      TVkDebugMarkerObjectTagInfoEXT=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       objectType:TVkDebugReportObjectTypeEXT; //< The type of the object
       object_:TVkUInt64; //< The handle of the object, cast to uint64_t
       tagName:TVkUInt64; //< The name of the tag to set on the object
       tagSize:TVkPtrInt; //< The length in bytes of the tag data
-      pTag:TVkPointer; //< Tag data to attach to the object
+      pTag:PVkVoid; //< Tag data to attach to the object
      end;
 
      PPVkDebugMarkerMarkerInfoEXT=^PVkDebugMarkerMarkerInfoEXT;
      PVkDebugMarkerMarkerInfoEXT=^TVkDebugMarkerMarkerInfoEXT;
      TVkDebugMarkerMarkerInfoEXT=record
       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT
-      pNext:TVkPointer; //< Pointer to next structure
+      pNext:PVkVoid; //< Pointer to next structure
       pMarkerName:PVkChar; //< Name of the debug marker
       color:array[0..3] of TVkFloat; //< Optional color for debug marker
      end;
@@ -3901,7 +3904,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If size is not equal to TVK_WHOLE_SIZE, size must: be greater than `0`
      // If size is not equal to TVK_WHOLE_SIZE, size must: be less than or equal to the size of the memory minus offset
      // memory must: have been created with a memory type that reports TVK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-     TvkMapMemory=function(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PVkPointer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkMapMemory=function(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PPVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // memory must: currently be mapped
      TvkUnmapMemory=procedure(device:TVkDevice;memory:TVkDeviceMemory); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -3997,7 +4000,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The sum of firstQuery and queryCount must: be less than or equal to the number of queries in queryPool
      // dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
      // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
-     TvkGetQueryPoolResults=function(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:TVkPointer;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetQueryPoolResults=function(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
      TvkCreateBuffer=function(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -4045,7 +4048,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If no TVkAllocationCallbacks were provided when pipelineCache was created, pAllocator must: be `NULL`
      TvkDestroyPipelineCache=procedure(device:TVkDevice;pipelineCache:TVkPipelineCache;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPipelineCacheData=function(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:TVkPointer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPipelineCacheData=function(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // dstCache mustnot: appear in the list of source caches
      TvkMergePipelineCaches=function(device:TVkDevice;dstCache:TVkPipelineCache;srcCacheCount:TVkUInt32;const pSrcCaches:PVkPipelineCache):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -4479,7 +4482,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // size must: be a multiple of `4`
      // offset must: be less than TVkPhysicalDeviceLimits::maxPushConstantsSize
      // size must: be less than or equal to TVkPhysicalDeviceLimits::maxPushConstantsSize minus offset
-     TvkCmdPushConstants=procedure(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:TVkPointer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushConstants=procedure(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
@@ -5514,7 +5517,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If size is not equal to TVK_WHOLE_SIZE, size must: be greater than `0`
        // If size is not equal to TVK_WHOLE_SIZE, size must: be less than or equal to the size of the memory minus offset
        // memory must: have been created with a memory type that reports TVK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-       function MapMemory(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PVkPointer):TVkResult; virtual;
+       function MapMemory(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PPVkVoid):TVkResult; virtual;
 
        // memory must: currently be mapped
        procedure UnmapMemory(device:TVkDevice;memory:TVkDeviceMemory); virtual;
@@ -5610,7 +5613,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // The sum of firstQuery and queryCount must: be less than or equal to the number of queries in queryPool
        // dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
        // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
-       function GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:TVkPointer;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; virtual;
+       function GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; virtual;
 
        // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
        function CreateBuffer(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; virtual;
@@ -5658,7 +5661,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If no TVkAllocationCallbacks were provided when pipelineCache was created, pAllocator must: be `NULL`
        procedure DestroyPipelineCache(device:TVkDevice;pipelineCache:TVkPipelineCache;const pAllocator:PVkAllocationCallbacks); virtual;
 
-       function GetPipelineCacheData(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:TVkPointer):TVkResult; virtual;
+       function GetPipelineCacheData(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:PVkVoid):TVkResult; virtual;
 
        // dstCache mustnot: appear in the list of source caches
        function MergePipelineCaches(device:TVkDevice;dstCache:TVkPipelineCache;srcCacheCount:TVkUInt32;const pSrcCaches:PVkPipelineCache):TVkResult; virtual;
@@ -6092,7 +6095,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // size must: be a multiple of `4`
        // offset must: be less than TVkPhysicalDeviceLimits::maxPushConstantsSize
        // size must: be less than or equal to TVkPhysicalDeviceLimits::maxPushConstantsSize minus offset
-       procedure CmdPushConstants(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:TVkPointer); virtual;
+       procedure CmdPushConstants(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:PVkVoid); virtual;
 
        // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
        // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
@@ -8367,7 +8370,7 @@ begin
  fCommands.FreeMemory(device,memory,pAllocator);
 end;
 
-function TVulkan.MapMemory(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PVkPointer):TVkResult;
+function TVulkan.MapMemory(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PPVkVoid):TVkResult;
 begin
  result:=fCommands.MapMemory(device,memory,offset,size,flags,ppData);
 end;
@@ -8497,7 +8500,7 @@ begin
  fCommands.DestroyQueryPool(device,queryPool,pAllocator);
 end;
 
-function TVulkan.GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:TVkPointer;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult;
+function TVulkan.GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkPtrInt;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult;
 begin
  result:=fCommands.GetQueryPoolResults(device,queryPool,firstQuery,queryCount,dataSize,pData,stride,flags);
 end;
@@ -8567,7 +8570,7 @@ begin
  fCommands.DestroyPipelineCache(device,pipelineCache,pAllocator);
 end;
 
-function TVulkan.GetPipelineCacheData(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:TVkPointer):TVkResult;
+function TVulkan.GetPipelineCacheData(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkPtrInt;pData:PVkVoid):TVkResult;
 begin
  result:=fCommands.GetPipelineCacheData(device,pipelineCache,pDataSize,pData);
 end;
@@ -8912,7 +8915,7 @@ begin
  fCommands.CmdCopyQueryPoolResults(commandBuffer,queryPool,firstQuery,queryCount,dstBuffer,dstOffset,stride,flags);
 end;
 
-procedure TVulkan.CmdPushConstants(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:TVkPointer);
+procedure TVulkan.CmdPushConstants(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:PVkVoid);
 begin
  fCommands.CmdPushConstants(commandBuffer,layout,stageFlags,offset,size,pValues);
 end;

@@ -2882,7 +2882,7 @@ begin
  case Ptr of
   1:begin
    if Type_='void' then begin
-    result:='TVkPointer';
+    result:='PVkVoid';
    end else if Type_='char' then begin
     result:='PVkChar';
    end else if Type_='float' then begin
@@ -2943,7 +2943,7 @@ begin
   end;
   2:begin
    if Type_='void' then begin
-    result:='PVkPointer';
+    result:='PPVkVoid';
    end else if Type_='char' then begin
     result:='PPVkChar';
    end else if Type_='float' then begin
@@ -3004,7 +3004,8 @@ begin
   end;
   else begin
    if Type_='void' then begin
-    result:='TVkPointer';
+    Assert(false,'TODO: Unexpected void data type');
+    result:='TVkVoid';
    end else if Type_='char' then begin
     result:='TVkChar';
    end else if Type_='float' then begin
@@ -4396,6 +4397,9 @@ begin
    OutputPAS.Add('     PPVkPointer=^PVkPointer;');
    OutputPAS.Add('     PVkPointer=^TVkPointer;');
    OutputPAS.Add('     TVkPointer=pointer;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkVoid=^PVkVoid;');
+   OutputPAS.Add('     PVkVoid=pointer;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkFloat=^PVkFloat;');
    OutputPAS.Add('     PVkFloat=^TVkFloat;');
