@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-05-24-15-43-0000                       *
+ *                        Version 2016-05-24-16-22-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -545,7 +545,19 @@ type EVulkanException=class(Exception);
        destructor Destroy; override;
        function GetQueueFamilyProperties:TVkQueueFamilyPropertiesArray;
        function GetMemoryProperties:TVkPhysicalDeviceMemoryProperties;
+       function GetProperties:TVkPhysicalDeviceProperties;
        function GetFeatures:TVkPhysicalDeviceFeatures;
+       function GetFormatProperties(const pFormat:TVkFormat):TVkFormatProperties;
+       function GetImageFormatProperties(const pFormat:TVkFormat;
+                                         const pType:TVkImageType;
+                                         const pTiling:TVkImageTiling;
+                                         const pUsageFlags:TVkImageUsageFlags;
+                                         const pCreateFlags:TVkImageCreateFlags):TVkImageFormatProperties;
+       function GetSparseImageFormatProperties(const pFormat:TVkFormat;
+                                               const pType:TVkImageType;
+                                               const pSamples:TVkSampleCountFlagBits;
+                                               const pUsageFlags:TVkImageUsageFlags;
+                                               const pTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
       published
        property PhysicalDevice:TVkPhysicalDevice read fPhysicalDevice;
      end;
@@ -2018,9 +2030,44 @@ begin
  fVulkan.GetPhysicalDeviceMemoryProperties(fPhysicalDevice,@result);
 end;
 
+function TVulkanPhysicalDevice.GetProperties:TVkPhysicalDeviceProperties;
+begin
+ fVulkan.GetPhysicalDeviceProperties(fPhysicalDevice,@result);
+end;
+
 function TVulkanPhysicalDevice.GetFeatures:TVkPhysicalDeviceFeatures;
 begin
  fVulkan.GetPhysicalDeviceFeatures(fPhysicalDevice,@result);
+end;
+
+function TVulkanPhysicalDevice.GetFormatProperties(const pFormat:TVkFormat):TVkFormatProperties;
+begin
+ fVulkan.GetPhysicalDeviceFormatProperties(fPhysicalDevice,pFormat,@result);
+end;
+
+function TVulkanPhysicalDevice.GetImageFormatProperties(const pFormat:TVkFormat;
+                                                        const pType:TVkImageType;
+                                                        const pTiling:TVkImageTiling;
+                                                        const pUsageFlags:TVkImageUsageFlags;
+                                                        const pCreateFlags:TVkImageCreateFlags):TVkImageFormatProperties;
+begin
+ fVulkan.GetPhysicalDeviceImageFormatProperties(fPhysicalDevice,pFormat,pType,pTiling,pUsageFlags,pCreateFlags,@result);
+end;
+
+function TVulkanPhysicalDevice.GetSparseImageFormatProperties(const pFormat:TVkFormat;
+                                                              const pType:TVkImageType;
+                                                              const pSamples:TVkSampleCountFlagBits;
+                                                              const pUsageFlags:TVkImageUsageFlags;
+                                                              const pTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
+var Count:TVkUInt32;
+begin
+ result:=nil;
+ Count:=0;
+ fVulkan.GetPhysicalDeviceSparseImageFormatProperties(fPhysicalDevice,pFormat,pType,pSamples,pUsageFlags,pTiling,@Count,nil);
+ if Count>0 then begin
+  SetLength(result,Count);
+  fVulkan.GetPhysicalDeviceSparseImageFormatProperties(fPhysicalDevice,pFormat,pType,pSamples,pUsageFlags,pTiling,@Count,@result[0]);
+ end;
 end;
 
 {
