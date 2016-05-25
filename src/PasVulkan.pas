@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-05-24-16-22-0000                       *
+ *                        Version 2016-05-25-14-21-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -159,7 +159,15 @@ uses SysUtils,Classes,Vulkan;
 
 type EVulkanException=class(Exception);
 
-     EVulkanErrorException=class(EVulkanException);
+     EVulkanResultException=class(EVulkanException)
+      private
+       fResultCode:TVkResult;
+      public
+       constructor Create(const pResultCode:TVkResult);
+       destructor Destroy; override;
+      published
+       property ResultCode:TVkResult read fResultCode;
+     end;
 
      TVulkanObject=class(TObject);
 
@@ -504,7 +512,7 @@ type EVulkanException=class(Exception);
        property APIVersion:TVkUInt32 read GetAPIVersion write SetAPIVersion;
      end;
 
-     TVulkanInstance=class(TVulkanObject)
+     TVulkanInstance=class(TVulkanHandle)
       private
        fVulkan:TVulkan;
        fApplicationInfo:TVulkanApplicationInfo;
@@ -516,8 +524,11 @@ type EVulkanException=class(Exception);
        fAllocationManager:TVulkanAllocationManager;
        fAllocationCallbacks:PVkAllocationCallbacks;
        fInstance:TVkInstance;
-       fCommands:TVulkanCommands;
+       fInstanceCommands:TVulkanCommands;
        fInstanceVulkan:TVulkan;
+       fPhysicalDevices:TVkPhysicalDeviceArray;
+       fNeedToEnumeratePhysicalDevices:boolean;
+       function GetPhysicalDevices:TVkPhysicalDeviceArray;
       protected
       public
        constructor Create(const pVulkan:TVulkan;
@@ -527,11 +538,11 @@ type EVulkanException=class(Exception);
                           const pEnabledExtensionNames:array of TVulkanCharString;
                           const pAllocationManager:TVulkanAllocationManager);
        destructor Destroy; override;
-       function EnumeratePhysicalDevices:TVkPhysicalDeviceArray;
-      published
+       procedure InvalidatePhysicalDevices;
        property Instance:TVkInstance read fInstance;
-       property Commands:TVulkanCommands read fCommands;
+       property InstanceCommands:TVulkanCommands read fInstanceCommands;
        property InstanceVulkan:TVulkan read fInstanceVulkan;
+       property PhysicalDevices:TVkPhysicalDeviceArray read GetPhysicalDevices;
      end;
 
      TVulkanPhysicalDevice=class(TVulkanObject)
@@ -558,6 +569,14 @@ type EVulkanException=class(Exception);
                                                const pSamples:TVkSampleCountFlagBits;
                                                const pUsageFlags:TVkImageUsageFlags;
                                                const pTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
+       function GetSurfaceSupport(const pQueueFamilyIndex:TVkUInt32;const pSurface:TVkSurfaceKHR):boolean;
+       function GetSurfaceCapabilities(const pSurface:TVkSurfaceKHR):TVkSurfaceCapabilitiesKHR;
+       function GetSurfaceFormats(const pSurface:TVkSurfaceKHR):TVkSurfaceFormatArray;
+       function GetSurfacePresentModes(const pSurface:TVkSurfaceKHR):TVkPresentModeArray;
+       function GetDisplayProperties:TVkDisplayPropertiesArray;
+       function GetDisplayPlaneProperties:TVkDisplayPlanePropertiesArray;
+       function GetDisplayPlaneSupportedDisplays(const pPlaneIndex:TVkUInt32):TVkDisplayArray;
+       function GetDisplayModeProperties(const pDisplay:TVkDisplayKHR):TVkDisplayModePropertiesArray;
       published
        property PhysicalDevice:TVkPhysicalDevice read fPhysicalDevice;
      end;
@@ -730,8 +749,19 @@ end;
 procedure HandleResultCode(const ResultCode:TVkResult);
 begin
  if ResultCode<>VK_SUCCESS then begin
-  raise EVulkanException.Create(VulkanErrorToString(ResultCode));
+  raise EVulkanResultException.Create(ResultCode);
  end;
+end;
+
+constructor EVulkanResultException.Create(const pResultCode:TVkResult);
+begin
+ fResultCode:=pResultCode;
+ inherited Create(VulkanErrorToString(fResultCode));
+end;
+
+destructor EVulkanResultException.Destroy;
+begin
+ inherited Destroy;
 end;
 
 constructor TVulkanBaseList.Create(const pItemSize:TVkSizeInt);
@@ -1956,43 +1986,53 @@ begin
 
  HandleResultCode(fVulkan.CreateInstance(@fInstanceCreateInfo,fAllocationCallbacks,@fInstance));
 
- if (fInstance<>VK_NULL_INSTANCE) and LoadVulkanInstanceCommands(fVulkan.Commands.GetInstanceProcAddr,fInstance,fCommands) then begin
-  fInstanceVulkan:=TVulkan.Create(fCommands);
+ if (fInstance<>VK_NULL_INSTANCE) and LoadVulkanInstanceCommands(fVulkan.Commands.GetInstanceProcAddr,fInstance,fInstanceCommands) then begin
+  fInstanceVulkan:=TVulkan.Create(fInstanceCommands);
  end else begin
   fInstanceVulkan:=fVulkan;
  end;
+
+ fPhysicalDevices:=nil;
+ fNeedToEnumeratePhysicalDevices:=true;
 
 end;
 
 destructor TVulkanInstance.Destroy;
 begin
- if fInstance<>VK_NULL_INSTANCE then begin
+ if (fInstance<>VK_NULL_INSTANCE) and fOwnsHandle then begin
   fVulkan.DestroyInstance(fInstance,fAllocationCallbacks);
  end;
  if fInstanceVulkan<>fVulkan then begin
   fInstanceVulkan.Free;
  end;
+ SetLength(fPhysicalDevices,0);
  inherited Destroy;
 end;
 
-function TVulkanInstance.EnumeratePhysicalDevices:TVkPhysicalDeviceArray;
+function TVulkanInstance.GetPhysicalDevices:TVkPhysicalDeviceArray;
 var Count:TVkUInt32;
 begin
- result:=nil;
-
- Count:=0;
-
- HandleResultCode(fVulkan.EnumeratePhysicalDevices(fInstance,@Count,nil));
-
- if Count>0 then begin
-  try
-   SetLength(result,Count);
-   HandleResultCode(fVulkan.EnumeratePhysicalDevices(fInstance,@Count,@result[0]));
-  except
-   SetLength(result,0);
-   raise;
+ if fNeedToEnumeratePhysicalDevices then begin
+  fNeedToEnumeratePhysicalDevices:=false;
+  fPhysicalDevices:=nil;
+  Count:=0;
+  HandleResultCode(fVulkan.EnumeratePhysicalDevices(fInstance,@Count,nil));
+  if Count>0 then begin
+   try
+    SetLength(fPhysicalDevices,Count);
+    HandleResultCode(fVulkan.EnumeratePhysicalDevices(fInstance,@Count,@fPhysicalDevices[0]));
+   except
+    SetLength(fPhysicalDevices,0);
+    raise;
+   end;
   end;
  end;
+ result:=fPhysicalDevices;
+end;
+
+procedure TVulkanInstance.InvalidatePhysicalDevices;
+begin
+ fNeedToEnumeratePhysicalDevices:=true;
 end;
 
 constructor TVulkanPhysicalDevice.Create(const pVulkan:TVulkan;
@@ -2067,6 +2107,127 @@ begin
  if Count>0 then begin
   SetLength(result,Count);
   fVulkan.GetPhysicalDeviceSparseImageFormatProperties(fPhysicalDevice,pFormat,pType,pSamples,pUsageFlags,pTiling,@Count,@result[0]);
+ end;
+end;
+
+function TVulkanPhysicalDevice.GetSurfaceSupport(const pQueueFamilyIndex:TVkUInt32;const pSurface:TVkSurfaceKHR):boolean;
+var Supported:TVkBool32;
+begin
+ Supported:=0;
+ fVulkan.GetPhysicalDeviceSurfaceSupportKHR(fPhysicalDevice,pQueueFamilyIndex,pSurface,@Supported);
+ result:=Supported<>0;
+end;
+
+function TVulkanPhysicalDevice.GetSurfaceCapabilities(const pSurface:TVkSurfaceKHR):TVkSurfaceCapabilitiesKHR;
+begin
+ fVulkan.GetPhysicalDeviceSurfaceCapabilitiesKHR(fPhysicalDevice,pSurface,@result);
+end;
+
+function TVulkanPhysicalDevice.GetSurfaceFormats(const pSurface:TVkSurfaceKHR):TVkSurfaceFormatArray;
+var Count:TVKUInt32;
+begin
+ result:=nil;
+ Count:=0;
+ if fVulkan.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDevice,pSurface,@Count,nil)=VK_SUCCESS then begin
+  if Count>0 then begin
+   try
+    SetLength(result,Count);
+    HandleResultCode(fVulkan.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDevice,PSurface,@Count,@result[0]));
+   except
+    SetLength(result,0);
+    raise;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanPhysicalDevice.GetSurfacePresentModes(const pSurface:TVkSurfaceKHR):TVkPresentModeArray;
+var Count:TVKUInt32;
+begin
+ result:=nil;
+ Count:=0;
+ if fVulkan.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDevice,pSurface,@Count,nil)=VK_SUCCESS then begin
+  if Count>0 then begin
+   try
+    SetLength(result,Count);
+    HandleResultCode(fVulkan.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDevice,PSurface,@Count,@result[0]));
+   except
+    SetLength(result,0);
+    raise;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanPhysicalDevice.GetDisplayProperties:TVkDisplayPropertiesArray;
+var Count:TVKUInt32;
+begin
+ result:=nil;
+ Count:=0;
+ if fVulkan.GetPhysicalDeviceDisplayPropertiesKHR(fPhysicalDevice,@Count,nil)=VK_SUCCESS then begin
+  if Count>0 then begin
+   try
+    SetLength(result,Count);
+    HandleResultCode(fVulkan.GetPhysicalDeviceDisplayPropertiesKHR(fPhysicalDevice,@Count,@result[0]));
+   except
+    SetLength(result,0);
+    raise;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanPhysicalDevice.GetDisplayPlaneProperties:TVkDisplayPlanePropertiesArray;
+var Count:TVKUInt32;
+begin
+ result:=nil;
+ Count:=0;
+ if fVulkan.GetPhysicalDeviceDisplayPlanePropertiesKHR(fPhysicalDevice,@Count,nil)=VK_SUCCESS then begin
+  if Count>0 then begin
+   try
+    SetLength(result,Count);
+    HandleResultCode(fVulkan.GetPhysicalDeviceDisplayPlanePropertiesKHR(fPhysicalDevice,@Count,@result[0]));
+   except
+    SetLength(result,0);
+    raise;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanPhysicalDevice.GetDisplayPlaneSupportedDisplays(const pPlaneIndex:TVkUInt32):TVkDisplayArray;
+var Count:TVKUInt32;
+begin
+ result:=nil;
+ Count:=0;
+ if fVulkan.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDevice,pPlaneIndex,@Count,nil)=VK_SUCCESS then begin
+  if Count>0 then begin
+   try
+    SetLength(result,Count);
+    HandleResultCode(fVulkan.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDevice,pPlaneIndex,@Count,@result[0]));
+   except
+    SetLength(result,0);
+    raise;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanPhysicalDevice.GetDisplayModeProperties(const pDisplay:TVkDisplayKHR):TVkDisplayModePropertiesArray;
+var Count:TVKUInt32;
+begin
+ result:=nil;
+ Count:=0;
+ if fVulkan.GetDisplayModePropertiesKHR(fPhysicalDevice,pDisplay,@Count,nil)=VK_SUCCESS then begin
+  if Count>0 then begin
+   try
+    SetLength(result,Count);
+    HandleResultCode(fVulkan.GetDisplayModePropertiesKHR(fPhysicalDevice,pDisplay,@Count,@result[0]));
+   except
+    SetLength(result,0);
+    raise;
+   end;
+  end;
  end;
 end;
 
