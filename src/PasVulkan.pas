@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-05-30-11-32-0000                       *
+ *                        Version 2016-05-30-14-12-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -515,6 +515,8 @@ type EVulkanException=class(Exception);
 
      TVulkanPhysicalDeviceList=class;
 
+     TVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:TVulkaNCharString;const pMessage:TVulkanCharString):TVkBool32 of object;
+
      TVulkanInstance=class(TVulkanObject)
       private
        fVulkan:TVulkan;
@@ -540,6 +542,9 @@ type EVulkanException=class(Exception);
        fInstanceVulkan:TVulkan;
        fPhysicalDevices:TVulkanPhysicalDeviceList;
        fNeedToEnumeratePhysicalDevices:boolean;
+       fDebugReportCallbackCreateInfoEXT:TVkDebugReportCallbackCreateInfoEXT;
+       fDebugReportCallbackEXT:TVkDebugReportCallbackEXT;
+       fOnInstanceDebugReportCallback:TVulkanInstanceDebugReportCallback;
        procedure SetApplicationInfo(const NewApplicationInfo:TVkApplicationInfo);
        function GetApplicationName:TVulkanCharString;
        procedure SetApplicationName(const NewApplicationName:TVulkanCharString);
@@ -552,6 +557,7 @@ type EVulkanException=class(Exception);
        function GetAPIVersion:TVkUInt32;
        procedure SetAPIVersion(const NewAPIVersion:TVkUInt32);
       protected
+       function DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:TVulkaNCharString;const pMessage:TVulkanCharString):TVkBool32; virtual;
       public
        constructor Create(const pApplicationName:TVulkanCharString='Vulkan application';
                           const pApplicationVersion:TVkUInt32=1;
@@ -563,6 +569,7 @@ type EVulkanException=class(Exception);
        destructor Destroy; override;
        procedure Initialize;
        procedure RefreshPhysicalDevices;
+       procedure InstallDebugReportCallback;
        property ApplicationName:TVulkanCharString read GetApplicationName write SetApplicationName;
        property ApplicationVersion:TVkUInt32 read GetApplicationVersion write SetApplicationVersion;
        property EngineName:TVulkanCharString read GetEngineName write SetEngineName;
@@ -580,6 +587,7 @@ type EVulkanException=class(Exception);
        property InstanceCommands:TVulkanCommands read fInstanceCommands;
        property InstanceVulkan:TVulkan read fInstanceVulkan;
        property PhysicalDevices:TVulkanPhysicalDeviceList read fPhysicalDevices;
+       property OnInstanceDebugReportCallback:TVulkanInstanceDebugReportCallback read fOnInstanceDebugReportCallback write fOnInstanceDebugReportCallback;
      end;
 
      TVulkanPhysicalDevice=class(TVulkanObject)
@@ -2070,6 +2078,10 @@ begin
 
  fInstance:=VK_NULL_INSTANCE;
 
+ fDebugReportCallbackEXT:=VK_NULL_HANDLE;
+
+ fOnInstanceDebugReportCallback:=nil;
+
  FillChar(fInstanceCommands,SizeOf(TVulkanCommands),#0);
  fInstanceVulkan:=nil;
 
@@ -2159,6 +2171,9 @@ end;
 
 destructor TVulkanInstance.Destroy;
 begin
+ if fDebugReportCallbackEXT<>VK_NULL_HANDLE then begin
+  fInstanceVulkan.DestroyDebugReportCallbackEXT(fInstance,fDebugReportCallbackEXT,fAllocationCallbacks);
+ end;
  fPhysicalDevices.Free;
  if fInstance<>VK_NULL_INSTANCE then begin
   fVulkan.DestroyInstance(fInstance,fAllocationCallbacks);
@@ -2326,6 +2341,32 @@ begin
   end;
  finally
   SetLength(PhysicalDevices,0);
+ end;
+end;
+
+function TVulkanInstanceDebugReportCallbackFunction(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar;pUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+begin
+ result:=TVulkanInstance(pUserData).DebugReportCallback(flags,objectType,object_,location,messageCode,pLayerPrefix,pMessage);
+end;
+
+function TVulkanInstance.DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:TVulkaNCharString;const pMessage:TVulkanCharString):TVkBool32;
+begin
+ if assigned(fOnInstanceDebugReportCallback) then begin
+  result:=fOnInstanceDebugReportCallback(flags,objectType,object_,location,messageCode,pLayerPrefix,pMessage);
+ end else begin
+  result:=VK_FALSE;
+ end;
+end;
+
+procedure TVulkanInstance.InstallDebugReportCallback;
+begin
+ if (fDebugReportCallbackEXT=VK_NULL_HANDLE) and assigned(fInstanceCommands.CreateDebugReportCallbackEXT) then begin
+  FillChar(fDebugReportCallbackCreateInfoEXT,SizeOf(TVkDebugReportCallbackCreateInfoEXT),#0);
+  fDebugReportCallbackCreateInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
+  fDebugReportCallbackCreateInfoEXT.flags:=TVkUInt32(VK_DEBUG_REPORT_ERROR_BIT_EXT) or TVkUInt32(VK_DEBUG_REPORT_WARNING_BIT_EXT) or TVkUInt32(VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT);
+  fDebugReportCallbackCreateInfoEXT.pfnCallback:=@TVulkanInstanceDebugReportCallbackFunction;
+  fDebugReportCallbackCreateInfoEXT.pUserData:=self;
+  HandleResultCode(fInstanceVulkan.CreateDebugReportCallbackEXT(fInstance,@fDebugReportCallbackCreateInfoEXT,fAllocationCallbacks,@fDebugReportCallbackEXT));
  end;
 end;
 
