@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-05-30-14-12-0000                       *
+ *                        Version 2016-05-30-14-33-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -652,7 +652,6 @@ type EVulkanException=class(Exception);
        fInstanceVulkan:TVulkan;
        fAllocationManager:TVulkanAllocationManager;
        fAllocationCallbacks:PVkAllocationCallbacks;
-       fInitialized:boolean;
 {$ifdef Windows}
        fSurfaceCreateInfo:TVkWin32SurfaceCreateInfoKHR;
 {$endif}
@@ -664,7 +663,6 @@ type EVulkanException=class(Exception);
                           const pAllocationManager:TVulkanAllocationManager=nil);
        destructor Destroy; override;
        procedure Initialize;
-       property Initialized:boolean read fInitialized;
        property Surface:TVkSurfaceKHR read fSurface;
      end;
 
@@ -2151,7 +2149,9 @@ begin
      ExtensionProperty^.LayerIndex:=Index;
      ExtensionProperty^.ExtensionName:=ExtensionProperties[SubIndex].extensionName;
      ExtensionProperty^.SpecVersion:=ExtensionProperties[SubIndex].SpecVersion;
-     fAvailableExtensionNames.Add(ExtensionProperty^.ExtensionName);
+     if fAvailableExtensionNames.IndexOf(ExtensionProperty^.ExtensionName)<0 then begin
+      fAvailableExtensionNames.Add(ExtensionProperty^.ExtensionName);
+     end;
     end;
     inc(Count,SubCount);
    end;
@@ -2448,7 +2448,9 @@ begin
      ExtensionProperty^.LayerIndex:=Index;
      ExtensionProperty^.ExtensionName:=ExtensionProperties[SubIndex].extensionName;
      ExtensionProperty^.SpecVersion:=ExtensionProperties[SubIndex].SpecVersion;
-     fAvailableExtensionNames.Add(ExtensionProperty^.ExtensionName);
+     if fAvailableExtensionNames.IndexOf(ExtensionProperty^.ExtensionName)<0 then begin
+      fAvailableExtensionNames.Add(ExtensionProperty^.ExtensionName);
+     end;
     end;
     inc(Count,SubCount);
    end;
@@ -2654,8 +2656,6 @@ begin
 
  fSurface:=VK_NULL_HANDLE;
 
- fInitialized:=false;
-
 {$ifdef Windows}
  FillChar(fSurfaceCreateInfo,SizeOf(TVkWin32SurfaceCreateInfoKHR),#0);
  fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
@@ -2667,7 +2667,7 @@ end;
 
 destructor TVulkanSurface.Destroy;
 begin
- if fInitialized and fOwnsHandle then begin
+ if (fSurface<>VK_NULL_HANDLE) and fOwnsHandle then begin
   fInstance.fVulkan.DestroySurfaceKHR(fInstance.fInstance,fSurface,fAllocationCallbacks);
  end;
  inherited Destroy;
@@ -2675,8 +2675,7 @@ end;
 
 procedure TVulkanSurface.Initialize;
 begin
- if not fInitialized then begin
-  fInitialized:=true;
+ if fSurface=VK_NULL_HANDLE then begin
 {$ifdef Windows}
   HandleResultCode(fInstance.fVulkan.CreateWin32SurfaceKHR(fInstance.fInstance,@fSurfaceCreateInfo,fAllocationCallbacks,@fSurface));
 {$else}
