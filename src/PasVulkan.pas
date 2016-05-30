@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-05-30-14-58-0000                       *
+ *                        Version 2016-05-30-16-06-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -169,7 +169,7 @@ type EVulkanException=class(Exception);
        property ResultCode:TVkResult read fResultCode;
      end;
 
-     TVulkanObject=class(TObject);
+     TVulkanObject=class(TInterfacedObject);
 
      TVulkanCharString=AnsiString;
 
@@ -219,7 +219,7 @@ type EVulkanException=class(Exception);
      TVkClearValueArray=array of TVkClearValue;
      TVkResultArray=array of TVkResult;
 
-     TVulkanBaseList=class
+     TVulkanBaseList=class(TVulkanObject)
       private
        fItemSize:TVkSizeInt;
        fCount:TVkSizeInt;
@@ -464,17 +464,6 @@ type EVulkanException=class(Exception);
        property OwnsHandle:boolean read fOwnsHandle write fOwnsHandle;
      end;
 
-     TVulkanAllocationHandle=class(TVulkanHandle)
-      private
-       fAllocationCallbacks:PVkAllocationCallbacks;
-      protected
-       procedure SetAllocationCallbacks(const NewAllocationCallbacks:PVkAllocationCallbacks);
-       property AllocationCallbacks:PVkAllocationCallbacks read fAllocationCallbacks write SetAllocationCallbacks;
-      public
-       constructor Create;
-       destructor Destroy; override;
-     end;
-
      TVulkanAllocationManager=class(TVulkanObject)
       private
        fAllocationCallbacks:TVkAllocationCallbacks;
@@ -517,8 +506,8 @@ type EVulkanException=class(Exception);
 
      TVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:TVulkaNCharString;const pMessage:TVulkanCharString):TVkBool32 of object;
 
-     TVulkanInstance=class(TVulkanObject)
-      private
+     TVulkanInstance=class(TVulkanHandle)
+      private    
        fVulkan:TVulkan;
        fApplicationInfo:TVkApplicationInfo;
        fApplicationName:TVulkanCharString;
@@ -538,7 +527,6 @@ type EVulkanException=class(Exception);
        fRawEnabledLayerNameStrings:array of PVkChar;
        fRawEnabledExtensionNameStrings:array of PVkChar;
        fInstanceHandle:TVkInstance;
-       fInstanceCommands:TVulkanCommands;
        fInstanceVulkan:TVulkan;
        fPhysicalDevices:TVulkanPhysicalDeviceList;
        fNeedToEnumeratePhysicalDevices:boolean;
@@ -584,9 +572,7 @@ type EVulkanException=class(Exception);
        property EnabledLayerNames:TStringList read fEnabledLayerNames;
        property EnabledExtensionNames:TStringList read fEnabledExtensionNames;
        property Handle:TVkInstance read fInstanceHandle;
-       property InstanceHandle:TVkInstance read fInstanceHandle;
-       property InstanceCommands:TVulkanCommands read fInstanceCommands;
-       property InstanceVulkan:TVulkan read fInstanceVulkan;
+       property Commands:TVulkan read fInstanceVulkan;
        property PhysicalDevices:TVulkanPhysicalDeviceList read fPhysicalDevices;
        property OnInstanceDebugReportCallback:TVulkanInstanceDebugReportCallback read fOnInstanceDebugReportCallback write fOnInstanceDebugReportCallback;
      end;
@@ -594,7 +580,6 @@ type EVulkanException=class(Exception);
      TVulkanPhysicalDevice=class(TVulkanObject)
       private
        fInstance:TVulkanInstance;
-       fInstanceVulkan:TVulkan;
        fPhysicalDeviceHandle:TVkPhysicalDevice;
        fDeviceName:TVulkanCharString;
        fProperties:TVkPhysicalDeviceProperties;
@@ -632,7 +617,6 @@ type EVulkanException=class(Exception);
        function GetQueueNodeIndex(const pSurface:TVkSurfaceKHR;const pQueueFlagBits:TVkQueueFlagBits):TVkInt32;
        function GetSurfaceFormat(const pSurface:TVkSurfaceKHR):TVkSurfaceFormatKHR;
        property Handle:TVkPhysicalDevice read fPhysicalDeviceHandle;
-       property PhysicalDeviceHandle:TVkPhysicalDevice read fPhysicalDeviceHandle;
        property DeviceName:TVulkanCharString read fDeviceName;
        property Properties:TVkPhysicalDeviceProperties read fProperties;
        property MemoryProperties:TVkPhysicalDeviceMemoryProperties read fMemoryProperties;
@@ -655,7 +639,6 @@ type EVulkanException=class(Exception);
      TVulkanSurface=class(TVulkanHandle)
       private
        fInstance:TVulkanInstance;
-       fInstanceVulkan:TVulkan;
        fAllocationManager:TVulkanAllocationManager;
        fAllocationCallbacks:PVkAllocationCallbacks;
 {$ifdef Windows}
@@ -670,7 +653,6 @@ type EVulkanException=class(Exception);
        destructor Destroy; override;
        procedure Initialize;
        property Handle:TVkSurfaceKHR read fSurfaceHandle;
-       property SurfaceHandle:TVkSurfaceKHR read fSurfaceHandle;
      end;
 
      TVulkanDeviceQueueCreateInfo=class;
@@ -680,7 +662,6 @@ type EVulkanException=class(Exception);
      TVulkanDevice=class(TVulkanHandle)
       private
        fInstance:TVulkanInstance;
-       fInstanceVulkan:TVulkan;
        fPhysicalDevice:TVulkanPhysicalDevice;
        fSurface:TVulkanSurface;
        fDeviceQueueCreateInfoList:TVulkanDeviceQueueCreateInfoList;
@@ -698,12 +679,11 @@ type EVulkanException=class(Exception);
        fAllocationManager:TVulkanAllocationManager;
        fAllocationCallbacks:PVkAllocationCallbacks;
        fDeviceHandle:TVkDevice;
-       fDeviceCommands:TVulkanCommands;
        fDeviceVulkan:TVulkan;
-       fGraphicQueueIndex:TVkInt32;
-       fComputeQueueIndex:TVkInt32;
-       fTransferQueueIndex:TVkInt32;
-       fSparseBindingQueueIndex:TVkInt32;
+       fGraphicQueueFamilyIndex:TVkInt32;
+       fComputeQueueFamilyIndex:TVkInt32;
+       fTransferQueueFamilyIndex:TVkInt32;
+       fSparseBindingQueueFamilyIndex:TVkInt32;
       protected
       public
        constructor Create(const pInstance:TVulkanInstance;
@@ -723,13 +703,11 @@ type EVulkanException=class(Exception);
        property EnabledExtensionNames:TStringList read fEnabledExtensionNames;
        property EnabledFeatures:PVkPhysicalDeviceLimits read fPointerToEnabledFeatures;
        property Handle:TVkDevice read fDeviceHandle;
-       property DeviceHandle:TVkDevice read fDeviceHandle;
-       property DeviceCommands:TVulkanCommands read fDeviceCommands;
-       property DeviceVulkan:TVulkan read fDeviceVulkan;
-       property GraphicQueueIndex:TVkInt32 read fGraphicQueueIndex;
-       property ComputeQueueIndex:TVkInt32 read fComputeQueueIndex;
-       property TransferQueueIndex:TVkInt32 read fTransferQueueIndex;
-       property SparseBindingQueueIndex:TVkInt32 read fSparseBindingQueueIndex;
+       property Commands:TVulkan read fDeviceVulkan;
+       property GraphicQueueFamilyIndex:TVkInt32 read fGraphicQueueFamilyIndex;
+       property ComputeQueueFamilyIndex:TVkInt32 read fComputeQueueFamilyIndex;
+       property TransferQueueFamilyIndex:TVkInt32 read fTransferQueueFamilyIndex;
+       property SparseBindingQueueFamilyIndex:TVkInt32 read fSparseBindingQueueFamilyIndex;
      end;
 
      TVulkanDeviceQueueCreateInfo=class(TVulkanObject)
@@ -763,6 +741,25 @@ type EVulkanException=class(Exception);
        property OwnsResource:boolean read fOwnsResource write fOwnsResource;
      end;
 
+     TVulkanCommandPool=class(TVulkanHandle)
+      private
+       fDevice:TVulkanDevice;
+       fQueueFamilyIndex:TVkUInt32;
+       fFlags:TVkCommandPoolCreateFlags;
+       fCommandPoolHandle:TVkCommandPool;
+       fCommandPoolCreateInfo:TVkCommandPoolCreateInfo;
+       fAllocationManager:TVulkanAllocationManager;
+       fAllocationCallbacks:PVkAllocationCallbacks;
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pQueueFamilyIndex:TVkUInt32;
+                          const pFlags:TVkCommandPoolCreateFlags=TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+                          const pAllocationManager:TVulkanAllocationManager=nil);
+       destructor Destroy; override;
+       procedure Initialize;
+       property QueueFamilyIndex:TVkUInt32 read fQueueFamilyIndex;
+       property Handle:TVkCommandPool read fCommandPoolHandle;
+     end;
 
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
 
@@ -1893,33 +1890,6 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanAllocationHandle.Create;
-begin
- inherited Create;
- fAllocationCallbacks:=nil;
-end;
-
-destructor TVulkanAllocationHandle.Destroy;
-begin
- SetAllocationCallbacks(nil);
- inherited Destroy;
-end;
-
-procedure TVulkanAllocationHandle.SetAllocationCallbacks(const NewAllocationCallbacks:PVkAllocationCallbacks);
-begin
- if assigned(NewAllocationCallbacks) then begin
-  if not assigned(fAllocationCallbacks) then begin
-   GetMem(fAllocationCallbacks,SizeOf(TVkAllocationCallbacks));
-  end;
-  fAllocationCallbacks^:=NewAllocationCallbacks^;
- end else begin
-  if assigned(fAllocationCallbacks) then begin
-   FreeMem(fAllocationCallbacks);
-   fAllocationCallbacks:=nil;
-  end;
- end;
-end;
-
 function VulkanAllocationCallback(UserData:PVkVoid;Size:TVkSize;Alignment:TVkSize;Scope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 begin
  result:=TVulkanAllocationManager(UserData).AllocationCallback(Size,Alignment,Scope);
@@ -1986,30 +1956,6 @@ procedure TVulkanAllocationManager.InternalFreeCallback(const Size:TVkSize;const
 begin
 end;
 
-{
-constructor TVulkanDevice.Create(const pVulkan:TVulkan;
-                                 const pPhysicalDevice:TVulkanPhysicalDevice;
-                                 const pFlags:TVkDeviceCreateFlags;
-                                 const pEnabledLayerNames:array of TVulkanCharString;
-                                 const pEnabledExtensionNames:array of TVulkanCharString;
-                                 const pAllocationManager:TVulkanAllocationManager);
-begin
- inherited Create;
-
- fVulkan:=pVulkan;
- fPhysicalDevice:=pPhysicalDevice;
-
- self.fDeviceCreateInfo.pQueueCreateInfos
-
- fVulkan.CreateDevice()
-end;
-
-destructor TVulkanDevice.Destroy;
-begin
- inherited Destroy;
-end;
- }
-
 constructor TVulkanInstance.Create(const pApplicationName:TVulkanCharString='Vulkan application';
                                       const pApplicationVersion:TVkUInt32=1;
                                       const pEngineName:TVulkanCharString='Vulkan engine';
@@ -2051,7 +1997,6 @@ begin
 
  fOnInstanceDebugReportCallback:=nil;
 
- FillChar(fInstanceCommands,SizeOf(TVulkanCommands),#0);
  fInstanceVulkan:=nil;
 
  fPhysicalDevices:=TVulkanPhysicalDeviceList.Create;
@@ -2130,6 +2075,8 @@ begin
  finally
   SetLength(ExtensionProperties,0);
  end;
+
+ fOwnsHandle:=true;
 
  if fValidation then begin
 { if fAvailableExtensionNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
@@ -2228,6 +2175,7 @@ end;
 
 procedure TVulkanInstance.Initialize;
 var i:TVkInt32;
+    InstanceCommands:PVulkanCommands;
 begin
 
  if fInstanceHandle=VK_NULL_INSTANCE then begin
@@ -2259,10 +2207,16 @@ begin
 
   HandleResultCode(fVulkan.CreateInstance(@fInstanceCreateInfo,fAllocationCallbacks,@fInstanceHandle));
 
-  if LoadVulkanInstanceCommands(fVulkan.Commands.GetInstanceProcAddr,fInstanceHandle,fInstanceCommands) then begin
-   fInstanceVulkan:=TVulkan.Create(fInstanceCommands);
-  end else begin
-   raise EVulkanException.Create('Couldn''t load vulkan instance commands');
+  GetMem(InstanceCommands,SizeOf(TVulkanCommands));
+  try
+   FillChar(InstanceCommands^,SizeOf(TVulkanCommands),#0);
+   if LoadVulkanInstanceCommands(fVulkan.Commands.GetInstanceProcAddr,fInstanceHandle,InstanceCommands^) then begin
+    fInstanceVulkan:=TVulkan.Create(InstanceCommands^);
+   end else begin
+    raise EVulkanException.Create('Couldn''t load vulkan instance commands');
+   end;
+  finally
+   FreeMem(InstanceCommands);
   end;
 
   RefreshPhysicalDevices;
@@ -2331,7 +2285,7 @@ end;
 
 procedure TVulkanInstance.InstallDebugReportCallback;
 begin
- if (fDebugReportCallbackEXT=VK_NULL_HANDLE) and assigned(fInstanceCommands.CreateDebugReportCallbackEXT) then begin
+ if (fDebugReportCallbackEXT=VK_NULL_HANDLE) and assigned(fInstanceVulkan.Commands.CreateDebugReportCallbackEXT) then begin
   FillChar(fDebugReportCallbackCreateInfoEXT,SizeOf(TVkDebugReportCallbackCreateInfoEXT),#0);
   fDebugReportCallbackCreateInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
   fDebugReportCallbackCreateInfoEXT.flags:=TVkUInt32(VK_DEBUG_REPORT_ERROR_BIT_EXT) or TVkUInt32(VK_DEBUG_REPORT_WARNING_BIT_EXT) or TVkUInt32(VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT);
@@ -2353,21 +2307,19 @@ begin
 
  fInstance:=pInstance;
 
- fInstanceVulkan:=fInstance.fInstanceVulkan;
-
  fPhysicalDeviceHandle:=pPhysicalDevice;
 
- fInstanceVulkan.GetPhysicalDeviceProperties(fPhysicalDeviceHandle,@fProperties);
+ fInstance.Commands.GetPhysicalDeviceProperties(fPhysicalDeviceHandle,@fProperties);
 
  fDeviceName:=fProperties.deviceName;
 
- fInstanceVulkan.GetPhysicalDeviceMemoryProperties(fPhysicalDeviceHandle,@fMemoryProperties);
+ fInstance.Commands.GetPhysicalDeviceMemoryProperties(fPhysicalDeviceHandle,@fMemoryProperties);
 
- fInstanceVulkan.GetPhysicalDeviceFeatures(fPhysicalDeviceHandle,@fFeatures);
+ fInstance.Commands.GetPhysicalDeviceFeatures(fPhysicalDeviceHandle,@fFeatures);
 
  fQueueFamilyProperties:=nil;
  Count:=0;
- fInstanceVulkan.GetPhysicalDeviceQueueFamilyProperties(fPhysicalDeviceHandle,@Count,nil);
+ fInstance.Commands.GetPhysicalDeviceQueueFamilyProperties(fPhysicalDeviceHandle,@Count,nil);
  if Count>0 then begin
   try
    SetLength(fQueueFamilyProperties,Count);
@@ -2444,7 +2396,7 @@ end;
 
 function TVulkanPhysicalDevice.GetFormatProperties(const pFormat:TVkFormat):TVkFormatProperties;
 begin
- fInstanceVulkan.GetPhysicalDeviceFormatProperties(fPhysicalDeviceHandle,pFormat,@result);
+ fInstance.Commands.GetPhysicalDeviceFormatProperties(fPhysicalDeviceHandle,pFormat,@result);
 end;
 
 function TVulkanPhysicalDevice.GetImageFormatProperties(const pFormat:TVkFormat;
@@ -2453,7 +2405,7 @@ function TVulkanPhysicalDevice.GetImageFormatProperties(const pFormat:TVkFormat;
                                                         const pUsageFlags:TVkImageUsageFlags;
                                                         const pCreateFlags:TVkImageCreateFlags):TVkImageFormatProperties;
 begin
- fInstanceVulkan.GetPhysicalDeviceImageFormatProperties(fPhysicalDeviceHandle,pFormat,pType,pTiling,pUsageFlags,pCreateFlags,@result);
+ fInstance.Commands.GetPhysicalDeviceImageFormatProperties(fPhysicalDeviceHandle,pFormat,pType,pTiling,pUsageFlags,pCreateFlags,@result);
 end;
 
 function TVulkanPhysicalDevice.GetSparseImageFormatProperties(const pFormat:TVkFormat;
@@ -2465,10 +2417,10 @@ var Count:TVkUInt32;
 begin
  result:=nil;
  Count:=0;
- fInstanceVulkan.GetPhysicalDeviceSparseImageFormatProperties(fPhysicalDeviceHandle,pFormat,pType,pSamples,pUsageFlags,pTiling,@Count,nil);
+ fInstance.Commands.GetPhysicalDeviceSparseImageFormatProperties(fPhysicalDeviceHandle,pFormat,pType,pSamples,pUsageFlags,pTiling,@Count,nil);
  if Count>0 then begin
   SetLength(result,Count);
-  fInstanceVulkan.GetPhysicalDeviceSparseImageFormatProperties(fPhysicalDeviceHandle,pFormat,pType,pSamples,pUsageFlags,pTiling,@Count,@result[0]);
+  fInstance.Commands.GetPhysicalDeviceSparseImageFormatProperties(fPhysicalDeviceHandle,pFormat,pType,pSamples,pUsageFlags,pTiling,@Count,@result[0]);
  end;
 end;
 
@@ -2476,13 +2428,13 @@ function TVulkanPhysicalDevice.GetSurfaceSupport(const pQueueFamilyIndex:TVkUInt
 var Supported:TVkBool32;
 begin
  Supported:=0;
- fInstanceVulkan.GetPhysicalDeviceSurfaceSupportKHR(fPhysicalDeviceHandle,pQueueFamilyIndex,pSurface,@Supported);
+ fInstance.Commands.GetPhysicalDeviceSurfaceSupportKHR(fPhysicalDeviceHandle,pQueueFamilyIndex,pSurface,@Supported);
  result:=Supported<>0;
 end;
 
 function TVulkanPhysicalDevice.GetSurfaceCapabilities(const pSurface:TVkSurfaceKHR):TVkSurfaceCapabilitiesKHR;
 begin
- fInstanceVulkan.GetPhysicalDeviceSurfaceCapabilitiesKHR(fPhysicalDeviceHandle,pSurface,@result);
+ fInstance.Commands.GetPhysicalDeviceSurfaceCapabilitiesKHR(fPhysicalDeviceHandle,pSurface,@result);
 end;
 
 function TVulkanPhysicalDevice.GetSurfaceFormats(const pSurface:TVkSurfaceKHR):TVkSurfaceFormatKHRArray;
@@ -2490,11 +2442,11 @@ var Count:TVKUInt32;
 begin
  result:=nil;
  Count:=0;
- if fInstanceVulkan.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,pSurface,@Count,nil)=VK_SUCCESS then begin
+ if fInstance.Commands.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,pSurface,@Count,nil)=VK_SUCCESS then begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstanceVulkan.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,PSurface,@Count,@result[0]));
+    HandleResultCode(fInstance.Commands.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,PSurface,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -2508,11 +2460,11 @@ var Count:TVKUInt32;
 begin
  result:=nil;
  Count:=0;
- if fInstanceVulkan.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDeviceHandle,pSurface,@Count,nil)=VK_SUCCESS then begin
+ if fInstance.Commands.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDeviceHandle,pSurface,@Count,nil)=VK_SUCCESS then begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstanceVulkan.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDeviceHandle,PSurface,@Count,@result[0]));
+    HandleResultCode(fInstance.Commands.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDeviceHandle,PSurface,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -2526,11 +2478,11 @@ var Count:TVKUInt32;
 begin
  result:=nil;
  Count:=0;
- if fInstanceVulkan.GetPhysicalDeviceDisplayPropertiesKHR(fPhysicalDeviceHandle,@Count,nil)=VK_SUCCESS then begin
+ if fInstance.Commands.GetPhysicalDeviceDisplayPropertiesKHR(fPhysicalDeviceHandle,@Count,nil)=VK_SUCCESS then begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstanceVulkan.GetPhysicalDeviceDisplayPropertiesKHR(fPhysicalDeviceHandle,@Count,@result[0]));
+    HandleResultCode(fInstance.Commands.GetPhysicalDeviceDisplayPropertiesKHR(fPhysicalDeviceHandle,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -2544,11 +2496,11 @@ var Count:TVKUInt32;
 begin
  result:=nil;
  Count:=0;
- if fInstanceVulkan.GetPhysicalDeviceDisplayPlanePropertiesKHR(fPhysicalDeviceHandle,@Count,nil)=VK_SUCCESS then begin
+ if fInstance.Commands.GetPhysicalDeviceDisplayPlanePropertiesKHR(fPhysicalDeviceHandle,@Count,nil)=VK_SUCCESS then begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstanceVulkan.GetPhysicalDeviceDisplayPlanePropertiesKHR(fPhysicalDeviceHandle,@Count,@result[0]));
+    HandleResultCode(fInstance.Commands.GetPhysicalDeviceDisplayPlanePropertiesKHR(fPhysicalDeviceHandle,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -2562,11 +2514,11 @@ var Count:TVKUInt32;
 begin
  result:=nil;
  Count:=0;
- if fInstanceVulkan.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDeviceHandle,pPlaneIndex,@Count,nil)=VK_SUCCESS then begin
+ if fInstance.Commands.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDeviceHandle,pPlaneIndex,@Count,nil)=VK_SUCCESS then begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstanceVulkan.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDeviceHandle,pPlaneIndex,@Count,@result[0]));
+    HandleResultCode(fInstance.Commands.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDeviceHandle,pPlaneIndex,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -2580,11 +2532,11 @@ var Count:TVKUInt32;
 begin
  result:=nil;
  Count:=0;
- if fInstanceVulkan.GetDisplayModePropertiesKHR(fPhysicalDeviceHandle,pDisplay,@Count,nil)=VK_SUCCESS then begin
+ if fInstance.Commands.GetDisplayModePropertiesKHR(fPhysicalDeviceHandle,pDisplay,@Count,nil)=VK_SUCCESS then begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstanceVulkan.GetDisplayModePropertiesKHR(fPhysicalDeviceHandle,pDisplay,@Count,@result[0]));
+    HandleResultCode(fInstance.Commands.GetDisplayModePropertiesKHR(fPhysicalDeviceHandle,pDisplay,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -2700,8 +2652,6 @@ begin
 
  fInstance:=pInstance;
 
- fInstanceVulkan:=fInstance.InstanceVulkan;
-
  if assigned(pAllocationManager) then begin
   fAllocationManager:=pAllocationManager;
  end else begin
@@ -2758,8 +2708,6 @@ begin
 
  fInstance:=pInstance;
 
- fInstanceVulkan:=fInstance.InstanceVulkan;
-
  fDeviceQueueCreateInfoList:=TVulkanDeviceQueueCreateInfoList.Create;
 
  fDeviceQueueCreateInfos:=nil;
@@ -2788,10 +2736,10 @@ begin
 
  fDeviceVulkan:=nil;
 
- fGraphicQueueIndex:=-1;
- fComputeQueueIndex:=-1;
- fTransferQueueIndex:=-1;
- fSparseBindingQueueIndex:=-1;
+ fGraphicQueueFamilyIndex:=-1;
+ fComputeQueueFamilyIndex:=-1;
+ fTransferQueueFamilyIndex:=-1;
+ fSparseBindingQueueFamilyIndex:=-1;
 
  if assigned(pPhysicalDevice) then begin
   fPhysicalDevice:=pPhysicalDevice;
@@ -2867,7 +2815,7 @@ destructor TVulkanDevice.Destroy;
 begin
  fDeviceVulkan.Free;
  if (fDeviceHandle<>VK_NULL_HANDLE) and fOwnsHandle then begin
-  fInstanceVulkan.DestroyDevice(fDeviceHandle,fAllocationCallbacks);
+  fInstance.Commands.DestroyDevice(fDeviceHandle,fAllocationCallbacks);
  end;
  SetLength(fDeviceQueueCreateInfos,0);
  fDeviceQueueCreateInfoList.Free;
@@ -2888,17 +2836,17 @@ begin
    raise EVulkanException.Create('Surface doesn''t support queue family index '+IntToStr(pQueueFamilyIndex));
   end;
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[pQueueFamilyIndex];
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicQueueIndex<0) then begin
-   fGraphicQueueIndex:=pQueueFamilyIndex;
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicQueueFamilyIndex<0) then begin
+   fGraphicQueueFamilyIndex:=pQueueFamilyIndex;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueIndex<0) then begin
-   fComputeQueueIndex:=pQueueFamilyIndex;
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
+   fComputeQueueFamilyIndex:=pQueueFamilyIndex;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueIndex<0) then begin
-   fTransferQueueIndex:=pQueueFamilyIndex;
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
+   fTransferQueueFamilyIndex:=pQueueFamilyIndex;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0) and (fSparseBindingQueueIndex<0) then begin
-   fSparseBindingQueueIndex:=pQueueFamilyIndex;
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0) and (fSparseBindingQueueFamilyIndex<0) then begin
+   fSparseBindingQueueFamilyIndex:=pQueueFamilyIndex;
   end;
   fDeviceQueueCreateInfoList.Add(TVulkanDeviceQueueCreateInfo.Create(pQueueFamilyIndex,pQueuePriorities));
  end else begin
@@ -2920,26 +2868,26 @@ begin
   if assigned(fSurface) and not fPhysicalDevice.GetSurfaceSupport(Index,fSurface.fSurfaceHandle) then begin
    continue;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicQueueIndex<0) then begin
-   fGraphicQueueIndex:=Index;
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicQueueFamilyIndex<0) then begin
+   fGraphicQueueFamilyIndex:=Index;
    if pGraphic then begin
     DoAdd:=true;
    end;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueIndex<0) then begin
-   fComputeQueueIndex:=Index;
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
+   fComputeQueueFamilyIndex:=Index;
    if pCompute then begin
     DoAdd:=true;
    end;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueIndex<0) then begin
-   fTransferQueueIndex:=Index;
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
+   fTransferQueueFamilyIndex:=Index;
    if pTransfer then begin
     DoAdd:=true;
    end;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0) and (fSparseBindingQueueIndex<0) then begin
-   fSparseBindingQueueIndex:=Index;
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0) and (fSparseBindingQueueFamilyIndex<0) then begin
+   fSparseBindingQueueFamilyIndex:=Index;
    if pSparseBinding then begin
     DoAdd:=true;
    end;
@@ -2948,10 +2896,10 @@ begin
    fDeviceQueueCreateInfoList.Add(TVulkanDeviceQueueCreateInfo.Create(Index,[1.0]));
   end;
  end;
- if ((fGraphicQueueIndex<0) and pGraphic) or
-    ((fComputeQueueIndex<0) and pCompute) or
-    ((fTransferQueueIndex<0) and pTransfer) or
-    ((fSparseBindingQueueIndex<0) and pSparseBinding) then begin
+ if ((fGraphicQueueFamilyIndex<0) and pGraphic) or
+    ((fComputeQueueFamilyIndex<0) and pCompute) or
+    ((fTransferQueueFamilyIndex<0) and pTransfer) or
+    ((fSparseBindingQueueFamilyIndex<0) and pSparseBinding) then begin
   raise EVulkanException.Create('Only unsatisfactory device queue families available');
  end;
 end;
@@ -2960,6 +2908,7 @@ procedure TVulkanDevice.Initialize;
 var Index:TVkInt32;
     DeviceQueueCreateInfo:PVkDeviceQueueCreateInfo;
     SrcDeviceQueueCreateInfo:TVulkanDeviceQueueCreateInfo;
+    DeviceCommands:PVulkanCommands;
 begin
  if fDeviceHandle=VK_NULL_HANDLE then begin
 
@@ -3005,12 +2954,18 @@ begin
    fDeviceCreateInfo.ppEnabledExtensionNames:=@fRawEnabledExtensionNameStrings[0];
   end;
   fDeviceCreateInfo.pEnabledFeatures:=@fEnabledFeatures;
-  HandleResultCode(fInstanceVulkan.CreateDevice(fPhysicalDevice.fPhysicalDeviceHandle,@fDeviceCreateInfo,fAllocationCallbacks,@fDeviceHandle));
+  HandleResultCode(fInstance.Commands.CreateDevice(fPhysicalDevice.fPhysicalDeviceHandle,@fDeviceCreateInfo,fAllocationCallbacks,@fDeviceHandle));
 
-  if LoadVulkanDeviceCommands(fInstanceVulkan.Commands.GetDeviceProcAddr,fDeviceHandle,fDeviceCommands) then begin
-   fDeviceVulkan:=TVulkan.Create(fDeviceCommands);
-  end else begin
-   raise EVulkanException.Create('Couldn''t load vulkan device commands');
+  GetMem(DeviceCommands,SizeOf(TVulkanCommands));
+  try
+   FillChar(DeviceCommands^,SizeOf(TVulkanCommands),#0);
+   if LoadVulkanDeviceCommands(fInstance.Commands.Commands.GetDeviceProcAddr,fDeviceHandle,DeviceCommands^) then begin
+    fDeviceVulkan:=TVulkan.Create(DeviceCommands^);
+   end else begin
+    raise EVulkanException.Create('Couldn''t load vulkan device commands');
+   end;
+  finally
+   FreeMem(DeviceCommands);
   end;
 
  end;
@@ -3063,6 +3018,56 @@ procedure TVulkanResource.Clear;
 begin
  fDevice:=nil;
  fOwnsResource:=false;
+end;
+
+constructor TVulkanCommandPool.Create(const pDevice:TVulkanDevice;
+                                      const pQueueFamilyIndex:TVkUInt32;
+                                      const pFlags:TVkCommandPoolCreateFlags=TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+                                      const pAllocationManager:TVulkanAllocationManager=nil);
+begin
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ if assigned(pAllocationManager) then begin
+  fAllocationManager:=pAllocationManager;
+ end else begin
+  fAllocationManager:=fDevice.fAllocationManager;
+ end;
+
+ if assigned(fAllocationManager) then begin
+  fAllocationCallbacks:=@fAllocationManager.fAllocationCallbacks;
+ end else begin
+  fAllocationCallbacks:=nil;
+ end;
+
+ fQueueFamilyIndex:=pQueueFamilyIndex;
+
+ fFlags:=pFlags;
+
+ fCommandPoolHandle:=VK_NULL_HANDLE;
+
+ fOwnsHandle:=true;
+
+end;
+
+destructor TVulkanCommandPool.Destroy;
+begin
+ if (fCommandPoolHandle<>VK_NULL_HANDLE) and fOwnsHandle then begin
+  fDevice.fDeviceVulkan.DestroyCommandPool(fDevice.Handle,Handle,fAllocationCallbacks);
+ end;
+ inherited Destroy;
+end;
+
+procedure TVulkanCommandPool.Initialize;
+begin
+ if (fCommandPoolHandle=VK_NULL_HANDLE) and fOwnsHandle then begin
+  FillChar(fCommandPoolCreateInfo,SizeOf(TVkCommandPoolCreateInfo),#0);
+  fCommandPoolCreateInfo.sType:=VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  fCommandPoolCreateInfo.queueFamilyIndex:=fQueueFamilyIndex;
+  fCommandPoolCreateInfo.flags:=fFlags;
+  HandleResultCode(fDevice.fDeviceVulkan.CreateCommandPool(fDevice.Handle,@fCommandPoolCreateInfo,fAllocationCallbacks,@fCommandPoolHandle));
+ end;
 end;
 
 end.
