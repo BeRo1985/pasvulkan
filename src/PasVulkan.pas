@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-05-30-14-42-0000                       *
+ *                        Version 2016-05-30-14-58-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -184,12 +184,12 @@ type EVulkanException=class(Exception);
      TVkPhysicalDeviceArray=array of TVkPhysicalDevice;
      TVkQueueFamilyPropertiesArray=array of TVkQueueFamilyProperties;
      TVkSparseImageFormatPropertiesArray=array of TVkSparseImageFormatProperties;
-     TVkSurfaceFormatArray=array of TVkSurfaceFormatKHR;
-     TVkPresentModeArray=array of TVkPresentModeKHR;
-     TVkDisplayPropertiesArray=array of TVkDisplayPropertiesKHR;
-     TVkDisplayPlanePropertiesArray=array of TVkDisplayPlanePropertiesKHR;
-     TVkDisplayArray=array of TVkDisplayKHR;
-     TVkDisplayModePropertiesArray=array of TVkDisplayModePropertiesKHR;
+     TVkSurfaceFormatKHRArray=array of TVkSurfaceFormatKHR;
+     TVkPresentModeKHRArray=array of TVkPresentModeKHR;
+     TVkDisplayPropertiesKHRArray=array of TVkDisplayPropertiesKHR;
+     TVkDisplayPlanePropertiesKHRArray=array of TVkDisplayPlanePropertiesKHR;
+     TVkDisplayKHRArray=array of TVkDisplayKHR;
+     TVkDisplayModePropertiesKHRArray=array of TVkDisplayModePropertiesKHR;
      TVkDeviceQueueCreateInfoArray=array of TVkDeviceQueueCreateInfo;
      TVkImageArray=array of TVkImage;
      TVkCommandBufferArray=array of TVkCommandBuffer;
@@ -621,12 +621,16 @@ type EVulkanException=class(Exception);
                                                const pTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
        function GetSurfaceSupport(const pQueueFamilyIndex:TVkUInt32;const pSurface:TVkSurfaceKHR):boolean;
        function GetSurfaceCapabilities(const pSurface:TVkSurfaceKHR):TVkSurfaceCapabilitiesKHR;
-       function GetSurfaceFormats(const pSurface:TVkSurfaceKHR):TVkSurfaceFormatArray;
-       function GetSurfacePresentModes(const pSurface:TVkSurfaceKHR):TVkPresentModeArray;
-       function GetDisplayProperties:TVkDisplayPropertiesArray;
-       function GetDisplayPlaneProperties:TVkDisplayPlanePropertiesArray;
-       function GetDisplayPlaneSupportedDisplays(const pPlaneIndex:TVkUInt32):TVkDisplayArray;
-       function GetDisplayModeProperties(const pDisplay:TVkDisplayKHR):TVkDisplayModePropertiesArray;
+       function GetSurfaceFormats(const pSurface:TVkSurfaceKHR):TVkSurfaceFormatKHRArray;
+       function GetSurfacePresentModes(const pSurface:TVkSurfaceKHR):TVkPresentModeKHRArray;
+       function GetDisplayProperties:TVkDisplayPropertiesKHRArray;
+       function GetDisplayPlaneProperties:TVkDisplayPlanePropertiesKHRArray;
+       function GetDisplayPlaneSupportedDisplays(const pPlaneIndex:TVkUInt32):TVkDisplayKHRArray;
+       function GetDisplayModeProperties(const pDisplay:TVkDisplayKHR):TVkDisplayModePropertiesKHRArray;
+       function GetMemoryType(const pTypeBits:TVkUInt32;const pProperties:TVkFlags):TVkUInt32;
+       function GetBestSupportedDepthFormat:TVkFormat;
+       function GetQueueNodeIndex(const pSurface:TVkSurfaceKHR;const pQueueFlagBits:TVkQueueFlagBits):TVkInt32;
+       function GetSurfaceFormat(const pSurface:TVkSurfaceKHR):TVkSurfaceFormatKHR;
        property Handle:TVkPhysicalDevice read fPhysicalDeviceHandle;
        property PhysicalDeviceHandle:TVkPhysicalDevice read fPhysicalDeviceHandle;
        property DeviceName:TVulkanCharString read fDeviceName;
@@ -747,56 +751,18 @@ type EVulkanException=class(Exception);
        property Items[const Index:TVkSizeInt]:TVulkanDeviceQueueCreateInfo read GetItem write SetItem; default;
      end;
 
-{    TVulkanResource=class
+     TVulkanResource=class(TVulkanObject)
       private
-       fDevice:TVkDevice;
+       fDevice:TVulkanDevice;
        fOwnsResource:boolean;
       public
        constructor Create; reintroduce; virtual;
        destructor Destroy; override;
        procedure Clear; virtual;
-       property Device:TVkDevice read fDevice write fDevice;
+       property Device:TVulkanDevice read fDevice write fDevice;
        property OwnsResource:boolean read fOwnsResource write fOwnsResource;
      end;
 
-     PVulkanDeviceSurfaceFormat=^TVulkanDeviceSurfaceFormat;
-     TVulkanDeviceSurfaceFormat=TVkSurfaceFormatKHR;
-
-     TVulkanDeviceSurfaceFormats=array of TVulkanDeviceSurfaceFormat;
-
-     TVulkanDevice=class
-      private
-       fDevice:TVkDevice;
-       fPhysicalDevice:TVkPhysicalDevice;
-      public
-       constructor Create(const pDevice:TVkDevice;const pPhysicalDevice:TVkPhysicalDevice);
-       destructor Destroy; override;
-       function GetMemoryType(const pTypeBits:TVkUInt32;const pProperties:TVkFlags):TVkUInt32;
-       function GetBestSupportedDepthFormat:TVkFormat;
-       function GetGraphicsQueueNodeIndex(const pSurface:TVkSurfaceKHR):TVkUInt32;
-       function GetSurfaceFormats(const pSurface:TVkSurfaceKHR):TVulkanDeviceSurfaceFormats;
-       function GetSurfaceFormat(const pSurface:TVkSurfaceKHR):TVulkanDeviceSurfaceFormat;
-       procedure WaitIdle;
-       property Device:TVkDevice read fDevice write fDevice;
-       property PhysicalDevice:TVkPhysicalDevice read fPhysicalDevice write fPhysicalDevice;
-     end;
-
-     TVulkanInstance=class
-      private
-       fDevice:TVkDevice;
-       fPhysicalDevice:TVkPhysicalDevice;
-       fQueue:TVkQueue;
-       fInstance:TVkInstance;
-       fEnableValidation:boolean;
-      public
-       constructor Create(const pEnableValidation:boolean);
-       destructor Destroy; override;
-       property Device:TVkDevice read fDevice write fDevice;
-       property PhysicalDevice:TVkPhysicalDevice read fPhysicalDevice write fPhysicalDevice;
-       property Queue:TVkDevice read fQueue write fQueue;
-       property Instance:TVkDevice read fInstance write fInstance;
-       property EnableValidation:boolean read fEnableValidation;
-     end;{}
 
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
 
@@ -2519,7 +2485,7 @@ begin
  fInstanceVulkan.GetPhysicalDeviceSurfaceCapabilitiesKHR(fPhysicalDeviceHandle,pSurface,@result);
 end;
 
-function TVulkanPhysicalDevice.GetSurfaceFormats(const pSurface:TVkSurfaceKHR):TVkSurfaceFormatArray;
+function TVulkanPhysicalDevice.GetSurfaceFormats(const pSurface:TVkSurfaceKHR):TVkSurfaceFormatKHRArray;
 var Count:TVKUInt32;
 begin
  result:=nil;
@@ -2537,7 +2503,7 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetSurfacePresentModes(const pSurface:TVkSurfaceKHR):TVkPresentModeArray;
+function TVulkanPhysicalDevice.GetSurfacePresentModes(const pSurface:TVkSurfaceKHR):TVkPresentModeKHRArray;
 var Count:TVKUInt32;
 begin
  result:=nil;
@@ -2555,7 +2521,7 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetDisplayProperties:TVkDisplayPropertiesArray;
+function TVulkanPhysicalDevice.GetDisplayProperties:TVkDisplayPropertiesKHRArray;
 var Count:TVKUInt32;
 begin
  result:=nil;
@@ -2573,7 +2539,7 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetDisplayPlaneProperties:TVkDisplayPlanePropertiesArray;
+function TVulkanPhysicalDevice.GetDisplayPlaneProperties:TVkDisplayPlanePropertiesKHRArray;
 var Count:TVKUInt32;
 begin
  result:=nil;
@@ -2591,7 +2557,7 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetDisplayPlaneSupportedDisplays(const pPlaneIndex:TVkUInt32):TVkDisplayArray;
+function TVulkanPhysicalDevice.GetDisplayPlaneSupportedDisplays(const pPlaneIndex:TVkUInt32):TVkDisplayKHRArray;
 var Count:TVKUInt32;
 begin
  result:=nil;
@@ -2609,7 +2575,7 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetDisplayModeProperties(const pDisplay:TVkDisplayKHR):TVkDisplayModePropertiesArray;
+function TVulkanPhysicalDevice.GetDisplayModeProperties(const pDisplay:TVkDisplayKHR):TVkDisplayModePropertiesKHRArray;
 var Count:TVKUInt32;
 begin
  result:=nil;
@@ -2625,6 +2591,95 @@ begin
    end;
   end;
  end;
+end;
+
+function TVulkanPhysicalDevice.GetMemoryType(const pTypeBits:TVkUInt32;const pProperties:TVkFlags):TVkUInt32;
+var i:TVkUInt32;
+    DeviceMemoryProperties:TVkPhysicalDeviceMemoryProperties;
+begin
+ result:=not TVkUInt32(0);
+ vkGetPhysicalDeviceMemoryProperties(fPhysicalDeviceHandle,@DeviceMemoryProperties);
+ for i:=0 to 31 do begin
+  if (pTypeBits and (TVkUInt32(1) shl i))<>0 then begin
+   if (DeviceMemoryProperties.MemoryTypes[i].PropertyFlags and pProperties)=pProperties then begin
+    result:=i;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanPhysicalDevice.GetBestSupportedDepthFormat:TVkFormat;
+const Formats:array[0..4] of TVkFormat=(VK_FORMAT_D32_SFLOAT_S8_UINT,
+                                        VK_FORMAT_D32_SFLOAT,
+                                        VK_FORMAT_D24_UNORM_S8_UINT,
+                                        VK_FORMAT_D16_UNORM_S8_UINT,
+                                        VK_FORMAT_D16_UNORM);
+var i:TVkInt32;
+    Format:TVkFormat;
+    FormatProperties:TVkFormatProperties;
+begin
+ result:=VK_FORMAT_UNDEFINED;
+ for i:=low(Formats) to high(Formats) do begin
+  Format:=Formats[i];
+  fInstance.fVulkan.GetPhysicalDeviceFormatProperties(fPhysicalDeviceHandle,Format,@FormatProperties);
+  if (FormatProperties.OptimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))<>0 then begin
+   result:=Format;
+   exit;
+  end;
+ end;
+end;
+
+function TVulkanPhysicalDevice.GetQueueNodeIndex(const pSurface:TVkSurfaceKHR;const pQueueFlagBits:TVkQueueFlagBits):TVkInt32;
+var Index:TVkInt32;
+    QueueCount:TVkUInt32;
+    QueueProperties:array of TVkQueueFamilyProperties;
+    SupportsPresent:TVkBool32;
+begin
+ result:=-1;
+ fInstance.fVulkan.GetPhysicalDeviceQueueFamilyProperties(fPhysicalDeviceHandle,@QueueCount,nil);
+ QueueProperties:=nil;
+ SetLength(QueueProperties,QueueCount);
+ try
+  fInstance.fVulkan.GetPhysicalDeviceQueueFamilyProperties(fPhysicalDeviceHandle,@QueueCount,@QueueProperties[0]);
+  for Index:=0 to QueueCount-1 do begin
+   fInstance.fVulkan.GetPhysicalDeviceSurfaceSupportKHR(fPhysicalDeviceHandle,Index,pSurface,@SupportsPresent);
+   if ((QueueProperties[Index].QueueFlags and TVkQueueFlags(pQueueFlagBits))<>0) and (SupportsPresent=VK_TRUE) then begin
+    result:=Index;
+    break;
+   end;
+  end;
+ finally
+  SetLength(QueueProperties,0);
+ end;
+end;
+
+function TVulkanPhysicalDevice.GetSurfaceFormat(const pSurface:TVkSurfaceKHR):TVkSurfaceFormatKHR;
+var FormatCount:TVkUInt32;
+    SurfaceFormats:TVkSurfaceFormatKHRArray;
+begin
+ SurfaceFormats:=nil;
+ try
+
+  FormatCount:=0;
+  HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,pSurface,@FormatCount,nil));
+
+  if FormatCount>0 then begin
+   SetLength(SurfaceFormats,FormatCount);
+   HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,pSurface,@FormatCount,@SurfaceFormats[0]));
+  end;
+
+  if (FormatCount=0) or (SurfaceFormats[0].Format=VK_FORMAT_UNDEFINED) then begin
+   result.Format:=VK_FORMAT_B8G8R8A8_UNORM;
+   result.ColorSpace:=VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+  end else begin
+   result:=SurfaceFormats[0];
+  end;
+
+ finally
+  SetLength(SurfaceFormats,0);
+ end;
+
 end;
 
 function TVulkanPhysicalDeviceList.GetItem(const Index:TVkSizeInt):TVulkanPhysicalDevice;
@@ -2992,11 +3047,10 @@ begin
  inherited Items[Index]:=Item;
 end;
 
-{
 constructor TVulkanResource.Create;
 begin
  inherited Create;
- fDevice:=VK_NULL_HANDLE;
+ fDevice:=nil;
  fOwnsResource:=false;
 end;
 
@@ -3007,182 +3061,9 @@ end;
 
 procedure TVulkanResource.Clear;
 begin
- fDevice:=VK_NULL_HANDLE;
+ fDevice:=nil;
  fOwnsResource:=false;
 end;
-
-constructor TVulkanDevice.Create(const pDevice:TVkDevice;const pPhysicalDevice:TVkPhysicalDevice);
-begin
- inherited Create;
- fDevice:=pDevice;
- fPhysicalDevice:=pPhysicalDevice;
-end;
-
-destructor TVulkanDevice.Destroy;
-begin
- inherited Destroy;
-end;
-
-function TVulkanDevice.GetMemoryType(const pTypeBits:TVkUInt32;const pProperties:TVkFlags):TVkUInt32;
-var i:TVkUInt32;
-    DeviceMemoryProperties:TVkPhysicalDeviceMemoryProperties;
-begin
- result:=not TVkUInt32(0);
- vkGetPhysicalDeviceMemoryProperties(fPhysicalDevice,@DeviceMemoryProperties);
- for i:=0 to 31 do begin
-  if (pTypeBits and (TVkUInt32(1) shl i))<>0 then begin
-   if (DeviceMemoryProperties.MemoryTypes[i].PropertyFlags and pProperties)=pProperties then begin
-    result:=i;
-    exit;
-   end;
-  end;
- end;
-end;
-
-function TVulkanDevice.GetBestSupportedDepthFormat:TVkFormat;
-const Formats:array[0..4] of TVkFormat=(VK_FORMAT_D32_SFLOAT_S8_UINT,
-                                        VK_FORMAT_D32_SFLOAT,
-                                        VK_FORMAT_D24_UNORM_S8_UINT,
-                                        VK_FORMAT_D16_UNORM_S8_UINT,
-                                        VK_FORMAT_D16_UNORM);
-var i:TVkInt32;
-    Format:TVkFormat;
-    FormatProperties:TVkFormatProperties;
-begin
- result:=VK_FORMAT_UNDEFINED;
- for i:=low(Formats) to high(Formats) do begin
-  Format:=Formats[i];
-  vkGetPhysicalDeviceFormatProperties(PhysicalDevice,Format,@FormatProperties);
-  if (FormatProperties.OptimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))<>0 then begin
-   result:=Format;
-   exit;
-  end;
- end;
-end;
-
-function TVulkanDevice.GetGraphicsQueueNodeIndex(const pSurface:TVkSurfaceKHR):TVkUInt32;
-var i:TVKInt32;
-    QueueCount,GraphicsQueueNodeIndex,PresentQueueNodeIndex:TVkUInt32;
-    QueueProperties:array of TVkQueueFamilyProperties;
-    SupportsPresent:array of TVkBool32;
-begin
- result:=not TVkUInt32(0);
-
- vkGetPhysicalDeviceQueueFamilyProperties(fPhysicalDevice,@QueueCount,nil);
-
- QueueProperties:=nil;
- SetLength(QueueProperties,QueueCount);
- try
-
-  SupportsPresent:=nil;
-  SetLength(SupportsPresent,QueueCount);
-  try
-
-   vkGetPhysicalDeviceQueueFamilyProperties(fPhysicalDevice,@QueueCount,@QueueProperties[0]);
-
-   for i:=0 to QueueCount-1 do begin
-    vkGetPhysicalDeviceSurfaceSupportKHR(fPhysicalDevice,i,pSurface,@SupportsPresent[i]);
-   end;
-
-   GraphicsQueueNodeIndex:=high(TVkUInt32);
-   PresentQueueNodeIndex:=high(TVkUInt32);
-   for i:=0 to QueueCount-1 do begin
-    if (QueueProperties[i].QueueFlags and TVkQueueFlags(VK_QUEUE_GRAPHICS_BIT))<>0 then begin
-     if GraphicsQueueNodeIndex=high(TVkUInt32) then begin
-      GraphicsQueueNodeIndex:=i;
-     end;
-     if SupportsPresent[i]=VK_TRUE then begin
-      result:=i;
-      break;
-     end;
-    end;
-   end;
-
-  finally
-   SetLength(SupportsPresent,0);
-  end;
- finally
-  SetLength(QueueProperties,0);
- end;
-end;
-
-function TVulkanDevice.GetSurfaceFormats(const pSurface:TVkSurfaceKHR):TVulkanDeviceSurfaceFormats;
-var FormatCount:TVkUInt32;
-begin
- result:=nil;
-
- FormatCount:=0;
- HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDevice,pSurface,@FormatCount,nil));
-
- if FormatCount>0 then begin
-  SetLength(result,FormatCount);
-  HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDevice,pSurface,@FormatCount,@result[0]));
- end;
-
- if (FormatCount=0) or (result[0].Format=VK_FORMAT_UNDEFINED) then begin
-  SetLength(result,1);
-  result[0].Format:=VK_FORMAT_B8G8R8A8_UNORM;
-  result[0].ColorSpace:=VK_COLORSPACE_SRGB_NONLINEAR_KHR;
- end;
-
-end;
-
-function TVulkanDevice.GetSurfaceFormat(const pSurface:TVkSurfaceKHR):TVulkanDeviceSurfaceFormat;
-var FormatCount:TVkUInt32;
-    SurfaceFormats:TVulkanDeviceSurfaceFormats;
-begin
- SurfaceFormats:=nil;
- try
-
-  FormatCount:=0;
-  HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDevice,pSurface,@FormatCount,nil));
-
-  if FormatCount>0 then begin
-   SetLength(SurfaceFormats,FormatCount);
-   HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDevice,pSurface,@FormatCount,@SurfaceFormats[0]));
-  end;
-
-  if (FormatCount=0) or (SurfaceFormats[0].Format=VK_FORMAT_UNDEFINED) then begin
-   result.Format:=VK_FORMAT_B8G8R8A8_UNORM;
-   result.ColorSpace:=VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-  end else begin
-   result:=SurfaceFormats[0];
-  end;
-
- finally
-  SetLength(SurfaceFormats,0);
- end;
-
-end;
-
-procedure TVulkanDevice.WaitIdle;
-begin
- vkDeviceWaitIdle(fDevice);
-end;
-
-constructor TVulkanInstance.Create(const pEnableValidation:boolean);
-const ValidationLayerNames:array[0..8] of PVkChar=
-       (
-        'VK_LAYER_LUNARG_threading',
-        'VK_LAYER_LUNARG_mem_tracker',
-        'VK_LAYER_LUNARG_object_tracker',
-        'VK_LAYER_LUNARG_draw_state',
-        'VK_LAYER_LUNARG_param_checker',
-        'VK_LAYER_LUNARG_swapchain',
-        'VK_LAYER_LUNARG_device_limits',
-        'VK_LAYER_LUNARG_image',
-        'VK_LAYER_GOOGLE_unique_objects'
-       );
-begin
- inherited Create;
- fEnableValidation:=pEnableValidation;
-end;
-
-destructor TVulkanInstance.Destroy;
-begin
- inherited Destroy;
-end;
-{}
 
 end.
 
