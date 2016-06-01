@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-05-30-16-06-0000                       *
+ *                        Version 2016-06-01-22-16-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -155,7 +155,7 @@ unit PasVulkan;
 
 interface
 
-uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef X11}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils,Classes,Vulkan;
+uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef X11}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils,Classes,Math,Vulkan;
 
 type EVulkanException=class(Exception);
 
@@ -761,6 +761,199 @@ type EVulkanException=class(Exception);
        property Handle:TVkCommandPool read fCommandPoolHandle;
      end;
 
+     TVulkanDeviceMemoryManager=class;
+
+     TVulkanDeviceMemoryChunkBlock=class;
+
+     PVulkanDeviceMemoryChunkBlockRedBlackTreeKey=^TVulkanDeviceMemoryChunkBlockRedBlackTreeKey;
+     TVulkanDeviceMemoryChunkBlockRedBlackTreeKey=TVkDeviceSize;
+
+     PVulkanDeviceMemoryChunkBlockRedBlackTreeValue=^TVulkanDeviceMemoryChunkBlockRedBlackTreeValue;
+     TVulkanDeviceMemoryChunkBlockRedBlackTreeValue=TVulkanDeviceMemoryChunkBlock;
+
+     PVulkanDeviceMemoryChunkBlockRedBlackTreeNode=^TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+     TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=class(TVulkanObject)
+      private
+       fKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey;
+       fValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue;
+       fLeft:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       fRight:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       fParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       fColor:boolean;
+      public
+       constructor Create(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey=0;
+                          const pValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue=nil;
+                          const pLeft:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                          const pRight:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                          const pParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                          const pColor:boolean=false);
+       destructor Destroy; override;
+       procedure Clear;
+       function Minimum:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       function Maximum:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       function Predecessor:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       function Successor:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       property Key:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey read fKey write fKey;
+       property Value:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue read fValue write fValue;
+       property Left:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode read fLeft write fLeft;
+       property Right:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode read fRight write fRight;
+       property Parent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode read fParent write fParent;
+       property Color:boolean read fColor write fColor;
+     end;
+
+     TVulkanDeviceMemoryChunkBlockRedBlackTree=class(TVulkanObject)
+      private
+       fRoot:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+      protected
+       procedure RotateLeft(x:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode);
+       procedure RotateRight(x:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode);
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Clear;
+       function Find(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       function Insert(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey;
+                       const pValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       procedure Remove(const pNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode);
+       procedure Delete(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey);
+       function LeftMost:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       function RightMost:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       property Root:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode read fRoot;
+     end;
+
+     TVulkanDeviceMemoryChunk=class;
+
+     TVulkanDeviceMemoryChunkBlock=class(TVulkanObject)
+      private
+       fMemoryChunk:TVulkanDeviceMemoryChunk;
+       fOffset:TVkDeviceSize;
+       fSize:TVkDeviceSize;
+       fUsed:boolean;
+       fOffsetRedBlackTreeNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       fSizeRedBlackTreeNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+      public
+       constructor Create(const pMemoryChunk:TVulkanDeviceMemoryChunk;
+                          const pOffset:TVkDeviceSize;
+                          const pSize:TVkDeviceSize;
+                          const pUsed:boolean);
+       destructor Destroy; override;
+       procedure Update(const pOffset:TVkDeviceSize;
+                        const pSize:TVkDeviceSize;
+                        const pUsed:boolean);
+       property MemoryChunk:TVulkanDeviceMemoryChunk read fMemoryChunk;
+       property Offset:TVkDeviceSize read fOffset;
+       property Size:TVkDeviceSize read fSize;
+       property Used:boolean read fUsed;
+     end;
+
+     TVulkanDeviceMemoryChunk=class(TVulkanObject)
+      private
+       fMemoryManager:TVulkanDeviceMemoryManager;
+       fPreviousMemoryChunk:TVulkanDeviceMemoryChunk;
+       fNextMemoryChunk:TVulkanDeviceMemoryChunk;
+       fAlignment:TVkDeviceSize;
+       fSize:TVkDeviceSize;
+       fOffsetRedBlackTree:TVulkanDeviceMemoryChunkBlockRedBlackTree;
+       fSizeRedBlackTree:TVulkanDeviceMemoryChunkBlockRedBlackTree;
+       fMemoryTypeIndex:TVkUInt32;
+       fMemoryPropertyFlags:TVkMemoryPropertyFlags;
+       fMemoryHandle:TVkDeviceMemory;
+       fMemory:PVkVoid;
+      public
+       constructor Create(const pMemoryManager:TVulkanDeviceMemoryManager;
+                          const pSize:TVkDeviceSize;
+                          const pMemoryPropertyFlags:TVkMemoryPropertyFlags;
+                          const pMemoryHeapFlags:TVkMemoryHeapFlags=0);
+       destructor Destroy; override;
+       function AllocateMemory(out pOffset:TVkDeviceSize;const pSize:TVkDeviceSize):boolean;
+       function ReallocateMemory(var pOffset:TVkDeviceSize;const pSize:TVkDeviceSize):boolean;
+       function FreeMemory(const pOffset:TVkDeviceSize):boolean;
+       property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
+       property Size:TVkDeviceSize read fSize;
+       property MemoryPropertyFlags:TVkMemoryPropertyFlags read fMemoryPropertyFlags;
+       property MemoryTypeIndex:TVkUInt32 read fMemoryTypeIndex;
+       property Handle:TVkDeviceMemory read fMemoryHandle;
+       property Memory:PVkVoid read fMemory;
+     end;
+
+     TVulkanDeviceMemoryBlock=class(TVulkanObject)
+      private
+       fMemoryManager:TVulkanDeviceMemoryManager;
+       fMemoryChunk:TVulkanDeviceMemoryChunk;
+       fOffset:TVkDeviceSize;
+       fSize:TVkDeviceSize;
+       fPreviousMemoryBlock:TVulkanDeviceMemoryBlock;
+       fNextMemoryBlock:TVulkanDeviceMemoryBlock;
+      public
+       constructor Create(const pMemoryManager:TVulkanDeviceMemoryManager;
+                          const pMemoryChunk:TVulkanDeviceMemoryChunk;
+                          const pOffset:TVkDeviceSize;
+                          const pSize:TVkDeviceSize);
+       destructor Destroy; override;
+       property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
+       property MemoryChunk:TVulkanDeviceMemoryChunk read fMemoryChunk;
+       property Offset:TVkDeviceSize read fOffset;
+       property Size:TVkDeviceSize read fSize;
+     end;
+
+     TVulkanDeviceMemoryManager=class(TVulkanObject)
+      private
+       fDevice:TVulkanDevice;
+       fAllocationManager:TVulkanAllocationManager;
+       fAllocationCallbacks:PVkAllocationCallbacks;
+       fFirstMemoryChunk:TVulkanDeviceMemoryChunk;
+       fLastMemoryChunk:TVulkanDeviceMemoryChunk;
+       fFirstMemoryBlock:TVulkanDeviceMemoryBlock;
+       fLastMemoryBlock:TVulkanDeviceMemoryBlock;
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pAllocationManager:TVulkanAllocationManager=nil);
+       destructor Destroy; override;
+       function AllocateMemoryBlock(const pSize:TVkDeviceSize;
+                                    const pMemoryPropertyFlags:TVkMemoryPropertyFlags):TVulkanDeviceMemoryBlock;
+       function FreeMemoryBlock(const pMemoryBlock:TVulkanDeviceMemoryBlock):boolean;
+     end;
+
+     TVulkanBuffer=class(TVulkanHandle)
+      private
+       fDevice:TVulkanDevice;
+       fSize:TVkDeviceSize;
+       fBufferHandle:TVkBuffer;
+       fMemoryHandle:TVkDeviceMemory;
+       fAllocationManager:TVulkanAllocationManager;
+       fAllocationCallbacks:PVkAllocationCallbacks;
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pInitializationData:pointer;
+                          const pSize:TVkDeviceSize;
+                          const pAllocationManager:TVulkanAllocationManager=nil);
+       destructor Destroy; override;
+       function Map:PVkVoid;
+       procedure Unmap;
+       procedure Bind;
+       property Handle:TVkBuffer read fBufferHandle;
+       property Size:TVkDeviceSize read fSize;
+       property MemoryHandle:TVkDeviceMemory read fMemoryHandle;
+     end;
+
+     TVulkanSwapChain=class(TVulkanHandle)
+      private
+       fDevice:TVulkanDevice;
+       fSwapChainHandle:TVkSwapChainKHR;
+       fSwapChainCreateInfo:TVkSwapchainCreateInfoKHR;
+       fPointerToSwapChainCreateInfo:PVkSwapchainCreateInfoKHR;
+       fAllocationManager:TVulkanAllocationManager;
+       fAllocationCallbacks:PVkAllocationCallbacks;
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pOldSwapChain:TVulkanSwapChain=nil;
+                          const pAllocationManager:TVulkanAllocationManager=nil);
+       destructor Destroy; override;
+       procedure Initialize;
+       property Handle:TVkSwapChainKHR read fSwapChainHandle;
+       property SwapChainCreateInfo:PVkSwapchainCreateInfoKHR read fPointerToSwapChainCreateInfo;
+     end;
+
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
 
 function VulkanErrorToString(const ErrorCode:TVkResult):TVulkanCharString;
@@ -780,6 +973,18 @@ begin
 {$ifdef CPU64}
  Value:=Value or (Value shr 32);
 {$endif}
+ result:=Value+1;
+end;
+
+function VulkanDeviceSizeRoundUpToPowerOfTwo(Value:TVkDeviceSize):TVkDeviceSize;
+begin
+ dec(Value);
+ Value:=Value or (Value shr 1);
+ Value:=Value or (Value shr 2);
+ Value:=Value or (Value shr 4);
+ Value:=Value or (Value shr 8);
+ Value:=Value or (Value shr 16);
+ Value:=Value or (Value shr 32);
  result:=Value+1;
 end;
 
@@ -2658,8 +2863,8 @@ begin
   fAllocationManager:=fInstance.fAllocationManager;
  end;
 
- if assigned(pAllocationManager) then begin
-  fAllocationCallbacks:=@pAllocationManager.fAllocationCallbacks;
+ if assigned(fAllocationManager) then begin
+  fAllocationCallbacks:=@fAllocationManager.fAllocationCallbacks;
  end else begin
   fAllocationCallbacks:=nil;
  end;
@@ -2724,8 +2929,8 @@ begin
   fAllocationManager:=fInstance.fAllocationManager;
  end;
 
- if assigned(pAllocationManager) then begin
-  fAllocationCallbacks:=@pAllocationManager.fAllocationCallbacks;
+ if assigned(fAllocationManager) then begin
+  fAllocationCallbacks:=@fAllocationManager.fAllocationCallbacks;
  end else begin
   fAllocationCallbacks:=nil;
  end;
@@ -3054,7 +3259,7 @@ end;
 destructor TVulkanCommandPool.Destroy;
 begin
  if (fCommandPoolHandle<>VK_NULL_HANDLE) and fOwnsHandle then begin
-  fDevice.fDeviceVulkan.DestroyCommandPool(fDevice.Handle,Handle,fAllocationCallbacks);
+  fDevice.fDeviceVulkan.DestroyCommandPool(fDevice.Handle,fCommandPoolHandle,fAllocationCallbacks);
  end;
  inherited Destroy;
 end;
@@ -3067,6 +3272,968 @@ begin
   fCommandPoolCreateInfo.queueFamilyIndex:=fQueueFamilyIndex;
   fCommandPoolCreateInfo.flags:=fFlags;
   HandleResultCode(fDevice.fDeviceVulkan.CreateCommandPool(fDevice.Handle,@fCommandPoolCreateInfo,fAllocationCallbacks,@fCommandPoolHandle));
+ end;
+end;
+
+constructor TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Create(const pKey:TVkUInt64=0;
+                                                                 const pValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue=nil;
+                                                                 const pLeft:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                                                                 const pRight:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                                                                 const pParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                                                                 const pColor:boolean=false);
+begin
+ inherited Create;
+ fKey:=pKey;
+ fValue:=pValue;
+ fLeft:=pLeft;
+ fRight:=pRight;
+ fParent:=pParent;
+ fColor:=pColor;
+end;
+
+destructor TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Destroy;
+begin
+ FreeAndNil(fLeft);
+ FreeAndNil(fRight);
+ inherited Destroy;
+end;
+
+procedure TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Clear;
+begin
+ fKey:=0;
+ fLeft:=nil;
+ fRight:=nil;
+ fParent:=nil;
+ fColor:=false;
+end;
+
+function TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Minimum:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ result:=self;
+ while assigned(result.fLeft) do begin
+  result:=result.fLeft;
+ end;
+end;
+
+function TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Maximum:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ result:=self;
+ while assigned(result.fRight) do begin
+  result:=result.fRight;
+ end;
+end;
+
+function TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Predecessor:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+var Last:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ if assigned(fLeft) then begin
+  result:=fLeft;
+  while assigned(result) and assigned(result.fRight) do begin
+   result:=result.fRight;
+  end;
+ end else begin
+  Last:=self;
+  result:=Parent;
+  while assigned(result) and (result.fLeft=Last) do begin
+   Last:=result;
+   result:=result.Parent;
+  end;
+ end;
+end;
+
+function TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Successor:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+var Last:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ if assigned(fRight) then begin
+  result:=fRight;
+  while assigned(result) and assigned(result.fLeft) do begin
+   result:=result.fLeft;
+  end;
+ end else begin
+  Last:=self;
+  result:=Parent;
+  while assigned(result) and (result.fRight=Last) do begin
+   Last:=result;
+   result:=result.Parent;
+  end;
+ end;
+end;
+
+constructor TVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
+begin
+ inherited Create;
+ fRoot:=nil;
+end;
+
+destructor TVulkanDeviceMemoryChunkBlockRedBlackTree.Destroy;
+begin
+ Clear;
+ inherited Destroy;
+end;
+
+procedure TVulkanDeviceMemoryChunkBlockRedBlackTree.Clear;
+begin
+ FreeAndNil(fRoot);
+end;
+
+procedure TVulkanDeviceMemoryChunkBlockRedBlackTree.RotateLeft(x:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode);
+var y:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ y:=x.fRight;
+ x.fRight:=y.fLeft;
+ if assigned(y.fLeft) then begin
+  y.fLeft.fParent:=x;
+ end;
+ y.fParent:=x.fParent;
+ if x=fRoot then begin
+  fRoot:=y;
+ end else if x=x.fParent.fLeft then begin
+  x.fparent.fLeft:=y;
+ end else begin
+  x.fParent.fRight:=y;
+ end;
+ y.fLeft:=x;
+ x.fParent:=y;
+end;
+
+procedure TVulkanDeviceMemoryChunkBlockRedBlackTree.RotateRight(x:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode);
+var y:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ y:=x.fLeft;
+ x.fLeft:=y.fRight;
+ if assigned(y.fRight) then begin
+  y.fRight.fParent:=x;
+ end;
+ y.fParent:=x.fParent;
+ if x=fRoot then begin
+  fRoot:=y;
+ end else if x=x.fParent.fRight then begin
+  x.fParent.fRight:=y;
+ end else begin
+  x.fParent.fLeft:=y;
+ end;
+ y.fRight:=x;
+ x.fParent:=y;
+end;
+
+function TVulkanDeviceMemoryChunkBlockRedBlackTree.Find(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ result:=fRoot;
+ while assigned(result) do begin
+  if pKey<result.fKey then begin
+   result:=result.fLeft;
+  end else if pKey>result.fKey then begin
+   result:=result.fRight;
+  end else begin
+   exit;
+  end;
+ end;
+ result:=nil;
+end;
+
+function TVulkanDeviceMemoryChunkBlockRedBlackTree.Insert(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey;
+                                                          const pValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+var x,y,xParentParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ x:=fRoot;
+ y:=nil;
+ while assigned(x) do begin
+  y:=x;
+  if pKey<x.fKey then begin
+   x:=x.fLeft;
+  end else begin
+   x:=x.fRight;
+  end;
+ end;
+ result:=TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Create(pKey,pValue,nil,nil,y,true);
+ if assigned(y) then begin
+  if pKey<y.fKey then begin
+   y.Left:=result;
+  end else begin
+   y.Right:=result;
+  end;
+ end else begin
+  fRoot:=result;
+ end;
+ x:=result;
+ while (x<>fRoot) and assigned(x.fParent) and assigned(x.fParent.fParent) and x.fParent.fColor do begin
+  xParentParent:=x.fParent.fParent;
+  if x.fParent=xParentParent.fLeft then begin
+   y:=xParentParent.fRight;
+   if assigned(y) and y.fColor then begin
+    x.fParent.fColor:=false;
+    y.fColor:=false;
+    xParentParent.fColor:=true;
+    x:=xParentParent;
+   end else begin
+    if x=x.fParent.fRight then begin
+     x:=x.fParent;
+     RotateLeft(x);
+    end;
+    x.fParent.fColor:=false;
+    xParentParent.fColor:=true;
+    RotateRight(xParentParent);
+   end;
+  end else begin
+   y:=xParentParent.fLeft;
+   if assigned(y) and y.fColor then begin
+    x.fParent.fColor:=false;
+    y.fColor:=false;
+    x.fParent.fParent.fColor:=true;
+    x:=x.fParent.fParent;
+   end else begin
+    if x=x.fParent.fLeft then begin
+     x:=x.fParent;
+     RotateRight(x);
+    end;
+    x.fParent.fColor:=false;
+    xParentParent.fColor:=true;
+    RotateLeft(xParentParent);
+   end;
+  end;
+ end;
+ fRoot.fColor:=false;
+end;
+
+procedure TVulkanDeviceMemoryChunkBlockRedBlackTree.Remove(const pNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode);
+var w,x,y,z,xParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    TemporaryColor:boolean;
+begin
+ z:=pNode;
+ y:=z;
+ x:=nil;
+ xParent:=nil;
+ if assigned(x) and assigned(xParent) then begin
+  // For to suppress "Value assigned to '*' never used" hints
+ end;
+ if assigned(y.fLeft) then begin
+  if assigned(y.fRight) then begin
+   y:=y.fRight;
+   while assigned(y.fLeft) do begin
+    y:=y.fLeft;
+   end;
+   x:=y.fRight;
+  end else begin
+   x:=y.fLeft;
+  end;
+ end else begin
+  x:=y.fRight;
+ end;
+ if y<>z then begin
+  z.fLeft.fParent:=y;
+  y.fLeft:=z.fLeft;
+  if y<>z.fRight then begin
+   xParent:=y.fParent;
+   if assigned(x) then begin
+    x.fParent:=y.fParent;
+   end;
+   y.fParent.fLeft:=x;
+   y.fRight:=z.fRight;
+   z.fRight.fParent:=y;
+  end else begin
+   xParent:=y;
+  end;
+  if fRoot=z then begin
+   fRoot:=y;
+  end else if z.fParent.fLeft=z then begin
+   z.fParent.fLeft:=y;
+  end else begin
+   z.fParent.fRight:=y;
+  end;
+  y.fParent:=z.fParent;
+  TemporaryColor:=y.fColor;
+  y.fColor:=z.fColor;
+  z.fColor:=TemporaryColor;
+  y:=z;
+ end else begin
+  xParent:=y.fParent;
+  if assigned(x) then begin
+   x.fParent:=y.fParent;
+  end;
+  if fRoot=z then begin
+   fRoot:=x;
+  end else if z.fParent.fLeft=z then begin
+   z.fParent.fLeft:=x;
+  end else begin
+   z.fParent.fRight:=x;
+  end;
+ end;
+ if assigned(y) then begin
+  if not y.fColor then begin
+   while (x<>fRoot) and not (assigned(x) and x.fColor) do begin
+    if x=xParent.fLeft then begin
+     w:=xParent.fRight;
+     if w.fColor then begin
+      w.fColor:=false;
+      xParent.fColor:=true;
+      RotateLeft(xParent);
+      w:=xParent.fRight;
+     end;
+     if not ((assigned(w.fLeft) and w.fLeft.fColor) or (assigned(w.fRight) and w.fRight.fColor)) then begin
+      w.fColor:=true;
+      x:=xParent;
+      xParent:=xParent.fParent;
+     end else begin
+      if not (assigned(w.fRight) and w.fRight.fColor) then begin
+       w.fLeft.fColor:=false;
+       w.fColor:=true;
+       RotateRight(w);
+       w:=xParent.fRight;
+      end;
+      w.fColor:=xParent.fColor;
+      xParent.fColor:=false;
+      if assigned(w.fRight) then begin
+       w.fRight.fColor:=false;
+      end;
+      RotateLeft(xParent);
+      x:=fRoot;
+     end;
+    end else begin
+     w:=xParent.fLeft;
+     if w.fColor then begin
+      w.fColor:=false;
+      xParent.fColor:=true;
+      RotateRight(xParent);
+      w:=xParent.fLeft;
+     end;
+     if not ((assigned(w.fLeft) and w.fLeft.fColor) or (assigned(w.fRight) and w.fRight.fColor)) then begin
+      w.fColor:=true;
+      x:=xParent;
+      xParent:=xParent.fParent;
+     end else begin
+      if not (assigned(w.fLeft) and w.fLeft.fColor) then begin
+       w.fRight.fColor:=false;
+       w.fColor:=true;
+       RotateLeft(w);
+       w:=xParent.fLeft;
+      end;
+      w.fColor:=xParent.fColor;
+      xParent.fColor:=false;
+      if assigned(w.fLeft) then begin
+       w.fLeft.fColor:=false;
+      end;
+      RotateRight(xParent);
+      x:=fRoot;
+     end;
+    end;
+   end;
+   if assigned(x) then begin
+    x.fColor:=false;
+   end;
+  end;
+  y.Clear;
+  y.Free;
+ end;
+end;
+
+procedure TVulkanDeviceMemoryChunkBlockRedBlackTree.Delete(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey);
+var Node:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ Node:=Find(pKey);
+ if assigned(Node) then begin
+  Remove(Node);
+ end;
+end;
+
+function TVulkanDeviceMemoryChunkBlockRedBlackTree.LeftMost:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ result:=fRoot;
+ while assigned(result) and assigned(result.fLeft) do begin
+  result:=result.fLeft;
+ end;
+end;
+
+function TVulkanDeviceMemoryChunkBlockRedBlackTree.RightMost:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ result:=fRoot;
+ while assigned(result) and assigned(result.fRight) do begin
+  result:=result.fRight;
+ end;
+end;
+
+constructor TVulkanDeviceMemoryChunkBlock.Create(const pMemoryChunk:TVulkanDeviceMemoryChunk;
+                                                 const pOffset:TVkDeviceSize;
+                                                 const pSize:TVkDeviceSize;
+                                                 const pUsed:boolean);
+begin
+ inherited Create;
+ fMemoryChunk:=pMemoryChunk;
+ fOffset:=pOffset;
+ fSize:=pSize;
+ fUsed:=pUsed;
+ fOffsetRedBlackTreeNode:=fMemoryChunk.fOffsetRedBlackTree.Insert(pOffset,self);
+ if not fUsed then begin
+  fSizeRedBlackTreeNode:=fMemoryChunk.fSizeRedBlackTree.Insert(pSize,self);
+ end;
+end;
+
+destructor TVulkanDeviceMemoryChunkBlock.Destroy;
+begin
+ fMemoryChunk.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
+ if not fUsed then begin
+  fMemoryChunk.fSizeRedBlackTree.Remove(fSizeRedBlackTreeNode);
+ end;
+ inherited Destroy;
+end;
+
+procedure TVulkanDeviceMemoryChunkBlock.Update(const pOffset:TVkDeviceSize;
+                                               const pSize:TVkDeviceSize;
+                                               const pUsed:boolean);
+begin
+ if fOffset<>pOffset then begin
+  fMemoryChunk.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
+  fOffsetRedBlackTreeNode:=fMemoryChunk.fOffsetRedBlackTree.Insert(pOffset,self);
+ end;
+ if (fUsed<>pUsed) or (fSize<>pSize) then begin
+  if not fUsed then begin
+   fMemoryChunk.fSizeRedBlackTree.Remove(fSizeRedBlackTreeNode);
+  end;
+  if not pUsed then begin
+   fSizeRedBlackTreeNode:=fMemoryChunk.fSizeRedBlackTree.Insert(pSize,self);
+  end;
+ end;
+ fOffset:=pOffset;
+ fSize:=pSize;
+ fUsed:=pUsed;
+ inherited Destroy;
+end;
+
+constructor TVulkanDeviceMemoryChunk.Create(const pMemoryManager:TVulkanDeviceMemoryManager;
+                                            const pSize:TVkDeviceSize;
+                                            const pMemoryPropertyFlags:TVkMemoryPropertyFlags;
+                                            const pMemoryHeapFlags:TVkMemoryHeapFlags=0);
+var Index,HeapIndex:TVkInt32;
+    MemoryRequirements:TVkMemoryRequirements;
+    MemoryAllocateInfo:TVkMemoryAllocateInfo;
+    PhysicalDevice:TVulkanPhysicalDevice;
+    CurrentSize,BestSize,Alignment:TVkDeviceSize;
+    Found:boolean;
+begin
+ inherited Create;
+
+ fMemoryManager:=pMemoryManager;
+
+ fSize:=pSize;
+
+ fMemoryPropertyFlags:=pMemoryPropertyFlags;
+
+ fMemoryHandle:=VK_NULL_HANDLE;
+
+ fMemory:=nil;
+
+ fMemoryTypeIndex:=0;
+ PhysicalDevice:=fMemoryManager.fDevice.fPhysicalDevice;
+ BestSize:=0;
+ Found:=false;
+ for Index:=0 to length(PhysicalDevice.fMemoryProperties.memoryTypes)-1 do begin
+  if (PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags then begin
+   HeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
+   CurrentSize:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size;
+   if ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and pMemoryHeapFlags)=pMemoryHeapFlags) and
+      (pSize<=CurrentSize) and (CurrentSize>BestSize) then begin
+    BestSize:=CurrentSize;
+    fMemoryTypeIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
+    Found:=true;
+   end;
+  end;
+ end;
+ if not Found then begin
+  raise EVulkanException.Create('No suitable device memory heap available');
+ end;
+
+ FillChar(MemoryAllocateInfo,SizeOf(TVkMemoryAllocateInfo),#0);
+ MemoryAllocateInfo.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+ MemoryAllocateInfo.pNext:=nil;
+ MemoryAllocateInfo.allocationSize:=fSize;
+ MemoryAllocateInfo.memoryTypeIndex:=fMemoryTypeIndex;
+
+ HandleResultCode(fMemoryManager.fDevice.Commands.AllocateMemory(fMemoryManager.fDevice.Handle,@MemoryAllocateInfo,fMemoryManager.fAllocationCallbacks,@fMemoryHandle));
+
+ if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+  fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.Handle,fMemoryHandle,0,TVkUInt64(VK_WHOLE_SIZE),0,@fMemory);
+ end;
+
+ // Ensure alignment
+ Alignment:=128;
+ dec(Alignment);
+ Alignment:=Alignment or (Alignment shr 1);
+ Alignment:=Alignment or (Alignment shr 2);
+ Alignment:=Alignment or (Alignment shr 4);
+ Alignment:=Alignment or (Alignment shr 8);
+ Alignment:=Alignment or (Alignment shr 16);
+ fAlignment:=(Alignment or (Alignment shr 32))+1;
+
+ fOffsetRedBlackTree:=TVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
+ fSizeRedBlackTree:=TVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
+
+ TVulkanDeviceMemoryChunkBlock.Create(self,0,pSize,false);
+
+ if assigned(fMemoryManager.fLastMemoryChunk) then begin
+  fMemoryManager.fLastMemoryChunk.fNextMemoryChunk:=self;
+  fPreviousMemoryChunk:=fMemoryManager.fLastMemoryChunk;
+ end else begin
+  fMemoryManager.fFirstMemoryChunk:=self;
+  fPreviousMemoryChunk:=nil;
+ end;
+ fMemoryManager.fLastMemoryChunk:=self;
+ fNextMemoryChunk:=nil;
+
+end;
+
+destructor TVulkanDeviceMemoryChunk.Destroy;
+begin
+
+ if assigned(fOffsetRedBlackTree) then begin
+  while assigned(fOffsetRedBlackTree.fRoot) do begin
+   fOffsetRedBlackTree.fRoot.fValue.Free;
+  end;
+ end;
+
+ if assigned(fPreviousMemoryChunk) then begin
+  fPreviousMemoryChunk.fNextMemoryChunk:=fNextMemoryChunk;
+ end else if fMemoryManager.fFirstMemoryChunk=self then begin
+  fMemoryManager.fFirstMemoryChunk:=fNextMemoryChunk;
+ end;
+ if assigned(fNextMemoryChunk) then begin
+  fNextMemoryChunk.fPreviousMemoryChunk:=fPreviousMemoryChunk;
+ end else if fMemoryManager.fLastMemoryChunk=self then begin
+  fMemoryManager.fLastMemoryChunk:=fPreviousMemoryChunk;
+ end;
+
+ if fMemoryHandle<>VK_NULL_HANDLE then begin
+  if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+   fMemoryManager.fDevice.Commands.UnmapMemory(fMemoryManager.fDevice.Handle,fMemoryHandle);
+  end;
+  fMemoryManager.fDevice.Commands.FreeMemory(fMemoryManager.fDevice.Handle,fMemoryHandle,fMemoryManager.fAllocationCallbacks);
+ end;
+
+ fOffsetRedBlackTree.Free;
+ fSizeRedBlackTree.Free;
+
+ fMemoryHandle:=VK_NULL_HANDLE;
+
+ inherited Destroy;
+end;
+
+function TVulkanDeviceMemoryChunk.AllocateMemory(out pOffset:TVkDeviceSize;const pSize:TVkDeviceSize):boolean;
+var Node,OtherNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    MemoryChunkBlock:TVulkanDeviceMemoryChunkBlock;
+    TempOffset,TempSize,Size:TVkDeviceSize;
+begin
+ result:=false;
+
+ Size:=pSize;
+
+ // Ensure alignment
+ if (Size and (fAlignment-1))<>0 then begin
+  inc(Size,fAlignment-(Size and (fAlignment-1)));
+ end;
+
+ // Best-fit search
+ Node:=fSizeRedBlackTree.fRoot;
+ while assigned(Node) do begin
+  if Size<Node.fKey then begin
+   if assigned(Node.fLeft) then begin
+    // If free block is too big, then go to left
+    Node:=Node.fLeft;
+    continue;
+   end else begin
+    // If free block is too big and there is no left children node, then try to find suitable smaller but not to small free blocks
+    while assigned(Node) and (Node.fKey>Size) do begin
+     OtherNode:=Node.Predecessor;
+     if assigned(OtherNode) and (OtherNode.fKey>=Size) then begin
+      Node:=OtherNode;
+     end else begin
+      break;
+     end;
+    end;
+    break;
+   end;
+  end else if Size>Node.fKey then begin
+   if assigned(Node.fRight) then begin
+    // If free block is too small, go to right
+    Node:=Node.fRight;
+    continue;
+   end else begin
+    // If free block is too small and there is no right children node, Try to find suitable bigger but not to small free blocks
+    while assigned(Node) and (Node.fKey<Size) do begin
+     OtherNode:=Node.Successor;
+     if assigned(OtherNode) then begin
+      Node:=OtherNode;
+     end else begin
+      break;
+     end;
+    end;
+    break;
+   end;
+  end else begin
+   // Perfect match
+   break;
+  end;
+ end;
+
+ if assigned(Node) and (Node.fKey>=Size) then begin
+  MemoryChunkBlock:=Node.fValue;
+  TempOffset:=MemoryChunkBlock.Offset;
+  TempSize:=MemoryChunkBlock.Size;
+  if TempSize=Size then begin
+   MemoryChunkBlock.Update(MemoryChunkBlock.Offset,MemoryChunkBlock.Size,true);
+  end else begin
+   MemoryChunkBlock.Update(TempOffset,Size,true);
+   TVulkanDeviceMemoryChunkBlock.Create(self,TempOffset+Size,TempSize-Size,false);
+  end;
+  pOffset:=TempOffset;
+  result:=true;
+ end;
+
+end;
+
+function TVulkanDeviceMemoryChunk.ReallocateMemory(var pOffset:TVkDeviceSize;const pSize:TVkDeviceSize):boolean;
+var Node,OtherNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    MemoryChunkBlock,OtherMemoryChunkBlock:TVulkanDeviceMemoryChunkBlock;
+    Size,TempOffset,TempSize:TVkDeviceSize;
+begin
+ result:=false;
+
+ Size:=pSize;
+
+ // Ensure alignment
+ if (Size and (fAlignment-1))<>0 then begin
+  inc(Size,fAlignment-(Size and (fAlignment-1)));
+ end;
+
+ Node:=fOffsetRedBlackTree.Find(pOffset);
+ if assigned(Node) then begin
+  MemoryChunkBlock:=Node.fValue;
+  if MemoryChunkBlock.fUsed then begin
+   if Size=0 then begin
+    result:=FreeMemory(pOffset);
+   end else if MemoryChunkBlock.fSize=Size then begin
+    result:=true;
+   end else begin
+    if MemoryChunkBlock.fSize<Size then begin
+     OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
+     if assigned(OtherNode) and
+        (MemoryChunkBlock.fOffsetRedBlackTreeNode<>OtherNode) then begin
+      OtherMemoryChunkBlock:=OtherNode.fValue;
+      if not OtherMemoryChunkBlock.fUsed then begin
+       if (MemoryChunkBlock.fOffset+Size)<(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
+        MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,Size,true);
+        OtherMemoryChunkBlock.Update(MemoryChunkBlock.fOffset+Size,(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-(MemoryChunkBlock.fOffset+Size),false);
+        result:=true;
+       end else if (MemoryChunkBlock.fOffset+Size)=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
+        MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,Size,true);
+        OtherMemoryChunkBlock.Free;
+        result:=true;
+       end;
+      end;
+     end;
+    end else if MemoryChunkBlock.fSize>Size then begin
+     OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
+     if assigned(OtherNode) and
+        (MemoryChunkBlock.fOffsetRedBlackTreeNode<>OtherNode) and
+        not OtherNode.fValue.fUsed then begin
+      OtherMemoryChunkBlock:=OtherNode.fValue;
+      TempOffset:=MemoryChunkBlock.fOffset+Size;
+      TempSize:=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-TempOffset;
+      MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,Size,true);
+      OtherMemoryChunkBlock.Update(TempOffset,TempSize,false);
+      result:=true;
+     end else begin
+      TempOffset:=MemoryChunkBlock.fOffset+Size;
+      TempSize:=(MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)-TempOffset;
+      MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,Size,true);
+      TVulkanDeviceMemoryChunkBlock.Create(self,TempOffset,TempSize,false);
+      result:=true;
+     end;
+    end;
+   end;
+  end;
+ end;
+
+end;
+
+function TVulkanDeviceMemoryChunk.FreeMemory(const pOffset:TVkDeviceSize):boolean;
+var Node,OtherNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    MemoryChunkBlock,OtherMemoryChunkBlock:TVulkanDeviceMemoryChunkBlock;
+    TempOffset,TempSize:TVkDeviceSize;
+begin
+ result:=false;
+ Node:=fOffsetRedBlackTree.Find(pOffset);
+ if assigned(Node) then begin
+  MemoryChunkBlock:=Node.fValue;
+  if MemoryChunkBlock.fUsed then begin
+   // Freeing including coalescing free blocks
+   while assigned(Node) do begin
+
+    // Coalescing previous free block with current block
+    OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Predecessor;
+    if assigned(OtherNode) and not OtherNode.fValue.fUsed then begin
+     OtherMemoryChunkBlock:=OtherNode.fValue;
+     TempOffset:=OtherMemoryChunkBlock.fOffset;
+     TempSize:=(MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)-TempOffset;
+     MemoryChunkBlock.Free;
+     OtherMemoryChunkBlock.Update(TempOffset,TempSize,false);
+     MemoryChunkBlock:=OtherMemoryChunkBlock;
+     Node:=OtherNode;
+     continue;
+    end;
+
+    // Coalescing current block with next free block
+    OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
+    if assigned(OtherNode) and not OtherNode.fValue.fUsed then begin
+     OtherMemoryChunkBlock:=OtherNode.fValue;
+     TempOffset:=MemoryChunkBlock.fOffset;
+     TempSize:=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-TempOffset;
+     OtherMemoryChunkBlock.Free;
+     MemoryChunkBlock.Update(TempOffset,TempSize,false);
+     continue;
+    end;
+
+    if MemoryChunkBlock.fUsed then begin
+     // Mark block as free
+     MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,MemoryChunkBlock.fSize,false);
+    end;
+    break;
+
+   end;
+  end;
+ end;
+end;
+
+constructor TVulkanDeviceMemoryBlock.Create(const pMemoryManager:TVulkanDeviceMemoryManager;
+                                            const pMemoryChunk:TVulkanDeviceMemoryChunk;
+                                            const pOffset:TVkDeviceSize;
+                                            const pSize:TVkDeviceSize);
+begin
+
+ inherited Create;
+
+ fMemoryManager:=pMemoryManager;
+
+ fMemoryChunk:=pMemoryChunk;
+
+ fOffset:=pSize;
+
+ fSize:=pOffset;
+
+ if assigned(fMemoryManager.fLastMemoryBlock) then begin
+  fMemoryManager.fLastMemoryBlock.fNextMemoryBlock:=self;
+  fPreviousMemoryBlock:=fMemoryManager.fLastMemoryBlock;
+ end else begin
+  fMemoryManager.fFirstMemoryBlock:=self;
+  fPreviousMemoryBlock:=nil;
+ end;
+ fMemoryManager.fLastMemoryBlock:=self;
+ fNextMemoryBlock:=nil;
+
+end;
+
+destructor TVulkanDeviceMemoryBlock.Destroy;
+begin
+ if assigned(fPreviousMemoryBlock) then begin
+  fPreviousMemoryBlock.fNextMemoryBlock:=fNextMemoryBlock;
+ end else if fMemoryManager.fFirstMemoryBlock=self then begin
+  fMemoryManager.fFirstMemoryBlock:=fNextMemoryBlock;
+ end;
+ if assigned(fNextMemoryBlock) then begin
+  fNextMemoryBlock.fPreviousMemoryBlock:=fPreviousMemoryBlock;
+ end else if fMemoryManager.fLastMemoryBlock=self then begin
+  fMemoryManager.fLastMemoryBlock:=fPreviousMemoryBlock;
+ end;
+ inherited Destroy;
+end;
+
+constructor TVulkanDeviceMemoryManager.Create(const pDevice:TVulkanDevice;
+                                              const pAllocationManager:TVulkanAllocationManager=nil);
+begin
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ if assigned(pAllocationManager) then begin
+  fAllocationManager:=pAllocationManager;
+ end else begin
+  fAllocationManager:=fDevice.fAllocationManager;
+ end;
+
+ if assigned(fAllocationManager) then begin
+  fAllocationCallbacks:=@fAllocationManager.fAllocationCallbacks;
+ end else begin
+  fAllocationCallbacks:=nil;
+ end;
+
+ fFirstMemoryChunk:=nil;
+ fLastMemoryChunk:=nil;
+
+ fFirstMemoryBlock:=nil;
+ fLastMemoryBlock:=nil;
+
+end;
+
+destructor TVulkanDeviceMemoryManager.Destroy;
+begin
+ while assigned(fFirstMemoryBlock) do begin
+  fFirstMemoryBlock.Free;
+ end;
+ while assigned(fFirstMemoryChunk) do begin
+  fFirstMemoryChunk.Free;
+ end;
+ inherited Destroy;
+end;
+
+function TVulkanDeviceMemoryManager.AllocateMemoryBlock(const pSize:TVkDeviceSize;
+                                                        const pMemoryPropertyFlags:TVkMemoryPropertyFlags):TVulkanDeviceMemoryBlock;
+var Index:TVkInt32;
+    MemoryChunk:TVulkanDeviceMemoryChunk;
+    Offset:TVkDeviceSize;
+begin
+
+ // Try first to allocate a block inside already existent chunks
+ MemoryChunk:=fFirstMemoryChunk;
+ while assigned(MemoryChunk) do begin
+  if (MemoryChunk.fMemoryPropertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags then begin
+   if MemoryChunk.AllocateMemory(Offset,pSize) then begin
+    result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pSize);
+    exit;
+   end;
+  end;
+  MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+ end;
+
+ // Otherwise allocate a block inside a new chunk
+ MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,VulkanDeviceSizeRoundUpToPowerOfTwo(Max(1 shl 25,pSize shl 1)),pMemoryPropertyFlags);
+ result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pSize);
+
+end;
+
+function TVulkanDeviceMemoryManager.FreeMemoryBlock(const pMemoryBlock:TVulkanDeviceMemoryBlock):boolean;
+var MemoryChunk:TVulkanDeviceMemoryChunk;
+begin
+ result:=assigned(pMemoryBlock);
+ if result then begin
+  MemoryChunk:=pMemoryBlock.fMemoryChunk;
+  result:=MemoryChunk.FreeMemory(pMemoryBlock.fOffset);
+  if result then begin
+   pMemoryBlock.Free;
+   if assigned(MemoryChunk.fOffsetRedBlackTree.fRoot) and
+      (MemoryChunk.fOffsetRedBlackTree.fRoot.fValue.fOffset=0) and
+      (MemoryChunk.fOffsetRedBlackTree.fRoot.fValue.fSize=MemoryChunk.fSize) and
+      not (assigned(MemoryChunk.fOffsetRedBlackTree.fRoot.fLeft) or assigned(MemoryChunk.fOffsetRedBlackTree.fRoot.fRight)) then begin
+    MemoryChunk.Free;  
+   end;
+  end;
+ end;
+end;
+
+constructor TVulkanBuffer.Create(const pDevice:TVulkanDevice;
+                                 const pInitializationData:pointer;
+                                 const pSize:TVkDeviceSize;
+                                 const pAllocationManager:TVulkanAllocationManager=nil);
+begin
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ if assigned(pAllocationManager) then begin
+  fAllocationManager:=pAllocationManager;
+ end else begin
+  fAllocationManager:=fDevice.fAllocationManager;
+ end;
+
+ if assigned(fAllocationManager) then begin
+  fAllocationCallbacks:=@fAllocationManager.fAllocationCallbacks;
+ end else begin
+  fAllocationCallbacks:=nil;
+ end;
+
+ fBufferHandle:=VK_NULL_HANDLE;
+
+ fMemoryHandle:=VK_NULL_HANDLE;
+
+ fOwnsHandle:=true;
+
+ fSize:=pSize;
+
+end;
+
+destructor TVulkanBuffer.Destroy;
+begin
+ if (fBufferHandle<>VK_NULL_HANDLE) and fOwnsHandle then begin
+  fDevice.Commands.DestroyBuffer(fDevice.Handle,fBufferHandle,fAllocationCallbacks);
+ end;
+ if (fMemoryHandle<>VK_NULL_HANDLE) and fOwnsHandle then begin
+  fDevice.Commands.FreeMemory(fDevice.Handle,fMemoryHandle,fAllocationCallbacks);
+ end;
+ fBufferHandle:=VK_NULL_HANDLE;
+ fMemoryHandle:=VK_NULL_HANDLE;
+ inherited Destroy;
+end;
+
+function TVulkanBuffer.Map:PVkVoid;
+begin
+ result:=nil;
+ HandleResultCode(fDevice.Commands.MapMemory(fDevice.Handle,fMemoryHandle,0,fSize,0,@result));
+end;
+
+procedure TVulkanBuffer.Unmap;
+begin
+ fDevice.Commands.UnmapMemory(fDevice.Handle,fMemoryHandle);
+end;
+
+procedure TVulkanBuffer.Bind;
+begin
+ HandleResultCode(fDevice.Commands.BindBufferMemory(fDevice.Handle,fBufferHandle,fMemoryHandle,0));
+end;
+
+constructor TVulkanSwapChain.Create(const pDevice:TVulkanDevice;
+                                    const pOldSwapChain:TVulkanSwapChain=nil;
+                                    const pAllocationManager:TVulkanAllocationManager=nil);
+begin
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ if assigned(pAllocationManager) then begin
+  fAllocationManager:=pAllocationManager;
+ end else begin
+  fAllocationManager:=fDevice.fAllocationManager;
+ end;
+
+ if assigned(fAllocationManager) then begin
+  fAllocationCallbacks:=@fAllocationManager.fAllocationCallbacks;
+ end else begin
+  fAllocationCallbacks:=nil;
+ end;
+
+ fSwapChainHandle:=VK_NULL_HANDLE;
+
+ FillChar(fSwapChainCreateInfo,SizeOf(TVkSwapChainCreateInfoKHR),#0);
+ fSwapChainCreateInfo.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+ if assigned(pOldSwapChain) then begin
+  fSwapChainCreateInfo.oldSwapchain:=pOldSwapChain.fSwapChainHandle;
+ end else begin
+  fSwapChainCreateInfo.oldSwapchain:=VK_NULL_HANDLE;
+ end;
+
+ fPointerToSwapChainCreateInfo:=@fSwapChainCreateInfo;
+
+ fOwnsHandle:=true;
+
+end;
+
+destructor TVulkanSwapChain.Destroy;
+begin
+ if (fSwapChainHandle<>VK_NULL_HANDLE) and fOwnsHandle then begin
+  fDevice.fDeviceVulkan.DestroySwapChainKHR(fDevice.Handle,fSwapChainHandle,fAllocationCallbacks);
+ end;
+ inherited Destroy;
+end;
+
+procedure TVulkanSwapChain.Initialize;
+begin
+ if (fSwapChainHandle=VK_NULL_HANDLE) and fOwnsHandle then begin
+  HandleResultCode(fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.Handle,@fSwapChainCreateInfo,fAllocationCallbacks,@fSwapChainHandle));
  end;
 end;
 
