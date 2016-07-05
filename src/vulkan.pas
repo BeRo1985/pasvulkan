@@ -170,7 +170,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=15;
+      VK_HEADER_VERSION=19;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -210,7 +210,7 @@ const VK_NULL_HANDLE=0;
       VK_ANDROID_NATIVE_BUFFER_SPEC_VERSION=4;
       VK_ANDROID_NATIVE_BUFFER_NUMBER=11;
       VK_ANDROID_NATIVE_BUFFER_NAME='VK_ANDROID_native_buffer';
-      VK_EXT_DEBUG_REPORT_SPEC_VERSION=2;
+      VK_EXT_DEBUG_REPORT_SPEC_VERSION=3;
       VK_EXT_DEBUG_REPORT_EXTENSION_NAME='VK_EXT_debug_report';
       VK_NV_GLSL_SHADER_SPEC_VERSION=1;
       VK_NV_GLSL_SHADER_EXTENSION_NAME='VK_NV_glsl_shader';
@@ -220,26 +220,74 @@ const VK_NULL_HANDLE=0;
       VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME='VK_KHR_sampler_mirror_clamp_to_edge';
       VK_IMG_FILTER_CUBIC_SPEC_VERSION=1;
       VK_IMG_FILTER_CUBIC_EXTENSION_NAME='VK_IMG_filter_cubic';
-      VK_AMD_EXTENSION_1_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_1_EXTENSION_NAME='VK_AMD_extension_1';
-      VK_AMD_EXTENSION_2_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_2_EXTENSION_NAME='VK_AMD_extension_2';
+      VK_AMD_EXTENSION_17_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_17_EXTENSION_NAME='VK_AMD_extension_17';
+      VK_AMD_EXTENSION_18_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_18_EXTENSION_NAME='VK_AMD_extension_18';
       VK_AMD_RASTERIZATION_ORDER_SPEC_VERSION=1;
       VK_AMD_RASTERIZATION_ORDER_EXTENSION_NAME='VK_AMD_rasterization_order';
-      VK_AMD_EXTENSION_4_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_4_EXTENSION_NAME='VK_AMD_extension_4';
-      VK_AMD_EXTENSION_5_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_5_EXTENSION_NAME='VK_AMD_extension_5';
-      VK_AMD_EXTENSION_6_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_6_EXTENSION_NAME='VK_AMD_extension_6';
+      VK_AMD_EXTENSION_20_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_20_EXTENSION_NAME='VK_AMD_extension_20';
+      VK_AMD_SHADER_TRINARY_MINMAX_SPEC_VERSION=1;
+      VK_AMD_SHADER_TRINARY_MINMAX_EXTENSION_NAME='VK_AMD_shader_trinary_minmax';
+      VK_AMD_SHADER_EXPLICIT_VERTEX_PARAMETER_SPEC_VERSION=1;
+      VK_AMD_SHADER_EXPLICIT_VERTEX_PARAMETER_EXTENSION_NAME='VK_AMD_shader_explicit_vertex_parameter';
       VK_EXT_DEBUG_MARKER_SPEC_VERSION=3;
       VK_EXT_DEBUG_MARKER_EXTENSION_NAME='VK_EXT_debug_marker';
-      VK_AMD_EXTENSION_7_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_7_EXTENSION_NAME='VK_AMD_extension_7';
-      VK_AMD_EXTENSION_8_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_8_EXTENSION_NAME='VK_AMD_extension_8';
-      VK_AMD_EXTENSION_9_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_9_EXTENSION_NAME='VK_AMD_extension_9';
+      VK_AMD_EXTENSION_24_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_24_EXTENSION_NAME='VK_AMD_extension_24';
+      VK_AMD_EXTENSION_25_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_25_EXTENSION_NAME='VK_AMD_extension_25';
+      VK_AMD_GCN_SHADER_SPEC_VERSION=1;
+      VK_AMD_GCN_SHADER_EXTENSION_NAME='VK_AMD_gcn_shader';
+      VK_NV_EXTENSION_27_SPEC_VERSION=0;
+      VK_NV_EXTENSION_27_EXTENSION_NAME='VK_NV_extension_27';
+      VK_EXT_EXTENSION_28_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_28_EXTENSION_NAME='VK_NV_extension_28';
+      VK_NVX_EXTENSION_29_SPEC_VERSION=0;
+      VK_NVX_EXTENSION_29_EXTENSION_NAME='VK_NVX_extension_29';
+      VK_NVX_EXTENSION_30_SPEC_VERSION=0;
+      VK_NVX_EXTENSION_30_EXTENSION_NAME='VK_NVX_extension_30';
+      VK_NVX_EXTENSION_31_SPEC_VERSION=0;
+      VK_NVX_EXTENSION_31_EXTENSION_NAME='VK_NVX_extension_31';
+      VK_AMD_EXTENSION_32_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_32_EXTENSION_NAME='VK_AMD_extension_32';
+      VK_AMD_EXTENSION_33_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_33_EXTENSION_NAME='VK_AMD_extension_33';
+      VK_AMD_EXTENSION_34_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_34_EXTENSION_NAME='VK_AMD_extension_34';
+      VK_AMD_EXTENSION_35_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_35_EXTENSION_NAME='VK_AMD_extension_35';
+      VK_AMD_EXTENSION_36_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_36_EXTENSION_NAME='VK_AMD_extension_36';
+      VK_AMD_EXTENSION_37_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_37_EXTENSION_NAME='VK_AMD_extension_37';
+      VK_AMD_EXTENSION_38_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_38_EXTENSION_NAME='VK_AMD_extension_38';
+      VK_AMD_EXTENSION_39_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_39_EXTENSION_NAME='VK_AMD_extension_39';
+      VK_AMD_EXTENSION_40_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_40_EXTENSION_NAME='VK_AMD_extension_40';
+      VK_AMD_EXTENSION_41_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_41_EXTENSION_NAME='VK_AMD_extension_41';
+      VK_AMD_EXTENSION_42_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_42_EXTENSION_NAME='VK_AMD_extension_42';
+      VK_AMD_EXTENSION_43_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_43_EXTENSION_NAME='VK_AMD_extension_43';
+      VK_AMD_EXTENSION_44_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_44_EXTENSION_NAME='VK_AMD_extension_44';
+      VK_AMD_EXTENSION_45_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_45_EXTENSION_NAME='VK_AMD_extension_45';
+      VK_AMD_EXTENSION_46_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_46_EXTENSION_NAME='VK_AMD_extension_46';
+      VK_AMD_EXTENSION_47_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_47_EXTENSION_NAME='VK_AMD_extension_47';
+      VK_NVX_EXTENSION_48_SPEC_VERSION=0;
+      VK_NVX_EXTENSION_48_EXTENSION_NAME='VK_NVX_extension_48';
+      VK_GOOGLE_EXTENSION_49_SPEC_VERSION=0;
+      VK_GOOGLE_EXTENSION_49_EXTENSION_NAME='VK_GOOGLE_extension_49';
+      VK_GOOGLE_EXTENSION_50_SPEC_VERSION=0;
+      VK_GOOGLE_EXTENSION_50_EXTENSION_NAME='VK_GOOGLE_extension_50';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -2017,9 +2065,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       inheritedQueries:TVkBool32; //< Queries may be inherited from primary to secondary command buffers
      end;
 
-     // Any given element of ppEnabledLayerNames must: be the name of a layer present on the system, exactly matching a string returned in the TVkLayerProperties structure by vkEnumerateInstanceLayerProperties
-     // Any given element of ppEnabledExtensionNames must: be the name of an extension present on the system, exactly matching a string returned in the TVkExtensionProperties structure by vkEnumerateInstanceExtensionProperties
-     // If an extension listed in ppEnabledExtensionNames is provided as part of a layer, then both the layer and extension must: be enabled to enable that extension
      PPVkInstanceCreateInfo=^PVkInstanceCreateInfo;
      PVkInstanceCreateInfo=^TVkInstanceCreateInfo;
      TVkInstanceCreateInfo=record
@@ -2311,7 +2356,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       size:TVkDeviceSize; //< Amount of bytes to sync
      end;
 
-     // oldLayout must: be TVK_IMAGE_LAYOUT_UNDEFINED, TVK_IMAGE_LAYOUT_PREINITIALIZED or the current layout of the image region affected by the barrier
+     // oldLayout must: be TVK_IMAGE_LAYOUT_UNDEFINED or the current layout of the image subresources affected by the barrier
      // newLayout mustnot: be TVK_IMAGE_LAYOUT_UNDEFINED or TVK_IMAGE_LAYOUT_PREINITIALIZED
      // If image was created with a sharing mode of TVK_SHARING_MODE_CONCURRENT, srcQueueFamilyIndex and dstQueueFamilyIndex must: both be TVK_QUEUE_FAMILY_IGNORED
      // If image was created with a sharing mode of TVK_SHARING_MODE_EXCLUSIVE, srcQueueFamilyIndex and dstQueueFamilyIndex must: either both be TVK_QUEUE_FAMILY_IGNORED, or both be a valid queue family (see <<devsandqueues-queueprops>>)
@@ -2702,6 +2747,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pSetLayouts:PVkDescriptorSetLayout;
      end;
 
+     // For a constantID specialization constant declared in a shader, size must: match the byte size of the constantID. If the specialization constant is of type boolean, size must: be the byte size of VkBool32
      PPVkSpecializationMapEntry=^PVkSpecializationMapEntry;
      PVkSpecializationMapEntry=^TVkSpecializationMapEntry;
      TVkSpecializationMapEntry=record
@@ -3304,9 +3350,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       flags:TVkFenceCreateFlags; //< Fence creation flags
      end;
 
-     // ppEnabledLayerNames must: either be TNULL or contain the same sequence of layer names that was enabled when creating the parent instance
-     // Any given element of ppEnabledExtensionNames must: be the name of an extension present on the system, exactly matching a string returned in the TVkExtensionProperties structure by vkEnumerateDeviceExtensionProperties
-     // If an extension listed in ppEnabledExtensionNames is provided as part of a layer, then both the layer and extension must: be enabled to enable that extension
      // The queueFamilyIndex member of any given element of pQueueCreateInfos must: be unique within pQueueCreateInfos
      PPVkDeviceCreateInfo=^PVkDeviceCreateInfo;
      PVkDeviceCreateInfo=^TVkDeviceCreateInfo;
@@ -3851,11 +3894,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkEnumeratePhysicalDevices=function(instance:TVkInstance;pPhysicalDeviceCount:PVkUInt32;pPhysicalDevices:PVkPhysicalDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // pName must: be the name of a supported command that has a first parameter of type TVkDevice, TVkQueue or TVkCommandBuffer, either in the core API or an enabled extension
      TvkGetDeviceProcAddr=function(device:TVkDevice;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // If instance is `NULL`, pName must: be one of: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
-     // If instance is not `NULL`, pName must: be the name of a core command or a command from an enabled extension, other than: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
+     // If instance is not `NULL`, pName mustnot: be vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
      TvkGetInstanceProcAddr=function(instance:TVkInstance;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetPhysicalDeviceProperties=procedure(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -3931,8 +3973,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
      // If buffer was created with the TVK_BUFFER_USAGE_STORAGE_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minStorageBufferOffsetAlignment
      // memory must: have been allocated using one of the memory types allowed in the memoryTypeBits member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer
-     // The size of buffer must: be less than or equal to the size of memory minus memoryOffset
      // memoryOffset must: be an integer multiple of the alignment member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer
+     // The size member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer must: be less than or equal to the size of memory minus memoryOffset
      TvkBindBufferMemory=function(device:TVkDevice;buffer:TVkBuffer;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetImageMemoryRequirements=procedure(device:TVkDevice;image:TVkImage;pMemoryRequirements:PVkMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -4148,7 +4190,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkBeginCommandBuffer=function(commandBuffer:TVkCommandBuffer;const pBeginInfo:PVkCommandBufferBeginInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // commandBuffer must: be in the recording state
-     // vkEndCommandBuffer mustnot: be called inside a render pass instance
+     // If commandBuffer is a primary command buffer, there mustnot: be an active render pass instance
      // All queries made <<queries-operation-active,active>> during the recording of commandBuffer must: have been made inactive
      TvkEndCommandBuffer=function(commandBuffer:TVkCommandBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -4163,10 +4205,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If the <<features-features-variableMultisampleRate,variable multisample rate>> feature is not supported, pipeline is a graphics pipeline, the current subpass has no attachments, and this is not the first call to this function with a graphics pipeline after transitioning to the current subpass, then the sample count specified by this pipeline must: match that set in the previous pipeline
      TvkCmdBindPipeline=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_VIEWPORT dynamic state enabled
      // firstViewport must: be less than TVkPhysicalDeviceLimits::maxViewports
      // The sum of firstViewport and viewportCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
      TvkCmdSetViewport=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewports:PVkViewport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_SCISSOR dynamic state enabled
      // firstScissor must: be less than TVkPhysicalDeviceLimits::maxViewports
      // The sum of firstScissor and scissorCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
      // The x and y members of offset must: be greater than or equal to `0`
@@ -4174,22 +4218,29 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // Evaluation of (offset.y + extent.height) mustnot: cause a signed integer addition overflow
      TvkCmdSetScissor=procedure(commandBuffer:TVkCommandBuffer;firstScissor:TVkUInt32;scissorCount:TVkUInt32;const pScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_LINE_WIDTH dynamic state enabled
      // If the <<features-features-wideLines,wide lines>> feature is not enabled, lineWidth must: be `1.0`
      TvkCmdSetLineWidth=procedure(commandBuffer:TVkCommandBuffer;lineWidth:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_DEPTH_BIAS dynamic state enabled
      // If the <<features-features-depthBiasClamp,depth bias clamping>> feature is not enabled, depthBiasClamp must: be code:0.0
      TvkCmdSetDepthBias=procedure(commandBuffer:TVkCommandBuffer;depthBiasConstantFactor:TVkFloat;depthBiasClamp:TVkFloat;depthBiasSlopeFactor:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_BLEND_CONSTANTS dynamic state enabled
      TvkCmdSetBlendConstants=procedure(commandBuffer:TVkCommandBuffer;const blendConstants:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_DEPTH_BOUNDS dynamic state enabled
      // minDepthBounds must: be between `0.0` and `1.0`, inclusive
      // maxDepthBounds must: be between `0.0` and `1.0`, inclusive
      TvkCmdSetDepthBounds=procedure(commandBuffer:TVkCommandBuffer;minDepthBounds:TVkFloat;maxDepthBounds:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_COMPARE_MASK dynamic state enabled
      TvkCmdSetStencilCompareMask=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;compareMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_WRITE_MASK dynamic state enabled
      TvkCmdSetStencilWriteMask=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;writeMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_REFERENCE dynamic state enabled
      TvkCmdSetStencilReference=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;reference:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
@@ -4378,14 +4429,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
      TvkCmdCopyImageToBuffer=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // dataSize must: be greater than `0`
      // dstOffset must: be less than the size of dstBuffer
      // dataSize must: be less than or equal to the size of dstBuffer minus dstOffset
      // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
      // dstOffset must: be a multiple of `4`
      // dataSize must: be less than or equal to `65536`
      // dataSize must: be a multiple of `4`
-     TvkCmdUpdateBuffer=procedure(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdUpdateBuffer=procedure(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // dstOffset must: be less than the size of dstBuffer
      // dstOffset must: be a multiple of `4`
@@ -4490,12 +4540,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // size must: be less than or equal to TVkPhysicalDeviceLimits::maxPushConstantsSize minus offset
      TvkCmdPushConstants=procedure(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
-     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
+     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
      // set
-     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_SAMPLED_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT set
-     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
-     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
+     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_SAMPLED_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+     // set
+     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
+     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
+     // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin.
      TvkCmdBeginRenderPass=procedure(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // The current subpass index must: be less than the number of subpasses in the render pass minus one
@@ -4513,7 +4565,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-     // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
+     // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
      // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
@@ -4655,11 +4707,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       EnumeratePhysicalDevices:TvkEnumeratePhysicalDevices;
 
-      // pName must: be the name of a supported command that has a first parameter of type TVkDevice, TVkQueue or TVkCommandBuffer, either in the core API or an enabled extension
       GetDeviceProcAddr:TvkGetDeviceProcAddr;
 
       // If instance is `NULL`, pName must: be one of: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
-      // If instance is not `NULL`, pName must: be the name of a core command or a command from an enabled extension, other than: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
+      // If instance is not `NULL`, pName mustnot: be vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
       GetInstanceProcAddr:TvkGetInstanceProcAddr;
 
       GetPhysicalDeviceProperties:TvkGetPhysicalDeviceProperties;
@@ -4735,8 +4786,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
       // If buffer was created with the TVK_BUFFER_USAGE_STORAGE_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minStorageBufferOffsetAlignment
       // memory must: have been allocated using one of the memory types allowed in the memoryTypeBits member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer
-      // The size of buffer must: be less than or equal to the size of memory minus memoryOffset
       // memoryOffset must: be an integer multiple of the alignment member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer
+      // The size member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer must: be less than or equal to the size of memory minus memoryOffset
       BindBufferMemory:TvkBindBufferMemory;
 
       GetImageMemoryRequirements:TvkGetImageMemoryRequirements;
@@ -4952,7 +5003,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       BeginCommandBuffer:TvkBeginCommandBuffer;
 
       // commandBuffer must: be in the recording state
-      // vkEndCommandBuffer mustnot: be called inside a render pass instance
+      // If commandBuffer is a primary command buffer, there mustnot: be an active render pass instance
       // All queries made <<queries-operation-active,active>> during the recording of commandBuffer must: have been made inactive
       EndCommandBuffer:TvkEndCommandBuffer;
 
@@ -4967,10 +5018,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If the <<features-features-variableMultisampleRate,variable multisample rate>> feature is not supported, pipeline is a graphics pipeline, the current subpass has no attachments, and this is not the first call to this function with a graphics pipeline after transitioning to the current subpass, then the sample count specified by this pipeline must: match that set in the previous pipeline
       CmdBindPipeline:TvkCmdBindPipeline;
 
+      // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_VIEWPORT dynamic state enabled
       // firstViewport must: be less than TVkPhysicalDeviceLimits::maxViewports
       // The sum of firstViewport and viewportCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
       CmdSetViewport:TvkCmdSetViewport;
 
+      // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_SCISSOR dynamic state enabled
       // firstScissor must: be less than TVkPhysicalDeviceLimits::maxViewports
       // The sum of firstScissor and scissorCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
       // The x and y members of offset must: be greater than or equal to `0`
@@ -4978,22 +5031,29 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // Evaluation of (offset.y + extent.height) mustnot: cause a signed integer addition overflow
       CmdSetScissor:TvkCmdSetScissor;
 
+      // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_LINE_WIDTH dynamic state enabled
       // If the <<features-features-wideLines,wide lines>> feature is not enabled, lineWidth must: be `1.0`
       CmdSetLineWidth:TvkCmdSetLineWidth;
 
+      // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_DEPTH_BIAS dynamic state enabled
       // If the <<features-features-depthBiasClamp,depth bias clamping>> feature is not enabled, depthBiasClamp must: be code:0.0
       CmdSetDepthBias:TvkCmdSetDepthBias;
 
+      // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_BLEND_CONSTANTS dynamic state enabled
       CmdSetBlendConstants:TvkCmdSetBlendConstants;
 
+      // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_DEPTH_BOUNDS dynamic state enabled
       // minDepthBounds must: be between `0.0` and `1.0`, inclusive
       // maxDepthBounds must: be between `0.0` and `1.0`, inclusive
       CmdSetDepthBounds:TvkCmdSetDepthBounds;
 
+      // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_COMPARE_MASK dynamic state enabled
       CmdSetStencilCompareMask:TvkCmdSetStencilCompareMask;
 
+      // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_WRITE_MASK dynamic state enabled
       CmdSetStencilWriteMask:TvkCmdSetStencilWriteMask;
 
+      // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_REFERENCE dynamic state enabled
       CmdSetStencilReference:TvkCmdSetStencilReference;
 
       // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
@@ -5182,7 +5242,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
       CmdCopyImageToBuffer:TvkCmdCopyImageToBuffer;
 
-      // dataSize must: be greater than `0`
       // dstOffset must: be less than the size of dstBuffer
       // dataSize must: be less than or equal to the size of dstBuffer minus dstOffset
       // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
@@ -5294,12 +5353,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // size must: be less than or equal to TVkPhysicalDeviceLimits::maxPushConstantsSize minus offset
       CmdPushConstants:TvkCmdPushConstants;
 
-      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
-      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
+      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
       // set
-      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_SAMPLED_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT set
-      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
-      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
+      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_SAMPLED_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+      // set
+      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
+      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
+      // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin.
       CmdBeginRenderPass:TvkCmdBeginRenderPass;
 
       // The current subpass index must: be less than the number of subpasses in the render pass minus one
@@ -5317,7 +5378,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-      // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
+      // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
       // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
@@ -5464,11 +5525,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function EnumeratePhysicalDevices(instance:TVkInstance;pPhysicalDeviceCount:PVkUInt32;pPhysicalDevices:PVkPhysicalDevice):TVkResult; virtual;
 
-       // pName must: be the name of a supported command that has a first parameter of type TVkDevice, TVkQueue or TVkCommandBuffer, either in the core API or an enabled extension
        function GetDeviceProcAddr(device:TVkDevice;const pName:PVkChar):TPFN_vkVoidFunction; virtual;
 
        // If instance is `NULL`, pName must: be one of: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
-       // If instance is not `NULL`, pName must: be the name of a core command or a command from an enabled extension, other than: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
+       // If instance is not `NULL`, pName mustnot: be vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
        function GetInstanceProcAddr(instance:TVkInstance;const pName:PVkChar):TPFN_vkVoidFunction; virtual;
 
        procedure GetPhysicalDeviceProperties(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties); virtual;
@@ -5544,8 +5604,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
        // If buffer was created with the TVK_BUFFER_USAGE_STORAGE_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minStorageBufferOffsetAlignment
        // memory must: have been allocated using one of the memory types allowed in the memoryTypeBits member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer
-       // The size of buffer must: be less than or equal to the size of memory minus memoryOffset
        // memoryOffset must: be an integer multiple of the alignment member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer
+       // The size member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer must: be less than or equal to the size of memory minus memoryOffset
        function BindBufferMemory(device:TVkDevice;buffer:TVkBuffer;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; virtual;
 
        procedure GetImageMemoryRequirements(device:TVkDevice;image:TVkImage;pMemoryRequirements:PVkMemoryRequirements); virtual;
@@ -5761,7 +5821,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function BeginCommandBuffer(commandBuffer:TVkCommandBuffer;const pBeginInfo:PVkCommandBufferBeginInfo):TVkResult; virtual;
 
        // commandBuffer must: be in the recording state
-       // vkEndCommandBuffer mustnot: be called inside a render pass instance
+       // If commandBuffer is a primary command buffer, there mustnot: be an active render pass instance
        // All queries made <<queries-operation-active,active>> during the recording of commandBuffer must: have been made inactive
        function EndCommandBuffer(commandBuffer:TVkCommandBuffer):TVkResult; virtual;
 
@@ -5776,10 +5836,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If the <<features-features-variableMultisampleRate,variable multisample rate>> feature is not supported, pipeline is a graphics pipeline, the current subpass has no attachments, and this is not the first call to this function with a graphics pipeline after transitioning to the current subpass, then the sample count specified by this pipeline must: match that set in the previous pipeline
        procedure CmdBindPipeline(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline); virtual;
 
+       // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_VIEWPORT dynamic state enabled
        // firstViewport must: be less than TVkPhysicalDeviceLimits::maxViewports
        // The sum of firstViewport and viewportCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
        procedure CmdSetViewport(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewports:PVkViewport); virtual;
 
+       // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_SCISSOR dynamic state enabled
        // firstScissor must: be less than TVkPhysicalDeviceLimits::maxViewports
        // The sum of firstScissor and scissorCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
        // The x and y members of offset must: be greater than or equal to `0`
@@ -5787,22 +5849,29 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // Evaluation of (offset.y + extent.height) mustnot: cause a signed integer addition overflow
        procedure CmdSetScissor(commandBuffer:TVkCommandBuffer;firstScissor:TVkUInt32;scissorCount:TVkUInt32;const pScissors:PVkRect2D); virtual;
 
+       // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_LINE_WIDTH dynamic state enabled
        // If the <<features-features-wideLines,wide lines>> feature is not enabled, lineWidth must: be `1.0`
        procedure CmdSetLineWidth(commandBuffer:TVkCommandBuffer;lineWidth:TVkFloat); virtual;
 
+       // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_DEPTH_BIAS dynamic state enabled
        // If the <<features-features-depthBiasClamp,depth bias clamping>> feature is not enabled, depthBiasClamp must: be code:0.0
        procedure CmdSetDepthBias(commandBuffer:TVkCommandBuffer;depthBiasConstantFactor:TVkFloat;depthBiasClamp:TVkFloat;depthBiasSlopeFactor:TVkFloat); virtual;
 
+       // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_BLEND_CONSTANTS dynamic state enabled
        procedure CmdSetBlendConstants(commandBuffer:TVkCommandBuffer;const blendConstants:TVkFloat); virtual;
 
+       // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_DEPTH_BOUNDS dynamic state enabled
        // minDepthBounds must: be between `0.0` and `1.0`, inclusive
        // maxDepthBounds must: be between `0.0` and `1.0`, inclusive
        procedure CmdSetDepthBounds(commandBuffer:TVkCommandBuffer;minDepthBounds:TVkFloat;maxDepthBounds:TVkFloat); virtual;
 
+       // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_COMPARE_MASK dynamic state enabled
        procedure CmdSetStencilCompareMask(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;compareMask:TVkUInt32); virtual;
 
+       // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_WRITE_MASK dynamic state enabled
        procedure CmdSetStencilWriteMask(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;writeMask:TVkUInt32); virtual;
 
+       // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_REFERENCE dynamic state enabled
        procedure CmdSetStencilReference(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;reference:TVkUInt32); virtual;
 
        // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
@@ -5991,14 +6060,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
        procedure CmdCopyImageToBuffer(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); virtual;
 
-       // dataSize must: be greater than `0`
        // dstOffset must: be less than the size of dstBuffer
        // dataSize must: be less than or equal to the size of dstBuffer minus dstOffset
        // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
        // dstOffset must: be a multiple of `4`
        // dataSize must: be less than or equal to `65536`
        // dataSize must: be a multiple of `4`
-       procedure CmdUpdateBuffer(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkUInt32); virtual;
+       procedure CmdUpdateBuffer(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkVoid); virtual;
 
        // dstOffset must: be less than the size of dstBuffer
        // dstOffset must: be a multiple of `4`
@@ -6103,12 +6171,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // size must: be less than or equal to TVkPhysicalDeviceLimits::maxPushConstantsSize minus offset
        procedure CmdPushConstants(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:PVkVoid); virtual;
 
-       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
-       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
+       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
        // set
-       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_SAMPLED_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT set
-       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
-       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
+       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_SAMPLED_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+       // set
+       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
+       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
+       // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin.
        procedure CmdBeginRenderPass(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents); virtual;
 
        // The current subpass index must: be less than the number of subpasses in the render pass minus one
@@ -6126,7 +6196,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-       // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
+       // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
        // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
        // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
        // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
@@ -6271,11 +6341,10 @@ var LibVulkan:pointer=nil;
 
     vkEnumeratePhysicalDevices:TvkEnumeratePhysicalDevices=nil;
 
-    // pName must: be the name of a supported command that has a first parameter of type TVkDevice, TVkQueue or TVkCommandBuffer, either in the core API or an enabled extension
     vkGetDeviceProcAddr:TvkGetDeviceProcAddr=nil;
 
     // If instance is `NULL`, pName must: be one of: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
-    // If instance is not `NULL`, pName must: be the name of a core command or a command from an enabled extension, other than: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
+    // If instance is not `NULL`, pName mustnot: be vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
     vkGetInstanceProcAddr:TvkGetInstanceProcAddr=nil;
 
     vkGetPhysicalDeviceProperties:TvkGetPhysicalDeviceProperties=nil;
@@ -6351,8 +6420,8 @@ var LibVulkan:pointer=nil;
     // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
     // If buffer was created with the TVK_BUFFER_USAGE_STORAGE_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minStorageBufferOffsetAlignment
     // memory must: have been allocated using one of the memory types allowed in the memoryTypeBits member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer
-    // The size of buffer must: be less than or equal to the size of memory minus memoryOffset
     // memoryOffset must: be an integer multiple of the alignment member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer
+    // The size member of the TVkMemoryRequirements structure returned from a call to vkGetBufferMemoryRequirements with buffer must: be less than or equal to the size of memory minus memoryOffset
     vkBindBufferMemory:TvkBindBufferMemory=nil;
 
     vkGetImageMemoryRequirements:TvkGetImageMemoryRequirements=nil;
@@ -6568,7 +6637,7 @@ var LibVulkan:pointer=nil;
     vkBeginCommandBuffer:TvkBeginCommandBuffer=nil;
 
     // commandBuffer must: be in the recording state
-    // vkEndCommandBuffer mustnot: be called inside a render pass instance
+    // If commandBuffer is a primary command buffer, there mustnot: be an active render pass instance
     // All queries made <<queries-operation-active,active>> during the recording of commandBuffer must: have been made inactive
     vkEndCommandBuffer:TvkEndCommandBuffer=nil;
 
@@ -6583,10 +6652,12 @@ var LibVulkan:pointer=nil;
     // If the <<features-features-variableMultisampleRate,variable multisample rate>> feature is not supported, pipeline is a graphics pipeline, the current subpass has no attachments, and this is not the first call to this function with a graphics pipeline after transitioning to the current subpass, then the sample count specified by this pipeline must: match that set in the previous pipeline
     vkCmdBindPipeline:TvkCmdBindPipeline=nil;
 
+    // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_VIEWPORT dynamic state enabled
     // firstViewport must: be less than TVkPhysicalDeviceLimits::maxViewports
     // The sum of firstViewport and viewportCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
     vkCmdSetViewport:TvkCmdSetViewport=nil;
 
+    // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_SCISSOR dynamic state enabled
     // firstScissor must: be less than TVkPhysicalDeviceLimits::maxViewports
     // The sum of firstScissor and scissorCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
     // The x and y members of offset must: be greater than or equal to `0`
@@ -6594,22 +6665,29 @@ var LibVulkan:pointer=nil;
     // Evaluation of (offset.y + extent.height) mustnot: cause a signed integer addition overflow
     vkCmdSetScissor:TvkCmdSetScissor=nil;
 
+    // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_LINE_WIDTH dynamic state enabled
     // If the <<features-features-wideLines,wide lines>> feature is not enabled, lineWidth must: be `1.0`
     vkCmdSetLineWidth:TvkCmdSetLineWidth=nil;
 
+    // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_DEPTH_BIAS dynamic state enabled
     // If the <<features-features-depthBiasClamp,depth bias clamping>> feature is not enabled, depthBiasClamp must: be code:0.0
     vkCmdSetDepthBias:TvkCmdSetDepthBias=nil;
 
+    // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_BLEND_CONSTANTS dynamic state enabled
     vkCmdSetBlendConstants:TvkCmdSetBlendConstants=nil;
 
+    // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_DEPTH_BOUNDS dynamic state enabled
     // minDepthBounds must: be between `0.0` and `1.0`, inclusive
     // maxDepthBounds must: be between `0.0` and `1.0`, inclusive
     vkCmdSetDepthBounds:TvkCmdSetDepthBounds=nil;
 
+    // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_COMPARE_MASK dynamic state enabled
     vkCmdSetStencilCompareMask:TvkCmdSetStencilCompareMask=nil;
 
+    // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_WRITE_MASK dynamic state enabled
     vkCmdSetStencilWriteMask:TvkCmdSetStencilWriteMask=nil;
 
+    // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_REFERENCE dynamic state enabled
     vkCmdSetStencilReference:TvkCmdSetStencilReference=nil;
 
     // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
@@ -6798,7 +6876,6 @@ var LibVulkan:pointer=nil;
     // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
     vkCmdCopyImageToBuffer:TvkCmdCopyImageToBuffer=nil;
 
-    // dataSize must: be greater than `0`
     // dstOffset must: be less than the size of dstBuffer
     // dataSize must: be less than or equal to the size of dstBuffer minus dstOffset
     // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
@@ -6910,12 +6987,14 @@ var LibVulkan:pointer=nil;
     // size must: be less than or equal to TVkPhysicalDeviceLimits::maxPushConstantsSize minus offset
     vkCmdPushConstants:TvkCmdPushConstants=nil;
 
-    // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
-    // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+    // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT set
+    // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL or TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
     // set
-    // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_SAMPLED_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT set
-    // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
-    // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
+    // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_SAMPLED_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+    // set
+    // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
+    // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
+    // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin.
     vkCmdBeginRenderPass:TvkCmdBeginRenderPass=nil;
 
     // The current subpass index must: be less than the number of subpasses in the render pass minus one
@@ -6933,7 +7012,7 @@ var LibVulkan:pointer=nil;
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-    // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: be compatible with the TVkFramebuffer used in the current render pass instance
+    // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
     // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
@@ -8846,7 +8925,7 @@ begin
  fCommands.CmdCopyImageToBuffer(commandBuffer,srcImage,srcImageLayout,dstBuffer,regionCount,pRegions);
 end;
 
-procedure TVulkan.CmdUpdateBuffer(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkUInt32);
+procedure TVulkan.CmdUpdateBuffer(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkVoid);
 begin
  fCommands.CmdUpdateBuffer(commandBuffer,dstBuffer,dstOffset,dataSize,pData);
 end;
