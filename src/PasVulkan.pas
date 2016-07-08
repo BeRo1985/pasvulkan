@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-08-17-48-0000                       *
+ *                        Version 2016-07-08-19-57-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1362,6 +1362,8 @@ type EVulkanException=class(Exception);
        fFrameBuffers:TVulkanSwapChainFrameBuffers;
        fCurrentBuffer:TVkUInt32;
        fRenderPass:TVulkanRenderPass;
+       fWidth:TVkUInt32;
+       fHeight:TVkUInt32;
        function GetCurrentImage:TVkImage;
        function GetCurrentFrameBuffer:TVkFrameBuffer;
       public
@@ -1392,6 +1394,8 @@ type EVulkanException=class(Exception);
        property RenderPass:TVulkanRenderPass read fRenderPass;
        property CurrentImage:TVkImage read GetCurrentImage;
        property CurrentFrameBuffer:TVkFrameBuffer read GetCurrentFrameBuffer;
+       property Width:TVkUInt32 read fWidth;
+       property Height:TVkUInt32 read fHeight;
      end;
 
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
@@ -6018,6 +6022,10 @@ begin
 
  fRenderPass:=nil;
 
+ fWidth:=0;
+
+ fHeight:=0;
+
  try
 
   if assigned(pQueueFamilyIndices) then begin
@@ -6067,6 +6075,10 @@ begin
   end else begin
    fSwapChainCreateInfo.imageExtent:=SurfaceCapabilities.CurrentExtent;
   end;
+
+  fWidth:=fSwapChainCreateInfo.imageExtent.width;
+
+  fHeight:=fSwapChainCreateInfo.imageExtent.height;
 
   fSwapChainCreateInfo.imageArrayLayers:=pImageArrayLayers;
   fSwapChainCreateInfo.imageUsage:=pImageUsage;
@@ -6301,7 +6313,7 @@ begin
   for Index:=0 to SwapChainImageCount-1 do begin
    Attachments[0]:=fSwapChainBuffers[Index].ImageView;
    Attachments[1]:=fDepthImageView;
-   HandleResultCode(fDevice.fDeviceVulkan.CreateFramebuffer(fDevice.fDeviceHandle,@FramebufferCreateInfo,fDevice.fAllocationCallbacks,@fFrameBuffers[0]));
+   HandleResultCode(fDevice.fDeviceVulkan.CreateFramebuffer(fDevice.fDeviceHandle,@FramebufferCreateInfo,fDevice.fAllocationCallbacks,@fFrameBuffers[Index]));
   end;
 
  except
