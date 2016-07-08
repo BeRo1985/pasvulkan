@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-08-20-02-0000                       *
+ *                        Version 2016-07-08-20-53-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1005,6 +1005,7 @@ type EVulkanException=class(Exception);
        fOffsetRedBlackTree:TVulkanDeviceMemoryChunkBlockRedBlackTree;
        fSizeRedBlackTree:TVulkanDeviceMemoryChunkBlockRedBlackTree;
        fMemoryTypeIndex:TVkUInt32;
+       fMemoryHeapIndex:TVkUInt32;
        fMemoryPropertyFlags:TVkMemoryPropertyFlags;
        fMemoryHandle:TVkDeviceMemory;
        fMemory:PVkVoid;
@@ -1012,6 +1013,7 @@ type EVulkanException=class(Exception);
        constructor Create(const pMemoryManager:TVulkanDeviceMemoryManager;
                           const pSize:TVkDeviceSize;
                           const pAlignment:TVkDeviceSize;
+                          const pMemoryTypeBits:TVkUInt32;
                           const pMemoryPropertyFlags:TVkMemoryPropertyFlags;
                           const pMemoryChunkList:PVulkanDeviceMemoryManagerChunkList;
                           const pMemoryHeapFlags:TVkMemoryHeapFlags=0);
@@ -1027,6 +1029,7 @@ type EVulkanException=class(Exception);
        property Size:TVkDeviceSize read fSize;
        property MemoryPropertyFlags:TVkMemoryPropertyFlags read fMemoryPropertyFlags;
        property MemoryTypeIndex:TVkUInt32 read fMemoryTypeIndex;
+       property MemoryHeapIndex:TVkUInt32 read fMemoryHeapIndex;
        property Handle:TVkDeviceMemory read fMemoryHandle;
        property Memory:PVkVoid read fMemory;
      end;
@@ -1074,6 +1077,7 @@ type EVulkanException=class(Exception);
        constructor Create(const pDevice:TVulkanDevice);
        destructor Destroy; override;
        function AllocateMemoryBlock(const pSize:TVkDeviceSize;
+                                    const pMemoryTypeBits:TVkUInt32;
                                     const pMemoryPropertyFlags:TVkMemoryPropertyFlags;
                                     const pAlignment:TVkDeviceSize=16;
                                     const pOwnSingleMemoryChunk:boolean=false):TVulkanDeviceMemoryBlock;
@@ -4313,6 +4317,7 @@ end;
 constructor TVulkanDeviceMemoryChunk.Create(const pMemoryManager:TVulkanDeviceMemoryManager;
                                             const pSize:TVkDeviceSize;
                                             const pAlignment:TVkDeviceSize;
+                                            const pMemoryTypeBits:TVkUInt32;
                                             const pMemoryPropertyFlags:TVkMemoryPropertyFlags;
                                             const pMemoryChunkList:PVulkanDeviceMemoryManagerChunkList;
                                             const pMemoryHeapFlags:TVkMemoryHeapFlags=0);
@@ -4347,17 +4352,20 @@ begin
  fMemory:=nil;
 
  fMemoryTypeIndex:=0;
+ fMemoryHeapIndex:=0;
  PhysicalDevice:=fMemoryManager.fDevice.fPhysicalDevice;
  BestSize:=0;
  Found:=false;
  for Index:=0 to length(PhysicalDevice.fMemoryProperties.memoryTypes)-1 do begin
-  if (PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags then begin
+  if ((pMemoryTypeBits and (TVkUInt32(1) shl Index))<>0) and
+     ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags) then begin
    HeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
    CurrentSize:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size;
    if ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and pMemoryHeapFlags)=pMemoryHeapFlags) and
       (pSize<=CurrentSize) and (CurrentSize>BestSize) then begin
     BestSize:=CurrentSize;
-    fMemoryTypeIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
+    fMemoryTypeIndex:=Index;
+    fMemoryHeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
     Found:=true;
    end;
   end;
@@ -4848,6 +4856,7 @@ begin
 end;
 
 function TVulkanDeviceMemoryManager.AllocateMemoryBlock(const pSize:TVkDeviceSize;
+                                                        const pMemoryTypeBits:TVkUInt32;
                                                         const pMemoryPropertyFlags:TVkMemoryPropertyFlags;
                                                         const pAlignment:TVkDeviceSize=16;
                                                         const pOwnSingleMemoryChunk:boolean=false):TVulkanDeviceMemoryBlock;
@@ -4872,7 +4881,7 @@ begin
   fLock.Acquire;
   try
    // Allocate a block inside a new chunk
-   MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,pSize,Alignment,pMemoryPropertyFlags,MemoryChunkList);
+   MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,pSize,Alignment,pMemoryTypeBits,pMemoryPropertyFlags,MemoryChunkList);
    if MemoryChunk.AllocateMemory(Offset,pSize) then begin
     result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pSize);
    end;
@@ -4898,7 +4907,9 @@ begin
    // Try first to allocate a block inside already existent chunks
    MemoryChunk:=MemoryChunkList^.First;
    while assigned(MemoryChunk) do begin
-    if ((MemoryChunk.fMemoryPropertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags) and ((MemoryChunk.fSize-MemoryChunk.fUsed)>=pSize) then begin
+    if ((pMemoryTypeBits and (TVkInt64(1) shl MemoryChunk.fMemoryTypeIndex))<>0) and
+       ((MemoryChunk.fMemoryPropertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags) and
+       ((MemoryChunk.fSize-MemoryChunk.fUsed)>=pSize) then begin
      if MemoryChunk.AllocateMemory(Offset,pSize) then begin
       result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pSize);
       break;
@@ -4909,7 +4920,7 @@ begin
 
    if not assigned(result) then begin
     // Otherwise allocate a block inside a new chunk
-    MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,VulkanDeviceSizeRoundUpToPowerOfTwo(Max(1 shl 24,pSize shl 1)),Alignment,pMemoryPropertyFlags,MemoryChunkList);
+    MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,VulkanDeviceSizeRoundUpToPowerOfTwo(Max(1 shl 24,pSize shl 1)),Alignment,pMemoryTypeBits,pMemoryPropertyFlags,MemoryChunkList);
     if MemoryChunk.AllocateMemory(Offset,pSize) then begin
      result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pSize);
     end;
@@ -5002,6 +5013,7 @@ begin
   fDevice.Commands.GetBufferMemoryRequirements(fDevice.fDeviceHandle,fBufferHandle,@fMemoryRequirements);
 
   fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(fMemoryRequirements.Size,
+                                                           fMemoryRequirements.memoryTypeBits,
                                                            fMemoryProperties,
                                                            fMemoryRequirements.Alignment,
                                                            fOwnSingleMemoryChunk);
@@ -6230,7 +6242,10 @@ begin
 
    fDevice.fDeviceVulkan.GetImageMemoryRequirements(fDevice.fDeviceHandle,fDepthImage,@MemoryRequirements);
 
-   fDepthMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryRequirements.size,MemoryRequirements.memoryTypeBits,MemoryRequirements.alignment);
+   fDepthMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryRequirements.size,
+                                                                 MemoryRequirements.memoryTypeBits,
+                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                 MemoryRequirements.alignment);
    if not assigned(fDepthMemoryBlock) then begin
     raise EVulkanMemoryAllocation.Create('Memory for depth image couldn''t be allocated!');
    end;
