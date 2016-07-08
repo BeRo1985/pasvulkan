@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-08-17-34-0000                       *
+ *                        Version 2016-07-08-17-48-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1384,8 +1384,8 @@ type EVulkanException=class(Exception);
                           const pClipped:boolean=true;
                           const pDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff));
        destructor Destroy; override;
-       procedure QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVkSemaphore=VK_NULL_HANDLE);
-       function AcquireNextImage(const pPresentCompleteSemaphore:TVkSemaphore;const pFence:TVkFence=VK_NULL_HANDLE;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkUInt32;
+       procedure QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVulkanSemaphore=nil);
+       function AcquireNextImage(const pPresentCompleteSemaphore:TVulkanSemaphore;const pFence:TVulkanFence=nil;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkUInt32;
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkSwapChainKHR read fSwapChainHandle;
        property CurrentBuffer:TVkUInt32 read fCurrentBuffer;
@@ -6403,7 +6403,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanSwapChain.QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVkSemaphore=VK_NULL_HANDLE);
+procedure TVulkanSwapChain.QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVulkanSemaphore=nil);
 var PresentInfo:TVkPresentInfoKHR;
 begin
  FillChar(PresentInfo,SizeOf(TVkPresentInfoKHR),#0);
@@ -6411,16 +6411,22 @@ begin
  PresentInfo.swapchainCount:=1;
  PresentInfo.pSwapchains:=@fSwapChainHandle;
  PresentInfo.pImageIndices:=@fCurrentBuffer;
- if pSemaphore<>VK_NULL_HANDLE then begin
+ if assigned(pSemaphore) then begin
   PresentInfo.waitSemaphoreCount:=1;
-  PresentInfo.pWaitSemaphores:=@pSemaphore;
+  PresentInfo.pWaitSemaphores:=@pSemaphore.fSemaphoreHandle;
  end;                             
  HandleResultCode(fDevice.fInstance.fInstanceVulkan.QueuePresentKHR(pQueue.fQueueHandle,@PresentInfo));
 end;
 
-function TVulkanSwapChain.AcquireNextImage(const pPresentCompleteSemaphore:TVkSemaphore;const pFence:TVkFence=VK_NULL_HANDLE;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkUInt32;
+function TVulkanSwapChain.AcquireNextImage(const pPresentCompleteSemaphore:TVulkanSemaphore;const pFence:TVulkanFence=nil;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkUInt32;
+var FenceHandle:TVkFence;
 begin
- HandleResultCode(fDevice.fDeviceVulkan.AcquireNextImageKHR(fDevice.fDeviceHandle,fSwapChainHandle,pTimeOut,pPresentCompleteSemaphore,pFence,@fCurrentBuffer));
+ if assigned(pFence) then begin
+  FenceHandle:=pFence.fFenceHandle;
+ end else begin
+  FenceHandle:=VK_NULL_HANDLE;
+ end;
+ HandleResultCode(fDevice.fDeviceVulkan.AcquireNextImageKHR(fDevice.fDeviceHandle,fSwapChainHandle,pTimeOut,pPresentCompleteSemaphore.fSemaphoreHandle,FenceHandle,@fCurrentBuffer));
  result:=fCurrentBuffer;
 end;
 
