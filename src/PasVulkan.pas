@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-08-20-53-0000                       *
+ *                        Version 2016-07-08-21-03-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1005,6 +1005,7 @@ type EVulkanException=class(Exception);
        fOffsetRedBlackTree:TVulkanDeviceMemoryChunkBlockRedBlackTree;
        fSizeRedBlackTree:TVulkanDeviceMemoryChunkBlockRedBlackTree;
        fMemoryTypeIndex:TVkUInt32;
+       fMemoryTypeBits:TVkUInt32;
        fMemoryHeapIndex:TVkUInt32;
        fMemoryPropertyFlags:TVkMemoryPropertyFlags;
        fMemoryHandle:TVkDeviceMemory;
@@ -1029,6 +1030,7 @@ type EVulkanException=class(Exception);
        property Size:TVkDeviceSize read fSize;
        property MemoryPropertyFlags:TVkMemoryPropertyFlags read fMemoryPropertyFlags;
        property MemoryTypeIndex:TVkUInt32 read fMemoryTypeIndex;
+       property MemoryTypeBits:TVkUInt32 read fMemoryTypeBits;
        property MemoryHeapIndex:TVkUInt32 read fMemoryHeapIndex;
        property Handle:TVkDeviceMemory read fMemoryHandle;
        property Memory:PVkVoid read fMemory;
@@ -4352,6 +4354,7 @@ begin
  fMemory:=nil;
 
  fMemoryTypeIndex:=0;
+ fMemoryTypeBits:=0;
  fMemoryHeapIndex:=0;
  PhysicalDevice:=fMemoryManager.fDevice.fPhysicalDevice;
  BestSize:=0;
@@ -4365,6 +4368,7 @@ begin
       (pSize<=CurrentSize) and (CurrentSize>BestSize) then begin
     BestSize:=CurrentSize;
     fMemoryTypeIndex:=Index;
+    fMemoryTypeBits:=TVkUInt32(1) shl Index;
     fMemoryHeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
     Found:=true;
    end;
@@ -4907,7 +4911,7 @@ begin
    // Try first to allocate a block inside already existent chunks
    MemoryChunk:=MemoryChunkList^.First;
    while assigned(MemoryChunk) do begin
-    if ((pMemoryTypeBits and (TVkInt64(1) shl MemoryChunk.fMemoryTypeIndex))<>0) and
+    if ((pMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
        ((MemoryChunk.fMemoryPropertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags) and
        ((MemoryChunk.fSize-MemoryChunk.fUsed)>=pSize) then begin
      if MemoryChunk.AllocateMemory(Offset,pSize) then begin
