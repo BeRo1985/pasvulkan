@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-08-21-03-0000                       *
+ *                        Version 2016-07-09-09-29-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1261,6 +1261,7 @@ type EVulkanException=class(Exception);
        procedure CmdEndRenderPass;
        procedure CmdExecuteCommands(commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer);
        procedure CmdExecute(const pCommandBuffer:TVulkanCommandBuffer);
+       procedure MetaCmdPresentImageBarrier(const pImage:TVkImage);
        procedure Execute(const pQueue:TVulkanQueue;const pFence:TVulkanFence;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
        property Device:TVulkanDevice read fDevice;
        property CommandPool:TVulkanCommandPool read fCommandPool;
@@ -5659,6 +5660,31 @@ end;
 procedure TVulkanCommandBuffer.CmdExecute(const pCommandBuffer:TVulkanCommandBuffer);
 begin
  CmdExecuteCommands(1,@pCommandBuffer.fCommandBufferHandle);
+end;
+
+procedure TVulkanCommandBuffer.MetaCmdPresentImageBarrier(const pImage:TVkImage);
+var ImageMemoryBarrier:TVkImageMemoryBarrier;
+begin
+ FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+ ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+ ImageMemoryBarrier.pNext:=nil;
+ ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+ ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+ ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+ ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+ ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+ ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+ ImageMemoryBarrier.image:=pImage;
+ ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+ ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+ ImageMemoryBarrier.subresourceRange.levelCount:=1;
+ ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+ ImageMemoryBarrier.subresourceRange.layerCount:=1;
+ CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                    0,
+                    0,nil,
+                    0,nil,
+                    1,@ImageMemoryBarrier);
 end;
 
 procedure TVulkanCommandBuffer.Execute(const pQueue:TVulkanQueue;const pFence:TVulkanFence;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
