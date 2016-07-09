@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-09-10-32-0000                       *
+ *                        Version 2016-07-09-11-38-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1369,8 +1369,8 @@ type EVulkanException=class(Exception);
        fFrameBuffers:TVulkanSwapChainFrameBuffers;
        fCurrentBuffer:TVkUInt32;
        fRenderPass:TVulkanRenderPass;
-       fWidth:TVkUInt32;
-       fHeight:TVkUInt32;
+       fWidth:TVkInt32;
+       fHeight:TVkInt32;
        function GetCurrentImage:TVkImage;
        function GetCurrentFrameBuffer:TVkFrameBuffer;
       public
@@ -1401,8 +1401,8 @@ type EVulkanException=class(Exception);
        property RenderPass:TVulkanRenderPass read fRenderPass;
        property CurrentImage:TVkImage read GetCurrentImage;
        property CurrentFrameBuffer:TVkFrameBuffer read GetCurrentFrameBuffer;
-       property Width:TVkUInt32 read fWidth;
-       property Height:TVkUInt32 read fHeight;
+       property Width:TVkInt32 read fWidth;
+       property Height:TVkInt32 read fHeight;
      end;
 
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
