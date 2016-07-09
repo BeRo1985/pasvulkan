@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-09-12-43-0000                       *
+ *                        Version 2016-07-09-13-55-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -823,7 +823,7 @@ type EVulkanException=class(Exception);
        fDeviceCreateInfo:TVkDeviceCreateInfo;
        fEnabledLayerNames:TStringList;
        fEnabledExtensionNames:TStringList;
-       fInstanceCreateInfo:TVkInstanceCreateInfo;
+//     fInstanceCreateInfo:TVkInstanceCreateInfo;
        fEnabledLayerNameStrings:array of TVulkanCharString;
        fEnabledExtensionNameStrings:array of TVulkanCharString;
        fRawEnabledLayerNameStrings:array of PVkChar;
@@ -1201,10 +1201,11 @@ type EVulkanException=class(Exception);
        fCommandPool:TVulkanCommandPool;
        fLevel:TVkCommandBufferLevel;
        fCommandBufferHandle:TVkCommandBuffer;
+//     fFence:TVulkanFence;
+      public
        constructor Create(const pCommandPool:TVulkanCommandPool;
                           const pLevel:TVkCommandBufferLevel;
                           const pCommandBufferHandle:TVkCommandBuffer); reintroduce; overload;
-      public
        constructor Create(const pCommandPool:TVulkanCommandPool;
                           const pLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY); reintroduce; overload;
        destructor Destroy; override;
@@ -1478,7 +1479,16 @@ begin
  result:=Value+1;
 end;
 
-{$if defined(cpu386)}
+{$if defined(fpc)}
+function CTZDWord(Value:TVkUInt32):TVkUInt8; inline;
+begin
+ if Value=0 then begin
+  result:=32;
+ end else begin
+  result:=BSFDWord(Value);
+ end;
+end;
+{$elseif defined(cpu386)}
 {$ifndef fpc}
 function CTZDWord(Value:TVkUInt32):TVkUInt8; assembler; register; {$ifdef fpc}nostackframe;{$endif}
 asm
@@ -1762,7 +1772,7 @@ begin
    end else begin
     GetMem(fMemory,NewAllocated*fItemSize);
    end;
-   FillChar(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(fAllocated*fItemSize)))^,(NewAllocated-fAllocated)*fItemSize,#0);
+   FillChar(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(fAllocated)*TVkPtrUInt(fItemSize))))^,(NewAllocated-fAllocated)*fItemSize,#0);
    fAllocated:=NewAllocated;
   end;
   Item:=fMemory;
@@ -1809,7 +1819,7 @@ end;
 function TVulkanBaseList.GetItem(const Index:TVkSizeInt):pointer;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)));
+  result:=pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))));
  end else begin
   result:=nil;
  end;
@@ -1912,7 +1922,7 @@ function TVulkanBaseList.Add(const Item):TVkSizeInt;
 begin
  result:=fCount;
  SetCount(result+1);
- CopyItem(Item,pointer(TVkPtrInt(TVkPtrInt(fMemory)+(result*fItemSize)))^);
+ CopyItem(Item,pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(result)*TVkPtrUInt(fItemSize))))^);
 end;
 
 function TVulkanBaseList.Find(const Item):TVkSizeInt;
@@ -1921,7 +1931,7 @@ begin
  result:=-1;
  Index:=0;
  while Index<fCount do begin
-  if CompareItem(Item,pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^)=0 then begin
+  if CompareItem(Item,pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^)=0 then begin
    result:=Index;
    break;
   end;
@@ -1934,21 +1944,21 @@ begin
  if Index>=0 then begin
   if Index<fCount then begin
    SetCount(fCount+1);
-   Move(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^,pointer(TVkPtrInt(TVkPtrInt(fMemory)+((Index+1)*fItemSize)))^,(fCount-Index)*fItemSize);
-   FillChar(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^,fItemSize,#0);
+   Move(pointer(TVkPtrInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^,pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index+1)*TVkPtrUInt(fItemSize))))^,(fCount-Index)*fItemSize);
+   FillChar(pointer(TVkPtrInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^,fItemSize,#0);
   end else begin
    SetCount(Index+1);
   end;
-  CopyItem(Item,pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+  CopyItem(Item,pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
  end;
 end;
 
 procedure TVulkanBaseList.Delete(const Index:TVkSizeInt);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  FinalizeItem(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
-  Move(pointer(TVkPtrInt(TVkPtrInt(fMemory)+((Index+1)*fItemSize)))^,pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^,(fCount-Index)*fItemSize);
-  FillChar(pointer(TVkPtrInt(TVkPtrInt(fMemory)+((fCount-1)*fItemSize)))^,fItemSize,#0);
+  FinalizeItem(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  Move(pointer(TVkPtrUInt(TVkPtruInt(fMemory)+(TVkPtrUInt(Index+1)*TVkPtrUInt(fItemSize))))^,pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^,(fCount-Index)*fItemSize);
+  FillChar(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(fCount-1)*TVkPtrUInt(fItemSize))))^,fItemSize,#0);
   SetCount(fCount-1);
  end;
 end;
@@ -1969,7 +1979,7 @@ end;
 procedure TVulkanBaseList.Exchange(const Index,WithIndex:TVkSizeInt);
 begin
  if (Index>=0) and (Index<fCount) and (WithIndex>=0) and (WithIndex<fCount) then begin
-  ExchangeItem(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^,pointer(TVkPtrInt(TVkPtrInt(fMemory)+(WithIndex*fItemSize)))^);
+  ExchangeItem(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^,pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(WithIndex)*TVkPtrUInt(fItemSize))))^);
  end;
 end;
 
@@ -1992,7 +2002,7 @@ end;
 function TVulkanObjectList.GetItem(const Index:TVkSizeInt):TVulkanObject;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVulkanObject(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+  result:=TVulkanObject(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
  end else begin
   result:=nil;
  end;
@@ -2001,7 +2011,7 @@ end;
 procedure TVulkanObjectList.SetItem(const Index:TVkSizeInt;const Item:TVulkanObject);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVulkanObject(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+  TVulkanObject(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -2069,7 +2079,7 @@ end;
 function TVkUInt32List.GetItem(const Index:TVkSizeInt):TVkUInt32;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkUInt32(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+  result:=TVkUInt32(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
@@ -2078,7 +2088,7 @@ end;
 procedure TVkUInt32List.SetItem(const Index:TVkSizeInt;const Item:TVkUInt32);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkUInt32(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+  TVkUInt32(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -2143,7 +2153,7 @@ end;
 function TVkFloatList.GetItem(const Index:TVkSizeInt):TVkFloat;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkFloat(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+  result:=TVkFloat(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
@@ -2152,7 +2162,7 @@ end;
 procedure TVkFloatList.SetItem(const Index:TVkSizeInt;const Item:TVkFloat);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkFloat(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+  TVkFloat(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -2217,7 +2227,7 @@ end;
 function TVkImageViewList.GetItem(const Index:TVkSizeInt):TVkImageView;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkImageView(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+  result:=TVkImageView(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
@@ -2226,7 +2236,7 @@ end;
 procedure TVkImageViewList.SetItem(const Index:TVkSizeInt;const Item:TVkImageView);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkImageView(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+  TVkImageView(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -2291,7 +2301,7 @@ end;
 function TVkSamplerList.GetItem(const Index:TVkSizeInt):TVkSampler;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkSampler(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+  result:=TVkSampler(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
@@ -2300,7 +2310,7 @@ end;
 procedure TVkSamplerList.SetItem(const Index:TVkSizeInt;const Item:TVkSampler);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkSampler(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+  TVkSampler(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -2365,7 +2375,7 @@ end;
 function TVkDescriptorSetLayoutList.GetItem(const Index:TVkSizeInt):TVkDescriptorSetLayout;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkDescriptorSetLayout(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+  result:=TVkDescriptorSetLayout(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
@@ -2374,7 +2384,7 @@ end;
 procedure TVkDescriptorSetLayoutList.SetItem(const Index:TVkSizeInt;const Item:TVkDescriptorSetLayout);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkDescriptorSetLayout(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+  TVkDescriptorSetLayout(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -2439,7 +2449,7 @@ end;
 function TVkSampleMaskList.GetItem(const Index:TVkSizeInt):TVkSampleMask;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkSampleMask(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+  result:=TVkSampleMask(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
@@ -2448,7 +2458,7 @@ end;
 procedure TVkSampleMaskList.SetItem(const Index:TVkSizeInt;const Item:TVkSampleMask);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkSampleMask(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+  TVkSampleMask(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -2513,7 +2523,7 @@ end;
 function TVkDynamicStateList.GetItem(const Index:TVkSizeInt):TVkDynamicState;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkDynamicState(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+  result:=TVkDynamicState(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
  end else begin
   result:=TVkDynamicState(0);
  end;
@@ -2522,7 +2532,7 @@ end;
 procedure TVkDynamicStateList.SetItem(const Index:TVkSizeInt;const Item:TVkDynamicState);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkDynamicState(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+  TVkDynamicState(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -2587,7 +2597,7 @@ end;
 function TVkBufferViewList.GetItem(const Index:TVkSizeInt):TVkBufferView;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkBufferView(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+  result:=TVkBufferView(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
  end else begin
   result:=TVkBufferView(0);
  end;
@@ -2596,7 +2606,7 @@ end;
 procedure TVkBufferViewList.SetItem(const Index:TVkSizeInt;const Item:TVkBufferView);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkBufferView(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+  TVkBufferView(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -2661,7 +2671,7 @@ end;
 function TVkClearValueList.GetItem(const Index:TVkSizeInt):TVkClearValue;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkClearValue(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^);
+  result:=TVkClearValue(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
  end else begin
   FillChar(result,SizeOf(TVkClearValue),#0);
  end;
@@ -2670,7 +2680,7 @@ end;
 procedure TVkClearValueList.SetItem(const Index:TVkSizeInt;const Item:TVkClearValue);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkClearValue(pointer(TVkPtrInt(TVkPtrInt(fMemory)+(Index*fItemSize)))^):=Item;
+  TVkClearValue(pointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -3389,7 +3399,7 @@ function TVulkanPhysicalDevice.GetMemoryType(const pTypeBits:TVkUInt32;const pPr
 var i:TVkUInt32;
     DeviceMemoryProperties:TVkPhysicalDeviceMemoryProperties;
 begin
- result:=not TVkUInt32(0);
+ result:=TVkUInt32(TVkInt32(-1));
  vkGetPhysicalDeviceMemoryProperties(fPhysicalDeviceHandle,@DeviceMemoryProperties);
  for i:=0 to 31 do begin
   if (pTypeBits and (TVkUInt32(1) shl i))<>0 then begin
@@ -3577,7 +3587,6 @@ constructor TVulkanDevice.Create(const pInstance:TVulkanInstance;
                                  const pSurface:TVulkanSurface=nil;
                                  const pAllocationManager:TVulkanAllocationManager=nil);
 var Index,SubIndex:TVkInt32;
-    Count,SubCount:TVkUInt32;
     BestPhysicalDevice,CurrentPhysicalDevice:TVulkanPhysicalDevice;
     BestScore,CurrentScore,Temp:int64;
     OK:boolean;
@@ -4357,7 +4366,6 @@ var Index,HeapIndex:TVkInt32;
     PhysicalDevice:TVulkanPhysicalDevice;
     CurrentSize,BestSize:TVkDeviceSize;
     Found:boolean;
-    BestChunk:TVulkanDeviceMemoryChunk;
 begin
  inherited Create;
 
@@ -4846,7 +4854,13 @@ end;
 function TVulkanDeviceMemoryBlock.Fill(const pData:PVkVoid;const pSize:TVkDeviceSize):TVkDeviceSize;
 var Memory:PVkVoid;
 begin
- result:=Max(0,Min(pSize,fSize));
+ if pSize<=0 then begin
+  result:=0;
+ end else if pSize>fSize then begin
+  result:=fSize;
+ end else begin
+  result:=pSize;
+ end;
  Memory:=MapMemory;
  try
   Move(pData^,Memory^,result);
@@ -4892,8 +4906,7 @@ function TVulkanDeviceMemoryManager.AllocateMemoryBlock(const pSize:TVkDeviceSiz
                                                         const pMemoryPropertyFlags:TVkMemoryPropertyFlags;
                                                         const pAlignment:TVkDeviceSize=16;
                                                         const pOwnSingleMemoryChunk:boolean=false):TVulkanDeviceMemoryBlock;
-var Index:TVkInt32;
-    MemoryChunkList:PVulkanDeviceMemoryManagerChunkList;
+var MemoryChunkList:PVulkanDeviceMemoryManagerChunkList;
     MemoryChunk:TVulkanDeviceMemoryChunk;
     Offset,Alignment:TVkDeviceSize;
 begin
@@ -5334,6 +5347,12 @@ begin
 
  fCommandBufferHandle:=pCommandBufferHandle;
 
+{if fLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
+  fFence:=TVulkanFence.Create(fDevice);
+ end else begin
+  fFence:=nil;
+ end;{}
+
 end;
 
 constructor TVulkanCommandBuffer.Create(const pCommandPool:TVulkanCommandPool;
@@ -5349,6 +5368,12 @@ begin
  fLevel:=pLevel;
 
  fCommandBufferHandle:=VK_NULL_HANDLE;
+
+{if fLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
+  fFence:=TVulkanFence.Create(fDevice);
+ end else begin
+  fFence:=nil;
+ end;{}
 
  FillChar(CommandBufferAllocateInfo,SizeOf(TVkCommandBufferAllocateInfo),#0);
  CommandBufferAllocateInfo.sType:=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -5366,6 +5391,7 @@ begin
   fDevice.fDeviceVulkan.FreeCommandBuffers(fDevice.fDeviceHandle,fCommandPool.fCommandPoolHandle,1,@fCommandBufferHandle);
   fCommandBufferHandle:=VK_NULL_HANDLE;
  end;
+//FreeAndNil(fFence);
  inherited Destroy;
 end;
 
