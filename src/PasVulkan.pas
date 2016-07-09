@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-09-13-55-0000                       *
+ *                        Version 2016-07-09-22-03-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -834,11 +834,13 @@ type EVulkanException=class(Exception);
        fAllocationCallbacks:PVkAllocationCallbacks;
        fDeviceHandle:TVkDevice;
        fDeviceVulkan:TVulkan;
-       fGraphicQueueFamilyIndex:TVkInt32;
+       fPresentQueueFamilyIndex:TVkInt32;
+       fGraphicsQueueFamilyIndex:TVkInt32;
        fComputeQueueFamilyIndex:TVkInt32;
        fTransferQueueFamilyIndex:TVkInt32;
        fSparseBindingQueueFamilyIndex:TVkInt32;
-       fGraphicQueue:TVulkanQueue;
+       fPresentQueue:TVulkanQueue;
+       fGraphicsQueue:TVulkanQueue;
        fComputeQueue:TVulkanQueue;
        fTransferQueue:TVulkanQueue;
        fMemoryManager:TVulkanDeviceMemoryManager;
@@ -850,7 +852,8 @@ type EVulkanException=class(Exception);
                           const pAllocationManager:TVulkanAllocationManager=nil);
        destructor Destroy; override;
        procedure AddQueue(const pQueueFamilyIndex:TVkUInt32;const pQueuePriorities:array of TVkFloat);
-       procedure AddQueues(const pGraphic:boolean=true;
+       procedure AddQueues(const pPresent:boolean=true;
+                           const pGraphics:boolean=true;
                            const pCompute:boolean=true;
                            const pTransfer:boolean=true;
                            const pSparseBinding:boolean=false);
@@ -863,11 +866,13 @@ type EVulkanException=class(Exception);
        property EnabledFeatures:PVkPhysicalDeviceLimits read fPointerToEnabledFeatures;
        property Handle:TVkDevice read fDeviceHandle;
        property Commands:TVulkan read fDeviceVulkan;
-       property GraphicQueueFamilyIndex:TVkInt32 read fGraphicQueueFamilyIndex;
+       property PresentQueueFamilyIndex:TVkInt32 read fPresentQueueFamilyIndex;
+       property GraphicsQueueFamilyIndex:TVkInt32 read fGraphicsQueueFamilyIndex;
        property ComputeQueueFamilyIndex:TVkInt32 read fComputeQueueFamilyIndex;
        property TransferQueueFamilyIndex:TVkInt32 read fTransferQueueFamilyIndex;
        property SparseBindingQueueFamilyIndex:TVkInt32 read fSparseBindingQueueFamilyIndex;
-       property GraphicQueue:TVulkanQueue read fGraphicQueue;
+       property PresentQueue:TVulkanQueue read fPresentQueue;
+       property GraphicsQueue:TVulkanQueue read fGraphicsQueue;
        property ComputeQueue:TVulkanQueue read fComputeQueue;
        property TransferQueue:TVulkanQueue read fTransferQueue;
        property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
@@ -1262,7 +1267,8 @@ type EVulkanException=class(Exception);
        procedure CmdEndRenderPass;
        procedure CmdExecuteCommands(commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer);
        procedure CmdExecute(const pCommandBuffer:TVulkanCommandBuffer);
-       procedure MetaCmdPresentImageBarrier(const pImage:TVkImage);
+       procedure MetaCmdPresentToDrawImageBarrier(const pImage:TVkImage);
+       procedure MetaCmdDrawToPresentImageBarrier(const pImage:TVkImage);
        procedure Execute(const pQueue:TVulkanQueue;const pFence:TVulkanFence;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
        property Device:TVulkanDevice read fDevice;
        property CommandPool:TVulkanCommandPool read fCommandPool;
@@ -1446,12 +1452,24 @@ procedure VulkanSetImageLayout(const pImage:TVkImage;
                                const pNewImageLayout:TVkImageLayout;
                                const pRange:PVkImageSubresourceRange;
                                const pCommandBuffer:TVulkanCommandBuffer;
-                               const pDevice:TVulkanDevice;
-                               const pQueue:TVulkanQueue;
-                               const pFence:TVulkanFence;
-                               const pBeginAndExecuteCommandBuffer:boolean);
+                               const pQueue:TVulkanQueue=nil;
+                               const pFence:TVulkanFence=nil;
+                               const pBeginAndExecuteCommandBuffer:boolean=false;
+                               const pSrcQueueFamilyIndex:TVkQueue=VK_QUEUE_FAMILY_IGNORED;
+                               const pDstQueueFamilyIndex:TVkQueue=VK_QUEUE_FAMILY_IGNORED);
 
 implementation
+
+const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
+       (
+        VK_IMAGE_TILING_LINEAR,  // VK_IMAGE_VIEW_TYPE_1D
+        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_2D
+        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_3D
+        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_CUBE
+        VK_IMAGE_TILING_LINEAR,  // VK_IMAGE_VIEW_TYPE_1D_ARRAY
+        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_2D_ARRAY
+        VK_IMAGE_TILING_LINEAR   // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
+       );
 
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
 begin
@@ -1634,13 +1652,15 @@ procedure VulkanSetImageLayout(const pImage:TVkImage;
                                const pNewImageLayout:TVkImageLayout;
                                const pRange:PVkImageSubresourceRange;
                                const pCommandBuffer:TVulkanCommandBuffer;
-                               const pDevice:TVulkanDevice;
-                               const pQueue:TVulkanQueue;
-                               const pFence:TVulkanFence;
-                               const pBeginAndExecuteCommandBuffer:boolean);
+                               const pQueue:TVulkanQueue=nil;
+                               const pFence:TVulkanFence=nil;
+                               const pBeginAndExecuteCommandBuffer:boolean=false;
+                               const pSrcQueueFamilyIndex:TVkQueue=VK_QUEUE_FAMILY_IGNORED;
+                               const pDstQueueFamilyIndex:TVkQueue=VK_QUEUE_FAMILY_IGNORED);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
     SrcStages,DestStages:TVkPipelineStageFlags;
 begin
+
  if pBeginAndExecuteCommandBuffer then begin
   pCommandBuffer.BeginRecording;
  end;
@@ -1649,8 +1669,8 @@ begin
  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
  ImageMemoryBarrier.oldLayout:=pOldImageLayout;
  ImageMemoryBarrier.newLayout:=pNewImageLayout;
- ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+ ImageMemoryBarrier.srcQueueFamilyIndex:=pSrcQueueFamilyIndex;
+ ImageMemoryBarrier.dstQueueFamilyIndex:=pDstQueueFamilyIndex;
  ImageMemoryBarrier.image:=pImage;
 
  if assigned(pRange) then begin
@@ -1665,14 +1685,14 @@ begin
 
  case pOldImageLayout of
   VK_IMAGE_LAYOUT_UNDEFINED:begin
-   ImageMemoryBarrier.srcAccessMask:=0;
+   ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
   end;
   VK_IMAGE_LAYOUT_GENERAL:begin
   end;
-	VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
+  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
   end;
-	VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
+  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
   end;
   VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:begin
@@ -1680,13 +1700,13 @@ begin
   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
   end;
- 	VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:begin
+  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:begin
    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
   end;
   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:begin
    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
   end;
-	VK_IMAGE_LAYOUT_PREINITIALIZED:begin
+  VK_IMAGE_LAYOUT_PREINITIALIZED:begin
    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT);
   end;
   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:begin
@@ -1697,33 +1717,54 @@ begin
   VK_IMAGE_LAYOUT_UNDEFINED:begin
   end;
   VK_IMAGE_LAYOUT_GENERAL:begin
+   if pOldImageLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then begin
+    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+   end;
   end;
- 	VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
+  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
+   if pOldImageLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR then begin
+    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+   end;
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
   end;
-	VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
-   ImageMemoryBarrier.dstAccessMask:=ImageMemoryBarrier.dstAccessMask or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
+   ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
   end;
   VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:begin
   end;
   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
-   ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+   if pOldImageLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then begin
+    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+   end;
+   ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
   end;
-	VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:begin
+  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:begin
    ImageMemoryBarrier.srcAccessMask:=ImageMemoryBarrier.srcAccessMask or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
   end;
   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:begin
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
   end;
-	VK_IMAGE_LAYOUT_PREINITIALIZED:begin
+  VK_IMAGE_LAYOUT_PREINITIALIZED:begin
   end;
-	VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:begin
+  VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:begin
+   if pOldImageLayout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then begin
+    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+   end;
+   ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
   end;
  end;
 
- SrcStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
- DestStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+ if pOldImageLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR then begin
+  SrcStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+  DestStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+ end else if pNewImageLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR then begin
+  SrcStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+  DestStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+ end else begin
+  SrcStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+  DestStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+ end;
 
  pCommandBuffer.CmdPipelineBarrier(SrcStages,DestStages,0,0,nil,0,nil,1,@ImageMemoryBarrier);
 
@@ -3623,12 +3664,14 @@ begin
 
  fDeviceVulkan:=nil;
 
- fGraphicQueueFamilyIndex:=-1;
+ fPresentQueueFamilyIndex:=-1;
+ fGraphicsQueueFamilyIndex:=-1;
  fComputeQueueFamilyIndex:=-1;
  fTransferQueueFamilyIndex:=-1;
  fSparseBindingQueueFamilyIndex:=-1;
 
- fGraphicQueue:=nil;
+ fPresentQueue:=nil;
+ fGraphicsQueue:=nil;
  fComputeQueue:=nil;
  fTransferQueue:=nil;
 
@@ -3706,7 +3749,8 @@ end;
 
 destructor TVulkanDevice.Destroy;
 begin
- fGraphicQueue.Free;
+ fPresentQueue.Free;
+ fGraphicsQueue.Free;
  fComputeQueue.Free;
  fTransferQueue.Free;
  fMemoryManager.Free;
@@ -3729,12 +3773,12 @@ procedure TVulkanDevice.AddQueue(const pQueueFamilyIndex:TVkUInt32;const pQueueP
 var QueueFamilyProperties:PVkQueueFamilyProperties;
 begin           
  if pQueueFamilyIndex<TVkUInt32(length(fPhysicalDevice.fQueueFamilyProperties)) then begin
-  if assigned(fSurface) and not fPhysicalDevice.GetSurfaceSupport(pQueueFamilyIndex,fSurface) then begin
-   raise EVulkanException.Create('Surface doesn''t support queue family index '+IntToStr(pQueueFamilyIndex));
-  end;
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[pQueueFamilyIndex];
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicQueueFamilyIndex<0) then begin
-   fGraphicQueueFamilyIndex:=pQueueFamilyIndex;
+  if (fPresentQueueFamilyIndex<0) and assigned(fSurface) and fPhysicalDevice.GetSurfaceSupport(pQueueFamilyIndex,fSurface) then begin
+   fPresentQueueFamilyIndex:=pQueueFamilyIndex;
+  end;
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
+   fGraphicsQueueFamilyIndex:=pQueueFamilyIndex;
   end;
   if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
    fComputeQueueFamilyIndex:=pQueueFamilyIndex;
@@ -3751,7 +3795,8 @@ begin
  end;
 end;
 
-procedure TVulkanDevice.AddQueues(const pGraphic:boolean=true;
+procedure TVulkanDevice.AddQueues(const pPresent:boolean=true;
+                                  const pGraphics:boolean=true;
                                   const pCompute:boolean=true;
                                   const pTransfer:boolean=true;
                                   const pSparseBinding:boolean=false);
@@ -3762,12 +3807,15 @@ begin
  for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
   DoAdd:=false;
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
-  if assigned(fSurface) and not fPhysicalDevice.GetSurfaceSupport(Index,fSurface) then begin
-   continue;
+  if (fPresentQueueFamilyIndex<0) and assigned(fSurface) and fPhysicalDevice.GetSurfaceSupport(Index,fSurface) then begin
+   fPresentQueueFamilyIndex:=Index;
+   if pPresent then begin
+    DoAdd:=true;
+   end;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicQueueFamilyIndex<0) then begin
-   fGraphicQueueFamilyIndex:=Index;
-   if pGraphic then begin
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
+   fGraphicsQueueFamilyIndex:=Index;
+   if pGraphics then begin
     DoAdd:=true;
    end;
   end;
@@ -3793,7 +3841,8 @@ begin
    fDeviceQueueCreateInfoList.Add(TVulkanDeviceQueueCreateInfo.Create(Index,[1.0]));
   end;
  end;
- if ((fGraphicQueueFamilyIndex<0) and pGraphic) or
+ if ((fPresentQueueFamilyIndex<0) and pPresent) or
+    ((fGraphicsQueueFamilyIndex<0) and pGraphics) or
     ((fComputeQueueFamilyIndex<0) and pCompute) or
     ((fTransferQueueFamilyIndex<0) and pTransfer) or
     ((fSparseBindingQueueFamilyIndex<0) and pSparseBinding) then begin
@@ -3866,9 +3915,13 @@ begin
    FreeMem(DeviceCommands);
   end;
 
-  if fGraphicQueueFamilyIndex>=0 then begin
-   fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fGraphicQueueFamilyIndex,0,@Queue);
-   fGraphicQueue:=TVulkanQueue.Create(self,Queue);
+  if fPresentQueueFamilyIndex>=0 then begin
+   fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fPresentQueueFamilyIndex,0,@Queue);
+   fPresentQueue:=TVulkanQueue.Create(self,Queue);
+  end;
+  if fGraphicsQueueFamilyIndex>=0 then begin
+   fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fGraphicsQueueFamilyIndex,0,@Queue);
+   fGraphicsQueue:=TVulkanQueue.Create(self,Queue);
   end;
   if fComputeQueueFamilyIndex>=0 then begin
    fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fComputeQueueFamilyIndex,0,@Queue);
@@ -5715,7 +5768,40 @@ begin
  CmdExecuteCommands(1,@pCommandBuffer.fCommandBufferHandle);
 end;
 
-procedure TVulkanCommandBuffer.MetaCmdPresentImageBarrier(const pImage:TVkImage);
+procedure TVulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(const pImage:TVkImage);
+var ImageMemoryBarrier:TVkImageMemoryBarrier;
+begin
+ FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+ ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+ ImageMemoryBarrier.pNext:=nil;
+ ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+ ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+ ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+ ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+ if (fDevice.fPresentQueueFamilyIndex<>fDevice.fGraphicsQueueFamilyIndex) or not
+    (assigned(fDevice.fPresentQueue) and assigned(fDevice.fGraphicsQueue)) then begin
+  ImageMemoryBarrier.srcQueueFamilyIndex:=fDevice.fPresentQueueFamilyIndex;
+  ImageMemoryBarrier.dstQueueFamilyIndex:=fDevice.fGraphicsQueueFamilyIndex;
+ end else begin
+  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+ end;
+ ImageMemoryBarrier.image:=pImage;
+ ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+ ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+ ImageMemoryBarrier.subresourceRange.levelCount:=1;
+ ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+ ImageMemoryBarrier.subresourceRange.layerCount:=1;
+ CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                    0,
+                    0,nil,
+                    0,nil,
+                    1,@ImageMemoryBarrier);
+end;
+
+
+procedure TVulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(const pImage:TVkImage);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -5725,15 +5811,22 @@ begin
  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
- ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+ if (fDevice.fPresentQueueFamilyIndex<>fDevice.fGraphicsQueueFamilyIndex) or not
+    (assigned(fDevice.fPresentQueue) and assigned(fDevice.fGraphicsQueue)) then begin
+  ImageMemoryBarrier.srcQueueFamilyIndex:=fDevice.fGraphicsQueueFamilyIndex;
+  ImageMemoryBarrier.dstQueueFamilyIndex:=fDevice.fPresentQueueFamilyIndex;
+ end else begin
+  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+ end;
  ImageMemoryBarrier.image:=pImage;
  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
  ImageMemoryBarrier.subresourceRange.levelCount:=1;
  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
  ImageMemoryBarrier.subresourceRange.layerCount:=1;
- CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+ CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                     0,
                     0,nil,
                     0,nil,
@@ -6341,8 +6434,7 @@ begin
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                         nil,
                         pCommandBuffer,
-                        fDevice,
-                        fDevice.fGraphicQueue,
+                        fDevice.fGraphicsQueue,
                         pCommandBufferFence,
                         true);
 
@@ -6661,8 +6753,7 @@ begin
                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                         nil,
                         pCommandBuffer,
-                        fDevice,
-                        fDevice.fGraphicQueue,
+                        fDevice.fGraphicsQueue,
                         pCommandBufferFence,
                         true);
   end else begin
@@ -6672,8 +6763,7 @@ begin
                         ImageLayout,
                         nil,
                         pCommandBuffer,
-                        fDevice,
-                        fDevice.fGraphicQueue,
+                        fDevice.fGraphicsQueue,
                         pCommandBufferFence,
                         true);
   end;
@@ -6721,6 +6811,7 @@ begin
  end;
 
  inherited Destroy;
+
 end;
 
 end.
