@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-09-09-29-0000                       *
+ *                        Version 2016-07-09-10-32-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1394,7 +1394,7 @@ type EVulkanException=class(Exception);
                           const pDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff));
        destructor Destroy; override;
        procedure QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVulkanSemaphore=nil);
-       function AcquireNextImage(const pSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkUInt32;
+       function AcquireNextImage(const pSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkResult;
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkSwapChainKHR read fSwapChainHandle;
        property CurrentBuffer:TVkUInt32 read fCurrentBuffer;
@@ -6475,7 +6475,7 @@ begin
  HandleResultCode(fDevice.fInstance.fInstanceVulkan.QueuePresentKHR(pQueue.fQueueHandle,@PresentInfo));
 end;
 
-function TVulkanSwapChain.AcquireNextImage(const pSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkUInt32;
+function TVulkanSwapChain.AcquireNextImage(const pSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkResult;
 var SemaphoreHandle:TVkFence;
     FenceHandle:TVkFence;
 begin
@@ -6494,8 +6494,10 @@ begin
  end else begin
   FenceHandle:=VK_NULL_HANDLE;
  end;
- HandleResultCode(fDevice.fDeviceVulkan.AcquireNextImageKHR(fDevice.fDeviceHandle,fSwapChainHandle,pTimeOut,SemaphoreHandle,FenceHandle,@fCurrentBuffer));
- result:=fCurrentBuffer;
+ result:=fDevice.fDeviceVulkan.AcquireNextImageKHR(fDevice.fDeviceHandle,fSwapChainHandle,pTimeOut,SemaphoreHandle,FenceHandle,@fCurrentBuffer);
+ if result<VK_SUCCESS then begin
+  HandleResultCode(result);
+ end;
 end;
 
 function TVulkanSwapChain.GetCurrentImage:TVkImage;
