@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-09-22-03-0000                       *
+ *                        Version 2016-07-10-06-21-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -6354,10 +6354,10 @@ begin
     ImageViewCreateInfo.image:=SwapChainImages[Index];
     ImageViewCreateInfo.viewType:=VK_IMAGE_VIEW_TYPE_2D;
     ImageViewCreateInfo.format:=fSwapChainCreateInfo.imageFormat;
-    ImageViewCreateInfo.components.r:=VK_COMPONENT_SWIZZLE_R;
-    ImageViewCreateInfo.components.g:=VK_COMPONENT_SWIZZLE_G;
-    ImageViewCreateInfo.components.b:=VK_COMPONENT_SWIZZLE_B;
-    ImageViewCreateInfo.components.a:=VK_COMPONENT_SWIZZLE_A;
+    ImageViewCreateInfo.components.r:=VK_COMPONENT_SWIZZLE_IDENTITY;
+    ImageViewCreateInfo.components.g:=VK_COMPONENT_SWIZZLE_IDENTITY;
+    ImageViewCreateInfo.components.b:=VK_COMPONENT_SWIZZLE_IDENTITY;
+    ImageViewCreateInfo.components.a:=VK_COMPONENT_SWIZZLE_IDENTITY;
     ImageViewCreateInfo.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
     ImageViewCreateInfo.subresourceRange.baseMipLevel:=0;
     ImageViewCreateInfo.subresourceRange.levelCount:=1;
@@ -6402,10 +6402,10 @@ begin
    ImageViewCreateInfo.image:=fDepthImage;
    ImageViewCreateInfo.viewType:=VK_IMAGE_VIEW_TYPE_2D;
    ImageViewCreateInfo.format:=fDepthImageFormat;
-   ImageViewCreateInfo.components.r:=VK_COMPONENT_SWIZZLE_R;
-   ImageViewCreateInfo.components.g:=VK_COMPONENT_SWIZZLE_G;
-   ImageViewCreateInfo.components.b:=VK_COMPONENT_SWIZZLE_B;
-   ImageViewCreateInfo.components.a:=VK_COMPONENT_SWIZZLE_A;
+   ImageViewCreateInfo.components.r:=VK_COMPONENT_SWIZZLE_IDENTITY;
+   ImageViewCreateInfo.components.g:=VK_COMPONENT_SWIZZLE_IDENTITY;
+   ImageViewCreateInfo.components.b:=VK_COMPONENT_SWIZZLE_IDENTITY;
+   ImageViewCreateInfo.components.a:=VK_COMPONENT_SWIZZLE_IDENTITY;
    if fDepthImageFormat in [VK_FORMAT_D32_SFLOAT_S8_UINT,VK_FORMAT_D24_UNORM_S8_UINT,VK_FORMAT_D16_UNORM_S8_UINT] then begin
     ImageViewCreateInfo.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT) or TVkImageAspectFlags(VK_IMAGE_ASPECT_STENCIL_BIT);
    end else begin
@@ -6724,10 +6724,10 @@ begin
   ImageViewCreateInfo.image:=fImage;
   ImageViewCreateInfo.viewType:=VK_IMAGE_VIEW_TYPE_2D;
   ImageViewCreateInfo.format:=fFormat;
-  ImageViewCreateInfo.components.r:=VK_COMPONENT_SWIZZLE_R;
-  ImageViewCreateInfo.components.g:=VK_COMPONENT_SWIZZLE_G;
-  ImageViewCreateInfo.components.b:=VK_COMPONENT_SWIZZLE_B;
-  ImageViewCreateInfo.components.a:=VK_COMPONENT_SWIZZLE_A;
+  ImageViewCreateInfo.components.r:=VK_COMPONENT_SWIZZLE_IDENTITY;
+  ImageViewCreateInfo.components.g:=VK_COMPONENT_SWIZZLE_IDENTITY;
+  ImageViewCreateInfo.components.b:=VK_COMPONENT_SWIZZLE_IDENTITY;
+  ImageViewCreateInfo.components.a:=VK_COMPONENT_SWIZZLE_IDENTITY;
   ImageViewCreateInfo.subresourceRange.aspectMask:=AspectMask;
   ImageViewCreateInfo.subresourceRange.baseMipLevel:=0;
   ImageViewCreateInfo.subresourceRange.levelCount:=1;
