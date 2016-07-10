@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-10-09-02-0000                       *
+ *                        Version 2016-07-10-12-59-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -722,6 +722,7 @@ type EVulkanException=class(Exception);
       public
        constructor Create(const pInstance:TVulkanInstance;const pPhysicalDevice:TVkPhysicalDevice);
        destructor Destroy; override;
+       function HasQueueSupportForSparseBindings(const pQueueFamilyIndex:TVkUInt32):boolean;
        function GetFormatProperties(const pFormat:TVkFormat):TVkFormatProperties;
        function GetImageFormatProperties(const pFormat:TVkFormat;
                                          const pType:TVkImageType;
@@ -841,7 +842,6 @@ type EVulkanException=class(Exception);
        fGraphicsQueueFamilyIndex:TVkInt32;
        fComputeQueueFamilyIndex:TVkInt32;
        fTransferQueueFamilyIndex:TVkInt32;
-       fSparseBindingQueueFamilyIndex:TVkInt32;
        fPresentQueue:TVulkanQueue;
        fGraphicsQueue:TVulkanQueue;
        fComputeQueue:TVulkanQueue;
@@ -874,7 +874,6 @@ type EVulkanException=class(Exception);
        property GraphicsQueueFamilyIndex:TVkInt32 read fGraphicsQueueFamilyIndex;
        property ComputeQueueFamilyIndex:TVkInt32 read fComputeQueueFamilyIndex;
        property TransferQueueFamilyIndex:TVkInt32 read fTransferQueueFamilyIndex;
-       property SparseBindingQueueFamilyIndex:TVkInt32 read fSparseBindingQueueFamilyIndex;
        property PresentQueue:TVulkanQueue read fPresentQueue;
        property GraphicsQueue:TVulkanQueue read fGraphicsQueue;
        property ComputeQueue:TVulkanQueue read fComputeQueue;
@@ -1187,9 +1186,12 @@ type EVulkanException=class(Exception);
       private
        fDevice:TVulkanDevice;
        fQueueHandle:TVkQueue;
+       fQueueFamilyIndex:TVkUInt32;
+       fHasSupportForSparseBindings:boolean;
       public
        constructor Create(const pDevice:TVulkanDevice;
-                          const pQueue:TVkQueue);
+                          const pQueue:TVkQueue;
+                          const pQueueFamilyIndex:TVKUInt32);
        destructor Destroy; override;
        procedure Submit(const pSubmitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;const pFence:TVulkanFence);
        procedure BindSparse(const pBindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;const pFence:TVulkanFence);
@@ -1197,6 +1199,8 @@ type EVulkanException=class(Exception);
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkQueue read fQueueHandle;
+       property QueueFamilyIndex:TVkUInt32 read fQueueFamilyIndex;
+       property HasSupportForSparseBindings:boolean read fHasSupportForSparseBindings;
      end;
 
      TVulkanCommandPool=class(TVulkanHandle)
@@ -3329,6 +3333,18 @@ begin
  inherited Destroy;
 end;
 
+function TVulkanPhysicalDevice.HasQueueSupportForSparseBindings(const pQueueFamilyIndex:TVkUInt32):boolean;
+var QueueFamilyProperties:PVkQueueFamilyProperties;
+begin
+ result:=false;
+ if pQueueFamilyIndex<TVkUInt32(length(fQueueFamilyProperties)) then begin
+  QueueFamilyProperties:=@fQueueFamilyProperties[pQueueFamilyIndex];
+  if (QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0 then begin
+   result:=true;
+  end;
+ end;
+end;
+
 function TVulkanPhysicalDevice.GetFormatProperties(const pFormat:TVkFormat):TVkFormatProperties;
 begin
  fInstance.Commands.GetPhysicalDeviceFormatProperties(fPhysicalDeviceHandle,pFormat,@result);
@@ -3712,7 +3728,6 @@ begin
  fGraphicsQueueFamilyIndex:=-1;
  fComputeQueueFamilyIndex:=-1;
  fTransferQueueFamilyIndex:=-1;
- fSparseBindingQueueFamilyIndex:=-1;
 
  fPresentQueue:=nil;
  fGraphicsQueue:=nil;
@@ -3815,7 +3830,7 @@ end;
 
 procedure TVulkanDevice.AddQueue(const pQueueFamilyIndex:TVkUInt32;const pQueuePriorities:array of TVkFloat);
 var QueueFamilyProperties:PVkQueueFamilyProperties;
-begin           
+begin
  if pQueueFamilyIndex<TVkUInt32(length(fPhysicalDevice.fQueueFamilyProperties)) then begin
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[pQueueFamilyIndex];
   if (fPresentQueueFamilyIndex<0) and assigned(fSurface) and fPhysicalDevice.GetSurfaceSupport(pQueueFamilyIndex,fSurface) then begin
@@ -3829,9 +3844,6 @@ begin
   end;
   if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
    fTransferQueueFamilyIndex:=pQueueFamilyIndex;
-  end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0) and (fSparseBindingQueueFamilyIndex<0) then begin
-   fSparseBindingQueueFamilyIndex:=pQueueFamilyIndex;
   end;
   fDeviceQueueCreateInfoList.Add(TVulkanDeviceQueueCreateInfo.Create(pQueueFamilyIndex,pQueuePriorities));
  end else begin
@@ -3875,11 +3887,8 @@ begin
     DoAdd:=true;
    end;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0) and (fSparseBindingQueueFamilyIndex<0) then begin
-   fSparseBindingQueueFamilyIndex:=Index;
-   if pSparseBinding then begin
-    DoAdd:=true;
-   end;
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and pSparseBinding then begin
+   raise EVulkanException.Create('Only unsatisfactory device queue families available');
   end;
   if DoAdd then begin
    fDeviceQueueCreateInfoList.Add(TVulkanDeviceQueueCreateInfo.Create(Index,[1.0]));
@@ -3888,8 +3897,7 @@ begin
  if ((fPresentQueueFamilyIndex<0) and pPresent) or
     ((fGraphicsQueueFamilyIndex<0) and pGraphics) or
     ((fComputeQueueFamilyIndex<0) and pCompute) or
-    ((fTransferQueueFamilyIndex<0) and pTransfer) or
-    ((fSparseBindingQueueFamilyIndex<0) and pSparseBinding) then begin
+    ((fTransferQueueFamilyIndex<0) and pTransfer) then begin
   raise EVulkanException.Create('Only unsatisfactory device queue families available');
  end;
 end;
@@ -3961,19 +3969,19 @@ begin
 
   if fPresentQueueFamilyIndex>=0 then begin
    fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fPresentQueueFamilyIndex,0,@Queue);
-   fPresentQueue:=TVulkanQueue.Create(self,Queue);
+   fPresentQueue:=TVulkanQueue.Create(self,Queue,fPresentQueueFamilyIndex);
   end;
   if fGraphicsQueueFamilyIndex>=0 then begin
    fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fGraphicsQueueFamilyIndex,0,@Queue);
-   fGraphicsQueue:=TVulkanQueue.Create(self,Queue);
+   fGraphicsQueue:=TVulkanQueue.Create(self,Queue,fGraphicsQueueFamilyIndex);
   end;
   if fComputeQueueFamilyIndex>=0 then begin
    fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fComputeQueueFamilyIndex,0,@Queue);
-   fComputeQueue:=TVulkanQueue.Create(self,Queue);
+   fComputeQueue:=TVulkanQueue.Create(self,Queue,fComputeQueueFamilyIndex);
   end;
   if fTransferQueueFamilyIndex>=0 then begin
    fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fTransferQueueFamilyIndex,0,@Queue);
-   fTransferQueue:=TVulkanQueue.Create(self,Queue);
+   fTransferQueue:=TVulkanQueue.Create(self,Queue,fTransferQueueFamilyIndex);
   end;
 
  end;
@@ -5370,13 +5378,18 @@ begin
 end;
 
 constructor TVulkanQueue.Create(const pDevice:TVulkanDevice;
-                                const pQueue:TVkQueue);
+                                const pQueue:TVkQueue;
+                                const pQueueFamilyIndex:TVKUInt32);
 begin
  inherited Create;
 
  fDevice:=pDevice;
 
  fQueueHandle:=pQueue;
+
+ fQueueFamilyIndex:=pQueueFamilyIndex;
+
+ fHasSupportForSparseBindings:=fDevice.fPhysicalDevice.HasQueueSupportForSparseBindings(pQueueFamilyIndex);
 
 end;
 
