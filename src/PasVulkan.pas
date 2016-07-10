@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-10-06-21-0000                       *
+ *                        Version 2016-07-10-06-33-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -6456,8 +6456,8 @@ begin
                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                                                                                              ),
                                                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                                                         )],
