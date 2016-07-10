@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-10-06-33-0000                       *
+ *                        Version 2016-07-10-08-40-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -684,13 +684,14 @@ type EVulkanException=class(Exception);
        destructor Destroy; override;
        procedure Initialize;
        procedure InstallDebugReportCallback;
+       property ApplicationInfo:TVkApplicationInfo read fApplicationInfo write SetApplicationInfo;
+      published
        property ApplicationName:TVulkanCharString read GetApplicationName write SetApplicationName;
        property ApplicationVersion:TVkUInt32 read GetApplicationVersion write SetApplicationVersion;
        property EngineName:TVulkanCharString read GetEngineName write SetEngineName;
        property EngineVersion:TVkUInt32 read GetEngineVersion write SetEngineVersion;
        property APIVersion:TVkUInt32 read GetAPIVersion write SetAPIVersion;
        property Validation:longbool read fValidation write fValidation;
-       property ApplicationInfo:TVkApplicationInfo read fApplicationInfo write SetApplicationInfo;
        property AvailableLayers:TVulkanAvailableLayers read fAvailableLayers;
        property AvailableExtensions:TVulkanAvailableExtensions read fAvailableExtensions;
        property AvailableLayerNames:TStringList read fAvailableLayerNames;
@@ -744,11 +745,12 @@ type EVulkanException=class(Exception);
        function GetBestSupportedDepthFormat(const pWithStencil:boolean):TVkFormat;
        function GetQueueNodeIndex(const pSurface:TVulkanSurface;const pQueueFlagBits:TVkQueueFlagBits):TVkInt32;
        function GetSurfaceFormat(const pSurface:TVulkanSurface):TVkSurfaceFormatKHR;
-       property Handle:TVkPhysicalDevice read fPhysicalDeviceHandle;
-       property DeviceName:TVulkanCharString read fDeviceName;
        property Properties:TVkPhysicalDeviceProperties read fProperties;
        property MemoryProperties:TVkPhysicalDeviceMemoryProperties read fMemoryProperties;
        property Features:TVkPhysicalDeviceFeatures read fFeatures;
+      published
+       property Handle:TVkPhysicalDevice read fPhysicalDeviceHandle;
+       property DeviceName:TVulkanCharString read fDeviceName;
        property QueueFamilyProperties:TVkQueueFamilyPropertiesArray read fQueueFamilyProperties;
        property AvailableLayers:TVulkanAvailableLayers read fAvailableLayers;
        property AvailableExtensions:TVulkanAvailableExtensions read fAvailableExtensions;
@@ -802,6 +804,7 @@ type EVulkanException=class(Exception);
 {$ifend}
                          );
        destructor Destroy; override;
+      published
        property Handle:TVkSurfaceKHR read fSurfaceHandle;
      end;
 
@@ -859,11 +862,12 @@ type EVulkanException=class(Exception);
                            const pSparseBinding:boolean=false);
        procedure Initialize;
        procedure WaitIdle;
+       property EnabledFeatures:PVkPhysicalDeviceLimits read fPointerToEnabledFeatures;
+      published
        property PhysicalDevice:TVulkanPhysicalDevice read fPhysicalDevice;
        property Surface:TVulkanSurface read fSurface;
        property EnabledLayerNames:TStringList read fEnabledLayerNames;
        property EnabledExtensionNames:TStringList read fEnabledExtensionNames;
-       property EnabledFeatures:PVkPhysicalDeviceLimits read fPointerToEnabledFeatures;
        property Handle:TVkDevice read fDeviceHandle;
        property Commands:TVulkan read fDeviceVulkan;
        property PresentQueueFamilyIndex:TVkInt32 read fPresentQueueFamilyIndex;
@@ -885,6 +889,7 @@ type EVulkanException=class(Exception);
       public
        constructor Create(const pQueueFamilyIndex:TVkUInt32;const pQueuePriorities:array of TVkFloat);
        destructor Destroy; override;
+      published
        property QueueFamilyIndex:TVkUInt32 read fQueueFamilyIndex;
        property QueuePriorities:TVkFloatArray read fQueuePriorities;
      end;
@@ -905,6 +910,7 @@ type EVulkanException=class(Exception);
        constructor Create; reintroduce; virtual;
        destructor Destroy; override;
        procedure Clear; virtual;
+      published
        property Device:TVulkanDevice read fDevice write fDevice;
        property OwnsResource:boolean read fOwnsResource write fOwnsResource;
      end;
@@ -939,6 +945,7 @@ type EVulkanException=class(Exception);
        function Maximum:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        function Predecessor:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        function Successor:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+      published
        property Key:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey read fKey write fKey;
        property Value:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue read fValue write fValue;
        property Left:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode read fLeft write fLeft;
@@ -962,6 +969,7 @@ type EVulkanException=class(Exception);
                        const pValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        procedure Remove(const pNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode);
        procedure Delete(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey);
+      published
        function LeftMost:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        function RightMost:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        property Root:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode read fRoot;
@@ -986,6 +994,7 @@ type EVulkanException=class(Exception);
        procedure Update(const pOffset:TVkDeviceSize;
                         const pSize:TVkDeviceSize;
                         const pUsed:boolean);
+      published
        property MemoryChunk:TVulkanDeviceMemoryChunk read fMemoryChunk;
        property Offset:TVkDeviceSize read fOffset;
        property Size:TVkDeviceSize read fSize;
@@ -1031,6 +1040,8 @@ type EVulkanException=class(Exception);
        procedure UnmapMemory;
        procedure FlushMappedMemory;
        procedure InvalidateMappedMemory;
+       property Memory:PVkVoid read fMemory;
+      published
        property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
        property Size:TVkDeviceSize read fSize;
        property MemoryPropertyFlags:TVkMemoryPropertyFlags read fMemoryPropertyFlags;
@@ -1038,7 +1049,6 @@ type EVulkanException=class(Exception);
        property MemoryTypeBits:TVkUInt32 read fMemoryTypeBits;
        property MemoryHeapIndex:TVkUInt32 read fMemoryHeapIndex;
        property Handle:TVkDeviceMemory read fMemoryHandle;
-       property Memory:PVkVoid read fMemory;
      end;
 
      TVulkanDeviceMemoryBlock=class(TVulkanObject)
@@ -1060,6 +1070,7 @@ type EVulkanException=class(Exception);
        procedure FlushMappedMemory;
        procedure InvalidateMappedMemory;
        function Fill(const pData:PVkVoid;const pSize:TVkDeviceSize):TVkDeviceSize;
+      published
        property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
        property MemoryChunk:TVulkanDeviceMemoryChunk read fMemoryChunk;
        property Offset:TVkDeviceSize read fOffset;
@@ -1115,6 +1126,7 @@ type EVulkanException=class(Exception);
                           const pOwnSingleMemoryChunk:boolean=false);
        destructor Destroy; override;
        procedure Bind;
+      published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkBuffer read fBufferHandle;
        property Size:TVkDeviceSize read fSize;
@@ -1133,6 +1145,7 @@ type EVulkanException=class(Exception);
        function GetStatus:TVkResult;
        function SetEvent:TVkResult;
        function Reset:TVkResult;
+      published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkEvent read fEventHandle;
      end;
@@ -1151,6 +1164,7 @@ type EVulkanException=class(Exception);
        class function Reset(const pFences:array of TVulkanFence):TVkResult; overload;
        function WaitFor(const pTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult; overload;
        class function WaitFor(const pFences:array of TVulkanFence;const pWaitAll:boolean=true;const pTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult; overload;
+      published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkFence read fFenceHandle;
      end;
@@ -1164,6 +1178,7 @@ type EVulkanException=class(Exception);
        constructor Create(const pDevice:TVulkanDevice;
                           const pFlags:TVkSemaphoreCreateFlags=TVkSemaphoreCreateFlags(0));
        destructor Destroy; override;
+      published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkSemaphore read fSemaphoreHandle;
      end;
@@ -1179,6 +1194,7 @@ type EVulkanException=class(Exception);
        procedure Submit(const pSubmitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;const pFence:TVulkanFence);
        procedure BindSparse(const pBindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;const pFence:TVulkanFence);
        procedure WaitIdle;
+      published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkQueue read fQueueHandle;
      end;
@@ -1195,6 +1211,7 @@ type EVulkanException=class(Exception);
                           const pQueueFamilyIndex:TVkUInt32;
                           const pFlags:TVkCommandPoolCreateFlags=TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
        destructor Destroy; override;
+      published
        property Device:TVulkanDevice read fDevice;
        property QueueFamilyIndex:TVkUInt32 read fQueueFamilyIndex;
        property Handle:TVkCommandPool read fCommandPoolHandle;
@@ -1270,6 +1287,7 @@ type EVulkanException=class(Exception);
        procedure MetaCmdPresentToDrawImageBarrier(const pImage:TVkImage);
        procedure MetaCmdDrawToPresentImageBarrier(const pImage:TVkImage);
        procedure Execute(const pQueue:TVulkanQueue;const pFence:TVulkanFence;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
+      published
        property Device:TVulkanDevice read fDevice;
        property CommandPool:TVulkanCommandPool read fCommandPool;
        property Level:TVkCommandBufferLevel read fLevel;
@@ -1346,9 +1364,10 @@ type EVulkanException=class(Exception);
                                  const pSubpassContents:TVkSubpassContents;
                                  const pOffsetX,pOffsetY,pWidth,pHeight:TVkUInt32);
        procedure EndRenderpass(const pCommandBuffer:TVulkanCommandBuffer);
+       property ClearValues[const Index:TVkUInt32]:PVkClearValue read GetClearValue;
+      published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkRenderPass read fRenderPassHandle;
-       property ClearValues[const Index:TVkUInt32]:PVkClearValue read GetClearValue;
      end;
 
      PVulkanSwapChainBuffer=^TVulkanSwapChainBuffer;
@@ -1403,6 +1422,7 @@ type EVulkanException=class(Exception);
        destructor Destroy; override;
        procedure QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVulkanSemaphore=nil);
        function AcquireNextImage(const pSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkResult;
+      published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkSwapChainKHR read fSwapChainHandle;
        property CurrentBuffer:TVkUInt32 read fCurrentBuffer;
@@ -1431,6 +1451,7 @@ type EVulkanException=class(Exception);
                           const pFormat:TVkFormat;
                           const pUsage:TVkBufferUsageFlags);
        destructor Destroy; override;
+      published
        property Device:TVulkanDevice read fDevice;
        property Width:TVkInt32 read fWidth;
        property Height:TVkInt32 read fHeight;
@@ -1439,6 +1460,30 @@ type EVulkanException=class(Exception);
        property ImageView:TVkImageView read fImageView;
        property Memory:TVulkanDeviceMemoryBlock read fMemoryBlock;
      end;
+
+     TVulkanShader=class(TVulkanObject)
+      private
+       fDevice:TVulkanDevice;
+      protected
+       function GetPipelineShaderStageCreateInfo:TVkPipelineShaderStageCreateInfo; virtual;
+      public
+       constructor Create(const pDevice:TVulkanDevice);
+       destructor Destroy; override;
+       property PipelineShaderStageCreateInfo:TVkPipelineShaderStageCreateInfo read GetPipelineShaderStageCreateInfo;
+      published
+       property Device:TVulkanDevice read fDevice;
+     end;
+
+const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
+       (
+        VK_IMAGE_TILING_LINEAR,  // VK_IMAGE_VIEW_TYPE_1D
+        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_2D
+        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_3D
+        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_CUBE
+        VK_IMAGE_TILING_LINEAR,  // VK_IMAGE_VIEW_TYPE_1D_ARRAY
+        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_2D_ARRAY
+        VK_IMAGE_TILING_LINEAR   // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
+       );
 
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
 
@@ -1459,17 +1504,6 @@ procedure VulkanSetImageLayout(const pImage:TVkImage;
                                const pDstQueueFamilyIndex:TVkQueue=VK_QUEUE_FAMILY_IGNORED);
 
 implementation
-
-const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
-       (
-        VK_IMAGE_TILING_LINEAR,  // VK_IMAGE_VIEW_TYPE_1D
-        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_2D
-        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_3D
-        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_CUBE
-        VK_IMAGE_TILING_LINEAR,  // VK_IMAGE_VIEW_TYPE_1D_ARRAY
-        VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_2D_ARRAY
-        VK_IMAGE_TILING_LINEAR   // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
-       );
 
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
 begin
@@ -6812,6 +6846,23 @@ begin
 
  inherited Destroy;
 
+end;
+
+constructor TVulkanShader.Create(const pDevice:TVulkanDevice);
+begin
+ inherited Create;
+ fDevice:=pDevice;
+end;
+
+destructor TVulkanShader.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TVulkanShader.GetPipelineShaderStageCreateInfo:TVkPipelineShaderStageCreateInfo;
+begin
+ result.pNext:=nil;
+ FillChar(result,SizeOf(TVkPipelineShaderStageCreateInfo),#0);
 end;
 
 end.
