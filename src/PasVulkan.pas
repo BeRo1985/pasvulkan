@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-10-12-59-0000                       *
+ *                        Version 2016-07-12-10-30-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -816,6 +816,8 @@ type EVulkanException=class(Exception);
      TVulkanDeviceMemoryManager=class;
 
      TVulkanQueue=class;
+
+     TVulkanQueues=array of TVulkanQueue; 
      
      TVulkanDevice=class(TVulkanHandle)
       private
@@ -842,6 +844,7 @@ type EVulkanException=class(Exception);
        fGraphicsQueueFamilyIndex:TVkInt32;
        fComputeQueueFamilyIndex:TVkInt32;
        fTransferQueueFamilyIndex:TVkInt32;
+       fQueues:TVulkanQueues;
        fPresentQueue:TVulkanQueue;
        fGraphicsQueue:TVulkanQueue;
        fComputeQueue:TVulkanQueue;
@@ -3724,6 +3727,8 @@ begin
 
  fDeviceVulkan:=nil;
 
+ fQueues:=nil;
+
  fPresentQueueFamilyIndex:=-1;
  fGraphicsQueueFamilyIndex:=-1;
  fComputeQueueFamilyIndex:=-1;
@@ -3807,11 +3812,15 @@ begin
 end;
 
 destructor TVulkanDevice.Destroy;
+var Index:TVkInt32;
 begin
- fPresentQueue.Free;
- fGraphicsQueue.Free;
- fComputeQueue.Free;
- fTransferQueue.Free;
+ for Index:=0 to length(fQueues)-1 do begin
+  if assigned(fQueues[Index]) then begin
+   fQueues[Index].Free;
+   fQueues[Index]:=nil;
+  end;
+ end;
+ SetLength(fQueues,0);
  fMemoryManager.Free;
  fDeviceVulkan.Free;
  if fDeviceHandle<>VK_NULL_HANDLE then begin
@@ -3967,21 +3976,38 @@ begin
    FreeMem(DeviceCommands);
   end;
 
+  SetLength(fQueues,length(fPhysicalDevice.fQueueFamilyProperties));
+  for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
+   if (Index=fPresentQueueFamilyIndex) or
+      (Index=fGraphicsQueueFamilyIndex) or
+      (Index=fComputeQueueFamilyIndex) or
+      (Index=fTransferQueueFamilyIndex) then begin
+    fDeviceVulkan.GetDeviceQueue(fDeviceHandle,Index,0,@Queue);
+    fQueues[Index]:=TVulkanQueue.Create(self,Queue,Index);
+   end else begin
+    fQueues[Index]:=nil;
+   end;
+  end;
+
   if fPresentQueueFamilyIndex>=0 then begin
-   fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fPresentQueueFamilyIndex,0,@Queue);
-   fPresentQueue:=TVulkanQueue.Create(self,Queue,fPresentQueueFamilyIndex);
+   fPresentQueue:=fQueues[fPresentQueueFamilyIndex];
+  end else begin
+   fPresentQueue:=nil;
   end;
   if fGraphicsQueueFamilyIndex>=0 then begin
-   fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fGraphicsQueueFamilyIndex,0,@Queue);
-   fGraphicsQueue:=TVulkanQueue.Create(self,Queue,fGraphicsQueueFamilyIndex);
+   fGraphicsQueue:=fQueues[fGraphicsQueueFamilyIndex];
+  end else begin
+   fGraphicsQueue:=nil;
   end;
   if fComputeQueueFamilyIndex>=0 then begin
-   fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fComputeQueueFamilyIndex,0,@Queue);
-   fComputeQueue:=TVulkanQueue.Create(self,Queue,fComputeQueueFamilyIndex);
+   fComputeQueue:=fQueues[fComputeQueueFamilyIndex];
+  end else begin
+   fComputeQueue:=nil;
   end;
   if fTransferQueueFamilyIndex>=0 then begin
-   fDeviceVulkan.GetDeviceQueue(fDeviceHandle,fTransferQueueFamilyIndex,0,@Queue);
-   fTransferQueue:=TVulkanQueue.Create(self,Queue,fTransferQueueFamilyIndex);
+   fTransferQueue:=fQueues[fTransferQueueFamilyIndex];
+  end else begin
+   fTransferQueue:=nil;
   end;
 
  end;
