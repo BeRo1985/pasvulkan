@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-12-10-30-0000                       *
+ *                        Version 2016-07-19-08-13-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1427,7 +1427,7 @@ type EVulkanException=class(Exception);
                           const pClipped:boolean=true;
                           const pDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff));
        destructor Destroy; override;
-       procedure QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVulkanSemaphore=nil);
+       function QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVulkanSemaphore=nil):TVkResult;
        function AcquireNextImage(const pSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkResult;
       published
        property Device:TVulkanDevice read fDevice;
@@ -6683,7 +6683,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanSwapChain.QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVulkanSemaphore=nil);
+function TVulkanSwapChain.QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVulkanSemaphore=nil):TVkResult;
 var PresentInfo:TVkPresentInfoKHR;
 begin
  FillChar(PresentInfo,SizeOf(TVkPresentInfoKHR),#0);
@@ -6694,8 +6694,11 @@ begin
  if assigned(pSemaphore) then begin
   PresentInfo.waitSemaphoreCount:=1;
   PresentInfo.pWaitSemaphores:=@pSemaphore.fSemaphoreHandle;
- end;                             
- HandleResultCode(fDevice.fInstance.fInstanceVulkan.QueuePresentKHR(pQueue.fQueueHandle,@PresentInfo));
+ end;
+ result:=fDevice.fInstance.fInstanceVulkan.QueuePresentKHR(pQueue.fQueueHandle,@PresentInfo);
+ if result<VK_SUCCESS then begin
+  HandleResultCode(result);
+ end;
 end;
 
 function TVulkanSwapChain.AcquireNextImage(const pSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkResult;
