@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-19-08-13-0000                       *
+ *                        Version 2016-07-30-22-15-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1196,8 +1196,8 @@ type EVulkanException=class(Exception);
                           const pQueue:TVkQueue;
                           const pQueueFamilyIndex:TVKUInt32);
        destructor Destroy; override;
-       procedure Submit(const pSubmitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;const pFence:TVulkanFence);
-       procedure BindSparse(const pBindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;const pFence:TVulkanFence);
+       procedure Submit(const pSubmitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;const pFence:TVulkanFence=nil);
+       procedure BindSparse(const pBindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;const pFence:TVulkanFence=nil);
        procedure WaitIdle;
       published
        property Device:TVulkanDevice read fDevice;
@@ -5424,14 +5424,22 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanQueue.Submit(const pSubmitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;const pFence:TVulkanFence);
+procedure TVulkanQueue.Submit(const pSubmitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;const pFence:TVulkanFence=nil);
 begin
- HandleResultCode(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,pSubmitCount,pSubmits,pFence.fFenceHandle));
+ if assigned(pFence) then begin
+  HandleResultCode(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,pSubmitCount,pSubmits,pFence.fFenceHandle));
+ end else begin
+  HandleResultCode(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,pSubmitCount,pSubmits,VK_NULL_HANDLE));
+ end;
 end;
 
-procedure TVulkanQueue.BindSparse(const pBindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;const pFence:TVulkanFence);
+procedure TVulkanQueue.BindSparse(const pBindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;const pFence:TVulkanFence=nil);
 begin
- HandleResultCode(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,pBindInfoCount,pBindInfo,pFence.fFenceHandle));
+ if assigned(pFence) then begin
+  HandleResultCode(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,pBindInfoCount,pBindInfo,pFence.fFenceHandle));
+ end else begin
+  HandleResultCode(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,pBindInfoCount,pBindInfo,VK_NULL_HANDLE));
+ end;
 end;
 
 procedure TVulkanQueue.WaitIdle;
@@ -5882,8 +5890,7 @@ begin
                     0,nil,
                     1,@ImageMemoryBarrier);
 end;
-
-
+                  
 procedure TVulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(const pImage:TVkImage);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
@@ -5942,12 +5949,18 @@ begin
    SubmitInfo.pSignalSemaphores:=nil;
   end;
 
-  pQueue.Submit(1,@Submitinfo,pFence);
+  if assigned(pFence) then begin
 
-  pFence.WaitFor;
-  pFence.Reset;
+   pQueue.Submit(1,@SubmitInfo,pFence);
 
-  Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   pFence.WaitFor;
+   pFence.Reset;
+
+  end else begin
+
+   pQueue.Submit(1,@SubmitInfo,nil);
+
+  end;
 
  end else begin
   raise EVulkanException.Create('Execute called from a non-primary command buffer!');
