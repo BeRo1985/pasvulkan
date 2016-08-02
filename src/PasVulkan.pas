@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-07-30-22-15-0000                       *
+ *                        Version 2016-08-02-16-02-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -320,6 +320,7 @@ type EVulkanException=class(Exception);
      TVkDisplayModePropertiesKHRArray=array of TVkDisplayModePropertiesKHR;
      TVkDeviceQueueCreateInfoArray=array of TVkDeviceQueueCreateInfo;
      TVkImageArray=array of TVkImage;
+     TVkSamplerArray=array of TVkSampler;
      TVkCommandBufferArray=array of TVkCommandBuffer;
      TVkDescriptorSetLayoutBindingArray=array of TVkDescriptorSetLayoutBinding;
      TVkDescriptorSetLayoutArray=array of TVkDescriptorSetLayout;
@@ -1489,6 +1490,91 @@ type EVulkanException=class(Exception);
        property Device:TVulkanDevice read fDevice;
        property ShaderStages:TVkPipelineShaderStageCreateInfoArray read fShaderStages;
        property CountShaderStages:TVkInt32 read fCountShaderStages;
+     end;
+
+     TVulkanDescriptorPool=class(TVulkanObject)
+      private
+       fDevice:TVulkanDevice;
+       fDescriptorPool:TVkDescriptorPool;
+       fDescriptorPoolCreateInfo:TVkDescriptorPoolCreateInfo;
+       fDescriptorPoolSizes:TVkDescriptorPoolSizeArray;
+       fCountDescriptorPoolSizes:TVkInt32;
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pFlags:TVkDescriptorPoolCreateFlags;
+                          const pMaxSets:TVkUInt32);
+       destructor Destroy; override;
+       function AddDescriptorPoolSize(const pType:TVkDescriptorType;const pDescriptorCount:TVkUInt32):TVkInt32;
+       procedure Initialize;
+       property Device:TVulkanDevice read fDevice;
+       property Handle:TVkDescriptorPool read fDescriptorPool;
+     end;
+
+     TVulkanDescriptorSetLayoutBinding=class(TVulkanObject)
+      private                     
+       fDescriptorSetLayoutBinding:TVkDescriptorSetLayoutBinding;
+       fImmutableSamplers:TVkSamplerArray;
+       fCountImmutableSamplers:TVkInt32;
+       function GetBinding:TVkUInt32;
+       procedure SetBinding(const pBinding:TVkUInt32);
+       function GetDescriptorType:TVkDescriptorType;
+       procedure SetDescriptorType(const pDescriptorType:TVkDescriptorType);
+       function GetDescriptorCount:TVkUInt32;
+       procedure SetDescriptorCount(const pDescriptorCount:TVkUInt32);
+       function GetStageFlags:TVkShaderStageFlags;
+       procedure SetStageFlags(const pStageFlags:TVkShaderStageFlags);
+      public
+       constructor Create(const pBinding:TVkUInt32;
+                          const pDescriptorType:TVkDescriptorType;
+                          const pDescriptorCount:TVkUInt32;
+                          const pStageFlags:TVkShaderStageFlags);
+       destructor Destroy; override;
+       procedure AddImmutableSampler(const pImmutableSampler:TVkSampler);
+       procedure AddImmutableSamplers(const pImmutableSamplers:array of TVkSampler);
+       procedure Initialize;
+      published
+       property Binding:TVkUInt32 read GetBinding write SetBinding;
+       property DescriptorType:TVkDescriptorType read GetDescriptorType write SetDescriptorType;
+       property DescriptorCount:TVkUInt32 read GetDescriptorCount write SetDescriptorCount;
+       property StageFlags:TVkShaderStageFlags read GetStageFlags write SetStageFlags;
+     end;
+
+     TVulkanDescriptorSetLayout=class(TVulkanObject)
+      private
+       fDevice:TVulkanDevice;
+       fDescriptorSetLayout:TVkDescriptorSetLayout;
+       fDescriptorSetLayoutCreateInfo:TVkDescriptorSetLayoutCreateInfo;
+       fDescriptorSetLayoutBindingList:TVulkanObjectList;
+       fDescriptorSetLayoutBindingArray:TVkDescriptorSetLayoutBindingArray;
+      public
+       constructor Create(const pDevice:TVulkanDevice);
+       destructor Destroy; override;
+       procedure AddBinding(const pBinding:TVkUInt32;
+                            const pDescriptorType:TVkDescriptorType;
+                            const pDescriptorCount:TVkUInt32;
+                            const pStageFlags:TVkShaderStageFlags;
+                            const pImmutableSamplers:array of TVkSampler);
+       procedure Initialize;
+       property Device:TVulkanDevice read fDevice;
+       property Handle:TVkDescriptorSetLayout read fDescriptorSetLayout;
+     end;
+
+     TVulkanDescriptorSet=class(TVulkanObject)
+      private
+       fDevice:TVulkanDevice;
+       fDescriptorPool:TVulkanDescriptorPool;
+       fDescriptorSetLayout:TVulkanDescriptorSetLayout;
+       fDescriptorSet:TVkDescriptorSet;
+       fDescriptorSetAllocateInfo:TVkDescriptorSetAllocateInfo;
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pDescriptorPool:TVulkanDescriptorPool;
+                          const pDescriptorSetLayout:TVulkanDescriptorSetLayout);
+       destructor Destroy; override;
+       property Device:TVulkanDevice read fDevice;
+       property Handle:TVkDescriptorSet read fDescriptorSet;
+       property DescriptorPool:TVulkanDescriptorPool read fDescriptorPool;
+       property DescriptorSetLayout:TVulkanDescriptorSetLayout read fDescriptorSetLayout;
      end;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
@@ -6978,6 +7064,243 @@ begin
  for Index:=0 to fCountShaderStages-1 do begin
   fShaderStages[Index].pName:=PVkChar(fNames[Index]);
  end;
+end;
+
+constructor TVulkanDescriptorPool.Create(const pDevice:TVulkanDevice;
+                                         const pFlags:TVkDescriptorPoolCreateFlags;
+                                         const pMaxSets:TVkUInt32);
+begin
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fDescriptorPool:=VK_NULL_HANDLE;
+
+ FillChar(fDescriptorPoolCreateInfo,SizeOf(TVkDescriptorPoolCreateInfo),#0);
+ fDescriptorPoolCreateInfo.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+ fDescriptorPoolCreateInfo.flags:=pFlags;
+ fDescriptorPoolCreateInfo.maxSets:=pMaxSets;
+
+ fDescriptorPoolSizes:=nil;
+ fCountDescriptorPoolSizes:=0;
+
+end;
+
+destructor TVulkanDescriptorPool.Destroy;
+begin
+ if fDescriptorPool<>VK_NULL_HANDLE then begin
+  fDevice.fDeviceVulkan.DestroyDescriptorPool(fDevice.fDeviceHandle,fDescriptorPool,fDevice.fAllocationCallbacks);
+ end;
+ SetLength(fDescriptorPoolSizes,0);
+ inherited Destroy;
+end;
+
+function TVulkanDescriptorPool.AddDescriptorPoolSize(const pType:TVkDescriptorType;const pDescriptorCount:TVkUInt32):TVkInt32;
+var DescriptorPoolSize:PVkDescriptorPoolSize;
+begin
+ result:=fCountDescriptorPoolSizes;
+ inc(fCountDescriptorPoolSizes);
+ if fCountDescriptorPoolSizes>length(fDescriptorPoolSizes) then begin
+  SetLength(fDescriptorPoolSizes,fCountDescriptorPoolSizes*2);
+ end;
+ DescriptorPoolSize:=@fDescriptorPoolSizes[result];
+ DescriptorPoolSize.type_:=pType;
+ DescriptorPoolSize.descriptorCount:=pDescriptorCount;
+end;
+
+procedure TVulkanDescriptorPool.Initialize;
+begin
+ if fDescriptorPool=VK_NULL_HANDLE then begin
+  if fCountDescriptorPoolSizes>0 then begin
+   SetLength(fDescriptorPoolSizes,fCountDescriptorPoolSizes);
+   fDescriptorPoolCreateInfo.poolSizeCount:=length(fDescriptorPoolSizes);
+   fDescriptorPoolCreateInfo.pPoolSizes:=@fDescriptorPoolSizes[0];
+  end;
+  HandleResultCode(fDevice.fDeviceVulkan.CreateDescriptorPool(fDevice.fDeviceHandle,@fDescriptorPoolCreateInfo,fDevice.fAllocationCallbacks,@fDescriptorPool));
+ end;
+end;
+
+constructor TVulkanDescriptorSetLayoutBinding.Create(const pBinding:TVkUInt32;
+                                                     const pDescriptorType:TVkDescriptorType;
+                                                     const pDescriptorCount:TVkUInt32;
+                                                     const pStageFlags:TVkShaderStageFlags);
+begin
+ inherited Create;
+
+ FillChar(fDescriptorSetLayoutBinding,SizeOf(TVkDescriptorSetLayoutBinding),#0);
+ fDescriptorSetLayoutBinding.binding:=pBinding;
+ fDescriptorSetLayoutBinding.descriptorType:=pDescriptorType;
+ fDescriptorSetLayoutBinding.descriptorCount:=pDescriptorCount;
+ fDescriptorSetLayoutBinding.stageFlags:=pStageFlags;
+
+ fImmutableSamplers:=nil;
+ fCountImmutableSamplers:=0;
+
+end;
+
+destructor TVulkanDescriptorSetLayoutBinding.Destroy;
+begin
+ SetLength(fImmutableSamplers,0);
+ inherited Destroy;
+end;
+
+function TVulkanDescriptorSetLayoutBinding.GetBinding:TVkUInt32;
+begin
+ result:=fDescriptorSetLayoutBinding.binding;
+end;
+
+procedure TVulkanDescriptorSetLayoutBinding.SetBinding(const pBinding:TVkUInt32);
+begin
+ fDescriptorSetLayoutBinding.binding:=pBinding;
+end;
+
+function TVulkanDescriptorSetLayoutBinding.GetDescriptorType:TVkDescriptorType;
+begin
+ result:=fDescriptorSetLayoutBinding.descriptorType;
+end;
+
+procedure TVulkanDescriptorSetLayoutBinding.SetDescriptorType(const pDescriptorType:TVkDescriptorType);
+begin
+ fDescriptorSetLayoutBinding.descriptorType:=pDescriptorType;
+end;
+
+function TVulkanDescriptorSetLayoutBinding.GetDescriptorCount:TVkUInt32;
+begin
+ result:=fDescriptorSetLayoutBinding.DescriptorCount;
+end;
+
+procedure TVulkanDescriptorSetLayoutBinding.SetDescriptorCount(const pDescriptorCount:TVkUInt32);
+begin
+ fDescriptorSetLayoutBinding.descriptorCount:=pDescriptorCount;
+end;
+
+function TVulkanDescriptorSetLayoutBinding.GetStageFlags:TVkShaderStageFlags;
+begin
+ result:=fDescriptorSetLayoutBinding.stageFlags;
+end;
+
+procedure TVulkanDescriptorSetLayoutBinding.SetStageFlags(const pStageFlags:TVkShaderStageFlags);
+begin
+ fDescriptorSetLayoutBinding.stageFlags:=pStageFlags;
+end;
+
+procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSampler(const pImmutableSampler:TVkSampler);
+var Index:TVkInt32;
+begin
+ Index:=fCountImmutableSamplers;
+ inc(fCountImmutableSamplers);
+ if fCountImmutableSamplers>length(fImmutableSamplers) then begin
+  SetLength(fImmutableSamplers,fCountImmutableSamplers*2);
+ end;
+ fImmutableSamplers[Index]:=pImmutableSampler;
+end;
+
+procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSamplers(const pImmutableSamplers:array of TVkSampler);
+var Index:TVkInt32;
+begin
+ if length(pImmutableSamplers)>0 then begin
+  Index:=fCountImmutableSamplers;
+  inc(fCountImmutableSamplers,length(pImmutableSamplers));
+  if fCountImmutableSamplers>length(fImmutableSamplers) then begin
+   SetLength(fImmutableSamplers,fCountImmutableSamplers*2);
+  end;
+  Move(pImmutableSamplers[0],fImmutableSamplers[Index],length(pImmutableSamplers)*SizeOf(TVkSampler));
+ end;
+end;
+
+procedure TVulkanDescriptorSetLayoutBinding.Initialize;
+begin
+ SetLength(fImmutableSamplers,fCountImmutableSamplers);
+ fDescriptorSetLayoutBinding.pImmutableSamplers:=@fImmutableSamplers[0];
+end;
+
+constructor TVulkanDescriptorSetLayout.Create(const pDevice:TVulkanDevice);
+begin
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fDescriptorSetLayout:=VK_NULL_HANDLE;
+
+ FillChar(fDescriptorSetLayoutCreateInfo,SizeOf(TVkDescriptorSetLayoutCreateInfo),#0);
+ fDescriptorSetLayoutCreateInfo.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+
+ fDescriptorSetLayoutBindingList:=TVulkanObjectList.Create;
+ fDescriptorSetLayoutBindingList.OwnObjects:=true;
+
+ fDescriptorSetLayoutBindingArray:=nil;
+
+end;
+
+destructor TVulkanDescriptorSetLayout.Destroy;
+begin
+ if fDescriptorSetLayout<>VK_NULL_HANDLE then begin
+  fDevice.fDeviceVulkan.DestroyDescriptorSetLayout(fDevice.fDeviceHandle,fDescriptorSetLayout,fDevice.fAllocationCallbacks);
+ end;
+ fDescriptorSetLayoutBindingList.Free;
+ SetLength(fDescriptorSetLayoutBindingArray,0);
+ inherited Destroy;
+end;
+
+procedure TVulkanDescriptorSetLayout.AddBinding(const pBinding:TVkUInt32;
+                                                const pDescriptorType:TVkDescriptorType;
+                                                const pDescriptorCount:TVkUInt32;
+                                                const pStageFlags:TVkShaderStageFlags;
+                                                const pImmutableSamplers:array of TVkSampler);
+var DescriptorSetLayoutBinding:TVulkanDescriptorSetLayoutBinding;
+begin
+ DescriptorSetLayoutBinding:=TVulkanDescriptorSetLayoutBinding.Create(pBinding,pDescriptorType,pDescriptorCount,pStageFlags);
+ fDescriptorSetLayoutBindingList.Add(DescriptorSetLayoutBinding);
+ DescriptorSetLayoutBinding.AddImmutableSamplers(pImmutableSamplers);
+ DescriptorSetLayoutBinding.Initialize;
+end;
+
+procedure TVulkanDescriptorSetLayout.Initialize;
+var Index:TVkInt32;
+begin
+ if fDescriptorSetLayout=VK_NULL_HANDLE then begin
+  SetLength(fDescriptorSetLayoutBindingArray,fDescriptorSetLayoutBindingList.Count);
+  if length(fDescriptorSetLayoutBindingArray)>0 then begin
+   for Index:=0 to length(fDescriptorSetLayoutBindingArray)-1 do begin
+    fDescriptorSetLayoutBindingArray[Index]:=TVulkanDescriptorSetLayoutBinding(fDescriptorSetLayoutBindingList[Index]).fDescriptorSetLayoutBinding;
+   end;
+   fDescriptorSetLayoutCreateInfo.bindingCount:=length(fDescriptorSetLayoutBindingArray);
+   fDescriptorSetLayoutCreateInfo.pBindings:=@fDescriptorSetLayoutBindingArray[0];
+  end;
+  HandleResultCode(fDevice.fDeviceVulkan.CreateDescriptorSetLayout(fDevice.fDeviceHandle,@fDescriptorSetLayoutCreateInfo,fDevice.fAllocationCallbacks,@fDescriptorSetLayout));
+ end;
+end;
+
+constructor TVulkanDescriptorSet.Create(const pDevice:TVulkanDevice;
+                                        const pDescriptorPool:TVulkanDescriptorPool;
+                                        const pDescriptorSetLayout:TVulkanDescriptorSetLayout);
+begin
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fDescriptorPool:=pDescriptorPool;
+
+ fDescriptorSetLayout:=pDescriptorSetLayout;
+
+ fDescriptorSet:=VK_NULL_HANDLE;
+
+ FillChar(fDescriptorSetAllocateInfo,SizeOf(TVkDescriptorSetAllocateInfo),#0);
+ fDescriptorSetAllocateInfo.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+ fDescriptorSetAllocateInfo.descriptorPool:=fDescriptorPool.fDescriptorPool;
+ fDescriptorSetAllocateInfo.descriptorSetCount:=1;
+ fDescriptorSetAllocateInfo.pSetLayouts:=@fDescriptorSetLayout.fDescriptorSetLayout;
+
+ fDevice.fDeviceVulkan.AllocateDescriptorSets(fDevice.fDeviceHandle,@fDescriptorSetAllocateInfo,@fDescriptorSet);
+
+end;
+
+destructor TVulkanDescriptorSet.Destroy;
+begin
+ if fDescriptorSet<>VK_NULL_HANDLE then begin
+  fDevice.fDeviceVulkan.FreeDescriptorSets(fDevice.fDeviceHandle,fDescriptorPool.fDescriptorPool,1,@fDescriptorSetLayout);
+ end;
+ inherited Destroy;
 end;
 
 end.
