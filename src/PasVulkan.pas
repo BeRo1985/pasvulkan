@@ -1373,11 +1373,11 @@ type EVulkanException=class(Exception);
                                      const pDstAccessMask:TVkAccessFlags;
                                      const pDependencyFlags:TVkDependencyFlags):TVkUInt32;
        procedure Initialize;
-       procedure BeginRenderpass(const pCommandBuffer:TVulkanCommandBuffer;
+       procedure BeginRenderPass(const pCommandBuffer:TVulkanCommandBuffer;
                                  const pFrameBuffer:TVulkanFrameBuffer;
                                  const pSubpassContents:TVkSubpassContents;
                                  const pOffsetX,pOffsetY,pWidth,pHeight:TVkUInt32);
-       procedure EndRenderpass(const pCommandBuffer:TVulkanCommandBuffer);
+       procedure EndRenderPass(const pCommandBuffer:TVulkanCommandBuffer);
        property ClearValues[const Index:TVkUInt32]:PVkClearValue read GetClearValue;
       published
        property Device:TVulkanDevice read fDevice;
@@ -6498,7 +6498,7 @@ begin
 
 end;
 
-procedure TVulkanRenderPass.BeginRenderpass(const pCommandBuffer:TVulkanCommandBuffer;
+procedure TVulkanRenderPass.BeginRenderPass(const pCommandBuffer:TVulkanCommandBuffer;
                                             const pFrameBuffer:TVulkanFrameBuffer;
                                             const pSubpassContents:TVkSubpassContents;
                                             const pOffsetX,pOffsetY,pWidth,pHeight:TVkUInt32);
@@ -6519,7 +6519,7 @@ begin
  pCommandBuffer.CmdBeginRenderPass(@RenderPassBeginInfo,pSubpassContents);
 end;
 
-procedure TVulkanRenderPass.EndRenderpass(const pCommandBuffer:TVulkanCommandBuffer);
+procedure TVulkanRenderPass.EndRenderPass(const pCommandBuffer:TVulkanCommandBuffer);
 begin
  pCommandBuffer.CmdEndRenderPass;
 end;

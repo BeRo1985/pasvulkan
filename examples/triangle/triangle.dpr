@@ -116,11 +116,11 @@ begin
   VulkanSwapChain.RenderPass.ClearValues[0].color.float32[1]:=(sin(Now*86400.0*2.0*pi)*0.5)+0.5;
   VulkanSwapChain.RenderPass.ClearValues[0].color.float32[2]:=(cos(Now*86400.0*pi*0.731)*0.5)+0.5;
 
-  VulkanSwapChain.RenderPass.BeginRenderpass(VulkanCommandBuffer,
+  VulkanSwapChain.RenderPass.BeginRenderPass(VulkanCommandBuffer,
                                              VulkanSwapChain.CurrentFrameBuffer,
                                              VK_SUBPASS_CONTENTS_INLINE,
                                              0,0,VulkanSwapChain.Width,VulkanSwapChain.Height);
-  VulkanSwapChain.RenderPass.EndRenderpass(VulkanCommandBuffer);
+  VulkanSwapChain.RenderPass.EndRenderPass(VulkanCommandBuffer);
 
   VulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(VulkanSwapChain.CurrentImage);
 

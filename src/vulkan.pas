@@ -170,7 +170,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=19;
+      VK_HEADER_VERSION=22;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -240,8 +240,8 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_25_EXTENSION_NAME='VK_AMD_extension_25';
       VK_AMD_GCN_SHADER_SPEC_VERSION=1;
       VK_AMD_GCN_SHADER_EXTENSION_NAME='VK_AMD_gcn_shader';
-      VK_NV_EXTENSION_27_SPEC_VERSION=0;
-      VK_NV_EXTENSION_27_EXTENSION_NAME='VK_NV_extension_27';
+      VK_NV_DEDICATED_ALLOCATION_SPEC_VERSION=1;
+      VK_NV_DEDICATED_ALLOCATION_EXTENSION_NAME='VK_NV_dedicated_allocation';
       VK_EXT_EXTENSION_28_SPEC_VERSION=0;
       VK_EXT_EXTENSION_28_EXTENSION_NAME='VK_NV_extension_28';
       VK_NVX_EXTENSION_29_SPEC_VERSION=0;
@@ -288,6 +288,12 @@ const VK_NULL_HANDLE=0;
       VK_GOOGLE_EXTENSION_49_EXTENSION_NAME='VK_GOOGLE_extension_49';
       VK_GOOGLE_EXTENSION_50_SPEC_VERSION=0;
       VK_GOOGLE_EXTENSION_50_EXTENSION_NAME='VK_GOOGLE_extension_50';
+      VK_NVX_EXTENSION_51_SPEC_VERSION=0;
+      VK_NVX_EXTENSION_51_EXTENSION_NAME='VK_NVX_extension_51';
+      VK_NVX_EXTENSION_52_SPEC_VERSION=0;
+      VK_NVX_EXTENSION_52_EXTENSION_NAME='VK_NVX_extension_52';
+      VK_NV_EXTENSION_53_SPEC_VERSION=0;
+      VK_NV_EXTENSION_53_EXTENSION_NAME='VK_NV_extension_53';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1339,7 +1345,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD=1000018000,
        VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT=1000022000,
        VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT=1000022001,
-       VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT=1000022002
+       VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT=1000022002,
+       VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV=1000026000,
+       VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV=1000026001,
+       VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV=1000026002
       );
 
      PPVkSubpassContents=^PVkSubpassContents;
@@ -1361,6 +1370,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ERROR_OUT_OF_DATE_KHR=-1000001004,
        VK_ERROR_NATIVE_WINDOW_IN_USE_KHR=-1000000001,
        VK_ERROR_SURFACE_LOST_KHR=-1000000000,
+       VK_ERROR_FRAGMENTED_POOL=-12,                                             //< A requested pool allocation has failed due to fragmentation of the pool's memory
        _UNUSED_START=-12,
        VK_ERROR_FORMAT_NOT_SUPPORTED=-11,                                        //< Requested format is not supported on this device
        VK_ERROR_TOO_MANY_OBJECTS=-10,                                            //< Too many objects of the type have already been created
@@ -1543,13 +1553,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT=$00000001,                            //< Format can be used for sampled images (SAMPLED_IMAGE and COMBINED_IMAGE_SAMPLER descriptor types)
        VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT=$00000002,                            //< Format can be used for storage images (STORAGE_IMAGE descriptor type)
-       VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT=$00000004,                     //< Format supports atomic operations in case it's used for storage images
+       VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT=$00000004,                     //< Format supports atomic operations in case it is used for storage images
        VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT=$00000008,                     //< Format can be used for uniform texel buffers (TBOs)
        VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT=$00000010,                     //< Format can be used for storage texel buffers (IBOs)
-       VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT=$00000020,              //< Format supports atomic operations in case it's used for storage texel buffers
+       VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT=$00000020,              //< Format supports atomic operations in case it is used for storage texel buffers
        VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT=$00000040,                            //< Format can be used for vertex buffers (VBOs)
        VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT=$00000080,                         //< Format can be used for color attachment images
-       VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT=$00000100,                   //< Format supports blending in case it's used for color attachment images
+       VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT=$00000100,                   //< Format supports blending in case it is used for color attachment images
        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT=$00000200,                 //< Format can be used for depth/stencil attachment images
        VK_FORMAT_FEATURE_BLIT_SRC_BIT=$00000400,                                 //< Format can be used as the source image of blits with vkCmdBlitImage
        VK_FORMAT_FEATURE_BLIT_DST_BIT=$00000800,                                 //< Format can be used as the destination image of blits with vkCmdBlitImage
@@ -1571,7 +1581,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_QUERY_RESULT_64_BIT=$00000001,                                         //< Results of the queries are written to the destination buffer as 64-bit values
        VK_QUERY_RESULT_WAIT_BIT=$00000002,                                       //< Results of the queries are waited on before proceeding with the result copy
        VK_QUERY_RESULT_WITH_AVAILABILITY_BIT=$00000004,                          //< Besides the results of the query, the availability of the results is also written
-       VK_QUERY_RESULT_PARTIAL_BIT=$00000008                                     //< Copy the partial results of the query even if the final results aren't available
+       VK_QUERY_RESULT_PARTIAL_BIT=$00000008                                     //< Copy the partial results of the query even if the final results are not available
       );
 
      PPVkCommandBufferUsageFlagBits=^PVkCommandBufferUsageFlagBits;
@@ -2110,7 +2120,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkMemoryRequirements=record
       size:TVkDeviceSize; //< Specified in bytes
       alignment:TVkDeviceSize; //< Specified in bytes
-      memoryTypeBits:TVkUInt32; //< Bitfield of the allowed memory type indices into memoryTypes[] for this object
+      memoryTypeBits:TVkUInt32; //< Bitmask of the allowed memory type indices into memoryTypes[] for this object
      end;
 
      PPVkSparseImageFormatProperties=^PVkSparseImageFormatProperties;
@@ -2194,19 +2204,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkDescriptorImageInfo=^PVkDescriptorImageInfo;
      PVkDescriptorImageInfo=^TVkDescriptorImageInfo;
      TVkDescriptorImageInfo=record
-      sampler:TVkSampler; //< Sampler to write to the descriptor in case it's a SAMPLER or COMBINED_IMAGE_SAMPLER descriptor. Ignored otherwise.
-      imageView:TVkImageView; //< Image view to write to the descriptor in case it's a SAMPLED_IMAGE, STORAGE_IMAGE, COMBINED_IMAGE_SAMPLER, or INPUT_ATTACHMENT descriptor. Ignored otherwise.
+      sampler:TVkSampler; //< Sampler to write to the descriptor in case it is a SAMPLER or COMBINED_IMAGE_SAMPLER descriptor. Ignored otherwise.
+      imageView:TVkImageView; //< Image view to write to the descriptor in case it is a SAMPLED_IMAGE, STORAGE_IMAGE, COMBINED_IMAGE_SAMPLER, or INPUT_ATTACHMENT descriptor. Ignored otherwise.
       imageLayout:TVkImageLayout; //< Layout the image is expected to be in when accessed using this descriptor (only used if imageView is not VK_NULL_HANDLE).
      end;
 
      // dstBinding must: be a valid binding point within dstSet
      // descriptorType must: match the type of dstBinding within dstSet
      // The sum of dstArrayElement and descriptorCount must: be less than or equal to the number of array elements in the descriptor set binding specified by dstBinding, and all applicable consecutive bindings, as described by <<descriptorsets-updates-consecutive>>
-     // If descriptorType is TVK_DESCRIPTOR_TYPE_SAMPLER, TVK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, TVK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, TVK_DESCRIPTOR_TYPE_STORAGE_IMAGE or TVK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, pImageInfo must: be a pointer to an array of descriptorCount valid TVkDescriptorImageInfo structures
+     // If descriptorType is TVK_DESCRIPTOR_TYPE_SAMPLER, TVK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, TVK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, TVK_DESCRIPTOR_TYPE_STORAGE_IMAGE, or TVK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, pImageInfo must: be a pointer to an array of descriptorCount valid TVkDescriptorImageInfo structures
      // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER or TVK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, pTexelBufferView must: be a pointer to an array of descriptorCount valid TVkBufferView handles
-     // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER, TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC or TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, pBufferInfo must: be a pointer to an array of descriptorCount valid TVkDescriptorBufferInfo structures
+     // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER, TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, or TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, pBufferInfo must: be a pointer to an array of descriptorCount valid TVkDescriptorBufferInfo structures
      // If descriptorType is TVK_DESCRIPTOR_TYPE_SAMPLER or TVK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, and dstSet was not created with a layout that included immutable samplers for dstBinding with descriptorType, the sampler member of any given element of pImageInfo must: be a valid TVkSampler object
-     // If descriptorType is TVK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, TVK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, TVK_DESCRIPTOR_TYPE_STORAGE_IMAGE or TVK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, the imageView and imageLayout members of any given element of pImageInfo must: be a valid TVkImageView and elink:VkImageLayout, respectively
+     // If descriptorType is TVK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, TVK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, TVK_DESCRIPTOR_TYPE_STORAGE_IMAGE, or TVK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, the imageView and imageLayout members of any given element of pImageInfo must: be a valid TVkImageView and elink:VkImageLayout, respectively
      // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, the offset member of any given element of pBufferInfo must: be a multiple of TVkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
      // If descriptorType is TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER or TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, the offset member of any given element of pBufferInfo must: be a multiple of TVkPhysicalDeviceLimits::minStorageBufferOffsetAlignment
      // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, the buffer member of any given element of pBufferInfo must: have been created with TVK_BUFFER_USAGE_UNIFORM_BUFFER_BIT set
@@ -2390,26 +2400,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The width, height, and depth members of extent must: all be greater than `0`
      // mipLevels must: be greater than `0`
      // arrayLayers must: be greater than `0`
-     // If imageType is TVK_IMAGE_TYPE_1D, extent.width must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension1D, or TVkImageFormatProperties::maxExtent.width (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure) - whichever is higher
-     // If imageType is TVK_IMAGE_TYPE_2D and flags does not contain TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension2D, or TVkImageFormatProperties::maxExtent.width/height (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure) - whichever is higher
-     // If imageType is TVK_IMAGE_TYPE_2D and flags contains TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimensionCube, or TVkImageFormatProperties::maxExtent.width/height (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure) - whichever is higher
+     // If imageType is TVK_IMAGE_TYPE_1D, extent.width must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension1D, or TVkImageFormatProperties::maxExtent.width (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
+     // If imageType is TVK_IMAGE_TYPE_2D and flags does not contain TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension2D, or TVkImageFormatProperties::maxExtent.width/height (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
+     // If imageType is TVK_IMAGE_TYPE_2D and flags contains TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimensionCube, or TVkImageFormatProperties::maxExtent.width/height (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
      // If imageType is TVK_IMAGE_TYPE_2D and flags contains TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be equal
-     // If imageType is TVK_IMAGE_TYPE_3D, extent.width, extent.height and extent.depth must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension3D, or TVkImageFormatProperties::maxExtent.width/height/depth (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure) - whichever is higher
+     // If imageType is TVK_IMAGE_TYPE_3D, extent.width, extent.height and extent.depth must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension3D, or TVkImageFormatProperties::maxExtent.width/height/depth (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
      // If imageType is TVK_IMAGE_TYPE_1D, both extent.height and extent.depth must: be `1`
      // If imageType is TVK_IMAGE_TYPE_2D, extent.depth must: be `1`
      // mipLevels must: be less than or equal to latexmath:[$\lfloor\log_2(\max(\mathit{extent.width}, \mathit{extent.height}, \mathit{extent.depth}))\rfloor + 1$]
-     // If any of extent.width, extent.height or extent.depth are greater than the equivalently named members of TVkPhysicalDeviceLimits::maxImageDimension3D, mipLevels must: be less than or equal to TVkImageFormatProperties::maxMipLevels (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure)
-     // arrayLayers must: be less than or equal to TVkPhysicalDeviceLimits::maxImageArrayLayers, or TVkImageFormatProperties::maxArrayLayers (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure) - whichever is higher
-     // samples must: be a bit value that is set in TVkPhysicalDeviceLimits::sampleCounts returned by flink:vkGetPhysicalDeviceProperties, or TVkImageFormatProperties::sampleCounts returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage and flags equal to those in this structure
-     // If usage includes TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, TVK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, extent.width must: be less than or equal to TVkPhysicalDeviceLimits::maxFramebufferWidth
-     // If usage includes TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, TVK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxFramebufferHeight
-     // If usage includes TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, samples must: be a bit value that is set in TVkPhysicalDeviceLimits::framebufferColorSampleCounts
-     // If usage includes TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, and format includes a depth aspect, samples must: be a bit value that is set in TVkPhysicalDeviceLimits::framebufferDepthSampleCounts
-     // If usage includes TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, and format includes a stencil aspect, samples must: be a bit value that is set in TVkPhysicalDeviceLimits::framebufferStencilSampleCounts
-     // If usage includes TVK_IMAGE_USAGE_SAMPLED_BIT, and format includes a color aspect, samples must: be a bit value that is set in TVkPhysicalDeviceLimits::sampledImageColorSampleCounts
-     // If usage includes TVK_IMAGE_USAGE_SAMPLED_BIT, and format includes a depth aspect, samples must: be a bit value that is set in TVkPhysicalDeviceLimits::sampledImageDepthSampleCounts
-     // If usage includes TVK_IMAGE_USAGE_SAMPLED_BIT, and format is an integer format, samples must: be a bit value that is set in TVkPhysicalDeviceLimits::sampledImageIntegerSampleCounts
-     // If usage includes TVK_IMAGE_USAGE_STORAGE_BIT, samples must: be a bit value that is set in TVkPhysicalDeviceLimits::storageImageSampleCounts
+     // If any of extent.width, extent.height, or extent.depth are greater than the equivalently named members of TVkPhysicalDeviceLimits::maxImageDimension3D, mipLevels must: be less than or equal to TVkImageFormatProperties::maxMipLevels (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure)
+     // arrayLayers must: be less than or equal to TVkPhysicalDeviceLimits::maxImageArrayLayers, or TVkImageFormatProperties::maxArrayLayers (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
+     // If samples is not TVK_SAMPLE_COUNT_1_BIT, imageType must: be TVK_IMAGE_TYPE_2D, tiling must: be TVK_IMAGE_TILING_OPTIMAL, and mipLevels must: be equal to `1`
+     // If usage includes TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, TVK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, extent.width must: be less than or equal to TVkPhysicalDeviceLimits::maxFramebufferWidth
+     // If usage includes TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, TVK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxFramebufferHeight
+     // samples must: be a bit value that is set in TVkImageFormatProperties::sampleCounts returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure
      // If the <<features-features-textureCompressionETC2,ETC2 texture compression>> feature is not enabled, format mustnot: be TVK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK, TVK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK, TVK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK, TVK_FORMAT_EAC_R11_UNORM_BLOCK, TVK_FORMAT_EAC_R11_SNORM_BLOCK, TVK_FORMAT_EAC_R11G11_UNORM_BLOCK, or TVK_FORMAT_EAC_R11G11_SNORM_BLOCK
      // If the <<features-features-textureCompressionASTC_LDR,ASTC LDR texture compression>> feature is not enabled, format mustnot: be TVK_FORMAT_ASTC_4x4_UNORM_BLOCK, TVK_FORMAT_ASTC_4x4_SRGB_BLOCK, TVK_FORMAT_ASTC_5x4_UNORM_BLOCK, TVK_FORMAT_ASTC_5x4_SRGB_BLOCK, TVK_FORMAT_ASTC_5x5_UNORM_BLOCK, TVK_FORMAT_ASTC_5x5_SRGB_BLOCK, TVK_FORMAT_ASTC_6x5_UNORM_BLOCK, TVK_FORMAT_ASTC_6x5_SRGB_BLOCK, TVK_FORMAT_ASTC_6x6_UNORM_BLOCK, TVK_FORMAT_ASTC_6x6_SRGB_BLOCK, TVK_FORMAT_ASTC_8x5_UNORM_BLOCK, TVK_FORMAT_ASTC_8x5_SRGB_BLOCK,
      // TVK_FORMAT_ASTC_8x6_UNORM_BLOCK, TVK_FORMAT_ASTC_8x6_SRGB_BLOCK, TVK_FORMAT_ASTC_8x8_UNORM_BLOCK, TVK_FORMAT_ASTC_8x8_SRGB_BLOCK, TVK_FORMAT_ASTC_10x5_UNORM_BLOCK, TVK_FORMAT_ASTC_10x5_SRGB_BLOCK, TVK_FORMAT_ASTC_10x6_UNORM_BLOCK, TVK_FORMAT_ASTC_10x6_SRGB_BLOCK, TVK_FORMAT_ASTC_10x8_UNORM_BLOCK, TVK_FORMAT_ASTC_10x8_SRGB_BLOCK, TVK_FORMAT_ASTC_10x10_UNORM_BLOCK, TVK_FORMAT_ASTC_10x10_SRGB_BLOCK, TVK_FORMAT_ASTC_12x10_UNORM_BLOCK, TVK_FORMAT_ASTC_12x10_SRGB_BLOCK, TVK_FORMAT_ASTC_12x12_UNORM_BLOCK, or TVK_FORMAT_ASTC_12x12_SRGB_BLOCK
@@ -2423,10 +2427,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If the <<features-features-sparseResidency4Samples,sparse residency for images with 4 samples>> feature is not enabled, imageType is TVK_IMAGE_TYPE_2D, and samples is TVK_SAMPLE_COUNT_4_BIT, flags mustnot: contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
      // If the <<features-features-sparseResidency8Samples,sparse residency for images with 8 samples>> feature is not enabled, imageType is TVK_IMAGE_TYPE_2D, and samples is TVK_SAMPLE_COUNT_8_BIT, flags mustnot: contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
      // If the <<features-features-sparseResidency16Samples,sparse residency for images with 16 samples>> feature is not enabled, imageType is TVK_IMAGE_TYPE_2D, and samples is TVK_SAMPLE_COUNT_16_BIT, flags mustnot: contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If tiling is TVK_IMAGE_TILING_LINEAR, format must: be a format that has at least one supported feature bit present in the value of TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
      // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, usage mustnot: contain TVK_IMAGE_USAGE_SAMPLED_BIT
      // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, usage mustnot: contain TVK_IMAGE_USAGE_STORAGE_BIT
      // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, usage mustnot: contain TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
      // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, usage mustnot: contain TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+     // If tiling is TVK_IMAGE_TILING_OPTIMAL, format must: be a format that has at least one supported feature bit present in the value of TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
      // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, usage mustnot: contain TVK_IMAGE_USAGE_SAMPLED_BIT
      // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, usage mustnot: contain TVK_IMAGE_USAGE_STORAGE_BIT
      // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, usage mustnot: contain TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
@@ -2469,14 +2475,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // TVK_FORMAT_ASTC_8x6_UNORM_BLOCK, TVK_FORMAT_ASTC_8x6_SRGB_BLOCK, TVK_FORMAT_ASTC_8x8_UNORM_BLOCK, TVK_FORMAT_ASTC_8x8_SRGB_BLOCK, TVK_FORMAT_ASTC_10x5_UNORM_BLOCK, TVK_FORMAT_ASTC_10x5_SRGB_BLOCK, TVK_FORMAT_ASTC_10x6_UNORM_BLOCK, TVK_FORMAT_ASTC_10x6_SRGB_BLOCK, TVK_FORMAT_ASTC_10x8_UNORM_BLOCK, TVK_FORMAT_ASTC_10x8_SRGB_BLOCK, TVK_FORMAT_ASTC_10x10_UNORM_BLOCK, TVK_FORMAT_ASTC_10x10_SRGB_BLOCK, TVK_FORMAT_ASTC_12x10_UNORM_BLOCK, TVK_FORMAT_ASTC_12x10_SRGB_BLOCK, TVK_FORMAT_ASTC_12x12_UNORM_BLOCK, or TVK_FORMAT_ASTC_12x12_SRGB_BLOCK
      // If the <<features-features-textureCompressionBC,BC texture compression>> feature is not enabled, format mustnot: be TVK_FORMAT_BC1_RGB_UNORM_BLOCK, TVK_FORMAT_BC1_RGB_SRGB_BLOCK, TVK_FORMAT_BC1_RGBA_UNORM_BLOCK, TVK_FORMAT_BC1_RGBA_SRGB_BLOCK, TVK_FORMAT_BC2_UNORM_BLOCK, TVK_FORMAT_BC2_SRGB_BLOCK, TVK_FORMAT_BC3_UNORM_BLOCK, TVK_FORMAT_BC3_SRGB_BLOCK, TVK_FORMAT_BC4_UNORM_BLOCK, TVK_FORMAT_BC4_SNORM_BLOCK, TVK_FORMAT_BC5_UNORM_BLOCK, TVK_FORMAT_BC5_SNORM_BLOCK, TVK_FORMAT_BC6H_UFLOAT_BLOCK, TVK_FORMAT_BC6H_SFLOAT_BLOCK,
      // TVK_FORMAT_BC7_UNORM_BLOCK, or TVK_FORMAT_BC7_SRGB_BLOCK
-     // If image was created with TVK_IMAGE_TILING_LINEAR and usage containing TVK_IMAGE_USAGE_SAMPLED_BIT, format must: be supported for sampled images, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
-     // If image was created with TVK_IMAGE_TILING_LINEAR and usage containing TVK_IMAGE_USAGE_STORAGE_BIT, format must: be supported for storage images, as specified by the TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
-     // If image was created with TVK_IMAGE_TILING_LINEAR and usage containing TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, format must: be supported for color attachments, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
-     // If image was created with TVK_IMAGE_TILING_LINEAR and usage containing TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, format must: be supported for depth/stencil attachments, as specified by the TVK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
-     // If image was created with TVK_IMAGE_TILING_OPTIMAL and usage containing TVK_IMAGE_USAGE_SAMPLED_BIT, format must: be supported for sampled images, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
-     // If image was created with TVK_IMAGE_TILING_OPTIMAL and usage containing TVK_IMAGE_USAGE_STORAGE_BIT, format must: be supported for storage images, as specified by the TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
-     // If image was created with TVK_IMAGE_TILING_OPTIMAL and usage containing TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, format must: be supported for color attachments, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
-     // If image was created with TVK_IMAGE_TILING_OPTIMAL and usage containing TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, format must: be supported for depth/stencil attachments, as specified by the TVK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
+     // If image was created with TVK_IMAGE_TILING_LINEAR, format must: be format that has at least one supported feature bit present in the value of TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
+     // If image was created with TVK_IMAGE_TILING_LINEAR and usage containing TVK_IMAGE_USAGE_SAMPLED_BIT, format must: be supported for sampled images, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
+     // If image was created with TVK_IMAGE_TILING_LINEAR and usage containing TVK_IMAGE_USAGE_STORAGE_BIT, format must: be supported for storage images, as specified by the TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
+     // If image was created with TVK_IMAGE_TILING_LINEAR and usage containing TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, format must: be supported for color attachments, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
+     // If image was created with TVK_IMAGE_TILING_LINEAR and usage containing TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, format must: be supported for depth/stencil attachments, as specified by the TVK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
+     // If image was created with TVK_IMAGE_TILING_OPTIMAL, format must: be format that has at least one supported feature bit present in the value of TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
+     // If image was created with TVK_IMAGE_TILING_OPTIMAL and usage containing TVK_IMAGE_USAGE_SAMPLED_BIT, format must: be supported for sampled images, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
+     // If image was created with TVK_IMAGE_TILING_OPTIMAL and usage containing TVK_IMAGE_USAGE_STORAGE_BIT, format must: be supported for storage images, as specified by the TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
+     // If image was created with TVK_IMAGE_TILING_OPTIMAL and usage containing TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, format must: be supported for color attachments, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
+     // If image was created with TVK_IMAGE_TILING_OPTIMAL and usage containing TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, format must: be supported for depth/stencil attachments, as specified by the TVK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
      // subresourceRange must: be a valid image subresource range for image (see <<resources-image-views>>)
      // If image was created with the TVK_IMAGE_CREATE_MUTABLE_FORMAT_BIT flag, format must: be compatible with the format used to create image, as defined in <<features-formats-compatibility-classes,Format Compatibility Classes>>
      // If image was not created with the TVK_IMAGE_CREATE_MUTABLE_FORMAT_BIT flag, format must: be identical to the format used to create image
@@ -2502,8 +2510,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       size:TVkDeviceSize; //< Specified in bytes
      end;
 
-     // If memory is not TVK_NULL_HANDLE, memory and memoryOffset must: match the memory requirements of the resource, as described in section <<resources-association>>
-     // If memory is not TVK_NULL_HANDLE, memory mustnot: have been created with a memory type that reports TVK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT bit set
+     // If memory is not dlink:VK_NULL_HANDLE, memory and memoryOffset must: match the memory requirements of the resource, as described in section <<resources-association>>
+     // If memory is not dlink:VK_NULL_HANDLE, memory mustnot: have been created with a memory type that reports TVK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT bit set
      // size must: be greater than `0`
      // resourceOffset must: be less than the size of the resource
      // size must: be less than or equal to the size of the resource minus resourceOffset
@@ -2618,6 +2626,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If either of the calling command's srcImage or dstImage parameters are of elink:VkImageType TVK_IMAGE_TYPE_3D, the baseArrayLayer and layerCount members of both srcSubresource and dstSubresource must: be `0` and `1`, respectively
      // The aspectMask member of srcSubresource must: specify aspects present in the calling command's srcImage
      // The aspectMask member of dstSubresource must: specify aspects present in the calling command's dstImage
+     // The layerCount member of dstSubresource must: be equal to the layerCount member of srcSubresource
      // srcOffset[0].x and srcOffset[1].x must: both be greater than or equal to `0` and less than or equal to the source image subresource width
      // srcOffset[0].y and srcOffset[1].y must: both be greater than or equal to `0` and less than or equal to the source image subresource height
      // srcOffset[0].z and srcOffset[1].z must: both be greater than or equal to `0` and less than or equal to the source image subresource depth
@@ -2795,11 +2804,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       pSpecializationInfo:PVkSpecializationInfo;
      end;
 
-     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineIndex is not `-1`, basePipelineHandle must: be TVK_NULL_HANDLE
+     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineIndex is not `-1`, basePipelineHandle must: be dlink:VK_NULL_HANDLE
      // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineIndex is not `-1`, it must: be a valid index into the calling command's pCreateInfos parameter
-     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not TVK_NULL_HANDLE, basePipelineIndex must: be `-1`
-     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not TVK_NULL_HANDLE, basePipelineHandle must: be a valid TVkPipeline handle
-     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not TVK_NULL_HANDLE, it must: be a valid handle to a compute TVkPipeline
+     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not dlink:VK_NULL_HANDLE, basePipelineIndex must: be `-1`
+     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not dlink:VK_NULL_HANDLE, basePipelineHandle must: be a valid TVkPipeline handle
+     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not dlink:VK_NULL_HANDLE, it must: be a valid handle to a compute TVkPipeline
      // The stage member of stage must: be TVK_SHADER_STAGE_COMPUTE_BIT
      // The shader code for the entry point identified by stage and the rest of the state identified by this structure must: adhere to the pipeline linking rules described in the <<interfaces,Shader Interfaces>> chapter
      // layout must: be <<descriptorsets-pipelinelayout-consistency,consistent>> with all shaders specified in pStages
@@ -3005,23 +3014,24 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       maxDepthBounds:TVkFloat;
      end;
 
-     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineIndex is not `-1`, basePipelineHandle must: be TVK_NULL_HANDLE
+     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineIndex is not `-1`, basePipelineHandle must: be dlink:VK_NULL_HANDLE
      // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineIndex is not `-1`, it must: be a valid index into the calling command's pCreateInfos parameter
-     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not TVK_NULL_HANDLE, basePipelineIndex must: be `-1`
-     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not TVK_NULL_HANDLE, basePipelineHandle must: be a valid TVkPipeline handle
-     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not TVK_NULL_HANDLE, it must: be a valid handle to a graphics TVkPipeline
+     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not dlink:VK_NULL_HANDLE, basePipelineIndex must: be `-1`
+     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not dlink:VK_NULL_HANDLE, basePipelineHandle must: be a valid TVkPipeline handle
+     // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not dlink:VK_NULL_HANDLE, it must: be a valid handle to a graphics TVkPipeline
      // The stage member of each element of pStages must: be unique
      // The stage member of one element of pStages must: be TVK_SHADER_STAGE_VERTEX_BIT
      // The stage member of any given element of pStages mustnot: be TVK_SHADER_STAGE_COMPUTE_BIT
      // If pStages includes a tessellation control shader stage, it must: include a tessellation evaluation shader stage
      // If pStages includes a tessellation evaluation shader stage, it must: include a tessellation control shader stage
      // If pStages includes a tessellation control shader stage and a tessellation evaluation shader stage, pTessellationState mustnot: be `NULL`
-     // If pStages includes both a tessellation control shader stage and a tessellation evaluation shader stage, the shader code of at least one must: contain an code:OpExecutionMode instruction that specifies the type of subdivision in the pipeline
-     // If pStages includes both a tessellation control shader stage and a tessellation evaluation shader stage, and the shader code of both contain an code:OpExecutionMode instruction that specifies the type of subdivision in the pipeline, they must: both specify the same subdivision mode
-     // If pStages includes both a tessellation control shader stage and a tessellation evaluation shader stage, the shader code of at least one must: contain an code:OpExecutionMode instruction that specifies the output patch size in the pipeline
-     // If pStages includes both a tessellation control shader stage and a tessellation evaluation shader stage, and the shader code of both contain an code:OpExecutionMode instruction that specifies the out patch size in the pipeline, they must: both specify the same patch size
+     // If pStages includes tessellation shader stages, the shader code of at least one stage must: contain an code:OpExecutionMode instruction that specifies the type of subdivision in the pipeline
+     // If pStages includes tessellation shader stages, and the shader code of both stages contain an code:OpExecutionMode instruction that specifies the type of subdivision in the pipeline, they must: both specify the same subdivision mode
+     // If pStages includes tessellation shader stages, the shader code of at least one stage must: contain an code:OpExecutionMode instruction that specifies the output patch size in the pipeline
+     // If pStages includes tessellation shader stages, and the shader code of both contain an code:OpExecutionMode instruction that specifies the out patch size in the pipeline, they must: both specify the same patch size
      // If pStages includes tessellation shader stages, the topology member of pInputAssembly must: be TVK_PRIMITIVE_TOPOLOGY_PATCH_LIST
-     // If pStages includes a geometry shader stage, and doesn't include any tessellation shader stages, its shader code must: contain an code:OpExecutionMode instruction that specifies an input primitive type that is <<shaders-geometry-execution, compatible>> with the primitive topology specified in pInputAssembly
+     // If the topology member of pInputAssembly is TVK_PRIMITIVE_TOPOLOGY_PATCH_LIST, pStages must: include tessellation shader stages
+     // If pStages includes a geometry shader stage, and does not include any tessellation shader stages, its shader code must: contain an code:OpExecutionMode instruction that specifies an input primitive type that is <<shaders-geometry-execution, compatible>> with the primitive topology specified in pInputAssembly
      // If pStages includes a geometry shader stage, and also includes tessellation shader stages, its shader code must: contain an code:OpExecutionMode instruction that specifies an input primitive type that is <<shaders-geometry-execution, compatible>> with the primitive topology that is output by the tessellation stages
      // If pStages includes a fragment shader stage and a geometry shader stage, and the fragment shader code reads from an input variable that is decorated with code:PrimitiveID, then the geometry shader code must: write to a matching output variable, decorated with code:PrimitiveID, in all execution paths
      // If pStages includes a fragment shader stage, its shader code mustnot: read from any input attachment that is defined as TVK_ATTACHMENT_UNUSED in subpass
@@ -3183,7 +3193,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      // If flags contains TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, the renderPass member of pInheritanceInfo must: be a valid TVkRenderPass
      // If flags contains TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, the subpass member of pInheritanceInfo must: be a valid subpass index within the renderPass member of pInheritanceInfo
-     // If flags contains TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, the framebuffer member of pInheritanceInfo must: be either TVK_NULL_HANDLE, or a valid TVkFramebuffer that is compatible with the renderPass member of pInheritanceInfo
+     // If flags contains TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, the framebuffer member of pInheritanceInfo must: be either dlink:VK_NULL_HANDLE, or a valid TVkFramebuffer that is compatible with the renderPass member of pInheritanceInfo
      PPVkCommandBufferBeginInfo=^PVkCommandBufferBeginInfo;
      PVkCommandBufferBeginInfo=^TVkCommandBufferBeginInfo;
      TVkCommandBufferBeginInfo=record
@@ -3227,7 +3237,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        );
      end;
 
-     // clearValueCount must: be greater than or equal to the number of attachments in renderPass that specify a loadOp of TVK_ATTACHMENT_LOAD_OP_CLEAR
+     // clearValueCount must: be greater than the largest attachment index in renderPass that specifies a loadOp (or stencilLoadOp, if the attachment has a depth/stencil format) of TVK_ATTACHMENT_LOAD_OP_CLEAR
      PPVkRenderPassBeginInfo=^PVkRenderPassBeginInfo;
      PVkRenderPassBeginInfo=^TVkRenderPassBeginInfo;
      TVkRenderPassBeginInfo=record
@@ -3250,6 +3260,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       clearValue:TVkClearValue;
      end;
 
+     // finalLayout mustnot: be TVK_IMAGE_LAYOUT_UNDEFINED or TVK_IMAGE_LAYOUT_PREINITIALIZED
      PPVkAttachmentDescription=^PVkAttachmentDescription;
      PVkAttachmentDescription=^TVkAttachmentDescription;
      TVkAttachmentDescription=record
@@ -3264,6 +3275,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       finalLayout:TVkImageLayout;
      end;
 
+     // layout mustnot: be TVK_IMAGE_LAYOUT_UNDEFINED or TVK_IMAGE_LAYOUT_PREINITIALIZED
      PPVkAttachmentReference=^PVkAttachmentReference;
      PVkAttachmentReference=^TVkAttachmentReference;
      TVkAttachmentReference=record
@@ -3304,6 +3316,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
      // srcSubpass must: be less than or equal to dstSubpass, unless one of them is TVK_SUBPASS_EXTERNAL, to avoid cyclic dependencies and ensure a valid execution order
      // srcSubpass and dstSubpass mustnot: both be equal to TVK_SUBPASS_EXTERNAL
+     // If srcSubpass is equal to dstSubpass, srcStageMask and dstStageMask must: only contain one of TVK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, TVK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, TVK_PIPELINE_STAGE_VERTEX_INPUT_BIT, TVK_PIPELINE_STAGE_VERTEX_SHADER_BIT, TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT, TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT, TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT, TVK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, TVK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, TVK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+     // TVK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, TVK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, or TVK_PIPELINE_STAGE_ALL_GRAPHICS_BIT
+     // If srcSubpass is equal to dstSubpass, the highest bit value included in srcStageMask must: be less than or equal to the lowest bit value in dstStageMask
      PPVkSubpassDependency=^PVkSubpassDependency;
      PVkSubpassDependency=^TVkSubpassDependency;
      TVkSubpassDependency=record
@@ -3582,7 +3597,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // Any given element of pCommandBuffers mustnot: contain commands that execute a secondary command buffer, if that secondary command buffer has been recorded in another primary command buffer after it was recorded into this TVkCommandBuffer
      // Any given element of pCommandBuffers must: have been created on a TVkCommandPool that was created for the same queue family that the calling command's queue belongs to
      // Any given element of pCommandBuffers mustnot: have been created with TVK_COMMAND_BUFFER_LEVEL_SECONDARY
-     // Any given element of TVkSemaphore in pWaitSemaphores must: refer to a prior signal of that TVkSemaphore that won't be consumed by any other wait on that semaphore
+     // Any given element of TVkSemaphore in pWaitSemaphores must: refer to a prior signal of that TVkSemaphore that will not be consumed by any other wait on that semaphore
      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, any given element of pWaitDstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, any given element of pWaitDstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
      PPVkSubmitInfo=^PVkSubmitInfo;
@@ -3822,7 +3837,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 
      // Any given element of pImageIndices must: be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array
-     // Any given element of TVkSemaphore in pWaitSemaphores must: refer to a prior signal of that TVkSemaphore that won't be consumed by any other wait on that semaphore
+     // Any given element of TVkSemaphore in pWaitSemaphores must: refer to a prior signal of that TVkSemaphore that will not be consumed by any other wait on that semaphore
      PPVkPresentInfoKHR=^PVkPresentInfoKHR;
      PVkPresentInfoKHR=^TVkPresentInfoKHR;
      TVkPresentInfoKHR=record
@@ -3885,6 +3900,38 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       color:array[0..3] of TVkFloat; //< Optional color for debug marker
      end;
 
+     // If dedicatedAllocation is TVK_TRUE, TVkImageCreateInfo::flags mustnot: include TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, or TVK_IMAGE_CREATE_SPARSE_ALIASED_BIT
+     PPVkDedicatedAllocationImageCreateInfoNV=^PVkDedicatedAllocationImageCreateInfoNV;
+     PVkDedicatedAllocationImageCreateInfoNV=^TVkDedicatedAllocationImageCreateInfoNV;
+     TVkDedicatedAllocationImageCreateInfoNV=record
+      sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV
+      pNext:PVkVoid; //< Pointer to next structure
+      dedicatedAllocation:TVkBool32; //< Whether this image uses a dedicated allocation
+     end;
+
+     // If dedicatedAllocation is TVK_TRUE, TVkBufferCreateInfo::flags mustnot: include TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT, or TVK_BUFFER_CREATE_SPARSE_ALIASED_BIT
+     PPVkDedicatedAllocationBufferCreateInfoNV=^PVkDedicatedAllocationBufferCreateInfoNV;
+     PVkDedicatedAllocationBufferCreateInfoNV=^TVkDedicatedAllocationBufferCreateInfoNV;
+     TVkDedicatedAllocationBufferCreateInfoNV=record
+      sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV
+      pNext:PVkVoid; //< Pointer to next structure
+      dedicatedAllocation:TVkBool32; //< Whether this buffer uses a dedicated allocation
+     end;
+
+     // At least one of image and buffer must: be TVK_NULL_HANDLE
+     // If image is not TVK_NULL_HANDLE, the image must: have been created with TVkDedicatedAllocationImageCreateInfoNV::dedicatedAllocation equal to TVK_TRUE
+     // If buffer is not TVK_NULL_HANDLE, the buffer must: have been created with TVkDedicatedAllocationBufferCreateInfoNV::dedicatedAllocation equal to TVK_TRUE
+     // If image is not TVK_NULL_HANDLE, TVkMemoryAllocateInfo::allocationSize must: equal the TVkMemoryRequirements::size of the image
+     // If buffer is not TVK_NULL_HANDLE, TVkMemoryAllocateInfo::allocationSize must: equal the TVkMemoryRequirements::size of the buffer
+     PPVkDedicatedAllocationMemoryAllocateInfoNV=^PVkDedicatedAllocationMemoryAllocateInfoNV;
+     PVkDedicatedAllocationMemoryAllocateInfoNV=^TVkDedicatedAllocationMemoryAllocateInfoNV;
+     TVkDedicatedAllocationMemoryAllocateInfoNV=record
+      sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV
+      pNext:PVkVoid; //< Pointer to next structure
+      image:TVkImage; //< Image that this allocation will be bound to
+      buffer:TVkBuffer; //< Buffer that this allocation will be bound to
+     end;
+
      TvkCreateInstance=function(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // All child objects created using instance must: have been destroyed prior to destroying instance
@@ -3896,8 +3943,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetDeviceProcAddr=function(device:TVkDevice;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If instance is `NULL`, pName must: be one of: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
-     // If instance is not `NULL`, pName mustnot: be vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
+     // If instance is `NULL`, pName must: be "vkEnumerateInstanceExtensionProperties", "vkEnumerateInstanceLayerProperties", or "vkCreateInstance"
+     // If instance is not `NULL`, pName mustnot: be "vkEnumerateInstanceExtensionProperties", "vkEnumerateInstanceLayerProperties", or "vkCreateInstance"
      TvkGetInstanceProcAddr=function(instance:TVkInstance;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetPhysicalDeviceProperties=procedure(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -3933,8 +3980,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // queueIndex must: be less than the number of queues created for the specified queue family index when device was created, via the queueCount member of the TVkDeviceQueueCreateInfo structure
      TvkGetDeviceQueue=procedure(device:TVkDevice;queueFamilyIndex:TVkUInt32;queueIndex:TVkUInt32;pQueue:PVkQueue); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If fence is not TVK_NULL_HANDLE, fence must: be unsignaled
-     // If fence is not TVK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+     // If fence is not dlink:VK_NULL_HANDLE, fence must: be unsignaled
+     // If fence is not dlink:VK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
      TvkQueueSubmit=function(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkQueueWaitIdle=function(queue:TVkQueue):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -3989,11 +4036,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetImageSparseMemoryRequirements=procedure(device:TVkDevice;image:TVkImage;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If format is an integer format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageIntegerSampleCounts
-     // If format is a non-integer color format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageColorSampleCounts
-     // If format is a depth format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageDepthSampleCounts
-     // If format is a stencil format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageStencilSampleCounts
-     // If usage includes TVK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::storageImageSampleCounts
+     // samples must: be a bit value that is set in TVkImageFormatProperties::sampleCounts returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, and usage equal to those in this command and flags equal to the value that is set in T:VkImageCreateInfo:::flags when the image is created
      TvkGetPhysicalDeviceSparseImageFormatProperties=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;samples:TVkSampleCountFlagBits;usage:TVkImageUsageFlags;tiling:TVkImageTiling;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // fence must: be unsignaled
@@ -4144,7 +4187,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkAllocateDescriptorSets=function(device:TVkDevice;const pAllocateInfo:PVkDescriptorSetAllocateInfo;pDescriptorSets:PVkDescriptorSet):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // All submitted commands that refer to any element of pDescriptorSets must: have completed execution
-     // pDescriptorSets must: be a pointer to an array of descriptorSetCount TVkDescriptorSet handles, each element of which must: either be a valid handle or TVK_NULL_HANDLE
+     // pDescriptorSets must: be a pointer to an array of descriptorSetCount TVkDescriptorSet handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
+     // Each valid handle in pDescriptorSets must: have been allocated from descriptorPool
      // descriptorPool must: have been created with the TVK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT flag
      TvkFreeDescriptorSets=function(device:TVkDevice;descriptorPool:TVkDescriptorPool;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -4179,7 +4223,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkAllocateCommandBuffers=function(device:TVkDevice;const pAllocateInfo:PVkCommandBufferAllocateInfo;pCommandBuffers:PVkCommandBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // All elements of pCommandBuffers mustnot: be pending execution
-     // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or TVK_NULL_HANDLE
+     // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
      TvkFreeCommandBuffers=procedure(device:TVkDevice;commandPool:TVkCommandPool;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // commandBuffer mustnot: be in the recording state
@@ -4250,7 +4294,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCmdBindDescriptorSets=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const pDynamicOffsets:PVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // offset must: be less than the size of buffer
-     // The sum of offset, and the address of the range of TVkDeviceMemory object that's backing buffer, must: be a multiple of the type indicated by indexType
+     // The sum of offset and the address of the range of TVkDeviceMemory object that is backing buffer, must: be a multiple of the type indicated by indexType
      // buffer must: have been created with the TVK_BUFFER_USAGE_INDEX_BUFFER_BIT flag
      TvkCmdBindIndexBuffer=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;indexType:TVkIndexType); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -4392,7 +4436,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
      // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+     // The union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory with any texel that may: be sampled during the blit operation
      // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
      // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
      // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -4406,6 +4450,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If either of srcImage or dstImage was created with an unsigned integer elink:VkFormat, the other must: also have been created with an unsigned integer elink:VkFormat
      // If either of srcImage or dstImage was created with a depth/stencil format, the other must: have exactly the same format
      // If srcImage was created with a depth/stencil format, filter must: be TVK_FILTER_NEAREST
+     // srcImage must: have been created with a samples value of TVK_SAMPLE_COUNT_1_BIT
+     // dstImage must: have been created with a samples value of TVK_SAMPLE_COUNT_1_BIT
      // If filter is TVK_FILTER_LINEAR, srcImage must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
      TvkCmdBlitImage=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageBlit;filter:TVkFilter); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -4498,7 +4544,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-     // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: declare at least one self-dependency from the current subpass to itself - see <<synchronization-pipeline-barriers-subpass-self-dependencies,Subpass Self-dependency>>
+     // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: have been created with a TVkSubpassDependency instance in pDependencies that expresses a dependency from the current subpass to itself. Additionally:
+     // ** srcStageMask must: contain a subset of the bit values in the srcStageMask member of that instance of TVkSubpassDependency
+     // ** dstStageMask must: contain a subset of the bit values in the dstStageMask member of that instance of TVkSubpassDependency
+     // ** The srcAccessMask of any element of pMemoryBarriers or pImageMemoryBarriers must: contain a subset of the bit values the srcAccessMask member of that instance of TVkSubpassDependency
+     // ** The dstAccessMask of any element of pMemoryBarriers or pImageMemoryBarriers must: contain a subset of the bit values the dstAccessMask member of that instance of TVkSubpassDependency
+     // ** dependencyFlags must: be equal to the dependencyFlags member of that instance of TVkSubpassDependency
+     // If vkCmdPipelineBarrier is called within a render pass instance, bufferMemoryBarrierCount must: be `0`
+     // If vkCmdPipelineBarrier is called within a render pass instance, the image member of any element of pImageMemoryBarriers must: be equal to one of the elements of pAttachments that the current framebuffer was created with, that is also referred to by one of the elements of the pColorAttachments, pResolveAttachments or pDepthStencilAttachment members of the TVkSubpassDescription instance that the current subpass was created with
+     // If vkCmdPipelineBarrier is called within a render pass instance, the oldLayout and newLayout members of any element of pImageMemoryBarriers must: be equal to the layout member of an element of the pColorAttachments, pResolveAttachments or pDepthStencilAttachment members of the TVkSubpassDescription instance that the current subpass was created with, that refers to the same image
+     // If vkCmdPipelineBarrier is called within a render pass instance, the oldLayout and newLayout members of an element of pImageMemoryBarriers must: be equal
+     // If vkCmdPipelineBarrier is called within a render pass instance, the srcQueueFamilyIndex and dstQueueFamilyIndex members of any element of pImageMemoryBarriers must: be TVK_QUEUE_FAMILY_IGNORED
      TvkCmdPipelineBarrier=procedure(commandBuffer:TVkCommandBuffer;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // The query identified by queryPool and query must: currently not be <<queries-operation-active,active>>
@@ -4565,7 +4621,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-     // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
+     // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
      // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
@@ -4626,8 +4682,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetSwapchainImagesKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainImageCount:PVkUInt32;pSwapchainImages:PVkImage):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If semaphore is not TVK_NULL_HANDLE it must: be unsignaled
-     // If fence is not TVK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+     // If semaphore is not dlink:VK_NULL_HANDLE it must: be unsignaled
+     // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
      TvkAcquireNextImageKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;timeout:TVkUInt64;semaphore:TVkSemaphore;fence:TVkFence;pImageIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
@@ -4709,8 +4765,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetDeviceProcAddr:TvkGetDeviceProcAddr;
 
-      // If instance is `NULL`, pName must: be one of: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
-      // If instance is not `NULL`, pName mustnot: be vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
+      // If instance is `NULL`, pName must: be "vkEnumerateInstanceExtensionProperties", "vkEnumerateInstanceLayerProperties", or "vkCreateInstance"
+      // If instance is not `NULL`, pName mustnot: be "vkEnumerateInstanceExtensionProperties", "vkEnumerateInstanceLayerProperties", or "vkCreateInstance"
       GetInstanceProcAddr:TvkGetInstanceProcAddr;
 
       GetPhysicalDeviceProperties:TvkGetPhysicalDeviceProperties;
@@ -4746,8 +4802,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // queueIndex must: be less than the number of queues created for the specified queue family index when device was created, via the queueCount member of the TVkDeviceQueueCreateInfo structure
       GetDeviceQueue:TvkGetDeviceQueue;
 
-      // If fence is not TVK_NULL_HANDLE, fence must: be unsignaled
-      // If fence is not TVK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+      // If fence is not dlink:VK_NULL_HANDLE, fence must: be unsignaled
+      // If fence is not dlink:VK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
       QueueSubmit:TvkQueueSubmit;
 
       QueueWaitIdle:TvkQueueWaitIdle;
@@ -4802,11 +4858,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetImageSparseMemoryRequirements:TvkGetImageSparseMemoryRequirements;
 
-      // If format is an integer format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageIntegerSampleCounts
-      // If format is a non-integer color format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageColorSampleCounts
-      // If format is a depth format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageDepthSampleCounts
-      // If format is a stencil format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageStencilSampleCounts
-      // If usage includes TVK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::storageImageSampleCounts
+      // samples must: be a bit value that is set in TVkImageFormatProperties::sampleCounts returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, and usage equal to those in this command and flags equal to the value that is set in T:VkImageCreateInfo:::flags when the image is created
       GetPhysicalDeviceSparseImageFormatProperties:TvkGetPhysicalDeviceSparseImageFormatProperties;
 
       // fence must: be unsignaled
@@ -4957,7 +5009,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       AllocateDescriptorSets:TvkAllocateDescriptorSets;
 
       // All submitted commands that refer to any element of pDescriptorSets must: have completed execution
-      // pDescriptorSets must: be a pointer to an array of descriptorSetCount TVkDescriptorSet handles, each element of which must: either be a valid handle or TVK_NULL_HANDLE
+      // pDescriptorSets must: be a pointer to an array of descriptorSetCount TVkDescriptorSet handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
+      // Each valid handle in pDescriptorSets must: have been allocated from descriptorPool
       // descriptorPool must: have been created with the TVK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT flag
       FreeDescriptorSets:TvkFreeDescriptorSets;
 
@@ -4992,7 +5045,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       AllocateCommandBuffers:TvkAllocateCommandBuffers;
 
       // All elements of pCommandBuffers mustnot: be pending execution
-      // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or TVK_NULL_HANDLE
+      // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
       FreeCommandBuffers:TvkFreeCommandBuffers;
 
       // commandBuffer mustnot: be in the recording state
@@ -5063,7 +5116,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CmdBindDescriptorSets:TvkCmdBindDescriptorSets;
 
       // offset must: be less than the size of buffer
-      // The sum of offset, and the address of the range of TVkDeviceMemory object that's backing buffer, must: be a multiple of the type indicated by indexType
+      // The sum of offset and the address of the range of TVkDeviceMemory object that is backing buffer, must: be a multiple of the type indicated by indexType
       // buffer must: have been created with the TVK_BUFFER_USAGE_INDEX_BUFFER_BIT flag
       CmdBindIndexBuffer:TvkCmdBindIndexBuffer;
 
@@ -5205,7 +5258,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
       // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+      // The union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory with any texel that may: be sampled during the blit operation
       // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
       // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
       // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -5219,6 +5272,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If either of srcImage or dstImage was created with an unsigned integer elink:VkFormat, the other must: also have been created with an unsigned integer elink:VkFormat
       // If either of srcImage or dstImage was created with a depth/stencil format, the other must: have exactly the same format
       // If srcImage was created with a depth/stencil format, filter must: be TVK_FILTER_NEAREST
+      // srcImage must: have been created with a samples value of TVK_SAMPLE_COUNT_1_BIT
+      // dstImage must: have been created with a samples value of TVK_SAMPLE_COUNT_1_BIT
       // If filter is TVK_FILTER_LINEAR, srcImage must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
       CmdBlitImage:TvkCmdBlitImage;
 
@@ -5311,7 +5366,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-      // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: declare at least one self-dependency from the current subpass to itself - see <<synchronization-pipeline-barriers-subpass-self-dependencies,Subpass Self-dependency>>
+      // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: have been created with a TVkSubpassDependency instance in pDependencies that expresses a dependency from the current subpass to itself. Additionally:
+      // ** srcStageMask must: contain a subset of the bit values in the srcStageMask member of that instance of TVkSubpassDependency
+      // ** dstStageMask must: contain a subset of the bit values in the dstStageMask member of that instance of TVkSubpassDependency
+      // ** The srcAccessMask of any element of pMemoryBarriers or pImageMemoryBarriers must: contain a subset of the bit values the srcAccessMask member of that instance of TVkSubpassDependency
+      // ** The dstAccessMask of any element of pMemoryBarriers or pImageMemoryBarriers must: contain a subset of the bit values the dstAccessMask member of that instance of TVkSubpassDependency
+      // ** dependencyFlags must: be equal to the dependencyFlags member of that instance of TVkSubpassDependency
+      // If vkCmdPipelineBarrier is called within a render pass instance, bufferMemoryBarrierCount must: be `0`
+      // If vkCmdPipelineBarrier is called within a render pass instance, the image member of any element of pImageMemoryBarriers must: be equal to one of the elements of pAttachments that the current framebuffer was created with, that is also referred to by one of the elements of the pColorAttachments, pResolveAttachments or pDepthStencilAttachment members of the TVkSubpassDescription instance that the current subpass was created with
+      // If vkCmdPipelineBarrier is called within a render pass instance, the oldLayout and newLayout members of any element of pImageMemoryBarriers must: be equal to the layout member of an element of the pColorAttachments, pResolveAttachments or pDepthStencilAttachment members of the TVkSubpassDescription instance that the current subpass was created with, that refers to the same image
+      // If vkCmdPipelineBarrier is called within a render pass instance, the oldLayout and newLayout members of an element of pImageMemoryBarriers must: be equal
+      // If vkCmdPipelineBarrier is called within a render pass instance, the srcQueueFamilyIndex and dstQueueFamilyIndex members of any element of pImageMemoryBarriers must: be TVK_QUEUE_FAMILY_IGNORED
       CmdPipelineBarrier:TvkCmdPipelineBarrier;
 
       // The query identified by queryPool and query must: currently not be <<queries-operation-active,active>>
@@ -5378,7 +5443,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-      // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
+      // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
       // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
@@ -5439,8 +5504,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetSwapchainImagesKHR:TvkGetSwapchainImagesKHR;
 
-      // If semaphore is not TVK_NULL_HANDLE it must: be unsignaled
-      // If fence is not TVK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+      // If semaphore is not dlink:VK_NULL_HANDLE it must: be unsignaled
+      // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
       AcquireNextImageKHR:TvkAcquireNextImageKHR;
 
       // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
@@ -5527,8 +5592,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function GetDeviceProcAddr(device:TVkDevice;const pName:PVkChar):TPFN_vkVoidFunction; virtual;
 
-       // If instance is `NULL`, pName must: be one of: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
-       // If instance is not `NULL`, pName mustnot: be vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
+       // If instance is `NULL`, pName must: be "vkEnumerateInstanceExtensionProperties", "vkEnumerateInstanceLayerProperties", or "vkCreateInstance"
+       // If instance is not `NULL`, pName mustnot: be "vkEnumerateInstanceExtensionProperties", "vkEnumerateInstanceLayerProperties", or "vkCreateInstance"
        function GetInstanceProcAddr(instance:TVkInstance;const pName:PVkChar):TPFN_vkVoidFunction; virtual;
 
        procedure GetPhysicalDeviceProperties(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties); virtual;
@@ -5564,8 +5629,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // queueIndex must: be less than the number of queues created for the specified queue family index when device was created, via the queueCount member of the TVkDeviceQueueCreateInfo structure
        procedure GetDeviceQueue(device:TVkDevice;queueFamilyIndex:TVkUInt32;queueIndex:TVkUInt32;pQueue:PVkQueue); virtual;
 
-       // If fence is not TVK_NULL_HANDLE, fence must: be unsignaled
-       // If fence is not TVK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+       // If fence is not dlink:VK_NULL_HANDLE, fence must: be unsignaled
+       // If fence is not dlink:VK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
        function QueueSubmit(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;fence:TVkFence):TVkResult; virtual;
 
        function QueueWaitIdle(queue:TVkQueue):TVkResult; virtual;
@@ -5620,11 +5685,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure GetImageSparseMemoryRequirements(device:TVkDevice;image:TVkImage;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements); virtual;
 
-       // If format is an integer format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageIntegerSampleCounts
-       // If format is a non-integer color format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageColorSampleCounts
-       // If format is a depth format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageDepthSampleCounts
-       // If format is a stencil format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageStencilSampleCounts
-       // If usage includes TVK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::storageImageSampleCounts
+       // samples must: be a bit value that is set in TVkImageFormatProperties::sampleCounts returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, and usage equal to those in this command and flags equal to the value that is set in T:VkImageCreateInfo:::flags when the image is created
        procedure GetPhysicalDeviceSparseImageFormatProperties(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;samples:TVkSampleCountFlagBits;usage:TVkImageUsageFlags;tiling:TVkImageTiling;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties); virtual;
 
        // fence must: be unsignaled
@@ -5775,7 +5836,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function AllocateDescriptorSets(device:TVkDevice;const pAllocateInfo:PVkDescriptorSetAllocateInfo;pDescriptorSets:PVkDescriptorSet):TVkResult; virtual;
 
        // All submitted commands that refer to any element of pDescriptorSets must: have completed execution
-       // pDescriptorSets must: be a pointer to an array of descriptorSetCount TVkDescriptorSet handles, each element of which must: either be a valid handle or TVK_NULL_HANDLE
+       // pDescriptorSets must: be a pointer to an array of descriptorSetCount TVkDescriptorSet handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
+       // Each valid handle in pDescriptorSets must: have been allocated from descriptorPool
        // descriptorPool must: have been created with the TVK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT flag
        function FreeDescriptorSets(device:TVkDevice;descriptorPool:TVkDescriptorPool;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet):TVkResult; virtual;
 
@@ -5810,7 +5872,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function AllocateCommandBuffers(device:TVkDevice;const pAllocateInfo:PVkCommandBufferAllocateInfo;pCommandBuffers:PVkCommandBuffer):TVkResult; virtual;
 
        // All elements of pCommandBuffers mustnot: be pending execution
-       // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or TVK_NULL_HANDLE
+       // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
        procedure FreeCommandBuffers(device:TVkDevice;commandPool:TVkCommandPool;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); virtual;
 
        // commandBuffer mustnot: be in the recording state
@@ -5881,7 +5943,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        procedure CmdBindDescriptorSets(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const pDynamicOffsets:PVkUInt32); virtual;
 
        // offset must: be less than the size of buffer
-       // The sum of offset, and the address of the range of TVkDeviceMemory object that's backing buffer, must: be a multiple of the type indicated by indexType
+       // The sum of offset and the address of the range of TVkDeviceMemory object that is backing buffer, must: be a multiple of the type indicated by indexType
        // buffer must: have been created with the TVK_BUFFER_USAGE_INDEX_BUFFER_BIT flag
        procedure CmdBindIndexBuffer(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;indexType:TVkIndexType); virtual;
 
@@ -6023,7 +6085,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
        // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+       // The union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory with any texel that may: be sampled during the blit operation
        // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
        // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
        // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -6037,6 +6099,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If either of srcImage or dstImage was created with an unsigned integer elink:VkFormat, the other must: also have been created with an unsigned integer elink:VkFormat
        // If either of srcImage or dstImage was created with a depth/stencil format, the other must: have exactly the same format
        // If srcImage was created with a depth/stencil format, filter must: be TVK_FILTER_NEAREST
+       // srcImage must: have been created with a samples value of TVK_SAMPLE_COUNT_1_BIT
+       // dstImage must: have been created with a samples value of TVK_SAMPLE_COUNT_1_BIT
        // If filter is TVK_FILTER_LINEAR, srcImage must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
        procedure CmdBlitImage(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageBlit;filter:TVkFilter); virtual;
 
@@ -6129,7 +6193,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
        // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
        // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-       // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: declare at least one self-dependency from the current subpass to itself - see <<synchronization-pipeline-barriers-subpass-self-dependencies,Subpass Self-dependency>>
+       // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: have been created with a TVkSubpassDependency instance in pDependencies that expresses a dependency from the current subpass to itself. Additionally:
+       // ** srcStageMask must: contain a subset of the bit values in the srcStageMask member of that instance of TVkSubpassDependency
+       // ** dstStageMask must: contain a subset of the bit values in the dstStageMask member of that instance of TVkSubpassDependency
+       // ** The srcAccessMask of any element of pMemoryBarriers or pImageMemoryBarriers must: contain a subset of the bit values the srcAccessMask member of that instance of TVkSubpassDependency
+       // ** The dstAccessMask of any element of pMemoryBarriers or pImageMemoryBarriers must: contain a subset of the bit values the dstAccessMask member of that instance of TVkSubpassDependency
+       // ** dependencyFlags must: be equal to the dependencyFlags member of that instance of TVkSubpassDependency
+       // If vkCmdPipelineBarrier is called within a render pass instance, bufferMemoryBarrierCount must: be `0`
+       // If vkCmdPipelineBarrier is called within a render pass instance, the image member of any element of pImageMemoryBarriers must: be equal to one of the elements of pAttachments that the current framebuffer was created with, that is also referred to by one of the elements of the pColorAttachments, pResolveAttachments or pDepthStencilAttachment members of the TVkSubpassDescription instance that the current subpass was created with
+       // If vkCmdPipelineBarrier is called within a render pass instance, the oldLayout and newLayout members of any element of pImageMemoryBarriers must: be equal to the layout member of an element of the pColorAttachments, pResolveAttachments or pDepthStencilAttachment members of the TVkSubpassDescription instance that the current subpass was created with, that refers to the same image
+       // If vkCmdPipelineBarrier is called within a render pass instance, the oldLayout and newLayout members of an element of pImageMemoryBarriers must: be equal
+       // If vkCmdPipelineBarrier is called within a render pass instance, the srcQueueFamilyIndex and dstQueueFamilyIndex members of any element of pImageMemoryBarriers must: be TVK_QUEUE_FAMILY_IGNORED
        procedure CmdPipelineBarrier(commandBuffer:TVkCommandBuffer;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); virtual;
 
        // The query identified by queryPool and query must: currently not be <<queries-operation-active,active>>
@@ -6196,7 +6270,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-       // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
+       // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
        // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
        // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
        // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
@@ -6257,8 +6331,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function GetSwapchainImagesKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainImageCount:PVkUInt32;pSwapchainImages:PVkImage):TVkResult; virtual;
 
-       // If semaphore is not TVK_NULL_HANDLE it must: be unsignaled
-       // If fence is not TVK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+       // If semaphore is not dlink:VK_NULL_HANDLE it must: be unsignaled
+       // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
        function AcquireNextImageKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;timeout:TVkUInt64;semaphore:TVkSemaphore;fence:TVkFence;pImageIndex:PVkUInt32):TVkResult; virtual;
 
        // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
@@ -6343,8 +6417,8 @@ var LibVulkan:pointer=nil;
 
     vkGetDeviceProcAddr:TvkGetDeviceProcAddr=nil;
 
-    // If instance is `NULL`, pName must: be one of: vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
-    // If instance is not `NULL`, pName mustnot: be vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties or vkCreateInstance
+    // If instance is `NULL`, pName must: be "vkEnumerateInstanceExtensionProperties", "vkEnumerateInstanceLayerProperties", or "vkCreateInstance"
+    // If instance is not `NULL`, pName mustnot: be "vkEnumerateInstanceExtensionProperties", "vkEnumerateInstanceLayerProperties", or "vkCreateInstance"
     vkGetInstanceProcAddr:TvkGetInstanceProcAddr=nil;
 
     vkGetPhysicalDeviceProperties:TvkGetPhysicalDeviceProperties=nil;
@@ -6380,8 +6454,8 @@ var LibVulkan:pointer=nil;
     // queueIndex must: be less than the number of queues created for the specified queue family index when device was created, via the queueCount member of the TVkDeviceQueueCreateInfo structure
     vkGetDeviceQueue:TvkGetDeviceQueue=nil;
 
-    // If fence is not TVK_NULL_HANDLE, fence must: be unsignaled
-    // If fence is not TVK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+    // If fence is not dlink:VK_NULL_HANDLE, fence must: be unsignaled
+    // If fence is not dlink:VK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
     vkQueueSubmit:TvkQueueSubmit=nil;
 
     vkQueueWaitIdle:TvkQueueWaitIdle=nil;
@@ -6436,11 +6510,7 @@ var LibVulkan:pointer=nil;
 
     vkGetImageSparseMemoryRequirements:TvkGetImageSparseMemoryRequirements=nil;
 
-    // If format is an integer format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageIntegerSampleCounts
-    // If format is a non-integer color format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageColorSampleCounts
-    // If format is a depth format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageDepthSampleCounts
-    // If format is a stencil format, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::sampledImageStencilSampleCounts
-    // If usage includes TVK_IMAGE_USAGE_STORAGE_BIT, samples must: be one of the bit flags specified in TVkPhysicalDeviceLimits::storageImageSampleCounts
+    // samples must: be a bit value that is set in TVkImageFormatProperties::sampleCounts returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, and usage equal to those in this command and flags equal to the value that is set in T:VkImageCreateInfo:::flags when the image is created
     vkGetPhysicalDeviceSparseImageFormatProperties:TvkGetPhysicalDeviceSparseImageFormatProperties=nil;
 
     // fence must: be unsignaled
@@ -6591,7 +6661,8 @@ var LibVulkan:pointer=nil;
     vkAllocateDescriptorSets:TvkAllocateDescriptorSets=nil;
 
     // All submitted commands that refer to any element of pDescriptorSets must: have completed execution
-    // pDescriptorSets must: be a pointer to an array of descriptorSetCount TVkDescriptorSet handles, each element of which must: either be a valid handle or TVK_NULL_HANDLE
+    // pDescriptorSets must: be a pointer to an array of descriptorSetCount TVkDescriptorSet handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
+    // Each valid handle in pDescriptorSets must: have been allocated from descriptorPool
     // descriptorPool must: have been created with the TVK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT flag
     vkFreeDescriptorSets:TvkFreeDescriptorSets=nil;
 
@@ -6626,7 +6697,7 @@ var LibVulkan:pointer=nil;
     vkAllocateCommandBuffers:TvkAllocateCommandBuffers=nil;
 
     // All elements of pCommandBuffers mustnot: be pending execution
-    // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or TVK_NULL_HANDLE
+    // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
     vkFreeCommandBuffers:TvkFreeCommandBuffers=nil;
 
     // commandBuffer mustnot: be in the recording state
@@ -6697,7 +6768,7 @@ var LibVulkan:pointer=nil;
     vkCmdBindDescriptorSets:TvkCmdBindDescriptorSets=nil;
 
     // offset must: be less than the size of buffer
-    // The sum of offset, and the address of the range of TVkDeviceMemory object that's backing buffer, must: be a multiple of the type indicated by indexType
+    // The sum of offset and the address of the range of TVkDeviceMemory object that is backing buffer, must: be a multiple of the type indicated by indexType
     // buffer must: have been created with the TVK_BUFFER_USAGE_INDEX_BUFFER_BIT flag
     vkCmdBindIndexBuffer:TvkCmdBindIndexBuffer=nil;
 
@@ -6839,7 +6910,7 @@ var LibVulkan:pointer=nil;
 
     // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
     // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-    // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+    // The union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory with any texel that may: be sampled during the blit operation
     // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
     // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
     // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -6853,6 +6924,8 @@ var LibVulkan:pointer=nil;
     // If either of srcImage or dstImage was created with an unsigned integer elink:VkFormat, the other must: also have been created with an unsigned integer elink:VkFormat
     // If either of srcImage or dstImage was created with a depth/stencil format, the other must: have exactly the same format
     // If srcImage was created with a depth/stencil format, filter must: be TVK_FILTER_NEAREST
+    // srcImage must: have been created with a samples value of TVK_SAMPLE_COUNT_1_BIT
+    // dstImage must: have been created with a samples value of TVK_SAMPLE_COUNT_1_BIT
     // If filter is TVK_FILTER_LINEAR, srcImage must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
     vkCmdBlitImage:TvkCmdBlitImage=nil;
 
@@ -6945,7 +7018,17 @@ var LibVulkan:pointer=nil;
     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-    // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: declare at least one self-dependency from the current subpass to itself - see <<synchronization-pipeline-barriers-subpass-self-dependencies,Subpass Self-dependency>>
+    // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: have been created with a TVkSubpassDependency instance in pDependencies that expresses a dependency from the current subpass to itself. Additionally:
+    // ** srcStageMask must: contain a subset of the bit values in the srcStageMask member of that instance of TVkSubpassDependency
+    // ** dstStageMask must: contain a subset of the bit values in the dstStageMask member of that instance of TVkSubpassDependency
+    // ** The srcAccessMask of any element of pMemoryBarriers or pImageMemoryBarriers must: contain a subset of the bit values the srcAccessMask member of that instance of TVkSubpassDependency
+    // ** The dstAccessMask of any element of pMemoryBarriers or pImageMemoryBarriers must: contain a subset of the bit values the dstAccessMask member of that instance of TVkSubpassDependency
+    // ** dependencyFlags must: be equal to the dependencyFlags member of that instance of TVkSubpassDependency
+    // If vkCmdPipelineBarrier is called within a render pass instance, bufferMemoryBarrierCount must: be `0`
+    // If vkCmdPipelineBarrier is called within a render pass instance, the image member of any element of pImageMemoryBarriers must: be equal to one of the elements of pAttachments that the current framebuffer was created with, that is also referred to by one of the elements of the pColorAttachments, pResolveAttachments or pDepthStencilAttachment members of the TVkSubpassDescription instance that the current subpass was created with
+    // If vkCmdPipelineBarrier is called within a render pass instance, the oldLayout and newLayout members of any element of pImageMemoryBarriers must: be equal to the layout member of an element of the pColorAttachments, pResolveAttachments or pDepthStencilAttachment members of the TVkSubpassDescription instance that the current subpass was created with, that refers to the same image
+    // If vkCmdPipelineBarrier is called within a render pass instance, the oldLayout and newLayout members of an element of pImageMemoryBarriers must: be equal
+    // If vkCmdPipelineBarrier is called within a render pass instance, the srcQueueFamilyIndex and dstQueueFamilyIndex members of any element of pImageMemoryBarriers must: be TVK_QUEUE_FAMILY_IGNORED
     vkCmdPipelineBarrier:TvkCmdPipelineBarrier=nil;
 
     // The query identified by queryPool and query must: currently not be <<queries-operation-active,active>>
@@ -7012,7 +7095,7 @@ var LibVulkan:pointer=nil;
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
-    // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to TVK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
+    // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
     // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
@@ -7073,8 +7156,8 @@ var LibVulkan:pointer=nil;
 
     vkGetSwapchainImagesKHR:TvkGetSwapchainImagesKHR=nil;
 
-    // If semaphore is not TVK_NULL_HANDLE it must: be unsignaled
-    // If fence is not TVK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+    // If semaphore is not dlink:VK_NULL_HANDLE it must: be unsignaled
+    // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
     vkAcquireNextImageKHR:TvkAcquireNextImageKHR=nil;
 
     // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
