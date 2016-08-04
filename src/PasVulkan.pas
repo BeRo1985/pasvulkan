@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-04-13-40-0000                       *
+ *                        Version 2016-08-04-13-57-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1384,6 +1384,37 @@ type EVulkanException=class(Exception);
        property Handle:TVkRenderPass read fRenderPassHandle;
      end;
 
+     TVulkanSampler=class(TVulkanHandle)
+      private
+       fDevice:TVulkanDevice;
+       fSamplerHandle:TVkSampler;
+       fDoDestroy:boolean;
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pSampler:TVkSampler;
+                          const pDoDestroy:boolean=true); reintroduce; overload;
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pMagFilter:TVkFilter;
+                          const pMinFilter:TVkFilter;
+                          const pMipmapMode:TVkSamplerMipmapMode;
+                          const pAddressModeU:TVkSamplerAddressMode;
+                          const pAddressModeV:TVkSamplerAddressMode;
+                          const pAddressModeW:TVkSamplerAddressMode;
+                          const pMipLodBias:TVkFloat;
+                          const pAnisotropyEnable:boolean;
+                          const pMaxAnisotropy:TVkFloat;
+                          const pCompareEnable:boolean;
+                          const pCompareOp:TVkCompareOp;
+                          const pMinLod:TVkFloat;
+                          const pMaxLod:TVkFloat;
+                          const pBorderColor:TVkBorderColor;
+                          const pUnnormalizedCoordinates:boolean); reintroduce; overload;
+       destructor Destroy; override;
+      published
+       property Device:TVulkanDevice read fDevice;
+       property Handle:TVkSampler read fSamplerHandle;
+     end;
+
      TVulkanImageView=class;
 
      TVulkanImage=class(TVulkanHandle)
@@ -1410,7 +1441,7 @@ type EVulkanException=class(Exception);
                            const pDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
       published
        property Device:TVulkanDevice read fDevice;
-       property Handle:TVkRenderPass read fImageHandle;
+       property Handle:TVkImage read fImageHandle;
        property ImageView:TVulkanImageView read fImageView write fImageView;
      end;
 
@@ -6493,6 +6524,95 @@ begin
  pCommandBuffer.CmdEndRenderPass;
 end;
 
+constructor TVulkanSampler.Create(const pDevice:TVulkanDevice;
+                                  const pSampler:TVkSampler;
+                                  const pDoDestroy:boolean=true);
+begin
+
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fSamplerHandle:=pSampler;
+
+ fDoDestroy:=pDoDestroy;
+
+end;
+
+constructor TVulkanSampler.Create(const pDevice:TVulkanDevice;
+                                  const pMagFilter:TVkFilter;
+                                  const pMinFilter:TVkFilter;
+                                  const pMipmapMode:TVkSamplerMipmapMode;
+                                  const pAddressModeU:TVkSamplerAddressMode;
+                                  const pAddressModeV:TVkSamplerAddressMode;
+                                  const pAddressModeW:TVkSamplerAddressMode;
+                                  const pMipLodBias:TVkFloat;
+                                  const pAnisotropyEnable:boolean;
+                                  const pMaxAnisotropy:TVkFloat;
+                                  const pCompareEnable:boolean;
+                                  const pCompareOp:TVkCompareOp;
+                                  const pMinLod:TVkFloat;
+                                  const pMaxLod:TVkFloat;
+                                  const pBorderColor:TVkBorderColor;
+                                  const pUnnormalizedCoordinates:boolean);
+var SamplerCreateInfo:TVkSamplerCreateInfo;
+begin
+
+ inherited Create;
+          
+ fDevice:=pDevice;
+
+ fSamplerHandle:=VK_NULL_HANDLE;
+
+ fDoDestroy:=true;
+
+ FillChar(SamplerCreateInfo,SizeOf(TVkSamplerCreateInfo),#0);
+ SamplerCreateInfo.sType:=VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+ SamplerCreateInfo.pNext:=nil;
+ SamplerCreateInfo.flags:=0;
+ SamplerCreateInfo.magFilter:=pMagFilter;
+ SamplerCreateInfo.minFilter:=pMinFilter;
+ SamplerCreateInfo.mipmapMode:=pMipmapMode;
+ SamplerCreateInfo.addressModeU:=pAddressModeU;
+ SamplerCreateInfo.addressModeV:=pAddressModeV;
+ SamplerCreateInfo.addressModeW:=pAddressModeW;
+ SamplerCreateInfo.mipLodBias:=pMipLodBias;
+ if pAnisotropyEnable then begin
+  SamplerCreateInfo.anisotropyEnable:=VK_TRUE;
+ end else begin
+  SamplerCreateInfo.anisotropyEnable:=VK_FALSE;
+ end;
+ SamplerCreateInfo.maxAnisotropy:=pMaxAnisotropy;
+ if pCompareEnable then begin
+  SamplerCreateInfo.compareEnable:=VK_TRUE;
+ end else begin
+  SamplerCreateInfo.compareEnable:=VK_FALSE;
+ end;
+ SamplerCreateInfo.compareOp:=pCompareOp;
+ SamplerCreateInfo.minLod:=pMinLod;
+ SamplerCreateInfo.maxLod:=pMaxLod;
+ SamplerCreateInfo.borderColor:=pBorderColor;
+ if pUnnormalizedCoordinates then begin
+  SamplerCreateInfo.unnormalizedCoordinates:=VK_TRUE;
+ end else begin
+  SamplerCreateInfo.unnormalizedCoordinates:=VK_FALSE;
+ end;
+
+ HandleResultCode(fDevice.fDeviceVulkan.CreateSampler(fDevice.fDeviceHandle,@SamplerCreateInfo,fDevice.fAllocationCallbacks,@fSamplerHandle));
+
+end;
+
+destructor TVulkanSampler.Destroy;
+begin
+ if fSamplerHandle<>VK_NULL_HANDLE then begin
+  if fDoDestroy then begin
+   fDevice.fDeviceVulkan.DestroySampler(fDevice.fDeviceHandle,fSamplerHandle,fDevice.fAllocationCallbacks);
+  end;
+  fSamplerHandle:=VK_NULL_HANDLE;
+ end;
+ inherited Destroy;
+end;
+
 constructor TVulkanImage.Create(const pDevice:TVulkanDevice;
                                 const pImage:TVkImage;
                                 const pImageView:TVulkanImageView=nil;
@@ -6609,7 +6729,7 @@ begin
  ImageViewCreateInfo.subresourceRange.layerCount:=pCountArrayLayers;
 
  HandleResultCode(fDevice.fDeviceVulkan.CreateImageView(fDevice.fDeviceHandle,@ImageViewCreateInfo,fDevice.fAllocationCallbacks,@fImageViewHandle));
-                                           
+
 end;
 
 destructor TVulkanImageView.Destroy;
