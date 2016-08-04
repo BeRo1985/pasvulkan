@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-04-14-18-0000                       *
+ *                        Version 2016-08-04-21-00-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1136,6 +1136,22 @@ type EVulkanException=class(Exception);
        property Handle:TVkBuffer read fBufferHandle;
        property Size:TVkDeviceSize read fSize;
        property Memory:TVulkanDeviceMemoryBlock read fMemoryBlock;
+     end;
+
+     TVulkanBufferView=class(TVulkanHandle)
+      private
+       fDevice:TVulkanDevice;
+       fBufferViewHandle:TVkBufferView;
+       fBuffer:TVulkanBuffer;
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pBufferView:TVkBufferView;
+                          const pBuffer:TVulkanBuffer=nil); reintroduce; overload;
+       destructor Destroy; override;
+      published
+       property Device:TVulkanDevice read fDevice;
+       property Handle:TVkRenderPass read fBufferViewHandle;
+       property Buffer:TVulkanBuffer read fBuffer write fBuffer;
      end;
 
      TVulkanEvent=class(TVulkanHandle)
@@ -5503,6 +5519,31 @@ end;
 procedure TVulkanBuffer.Bind;
 begin
  HandleResultCode(fDevice.Commands.BindBufferMemory(fDevice.fDeviceHandle,fBufferHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
+end;
+
+constructor TVulkanBufferView.Create(const pDevice:TVulkanDevice;
+                                     const pBufferView:TVkBufferView;
+                                     const pBuffer:TVulkanBuffer=nil);
+begin
+
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fBufferViewHandle:=pBufferView;
+
+ fBuffer:=pBuffer;
+
+end;
+                    
+destructor TVulkanBufferView.Destroy;
+begin
+ fBuffer:=nil;
+ if fBufferViewHandle<>VK_NULL_HANDLE then begin
+  fDevice.fDeviceVulkan.DestroyBufferView(fDevice.fDeviceHandle,fBufferViewHandle,fDevice.fAllocationCallbacks);
+  fBufferViewHandle:=VK_NULL_HANDLE;
+ end;
+ inherited Destroy;
 end;
 
 constructor TVulkanEvent.Create(const pDevice:TVulkanDevice;
