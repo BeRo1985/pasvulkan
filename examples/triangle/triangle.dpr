@@ -326,9 +326,9 @@ begin
 
    DoNeedToRecreateVulkanSwapChain:=false;
 
-   TriangleVertexShaderModule:=TVulkanShaderModule.Create(VulkanDevice,'triangle.vert');
+   TriangleVertexShaderModule:=TVulkanShaderModule.Create(VulkanDevice,'triangle_vert.spv');
 
-   TriangleFragmentShaderModule:=TVulkanShaderModule.Create(VulkanDevice,'triangle.frag');
+   TriangleFragmentShaderModule:=TVulkanShaderModule.Create(VulkanDevice,'triangle_frag.spv');
 
    ShowWindow(hWindow,SW_SHOWNORMAL);
 
