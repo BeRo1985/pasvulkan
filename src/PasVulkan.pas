@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-04-05-10-0000                       *
+ *                        Version 2016-08-04-08-32-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1572,6 +1572,24 @@ type EVulkanException=class(Exception);
        property CurrentFrameBuffer:TVulkanFrameBuffer read GetCurrentFrameBuffer;
        property Width:TVkInt32 read fWidth;
        property Height:TVkInt32 read fHeight;
+     end;
+
+     TVulkanShaderModule=class(TVulkanObject)
+      private
+       fDevice:TVulkanDevice;
+       fShaderModuleHandle:TVkShaderModule;
+       fData:PVkVoid;
+       fDataAligned:PVkVoid;
+       fDataSize:TVkSize;
+       procedure Load;
+      public
+       constructor Create(const pDevice:TVulkanDevice;const pData;const pDataSize:TVkSize); overload;
+       constructor Create(const pDevice:TVulkanDevice;const pStream:TStream); overload;
+       constructor Create(const pDevice:TVulkanDevice;const pFileName:string); overload;
+       destructor Destroy; override;
+      published
+       property Device:TVulkanDevice read fDevice;
+       property Handle:TVkShaderModule read fShaderModuleHandle;
      end;
 
      TVulkanShader=class(TVulkanObject)
@@ -7434,6 +7452,94 @@ end;
 function TVulkanSwapChain.GetCurrentFrameBuffer:TVulkanFrameBuffer;
 begin
  result:=fFrameBuffers[fCurrentBuffer];
+end;
+
+constructor TVulkanShaderModule.Create(const pDevice:TVulkanDevice;const pData;const pDataSize:TVkSize);
+begin
+
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fShaderModuleHandle:=VK_NULL_HANDLE;
+
+ fData:=nil;
+
+ fDataAligned:=nil;
+
+ fDataSize:=pDataSize;
+ if (fDataSize and not 3)<>0 then begin
+  inc(fDataSize,4-(fDataSize and not 3));
+ end;
+
+ GetMem(fData,fDataSize+4);
+ fDataAligned:=fData;
+ if (TVkPtrUInt(fDataAligned) and not 3)<>0 then begin
+  inc(TVkPtrUInt(fDataAligned),4-(TVkPtrUInt(fDataAligned) and not 3));
+ end;
+
+ Load;
+
+end;
+
+constructor TVulkanShaderModule.Create(const pDevice:TVulkanDevice;const pStream:TStream);
+begin
+
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fShaderModuleHandle:=VK_NULL_HANDLE;
+
+ fData:=nil;
+
+ fDataAligned:=nil;
+
+ fDataSize:=pStream.Size;
+ if (fDataSize and not 3)<>0 then begin
+  inc(fDataSize,4-(fDataSize and not 3));
+ end;
+
+ GetMem(fData,fDataSize+4);
+ fDataAligned:=fData;
+ if (TVkPtrUInt(fDataAligned) and not 3)<>0 then begin
+  inc(TVkPtrUInt(fDataAligned),4-(TVkPtrUInt(fDataAligned) and not 3));
+ end;
+
+ if pStream.Seek(0,soBeginning)<>0 then begin
+  raise EInOutError.Create('Stream seek error');
+ end;
+
+ if pStream.Read(fData^,pStream.Size)<>pStream.Size then begin
+  raise EInOutError.Create('Stream read error');
+ end;
+
+ Load;
+
+end;
+
+constructor TVulkanShaderModule.Create(const pDevice:TVulkanDevice;const pFileName:string);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(pFileName,fmOpenRead);
+ try
+  Create(pDevice,FileStream);
+ finally
+  FileStream.Free;
+ end;
+end;
+
+destructor TVulkanShaderModule.Destroy;
+begin
+ if assigned(fData) then begin
+  FreeMem(fData);
+  fData:=nil;
+ end;
+ inherited Destroy;
+end;
+
+procedure TVulkanShaderModule.Load;
+begin
 end;
 
 constructor TVulkanShader.Create(const pDevice:TVulkanDevice);

@@ -34,19 +34,19 @@ var WndClass:TWndClassA;
     SurfaceWidth:TVkInt32=640;
     SurfaceHeight:TVkInt32=360;
 
-    VulkanInstance:TVulkanInstance;
-    VulkanSurface:TVulkanSurface;
-    VulkanDevice:TVulkanDevice;
-    VulkanPrimaryCommandBufferFence:TVulkanFence;
-    VulkanInitializationCommandPool:TVulkanCommandPool;
-    VulkanInitializationCommandBuffer:TVulkanCommandBuffer;
-    VulkanSwapChain:TVulkanSwapChain;
-    VulkanCommandPool:TVulkanCommandPool;
-    VulkanCommandBuffer:TVulkanCommandBuffer;
-    VulkanPresentCompleteSemaphore:TVulkanSemaphore;
-    VulkanDrawCompleteSemaphore:TVulkanSemaphore;
-    DoNeedToRecreateVulkanSwapChain:boolean;
-    EnableDebugging:boolean;
+    VulkanInstance:TVulkanInstance=nil;
+    VulkanSurface:TVulkanSurface=nil;
+    VulkanDevice:TVulkanDevice=nil;
+    VulkanPrimaryCommandBufferFence:TVulkanFence=nil;
+    VulkanInitializationCommandPool:TVulkanCommandPool=nil;
+    VulkanInitializationCommandBuffer:TVulkanCommandBuffer=nil;
+    VulkanSwapChain:TVulkanSwapChain=nil;
+    VulkanCommandPool:TVulkanCommandPool=nil;
+    VulkanCommandBuffer:TVulkanCommandBuffer=nil;
+    VulkanPresentCompleteSemaphore:TVulkanSemaphore=nil;
+    VulkanDrawCompleteSemaphore:TVulkanSemaphore=nil;
+    DoNeedToRecreateVulkanSwapChain:boolean=false;
+    EnableDebugging:boolean=false;
 
 procedure DebugLn(const s:TVulkanCharString);
 begin
@@ -63,7 +63,7 @@ begin
  result:=VK_FALSE;
 end;
 
-var VulkanDebug:TVulkanDebug;
+var VulkanDebug:TVulkanDebug=nil;
 
 procedure VulkanDraw;
 var OldVulkanSwapChain:TVulkanSwapChain;
@@ -158,9 +158,11 @@ begin
  case pMsg of
   WM_CLOSE:begin
    PostQuitMessage(0);
+   result:=0;
   end;
   WM_DESTROY:begin
    PostQuitMessage(0);
+   result:=0;
   end;
   WM_KEYDOWN:begin
    case pWParam of
@@ -168,6 +170,7 @@ begin
      SendMessageA(pWindow,WM_CLOSE,0,0);
     end;
    end;
+   result:=0;
   end;
   WM_COMMAND:begin
    result:=0;
