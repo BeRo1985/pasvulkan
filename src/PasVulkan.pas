@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-04-08-32-0000                       *
+ *                        Version 2016-08-04-09-13-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -7531,6 +7531,10 @@ end;
 
 destructor TVulkanShaderModule.Destroy;
 begin
+ if fShaderModuleHandle<>VK_NULL_HANDLE then begin
+  fDevice.fDeviceVulkan.DestroyShaderModule(fDevice.fDeviceHandle,fShaderModuleHandle,fDevice.fAllocationCallbacks);
+  fShaderModuleHandle:=VK_NULL_HANDLE;
+ end;
  if assigned(fData) then begin
   FreeMem(fData);
   fData:=nil;
@@ -7539,7 +7543,20 @@ begin
 end;
 
 procedure TVulkanShaderModule.Load;
+var ShaderModuleCreateInfo:TVkShaderModuleCreateInfo;
 begin
+
+ if fShaderModuleHandle=VK_NULL_HANDLE then begin
+
+  FillChar(ShaderModuleCreateInfo,SizeOf(TVkShaderModuleCreateInfo),#0);
+  ShaderModuleCreateInfo.sType:=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  ShaderModuleCreateInfo.codeSize:=fDataSize;
+  ShaderModuleCreateInfo.pCode:=fData;
+
+  HandleResultCode(fDevice.fDeviceVulkan.CreateShaderModule(fDevice.fDeviceHandle,@ShaderModuleCreateInfo,fDevice.fAllocationCallbacks,@fShaderModuleHandle));
+
+ end;
+ 
 end;
 
 constructor TVulkanShader.Create(const pDevice:TVulkanDevice);
