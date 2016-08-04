@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-04-11-34-0000                       *
+ *                        Version 2016-08-04-13-40-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1423,6 +1423,19 @@ type EVulkanException=class(Exception);
        constructor Create(const pDevice:TVulkanDevice;
                           const pImageView:TVkImageView;
                           const pImage:TVulkanImage=nil); reintroduce; overload;
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pImage:TVulkanImage;
+                          const pImageViewType:TVkImageViewType;
+                          const pFormat:TvkFormat;
+                          const pComponentRed:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                          const pComponentGreen:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                          const pComponentBlue:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                          const pComponentAlpha:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                          const pImageAspectFlags:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+                          const pBaseMipLevel:TVkUInt32=0;
+                          const pCountMipMapLevels:TVkUInt32=1;
+                          const pBaseArrayLayer:TVkUInt32=1;
+                          const pCountArrayLayers:TVkUInt32=0); reintroduce; overload;
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
@@ -6552,6 +6565,51 @@ begin
 
  fImage:=pImage;
 
+end;
+
+constructor TVulkanImageView.Create(const pDevice:TVulkanDevice;
+                                    const pImage:TVulkanImage;
+                                    const pImageViewType:TVkImageViewType;
+                                    const pFormat:TvkFormat;
+                                    const pComponentRed:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                    const pComponentGreen:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                    const pComponentBlue:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                    const pComponentAlpha:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                    const pImageAspectFlags:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+                                    const pBaseMipLevel:TVkUInt32=0;
+                                    const pCountMipMapLevels:TVkUInt32=1;
+                                    const pBaseArrayLayer:TVkUInt32=1;
+                                    const pCountArrayLayers:TVkUInt32=0);
+var ImageViewCreateInfo:TVkImageViewCreateInfo;
+begin
+
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fImage:=pImage;
+
+ fImageViewHandle:=VK_NULL_HANDLE;
+
+ FillChar(ImageViewCreateInfo,SizeOf(TVkImageViewCreateInfo),#0);
+ ImageViewCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+ ImageViewCreateInfo.pNext:=nil;
+ ImageViewCreateInfo.flags:=0;
+ ImageViewCreateInfo.image:=pImage.fImageHandle;
+ ImageViewCreateInfo.viewType:=pImageViewType;
+ ImageViewCreateInfo.format:=pFormat;
+ ImageViewCreateInfo.components.r:=pComponentRed;
+ ImageViewCreateInfo.components.g:=pComponentGreen;
+ ImageViewCreateInfo.components.b:=pComponentBlue;
+ ImageViewCreateInfo.components.a:=pComponentAlpha;
+ ImageViewCreateInfo.subresourceRange.aspectMask:=pImageAspectFlags;
+ ImageViewCreateInfo.subresourceRange.baseMipLevel:=pBaseMipLevel;
+ ImageViewCreateInfo.subresourceRange.levelCount:=pCountMipMapLevels;
+ ImageViewCreateInfo.subresourceRange.baseArrayLayer:=pBaseArrayLayer;
+ ImageViewCreateInfo.subresourceRange.layerCount:=pCountArrayLayers;
+
+ HandleResultCode(fDevice.fDeviceVulkan.CreateImageView(fDevice.fDeviceHandle,@ImageViewCreateInfo,fDevice.fAllocationCallbacks,@fImageViewHandle));
+                                           
 end;
 
 destructor TVulkanImageView.Destroy;
