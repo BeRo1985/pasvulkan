@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-04-04-37-0000                       *
+ *                        Version 2016-08-04-05-10-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1324,6 +1324,8 @@ type EVulkanException=class(Exception);
 
      TVulkanRenderPassSubpassDescriptions=array of TVulkanRenderPassSubpassDescription;
 
+     TVulkanFrameBuffer=class;
+
      TVulkanRenderPass=class(TVulkanHandle)
       private
        fDevice:TVulkanDevice;
@@ -1370,7 +1372,7 @@ type EVulkanException=class(Exception);
                                      const pDependencyFlags:TVkDependencyFlags):TVkUInt32;
        procedure Initialize;
        procedure BeginRenderpass(const pCommandBuffer:TVulkanCommandBuffer;
-                                 const pFrameBuffer:TVkFrameBuffer;
+                                 const pFrameBuffer:TVulkanFrameBuffer;
                                  const pSubpassContents:TVkSubpassContents;
                                  const pOffsetX,pOffsetY,pWidth,pHeight:TVkUInt32);
        procedure EndRenderpass(const pCommandBuffer:TVulkanCommandBuffer);
@@ -1443,7 +1445,14 @@ type EVulkanException=class(Exception);
                           const pWidth:TVkUInt32;
                           const pHeight:TVkUInt32;
                           const pFormat:TVkFormat;
-                          const pUsage:TVkBufferUsageFlags);
+                          const pUsage:TVkBufferUsageFlags); reintroduce; overload;
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pImage:TVulkanImage;
+                          const pImageView:TVulkanImageView;
+                          const pWidth:TVkUInt32;
+                          const pHeight:TVkUInt32;
+                          const pFormat:TVkFormat;
+                          const pDoDestroy:boolean=true); reintroduce; overload;
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
@@ -1471,6 +1480,7 @@ type EVulkanException=class(Exception);
        fHeight:TVkUInt32;
        fLayers:TVkUInt32;
        fDoDestroy:boolean;
+       fDoDestroyAttachments:boolean;
        function GetFrameBufferAttachment(const pIndex:TVkInt32):TVulkanFrameBufferAttachment;
       public
        constructor Create(const pDevice:TVulkanDevice;
@@ -1483,9 +1493,17 @@ type EVulkanException=class(Exception);
                           const pWidth:TVkUInt32;
                           const pHeight:TVkUInt32;
                           const pLayers:TVkUInt32;
+                          const pFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
+                          const pDoDestroyAttachments:boolean=true); reintroduce; overload;
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pRenderPass:TVulkanRenderPass;
+                          const pWidth:TVkUInt32;
+                          const pHeight:TVkUInt32;
+                          const pLayers:TVkUInt32;
                           const pFrameBufferHandle:TVkFrameBuffer;
                           const pFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
-                          const pDoDestroy:boolean=true); reintroduce; overload;
+                          const pDoDestroy:boolean=true;
+                          const pDoDestroyAttachments:boolean=true); reintroduce; overload;
        destructor Destroy; override;
        function AddAttachment(const pFrameBufferAttachment:TVulkanFrameBufferAttachment):TVkInt32;
        procedure Initialize;
@@ -1500,15 +1518,7 @@ type EVulkanException=class(Exception);
        property Layers:TVkUInt32 read fLayers;
      end;
 
-     PVulkanSwapChainBuffer=^TVulkanSwapChainBuffer;
-     TVulkanSwapChainBuffer=record
-      Image:TVulkanImage;
-      ImageView:TVulkanImageView;
-     end;
-
-     TVulkanSwapChainBuffers=array of TVulkanSwapChainBuffer;
-
-     TVulkanSwapChainFrameBuffers=array of TVkFrameBuffer;
+     TVulkanSwapChainFrameBuffers=array of TVulkanFrameBuffer;
 
      TVulkanSwapChain=class(TVulkanHandle)
       private
@@ -1520,15 +1530,16 @@ type EVulkanException=class(Exception);
        fDepthImage:TVulkanImage;
        fDepthImageFormat:TVkFormat;
        fDepthImageView:TVulkanImageView;
+       fDepthFrameBufferAttachment:TVulkanFrameBufferAttachment;
        fDepthMemoryBlock:TVulkanDeviceMemoryBlock;
-       fSwapChainBuffers:TVulkanSwapChainBuffers;
+       fFrameBufferColorAttachments:TVulkanFrameBufferAttachments;
        fFrameBuffers:TVulkanSwapChainFrameBuffers;
        fCurrentBuffer:TVkUInt32;
        fRenderPass:TVulkanRenderPass;
        fWidth:TVkInt32;
        fHeight:TVkInt32;
        function GetCurrentImage:TVulkanImage;
-       function GetCurrentFrameBuffer:TVkFrameBuffer;
+       function GetCurrentFrameBuffer:TVulkanFrameBuffer;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pCommandBuffer:TVulkanCommandBuffer;
@@ -1558,7 +1569,7 @@ type EVulkanException=class(Exception);
        property CurrentBuffer:TVkUInt32 read fCurrentBuffer;
        property RenderPass:TVulkanRenderPass read fRenderPass;
        property CurrentImage:TVulkanImage read GetCurrentImage;
-       property CurrentFrameBuffer:TVkFrameBuffer read GetCurrentFrameBuffer;
+       property CurrentFrameBuffer:TVulkanFrameBuffer read GetCurrentFrameBuffer;
        property Width:TVkInt32 read fWidth;
        property Height:TVkInt32 read fHeight;
      end;
@@ -6423,7 +6434,7 @@ begin
 end;
 
 procedure TVulkanRenderPass.BeginRenderpass(const pCommandBuffer:TVulkanCommandBuffer;
-                                            const pFrameBuffer:TVkFrameBuffer;
+                                            const pFrameBuffer:TVulkanFrameBuffer;
                                             const pSubpassContents:TVkSubpassContents;
                                             const pOffsetX,pOffsetY,pWidth,pHeight:TVkUInt32);
 var RenderPassBeginInfo:TVkRenderPassBeginInfo;
@@ -6431,7 +6442,7 @@ begin
  FillChar(RenderPassBeginInfo,SizeOf(TVkRenderPassBeginInfo),#0);
  RenderPassBeginInfo.sType:=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
  RenderPassBeginInfo.renderPass:=fRenderPassHandle;
- RenderPassBeginInfo.framebuffer:=pFrameBuffer;
+ RenderPassBeginInfo.framebuffer:=pFrameBuffer.fFrameBufferHandle;
  RenderPassBeginInfo.renderArea.offset.x:=pOffsetX;
  RenderPassBeginInfo.renderArea.offset.y:=pOffsetY;
  RenderPassBeginInfo.renderArea.extent.width:=pWidth;
@@ -6678,6 +6689,35 @@ begin
  end;
 end;
 
+constructor TVulkanFrameBufferAttachment.Create(const pDevice:TVulkanDevice;
+                                                const pImage:TVulkanImage;
+                                                const pImageView:TVulkanImageView;
+                                                const pWidth:TVkUInt32;
+                                                const pHeight:TVkUInt32;
+                                                const pFormat:TVkFormat;
+                                                const pDoDestroy:boolean=true);
+begin
+
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fWidth:=pWidth;
+
+ fHeight:=pHeight;
+
+ fFormat:=pFormat;
+
+ fImage:=pImage;
+
+ fImageView:=pImageView;
+
+ fMemoryBlock:=nil;
+
+ fDoDestroy:=pDoDestroy;
+
+end;
+
 destructor TVulkanFrameBufferAttachment.Destroy;
 begin
 
@@ -6742,9 +6782,53 @@ constructor TVulkanFrameBuffer.Create(const pDevice:TVulkanDevice;
                                       const pWidth:TVkUInt32;
                                       const pHeight:TVkUInt32;
                                       const pLayers:TVkUInt32;
+                                      const pFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
+                                      const pDoDestroyAttachments:boolean=true);
+begin
+
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fFrameBufferHandle:=VK_NULL_HANDLE;
+
+ fFrameBufferAttachments:=nil;
+
+ fFrameBufferAttachmentImageViews:=nil;
+
+ fCountFrameBufferAttachments:=length(pFrameBufferAttachments);
+
+ SetLength(fFrameBufferAttachments,fCountFrameBufferAttachments);
+
+ if fCountFrameBufferAttachments>0 then begin
+  Move(pFrameBufferAttachments[0],fFrameBufferAttachments[0],fCountFrameBufferAttachments*SizeOf(TVulkanFrameBufferAttachment));
+ end;
+
+ fRenderPass:=pRenderPass;
+
+ fWidth:=pWidth;
+
+ fHeight:=pHeight;
+
+ fLayers:=pLayers;
+
+ fDoDestroy:=true;
+
+ fDoDestroyAttachments:=pDoDestroyAttachments;
+
+ Initialize;
+
+end;                                      
+
+constructor TVulkanFrameBuffer.Create(const pDevice:TVulkanDevice;
+                                      const pRenderPass:TVulkanRenderPass;
+                                      const pWidth:TVkUInt32;
+                                      const pHeight:TVkUInt32;
+                                      const pLayers:TVkUInt32;
                                       const pFrameBufferHandle:TVkFrameBuffer;
                                       const pFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
-                                      const pDoDestroy:boolean=true);
+                                      const pDoDestroy:boolean=true;
+                                      const pDoDestroyAttachments:boolean=true);
 begin
 
  inherited Create;
@@ -6775,6 +6859,8 @@ begin
 
  fDoDestroy:=pDoDestroy;
 
+ fDoDestroyAttachments:=pDoDestroyAttachments;
+
 end;
 
 destructor TVulkanFrameBuffer.Destroy;
@@ -6789,7 +6875,11 @@ begin
  end;
 
  for Index:=0 to fCountFrameBufferAttachments-1 do begin
-  FreeAndNil(fFrameBufferAttachments[Index]);
+  if fDoDestroyAttachments then begin
+   FreeAndNil(fFrameBufferAttachments[Index]);
+  end else begin
+   fFrameBufferAttachments[Index]:=nil;
+  end;
  end;
 
  SetLength(fFrameBufferAttachments,0);
@@ -6869,15 +6959,16 @@ var Index:TVkInt32;
     SurfacePresetModes:TVkPresentModeKHRArray;
     SurfaceFormat:TVkSurfaceFormatKHR;
     SwapChainImages:array of TVkImage;
-    SwapChainBuffer:PVulkanSwapChainBuffer;
+    FrameBufferColorAttachment:TVulkanFrameBufferAttachment;
     ImageCreateInfo:TVkImageCreateInfo;
     ImageViewCreateInfo:TVkImageViewCreateInfo;
     Attachments:array[0..1] of TVkImageView;
-    FramebufferCreateInfo:TVkFramebufferCreateInfo;
     FormatProperties:TVkFormatProperties;
     MemoryRequirements:TVkMemoryRequirements;
     TempImage:TVkImage;
     TempImageView:TVkImageView;
+    ColorAttachmentImage:TVulkanImage;
+    ColorAttachmentImageView:TVulkanImageView;
 begin
  inherited Create;
 
@@ -6887,7 +6978,7 @@ begin
 
  fQueueFamilyIndices:=nil;
 
- fSwapChainBuffers:=nil;
+ fFrameBufferColorAttachments:=nil;
 
  fFrameBuffers:=nil;
 
@@ -6899,6 +6990,8 @@ begin
 
  fDepthImageView:=nil;
 
+ fDepthFrameBufferAttachment:=nil;
+ 
  fRenderPass:=nil;
 
  fWidth:=0;
@@ -7020,47 +7113,98 @@ begin
 
   HandleResultCode(fDevice.fDeviceVulkan.GetSwapchainImagesKHR(fDevice.fDeviceHandle,fSwapChainHandle,@SwapChainImageCount,nil));
 
+  begin
+
+   fRenderPass:=TVulkanRenderPass.Create(fDevice);
+
+   fRenderPass.AddSubpassDescription(0,
+                                     VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                     [],
+                                     [fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
+                                                                                                              fSwapChainCreateInfo.imageFormat,
+                                                                                                              VK_SAMPLE_COUNT_1_BIT,
+                                                                                                              VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
+                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                                                             ),
+                                                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                        )],
+                                     [],
+                                     fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
+                                                                                                             fDepthImageFormat,
+                                                                                                             VK_SAMPLE_COUNT_1_BIT,
+                                                                                                             VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                                                                             VK_ATTACHMENT_STORE_OP_STORE,
+                                                                                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                                                             VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                                                                            ),
+                                                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                                       ),
+                                     []);
+
+   fRenderPass.Initialize;
+
+  end;
+
   SwapChainImages:=nil;
   try
    SetLength(SwapChainImages,SwapChainImageCount);
 
    HandleResultCode(fDevice.fDeviceVulkan.GetSwapchainImagesKHR(fDevice.fDeviceHandle,fSwapChainHandle,@SwapChainImageCount,@SwapChainImages[0]));
 
-   SetLength(fSwapChainBuffers,SwapChainImageCount);
+   SetLength(fFrameBufferColorAttachments,SwapChainImageCount);
 
    for Index:=0 to SwapChainImageCount-1 do begin
-    SwapChainBuffer:=@fSwapChainBuffers[Index];
-    SwapChainBuffer^.Image:=nil;
-    SwapChainBuffer^.ImageView:=nil;
+    fFrameBufferColorAttachments[Index]:=nil;
    end;
 
    for Index:=0 to SwapChainImageCount-1 do begin
 
-    SwapChainBuffer:=@fSwapChainBuffers[Index];
+    ColorAttachmentImage:=nil;
+    ColorAttachmentImageView:=nil;
 
-    SwapChainBuffer^.Image:=TVulkanImage.Create(fDevice,SwapChainImages[Index],nil,false);
+    try
+     ColorAttachmentImage:=TVulkanImage.Create(fDevice,SwapChainImages[Index],nil,false);
 
-    FillChar(ImageViewCreateInfo,SizeOf(TVkImageViewCreateInfo),#0);
-    ImageViewCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    ImageViewCreateInfo.pNext:=nil;
-    ImageViewCreateInfo.flags:=0;
-    ImageViewCreateInfo.image:=SwapChainImages[Index];
-    ImageViewCreateInfo.viewType:=VK_IMAGE_VIEW_TYPE_2D;
-    ImageViewCreateInfo.format:=fSwapChainCreateInfo.imageFormat;
-    ImageViewCreateInfo.components.r:=VK_COMPONENT_SWIZZLE_IDENTITY;
-    ImageViewCreateInfo.components.g:=VK_COMPONENT_SWIZZLE_IDENTITY;
-    ImageViewCreateInfo.components.b:=VK_COMPONENT_SWIZZLE_IDENTITY;
-    ImageViewCreateInfo.components.a:=VK_COMPONENT_SWIZZLE_IDENTITY;
-    ImageViewCreateInfo.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-    ImageViewCreateInfo.subresourceRange.baseMipLevel:=0;
-    ImageViewCreateInfo.subresourceRange.levelCount:=1;
-    ImageViewCreateInfo.subresourceRange.baseArrayLayer:=0;
-    ImageViewCreateInfo.subresourceRange.layerCount:=1;
+     FillChar(ImageViewCreateInfo,SizeOf(TVkImageViewCreateInfo),#0);
+     ImageViewCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+     ImageViewCreateInfo.pNext:=nil;
+     ImageViewCreateInfo.flags:=0;
+     ImageViewCreateInfo.image:=SwapChainImages[Index];
+     ImageViewCreateInfo.viewType:=VK_IMAGE_VIEW_TYPE_2D;
+     ImageViewCreateInfo.format:=fSwapChainCreateInfo.imageFormat;
+     ImageViewCreateInfo.components.r:=VK_COMPONENT_SWIZZLE_IDENTITY;
+     ImageViewCreateInfo.components.g:=VK_COMPONENT_SWIZZLE_IDENTITY;
+     ImageViewCreateInfo.components.b:=VK_COMPONENT_SWIZZLE_IDENTITY;
+     ImageViewCreateInfo.components.a:=VK_COMPONENT_SWIZZLE_IDENTITY;
+     ImageViewCreateInfo.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageViewCreateInfo.subresourceRange.baseMipLevel:=0;
+     ImageViewCreateInfo.subresourceRange.levelCount:=1;
+     ImageViewCreateInfo.subresourceRange.baseArrayLayer:=0;
+     ImageViewCreateInfo.subresourceRange.layerCount:=1;
 
-    HandleResultCode(fDevice.fDeviceVulkan.CreateImageView(fDevice.fDeviceHandle,@ImageViewCreateInfo,fDevice.fAllocationCallbacks,@TempImageView));
-    SwapChainBuffer^.ImageView:=TVulkanImageView.Create(fDevice,TempImageView,SwapChainBuffer^.Image);
+     HandleResultCode(fDevice.fDeviceVulkan.CreateImageView(fDevice.fDeviceHandle,@ImageViewCreateInfo,fDevice.fAllocationCallbacks,@TempImageView));
+     ColorAttachmentImageView:=TVulkanImageView.Create(fDevice,TempImageView,ColorAttachmentImage);
 
-    SwapChainBuffer^.Image.fImageView:=SwapChainBuffer^.ImageView;
+     ColorAttachmentImage.fImageView:=ColorAttachmentImageView;
+    except
+     FreeAndNil(ColorAttachmentImage);
+     FreeAndNil(ColorAttachmentImageView);
+     raise;
+    end;
+
+    fFrameBufferColorAttachments[Index]:=TVulkanFrameBufferAttachment.Create(fDevice,
+                                                                             ColorAttachmentImage,
+                                                                             ColorAttachmentImageView,
+                                                                             fSwapChainCreateInfo.imageExtent.width,
+                                                                             fSwapChainCreateInfo.imageExtent.height,
+                                                                             fSwapChainCreateInfo.imageFormat,
+                                                                             true);
 
    end;
 
@@ -7136,89 +7280,48 @@ begin
 
    HandleResultCode(fDevice.fDeviceVulkan.CreateImageView(fDevice.fDeviceHandle,@ImageViewCreateInfo,fDevice.fAllocationCallbacks,@TempImageView));
    fDepthImageView:=TVulkanImageView.Create(fDevice,TempImageView,fDepthImage);
-   
+
    fDepthImage.fImageView:=fDepthImageView;
 
+   fDepthFrameBufferAttachment:=TVulkanFrameBufferAttachment.Create(fDevice,
+                                                                    fDepthImage,
+                                                                    fDepthImageView,
+                                                                    fSwapChainCreateInfo.imageExtent.width,
+                                                                    fSwapChainCreateInfo.imageExtent.height,fDepthImageFormat,
+                                                                    false);
+
   end;
-
-  begin
-
-   fRenderPass:=TVulkanRenderPass.Create(fDevice);
-
-   fRenderPass.AddSubpassDescription(0,
-                                     VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                     [],
-                                     [fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
-                                                                                                              fSwapChainCreateInfo.imageFormat,
-                                                                                                              VK_SAMPLE_COUNT_1_BIT,
-                                                                                                              VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
-                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                                                             ),
-                                                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                        )],
-                                     [],
-                                     fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
-                                                                                                             fDepthImageformat,
-                                                                                                             VK_SAMPLE_COUNT_1_BIT,
-                                                                                                             VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                             VK_ATTACHMENT_STORE_OP_STORE,
-                                                                                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                             VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                                                            ),
-                                                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                       ),
-                                     []);
-
-   fRenderPass.Initialize;
-                                     
-  end;
-
-  FillChar(FramebufferCreateInfo,SizeOf(TVkFramebufferCreateInfo),#0);
-  FramebufferCreateInfo.sType:=VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-  FramebufferCreateInfo.pNext:=nil;
-  FramebufferCreateInfo.flags:=0;
-  FramebufferCreateInfo.renderPass:=fRenderPass.fRenderPassHandle;
-  FramebufferCreateInfo.attachmentCount:=2;
-  FramebufferCreateInfo.pAttachments:=@Attachments[0];
-  FramebufferCreateInfo.width:=fSwapChainCreateInfo.imageExtent.width;
-  FramebufferCreateInfo.height:=fSwapChainCreateInfo.imageExtent.height;
-  FramebufferCreateInfo.layers:=1;
 
   SetLength(fFrameBuffers,SwapChainImageCount);
   for Index:=0 to SwapChainImageCount-1 do begin
-   fFrameBuffers[Index]:=VK_NULL_HANDLE;
+   fFrameBuffers[Index]:=nil;
   end;
   for Index:=0 to SwapChainImageCount-1 do begin
-   Attachments[0]:=fSwapChainBuffers[Index].ImageView.fImageViewHandle;
-   Attachments[1]:=fDepthImageView.fImageViewHandle;
-   HandleResultCode(fDevice.fDeviceVulkan.CreateFramebuffer(fDevice.fDeviceHandle,@FramebufferCreateInfo,fDevice.fAllocationCallbacks,@fFrameBuffers[Index]));
+   fFrameBuffers[Index]:=TVulkanFrameBuffer.Create(fDevice,
+                                                   fRenderPass,
+                                                   fSwapChainCreateInfo.imageExtent.width,
+                                                   fSwapChainCreateInfo.imageExtent.height,
+                                                   1,
+                                                   [fFrameBufferColorAttachments[Index],fDepthFrameBufferAttachment],
+                                                   false);
   end;
 
  except
 
   for Index:=0 to length(fFramebuffers)-1 do begin
-   if fFrameBuffers[Index]<>VK_NULL_HANDLE then begin
-    fDevice.fDeviceVulkan.DestroyFramebuffer(fDevice.fDeviceHandle,fFrameBuffers[Index],fDevice.fAllocationCallbacks);
-    fFrameBuffers[Index]:=VK_NULL_HANDLE;
-   end;
+   FreeAndNil(fFrameBuffers[Index]);
   end;
 
   FreeAndNil(fRenderPass);
+
+  FreeAndNil(fDepthFrameBufferAttachment);
 
   FreeAndNil(fDepthImageView);
 
   FreeAndNil(fDepthImage);
 
-  for Index:=0 to length(fSwapChainBuffers)-1 do begin
-   SwapChainBuffer:=@fSwapChainBuffers[Index];
-   FreeAndNil(SwapChainBuffer^.ImageView);
-   FreeAndNil(SwapChainBuffer^.Image);
+  for Index:=0 to length(fFrameBufferColorAttachments)-1 do begin
+  FreeAndNil(fFrameBufferColorAttachments[Index]);
   end;
 
   if fSwapChainHandle<>VK_NULL_HANDLE then begin
@@ -7233,7 +7336,7 @@ begin
 
   SetLength(fQueueFamilyIndices,0);
 
-  SetLength(fSwapChainBuffers,0);
+  SetLength(fFrameBufferColorAttachments,0);
 
   SetLength(fFrameBuffers,0);
 
@@ -7244,27 +7347,24 @@ end;
 
 destructor TVulkanSwapChain.Destroy;
 var Index:TVkInt32;
-    SwapChainBuffer:PVulkanSwapChainBuffer;
+    FrameBufferColorAttachment:TVulkanFrameBufferAttachment;
 begin
 
  for Index:=0 to length(fFramebuffers)-1 do begin
-  if fFrameBuffers[Index]<>VK_NULL_HANDLE then begin
-   fDevice.fDeviceVulkan.DestroyFramebuffer(fDevice.fDeviceHandle,fFrameBuffers[Index],fDevice.fAllocationCallbacks);
-   fFrameBuffers[Index]:=VK_NULL_HANDLE;
-  end;
+   FreeAndNil(fFrameBuffers[Index]);
  end;
 
  FreeAndNil(fRenderPass);
+
+ FreeAndNil(fDepthFrameBufferAttachment);
 
  FreeAndNil(fDepthImageView);
 
  FreeAndNil(fDepthImage);
 
- for Index:=0 to length(fSwapChainBuffers)-1 do begin
-  SwapChainBuffer:=@fSwapChainBuffers[Index];
-  FreeAndNil(SwapChainBuffer^.ImageView);
-  FreeAndNil(SwapChainBuffer^.Image);
- end;
+ for Index:=0 to length(fFrameBufferColorAttachments)-1 do begin
+  FreeAndNil(fFrameBufferColorAttachments[Index]);
+ end;                          
 
  if fSwapChainHandle<>VK_NULL_HANDLE then begin
   fDevice.fDeviceVulkan.DestroySwapChainKHR(fDevice.fDeviceHandle,fSwapChainHandle,fDevice.fAllocationCallbacks);
@@ -7277,7 +7377,7 @@ begin
  end;
 
  SetLength(fQueueFamilyIndices,0);
- SetLength(fSwapChainBuffers,0);
+ SetLength(fFrameBufferColorAttachments,0);
  SetLength(fFrameBuffers,0);
 
  inherited Destroy;
@@ -7328,10 +7428,10 @@ end;
 
 function TVulkanSwapChain.GetCurrentImage:TVulkanImage;
 begin
- result:=fSwapChainBuffers[fCurrentBuffer].Image;
+ result:=fFrameBufferColorAttachments[fCurrentBuffer].fImage;
 end;
 
-function TVulkanSwapChain.GetCurrentFrameBuffer:TVkFrameBuffer;
+function TVulkanSwapChain.GetCurrentFrameBuffer:TVulkanFrameBuffer;
 begin
  result:=fFrameBuffers[fCurrentBuffer];
 end;
