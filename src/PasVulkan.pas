@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-04-13-57-0000                       *
+ *                        Version 2016-08-04-14-18-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1699,8 +1699,8 @@ type EVulkanException=class(Exception);
                           const pDescriptorCount:TVkUInt32;
                           const pStageFlags:TVkShaderStageFlags);
        destructor Destroy; override;
-       procedure AddImmutableSampler(const pImmutableSampler:TVkSampler);
-       procedure AddImmutableSamplers(const pImmutableSamplers:array of TVkSampler);
+       procedure AddImmutableSampler(const pImmutableSampler:TVulkanSampler);
+       procedure AddImmutableSamplers(const pImmutableSamplers:array of TVulkanSampler);
        procedure Initialize;
       published
        property Binding:TVkUInt32 read GetBinding write SetBinding;
@@ -1723,7 +1723,7 @@ type EVulkanException=class(Exception);
                             const pDescriptorType:TVkDescriptorType;
                             const pDescriptorCount:TVkUInt32;
                             const pStageFlags:TVkShaderStageFlags;
-                            const pImmutableSamplers:array of TVkSampler);
+                            const pImmutableSamplers:array of TVulkanSampler);
        procedure Initialize;
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkDescriptorSetLayout read fDescriptorSetLayoutHandle;
@@ -7930,7 +7930,7 @@ begin
  fDescriptorSetLayoutBinding.stageFlags:=pStageFlags;
 end;
 
-procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSampler(const pImmutableSampler:TVkSampler);
+procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSampler(const pImmutableSampler:TVulkanSampler);
 var Index:TVkInt32;
 begin
  Index:=fCountImmutableSamplers;
@@ -7938,19 +7938,14 @@ begin
  if fCountImmutableSamplers>length(fImmutableSamplers) then begin
   SetLength(fImmutableSamplers,fCountImmutableSamplers*2);
  end;
- fImmutableSamplers[Index]:=pImmutableSampler;
+ fImmutableSamplers[Index]:=pImmutableSampler.fSamplerHandle;
 end;
 
-procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSamplers(const pImmutableSamplers:array of TVkSampler);
+procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSamplers(const pImmutableSamplers:array of TVulkanSampler);
 var Index:TVkInt32;
 begin
- if length(pImmutableSamplers)>0 then begin
-  Index:=fCountImmutableSamplers;
-  inc(fCountImmutableSamplers,length(pImmutableSamplers));
-  if fCountImmutableSamplers>length(fImmutableSamplers) then begin
-   SetLength(fImmutableSamplers,fCountImmutableSamplers*2);
-  end;
-  Move(pImmutableSamplers[0],fImmutableSamplers[Index],length(pImmutableSamplers)*SizeOf(TVkSampler));
+ for Index:=0 to length(pImmutableSamplers)-1 do begin
+  AddImmutableSampler(pImmutableSamplers[Index]);
  end;
 end;
 
@@ -7993,7 +7988,7 @@ procedure TVulkanDescriptorSetLayout.AddBinding(const pBinding:TVkUInt32;
                                                 const pDescriptorType:TVkDescriptorType;
                                                 const pDescriptorCount:TVkUInt32;
                                                 const pStageFlags:TVkShaderStageFlags;
-                                                const pImmutableSamplers:array of TVkSampler);
+                                                const pImmutableSamplers:array of TVulkanSampler);
 var DescriptorSetLayoutBinding:TVulkanDescriptorSetLayoutBinding;
 begin
  DescriptorSetLayoutBinding:=TVulkanDescriptorSetLayoutBinding.Create(pBinding,pDescriptorType,pDescriptorCount,pStageFlags);
