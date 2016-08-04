@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-04-09-55-0000                       *
+ *                        Version 2016-08-04-11-34-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -7471,14 +7471,14 @@ begin
  fDataAligned:=nil;
 
  fDataSize:=pDataSize;
- if (fDataSize and not 3)<>0 then begin
-  inc(fDataSize,4-(fDataSize and not 3));
+ if (fDataSize and 3)<>0 then begin
+  inc(fDataSize,4-(fDataSize and 3));
  end;
 
  GetMem(fData,fDataSize+4);
  fDataAligned:=fData;
- if (TVkPtrUInt(fDataAligned) and not 3)<>0 then begin
-  inc(TVkPtrUInt(fDataAligned),4-(TVkPtrUInt(fDataAligned) and not 3));
+ if (TVkPtrUInt(fDataAligned) and 3)<>0 then begin
+  inc(TVkPtrUInt(fDataAligned),4-(TVkPtrUInt(fDataAligned) and 3));
  end;
 
  Load;
@@ -7499,14 +7499,14 @@ begin
  fDataAligned:=nil;
 
  fDataSize:=pStream.Size;
- if (fDataSize and not 3)<>0 then begin
-  inc(fDataSize,4-(fDataSize and not 3));
+ if (fDataSize and 3)<>0 then begin
+  inc(fDataSize,4-(fDataSize and 3));
  end;
 
  GetMem(fData,fDataSize+4);
  fDataAligned:=fData;
- if (TVkPtrUInt(fDataAligned) and not 3)<>0 then begin
-  inc(TVkPtrUInt(fDataAligned),4-(TVkPtrUInt(fDataAligned) and not 3));
+ if (TVkPtrUInt(fDataAligned) and 3)<>0 then begin
+  inc(TVkPtrUInt(fDataAligned),4-(TVkPtrUInt(fDataAligned) and 3));
  end;
 
  if pStream.Seek(0,soBeginning)<>0 then begin

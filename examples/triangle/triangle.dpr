@@ -48,6 +48,9 @@ var WndClass:TWndClassA;
     DoNeedToRecreateVulkanSwapChain:boolean=false;
     EnableDebugging:boolean=false;
 
+    TriangleVertexShaderModule:TVulkanShaderModule=nil;
+    TriangleFragmentShaderModule:TVulkanShaderModule=nil;
+
 procedure DebugLn(const s:TVulkanCharString);
 begin
  WriteLn(s);
@@ -323,6 +326,10 @@ begin
 
    DoNeedToRecreateVulkanSwapChain:=false;
 
+   TriangleVertexShaderModule:=TVulkanShaderModule.Create(VulkanDevice,'triangle.vert');
+
+   TriangleFragmentShaderModule:=TVulkanShaderModule.Create(VulkanDevice,'triangle.frag');
+
    ShowWindow(hWindow,SW_SHOWNORMAL);
 
    Running:=true;
@@ -349,6 +356,9 @@ begin
   end;
 
  finally
+
+  TriangleFragmentShaderModule.Free;
+  TriangleVertexShaderModule.Free;
 
   VulkanDrawCompleteSemaphore.Free;
   VulkanPresentCompleteSemaphore.Free;
