@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-04-21-00-0000                       *
+ *                        Version 2016-08-05-09-43-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -349,6 +349,8 @@ type EVulkanException=class(Exception);
      TVkDescriptorBufferInfoArray=array of TVkDescriptorBufferInfo;
      TVkClearValueArray=array of TVkClearValue;
      TVkResultArray=array of TVkResult;
+     TVkCopyDescriptorSetArray=array of TVkCopyDescriptorSet;
+     TVkWriteDescriptorSetArray=array of TVkWriteDescriptorSet;
 
      TVulkanBaseList=class(TVulkanObject)
       private
@@ -1745,6 +1747,15 @@ type EVulkanException=class(Exception);
        property Handle:TVkDescriptorSetLayout read fDescriptorSetLayoutHandle;
      end;
 
+     PVulkanDescriptorSetWriteDescriptorSetMetaData=^TVulkanDescriptorSetWriteDescriptorSetMetaData;
+     TVulkanDescriptorSetWriteDescriptorSetMetaData=record
+      ImageInfo:array of TVkDescriptorImageInfo;
+      BufferInfo:array of TVkDescriptorBufferInfo;
+      TexelBufferView:array of TVkBufferView;
+     end;
+
+     TVulkanDescriptorSetWriteDescriptorSetMetaDataArray=array of TVulkanDescriptorSetWriteDescriptorSetMetaData;
+
      TVulkanDescriptorSet=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
@@ -1752,6 +1763,11 @@ type EVulkanException=class(Exception);
        fDescriptorSetLayout:TVulkanDescriptorSetLayout;
        fDescriptorSetHandle:TVkDescriptorSet;
        fDescriptorSetAllocateInfo:TVkDescriptorSetAllocateInfo;
+       fCopyDescriptorSetQueue:TVkCopyDescriptorSetArray;
+       fCopyDescriptorSetQueueSize:TVkInt32;
+       fWriteDescriptorSetQueue:TVkWriteDescriptorSetArray;
+       fWriteDescriptorSetQueueMetaData:TVulkanDescriptorSetWriteDescriptorSetMetaDataArray;
+       fWriteDescriptorSetQueueSize:TVkInt32;
       public
        constructor Create(const pDescriptorPool:TVulkanDescriptorPool;
                           const pDescriptorSetLayout:TVulkanDescriptorSetLayout);
@@ -1763,14 +1779,17 @@ type EVulkanException=class(Exception);
                                        const pSourceArrayElement:TVkUInt32;
                                        const pDestinationBinding:TVkUInt32;
                                        const pDestinationArrayElement:TVkUInt32;
-                                       const pDescriptorCount:TVkUInt32);
-      procedure WriteToDescriptorSet(const pDestinationBinding:TVkUInt32;
-                                     const pDestinationArrayElement:TVkUInt32;
-                                     const pDescriptorCount:TVkUInt32;
-                                     const pDescriptorType:TVkDescriptorType;
-                                     const pImageInfo:PVkDescriptorImageInfo;
-                                     const pBufferInfo:PVkDescriptorBufferInfo;
-                                     const pTexelBufferView:PVkBufferView);
+                                       const pDescriptorCount:TVkUInt32;
+                                       const pDoInstant:boolean=false);
+       procedure WriteToDescriptorSet(const pDestinationBinding:TVkUInt32;
+                                      const pDestinationArrayElement:TVkUInt32;
+                                      const pDescriptorCount:TVkUInt32;
+                                      const pDescriptorType:TVkDescriptorType;
+                                      const pImageInfo:array of TVkDescriptorImageInfo;
+                                      const pBufferInfo:array of TVkDescriptorBufferInfo;
+                                      const pTexelBufferView:array of TVkBufferView;
+                                      const pDoInstant:boolean=false);
+       procedure Flush;
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkDescriptorSet read fDescriptorSetHandle;
        property DescriptorPool:TVulkanDescriptorPool read fDescriptorPool;
@@ -8067,6 +8086,13 @@ begin
 
  fDescriptorSetHandle:=VK_NULL_HANDLE;
 
+ fCopyDescriptorSetQueue:=nil;
+ fCopyDescriptorSetQueueSize:=0;
+
+ fWriteDescriptorSetQueue:=nil;
+ fWriteDescriptorSetQueueMetaData:=nil;
+ fWriteDescriptorSetQueueSize:=0;
+
  FillChar(fDescriptorSetAllocateInfo,SizeOf(TVkDescriptorSetAllocateInfo),#0);
  fDescriptorSetAllocateInfo.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
  fDescriptorSetAllocateInfo.descriptorPool:=fDescriptorPool.fDescriptorPoolHandle;
@@ -8083,6 +8109,9 @@ begin
   fDevice.fDeviceVulkan.FreeDescriptorSets(fDevice.fDeviceHandle,fDescriptorPool.fDescriptorPoolHandle,1,@fDescriptorSetHandle);
   fDescriptorSetHandle:=VK_NULL_HANDLE;
  end;
+ SetLength(fCopyDescriptorSetQueue,0);
+ SetLength(fWriteDescriptorSetQueue,0);
+ SetLength(fWriteDescriptorSetQueueMetaData,0);
  inherited Destroy;
 end;
 
@@ -8107,38 +8136,155 @@ procedure TVulkanDescriptorSet.CopyFromDescriptorSet(const pSourceDescriptorSet:
                                                      const pSourceArrayElement:TVkUInt32;
                                                      const pDestinationBinding:TVkUInt32;
                                                      const pDestinationArrayElement:TVkUInt32;
-                                                     const pDescriptorCount:TVkUInt32);
-var CopyDescriptorSet:TVkCopyDescriptorSet;
+                                                     const pDescriptorCount:TVkUInt32;
+                                                     const pDoInstant:boolean=false);
+ procedure InstantCopyFromDescriptorSet;
+ var CopyDescriptorSet:TVkCopyDescriptorSet;
+ begin
+  FillChar(CopyDescriptorSet,SizeOf(TVkCopyDescriptorSet),#0);
+  CopyDescriptorSet.sType:=VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
+  CopyDescriptorSet.srcSet:=pSourceDescriptorSet.Handle;
+  CopyDescriptorSet.srcBinding:=pSourceBinding;
+  CopyDescriptorSet.srcArrayElement:=pSourceArrayElement;
+  CopyDescriptorSet.dstBinding:=pDestinationBinding;
+  CopyDescriptorSet.dstArrayElement:=pDestinationArrayElement;
+  CopyDescriptorSet.descriptorCount:=pDescriptorCount;
+  fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,0,nil,1,@CopyDescriptorSet);
+ end;
+var Index:TVkInt32;
+    CopyDescriptorSet:PVkCopyDescriptorSet;
 begin
- FillChar(CopyDescriptorSet,SizeOf(TVkCopyDescriptorSet),#0);
- CopyDescriptorSet.sType:=VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
- CopyDescriptorSet.srcSet:=pSourceDescriptorSet.Handle;
- CopyDescriptorSet.srcBinding:=pSourceBinding;
- CopyDescriptorSet.srcArrayElement:=pSourceArrayElement;
- CopyDescriptorSet.dstBinding:=pDestinationBinding;
- CopyDescriptorSet.dstArrayElement:=pDestinationArrayElement;
- CopyDescriptorSet.descriptorCount:=pDescriptorCount;
- fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,0,nil,1,@CopyDescriptorSet);
+ if pDoInstant then begin
+  InstantCopyFromDescriptorSet; 
+ end else begin
+  Index:=fCopyDescriptorSetQueueSize;
+  inc(fCopyDescriptorSetQueueSize);
+  if length(fCopyDescriptorSetQueue)<fCopyDescriptorSetQueueSize then begin
+   SetLength(fCopyDescriptorSetQueue,fCopyDescriptorSetQueueSize*2);
+  end;
+  CopyDescriptorSet:=@fCopyDescriptorSetQueue[Index];
+  FillChar(CopyDescriptorSet^,SizeOf(TVkCopyDescriptorSet),#0);
+  CopyDescriptorSet^.sType:=VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
+  CopyDescriptorSet^.srcSet:=pSourceDescriptorSet.Handle;
+  CopyDescriptorSet^.srcBinding:=pSourceBinding;
+  CopyDescriptorSet^.srcArrayElement:=pSourceArrayElement;
+  CopyDescriptorSet^.dstBinding:=pDestinationBinding;
+  CopyDescriptorSet^.dstArrayElement:=pDestinationArrayElement;
+  CopyDescriptorSet^.descriptorCount:=pDescriptorCount;
+ end;
 end;
 
 procedure TVulkanDescriptorSet.WriteToDescriptorSet(const pDestinationBinding:TVkUInt32;
-                                                    const pDestinationArrayElement:TVkUInt32;
-                                                    const pDescriptorCount:TVkUInt32;
-                                                    const pDescriptorType:TVkDescriptorType;
-                                                    const pImageInfo:PVkDescriptorImageInfo;
-                                                    const pBufferInfo:PVkDescriptorBufferInfo;
-                                                    const pTexelBufferView:PVkBufferView);
-var WriteDescriptorSet:TVkWriteDescriptorSet;
+                                                   const pDestinationArrayElement:TVkUInt32;
+                                                   const pDescriptorCount:TVkUInt32;
+                                                   const pDescriptorType:TVkDescriptorType;
+                                                   const pImageInfo:array of TVkDescriptorImageInfo;
+                                                   const pBufferInfo:array of TVkDescriptorBufferInfo;
+                                                   const pTexelBufferView:array of TVkBufferView;
+                                                   const pDoInstant:boolean=false);
+ procedure InstantWriteToDescriptorSet;
+ var WriteDescriptorSet:TVkWriteDescriptorSet;
+ begin
+  FillChar(WriteDescriptorSet,SizeOf(TVkWriteDescriptorSet),#0);
+  WriteDescriptorSet.sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  WriteDescriptorSet.dstBinding:=pDestinationBinding;
+  WriteDescriptorSet.dstArrayElement:=pDestinationArrayElement;
+  WriteDescriptorSet.descriptorCount:=pDescriptorCount;
+  if length(pImageInfo)>0 then begin
+   WriteDescriptorSet.pImageInfo:=@pImageInfo[0];
+  end else begin
+   WriteDescriptorSet.pImageInfo:=nil;
+  end;
+  if length(pBufferInfo)>0 then begin
+   WriteDescriptorSet.pBufferInfo:=@pBufferInfo[0];
+  end else begin
+   WriteDescriptorSet.pBufferInfo:=nil;
+  end;
+  if length(pTexelBufferView)>0 then begin
+   WriteDescriptorSet.pTexelBufferView:=@pTexelBufferView[0];
+  end else begin
+   WriteDescriptorSet.pTexelBufferView:=nil;
+  end;
+  fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,1,@WriteDescriptorSet,0,nil);
+ end;
+var Index:TVkInt32;
+    WriteDescriptorSet:PVkWriteDescriptorSet;
+    WriteDescriptorSetMetaData:PVulkanDescriptorSetWriteDescriptorSetMetaData;
 begin
- FillChar(WriteDescriptorSet,SizeOf(TVkWriteDescriptorSet),#0);
- WriteDescriptorSet.sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
- WriteDescriptorSet.dstBinding:=pDestinationBinding;
- WriteDescriptorSet.dstArrayElement:=pDestinationArrayElement;
- WriteDescriptorSet.descriptorCount:=pDescriptorCount;
- WriteDescriptorSet.pImageInfo:=pImageInfo;
- WriteDescriptorSet.pBufferInfo:=pBufferInfo;
- WriteDescriptorSet.pTexelBufferView:=pTexelBufferView;
- fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,1,@WriteDescriptorSet,0,nil);
+ if pDoInstant then begin
+  InstantWriteToDescriptorSet;
+ end else begin
+  Index:=fWriteDescriptorSetQueueSize;
+  inc(fWriteDescriptorSetQueueSize);
+  if length(fWriteDescriptorSetQueue)<fWriteDescriptorSetQueueSize then begin
+   SetLength(fWriteDescriptorSetQueue,fWriteDescriptorSetQueueSize*2);
+  end;
+  if length(fWriteDescriptorSetQueueMetaData)<fWriteDescriptorSetQueueSize then begin
+   SetLength(fWriteDescriptorSetQueueMetaData,fWriteDescriptorSetQueueSize*2);
+  end;
+  WriteDescriptorSet:=@fWriteDescriptorSetQueue[Index];
+  WriteDescriptorSetMetaData:=@fWriteDescriptorSetQueueMetaData[Index];
+  FillChar(WriteDescriptorSet^,SizeOf(TVkWriteDescriptorSet),#0);
+  WriteDescriptorSet^.sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  WriteDescriptorSet^.dstBinding:=pDestinationBinding;
+  WriteDescriptorSet^.dstArrayElement:=pDestinationArrayElement;
+  WriteDescriptorSet^.descriptorCount:=pDescriptorCount;
+  WriteDescriptorSet^.pImageInfo:=nil;
+  WriteDescriptorSet^.pBufferInfo:=nil;
+  WriteDescriptorSet^.pTexelBufferView:=nil;
+  WriteDescriptorSetMetaData^.ImageInfo:=nil;
+  WriteDescriptorSetMetaData^.BufferInfo:=nil;
+  WriteDescriptorSetMetaData^.TexelBufferView:=nil;
+  if length(pImageInfo)>0 then begin
+   SetLength(WriteDescriptorSetMetaData^.ImageInfo,length(pImageInfo));
+   Move(pImageInfo[0],WriteDescriptorSetMetaData^.ImageInfo[0],length(pImageInfo)*SizeOf(TVkDescriptorImageInfo));
+  end;
+  if length(pBufferInfo)>0 then begin
+   SetLength(WriteDescriptorSetMetaData^.BufferInfo,length(pBufferInfo));
+   Move(pBufferInfo[0],WriteDescriptorSetMetaData^.BufferInfo[0],length(pBufferInfo)*SizeOf(TVkDescriptorBufferInfo));
+  end;
+  if length(pTexelBufferView)>0 then begin
+   SetLength(WriteDescriptorSetMetaData^.TexelBufferView,length(pTexelBufferView));
+   Move(pTexelBufferView[0],WriteDescriptorSetMetaData^.TexelBufferView[0],length(pTexelBufferView)*SizeOf(TVkBufferView));
+  end;
+ end;
+end;
+
+procedure TVulkanDescriptorSet.Flush;
+var Index:TVkInt32;
+    WriteDescriptorSet:PVkWriteDescriptorSet;
+    WriteDescriptorSetMetaData:PVulkanDescriptorSetWriteDescriptorSetMetaData;
+begin
+ if fWriteDescriptorSetQueueSize>0 then begin
+  for Index:=0 to fWriteDescriptorSetQueueSize-1 do begin
+   WriteDescriptorSet:=@fWriteDescriptorSetQueue[Index];
+   WriteDescriptorSetMetaData:=@fWriteDescriptorSetQueueMetaData[Index];
+   if length(WriteDescriptorSetMetaData^.ImageInfo)>0 then begin
+    WriteDescriptorSet^.pImageInfo:=@WriteDescriptorSetMetaData^.ImageInfo[0];
+   end else begin
+    WriteDescriptorSet^.pImageInfo:=nil;
+   end;
+   if length(WriteDescriptorSetMetaData^.BufferInfo)>0 then begin
+    WriteDescriptorSet^.pBufferInfo:=@WriteDescriptorSetMetaData^.BufferInfo[0];
+   end else begin
+    WriteDescriptorSet^.pBufferInfo:=nil;
+   end;
+   if length(WriteDescriptorSetMetaData^.TexelBufferView)>0 then begin
+    WriteDescriptorSet^.pTexelBufferView:=@WriteDescriptorSetMetaData^.TexelBufferView[0];
+   end else begin
+    WriteDescriptorSet^.pTexelBufferView:=nil;
+   end;
+  end;
+  if fCopyDescriptorSetQueueSize>0 then begin
+   fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,fWriteDescriptorSetQueueSize,@fWriteDescriptorSetQueue[0],fCopyDescriptorSetQueueSize,@fCopyDescriptorSetQueue[0]);
+  end else begin
+   fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,fWriteDescriptorSetQueueSize,@fWriteDescriptorSetQueue[0],0,nil);
+  end;
+ end else if fCopyDescriptorSetQueueSize>0 then begin
+  fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,0,nil,fCopyDescriptorSetQueueSize,@fCopyDescriptorSetQueue[0]);
+ end;
+ fCopyDescriptorSetQueueSize:=0;
+ fWriteDescriptorSetQueueSize:=0;
 end;
 
 end.
