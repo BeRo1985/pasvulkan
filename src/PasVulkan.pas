@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-05-09-43-0000                       *
+ *                        Version 2016-08-05-14-14-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -586,15 +586,6 @@ type EVulkanException=class(Exception);
        property Items[const Index:TVkSizeInt]:TVkClearValue read GetItem write SetItem; default;
      end;
 
-     TVulkanHandle=class(TVulkanObject)
-      private
-      protected
-      public
-       constructor Create;
-       destructor Destroy; override;
-      published
-     end;
-
      TVulkanAllocationManager=class(TVulkanObject)
       private
        fAllocationCallbacks:TVkAllocationCallbacks;
@@ -637,7 +628,7 @@ type EVulkanException=class(Exception);
 
      TVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:TVulkaNCharString;const pMessage:TVulkanCharString):TVkBool32 of object;
 
-     TVulkanInstance=class(TVulkanHandle)
+     TVulkanInstance=class(TVulkanObject)
       private    
        fVulkan:TVulkan;
        fApplicationInfo:TVkApplicationInfo;
@@ -787,7 +778,7 @@ type EVulkanException=class(Exception);
      TVulkanSurfaceCreateInfo=TVkXCBSurfaceCreateInfoKHR;
 {$ifend}
 
-     TVulkanSurface=class(TVulkanHandle)
+     TVulkanSurface=class(TVulkanObject)
       private
        fInstance:TVulkanInstance;
        fSurfaceCreateInfo:TVulkanSurfaceCreateInfo;
@@ -824,7 +815,7 @@ type EVulkanException=class(Exception);
 
      TVulkanQueues=array of TVulkanQueue; 
      
-     TVulkanDevice=class(TVulkanHandle)
+     TVulkanDevice=class(TVulkanObject)
       private
        fInstance:TVulkanInstance;
        fPhysicalDevice:TVulkanPhysicalDevice;
@@ -1111,7 +1102,7 @@ type EVulkanException=class(Exception);
 
      TVulkanQueueFamilyIndices=array of TVkUInt32;
 
-     TVulkanBuffer=class(TVulkanHandle)
+     TVulkanBuffer=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fSize:TVkDeviceSize;
@@ -1140,12 +1131,17 @@ type EVulkanException=class(Exception);
        property Memory:TVulkanDeviceMemoryBlock read fMemoryBlock;
      end;
 
-     TVulkanBufferView=class(TVulkanHandle)
+     TVulkanBufferView=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fBufferViewHandle:TVkBufferView;
        fBuffer:TVulkanBuffer;
       public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pBuffer:TVulkanBuffer;
+                          const pFormat:TVkFormat;
+                          const pOffset:TVkDeviceSize;
+                          const pRange:TVkDeviceSize); reintroduce; overload;
        constructor Create(const pDevice:TVulkanDevice;
                           const pBufferView:TVkBufferView;
                           const pBuffer:TVulkanBuffer=nil); reintroduce; overload;
@@ -1156,7 +1152,7 @@ type EVulkanException=class(Exception);
        property Buffer:TVulkanBuffer read fBuffer write fBuffer;
      end;
 
-     TVulkanEvent=class(TVulkanHandle)
+     TVulkanEvent=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fEventHandle:TVkEvent;
@@ -1173,7 +1169,7 @@ type EVulkanException=class(Exception);
        property Handle:TVkEvent read fEventHandle;
      end;
 
-     TVulkanFence=class(TVulkanHandle)
+     TVulkanFence=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fFenceHandle:TVkFence;
@@ -1192,7 +1188,7 @@ type EVulkanException=class(Exception);
        property Handle:TVkFence read fFenceHandle;
      end;
 
-     TVulkanSemaphore=class(TVulkanHandle)
+     TVulkanSemaphore=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fSemaphoreHandle:TVkSemaphore;
@@ -1206,7 +1202,7 @@ type EVulkanException=class(Exception);
        property Handle:TVkSemaphore read fSemaphoreHandle;
      end;
 
-     TVulkanQueue=class(TVulkanHandle)
+     TVulkanQueue=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fQueueHandle:TVkQueue;
@@ -1227,7 +1223,7 @@ type EVulkanException=class(Exception);
        property HasSupportForSparseBindings:boolean read fHasSupportForSparseBindings;
      end;
 
-     TVulkanCommandPool=class(TVulkanHandle)
+     TVulkanCommandPool=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fQueueFamilyIndex:TVkUInt32;
@@ -1247,7 +1243,7 @@ type EVulkanException=class(Exception);
 
      TVulkanImage=class;
 
-     TVulkanCommandBuffer=class(TVulkanHandle)
+     TVulkanCommandBuffer=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fCommandPool:TVulkanCommandPool;
@@ -1346,7 +1342,7 @@ type EVulkanException=class(Exception);
 
      TVulkanFrameBuffer=class;
 
-     TVulkanRenderPass=class(TVulkanHandle)
+     TVulkanRenderPass=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fRenderPassHandle:TVkRenderPass;
@@ -1402,7 +1398,7 @@ type EVulkanException=class(Exception);
        property Handle:TVkRenderPass read fRenderPassHandle;
      end;
 
-     TVulkanSampler=class(TVulkanHandle)
+     TVulkanSampler=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fSamplerHandle:TVkSampler;
@@ -1435,7 +1431,7 @@ type EVulkanException=class(Exception);
 
      TVulkanImageView=class;
 
-     TVulkanImage=class(TVulkanHandle)
+     TVulkanImage=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fImageHandle:TVkImage;
@@ -1463,7 +1459,7 @@ type EVulkanException=class(Exception);
        property ImageView:TVulkanImageView read fImageView write fImageView;
      end;
 
-     TVulkanImageView=class(TVulkanHandle)
+     TVulkanImageView=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fImageViewHandle:TVkImageView;
@@ -1584,7 +1580,7 @@ type EVulkanException=class(Exception);
 
      TVulkanSwapChainFrameBuffers=array of TVulkanFrameBuffer;
 
-     TVulkanSwapChain=class(TVulkanHandle)
+     TVulkanSwapChain=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fSwapChainHandle:TVkSwapChainKHR;
@@ -3127,16 +3123,6 @@ end;
 procedure TVkClearValueList.Remove(const Item:TVkClearValue);
 begin
  inherited Remove(Item);
-end;
-
-constructor TVulkanHandle.Create;
-begin
- inherited Create;
-end;
-
-destructor TVulkanHandle.Destroy;
-begin
- inherited Destroy;
 end;
 
 function VulkanAllocationCallback(UserData:PVkVoid;Size:TVkSize;Alignment:TVkSize;Scope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -5541,6 +5527,35 @@ begin
 end;
 
 constructor TVulkanBufferView.Create(const pDevice:TVulkanDevice;
+                                     const pBuffer:TVulkanBuffer;
+                                     const pFormat:TVkFormat;
+                                     const pOffset:TVkDeviceSize;
+                                     const pRange:TVkDeviceSize);
+var BufferViewCreateInfo:TVkBufferViewCreateInfo;
+begin
+
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fBuffer:=pBuffer;
+
+ fBufferViewHandle:=VK_NULL_HANDLE;
+
+ FillChar(BufferViewCreateInfo,SizeOf(TVkBufferViewCreateInfo),#0);
+ BufferViewCreateInfo.sType:=VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+ BufferViewCreateInfo.pNext:=nil;
+ BufferViewCreateInfo.flags:=0;
+ BufferViewCreateInfo.buffer:=fBuffer.fBufferHandle;
+ BufferViewCreateInfo.format:=pFormat;
+ BufferViewCreateInfo.offset:=pOffset;
+ BufferViewCreateInfo.range:=pRange;
+
+ HandleResultCode(fDevice.fDeviceVulkan.CreateBufferView(fDevice.fDeviceHandle,@BufferViewCreateInfo,fDevice.fAllocationCallbacks,@fBufferViewHandle));
+
+end;
+
+constructor TVulkanBufferView.Create(const pDevice:TVulkanDevice;
                                      const pBufferView:TVkBufferView;
                                      const pBuffer:TVulkanBuffer=nil);
 begin
@@ -5554,7 +5569,7 @@ begin
  fBuffer:=pBuffer;
 
 end;
-                    
+
 destructor TVulkanBufferView.Destroy;
 begin
  fBuffer:=nil;
@@ -8175,13 +8190,13 @@ begin
 end;
 
 procedure TVulkanDescriptorSet.WriteToDescriptorSet(const pDestinationBinding:TVkUInt32;
-                                                   const pDestinationArrayElement:TVkUInt32;
-                                                   const pDescriptorCount:TVkUInt32;
-                                                   const pDescriptorType:TVkDescriptorType;
-                                                   const pImageInfo:array of TVkDescriptorImageInfo;
-                                                   const pBufferInfo:array of TVkDescriptorBufferInfo;
-                                                   const pTexelBufferView:array of TVkBufferView;
-                                                   const pDoInstant:boolean=false);
+                                                    const pDestinationArrayElement:TVkUInt32;
+                                                    const pDescriptorCount:TVkUInt32;
+                                                    const pDescriptorType:TVkDescriptorType;
+                                                    const pImageInfo:array of TVkDescriptorImageInfo;
+                                                    const pBufferInfo:array of TVkDescriptorBufferInfo;
+                                                    const pTexelBufferView:array of TVkBufferView;
+                                                    const pDoInstant:boolean=false);
  procedure InstantWriteToDescriptorSet;
  var WriteDescriptorSet:TVkWriteDescriptorSet;
  begin
