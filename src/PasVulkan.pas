@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-06-13-12-0000                       *
+ *                        Version 2016-08-06-20-29-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -301,7 +301,7 @@ type EVulkanException=class(Exception);
 
      TVulkanObject=class(TInterfacedObject);
 
-     TVulkanCharString=AnsiString;
+     TVulkanCharString=TVkCharString;
 
      TVulkanCharStringArray=array of TVulkanCharString;
      TVkInt32Array=array of TVkInt32;
