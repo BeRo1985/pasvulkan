@@ -52,9 +52,14 @@ var WndClass:TWndClass;
     TriangleVertexShaderModule:TVulkanShaderModule=nil;
     TriangleFragmentShaderModule:TVulkanShaderModule=nil;
 
+var DebugLast:TVulkanCharString='';
+
 procedure DebugLn(const s:TVulkanCharString);
 begin
- WriteLn(s);
+ if DebugLast<>s then begin
+  DebugLast:=s;
+  WriteLn(s);
+ end;
 end;
 
 type TVulkanDebug=class
@@ -313,6 +318,36 @@ begin
    end else begin
     EnableDebugging:=false;
    end;
+{$define VULKAN_VALIDATION}
+{$ifdef VULKAN_VALIDATION}
+{  if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
+    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_standard_validation');
+   end;{}
+(* if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_threading')>=0 then begin
+    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_GOOGLE_threading');
+   end;*)
+{  if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_object_tracker')>=0 then begin
+    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_object_tracker'); // The framebuffer is not registered for some reason by the object tracker... the steps are exactly the same as in the demo. For now ObjectTracker is disabled...
+   end;{}
+   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_parameter_validation')>=0 then begin
+    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_parameter_validation');
+   end;
+   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_swapchain')>=0 then begin
+    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_swapchain');
+   end;
+   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_device_limits')>=0 then begin
+    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_device_limits');
+   end;
+   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_image')>=0 then begin
+    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_image');
+   end;
+   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_unique_objects')>=0 then begin
+    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_GOOGLE_unique_objects');
+   end;
+   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_core_validation')>=0 then begin
+    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_core_validation');
+   end;
+{$endif}
    VulkanInstance.Initialize;
    if EnableDebugging then begin
     VulkanInstance.OnInstanceDebugReportCallback:=VulkanDebug.OnDebugReportCallback;
@@ -323,6 +358,21 @@ begin
 
    VulkanDevice:=TVulkanDevice.Create(VulkanInstance,nil,VulkanSurface);
    VulkanDevice.AddQueues;
+   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+(* VulkanDevice.EnabledExtensionNames.Add(VK_KHR_SURFACE_EXTENSION_NAME);
+{$if defined(Android)}
+   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
+{$elseif defined(Mir)}
+   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_MIR_SURFACE_EXTENSION_NAME);
+{$elseif defined(Wayland)}
+   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+{$elseif defined(Windows)}
+   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+{$elseif defined(X11)}
+   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_X11_SURFACE_EXTENSION_NAME);
+{$elseif defined(XCB)}
+   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
+{$ifend}*)
    VulkanDevice.Initialize;
 
    VulkanPrimaryCommandBufferFence:=TVulkanFence.Create(VulkanDevice);

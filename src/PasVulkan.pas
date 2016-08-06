@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-06-20-48-0000                       *
+ *                        Version 2016-08-07-00-12-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -830,8 +830,8 @@ type EVulkanException=class(Exception);
        fEnabledExtensionNameStrings:array of TVulkanCharString;
        fRawEnabledLayerNameStrings:array of PVkChar;
        fRawEnabledExtensionNameStrings:array of PVkChar;
-       fEnabledFeatures:TVkPhysicalDeviceLimits;
-       fPointerToEnabledFeatures:PVkPhysicalDeviceLimits;
+       fEnabledFeatures:TVkPhysicalDeviceFeatures;
+       fPointerToEnabledFeatures:PVkPhysicalDeviceFeatures;
        fAllocationManager:TVulkanAllocationManager;
        fAllocationCallbacks:PVkAllocationCallbacks;
        fDeviceHandle:TVkDevice;
@@ -861,7 +861,7 @@ type EVulkanException=class(Exception);
                            const pSparseBinding:boolean=false);
        procedure Initialize;
        procedure WaitIdle;
-       property EnabledFeatures:PVkPhysicalDeviceLimits read fPointerToEnabledFeatures;
+       property EnabledFeatures:PVkPhysicalDeviceFeatures read fPointerToEnabledFeatures;
       published
        property PhysicalDevice:TVulkanPhysicalDevice read fPhysicalDevice;
        property Surface:TVulkanSurface read fSurface;
@@ -1135,6 +1135,7 @@ type EVulkanException=class(Exception);
       private
        fDevice:TVulkanDevice;
        fBufferViewHandle:TVkBufferView;
+       fBufferViewCreateInfo:TVkBufferViewCreateInfo;
        fBuffer:TVulkanBuffer;
       public
        constructor Create(const pDevice:TVulkanDevice;
@@ -1402,6 +1403,7 @@ type EVulkanException=class(Exception);
       private
        fDevice:TVulkanDevice;
        fSamplerHandle:TVkSampler;
+       fSamplerCreateInfo:TVkSamplerCreateInfo;
        fDoDestroy:boolean;
       public
        constructor Create(const pDevice:TVulkanDevice;
@@ -1435,6 +1437,7 @@ type EVulkanException=class(Exception);
       private
        fDevice:TVulkanDevice;
        fImageHandle:TVkImage;
+       fImageCreateInfo:TVkImageCreateInfo;
        fImageView:TVulkanImageView;
        fDoDestroy:boolean;
       public
@@ -1494,6 +1497,7 @@ type EVulkanException=class(Exception);
       private
        fDevice:TVulkanDevice;
        fImageViewHandle:TVkImageView;
+       fImageViewCreateInfo:TVkImageViewCreateInfo;
        fImage:TVulkanImage;
       public
        constructor Create(const pDevice:TVulkanDevice;
@@ -1563,6 +1567,7 @@ type EVulkanException=class(Exception);
       private
        fDevice:TVulkanDevice;
        fFrameBufferHandle:TVkFrameBuffer;
+       fFrameBufferCreateInfo:TVkFramebufferCreateInfo;
        fFrameBufferAttachments:TVulkanFrameBufferAttachments;
        fFrameBufferAttachmentImageViews:TVulkanFrameBufferAttachmentImageViews;
        fCountFrameBufferAttachments:TVkInt32;
@@ -1693,6 +1698,7 @@ type EVulkanException=class(Exception);
       private
        fDevice:TVulkanDevice;
        fShaderModuleHandle:TVkShaderModule;
+       fShaderModuleCreateInfo:TVkShaderModuleCreateInfo;
        fData:PVkVoid;
        fDataAligned:PVkVoid;
        fDataSize:TVkSize;
@@ -4152,7 +4158,7 @@ begin
  fEnabledLayerNames:=TStringList.Create;
  fEnabledExtensionNames:=TStringList.Create;
 
- fEnabledFeatures:=fPhysicalDevice.fProperties.limits;
+ fEnabledFeatures:=fPhysicalDevice.fFeatures;
 
  fPointerToEnabledFeatures:=@fEnabledFeatures;
 
@@ -5587,7 +5593,6 @@ constructor TVulkanBufferView.Create(const pDevice:TVulkanDevice;
                                      const pFormat:TVkFormat;
                                      const pOffset:TVkDeviceSize;
                                      const pRange:TVkDeviceSize);
-var BufferViewCreateInfo:TVkBufferViewCreateInfo;
 begin
 
  inherited Create;
@@ -5598,16 +5603,16 @@ begin
 
  fBufferViewHandle:=VK_NULL_HANDLE;
 
- FillChar(BufferViewCreateInfo,SizeOf(TVkBufferViewCreateInfo),#0);
- BufferViewCreateInfo.sType:=VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
- BufferViewCreateInfo.pNext:=nil;
- BufferViewCreateInfo.flags:=0;
- BufferViewCreateInfo.buffer:=fBuffer.fBufferHandle;
- BufferViewCreateInfo.format:=pFormat;
- BufferViewCreateInfo.offset:=pOffset;
- BufferViewCreateInfo.range:=pRange;
+ FillChar(fBufferViewCreateInfo,SizeOf(TVkBufferViewCreateInfo),#0);
+ fBufferViewCreateInfo.sType:=VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+ fBufferViewCreateInfo.pNext:=nil;
+ fBufferViewCreateInfo.flags:=0;
+ fBufferViewCreateInfo.buffer:=fBuffer.fBufferHandle;
+ fBufferViewCreateInfo.format:=pFormat;
+ fBufferViewCreateInfo.offset:=pOffset;
+ fBufferViewCreateInfo.range:=pRange;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateBufferView(fDevice.fDeviceHandle,@BufferViewCreateInfo,fDevice.fAllocationCallbacks,@fBufferViewHandle));
+ HandleResultCode(fDevice.fDeviceVulkan.CreateBufferView(fDevice.fDeviceHandle,@fBufferViewCreateInfo,fDevice.fAllocationCallbacks,@fBufferViewHandle));
 
 end;
 
@@ -6686,7 +6691,6 @@ constructor TVulkanSampler.Create(const pDevice:TVulkanDevice;
                                   const pMaxLod:TVkFloat;
                                   const pBorderColor:TVkBorderColor;
                                   const pUnnormalizedCoordinates:boolean);
-var SamplerCreateInfo:TVkSamplerCreateInfo;
 begin
 
  inherited Create;
@@ -6697,39 +6701,39 @@ begin
 
  fDoDestroy:=true;
 
- FillChar(SamplerCreateInfo,SizeOf(TVkSamplerCreateInfo),#0);
- SamplerCreateInfo.sType:=VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
- SamplerCreateInfo.pNext:=nil;
- SamplerCreateInfo.flags:=0;
- SamplerCreateInfo.magFilter:=pMagFilter;
- SamplerCreateInfo.minFilter:=pMinFilter;
- SamplerCreateInfo.mipmapMode:=pMipmapMode;
- SamplerCreateInfo.addressModeU:=pAddressModeU;
- SamplerCreateInfo.addressModeV:=pAddressModeV;
- SamplerCreateInfo.addressModeW:=pAddressModeW;
- SamplerCreateInfo.mipLodBias:=pMipLodBias;
+ FillChar(fSamplerCreateInfo,SizeOf(TVkSamplerCreateInfo),#0);
+ fSamplerCreateInfo.sType:=VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+ fSamplerCreateInfo.pNext:=nil;
+ fSamplerCreateInfo.flags:=0;
+ fSamplerCreateInfo.magFilter:=pMagFilter;
+ fSamplerCreateInfo.minFilter:=pMinFilter;
+ fSamplerCreateInfo.mipmapMode:=pMipmapMode;
+ fSamplerCreateInfo.addressModeU:=pAddressModeU;
+ fSamplerCreateInfo.addressModeV:=pAddressModeV;
+ fSamplerCreateInfo.addressModeW:=pAddressModeW;
+ fSamplerCreateInfo.mipLodBias:=pMipLodBias;
  if pAnisotropyEnable then begin
-  SamplerCreateInfo.anisotropyEnable:=VK_TRUE;
+  fSamplerCreateInfo.anisotropyEnable:=VK_TRUE;
  end else begin
-  SamplerCreateInfo.anisotropyEnable:=VK_FALSE;
+  fSamplerCreateInfo.anisotropyEnable:=VK_FALSE;
  end;
- SamplerCreateInfo.maxAnisotropy:=pMaxAnisotropy;
+ fSamplerCreateInfo.maxAnisotropy:=pMaxAnisotropy;
  if pCompareEnable then begin
-  SamplerCreateInfo.compareEnable:=VK_TRUE;
+  fSamplerCreateInfo.compareEnable:=VK_TRUE;
  end else begin
-  SamplerCreateInfo.compareEnable:=VK_FALSE;
+  fSamplerCreateInfo.compareEnable:=VK_FALSE;
  end;
- SamplerCreateInfo.compareOp:=pCompareOp;
- SamplerCreateInfo.minLod:=pMinLod;
- SamplerCreateInfo.maxLod:=pMaxLod;
- SamplerCreateInfo.borderColor:=pBorderColor;
+ fSamplerCreateInfo.compareOp:=pCompareOp;
+ fSamplerCreateInfo.minLod:=pMinLod;
+ fSamplerCreateInfo.maxLod:=pMaxLod;
+ fSamplerCreateInfo.borderColor:=pBorderColor;
  if pUnnormalizedCoordinates then begin
-  SamplerCreateInfo.unnormalizedCoordinates:=VK_TRUE;
+  fSamplerCreateInfo.unnormalizedCoordinates:=VK_TRUE;
  end else begin
-  SamplerCreateInfo.unnormalizedCoordinates:=VK_FALSE;
+  fSamplerCreateInfo.unnormalizedCoordinates:=VK_FALSE;
  end;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateSampler(fDevice.fDeviceHandle,@SamplerCreateInfo,fDevice.fAllocationCallbacks,@fSamplerHandle));
+ HandleResultCode(fDevice.fDeviceVulkan.CreateSampler(fDevice.fDeviceHandle,@fSamplerCreateInfo,fDevice.fAllocationCallbacks,@fSamplerHandle));
 
 end;
 
@@ -6778,7 +6782,6 @@ constructor TVulkanImage.Create(const pDevice:TVulkanDevice;
                                 const pQueueFamilyIndexCount:TVkUInt32;
                                 const pQueueFamilyIndices:PVkUInt32;
                                 const pInitialLayout:TVkImageLayout);
-var ImageCreateInfo:TVkImageCreateInfo;
 begin
 
  inherited Create;
@@ -6791,26 +6794,26 @@ begin
 
  fDoDestroy:=true;
 
- FillChar(ImageCreateInfo,SizeOf(TVkImageCreateInfo),#0);
- ImageCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
- ImageCreateInfo.pNext:=nil;
- ImageCreateInfo.flags:=pFlags;
- ImageCreateInfo.imageType:=pImageType;
- ImageCreateInfo.format:=pFormat;
- ImageCreateInfo.extent.width:=pExtentWidth;
- ImageCreateInfo.extent.height:=pExtentHeight;
- ImageCreateInfo.extent.depth:=pExtentDepth;
- ImageCreateInfo.mipLevels:=pMipLevels;
- ImageCreateInfo.arrayLayers:=pArrayLayers;
- ImageCreateInfo.samples:=pSamples;
- ImageCreateInfo.tiling:=pTiling;
- ImageCreateInfo.usage:=pUsage;
- ImageCreateInfo.sharingMode:=pSharingMode;
- ImageCreateInfo.queueFamilyIndexCount:=pQueueFamilyIndexCount;
- ImageCreateInfo.pQueueFamilyIndices:=pQueueFamilyIndices;
- ImageCreateInfo.initialLayout:=pInitialLayout;
+ FillChar(fImageCreateInfo,SizeOf(TVkImageCreateInfo),#0);
+ fImageCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+ fImageCreateInfo.pNext:=nil;
+ fImageCreateInfo.flags:=pFlags;
+ fImageCreateInfo.imageType:=pImageType;
+ fImageCreateInfo.format:=pFormat;
+ fImageCreateInfo.extent.width:=pExtentWidth;
+ fImageCreateInfo.extent.height:=pExtentHeight;
+ fImageCreateInfo.extent.depth:=pExtentDepth;
+ fImageCreateInfo.mipLevels:=pMipLevels;
+ fImageCreateInfo.arrayLayers:=pArrayLayers;
+ fImageCreateInfo.samples:=pSamples;
+ fImageCreateInfo.tiling:=pTiling;
+ fImageCreateInfo.usage:=pUsage;
+ fImageCreateInfo.sharingMode:=pSharingMode;
+ fImageCreateInfo.queueFamilyIndexCount:=pQueueFamilyIndexCount;
+ fImageCreateInfo.pQueueFamilyIndices:=pQueueFamilyIndices;
+ fImageCreateInfo.initialLayout:=pInitialLayout;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@ImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
+ HandleResultCode(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@fImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
 
 end;
 
@@ -6829,7 +6832,7 @@ constructor TVulkanImage.Create(const pDevice:TVulkanDevice;
                                 const pSharingMode:TVkSharingMode;
                                 const pQueueFamilyIndices:array of TVkUInt32;
                                 const pInitialLayout:TVkImageLayout);
-var ImageCreateInfo:TVkImageCreateInfo;
+var fImageCreateInfo:TVkImageCreateInfo;
 begin
 
  inherited Create;
@@ -6842,30 +6845,30 @@ begin
 
  fDoDestroy:=true;
 
- FillChar(ImageCreateInfo,SizeOf(TVkImageCreateInfo),#0);
- ImageCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
- ImageCreateInfo.pNext:=nil;
- ImageCreateInfo.flags:=pFlags;
- ImageCreateInfo.imageType:=pImageType;
- ImageCreateInfo.format:=pFormat;
- ImageCreateInfo.extent.width:=pExtentWidth;
- ImageCreateInfo.extent.height:=pExtentHeight;
- ImageCreateInfo.extent.depth:=pExtentDepth;
- ImageCreateInfo.mipLevels:=pMipLevels;
- ImageCreateInfo.arrayLayers:=pArrayLayers;
- ImageCreateInfo.samples:=pSamples;
- ImageCreateInfo.tiling:=pTiling;
- ImageCreateInfo.usage:=pUsage;
- ImageCreateInfo.sharingMode:=pSharingMode;
- ImageCreateInfo.queueFamilyIndexCount:=length(pQueueFamilyIndices);
- if ImageCreateInfo.queueFamilyIndexCount>0 then begin
-  ImageCreateInfo.pQueueFamilyIndices:=@pQueueFamilyIndices[0];
+ FillChar(fImageCreateInfo,SizeOf(TVkImageCreateInfo),#0);
+ fImageCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+ fImageCreateInfo.pNext:=nil;
+ fImageCreateInfo.flags:=pFlags;
+ fImageCreateInfo.imageType:=pImageType;
+ fImageCreateInfo.format:=pFormat;
+ fImageCreateInfo.extent.width:=pExtentWidth;
+ fImageCreateInfo.extent.height:=pExtentHeight;
+ fImageCreateInfo.extent.depth:=pExtentDepth;
+ fImageCreateInfo.mipLevels:=pMipLevels;
+ fImageCreateInfo.arrayLayers:=pArrayLayers;
+ fImageCreateInfo.samples:=pSamples;
+ fImageCreateInfo.tiling:=pTiling;
+ fImageCreateInfo.usage:=pUsage;
+ fImageCreateInfo.sharingMode:=pSharingMode;
+ fImageCreateInfo.queueFamilyIndexCount:=length(pQueueFamilyIndices);
+ if fImageCreateInfo.queueFamilyIndexCount>0 then begin
+  fImageCreateInfo.pQueueFamilyIndices:=@pQueueFamilyIndices[0];
  end else begin
-  ImageCreateInfo.pQueueFamilyIndices:=nil;
+  fImageCreateInfo.pQueueFamilyIndices:=nil;
  end;
- ImageCreateInfo.initialLayout:=pInitialLayout;
+ fImageCreateInfo.initialLayout:=pInitialLayout;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@ImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
+ HandleResultCode(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@fImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
 
 end;
 
@@ -6938,7 +6941,6 @@ constructor TVulkanImageView.Create(const pDevice:TVulkanDevice;
                                     const pCountMipMapLevels:TVkUInt32=1;
                                     const pBaseArrayLayer:TVkUInt32=1;
                                     const pCountArrayLayers:TVkUInt32=0);
-var ImageViewCreateInfo:TVkImageViewCreateInfo;
 begin
 
  inherited Create;
@@ -6949,24 +6951,24 @@ begin
 
  fImageViewHandle:=VK_NULL_HANDLE;
 
- FillChar(ImageViewCreateInfo,SizeOf(TVkImageViewCreateInfo),#0);
- ImageViewCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
- ImageViewCreateInfo.pNext:=nil;
- ImageViewCreateInfo.flags:=0;
- ImageViewCreateInfo.image:=pImage.fImageHandle;
- ImageViewCreateInfo.viewType:=pImageViewType;
- ImageViewCreateInfo.format:=pFormat;
- ImageViewCreateInfo.components.r:=pComponentRed;
- ImageViewCreateInfo.components.g:=pComponentGreen;
- ImageViewCreateInfo.components.b:=pComponentBlue;
- ImageViewCreateInfo.components.a:=pComponentAlpha;
- ImageViewCreateInfo.subresourceRange.aspectMask:=pImageAspectFlags;
- ImageViewCreateInfo.subresourceRange.baseMipLevel:=pBaseMipLevel;
- ImageViewCreateInfo.subresourceRange.levelCount:=pCountMipMapLevels;
- ImageViewCreateInfo.subresourceRange.baseArrayLayer:=pBaseArrayLayer;
- ImageViewCreateInfo.subresourceRange.layerCount:=pCountArrayLayers;
+ FillChar(fImageViewCreateInfo,SizeOf(TVkImageViewCreateInfo),#0);
+ fImageViewCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+ fImageViewCreateInfo.pNext:=nil;
+ fImageViewCreateInfo.flags:=0;
+ fImageViewCreateInfo.image:=pImage.fImageHandle;
+ fImageViewCreateInfo.viewType:=pImageViewType;
+ fImageViewCreateInfo.format:=pFormat;
+ fImageViewCreateInfo.components.r:=pComponentRed;
+ fImageViewCreateInfo.components.g:=pComponentGreen;
+ fImageViewCreateInfo.components.b:=pComponentBlue;
+ fImageViewCreateInfo.components.a:=pComponentAlpha;
+ fImageViewCreateInfo.subresourceRange.aspectMask:=pImageAspectFlags;
+ fImageViewCreateInfo.subresourceRange.baseMipLevel:=pBaseMipLevel;
+ fImageViewCreateInfo.subresourceRange.levelCount:=pCountMipMapLevels;
+ fImageViewCreateInfo.subresourceRange.baseArrayLayer:=pBaseArrayLayer;
+ fImageViewCreateInfo.subresourceRange.layerCount:=pCountArrayLayers;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateImageView(fDevice.fDeviceHandle,@ImageViewCreateInfo,fDevice.fAllocationCallbacks,@fImageViewHandle));
+ HandleResultCode(fDevice.fDeviceVulkan.CreateImageView(fDevice.fDeviceHandle,@fImageViewCreateInfo,fDevice.fAllocationCallbacks,@fImageViewHandle));
 
 end;
 
@@ -7327,7 +7329,6 @@ end;
 
 procedure TVulkanFrameBuffer.Initialize;
 var Index:TVkInt32;
-    FramebufferCreateInfo:TVkFramebufferCreateInfo;
 begin
  if fFrameBufferHandle=VK_NULL_HANDLE then begin
 
@@ -7339,18 +7340,18 @@ begin
    fFrameBufferAttachmentImageViews[Index]:=fFrameBufferAttachments[Index].fImageView.fImageViewHandle;
   end;
 
-  FillChar(FramebufferCreateInfo,SizeOf(TVkFramebufferCreateInfo),#0);
-  FramebufferCreateInfo.sType:=VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-  FramebufferCreateInfo.pNext:=nil;
-  FramebufferCreateInfo.flags:=0;
-  FramebufferCreateInfo.renderPass:=fRenderPass.fRenderPassHandle;
-  FramebufferCreateInfo.attachmentCount:=fCountFrameBufferAttachments;
-  FramebufferCreateInfo.pAttachments:=@fFrameBufferAttachmentImageViews[0];
-  FramebufferCreateInfo.width:=fWidth;
-  FramebufferCreateInfo.height:=fHeight;
-  FramebufferCreateInfo.layers:=fLayers;
+  FillChar(fFrameBufferCreateInfo,SizeOf(TVkFramebufferCreateInfo),#0);
+  fFrameBufferCreateInfo.sType:=VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+  fFrameBufferCreateInfo.pNext:=nil;
+  fFrameBufferCreateInfo.flags:=0;
+  fFrameBufferCreateInfo.renderPass:=fRenderPass.fRenderPassHandle;
+  fFrameBufferCreateInfo.attachmentCount:=fCountFrameBufferAttachments;
+  fFrameBufferCreateInfo.pAttachments:=@fFrameBufferAttachmentImageViews[0];
+  fFrameBufferCreateInfo.width:=fWidth;
+  fFrameBufferCreateInfo.height:=fHeight;
+  fFrameBufferCreateInfo.layers:=fLayers;
 
-  HandleResultCode(fDevice.fDeviceVulkan.CreateFramebuffer(fDevice.fDeviceHandle,@FramebufferCreateInfo,fDevice.fAllocationCallbacks,@fFrameBufferHandle));
+  HandleResultCode(fDevice.fDeviceVulkan.CreateFramebuffer(fDevice.fDeviceHandle,@fFrameBufferCreateInfo,fDevice.fAllocationCallbacks,@fFrameBufferHandle));
 
  end;
 end;
@@ -7674,7 +7675,7 @@ begin
                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                                                                              VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                                                                               VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                                                                                              ),
                                                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
@@ -7687,7 +7688,7 @@ begin
                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                                                                             VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                                                                                                             ),
                                                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
@@ -7713,7 +7714,7 @@ begin
    try
     ColorAttachmentImage:=TVulkanImage.Create(fDevice,fSwapChain.Images[Index].fImageHandle,nil,false);
 
-    ColorAttachmentImageView:=TVulkanImageView.Create(fDevice,
+    ColorAttachmentImageView:=TVulkanImageView.Create(Device,
                                                       ColorAttachmentImage,
                                                       VK_IMAGE_VIEW_TYPE_2D,
                                                       fSwapChain.ImageFormat,
@@ -7910,17 +7911,16 @@ begin
 end;
 
 procedure TVulkanShaderModule.Load;
-var ShaderModuleCreateInfo:TVkShaderModuleCreateInfo;
 begin
 
  if fShaderModuleHandle=VK_NULL_HANDLE then begin
 
-  FillChar(ShaderModuleCreateInfo,SizeOf(TVkShaderModuleCreateInfo),#0);
-  ShaderModuleCreateInfo.sType:=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  ShaderModuleCreateInfo.codeSize:=fDataSize;
-  ShaderModuleCreateInfo.pCode:=fData;
+  FillChar(fShaderModuleCreateInfo,SizeOf(TVkShaderModuleCreateInfo),#0);
+  fShaderModuleCreateInfo.sType:=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  fShaderModuleCreateInfo.codeSize:=fDataSize;
+  fShaderModuleCreateInfo.pCode:=fData;
 
-  HandleResultCode(fDevice.fDeviceVulkan.CreateShaderModule(fDevice.fDeviceHandle,@ShaderModuleCreateInfo,fDevice.fAllocationCallbacks,@fShaderModuleHandle));
+  HandleResultCode(fDevice.fDeviceVulkan.CreateShaderModule(fDevice.fDeviceHandle,@fShaderModuleCreateInfo,fDevice.fAllocationCallbacks,@fShaderModuleHandle));
 
  end;
  
