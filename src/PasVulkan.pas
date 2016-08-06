@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-06-12-52-0000                       *
+ *                        Version 2016-08-06-12-54-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1578,8 +1578,6 @@ type EVulkanException=class(Exception);
        property Layers:TVkUInt32 read fLayers;
      end;
 
-     TVulkanSwapChainFrameBuffers=array of TVulkanFrameBuffer;
-
      TVulkanSwapChainImages=array of TVulkanImage;
 
      TVulkanSwapChain=class(TVulkanObject)
@@ -1632,6 +1630,8 @@ type EVulkanException=class(Exception);
        property Height:TVkInt32 read fHeight;
      end;
 
+     TVulkanSwapChainDirectRenderTargetFrameBuffers=array of TVulkanFrameBuffer;
+
      TVulkanSwapChainDirectRenderTarget=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
@@ -1639,7 +1639,7 @@ type EVulkanException=class(Exception);
        fDepthImageFormat:TVkFormat;
        fDepthFrameBufferAttachment:TVulkanFrameBufferAttachment;
        fFrameBufferColorAttachments:TVulkanFrameBufferAttachments;
-       fFrameBuffers:TVulkanSwapChainFrameBuffers;
+       fFrameBuffers:TVulkanSwapChainDirectRenderTargetFrameBuffers;
        fRenderPass:TVulkanRenderPass;
        function GetCurrentFrameBuffer:TVulkanFrameBuffer;
       public
