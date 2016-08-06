@@ -70,92 +70,106 @@ end;
 var VulkanDebug:TVulkanDebug=nil;
 
 procedure VulkanDraw;
-var OldVulkanSwapChain:TVulkanSwapChain;
+var Tries:TVkInt32;
+    OldVulkanSwapChain:TVulkanSwapChain;
+    OK:boolean;
 begin
- if (VulkanSwapChain.Width<>SurfaceWidth) or (VulkanSwapChain.Height<>SurfaceHeight) then begin
-  DoNeedToRecreateVulkanSwapChain:=true;
- end else begin
-  try
-   if VulkanSwapChain.AcquireNextImage(VulkanPresentCompleteSemaphore)=VK_SUBOPTIMAL_KHR then begin
-    DoNeedToRecreateVulkanSwapChain:=true;
-   end;
-  except
-   on VulkanResultException:EVulkanResultException do begin
-    case VulkanResultException.ResultCode of
-     VK_ERROR_SURFACE_LOST_KHR,
-     VK_ERROR_OUT_OF_DATE_KHR,
-     VK_SUBOPTIMAL_KHR:begin
-      DoNeedToRecreateVulkanSwapChain:=true;
-     end;
-     else begin
-      raise;
-     end;
+
+ for Tries:=1 to 2 do begin
+
+  OK:=false;
+
+  if (VulkanSwapChain.Width<>SurfaceWidth) or (VulkanSwapChain.Height<>SurfaceHeight) then begin
+   DoNeedToRecreateVulkanSwapChain:=true;
+  end else begin
+   try
+    if VulkanSwapChain.AcquireNextImage(VulkanPresentCompleteSemaphore)=VK_SUBOPTIMAL_KHR then begin
+     DoNeedToRecreateVulkanSwapChain:=true;
     end;
-   end;
-  end;
- end;
-
- if DoNeedToRecreateVulkanSwapChain then begin
-
-  DoNeedToRecreateVulkanSwapChain:=false;
-  OldVulkanSwapChain:=VulkanSwapChain;
-  try
-   FreeAndNil(VulkanSwapChainDirectRenderTarget);
-   VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,OldVulkanSwapChain,SurfaceWidth,SurfaceHeight,2,1);
-   VulkanSwapChainDirectRenderTarget:=TVulkanSwapChainDirectRenderTarget.Create(VulkanDevice,VulkanSwapChain,VulkanInitializationCommandBuffer,VulkanPrimaryCommandBufferFence);
-  finally
-   OldVulkanSwapChain.Free;
-  end;
-
- end else begin
-
-  VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-
-  VulkanCommandBuffer.BeginRecording;
-
-  VulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(VulkanSwapChain.CurrentImage);
-
-  VulkanSwapChainDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=(cos(Now*86400.0*2.0*pi)*0.5)+0.5;
-  VulkanSwapChainDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=(sin(Now*86400.0*2.0*pi)*0.5)+0.5;
-  VulkanSwapChainDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=(cos(Now*86400.0*pi*0.731)*0.5)+0.5;
-
-  VulkanSwapChainDirectRenderTarget.RenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                                       VulkanSwapChainDirectRenderTarget.CurrentFrameBuffer,
-                                                       VK_SUBPASS_CONTENTS_INLINE,
-                                                       0,0,VulkanSwapChain.Width,VulkanSwapChain.Height);
-  VulkanSwapChainDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
-
-  VulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(VulkanSwapChain.CurrentImage);
-
-  VulkanCommandBuffer.EndRecording;
-
-  VulkanCommandBuffer.Execute(VulkanDevice.GraphicsQueue,
-                              VulkanPrimaryCommandBufferFence,
-                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                              VulkanPresentCompleteSemaphore,
-                              VulkanDrawCompleteSemaphore);
-
-  try
-   if VulkanSwapChain.QueuePresent(VulkanDevice.GraphicsQueue,VulkanDrawCompleteSemaphore)<>VK_SUBOPTIMAL_KHR then begin
-    //VulkanDevice.WaitIdle;
-   end else begin
-    DoNeedToRecreateVulkanSwapChain:=true;
-   end;
-  except
-   on VulkanResultException:EVulkanResultException do begin
-    case VulkanResultException.ResultCode of
-     VK_ERROR_SURFACE_LOST_KHR,
-     VK_ERROR_OUT_OF_DATE_KHR,
-     VK_SUBOPTIMAL_KHR:begin
-      DoNeedToRecreateVulkanSwapChain:=true;
-     end;
-     else begin
-      raise;
+   except
+    on VulkanResultException:EVulkanResultException do begin
+     case VulkanResultException.ResultCode of
+      VK_ERROR_SURFACE_LOST_KHR,
+      VK_ERROR_OUT_OF_DATE_KHR,
+      VK_SUBOPTIMAL_KHR:begin
+       DoNeedToRecreateVulkanSwapChain:=true;
+      end;
+      else begin
+       raise;
+      end;
      end;
     end;
    end;
   end;
 
+  if DoNeedToRecreateVulkanSwapChain then begin
+
+   DoNeedToRecreateVulkanSwapChain:=false;
+   OldVulkanSwapChain:=VulkanSwapChain;
+   try
+    FreeAndNil(VulkanSwapChainDirectRenderTarget);
+    VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,OldVulkanSwapChain,SurfaceWidth,SurfaceHeight,2,1);
+    VulkanSwapChainDirectRenderTarget:=TVulkanSwapChainDirectRenderTarget.Create(VulkanDevice,VulkanSwapChain,VulkanInitializationCommandBuffer,VulkanPrimaryCommandBufferFence);
+   finally
+    OldVulkanSwapChain.Free;
+   end;
+
+  end else begin
+
+   VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
+   VulkanCommandBuffer.BeginRecording;
+
+   VulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(VulkanSwapChain.CurrentImage);
+
+   VulkanSwapChainDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=(cos(Now*86400.0*2.0*pi)*0.5)+0.5;
+   VulkanSwapChainDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=(sin(Now*86400.0*2.0*pi)*0.5)+0.5;
+   VulkanSwapChainDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=(cos(Now*86400.0*pi*0.731)*0.5)+0.5;
+
+   VulkanSwapChainDirectRenderTarget.RenderPass.BeginRenderPass(VulkanCommandBuffer,
+                                                        VulkanSwapChainDirectRenderTarget.CurrentFrameBuffer,
+                                                        VK_SUBPASS_CONTENTS_INLINE,
+                                                        0,0,VulkanSwapChain.Width,VulkanSwapChain.Height);
+   VulkanSwapChainDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
+
+   VulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(VulkanSwapChain.CurrentImage);
+
+   VulkanCommandBuffer.EndRecording;
+
+   VulkanCommandBuffer.Execute(VulkanDevice.GraphicsQueue,
+                               VulkanPrimaryCommandBufferFence,
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                               VulkanPresentCompleteSemaphore,
+                               VulkanDrawCompleteSemaphore);
+
+   try
+    if VulkanSwapChain.QueuePresent(VulkanDevice.GraphicsQueue,VulkanDrawCompleteSemaphore)<>VK_SUBOPTIMAL_KHR then begin
+     //VulkanDevice.WaitIdle;
+     OK:=true;
+    end else begin
+     DoNeedToRecreateVulkanSwapChain:=true;
+    end;
+   except
+    on VulkanResultException:EVulkanResultException do begin
+     case VulkanResultException.ResultCode of
+      VK_ERROR_SURFACE_LOST_KHR,
+      VK_ERROR_OUT_OF_DATE_KHR,
+      VK_SUBOPTIMAL_KHR:begin
+       DoNeedToRecreateVulkanSwapChain:=true;
+      end;
+      else begin
+       raise;
+      end;
+     end;
+    end;
+   end;
+
+  end;
+
+  if OK then begin
+   break;
+  end;
+  
  end;
 end;
 
@@ -347,7 +361,7 @@ begin
       TranslateMessage(Msg);
       DispatchMessage(Msg);
      end;
-    end else begin
+    end else begin 
      VulkanDraw;
     end;
    until not Running;
