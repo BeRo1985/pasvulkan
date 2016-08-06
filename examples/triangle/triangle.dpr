@@ -41,6 +41,7 @@ var WndClass:TWndClassA;
     VulkanInitializationCommandPool:TVulkanCommandPool=nil;
     VulkanInitializationCommandBuffer:TVulkanCommandBuffer=nil;
     VulkanSwapChain:TVulkanSwapChain=nil;
+    VulkanSwapChainDirectRenderTarget:TVulkanSwapChainDirectRenderTarget=nil;
     VulkanCommandPool:TVulkanCommandPool=nil;
     VulkanCommandBuffer:TVulkanCommandBuffer=nil;
     VulkanPresentCompleteSemaphore:TVulkanSemaphore=nil;
@@ -99,7 +100,9 @@ begin
   DoNeedToRecreateVulkanSwapChain:=false;
   OldVulkanSwapChain:=VulkanSwapChain;
   try
-   VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,VulkanInitializationCommandBuffer,VulkanPrimaryCommandBufferFence,OldVulkanSwapChain,SurfaceWidth,SurfaceHeight,2,1);
+   FreeAndNil(VulkanSwapChainDirectRenderTarget);
+   VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,OldVulkanSwapChain,SurfaceWidth,SurfaceHeight,2,1);
+   VulkanSwapChainDirectRenderTarget:=TVulkanSwapChainDirectRenderTarget.Create(VulkanDevice,VulkanSwapChain,VulkanInitializationCommandBuffer,VulkanPrimaryCommandBufferFence);
   finally
    OldVulkanSwapChain.Free;
   end;
@@ -112,15 +115,15 @@ begin
 
   VulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(VulkanSwapChain.CurrentImage);
 
-  VulkanSwapChain.RenderPass.ClearValues[0].color.float32[0]:=(cos(Now*86400.0*2.0*pi)*0.5)+0.5;
-  VulkanSwapChain.RenderPass.ClearValues[0].color.float32[1]:=(sin(Now*86400.0*2.0*pi)*0.5)+0.5;
-  VulkanSwapChain.RenderPass.ClearValues[0].color.float32[2]:=(cos(Now*86400.0*pi*0.731)*0.5)+0.5;
+  VulkanSwapChainDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=(cos(Now*86400.0*2.0*pi)*0.5)+0.5;
+  VulkanSwapChainDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=(sin(Now*86400.0*2.0*pi)*0.5)+0.5;
+  VulkanSwapChainDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=(cos(Now*86400.0*pi*0.731)*0.5)+0.5;
 
-  VulkanSwapChain.RenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                             VulkanSwapChain.CurrentFrameBuffer,
-                                             VK_SUBPASS_CONTENTS_INLINE,
-                                             0,0,VulkanSwapChain.Width,VulkanSwapChain.Height);
-  VulkanSwapChain.RenderPass.EndRenderPass(VulkanCommandBuffer);
+  VulkanSwapChainDirectRenderTarget.RenderPass.BeginRenderPass(VulkanCommandBuffer,
+                                                       VulkanSwapChainDirectRenderTarget.CurrentFrameBuffer,
+                                                       VK_SUBPASS_CONTENTS_INLINE,
+                                                       0,0,VulkanSwapChain.Width,VulkanSwapChain.Height);
+  VulkanSwapChainDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
 
   VulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(VulkanSwapChain.CurrentImage);
 
@@ -314,7 +317,9 @@ begin
 
    VulkanInitializationCommandBuffer:=TVulkanCommandBuffer.Create(VulkanInitializationCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-   VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,VulkanInitializationCommandBuffer,VulkanPrimaryCommandBufferFence,nil,SurfaceWidth,SurfaceHeight,2,1);
+   VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,nil,SurfaceWidth,SurfaceHeight,2,1);
+
+   VulkanSwapChainDirectRenderTarget:=TVulkanSwapChainDirectRenderTarget.Create(VulkanDevice,VulkanSwapChain,VulkanInitializationCommandBuffer,VulkanPrimaryCommandBufferFence);
 
    VulkanCommandPool:=TVulkanCommandPool.Create(VulkanDevice,VulkanDevice.GraphicsQueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
@@ -364,6 +369,7 @@ begin
   VulkanPresentCompleteSemaphore.Free;
   VulkanCommandBuffer.Free;
   VulkanCommandPool.Free;
+  VulkanSwapChainDirectRenderTarget.Free;
   VulkanSwapChain.Free;
   VulkanInitializationCommandBuffer.Free;
   VulkanInitializationCommandPool.Free;
