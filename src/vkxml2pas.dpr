@@ -3704,6 +3704,12 @@ begin
      try
       for j:=0 to TypeDefinition^.CountMembers-1 do begin
        Assert(length(TypeDefinition^.Members[j].Name)>0);
+       if (TypeDefinition^.Members[j].Type_='VkStructureType') and
+          (length(TypeDefinition^.Members[j].Comment)=0) and
+          (length(TypeDefinition^.Members[j].Values)>0) and
+          (copy(TypeDefinition^.Members[j].Values,1,length('VK_STRUCTURE_TYPE_'))='VK_STRUCTURE_TYPE_') then begin
+        TypeDefinition^.Members[j].Comment:='Must be '+TypeDefinition^.Members[j].Values; // Restore/Recreate old <= 1.0.22 sType member comments
+       end;
        ParameterName:='p'+UpCase(TypeDefinition^.Members[j].Name[1])+copy(TypeDefinition^.Members[j].Name,2,length(TypeDefinition^.Members[j].Name)-1);
        ParameterLine:=ParameterName+':';
        if length(TypeDefinition^.Members[j].ArraySizeStr)>0 then begin

@@ -2085,7 +2085,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_APPLICATION_INFO
        pNext:PVkVoid; //< Pointer to next structure
        pApplicationName:PVkChar;
        applicationVersion:TVkUInt32;
@@ -2136,7 +2136,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkDeviceQueueCreateFlags; //< Reserved
        queueFamilyIndex:TVkUInt32;
@@ -2277,7 +2277,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkInstanceCreateFlags; //< Reserved
        pApplicationInfo:PVkApplicationInfo;
@@ -2335,7 +2335,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        allocationSize:TVkDeviceSize; //< Size of memory allocation
        memoryTypeIndex:TVkUInt32; //< Index of the of the memory type to allocate from
@@ -2440,7 +2440,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE
        pNext:PVkVoid; //< Pointer to next structure
        memory:TVkDeviceMemory; //< Mapped memory object
        offset:TVkDeviceSize; //< Offset within the memory object where the range starts
@@ -2546,7 +2546,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
        pNext:PVkVoid; //< Pointer to next structure
        dstSet:TVkDescriptorSet; //< Destination descriptor set
        dstBinding:TVkUInt32; //< Binding within the destination descriptor set to write
@@ -2579,7 +2579,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET
        pNext:PVkVoid; //< Pointer to next structure
        srcSet:TVkDescriptorSet; //< Source descriptor set
        srcBinding:TVkUInt32; //< Binding within the source descriptor set to copy from
@@ -2612,7 +2612,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure.
        flags:TVkBufferCreateFlags; //< Buffer creation flags
        size:TVkDeviceSize; //< Specified in bytes
@@ -2646,7 +2646,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure.
        flags:TVkBufferViewCreateFlags; //< Reserved
        buffer:TVkBuffer;
@@ -2730,7 +2730,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_BARRIER
        pNext:PVkVoid; //< Pointer to next structure.
        srcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
        dstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
@@ -2752,7 +2752,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER
        pNext:PVkVoid; //< Pointer to next structure.
        srcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
        dstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
@@ -2791,7 +2791,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER
        pNext:PVkVoid; //< Pointer to next structure.
        srcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
        dstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
@@ -2863,7 +2863,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure.
        flags:TVkImageCreateFlags; //< Image creation flags
        imageType:TVkImageType;
@@ -2942,7 +2942,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkImageViewCreateFlags; //< Reserved
        image:TVkImage;
@@ -3089,7 +3089,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_SPARSE_INFO
        pNext:PVkVoid; //< Pointer to next structure.
        waitSemaphoreCount:TVkUInt32;
        pWaitSemaphores:PVkSemaphore;
@@ -3264,7 +3264,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkShaderModuleCreateFlags; //< Reserved
        codeSize:TVkSize; //< Specified in bytes
@@ -3304,7 +3304,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkDescriptorSetLayoutCreateFlags; //< Reserved
        bindingCount:TVkUInt32; //< Number of bindings in the descriptor set layout
@@ -3338,7 +3338,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkDescriptorPoolCreateFlags;
        maxSets:TVkUInt32;
@@ -3360,7 +3360,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        descriptorPool:TVkDescriptorPool;
        descriptorSetCount:TVkUInt32;
@@ -3431,7 +3431,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineShaderStageCreateFlags; //< Reserved
        stage:TVkShaderStageFlagBits; //< Shader stage
@@ -3461,7 +3461,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineCreateFlags; //< Pipeline creation flags
        stage:TVkPipelineShaderStageCreateInfo;
@@ -3528,7 +3528,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineVertexInputStateCreateFlags; //< Reserved
        vertexBindingDescriptionCount:TVkUInt32; //< number of bindings
@@ -3553,7 +3553,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineInputAssemblyStateCreateFlags; //< Reserved
        topology:TVkPrimitiveTopology;
@@ -3572,7 +3572,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineTessellationStateCreateFlags; //< Reserved
        patchControlPoints:TVkUInt32;
@@ -3593,7 +3593,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineViewportStateCreateFlags; //< Reserved
        viewportCount:TVkUInt32;
@@ -3617,7 +3617,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineRasterizationStateCreateFlags; //< Reserved
        depthClampEnable:TVkBool32;
@@ -3654,7 +3654,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineMultisampleStateCreateFlags; //< Reserved
        rasterizationSamples:TVkSampleCountFlagBits; //< Number of samples used for rasterization
@@ -3713,7 +3713,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineColorBlendStateCreateFlags; //< Reserved
        logicOpEnable:TVkBool32;
@@ -3737,7 +3737,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineDynamicStateCreateFlags; //< Reserved
        dynamicStateCount:TVkUInt32;
@@ -3780,7 +3780,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineDepthStencilStateCreateFlags; //< Reserved
        depthTestEnable:TVkBool32;
@@ -3851,7 +3851,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineCreateFlags; //< Pipeline creation flags
        stageCount:TVkUInt32;
@@ -3899,7 +3899,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineCacheCreateFlags; //< Reserved
        initialDataSize:TVkSize; //< Size of initial data to populate cache, in bytes
@@ -3943,7 +3943,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkPipelineLayoutCreateFlags; //< Reserved
        setLayoutCount:TVkUInt32; //< Number of descriptor sets interfaced by the pipeline
@@ -3977,7 +3977,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkSamplerCreateFlags; //< Reserved
        magFilter:TVkFilter; //< Filter mode for magnification
@@ -4022,7 +4022,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkCommandPoolCreateFlags; //< Command pool creation flags
        queueFamilyIndex:TVkUInt32;
@@ -4039,7 +4039,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        commandPool:TVkCommandPool;
        level:TVkCommandBufferLevel;
@@ -4060,7 +4060,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        renderPass:TVkRenderPass; //< Render pass for secondary command buffers
        subpass:TVkUInt32;
@@ -4087,7 +4087,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkCommandBufferUsageFlags; //< Command buffer usage flags
        pInheritanceInfo:PVkCommandBufferInheritanceInfo; //< Pointer to inheritance info for secondary command buffers
@@ -4145,7 +4145,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO
        pNext:PVkVoid; //< Pointer to next structure
        renderPass:TVkRenderPass;
        framebuffer:TVkFramebuffer;
@@ -4308,7 +4308,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkRenderPassCreateFlags; //< Reserved
        attachmentCount:TVkUInt32;
@@ -4334,7 +4334,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EVENT_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkEventCreateFlags; //< Event creation flags
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -4348,7 +4348,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkFenceCreateFlags; //< Fence creation flags
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -4363,7 +4363,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkDeviceCreateFlags; //< Reserved
        queueCreateInfoCount:TVkUInt32;
@@ -4641,7 +4641,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkSemaphoreCreateFlags; //< Semaphore creation flags
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -4657,7 +4657,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkQueryPoolCreateFlags; //< Reserved
        queryType:TVkQueryType;
@@ -4689,7 +4689,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkFramebufferCreateFlags; //< Reserved
        renderPass:TVkRenderPass;
@@ -4789,7 +4789,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SUBMIT_INFO
        pNext:PVkVoid; //< Pointer to next structure
        waitSemaphoreCount:TVkUInt32;
        pWaitSemaphores:PVkSemaphore;
@@ -4883,7 +4883,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkDisplayModeCreateFlagsKHR; //< Reserved
        parameters:TVkDisplayModeParametersKHR; //< The parameters this mode uses.
@@ -4933,7 +4933,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkDisplaySurfaceCreateFlagsKHR; //< Reserved
        displayMode:TVkDisplayModeKHR; //< The mode to use when displaying this surface
@@ -4964,7 +4964,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_PRESENT_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        srcRect:TVkRect2D; //< Rectangle within the presentable image to read pixel data from when presenting to the display.
        dstRect:TVkRect2D; //< Rectangle within the current display mode's visible region to display srcRectangle in.
@@ -5014,7 +5014,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkAndroidSurfaceCreateFlagsKHR; //< Reserved
        window:PANativeWindow;
@@ -5032,7 +5032,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkMirSurfaceCreateFlagsKHR; //< Reserved
        connection:PMirConnection;
@@ -5052,7 +5052,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkWaylandSurfaceCreateFlagsKHR; //< Reserved
        display:Pwl_display;
@@ -5072,7 +5072,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkWin32SurfaceCreateFlagsKHR; //< Reserved
        hinstance_:TVkHINSTANCE;
@@ -5092,7 +5092,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkXlibSurfaceCreateFlagsKHR; //< Reserved
        dpy:PDisplay;
@@ -5112,7 +5112,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkXcbSurfaceCreateFlagsKHR; //< Reserved
        connection:Pxcb_connection;
@@ -5158,7 +5158,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkSwapchainCreateFlagsKHR; //< Reserved
        surface:TVkSurfaceKHR; //< The swapchain's target surface
@@ -5204,7 +5204,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        waitSemaphoreCount:TVkUInt32; //< Number of semaphores to wait for before presenting
        pWaitSemaphores:PVkSemaphore; //< Semaphores to wait for before presenting
@@ -5228,7 +5228,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkDebugReportFlagsEXT; //< Indicates which events call this callback
        pfnCallback:TPFN_vkDebugReportCallbackEXT; //< Function pointer of a callback function
@@ -5246,7 +5246,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD
        pNext:PVkVoid; //< Pointer to next structure
        rasterizationOrder:TVkRasterizationOrderAMD; //< Rasterization order to use for the pipeline
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -5260,7 +5260,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT
        pNext:PVkVoid; //< Pointer to next structure
        objectType:TVkDebugReportObjectTypeEXT; //< The type of the object
        object_:TVkUInt64; //< The handle of the object, cast to uint64_t
@@ -5278,7 +5278,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT
        pNext:PVkVoid; //< Pointer to next structure
        objectType:TVkDebugReportObjectTypeEXT; //< The type of the object
        object_:TVkUInt64; //< The handle of the object, cast to uint64_t
@@ -5300,7 +5300,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT
        pNext:PVkVoid; //< Pointer to next structure
        pMarkerName:PVkChar; //< Name of the debug marker
        color:array[0..3] of TVkFloat; //< Optional color for debug marker
@@ -5317,7 +5317,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV
        pNext:PVkVoid; //< Pointer to next structure
        dedicatedAllocation:TVkBool32; //< Whether this image uses a dedicated allocation
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -5332,7 +5332,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV
        pNext:PVkVoid; //< Pointer to next structure
        dedicatedAllocation:TVkBool32; //< Whether this buffer uses a dedicated allocation
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -5351,7 +5351,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType;
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV
        pNext:PVkVoid; //< Pointer to next structure
        image:TVkImage; //< Image that this allocation will be bound to
        buffer:TVkBuffer; //< Buffer that this allocation will be bound to
