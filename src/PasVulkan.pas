@@ -123,8 +123,8 @@ unit PasVulkan;
   {$endif}
  {$endif}
  {$ifdef conditionalexpressions}
-  {$if CompilerVersion>=24}
-   {$legacyifend on}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}       
   {$ifend}
   {$if CompilerVersion>=14.0}
    {$if CompilerVersion=14.0}
@@ -2032,7 +2032,7 @@ begin
    result:='VK_ERROR_INVALID_SHADER_NV';
   end;
   else begin
-   result:='Unknown error code detected ('+IntToStr(longint(ErrorCode))+')';
+   result:='Unknown error code detected ('+TVulkanCharString(IntToStr(longint(ErrorCode)))+')';
   end;
  end;
 end;
@@ -2043,7 +2043,7 @@ begin
  result:=nil;
  SetLength(result,StringList.Count);
  for i:=0 to StringList.Count-1 do begin
-  result[i]:=StringList.Strings[i];
+  result[i]:=TVulkanCharString(StringList.Strings[i]);
  end;
 end;
 
@@ -2186,7 +2186,7 @@ end;
 constructor EVulkanResultException.Create(const pResultCode:TVkResult);
 begin
  fResultCode:=pResultCode;
- inherited Create(VulkanErrorToString(fResultCode));
+ inherited Create(String(VulkanErrorToString(fResultCode)));
 end;
 
 destructor EVulkanResultException.Destroy;
@@ -3332,7 +3332,7 @@ begin
     LayerProperty^.SpecVersion:=LayerProperties[Index].specVersion;
     LayerProperty^.ImplementationVersion:=LayerProperties[Index].implementationVersion;
     LayerProperty^.Description:=LayerProperties[Index].description;
-    fAvailableLayerNames.Add(LayerProperty^.LayerName);
+    fAvailableLayerNames.Add(String(LayerProperty^.LayerName));
    end;
   end;
  finally
@@ -3356,8 +3356,8 @@ begin
      ExtensionProperty^.LayerIndex:=Index;
      ExtensionProperty^.ExtensionName:=ExtensionProperties[SubIndex].extensionName;
      ExtensionProperty^.SpecVersion:=ExtensionProperties[SubIndex].SpecVersion;
-     if fAvailableExtensionNames.IndexOf(ExtensionProperty^.ExtensionName)<0 then begin
-      fAvailableExtensionNames.Add(ExtensionProperty^.ExtensionName);
+     if fAvailableExtensionNames.IndexOf(String(ExtensionProperty^.ExtensionName))<0 then begin
+      fAvailableExtensionNames.Add(String(ExtensionProperty^.ExtensionName));
      end;
     end;
     inc(Count,SubCount);
@@ -3474,14 +3474,14 @@ begin
   SetLength(fEnabledLayerNameStrings,fEnabledLayerNames.Count);
   SetLength(fRawEnabledLayerNameStrings,fEnabledLayerNames.Count);
   for i:=0 to fEnabledLayerNames.Count-1 do begin
-   fEnabledLayerNameStrings[i]:=fEnabledLayerNames.Strings[i];
+   fEnabledLayerNameStrings[i]:=TVulkanCharString(fEnabledLayerNames.Strings[i]);
    fRawEnabledLayerNameStrings[i]:=PVkChar(fEnabledLayerNameStrings[i]);
   end;
 
   SetLength(fEnabledExtensionNameStrings,fEnabledExtensionNames.Count);
   SetLength(fRawEnabledExtensionNameStrings,fEnabledExtensionNames.Count);
   for i:=0 to fEnabledExtensionNames.Count-1 do begin
-   fEnabledExtensionNameStrings[i]:=fEnabledExtensionNames.Strings[i];
+   fEnabledExtensionNameStrings[i]:=TVulkanCharString(fEnabledExtensionNames.Strings[i]);
    fRawEnabledExtensionNameStrings[i]:=PVkChar(fEnabledExtensionNameStrings[i]);
   end;
 
@@ -3638,7 +3638,7 @@ begin
     LayerProperty^.SpecVersion:=LayerProperties[Index].specVersion;
     LayerProperty^.ImplementationVersion:=LayerProperties[Index].implementationVersion;
     LayerProperty^.Description:=LayerProperties[Index].description;
-    fAvailableLayerNames.Add(LayerProperty^.LayerName);
+    fAvailableLayerNames.Add(String(LayerProperty^.LayerName));
    end;
   end;
  finally
@@ -3662,8 +3662,8 @@ begin
      ExtensionProperty^.LayerIndex:=Index;
      ExtensionProperty^.ExtensionName:=ExtensionProperties[SubIndex].extensionName;
      ExtensionProperty^.SpecVersion:=ExtensionProperties[SubIndex].SpecVersion;
-     if fAvailableExtensionNames.IndexOf(ExtensionProperty^.ExtensionName)<0 then begin
-      fAvailableExtensionNames.Add(ExtensionProperty^.ExtensionName);
+     if fAvailableExtensionNames.IndexOf(String(ExtensionProperty^.ExtensionName))<0 then begin
+      fAvailableExtensionNames.Add(String(ExtensionProperty^.ExtensionName));
      end;
     end;
     inc(Count,SubCount);
@@ -4273,14 +4273,14 @@ begin
   SetLength(fEnabledLayerNameStrings,fEnabledLayerNames.Count);
   SetLength(fRawEnabledLayerNameStrings,fEnabledLayerNames.Count);
   for Index:=0 to fEnabledLayerNames.Count-1 do begin
-   fEnabledLayerNameStrings[Index]:=fEnabledLayerNames.Strings[Index];
+   fEnabledLayerNameStrings[Index]:=TVulkanCharString(fEnabledLayerNames.Strings[Index]);
    fRawEnabledLayerNameStrings[Index]:=PVkChar(fEnabledLayerNameStrings[Index]);
   end;
 
   SetLength(fEnabledExtensionNameStrings,fEnabledExtensionNames.Count);
   SetLength(fRawEnabledExtensionNameStrings,fEnabledExtensionNames.Count);
   for Index:=0 to fEnabledExtensionNames.Count-1 do begin
-   fEnabledExtensionNameStrings[Index]:=fEnabledExtensionNames.Strings[Index];
+   fEnabledExtensionNameStrings[Index]:=TVulkanCharString(fEnabledExtensionNames.Strings[Index]);
    fRawEnabledExtensionNameStrings[Index]:=PVkChar(fEnabledExtensionNameStrings[Index]);
   end;
 
@@ -5312,7 +5312,7 @@ begin
  if pSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
   Size:=TVkInt64(Max(0,TVkInt64((fOffset+fSize)-Offset)));
  end else begin
-  Size:=Min(Max(pSize,0),TVkInt64(Max(0,TVkInt64((fOffset+fSize)-Offset))));
+  Size:=Min(TVkInt64(Max(TVkInt64(pSize),0)),TVkInt64(Max(0,TVkInt64((fOffset+fSize)-Offset))));
  end;
  result:=fMemoryChunk.MapMemory(Offset,Size);
 end;

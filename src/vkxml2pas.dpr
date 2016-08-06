@@ -127,6 +127,7 @@ program vkxml2pas;
 {$ifdef windows}
  {$apptype console}
 {$endif}
+{$undef UNICODE}
 
 uses SysUtils,Classes,Contnrs;
 
@@ -2861,6 +2862,7 @@ var Comment:ansistring;
     ENumConstants:TStringList;
     ENumValues:TStringList;
     TypeDefinitionTypes:TStringList;
+    TypeDefinitionConstructors:TStringList;
     CommandTypes:TStringList;
     CommandVariables:TStringList;
     AllCommandType:TStringList;
@@ -3222,6 +3224,7 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
      TTypeDefinitionMember=record
       Name:ansistring;
       Type_:ansistring;
+      Values:ansistring;
       ArraySizeInt:longint;
       ArraySizeStr:ansistring;
       Comment:ansistring;
@@ -3247,14 +3250,17 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
 var i,j,k,ArraySize,CountTypeDefinitions,VersionMajor,VersionMinor,VersionPatch:longint;
     ChildItem,ChildChildItem,NextChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
-    Category,Type_,Name,Text,NextText,ArraySizeStr,Comment:ansistring;
+    Category,Type_,Name,Text,NextText,ArraySizeStr,Comment,ParameterLine,ParameterName,CodeParameterLine:ansistring;
     TypeDefinitions:TTypeDefinitions;
     SortedTypeDefinitions:TPTypeDefinitions;
     TypeDefinition:PTypeDefinition;
     TypeDefinitionMember:PTypeDefinitionMember;
     TypeDefinitionList:TStringList;
     ValidityStringList:TStringList;
-    Ptr,Constant:boolean;
+    RecordConstructorStringList:TStringList;
+    RecordConstructorCodeStringList:TStringList;
+    RecordConstructorCodeBlockStringList:TStringList;
+    Ptr,Constant,HasArray:boolean;
  procedure ResolveTypeDefinitionDependencies;
   function HaveDependencyOnTypeDefinition(const TypeDefinition,OtherTypeDefinition:PTypeDefinition):boolean;
   var i:longint;
@@ -3617,6 +3623,7 @@ begin
           TypeDefinitionMember^.ArraySizeInt:=ArraySize;
           Type_:=ParseText(ChildChildTag.FindTag('type'));
           TypeDefinitionMember^.Type_:=Type_;
+          TypeDefinitionMember^.Values:=ChildChildTag.GetParameter('values');
           TypeDefinitionMember^.ArraySizeStr:=ArraySizeStr;
           TypeDefinitionMember^.Comment:=trim(ChildChildTag.GetParameter('comment')+' '+Comment);
 {         k:=0;
@@ -3687,16 +3694,133 @@ begin
    case TypeDefinition^.Kind of
     tdkSTRUCT:begin
      TypeDefinitionTypes.Add('     T'+TypeDefinition^.Name+'=record');
-     for j:=0 to TypeDefinition^.CountMembers-1 do begin
-      if length(TypeDefinition^.Members[j].ArraySizeStr)>0 then begin
-       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].ArraySizeStr+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
-      end else if TypeDefinition^.Members[j].ArraySizeInt>=0 then begin
-       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
-      end else begin
-       TypeDefinitionTypes.Add('      '+TypeDefinition^.Members[j].Name+':'+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
+     TypeDefinitionTypes.Add('{$ifdef HAS_ADVANCED_RECORDS}');
+     TypeDefinitionTypes.Add('      public');
+     TypeDefinitionTypes.Add('{$endif}');
+     RecordConstructorStringList:=TStringList.Create;
+     RecordConstructorCodeStringList:=TStringList.Create;
+     RecordConstructorCodeBlockStringList:=TStringList.Create;
+     HasArray:=false;
+     try
+      for j:=0 to TypeDefinition^.CountMembers-1 do begin
+       Assert(length(TypeDefinition^.Members[j].Name)>0);
+       ParameterName:='p'+UpCase(TypeDefinition^.Members[j].Name[1])+copy(TypeDefinition^.Members[j].Name,2,length(TypeDefinition^.Members[j].Name)-1);
+       ParameterLine:=ParameterName+':';
+       if length(TypeDefinition^.Members[j].ArraySizeStr)>0 then begin
+        TypeDefinitionTypes.Add('       '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].ArraySizeStr+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
+        if TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)='TVkChar' then begin
+         ParameterLine:=ParameterLine+'TVkCharString';
+        end else begin
+         ParameterLine:=ParameterLine+'array of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr);
+        end;
+       end else if TypeDefinition^.Members[j].ArraySizeInt>=0 then begin
+        TypeDefinitionTypes.Add('       '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
+        if TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)='TVkChar' then begin
+         ParameterLine:=ParameterLine+'TVkCharString';
+        end else begin
+         ParameterLine:=ParameterLine+'array of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr);
+        end;
+       end else begin
+        TypeDefinitionTypes.Add('       '+TypeDefinition^.Members[j].Name+':'+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
+        if (TypeDefinition^.Members[j].Type_<>'VkStructureType') and (TypeDefinition^.Members[j].Name<>'pNext') then begin
+         ParameterLine:=ParameterLine+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr);
+        end;
+       end;
+       if (length(TypeDefinition^.Members[j].ArraySizeStr)>0) or (TypeDefinition^.Members[j].ArraySizeInt>=0) then begin
+        HasArray:=true;
+        if TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)='TVkChar' then begin
+         RecordConstructorCodeBlockStringList.Add(' ArrayItemCount:=length('+ParameterName+');');
+         RecordConstructorCodeBlockStringList.Add(' if ArrayItemCount>length('+TypeDefinition^.Members[j].Name+') then begin');
+         RecordConstructorCodeBlockStringList.Add('  ArrayItemCount:=length('+TypeDefinition^.Members[j].Name+');');
+         RecordConstructorCodeBlockStringList.Add(' end;');
+         RecordConstructorCodeBlockStringList.Add(' if ArrayItemCount>0 then begin');
+         RecordConstructorCodeBlockStringList.Add('  Move('+ParameterName+'[1],'+TypeDefinition^.Members[j].Name+'[0],ArrayItemCount*SizeOf('+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+'));');
+         RecordConstructorCodeBlockStringList.Add(' end;');
+        end else begin
+         RecordConstructorCodeBlockStringList.Add(' ArrayItemCount:=length('+ParameterName+');');
+         RecordConstructorCodeBlockStringList.Add(' if ArrayItemCount>length('+TypeDefinition^.Members[j].Name+') then begin');
+         RecordConstructorCodeBlockStringList.Add('  ArrayItemCount:=length('+TypeDefinition^.Members[j].Name+');');
+         RecordConstructorCodeBlockStringList.Add(' end;');
+         RecordConstructorCodeBlockStringList.Add(' if ArrayItemCount>0 then begin');
+         RecordConstructorCodeBlockStringList.Add('  Move('+ParameterName+'[0],'+TypeDefinition^.Members[j].Name+'[0],ArrayItemCount*SizeOf('+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+'));');
+         RecordConstructorCodeBlockStringList.Add(' end;');
+        end;
+       end else begin
+        if (TypeDefinition^.Members[j].Type_<>'VkStructureType') and (TypeDefinition^.Members[j].Name<>'pNext') then begin
+         RecordConstructorCodeBlockStringList.Add(' '+TypeDefinition^.Members[j].Name+':='+ParameterName+';');
+        end else if TypeDefinition^.Members[j].Type_='VkStructureType' then begin
+         ParameterName:=TypeDefinition^.Members[j].Comment;
+         k:=pos('VK_STRUCTURE_TYPE_',ParameterName);
+         if k>0 then begin
+          Delete(ParameterName,1,k-1);
+          for k:=1 to length(ParameterName) do begin
+           if not (ParameterName[k] in ['A'..'Z','a'..'z','_','0'..'9']) then begin
+            ParameterName:=copy(ParameterName,1,k-1);
+            break;
+           end;
+          end;
+          RecordConstructorCodeBlockStringList.Add(' '+TypeDefinition^.Members[j].Name+':='+ParameterName+';');
+         end else if (length(TypeDefinition^.Members[j].Values)>0) and
+                     (copy(TypeDefinition^.Members[j].Values,1,length('VK_STRUCTURE_TYPE_'))='VK_STRUCTURE_TYPE_') then begin
+          RecordConstructorCodeBlockStringList.Add(' '+TypeDefinition^.Members[j].Name+':='+TypeDefinition^.Members[j].Values+';');
+         end else begin
+          Assert(false);
+         end;
+        end else if TypeDefinition^.Members[j].Name='pNext' then begin
+         RecordConstructorCodeBlockStringList.Add(' '+TypeDefinition^.Members[j].Name+':=nil;');
+        end;
+       end;
+       if (TypeDefinition^.Members[j].Type_<>'VkStructureType') and (TypeDefinition^.Members[j].Name<>'pNext') then begin
+        if RecordConstructorStringList.Count=0 then begin
+         CodeParameterLine:='constructor T'+TypeDefinition^.Name+'.Create(const '+ParameterLine;
+         ParameterLine:='       constructor Create(const '+ParameterLine;
+        end else begin
+         CodeParameterLine:=AlignPaddingString('',21+length(TypeDefinition^.Name))+'const '+ParameterLine;
+         ParameterLine:='                          const '+ParameterLine;
+        end;
+        if (j+1)<TypeDefinition^.CountMembers then begin
+         CodeParameterLine:=CodeParameterLine+';';
+         ParameterLine:=ParameterLine+';'+MemberComment(TypeDefinition^.Members[j].Comment);
+        end else begin
+         CodeParameterLine:=CodeParameterLine+');';
+         ParameterLine:=ParameterLine+');'+MemberComment(TypeDefinition^.Members[j].Comment);
+        end;
+        RecordConstructorCodeStringList.Add(CodeParameterLine);
+        RecordConstructorStringList.Add(ParameterLine);
+       end;
       end;
+      if HasArray then begin
+       RecordConstructorCodeStringList.Add('var ArrayItemCount:TVkInt32;');
+      end;
+      RecordConstructorCodeStringList.Add('begin');
+      if HasArray then begin
+       RecordConstructorCodeStringList.Add(' FillChar(self,SizeOf(T'+TypeDefinition^.Name+'),#0);');
+      end;
+      RecordConstructorCodeStringList.AddStrings(RecordConstructorCodeBlockStringList);
+      RecordConstructorCodeStringList.Add('end;');
+      if TypeDefinitionConstructors.Count>0 then begin
+       TypeDefinitionConstructors.Add('');
+      end;
+      if length(TypeDefinition^.Define)>0 then begin
+       TypeDefinitionConstructors.Add('{$ifdef '+TypeDefinition^.Define+'}');
+      end;
+      TypeDefinitionConstructors.AddStrings(RecordConstructorCodeStringList);
+      if length(TypeDefinition^.Define)>0 then begin
+       TypeDefinitionConstructors.Add('{$endif}');
+      end;
+      TypeDefinitionTypes.Add('{$ifdef HAS_ADVANCED_RECORDS}');
+      if RecordConstructorStringList.Count>0 then begin
+       TypeDefinitionTypes.AddStrings(RecordConstructorStringList);
+      end else begin
+       TypeDefinitionTypes.Add('       constructor Create;');
+      end;
+      TypeDefinitionTypes.Add('{$endif}');
+      TypeDefinitionTypes.Add('     end;');
+     finally
+      RecordConstructorStringList.Free;
+      RecordConstructorCodeStringList.Free;
+      RecordConstructorCodeBlockStringList.Free;
      end;
-     TypeDefinitionTypes.Add('     end;');
     end;
     tdkUNION:begin
      TypeDefinitionTypes.Add('     T'+TypeDefinition^.Name+'=record');
@@ -4220,6 +4344,7 @@ begin
  ENumConstants:=TStringList.Create;
  ENumValues:=TStringList.Create;
  TypeDefinitionTypes:=TStringList.Create;
+ TypeDefinitionConstructors:=TStringList.Create;
  CommandTypes:=TStringList.Create;
  CommandVariables:=TStringList.Create;
  AllCommandType:=TStringList.Create;
@@ -4317,18 +4442,20 @@ begin
    OutputPAS.Add(' {$z4}');
    OutputPAS.Add(' {$packrecords c}');
    OutputPAS.Add(' {$define CAN_INLINE}');
+   OutputPAS.Add(' {$define HAS_ADVANCED_RECORDS}');
    OutputPAS.Add(' {$notes off}');
    OutputPAS.Add('{$else}');
    OutputPAS.Add(' {$z4}');
    OutputPAS.Add(' {$undef CAN_INLINE}');
-   OutputPAS.Add(' {$ifdef ver180}');
-   OutputPAS.Add('  {$define CAN_INLINE}');
-   OutputPAS.Add(' {$else}');
-   OutputPAS.Add('  {$ifdef conditionalexpressions}');
-   OutputPAS.Add('   {$if compilerversion>=18}');
-   OutputPAS.Add('    {$define CAN_INLINE}');
-   OutputPAS.Add('   {$ifend}');
-   OutputPAS.Add('  {$endif}');
+   OutputPAS.Add(' {$undef HAS_ADVANCED_RECORDS}');
+   OutputPAS.Add(' {$ifdef conditionalexpressions}');
+   OutputPAS.Add('  {$if CompilerVersion>=24.0}');
+   OutputPAS.Add('   {$legacyifend on}');
+   OutputPAS.Add('  {$ifend}');
+   OutputPAS.Add('  {$if CompilerVersion>=18.0}');
+   OutputPAS.Add('   {$define CAN_INLINE}');
+   OutputPAS.Add('   {$define HAS_ADVANCED_RECORDS}');
+   OutputPAS.Add('  {$ifend}');
    OutputPAS.Add(' {$endif}');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('{$ifdef Win32}');
@@ -4447,6 +4574,10 @@ begin
    OutputPAS.Add('     PPVkPtrDiff=^PVkPtrDiff;');
    OutputPAS.Add('     PVkPtrDiff=^TVkPtrDiff;');
    OutputPAS.Add('     TVkPtrDiff=TVkPtrInt;');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkCharString=^PVkCharString;');
+   OutputPAS.Add('     PVkCharString=^TVkCharString;');
+   OutputPAS.Add('     TVkCharString=AnsiString;');
    OutputPAS.Add('');
    OutputPAS.Add('const VK_NULL_HANDLE=0;');
    OutputPAS.Add('');
@@ -4696,6 +4827,12 @@ begin
    OutputPAS.Add(' end;');
    OutputPAS.Add('end;');
    OutputPAS.Add('');
+   if TypeDefinitionConstructors.Count>0 then begin
+    OutputPAS.Add('{$ifdef HAS_ADVANCED_RECORDS}');
+    OutputPAS.AddStrings(TypeDefinitionConstructors);
+    OutputPAS.Add('{$endif}');
+    OutputPAS.Add('');
+   end;
    OutputPAS.Add('constructor TVulkan.Create;');
    OutputPAS.Add('begin');
    OutputPAS.Add(' inherited Create;');
@@ -4743,6 +4880,7 @@ begin
   ENumTypes.Free;
   ENumConstants.Free;
   ENumValues.Free;
+  TypeDefinitionConstructors.Free;
   TypeDefinitionTypes.Free;
   CommandTypes.Free;
   CommandVariables.Free;

@@ -26,7 +26,7 @@ uses
   PasVulkan in '..\..\src\PasVulkan.pas',
   vulkan in '..\..\src\vulkan.pas';
 
-var WndClass:TWndClassA;
+var WndClass:TWndClass;
     hWindow:HWND;
     Msg:TMsg;
     Running:boolean;
@@ -187,7 +187,7 @@ begin
   WM_KEYDOWN:begin
    case pWParam of
     VK_ESCAPE:begin
-     SendMessageA(pWindow,WM_CLOSE,0,0);
+     SendMessage(pWindow,WM_CLOSE,0,0);
     end;
    end;
    result:=0;
@@ -255,7 +255,7 @@ begin
               0,
               SWP_NOSIZE);
 
- FillChar(WndClass,SizeOf(TWndClassA),#0);
+ FillChar(WndClass,SizeOf(TWndClass),#0);
  WndClass.style:=0;
  WndClass.lpfnWndProc:=@WindowProc;
  WndClass.cbClsExtra:=0;
@@ -266,19 +266,19 @@ begin
  WndClass.hbrBackground:=COLOR_WINDOW;
  WndClass.lpszMenuName:=nil;
  WndClass.lpszClassName:='TVulkanExample';
- Windows.RegisterClassA(WndClass);
+ Windows.RegisterClass(WndClass);
 
- hWindow:=CreateWindowA('TVulkanExample',
-                        'Vulkan Triangle',
-                        WS_OVERLAPPEDWINDOW,
-                        MonitorLeft+(((MonitorWidth-SurfaceWidth)*7) div 8),
-                        MonitorTop+((MonitorHeight-SurfaceHeight) div 2),
-                        SurfaceWidth,
-                        SurfaceHeight,
-                        0,
-                        0,
-                        hInstance,
-                        nil);
+ hWindow:=CreateWindow('TVulkanExample',
+                       'Vulkan Triangle',
+                       WS_OVERLAPPEDWINDOW,
+                       MonitorLeft+(((MonitorWidth-SurfaceWidth)*7) div 8),
+                       MonitorTop+((MonitorHeight-SurfaceHeight) div 2),
+                       SurfaceWidth,
+                       SurfaceHeight,
+                       0,
+                       0,
+                       hInstance,
+                       nil);
 
  try
 
@@ -288,10 +288,10 @@ begin
 
    VulkanInstance:=TVulkanInstance.Create('Test application',1,'Test engine',1,VK_API_VERSION_1_0,true);
    for i:=0 to VulkanInstance.AvailableLayerNames.Count-1 do begin
-    DebugLn('Layer: '+VulkanInstance.AvailableLayerNames[i]);
+    DebugLn('Layer: '+TVulkanCharString(VulkanInstance.AvailableLayerNames[i]));
    end;
    for i:=0 to VulkanInstance.AvailableExtensionNames.Count-1 do begin
-    DebugLn('Extension: '+VulkanInstance.AvailableExtensionNames[i]);
+    DebugLn('Extension: '+TVulkanCharString(VulkanInstance.AvailableExtensionNames[i]));
    end;
    VulkanInstance.EnabledExtensionNames.Add(VK_KHR_SURFACE_EXTENSION_NAME);
 {$if defined(Android)}
