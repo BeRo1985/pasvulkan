@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-06-20-29-0000                       *
+ *                        Version 2016-08-06-20-48-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1661,16 +1661,16 @@ type EVulkanException=class(Exception);
        property Height:TVkInt32 read fHeight;
      end;
 
-     TVulkanSwapChainDirectRenderTargetFrameBuffers=array of TVulkanFrameBuffer;
+     TVulkanSwapChainSimpleDirectRenderTargetFrameBuffers=array of TVulkanFrameBuffer;
 
-     TVulkanSwapChainDirectRenderTarget=class(TVulkanObject)
+     TVulkanSwapChainSimpleDirectRenderTarget=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fSwapChain:TVulkanSwapChain;
        fDepthImageFormat:TVkFormat;
        fDepthFrameBufferAttachment:TVulkanFrameBufferAttachment;
        fFrameBufferColorAttachments:TVulkanFrameBufferAttachments;
-       fFrameBuffers:TVulkanSwapChainDirectRenderTargetFrameBuffers;
+       fFrameBuffers:TVulkanSwapChainSimpleDirectRenderTargetFrameBuffers;
        fRenderPass:TVulkanRenderPass;
        function GetCurrentFrameBuffer:TVulkanFrameBuffer;
       public
@@ -7618,12 +7618,12 @@ begin
  result:=fImages[fCurrentImageIndex];
 end;
 
-constructor TVulkanSwapChainDirectRenderTarget.Create(const pDevice:TVulkanDevice;
-                                                      const pSwapChain:TVulkanSwapChain;
-                                                      const pCommandBuffer:TVulkanCommandBuffer;
-                                                      const pCommandBufferFence:TVulkanFence;
-                                                      const pDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
-                                                      const pDepthImageFormatWithStencil:boolean=false);
+constructor TVulkanSwapChainSimpleDirectRenderTarget.Create(const pDevice:TVulkanDevice;
+                                                            const pSwapChain:TVulkanSwapChain;
+                                                            const pCommandBuffer:TVulkanCommandBuffer;
+                                                            const pCommandBufferFence:TVulkanFence;
+                                                            const pDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
+                                                            const pDepthImageFormatWithStencil:boolean=false);
 var Index:TVkInt32;
     FrameBufferColorAttachment:TVulkanFrameBufferAttachment;
     Attachments:array[0..1] of TVkImageView;
@@ -7793,7 +7793,7 @@ begin
 
 end;
 
-destructor TVulkanSwapChainDirectRenderTarget.Destroy;
+destructor TVulkanSwapChainSimpleDirectRenderTarget.Destroy;
 var Index:TVkInt32;
     FrameBufferColorAttachment:TVulkanFrameBufferAttachment;
 begin
@@ -7816,7 +7816,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanSwapChainDirectRenderTarget.GetCurrentFrameBuffer:TVulkanFrameBuffer;
+function TVulkanSwapChainSimpleDirectRenderTarget.GetCurrentFrameBuffer:TVulkanFrameBuffer;
 begin
  result:=fFrameBuffers[fSwapChain.CurrentImageIndex];
 end;
