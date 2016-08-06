@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-07-00-12-0000                       *
+ *                        Version 2016-08-07-01-43-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2099,7 +2099,7 @@ begin
 
  case pOldImageLayout of
   VK_IMAGE_LAYOUT_UNDEFINED:begin
-   ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+   ImageMemoryBarrier.srcAccessMask:=0; //TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
   end;
   VK_IMAGE_LAYOUT_GENERAL:begin
   end;
@@ -6299,7 +6299,7 @@ begin
                     0,nil,
                     1,@ImageMemoryBarrier);
 end;
-                  
+
 procedure TVulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(const pImage:TVulkanImage);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
@@ -7676,7 +7676,7 @@ begin
                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
                                                                                                               VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                                                                                              ),
                                                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                                                         )],
@@ -7713,6 +7713,15 @@ begin
 
    try
     ColorAttachmentImage:=TVulkanImage.Create(fDevice,fSwapChain.Images[Index].fImageHandle,nil,false);
+
+    ColorAttachmentImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                   VK_IMAGE_LAYOUT_UNDEFINED,
+                                   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                   nil,
+                                   pCommandBuffer,
+                                   fDevice.fGraphicsQueue,
+                                   pCommandBufferFence,
+                                   true);
 
     ColorAttachmentImageView:=TVulkanImageView.Create(Device,
                                                       ColorAttachmentImage,

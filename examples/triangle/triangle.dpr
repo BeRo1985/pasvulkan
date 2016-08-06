@@ -121,8 +121,6 @@ begin
 
   end else begin
 
-   VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-
    VulkanCommandBuffer.BeginRecording;
 
    VulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(VulkanSwapChain.CurrentImage);
@@ -132,9 +130,10 @@ begin
    VulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=(cos(Now*86400.0*pi*0.731)*0.5)+0.5;
 
    VulkanSwapChainSimpleDirectRenderTarget.RenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                                        VulkanSwapChainSimpleDirectRenderTarget.CurrentFrameBuffer,
-                                                        VK_SUBPASS_CONTENTS_INLINE,
-                                                        0,0,VulkanSwapChain.Width,VulkanSwapChain.Height);
+                                                                      VulkanSwapChainSimpleDirectRenderTarget.CurrentFrameBuffer,
+                                                                      VK_SUBPASS_CONTENTS_INLINE,
+                                                                      0,0,VulkanSwapChain.Width,VulkanSwapChain.Height);
+
    VulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
 
    VulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(VulkanSwapChain.CurrentImage);
@@ -146,6 +145,9 @@ begin
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                VulkanPresentCompleteSemaphore,
                                VulkanDrawCompleteSemaphore);
+
+   VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
 
    try
     if VulkanSwapChain.QueuePresent(VulkanDevice.GraphicsQueue,VulkanDrawCompleteSemaphore)<>VK_SUBOPTIMAL_KHR then begin
@@ -320,32 +322,8 @@ begin
    end;
 {$define VULKAN_VALIDATION}
 {$ifdef VULKAN_VALIDATION}
-{  if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
+   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
     VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_standard_validation');
-   end;{}
-(* if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_threading')>=0 then begin
-    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_GOOGLE_threading');
-   end;*)
-{  if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_object_tracker')>=0 then begin
-    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_object_tracker'); // The framebuffer is not registered for some reason by the object tracker... the steps are exactly the same as in the demo. For now ObjectTracker is disabled...
-   end;{}
-   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_parameter_validation')>=0 then begin
-    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_parameter_validation');
-   end;
-   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_swapchain')>=0 then begin
-    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_swapchain');
-   end;
-   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_device_limits')>=0 then begin
-    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_device_limits');
-   end;
-   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_image')>=0 then begin
-    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_image');
-   end;
-   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_unique_objects')>=0 then begin
-    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_GOOGLE_unique_objects');
-   end;
-   if VulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_core_validation')>=0 then begin
-    VulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_core_validation');
    end;
 {$endif}
    VulkanInstance.Initialize;
@@ -355,6 +333,11 @@ begin
    end;
 
    VulkanSurface:=TVulkanSurface.Create(VulkanInstance,hInstance,hWindow);
+
+   if GetClientRect(hWindow,R) then begin
+    SurfaceWidth:=R.Right-R.Left;
+    SurfaceHeight:=R.Bottom-R.Top;
+   end;
 
    VulkanDevice:=TVulkanDevice.Create(VulkanInstance,nil,VulkanSurface);
    VulkanDevice.AddQueues;
