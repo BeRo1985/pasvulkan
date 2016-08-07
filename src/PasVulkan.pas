@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-07-22-01-0000                       *
+ *                        Version 2016-08-07-23-23-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1902,6 +1902,7 @@ type EVulkanException=class(Exception);
        fDoCopyAndDoFree:boolean;
        fSpecializationMapEntries:TVkSpecializationMapEntryArray;
        fCountSpecializationMapEntries:TVkInt32;
+       fInitialized:boolean;
        procedure AllocateSpecializationInfo;
       public
        constructor Create(const pStage:TVkShaderStageFlagBits;
@@ -1960,8 +1961,40 @@ type EVulkanException=class(Exception);
                           const pFlags:TVkPipelineCreateFlags;
                           const pStage:TVulkanPipelineShaderStage;
                           const pLayout:TVulkanPipelineLayout;
-                          const pBasePipelineHandle:TVulkanPipeline=nil;
-                          const pBasePipelineIndex:TVkInt32=0); reintroduce;
+                          const pBasePipelineHandle:TVulkanPipeline;
+                          const pBasePipelineIndex:TVkInt32); reintroduce;
+     end;
+
+     TVulkanGraphicsPipeline=class(TVulkanPipeline)
+      private
+       fGraphicsPipelineCreateInfo:TVkGraphicsPipelineCreateInfo;
+       fStages:TVkPipelineShaderStageCreateInfoArray;
+       fPipelineCache:TVkPipelineCache;
+       fVertexInputBindingDescriptions:TVkVertexInputBindingDescriptionArray;
+       fCountVertexInputBindingDescriptions:TVkInt32;
+       fVertexInputAttributeDescriptions:TVkVertexInputAttributeDescriptionArray;
+       fCountVertexInputAttributeDescriptions:TVkInt32;
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pCache:TVulkanPipelineCache;
+                          const pFlags:TVkPipelineCreateFlags;
+                          const pStages:array of TVulkanPipelineShaderStage;
+                          const pLayout:TVulkanPipelineLayout;
+                          const pRenderPass:TVulkanRenderPass;
+                          const pSubPass:TVkUInt32;
+                          const pBasePipelineHandle:TVulkanPipeline;
+                          const pBasePipelineIndex:TVkInt32); reintroduce;
+       destructor Destroy; override;
+       function AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
+       function AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32; overload;
+       function AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+       function AddVertexInputAttributeDescription(const pVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32; overload;
+       function AddVertexInputAttributeDescription(const pLocation,pBinding:TVkUInt32;const pFormat:TVkFormat;const pOffset:TVkUInt32):TVkInt32; overload;
+       function AddVertexInputAttributeDescriptions(const pVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+       procedure SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
+       procedure SetTessellationState(const pPatchControlPoints:TVkUInt32);
+       procedure Initialize;
+      published
      end;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
@@ -8717,6 +8750,8 @@ begin
  fSpecializationMapEntries:=nil;
  fCountSpecializationMapEntries:=0;
 
+ fInitialized:=false;
+
 end;
 
 destructor TVulkanPipelineShaderStage.Destroy;
@@ -8836,11 +8871,14 @@ end;
 
 procedure TVulkanPipelineShaderStage.Initialize;
 begin
- if fCountSpecializationMapEntries>0 then begin
-  AllocateSpecializationInfo;
-  SetLength(fSpecializationMapEntries,fCountSpecializationMapEntries);
-  fSpecializationInfo^.mapEntryCount:=fCountSpecializationMapEntries;
-  fSpecializationInfo^.pMapEntries:=@fSpecializationMapEntries[0];
+ if not fInitialized then begin
+  fInitialized:=true;
+  if fCountSpecializationMapEntries>0 then begin
+   AllocateSpecializationInfo;
+   SetLength(fSpecializationMapEntries,fCountSpecializationMapEntries);
+   fSpecializationInfo^.mapEntryCount:=fCountSpecializationMapEntries;
+   fSpecializationInfo^.pMapEntries:=@fSpecializationMapEntries[0];
+  end;
  end;
 end;
 
@@ -8984,8 +9022,8 @@ constructor TVulkanComputePipeline.Create(const pDevice:TVulkanDevice;
                                           const pFlags:TVkPipelineCreateFlags;
                                           const pStage:TVulkanPipelineShaderStage;
                                           const pLayout:TVulkanPipelineLayout;
-                                          const pBasePipelineHandle:TVulkanPipeline=nil;
-                                          const pBasePipelineIndex:TVkInt32=0);
+                                          const pBasePipelineHandle:TVulkanPipeline;
+                                          const pBasePipelineIndex:TVkInt32);
 var PipelineCache:TVkPipelineCache;
 begin
  inherited Create(pDevice);
@@ -9018,6 +9056,257 @@ begin
 
  HandleResultCode(fDevice.fDeviceVulkan.CreateComputePipelines(fDevice.fDeviceHandle,PipelineCache,1,@fComputePipelineCreateInfo,fDevice.fAllocationCallbacks,@fPipelineHandle));
 
+end;
+
+constructor TVulkanGraphicsPipeline.Create(const pDevice:TVulkanDevice;
+                                           const pCache:TVulkanPipelineCache;
+                                           const pFlags:TVkPipelineCreateFlags;
+                                           const pStages:array of TVulkanPipelineShaderStage;
+                                           const pLayout:TVulkanPipelineLayout;
+                                           const pRenderPass:TVulkanRenderPass;
+                                           const pSubPass:TVkUInt32;
+                                           const pBasePipelineHandle:TVulkanPipeline;
+                                           const pBasePipelineIndex:TVkInt32);
+var Index:TVkInt32;
+begin
+ fStages:=nil;
+
+ inherited Create(pDevice);
+
+ FillChar(fGraphicsPipelineCreateInfo,SizeOf(TVkGraphicsPipelineCreateInfo),#0);
+ fGraphicsPipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+ fGraphicsPipelineCreateInfo.pNext:=nil;
+ fGraphicsPipelineCreateInfo.flags:=pFlags;
+ fGraphicsPipelineCreateInfo.stageCount:=length(pStages);
+ if fGraphicsPipelineCreateInfo.stageCount>0 then begin
+  SetLength(fStages,fGraphicsPipelineCreateInfo.stageCount);
+  for Index:=0 to fGraphicsPipelineCreateInfo.stageCount-1 do begin
+   pStages[Index].Initialize;
+   fStages[Index]:=pStages[Index].fPipelineShaderStageCreateInfo;
+  end;
+  fGraphicsPipelineCreateInfo.pStages:=@fStages[0];
+ end else begin
+  fGraphicsPipelineCreateInfo.pStages:=nil;
+ end;
+ fGraphicsPipelineCreateInfo.pVertexInputState:=nil;
+ fGraphicsPipelineCreateInfo.pInputAssemblyState:=nil;
+ fGraphicsPipelineCreateInfo.pTessellationState:=nil;
+ fGraphicsPipelineCreateInfo.pViewportState:=nil;
+ fGraphicsPipelineCreateInfo.pRasterizationState:=nil;
+ fGraphicsPipelineCreateInfo.pMultisampleState:=nil;
+ fGraphicsPipelineCreateInfo.pDepthStencilState:=nil;
+ fGraphicsPipelineCreateInfo.pColorBlendState:=nil;
+ fGraphicsPipelineCreateInfo.pDynamicState:=nil;
+ if assigned(pLayout) then begin
+  fGraphicsPipelineCreateInfo.layout:=pLayout.fPipelineLayoutHandle;
+ end else begin
+  fGraphicsPipelineCreateInfo.layout:=VK_NULL_HANDLE;
+ end;
+ if assigned(pRenderPass) then begin
+  fGraphicsPipelineCreateInfo.renderPass:=pRenderPass.fRenderPassHandle;
+ end else begin
+  fGraphicsPipelineCreateInfo.renderPass:=VK_NULL_HANDLE;
+ end;
+ fGraphicsPipelineCreateInfo.subpass:=pSubPass;
+ if assigned(pBasePipelineHandle) then begin
+  fGraphicsPipelineCreateInfo.basePipelineHandle:=pBasePipelineHandle.fPipelineHandle;
+ end else begin
+  fGraphicsPipelineCreateInfo.basePipelineHandle:=VK_NULL_HANDLE;
+ end;
+ fGraphicsPipelineCreateInfo.basePipelineIndex:=pBasePipelineIndex;
+
+ if assigned(pCache) then begin
+  fPipelineCache:=pCache.fPipelineCacheHandle;
+ end else begin
+  fPipelineCache:=VK_NULL_HANDLE;
+ end;
+
+ fVertexInputBindingDescriptions:=nil;
+ fCountVertexInputBindingDescriptions:=0;
+
+ fVertexInputAttributeDescriptions:=nil;
+ fCountVertexInputAttributeDescriptions:=0;
+
+end;
+
+destructor TVulkanGraphicsPipeline.Destroy;
+begin
+ if assigned(fGraphicsPipelineCreateInfo.pVertexInputState) then begin
+  FreeMem(fGraphicsPipelineCreateInfo.pVertexInputState);
+  fGraphicsPipelineCreateInfo.pVertexInputState:=nil;
+ end;
+ if assigned(fGraphicsPipelineCreateInfo.pInputAssemblyState) then begin
+  FreeMem(fGraphicsPipelineCreateInfo.pInputAssemblyState);
+  fGraphicsPipelineCreateInfo.pInputAssemblyState:=nil;
+ end;
+ if assigned(fGraphicsPipelineCreateInfo.pTessellationState) then begin
+  FreeMem(fGraphicsPipelineCreateInfo.pTessellationState);
+  fGraphicsPipelineCreateInfo.pTessellationState:=nil;
+ end;
+ if assigned(fGraphicsPipelineCreateInfo.pViewportState) then begin
+  FreeMem(fGraphicsPipelineCreateInfo.pViewportState);
+  fGraphicsPipelineCreateInfo.pViewportState:=nil;
+ end;
+ if assigned(fGraphicsPipelineCreateInfo.pRasterizationState) then begin
+  FreeMem(fGraphicsPipelineCreateInfo.pRasterizationState);
+  fGraphicsPipelineCreateInfo.pRasterizationState:=nil;
+ end;
+ if assigned(fGraphicsPipelineCreateInfo.pMultisampleState) then begin
+  FreeMem(fGraphicsPipelineCreateInfo.pMultisampleState);
+  fGraphicsPipelineCreateInfo.pMultisampleState:=nil;
+ end;
+ if assigned(fGraphicsPipelineCreateInfo.pDepthStencilState) then begin
+  FreeMem(fGraphicsPipelineCreateInfo.pDepthStencilState);
+  fGraphicsPipelineCreateInfo.pDepthStencilState:=nil;
+ end;
+ if assigned(fGraphicsPipelineCreateInfo.pColorBlendState) then begin
+  FreeMem(fGraphicsPipelineCreateInfo.pColorBlendState);
+  fGraphicsPipelineCreateInfo.pColorBlendState:=nil;
+ end;
+ if assigned(fGraphicsPipelineCreateInfo.pColorBlendState) then begin
+  FreeMem(fGraphicsPipelineCreateInfo.pColorBlendState);
+  fGraphicsPipelineCreateInfo.pColorBlendState:=nil;
+ end;
+ SetLength(fStages,0);
+ SetLength(fVertexInputBindingDescriptions,0);
+ SetLength(fVertexInputAttributeDescriptions,0);
+ inherited Destroy;
+end;
+
+function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
+begin
+ result:=fCountVertexInputBindingDescriptions;
+ inc(fCountVertexInputBindingDescriptions);
+ if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
+  SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
+ end;
+ fVertexInputBindingDescriptions[result]:=pVertexInputBindingDescription;
+end;
+
+function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32;
+var VertexInputBindingDescription:PVkVertexInputBindingDescription;
+begin
+ result:=fCountVertexInputBindingDescriptions;
+ inc(fCountVertexInputBindingDescriptions);
+ if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
+  SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
+ end;
+ VertexInputBindingDescription:=@fVertexInputBindingDescriptions[result];
+ VertexInputBindingDescription^.binding:=pBinding;
+ VertexInputBindingDescription^.stride:=pStride;
+ VertexInputBindingDescription^.inputRate:=pInputRate;
+end;
+
+function TVulkanGraphicsPipeline.AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+begin
+ if length(pVertexInputBindingDescriptions)>0 then begin
+  result:=fCountVertexInputBindingDescriptions;
+  inc(fCountVertexInputBindingDescriptions,length(pVertexInputBindingDescriptions));
+  if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
+   SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
+  end;
+  Move(pVertexInputBindingDescriptions[0],fVertexInputBindingDescriptions[result],length(pVertexInputBindingDescriptions)*SizeOf(TVkVertexInputBindingDescription));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TVulkanGraphicsPipeline.AddVertexInputAttributeDescription(const pVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
+begin
+ result:=fCountVertexInputAttributeDescriptions;
+ inc(fCountVertexInputAttributeDescriptions);
+ if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
+  SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
+ end;
+ fVertexInputAttributeDescriptions[result]:=pVertexInputAttributeDescription;
+end;
+
+function TVulkanGraphicsPipeline.AddVertexInputAttributeDescription(const pLocation,pBinding:TVkUInt32;const pFormat:TVkFormat;const pOffset:TVkUInt32):TVkInt32;
+var VertexInputAttributeDescription:PVkVertexInputAttributeDescription;
+begin
+ result:=fCountVertexInputAttributeDescriptions;
+ inc(fCountVertexInputAttributeDescriptions);
+ if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
+  SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
+ end;
+ VertexInputAttributeDescription:=@fVertexInputAttributeDescriptions[result];
+ VertexInputAttributeDescription^.location:=pLocation;
+ VertexInputAttributeDescription^.binding:=pBinding;
+ VertexInputAttributeDescription^.format:=pFormat;
+ VertexInputAttributeDescription^.offset:=pOffset;
+end;
+
+function TVulkanGraphicsPipeline.AddVertexInputAttributeDescriptions(const pVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+begin
+ if length(pVertexInputAttributeDescriptions)>0 then begin
+  result:=fCountVertexInputAttributeDescriptions;
+  inc(fCountVertexInputAttributeDescriptions,length(pVertexInputAttributeDescriptions));
+  if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
+   SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
+  end;
+  Move(pVertexInputAttributeDescriptions[0],fVertexInputAttributeDescriptions[result],length(pVertexInputAttributeDescriptions)*SizeOf(TVkVertexInputAttributeDescription));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TVulkanGraphicsPipeline.SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
+begin
+ if not assigned(fGraphicsPipelineCreateInfo.pInputAssemblyState) then begin
+  GetMem(fGraphicsPipelineCreateInfo.pInputAssemblyState,SizeOf(TVkPipelineInputAssemblyStateCreateInfo));
+ end;
+ FillChar(fGraphicsPipelineCreateInfo.pInputAssemblyState^,SizeOf(TVkPipelineInputAssemblyStateCreateInfo),#0);
+ fGraphicsPipelineCreateInfo.pInputAssemblyState^.sType:=VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+ fGraphicsPipelineCreateInfo.pInputAssemblyState^.pNext:=nil;
+ fGraphicsPipelineCreateInfo.pInputAssemblyState^.flags:=0;
+ fGraphicsPipelineCreateInfo.pInputAssemblyState^.topology:=pTopology;
+ if pPrimitiveRestartEnable then begin
+  fGraphicsPipelineCreateInfo.pInputAssemblyState^.primitiveRestartEnable:=VK_TRUE;
+ end else begin
+  fGraphicsPipelineCreateInfo.pInputAssemblyState^.primitiveRestartEnable:=VK_FALSE;
+ end;
+end;
+
+procedure TVulkanGraphicsPipeline.SetTessellationState(const pPatchControlPoints:TVkUInt32);
+begin
+ if not assigned(fGraphicsPipelineCreateInfo.pTessellationState) then begin
+  GetMem(fGraphicsPipelineCreateInfo.pTessellationState,SizeOf(TVkPipelineTessellationStateCreateInfo));
+ end;
+ FillChar(fGraphicsPipelineCreateInfo.pTessellationState^,SizeOf(TVkPipelineTessellationStateCreateInfo),#0);
+ fGraphicsPipelineCreateInfo.pTessellationState^.sType:=VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+ fGraphicsPipelineCreateInfo.pTessellationState^.pNext:=nil;
+ fGraphicsPipelineCreateInfo.pTessellationState^.flags:=0;
+ fGraphicsPipelineCreateInfo.pTessellationState^.patchControlPoints:=pPatchControlPoints;
+end;
+
+procedure TVulkanGraphicsPipeline.Initialize;
+begin
+ if fPipelineHandle=VK_NULL_HANDLE then begin
+
+  SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions);
+  SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions);
+
+  if (fCountVertexInputBindingDescriptions>0) or (fCountVertexInputAttributeDescriptions>0) then begin
+   if not assigned(fGraphicsPipelineCreateInfo.pVertexInputState) then begin
+    GetMem(fGraphicsPipelineCreateInfo.pVertexInputState,SizeOf(TVkPipelineVertexInputStateCreateInfo));
+   end;
+   FillChar(fGraphicsPipelineCreateInfo.pVertexInputState^,SizeOf(TVkPipelineVertexInputStateCreateInfo),#0);
+   fGraphicsPipelineCreateInfo.pVertexInputState^.sType:=VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+   fGraphicsPipelineCreateInfo.pVertexInputState^.pNext:=nil;
+   fGraphicsPipelineCreateInfo.pVertexInputState^.flags:=0;
+   fGraphicsPipelineCreateInfo.pVertexInputState^.vertexBindingDescriptionCount:=fCountVertexInputBindingDescriptions;
+   if fCountVertexInputBindingDescriptions>0 then begin
+    fGraphicsPipelineCreateInfo.pVertexInputState^.pVertexBindingDescriptions:=@fVertexInputBindingDescriptions[0];
+   end;
+   fGraphicsPipelineCreateInfo.pVertexInputState^.vertexAttributeDescriptionCount:=fCountVertexInputAttributeDescriptions;
+   if fCountVertexInputAttributeDescriptions>0 then begin
+    fGraphicsPipelineCreateInfo.pVertexInputState^.pVertexAttributeDescriptions:=@fVertexInputAttributeDescriptions[0];
+   end;
+  end;
+
+  HandleResultCode(fDevice.fDeviceVulkan.CreateGraphicsPipelines(fDevice.fDeviceHandle,fPipelineCache,1,@fGraphicsPipelineCreateInfo,fDevice.fAllocationCallbacks,@fPipelineHandle));
+
+ end;
 end;
 
 end.
