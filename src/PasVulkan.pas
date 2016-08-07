@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-07-01-43-0000                       *
+ *                        Version 2016-08-07-12-55-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1848,11 +1848,37 @@ type EVulkanException=class(Exception);
                                       const pTexelBufferView:array of TVkBufferView;
                                       const pDoInstant:boolean=false);
        procedure Flush;
+      published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkDescriptorSet read fDescriptorSetHandle;
        property DescriptorPool:TVulkanDescriptorPool read fDescriptorPool;
        property DescriptorSetLayout:TVulkanDescriptorSetLayout read fDescriptorSetLayout;
      end;
+
+     TVulkanPipelineLayout=class(TVulkanObject)
+      private
+       fDevice:TVulkanDevice;
+       fPipelineLayoutHandle:TVkPipelineLayout;
+       fPipelineLayoutCreateInfo:TVkPipelineLayoutCreateInfo;
+       fDescriptorSetLayouts:TVkDescriptorSetLayoutArray;
+       fCountDescriptorSetLayouts:TVkInt32;
+       fPushConstantRanges:TVkPushConstantRangeArray;
+       fCountPushConstantRanges:TVkInt32;
+      public
+       constructor Create(const pDevice:TVulkanDevice);
+       destructor Destroy; override;
+       function AddDescriptorSetLayout(const pDescriptorSetLayout:TVkDescriptorSetLayout):TVkInt32; overload;
+       function AddDescriptorSetLayout(const pDescriptorSetLayout:TVulkanDescriptorSetLayout):TVkInt32; overload;
+       function AddDescriptorSetLayouts(const pDescriptorSetLayouts:array of TVkDescriptorSetLayout):TVkInt32; overload;
+       function AddDescriptorSetLayouts(const pDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVkInt32; overload;
+       function AddPushConstantRange(const pPushConstantRange:TVkPushConstantRange):TVkInt32; overload;
+       function AddPushConstantRange(const pStageFlags:TVkShaderStageFlags;const pOffset,pSize:TVkUInt32):TVkInt32; overload;
+       function AddPushConstantRanges(const pPushConstantRanges:array of TVkPushConstantRange):TVkInt32;
+       procedure Initialize;
+      published
+       property Device:TVulkanDevice read fDevice;
+       property Handle:TVkPipelineLayout read fPipelineLayoutHandle;
+    end;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
        (
@@ -2186,7 +2212,7 @@ begin
   pCommandBuffer.EndRecording;
   pCommandBuffer.Execute(pQueue,pFence,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT));
  end;
- 
+
 end;
 
 constructor EVulkanResultException.Create(const pResultCode:TVkResult);
@@ -8420,6 +8446,159 @@ begin
  end;
  fCopyDescriptorSetQueueSize:=0;
  fWriteDescriptorSetQueueSize:=0;
+end;
+
+constructor TVulkanPipelineLayout.Create(const pDevice:TVulkanDevice);
+begin
+
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fPipelineLayoutHandle:=VK_NULL_HANDLE;
+
+ FillChar(fPipelineLayoutCreateInfo,SizeOf(TVkPipelineLayoutCreateInfo),#0);
+ fPipelineLayoutCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+ fPipelineLayoutCreateInfo.pNext:=nil;
+ fPipelineLayoutCreateInfo.flags:=0;
+ fPipelineLayoutCreateInfo.setLayoutCount:=0;
+ fPipelineLayoutCreateInfo.pSetLayouts:=nil;
+ fPipelineLayoutCreateInfo.pushConstantRangeCount:=0;
+ fPipelineLayoutCreateInfo.pPushConstantRanges:=nil;
+
+ fDescriptorSetLayouts:=nil;
+ fCountDescriptorSetLayouts:=0;
+
+ fPushConstantRanges:=nil;
+ fCountPushConstantRanges:=0;
+
+end;
+
+destructor TVulkanPipelineLayout.Destroy;
+begin
+ if fPipelineLayoutHandle<>VK_NULL_HANDLE then begin
+  fDevice.fDeviceVulkan.DestroyPipelineLayout(fDevice.fDeviceHandle,fPipelineLayoutHandle,fDevice.fAllocationCallbacks);
+  fPipelineLayoutHandle:=VK_NULL_HANDLE;
+ end;
+ SetLength(fDescriptorSetLayouts,0);
+ SetLength(fPushConstantRanges,0);
+ inherited Destroy;
+end;
+
+function TVulkanPipelineLayout.AddDescriptorSetLayout(const pDescriptorSetLayout:TVkDescriptorSetLayout):TVkInt32;
+begin
+ result:=fCountDescriptorSetLayouts;
+ inc(fCountDescriptorSetLayouts);
+ if fCountDescriptorSetLayouts>length(fDescriptorSetLayouts) then begin
+  SetLength(fDescriptorSetLayouts,fCountDescriptorSetLayouts*2);
+ end;
+ fDescriptorSetLayouts[result]:=pDescriptorSetLayout;
+end;
+
+function TVulkanPipelineLayout.AddDescriptorSetLayout(const pDescriptorSetLayout:TVulkanDescriptorSetLayout):TVkInt32;
+begin
+ result:=fCountDescriptorSetLayouts;
+ inc(fCountDescriptorSetLayouts);
+ if fCountDescriptorSetLayouts>length(fDescriptorSetLayouts) then begin
+  SetLength(fDescriptorSetLayouts,fCountDescriptorSetLayouts*2);
+ end;
+ fDescriptorSetLayouts[result]:=pDescriptorSetLayout.fDescriptorSetLayoutHandle;
+end;
+
+function TVulkanPipelineLayout.AddDescriptorSetLayouts(const pDescriptorSetLayouts:array of TVkDescriptorSetLayout):TVkInt32;
+begin
+ if length(pDescriptorSetLayouts)>0 then begin
+  result:=fCountDescriptorSetLayouts;
+  inc(fCountDescriptorSetLayouts,length(pDescriptorSetLayouts));
+  if fCountDescriptorSetLayouts>length(fDescriptorSetLayouts) then begin
+   SetLength(fDescriptorSetLayouts,fCountDescriptorSetLayouts*2);
+  end;
+  Move(pDescriptorSetLayouts[0],fDescriptorSetLayouts[result],length(pDescriptorSetLayouts)*SizeOf(TVkDescriptorSetLayout));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TVulkanPipelineLayout.AddDescriptorSetLayouts(const pDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVkInt32;
+var Index:TVkInt32;
+begin
+ if length(pDescriptorSetLayouts)>0 then begin
+  result:=fCountDescriptorSetLayouts;
+  inc(fCountDescriptorSetLayouts,length(pDescriptorSetLayouts));
+  if fCountDescriptorSetLayouts>length(fDescriptorSetLayouts) then begin
+   SetLength(fDescriptorSetLayouts,fCountDescriptorSetLayouts*2);
+  end;
+  for Index:=0 to length(pDescriptorSetLayouts)-1 do begin
+   fDescriptorSetLayouts[result+Index]:=pDescriptorSetLayouts[Index].fDescriptorSetLayoutHandle;
+  end;
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TVulkanPipelineLayout.AddPushConstantRange(const pPushConstantRange:TVkPushConstantRange):TVkInt32;
+begin
+ result:=fCountPushConstantRanges;
+ inc(fCountPushConstantRanges);
+ if fCountPushConstantRanges>length(fPushConstantRanges) then begin
+  SetLength(fPushConstantRanges,fCountPushConstantRanges*2);
+ end;
+ fPushConstantRanges[result]:=pPushConstantRange;
+end;
+
+function TVulkanPipelineLayout.AddPushConstantRange(const pStageFlags:TVkShaderStageFlags;const pOffset,pSize:TVkUInt32):TVkInt32;
+var PushConstantRange:PVkPushConstantRange;
+begin
+ result:=fCountPushConstantRanges;
+ inc(fCountPushConstantRanges);
+ if fCountPushConstantRanges>length(fPushConstantRanges) then begin
+  SetLength(fPushConstantRanges,fCountPushConstantRanges*2);
+ end;
+ PushConstantRange:=@fPushConstantRanges[result];
+ PushConstantRange^.stageFlags:=pStageFlags;
+ PushConstantRange^.offset:=pOffset;
+ PushConstantRange^.size:=pSize;
+end;
+
+function TVulkanPipelineLayout.AddPushConstantRanges(const pPushConstantRanges:array of TVkPushConstantRange):TVkInt32;
+begin
+ if length(pPushConstantRanges)>0 then begin
+  result:=fCountPushConstantRanges;
+  inc(fCountPushConstantRanges,length(pPushConstantRanges));
+  if fCountPushConstantRanges>length(fPushConstantRanges) then begin
+   SetLength(fPushConstantRanges,fCountPushConstantRanges*2);
+  end;
+  Move(pPushConstantRanges[0],fPushConstantRanges[result],length(pPushConstantRanges)*SizeOf(TVkPushConstantRange));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TVulkanPipelineLayout.Initialize;
+begin
+
+ if fPipelineLayoutHandle=VK_NULL_HANDLE then begin
+
+  SetLength(fDescriptorSetLayouts,fCountDescriptorSetLayouts);
+  fPipelineLayoutCreateInfo.setLayoutCount:=fCountDescriptorSetLayouts;
+  if fCountDescriptorSetLayouts>0 then begin
+   fPipelineLayoutCreateInfo.pSetLayouts:=@fDescriptorSetLayouts[0];
+  end else begin
+   fPipelineLayoutCreateInfo.pSetLayouts:=nil;
+  end;
+
+  SetLength(fPushConstantRanges,fCountPushConstantRanges);
+  fPipelineLayoutCreateInfo.pushConstantRangeCount:=fCountPushConstantRanges;
+  if fCountPushConstantRanges>0 then begin
+   fPipelineLayoutCreateInfo.pPushConstantRanges:=@fPushConstantRanges[0];
+  end else begin
+   fPipelineLayoutCreateInfo.pPushConstantRanges:=nil;
+  end;
+
+  HandleResultCode(fDevice.fDeviceVulkan.CreatePipelineLayout(fDevice.fDeviceHandle,@fPipelineLayoutCreateInfo,fDevice.fAllocationCallbacks,@fPipelineLayoutHandle));
+
+ end;
+
 end;
 
 end.
