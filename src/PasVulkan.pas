@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-08-00-22-0000                       *
+ *                        Version 2016-08-08-00-38-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1978,6 +1978,7 @@ type EVulkanException=class(Exception);
        fCountViewPorts:TVkInt32;
        fScissors:TVkRect2DArray;
        fCountScissors:TVkInt32;
+       fSampleMasks:TVkSampleMaskArray;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pCache:TVulkanPipelineCache;
@@ -2013,6 +2014,12 @@ type EVulkanException=class(Exception);
                                        const pDepthBiasClamp:TVkFloat;
                                        const pDepthBiasSlopeFactor:TVkFloat;
                                        const pLineWidth:TVkFloat);
+       procedure SetMultisampleState(const pRasterizationSamples:TVkSampleCountFlagBits;
+                                     const pSampleShadingEnable:boolean;
+                                     const pMinSampleShading:TVkFloat;
+                                     const pSampleMask:array of TVkSampleMask;
+                                     const pAlphaToCoverageEnable:boolean;
+                                     const pAlphaToOneEnable:boolean);
        procedure Initialize;
       published
      end;
@@ -9153,6 +9160,8 @@ begin
  fScissors:=nil;
  fCountScissors:=0;
 
+ fSampleMasks:=nil;
+
 end;
 
 destructor TVulkanGraphicsPipeline.Destroy;
@@ -9198,6 +9207,7 @@ begin
  SetLength(fVertexInputAttributeDescriptions,0);
  SetLength(fViewPorts,0);
  SetLength(fScissors,0);
+ SetLength(fSampleMasks,0);
  inherited Destroy;
 end;
 
@@ -9397,7 +9407,6 @@ procedure TVulkanGraphicsPipeline.SetRasterizationState(const pDepthClampEnable:
                                                         const pDepthBiasClamp:TVkFloat;
                                                         const pDepthBiasSlopeFactor:TVkFloat;
                                                         const pLineWidth:TVkFloat);
-
 begin
  if not assigned(fGraphicsPipelineCreateInfo.pRasterizationState) then begin
   GetMem(fGraphicsPipelineCreateInfo.pRasterizationState,SizeOf(TVkPipelineRasterizationStateCreateInfo));
@@ -9428,6 +9437,43 @@ begin
  fGraphicsPipelineCreateInfo.pRasterizationState^.depthBiasClamp:=pDepthBiasClamp;
  fGraphicsPipelineCreateInfo.pRasterizationState^.depthBiasSlopeFactor:=pDepthBiasSlopeFactor;
  fGraphicsPipelineCreateInfo.pRasterizationState^.lineWidth:=pLineWidth;
+end;
+
+procedure TVulkanGraphicsPipeline.SetMultisampleState(const pRasterizationSamples:TVkSampleCountFlagBits;
+                                                      const pSampleShadingEnable:boolean;
+                                                      const pMinSampleShading:TVkFloat;
+                                                      const pSampleMask:array of TVkSampleMask;
+                                                      const pAlphaToCoverageEnable:boolean;
+                                                      const pAlphaToOneEnable:boolean);
+begin
+ if not assigned(fGraphicsPipelineCreateInfo.pMultisampleState) then begin
+  GetMem(fGraphicsPipelineCreateInfo.pMultisampleState,SizeOf(TVkPipelineMultisampleStateCreateInfo));
+ end;
+ FillChar(fGraphicsPipelineCreateInfo.pMultisampleState^,SizeOf(TVkPipelineMultisampleStateCreateInfo),#0);
+ fGraphicsPipelineCreateInfo.pMultisampleState^.sType:=VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+ fGraphicsPipelineCreateInfo.pMultisampleState^.pNext:=nil;
+ fGraphicsPipelineCreateInfo.pMultisampleState^.flags:=0;
+ fGraphicsPipelineCreateInfo.pMultisampleState^.rasterizationSamples:=pRasterizationSamples;
+ if pSampleShadingEnable then begin
+  fGraphicsPipelineCreateInfo.pMultisampleState^.sampleShadingEnable:=VK_TRUE;
+ end else begin
+  fGraphicsPipelineCreateInfo.pMultisampleState^.sampleShadingEnable:=VK_FALSE;
+ end;
+ fGraphicsPipelineCreateInfo.pMultisampleState^.minSampleShading:=pMinSampleShading;
+ SetLength(fSampleMasks,length(pSampleMask));
+ if length(pSampleMask)>0 then begin
+  Move(pSampleMask[0],fSampleMasks[0],length(pSampleMask)*SizeOf(TVkSampleMask));
+ end;
+ if pAlphaToCoverageEnable then begin
+  fGraphicsPipelineCreateInfo.pMultisampleState^.alphaToCoverageEnable:=VK_TRUE;
+ end else begin
+  fGraphicsPipelineCreateInfo.pMultisampleState^.alphaToCoverageEnable:=VK_FALSE;
+ end;
+ if pAlphaToOneEnable then begin
+  fGraphicsPipelineCreateInfo.pMultisampleState^.alphaToOneEnable:=VK_TRUE;
+ end else begin
+  fGraphicsPipelineCreateInfo.pMultisampleState^.alphaToOneEnable:=VK_FALSE;
+ end;
 end;
 
 procedure TVulkanGraphicsPipeline.Initialize;
