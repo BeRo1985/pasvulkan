@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-07-16-47-0000                       *
+ *                        Version 2016-08-07-20-14-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1667,9 +1667,20 @@ type EVulkanException=class(Exception);
        property Height:TVkInt32 read fHeight;
      end;
 
+     TVulkanRenderTarget=class(TVulkanObject)
+      private
+      protected
+       function GetRenderPass:TVulkanRenderPass; virtual; abstract;
+       function GetFrameBuffer:TVulkanFrameBuffer; virtual; abstract;
+      public
+      published
+       property RenderPass:TVulkanRenderPass read GetRenderPass;
+       property FrameBuffer:TVulkanFrameBuffer read GetFrameBuffer;
+     end;
+
      TVulkanSwapChainSimpleDirectRenderTargetFrameBuffers=array of TVulkanFrameBuffer;
 
-     TVulkanSwapChainSimpleDirectRenderTarget=class(TVulkanObject)
+     TVulkanSwapChainSimpleDirectRenderTarget=class(TVulkanRenderTarget)
       private
        fDevice:TVulkanDevice;
        fSwapChain:TVulkanSwapChain;
@@ -1678,7 +1689,9 @@ type EVulkanException=class(Exception);
        fFrameBufferColorAttachments:TVulkanFrameBufferAttachments;
        fFrameBuffers:TVulkanSwapChainSimpleDirectRenderTargetFrameBuffers;
        fRenderPass:TVulkanRenderPass;
-       function GetCurrentFrameBuffer:TVulkanFrameBuffer;
+      protected
+       function GetRenderPass:TVulkanRenderPass; override;
+       function GetFrameBuffer:TVulkanFrameBuffer; override;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pSwapChain:TVulkanSwapChain;
@@ -1691,8 +1704,6 @@ type EVulkanException=class(Exception);
        property Device:TVulkanDevice read fDevice;
        property SwapChain:TVulkanSwapChain read fSwapChain;
        property DepthImageFormat:TVkFormat read fDepthImageFormat;
-       property CurrentFrameBuffer:TVulkanFrameBuffer read GetCurrentFrameBuffer;
-       property RenderPass:TVulkanRenderPass read fRenderPass;
      end;
 
      TVulkanShaderModule=class(TVulkanObject)
@@ -7879,7 +7890,12 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanSwapChainSimpleDirectRenderTarget.GetCurrentFrameBuffer:TVulkanFrameBuffer;
+function TVulkanSwapChainSimpleDirectRenderTarget.GetRenderPass:TVulkanRenderPass;
+begin
+ result:=fRenderPass;
+end;
+
+function TVulkanSwapChainSimpleDirectRenderTarget.GetFrameBuffer:TVulkanFrameBuffer;
 begin
  result:=fFrameBuffers[fSwapChain.CurrentImageIndex];
 end;

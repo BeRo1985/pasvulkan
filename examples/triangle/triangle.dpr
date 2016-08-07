@@ -130,7 +130,7 @@ begin
    VulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=(cos(Now*86400.0*pi*0.731)*0.5)+0.5;
 
    VulkanSwapChainSimpleDirectRenderTarget.RenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                                                      VulkanSwapChainSimpleDirectRenderTarget.CurrentFrameBuffer,
+                                                                      VulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
                                                                       VK_SUBPASS_CONTENTS_INLINE,
                                                                       0,0,VulkanSwapChain.Width,VulkanSwapChain.Height);
 
@@ -342,20 +342,6 @@ begin
    VulkanDevice:=TVulkanDevice.Create(VulkanInstance,nil,VulkanSurface);
    VulkanDevice.AddQueues;
    VulkanDevice.EnabledExtensionNames.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-(* VulkanDevice.EnabledExtensionNames.Add(VK_KHR_SURFACE_EXTENSION_NAME);
-{$if defined(Android)}
-   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
-{$elseif defined(Mir)}
-   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_MIR_SURFACE_EXTENSION_NAME);
-{$elseif defined(Wayland)}
-   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
-{$elseif defined(Windows)}
-   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-{$elseif defined(X11)}
-   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_X11_SURFACE_EXTENSION_NAME);
-{$elseif defined(XCB)}
-   VulkanDevice.EnabledExtensionNames.Add(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
-{$ifend}*)
    VulkanDevice.Initialize;
 
    VulkanPrimaryCommandBufferFence:=TVulkanFence.Create(VulkanDevice);
