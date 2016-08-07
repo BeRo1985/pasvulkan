@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-07-20-14-0000                       *
+ *                        Version 2016-08-07-22-01-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -352,6 +352,7 @@ type EVulkanException=class(Exception);
      TVkCopyDescriptorSetArray=array of TVkCopyDescriptorSet;
      TVkWriteDescriptorSetArray=array of TVkWriteDescriptorSet;
      TVkSpecializationMapEntryArray=array of TVkSpecializationMapEntry;
+     TVkPipelineCacheArray=array of TVkPipelineCache;
 
      TVulkanBaseList=class(TVulkanObject)
       private
@@ -1890,7 +1891,7 @@ type EVulkanException=class(Exception);
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkPipelineLayout read fPipelineLayoutHandle;
-    end;
+     end;
 
      TVulkanPipelineShaderStage=class(TVulkanObject)
       private
@@ -1916,7 +1917,52 @@ type EVulkanException=class(Exception);
        procedure Initialize;
        property PipelineShaderStageCreateInfo:PVkPipelineShaderStageCreateInfo read fPointerToPipelineShaderStageCreateInfo;
       published
-    end;
+     end;
+
+     TVulkanPipelineCache=class(TVulkanObject)
+      private
+       fDevice:TVulkanDevice;
+       fPipelineCacheHandle:TVkPipelineCache;
+       fPipelineCacheCreateInfo:TVkPipelineCacheCreateInfo;
+      public
+       constructor Create(const pDevice:TVulkanDevice;const pInitialData:pointer=nil;const pInitialDataSize:TVkSize=0);
+       constructor CreateFromMemory(const pDevice:TVulkanDevice;const pInitialData:pointer;const pInitialDataSize:TVkSize);
+       constructor CreateFromStream(const pDevice:TVulkanDevice;const pStream:TStream);
+       constructor CreateFromFile(const pDevice:TVulkanDevice;const pFileName:string);
+       destructor Destroy; override;
+       procedure SaveToStream(const pStream:TStream);
+       procedure SaveToFile(const pFileName:string);
+       procedure Merge(const pSourcePipelineCache:TVulkanPipelineCache); overload;
+       procedure Merge(const pSourcePipelineCaches:array of TVulkanPipelineCache); overload;
+      published
+       property Device:TVulkanDevice read fDevice;
+       property Handle:TVkPipelineCache read fPipelineCacheHandle;
+     end;
+
+     TVulkanPipeline=class(TVulkanObject)
+      private
+       fDevice:TVulkanDevice;
+       fPipelineHandle:TVkPipeline;
+      public
+       constructor Create(const pDevice:TVulkanDevice);
+       destructor Destroy; override;
+      published
+       property Device:TVulkanDevice read fDevice;
+       property Handle:TVkPipeline read fPipelineHandle;
+     end;
+
+     TVulkanComputePipeline=class(TVulkanPipeline)
+      private
+       fComputePipelineCreateInfo:TVkComputePipelineCreateInfo;
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pCache:TVulkanPipelineCache;
+                          const pFlags:TVkPipelineCreateFlags;
+                          const pStage:TVulkanPipelineShaderStage;
+                          const pLayout:TVulkanPipelineLayout;
+                          const pBasePipelineHandle:TVulkanPipeline=nil;
+                          const pBasePipelineIndex:TVkInt32=0); reintroduce;
+     end;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
        (
@@ -8796,6 +8842,182 @@ begin
   fSpecializationInfo^.mapEntryCount:=fCountSpecializationMapEntries;
   fSpecializationInfo^.pMapEntries:=@fSpecializationMapEntries[0];
  end;
+end;
+
+constructor TVulkanPipelineCache.Create(const pDevice:TVulkanDevice;const pInitialData:pointer=nil;const pInitialDataSize:TVkSize=0);
+begin
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fPipelineCacheHandle:=VK_NULL_HANDLE;
+
+ FillChar(fPipelineCacheCreateInfo,SizeOf(TVkPipelineCacheCreateInfo),#0);
+ fPipelineCacheCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+ fPipelineCacheCreateInfo.pNext:=nil;
+ fPipelineCacheCreateInfo.flags:=0;
+ fPipelineCacheCreateInfo.pInitialData:=pInitialData;
+ fPipelineCacheCreateInfo.initialDataSize:=pInitialDataSize;
+
+ HandleResultCode(fDevice.fDeviceVulkan.CreatePipelineCache(fDevice.fDeviceHandle,@fPipelineCacheCreateInfo,fDevice.fAllocationCallbacks,@fPipelineCacheHandle));
+
+end;
+
+constructor TVulkanPipelineCache.CreateFromMemory(const pDevice:TVulkanDevice;const pInitialData:pointer;const pInitialDataSize:TVkSize);
+begin
+ Create(pDevice,pInitialData,pInitialDataSize);
+end;
+
+constructor TVulkanPipelineCache.CreateFromStream(const pDevice:TVulkanDevice;const pStream:TStream);
+var Data:pointer;
+    DataSize:TVkSize;
+begin
+ fPipelineCacheHandle:=VK_NULL_HANDLE;
+ if assigned(pStream) and (pStream.Size>0) then begin
+  DataSize:=pStream.Size;
+  GetMem(Data,DataSize);
+  try
+   if pStream.Seek(0,soBeginning)<>0 then begin
+    raise EInOutError.Create('Stream seek error');
+   end;
+   if pStream.Read(Data^,pStream.Size)<>pStream.Size then begin
+    raise EInOutError.Create('Stream read error');
+   end;
+   Create(pDevice,Data,DataSize);
+  finally
+   FreeMem(Data);
+  end;
+ end;
+end;
+
+constructor TVulkanPipelineCache.CreateFromFile(const pDevice:TVulkanDevice;const pFileName:string);
+var FileStream:TFileStream;
+begin
+ fPipelineCacheHandle:=VK_NULL_HANDLE;
+ FileStream:=TFileStream.Create(pFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  Create(pDevice,FileStream);
+ finally
+  FileStream.Free;
+ end;
+end;
+
+destructor TVulkanPipelineCache.Destroy;
+begin
+ if fPipelineCacheHandle<>VK_NULL_HANDLE then begin
+  fDevice.fDeviceVulkan.DestroyPipelineCache(fDevice.fDeviceHandle,fPipelineCacheHandle,fDevice.fAllocationCallbacks);
+  fPipelineCacheHandle:=VK_NULL_HANDLE;
+ end;
+ inherited Destroy;
+end;
+
+procedure TVulkanPipelineCache.SaveToStream(const pStream:TStream);
+var Data:pointer;
+    DataSize:TVKSize;
+begin
+ HandleResultCode(fDevice.fDeviceVulkan.GetPipelineCacheData(fDevice.fDeviceHandle,fPipelineCacheHandle,@DataSize,nil));
+ if DataSize>0 then begin
+  GetMem(Data,DataSize);
+  try
+   HandleResultCode(fDevice.fDeviceVulkan.GetPipelineCacheData(fDevice.fDeviceHandle,fPipelineCacheHandle,@DataSize,Data));
+   if pStream.Write(Data^,DataSize)<>TVkPtrInt(DataSize) then begin
+    raise EInOutError.Create('Stream write error');
+   end;
+  finally
+   FreeMem(Data);
+  end;
+ end;
+end;
+
+procedure TVulkanPipelineCache.SaveToFile(const pFileName:string);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(pFileName,fmCreate);
+ try
+  SaveToStream(FileStream);
+ finally
+  FileStream.Free;
+ end;
+end;
+
+procedure TVulkanPipelineCache.Merge(const pSourcePipelineCache:TVulkanPipelineCache);
+begin
+ HandleResultCode(fDevice.fDeviceVulkan.MergePipelineCaches(fDevice.fDeviceHandle,fPipelineCacheHandle,1,@pSourcePipelineCache.fPipelineCacheHandle));
+end;
+
+procedure TVulkanPipelineCache.Merge(const pSourcePipelineCaches:array of TVulkanPipelineCache);
+var Index:TVkInt32;
+    SourcePipelineCaches:TVkPipelineCacheArray;
+begin
+ if length(pSourcePipelineCaches)>0 then begin
+  SourcePipelineCaches:=nil;
+  try
+   SetLength(SourcePipelineCaches,length(pSourcePipelineCaches));
+   for Index:=0 to length(pSourcePipelineCaches)-1 do begin
+    SourcePipelineCaches[Index]:=pSourcePipelineCaches[Index].fPipelineCacheHandle;
+   end;
+   HandleResultCode(fDevice.fDeviceVulkan.MergePipelineCaches(fDevice.fDeviceHandle,fPipelineCacheHandle,length(SourcePipelineCaches),@SourcePipelineCaches[0]));
+  finally
+   SetLength(SourcePipelineCaches,0);
+  end;
+ end;
+end;
+
+constructor TVulkanPipeline.Create(const pDevice:TVulkanDevice);
+begin
+ inherited Create;
+ fDevice:=pDevice;
+ fPipelineHandle:=VK_NULL_HANDLE;
+end;
+
+destructor TVulkanPipeline.Destroy;
+begin
+ if fPipelineHandle<>VK_NULL_HANDLE then begin
+  fDevice.fDeviceVulkan.DestroyPipeline(fDevice.fDeviceHandle,fPipelineHandle,fDevice.fAllocationCallbacks);
+  fPipelineHandle:=VK_NULL_HANDLE;
+ end;
+ inherited Destroy;
+end;
+
+constructor TVulkanComputePipeline.Create(const pDevice:TVulkanDevice;
+                                          const pCache:TVulkanPipelineCache;
+                                          const pFlags:TVkPipelineCreateFlags;
+                                          const pStage:TVulkanPipelineShaderStage;
+                                          const pLayout:TVulkanPipelineLayout;
+                                          const pBasePipelineHandle:TVulkanPipeline=nil;
+                                          const pBasePipelineIndex:TVkInt32=0);
+var PipelineCache:TVkPipelineCache;
+begin
+ inherited Create(pDevice);
+
+ FillChar(fComputePipelineCreateInfo,SizeOf(TVkComputePipelineCreateInfo),#0);
+ fComputePipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+ fComputePipelineCreateInfo.pNext:=nil;
+ fComputePipelineCreateInfo.flags:=pFlags;
+ if assigned(pStage) then begin
+  pStage.Initialize;
+  fComputePipelineCreateInfo.stage:=pStage.fPipelineShaderStageCreateInfo;
+ end;
+ if assigned(pLayout) then begin
+  fComputePipelineCreateInfo.layout:=pLayout.fPipelineLayoutHandle;
+ end else begin
+  fComputePipelineCreateInfo.layout:=VK_NULL_HANDLE;
+ end;
+ if assigned(pBasePipelineHandle) then begin
+  fComputePipelineCreateInfo.basePipelineHandle:=pBasePipelineHandle.fPipelineHandle;
+ end else begin
+  fComputePipelineCreateInfo.basePipelineHandle:=VK_NULL_HANDLE;
+ end;
+ fComputePipelineCreateInfo.basePipelineIndex:=pBasePipelineIndex;
+
+ if assigned(pCache) then begin
+  PipelineCache:=pCache.fPipelineCacheHandle;
+ end else begin
+  PipelineCache:=VK_NULL_HANDLE;
+ end;
+
+ HandleResultCode(fDevice.fDeviceVulkan.CreateComputePipelines(fDevice.fDeviceHandle,PipelineCache,1,@fComputePipelineCreateInfo,fDevice.fAllocationCallbacks,@fPipelineHandle));
+
 end;
 
 end.
