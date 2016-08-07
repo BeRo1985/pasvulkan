@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-07-12-55-0000                       *
+ *                        Version 2016-08-07-16-47-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -351,6 +351,7 @@ type EVulkanException=class(Exception);
      TVkResultArray=array of TVkResult;
      TVkCopyDescriptorSetArray=array of TVkCopyDescriptorSet;
      TVkWriteDescriptorSetArray=array of TVkWriteDescriptorSet;
+     TVkSpecializationMapEntryArray=array of TVkSpecializationMapEntry;
 
      TVulkanBaseList=class(TVulkanObject)
       private
@@ -1878,6 +1879,32 @@ type EVulkanException=class(Exception);
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkPipelineLayout read fPipelineLayoutHandle;
+    end;
+
+     TVulkanPipelineShaderStage=class(TVulkanObject)
+      private
+       fPipelineShaderStageCreateInfo:TVkPipelineShaderStageCreateInfo;
+       fPointerToPipelineShaderStageCreateInfo:PVkPipelineShaderStageCreateInfo;
+       fName:TVkCharString;
+       fSpecializationInfo:PVkSpecializationInfo;
+       fDoCopyAndDoFree:boolean;
+       fSpecializationMapEntries:TVkSpecializationMapEntryArray;
+       fCountSpecializationMapEntries:TVkInt32;
+       procedure AllocateSpecializationInfo;
+      public
+       constructor Create(const pStage:TVkShaderStageFlagBits;
+                          const pModule:TVulkanShaderModule;
+                          const pName:TVkCharString);
+       destructor Destroy; override;
+       procedure AddSpecializationDataFromMemory(const pData:TVkPointer;const pDataSize:TVkSize;const pDoCopyAndDoFree:boolean=true);
+       procedure AddSpecializationDataFromStream(const pStream:TStream);
+       procedure AddSpecializationDataFromFile(const pFileName:string);
+       function AddSpecializationMapEntry(const pSpecializationMapEntry:TVkSpecializationMapEntry):TVkInt32; overload;
+       function AddSpecializationMapEntry(const pConstantID,pOffset:TVkUInt32;const pSize:TVkSize):TVkInt32; overload;
+       function AddSpecializationMapEntries(const pSpecializationMapEntries:array of TVkSpecializationMapEntry):TVkInt32;
+       procedure Initialize;
+       property PipelineShaderStageCreateInfo:PVkPipelineShaderStageCreateInfo read fPointerToPipelineShaderStageCreateInfo;
+      published
     end;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
@@ -7924,7 +7951,7 @@ end;
 constructor TVulkanShaderModule.Create(const pDevice:TVulkanDevice;const pFileName:string);
 var FileStream:TFileStream;
 begin
- FileStream:=TFileStream.Create(pFileName,fmOpenRead);
+ FileStream:=TFileStream.Create(pFileName,fmOpenRead or fmShareDenyWrite);
  try
   Create(pDevice,FileStream);
  finally
@@ -8599,6 +8626,160 @@ begin
 
  end;
 
+end;
+
+constructor TVulkanPipelineShaderStage.Create(const pStage:TVkShaderStageFlagBits;
+                                              const pModule:TVulkanShaderModule;
+                                              const pName:TVkCharString);
+begin
+
+ inherited Create;
+
+ fName:=pName;
+
+ FillChar(fPipelineShaderStageCreateInfo,SizeOf(TVkPipelineShaderStageCreateInfo),#0);
+ fPipelineShaderStageCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+ fPipelineShaderStageCreateInfo.pNext:=nil;
+ fPipelineShaderStageCreateInfo.flags:=0;
+ fPipelineShaderStageCreateInfo.stage:=pStage;
+ fPipelineShaderStageCreateInfo.module:=pModule.fShaderModuleHandle;
+ fPipelineShaderStageCreateInfo.pName:=PVkChar(fName);
+ fPipelineShaderStageCreateInfo.pSpecializationInfo:=nil;
+
+ fPointerToPipelineShaderStageCreateInfo:=@fPipelineShaderStageCreateInfo;
+
+ fSpecializationInfo:=nil;
+
+ fDoCopyAndDoFree:=false;
+
+ fSpecializationMapEntries:=nil;
+ fCountSpecializationMapEntries:=0;
+
+end;
+
+destructor TVulkanPipelineShaderStage.Destroy;
+begin
+ fName:='';
+ if assigned(fSpecializationInfo) then begin
+  if assigned(fSpecializationInfo.pData) and fDoCopyAndDoFree then begin
+   FreeMem(fSpecializationInfo.pData);
+   fSpecializationInfo.pData:=nil;
+   fSpecializationInfo.dataSize:=0;
+  end;
+  FreeMem(fSpecializationInfo);
+  fSpecializationInfo:=nil;
+ end;
+ SetLength(fSpecializationMapEntries,0);
+ inherited Destroy;
+end;
+
+procedure TVulkanPipelineShaderStage.AllocateSpecializationInfo;
+begin
+ if not assigned(fSpecializationInfo) then begin
+  GetMem(fSpecializationInfo,SizeOf(TVkSpecializationInfo));
+  FillChar(fSpecializationInfo^,SizeOf(TVkSpecializationInfo),#0);
+  fPipelineShaderStageCreateInfo.pSpecializationInfo:=fSpecializationInfo;
+ end;
+end;
+
+procedure TVulkanPipelineShaderStage.AddSpecializationDataFromMemory(const pData:TVkPointer;const pDataSize:TVkSize;const pDoCopyAndDoFree:boolean=true);
+begin
+ if assigned(fSpecializationInfo) and assigned(fSpecializationInfo.pData) and fDoCopyAndDoFree then begin
+  FreeMem(fSpecializationInfo.pData);
+  fSpecializationInfo.pData:=nil;
+  fSpecializationInfo.dataSize:=0;
+ end;
+ if assigned(pData) and (pDataSize>0) then begin
+  AllocateSpecializationInfo;
+  fDoCopyAndDoFree:=pDoCopyAndDoFree;
+  if fDoCopyAndDoFree then begin
+   GetMem(fSpecializationInfo.pData,pDataSize);
+   Move(pData^,fSpecializationInfo.pData^,pDataSize);
+  end else begin
+   fSpecializationInfo.pData:=pData;
+  end;
+  fSpecializationInfo.dataSize:=pDataSize;
+ end;
+end;
+
+procedure TVulkanPipelineShaderStage.AddSpecializationDataFromStream(const pStream:TStream);
+begin
+ if assigned(fSpecializationInfo) and assigned(fSpecializationInfo.pData) and fDoCopyAndDoFree then begin
+  FreeMem(fSpecializationInfo.pData);
+  fSpecializationInfo.pData:=nil;
+  fSpecializationInfo.dataSize:=0;
+ end;
+ if assigned(pStream) and (pStream.Size>0) then begin
+  AllocateSpecializationInfo;
+  fDoCopyAndDoFree:=true;
+  GetMem(fSpecializationInfo.pData,pStream.Size);
+  if pStream.Seek(0,soBeginning)<>0 then begin
+   raise EInOutError.Create('Stream seek error');
+  end;
+  if pStream.Read(fSpecializationInfo.pData^,pStream.Size)<>pStream.Size then begin
+   raise EInOutError.Create('Stream read error');
+  end;
+  fSpecializationInfo.dataSize:=pStream.Size;
+ end;
+end;
+
+procedure TVulkanPipelineShaderStage.AddSpecializationDataFromFile(const pFileName:string);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(pFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  AddSpecializationDataFromStream(FileStream);
+ finally
+  FileStream.Free;
+ end;
+end;
+
+function TVulkanPipelineShaderStage.AddSpecializationMapEntry(const pSpecializationMapEntry:TVkSpecializationMapEntry):TVkInt32;
+begin
+ result:=fCountSpecializationMapEntries;
+ inc(fCountSpecializationMapEntries);
+ if length(fSpecializationMapEntries)<fCountSpecializationMapEntries then begin
+  SetLength(fSpecializationMapEntries,fCountSpecializationMapEntries*2);
+ end;
+ fSpecializationMapEntries[result]:=pSpecializationMapEntry;
+end;
+
+function TVulkanPipelineShaderStage.AddSpecializationMapEntry(const pConstantID,pOffset:TVkUInt32;const pSize:TVkSize):TVkInt32;
+var SpecializationMapEntry:PVkSpecializationMapEntry;
+begin
+ result:=fCountSpecializationMapEntries;
+ inc(fCountSpecializationMapEntries);
+ if length(fSpecializationMapEntries)<fCountSpecializationMapEntries then begin
+  SetLength(fSpecializationMapEntries,fCountSpecializationMapEntries*2);
+ end;
+ SpecializationMapEntry:=@fSpecializationMapEntries[result];
+ SpecializationMapEntry^.constantID:=pConstantID;
+ SpecializationMapEntry^.offset:=pOffset;
+ SpecializationMapEntry^.size:=pSize;
+end;
+
+function TVulkanPipelineShaderStage.AddSpecializationMapEntries(const pSpecializationMapEntries:array of TVkSpecializationMapEntry):TVkInt32;
+begin
+ if length(pSpecializationMapEntries)>0 then begin
+  result:=fCountSpecializationMapEntries;
+  inc(fCountSpecializationMapEntries,length(pSpecializationMapEntries));
+  if length(fSpecializationMapEntries)<fCountSpecializationMapEntries then begin
+   SetLength(fSpecializationMapEntries,fCountSpecializationMapEntries*2);
+  end;
+  Move(pSpecializationMapEntries[0],fSpecializationMapEntries[result],length(pSpecializationMapEntries)*SizeOf(TVkSpecializationMapEntry));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TVulkanPipelineShaderStage.Initialize;
+begin
+ if fCountSpecializationMapEntries>0 then begin
+  AllocateSpecializationInfo;
+  SetLength(fSpecializationMapEntries,fCountSpecializationMapEntries);
+  fSpecializationInfo^.mapEntryCount:=fCountSpecializationMapEntries;
+  fSpecializationInfo^.pMapEntries:=@fSpecializationMapEntries[0];
+ end;
 end;
 
 end.
