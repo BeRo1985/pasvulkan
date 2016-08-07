@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-08-01-43-0000                       *
+ *                        Version 2016-08-08-01-50-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1981,6 +1981,8 @@ type EVulkanException=class(Exception);
        fSampleMasks:TVkSampleMaskArray;
        fColorBlendAttachmentStates:TVkPipelineColorBlendAttachmentStateArray;
        fCountColorBlendAttachmentStates:TVkInt32;
+       fDynamicStates:TVkDynamicStateArray;
+       fCountDynamicStates:TVkInt32;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pCache:TVulkanPipelineCache;
@@ -2044,6 +2046,8 @@ type EVulkanException=class(Exception);
                                              const pAlphaBlendOp:TVkBlendOp;
                                              const pColorWriteMask:TVkColorComponentFlags):TVkInt32; overload;
        function AddColorBlendAttachmentStates(const pColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+       function AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
+       function AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
        procedure Initialize;
       published
      end;
@@ -9189,6 +9193,9 @@ begin
  fColorBlendAttachmentStates:=nil;
  fCountColorBlendAttachmentStates:=0;
 
+ fDynamicStates:=nil;
+ fCountDynamicStates:=0;
+
 end;
 
 destructor TVulkanGraphicsPipeline.Destroy;
@@ -9236,6 +9243,7 @@ begin
  SetLength(fScissors,0);
  SetLength(fSampleMasks,0);
  SetLength(fColorBlendAttachmentStates,0);
+ SetLength(fDynamicStates,0);
  inherited Destroy;
 end;
 
@@ -9629,6 +9637,30 @@ begin
  end;
 end;
 
+function TVulkanGraphicsPipeline.AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
+begin
+ result:=fCountDynamicStates;
+ inc(fCountDynamicStates);
+ if length(fDynamicStates)<fCountDynamicStates then begin
+  SetLength(fDynamicStates,fCountDynamicStates*2);
+ end;
+ fDynamicStates[result]:=pDynamicState;
+end;
+
+function TVulkanGraphicsPipeline.AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
+begin
+ if length(pDynamicStates)>0 then begin
+  result:=fCountDynamicStates;
+  inc(fCountDynamicStates,length(pDynamicStates));
+  if length(fDynamicStates)<fCountDynamicStates then begin
+   SetLength(fDynamicStates,fCountDynamicStates*2);
+  end;
+  Move(pDynamicStates[0],fDynamicStates[result],length(pDynamicStates)*SizeOf(TVkDynamicState));
+ end else begin
+  result:=-1;
+ end;
+end;
+
 procedure TVulkanGraphicsPipeline.Initialize;
 begin
  if fPipelineHandle=VK_NULL_HANDLE then begin
@@ -9684,6 +9716,19 @@ begin
    end;
    fGraphicsPipelineCreateInfo.pColorBlendState^.attachmentCount:=fCountColorBlendAttachmentStates;
    fGraphicsPipelineCreateInfo.pColorBlendState^.pAttachments:=@fColorBlendAttachmentStates[0];
+  end;
+
+  SetLength(fDynamicStates,fCountDynamicStates);
+  if fCountDynamicStates>0 then begin
+   if not assigned(fGraphicsPipelineCreateInfo.pDynamicState) then begin
+    GetMem(fGraphicsPipelineCreateInfo.pDynamicState,SizeOf(TVkPipelineDynamicStateCreateInfo));
+    FillChar(fGraphicsPipelineCreateInfo.pDynamicState^,SizeOf(TVkPipelineDynamicStateCreateInfo),#0);
+    fGraphicsPipelineCreateInfo.pDynamicState^.sType:=VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    fGraphicsPipelineCreateInfo.pDynamicState^.pNext:=nil;
+    fGraphicsPipelineCreateInfo.pDynamicState^.flags:=0;
+   end;
+   fGraphicsPipelineCreateInfo.pDynamicState^.dynamicStateCount:=fCountDynamicStates;
+   fGraphicsPipelineCreateInfo.pDynamicState^.pDynamicStates:=@fDynamicStates[0];
   end;
 
   HandleResultCode(fDevice.fDeviceVulkan.CreateGraphicsPipelines(fDevice.fDeviceHandle,fPipelineCache,1,@fGraphicsPipelineCreateInfo,fDevice.fAllocationCallbacks,@fPipelineHandle));
