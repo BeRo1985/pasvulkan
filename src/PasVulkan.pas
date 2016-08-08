@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-08-01-50-0000                       *
+ *                        Version 2016-08-08-02-46-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -9195,6 +9195,10 @@ begin
 
  fDynamicStates:=nil;
  fCountDynamicStates:=0;
+
+ GetMem(fGraphicsPipelineCreateInfo.pVertexInputState,SizeOf(TVkPipelineVertexInputStateCreateInfo));
+ FillChar(fGraphicsPipelineCreateInfo.pVertexInputState^,SizeOf(TVkPipelineVertexInputStateCreateInfo),#0);
+ fGraphicsPipelineCreateInfo.pVertexInputState^.sType:=VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
 end;
 

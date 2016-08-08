@@ -52,6 +52,15 @@ var WndClass:TWndClass;
     TriangleVertexShaderModule:TVulkanShaderModule=nil;
     TriangleFragmentShaderModule:TVulkanShaderModule=nil;
 
+    VulkanPipelineShaderStageTriangleVertex:TVulkanPipelineShaderStage=nil;
+    VulkanPipelineShaderStageTriangleFragment:TVulkanPipelineShaderStage=nil;
+
+    VulkanPipelineCache:TVulkanPipelineCache=nil;
+
+    VulkanPipelineLayout:TVulkanPipelineLayout=nil;
+
+    VulkanGraphicsPipeline:TVulkanGraphicsPipeline=nil;
+
 var DebugLast:TVulkanCharString='';
 
 procedure DebugLn(const s:TVulkanCharString);
@@ -73,6 +82,47 @@ begin
 end;
 
 var VulkanDebug:TVulkanDebug=nil;
+
+procedure RecreateVulkanGraphicsPipeline;
+begin
+ FreeAndNil(VulkanGraphicsPipeline);
+ VulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(VulkanDevice,
+                                                        VulkanPipelineCache,
+                                                        0,
+                                                        [VulkanPipelineShaderStageTriangleVertex,VulkanPipelineShaderStageTriangleFragment],
+                                                        VulkanPipelineLayout,
+                                                        VulkanSwapChainSimpleDirectRenderTarget.RenderPass,
+                                                        0,
+                                                        nil,
+                                                        0);
+ VulkanGraphicsPipeline.SetInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,false);
+ VulkanGraphicsPipeline.AddViewPort(0.0,0.0,SurfaceWidth,SurfaceHeight,0.0,1.0);
+ VulkanGraphicsPipeline.AddScissor(0,0,SurfaceWidth,SurfaceHeight);
+ VulkanGraphicsPipeline.SetRasterizationState(false,
+                                              false,
+                                              VK_POLYGON_MODE_FILL,
+                                              TVkCullModeFlags(VK_CULL_MODE_BACK_BIT),
+                                              VK_FRONT_FACE_CLOCKWISE,
+                                              false,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              1.0);
+ VulkanGraphicsPipeline.SetMultisampleState(VK_SAMPLE_COUNT_1_BIT,false,0.0,[],false,false);
+ VulkanGraphicsPipeline.SetColorBlendState(false,VK_LOGIC_OP_COPY,[0.0,0.0,0.0,0.0]);
+ VulkanGraphicsPipeline.AddColorBlendAttachmentState(false,
+                                                     VK_BLEND_FACTOR_ONE,
+                                                     VK_BLEND_FACTOR_ONE,
+                                                     VK_BLEND_OP_ADD,
+                                                     VK_BLEND_FACTOR_ONE,
+                                                     VK_BLEND_FACTOR_ONE,
+                                                     VK_BLEND_OP_ADD,
+                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+ VulkanGraphicsPipeline.Initialize;
+end;
 
 procedure VulkanDraw;
 var Tries:TVkInt32;
@@ -112,9 +162,11 @@ begin
    DoNeedToRecreateVulkanSwapChain:=false;
    OldVulkanSwapChain:=VulkanSwapChain;
    try
+    FreeAndNil(VulkanGraphicsPipeline);
     FreeAndNil(VulkanSwapChainSimpleDirectRenderTarget);
     VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,OldVulkanSwapChain,SurfaceWidth,SurfaceHeight,2,1);
     VulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanDevice,VulkanSwapChain,VulkanInitializationCommandBuffer,VulkanPrimaryCommandBufferFence);
+    RecreateVulkanGraphicsPipeline;
    finally
     OldVulkanSwapChain.Free;
    end;
@@ -133,7 +185,8 @@ begin
                                                                       VulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
                                                                       VK_SUBPASS_CONTENTS_INLINE,
                                                                       0,0,VulkanSwapChain.Width,VulkanSwapChain.Height);
-
+   VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,VulkanGraphicsPipeline.Handle);
+   VulkanCommandBuffer.CmdDraw(3,1,0,0);
    VulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
 
    VulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(VulkanSwapChain.CurrentImage);
@@ -368,6 +421,17 @@ begin
 
    TriangleFragmentShaderModule:=TVulkanShaderModule.Create(VulkanDevice,'triangle_frag.spv');
 
+   VulkanPipelineShaderStageTriangleVertex:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,TriangleVertexShaderModule,'main');
+
+   VulkanPipelineShaderStageTriangleFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,TriangleFragmentShaderModule,'main');
+
+   VulkanPipelineCache:=TVulkanPipelineCache.Create(VulkanDevice);
+
+   VulkanPipelineLayout:=TVulkanPipelineLayout.Create(VulkanDevice);
+   VulkanPipelineLayout.Initialize;
+
+   RecreateVulkanGraphicsPipeline;
+
    ShowWindow(hWindow,SW_SHOWNORMAL);
 
    Running:=true;
@@ -394,6 +458,16 @@ begin
   end;
 
  finally
+
+  VulkanGraphicsPipeline.Free;
+
+  VulkanPipelineLayout.Free;
+
+  VulkanPipelineCache.Free;
+
+  VulkanPipelineShaderStageTriangleVertex.Free;
+
+  VulkanPipelineShaderStageTriangleFragment.Free;
 
   TriangleFragmentShaderModule.Free;
   TriangleVertexShaderModule.Free;
