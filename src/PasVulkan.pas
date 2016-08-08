@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-08-02-46-0000                       *
+ *                        Version 2016-08-08-03-25-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1727,29 +1727,6 @@ type EVulkanException=class(Exception);
      end;
 
      TVulkanShaderModules=array of TVulkanShaderModule;
-
-     TVulkanShader=class(TVulkanObject)
-      private
-       fDevice:TVulkanDevice;
-       fShaderStages:TVkPipelineShaderStageCreateInfoArray;
-       fCountShaderStages:TVkInt32;
-       fShaderModules:TVulkanShaderModules;
-       fNames:TVulkanCharStringArray;
-      public
-       constructor Create(const pDevice:TVulkanDevice);
-       destructor Destroy; override;
-       function AddShaderStage(const pShaderStage:TVkPipelineShaderStageCreateInfo):TVkInt32; overload;
-       function AddShaderStage(const pFlags:TVkPipelineShaderStageCreateFlags;
-                               const pStage:TVkShaderStageFlagBits;
-                               const pModule:TVulkanShaderModule;
-                               const pName:TVulkanCharString;
-                               const pSpecializationInfo:PVkSpecializationInfo):TVkInt32; overload;
-       procedure FinishShaderStages;
-      published
-       property Device:TVulkanDevice read fDevice;
-       property ShaderStages:TVkPipelineShaderStageCreateInfoArray read fShaderStages;
-       property CountShaderStages:TVkInt32 read fCountShaderStages;
-     end;
 
      TVulkanDescriptorPool=class(TVulkanObject)
       private
@@ -7917,7 +7894,7 @@ begin
                                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                                    nil,
                                    pCommandBuffer,
-                                   fDevice.fGraphicsQueue,
+                                   fDevice.fPresentQueue,
                                    pCommandBufferFence,
                                    true);
 
@@ -8136,77 +8113,6 @@ begin
 
  end;
  
-end;
-
-constructor TVulkanShader.Create(const pDevice:TVulkanDevice);
-begin
- inherited Create;
- fDevice:=pDevice;
- fShaderStages:=nil;
- fCountShaderStages:=0;
- fShaderModules:=nil;
- fNames:=nil;
-end;
-
-destructor TVulkanShader.Destroy;
-begin
- SetLength(fShaderStages,0);
- SetLength(fShaderModules,0);
- SetLength(fNames,0);
- inherited Destroy;
-end;
-
-function TVulkanShader.AddShaderStage(const pShaderStage:TVkPipelineShaderStageCreateInfo):TVkInt32;
-var ShaderStage:PVkPipelineShaderStageCreateInfo;
-begin
- result:=fCountShaderStages;
- inc(fCountShaderStages);
- if fCountShaderStages>length(fShaderStages) then begin
-  SetLength(fShaderStages,fCountShaderStages*2);
-  SetLength(fNames,fCountShaderStages*2);
- end;
- ShaderStage:=@fShaderStages[result];
- ShaderStage^:=pShaderStage;
- ShaderStage^.pName:=nil;
- fNames[result]:=pShaderStage.pName;
-end;
-
-function TVulkanShader.AddShaderStage(const pFlags:TVkPipelineShaderStageCreateFlags;
-                                      const pStage:TVkShaderStageFlagBits;
-                                      const pModule:TVulkanShaderModule;
-                                      const pName:TVulkanCharString;
-                                      const pSpecializationInfo:PVkSpecializationInfo):TVkInt32;
-var ShaderStage:TVkPipelineShaderStageCreateInfo;
-begin
- FillChar(ShaderStage,SizeOf(TVkPipelineShaderStageCreateInfo),#0);
- ShaderStage.sType:=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
- ShaderStage.pNext:=nil;
- ShaderStage.flags:=pFlags;
- ShaderStage.stage:=pStage;
- ShaderStage.module:=pModule.fShaderModuleHandle;
- ShaderStage.pName:=nil;
- ShaderStage.pSpecializationInfo:=pSpecializationInfo;
- result:=fCountShaderStages;
- inc(fCountShaderStages);
- if fCountShaderStages>length(fShaderStages) then begin
-  SetLength(fShaderStages,fCountShaderStages*2);
-  SetLength(fShaderModules,fCountShaderStages*2);
-  SetLength(fNames,fCountShaderStages*2);
- end;
- fShaderStages[result]:=ShaderStage;
- fShaderModules[result]:=pModule;
- fNames[result]:=pName;
-end;
-
-procedure TVulkanShader.FinishShaderStages;
-var Index:TVkInt32;
-begin
- SetLength(fShaderStages,fCountShaderStages);
- SetLength(fShaderModules,fCountShaderStages);
- SetLength(fNames,fCountShaderStages);
- for Index:=0 to fCountShaderStages-1 do begin
-  fShaderStages[Index].pName:=PVkChar(fNames[Index]);
- end;
 end;
 
 constructor TVulkanDescriptorPool.Create(const pDevice:TVulkanDevice;
