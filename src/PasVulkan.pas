@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-10-15-41-0000                       *
+ *                        Version 2016-08-10-16-04-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1976,12 +1976,28 @@ type EVulkanException=class(Exception);
        property PrimitiveRestartEnable:boolean read GetPrimitiveRestartEnable write SetPrimitiveRestartEnable;
      end;
 
+     TVulkanPipelineTessellationState=class(TVulkanPipelineState)
+      private
+       fTessellationStateCreateInfo:TVkPipelineTessellationStateCreateInfo;
+       fPointerToTessellationStateCreateInfo:PVkPipelineTessellationStateCreateInfo;
+       function GetPatchControlPoints:TVkUInt32;
+       procedure SetPatchControlPoints(const pNewValue:TVkUInt32);
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Assign(const pFrom:TVulkanPipelineTessellationState);
+       procedure SetTessellationState(const pPatchControlPoints:TVkUInt32);
+       property TessellationStateCreateInfo:PVkPipelineTessellationStateCreateInfo read fPointerToTessellationStateCreateInfo;
+      published
+       property PatchControlPoints:TVkUInt32 read GetPatchControlPoints write SetPatchControlPoints;
+     end;
+
      TVulkanGraphicsPipelineConstructor=class(TVulkanPipeline)
       private
        fGraphicsPipelineCreateInfo:TVkGraphicsPipelineCreateInfo;
        fVertexInputState:TVulkanPipelineVertexInputState;
        fInputAssemblyState:TVulkanPipelineInputAssemblyState;
-       fTessellationStateCreateInfo:TVkPipelineTessellationStateCreateInfo;
+       fTessellationState:TVulkanPipelineTessellationState;
        fViewportStateCreateInfo:TVkPipelineViewportStateCreateInfo;
        fRasterizationStateCreateInfo:TVkPipelineRasterizationStateCreateInfo;
        fMultisampleStateCreateInfo:TVkPipelineMultisampleStateCreateInfo;
@@ -2068,6 +2084,7 @@ type EVulkanException=class(Exception);
       published
        property VertexInputState:TVulkanPipelineVertexInputState read fVertexInputState;
        property InputAssemblyState:TVulkanPipelineInputAssemblyState read fInputAssemblyState;
+       property TessellationState:TVulkanPipelineTessellationState read fTessellationState;
      end;
 
      TVulkanGraphicsPipeline=class(TVulkanPipeline)
@@ -2075,6 +2092,7 @@ type EVulkanException=class(Exception);
        fGraphicsPipelineConstructor:TVulkanGraphicsPipelineConstructor;
        function GetVertexInputState:TVulkanPipelineVertexInputState;
        function GetInputAssemblyState:TVulkanPipelineInputAssemblyState;
+       function GetTessellationState:TVulkanPipelineTessellationState;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pCache:TVulkanPipelineCache;
@@ -2144,6 +2162,7 @@ type EVulkanException=class(Exception);
       published
        property VertexInputState:TVulkanPipelineVertexInputState read GetVertexInputState;
        property InputAssemblyState:TVulkanPipelineInputAssemblyState read GetInputAssemblyState;
+       property TessellationState:TVulkanPipelineTessellationState read GetTessellationState;
      end;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
@@ -9434,6 +9453,45 @@ begin
  fInputAssemblyStateCreateInfo.primitiveRestartEnable:=BooleanToVkBool[pNewValue];
 end;
 
+constructor TVulkanPipelineTessellationState.Create;
+begin
+ inherited Create;
+
+ FillChar(fTessellationStateCreateInfo,SizeOf(TVkPipelineTessellationStateCreateInfo),#0);
+ fTessellationStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+ fTessellationStateCreateInfo.pNext:=nil;
+ fTessellationStateCreateInfo.flags:=0;
+ fTessellationStateCreateInfo.patchControlPoints:=0;
+
+ fPointerToTessellationStateCreateInfo:=@fTessellationStateCreateInfo;
+
+end;
+
+destructor TVulkanPipelineTessellationState.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TVulkanPipelineTessellationState.Assign(const pFrom:TVulkanPipelineTessellationState);
+begin
+ fTessellationStateCreateInfo:=pFrom.fTessellationStateCreateInfo;
+end;
+
+function TVulkanPipelineTessellationState.GetPatchControlPoints:TVkUInt32;
+begin
+ result:=fTessellationStateCreateInfo.patchControlPoints;
+end;
+
+procedure TVulkanPipelineTessellationState.SetPatchControlPoints(const pNewValue:TVkUInt32);
+begin
+ fTessellationStateCreateInfo.patchControlPoints:=pNewValue;
+end;
+
+procedure TVulkanPipelineTessellationState.SetTessellationState(const pPatchControlPoints:TVkUInt32);
+begin
+ fTessellationStateCreateInfo.patchControlPoints:=pPatchControlPoints;
+end;
+
 constructor TVulkanGraphicsPipelineConstructor.Create(const pDevice:TVulkanDevice;
                                                       const pCache:TVulkanPipelineCache;
                                                       const pFlags:TVkPipelineCreateFlags;
@@ -9452,6 +9510,8 @@ begin
  fVertexInputState:=TVulkanPipelineVertexInputState.Create;
 
  fInputAssemblyState:=TVulkanPipelineInputAssemblyState.Create;
+
+ fTessellationState:=TVulkanPipelineTessellationState.Create;
 
  FillChar(fGraphicsPipelineCreateInfo,SizeOf(TVkGraphicsPipelineCreateInfo),#0);
  fGraphicsPipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -9494,12 +9554,6 @@ begin
   fGraphicsPipelineCreateInfo.basePipelineHandle:=VK_NULL_HANDLE;
  end;
  fGraphicsPipelineCreateInfo.basePipelineIndex:=pBasePipelineIndex;
-
- FillChar(fTessellationStateCreateInfo,SizeOf(TVkPipelineTessellationStateCreateInfo),#0);
- fTessellationStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
- fTessellationStateCreateInfo.pNext:=nil;
- fTessellationStateCreateInfo.flags:=0;
- fTessellationStateCreateInfo.patchControlPoints:=0;
 
  FillChar(fViewportStateCreateInfo,SizeOf(TVkPipelineViewportStateCreateInfo),#0);
  fViewportStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -9610,6 +9664,7 @@ begin
  SetLength(fDynamicStates,0);
  fVertexInputState.Free;
  fInputAssemblyState.Free;
+ fTessellationState.Free;
  inherited Destroy;
 end;
 
@@ -9657,8 +9712,8 @@ end;
 
 procedure TVulkanGraphicsPipelineConstructor.SetTessellationState(const pPatchControlPoints:TVkUInt32);
 begin
- fGraphicsPipelineCreateInfo.pTessellationState:=@fTessellationStateCreateInfo;
- fTessellationStateCreateInfo.patchControlPoints:=pPatchControlPoints;
+ Assert(assigned(fTessellationState));
+ fTessellationState.SetTessellationState(pPatchControlPoints);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddViewPort(const pViewPort:TVkViewport):TVkInt32;
@@ -9948,6 +10003,10 @@ begin
 
   fVertexInputState.Initialize;
 
+  if fTessellationState.fTessellationStateCreateInfo.patchControlPoints>0 then begin
+   fGraphicsPipelineCreateInfo.pTessellationState:=@fTessellationState.fTessellationStateCreateInfo;
+  end;
+
   SetLength(fViewPorts,fCountViewPorts);
   SetLength(fScissors,fCountScissors);
   if (fCountViewPorts>0) or (fCountScissors>0) then begin
@@ -10016,6 +10075,11 @@ end;
 function TVulkanGraphicsPipeline.GetInputAssemblyState:TVulkanPipelineInputAssemblyState;
 begin
  result:=fGraphicsPipelineConstructor.InputAssemblyState;
+end;
+
+function TVulkanGraphicsPipeline.GetTessellationState:TVulkanPipelineTessellationState;
+begin
+ result:=fGraphicsPipelineConstructor.TessellationState;
 end;
 
 function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
