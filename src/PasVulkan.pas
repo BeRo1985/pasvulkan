@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-10-15-39-0000                       *
+ *                        Version 2016-08-10-15-41-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1921,10 +1921,8 @@ type EVulkanException=class(Exception);
      end;
 
      TVulkanPipelineState=class(TVulkanObject)
-      private
-       fDevice:TVulkanDevice;
       public
-       constructor Create(const pDevice:TVulkanDevice);
+       constructor Create;
        destructor Destroy; override;
      end;
 
@@ -1942,7 +1940,7 @@ type EVulkanException=class(Exception);
        procedure SetCountVertexInputAttributeDescriptions(const pNewCount:TVkInt32);
        procedure Initialize;
       public
-       constructor Create(const pDevice:TVulkanDevice);
+       constructor Create;
        destructor Destroy; override;
        procedure Assign(const pFrom:TVulkanPipelineVertexInputState);
        function AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
@@ -1968,7 +1966,7 @@ type EVulkanException=class(Exception);
        function GetPrimitiveRestartEnable:boolean;
        procedure SetPrimitiveRestartEnable(const pNewValue:boolean);
       public
-       constructor Create(const pDevice:TVulkanDevice);
+       constructor Create;
        destructor Destroy; override;
        procedure Assign(const pFrom:TVulkanPipelineInputAssemblyState);
        procedure SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
@@ -9218,10 +9216,9 @@ begin
 
 end;
 
-constructor TVulkanPipelineState.Create(const pDevice:TVulkanDevice);
+constructor TVulkanPipelineState.Create;
 begin
  inherited Create;
- fDevice:=pDevice;
 end;
 
 destructor TVulkanPipelineState.Destroy;
@@ -9229,9 +9226,9 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanPipelineVertexInputState.Create(const pDevice:TVulkanDevice);
+constructor TVulkanPipelineVertexInputState.Create;
 begin
- inherited Create(pDevice);
+ inherited Create;
 
  FillChar(fVertexInputStateCreateInfo,SizeOf(TVkPipelineVertexInputStateCreateInfo),0);
  fVertexInputStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -9386,9 +9383,9 @@ begin
  end;
 end;
 
-constructor TVulkanPipelineInputAssemblyState.Create(const pDevice:TVulkanDevice);
+constructor TVulkanPipelineInputAssemblyState.Create;
 begin
- inherited Create(fDevice);
+ inherited Create;
 
  FillChar(fInputAssemblyStateCreateInfo,SizeOf(TVkPipelineInputAssemblyStateCreateInfo),#0);
  fInputAssemblyStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -9452,9 +9449,9 @@ begin
 
  inherited Create(pDevice);
 
- fVertexInputState:=TVulkanPipelineVertexInputState.Create(fDevice);
+ fVertexInputState:=TVulkanPipelineVertexInputState.Create;
 
- fInputAssemblyState:=TVulkanPipelineInputAssemblyState.Create(fDevice);
+ fInputAssemblyState:=TVulkanPipelineInputAssemblyState.Create;
 
  FillChar(fGraphicsPipelineCreateInfo,SizeOf(TVkGraphicsPipelineCreateInfo),#0);
  fGraphicsPipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
