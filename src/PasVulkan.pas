@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-10-16-04-0000                       *
+ *                        Version 2016-08-10-16-25-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1992,13 +1992,40 @@ type EVulkanException=class(Exception);
        property PatchControlPoints:TVkUInt32 read GetPatchControlPoints write SetPatchControlPoints;
      end;
 
+     TVulkanPipelineViewPortState=class(TVulkanPipelineState)
+      private
+       fViewportStateCreateInfo:TVkPipelineViewportStateCreateInfo;
+       fPointerToViewportStateCreateInfo:PVkPipelineViewportStateCreateInfo;
+       fViewPorts:TVkViewportArray;
+       fCountViewPorts:TVkInt32;
+       fScissors:TVkRect2DArray;
+       fCountScissors:TVkInt32;
+       procedure SetCountViewPorts(const pNewCount:TVkInt32);
+       procedure SetCountScissors(const pNewCount:TVkInt32);
+       procedure Initialize;
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Assign(const pFrom:TVulkanPipelineViewPortState);
+       function AddViewPort(const pViewPort:TVkViewport):TVkInt32; overload;
+       function AddViewPort(const pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth:TVkFloat):TVkInt32; overload;
+       function AddViewPorts(const pViewPorts:array of TVkViewport):TVkInt32; overload;
+       function AddScissor(const pScissor:TVkRect2D):TVkInt32; overload;
+       function AddScissor(const pX,pY:TVkInt32;const pWidth,pHeight:TVkUInt32):TVkInt32; overload;
+       function AddScissors(const pScissors:array of TVkRect2D):TVkInt32; overload;
+       property ViewportStateCreateInfo:PVkPipelineViewportStateCreateInfo read fPointerToViewportStateCreateInfo;
+      published
+       property CountViewPorts:TVkInt32 read fCountViewPorts write SetCountViewPorts;
+       property CountScissors:TVkInt32 read fCountScissors write SetCountScissors;
+     end;
+
      TVulkanGraphicsPipelineConstructor=class(TVulkanPipeline)
       private
        fGraphicsPipelineCreateInfo:TVkGraphicsPipelineCreateInfo;
        fVertexInputState:TVulkanPipelineVertexInputState;
        fInputAssemblyState:TVulkanPipelineInputAssemblyState;
        fTessellationState:TVulkanPipelineTessellationState;
-       fViewportStateCreateInfo:TVkPipelineViewportStateCreateInfo;
+       fViewPortState:TVulkanPipelineViewPortState;
        fRasterizationStateCreateInfo:TVkPipelineRasterizationStateCreateInfo;
        fMultisampleStateCreateInfo:TVkPipelineMultisampleStateCreateInfo;
        fDepthStencilStateCreateInfo:TVkPipelineDepthStencilStateCreateInfo;
@@ -2006,10 +2033,6 @@ type EVulkanException=class(Exception);
        fDynamicStateCreateInfo:TVkPipelineDynamicStateCreateInfo;
        fStages:TVkPipelineShaderStageCreateInfoArray;
        fPipelineCache:TVkPipelineCache;
-       fViewPorts:TVkViewportArray;
-       fCountViewPorts:TVkInt32;
-       fScissors:TVkRect2DArray;
-       fCountScissors:TVkInt32;
        fSampleMasks:TVkSampleMaskArray;
        fColorBlendAttachmentStates:TVkPipelineColorBlendAttachmentStateArray;
        fCountColorBlendAttachmentStates:TVkInt32;
@@ -2085,6 +2108,7 @@ type EVulkanException=class(Exception);
        property VertexInputState:TVulkanPipelineVertexInputState read fVertexInputState;
        property InputAssemblyState:TVulkanPipelineInputAssemblyState read fInputAssemblyState;
        property TessellationState:TVulkanPipelineTessellationState read fTessellationState;
+       property ViewPortState:TVulkanPipelineViewPortState read fViewPortState;
      end;
 
      TVulkanGraphicsPipeline=class(TVulkanPipeline)
@@ -2093,6 +2117,7 @@ type EVulkanException=class(Exception);
        function GetVertexInputState:TVulkanPipelineVertexInputState;
        function GetInputAssemblyState:TVulkanPipelineInputAssemblyState;
        function GetTessellationState:TVulkanPipelineTessellationState;
+       function GetViewPortState:TVulkanPipelineViewPortState;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pCache:TVulkanPipelineCache;
@@ -2163,6 +2188,7 @@ type EVulkanException=class(Exception);
        property VertexInputState:TVulkanPipelineVertexInputState read GetVertexInputState;
        property InputAssemblyState:TVulkanPipelineInputAssemblyState read GetInputAssemblyState;
        property TessellationState:TVulkanPipelineTessellationState read GetTessellationState;
+       property ViewPortState:TVulkanPipelineViewPortState read GetViewPortState;
      end;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
@@ -9492,6 +9518,157 @@ begin
  fTessellationStateCreateInfo.patchControlPoints:=pPatchControlPoints;
 end;
 
+constructor TVulkanPipelineViewPortState.Create;
+begin
+
+ inherited Create;
+
+ FillChar(fViewportStateCreateInfo,SizeOf(TVkPipelineViewportStateCreateInfo),#0);
+ fViewportStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+ fViewportStateCreateInfo.pNext:=nil;
+ fViewportStateCreateInfo.flags:=0;
+ fViewportStateCreateInfo.viewportCount:=0;
+ fViewportStateCreateInfo.pViewports:=nil;
+ fViewportStateCreateInfo.scissorCount:=0;
+ fViewportStateCreateInfo.pScissors:=nil;
+
+ fPointerToViewportStateCreateInfo:=@fViewportStateCreateInfo;
+
+ fViewPorts:=nil;
+ fCountViewPorts:=0;
+
+ fScissors:=nil;
+ fCountScissors:=0;
+
+end;
+
+destructor TVulkanPipelineViewPortState.Destroy;
+begin
+ SetLength(fViewPorts,0);
+ SetLength(fScissors,0);
+ inherited Destroy;
+end;
+
+procedure TVulkanPipelineViewPortState.Assign(const pFrom:TVulkanPipelineViewPortState);
+begin
+ fViewPorts:=copy(pFrom.fViewPorts);
+ fCountViewPorts:=pFrom.fCountViewPorts;
+ fScissors:=copy(pFrom.fScissors);
+ fCountScissors:=pFrom.fCountScissors;
+end;
+
+procedure TVulkanPipelineViewPortState.SetCountViewPorts(const pNewCount:TVkInt32);
+begin
+ fCountViewPorts:=pNewCount;
+ if length(fViewPorts)<fCountViewPorts then begin
+  SetLength(fViewPorts,fCountViewPorts*2);
+ end;
+end;
+
+procedure TVulkanPipelineViewPortState.SetCountScissors(const pNewCount:TVkInt32);
+begin
+ fCountScissors:=pNewCount;
+ if length(fScissors)<fCountScissors then begin
+  SetLength(fScissors,fCountScissors*2);
+ end;
+end;
+
+function TVulkanPipelineViewPortState.AddViewPort(const pViewPort:TVkViewport):TVkInt32;
+begin
+ result:=fCountViewPorts;
+ inc(fCountViewPorts);
+ if length(fViewPorts)<fCountViewPorts then begin
+  SetLength(fViewPorts,fCountViewPorts*2);
+ end;
+ fViewPorts[result]:=pViewPort;
+end;
+
+function TVulkanPipelineViewPortState.AddViewPort(const pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth:TVkFloat):TVkInt32;
+var Viewport:PVkViewport;
+begin
+ result:=fCountViewPorts;
+ inc(fCountViewPorts);
+ if length(fViewPorts)<fCountViewPorts then begin
+  SetLength(fViewPorts,fCountViewPorts*2);
+ end;
+ Viewport:=@fViewPorts[result];
+ Viewport^.x:=pX;
+ Viewport^.y:=pY;
+ Viewport^.width:=pWidth;
+ Viewport^.height:=pHeight;
+ Viewport^.minDepth:=pMinDepth;
+ Viewport^.maxDepth:=pMaxDepth;
+end;
+
+function TVulkanPipelineViewPortState.AddViewPorts(const pViewPorts:array of TVkViewport):TVkInt32;
+begin
+ if length(pViewPorts)>0 then begin
+  result:=fCountViewPorts;
+  inc(fCountViewPorts,length(pViewPorts));
+  if length(fViewPorts)<fCountViewPorts then begin
+   SetLength(fViewPorts,fCountViewPorts*2);
+  end;
+  Move(pViewPorts[0],fViewPorts[result],length(pViewPorts)*SizeOf(TVkViewport));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TVulkanPipelineViewPortState.AddScissor(const pScissor:TVkRect2D):TVkInt32;
+begin
+ result:=fCountScissors;
+ inc(fCountScissors);
+ if length(fScissors)<fCountScissors then begin
+  SetLength(fScissors,fCountScissors*2);
+ end;
+ fScissors[result]:=pScissor;
+end;
+
+function TVulkanPipelineViewPortState.AddScissor(const pX,pY:TVkInt32;const pWidth,pHeight:TVkUInt32):TVkInt32;
+var Scissor:PVkRect2D;
+begin
+ result:=fCountScissors;
+ inc(fCountScissors);
+ if length(fScissors)<fCountScissors then begin
+  SetLength(fScissors,fCountScissors*2);
+ end;
+ Scissor:=@fScissors[result];
+ Scissor^.offset.x:=pX;
+ Scissor^.offset.y:=pY;
+ Scissor^.extent.width:=pWidth;
+ Scissor^.extent.height:=pHeight;
+end;
+
+function TVulkanPipelineViewPortState.AddScissors(const pScissors:array of TVkRect2D):TVkInt32;
+begin
+ if length(pScissors)>0 then begin
+  result:=fCountScissors;
+  inc(fCountScissors,length(pScissors));
+  if length(fScissors)<fCountScissors then begin
+   SetLength(fScissors,fCountScissors*2);
+  end;
+  Move(pScissors[0],fScissors[result],length(pScissors)*SizeOf(TVkRect2D));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TVulkanPipelineViewPortState.Initialize;
+begin
+ SetLength(fViewPorts,fCountViewPorts);
+ SetLength(fScissors,fCountScissors);
+ if (fCountViewPorts>0) or (fCountScissors>0) then begin
+  fViewportStateCreateInfo.viewportCount:=fCountViewPorts;
+  if fCountViewPorts>0 then begin
+   fViewportStateCreateInfo.pViewports:=@fViewPorts[0];
+  end;
+  fViewportStateCreateInfo.scissorCount:=fCountScissors;
+  if fCountScissors>0 then begin
+   fViewportStateCreateInfo.pScissors:=@fScissors[0];
+  end;
+ end;
+end;
+
 constructor TVulkanGraphicsPipelineConstructor.Create(const pDevice:TVulkanDevice;
                                                       const pCache:TVulkanPipelineCache;
                                                       const pFlags:TVkPipelineCreateFlags;
@@ -9513,6 +9690,8 @@ begin
 
  fTessellationState:=TVulkanPipelineTessellationState.Create;
 
+ fViewPortState:=TVulkanPipelineViewPortState.Create;
+
  FillChar(fGraphicsPipelineCreateInfo,SizeOf(TVkGraphicsPipelineCreateInfo),#0);
  fGraphicsPipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
  fGraphicsPipelineCreateInfo.pNext:=nil;
@@ -9531,7 +9710,7 @@ begin
  fGraphicsPipelineCreateInfo.pVertexInputState:=@fVertexInputState.fVertexInputStateCreateInfo;
  fGraphicsPipelineCreateInfo.pInputAssemblyState:=@fInputAssemblyState.fInputAssemblyStateCreateInfo;
  fGraphicsPipelineCreateInfo.pTessellationState:=nil;
- fGraphicsPipelineCreateInfo.pViewportState:=@fViewportStateCreateInfo;
+ fGraphicsPipelineCreateInfo.pViewportState:=@fViewPortState.fViewportStateCreateInfo;
  fGraphicsPipelineCreateInfo.pRasterizationState:=@fRasterizationStateCreateInfo;
  fGraphicsPipelineCreateInfo.pMultisampleState:=@fMultisampleStateCreateInfo;
  fGraphicsPipelineCreateInfo.pDepthStencilState:=nil;
@@ -9554,15 +9733,6 @@ begin
   fGraphicsPipelineCreateInfo.basePipelineHandle:=VK_NULL_HANDLE;
  end;
  fGraphicsPipelineCreateInfo.basePipelineIndex:=pBasePipelineIndex;
-
- FillChar(fViewportStateCreateInfo,SizeOf(TVkPipelineViewportStateCreateInfo),#0);
- fViewportStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
- fViewportStateCreateInfo.pNext:=nil;
- fViewportStateCreateInfo.flags:=0;
- fViewportStateCreateInfo.viewportCount:=0;
- fViewportStateCreateInfo.pViewports:=nil;
- fViewportStateCreateInfo.scissorCount:=0;
- fViewportStateCreateInfo.pScissors:=nil;
 
  FillChar(fRasterizationStateCreateInfo,SizeOf(TVkPipelineRasterizationStateCreateInfo),#0);
  fRasterizationStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -9638,12 +9808,6 @@ begin
   fPipelineCache:=VK_NULL_HANDLE;
  end;
 
- fViewPorts:=nil;
- fCountViewPorts:=0;
-
- fScissors:=nil;
- fCountScissors:=0;
-
  fSampleMasks:=nil;
 
  fColorBlendAttachmentStates:=nil;
@@ -9657,14 +9821,13 @@ end;
 destructor TVulkanGraphicsPipelineConstructor.Destroy;
 begin
  SetLength(fStages,0);
- SetLength(fViewPorts,0);
- SetLength(fScissors,0);
  SetLength(fSampleMasks,0);
  SetLength(fColorBlendAttachmentStates,0);
  SetLength(fDynamicStates,0);
  fVertexInputState.Free;
  fInputAssemblyState.Free;
  fTessellationState.Free;
+ fViewPortState.Free;
  inherited Destroy;
 end;
 
@@ -9718,82 +9881,38 @@ end;
 
 function TVulkanGraphicsPipelineConstructor.AddViewPort(const pViewPort:TVkViewport):TVkInt32;
 begin
- result:=fCountViewPorts;
- inc(fCountViewPorts);
- if length(fViewPorts)<fCountViewPorts then begin
-  SetLength(fViewPorts,fCountViewPorts*2);
- end;
- fViewPorts[result]:=pViewPort;
+ Assert(assigned(fViewPortState));
+ result:=fViewPortState.AddViewPort(pViewPort);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddViewPort(const pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth:TVkFloat):TVkInt32;
-var Viewport:PVkViewport;
 begin
- result:=fCountViewPorts;
- inc(fCountViewPorts);
- if length(fViewPorts)<fCountViewPorts then begin
-  SetLength(fViewPorts,fCountViewPorts*2);
- end;
- Viewport:=@fViewPorts[result];
- Viewport^.x:=pX;
- Viewport^.y:=pY;
- Viewport^.width:=pWidth;
- Viewport^.height:=pHeight;
- Viewport^.minDepth:=pMinDepth;
- Viewport^.maxDepth:=pMaxDepth;
+ Assert(assigned(fViewPortState));
+ result:=fViewPortState.AddViewPort(pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddViewPorts(const pViewPorts:array of TVkViewport):TVkInt32;
 begin
- if length(pViewPorts)>0 then begin
-  result:=fCountViewPorts;
-  inc(fCountViewPorts,length(pViewPorts));
-  if length(fViewPorts)<fCountViewPorts then begin
-   SetLength(fViewPorts,fCountViewPorts*2);
-  end;
-  Move(pViewPorts[0],fViewPorts[result],length(pViewPorts)*SizeOf(TVkViewport));
- end else begin
-  result:=-1;
- end;
+ Assert(assigned(fViewPortState));
+ result:=fViewPortState.AddViewPorts(pViewPorts);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddScissor(const pScissor:TVkRect2D):TVkInt32;
 begin
- result:=fCountScissors;
- inc(fCountScissors);
- if length(fScissors)<fCountScissors then begin
-  SetLength(fScissors,fCountScissors*2);
- end;
- fScissors[result]:=pScissor;
+ Assert(assigned(fViewPortState));
+ result:=fViewPortState.AddScissor(pScissor);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddScissor(const pX,pY:TVkInt32;const pWidth,pHeight:TVkUInt32):TVkInt32;
-var Scissor:PVkRect2D;
 begin
- result:=fCountScissors;
- inc(fCountScissors);
- if length(fScissors)<fCountScissors then begin
-  SetLength(fScissors,fCountScissors*2);
- end;
- Scissor:=@fScissors[result];
- Scissor^.offset.x:=pX;
- Scissor^.offset.y:=pY;
- Scissor^.extent.width:=pWidth;
- Scissor^.extent.height:=pHeight;
+ Assert(assigned(fViewPortState));
+ result:=fViewPortState.AddScissor(pX,pY,pWidth,pHeight);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddScissors(const pScissors:array of TVkRect2D):TVkInt32;
 begin
- if length(pScissors)>0 then begin
-  result:=fCountScissors;
-  inc(fCountScissors,length(pScissors));
-  if length(fScissors)<fCountScissors then begin
-   SetLength(fScissors,fCountScissors*2);
-  end;
-  Move(pScissors[0],fScissors[result],length(pScissors)*SizeOf(TVkRect2D));
- end else begin
-  result:=-1;
- end;
+ Assert(assigned(fViewPortState));
+ result:=fViewPortState.AddScissors(pScissors);
 end;
 
 procedure TVulkanGraphicsPipelineConstructor.SetRasterizationState(const pDepthClampEnable:boolean;
@@ -10007,18 +10126,7 @@ begin
    fGraphicsPipelineCreateInfo.pTessellationState:=@fTessellationState.fTessellationStateCreateInfo;
   end;
 
-  SetLength(fViewPorts,fCountViewPorts);
-  SetLength(fScissors,fCountScissors);
-  if (fCountViewPorts>0) or (fCountScissors>0) then begin
-   fViewportStateCreateInfo.viewportCount:=fCountViewPorts;
-   if fCountViewPorts>0 then begin
-    fViewportStateCreateInfo.pViewports:=@fViewPorts[0];
-   end;
-   fViewportStateCreateInfo.scissorCount:=fCountScissors;
-   if fCountScissors>0 then begin
-    fViewportStateCreateInfo.pScissors:=@fScissors[0];
-   end;
-  end;
+  fViewPortState.Initialize;
 
   SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates);
   if fCountColorBlendAttachmentStates>0 then begin
@@ -10080,6 +10188,11 @@ end;
 function TVulkanGraphicsPipeline.GetTessellationState:TVulkanPipelineTessellationState;
 begin
  result:=fGraphicsPipelineConstructor.TessellationState;
+end;
+
+function TVulkanGraphicsPipeline.GetViewPortState:TVulkanPipelineViewPortState;
+begin
+ result:=fGraphicsPipelineConstructor.ViewPortState;
 end;
 
 function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
