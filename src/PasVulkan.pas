@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-10-17-28-0000                       *
+ *                        Version 2016-08-10-17-29-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -10507,6 +10507,8 @@ begin
   end;
 
   fViewPortState.Initialize;
+
+  fMultisampleState.Initialize;
 
   SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates);
   if fCountColorBlendAttachmentStates>0 then begin
