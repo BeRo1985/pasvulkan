@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-09-17-48-0000                       *
+ *                        Version 2016-08-10-15-39-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1920,11 +1920,69 @@ type EVulkanException=class(Exception);
                           const pBasePipelineIndex:TVkInt32); reintroduce;
      end;
 
+     TVulkanPipelineState=class(TVulkanObject)
+      private
+       fDevice:TVulkanDevice;
+      public
+       constructor Create(const pDevice:TVulkanDevice);
+       destructor Destroy; override;
+     end;
+
+     TVulkanPipelineVertexInputState=class(TVulkanPipelineState)
+      private
+       fVertexInputStateCreateInfo:TVkPipelineVertexInputStateCreateInfo;
+       fPointerToVertexInputStateCreateInfo:PVkPipelineVertexInputStateCreateInfo;
+       fVertexInputBindingDescriptions:TVkVertexInputBindingDescriptionArray;
+       fCountVertexInputBindingDescriptions:TVkInt32;
+       fVertexInputAttributeDescriptions:TVkVertexInputAttributeDescriptionArray;
+       fCountVertexInputAttributeDescriptions:TVkInt32;
+       function GetVertexInputBindingDescription(const pIndex:TVkInt32):PVkVertexInputBindingDescription;
+       function GetVertexInputAttributeDescription(const pIndex:TVkInt32):PVkVertexInputAttributeDescription;
+       procedure SetCountVertexInputBindingDescriptions(const pNewCount:TVkInt32);
+       procedure SetCountVertexInputAttributeDescriptions(const pNewCount:TVkInt32);
+       procedure Initialize;
+      public
+       constructor Create(const pDevice:TVulkanDevice);
+       destructor Destroy; override;
+       procedure Assign(const pFrom:TVulkanPipelineVertexInputState);
+       function AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
+       function AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32; overload;
+       function AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+       function AddVertexInputAttributeDescription(const pVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32; overload;
+       function AddVertexInputAttributeDescription(const pLocation,pBinding:TVkUInt32;const pFormat:TVkFormat;const pOffset:TVkUInt32):TVkInt32; overload;
+       function AddVertexInputAttributeDescriptions(const pVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+       property VertexInputStateCreateInfo:PVkPipelineVertexInputStateCreateInfo read fPointerToVertexInputStateCreateInfo;
+       property VertexInputBindingDescriptions[const pIndex:TVkInt32]:PVkVertexInputBindingDescription read GetVertexInputBindingDescription;
+       property VertexInputAttributeDescriptions[const pIndex:TVkInt32]:PVkVertexInputAttributeDescription read GetVertexInputAttributeDescription;
+      published
+       property CountVertexInputBindingDescriptions:TVkInt32 read fCountVertexInputBindingDescriptions write SetCountVertexInputBindingDescriptions;
+       property CountVertexInputAttributeDescriptions:TVkInt32 read fCountVertexInputAttributeDescriptions write SetCountVertexInputAttributeDescriptions;
+     end;
+
+     TVulkanPipelineInputAssemblyState=class(TVulkanPipelineState)
+      private
+       fInputAssemblyStateCreateInfo:TVkPipelineInputAssemblyStateCreateInfo;
+       fPointerToInputAssemblyStateCreateInfo:PVkPipelineInputAssemblyStateCreateInfo;
+       function GetTopology:TVkPrimitiveTopology;
+       procedure SetTopology(const pNewValue:TVkPrimitiveTopology);
+       function GetPrimitiveRestartEnable:boolean;
+       procedure SetPrimitiveRestartEnable(const pNewValue:boolean);
+      public
+       constructor Create(const pDevice:TVulkanDevice);
+       destructor Destroy; override;
+       procedure Assign(const pFrom:TVulkanPipelineInputAssemblyState);
+       procedure SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
+       property InputAssemblyStateCreateInfo:PVkPipelineInputAssemblyStateCreateInfo read fPointerToInputAssemblyStateCreateInfo;
+      published
+       property Topology:TVkPrimitiveTopology read GetTopology write SetTopology;
+       property PrimitiveRestartEnable:boolean read GetPrimitiveRestartEnable write SetPrimitiveRestartEnable;
+     end;
+
      TVulkanGraphicsPipelineConstructor=class(TVulkanPipeline)
       private
        fGraphicsPipelineCreateInfo:TVkGraphicsPipelineCreateInfo;
-       fVertexInputStateCreateInfo:TVkPipelineVertexInputStateCreateInfo;
-       fInputAssemblyStateCreateInfo:TVkPipelineInputAssemblyStateCreateInfo;
+       fVertexInputState:TVulkanPipelineVertexInputState;
+       fInputAssemblyState:TVulkanPipelineInputAssemblyState;
        fTessellationStateCreateInfo:TVkPipelineTessellationStateCreateInfo;
        fViewportStateCreateInfo:TVkPipelineViewportStateCreateInfo;
        fRasterizationStateCreateInfo:TVkPipelineRasterizationStateCreateInfo;
@@ -1934,10 +1992,6 @@ type EVulkanException=class(Exception);
        fDynamicStateCreateInfo:TVkPipelineDynamicStateCreateInfo;
        fStages:TVkPipelineShaderStageCreateInfoArray;
        fPipelineCache:TVkPipelineCache;
-       fVertexInputBindingDescriptions:TVkVertexInputBindingDescriptionArray;
-       fCountVertexInputBindingDescriptions:TVkInt32;
-       fVertexInputAttributeDescriptions:TVkVertexInputAttributeDescriptionArray;
-       fCountVertexInputAttributeDescriptions:TVkInt32;
        fViewPorts:TVkViewportArray;
        fCountViewPorts:TVkInt32;
        fScissors:TVkRect2DArray;
@@ -2014,11 +2068,15 @@ type EVulkanException=class(Exception);
        function AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
        procedure Initialize;
       published
+       property VertexInputState:TVulkanPipelineVertexInputState read fVertexInputState;
+       property InputAssemblyState:TVulkanPipelineInputAssemblyState read fInputAssemblyState;
      end;
 
      TVulkanGraphicsPipeline=class(TVulkanPipeline)
       private
        fGraphicsPipelineConstructor:TVulkanGraphicsPipelineConstructor;
+       function GetVertexInputState:TVulkanPipelineVertexInputState;
+       function GetInputAssemblyState:TVulkanPipelineInputAssemblyState;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pCache:TVulkanPipelineCache;
@@ -2086,6 +2144,8 @@ type EVulkanException=class(Exception);
        function AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
        procedure Initialize;
       published
+       property VertexInputState:TVulkanPipelineVertexInputState read GetVertexInputState;
+       property InputAssemblyState:TVulkanPipelineInputAssemblyState read GetInputAssemblyState;
      end;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
@@ -2119,7 +2179,9 @@ procedure VulkanSetImageLayout(const pImage:TVkImage;
 
 implementation
 
-const CELL_EMPTY=-1;
+const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
+
+      CELL_EMPTY=-1;
       CELL_DELETED=-2;
       ENT_EMPTY=-1;
       ENT_DELETED=-2;
@@ -9156,20 +9218,243 @@ begin
 
 end;
 
+constructor TVulkanPipelineState.Create(const pDevice:TVulkanDevice);
+begin
+ inherited Create;
+ fDevice:=pDevice;
+end;
+
+destructor TVulkanPipelineState.Destroy;
+begin
+ inherited Destroy;
+end;
+
+constructor TVulkanPipelineVertexInputState.Create(const pDevice:TVulkanDevice);
+begin
+ inherited Create(pDevice);
+
+ FillChar(fVertexInputStateCreateInfo,SizeOf(TVkPipelineVertexInputStateCreateInfo),0);
+ fVertexInputStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+ fVertexInputStateCreateInfo.pNext:=nil;
+ fVertexInputStateCreateInfo.flags:=0;
+ fVertexInputStateCreateInfo.vertexBindingDescriptionCount:=0;
+ fVertexInputStateCreateInfo.pVertexBindingDescriptions:=nil;
+ fVertexInputStateCreateInfo.vertexAttributeDescriptionCount:=0;
+ fVertexInputStateCreateInfo.pVertexAttributeDescriptions:=nil;
+
+ fPointerToVertexInputStateCreateInfo:=@fVertexInputStateCreateInfo;
+
+ fVertexInputBindingDescriptions:=nil;
+ fCountVertexInputBindingDescriptions:=0;
+
+ fVertexInputAttributeDescriptions:=nil;
+ fCountVertexInputAttributeDescriptions:=0;
+
+end;
+
+destructor TVulkanPipelineVertexInputState.Destroy;
+begin
+ SetLength(fVertexInputBindingDescriptions,0);
+ SetLength(fVertexInputAttributeDescriptions,0);
+ inherited Destroy;
+end;
+
+function TVulkanPipelineVertexInputState.GetVertexInputBindingDescription(const pIndex:TVkInt32):PVkVertexInputBindingDescription;
+begin
+ result:=@fVertexInputBindingDescriptions[pIndex];
+end;
+
+function TVulkanPipelineVertexInputState.GetVertexInputAttributeDescription(const pIndex:TVkInt32):PVkVertexInputAttributeDescription;
+begin
+ result:=@fVertexInputAttributeDescriptions[pIndex];
+end;
+
+procedure TVulkanPipelineVertexInputState.SetCountVertexInputBindingDescriptions(const pNewCount:TVkInt32);
+begin
+ fCountVertexInputBindingDescriptions:=pNewCount;
+ if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
+  SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
+ end;
+end;
+
+procedure TVulkanPipelineVertexInputState.SetCountVertexInputAttributeDescriptions(const pNewCount:TVkInt32);
+begin
+ fCountVertexInputAttributeDescriptions:=pNewCount;
+ if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
+  SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
+ end;
+end;
+
+procedure TVulkanPipelineVertexInputState.Assign(const pFrom:TVulkanPipelineVertexInputState);
+begin
+ fVertexInputBindingDescriptions:=copy(pFrom.fVertexInputBindingDescriptions);
+ fCountVertexInputBindingDescriptions:=pFrom.fCountVertexInputBindingDescriptions;
+ fVertexInputAttributeDescriptions:=copy(pFrom.fVertexInputAttributeDescriptions);
+ fCountVertexInputAttributeDescriptions:=pFrom.fCountVertexInputAttributeDescriptions;
+end;
+
+function TVulkanPipelineVertexInputState.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
+begin
+ result:=fCountVertexInputBindingDescriptions;
+ inc(fCountVertexInputBindingDescriptions);
+ if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
+  SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
+ end;
+ fVertexInputBindingDescriptions[result]:=pVertexInputBindingDescription;
+end;
+
+function TVulkanPipelineVertexInputState.AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32;
+var VertexInputBindingDescription:PVkVertexInputBindingDescription;
+begin
+ result:=fCountVertexInputBindingDescriptions;
+ inc(fCountVertexInputBindingDescriptions);
+ if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
+  SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
+ end;
+ VertexInputBindingDescription:=@fVertexInputBindingDescriptions[result];
+ VertexInputBindingDescription^.binding:=pBinding;
+ VertexInputBindingDescription^.stride:=pStride;
+ VertexInputBindingDescription^.inputRate:=pInputRate;
+end;
+
+function TVulkanPipelineVertexInputState.AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+begin
+ if length(pVertexInputBindingDescriptions)>0 then begin
+  result:=fCountVertexInputBindingDescriptions;
+  inc(fCountVertexInputBindingDescriptions,length(pVertexInputBindingDescriptions));
+  if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
+   SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
+  end;
+  Move(pVertexInputBindingDescriptions[0],fVertexInputBindingDescriptions[result],length(pVertexInputBindingDescriptions)*SizeOf(TVkVertexInputBindingDescription));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescription(const pVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
+begin
+ result:=fCountVertexInputAttributeDescriptions;
+ inc(fCountVertexInputAttributeDescriptions);
+ if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
+  SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
+ end;
+ fVertexInputAttributeDescriptions[result]:=pVertexInputAttributeDescription;
+end;
+
+function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescription(const pLocation,pBinding:TVkUInt32;const pFormat:TVkFormat;const pOffset:TVkUInt32):TVkInt32;
+var VertexInputAttributeDescription:PVkVertexInputAttributeDescription;
+begin
+ result:=fCountVertexInputAttributeDescriptions;
+ inc(fCountVertexInputAttributeDescriptions);
+ if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
+  SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
+ end;
+ VertexInputAttributeDescription:=@fVertexInputAttributeDescriptions[result];
+ VertexInputAttributeDescription^.location:=pLocation;
+ VertexInputAttributeDescription^.binding:=pBinding;
+ VertexInputAttributeDescription^.format:=pFormat;
+ VertexInputAttributeDescription^.offset:=pOffset;
+end;
+
+function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescriptions(const pVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+begin
+ if length(pVertexInputAttributeDescriptions)>0 then begin
+  result:=fCountVertexInputAttributeDescriptions;
+  inc(fCountVertexInputAttributeDescriptions,length(pVertexInputAttributeDescriptions));
+  if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
+   SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
+  end;
+  Move(pVertexInputAttributeDescriptions[0],fVertexInputAttributeDescriptions[result],length(pVertexInputAttributeDescriptions)*SizeOf(TVkVertexInputAttributeDescription));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TVulkanPipelineVertexInputState.Initialize;
+begin
+ SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions);
+ SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions);
+ if (fCountVertexInputBindingDescriptions>0) or (fCountVertexInputAttributeDescriptions>0) then begin
+  fVertexInputStateCreateInfo.vertexBindingDescriptionCount:=fCountVertexInputBindingDescriptions;
+  if fCountVertexInputBindingDescriptions>0 then begin
+   fVertexInputStateCreateInfo.pVertexBindingDescriptions:=@fVertexInputBindingDescriptions[0];
+  end;
+  fVertexInputStateCreateInfo.vertexAttributeDescriptionCount:=fCountVertexInputAttributeDescriptions;
+  if fCountVertexInputAttributeDescriptions>0 then begin
+   fVertexInputStateCreateInfo.pVertexAttributeDescriptions:=@fVertexInputAttributeDescriptions[0];
+  end;
+ end;
+end;
+
+constructor TVulkanPipelineInputAssemblyState.Create(const pDevice:TVulkanDevice);
+begin
+ inherited Create(fDevice);
+
+ FillChar(fInputAssemblyStateCreateInfo,SizeOf(TVkPipelineInputAssemblyStateCreateInfo),#0);
+ fInputAssemblyStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+ fInputAssemblyStateCreateInfo.pNext:=nil;
+ fInputAssemblyStateCreateInfo.flags:=0;
+ fInputAssemblyStateCreateInfo.topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+ fInputAssemblyStateCreateInfo.primitiveRestartEnable:=VK_FALSE;
+
+ fPointerToInputAssemblyStateCreateInfo:=@fInputAssemblyStateCreateInfo;
+
+end;
+
+destructor TVulkanPipelineInputAssemblyState.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TVulkanPipelineInputAssemblyState.Assign(const pFrom:TVulkanPipelineInputAssemblyState);
+begin
+ fInputAssemblyStateCreateInfo:=pFrom.fInputAssemblyStateCreateInfo;
+end;
+
+procedure TVulkanPipelineInputAssemblyState.SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
+begin
+ fInputAssemblyStateCreateInfo.topology:=pTopology;
+ fInputAssemblyStateCreateInfo.primitiveRestartEnable:=BooleanToVkBool[pPrimitiveRestartEnable];
+end;
+
+function TVulkanPipelineInputAssemblyState.GetTopology:TVkPrimitiveTopology;
+begin
+ result:=fInputAssemblyStateCreateInfo.topology;
+end;
+
+procedure TVulkanPipelineInputAssemblyState.SetTopology(const pNewValue:TVkPrimitiveTopology);
+begin
+ fInputAssemblyStateCreateInfo.topology:=pNewValue;
+end;
+
+function TVulkanPipelineInputAssemblyState.GetPrimitiveRestartEnable:boolean;
+begin
+ result:=fInputAssemblyStateCreateInfo.primitiveRestartEnable<>VK_FALSE;
+end;
+
+procedure TVulkanPipelineInputAssemblyState.SetPrimitiveRestartEnable(const pNewValue:boolean);
+begin
+ fInputAssemblyStateCreateInfo.primitiveRestartEnable:=BooleanToVkBool[pNewValue];
+end;
+
 constructor TVulkanGraphicsPipelineConstructor.Create(const pDevice:TVulkanDevice;
-                                           const pCache:TVulkanPipelineCache;
-                                           const pFlags:TVkPipelineCreateFlags;
-                                           const pStages:array of TVulkanPipelineShaderStage;
-                                           const pLayout:TVulkanPipelineLayout;
-                                           const pRenderPass:TVulkanRenderPass;
-                                           const pSubPass:TVkUInt32;
-                                           const pBasePipelineHandle:TVulkanPipeline;
-                                           const pBasePipelineIndex:TVkInt32);
+                                                      const pCache:TVulkanPipelineCache;
+                                                      const pFlags:TVkPipelineCreateFlags;
+                                                      const pStages:array of TVulkanPipelineShaderStage;
+                                                      const pLayout:TVulkanPipelineLayout;
+                                                      const pRenderPass:TVulkanRenderPass;
+                                                      const pSubPass:TVkUInt32;
+                                                      const pBasePipelineHandle:TVulkanPipeline;
+                                                      const pBasePipelineIndex:TVkInt32);
 var Index:TVkInt32;
 begin
  fStages:=nil;
 
  inherited Create(pDevice);
+
+ fVertexInputState:=TVulkanPipelineVertexInputState.Create(fDevice);
+
+ fInputAssemblyState:=TVulkanPipelineInputAssemblyState.Create(fDevice);
 
  FillChar(fGraphicsPipelineCreateInfo,SizeOf(TVkGraphicsPipelineCreateInfo),#0);
  fGraphicsPipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -9186,8 +9471,8 @@ begin
  end else begin
   fGraphicsPipelineCreateInfo.pStages:=nil;
  end;
- fGraphicsPipelineCreateInfo.pVertexInputState:=@fVertexInputStateCreateInfo;
- fGraphicsPipelineCreateInfo.pInputAssemblyState:=@fInputAssemblyStateCreateInfo;
+ fGraphicsPipelineCreateInfo.pVertexInputState:=@fVertexInputState.fVertexInputStateCreateInfo;
+ fGraphicsPipelineCreateInfo.pInputAssemblyState:=@fInputAssemblyState.fInputAssemblyStateCreateInfo;
  fGraphicsPipelineCreateInfo.pTessellationState:=nil;
  fGraphicsPipelineCreateInfo.pViewportState:=@fViewportStateCreateInfo;
  fGraphicsPipelineCreateInfo.pRasterizationState:=@fRasterizationStateCreateInfo;
@@ -9212,22 +9497,6 @@ begin
   fGraphicsPipelineCreateInfo.basePipelineHandle:=VK_NULL_HANDLE;
  end;
  fGraphicsPipelineCreateInfo.basePipelineIndex:=pBasePipelineIndex;
-
- FillChar(fVertexInputStateCreateInfo,SizeOf(TVkPipelineVertexInputStateCreateInfo),0);
- fVertexInputStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
- fVertexInputStateCreateInfo.pNext:=nil;
- fVertexInputStateCreateInfo.flags:=0;
- fVertexInputStateCreateInfo.vertexBindingDescriptionCount:=0;
- fVertexInputStateCreateInfo.pVertexBindingDescriptions:=nil;
- fVertexInputStateCreateInfo.vertexAttributeDescriptionCount:=0;
- fVertexInputStateCreateInfo.pVertexAttributeDescriptions:=nil;
-
- FillChar(fInputAssemblyStateCreateInfo,SizeOf(TVkPipelineInputAssemblyStateCreateInfo),#0);
- fInputAssemblyStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
- fInputAssemblyStateCreateInfo.pNext:=nil;
- fInputAssemblyStateCreateInfo.flags:=0;
- fInputAssemblyStateCreateInfo.topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
- fInputAssemblyStateCreateInfo.primitiveRestartEnable:=VK_FALSE;
 
  FillChar(fTessellationStateCreateInfo,SizeOf(TVkPipelineTessellationStateCreateInfo),#0);
  fTessellationStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
@@ -9318,12 +9587,6 @@ begin
   fPipelineCache:=VK_NULL_HANDLE;
  end;
 
- fVertexInputBindingDescriptions:=nil;
- fCountVertexInputBindingDescriptions:=0;
-
- fVertexInputAttributeDescriptions:=nil;
- fCountVertexInputAttributeDescriptions:=0;
-
  fViewPorts:=nil;
  fCountViewPorts:=0;
 
@@ -9343,101 +9606,56 @@ end;
 destructor TVulkanGraphicsPipelineConstructor.Destroy;
 begin
  SetLength(fStages,0);
- SetLength(fVertexInputBindingDescriptions,0);
- SetLength(fVertexInputAttributeDescriptions,0);
  SetLength(fViewPorts,0);
  SetLength(fScissors,0);
  SetLength(fSampleMasks,0);
  SetLength(fColorBlendAttachmentStates,0);
  SetLength(fDynamicStates,0);
+ fVertexInputState.Free;
+ fInputAssemblyState.Free;
  inherited Destroy;
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
 begin
- result:=fCountVertexInputBindingDescriptions;
- inc(fCountVertexInputBindingDescriptions);
- if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
-  SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
- end;
- fVertexInputBindingDescriptions[result]:=pVertexInputBindingDescription;
+ Assert(assigned(fVertexInputState));
+ result:=fVertexInputState.AddVertexInputBindingDescription(pVertexInputBindingDescription);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32;
-var VertexInputBindingDescription:PVkVertexInputBindingDescription;
 begin
- result:=fCountVertexInputBindingDescriptions;
- inc(fCountVertexInputBindingDescriptions);
- if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
-  SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
- end;
- VertexInputBindingDescription:=@fVertexInputBindingDescriptions[result];
- VertexInputBindingDescription^.binding:=pBinding;
- VertexInputBindingDescription^.stride:=pStride;
- VertexInputBindingDescription^.inputRate:=pInputRate;
+ Assert(assigned(fVertexInputState));
+ result:=fVertexInputState.AddVertexInputBindingDescription(pBinding,pStride,pInputRate);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
 begin
- if length(pVertexInputBindingDescriptions)>0 then begin
-  result:=fCountVertexInputBindingDescriptions;
-  inc(fCountVertexInputBindingDescriptions,length(pVertexInputBindingDescriptions));
-  if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
-   SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
-  end;
-  Move(pVertexInputBindingDescriptions[0],fVertexInputBindingDescriptions[result],length(pVertexInputBindingDescriptions)*SizeOf(TVkVertexInputBindingDescription));
- end else begin
-  result:=-1;
- end;
+ Assert(assigned(fVertexInputState));
+ result:=fVertexInputState.AddVertexInputBindingDescriptions(pVertexInputBindingDescriptions);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescription(const pVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
 begin
- result:=fCountVertexInputAttributeDescriptions;
- inc(fCountVertexInputAttributeDescriptions);
- if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
-  SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
- end;
- fVertexInputAttributeDescriptions[result]:=pVertexInputAttributeDescription;
+ Assert(assigned(fVertexInputState));
+ result:=fVertexInputState.AddVertexInputAttributeDescription(pVertexInputAttributeDescription);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescription(const pLocation,pBinding:TVkUInt32;const pFormat:TVkFormat;const pOffset:TVkUInt32):TVkInt32;
-var VertexInputAttributeDescription:PVkVertexInputAttributeDescription;
 begin
- result:=fCountVertexInputAttributeDescriptions;
- inc(fCountVertexInputAttributeDescriptions);
- if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
-  SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
- end;
- VertexInputAttributeDescription:=@fVertexInputAttributeDescriptions[result];
- VertexInputAttributeDescription^.location:=pLocation;
- VertexInputAttributeDescription^.binding:=pBinding;
- VertexInputAttributeDescription^.format:=pFormat;
- VertexInputAttributeDescription^.offset:=pOffset;
+ Assert(assigned(fVertexInputState));
+ result:=fVertexInputState.AddVertexInputAttributeDescription(pLocation,pBinding,pFormat,pOffset);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescriptions(const pVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
 begin
- if length(pVertexInputAttributeDescriptions)>0 then begin
-  result:=fCountVertexInputAttributeDescriptions;
-  inc(fCountVertexInputAttributeDescriptions,length(pVertexInputAttributeDescriptions));
-  if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
-   SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
-  end;
-  Move(pVertexInputAttributeDescriptions[0],fVertexInputAttributeDescriptions[result],length(pVertexInputAttributeDescriptions)*SizeOf(TVkVertexInputAttributeDescription));
- end else begin
-  result:=-1;
- end;
+ Assert(assigned(fVertexInputState));
+ result:=fVertexInputState.AddVertexInputAttributeDescriptions(pVertexInputAttributeDescriptions);
 end;
 
 procedure TVulkanGraphicsPipelineConstructor.SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
 begin
- fInputAssemblyStateCreateInfo.topology:=pTopology;
- if pPrimitiveRestartEnable then begin
-  fInputAssemblyStateCreateInfo.primitiveRestartEnable:=VK_TRUE;
- end else begin
-  fInputAssemblyStateCreateInfo.primitiveRestartEnable:=VK_FALSE;
- end;
+ Assert(assigned(fInputAssemblyState));
+ fInputAssemblyState.SetInputAssemblyState(pTopology,pPrimitiveRestartEnable);
 end;
 
 procedure TVulkanGraphicsPipelineConstructor.SetTessellationState(const pPatchControlPoints:TVkUInt32);
@@ -9731,18 +9949,7 @@ procedure TVulkanGraphicsPipelineConstructor.Initialize;
 begin
  if fPipelineHandle=VK_NULL_HANDLE then begin
 
-  SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions);
-  SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions);
-  if (fCountVertexInputBindingDescriptions>0) or (fCountVertexInputAttributeDescriptions>0) then begin
-   fVertexInputStateCreateInfo.vertexBindingDescriptionCount:=fCountVertexInputBindingDescriptions;
-   if fCountVertexInputBindingDescriptions>0 then begin
-    fVertexInputStateCreateInfo.pVertexBindingDescriptions:=@fVertexInputBindingDescriptions[0];
-   end;
-   fVertexInputStateCreateInfo.vertexAttributeDescriptionCount:=fCountVertexInputAttributeDescriptions;
-   if fCountVertexInputAttributeDescriptions>0 then begin
-    fVertexInputStateCreateInfo.pVertexAttributeDescriptions:=@fVertexInputAttributeDescriptions[0];
-   end;
-  end;
+  fVertexInputState.Initialize;
 
   SetLength(fViewPorts,fCountViewPorts);
   SetLength(fScissors,fCountScissors);
@@ -9802,6 +10009,16 @@ destructor TVulkanGraphicsPipeline.Destroy;
 begin
  FreeAndNil(fGraphicsPipelineConstructor);
  inherited Destroy;
+end;
+
+function TVulkanGraphicsPipeline.GetVertexInputState:TVulkanPipelineVertexInputState;
+begin
+ result:=fGraphicsPipelineConstructor.VertexInputState;
+end;
+
+function TVulkanGraphicsPipeline.GetInputAssemblyState:TVulkanPipelineInputAssemblyState;
+begin
+ result:=fGraphicsPipelineConstructor.InputAssemblyState;
 end;
 
 function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
