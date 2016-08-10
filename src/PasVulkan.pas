@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-10-16-30-0000                       *
+ *                        Version 2016-08-10-17-03-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2023,6 +2023,58 @@ type EVulkanException=class(Exception);
        property CountScissors:TVkInt32 read fCountScissors write SetCountScissors;
      end;
 
+     TVulkanPipelineRasterizationState=class(TVulkanPipelineState)
+      private
+       fRasterizationStateCreateInfo:TVkPipelineRasterizationStateCreateInfo;
+       fPointerToRasterizationStateCreateInfo:PVkPipelineRasterizationStateCreateInfo;
+       function GetDepthClampEnable:boolean;
+       procedure SetDepthClampEnable(const pNewValue:boolean);
+       function GetRasterizerDiscardEnable:boolean;
+       procedure SetRasterizerDiscardEnable(const pNewValue:boolean);
+       function GetPolygonMode:TVkPolygonMode;
+       procedure SetPolygonMode(const pNewValue:TVkPolygonMode);
+       function GetCullMode:TVkCullModeFlags;
+       procedure SetCullMode(const pNewValue:TVkCullModeFlags);
+       function GetFrontFace:TVkFrontFace;
+       procedure SetFrontFace(const pNewValue:TVkFrontFace);
+       function GetDepthBiasEnable:boolean;
+       procedure SetDepthBiasEnable(const pNewValue:boolean);
+       function GetDepthBiasConstantFactor:TVkFloat;
+       procedure SetDepthBiasConstantFactor(const pNewValue:TVkFloat);
+       function GetDepthBiasClamp:TVkFloat;
+       procedure SetDepthBiasClamp(const pNewValue:TVkFloat);
+       function GetDepthBiasSlopeFactor:TVkFloat;
+       procedure SetDepthBiasSlopeFactor(const pNewValue:TVkFloat);
+       function GetLineWidth:TVkFloat;
+       procedure SetLineWidth(const pNewValue:TVkFloat);
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Assign(const pFrom:TVulkanPipelineRasterizationState);
+       procedure SetRasterizationState(const pDepthClampEnable:boolean;
+                                       const pRasterizerDiscardEnable:boolean;
+                                       const pPolygonMode:TVkPolygonMode;
+                                       const pCullMode:TVkCullModeFlags;
+                                       const pFrontFace:TVkFrontFace;
+                                       const pDepthBiasEnable:boolean;
+                                       const pDepthBiasConstantFactor:TVkFloat;
+                                       const pDepthBiasClamp:TVkFloat;
+                                       const pDepthBiasSlopeFactor:TVkFloat;
+                                       const pLineWidth:TVkFloat);
+       property RasterizationStateCreateInfo:PVkPipelineRasterizationStateCreateInfo read fPointerToRasterizationStateCreateInfo;
+      published
+       property DepthClampEnable:boolean read GetDepthClampEnable write SetDepthClampEnable;
+       property RasterizerDiscardEnable:boolean read GetRasterizerDiscardEnable write SetRasterizerDiscardEnable;
+       property PolygonMode:TVkPolygonMode read GetPolygonMode write SetPolygonMode;
+       property CullMode:TVkCullModeFlags read GetCullMode write SetCullMode;
+       property FrontFace:TVkFrontFace read GetFrontFace write SetFrontFace;
+       property DepthBiasEnable:boolean read GetDepthBiasEnable write SetDepthBiasEnable;
+       property DepthBiasConstantFactor:TVkFloat read GetDepthBiasConstantFactor write SetDepthBiasConstantFactor;
+       property DepthBiasClamp:TVkFloat read GetDepthBiasClamp write SetDepthBiasClamp;
+       property DepthBiasSlopeFactor:TVkFloat read GetDepthBiasSlopeFactor write SetDepthBiasSlopeFactor;
+       property LineWidth:TVkFloat read GetLineWidth write SetLineWidth;
+     end;
+
      TVulkanGraphicsPipelineConstructor=class(TVulkanPipeline)
       private
        fGraphicsPipelineCreateInfo:TVkGraphicsPipelineCreateInfo;
@@ -2030,7 +2082,7 @@ type EVulkanException=class(Exception);
        fInputAssemblyState:TVulkanPipelineInputAssemblyState;
        fTessellationState:TVulkanPipelineTessellationState;
        fViewPortState:TVulkanPipelineViewPortState;
-       fRasterizationStateCreateInfo:TVkPipelineRasterizationStateCreateInfo;
+       fRasterizationState:TVulkanPipelineRasterizationState;
        fMultisampleStateCreateInfo:TVkPipelineMultisampleStateCreateInfo;
        fDepthStencilStateCreateInfo:TVkPipelineDepthStencilStateCreateInfo;
        fColorBlendStateCreateInfo:TVkPipelineColorBlendStateCreateInfo;
@@ -2113,6 +2165,7 @@ type EVulkanException=class(Exception);
        property InputAssemblyState:TVulkanPipelineInputAssemblyState read fInputAssemblyState;
        property TessellationState:TVulkanPipelineTessellationState read fTessellationState;
        property ViewPortState:TVulkanPipelineViewPortState read fViewPortState;
+       property RasterizationState:TVulkanPipelineRasterizationState read fRasterizationState;
      end;
 
      TVulkanGraphicsPipeline=class(TVulkanPipeline)
@@ -2122,6 +2175,7 @@ type EVulkanException=class(Exception);
        function GetInputAssemblyState:TVulkanPipelineInputAssemblyState;
        function GetTessellationState:TVulkanPipelineTessellationState;
        function GetViewPortState:TVulkanPipelineViewPortState;
+       function GetRasterizationState:TVulkanPipelineRasterizationState;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pCache:TVulkanPipelineCache;
@@ -2193,6 +2247,7 @@ type EVulkanException=class(Exception);
        property InputAssemblyState:TVulkanPipelineInputAssemblyState read GetInputAssemblyState;
        property TessellationState:TVulkanPipelineTessellationState read GetTessellationState;
        property ViewPortState:TVulkanPipelineViewPortState read GetViewPortState;
+       property RasterizationState:TVulkanPipelineRasterizationState read GetRasterizationState;
      end;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
@@ -9683,6 +9738,162 @@ begin
  end;
 end;
 
+constructor TVulkanPipelineRasterizationState.Create;
+begin
+
+ inherited Create;
+
+ FillChar(fRasterizationStateCreateInfo,SizeOf(TVkPipelineRasterizationStateCreateInfo),#0);
+ fRasterizationStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+ fRasterizationStateCreateInfo.pNext:=nil;
+ fRasterizationStateCreateInfo.flags:=0;
+ fRasterizationStateCreateInfo.depthClampEnable:=VK_FALSE;
+ fRasterizationStateCreateInfo.rasterizerDiscardEnable:=VK_TRUE;
+ fRasterizationStateCreateInfo.polygonMode:=VK_POLYGON_MODE_FILL;
+ fRasterizationStateCreateInfo.cullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+ fRasterizationStateCreateInfo.frontFace:=VK_FRONT_FACE_CLOCKWISE;
+ fRasterizationStateCreateInfo.depthBiasEnable:=VK_FALSE;
+ fRasterizationStateCreateInfo.depthBiasConstantFactor:=0.0;
+ fRasterizationStateCreateInfo.depthBiasClamp:=0.0;
+ fRasterizationStateCreateInfo.depthBiasSlopeFactor:=0.0;
+ fRasterizationStateCreateInfo.lineWidth:=1.0;
+
+ fPointerToRasterizationStateCreateInfo:=@fRasterizationStateCreateInfo;
+
+end;
+
+destructor TVulkanPipelineRasterizationState.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TVulkanPipelineRasterizationState.Assign(const pFrom:TVulkanPipelineRasterizationState);
+begin
+end;
+
+function TVulkanPipelineRasterizationState.GetDepthClampEnable:boolean;
+begin
+ result:=fRasterizationStateCreateInfo.depthClampEnable<>VK_FALSE;
+end;
+
+procedure TVulkanPipelineRasterizationState.SetDepthClampEnable(const pNewValue:boolean);
+begin
+ fRasterizationStateCreateInfo.depthClampEnable:=BooleanToVkBool[pNewValue];
+end;
+
+function TVulkanPipelineRasterizationState.GetRasterizerDiscardEnable:boolean;
+begin
+ result:=fRasterizationStateCreateInfo.rasterizerDiscardEnable<>VK_FALSE;
+end;
+
+procedure TVulkanPipelineRasterizationState.SetRasterizerDiscardEnable(const pNewValue:boolean);
+begin
+ fRasterizationStateCreateInfo.rasterizerDiscardEnable:=BooleanToVkBool[pNewValue];
+end;
+
+function TVulkanPipelineRasterizationState.GetPolygonMode:TVkPolygonMode;
+begin
+ result:=fRasterizationStateCreateInfo.polygonMode;
+end;
+
+procedure TVulkanPipelineRasterizationState.SetPolygonMode(const pNewValue:TVkPolygonMode);
+begin
+ fRasterizationStateCreateInfo.polygonMode:=pNewValue;
+end;
+
+function TVulkanPipelineRasterizationState.GetCullMode:TVkCullModeFlags;
+begin
+ result:=fRasterizationStateCreateInfo.cullMode;
+end;
+
+procedure TVulkanPipelineRasterizationState.SetCullMode(const pNewValue:TVkCullModeFlags);
+begin
+ fRasterizationStateCreateInfo.cullMode:=pNewValue;
+end;
+
+function TVulkanPipelineRasterizationState.GetFrontFace:TVkFrontFace;
+begin
+ result:=fRasterizationStateCreateInfo.frontFace;
+end;
+
+procedure TVulkanPipelineRasterizationState.SetFrontFace(const pNewValue:TVkFrontFace);
+begin
+ fRasterizationStateCreateInfo.frontFace:=pNewValue;
+end;
+
+function TVulkanPipelineRasterizationState.GetDepthBiasEnable:boolean;
+begin
+ result:=fRasterizationStateCreateInfo.depthBiasEnable<>VK_FALSE;
+end;
+
+procedure TVulkanPipelineRasterizationState.SetDepthBiasEnable(const pNewValue:boolean);
+begin
+ fRasterizationStateCreateInfo.depthBiasEnable:=BooleanToVkBool[pNewValue];
+end;
+
+function TVulkanPipelineRasterizationState.GetDepthBiasConstantFactor:TVkFloat;
+begin
+ result:=fRasterizationStateCreateInfo.depthBiasConstantFactor;
+end;
+
+procedure TVulkanPipelineRasterizationState.SetDepthBiasConstantFactor(const pNewValue:TVkFloat);
+begin
+ fRasterizationStateCreateInfo.depthBiasConstantFactor:=pNewValue;
+end;
+
+function TVulkanPipelineRasterizationState.GetDepthBiasClamp:TVkFloat;
+begin
+ result:=fRasterizationStateCreateInfo.depthBiasClamp;
+end;
+
+procedure TVulkanPipelineRasterizationState.SetDepthBiasClamp(const pNewValue:TVkFloat);
+begin
+ fRasterizationStateCreateInfo.depthBiasClamp:=pNewValue;
+end;
+
+function TVulkanPipelineRasterizationState.GetDepthBiasSlopeFactor:TVkFloat;
+begin
+ result:=fRasterizationStateCreateInfo.depthBiasSlopeFactor;
+end;
+
+procedure TVulkanPipelineRasterizationState.SetDepthBiasSlopeFactor(const pNewValue:TVkFloat);
+begin
+ fRasterizationStateCreateInfo.depthBiasSlopeFactor:=pNewValue;
+end;
+
+function TVulkanPipelineRasterizationState.GetLineWidth:TVkFloat;
+begin
+ result:=fRasterizationStateCreateInfo.lineWidth;
+end;
+
+procedure TVulkanPipelineRasterizationState.SetLineWidth(const pNewValue:TVkFloat);
+begin
+ fRasterizationStateCreateInfo.lineWidth:=pNewValue;
+end;
+
+procedure TVulkanPipelineRasterizationState.SetRasterizationState(const pDepthClampEnable:boolean;
+                                                                  const pRasterizerDiscardEnable:boolean;
+                                                                  const pPolygonMode:TVkPolygonMode;
+                                                                  const pCullMode:TVkCullModeFlags;
+                                                                  const pFrontFace:TVkFrontFace;
+                                                                  const pDepthBiasEnable:boolean;
+                                                                  const pDepthBiasConstantFactor:TVkFloat;
+                                                                  const pDepthBiasClamp:TVkFloat;
+                                                                  const pDepthBiasSlopeFactor:TVkFloat;
+                                                                  const pLineWidth:TVkFloat);
+begin
+ fRasterizationStateCreateInfo.depthClampEnable:=BooleanToVkBool[pDepthClampEnable];
+ fRasterizationStateCreateInfo.rasterizerDiscardEnable:=BooleanToVkBool[pRasterizerDiscardEnable];
+ fRasterizationStateCreateInfo.polygonMode:=pPolygonMode;
+ fRasterizationStateCreateInfo.cullMode:=pCullMode;
+ fRasterizationStateCreateInfo.frontFace:=pFrontFace;
+ fRasterizationStateCreateInfo.depthBiasEnable:=BooleanToVkBool[pDepthBiasEnable];
+ fRasterizationStateCreateInfo.depthBiasConstantFactor:=pDepthBiasConstantFactor;
+ fRasterizationStateCreateInfo.depthBiasClamp:=pDepthBiasClamp;
+ fRasterizationStateCreateInfo.depthBiasSlopeFactor:=pDepthBiasSlopeFactor;
+ fRasterizationStateCreateInfo.lineWidth:=pLineWidth;
+end;
+
 constructor TVulkanGraphicsPipelineConstructor.Create(const pDevice:TVulkanDevice;
                                                       const pCache:TVulkanPipelineCache;
                                                       const pFlags:TVkPipelineCreateFlags;
@@ -9706,6 +9917,8 @@ begin
 
  fViewPortState:=TVulkanPipelineViewPortState.Create;
 
+ fRasterizationState:=TVulkanPipelineRasterizationState.Create;
+
  FillChar(fGraphicsPipelineCreateInfo,SizeOf(TVkGraphicsPipelineCreateInfo),#0);
  fGraphicsPipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
  fGraphicsPipelineCreateInfo.pNext:=nil;
@@ -9725,7 +9938,7 @@ begin
  fGraphicsPipelineCreateInfo.pInputAssemblyState:=@fInputAssemblyState.fInputAssemblyStateCreateInfo;
  fGraphicsPipelineCreateInfo.pTessellationState:=nil;
  fGraphicsPipelineCreateInfo.pViewportState:=@fViewPortState.fViewportStateCreateInfo;
- fGraphicsPipelineCreateInfo.pRasterizationState:=@fRasterizationStateCreateInfo;
+ fGraphicsPipelineCreateInfo.pRasterizationState:=@fRasterizationState.fRasterizationStateCreateInfo;
  fGraphicsPipelineCreateInfo.pMultisampleState:=@fMultisampleStateCreateInfo;
  fGraphicsPipelineCreateInfo.pDepthStencilState:=nil;
  fGraphicsPipelineCreateInfo.pColorBlendState:=@fColorBlendStateCreateInfo;
@@ -9747,21 +9960,6 @@ begin
   fGraphicsPipelineCreateInfo.basePipelineHandle:=VK_NULL_HANDLE;
  end;
  fGraphicsPipelineCreateInfo.basePipelineIndex:=pBasePipelineIndex;
-
- FillChar(fRasterizationStateCreateInfo,SizeOf(TVkPipelineRasterizationStateCreateInfo),#0);
- fRasterizationStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
- fRasterizationStateCreateInfo.pNext:=nil;
- fRasterizationStateCreateInfo.flags:=0;
- fRasterizationStateCreateInfo.depthClampEnable:=VK_FALSE;
- fRasterizationStateCreateInfo.rasterizerDiscardEnable:=VK_TRUE;
- fRasterizationStateCreateInfo.polygonMode:=VK_POLYGON_MODE_FILL;
- fRasterizationStateCreateInfo.cullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
- fRasterizationStateCreateInfo.frontFace:=VK_FRONT_FACE_CLOCKWISE;
- fRasterizationStateCreateInfo.depthBiasEnable:=VK_FALSE;
- fRasterizationStateCreateInfo.depthBiasConstantFactor:=0.0;
- fRasterizationStateCreateInfo.depthBiasClamp:=0.0;
- fRasterizationStateCreateInfo.depthBiasSlopeFactor:=0.0;
- fRasterizationStateCreateInfo.lineWidth:=1.0;
 
  FillChar(fMultisampleStateCreateInfo,SizeOf(TVkPipelineMultisampleStateCreateInfo),#0);
  fMultisampleStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -9842,6 +10040,7 @@ begin
  fInputAssemblyState.Free;
  fTessellationState.Free;
  fViewPortState.Free;
+ fRasterizationState.Free;
  inherited Destroy;
 end;
 
@@ -9930,46 +10129,35 @@ begin
 end;
 
 procedure TVulkanGraphicsPipelineConstructor.SetRasterizationState(const pDepthClampEnable:boolean;
-                                                        const pRasterizerDiscardEnable:boolean;
-                                                        const pPolygonMode:TVkPolygonMode;
-                                                        const pCullMode:TVkCullModeFlags;
-                                                        const pFrontFace:TVkFrontFace;
-                                                        const pDepthBiasEnable:boolean;
-                                                        const pDepthBiasConstantFactor:TVkFloat;
-                                                        const pDepthBiasClamp:TVkFloat;
-                                                        const pDepthBiasSlopeFactor:TVkFloat;
-                                                        const pLineWidth:TVkFloat);
+                                                                   const pRasterizerDiscardEnable:boolean;
+                                                                   const pPolygonMode:TVkPolygonMode;
+                                                                   const pCullMode:TVkCullModeFlags;
+                                                                   const pFrontFace:TVkFrontFace;
+                                                                   const pDepthBiasEnable:boolean;
+                                                                   const pDepthBiasConstantFactor:TVkFloat;
+                                                                   const pDepthBiasClamp:TVkFloat;
+                                                                   const pDepthBiasSlopeFactor:TVkFloat;
+                                                                   const pLineWidth:TVkFloat);
 begin
- if pDepthClampEnable then begin
-  fRasterizationStateCreateInfo.depthClampEnable:=VK_TRUE;
- end else begin
-  fRasterizationStateCreateInfo.depthClampEnable:=VK_FALSE;
- end;
- if pRasterizerDiscardEnable then begin
-  fRasterizationStateCreateInfo.rasterizerDiscardEnable:=VK_TRUE;
- end else begin
-  fRasterizationStateCreateInfo.rasterizerDiscardEnable:=VK_FALSE;
- end;
- fRasterizationStateCreateInfo.polygonMode:=pPolygonMode;
- fRasterizationStateCreateInfo.cullMode:=pCullMode;
- fRasterizationStateCreateInfo.frontFace:=pFrontFace;
- if pDepthBiasEnable then begin
-  fRasterizationStateCreateInfo.depthBiasEnable:=VK_TRUE;
- end else begin
-  fRasterizationStateCreateInfo.depthBiasEnable:=VK_FALSE;
- end;
- fRasterizationStateCreateInfo.depthBiasConstantFactor:=pDepthBiasConstantFactor;
- fRasterizationStateCreateInfo.depthBiasClamp:=pDepthBiasClamp;
- fRasterizationStateCreateInfo.depthBiasSlopeFactor:=pDepthBiasSlopeFactor;
- fRasterizationStateCreateInfo.lineWidth:=pLineWidth;
+ Assert(assigned(fRasterizationState));
+ fRasterizationState.SetRasterizationState(pDepthClampEnable,
+                                           pRasterizerDiscardEnable,
+                                           pPolygonMode,
+                                           pCullMode,
+                                           pFrontFace,
+                                           pDepthBiasEnable,
+                                           pDepthBiasConstantFactor,
+                                           pDepthBiasClamp,
+                                           pDepthBiasSlopeFactor,
+                                           pLineWidth);
 end;
 
 procedure TVulkanGraphicsPipelineConstructor.SetMultisampleState(const pRasterizationSamples:TVkSampleCountFlagBits;
-                                                      const pSampleShadingEnable:boolean;
-                                                      const pMinSampleShading:TVkFloat;
-                                                      const pSampleMask:array of TVkSampleMask;
-                                                      const pAlphaToCoverageEnable:boolean;
-                                                      const pAlphaToOneEnable:boolean);
+                                                                 const pSampleShadingEnable:boolean;
+                                                                 const pMinSampleShading:TVkFloat;
+                                                                 const pSampleMask:array of TVkSampleMask;
+                                                                 const pAlphaToCoverageEnable:boolean;
+                                                                 const pAlphaToOneEnable:boolean);
 begin
  fMultisampleStateCreateInfo.rasterizationSamples:=pRasterizationSamples;
  if pSampleShadingEnable then begin
@@ -9995,14 +10183,14 @@ begin
 end;
 
 procedure TVulkanGraphicsPipelineConstructor.SetDepthStencilState(const pDepthTestEnable:boolean;
-                                                       const pDepthWriteEnable:boolean;
-                                                       const pDepthCompareOp:TVkCompareOp;
-                                                       const pDepthBoundsTestEnable:boolean;
-                                                       const pStencilTestEnable:boolean;
-                                                       const pFront:TVkStencilOpState;
-                                                       const pBack:TVkStencilOpState;
-                                                       const pMinDepthBounds:TVkFloat;
-                                                       const pMaxDepthBounds:TVkFloat);
+                                                                  const pDepthWriteEnable:boolean;
+                                                                  const pDepthCompareOp:TVkCompareOp;
+                                                                  const pDepthBoundsTestEnable:boolean;
+                                                                  const pStencilTestEnable:boolean;
+                                                                  const pFront:TVkStencilOpState;
+                                                                  const pBack:TVkStencilOpState;
+                                                                  const pMinDepthBounds:TVkFloat;
+                                                                  const pMaxDepthBounds:TVkFloat);
 begin
  fGraphicsPipelineCreateInfo.pDepthStencilState:=@fDepthStencilStateCreateInfo;
  if pDepthTestEnable then begin
@@ -10033,8 +10221,8 @@ begin
 end;
 
 procedure TVulkanGraphicsPipelineConstructor.SetColorBlendState(const pLogicOpEnable:boolean;
-                                                     const pLogicOp:TVkLogicOp;
-                                                     const pBlendConstants:array of TVkFloat);
+                                                                const pLogicOp:TVkLogicOp;
+                                                                const pBlendConstants:array of TVkFloat);
 var ArrayItemCount:TVkInt32;
 begin
  if pLogicOpEnable then begin
@@ -10063,13 +10251,13 @@ begin
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const pBlendEnable:boolean;
-                                                              const pSrcColorBlendFactor:TVkBlendFactor;
-                                                              const pDstColorBlendFactor:TVkBlendFactor;
-                                                              const pColorBlendOp:TVkBlendOp;
-                                                              const pSrcAlphaBlendFactor:TVkBlendFactor;
-                                                              const pDstAlphaBlendFactor:TVkBlendFactor;
-                                                              const pAlphaBlendOp:TVkBlendOp;
-                                                              const pColorWriteMask:TVkColorComponentFlags):TVkInt32;
+                                                                         const pSrcColorBlendFactor:TVkBlendFactor;
+                                                                         const pDstColorBlendFactor:TVkBlendFactor;
+                                                                         const pColorBlendOp:TVkBlendOp;
+                                                                         const pSrcAlphaBlendFactor:TVkBlendFactor;
+                                                                         const pDstAlphaBlendFactor:TVkBlendFactor;
+                                                                         const pAlphaBlendOp:TVkBlendOp;
+                                                                         const pColorWriteMask:TVkColorComponentFlags):TVkInt32;
 var ColorBlendAttachmentState:PVkPipelineColorBlendAttachmentState;
 begin
  result:=fCountColorBlendAttachmentStates;
@@ -10207,6 +10395,11 @@ end;
 function TVulkanGraphicsPipeline.GetViewPortState:TVulkanPipelineViewPortState;
 begin
  result:=fGraphicsPipelineConstructor.ViewPortState;
+end;
+
+function TVulkanGraphicsPipeline.GetRasterizationState:TVulkanPipelineRasterizationState;
+begin
+ result:=fGraphicsPipelineConstructor.RasterizationState;
 end;
 
 function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
