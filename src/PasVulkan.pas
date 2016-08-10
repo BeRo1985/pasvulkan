@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-10-16-25-0000                       *
+ *                        Version 2016-08-10-16-30-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2000,6 +2000,8 @@ type EVulkanException=class(Exception);
        fCountViewPorts:TVkInt32;
        fScissors:TVkRect2DArray;
        fCountScissors:TVkInt32;
+       function GetViewPort(const pIndex:TVkInt32):PVkViewport;
+       function GetScissor(const pIndex:TVkInt32):PVkRect2D;
        procedure SetCountViewPorts(const pNewCount:TVkInt32);
        procedure SetCountScissors(const pNewCount:TVkInt32);
        procedure Initialize;
@@ -2014,6 +2016,8 @@ type EVulkanException=class(Exception);
        function AddScissor(const pX,pY:TVkInt32;const pWidth,pHeight:TVkUInt32):TVkInt32; overload;
        function AddScissors(const pScissors:array of TVkRect2D):TVkInt32; overload;
        property ViewportStateCreateInfo:PVkPipelineViewportStateCreateInfo read fPointerToViewportStateCreateInfo;
+       property ViewPorts[const pIndex:TVkInt32]:PVkViewport read GetViewPort;
+       property Scissors[const pIndex:TVkInt32]:PVkRect2D read GetScissor;
       published
        property CountViewPorts:TVkInt32 read fCountViewPorts write SetCountViewPorts;
        property CountScissors:TVkInt32 read fCountScissors write SetCountScissors;
@@ -9555,6 +9559,16 @@ begin
  fCountViewPorts:=pFrom.fCountViewPorts;
  fScissors:=copy(pFrom.fScissors);
  fCountScissors:=pFrom.fCountScissors;
+end;
+
+function TVulkanPipelineViewPortState.GetViewPort(const pIndex:TVkInt32):PVkViewport;
+begin
+ result:=@fViewPorts[pIndex];
+end;
+
+function TVulkanPipelineViewPortState.GetScissor(const pIndex:TVkInt32):PVkRect2D;
+begin
+ result:=@fScissors[pIndex];
 end;
 
 procedure TVulkanPipelineViewPortState.SetCountViewPorts(const pNewCount:TVkInt32);
