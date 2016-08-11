@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-11-03-08-0000                       *
+ *                        Version 2016-08-11-03-19-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2277,7 +2277,6 @@ type EVulkanException=class(Exception);
        constructor Create(const pDevice:TVulkanDevice;
                           const pCache:TVulkanPipelineCache;
                           const pFlags:TVkPipelineCreateFlags;
-                          const pStages:array of TVulkanPipelineShaderStage;
                           const pLayout:TVulkanPipelineLayout;
                           const pRenderPass:TVulkanRenderPass;
                           const pSubPass:TVkUInt32;
@@ -2372,7 +2371,6 @@ type EVulkanException=class(Exception);
        constructor Create(const pDevice:TVulkanDevice;
                           const pCache:TVulkanPipelineCache;
                           const pFlags:TVkPipelineCreateFlags;
-                          const pStages:array of TVulkanPipelineShaderStage;
                           const pLayout:TVulkanPipelineLayout;
                           const pRenderPass:TVulkanRenderPass;
                           const pSubPass:TVkUInt32;
@@ -10718,7 +10716,6 @@ end;
 constructor TVulkanGraphicsPipelineConstructor.Create(const pDevice:TVulkanDevice;
                                                       const pCache:TVulkanPipelineCache;
                                                       const pFlags:TVkPipelineCreateFlags;
-                                                      const pStages:array of TVulkanPipelineShaderStage;
                                                       const pLayout:TVulkanPipelineLayout;
                                                       const pRenderPass:TVulkanRenderPass;
                                                       const pSubPass:TVkUInt32;
@@ -10726,10 +10723,11 @@ constructor TVulkanGraphicsPipelineConstructor.Create(const pDevice:TVulkanDevic
                                                       const pBasePipelineIndex:TVkInt32);
 var Index:TVkInt32;
 begin
- fStages:=nil;
- fCountStages:=0;
 
  inherited Create(pDevice);
+
+ fStages:=nil;
+ fCountStages:=0;
 
  fVertexInputState:=TVulkanPipelineVertexInputState.Create;
 
@@ -10753,18 +10751,8 @@ begin
  fGraphicsPipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
  fGraphicsPipelineCreateInfo.pNext:=nil;
  fGraphicsPipelineCreateInfo.flags:=pFlags;
- fGraphicsPipelineCreateInfo.stageCount:=length(pStages);
- fCountStages:=fGraphicsPipelineCreateInfo.stageCount;
- if fCountStages>0 then begin
-  SetLength(fStages,fCountStages);
-  for Index:=0 to fCountStages-1 do begin
-   pStages[Index].Initialize;
-   fStages[Index]:=pStages[Index].fPipelineShaderStageCreateInfo;
-  end;
-  fGraphicsPipelineCreateInfo.pStages:=@fStages[0];
- end else begin
-  fGraphicsPipelineCreateInfo.pStages:=nil;
- end;
+ fGraphicsPipelineCreateInfo.stageCount:=0;
+ fGraphicsPipelineCreateInfo.pStages:=nil;
  fGraphicsPipelineCreateInfo.pVertexInputState:=@fVertexInputState.fVertexInputStateCreateInfo;
  fGraphicsPipelineCreateInfo.pInputAssemblyState:=@fInputAssemblyState.fInputAssemblyStateCreateInfo;
  fGraphicsPipelineCreateInfo.pTessellationState:=nil;
@@ -11094,7 +11082,6 @@ end;
 constructor TVulkanGraphicsPipeline.Create(const pDevice:TVulkanDevice;
                                            const pCache:TVulkanPipelineCache;
                                            const pFlags:TVkPipelineCreateFlags;
-                                           const pStages:array of TVulkanPipelineShaderStage;
                                            const pLayout:TVulkanPipelineLayout;
                                            const pRenderPass:TVulkanRenderPass;
                                            const pSubPass:TVkUInt32;
@@ -11105,7 +11092,6 @@ begin
  fGraphicsPipelineConstructor:=TVulkanGraphicsPipelineConstructor.Create(fDevice,
                                                                          pCache,
                                                                          pFlags,
-                                                                         pStages,
                                                                          pLayout,
                                                                          pRenderPass,
                                                                          pSubPass,

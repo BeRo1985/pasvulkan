@@ -90,12 +90,14 @@ begin
  VulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(VulkanDevice,
                                                         VulkanPipelineCache,
                                                         0,
-                                                        [VulkanPipelineShaderStageTriangleVertex,VulkanPipelineShaderStageTriangleFragment],
                                                         VulkanPipelineLayout,
                                                         VulkanSwapChainSimpleDirectRenderTarget.RenderPass,
                                                         0,
                                                         nil,
                                                         0);
+
+ VulkanGraphicsPipeline.AddStage(VulkanPipelineShaderStageTriangleVertex);
+ VulkanGraphicsPipeline.AddStage(VulkanPipelineShaderStageTriangleFragment);
 
  VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
