@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-11-02-23-0000                       *
+ *                        Version 2016-08-11-02-46-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2237,6 +2237,27 @@ type EVulkanException=class(Exception);
        property CountColorBlendAttachmentStates:TVkInt32 read fCountColorBlendAttachmentStates write SetCountColorBlendAttachmentStates;
      end;
 
+     TVulkanPipelineDynamicState=class(TVulkanPipelineState)
+      private
+       fDynamicStateCreateInfo:TVkPipelineDynamicStateCreateInfo;
+       fPointerToDynamicStateCreateInfo:PVkPipelineDynamicStateCreateInfo;
+       fDynamicStates:TVkDynamicStateArray;
+       fCountDynamicStates:TVkInt32;
+       function GetDynamicState(const pIndex:TVkInt32):PVkDynamicState;
+       procedure SetCountDynamicStates(const pNewCount:TVkInt32);
+       procedure Initialize;
+      public                
+       constructor Create;
+       destructor Destroy; override;
+       procedure Assign(const pFrom:TVulkanPipelineDynamicState);
+       function AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32; overload;
+       function AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32; overload;
+       property DynamicStateStateCreateInfo:PVkPipelineDynamicStateCreateInfo read fPointerToDynamicStateCreateInfo;
+       property DynamicStates[const pIndex:TVkInt32]:PVkDynamicState read GetDynamicState;
+      published
+       property CountDynamicStates:TVkInt32 read fCountDynamicStates write SetCountDynamicStates;
+     end;
+
      TVulkanGraphicsPipelineConstructor=class(TVulkanPipeline)
       private
        fGraphicsPipelineCreateInfo:TVkGraphicsPipelineCreateInfo;
@@ -2248,11 +2269,9 @@ type EVulkanException=class(Exception);
        fMultisampleState:TVulkanPipelineMultisampleState;
        fDepthStencilState:TVulkanPipelineDepthStencilState;
        fColorBlendState:TVulkanPipelineColorBlendState;
-       fDynamicStateCreateInfo:TVkPipelineDynamicStateCreateInfo;
+       fDynamicState:TVulkanPipelineDynamicState;
        fStages:TVkPipelineShaderStageCreateInfoArray;
        fPipelineCache:TVkPipelineCache;
-       fDynamicStates:TVkDynamicStateArray;
-       fCountDynamicStates:TVkInt32;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pCache:TVulkanPipelineCache;
@@ -2328,6 +2347,7 @@ type EVulkanException=class(Exception);
        property MultisampleState:TVulkanPipelineMultisampleState read fMultisampleState;
        property DepthStencilState:TVulkanPipelineDepthStencilState read fDepthStencilState;
        property ColorBlendState:TVulkanPipelineColorBlendState read fColorBlendState;
+       property DynamicState:TVulkanPipelineDynamicState read fDynamicState;
      end;
 
      TVulkanGraphicsPipeline=class(TVulkanPipeline)
@@ -2341,6 +2361,7 @@ type EVulkanException=class(Exception);
        function GetMultisampleState:TVulkanPipelineMultisampleState;
        function GetDepthStencilState:TVulkanPipelineDepthStencilState;
        function GetColorBlendState:TVulkanPipelineColorBlendState;
+       function GetDynamicState:TVulkanPipelineDynamicState;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pCache:TVulkanPipelineCache;
@@ -2416,6 +2437,7 @@ type EVulkanException=class(Exception);
        property MultisampleState:TVulkanPipelineMultisampleState read GetMultisampleState;
        property DepthStencilState:TVulkanPipelineDepthStencilState read GetDepthStencilState;
        property ColorBlendState:TVulkanPipelineColorBlendState read GetColorBlendState;
+       property DynamicState:TVulkanPipelineDynamicState read GetDynamicState;
      end;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
@@ -10605,6 +10627,83 @@ begin
  end;
 end;
 
+constructor TVulkanPipelineDynamicState.Create;
+begin
+
+ inherited Create;
+
+ FillChar(fDynamicStateCreateInfo,SizeOf(TVkPipelineDynamicStateCreateInfo),#0);
+ fDynamicStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+ fDynamicStateCreateInfo.pNext:=nil;
+ fDynamicStateCreateInfo.flags:=0;
+ fDynamicStateCreateInfo.dynamicStateCount:=0;
+ fDynamicStateCreateInfo.pDynamicStates:=nil;
+
+ fPointerToDynamicStateCreateInfo:=@fDynamicStateCreateInfo;
+
+ fDynamicStates:=nil;
+ fCountDynamicStates:=0;
+
+end;
+
+destructor TVulkanPipelineDynamicState.Destroy;
+begin
+ SetLength(fDynamicStates,0);
+ inherited Destroy;
+end;
+
+procedure TVulkanPipelineDynamicState.Assign(const pFrom:TVulkanPipelineDynamicState);
+begin
+ fDynamicStates:=copy(pFrom.fDynamicStates);
+ fCountDynamicStates:=pFrom.fCountDynamicStates;
+end;
+
+function TVulkanPipelineDynamicState.GetDynamicState(const pIndex:TVkInt32):PVkDynamicState;
+begin
+ result:=@fDynamicStates[pIndex];
+end;
+
+procedure TVulkanPipelineDynamicState.SetCountDynamicStates(const pNewCount:TVkInt32);
+begin
+ fCountDynamicStates:=pNewCount;
+ if length(fDynamicStates)<fCountDynamicStates then begin
+  SetLength(fDynamicStates,fCountDynamicStates*2);
+ end;
+end;
+
+function TVulkanPipelineDynamicState.AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
+begin
+ result:=fCountDynamicStates;
+ inc(fCountDynamicStates);
+ if length(fDynamicStates)<fCountDynamicStates then begin
+  SetLength(fDynamicStates,fCountDynamicStates*2);
+ end;
+ fDynamicStates[result]:=pDynamicState;
+end;
+
+function TVulkanPipelineDynamicState.AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
+begin
+ if length(pDynamicStates)>0 then begin
+  result:=fCountDynamicStates;
+  inc(fCountDynamicStates,length(pDynamicStates));
+  if length(fDynamicStates)<fCountDynamicStates then begin
+   SetLength(fDynamicStates,fCountDynamicStates*2);
+  end;
+  Move(pDynamicStates[0],fDynamicStates[result],length(pDynamicStates)*SizeOf(TVkDynamicState));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TVulkanPipelineDynamicState.Initialize;
+begin
+ SetLength(fDynamicStates,fCountDynamicStates);
+ fDynamicStateCreateInfo.DynamicStateCount:=fCountDynamicStates;
+ if fCountDynamicStates>0 then begin
+  fDynamicStateCreateInfo.pDynamicStates:=@fDynamicStates[0];
+ end;
+end;
+
 constructor TVulkanGraphicsPipelineConstructor.Create(const pDevice:TVulkanDevice;
                                                       const pCache:TVulkanPipelineCache;
                                                       const pFlags:TVkPipelineCreateFlags;
@@ -10635,6 +10734,8 @@ begin
  fDepthStencilState:=TVulkanPipelineDepthStencilState.Create;
 
  fColorBlendState:=TVulkanPipelineColorBlendState.Create;
+
+ fDynamicState:=TVulkanPipelineDynamicState.Create;
 
  FillChar(fGraphicsPipelineCreateInfo,SizeOf(TVkGraphicsPipelineCreateInfo),#0);
  fGraphicsPipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -10678,28 +10779,17 @@ begin
  end;
  fGraphicsPipelineCreateInfo.basePipelineIndex:=pBasePipelineIndex;
 
- FillChar(fDynamicStateCreateInfo,SizeOf(TVkPipelineDynamicStateCreateInfo),#0);
- fDynamicStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
- fDynamicStateCreateInfo.pNext:=nil;
- fDynamicStateCreateInfo.flags:=0;
- fDynamicStateCreateInfo.dynamicStateCount:=0;
- fDynamicStateCreateInfo.pDynamicStates:=nil;
-
  if assigned(pCache) then begin
   fPipelineCache:=pCache.fPipelineCacheHandle;
  end else begin
   fPipelineCache:=VK_NULL_HANDLE;
  end;
 
- fDynamicStates:=nil;
- fCountDynamicStates:=0;
-
 end;
 
 destructor TVulkanGraphicsPipelineConstructor.Destroy;
 begin
  SetLength(fStages,0);
- SetLength(fDynamicStates,0);
  fVertexInputState.Free;
  fInputAssemblyState.Free;
  fTessellationState.Free;
@@ -10708,6 +10798,7 @@ begin
  fMultisampleState.Free;
  fDepthStencilState.Free;
  fColorBlendState.Free;
+ fDynamicState.Free;
  inherited Destroy;
 end;
 
@@ -10902,26 +10993,14 @@ end;
 
 function TVulkanGraphicsPipelineConstructor.AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
 begin
- result:=fCountDynamicStates;
- inc(fCountDynamicStates);
- if length(fDynamicStates)<fCountDynamicStates then begin
-  SetLength(fDynamicStates,fCountDynamicStates*2);
- end;
- fDynamicStates[result]:=pDynamicState;
+ Assert(assigned(fDynamicState));
+ result:=fDynamicState.AddDynamicState(pDynamicState);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
 begin
- if length(pDynamicStates)>0 then begin
-  result:=fCountDynamicStates;
-  inc(fCountDynamicStates,length(pDynamicStates));
-  if length(fDynamicStates)<fCountDynamicStates then begin
-   SetLength(fDynamicStates,fCountDynamicStates*2);
-  end;
-  Move(pDynamicStates[0],fDynamicStates[result],length(pDynamicStates)*SizeOf(TVkDynamicState));
- end else begin
-  result:=-1;
- end;
+ Assert(assigned(fDynamicState));
+ result:=fDynamicState.AddDynamicStates(pDynamicStates);
 end;
 
 procedure TVulkanGraphicsPipelineConstructor.Initialize;
@@ -10940,11 +11019,10 @@ begin
 
   fColorBlendState.Initialize;
 
-  SetLength(fDynamicStates,fCountDynamicStates);
-  if fCountDynamicStates>0 then begin
-   fGraphicsPipelineCreateInfo.pDynamicState:=@fDynamicStateCreateInfo;
-   fDynamicStateCreateInfo.dynamicStateCount:=fCountDynamicStates;
-   fDynamicStateCreateInfo.pDynamicStates:=@fDynamicStates[0];
+  fDynamicState.Initialize;
+
+  if fDynamicState.CountDynamicStates>0 then begin
+   fGraphicsPipelineCreateInfo.pDynamicState:=@fDynamicState.fDynamicStateCreateInfo;
   end;
 
   HandleResultCode(fDevice.fDeviceVulkan.CreateGraphicsPipelines(fDevice.fDeviceHandle,fPipelineCache,1,@fGraphicsPipelineCreateInfo,fDevice.fAllocationCallbacks,@fPipelineHandle));
@@ -11019,6 +11097,11 @@ end;
 function TVulkanGraphicsPipeline.GetColorBlendState:TVulkanPipelineColorBlendState;
 begin
  result:=fGraphicsPipelineConstructor.ColorBlendState;
+end;
+
+function TVulkanGraphicsPipeline.GetDynamicState:TVulkanPipelineDynamicState;
+begin
+ result:=fGraphicsPipelineConstructor.DynamicState;
 end;
 
 function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
