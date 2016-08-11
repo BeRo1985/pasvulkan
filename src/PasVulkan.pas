@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-11-02-49-0000                       *
+ *                        Version 2016-08-11-02-54-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2261,6 +2261,7 @@ type EVulkanException=class(Exception);
      TVulkanGraphicsPipelineConstructor=class(TVulkanPipeline)
       private
        fGraphicsPipelineCreateInfo:TVkGraphicsPipelineCreateInfo;
+       fStages:TVkPipelineShaderStageCreateInfoArray;
        fVertexInputState:TVulkanPipelineVertexInputState;
        fInputAssemblyState:TVulkanPipelineInputAssemblyState;
        fTessellationState:TVulkanPipelineTessellationState;
@@ -2270,7 +2271,6 @@ type EVulkanException=class(Exception);
        fDepthStencilState:TVulkanPipelineDepthStencilState;
        fColorBlendState:TVulkanPipelineColorBlendState;
        fDynamicState:TVulkanPipelineDynamicState;
-       fStages:TVkPipelineShaderStageCreateInfoArray;
        fPipelineCache:TVkPipelineCache;
       public
        constructor Create(const pDevice:TVulkanDevice;
@@ -2283,6 +2283,7 @@ type EVulkanException=class(Exception);
                           const pBasePipelineHandle:TVulkanPipeline;
                           const pBasePipelineIndex:TVkInt32); reintroduce;
        destructor Destroy; override;
+       procedure Assign(const pFrom:TVulkanGraphicsPipelineConstructor);
        function AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
        function AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32; overload;
        function AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
@@ -2373,6 +2374,7 @@ type EVulkanException=class(Exception);
                           const pBasePipelineHandle:TVulkanPipeline;
                           const pBasePipelineIndex:TVkInt32); reintroduce;
        destructor Destroy; override;
+       procedure Assign(const pFrom:TVulkanGraphicsPipeline);
        function AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
        function AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32; overload;
        function AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
@@ -10803,6 +10805,20 @@ begin
  inherited Destroy;
 end;
 
+procedure TVulkanGraphicsPipelineConstructor.Assign(const pFrom:TVulkanGraphicsPipelineConstructor);
+begin
+ fStages:=copy(pFrom.fStages);
+ fVertexInputState.Assign(pFrom.fVertexInputState);
+ fInputAssemblyState.Assign(pFrom.fInputAssemblyState);
+ fTessellationState.Assign(pFrom.fTessellationState);
+ fViewPortState.Assign(pFrom.fViewPortState);
+ fRasterizationState.Assign(pFrom.fRasterizationState);
+ fMultisampleState.Assign(pFrom.fMultisampleState);
+ fDepthStencilState.Assign(pFrom.fDepthStencilState);
+ fColorBlendState.Assign(pFrom.fColorBlendState);
+ fDynamicState.Assign(pFrom.fDynamicState);
+end;
+
 function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
 begin
  Assert(assigned(fVertexInputState));
@@ -11058,6 +11074,11 @@ destructor TVulkanGraphicsPipeline.Destroy;
 begin
  FreeAndNil(fGraphicsPipelineConstructor);
  inherited Destroy;
+end;
+
+procedure TVulkanGraphicsPipeline.Assign(const pFrom:TVulkanGraphicsPipeline);
+begin
+ fGraphicsPipelineConstructor.Assign(pFrom.fGraphicsPipelineConstructor);
 end;
 
 function TVulkanGraphicsPipeline.GetVertexInputState:TVulkanPipelineVertexInputState;
