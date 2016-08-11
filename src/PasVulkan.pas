@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-10-17-29-0000                       *
+ *                        Version 2016-08-11-02-23-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2118,6 +2118,125 @@ type EVulkanException=class(Exception);
        property AlphaToOneEnable:boolean read GetAlphaToOneEnable write SetAlphaToOneEnable;
      end;
 
+     TVulkanStencilOpState=class(TVulkanObject)
+      private
+       fStencilOpState:PVkStencilOpState;
+       function GetFailOp:TVkStencilOp;
+       procedure SetFailOp(const pNewValue:TVkStencilOp);
+       function GetPassOp:TVkStencilOp;
+       procedure SetPassOp(const pNewValue:TVkStencilOp);
+       function GetDepthFailOp:TVkStencilOp;
+       procedure SetDepthFailOp(const pNewValue:TVkStencilOp);
+       function GetCompareOp:TVkCompareOp;
+       procedure SetCompareOp(const pNewValue:TVkCompareOp);
+       function GetCompareMask:TVkUInt32;
+       procedure SetCompareMask(const pNewValue:TVkUInt32);
+       function GetWriteMask:TVkUInt32;
+       procedure SetWriteMask(const pNewValue:TVkUInt32);
+       function GetReference:TVkUInt32;
+       procedure SetReference(const pNewValue:TVkUInt32);
+      public
+       constructor Create(const pStencilOpState:PVkStencilOpState);
+       destructor Destroy; override;
+       procedure Assign(const pFrom:TVulkanStencilOpState);
+       property StencilOpState:PVkStencilOpState read fStencilOpState;
+      published
+       property FailOp:TVkStencilOp read GetFailOp write SetFailOp;
+       property PassOp:TVkStencilOp read GetPassOp write SetPassOp;
+       property DepthFailOp:TVkStencilOp read GetDepthFailOp write SetDepthFailOp;
+       property CompareOp:TVkCompareOp read GetCompareOp write SetCompareOp;
+       property CompareMask:TVkUInt32 read GetCompareMask write SetCompareMask;
+       property WriteMask:TVkUInt32 read GetWriteMask write SetWriteMask;
+       property Reference:TVkUInt32 read GetReference write SetReference;
+     end;
+
+     TVulkanPipelineDepthStencilState=class(TVulkanPipelineState)
+      private
+       fDepthStencilStateCreateInfo:TVkPipelineDepthStencilStateCreateInfo;
+       fPointerToDepthStencilStateCreateInfo:PVkPipelineDepthStencilStateCreateInfo;
+       fFrontStencilOpState:TVulkanStencilOpState;
+       fBackStencilOpState:TVulkanStencilOpState;
+       function GetDepthTestEnable:boolean;
+       procedure SetDepthTestEnable(const pNewValue:boolean);
+       function GetDepthWriteEnable:boolean;
+       procedure SetDepthWriteEnable(const pNewValue:boolean);
+       function GetDepthCompareOp:TVkCompareOp;
+       procedure SetDepthCompareOp(const pNewValue:TVkCompareOp);
+       function GetDepthBoundsTestEnable:boolean;
+       procedure SetDepthBoundsTestEnable(const pNewValue:boolean);
+       function GetStencilTestEnable:boolean;
+       procedure SetStencilTestEnable(const pNewValue:boolean);
+       function GetMinDepthBounds:TVkFloat;
+       procedure SetMinDepthBounds(const pNewValue:TVkFloat);
+       function GetMaxDepthBounds:TVkFloat;
+       procedure SetMaxDepthBounds(const pNewValue:TVkFloat);
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Assign(const pFrom:TVulkanPipelineDepthStencilState);
+       procedure SetDepthStencilState(const pDepthTestEnable:boolean;
+                                      const pDepthWriteEnable:boolean;
+                                      const pDepthCompareOp:TVkCompareOp;
+                                      const pDepthBoundsTestEnable:boolean;
+                                      const pStencilTestEnable:boolean;
+                                      const pFront:TVkStencilOpState;
+                                      const pBack:TVkStencilOpState;
+                                      const pMinDepthBounds:TVkFloat;
+                                      const pMaxDepthBounds:TVkFloat);
+       property DepthStencilStateCreateInfo:PVkPipelineDepthStencilStateCreateInfo read fPointerToDepthStencilStateCreateInfo;
+      published
+       property DepthTestEnable:boolean read GetDepthTestEnable write SetDepthTestEnable;
+       property DepthWriteEnable:boolean read GetDepthWriteEnable write SetDepthWriteEnable;
+       property DepthCompareOp:TVkCompareOp read GetDepthCompareOp write SetDepthCompareOp;
+       property DepthBoundsTestEnable:boolean read GetDepthBoundsTestEnable write SetDepthBoundsTestEnable;
+       property StencilTestEnable:boolean read GetStencilTestEnable write SetStencilTestEnable;
+       property Front:TVulkanStencilOpState read fFrontStencilOpState;
+       property Back:TVulkanStencilOpState read fBackStencilOpState;
+       property MinDepthBounds:TVkFloat read GetMinDepthBounds write SetMinDepthBounds;
+       property MaxDepthBounds:TVkFloat read GetMaxDepthBounds write SetMaxDepthBounds;
+     end;
+
+     TVulkanPipelineColorBlendState=class(TVulkanPipelineState)
+      private
+       fColorBlendStateCreateInfo:TVkPipelineColorBlendStateCreateInfo;
+       fPointerToColorBlendStateCreateInfo:PVkPipelineColorBlendStateCreateInfo;
+       fColorBlendAttachmentStates:TVkPipelineColorBlendAttachmentStateArray;
+       fCountColorBlendAttachmentStates:TVkInt32;
+       function GetLogicOpEnable:boolean;
+       procedure SetLogicOpEnable(const pNewValue:boolean);
+       function GetLogicOp:TVkLogicOp;
+       procedure SetLogicOp(const pNewValue:TVkLogicOp);
+       procedure SetCountColorBlendAttachmentStates(const pNewCount:TVkInt32);
+       function GetColorBlendAttachmentState(const pIndex:TVkInt32):PVkPipelineColorBlendAttachmentState;
+       function GetBlendConstant(const pIndex:TVkInt32):TVkFloat;
+       procedure SetBlendConstant(const pIndex:TVkInt32;const pNewValue:TVkFloat);
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Assign(const pFrom:TVulkanPipelineColorBlendState);
+       procedure SetColorBlendState(const pLogicOpEnable:boolean;
+                                    const pLogicOp:TVkLogicOp;
+                                    const pBlendConstants:array of TVkFloat);
+       function AddColorBlendAttachmentState(const pColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32; overload;
+       function AddColorBlendAttachmentState(const pBlendEnable:boolean;
+                                             const pSrcColorBlendFactor:TVkBlendFactor;
+                                             const pDstColorBlendFactor:TVkBlendFactor;
+                                             const pColorBlendOp:TVkBlendOp;
+                                             const pSrcAlphaBlendFactor:TVkBlendFactor;
+                                             const pDstAlphaBlendFactor:TVkBlendFactor;
+                                             const pAlphaBlendOp:TVkBlendOp;
+                                             const pColorWriteMask:TVkColorComponentFlags):TVkInt32; overload;
+       function AddColorBlendAttachmentStates(const pColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+       procedure Initialize;
+       property ColorBlendStateCreateInfo:PVkPipelineColorBlendStateCreateInfo read fPointerToColorBlendStateCreateInfo;
+       property ColorBlendAttachmentStates[const pIndex:TVkInt32]:PVkPipelineColorBlendAttachmentState read GetColorBlendAttachmentState;
+       property BlendConstants[const pIndex:TVkInt32]:TVkFloat read GetBlendConstant write SetBlendConstant;
+      published
+       property LogicOpEnable:boolean read GetLogicOpEnable write SetLogicOpEnable;
+       property LogicOp:TVkLogicOp read GetLogicOp write SetLogicOp;
+       property CountColorBlendAttachmentStates:TVkInt32 read fCountColorBlendAttachmentStates write SetCountColorBlendAttachmentStates;
+     end;
+
      TVulkanGraphicsPipelineConstructor=class(TVulkanPipeline)
       private
        fGraphicsPipelineCreateInfo:TVkGraphicsPipelineCreateInfo;
@@ -2127,13 +2246,11 @@ type EVulkanException=class(Exception);
        fViewPortState:TVulkanPipelineViewPortState;
        fRasterizationState:TVulkanPipelineRasterizationState;
        fMultisampleState:TVulkanPipelineMultisampleState;
-       fDepthStencilStateCreateInfo:TVkPipelineDepthStencilStateCreateInfo;
-       fColorBlendStateCreateInfo:TVkPipelineColorBlendStateCreateInfo;
+       fDepthStencilState:TVulkanPipelineDepthStencilState;
+       fColorBlendState:TVulkanPipelineColorBlendState;
        fDynamicStateCreateInfo:TVkPipelineDynamicStateCreateInfo;
        fStages:TVkPipelineShaderStageCreateInfoArray;
        fPipelineCache:TVkPipelineCache;
-       fColorBlendAttachmentStates:TVkPipelineColorBlendAttachmentStateArray;
-       fCountColorBlendAttachmentStates:TVkInt32;
        fDynamicStates:TVkDynamicStateArray;
        fCountDynamicStates:TVkInt32;
       public
@@ -2209,6 +2326,8 @@ type EVulkanException=class(Exception);
        property ViewPortState:TVulkanPipelineViewPortState read fViewPortState;
        property RasterizationState:TVulkanPipelineRasterizationState read fRasterizationState;
        property MultisampleState:TVulkanPipelineMultisampleState read fMultisampleState;
+       property DepthStencilState:TVulkanPipelineDepthStencilState read fDepthStencilState;
+       property ColorBlendState:TVulkanPipelineColorBlendState read fColorBlendState;
      end;
 
      TVulkanGraphicsPipeline=class(TVulkanPipeline)
@@ -2220,6 +2339,8 @@ type EVulkanException=class(Exception);
        function GetViewPortState:TVulkanPipelineViewPortState;
        function GetRasterizationState:TVulkanPipelineRasterizationState;
        function GetMultisampleState:TVulkanPipelineMultisampleState;
+       function GetDepthStencilState:TVulkanPipelineDepthStencilState;
+       function GetColorBlendState:TVulkanPipelineColorBlendState;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pCache:TVulkanPipelineCache;
@@ -2293,6 +2414,8 @@ type EVulkanException=class(Exception);
        property ViewPortState:TVulkanPipelineViewPortState read GetViewPortState;
        property RasterizationState:TVulkanPipelineRasterizationState read GetRasterizationState;
        property MultisampleState:TVulkanPipelineMultisampleState read GetMultisampleState;
+       property DepthStencilState:TVulkanPipelineDepthStencilState read GetDepthStencilState;
+       property ColorBlendState:TVulkanPipelineColorBlendState read GetColorBlendState;
      end;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
@@ -9792,12 +9915,12 @@ begin
  fRasterizationStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
  fRasterizationStateCreateInfo.pNext:=nil;
  fRasterizationStateCreateInfo.flags:=0;
- fRasterizationStateCreateInfo.depthClampEnable:=VK_FALSE;
- fRasterizationStateCreateInfo.rasterizerDiscardEnable:=VK_TRUE;
+ fRasterizationStateCreateInfo.depthClampEnable:=VK_TRUE;
+ fRasterizationStateCreateInfo.rasterizerDiscardEnable:=VK_FALSE;
  fRasterizationStateCreateInfo.polygonMode:=VK_POLYGON_MODE_FILL;
- fRasterizationStateCreateInfo.cullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
- fRasterizationStateCreateInfo.frontFace:=VK_FRONT_FACE_CLOCKWISE;
- fRasterizationStateCreateInfo.depthBiasEnable:=VK_FALSE;
+ fRasterizationStateCreateInfo.cullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+ fRasterizationStateCreateInfo.frontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+ fRasterizationStateCreateInfo.depthBiasEnable:=VK_TRUE;
  fRasterizationStateCreateInfo.depthBiasConstantFactor:=0.0;
  fRasterizationStateCreateInfo.depthBiasClamp:=0.0;
  fRasterizationStateCreateInfo.depthBiasSlopeFactor:=0.0;
@@ -9814,6 +9937,7 @@ end;
 
 procedure TVulkanPipelineRasterizationState.Assign(const pFrom:TVulkanPipelineRasterizationState);
 begin
+ fRasterizationStateCreateInfo:=pFrom.fRasterizationStateCreateInfo;
 end;
 
 function TVulkanPipelineRasterizationState.GetDepthClampEnable:boolean;
@@ -9950,7 +10074,7 @@ begin
  fMultisampleStateCreateInfo.flags:=0;
  fMultisampleStateCreateInfo.rasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
  fMultisampleStateCreateInfo.sampleShadingEnable:=VK_FALSE;
- fMultisampleStateCreateInfo.minSampleShading:=0.0;
+ fMultisampleStateCreateInfo.minSampleShading:=1.0;
  fMultisampleStateCreateInfo.pSampleMask:=nil;
  fMultisampleStateCreateInfo.alphaToCoverageEnable:=VK_FALSE;
  fMultisampleStateCreateInfo.alphaToOneEnable:=VK_FALSE;
@@ -10097,6 +10221,390 @@ begin
  end;
 end;
 
+constructor TVulkanStencilOpState.Create(const pStencilOpState:PVkStencilOpState);
+begin
+ inherited Create;
+ fStencilOpState:=pStencilOpState;
+end;
+
+destructor TVulkanStencilOpState.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TVulkanStencilOpState.Assign(const pFrom:TVulkanStencilOpState);
+begin
+ fStencilOpState^:=pFrom.fStencilOpState^;
+end;
+
+function TVulkanStencilOpState.GetFailOp:TVkStencilOp;
+begin
+ result:=fStencilOpState^.failOp;
+end;
+
+procedure TVulkanStencilOpState.SetFailOp(const pNewValue:TVkStencilOp);
+begin
+ fStencilOpState^.failOp:=pNewValue;
+end;
+
+function TVulkanStencilOpState.GetPassOp:TVkStencilOp;
+begin
+ result:=fStencilOpState^.passOp;
+end;
+
+procedure TVulkanStencilOpState.SetPassOp(const pNewValue:TVkStencilOp);
+begin
+ fStencilOpState^.passOp:=pNewValue;
+end;
+
+function TVulkanStencilOpState.GetDepthFailOp:TVkStencilOp;
+begin
+ result:=fStencilOpState^.depthFailOp;
+end;
+
+procedure TVulkanStencilOpState.SetDepthFailOp(const pNewValue:TVkStencilOp);
+begin
+ fStencilOpState^.depthFailOp:=pNewValue;
+end;
+
+function TVulkanStencilOpState.GetCompareOp:TVkCompareOp;
+begin
+ result:=fStencilOpState^.compareOp;
+end;
+
+procedure TVulkanStencilOpState.SetCompareOp(const pNewValue:TVkCompareOp);
+begin
+ fStencilOpState^.compareOp:=pNewValue;
+end;
+
+function TVulkanStencilOpState.GetCompareMask:TVkUInt32;
+begin
+ result:=fStencilOpState^.compareMask;
+end;
+
+procedure TVulkanStencilOpState.SetCompareMask(const pNewValue:TVkUInt32);
+begin
+ fStencilOpState^.compareMask:=pNewValue;
+end;
+
+function TVulkanStencilOpState.GetWriteMask:TVkUInt32;
+begin
+ result:=fStencilOpState^.writeMask;
+end;
+
+procedure TVulkanStencilOpState.SetWriteMask(const pNewValue:TVkUInt32);
+begin
+ fStencilOpState^.writeMask:=pNewValue;
+end;
+
+function TVulkanStencilOpState.GetReference:TVkUInt32;
+begin
+ result:=fStencilOpState^.reference;
+end;
+
+procedure TVulkanStencilOpState.SetReference(const pNewValue:TVkUInt32);
+begin
+ fStencilOpState^.reference:=pNewValue;
+end;
+
+constructor TVulkanPipelineDepthStencilState.Create;
+begin
+
+ inherited Create;
+
+ FillChar(fDepthStencilStateCreateInfo,SizeOf(TVkPipelineDepthStencilStateCreateInfo),#0);
+ fDepthStencilStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+ fDepthStencilStateCreateInfo.pNext:=nil;
+ fDepthStencilStateCreateInfo.flags:=0;      
+ fDepthStencilStateCreateInfo.depthTestEnable:=VK_TRUE;
+ fDepthStencilStateCreateInfo.depthWriteEnable:=VK_TRUE;
+ fDepthStencilStateCreateInfo.depthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+ fDepthStencilStateCreateInfo.depthBoundsTestEnable:=VK_FALSE;
+ fDepthStencilStateCreateInfo.stencilTestEnable:=VK_FALSE;
+ fDepthStencilStateCreateInfo.front.failOp:=VK_STENCIL_OP_KEEP;
+ fDepthStencilStateCreateInfo.front.depthFailOp:=VK_STENCIL_OP_KEEP;
+ fDepthStencilStateCreateInfo.front.compareOp:=VK_COMPARE_OP_ALWAYS;
+ fDepthStencilStateCreateInfo.front.compareMask:=0;
+ fDepthStencilStateCreateInfo.front.writeMask:=0;
+ fDepthStencilStateCreateInfo.front.reference:=0;
+ fDepthStencilStateCreateInfo.back.failOp:=VK_STENCIL_OP_KEEP;
+ fDepthStencilStateCreateInfo.back.depthFailOp:=VK_STENCIL_OP_KEEP;
+ fDepthStencilStateCreateInfo.back.compareOp:=VK_COMPARE_OP_ALWAYS;
+ fDepthStencilStateCreateInfo.back.compareMask:=0;
+ fDepthStencilStateCreateInfo.back.writeMask:=0;
+ fDepthStencilStateCreateInfo.back.reference:=0;
+ fDepthStencilStateCreateInfo.minDepthBounds:=0.0;
+ fDepthStencilStateCreateInfo.maxDepthBounds:=1.0;
+
+ fPointerToDepthStencilStateCreateInfo:=@fDepthStencilStateCreateInfo;
+
+ fFrontStencilOpState:=TVulkanStencilOpState.Create(@fDepthStencilStateCreateInfo.front);
+
+ fBackStencilOpState:=TVulkanStencilOpState.Create(@fDepthStencilStateCreateInfo.back);
+
+end;
+
+destructor TVulkanPipelineDepthStencilState.Destroy;
+begin
+ fFrontStencilOpState.Free;
+ fBackStencilOpState.Free;
+ inherited Destroy;
+end;
+
+procedure TVulkanPipelineDepthStencilState.Assign(const pFrom:TVulkanPipelineDepthStencilState);
+begin
+ fDepthStencilStateCreateInfo:=pFrom.fDepthStencilStateCreateInfo;
+end;
+
+function TVulkanPipelineDepthStencilState.GetDepthTestEnable:boolean;
+begin
+ result:=fDepthStencilStateCreateInfo.depthTestEnable<>VK_FALSE;
+end;
+
+procedure TVulkanPipelineDepthStencilState.SetDepthTestEnable(const pNewValue:boolean);
+begin
+ fDepthStencilStateCreateInfo.depthTestEnable:=BooleanToVkBool[pNewValue];
+end;
+
+function TVulkanPipelineDepthStencilState.GetDepthWriteEnable:boolean;
+begin
+ result:=fDepthStencilStateCreateInfo.depthWriteEnable<>VK_FALSE;
+end;
+
+procedure TVulkanPipelineDepthStencilState.SetDepthWriteEnable(const pNewValue:boolean);
+begin
+ fDepthStencilStateCreateInfo.depthWriteEnable:=BooleanToVkBool[pNewValue];
+end;
+
+function TVulkanPipelineDepthStencilState.GetDepthCompareOp:TVkCompareOp;
+begin
+ result:=fDepthStencilStateCreateInfo.depthCompareOp;
+end;
+
+procedure TVulkanPipelineDepthStencilState.SetDepthCompareOp(const pNewValue:TVkCompareOp);
+begin
+ fDepthStencilStateCreateInfo.depthCompareOp:=pNewValue;
+end;
+
+function TVulkanPipelineDepthStencilState.GetDepthBoundsTestEnable:boolean;
+begin
+ result:=fDepthStencilStateCreateInfo.depthBoundsTestEnable<>VK_FALSE;
+end;
+
+procedure TVulkanPipelineDepthStencilState.SetDepthBoundsTestEnable(const pNewValue:boolean);
+begin
+ fDepthStencilStateCreateInfo.depthBoundsTestEnable:=BooleanToVkBool[pNewValue];
+end;
+
+function TVulkanPipelineDepthStencilState.GetStencilTestEnable:boolean;
+begin
+ result:=fDepthStencilStateCreateInfo.stencilTestEnable<>VK_FALSE;
+end;
+
+procedure TVulkanPipelineDepthStencilState.SetStencilTestEnable(const pNewValue:boolean);
+begin
+ fDepthStencilStateCreateInfo.stencilTestEnable:=BooleanToVkBool[pNewValue];
+end;
+
+function TVulkanPipelineDepthStencilState.GetMinDepthBounds:TVkFloat;
+begin
+ result:=fDepthStencilStateCreateInfo.minDepthBounds;
+end;
+
+procedure TVulkanPipelineDepthStencilState.SetMinDepthBounds(const pNewValue:TVkFloat);
+begin
+ fDepthStencilStateCreateInfo.minDepthBounds:=pNewValue;
+end;
+
+function TVulkanPipelineDepthStencilState.GetMaxDepthBounds:TVkFloat;
+begin
+ result:=fDepthStencilStateCreateInfo.maxDepthBounds;
+end;
+
+procedure TVulkanPipelineDepthStencilState.SetMaxDepthBounds(const pNewValue:TVkFloat);
+begin
+ fDepthStencilStateCreateInfo.maxDepthBounds:=pNewValue;
+end;
+
+procedure TVulkanPipelineDepthStencilState.SetDepthStencilState(const pDepthTestEnable:boolean;
+                                                                const pDepthWriteEnable:boolean;
+                                                                const pDepthCompareOp:TVkCompareOp;
+                                                                const pDepthBoundsTestEnable:boolean;
+                                                                const pStencilTestEnable:boolean;
+                                                                const pFront:TVkStencilOpState;
+                                                                const pBack:TVkStencilOpState;
+                                                                const pMinDepthBounds:TVkFloat;
+                                                                const pMaxDepthBounds:TVkFloat);
+begin
+ fDepthStencilStateCreateInfo.depthTestEnable:=BooleanToVkBool[pDepthTestEnable];
+ fDepthStencilStateCreateInfo.depthWriteEnable:=BooleanToVkBool[pDepthWriteEnable];
+ fDepthStencilStateCreateInfo.depthCompareOp:=pDepthCompareOp;
+ fDepthStencilStateCreateInfo.depthBoundsTestEnable:=BooleanToVkBool[pDepthBoundsTestEnable];
+ fDepthStencilStateCreateInfo.stencilTestEnable:=BooleanToVkBool[pStencilTestEnable];
+ fDepthStencilStateCreateInfo.front:=pFront;
+ fDepthStencilStateCreateInfo.back:=pBack;
+ fDepthStencilStateCreateInfo.minDepthBounds:=pMinDepthBounds;
+ fDepthStencilStateCreateInfo.maxDepthBounds:=pMaxDepthBounds;
+end;
+
+constructor TVulkanPipelineColorBlendState.Create;
+begin
+
+ inherited Create;
+
+ FillChar(fColorBlendStateCreateInfo,SizeOf(TVkPipelineColorBlendStateCreateInfo),#0);
+ fColorBlendStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+ fColorBlendStateCreateInfo.pNext:=nil;
+ fColorBlendStateCreateInfo.flags:=0;
+ fColorBlendStateCreateInfo.logicOpEnable:=VK_FALSE;
+ fColorBlendStateCreateInfo.logicOp:=VK_LOGIC_OP_NO_OP;
+ fColorBlendStateCreateInfo.blendConstants[0]:=0.0;
+ fColorBlendStateCreateInfo.blendConstants[1]:=0.0;
+ fColorBlendStateCreateInfo.blendConstants[2]:=0.0;
+ fColorBlendStateCreateInfo.blendConstants[3]:=0.0;
+
+ fPointerToColorBlendStateCreateInfo:=@fColorBlendStateCreateInfo;
+
+ fColorBlendAttachmentStates:=nil;
+ fCountColorBlendAttachmentStates:=0;
+
+end;
+
+destructor TVulkanPipelineColorBlendState.Destroy;
+begin
+ SetLength(fColorBlendAttachmentStates,0);
+ inherited Destroy;
+end;
+
+procedure TVulkanPipelineColorBlendState.Assign(const pFrom:TVulkanPipelineColorBlendState);
+begin
+ fColorBlendStateCreateInfo:=pFrom.fColorBlendStateCreateInfo;
+ fColorBlendStateCreateInfo.attachmentCount:=0;
+ fColorBlendStateCreateInfo.pAttachments:=nil;
+end;
+
+function TVulkanPipelineColorBlendState.GetLogicOpEnable:boolean;
+begin
+ result:=fColorBlendStateCreateInfo.logicOpEnable<>VK_FALSE;
+end;
+
+procedure TVulkanPipelineColorBlendState.SetLogicOpEnable(const pNewValue:boolean);
+begin
+ fColorBlendStateCreateInfo.logicOpEnable:=BooleanToVkBool[pNewValue];
+end;
+
+function TVulkanPipelineColorBlendState.GetLogicOp:TVkLogicOp;
+begin
+ result:=fColorBlendStateCreateInfo.logicOp;
+end;
+
+procedure TVulkanPipelineColorBlendState.SetLogicOp(const pNewValue:TVkLogicOp);
+begin
+ fColorBlendStateCreateInfo.logicOp:=pNewValue;
+end;
+
+procedure TVulkanPipelineColorBlendState.SetCountColorBlendAttachmentStates(const pNewCount:TVkInt32);
+begin
+ fCountColorBlendAttachmentStates:=pNewCount;
+ if length(fColorBlendAttachmentStates)<fCountColorBlendAttachmentStates then begin
+  SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates*2);
+ end;
+end;
+
+function TVulkanPipelineColorBlendState.GetColorBlendAttachmentState(const pIndex:TVkInt32):PVkPipelineColorBlendAttachmentState;
+begin
+ result:=@fColorBlendAttachmentStates[pIndex];
+end;
+
+function TVulkanPipelineColorBlendState.GetBlendConstant(const pIndex:TVkInt32):TVkFloat;
+begin
+ result:=fColorBlendStateCreateInfo.blendConstants[pIndex];
+end;
+
+procedure TVulkanPipelineColorBlendState.SetBlendConstant(const pIndex:TVkInt32;const pNewValue:TVkFloat);
+begin
+ fColorBlendStateCreateInfo.blendConstants[pIndex]:=pNewValue;
+end;
+
+procedure TVulkanPipelineColorBlendState.SetColorBlendState(const pLogicOpEnable:boolean;
+                                                            const pLogicOp:TVkLogicOp;
+                                                            const pBlendConstants:array of TVkFloat);
+var ArrayItemCount:TVkInt32;
+begin
+ fColorBlendStateCreateInfo.logicOpEnable:=BooleanToVkBool[pLogicOpEnable];
+ fColorBlendStateCreateInfo.logicOp:=pLogicOp;
+ ArrayItemCount:=length(pBlendConstants);
+ if ArrayItemCount>length(fColorBlendStateCreateInfo.blendConstants) then begin
+  ArrayItemCount:=length(fColorBlendStateCreateInfo.blendConstants);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(pBlendConstants[0],fColorBlendStateCreateInfo.blendConstants[0],ArrayItemCount*SizeOf(TVkFloat));
+ end;
+end;
+
+function TVulkanPipelineColorBlendState.AddColorBlendAttachmentState(const pColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32;
+begin
+ result:=fCountColorBlendAttachmentStates;
+ inc(fCountColorBlendAttachmentStates);
+ if length(fColorBlendAttachmentStates)<fCountColorBlendAttachmentStates then begin
+  SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates*2);
+ end;
+ fColorBlendAttachmentStates[result]:=pColorBlendAttachmentState;
+end;
+
+function TVulkanPipelineColorBlendState.AddColorBlendAttachmentState(const pBlendEnable:boolean;
+                                                                     const pSrcColorBlendFactor:TVkBlendFactor;
+                                                                     const pDstColorBlendFactor:TVkBlendFactor;
+                                                                     const pColorBlendOp:TVkBlendOp;
+                                                                     const pSrcAlphaBlendFactor:TVkBlendFactor;
+                                                                     const pDstAlphaBlendFactor:TVkBlendFactor;
+                                                                     const pAlphaBlendOp:TVkBlendOp;
+                                                                     const pColorWriteMask:TVkColorComponentFlags):TVkInt32;
+var ColorBlendAttachmentState:PVkPipelineColorBlendAttachmentState;
+begin
+ result:=fCountColorBlendAttachmentStates;
+ inc(fCountColorBlendAttachmentStates);
+ if length(fColorBlendAttachmentStates)<fCountColorBlendAttachmentStates then begin
+  SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates*2);
+ end;
+ ColorBlendAttachmentState:=@fColorBlendAttachmentStates[result];
+ if pBlendEnable then begin
+  ColorBlendAttachmentState^.blendEnable:=VK_TRUE;
+ end else begin
+  ColorBlendAttachmentState^.blendEnable:=VK_FALSE;
+ end;
+ ColorBlendAttachmentState^.srcColorBlendFactor:=pSrcColorBlendFactor;
+ ColorBlendAttachmentState^.dstColorBlendFactor:=pDstColorBlendFactor;
+ ColorBlendAttachmentState^.colorBlendOp:=pColorBlendOp;
+ ColorBlendAttachmentState^.srcAlphaBlendFactor:=pSrcAlphaBlendFactor;
+ ColorBlendAttachmentState^.dstAlphaBlendFactor:=pDstAlphaBlendFactor;
+ ColorBlendAttachmentState^.alphaBlendOp:=pAlphaBlendOp;
+ ColorBlendAttachmentState^.colorWriteMask:=pColorWriteMask;
+end;
+
+function TVulkanPipelineColorBlendState.AddColorBlendAttachmentStates(const pColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+begin
+ if length(pColorBlendAttachmentStates)>0 then begin
+  result:=fCountColorBlendAttachmentStates;
+  inc(fCountColorBlendAttachmentStates,length(pColorBlendAttachmentStates));
+  if length(fColorBlendAttachmentStates)<fCountColorBlendAttachmentStates then begin
+   SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates*2);
+  end;
+  Move(pColorBlendAttachmentStates[0],fColorBlendAttachmentStates[result],length(pColorBlendAttachmentStates)*SizeOf(TVkRect2D));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TVulkanPipelineColorBlendState.Initialize;
+begin
+ SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates);
+ if fCountColorBlendAttachmentStates>0 then begin
+  fColorBlendStateCreateInfo.attachmentCount:=fCountColorBlendAttachmentStates;
+  fColorBlendStateCreateInfo.pAttachments:=@fColorBlendAttachmentStates[0];
+ end;
+end;
+
 constructor TVulkanGraphicsPipelineConstructor.Create(const pDevice:TVulkanDevice;
                                                       const pCache:TVulkanPipelineCache;
                                                       const pFlags:TVkPipelineCreateFlags;
@@ -10124,6 +10632,10 @@ begin
 
  fMultisampleState:=TVulkanPipelineMultisampleState.Create;
 
+ fDepthStencilState:=TVulkanPipelineDepthStencilState.Create;
+
+ fColorBlendState:=TVulkanPipelineColorBlendState.Create;
+
  FillChar(fGraphicsPipelineCreateInfo,SizeOf(TVkGraphicsPipelineCreateInfo),#0);
  fGraphicsPipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
  fGraphicsPipelineCreateInfo.pNext:=nil;
@@ -10145,8 +10657,8 @@ begin
  fGraphicsPipelineCreateInfo.pViewportState:=@fViewPortState.fViewportStateCreateInfo;
  fGraphicsPipelineCreateInfo.pRasterizationState:=@fRasterizationState.fRasterizationStateCreateInfo;
  fGraphicsPipelineCreateInfo.pMultisampleState:=@fMultisampleState.fMultisampleStateCreateInfo;
- fGraphicsPipelineCreateInfo.pDepthStencilState:=nil;
- fGraphicsPipelineCreateInfo.pColorBlendState:=@fColorBlendStateCreateInfo;
+ fGraphicsPipelineCreateInfo.pDepthStencilState:=@fDepthStencilState.fDepthStencilStateCreateInfo;
+ fGraphicsPipelineCreateInfo.pColorBlendState:=@fColorBlendState.fColorBlendStateCreateInfo;
  fGraphicsPipelineCreateInfo.pDynamicState:=nil;
  if assigned(pLayout) then begin
   fGraphicsPipelineCreateInfo.layout:=pLayout.fPipelineLayoutHandle;
@@ -10166,41 +10678,6 @@ begin
  end;
  fGraphicsPipelineCreateInfo.basePipelineIndex:=pBasePipelineIndex;
 
- FillChar(fDepthStencilStateCreateInfo,SizeOf(TVkPipelineDepthStencilStateCreateInfo),#0);
- fDepthStencilStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
- fDepthStencilStateCreateInfo.pNext:=nil;
- fDepthStencilStateCreateInfo.flags:=0;
- fDepthStencilStateCreateInfo.depthTestEnable:=VK_FALSE;
- fDepthStencilStateCreateInfo.depthWriteEnable:=VK_FALSE;
- fDepthStencilStateCreateInfo.depthCompareOp:=VK_COMPARE_OP_LESS;
- fDepthStencilStateCreateInfo.depthBoundsTestEnable:=VK_FALSE;
- fDepthStencilStateCreateInfo.stencilTestEnable:=VK_FALSE;
- fDepthStencilStateCreateInfo.front.failOp:=VK_STENCIL_OP_KEEP;
- fDepthStencilStateCreateInfo.front.depthFailOp:=VK_STENCIL_OP_KEEP;
- fDepthStencilStateCreateInfo.front.compareOp:=VK_COMPARE_OP_LESS;
- fDepthStencilStateCreateInfo.front.compareMask:=TVkUInt32($ffffffff);
- fDepthStencilStateCreateInfo.front.writeMask:=TVkUInt32($ffffffff);
- fDepthStencilStateCreateInfo.front.reference:=TVkUInt32($ffffffff);
- fDepthStencilStateCreateInfo.back.failOp:=VK_STENCIL_OP_KEEP;
- fDepthStencilStateCreateInfo.back.depthFailOp:=VK_STENCIL_OP_KEEP;
- fDepthStencilStateCreateInfo.back.compareOp:=VK_COMPARE_OP_LESS;
- fDepthStencilStateCreateInfo.back.compareMask:=TVkUInt32($ffffffff);
- fDepthStencilStateCreateInfo.back.writeMask:=TVkUInt32($ffffffff);
- fDepthStencilStateCreateInfo.back.reference:=TVkUInt32($ffffffff);
- fDepthStencilStateCreateInfo.minDepthBounds:=0.0;
- fDepthStencilStateCreateInfo.maxDepthBounds:=1.0;
-
- FillChar(fColorBlendStateCreateInfo,SizeOf(TVkPipelineColorBlendStateCreateInfo),#0);
- fColorBlendStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
- fColorBlendStateCreateInfo.pNext:=nil;
- fColorBlendStateCreateInfo.flags:=0;
- fColorBlendStateCreateInfo.logicOpEnable:=VK_FALSE;
- fColorBlendStateCreateInfo.logicOp:=VK_LOGIC_OP_SET;
- fColorBlendStateCreateInfo.blendConstants[0]:=0.0;
- fColorBlendStateCreateInfo.blendConstants[1]:=0.0;
- fColorBlendStateCreateInfo.blendConstants[2]:=0.0;
- fColorBlendStateCreateInfo.blendConstants[3]:=0.0;
-
  FillChar(fDynamicStateCreateInfo,SizeOf(TVkPipelineDynamicStateCreateInfo),#0);
  fDynamicStateCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
  fDynamicStateCreateInfo.pNext:=nil;
@@ -10214,9 +10691,6 @@ begin
   fPipelineCache:=VK_NULL_HANDLE;
  end;
 
- fColorBlendAttachmentStates:=nil;
- fCountColorBlendAttachmentStates:=0;
-
  fDynamicStates:=nil;
  fCountDynamicStates:=0;
 
@@ -10225,7 +10699,6 @@ end;
 destructor TVulkanGraphicsPipelineConstructor.Destroy;
 begin
  SetLength(fStages,0);
- SetLength(fColorBlendAttachmentStates,0);
  SetLength(fDynamicStates,0);
  fVertexInputState.Free;
  fInputAssemblyState.Free;
@@ -10233,6 +10706,8 @@ begin
  fViewPortState.Free;
  fRasterizationState.Free;
  fMultisampleState.Free;
+ fDepthStencilState.Free;
+ fColorBlendState.Free;
  inherited Destroy;
 end;
 
@@ -10370,62 +10845,32 @@ procedure TVulkanGraphicsPipelineConstructor.SetDepthStencilState(const pDepthTe
                                                                   const pMinDepthBounds:TVkFloat;
                                                                   const pMaxDepthBounds:TVkFloat);
 begin
- fGraphicsPipelineCreateInfo.pDepthStencilState:=@fDepthStencilStateCreateInfo;
- if pDepthTestEnable then begin
-  fDepthStencilStateCreateInfo.depthTestEnable:=VK_TRUE;
- end else begin
-  fDepthStencilStateCreateInfo.depthTestEnable:=VK_FALSE;
- end;
- if pDepthWriteEnable then begin
-  fDepthStencilStateCreateInfo.depthWriteEnable:=VK_TRUE;
- end else begin
-  fDepthStencilStateCreateInfo.depthWriteEnable:=VK_FALSE;
- end;
- fDepthStencilStateCreateInfo.depthCompareOp:=pDepthCompareOp;
- if pDepthBoundsTestEnable then begin
-  fDepthStencilStateCreateInfo.depthBoundsTestEnable:=VK_TRUE;
- end else begin
-  fDepthStencilStateCreateInfo.depthBoundsTestEnable:=VK_FALSE;
- end;
- if pStencilTestEnable then begin
-  fDepthStencilStateCreateInfo.stencilTestEnable:=VK_TRUE;
- end else begin
-  fDepthStencilStateCreateInfo.stencilTestEnable:=VK_FALSE;
- end;
- fDepthStencilStateCreateInfo.front:=pFront;
- fDepthStencilStateCreateInfo.back:=pBack;
- fDepthStencilStateCreateInfo.minDepthBounds:=pMinDepthBounds;
- fDepthStencilStateCreateInfo.maxDepthBounds:=pMaxDepthBounds;
+ Assert(assigned(fDepthStencilState));
+ fDepthStencilState.SetDepthStencilState(pDepthTestEnable,
+                                         pDepthWriteEnable,
+                                         pDepthCompareOp,
+                                         pDepthBoundsTestEnable,
+                                         pStencilTestEnable,
+                                         pFront,
+                                         pBack,
+                                         pMinDepthBounds,
+                                         pMaxDepthBounds);
 end;
 
 procedure TVulkanGraphicsPipelineConstructor.SetColorBlendState(const pLogicOpEnable:boolean;
                                                                 const pLogicOp:TVkLogicOp;
                                                                 const pBlendConstants:array of TVkFloat);
-var ArrayItemCount:TVkInt32;
 begin
- if pLogicOpEnable then begin
-  fColorBlendStateCreateInfo.logicOpEnable:=VK_TRUE;
- end else begin
-  fColorBlendStateCreateInfo.logicOpEnable:=VK_FALSE;
- end;
- fColorBlendStateCreateInfo.logicOp:=pLogicOp;
- ArrayItemCount:=length(pBlendConstants);
- if ArrayItemCount>length(fColorBlendStateCreateInfo.blendConstants) then begin
-  ArrayItemCount:=length(fColorBlendStateCreateInfo.blendConstants);
- end;
- if ArrayItemCount>0 then begin
-  Move(pBlendConstants[0],fColorBlendStateCreateInfo.blendConstants[0],ArrayItemCount*SizeOf(TVkFloat));
- end;
+ Assert(assigned(fColorBlendState));
+ fColorBlendState.SetColorBlendState(pLogicOpEnable,
+                                     pLogicOp,
+                                     pBlendConstants);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const pColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32;
 begin
- result:=fCountColorBlendAttachmentStates;
- inc(fCountColorBlendAttachmentStates);
- if length(fColorBlendAttachmentStates)<fCountColorBlendAttachmentStates then begin
-  SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates*2);
- end;
- fColorBlendAttachmentStates[result]:=pColorBlendAttachmentState;
+ Assert(assigned(fColorBlendState));
+ result:=fColorBlendState.AddColorBlendAttachmentState(pColorBlendAttachmentState);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const pBlendEnable:boolean;
@@ -10438,38 +10883,21 @@ function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const p
                                                                          const pColorWriteMask:TVkColorComponentFlags):TVkInt32;
 var ColorBlendAttachmentState:PVkPipelineColorBlendAttachmentState;
 begin
- result:=fCountColorBlendAttachmentStates;
- inc(fCountColorBlendAttachmentStates);
- if length(fColorBlendAttachmentStates)<fCountColorBlendAttachmentStates then begin
-  SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates*2);
- end;
- ColorBlendAttachmentState:=@fColorBlendAttachmentStates[result];
- if pBlendEnable then begin
-  ColorBlendAttachmentState^.blendEnable:=VK_TRUE;
- end else begin
-  ColorBlendAttachmentState^.blendEnable:=VK_FALSE;
- end;
- ColorBlendAttachmentState^.srcColorBlendFactor:=pSrcColorBlendFactor;
- ColorBlendAttachmentState^.dstColorBlendFactor:=pDstColorBlendFactor;
- ColorBlendAttachmentState^.colorBlendOp:=pColorBlendOp;
- ColorBlendAttachmentState^.srcAlphaBlendFactor:=pSrcAlphaBlendFactor;
- ColorBlendAttachmentState^.dstAlphaBlendFactor:=pDstAlphaBlendFactor;
- ColorBlendAttachmentState^.alphaBlendOp:=pAlphaBlendOp;
- ColorBlendAttachmentState^.colorWriteMask:=pColorWriteMask;
+ Assert(assigned(fColorBlendState));
+ result:=fColorBlendState.AddColorBlendAttachmentState(pBlendEnable,
+                                                       pSrcColorBlendFactor,
+                                                       pDstColorBlendFactor,
+                                                       pColorBlendOp,
+                                                       pSrcAlphaBlendFactor,
+                                                       pDstAlphaBlendFactor,
+                                                       pAlphaBlendOp,
+                                                       pColorWriteMask);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentStates(const pColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
 begin
- if length(pColorBlendAttachmentStates)>0 then begin
-  result:=fCountColorBlendAttachmentStates;
-  inc(fCountColorBlendAttachmentStates,length(pColorBlendAttachmentStates));
-  if length(fColorBlendAttachmentStates)<fCountColorBlendAttachmentStates then begin
-   SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates*2);
-  end;
-  Move(pColorBlendAttachmentStates[0],fColorBlendAttachmentStates[result],length(pColorBlendAttachmentStates)*SizeOf(TVkRect2D));
- end else begin
-  result:=-1;
- end;
+ Assert(assigned(fColorBlendState));
+ result:=fColorBlendState.AddColorBlendAttachmentStates(pColorBlendAttachmentStates);
 end;
 
 function TVulkanGraphicsPipelineConstructor.AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
@@ -10510,11 +10938,7 @@ begin
 
   fMultisampleState.Initialize;
 
-  SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates);
-  if fCountColorBlendAttachmentStates>0 then begin
-   fColorBlendStateCreateInfo.attachmentCount:=fCountColorBlendAttachmentStates;
-   fColorBlendStateCreateInfo.pAttachments:=@fColorBlendAttachmentStates[0];
-  end;
+  fColorBlendState.Initialize;
 
   SetLength(fDynamicStates,fCountDynamicStates);
   if fCountDynamicStates>0 then begin
@@ -10585,6 +11009,16 @@ end;
 function TVulkanGraphicsPipeline.GetMultisampleState:TVulkanPipelineMultisampleState;
 begin
  result:=fGraphicsPipelineConstructor.MultisampleState;
+end;
+
+function TVulkanGraphicsPipeline.GetDepthStencilState:TVulkanPipelineDepthStencilState;
+begin
+ result:=fGraphicsPipelineConstructor.DepthStencilState;
+end;
+
+function TVulkanGraphicsPipeline.GetColorBlendState:TVulkanPipelineColorBlendState;
+begin
+ result:=fGraphicsPipelineConstructor.ColorBlendState;
 end;
 
 function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
