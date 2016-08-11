@@ -86,6 +86,7 @@ var VulkanDebug:TVulkanDebug=nil;
 procedure RecreateVulkanGraphicsPipeline;
 begin
  FreeAndNil(VulkanGraphicsPipeline);
+
  VulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(VulkanDevice,
                                                         VulkanPipelineCache,
                                                         0,
@@ -95,33 +96,53 @@ begin
                                                         0,
                                                         nil,
                                                         0);
- VulkanGraphicsPipeline.SetInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,false);
- VulkanGraphicsPipeline.AddViewPort(0.0,0.0,SurfaceWidth,SurfaceHeight,0.0,1.0);
- VulkanGraphicsPipeline.AddScissor(0,0,SurfaceWidth,SurfaceHeight);
- VulkanGraphicsPipeline.SetRasterizationState(false,
-                                              false,
-                                              VK_POLYGON_MODE_FILL,
-                                              TVkCullModeFlags(VK_CULL_MODE_BACK_BIT),
-                                              VK_FRONT_FACE_CLOCKWISE,
-                                              false,
-                                              0.0,
-                                              0.0,
-                                              0.0,
-                                              1.0);
- VulkanGraphicsPipeline.SetMultisampleState(VK_SAMPLE_COUNT_1_BIT,false,0.0,[],false,false);
- VulkanGraphicsPipeline.SetColorBlendState(false,VK_LOGIC_OP_COPY,[0.0,0.0,0.0,0.0]);
- VulkanGraphicsPipeline.AddColorBlendAttachmentState(false,
-                                                     VK_BLEND_FACTOR_ONE,
-                                                     VK_BLEND_FACTOR_ONE,
-                                                     VK_BLEND_OP_ADD,
-                                                     VK_BLEND_FACTOR_ONE,
-                                                     VK_BLEND_FACTOR_ONE,
-                                                     VK_BLEND_OP_ADD,
-                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
-                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
-                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+ VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+ VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+ VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,SurfaceWidth,SurfaceHeight,0.0,1.0);
+ VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,SurfaceWidth,SurfaceHeight);
+
+ VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
+ VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+ VulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+ VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+ VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
+ VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+ VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+ VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+ VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+ VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+
+ VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+ VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+ VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+ VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+ VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+ VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+ VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
+ VulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+ VulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+ VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+ VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+ VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+ VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                     VK_BLEND_FACTOR_ZERO,
+                                                                     VK_BLEND_FACTOR_ZERO,
+                                                                     VK_BLEND_OP_ADD,
+                                                                     VK_BLEND_FACTOR_ZERO,
+                                                                     VK_BLEND_FACTOR_ZERO,
+                                                                     VK_BLEND_OP_ADD,
+                                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                     TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
  VulkanGraphicsPipeline.Initialize;
+
+ VulkanGraphicsPipeline.FreeMemory;
+ 
 end;
 
 procedure VulkanDraw;

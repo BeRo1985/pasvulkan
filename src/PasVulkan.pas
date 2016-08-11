@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-11-02-46-0000                       *
+ *                        Version 2016-08-11-02-49-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2428,6 +2428,7 @@ type EVulkanException=class(Exception);
        function AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
        function AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
        procedure Initialize;
+       procedure FreeMemory;
       published
        property VertexInputState:TVulkanPipelineVertexInputState read GetVertexInputState;
        property InputAssemblyState:TVulkanPipelineInputAssemblyState read GetInputAssemblyState;
@@ -11311,10 +11312,13 @@ begin
   fGraphicsPipelineConstructor.Initialize;
   fPipelineHandle:=fGraphicsPipelineConstructor.fPipelineHandle;
   fGraphicsPipelineConstructor.fPipelineHandle:=VK_NULL_HANDLE;
-  FreeAndNil(fGraphicsPipelineConstructor);
  end;
 end;
 
+procedure TVulkanGraphicsPipeline.FreeMemory;
+begin
+ FreeAndNil(fGraphicsPipelineConstructor);
+end;
 
 end.
 
