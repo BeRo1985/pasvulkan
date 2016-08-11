@@ -49,9 +49,11 @@ var WndClass:TWndClass;
     VulkanCommandPool:TVulkanCommandPool=nil;
 
     // each one instance (command buffer, fences, semaphores, etc.) per swap chain buffer (two when in a double buffer case)
-    // for so that the GPU and CPU can work asynchronously without explicit CPU/GPU frame synchronization points
+    // for so that the GPU and CPU can work asynchronously without explicit CPU/GPU frame synchronization points, until
+    // the CPU reaches the wrapped previous already processed swap chain image index again 
     VulkanCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
     VulkanCommandBufferFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
+    VulkanCommandBufferFencesReady:array[0..MaxSwapChainImages-1] of boolean;
     VulkanPresentCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
     VulkanDrawCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
 
@@ -164,11 +166,17 @@ var Tries,CurrentImageIndex:TVkInt32;
     VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
 
+ CurrentImageIndex:=VulkanSwapChain.CurrentImageIndex;
+ 
+ if VulkanCommandBufferFencesReady[CurrentImageIndex] then begin
+  VulkanCommandBufferFences[CurrentImageIndex].WaitFor;
+  VulkanCommandBufferFences[CurrentImageIndex].Reset;
+  VulkanCommandBufferFencesReady[CurrentImageIndex]:=false;
+ end;
+
  for Tries:=1 to 2 do begin
 
   OK:=false;
-
-  CurrentImageIndex:=VulkanSwapChain.CurrentImageIndex;
 
   if (VulkanSwapChain.Width<>SurfaceWidth) or (VulkanSwapChain.Height<>SurfaceHeight) then begin
    DoNeedToRecreateVulkanSwapChain:=true;
@@ -216,6 +224,8 @@ begin
 
    VulkanCommandBuffer:=VulkanCommandBuffers[VulkanSwapChain.CurrentImageIndex];
 
+   VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
    VulkanCommandBuffer.BeginRecording;
 
    VulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(VulkanSwapChain.CurrentImage);
@@ -237,13 +247,12 @@ begin
    VulkanCommandBuffer.EndRecording;
 
    VulkanCommandBuffer.Execute(VulkanDevice.GraphicsQueue,
-                               VulkanCommandBufferFences[CurrentImageIndex],
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                VulkanPresentCompleteSemaphores[CurrentImageIndex],
-                               VulkanDrawCompleteSemaphores[CurrentImageIndex]);
-
-   VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-
+                               VulkanDrawCompleteSemaphores[CurrentImageIndex],
+                               VulkanCommandBufferFences[CurrentImageIndex],
+                               false);
+   VulkanCommandBufferFencesReady[CurrentImageIndex]:=true;
 
    try
     if VulkanSwapChain.QueuePresent(VulkanDevice.GraphicsQueue,VulkanDrawCompleteSemaphores[CurrentImageIndex])<>VK_SUBOPTIMAL_KHR then begin

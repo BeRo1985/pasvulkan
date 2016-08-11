@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-11-15-49-0000                       *
+ *                        Version 2016-08-11-23-13-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1306,7 +1306,7 @@ type EVulkanException=class(Exception);
        procedure CmdExecute(const pCommandBuffer:TVulkanCommandBuffer);
        procedure MetaCmdPresentToDrawImageBarrier(const pImage:TVulkanImage);
        procedure MetaCmdDrawToPresentImageBarrier(const pImage:TVulkanImage);
-       procedure Execute(const pQueue:TVulkanQueue;const pFence:TVulkanFence;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
+       procedure Execute(const pQueue:TVulkanQueue;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
       published
        property Device:TVulkanDevice read fDevice;
        property CommandPool:TVulkanCommandPool read fCommandPool;
@@ -2846,7 +2846,7 @@ begin
 
  if pBeginAndExecuteCommandBuffer then begin
   pCommandBuffer.EndRecording;
-  pCommandBuffer.Execute(pQueue,pFence,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT));
+  pCommandBuffer.Execute(pQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),nil,nil,pFence,true);
  end;
 
 end;
@@ -7002,7 +7002,7 @@ begin
                     1,@ImageMemoryBarrier);
 end;
 
-procedure TVulkanCommandBuffer.Execute(const pQueue:TVulkanQueue;const pFence:TVulkanFence;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
+procedure TVulkanCommandBuffer.Execute(const pQueue:TVulkanQueue;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
 var SubmitInfo:TVkSubmitInfo;
 begin
  if fLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
@@ -7032,8 +7032,10 @@ begin
 
    pQueue.Submit(1,@SubmitInfo,pFence);
 
-   pFence.WaitFor;
-   pFence.Reset;
+   if pDoWaitAndResetFence then begin
+    pFence.WaitFor;
+    pFence.Reset;
+   end;
 
   end else begin
 
