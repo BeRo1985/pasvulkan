@@ -90,6 +90,7 @@ begin
  VulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(VulkanDevice,
                                                         VulkanPipelineCache,
                                                         0,
+                                                        [],
                                                         VulkanPipelineLayout,
                                                         VulkanSwapChainSimpleDirectRenderTarget.RenderPass,
                                                         0,
