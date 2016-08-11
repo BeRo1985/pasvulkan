@@ -26,6 +26,10 @@ uses
   PasVulkan in '..\..\src\PasVulkan.pas',
   vulkan in '..\..\src\vulkan.pas';
 
+const MaxSwapChainImages=3; // 1 = single buffer, 2 = double buffer, 3 = triple buffer, 4 = quadruple buffer,
+                            // 5 = quintuple buffer, 6 = sextuple buffer, 7 = septuple buffer, 8 = septuple buffer,
+                            // etc.
+
 var WndClass:TWndClass;
     hWindow:HWND;
     Msg:TMsg;
@@ -37,15 +41,20 @@ var WndClass:TWndClass;
     VulkanInstance:TVulkanInstance=nil;
     VulkanSurface:TVulkanSurface=nil;
     VulkanDevice:TVulkanDevice=nil;
-    VulkanPrimaryCommandBufferFence:TVulkanFence=nil;
+    VulkanInitializationCommandBufferFence:TVulkanFence=nil;
     VulkanInitializationCommandPool:TVulkanCommandPool=nil;
     VulkanInitializationCommandBuffer:TVulkanCommandBuffer=nil;
     VulkanSwapChain:TVulkanSwapChain=nil;
     VulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget=nil;
     VulkanCommandPool:TVulkanCommandPool=nil;
-    VulkanCommandBuffer:TVulkanCommandBuffer=nil;
-    VulkanPresentCompleteSemaphore:TVulkanSemaphore=nil;
-    VulkanDrawCompleteSemaphore:TVulkanSemaphore=nil;
+
+    // each one instance (command buffer, fences, semaphores, etc.) per swap chain buffer (two when in a double buffer case)
+    // for so that the GPU and CPU can work asynchronously without explicit CPU/GPU frame synchronization points
+    VulkanCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
+    VulkanCommandBufferFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
+    VulkanPresentCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+    VulkanDrawCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+
     DoNeedToRecreateVulkanSwapChain:boolean=false;
     EnableDebugging:boolean=false;
 
@@ -149,21 +158,26 @@ begin
 end;
 
 procedure VulkanDraw;
-var Tries:TVkInt32;
+var Tries,CurrentImageIndex:TVkInt32;
     OldVulkanSwapChain:TVulkanSwapChain;
     OK:boolean;
+    VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
 
  for Tries:=1 to 2 do begin
 
   OK:=false;
 
+  CurrentImageIndex:=VulkanSwapChain.CurrentImageIndex;
+
   if (VulkanSwapChain.Width<>SurfaceWidth) or (VulkanSwapChain.Height<>SurfaceHeight) then begin
    DoNeedToRecreateVulkanSwapChain:=true;
+   writeln('New surface dimension size detected!');
   end else begin
    try
-    if VulkanSwapChain.AcquireNextImage(VulkanPresentCompleteSemaphore)=VK_SUBOPTIMAL_KHR then begin
+    if VulkanSwapChain.AcquireNextImage(VulkanPresentCompleteSemaphores[CurrentImageIndex])=VK_SUBOPTIMAL_KHR then begin
      DoNeedToRecreateVulkanSwapChain:=true;
+     writeln('Suboptimal surface detected!');
     end;
    except
     on VulkanResultException:EVulkanResultException do begin
@@ -172,6 +186,7 @@ begin
       VK_ERROR_OUT_OF_DATE_KHR,
       VK_SUBOPTIMAL_KHR:begin
        DoNeedToRecreateVulkanSwapChain:=true;
+       writeln(VulkanResultException.ClassName,': ',VulkanResultException.Message);
       end;
       else begin
        raise;
@@ -183,19 +198,23 @@ begin
 
   if DoNeedToRecreateVulkanSwapChain then begin
 
+   write('Recreating swap chain... ');
    DoNeedToRecreateVulkanSwapChain:=false;
    OldVulkanSwapChain:=VulkanSwapChain;
    try
     FreeAndNil(VulkanGraphicsPipeline);
     FreeAndNil(VulkanSwapChainSimpleDirectRenderTarget);
-    VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,OldVulkanSwapChain,SurfaceWidth,SurfaceHeight,2,1);
-    VulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanDevice,VulkanSwapChain,VulkanInitializationCommandBuffer,VulkanPrimaryCommandBufferFence);
+    VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,OldVulkanSwapChain,SurfaceWidth,SurfaceHeight,MaxSwapChainImages,1);
+    VulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanDevice,VulkanSwapChain,VulkanInitializationCommandBuffer,VulkanInitializationCommandBufferFence);
     RecreateVulkanGraphicsPipeline;
    finally
     OldVulkanSwapChain.Free;
    end;
+   writeln('done!');
 
   end else begin
+
+   VulkanCommandBuffer:=VulkanCommandBuffers[VulkanSwapChain.CurrentImageIndex];
 
    VulkanCommandBuffer.BeginRecording;
 
@@ -218,17 +237,17 @@ begin
    VulkanCommandBuffer.EndRecording;
 
    VulkanCommandBuffer.Execute(VulkanDevice.GraphicsQueue,
-                               VulkanPrimaryCommandBufferFence,
+                               VulkanCommandBufferFences[CurrentImageIndex],
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                               VulkanPresentCompleteSemaphore,
-                               VulkanDrawCompleteSemaphore);
+                               VulkanPresentCompleteSemaphores[CurrentImageIndex],
+                               VulkanDrawCompleteSemaphores[CurrentImageIndex]);
 
    VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
 
    try
-    if VulkanSwapChain.QueuePresent(VulkanDevice.GraphicsQueue,VulkanDrawCompleteSemaphore)<>VK_SUBOPTIMAL_KHR then begin
-     //VulkanDevice.WaitIdle;
+    if VulkanSwapChain.QueuePresent(VulkanDevice.GraphicsQueue,VulkanDrawCompleteSemaphores[CurrentImageIndex])<>VK_SUBOPTIMAL_KHR then begin
+     //VulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
      OK:=true;
     end else begin
      DoNeedToRecreateVulkanSwapChain:=true;
@@ -315,7 +334,7 @@ begin
  end;
 end;
 
-var i,MonitorLeft,MonitorTop,MonitorWidth,MonitorHeight:TVkInt32;
+var Index,MonitorLeft,MonitorTop,MonitorWidth,MonitorHeight:TVkInt32;
     ConsoleHwnd:HWND;
     R:TRect;
     MonitorInfo:TMonitorInfoA;
@@ -364,6 +383,13 @@ begin
                        hInstance,
                        nil);
 
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  VulkanCommandBuffers[Index]:=nil;
+  VulkanCommandBufferFences[Index]:=nil;
+  VulkanPresentCompleteSemaphores[Index]:=nil;
+  VulkanDrawCompleteSemaphores[Index]:=nil;
+ end;
+ 
  try
 
   try
@@ -371,11 +397,11 @@ begin
    VulkanDebug:=TVulkanDebug.Create;
 
    VulkanInstance:=TVulkanInstance.Create('Test application',1,'Test engine',1,VK_API_VERSION_1_0,true);
-   for i:=0 to VulkanInstance.AvailableLayerNames.Count-1 do begin
-    DebugLn('Layer: '+TVulkanCharString(VulkanInstance.AvailableLayerNames[i]));
+   for Index:=0 to VulkanInstance.AvailableLayerNames.Count-1 do begin
+    DebugLn('Layer: '+TVulkanCharString(VulkanInstance.AvailableLayerNames[Index]));
    end;
-   for i:=0 to VulkanInstance.AvailableExtensionNames.Count-1 do begin
-    DebugLn('Extension: '+TVulkanCharString(VulkanInstance.AvailableExtensionNames[i]));
+   for Index:=0 to VulkanInstance.AvailableExtensionNames.Count-1 do begin
+    DebugLn('Extension: '+TVulkanCharString(VulkanInstance.AvailableExtensionNames[Index]));
    end;
    VulkanInstance.EnabledExtensionNames.Add(VK_KHR_SURFACE_EXTENSION_NAME);
 {$if defined(Android)}
@@ -421,23 +447,24 @@ begin
    VulkanDevice.EnabledExtensionNames.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
    VulkanDevice.Initialize;
 
-   VulkanPrimaryCommandBufferFence:=TVulkanFence.Create(VulkanDevice);
+   VulkanInitializationCommandBufferFence:=TVulkanFence.Create(VulkanDevice);
 
    VulkanInitializationCommandPool:=TVulkanCommandPool.Create(VulkanDevice,VulkanDevice.GraphicsQueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
    VulkanInitializationCommandBuffer:=TVulkanCommandBuffer.Create(VulkanInitializationCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-   VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,nil,SurfaceWidth,SurfaceHeight,2,1);
+   VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,nil,SurfaceWidth,SurfaceHeight,MaxSwapChainImages,1);
 
-   VulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanDevice,VulkanSwapChain,VulkanInitializationCommandBuffer,VulkanPrimaryCommandBufferFence);
+   VulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanDevice,VulkanSwapChain,VulkanInitializationCommandBuffer,VulkanInitializationCommandBufferFence);
 
    VulkanCommandPool:=TVulkanCommandPool.Create(VulkanDevice,VulkanDevice.GraphicsQueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
-   VulkanCommandBuffer:=TVulkanCommandBuffer.Create(VulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
-   VulkanPresentCompleteSemaphore:=TVulkanSemaphore.Create(VulkanDevice);
-
-   VulkanDrawCompleteSemaphore:=TVulkanSemaphore.Create(VulkanDevice);
+   for Index:=0 to MaxSwapChainImages-1 do begin
+    VulkanCommandBuffers[Index]:=TVulkanCommandBuffer.Create(VulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    VulkanCommandBufferFences[Index]:=TVulkanFence.Create(VulkanDevice);
+    VulkanPresentCompleteSemaphores[Index]:=TVulkanSemaphore.Create(VulkanDevice);
+    VulkanDrawCompleteSemaphores[Index]:=TVulkanSemaphore.Create(VulkanDevice);
+   end;
 
    DoNeedToRecreateVulkanSwapChain:=false;
 
@@ -496,15 +523,18 @@ begin
   TriangleFragmentShaderModule.Free;
   TriangleVertexShaderModule.Free;
 
-  VulkanDrawCompleteSemaphore.Free;
-  VulkanPresentCompleteSemaphore.Free;
-  VulkanCommandBuffer.Free;
+  for Index:=0 to MaxSwapChainImages-1 do begin
+   VulkanCommandBufferFences[Index].Free;
+   VulkanPresentCompleteSemaphores[Index].Free;
+   VulkanDrawCompleteSemaphores[Index].Free;
+   VulkanCommandBuffers[Index].Free;
+  end;
   VulkanCommandPool.Free;
   VulkanSwapChainSimpleDirectRenderTarget.Free;
   VulkanSwapChain.Free;
   VulkanInitializationCommandBuffer.Free;
   VulkanInitializationCommandPool.Free;
-  VulkanPrimaryCommandBufferFence.Free;
+  VulkanInitializationCommandBufferFence.Free;
   VulkanDevice.Free;
   VulkanSurface.Free;
   VulkanInstance.Free;
