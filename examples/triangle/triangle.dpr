@@ -167,7 +167,7 @@ var Tries,CurrentImageIndex:TVkInt32;
 begin
 
  CurrentImageIndex:=VulkanSwapChain.CurrentImageIndex;
- 
+
  if VulkanCommandBufferFencesReady[CurrentImageIndex] then begin
   VulkanCommandBufferFences[CurrentImageIndex].WaitFor;
   VulkanCommandBufferFences[CurrentImageIndex].Reset;
@@ -206,6 +206,16 @@ begin
 
   if DoNeedToRecreateVulkanSwapChain then begin
 
+   for CurrentImageIndex:=0 to MaxSwapChainImages-1 do begin
+    if VulkanCommandBufferFencesReady[CurrentImageIndex] then begin
+     VulkanCommandBufferFences[CurrentImageIndex].WaitFor;
+     VulkanCommandBufferFences[CurrentImageIndex].Reset;
+     VulkanCommandBufferFencesReady[CurrentImageIndex]:=false;
+    end;
+   end;
+
+   VulkanDevice.WaitIdle;
+
    write('Recreating swap chain... ');
    DoNeedToRecreateVulkanSwapChain:=false;
    OldVulkanSwapChain:=VulkanSwapChain;
@@ -219,6 +229,8 @@ begin
     OldVulkanSwapChain.Free;
    end;
    writeln('done!');
+
+   CurrentImageIndex:=VulkanSwapChain.CurrentImageIndex;
 
   end else begin
 
@@ -508,6 +520,16 @@ begin
      VulkanDraw;
     end;
    until not Running;
+
+   for Index:=0 to MaxSwapChainImages-1 do begin
+    if VulkanCommandBufferFencesReady[Index] then begin
+     VulkanCommandBufferFences[Index].WaitFor;
+     VulkanCommandBufferFences[Index].Reset;
+     VulkanCommandBufferFencesReady[Index]:=false;
+    end;
+   end;
+
+   VulkanDevice.WaitIdle;
 
   except
    on e:Exception do begin
