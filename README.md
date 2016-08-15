@@ -1,2 +1,2 @@
 # pasvulkan
-Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal
+Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal, which includes also a best-fit red-black-tree based memory manager for the Vulkan memory management, for to managing the suballocations in the allocated buffers and for to keep the total count of simultaneous live allocations as much low as possible and less than TVkPhysicalDeviceLimits.maxMemoryAllocationCount.
