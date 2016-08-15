@@ -25,7 +25,7 @@
 ** This header is generated from the Khronos Vulkan XML API Registry.
 **
 *)
-unit vulkan;
+unit Vulkan;
 {$ifdef fpc}
  {$mode delphi}
  {$z4}
