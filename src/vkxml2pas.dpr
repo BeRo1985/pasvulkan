@@ -4411,7 +4411,7 @@ begin
    VKXMLFileStream.Free;
   end;
 
-  write('Generating "vulkan.pas" . . . ');
+  write('Generating "Vulkan.pas" . . . ');
   ProcessExtensions;
   OutputPAS:=TStringList.Create;
   try
@@ -4442,7 +4442,7 @@ begin
    OutputPAS.Add('** This header is generated from the Khronos Vulkan XML API Registry.');
    OutputPAS.Add('**');
    OutputPAS.Add('*)');
-   OutputPAS.Add('unit vulkan;');
+   OutputPAS.Add('unit Vulkan;');
    OutputPAS.Add('{$ifdef fpc}');
    OutputPAS.Add(' {$mode delphi}');
    OutputPAS.Add(' {$z4}');
@@ -4865,7 +4865,7 @@ begin
    OutputPAS.Add('  vkFreeLibrary(LibVulkan);');
    OutputPAS.Add(' end;');
    OutputPAS.Add('end.');
-   OutputPAS.SaveToFile('vulkan.pas');
+   OutputPAS.SaveToFile('Vulkan.pas');
   finally
    OutputPAS.Free;
   end;
