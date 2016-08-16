@@ -51,6 +51,8 @@ var WndClass:TWndClass;
     // each one instance (command buffer, fences, semaphores, etc.) per swap chain buffer (two when in a double buffer case)
     // for so that the GPU and CPU can work asynchronously without explicit CPU/GPU frame synchronization points, until
     // the CPU reaches the wrapped previous already processed swap chain image index again 
+    VulkanSwapChainImageFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
+    VulkanSwapChainImageFencesReady:array[0..MaxSwapChainImages-1] of boolean;
     VulkanCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
     VulkanCommandBufferFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
     VulkanCommandBufferFencesReady:array[0..MaxSwapChainImages-1] of boolean;
@@ -168,6 +170,12 @@ begin
 
  CurrentImageIndex:=VulkanSwapChain.CurrentImageIndex;
 
+ if VulkanSwapChainImageFencesReady[CurrentImageIndex] then begin
+  VulkanSwapChainImageFences[CurrentImageIndex].WaitFor;
+  VulkanSwapChainImageFences[CurrentImageIndex].Reset;
+  VulkanSwapChainImageFencesReady[CurrentImageIndex]:=false;
+ end;
+
  if VulkanCommandBufferFencesReady[CurrentImageIndex] then begin
   VulkanCommandBufferFences[CurrentImageIndex].WaitFor;
   VulkanCommandBufferFences[CurrentImageIndex].Reset;
@@ -183,9 +191,11 @@ begin
    writeln('New surface dimension size detected!');
   end else begin
    try
-    if VulkanSwapChain.AcquireNextImage(VulkanPresentCompleteSemaphores[CurrentImageIndex])=VK_SUBOPTIMAL_KHR then begin
+    if VulkanSwapChain.AcquireNextImage(VulkanPresentCompleteSemaphores[CurrentImageIndex],VulkanSwapChainImageFences[CurrentImageIndex])=VK_SUBOPTIMAL_KHR then begin
      DoNeedToRecreateVulkanSwapChain:=true;
      writeln('Suboptimal surface detected!');
+    end else begin
+     VulkanSwapChainImageFencesReady[CurrentImageIndex]:=true;
     end;
    except
     on VulkanResultException:EVulkanResultException do begin
@@ -207,6 +217,11 @@ begin
   if DoNeedToRecreateVulkanSwapChain then begin
 
    for CurrentImageIndex:=0 to MaxSwapChainImages-1 do begin
+    if VulkanSwapChainImageFencesReady[CurrentImageIndex] then begin
+     VulkanSwapChainImageFences[CurrentImageIndex].WaitFor;
+     VulkanSwapChainImageFences[CurrentImageIndex].Reset;
+     VulkanSwapChainImageFencesReady[CurrentImageIndex]:=false;
+    end;
     if VulkanCommandBufferFencesReady[CurrentImageIndex] then begin
      VulkanCommandBufferFences[CurrentImageIndex].WaitFor;
      VulkanCommandBufferFences[CurrentImageIndex].Reset;
@@ -405,12 +420,15 @@ begin
                        nil);
 
  for Index:=0 to MaxSwapChainImages-1 do begin
+  VulkanSwapChainImageFences[Index]:=nil;
+  VulkanSwapChainImageFencesReady[Index]:=false;
   VulkanCommandBuffers[Index]:=nil;
   VulkanCommandBufferFences[Index]:=nil;
+  VulkanCommandBufferFencesReady[Index]:=false;
   VulkanPresentCompleteSemaphores[Index]:=nil;
   VulkanDrawCompleteSemaphores[Index]:=nil;
  end;
- 
+
  try
 
   try
@@ -481,6 +499,7 @@ begin
    VulkanCommandPool:=TVulkanCommandPool.Create(VulkanDevice,VulkanDevice.GraphicsQueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
    for Index:=0 to MaxSwapChainImages-1 do begin
+    VulkanSwapChainImageFences[Index]:=TVulkanFence.Create(VulkanDevice);
     VulkanCommandBuffers[Index]:=TVulkanCommandBuffer.Create(VulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
     VulkanCommandBufferFences[Index]:=TVulkanFence.Create(VulkanDevice);
     VulkanPresentCompleteSemaphores[Index]:=TVulkanSemaphore.Create(VulkanDevice);
@@ -522,6 +541,11 @@ begin
    until not Running;
 
    for Index:=0 to MaxSwapChainImages-1 do begin
+    if VulkanSwapChainImageFencesReady[Index] then begin
+     VulkanSwapChainImageFences[Index].WaitFor;
+     VulkanSwapChainImageFences[Index].Reset;
+     VulkanSwapChainImageFencesReady[Index]:=false;
+    end;
     if VulkanCommandBufferFencesReady[Index] then begin
      VulkanCommandBufferFences[Index].WaitFor;
      VulkanCommandBufferFences[Index].Reset;
@@ -555,6 +579,7 @@ begin
   TriangleVertexShaderModule.Free;
 
   for Index:=0 to MaxSwapChainImages-1 do begin
+   VulkanSwapChainImageFences[Index].Free;
    VulkanCommandBufferFences[Index].Free;
    VulkanPresentCompleteSemaphores[Index].Free;
    VulkanDrawCompleteSemaphores[Index].Free;
