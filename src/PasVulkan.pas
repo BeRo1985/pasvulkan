@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-11-23-13-0000                       *
+ *                        Version 2016-08-16-03-30-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -8269,11 +8269,6 @@ begin
   SemaphoreHandle:=pSemaphore.fSemaphoreHandle;
  end else begin
   SemaphoreHandle:=VK_NULL_HANDLE;
- end;
- if assigned(pFence) then begin
-  FenceHandle:=pFence.fFenceHandle;
- end else begin
-  FenceHandle:=VK_NULL_HANDLE;
  end;
  if assigned(pFence) then begin
   FenceHandle:=pFence.fFenceHandle;
