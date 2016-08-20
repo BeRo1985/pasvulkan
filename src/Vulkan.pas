@@ -176,7 +176,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=23;
+      VK_HEADER_VERSION=24;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -302,6 +302,8 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_53_EXTENSION_NAME='VK_NV_extension_53';
       VK_NV_EXTENSION_54_SPEC_VERSION=0;
       VK_NV_EXTENSION_54_EXTENSION_NAME='VK_NV_extension_54';
+      VK_IMG_FORMAT_PVRTC_SPEC_VERSION=1;
+      VK_IMG_FORMAT_PVRTC_EXTENSION_NAME='VK_IMG_format_pvrtc';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1281,7 +1283,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_ASTC_12x10_UNORM_BLOCK=181,
        VK_FORMAT_ASTC_12x10_SRGB_BLOCK=182,
        VK_FORMAT_ASTC_12x12_UNORM_BLOCK=183,
-       VK_FORMAT_ASTC_12x12_SRGB_BLOCK=184
+       VK_FORMAT_ASTC_12x12_SRGB_BLOCK=184,
+       VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG=1000054000,
+       VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG=1000054001,
+       VK_FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG=1000054002,
+       VK_FORMAT_PVRTC2_4BPP_UNORM_BLOCK_IMG=1000054003,
+       VK_FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG=1000054004,
+       VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG=1000054005,
+       VK_FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG=1000054006,
+       VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG=1000054007
       );
 
      PPVkStructureType=^PVkStructureType;
@@ -2529,14 +2539,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If descriptorType is TVK_DESCRIPTOR_TYPE_SAMPLER, TVK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, TVK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, TVK_DESCRIPTOR_TYPE_STORAGE_IMAGE, or TVK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, pImageInfo must: be a pointer to an array of descriptorCount valid TVkDescriptorImageInfo structures
      // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER or TVK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, pTexelBufferView must: be a pointer to an array of descriptorCount valid TVkBufferView handles
      // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER, TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, or TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, pBufferInfo must: be a pointer to an array of descriptorCount valid TVkDescriptorBufferInfo structures
-     // If descriptorType is TVK_DESCRIPTOR_TYPE_SAMPLER or TVK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, and dstSet was not created with a layout that included immutable samplers for dstBinding with descriptorType, the sampler member of any given element of pImageInfo must: be a valid TVkSampler object
+     // If descriptorType is TVK_DESCRIPTOR_TYPE_SAMPLER or TVK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, and dstSet was not allocated with a layout that included immutable samplers for dstBinding with descriptorType, the sampler member of any given element of pImageInfo must: be a valid TVkSampler object
      // If descriptorType is TVK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, TVK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, TVK_DESCRIPTOR_TYPE_STORAGE_IMAGE, or TVK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, the imageView and imageLayout members of any given element of pImageInfo must: be a valid TVkImageView and elink:VkImageLayout, respectively
      // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, the offset member of any given element of pBufferInfo must: be a multiple of TVkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
      // If descriptorType is TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER or TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, the offset member of any given element of pBufferInfo must: be a multiple of TVkPhysicalDeviceLimits::minStorageBufferOffsetAlignment
      // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, the buffer member of any given element of pBufferInfo must: have been created with TVK_BUFFER_USAGE_UNIFORM_BUFFER_BIT set
      // If descriptorType is TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER or TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, the buffer member of any given element of pBufferInfo must: have been created with TVK_BUFFER_USAGE_STORAGE_BUFFER_BIT set
-     // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, the range member of any given element of pBufferInfo must: be less than or equal to TVkPhysicalDeviceLimits::maxUniformBufferRange
-     // If descriptorType is TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER or TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, the range member of any given element of pBufferInfo must: be less than or equal to TVkPhysicalDeviceLimits::maxStorageBufferRange
+     // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or TVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, the range member of any given element of pBufferInfo, or the effective range if range is TVK_WHOLE_SIZE, must: be less than or equal to TVkPhysicalDeviceLimits::maxUniformBufferRange
+     // If descriptorType is TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER or TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, the range member of any given element of pBufferInfo, or the effective range if range is TVK_WHOLE_SIZE, must: be less than or equal to TVkPhysicalDeviceLimits::maxStorageBufferRange
      // If descriptorType is TVK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, the TVkBuffer that any given element of pTexelBufferView was created from must: have been created with TVK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT set
      // If descriptorType is TVK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, the TVkBuffer that any given element of pTexelBufferView was created from must: have been created with TVK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT set
      // If descriptorType is TVK_DESCRIPTOR_TYPE_STORAGE_IMAGE or TVK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, the imageView member of any given element of pImageInfo must: have been created with the identity swizzle
@@ -2819,6 +2829,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The width, height, and depth members of extent must: all be greater than `0`
      // mipLevels must: be greater than `0`
      // arrayLayers must: be greater than `0`
+     // If flags contains TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, imageType must be TVK_IMAGE_TYPE_2D
      // If imageType is TVK_IMAGE_TYPE_1D, extent.width must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension1D, or TVkImageFormatProperties::maxExtent.width (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
      // If imageType is TVK_IMAGE_TYPE_2D and flags does not contain TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension2D, or TVkImageFormatProperties::maxExtent.width/height (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
      // If imageType is TVK_IMAGE_TYPE_2D and flags contains TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimensionCube, or TVkImageFormatProperties::maxExtent.width/height (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
@@ -4775,11 +4786,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // Any given element of pCommandBuffers must: either have been recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT, or not currently be executing on the device
      // Any given element of pCommandBuffers must: be in the executable state
      // If any given element of pCommandBuffers contains commands that execute secondary command buffers, those secondary command buffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT, or not currently be executing on the device
-     // If any given element of pCommandBuffers was created with TVK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, it mustnot: have been previously submitted without re-recording that command buffer
-     // If any given element of pCommandBuffers contains commands that execute secondary command buffers created with TVK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, each such secondary command buffer mustnot: have been previously submitted without re-recording that command buffer
+     // If any given element of pCommandBuffers was recorded with TVK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, it mustnot: have been previously submitted without re-recording that command buffer
+     // If any given element of pCommandBuffers contains commands that execute secondary command buffers recorded with TVK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, each such secondary command buffer mustnot: have been previously submitted without re-recording that command buffer
      // Any given element of pCommandBuffers mustnot: contain commands that execute a secondary command buffer, if that secondary command buffer has been recorded in another primary command buffer after it was recorded into this TVkCommandBuffer
-     // Any given element of pCommandBuffers must: have been created on a TVkCommandPool that was created for the same queue family that the calling command's queue belongs to
-     // Any given element of pCommandBuffers mustnot: have been created with TVK_COMMAND_BUFFER_LEVEL_SECONDARY
+     // Any given element of pCommandBuffers must: have been allocated from a TVkCommandPool that was created for the same queue family that the calling command's queue belongs to
+     // Any given element of pCommandBuffers mustnot: have been allocated with TVK_COMMAND_BUFFER_LEVEL_SECONDARY
      // Any given element of TVkSemaphore in pWaitSemaphores must: refer to a prior signal of that TVkSemaphore that will not be consumed by any other wait on that semaphore
      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, any given element of pWaitDstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, any given element of pWaitDstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
@@ -5714,7 +5725,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_REFERENCE dynamic state enabled
      TvkCmdSetStencilReference=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;reference:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
+     // Any given element of pDescriptorSets must: have been allocated with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
      // dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pDescriptorSets
      // The sum of firstSet and descriptorSetCount must: be less than or equal to TVkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created
      // pipelineBindPoint must: be supported by the commandBuffer's parent TVkCommandPool's queue family
@@ -5990,9 +6001,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
      // queryPool must: have been created with a queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within commandBuffer
      // query must: be less than the number of queries in queryPool
-     // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was created from must: support graphics operations
-     // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate graphics operations, the TVkCommandPool that commandBuffer was created from must: support graphics operations
-     // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate compute operations, the TVkCommandPool that commandBuffer was created from must: support compute operations
+     // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
+     // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate graphics operations, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
+     // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate compute operations, the TVkCommandPool that commandBuffer was allocated from must: support compute operations
      TvkCmdBeginQuery=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // The query identified by queryPool and query must: currently be <<queries-operation-active,active>>
@@ -6040,10 +6051,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The current subpass index must: be equal to the number of subpasses in the render pass minus one
      TvkCmdEndRenderPass=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // commandBuffer must: have been created with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
-     // Any given element of pCommandBuffers must: have been created with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
-     // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was created with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
-     // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was created with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+     // commandBuffer must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
+     // Any given element of pCommandBuffers must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
+     // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+     // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
      // Any given element of pCommandBuffers must: be in the executable state
      // Any given element of pCommandBuffers must: have been allocated from a TVkCommandPool that was created for the same queue family as the TVkCommandPool from which commandBuffer was allocated
      // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
@@ -6051,6 +6062,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
      // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
+     // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers mustnot: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
      // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
@@ -6536,7 +6548,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_REFERENCE dynamic state enabled
       CmdSetStencilReference:TvkCmdSetStencilReference;
 
-      // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
+      // Any given element of pDescriptorSets must: have been allocated with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
       // dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pDescriptorSets
       // The sum of firstSet and descriptorSetCount must: be less than or equal to TVkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created
       // pipelineBindPoint must: be supported by the commandBuffer's parent TVkCommandPool's queue family
@@ -6812,9 +6824,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
       // queryPool must: have been created with a queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within commandBuffer
       // query must: be less than the number of queries in queryPool
-      // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was created from must: support graphics operations
-      // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate graphics operations, the TVkCommandPool that commandBuffer was created from must: support graphics operations
-      // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate compute operations, the TVkCommandPool that commandBuffer was created from must: support compute operations
+      // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
+      // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate graphics operations, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
+      // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate compute operations, the TVkCommandPool that commandBuffer was allocated from must: support compute operations
       CmdBeginQuery:TvkCmdBeginQuery;
 
       // The query identified by queryPool and query must: currently be <<queries-operation-active,active>>
@@ -6862,10 +6874,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // The current subpass index must: be equal to the number of subpasses in the render pass minus one
       CmdEndRenderPass:TvkCmdEndRenderPass;
 
-      // commandBuffer must: have been created with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
-      // Any given element of pCommandBuffers must: have been created with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
-      // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was created with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
-      // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was created with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+      // commandBuffer must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
+      // Any given element of pCommandBuffers must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
+      // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+      // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
       // Any given element of pCommandBuffers must: be in the executable state
       // Any given element of pCommandBuffers must: have been allocated from a TVkCommandPool that was created for the same queue family as the TVkCommandPool from which commandBuffer was allocated
       // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
@@ -6873,6 +6885,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
       // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
+      // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers mustnot: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
       // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
@@ -7363,7 +7376,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_REFERENCE dynamic state enabled
        procedure CmdSetStencilReference(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;reference:TVkUInt32); virtual;
 
-       // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
+       // Any given element of pDescriptorSets must: have been allocated with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
        // dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pDescriptorSets
        // The sum of firstSet and descriptorSetCount must: be less than or equal to TVkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created
        // pipelineBindPoint must: be supported by the commandBuffer's parent TVkCommandPool's queue family
@@ -7639,9 +7652,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
        // queryPool must: have been created with a queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within commandBuffer
        // query must: be less than the number of queries in queryPool
-       // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was created from must: support graphics operations
-       // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate graphics operations, the TVkCommandPool that commandBuffer was created from must: support graphics operations
-       // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate compute operations, the TVkCommandPool that commandBuffer was created from must: support compute operations
+       // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
+       // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate graphics operations, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
+       // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate compute operations, the TVkCommandPool that commandBuffer was allocated from must: support compute operations
        procedure CmdBeginQuery(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags); virtual;
 
        // The query identified by queryPool and query must: currently be <<queries-operation-active,active>>
@@ -7689,10 +7702,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // The current subpass index must: be equal to the number of subpasses in the render pass minus one
        procedure CmdEndRenderPass(commandBuffer:TVkCommandBuffer); virtual;
 
-       // commandBuffer must: have been created with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
-       // Any given element of pCommandBuffers must: have been created with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
-       // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was created with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
-       // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was created with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+       // commandBuffer must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
+       // Any given element of pCommandBuffers must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
+       // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+       // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
        // Any given element of pCommandBuffers must: be in the executable state
        // Any given element of pCommandBuffers must: have been allocated from a TVkCommandPool that was created for the same queue family as the TVkCommandPool from which commandBuffer was allocated
        // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
@@ -7700,6 +7713,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
        // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
+       // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers mustnot: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
        // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
        // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
        // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
@@ -8188,7 +8202,7 @@ var LibVulkan:pointer=nil;
     // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_STENCIL_REFERENCE dynamic state enabled
     vkCmdSetStencilReference:TvkCmdSetStencilReference=nil;
 
-    // Any given element of pDescriptorSets must: have been created with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
+    // Any given element of pDescriptorSets must: have been allocated with a TVkDescriptorSetLayout that matches (is the same as, or defined identically to) the TVkDescriptorSetLayout at set _n_ in layout, where _n_ is the sum of firstSet and the index into pDescriptorSets
     // dynamicOffsetCount must: be equal to the total number of dynamic descriptors in pDescriptorSets
     // The sum of firstSet and descriptorSetCount must: be less than or equal to TVkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created
     // pipelineBindPoint must: be supported by the commandBuffer's parent TVkCommandPool's queue family
@@ -8464,9 +8478,9 @@ var LibVulkan:pointer=nil;
     // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
     // queryPool must: have been created with a queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within commandBuffer
     // query must: be less than the number of queries in queryPool
-    // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was created from must: support graphics operations
-    // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate graphics operations, the TVkCommandPool that commandBuffer was created from must: support graphics operations
-    // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate compute operations, the TVkCommandPool that commandBuffer was created from must: support compute operations
+    // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
+    // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate graphics operations, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
+    // If the queryType used to create queryPool was TVK_QUERY_TYPE_PIPELINE_STATISTICS and any of the pipelineStatistics indicate compute operations, the TVkCommandPool that commandBuffer was allocated from must: support compute operations
     vkCmdBeginQuery:TvkCmdBeginQuery=nil;
 
     // The query identified by queryPool and query must: currently be <<queries-operation-active,active>>
@@ -8514,10 +8528,10 @@ var LibVulkan:pointer=nil;
     // The current subpass index must: be equal to the number of subpasses in the render pass minus one
     vkCmdEndRenderPass:TvkCmdEndRenderPass=nil;
 
-    // commandBuffer must: have been created with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
-    // Any given element of pCommandBuffers must: have been created with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
-    // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was created with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
-    // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was created with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+    // commandBuffer must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
+    // Any given element of pCommandBuffers must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
+    // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+    // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
     // Any given element of pCommandBuffers must: be in the executable state
     // Any given element of pCommandBuffers must: have been allocated from a TVkCommandPool that was created for the same queue family as the TVkCommandPool from which commandBuffer was allocated
     // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
@@ -8525,6 +8539,7 @@ var LibVulkan:pointer=nil;
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
     // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
+    // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers mustnot: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
     // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
