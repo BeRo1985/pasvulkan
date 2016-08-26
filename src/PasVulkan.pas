@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-26-04-25-0000                       *
+ *                        Version 2016-08-26-04-28-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -10428,7 +10428,6 @@ var Index:TVkInt32;
     SurfaceFormat:TVkSurfaceFormatKHR;
     SwapChainImages:array of TVkImage;
     FormatProperties:TVkFormatProperties;
-    MemoryRequirements:TVkMemoryRequirements;
     SwapChainCreateInfo:TVkSwapchainCreateInfoKHR;
 begin
  inherited Create;
@@ -10597,7 +10596,6 @@ end;
 
 destructor TVulkanSwapChain.Destroy;
 var Index:TVkInt32;
-    FrameBufferColorAttachment:TVulkanFrameBufferAttachment;
 begin
 
  for Index:=0 to length(fImages)-1 do begin
@@ -10671,10 +10669,7 @@ constructor TVulkanSwapChainSimpleDirectRenderTarget.Create(const pDevice:TVulka
                                                             const pDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
                                                             const pDepthImageFormatWithStencil:boolean=false);
 var Index:TVkInt32;
-    FrameBufferColorAttachment:TVulkanFrameBufferAttachment;
-    Attachments:array[0..1] of TVkImageView;
     FormatProperties:TVkFormatProperties;
-    MemoryRequirements:TVkMemoryRequirements;
     ColorAttachmentImage:TVulkanImage;
     ColorAttachmentImageView:TVulkanImageView;
 begin
@@ -10850,7 +10845,6 @@ end;
 
 destructor TVulkanSwapChainSimpleDirectRenderTarget.Destroy;
 var Index:TVkInt32;
-    FrameBufferColorAttachment:TVulkanFrameBufferAttachment;
 begin
 
  for Index:=0 to length(fFramebuffers)-1 do begin
@@ -13394,7 +13388,6 @@ function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const p
                                                                          const pDstAlphaBlendFactor:TVkBlendFactor;
                                                                          const pAlphaBlendOp:TVkBlendOp;
                                                                          const pColorWriteMask:TVkColorComponentFlags):TVkInt32;
-var ColorBlendAttachmentState:PVkPipelineColorBlendAttachmentState;
 begin
  Assert(assigned(fColorBlendState));
  result:=fColorBlendState.AddColorBlendAttachmentState(pBlendEnable,
