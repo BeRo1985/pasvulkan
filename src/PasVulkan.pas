@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-26-16-11-0000                       *
+ *                        Version 2016-08-26-17-23-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2582,6 +2582,12 @@ type EVulkanException=class(Exception);
                                  const pFence:TVulkanFence;
                                  const pCommandBuffer:TVulkanCommandBuffer;
                                  const pStream:TStream);
+       constructor CreateFromHDR(const pDevice:TVulkanDevice;
+                                 const pQueue:TVulkanQueue;
+                                 const pFence:TVulkanFence;
+                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pStream:TStream;
+                                 const pMipMaps:boolean);
        constructor CreateDefault(const pDevice:TVulkanDevice;
                                  const pQueue:TVulkanQueue;
                                  const pFence:TVulkanFence;
@@ -15924,7 +15930,304 @@ begin
   FreeMem(Data);
  end;     
 end;
-                   
+
+constructor TVulkanTexture.CreateFromHDR(const pDevice:TVulkanDevice;
+                                         const pQueue:TVulkanQueue;
+                                         const pFence:TVulkanFence;
+                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pStream:TStream;
+                                         const pMipMaps:boolean);
+const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
+      RGBE_DATA_RED=0;
+      RGBE_DATA_GREEN=1;
+      RGBE_DATA_BLUE=2;
+      RGBE_DATA_SIZE=3;
+ procedure rgbe2float(const r,g,b,e:TVkUInt8;out red,green,blue,alpha:TVkFloat);
+ var f:TVkFloat;
+ begin
+  if e<>0 then begin
+   f:=ldexp(1.0,e-(128+8));
+ //f:=power(2.0,e-(128+8));
+   red:=r*f;
+   green:=g*f;
+   blue:=b*f;
+   alpha:=1.0;
+  end else begin
+   red:=0.0;
+   green:=0.0;
+   blue:=0.0;
+   alpha:=0.0;
+  end;
+ end;
+ function LoadHDRImage(var ImageData:pointer;var ImageWidth,ImageHeight:TVkInt32):boolean;
+ label NonRLE,Fail;
+ var i,j,k,CountPixels,y,x:TVkInt32;
+     programtype,line:shortstring;
+     gamma,exposure,r,g,b,a:TVkFloat;
+     scanlinebuffer:array of array[0..3] of TVkUInt8;
+     c:ansichar;
+     OK:longbool;
+     buf:array[0..3] of ansichar;
+     rgbe:array[0..3] of TVkUInt8;
+     Len,Val:TVkUInt8;
+     p:PVkFloat;
+ begin
+  result:=false;
+  scanlinebuffer:=nil;
+  ImageData:=nil;
+  if pStream.Size>16 then begin
+   buf[0]:=#0;
+   buf[1]:=#0;
+   pStream.Read(buf,2*SizeOf(AnsiChar));
+   if (buf[0]<>'#') or (buf[1]<>'?') then begin
+    exit;
+   end;
+   programtype:='';
+   gamma:=1.0;
+   exposure:=1.0;
+   begin
+    i:=0;
+    while pStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
+     if c in [#1..#9,#11..#12,#14..#32] then begin
+      break;
+     end else if i<255 then begin
+      inc(i);
+      programtype[i]:=c;
+     end;
+    end;
+    programtype[0]:=ansichar(TVkUInt8(i));
+    while pStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
+     if c in [#0,#10,#13] then begin
+      break;
+     end;
+    end;
+   end;
+   OK:=false;
+   while pStream.Position<pStream.Size do begin
+    line:='';
+    i:=0;
+    while pStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
+     if c in [#0,#10,#13] then begin
+      break;
+     end else if i<255 then begin
+      inc(i);
+      line[i]:=c;
+     end;
+    end;
+    line[0]:=ansichar(TVkUInt8(i));
+    line:=trim(line);
+    if line='FORMAT=32-bit_rle_rgbe' then begin
+     OK:=true;
+     break;
+    end else if pos('GAMMA=',line)=1 then begin
+     Delete(line,1,6);
+     OK:=false;
+     gamma:=0;
+     System.Val(line,gamma,k);
+     if k>0 then begin
+      gamma:=1.0;
+     end;
+     OK:=false;
+    end else if pos('EXPOSURE=',line)=1 then begin
+     Delete(line,1,9);
+     System.Val(line,exposure,k);
+     if k>0 then begin
+      exposure:=1.0;
+     end;
+     OK:=false;
+    end;
+   end;
+   if not OK then begin
+    exit;
+   end;
+   OK:=false;
+   while pStream.Position<pStream.Size do begin
+    line:='';
+    i:=0;
+    while pStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
+     if c in [#0,#10,#13] then begin
+      break;
+     end else if i<255 then begin
+      inc(i);
+      line[i]:=c;
+     end;
+    end;
+    line[0]:=ansichar(TVkUInt8(i));
+    line:=trim(line);
+    if (pos('-Y',line)=1) and (pos('+X',line)>2) then begin
+     Delete(line,1,2);
+     line:=trim(line);
+     ImageWidth:=0;
+     i:=0;
+     while ((i+1)<=length(line)) and (line[i+1] in ['0'..'9']) do begin
+      inc(i);
+      ImageWidth:=(ImageWidth*10)+(TVkUInt8(ansichar(line[i]))-TVkUInt8(ansichar('0')));
+     end;
+     Delete(line,1,i);
+     line:=trim(line);
+     if pos('-X',line)=1 then begin
+      Delete(line,1,2);
+      line:=trim(line);
+      ImageHeight:=0;
+      i:=0;
+      while ((i+1)<=length(line)) and (line[i+1] in ['0'..'9']) do begin
+       inc(i);
+       ImageHeight:=(ImageHeight*10)+(TVkUInt8(ansichar(line[i]))-TVkUInt8(ansichar('0')));
+      end;
+      OK:=true;
+     end;
+     break;
+    end;
+   end;
+   if not OK then begin
+    exit;
+   end;
+   begin
+    CountPixels:=ImageWidth*ImageHeight;
+    GetMem(ImageData,CountPixels*(SizeOf(TVkFloat)*4));
+    p:=ImageData;
+    if (ImageWidth<8) or (ImageWidth>$7fff) then begin
+     NonRLE:
+     while (CountPixels>0) and (pStream.Read(rgbe,SizeOf(TVkUInt8)*4)=(SizeOf(TVkUInt8)*4)) do begin
+      dec(CountPixels);
+      rgbe2float(rgbe[0],rgbe[1],rgbe[2],rgbe[3],r,g,b,a);
+      p^:=r;
+      inc(p);
+      p^:=g;
+      inc(p);
+      p^:=b;
+      inc(p);
+      p^:=a;
+      inc(p);
+     end;
+    end else begin
+     y:=ImageHeight;
+     while (CountPixels>0) and (y>0) do begin
+      dec(y);
+      if pStream.Read(rgbe,SizeOf(TVkUInt8)*4)=(SizeOf(TVkUInt8)*4) then begin
+       if (rgbe[0]<>2) or (rgbe[1]<>2) or ((rgbe[2] and $80)<>0) then begin
+        pStream.Seek(-(SizeOf(TVkUInt8)*4),soCurrent);
+        goto NonRLE;
+       end else begin
+        if longint((longint(rgbe[2]) shl 8) or longint(rgbe[3]))<>ImageWidth then begin
+         goto Fail;
+        end;
+        if length(scanlinebuffer)<>ImageWidth then begin
+         SetLength(scanlinebuffer,ImageWidth);
+        end;
+        for i:=0 to 3 do begin
+         x:=0;
+         while x<ImageWidth do begin
+          if pStream.Read(Len,SizeOf(TVkUInt8))=SizeOf(TVkUInt8) then begin
+           if Len>128 then begin
+            k:=Len-128;
+            if (x+k)>ImageWidth then begin
+             goto Fail;
+            end;
+            if pStream.Read(Val,SizeOf(TVkUInt8))=SizeOf(TVkUInt8) then begin
+             for j:=1 to k do begin
+              scanlinebuffer[x,i]:=Val;
+              inc(x);
+             end;
+            end else begin
+             goto Fail;
+            end;
+           end else begin
+            k:=Len;
+            if (x+k)>ImageWidth then begin
+             goto Fail;
+            end;
+            for j:=1 to k do begin
+             if pStream.Read(scanlinebuffer[x,i],SizeOf(TVkUInt8))<>SizeOf(TVkUInt8) then begin
+              goto Fail;
+             end;
+             inc(x);
+            end;
+           end;
+          end else begin
+           goto Fail;
+          end;
+         end;
+         for x:=0 to ImageWidth-1 do begin
+          rgbe2float(scanlinebuffer[x,0],scanlinebuffer[x,1],scanlinebuffer[x,2],scanlinebuffer[x,3],r,g,b,a);
+          p^:=r;
+          inc(p);
+          p^:=g;
+          inc(p);
+          p^:=b;
+          inc(p);
+          p^:=a;
+          inc(p);
+          dec(CountPixels);
+         end;
+        end;
+       end;
+      end else begin
+       break;
+      end;
+     end;
+    end;
+    result:=CountPixels=0;
+   end;
+   Fail:
+   if result then begin
+    if (abs(1.0-gamma)>1e-12) or (abs(1.0-exposure)>1e-12) then begin
+     CountPixels:=ImageWidth*ImageHeight;
+     p:=ImageData;
+     while CountPixels>0 do begin
+      dec(CountPixels);
+      p^:=power(p^,gamma)*exposure;
+      inc(p);
+      p^:=power(p^,gamma)*exposure;
+      inc(p);
+      p^:=power(p^,gamma)*exposure;
+      inc(p,2);
+     end;
+    end;
+   end else begin
+    FreeMem(ImageData);
+    ImageData:=nil;
+   end;
+   SetLength(scanlinebuffer,0);
+  end;
+ end;
+var ImageData:pointer;
+    ImageWidth,ImageHeight:TVkInt32;
+begin
+ ImageData:=nil;
+ ImageWidth:=0;
+ ImageHeight:=0;
+ try
+  if LoadHDRImage(ImageData,ImageWidth,ImageHeight) then begin
+   CreateFromMemory(pDevice,
+                    pQueue,
+                    pFence,
+                    pCommandBuffer,
+                    VK_FORMAT_R32G32B32A32_SFLOAT,
+                    VK_SAMPLE_COUNT_1_BIT,
+                    Max(1,ImageWidth),
+                    Max(1,ImageHeight),
+                    1,
+                    1,
+                    1,
+                    MipMapLevels[pMipMaps],
+                    [vtufSampled],
+                    ImageData,
+                    ImageWidth*ImageHeight*SizeOf(TVkFloat)*4,
+                    false,
+                    false,
+                    1,
+                    true);
+  end else begin
+   raise EVulkanTextureException.Create('Invalid HDR stream');
+  end;
+ finally
+  if assigned(ImageData) then begin
+   FreeMem(ImageData);
+  end;
+ end;
+end;
+
 constructor TVulkanTexture.CreateDefault(const pDevice:TVulkanDevice;
                                          const pQueue:TVulkanQueue;
                                          const pFence:TVulkanFence;
