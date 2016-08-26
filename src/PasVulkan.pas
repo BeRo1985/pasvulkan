@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-26-17-23-0000                       *
+ *                        Version 2016-08-26-17-35-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2583,6 +2583,12 @@ type EVulkanException=class(Exception);
                                  const pCommandBuffer:TVulkanCommandBuffer;
                                  const pStream:TStream);
        constructor CreateFromHDR(const pDevice:TVulkanDevice;
+                                 const pQueue:TVulkanQueue;
+                                 const pFence:TVulkanFence;
+                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pStream:TStream;
+                                 const pMipMaps:boolean);
+       constructor CreateFromTGA(const pDevice:TVulkanDevice;
                                  const pQueue:TVulkanQueue;
                                  const pFence:TVulkanFence;
                                  const pCommandBuffer:TVulkanCommandBuffer;
@@ -16220,6 +16226,392 @@ begin
                     true);
   end else begin
    raise EVulkanTextureException.Create('Invalid HDR stream');
+  end;
+ finally
+  if assigned(ImageData) then begin
+   FreeMem(ImageData);
+  end;
+ end;
+end;
+
+constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
+                                         const pQueue:TVulkanQueue;
+                                         const pFence:TVulkanFence;
+                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pStream:TStream;
+                                         const pMipMaps:boolean);
+const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
+ function LoadTGAImage(var ImageData:pointer;var ImageWidth,ImageHeight:TVkInt32):boolean;
+ type pbyte=^TVkUInt8;
+      PLongword=^TVkUInt32;
+      PLongwords=^TLongwords;
+      TLongwords=array[0..65536] of TVkUInt32;
+      TTGAHeader=packed record
+       ImageID:TVkUInt8;
+       ColorMapType:TVkUInt8;
+       ImageType:TVkUInt8;
+       CMapSpec:packed record
+        FirstEntryIndex:TVkUInt16;
+        Length:TVkUInt16;
+        EntrySize:TVkUInt8;
+       end;
+       OrigX:array[0..1] of TVkUInt8;
+       OrigY:array[0..1] of TVkUInt8;
+       Width:array[0..1] of TVkUInt8;
+       Height:array[0..1] of TVkUInt8;
+       BPP:TVkUInt8;
+       ImageInfo:TVkUInt8;
+      end;
+      TBGR=packed record
+       b,g,r:TVkUInt8;
+      end;
+      TBGRA=packed record
+       b,g,r,a:TVkUInt8;
+      end;
+      TRGBA=packed record
+       r,g,b,a:TVkUInt8;
+      end;
+ var TGAHeader:TTGAHeader;
+     ImagePointer,NewImagePointer,Pixel:PLongword;
+     Width,Height,ImageSize,PixelCounter,i,l,j:TVkUInt32;
+     BGR:TBGR;
+     BGRA:TBGRA;
+     b,B1,B8:TVkUInt8;
+     w:TVkUInt16;
+     HasPalette:BOOLEAN;
+     Palette:array of TVkUInt8;
+  function PaletteEncode(Index:TVkUInt32):TVkUInt32;
+  var r:TRGBA;
+      l:TVkUInt32 ABSOLUTE r;
+      Offset:TVkUInt32;
+      w:TVkUInt16;
+  begin
+   l:=0;
+   if (B8+TGAHeader.CMapSpec.FirstEntryIndex)<TGAHeader.CMapSpec.Length then begin
+    Offset:=Index*(TGAHeader.CMapSpec.EntrySize div 8);
+    case TGAHeader.CMapSpec.EntrySize of
+     8:begin
+      l:=Palette[Offset];
+     end;
+     16:begin
+      w:=Palette[Offset] or (Palette[Offset+1] shl 8);
+      l:=(((w and $8000) shl 16) or ((w and $7C00) shl 9) or ((w and $3e0) shl 6) or ((w and $1f) shl 3)) or $0f0f0f0f;
+     end;
+     24:begin
+      r.r:=Palette[Offset+2];
+      r.g:=Palette[Offset+1];
+      r.b:=Palette[Offset];
+      if TGAHeader.ImageType=3 then begin
+       r.a:=(r.r+r.g+r.b) div 3;
+      end else begin
+       r.a:=255;
+      end;
+     end;
+     32:begin
+      r.r:=Palette[Offset+3];
+      r.g:=Palette[Offset+2];
+      r.b:=Palette[Offset+1];
+      r.a:=Palette[Offset];
+     end;
+    end;
+   end;
+   result:=(r.a shl 24) or (r.b shl 16) or (r.g shl 8) or r.r;
+  end;
+  procedure FlipAndCorrectImage;
+  var x,y,o:TVkUInt32;
+      Line,NewLine:PLongwords;
+  begin
+   if (Width<>0) and (Height<>0) then begin
+    if (TGAHeader.ImageInfo and $10)<>0 then begin
+     GetMem(NewImagePointer,ImageSize);
+     for y:=0 to Height-1 do begin
+      o:=y*Width*SizeOf(TVkUInt32);
+      Line:=PLongwords(pointer(@PAnsiChar(pointer(ImagePointer))[o]));
+      NewLine:=PLongwords(pointer(@PAnsiChar(pointer(NewImagePointer))[o]));
+      for x:=0 to Width-1 do begin
+       NewLine^[Width-(x+1)]:=Line^[x];
+      end;
+     end;
+     FreeMem(ImagePointer);
+     ImagePointer:=NewImagePointer;
+    end;
+    if (TGAHeader.ImageInfo and $20)=0 then begin
+     GetMem(NewImagePointer,ImageSize);
+     for y:=0 to Height-1 do begin
+      Move(pointer(@PAnsiChar(pointer(ImagePointer))[y*Width*SizeOf(TVkUInt32)])^,
+           pointer(@PAnsiChar(pointer(NewImagePointer))[(Height-(y+1))*Width*SizeOf(TVkUInt32)])^,
+           Width*SizeOf(TVkUInt32));
+     end;
+     FreeMem(ImagePointer);
+     ImagePointer:=NewImagePointer;
+    end;
+   end;
+  end;
+ begin
+  result:=false;
+  if pStream.Size>0 then begin
+   if pStream.Read(TGAHeader,SizeOf(TGAHeader))<>SizeOf(TGAHeader) then begin
+    result:=false;
+    exit;
+   end;
+   if (not (TGAHeader.ColorMapType in [0,1])) or (not (TGAHeader.ImageType in [1,2,3,9,10,11])) then begin
+    result:=false;
+    exit;
+   end;
+   pStream.Seek(TGAHeader.ImageID,soCurrent);
+   Palette:=nil;
+   HasPalette:=TGAHeader.ColorMapType=1;
+   if HasPalette then begin
+    SetLength(Palette,TGAHeader.CMapSpec.Length*TGAHeader.CMapSpec.EntrySize div 8);
+    if pStream.Read(Palette[0],length(Palette))<>length(Palette) then begin
+     exit;
+    end;
+   end;
+   if HasPalette and not (TGAHeader.CMapSpec.EntrySize in [8,16,24,32]) then begin
+    SetLength(Palette,0);
+    result:=false;
+    exit;
+   end;
+   Width:=(TGAHeader.Width[1] shl 8) or TGAHeader.Width[0];
+   Height:=(TGAHeader.Height[1] shl 8) or TGAHeader.Height[0];
+   if TGAHeader.ImageType in [1,2,3] then begin
+    ImageSize:=(Width*Height)*SizeOf(TBGRA);
+    GetMem(ImagePointer,ImageSize);
+    Pixel:=ImagePointer;
+    if TGAHeader.BPP=8 then begin
+     if (Width*Height)>0 then begin
+      case TGAHeader.ImageType of
+       1:begin
+        for i:=0 to (Width*Height)-1 do begin
+         pStream.Read(B8,SizeOf(TVkUInt8));
+         Pixel^:=PaletteEncode(B8);
+         inc(Pixel);
+        end;
+       end;
+       2:begin
+        for i:=0 to (Width*Height)-1 do begin
+         pStream.Read(B8,SizeOf(TVkUInt8));
+         Pixel^:=B8;
+         inc(Pixel);
+        end;
+       end;
+       3:begin
+        for i:=0 to (Width*Height)-1 do begin
+         pStream.Read(B8,SizeOf(TVkUInt8));
+         Pixel^:=(B8 shl 24) or (B8 shl 16) or (B8 shl 8) or B8;
+         inc(Pixel);
+        end;
+       end;
+      end;
+     end;
+    end else if TGAHeader.BPP=16 then begin
+     if (Width*Height)>0 then begin
+      for i:=0 to (Width*Height)-1 do begin
+       pStream.Read(w,SizeOf(TVkUInt16));
+       Pixel^:=(((w and $8000) shl 16) or ((w and $7C00) shl 9) or ((w and $3E0) shl 6) or ((w and $1F) shl 3)) or $0F0F0F0F;
+       inc(Pixel);
+      end;
+     end;
+    end else if TGAHeader.BPP=24 then begin
+     if (Width*Height)>0 then begin
+      for i:=0 to (Width*Height)-1 do begin
+       pStream.Read(BGR,SizeOf(TBGR));
+       if TGAHeader.ImageType=3 then begin
+        Pixel^:=(((BGR.r+BGR.g+BGR.b) div 3)  shl 24) or (BGR.b shl 16) or (BGR.g shl 8) or BGR.r;
+       end else begin
+        Pixel^:=(255 shl 24) or (BGR.b shl 16) or (BGR.g shl 8) or BGR.r;
+       end;
+       inc(Pixel);
+      end;
+     end;
+    end else if TGAHeader.BPP=32 then begin
+     if (Width*Height)>0 then begin
+      for i:=0 to (Width*Height)-1 do begin
+       pStream.Read(BGRA,SizeOf(TBGRA));
+       Pixel^:=(BGRA.a shl 24) or (BGRA.b shl 16) or (BGRA.g shl 8) or BGRA.r;
+       inc(Pixel);
+      end;
+     end;
+    end;
+    FlipAndCorrectImage;
+   end else if TGAHeader.ImageType in [9,10,11] then begin
+    ImageSize:=(Width*Height)*SizeOf(TBGRA);
+    GetMem(ImagePointer,ImageSize);
+    Pixel:=ImagePointer;
+    PixelCounter:=0;
+    j:=Width*Height;
+    if TGAHeader.BPP=8 then begin
+     while PixelCounter<j do begin
+      pStream.Read(B1,SizeOf(TVkUInt8));
+      b:=(B1 and $7f)+1;
+      if (B1 and $80)<>0 then begin
+       pStream.Read(B8,SizeOf(TVkUInt8));
+       case TGAHeader.ImageType of
+        9:begin
+         l:=PaletteEncode(B8);
+        end;
+        10:begin
+         l:=B8;
+        end;
+        11:begin
+         BGR.b:=B8;
+         BGR.g:=B8;
+         BGR.r:=B8;
+         l:=(255 shl 24) or (BGR.b shl 16) or (BGR.g shl 8) or BGR.r;
+        end;
+        else begin
+         l:=0;
+        end;
+       end;
+       i:=0;
+       while i<b do begin
+        Pixel^:=l;
+        inc(Pixel);
+        inc(PixelCounter);
+        inc(i);
+       end;
+      end else begin
+       i:=0;
+       while i<b do begin
+        pStream.Read(B8,SizeOf(TVkUInt8));
+        case TGAHeader.ImageType of
+         9:begin
+          l:=PaletteEncode(B8);
+         end;
+         10:begin
+          l:=B8;
+         end;
+         11:begin
+          BGR.b:=B8;
+          BGR.g:=B8;
+          BGR.r:=B8;
+          l:=(255 shl 24) or (BGR.b shl 16) or (BGR.g shl 8) or BGR.r;
+         end;
+         else begin
+          l:=0;
+         end;
+        end;
+        Pixel^:=l;
+        inc(Pixel);
+        inc(PixelCounter);
+        inc(i);
+       end;
+      end;
+     end;
+    end else if TGAHeader.BPP=16 then begin
+     while PixelCounter<j do begin
+      pStream.Read(B1,SizeOf(TVkUInt8));
+      b:=(B1 and $7f)+1;
+      if (B1 and $80)<>0 then begin
+       pStream.Read(w,SizeOf(TVkUInt16));
+       l:=(((w and $8000) shl 16) or ((w and $7C00) shl 9) or ((w and $3E0) shl 6) or ((w and $1F) shl 3)) or $0F0F0F0F;
+       i:=0;
+       while i<b do begin
+        Pixel^:=l;
+        inc(Pixel);
+        inc(PixelCounter);
+        inc(i);
+       end;
+      end else begin
+       i:=0;
+       while i<b do begin
+        pStream.Read(w,SizeOf(TVkUInt16));
+        Pixel^:=(((w and $8000) shl 16) or ((w and $7C00) shl 9) or ((w and $3E0) shl 6) or ((w and $1F) shl 3)) or $0F0F0F0F;
+        inc(Pixel);
+        inc(PixelCounter);
+        inc(i);
+       end;
+      end;
+     end;
+    end else if TGAHeader.BPP=24 then begin
+     while PixelCounter<j do begin
+      pStream.Read(B1,SizeOf(TVkUInt8));
+      b:=(B1 and $7f)+1;
+      if (B1 and $80)<>0 then begin
+       pStream.Read(BGR,SizeOf(TBGR));
+       l:=(255 shl 24) or (BGR.b shl 16) or (BGR.g shl 8) or BGR.r;;
+       i:=0;
+       while i<b do begin
+        Pixel^:=l;
+        inc(Pixel);
+        inc(PixelCounter);
+        inc(i);
+       end;
+      end else begin
+       i:=0;
+       while i<b do begin
+        pStream.Read(BGR,SizeOf(TBGR));
+        Pixel^:=(255 shl 24) or (BGR.b shl 16) or (BGR.g shl 8) or BGR.r;;
+        inc(Pixel);
+        inc(PixelCounter);
+        inc(i);
+       end;
+      end;
+     end;
+    end else if TGAHeader.BPP=32 then begin
+     while PixelCounter<j do begin
+      pStream.Read(B1,SizeOf(TVkUInt8));
+      b:=(B1 and $7f)+1;
+      if (B1 and $80)<>0 then begin
+       pStream.Read(BGRA,SizeOf(TBGRA));
+       l:=(BGRA.a shl 24) or (BGRA.b shl 16) or (BGRA.g shl 8) or BGRA.r;
+       i:=0;
+       while i<b do begin
+        Pixel^:=l;
+        inc(Pixel);
+        inc(PixelCounter);
+        inc(i);
+       end;
+      end else begin
+       i:=0;
+       while i<b do begin
+        pStream.Read(BGRA,SizeOf(TBGRA));
+        Pixel^:=(BGRA.a shl 24) or (BGRA.b shl 16) or (BGRA.g shl 8) or BGRA.r;
+        inc(Pixel);
+        inc(PixelCounter);
+        inc(i);
+       end;
+      end;
+     end;
+    end;
+    FlipAndCorrectImage;
+   end;
+   SetLength(Palette,0);
+   ImageData:=ImagePointer;
+   ImageWidth:=Width;
+   ImageHeight:=Height;
+   result:=true;
+  end;
+ end;
+var ImageData:pointer;
+    ImageWidth,ImageHeight:TVkInt32;
+begin
+ ImageData:=nil;
+ ImageWidth:=0;
+ ImageHeight:=0;
+ try
+  if LoadTGAImage(ImageData,ImageWidth,ImageHeight) then begin
+   CreateFromMemory(pDevice,
+                    pQueue,
+                    pFence,
+                    pCommandBuffer,
+                    VK_FORMAT_R8G8B8A8_UNORM,
+                    VK_SAMPLE_COUNT_1_BIT,
+                    Max(1,ImageWidth),
+                    Max(1,ImageHeight),
+                    1,
+                    1,
+                    1,
+                    MipMapLevels[pMipMaps],
+                    [vtufSampled],
+                    ImageData,
+                    ImageWidth*ImageHeight*SizeOf(TVkUInt8)*4,
+                    false,
+                    false,
+                    1,
+                    true);
+  end else begin
+   raise EVulkanTextureException.Create('Invalid TGA stream');
   end;
  finally
   if assigned(ImageData) then begin
