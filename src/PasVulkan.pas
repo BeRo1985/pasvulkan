@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-26-17-35-0000                       *
+ *                        Version 2016-08-26-18-06-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2589,6 +2589,12 @@ type EVulkanException=class(Exception);
                                  const pStream:TStream;
                                  const pMipMaps:boolean);
        constructor CreateFromTGA(const pDevice:TVulkanDevice;
+                                 const pQueue:TVulkanQueue;
+                                 const pFence:TVulkanFence;
+                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pStream:TStream;
+                                 const pMipMaps:boolean);
+       constructor CreateFromPNG(const pDevice:TVulkanDevice;
                                  const pQueue:TVulkanQueue;
                                  const pFence:TVulkanFence;
                                  const pCommandBuffer:TVulkanCommandBuffer;
@@ -15345,7 +15351,7 @@ type PDDSPixelFormat=^TDDSPixelFormat;
      end;
 var Header:TDDSHeader;
     HeaderDX10:TDDSHeaderDX10;
-    BlockSize,ImageWidth,ImageHeight,ImageDepth,ImageMipMaps,ImageFaces,ImageArrayElements:TVkUInt32;
+    ImageWidth,ImageHeight,ImageDepth,ImageMipMaps,ImageFaces,ImageArrayElements:TVkUInt32;
     ImageFormat:TVkFormat;
     IsVolume:boolean;
     DataSize:TVkSizeInt;
@@ -15966,7 +15972,7 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
   end;
  end;
  function LoadHDRImage(var ImageData:pointer;var ImageWidth,ImageHeight:TVkInt32):boolean;
- label NonRLE,Fail;
+ label NonRLE,DoFail;
  var i,j,k,CountPixels,y,x:TVkInt32;
      programtype,line:shortstring;
      gamma,exposure,r,g,b,a:TVkFloat;
@@ -16007,6 +16013,8 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
       break;
      end;
     end;
+   end;
+   if length(programtype)>0 then begin
    end;
    OK:=false;
    while pStream.Position<pStream.Size do begin
@@ -16116,7 +16124,7 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
         goto NonRLE;
        end else begin
         if longint((longint(rgbe[2]) shl 8) or longint(rgbe[3]))<>ImageWidth then begin
-         goto Fail;
+         goto DoFail;
         end;
         if length(scanlinebuffer)<>ImageWidth then begin
          SetLength(scanlinebuffer,ImageWidth);
@@ -16128,7 +16136,7 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
            if Len>128 then begin
             k:=Len-128;
             if (x+k)>ImageWidth then begin
-             goto Fail;
+             goto DoFail;
             end;
             if pStream.Read(Val,SizeOf(TVkUInt8))=SizeOf(TVkUInt8) then begin
              for j:=1 to k do begin
@@ -16136,22 +16144,22 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
               inc(x);
              end;
             end else begin
-             goto Fail;
+             goto DoFail;
             end;
            end else begin
             k:=Len;
             if (x+k)>ImageWidth then begin
-             goto Fail;
+             goto DoFail;
             end;
             for j:=1 to k do begin
              if pStream.Read(scanlinebuffer[x,i],SizeOf(TVkUInt8))<>SizeOf(TVkUInt8) then begin
-              goto Fail;
+              goto DoFail;
              end;
              inc(x);
             end;
            end;
           end else begin
-           goto Fail;
+           goto DoFail;
           end;
          end;
          for x:=0 to ImageWidth-1 do begin
@@ -16175,7 +16183,7 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
     end;
     result:=CountPixels=0;
    end;
-   Fail:
+   DoFail:
    if result then begin
     if (abs(1.0-gamma)>1e-12) or (abs(1.0-exposure)>1e-12) then begin
      CountPixels:=ImageWidth*ImageHeight;
@@ -16617,6 +16625,1325 @@ begin
   if assigned(ImageData) then begin
    FreeMem(ImageData);
   end;
+ end;
+end;
+
+constructor TVulkanTexture.CreateFromPNG(const pDevice:TVulkanDevice;
+                                         const pQueue:TVulkanQueue;
+                                         const pFence:TVulkanFence;
+                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pStream:TStream;
+                                         const pMipMaps:boolean);
+const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
+{$undef PNGHighDepth}
+type PPNGPixel=^TPNGPixel;
+     TPNGPixel=packed record
+      r,g,b,a:{$ifdef PNGHighDepth}TVkUInt16{$else}TVkUInt8{$endif};
+     end;
+//const PNGHeader:TPNGHeader=($89,$50,$4e,$47,$0d,$0a,$1a,$0a);
+ function CRC32(data:pointer;length:TVkUInt32):TVkUInt32;
+ const CRC32Table:array[0..15] of TVkUInt32=($00000000,$1db71064,$3b6e20c8,$26d930ac,$76dc4190,
+                                            $6b6b51f4,$4db26158,$5005713c,$edb88320,$f00f9344,
+                                            $d6d6a3e8,$cb61b38c,$9b64c2b0,$86d3d2d4,$a00ae278,
+                                            $bdbdf21c);
+
+ var buf:pansichar;
+     i:TVkUInt32;
+ begin
+  if length=0 then begin
+   result:=0;
+  end else begin
+   buf:=data;
+   result:=$ffffffff;
+   for i:=1 to length do begin
+    result:=result xor TVkUInt8(buf^);
+    result:=CRC32Table[result and $f] xor (result shr 4);
+    result:=CRC32Table[result and $f] xor (result shr 4);
+    inc(buf);
+   end;
+   result:=result xor $ffffffff;
+  end;
+ end;
+ function Swap16(x:TVkUInt16):TVkUInt16;
+ begin
+  result:=((x and $ff) shl 8) or ((x and $ff00) shr 8);
+ end;
+ function Swap32(x:TVkUInt32):TVkUInt32;
+ begin
+  result:=(Swap16(x and $ffff) shl 16) or Swap16((x and $ffff0000) shr 16);
+ end;
+ function Swap64(x:TVkUInt64):TVkUInt64;
+ begin
+  result:=(TVkUInt64(Swap32(x and TVkUInt64($ffffffff))) shl 32) or Swap32((x and TVkUInt64($ffffffff00000000)) shr 32);
+ end;
+ function DoInflate(InData:pointer;InLen:TVkUInt32;var DestData:pointer;var DestLen:TVkUInt32;ParseHeader:boolean):boolean;
+ const CLCIndex:array[0..18] of TVkUInt8=(16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15);
+ type pword=^TVkUInt16;
+      PTree=^TTree;
+      TTree=packed record
+       Table:array[0..15] of TVkUInt16;
+       Translation:array[0..287] of TVkUInt16;
+      end;
+      PBuffer=^TBuffer;
+      TBuffer=array[0..65535] of TVkUInt8;
+      PLengths=^TLengths;
+      TLengths=array[0..288+32-1] of TVkUInt8;
+      POffsets=^TOffsets;
+      TOffsets=array[0..15] of TVkUInt16;
+      PBits=^TBits;
+      TBits=array[0..29] of TVkUInt8;
+      PBase=^TBase;
+      TBase=array[0..29] of TVkUInt16;
+ var Tag,BitCount,DestSize:TVkUInt32;
+     SymbolLengthTree,DistanceTree,FixedSymbolLengthTree,FixedDistanceTree:PTree;
+     LengthBits,DistanceBits:PBits;
+     LengthBase,DistanceBase:PBase;
+     Source,SourceEnd:pansichar;
+     Dest:pansichar;
+  procedure IncSize(length:TVkUInt32);
+  var j:TVkUInt32;
+  begin
+   if (DestLen+length)>=DestSize then begin
+    if DestSize=0 then begin
+     DestSize:=1;
+    end;
+    while (DestLen+length)>=DestSize do begin
+     inc(DestSize,DestSize);
+    end;
+    j:=TVkPtrUInt(Dest)-TVkPtrUInt(DestData);
+    ReAllocMem(DestData,DestSize);
+    TVkPtrUInt(Dest):=TVkPtrUInt(DestData)+j;
+   end;
+  end;           
+  function adler32(data:pointer;length:TVkUInt32):TVkUInt32;
+  const BASE=65521;
+        NMAX=5552;
+  var buf:pansichar;
+      s1,s2,k,i:TVkUInt32;
+  begin
+   s1:=1;
+   s2:=0;
+   buf:=data;
+   while length>0 do begin
+    if length<NMAX then begin
+     k:=length;
+    end else begin
+     k:=NMAX;
+    end;
+    dec(length,k);
+    for i:=1 to k do begin
+     inc(s1,TVkUInt8(buf^));
+     inc(s2,s1);
+     inc(buf);
+    end;
+    s1:=s1 mod BASE;
+    s2:=s2 mod BASE;
+   end;
+   result:=(s2 shl 16) or s1;
+  end;
+  procedure BuildBitsBase(Bits:pansichar;Base:pword;Delta,First:TVkInt32);
+  var i,Sum:TVkInt32;
+  begin
+   for i:=0 to Delta-1 do begin
+    Bits[i]:=ansichar(#0);
+   end;
+   for i:=0 to (30-Delta)-1 do begin
+    Bits[i+Delta]:=ansichar(TVkUInt8(i div Delta));
+   end;
+   Sum:=First;
+   for i:=0 to 29 do begin
+    Base^:=Sum;
+    inc(Base);
+    inc(Sum,1 shl TVkUInt8(Bits[i]));
+   end;
+  end;
+  procedure BuildFixedTrees(var lt,dt:TTree);
+  var i:TVkInt32;
+  begin
+   for i:=0 to 6 do begin
+    lt.Table[i]:=0;
+   end;
+   lt.Table[7]:=24;
+   lt.Table[8]:=152;
+   lt.Table[9]:=112;
+   for i:=0 to 23 do begin
+    lt.Translation[i]:=256+i;
+   end;
+   for i:=0 to 143 do begin
+    lt.Translation[24+i]:=i;
+   end;
+   for i:=0 to 7 do begin
+    lt.Translation[168+i]:=280+i;
+   end;
+   for i:=0 to 111 do begin
+    lt.Translation[176+i]:=144+i;
+   end;
+   for i:=0 to 4 do begin
+    dt.Table[i]:=0;
+   end;
+   dt.Table[5]:=32;
+   for i:=0 to 31 do begin
+    dt.Translation[i]:=i;
+   end;
+  end;
+  procedure BuildTree(var t:TTree;Lengths:pansichar;Num:TVkInt32);
+  var Offsets:POffsets;
+      i:TVkInt32;
+      Sum:TVkUInt32;
+  begin
+   New(Offsets);
+   try
+    for i:=0 to 15 do begin
+     t.Table[i]:=0;
+    end;
+    for i:=0 to Num-1 do begin
+     inc(t.Table[TVkUInt8(Lengths[i])]);
+    end;
+    t.Table[0]:=0;
+    Sum:=0;
+    for i:=0 to 15 do begin
+     Offsets^[i]:=Sum;
+     inc(Sum,t.Table[i]);
+    end;
+    for i:=0 to Num-1 do begin
+     if lengths[i]<>ansichar(#0) then begin
+      t.Translation[Offsets^[TVkUInt8(lengths[i])]]:=i;
+      inc(Offsets^[TVkUInt8(lengths[i])]);
+     end;
+    end;
+   finally
+    Dispose(Offsets);
+   end;
+  end;
+  function GetBit:TVkUInt32;
+  begin
+   if BitCount=0 then begin
+    Tag:=TVkUInt8(Source^);
+    inc(Source);
+    BitCount:=7;
+   end else begin
+    dec(BitCount);
+   end;
+   result:=Tag and 1;
+   Tag:=Tag shr 1;
+  end;
+  function ReadBits(Num,Base:TVkUInt32):TVkUInt32;
+  var Limit,Mask:TVkUInt32;
+  begin
+   result:=0;
+   if Num<>0 then begin
+    Limit:=1 shl Num;
+    Mask:=1;
+    while Mask<Limit do begin
+     if GetBit<>0 then begin
+      inc(result,Mask);
+     end;
+     Mask:=Mask shl 1;
+    end;
+   end;
+   inc(result,Base);
+  end;
+  function DecodeSymbol(var t:TTree):TVkUInt32;
+  var Sum,c,l:TVkInt32;
+  begin
+   Sum:=0;
+   c:=0;
+   l:=0;
+   repeat
+    c:=(c*2)+TVkInt32(GetBit);
+    inc(l);
+    inc(Sum,t.Table[l]);
+    dec(c,t.Table[l]);
+   until not (c>=0);
+   result:=t.Translation[Sum+c];
+  end;
+  procedure DecodeTrees(var lt,dt:TTree);
+  var CodeTree:PTree;
+      Lengths:PLengths;
+      hlit,hdist,hclen,i,num,length,clen,Symbol,Prev:TVkUInt32;
+  begin
+   New(CodeTree);
+   New(Lengths);
+   try
+    FillChar(CodeTree^,sizeof(TTree),ansichar(#0));
+    FillChar(Lengths^,sizeof(TLengths),ansichar(#0));
+    hlit:=ReadBits(5,257);
+    hdist:=ReadBits(5,1);
+    hclen:=ReadBits(4,4);
+    for i:=0 to 18 do begin
+     lengths^[i]:=0;
+    end;
+    for i:=1 to hclen do begin
+     clen:=ReadBits(3,0);
+     lengths^[CLCIndex[i-1]]:=clen;
+    end;
+    BuildTree(CodeTree^,pansichar(pointer(@lengths^[0])),19);
+    num:=0;
+    while num<(hlit+hdist) do begin
+     Symbol:=DecodeSymbol(CodeTree^);
+     case Symbol of
+      16:begin
+       prev:=lengths^[num-1];
+       length:=ReadBits(2,3);
+       while length>0 do begin
+        lengths^[num]:=prev;
+        inc(num);
+        dec(length);
+       end;
+      end;
+      17:begin
+       length:=ReadBits(3,3);
+       while length>0 do begin
+        lengths^[num]:=0;
+        inc(num);
+        dec(length);
+       end;
+      end;
+      18:begin
+       length:=ReadBits(7,11);
+       while length>0 do begin
+        lengths^[num]:=0;
+        inc(num);
+        dec(length);
+       end;
+      end;
+      else begin
+       lengths^[num]:=Symbol;
+       inc(num);
+      end;
+     end;
+    end;
+    BuildTree(lt,pansichar(pointer(@lengths^[0])),hlit);
+    BuildTree(dt,pansichar(pointer(@lengths^[hlit])),hdist);
+   finally
+    Dispose(CodeTree);
+    Dispose(Lengths);
+   end;
+  end;
+  function InflateBlockData(var lt,dt:TTree):boolean;
+  var Symbol:TVkUInt32;
+      Length,Distance,Offset,i:TVkInt32;
+  begin
+   result:=false;
+   while (Source<SourceEnd) or (BitCount>0) do begin
+    Symbol:=DecodeSymbol(lt);
+    if Symbol=256 then begin
+     result:=true;
+     break;
+    end;
+    if Symbol<256 then begin
+     IncSize(1);
+     Dest^:=ansichar(TVkUInt8(Symbol));
+     inc(Dest);
+     inc(DestLen);
+    end else begin
+     dec(Symbol,257);
+     Length:=ReadBits(LengthBits^[Symbol],LengthBase^[Symbol]);
+     Distance:=DecodeSymbol(dt);
+     Offset:=ReadBits(DistanceBits^[Distance],DistanceBase^[Distance]);
+     IncSize(length);
+     for i:=0 to length-1 do begin
+      Dest[i]:=Dest[i-Offset];
+     end;
+     inc(Dest,Length);
+     inc(DestLen,Length);
+    end;
+   end;
+  end;
+  function InflateUncompressedBlock:boolean;
+  var length,invlength:TVkUInt32;
+  begin
+   result:=false;
+   length:=(TVkUInt8(source[1]) shl 8) or TVkUInt8(source[0]);
+   invlength:=(TVkUInt8(source[3]) shl 8) or TVkUInt8(source[2]);
+   if length<>((not invlength) and $ffff) then begin
+    exit;
+   end;
+   IncSize(length);
+   inc(Source,4);
+   if Length>0 then begin
+    Move(Source^,Dest^,Length);
+    inc(Source,Length);
+    inc(Dest,Length);
+   end;
+   BitCount:=0;
+   inc(DestLen,Length);
+   result:=true;
+  end;
+  function InflateFixedBlock:boolean;
+  begin
+   result:=InflateBlockData(FixedSymbolLengthTree^,FixedDistanceTree^);
+  end;
+  function InflateDynamicBlock:boolean;
+  begin
+   DecodeTrees(SymbolLengthTree^,DistanceTree^);
+   result:=InflateBlockData(SymbolLengthTree^,DistanceTree^);
+  end;
+  function Uncompress:boolean;
+  var Final,r:boolean;
+      BlockType:TVkUInt32;
+  begin
+   result:=false;
+   BitCount:=0;
+   Final:=false;
+   while not Final do begin
+    Final:=GetBit<>0;
+    BlockType:=ReadBits(2,0);
+    case BlockType of
+     0:begin
+      r:=InflateUncompressedBlock;
+     end;
+     1:begin
+      r:=InflateFixedBlock;
+     end;
+     2:begin
+      r:=InflateDynamicBlock;
+     end;
+     else begin
+      r:=false;
+     end;
+    end;
+    if not r then begin
+     exit;
+    end;
+   end;
+   result:=true;
+  end;
+  function UncompressZLIB:boolean;
+  var cmf,flg:TVkUInt8;
+      a32:TVkUInt32;
+  begin
+   result:=false;
+   Source:=InData;
+   cmf:=TVkUInt8(Source[0]);
+   flg:=TVkUInt8(Source[1]);
+   if ((((cmf shl 8)+flg) mod 31)<>0) or ((cmf and $f)<>8) or ((cmf shr 4)>7) or ((flg and $20)<>0) then begin
+    exit;
+   end;
+   a32:=(TVkUInt8(Source[InLen-4]) shl 24) or (TVkUInt8(Source[InLen-3]) shl 16) or (TVkUInt8(Source[InLen-2]) shl 8) or (TVkUInt8(Source[InLen-1]) shl 0);
+   inc(Source,2);
+   dec(InLen,6);
+   SourceEnd:=@Source[InLen];
+   result:=Uncompress;
+   if not result then begin
+    exit;
+   end;
+   result:=adler32(DestData,DestLen)=a32;
+  end;
+  function UncompressDirect:boolean;
+  begin
+   Source:=InData;
+   SourceEnd:=@Source[InLen];
+   result:=Uncompress;
+  end;
+ begin
+  DestData:=nil;
+  LengthBits:=nil;
+  DistanceBits:=nil;
+  LengthBase:=nil;
+  DistanceBase:=nil;
+  SymbolLengthTree:=nil;
+  DistanceTree:=nil;
+  FixedSymbolLengthTree:=nil;
+  FixedDistanceTree:=nil;
+  try
+   New(LengthBits);
+   New(DistanceBits);
+   New(LengthBase);
+   New(DistanceBase);
+   New(SymbolLengthTree);
+   New(DistanceTree);
+   New(FixedSymbolLengthTree);
+   New(FixedDistanceTree);
+   try
+    begin
+     FillChar(LengthBits^,sizeof(TBits),ansichar(#0));
+     FillChar(DistanceBits^,sizeof(TBits),ansichar(#0));
+     FillChar(LengthBase^,sizeof(TBase),ansichar(#0));
+     FillChar(DistanceBase^,sizeof(TBase),ansichar(#0));
+     FillChar(SymbolLengthTree^,sizeof(TTree),ansichar(#0));
+     FillChar(DistanceTree^,sizeof(TTree),ansichar(#0));
+     FillChar(FixedSymbolLengthTree^,sizeof(TTree),ansichar(#0));
+     FillChar(FixedDistanceTree^,sizeof(TTree),ansichar(#0));
+    end;
+    begin
+     BuildFixedTrees(FixedSymbolLengthTree^,FixedDistanceTree^);
+     BuildBitsBase(pansichar(pointer(@LengthBits^[0])),pword(pointer(@LengthBase^[0])),4,3);
+     BuildBitsBase(pansichar(pointer(@DistanceBits^[0])),pword(pointer(@DistanceBase^[0])),2,1);
+     LengthBits^[28]:=0;
+     LengthBase^[28]:=258;
+    end;
+    begin
+     GetMem(DestData,4096);
+     DestSize:=4096;
+     Dest:=DestData;
+     DestLen:=0;
+     if ParseHeader then begin
+      result:=UncompressZLIB;
+     end else begin
+      result:=UncompressDirect;
+     end;
+     if result then begin
+      ReAllocMem(DestData,DestLen);
+     end else if assigned(DestData) then begin
+      FreeMem(DestData);
+      DestData:=nil;
+     end;
+    end;
+   finally
+    if assigned(LengthBits) then begin
+     Dispose(LengthBits);
+    end;
+    if assigned(DistanceBits) then begin
+     Dispose(DistanceBits);
+    end;
+    if assigned(LengthBase) then begin
+     Dispose(LengthBase);
+    end;
+    if assigned(DistanceBase) then begin
+     Dispose(DistanceBase);
+    end;
+    if assigned(SymbolLengthTree) then begin
+     Dispose(SymbolLengthTree);
+    end;
+    if assigned(DistanceTree) then begin
+     Dispose(DistanceTree);
+    end;
+    if assigned(FixedSymbolLengthTree) then begin
+     Dispose(FixedSymbolLengthTree);
+    end;
+    if assigned(FixedDistanceTree) then begin
+     Dispose(FixedDistanceTree);
+    end;
+   end;
+  except
+   result:=false;
+  end;
+ end;
+ type PPNGPixelEx=^TPNGPixelEx;
+      TPNGPixelEx=packed record
+       r,g,b,a:TVkUInt16;
+      end;
+      TPNGColorFunc=function(x:TVkInt64):TPNGPixelEx;
+ function ColorGray1(x:TVkInt64):TPNGPixelEx;
+ begin
+  result.r:=(0-(x and 1)) and $ffff;
+  result.g:=(0-(x and 1)) and $ffff;
+  result.b:=(0-(x and 1)) and $ffff;
+  result.a:=$ffff;
+ end;
+ function ColorGray2(x:TVkInt64):TPNGPixelEx;
+ begin
+  result.r:=(x and 3) or ((x and 3) shl 2) or ((x and 3) shl 4) or ((x and 3) shl 6) or ((x and 3) shl 8) or ((x and 3) shl 10) or ((x and 3) shl 12) or ((x and 3) shl 14);
+  result.g:=(x and 3) or ((x and 3) shl 2) or ((x and 3) shl 4) or ((x and 3) shl 6) or ((x and 3) shl 8) or ((x and 3) shl 10) or ((x and 3) shl 12) or ((x and 3) shl 14);
+  result.b:=(x and 3) or ((x and 3) shl 2) or ((x and 3) shl 4) or ((x and 3) shl 6) or ((x and 3) shl 8) or ((x and 3) shl 10) or ((x and 3) shl 12) or ((x and 3) shl 14);
+  result.a:=$ffff;
+ end;
+ function ColorGray4(x:TVkInt64):TPNGPixelEx;
+ begin
+  result.r:=(x and $f) or ((x and $f) shl 4) or ((x and $f) shl 8) or ((x and $f) shl 12);
+  result.g:=(x and $f) or ((x and $f) shl 4) or ((x and $f) shl 8) or ((x and $f) shl 12);
+  result.b:=(x and $f) or ((x and $f) shl 4) or ((x and $f) shl 8) or ((x and $f) shl 12);
+  result.a:=$ffff;
+ end;
+ function ColorGray8(x:TVkInt64):TPNGPixelEx;
+ begin
+  result.r:=(x and $ff) or ((x and $ff) shl 8);
+  result.g:=(x and $ff) or ((x and $ff) shl 8);
+  result.b:=(x and $ff) or ((x and $ff) shl 8);
+  result.a:=$ffff;
+ end;
+ function ColorGray16(x:TVkInt64):TPNGPixelEx;
+ begin
+  result.r:=x and $ffff;
+  result.g:=x and $ffff;
+  result.b:=x and $ffff;
+  result.a:=$ffff;
+ end;
+ function ColorGrayAlpha8(x:TVkInt64):TPNGPixelEx;
+ begin
+  result.r:=(x and $00ff) or ((x and $00ff) shl 8);
+  result.g:=(x and $00ff) or ((x and $00ff) shl 8);
+  result.b:=(x and $00ff) or ((x and $00ff) shl 8);
+  result.a:=(x and $ff00) or ((x and $ff00) shr 8);
+ end;
+ function ColorGrayAlpha16(x:TVkInt64):TPNGPixelEx;
+ begin
+  result.r:=(x shr 16) and $ffff;
+  result.g:=(x shr 16) and $ffff;
+  result.b:=(x shr 16) and $ffff;
+  result.a:=x and $ffff;
+ end;
+ function ColorColor8(x:TVkInt64):TPNGPixelEx;
+ begin
+  result.r:=(x and $ff) or ((x and $ff) shl 8);
+  result.g:=((x shr 8) and $ff) or (((x shr 8) and $ff) shl 8);
+  result.b:=((x shr 16) and $ff) or (((x shr 16) and $ff) shl 8);
+  result.a:=$ffff;
+ end;
+ function ColorColor16(x:TVkInt64):TPNGPixelEx;
+ begin
+  result.r:=x and $ffff;
+  result.g:=(x shr 16) and $ffff;
+  result.b:=(x shr 32) and $ffff;
+  result.a:=$ffff;
+ end;
+ function ColorColorAlpha8(x:TVkInt64):TPNGPixelEx;
+ begin
+  result.r:=(x and $ff) or ((x and $ff) shl 8);
+  result.g:=((x shr 8) and $ff) or (((x shr 8) and $ff) shl 8);
+  result.b:=((x shr 16) and $ff) or (((x shr 16) and $ff) shl 8);
+  result.a:=((x shr 24) and $ff) or (((x shr 24) and $ff) shl 8);
+ end;
+ function ColorColorAlpha16(x:TVkInt64):TPNGPixelEx;
+ begin
+  result.r:=x and $ffff;
+  result.g:=(x shr 16) and $ffff;
+  result.b:=(x shr 32) and $ffff;
+  result.a:=(x shr 48) and $ffff;
+ end;
+ function Paeth(a,b,c:TVkInt32):TVkInt32;
+ var p,pa,pb,pc:TVkInt32;
+ begin
+  p:=(a+b)-c;
+  pa:=abs(p-a);
+  pb:=abs(p-b);
+  pc:=abs(p-c);
+  if (pa<=pb) and (pa<=pc) then begin
+   result:=a;
+  end else if pb<=pc then begin
+   result:=b;
+  end else begin
+   result:=c;
+  end;
+ end;
+ function LoadPNGImage(DataPointer:pointer;DataSize:TVkUInt32;var ImageData:pointer;var ImageWidth,ImageHeight:TVkInt32;HeaderOnly:boolean):boolean;
+ type TBitsUsed=array[0..7] of TVkUInt32;
+      PByteArray=^TByteArray;
+      TByteArray=array[0..65535] of TVkUInt8;
+      TColorData=TVkInt64;
+ const StartPoints:array[0..7,0..1] of TVkUInt16=((0,0),(0,0),(4,0),(0,4),(2,0),(0,2),(1,0),(0,1));
+       Delta:array[0..7,0..1] of TVkUInt16=((1,1),(8,8),(8,8),(4,8),(4,4),(2,4),(2,2),(1,2));
+       BitsUsed1Depth:TBitsUsed=($80,$40,$20,$10,$08,$04,$02,$01);
+       BitsUsed2Depth:TBitsUsed=($c0,$30,$0c,$03,0,0,0,0);
+       BitsUsed4Depth:TBitsUsed=($f0,$0f,0,0,0,0,0,0);
+ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:pointer;
+     ConvertColor:TPNGColorFunc;
+     ByteWidth:TVkInt32;
+     CountBitsUsed,BitShift,UsingBitGroup,DataIndex:TVkUInt32;
+     DataBytes:TColorData;
+     DataBytes32:TVkUInt32;
+     BitDepth,StartX,StartY,DeltaX,DeltaY,{ImageBytesPerPixel,}WidthHeight:TVkInt32;
+     BitsUsed:TBitsUsed;
+     SwitchLine,CurrentLine,PreviousLine:PByteArray;
+     CountScanlines,ScanLineLength:array[0..7] of TVkUInt32;
+     ChunkLength,ChunkType,Width,Height,ColorType,Comp,Filter,Interlace,CRC,
+     PalImgBytes,ImgBytes,PaletteSize,l,ml:TVkUInt32;
+     First,HasTransparent,CgBI:boolean;
+     Palette:array of array[0..3] of TVkUInt8;
+     TransparentColor:array of TVkUInt16;
+     i,rx,ry,y{,BitsPerPixel,ImageLineWidth,ImageSize},StartPass,EndPass,d:TVkInt32;
+     idata,DecompressPtr:pointer;
+     idatasize,idatacapacity,idataexpandedsize,LineFilter:TVkUInt32;
+     idataexpanded:pointer;
+  function GetU8(var p:pointer):TVkUInt8;
+  begin
+   result:=TVkUInt8(p^);
+   inc(pansichar(p),sizeof(TVkUInt8));
+  end;
+  function GetU16(var p:pointer):TVkUInt16;
+  begin
+   result:=GetU8(p) shl 8;
+   result:=result or GetU8(p);
+  end;
+  function GetU32(var p:pointer):TVkUInt32;
+  begin
+   result:=GetU16(p) shl 16;
+   result:=result or GetU16(p);
+  end;
+  function CalcColor:TColorData;
+  var r:TVkUInt16;
+      b:TVkUInt8;
+  begin
+   if UsingBitGroup=0 then begin
+    DataBytes:=0;
+    if BitDepth=16 then begin
+     r:=1;
+     while r<ByteWidth do begin
+      b:=CurrentLine^[DataIndex+r];
+      CurrentLine^[DataIndex+r]:=CurrentLine^[DataIndex+TVkUInt32(r-1)];
+      CurrentLine^[DataIndex+TVkUInt32(r-1)]:=b;
+      inc(r,2);
+     end;
+    end;
+    Move(CurrentLine^[DataIndex],DataBytes,ByteWidth);
+{$ifdef big_endian}
+    DataBytes:=Swap64(DataBytes);
+{$endif}
+    inc(DataIndex,ByteWidth);
+   end;
+   if ByteWidth=1 then begin
+    result:=(TVkUInt32(DataBytes and BitsUsed[UsingBitGroup]) and $ffffffff) shr (((CountBitsUsed-UsingBitGroup)-1)*BitShift);
+    inc(UsingBitgroup);
+    if UsingBitGroup>=CountBitsUsed then begin
+     UsingBitGroup:=0;
+    end;
+   end else begin
+    result:=DataBytes;
+   end;
+  end;
+  procedure HandleScanLine(const y,CurrentPass:TVkInt32;const ScanLine:PByteArray);
+  var x,l:TVkInt32;
+      c:TColorData;
+      pe:TPNGPixelEx;
+      p:PPNGPixel;
+  begin
+   UsingBitGroup:=0;
+   DataIndex:=0;
+   if length(Palette)<>0 then begin
+    l:=length(Palette);
+    for x:=0 to ScanlineLength[CurrentPass]-1 do begin
+     c:=CalcColor;
+     if c<l then begin
+      p:=PPNGPixel(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixel)]));
+{$ifdef PNGHighDepth}
+      p^.r:=Palette[c,0] or (Palette[c,0] shl 8);
+      p^.g:=Palette[c,1] or (Palette[c,1] shl 8);
+      p^.b:=Palette[c,2] or (Palette[c,2] shl 8);
+      p^.a:=Palette[c,3] or (Palette[c,3] shl 8);
+{$else}
+      p^.r:=Palette[c,0];
+      p^.g:=Palette[c,1];
+      p^.b:=Palette[c,2];
+      p^.a:=Palette[c,3];
+{$endif}
+     end;
+    end;
+   end else begin
+    if addr(ConvertColor)=@ColorColorAlpha8 then begin
+     l:=length(TransparentColor);
+     for x:=0 to ScanlineLength[CurrentPass]-1 do begin
+      DataBytes32:=TVkUInt32(pointer(@CurrentLine^[DataIndex])^);
+{$ifdef big_endian}
+      DataBytes32:=Swap32(DataBytes32);
+{$endif}
+      inc(DataIndex,4);
+      pe.r:=(DataBytes32 and $ff) or ((DataBytes32 and $ff) shl 8);
+      pe.g:=((DataBytes32 shr 8) and $ff) or (((DataBytes32 shr 8) and $ff) shl 8);
+      pe.b:=((DataBytes32 shr 16) and $ff) or (((DataBytes32 shr 16) and $ff) shl 8);
+      pe.a:=((DataBytes32 shr 24) and $ff) or (((DataBytes32 shr 24) and $ff) shl 8);
+      p:=PPNGPixel(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixel)]));
+      if (((l=1) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[0]) and (pe.b=TransparentColor[0])))) or
+         (((l=3) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[1]) and (pe.b=TransparentColor[2])))) then begin
+       pe.a:=0;
+      end;
+{$ifdef PNGHighDepth}
+      p^.r:=pe.r;
+      p^.g:=pe.g;
+      p^.b:=pe.b;
+      p^.a:=pe.a;
+{$else}
+      p^.r:=pe.r shr 8;
+      p^.g:=pe.g shr 8;
+      p^.b:=pe.b shr 8;
+      p^.a:=pe.a shr 8;
+{$endif}
+     end;
+    end else if addr(ConvertColor)=@ColorColor8 then begin
+     l:=length(TransparentColor);
+     for x:=0 to ScanlineLength[CurrentPass]-1 do begin
+      DataBytes32:=TVkUInt32(pointer(@CurrentLine^[DataIndex])^) and $00ffffff;
+{$ifdef big_endian}
+      DataBytes32:=Swap32(DataBytes32);
+{$endif}
+      inc(DataIndex,3);
+      pe.r:=(DataBytes32 and $ff) or ((DataBytes32 and $ff) shl 8);
+      pe.g:=((DataBytes32 shr 8) and $ff) or (((DataBytes32 shr 8) and $ff) shl 8);
+      pe.b:=((DataBytes32 shr 16) and $ff) or (((DataBytes32 shr 16) and $ff) shl 8);
+      pe.a:=$ffff;
+      p:=PPNGPixel(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixel)]));
+      if (((l=1) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[0]) and (pe.b=TransparentColor[0])))) or
+         (((l=3) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[1]) and (pe.b=TransparentColor[2])))) then begin
+       pe.a:=0;
+      end;
+{$ifdef PNGHighDepth}
+      p^.r:=pe.r;
+      p^.g:=pe.g;
+      p^.b:=pe.b;
+      p^.a:=pe.a;
+{$else}
+      p^.r:=pe.r shr 8;
+      p^.g:=pe.g shr 8;
+      p^.b:=pe.b shr 8;
+      p^.a:=pe.a shr 8;
+{$endif}
+     end;
+    end else if assigned(ConvertColor) then begin
+     l:=length(TransparentColor);
+     for x:=0 to ScanlineLength[CurrentPass]-1 do begin
+      pe:=ConvertColor(CalcColor);
+      p:=PPNGPixel(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixel)]));
+      if (((l=1) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[0]) and (pe.b=TransparentColor[0])))) or
+         (((l=3) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[1]) and (pe.b=TransparentColor[2])))) then begin
+       pe.a:=0;
+      end;
+ {$ifdef PNGHighDepth}
+      p^.r:=pe.r;
+      p^.g:=pe.g;
+      p^.b:=pe.b;
+      p^.a:=pe.a;
+ {$else}
+      p^.r:=pe.r shr 8;
+      p^.g:=pe.g shr 8;
+      p^.b:=pe.b shr 8;
+      p^.a:=pe.a shr 8;
+ {$endif}
+     end;
+    end;
+   end;
+  end;
+  procedure CgBISwapBGR2RGBandUnpremultiply;
+  const UnpremultiplyFactor={$ifdef PNGHighDepth}65535{$else}255{$endif};
+        FullAlpha={$ifdef PNGHighDepth}65535{$else}255{$endif};
+  var i,b,a:TVkInt32;
+      p:PPNGPixel;
+  begin
+   a:=FullAlpha;
+   p:=PPNGPixel(pointer(@pansichar(ImageData)[0]));
+   for i:=0 to WidthHeight-1 do begin
+    a:=a and p^.a;
+    inc(p);
+   end;
+   if ((ColorType and 4)<>0) or (a<>FullAlpha) or HasTransparent then begin
+    p:=PPNGPixel(pointer(@pansichar(ImageData)[0]));
+    for i:=0 to WidthHeight-1 do begin
+     a:=p^.a;
+     if a<>0 then begin
+      b:=p^.b;
+      p^.b:=(p^.r*UnpremultiplyFactor) div a;
+      p^.r:=(b*UnpremultiplyFactor) div a;
+      p^.g:=(p^.g*UnpremultiplyFactor) div a;
+     end else begin
+      b:=p^.b;
+      p^.b:=p^.r;
+      p^.r:=b;
+     end;
+     inc(p);
+    end;
+   end else begin
+    p:=PPNGPixel(pointer(@pansichar(ImageData)[0]));
+    for i:=0 to WidthHeight-1 do begin
+     b:=p^.b;
+     p^.b:=p^.r;
+     p^.r:=b;
+     inc(p);
+    end;
+   end;
+  end;
+ begin
+  result:=false;
+  ImageData:=nil;
+  try
+   Palette:=nil;
+   TransparentColor:=nil;
+   idataexpanded:=nil;
+   idata:=nil;
+   idataexpanded:=nil;
+   try
+    if (assigned(DataPointer) and (DataSize>8)) and
+       ((pansichar(DataPointer)[0]=#$89) and (pansichar(DataPointer)[1]=#$50) and (pansichar(DataPointer)[2]=#$4e) and (pansichar(DataPointer)[3]=#$47) and
+        (pansichar(DataPointer)[4]=#$0d) and (pansichar(DataPointer)[5]=#$0a) and (pansichar(DataPointer)[6]=#$1a) and (pansichar(DataPointer)[7]=#$0a)) then begin
+     DataEnd:=@pansichar(DataPointer)[DataSize];
+     First:=true;
+     PalImgBytes:=0;
+     ImgBytes:=0;
+     DataPtr:=@pansichar(DataPointer)[8];
+     Width:=0;
+     Height:=0;
+     idatasize:=0;
+     idatacapacity:=0;
+     PaletteSize:=0;
+     idataexpandedsize:=0;
+     BitDepth:=0;
+     ColorType:=0;
+     Interlace:=0;
+     WidthHeight:=0;
+     DataBytes:=0;
+     CgBI:=false;
+     HasTransparent:=false;
+     while (pansichar(DataPtr)+11)<pansichar(DataEnd) do begin
+      ChunkLength:=GetU32(DataPtr);
+      if (pansichar(DataPtr)+(4+ChunkLength))>pansichar(DataEnd) then begin
+       result:=false;
+       break;
+      end;
+      DataPtrEx:=DataPtr;
+      ChunkType:=GetU32(DataPtr);
+      DataNextChunk:=@pansichar(DataPtr)[ChunkLength];
+      CRC:=GetU32(DataNextChunk);
+      if CRC32(DataPtrEx,ChunkLength+4)<>CRC then begin
+       result:=false;
+       break;
+      end;
+      case ChunkType of
+       TVkUInt32((ord('C') shl 24) or (ord('g') shl 16) or (ord('B') shl 8) or ord('I')):begin // CgBI
+        CgBI:=true;
+       end;
+       TVkUInt32((ord('I') shl 24) or (ord('H') shl 16) or (ord('D') shl 8) or ord('R')):begin // IHDR
+        if ChunkLength=13 then begin
+         if not First then begin
+          result:=false;
+          break;
+         end;
+         First:=false;
+         Width:=GetU32(DataPtr);
+         Height:=GetU32(DataPtr);
+         if ((Width>(1 shl 24)) or (Height>(1 shl 24))) or ((Width=0) or (Height=0)) then begin
+          result:=false;
+          break;
+         end;
+         if HeaderOnly then begin
+          result:=true;
+          break;
+         end;
+         BitDepth:=GetU8(DataPtr);
+         if not (BitDepth in [1,2,4,8,16]) then begin
+          result:=false;
+          break;
+         end;
+         ColorType:=GetU8(DataPtr);
+         if (ColorType>6) or ((ColorType<>3) and ((ColorType and 1)<>0)) then begin
+          result:=false;
+          exit;
+         end else if ColorType=3 then begin
+          PalImgBytes:=3;
+         end;
+         Comp:=GetU8(DataPtr);
+         if Comp<>0 then begin
+          result:=false;
+          break;
+         end;
+         Filter:=GetU8(DataPtr);
+         if Filter<>0 then begin
+          result:=false;
+          break;
+         end;
+         Interlace:=GetU8(DataPtr);
+         if Interlace>1 then begin
+          result:=false;
+          break;
+         end;
+         if PalImgBytes=0 then begin
+          if (ColorType and 2)<>0 then begin
+           ImgBytes:=3;
+          end else begin
+           ImgBytes:=1;
+          end;
+          if (ColorType and 4)<>0 then begin
+           inc(ImgBytes);
+          end;
+          if (((1 shl 30) div Width) div ImgBytes)<Height then begin
+           result:=false;
+           break;
+          end;
+         end else begin
+          ImgBytes:=1;
+          if (((1 shl 30) div Width) div 4)<Height then begin
+           result:=false;
+           break;
+          end;
+         end;
+        end else begin
+         result:=false;
+         break;
+        end;
+       end;
+       TVkUInt32((ord('P') shl 24) or (ord('L') shl 16) or (ord('T') shl 8) or ord('E')):begin // PLTE
+        if First then begin
+         result:=false;
+         break;
+        end;
+        case PalImgBytes of
+         3:begin
+          PaletteSize:=ChunkLength div 3;
+          if (PaletteSize*3)<>ChunkLength then begin
+           result:=false;
+           break;
+          end;
+          SetLength(Palette,PaletteSize);
+          for i:=0 to PaletteSize-1 do begin
+           Palette[i,0]:=GetU8(DataPtr);
+           Palette[i,1]:=GetU8(DataPtr);
+           Palette[i,2]:=GetU8(DataPtr);
+           Palette[i,3]:=$ff;
+          end;
+         end;
+         4:begin
+          PaletteSize:=ChunkLength div 4;
+          if (PaletteSize*4)<>ChunkLength then begin
+           result:=false;
+           exit;
+          end;
+          SetLength(Palette,PaletteSize);
+          for i:=0 to PaletteSize-1 do begin
+           Palette[i,0]:=GetU8(DataPtr);
+           Palette[i,1]:=GetU8(DataPtr);
+           Palette[i,2]:=GetU8(DataPtr);
+           Palette[i,3]:=GetU8(DataPtr);
+          end;
+         end;
+         else begin
+          result:=false;
+          break;
+         end;
+        end;
+       end;
+       TVkUInt32((ord('t') shl 24) or (ord('R') shl 16) or (ord('N') shl 8) or ord('S')):begin // tRNS
+        if First or assigned(idata) then begin
+         result:=false;
+         break;
+        end;
+        if PalImgBytes<>0 then begin
+         if (length(Palette)=0) or (TVkInt32(ChunkLength)>length(Palette)) then begin
+          result:=false;
+          break;
+         end;
+         PalImgBytes:=4;
+         for i:=0 to PaletteSize-1 do begin
+          Palette[i,3]:=GetU8(DataPtr);
+         end;
+        end else begin
+         if ChunkLength=ImgBytes then begin
+          SetLength(TransparentColor,TVkInt32(ImgBytes));
+          for i:=0 to TVkInt32(ImgBytes)-1 do begin
+           d:=GetU8(DataPtr);
+           TransparentColor[i]:=d or (d shl 8);
+          end;
+         end else begin
+          if ((ImgBytes and 1)=0) or (ChunkLength<>(ImgBytes*2)) then begin
+           result:=false;
+           break;
+          end;
+          HasTransparent:=true;
+          SetLength(TransparentColor,TVkInt32(ImgBytes));
+          for i:=0 to TVkInt32(ImgBytes)-1 do begin
+           TransparentColor[i]:=GetU16(DataPtr);
+          end;
+         end;
+        end;
+       end;
+       TVkUInt32((ord('I') shl 24) or (ord('D') shl 16) or (ord('A') shl 8) or ord('T')):begin // IDAT
+        if First or ((PalImgBytes<>0) and (length(Palette)=0)) then begin
+         result:=false;
+         break;
+        end;
+        if (idatasize=0) or (idatacapacity=0) or not assigned(idata) then begin
+         idatasize:=ChunkLength;
+         idatacapacity:=ChunkLength;
+         GetMem(idata,idatacapacity);
+         Move(DataPtr^,idata^,ChunkLength);
+        end else begin
+         if (idatasize+ChunkLength)>=idatacapacity then begin
+          if idatacapacity=0 then begin
+           idatacapacity:=1;
+          end;
+          while (idatasize+ChunkLength)>=idatacapacity do begin
+           inc(idatacapacity,idatacapacity);
+          end;
+          ReallocMem(idata,idatacapacity);
+         end;
+         Move(DataPtr^,pansichar(idata)[idatasize],ChunkLength);
+         inc(idatasize,ChunkLength);
+        end;
+       end;
+       TVkUInt32((ord('I') shl 24) or (ord('E') shl 16) or (ord('N') shl 8) or ord('D')):begin // IEND
+        if First or ((PalImgBytes<>0) and (length(Palette)=0)) or not assigned(idata) then begin
+         result:=false;
+         break;
+        end;
+        if not DoInflate(idata,idatasize,idataexpanded,idataexpandedsize,not CgBI) then begin
+         result:=false;
+         break;
+        end;
+ //     BitsPerPixel:=TVkInt32(ImgBytes)*BitDepth;
+        ImageWidth:=Width;
+        ImageHeight:=Height;
+        WidthHeight:=Width*Height;
+ //     ImageBytesPerPixel:=((TVkInt32(ImgBytes)*TVkInt32(BitDepth))+7) shr 3;
+ //     ImageLineWidth:=((ImageWidth*BitsPerPixel)+7) shr 3;
+ //     ImageSize:=(((ImageWidth*ImageHeight)*BitsPerPixel)+7) shr 3;
+        GetMem(ImageData,(ImageWidth*ImageHeight)*sizeof(TPNGPixel));
+        try
+         CountBitsUsed:=0;
+         case Interlace of
+          0:begin
+           StartPass:=0;
+           EndPass:=0;
+           CountScanlines[0]:=Height;
+           ScanLineLength[0]:=Width;
+          end;
+          1:begin
+           StartPass:=1;
+           EndPass:=7;
+           for i:=1 to 7 do begin
+            d:=Height div Delta[i,1];
+            if (Height mod Delta[i,1])>StartPoints[i,1] then begin
+             inc(d);
+            end;
+            CountScanLines[i]:=d;
+            d:=Width div Delta[i,0];
+            if (Width mod Delta[i,0])>StartPoints[i,0] then begin
+             inc(d);
+            end;
+            ScanLineLength[i]:=d;
+           end;
+          end;
+          else begin
+           if assigned(ImageData) then begin
+            FreeMem(ImageData);
+            ImageData:=nil;
+           end;
+           result:=false;
+           break;
+          end;
+         end;
+         ByteWidth:=0;
+         ConvertColor:=nil;
+         case ColorType of
+          0:begin
+           case BitDepth of
+            1:begin
+             ConvertColor:=@ColorGray1;
+             ByteWidth:=1;
+            end;
+            2:begin
+             ConvertColor:=@ColorGray2;
+             ByteWidth:=1;
+            end;
+            4:begin
+             ConvertColor:=@ColorGray4;
+             ByteWidth:=1;
+            end;
+            8:begin
+             ConvertColor:=@ColorGray8;
+             ByteWidth:=1;
+            end;
+            16:begin
+             ConvertColor:=@ColorGray16;
+             ByteWidth:=2;
+            end;
+           end;
+          end;
+          2:begin
+           if BitDepth=8 then begin
+            ConvertColor:=@ColorColor8;
+            ByteWidth:=3;
+           end else begin
+            ConvertColor:=@ColorColor16;
+            ByteWidth:=6;
+           end;
+          end;
+          3:begin
+           if BitDepth=16 then begin
+            ByteWidth:=2;
+           end else begin
+            ByteWidth:=1;
+           end;
+          end;
+          4:begin
+           if BitDepth=8 then begin
+            ConvertColor:=@ColorGrayAlpha8;
+            ByteWidth:=2;
+           end else begin
+            ConvertColor:=@ColorGrayAlpha16;
+            ByteWidth:=4;
+           end;
+          end;
+          6:begin
+           if BitDepth=8 then begin
+            ConvertColor:=@ColorColorAlpha8;
+            ByteWidth:=4;
+           end else begin
+            ConvertColor:=@ColorColorAlpha16;
+            ByteWidth:=8;
+           end;
+          end;
+         end;
+         case BitDepth of
+          1:begin
+           CountBitsUsed:=8;
+           BitShift:=1;
+           BitsUsed:=BitsUsed1Depth;
+          end;
+          2:begin
+           CountBitsUsed:=4;
+           BitShift:=2;
+           BitsUsed:=BitsUsed2Depth;
+          end;
+          4:begin
+           CountBitsUsed:=2;
+           BitShift:=4;
+           BitsUsed:=BitsUsed4Depth;
+          end;
+          8:begin
+           CountBitsUsed:=1;
+           BitShift:=0;
+           BitsUsed[0]:=$ff;
+          end;
+         end;
+         DecompressPtr:=idataexpanded;
+         ml:=16;
+         try
+          GetMem(PreviousLine,16);
+          GetMem(CurrentLine,16);
+          for i:=StartPass to EndPass do begin
+           StartX:=StartPoints[i,0];
+           StartY:=StartPoints[i,1];
+           DeltaX:=Delta[i,0];
+           DeltaY:=Delta[i,1];
+           if ByteWidth=1 then begin
+            l:=ScanLineLength[i] div CountBitsUsed;
+            if (ScanLineLength[i] mod CountBitsUsed)>0 then begin
+             inc(l);
+            end;
+           end else begin
+            l:=ScanLineLength[i]*TVkUInt32(ByteWidth);
+           end;
+           if ml=0 then begin
+            GetMem(PreviousLine,l);
+            GetMem(CurrentLine,l);
+           end else if ml<l then begin
+            ReallocMem(PreviousLine,l);
+            ReallocMem(CurrentLine,l);
+           end;
+           ml:=l;
+           FillChar(CurrentLine^,l,ansichar(#0));
+           for ry:=0 to CountScanlines[i]-1 do begin
+            SwitchLine:=CurrentLine;
+            CurrentLine:=PreviousLine;
+            PreviousLine:=SwitchLine;
+            y:=StartY+(ry*DeltaY);
+            LineFilter:=GetU8(DecompressPtr);
+            Move(DecompressPtr^,CurrentLine^,l);
+            inc(pansichar(DecompressPtr),l);
+            case LineFilter of
+             1:begin // Sub
+              for rx:=0 to l-1 do begin
+               if rx<ByteWidth then begin
+                CurrentLine^[rx]:=CurrentLine^[rx] and $ff;
+               end else begin
+                CurrentLine^[rx]:=(CurrentLine^[rx]+CurrentLine^[rx-ByteWidth]) and $ff;
+               end;
+              end;
+             end;
+             2:begin // Up
+              for rx:=0 to l-1 do begin
+               CurrentLine^[rx]:=(CurrentLine^[rx]+PreviousLine^[rx]) and $ff;
+              end;
+             end;
+             3:begin // Average
+              for rx:=0 to l-1 do begin
+               if rx<ByteWidth then begin
+                CurrentLine^[rx]:=(CurrentLine^[rx]+(PreviousLine^[rx] div 2)) and $ff;
+               end else begin
+                CurrentLine^[rx]:=(CurrentLine^[rx]+((CurrentLine^[rx-ByteWidth]+PreviousLine^[rx]) div 2)) and $ff;
+               end;
+              end;
+             end;
+             4:begin // Paeth
+              for rx:=0 to l-1 do begin
+               if rx<ByteWidth then begin             
+                CurrentLine^[rx]:=(CurrentLine^[rx]+Paeth(0,PreviousLine^[rx],0)) and $ff;
+               end else begin
+                CurrentLine^[rx]:=(CurrentLine^[rx]+Paeth(CurrentLine^[rx-ByteWidth],PreviousLine^[rx],PreviousLine^[rx-ByteWidth])) and $ff;
+               end;
+              end;
+             end;
+            end;
+            HandleScanLine(y,i,CurrentLine);
+           end;
+          end;
+         finally
+          FreeMem(PreviousLine);
+          FreeMem(CurrentLine);
+         end;
+         if CgBI then begin
+          CgBISwapBGR2RGBandUnpremultiply;
+         end;
+        finally
+        end;
+        result:=true;
+        break;
+       end;
+       else begin
+       end;
+      end;
+      DataPtr:=DataNextChunk;
+     end;
+    end;
+   finally
+    SetLength(Palette,0);
+    SetLength(TransparentColor,0);
+    if assigned(idata) then begin
+     FreeMem(idata);
+     idata:=nil;
+    end;
+    if assigned(idataexpanded) then begin
+     FreeMem(idataexpanded);
+     idataexpanded:=nil;
+    end;
+   end;
+  except
+   if assigned(ImageData) then begin
+    FreeMem(ImageData);
+    ImageData:=nil;
+   end;
+   result:=false;
+  end;
+ end;
+var Data,ImageData:pointer;
+    DataSize,ImageWidth,ImageHeight:TVkInt32;
+begin
+ DataSize:=pStream.Size;
+ GetMem(Data,DataSize);
+ try
+  if pStream.Read(Data^,DataSize)<>DataSize then begin
+   raise EVulkanTextureException.Create('Invalid PNG stream');
+  end;
+  ImageData:=nil;
+  ImageWidth:=0;
+  ImageHeight:=0;
+  try
+   if LoadPNGImage(Data,DataSize,ImageData,ImageWidth,ImageHeight,false) then begin
+    CreateFromMemory(pDevice,
+                     pQueue,
+                     pFence,
+                     pCommandBuffer,
+                     VK_FORMAT_R8G8B8A8_UNORM,
+                     VK_SAMPLE_COUNT_1_BIT,
+                     Max(1,ImageWidth),
+                     Max(1,ImageHeight),
+                     1,
+                     1,
+                     1,
+                     MipMapLevels[pMipMaps],
+                     [vtufSampled],
+                     ImageData,
+                     ImageWidth*ImageHeight*SizeOf(TVkUInt8)*4,
+                     false,
+                     false,
+                     1,
+                     true);
+   end else begin
+    raise EVulkanTextureException.Create('Invalid PNG stream');
+   end;
+  finally
+   if assigned(ImageData) then begin
+    FreeMem(ImageData);
+   end;
+  end;
+ finally
+  FreeMem(Data);
  end;
 end;
 
