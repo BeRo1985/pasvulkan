@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-26-10-41-0000                       *
+ *                        Version 2016-08-26-11-01-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2547,7 +2547,9 @@ type EVulkanException=class(Exception);
                                 const pUsageFlags:TVulkanTextureUsageFlags;
                                 const pData:TVkPointer;
                                 const pDataSize:TVkSizeInt;
-                                const pMipMapSizeStored:boolean);
+                                const pMipMapSizeStored:boolean;
+                                const pSwapEndianness:boolean;
+                                const pSwapEndiannessTexels:TVkInt32);
       public
        constructor Create(const pDevice:TVulkanDevice); reintroduce;
        constructor CreateDefault(const pDevice:TVulkanDevice;
@@ -13996,7 +13998,7 @@ const TexelSize=4;
         ($00,$ff,$00,$ff),
         ($00,$00,$ff,$ff),
         ($ff,$ff,$00,$ff));
-var LayerSize,DataSize,LayerIndex,x,y,Offset,lx,ly,rx,ry,cx,cy,m,Index,dx,dy,ds,Scale,c,CountMipMaps:TVkInt32;
+var LayerSize,DataSize,LayerIndex,x,y,Offset,lx,ly,rx,ry,cx,cy,m,Index,dx,dy,ds,Scale,CountMipMaps:TVkInt32;
     Data:TVkUInt8Array;
 begin
 
@@ -14160,7 +14162,9 @@ begin
                  [vtufSampled],
                  @Data[0],
                  DataSize,
-                 false);
+                 false,
+                 false,
+                 1);
 
 
  finally
@@ -14202,8 +14206,7 @@ type PKTXIdentifier=^TKTXIdentifier;
   result:=(Swap16(x and $ffff) shl 16) or Swap16((x and $ffff0000) shr 16);
  end;
 var KTXHeader:TKTXHeader;
-    MustSwap,GenerateMipMaps:boolean;
-    TextureDimensions,GLTarget:TVkInt32;
+    MustSwap:boolean;
     NumberOfArrayElements:TVkUInt32;
     NumberOfFaces:TVkUInt32;
     NumberOfMipMapLevels:TVkUInt32;
@@ -14307,7 +14310,9 @@ begin
                  [vtufSampled],
                  Data,
                  DataSize,
-                 true);
+                 true,
+                 MustSwap,
+                 KTXHeader.GLTypeSize);
  finally
   FreeMem(Data);
  end;
@@ -14337,13 +14342,30 @@ procedure TVulkanTexture.CreateInternal(const pQueue:TVulkanQueue;
                                         const pUsageFlags:TVulkanTextureUsageFlags;
                                         const pData:TVkPointer;
                                         const pDataSize:TVkSizeInt;
-                                        const pMipMapSizeStored:boolean);
+                                        const pMipMapSizeStored:boolean;
+                                        const pSwapEndianness:boolean;
+                                        const pSwapEndiannessTexels:TVkInt32);
 type PUInt8Array=^TUInt8Array;
      TUInt8Array=array[0..65535] of TVkUInt8;
+ function Swap16(x:TVkUInt16):TVkUInt16;
+ begin
+  result:=((x and $ff) shl 8) or ((x and $ff00) shr 8);
+ end;
+ function Swap32(x:TVkUInt32):TVkUInt32;
+ begin
+  result:=(Swap16(x and $ffff) shl 16) or Swap16((x and $ffff0000) shr 16);
+ end;
+ function Swap64(x:TVkUInt64):TVkUInt64;
+ begin
+  result:=(TVkUInt64(Swap32(x and TVkUInt64($ffffffff))) shl 32) or Swap32((x and TVkUInt64($ffffffff00000000)) shr 32);
+ end;
 var MaxDimension,MaxMipMapLevels,CountStorageLevels,CountArrayLayers,CountDataLevels,
-    BufferImageCopyIndex,MipMapLevelIndex,MipMapWidth,MipMapHeight,MipMapDepth,
+    BufferImageCopyIndex,MipMapLevelIndex,MipMapWidth,MipMapHeight,
     LayerIndex,DepthIndex,PreviousMipMapLevelIndex:TVkInt32;
-    DataOffset,TotalMipMapSize,StoredMipMapSize,MipMapSize:TVkUInt32;
+    DataOffset,TotalMipMapSize,StoredMipMapSize,MipMapSize,Index:TVkUInt32;
+    v16:PVkUInt16;
+    v32:PVkUInt32;
+    v64:PVkUInt64;
     Compressed:boolean;
     FormatProperties:TVkFormatProperties;
     Usage:TVkImageUsageFlags;
@@ -14359,6 +14381,331 @@ var MaxDimension,MaxMipMapLevels,CountStorageLevels,CountArrayLayers,CountDataLe
     BufferImageCopy:PVkBufferImageCopy;
     ImageBlit:TVkImageBlit;
     ImageViewType:TVkImageViewType;
+ procedure GetMipMapSize;
+ begin
+  case fFormat of
+   VK_FORMAT_R8_UNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt8);
+   end;
+   VK_FORMAT_R8G8_UNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt8);
+   end;
+   VK_FORMAT_R8G8B8A8_UNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt8);
+   end;
+   VK_FORMAT_R8_SNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt8);
+   end;
+   VK_FORMAT_R8G8_SNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt8);
+   end;
+   VK_FORMAT_R8G8B8_SNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt8);
+   end;
+   VK_FORMAT_R8_UINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt8);
+   end;
+   VK_FORMAT_R8G8_UINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt8);
+   end;
+   VK_FORMAT_R8G8B8_UINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt8);
+   end;
+   VK_FORMAT_R8_SINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt8);
+   end;
+   VK_FORMAT_R8G8_SINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt8);
+   end;
+   VK_FORMAT_R8G8B8_SINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt8);
+   end;
+   VK_FORMAT_R8_SRGB:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt8);
+   end;
+   VK_FORMAT_R8G8_SRGB:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt8);
+   end;
+   VK_FORMAT_R8G8B8A8_SRGB:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt8);
+   end;
+   VK_FORMAT_R16_UNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt16);
+   end;
+   VK_FORMAT_R16G16_UNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt16);
+   end;
+   VK_FORMAT_R16G16B16A16_UNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt16);
+   end;
+   VK_FORMAT_R16_SNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt16);
+   end;
+   VK_FORMAT_R16G16_SNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt16);
+   end;
+   VK_FORMAT_R16G16B16A16_SNORM:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt16);
+   end;
+   VK_FORMAT_R16_UINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt16);
+   end;
+   VK_FORMAT_R16G16_UINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt16);
+   end;
+   VK_FORMAT_R16G16B16A16_UINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt16);
+   end;
+   VK_FORMAT_R16_SINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt16);
+   end;
+   VK_FORMAT_R16G16_SINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt16);
+   end;
+   VK_FORMAT_R16G16B16A16_SINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt16);
+   end;
+   VK_FORMAT_R16_SFLOAT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt16);
+   end;
+   VK_FORMAT_R16G16_SFLOAT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt16);
+   end;
+   VK_FORMAT_R16G16B16A16_SFLOAT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt16);
+   end;
+   VK_FORMAT_R32_UINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt32);
+   end;
+   VK_FORMAT_R32G32_UINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt32);
+   end;
+   VK_FORMAT_R32G32B32A32_UINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt32);
+   end;
+   VK_FORMAT_R32_SINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt32);
+   end;
+   VK_FORMAT_R32G32_SINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt32);
+   end;
+   VK_FORMAT_R32G32B32A32_SINT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt32);
+   end;
+   VK_FORMAT_R32_SFLOAT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(single);
+   end;
+   VK_FORMAT_R32G32_SFLOAT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(single);
+   end;
+   VK_FORMAT_R32G32B32A32_SFLOAT:begin
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(single);
+   end;
+   VK_FORMAT_BC1_RGB_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_BC1_RGBA_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_BC2_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_BC3_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_BC1_RGB_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_BC1_RGBA_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_BC2_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_BC3_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_BC4_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_BC5_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_BC4_SNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_BC5_SNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_EAC_R11_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_EAC_R11G11_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_EAC_R11_SNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
+    Compressed:=true;
+   end;
+   VK_FORMAT_EAC_R11G11_SNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_4x4_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_5x4_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+4) div 5)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_5x5_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+4) div 5)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_6x5_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+5) div 6)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_6x6_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+5) div 6)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_8x5_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+7) div 8)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_8x6_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+7) div 8)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_8x8_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+7) div 8)*((MipMapWidth+7) div 8)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_10x5_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+9) div 10)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_10x6_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+9) div 10)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_10x8_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+7) div 8)*((MipMapWidth+9) div 10)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_10x10_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+9) div 10)*((MipMapWidth+9) div 10)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_12x10_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+9) div 10)*((MipMapWidth+11) div 12)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_12x12_UNORM_BLOCK:begin
+    MipMapSize:=((MipMapHeight+11) div 12)*((MipMapWidth+11) div 12)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_4x4_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_5x4_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+4) div 5)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_5x5_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+4) div 5)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_6x5_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+5) div 6)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_6x6_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+5) div 6)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_8x5_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+7) div 8)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_8x6_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+7) div 8)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_8x8_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+7) div 8)*((MipMapWidth+7) div 8)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_10x5_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+9) div 10)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_10x6_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+9) div 10)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_10x8_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+7) div 8)*((MipMapWidth+9) div 10)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_10x10_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+9) div 10)*((MipMapWidth+9) div 10)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_12x10_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+9) div 10)*((MipMapWidth+11) div 12)*16;
+    Compressed:=true;
+   end;
+   VK_FORMAT_ASTC_12x12_SRGB_BLOCK:begin
+    MipMapSize:=((MipMapHeight+11) div 12)*((MipMapWidth+11) div 12)*16;
+    Compressed:=true;
+   end;
+   else begin
+    raise EVulkanTextureException.Create('Non-supported texture image format ('+IntToStr(TVkInt32(fFormat))+')');
+   end;
+  end;
+ end;
 begin
 
  if (pDepth<1) or (pCountArrayElements<1) or (pCountFaces<1) then begin
@@ -14513,6 +14860,66 @@ begin
 
     HandleResultCode(fDevice.fDeviceVulkan.BindBufferMemory(fDevice.fDeviceHandle,StagingBuffer.fBufferHandle,StagingMemoryBlock.fMemoryChunk.fMemoryHandle,StagingMemoryBlock.fOffset));
 
+    if pSwapEndianness and (pSwapEndiannessTexels in [2,4,8]) then begin
+     DataOffset:=0;
+     for MipMapLevelIndex:=0 to CountDataLevels-1 do begin
+      MipMapWidth:=Max(1,fWidth shr MipMapLevelIndex);
+      MipMapHeight:=Max(1,fHeight shr MipMapLevelIndex);
+      TotalMipMapSize:=0;
+      StoredMipMapSize:=0;
+      if pMipMapSizeStored then begin
+       Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(pDataSize));
+       StoredMipMapSize:=TVkUInt32(pointer(@TUInt8Array(pointer(pData)^)[DataOffset])^);
+       inc(DataOffset,SizeOf(TVkUInt32));
+       if pSwapEndianness then begin
+        StoredMipMapSize:=Swap32(StoredMipMapSize);
+       end;
+       if StoredMipMapSize<>0 then begin
+       end;
+      end;
+      for LayerIndex:=0 to fCountArrayLayers-1 do begin
+       for DepthIndex:=0 to fDepth-1 do begin
+        MipMapSize:=0;
+        GetMipMapSize;
+        Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
+        case pSwapEndiannessTexels of
+         2:begin
+          v16:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(pData))+TVkPtrUInt(DataOffset)));
+          for Index:=1 to MipMapSize shr 1 do begin
+           v16^:=Swap16(v16^);
+           inc(v16);
+          end;
+         end;
+         4:begin
+          v32:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(pData))+TVkPtrUInt(DataOffset)));
+          for Index:=1 to MipMapSize shr 2 do begin
+           v32^:=Swap32(v32^);
+           inc(v32);
+          end;
+         end;
+         8:begin
+          v64:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(pData))+TVkPtrUInt(DataOffset)));
+          for Index:=1 to MipMapSize shr 3 do begin
+           v64^:=Swap64(v64^);
+           inc(v64);
+          end;
+         end;
+        end;
+        inc(TotalMipMapSize,MipMapSize);
+        inc(DataOffset,MipMapSize);
+        if pMipMapSizeStored and ((fDepth<=1) and (pCountArrayElements<=1)) then begin
+         Assert(TotalMipMapSize=StoredMipMapSize);
+         inc(DataOffset,3-((MipMapSize+3) and 3));
+        end;
+       end;
+      end;
+      if pMipMapSizeStored and ((fDepth>1) or (pCountArrayElements>1)) then begin
+       Assert(TotalMipMapSize=StoredMipMapSize);
+       inc(DataOffset,3-((TotalMipMapSize+3) and 3));
+      end;
+     end;
+    end;
+
     StagingMemoryBlockData:=StagingMemoryBlock.MapMemory;
     try
      Move(pData^,StagingMemoryBlockData^,pDataSize);
@@ -14576,13 +14983,15 @@ begin
       for MipMapLevelIndex:=0 to CountDataLevels-1 do begin
        MipMapWidth:=Max(1,fWidth shr MipMapLevelIndex);
        MipMapHeight:=Max(1,fHeight shr MipMapLevelIndex);
-       MipMapDepth:=Max(1,fDepth shr MipMapLevelIndex);
        TotalMipMapSize:=0;
        StoredMipMapSize:=0;
        if pMipMapSizeStored then begin
         Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(pDataSize));
         StoredMipMapSize:=TVkUInt32(pointer(@TUInt8Array(pointer(pData)^)[DataOffset])^);
         inc(DataOffset,SizeOf(TVkUInt32));
+        if pSwapEndianness then begin
+         StoredMipMapSize:=Swap32(StoredMipMapSize);
+        end;
         if StoredMipMapSize<>0 then begin
         end;
        end;
@@ -14605,328 +15014,7 @@ begin
          BufferImageCopy^.imageExtent.height:=fHeight;
          BufferImageCopy^.imageExtent.depth:=1;
          MipMapSize:=0;
-         case fFormat of
-          VK_FORMAT_R8_UNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt8);
-          end;
-          VK_FORMAT_R8G8_UNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt8);
-          end;
-          VK_FORMAT_R8G8B8A8_UNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt8);
-          end;
-          VK_FORMAT_R8_SNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt8);
-          end;
-          VK_FORMAT_R8G8_SNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt8);
-          end;
-          VK_FORMAT_R8G8B8_SNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt8);
-          end;
-          VK_FORMAT_R8_UINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt8);
-          end;
-          VK_FORMAT_R8G8_UINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt8);
-          end;
-          VK_FORMAT_R8G8B8_UINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt8);
-          end;
-          VK_FORMAT_R8_SINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt8);
-          end;
-          VK_FORMAT_R8G8_SINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt8);
-          end;
-          VK_FORMAT_R8G8B8_SINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt8);
-          end;
-          VK_FORMAT_R8_SRGB:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt8);
-          end;
-          VK_FORMAT_R8G8_SRGB:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt8);
-          end;
-          VK_FORMAT_R8G8B8A8_SRGB:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt8);
-          end;
-          VK_FORMAT_R16_UNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt16);
-          end;
-          VK_FORMAT_R16G16_UNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt16);
-          end;
-          VK_FORMAT_R16G16B16A16_UNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt16);
-          end;
-          VK_FORMAT_R16_SNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt16);
-          end;
-          VK_FORMAT_R16G16_SNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt16);
-          end;
-          VK_FORMAT_R16G16B16A16_SNORM:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt16);
-          end;
-          VK_FORMAT_R16_UINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt16);
-          end;
-          VK_FORMAT_R16G16_UINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt16);
-          end;
-          VK_FORMAT_R16G16B16A16_UINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt16);
-          end;
-          VK_FORMAT_R16_SINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt16);
-          end;
-          VK_FORMAT_R16G16_SINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt16);
-          end;
-          VK_FORMAT_R16G16B16A16_SINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt16);
-          end;
-          VK_FORMAT_R16_SFLOAT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt16);
-          end;
-          VK_FORMAT_R16G16_SFLOAT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt16);
-          end;
-          VK_FORMAT_R16G16B16A16_SFLOAT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt16);
-          end;
-          VK_FORMAT_R32_UINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt32);
-          end;
-          VK_FORMAT_R32G32_UINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt32);
-          end;
-          VK_FORMAT_R32G32B32A32_UINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt32);
-          end;
-          VK_FORMAT_R32_SINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt32);
-          end;
-          VK_FORMAT_R32G32_SINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt32);
-          end;
-          VK_FORMAT_R32G32B32A32_SINT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt32);
-          end;
-          VK_FORMAT_R32_SFLOAT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(single);
-          end;
-          VK_FORMAT_R32G32_SFLOAT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(single);
-          end;
-          VK_FORMAT_R32G32B32A32_SFLOAT:begin
-           MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(single);
-          end;
-          VK_FORMAT_BC1_RGB_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_BC1_RGBA_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_BC2_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_BC3_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_BC1_RGB_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_BC1_RGBA_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_BC2_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_BC3_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_BC4_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_BC5_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_BC4_SNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_BC5_SNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_EAC_R11_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_EAC_R11G11_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_EAC_R11_SNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*8;
-           Compressed:=true;
-          end;
-          VK_FORMAT_EAC_R11G11_SNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_4x4_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_5x4_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+4) div 5)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_5x5_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+4) div 5)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_6x5_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+5) div 6)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_6x6_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+5) div 6)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_8x5_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+7) div 8)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_8x6_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+7) div 8)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_8x8_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+7) div 8)*((MipMapWidth+7) div 8)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_10x5_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+9) div 10)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_10x6_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+9) div 10)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_10x8_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+7) div 8)*((MipMapWidth+9) div 10)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_10x10_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+9) div 10)*((MipMapWidth+9) div 10)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_12x10_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+9) div 10)*((MipMapWidth+11) div 12)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_12x12_UNORM_BLOCK:begin
-           MipMapSize:=((MipMapHeight+11) div 12)*((MipMapWidth+11) div 12)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_4x4_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+3) div 4)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_5x4_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+3) div 4)*((MipMapWidth+4) div 5)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_5x5_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+4) div 5)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_6x5_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+5) div 6)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_6x6_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+5) div 6)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_8x5_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+7) div 8)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_8x6_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+7) div 8)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_8x8_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+7) div 8)*((MipMapWidth+7) div 8)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_10x5_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+4) div 5)*((MipMapWidth+9) div 10)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_10x6_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+5) div 6)*((MipMapWidth+9) div 10)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_10x8_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+7) div 8)*((MipMapWidth+9) div 10)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_10x10_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+9) div 10)*((MipMapWidth+9) div 10)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_12x10_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+9) div 10)*((MipMapWidth+11) div 12)*16;
-           Compressed:=true;
-          end;
-          VK_FORMAT_ASTC_12x12_SRGB_BLOCK:begin
-           MipMapSize:=((MipMapHeight+11) div 12)*((MipMapWidth+11) div 12)*16;
-           Compressed:=true;
-          end;
-          else begin
-           raise EVulkanTextureException.Create('Non-supported texture image format ('+IntToStr(TVkInt32(fFormat))+')');
-          end;
-         end;
+         GetMipMapSize;
          Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
          inc(TotalMipMapSize,MipMapSize);
          inc(DataOffset,MipMapSize);
