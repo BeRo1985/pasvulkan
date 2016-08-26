@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-26-10-10-0000                       *
+ *                        Version 2016-08-26-10-41-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2562,6 +2562,11 @@ type EVulkanException=class(Exception);
                                  const pCountFaces:TVkInt32;
                                  const pMipmaps:boolean;
                                  const pBorder:boolean);
+       constructor CreateFromKTX(const pDevice:TVulkanDevice;
+                                 const pQueue:TVulkanQueue;
+                                 const pFence:TVulkanFence;
+                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pStream:TStream);
        destructor Destroy; override;
        procedure UpdateSampler;
       published
@@ -14164,6 +14169,151 @@ begin
 
 end;
 
+constructor TVulkanTexture.CreateFromKTX(const pDevice:TVulkanDevice;
+                                         const pQueue:TVulkanQueue;
+                                         const pFence:TVulkanFence;
+                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pStream:TStream);
+type PKTXIdentifier=^TKTXIdentifier;
+     TKTXIdentifier=array[0..11] of TVkUInt8;
+     PKTXHeader=^TKTXHeader;
+     TKTXHeader=packed record
+      Identifier:TKTXIdentifier;
+      Endianness:TVkUInt32;
+      GLType:TVkUInt32;
+      GLTypeSize:TVkUInt32;
+      GLFormat:TVkUInt32;
+      GLInternalFormat:TVkUInt32;
+      GLBaseInternalFormat:TVkUInt32;
+      PixelWidth:TVkUInt32;
+      PixelHeight:TVkUInt32;
+      PixelDepth:TVkUInt32;
+      NumberOfArrayElements:TVkUInt32;
+      NumberOfFaces:TVkUInt32;
+      NumberOfMipMapLevels:TVkUInt32;
+      BytesOfKeyValueData:TVkUInt32;
+     end;
+ function Swap16(x:TVkUInt16):TVkUInt16;
+ begin
+  result:=((x and $ff) shl 8) or ((x and $ff00) shr 8);
+ end;
+ function Swap32(x:TVkUInt32):TVkUInt32;
+ begin
+  result:=(Swap16(x and $ffff) shl 16) or Swap16((x and $ffff0000) shr 16);
+ end;
+var KTXHeader:TKTXHeader;
+    MustSwap,GenerateMipMaps:boolean;
+    TextureDimensions,GLTarget:TVkInt32;
+    NumberOfArrayElements:TVkUInt32;
+    NumberOfFaces:TVkUInt32;
+    NumberOfMipMapLevels:TVkUInt32;
+    Data:pointer;
+    DataSize:TVkSizeInt;
+    NewPosition:TVkInt64;
+begin
+ Create(pDevice);
+
+ if pStream.Read(KTXHeader,SizeOf(TKTXHeader))<>SizeOf(TKTXHeader) then begin
+  raise EVulkanTextureException.Create('Stream read error');
+ end;
+
+ if (KTXHeader.Identifier[0]<>$ab) or
+    (KTXHeader.Identifier[1]<>$4b) or
+    (KTXHeader.Identifier[2]<>$54) or
+    (KTXHeader.Identifier[3]<>$58) or
+    (KTXHeader.Identifier[4]<>$20) or
+    (KTXHeader.Identifier[5]<>$31) or
+    (KTXHeader.Identifier[6]<>$31) or
+    (KTXHeader.Identifier[7]<>$bb) or
+    (KTXHeader.Identifier[8]<>$0d) or
+    (KTXHeader.Identifier[9]<>$0a) or
+    (KTXHeader.Identifier[10]<>$1a) or
+    (KTXHeader.Identifier[11]<>$0a) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+
+ MustSwap:=false;
+ case KTXHeader.Endianness of
+  $01020304:begin
+   MustSwap:=true;
+   KTXHeader.GLType:=Swap32(KTXHeader.GLType);
+   KTXHeader.GLTypeSize:=Swap32(KTXHeader.GLTypeSize);
+   KTXHeader.GLFormat:=Swap32(KTXHeader.GLFormat);
+   KTXHeader.GLInternalFormat:=Swap32(KTXHeader.GLInternalFormat);
+   KTXHeader.GLBaseInternalFormat:=Swap32(KTXHeader.GLBaseInternalFormat);
+   KTXHeader.PixelWidth:=Swap32(KTXHeader.PixelWidth);
+   KTXHeader.PixelHeight:=Swap32(KTXHeader.PixelHeight);
+   KTXHeader.PixelDepth:=Swap32(KTXHeader.PixelDepth);
+   KTXHeader.NumberOfArrayElements:=Swap32(KTXHeader.NumberOfArrayElements);
+   KTXHeader.NumberOfFaces:=Swap32(KTXHeader.NumberOfFaces);
+   KTXHeader.NumberOfMipmapLevels:=Swap32(KTXHeader.NumberOfMipmapLevels);
+   KTXHeader.BytesOfKeyValueData:=Swap32(KTXHeader.BytesOfKeyValueData);
+   if not (KTXHeader.GLTypeSize in [1,2,4]) then begin
+    exit;
+   end;
+  end;
+  $04030201:begin
+  end;
+  else begin
+   exit;
+  end;
+ end;
+
+ if (KTXHeader.GLType=0)<>(KTXHeader.GLFormat=0) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+ if (KTXHeader.PixelWidth=0) or ((KTXHeader.PixelDepth>0) and (KTXHeader.PixelHeight=0)) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+ if not ((KTXHeader.GLFormat=0) or (KTXHeader.GLTypeSize in [1,2,4,8])) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+ if not ((KTXHeader.GLFormat=0) or (KTXHeader.GLFormat=KTXHeader.GLBaseInternalFormat)) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+ if not ((KTXHeader.GLFormat<>0) or (KTXHeader.GLTypeSize=1)) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+
+ NumberOfArrayElements:=Max(1,KTXHeader.NumberOfArrayElements);
+ NumberOfFaces:=Max(1,KTXHeader.NumberOfFaces);
+ NumberOfMipMapLevels:=KTXHeader.NumberOfMipMapLevels;
+
+ if KTXHeader.BytesOfKeyValueData>0 then begin
+  NewPosition:=pStream.Position+KTXHeader.BytesOfKeyValueData;
+  if pStream.Seek(NewPosition,soBeginning)<>NewPosition then begin
+   raise EVulkanTextureException.Create('Stream seek error');
+  end;
+ end;
+
+ DataSize:=pStream.Size-pStream.Position;
+
+ GetMem(Data,DataSize);
+ try
+  if pStream.Read(Data^,DataSize)<>DataSize then begin
+   raise EVulkanTextureException.Create('Stream read error');
+  end;
+  CreateInternal(pQueue,
+                 pFence,
+                 pCommandBuffer,
+                 VulkanGetFormatFromOpenGLInternalFormat(KTXHeader.GLInternalFormat),
+                 VK_SAMPLE_COUNT_1_BIT,
+                 Max(1,KTXHeader.PixelWidth),
+                 Max(1,KTXHeader.PixelHeight),
+                 Max(1,KTXHeader.PixelDepth),
+                 NumberOfArrayElements,
+                 NumberOfFaces,
+                 NumberOfMipMapLevels,
+                 [vtufSampled],
+                 Data,
+                 DataSize,
+                 true);
+ finally
+  FreeMem(Data);
+ end;
+
+end;
+
 destructor TVulkanTexture.Destroy;
 begin
  FreeAndNil(fSampler);
@@ -14223,9 +14373,9 @@ begin
  if (pCountFaces<>1) and (pWidth<>pHeight) then begin
   raise EVulkanTextureException.Create('Cube maps must be square ('+IntToStr(pWidth)+'x'+IntToStr(pHeight)+')');
  end;
- if (pDepth>1) or (pCountArrayElements>1) then begin
+{if (pDepth>1) or (pCountArrayElements>1) then begin
   raise EVulkanTextureException.Create('3D array textures not supported yet');
- end;
+ end;}
 
  MaxDimension:=Max(Max(pWidth,pHeight),pDepth);
  MaxMipMapLevels:=VulkanIntLog2(MaxDimension)+1;
@@ -14781,7 +14931,7 @@ begin
          inc(TotalMipMapSize,MipMapSize);
          inc(DataOffset,MipMapSize);
          if pMipMapSizeStored and ((fDepth<=1) and (pCountArrayElements<=1)) then begin
-          Assert(MipMapSize=StoredMipMapSize);
+          Assert(TotalMipMapSize=StoredMipMapSize);
           inc(DataOffset,3-((MipMapSize+3) and 3));
          end;
         end;
