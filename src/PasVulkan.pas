@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-26-12-22-0000                       *
+ *                        Version 2016-08-26-16-11-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2552,7 +2552,8 @@ type EVulkanException=class(Exception);
                                     const pDataSize:TVkSizeInt;
                                     const pMipMapSizeStored:boolean;
                                     const pSwapEndianness:boolean;
-                                    const pSwapEndiannessTexels:TVkInt32);
+                                    const pSwapEndiannessTexels:TVkInt32;
+                                    const pFromDDS:boolean=false);
        constructor CreateFromStream(const pDevice:TVulkanDevice;
                                     const pQueue:TVulkanQueue;
                                     const pFence:TVulkanFence;
@@ -2569,8 +2570,14 @@ type EVulkanException=class(Exception);
                                     const pStream:TStream;
                                     const pMipMapSizeStored:boolean;
                                     const pSwapEndianness:boolean;
-                                    const pSwapEndiannessTexels:TVkInt32);
+                                    const pSwapEndiannessTexels:TVkInt32;
+                                    const pFromDDS:boolean=false);
        constructor CreateFromKTX(const pDevice:TVulkanDevice;
+                                 const pQueue:TVulkanQueue;
+                                 const pFence:TVulkanFence;
+                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pStream:TStream);
+       constructor CreateFromDDS(const pDevice:TVulkanDevice;
                                  const pQueue:TVulkanQueue;
                                  const pFence:TVulkanFence;
                                  const pCommandBuffer:TVulkanCommandBuffer;
@@ -13973,7 +13980,8 @@ constructor TVulkanTexture.CreateFromMemory(const pDevice:TVulkanDevice;
                                             const pDataSize:TVkSizeInt;
                                             const pMipMapSizeStored:boolean;
                                             const pSwapEndianness:boolean;
-                                            const pSwapEndiannessTexels:TVkInt32);
+                                            const pSwapEndiannessTexels:TVkInt32;
+                                            const pFromDDS:boolean=false);
 type PUInt8Array=^TUInt8Array;
      TUInt8Array=array[0..65535] of TVkUInt8;
  function Swap16(x:TVkUInt16):TVkUInt16;
@@ -13989,7 +13997,7 @@ type PUInt8Array=^TUInt8Array;
   result:=(TVkUInt64(Swap32(x and TVkUInt64($ffffffff))) shl 32) or Swap32((x and TVkUInt64($ffffffff00000000)) shr 32);
  end;
 var MaxDimension,MaxMipMapLevels,CountStorageLevels,CountArrayLayers,CountDataLevels,
-    BufferImageCopyIndex,MipMapLevelIndex,MipMapWidth,MipMapHeight,
+    BufferImageCopyArraySize,MipMapLevelIndex,MipMapWidth,MipMapHeight,MipMapDepth,
     LayerIndex,DepthIndex,PreviousMipMapLevelIndex:TVkInt32;
     DataOffset,TotalMipMapSize,StoredMipMapSize,MipMapSize,Index:TVkUInt32;
     v16:PVkUInt16;
@@ -14527,11 +14535,12 @@ begin
 
     HandleResultCode(fDevice.fDeviceVulkan.BindBufferMemory(fDevice.fDeviceHandle,StagingBuffer.fBufferHandle,StagingMemoryBlock.fMemoryChunk.fMemoryHandle,StagingMemoryBlock.fOffset));
 
-    if pSwapEndianness and (pSwapEndiannessTexels in [2,4,8]) then begin
+    if (not pFromDDS) and (pSwapEndianness and (pSwapEndiannessTexels in [2,4,8])) then begin
      DataOffset:=0;
      for MipMapLevelIndex:=0 to CountDataLevels-1 do begin
       MipMapWidth:=Max(1,fWidth shr MipMapLevelIndex);
       MipMapHeight:=Max(1,fHeight shr MipMapLevelIndex);
+      MipMapDepth:=Max(1,fDepth shr MipMapLevelIndex);
       TotalMipMapSize:=0;
       StoredMipMapSize:=0;
       if pMipMapSizeStored then begin
@@ -14545,7 +14554,7 @@ begin
        end;
       end;
       for LayerIndex:=0 to fCountArrayLayers-1 do begin
-       for DepthIndex:=0 to fDepth-1 do begin
+       for DepthIndex:=0 to MipMapDepth-1 do begin
         MipMapSize:=0;
         GetMipMapSize;
         Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
@@ -14645,61 +14654,95 @@ begin
                                         nil);
 
       SetLength(BufferImageCopyArray,CountDataLevels*fCountArrayLayers*fDepth);
-      BufferImageCopyIndex:=0;
+      BufferImageCopyArraySize:=0;
       DataOffset:=0;
-      for MipMapLevelIndex:=0 to CountDataLevels-1 do begin
-       MipMapWidth:=Max(1,fWidth shr MipMapLevelIndex);
-       MipMapHeight:=Max(1,fHeight shr MipMapLevelIndex);
-       TotalMipMapSize:=0;
-       StoredMipMapSize:=0;
-       if pMipMapSizeStored then begin
-        Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(pDataSize));
-        StoredMipMapSize:=TVkUInt32(pointer(@TUInt8Array(pointer(pData)^)[DataOffset])^);
-        inc(DataOffset,SizeOf(TVkUInt32));
-        if pSwapEndianness then begin
-         StoredMipMapSize:=Swap32(StoredMipMapSize);
-        end;
-        if StoredMipMapSize<>0 then begin
-        end;
-       end;
+      if pFromDDS then begin
        for LayerIndex:=0 to fCountArrayLayers-1 do begin
-        for DepthIndex:=0 to fDepth-1 do begin
-         BufferImageCopy:=@BufferImageCopyArray[BufferImageCopyIndex];
-         inc(BufferImageCopyIndex);
-         FillChar(BufferImageCopy^,SizeOf(TVkBufferImageCopy),#0);
-         BufferImageCopy^.bufferOffset:=DataOffset;
-         BufferImageCopy^.bufferRowLength:=0;
-         BufferImageCopy^.bufferImageHeight:=0;
-         BufferImageCopy^.imageSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-         BufferImageCopy^.imageSubresource.mipLevel:=MipMapLevelIndex;
-         BufferImageCopy^.imageSubresource.baseArrayLayer:=LayerIndex;
-         BufferImageCopy^.imageSubresource.layerCount:=1;
-         BufferImageCopy^.imageOffset.x:=0;
-         BufferImageCopy^.imageOffset.y:=0;
-         BufferImageCopy^.imageOffset.z:=DepthIndex;
-         BufferImageCopy^.imageExtent.width:=fWidth;
-         BufferImageCopy^.imageExtent.height:=fHeight;
-         BufferImageCopy^.imageExtent.depth:=1;
-         MipMapSize:=0;
-         GetMipMapSize;
-         Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
-         inc(TotalMipMapSize,MipMapSize);
-         inc(DataOffset,MipMapSize);
-         if pMipMapSizeStored and ((fDepth<=1) and (pCountArrayElements<=1)) then begin
-          Assert(TotalMipMapSize=StoredMipMapSize);
-          inc(DataOffset,3-((MipMapSize+3) and 3));
+        for MipMapLevelIndex:=0 to CountDataLevels-1 do begin
+         MipMapWidth:=Max(1,fWidth shr MipMapLevelIndex);
+         MipMapHeight:=Max(1,fHeight shr MipMapLevelIndex);
+         MipMapDepth:=Max(1,fDepth shr MipMapLevelIndex);
+         for DepthIndex:=0 to MipMapDepth-1 do begin
+          BufferImageCopy:=@BufferImageCopyArray[BufferImageCopyArraySize];
+          inc(BufferImageCopyArraySize);
+          FillChar(BufferImageCopy^,SizeOf(TVkBufferImageCopy),#0);
+          BufferImageCopy^.bufferOffset:=DataOffset;
+          BufferImageCopy^.bufferRowLength:=0;
+          BufferImageCopy^.bufferImageHeight:=0;
+          BufferImageCopy^.imageSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+          BufferImageCopy^.imageSubresource.mipLevel:=MipMapLevelIndex;
+          BufferImageCopy^.imageSubresource.baseArrayLayer:=LayerIndex;
+          BufferImageCopy^.imageSubresource.layerCount:=1;
+          BufferImageCopy^.imageOffset.x:=0;
+          BufferImageCopy^.imageOffset.y:=0;
+          BufferImageCopy^.imageOffset.z:=DepthIndex;
+          BufferImageCopy^.imageExtent.width:=fWidth;
+          BufferImageCopy^.imageExtent.height:=fHeight;
+          BufferImageCopy^.imageExtent.depth:=1;
+          MipMapSize:=0;
+          GetMipMapSize;
+          Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
+          inc(DataOffset,MipMapSize);
          end;
         end;
        end;
-       if pMipMapSizeStored and ((fDepth>1) or (pCountArrayElements>1)) then begin
-        Assert(TotalMipMapSize=StoredMipMapSize);
-        inc(DataOffset,3-((TotalMipMapSize+3) and 3));
+      end else begin
+       for MipMapLevelIndex:=0 to CountDataLevels-1 do begin
+        MipMapWidth:=Max(1,fWidth shr MipMapLevelIndex);
+        MipMapHeight:=Max(1,fHeight shr MipMapLevelIndex);
+        MipMapDepth:=Max(1,fDepth shr MipMapLevelIndex);
+        TotalMipMapSize:=0;
+        StoredMipMapSize:=0;
+        if pMipMapSizeStored then begin
+         Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(pDataSize));
+         StoredMipMapSize:=TVkUInt32(pointer(@TUInt8Array(pointer(pData)^)[DataOffset])^);
+         inc(DataOffset,SizeOf(TVkUInt32));
+         if pSwapEndianness then begin
+          StoredMipMapSize:=Swap32(StoredMipMapSize);
+         end;
+         if StoredMipMapSize<>0 then begin
+         end;
+        end;
+        for LayerIndex:=0 to fCountArrayLayers-1 do begin
+         for DepthIndex:=0 to MipMapDepth-1 do begin
+          BufferImageCopy:=@BufferImageCopyArray[BufferImageCopyArraySize];
+          inc(BufferImageCopyArraySize);
+          FillChar(BufferImageCopy^,SizeOf(TVkBufferImageCopy),#0);
+          BufferImageCopy^.bufferOffset:=DataOffset;
+          BufferImageCopy^.bufferRowLength:=0;
+          BufferImageCopy^.bufferImageHeight:=0;
+          BufferImageCopy^.imageSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+          BufferImageCopy^.imageSubresource.mipLevel:=MipMapLevelIndex;
+          BufferImageCopy^.imageSubresource.baseArrayLayer:=LayerIndex;
+          BufferImageCopy^.imageSubresource.layerCount:=1;
+          BufferImageCopy^.imageOffset.x:=0;
+          BufferImageCopy^.imageOffset.y:=0;
+          BufferImageCopy^.imageOffset.z:=DepthIndex;
+          BufferImageCopy^.imageExtent.width:=fWidth;
+          BufferImageCopy^.imageExtent.height:=fHeight;
+          BufferImageCopy^.imageExtent.depth:=1;
+          MipMapSize:=0;
+          GetMipMapSize;
+          Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
+          inc(TotalMipMapSize,MipMapSize);
+          inc(DataOffset,MipMapSize);
+          if pMipMapSizeStored and ((fDepth<=1) and (pCountArrayElements<=1)) then begin
+           Assert(TotalMipMapSize=StoredMipMapSize);
+           inc(DataOffset,3-((MipMapSize+3) and 3));
+          end;
+         end;
+        end;
+        if pMipMapSizeStored and ((fDepth>1) or (pCountArrayElements>1)) then begin
+         Assert(TotalMipMapSize=StoredMipMapSize);
+         inc(DataOffset,3-((TotalMipMapSize+3) and 3));
+        end;
        end;
       end;
+      SetLength(BufferImageCopyArray,BufferImageCopyArraySize);
 
       Assert(TVkSizeInt(DataOffset)=TVkSizeInt(pDataSize));
 
-      pCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,length(BufferImageCopyArray),@BufferImageCopyArray[0]);
+      pCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
 
       if pCountMipMaps<1 then begin
 
@@ -14904,7 +14947,8 @@ constructor TVulkanTexture.CreateFromStream(const pDevice:TVulkanDevice;
                                             const pStream:TStream;
                                             const pMipMapSizeStored:boolean;
                                             const pSwapEndianness:boolean;
-                                            const pSwapEndiannessTexels:TVkInt32);
+                                            const pSwapEndiannessTexels:TVkInt32;
+                                            const pFromDDS:boolean=false);
 var Data:TVkPointer;
     DataSize:TVkUInt32;
 begin
@@ -14931,7 +14975,8 @@ begin
                    DataSize,
                    pMipMapSizeStored,
                    pSwapEndianness,
-                   pSwapEndiannessTexels);
+                   pSwapEndiannessTexels,
+                   pFromDDS);
  finally
   FreeMem(Data);
  end;
@@ -15076,13 +15121,810 @@ begin
                    DataSize,
                    true,
                    MustSwap,
-                   KTXHeader.GLTypeSize);
+                   KTXHeader.GLTypeSize,
+                   false);
  finally
   FreeMem(Data);
  end;
 
 end;
 
+constructor TVulkanTexture.CreateFromDDS(const pDevice:TVulkanDevice;
+                                         const pQueue:TVulkanQueue;
+                                         const pFence:TVulkanFence;
+                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pStream:TStream);
+const DDS_MAGIC=$20534444;
+      DDSD_CAPS=$00000001;
+      DDSD_HEIGHT=$00000002;
+      DDSD_WIDTH=$00000004;
+      DDSD_PITCH=$00000008;
+      DDSD_PIXELFORMAT=$00001000;
+      DDSD_MIPMAPCOUNT=$00020000;
+      DDSD_LINEARSIZE=$00080000;
+      DDSD_DEPTH=$00800000;
+      DDPF_ALPHAPIXELS=$00000001;
+      DDPF_ALPHA=$00000002;
+      DDPF_FOURCC=$00000004;
+      DDPF_INDEXED=$00000020;
+      DDPF_RGB=$00000040;
+      DDPF_YUV=$00000200;
+      DDPF_LUMINANCE=$00020000;
+      DDSCAPS_COMPLEX=$00000008;
+      DDSCAPS_TEXTURE=$00001000;
+      DDSCAPS_MIPMAP=$00400000;
+      DDSCAPS2_CUBEMAP=$00000200;
+      DDSCAPS2_CUBEMAP_POSITIVEX=$00000400;
+      DDSCAPS2_CUBEMAP_NEGATIVEX=$00000800;
+      DDSCAPS2_CUBEMAP_POSITIVEY=$00001000;
+      DDSCAPS2_CUBEMAP_NEGATIVEY=$00002000;
+      DDSCAPS2_CUBEMAP_POSITIVEZ=$00004000;
+      DDSCAPS2_CUBEMAP_NEGATIVEZ=$00008000;
+      DDSCAPS2_VOLUME=$00200000;
+      D3DFMT_DXT1=$31545844;
+      D3DFMT_DXT2=$32545844;
+      D3DFMT_DXT3=$33545844;
+      D3DFMT_DXT4=$34545844;
+      D3DFMT_DXT5=$35545844;
+      D3DFMT_ATI1=$31495441;
+      D3DFMT_ATI2=$32495441;
+      D3DFMT_BC4U=$55344342;
+      D3DFMT_BC4S=$53344342;
+      D3DFMT_BC5U=$55354342;
+      D3DFMT_BC5S=$53354342;
+      D3DFMT_RXGB=$42475852;
+      D3DFMT_DX10=$30315844;
+      DXGI_FORMAT_UNKNOWN=0;
+      DXGI_FORMAT_R32G32B32A32_TYPELESS=1;
+      DXGI_FORMAT_R32G32B32A32_FLOAT=2;
+      DXGI_FORMAT_R32G32B32A32_UINT=3;
+      DXGI_FORMAT_R32G32B32A32_SINT=4;
+      DXGI_FORMAT_R32G32B32_TYPELESS=5;
+      DXGI_FORMAT_R32G32B32_FLOAT=6;
+      DXGI_FORMAT_R32G32B32_UINT=7;
+      DXGI_FORMAT_R32G32B32_SINT=8;
+      DXGI_FORMAT_R16G16B16A16_TYPELESS=9;
+      DXGI_FORMAT_R16G16B16A16_FLOAT=10;
+      DXGI_FORMAT_R16G16B16A16_UNORM=11;
+      DXGI_FORMAT_R16G16B16A16_UINT=12;
+      DXGI_FORMAT_R16G16B16A16_SNORM=13;
+      DXGI_FORMAT_R16G16B16A16_SINT=14;
+      DXGI_FORMAT_R32G32_TYPELESS=15;
+      DXGI_FORMAT_R32G32_FLOAT=16;
+      DXGI_FORMAT_R32G32_UINT=17;
+      DXGI_FORMAT_R32G32_SINT=18;
+      DXGI_FORMAT_R32G8X24_TYPELESS=19;
+      DXGI_FORMAT_D32_FLOAT_S8X24_UINT=20;
+      DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS=21;
+      DXGI_FORMAT_X32_TYPELESS_G8X24_UINT=22;
+      DXGI_FORMAT_R10G10B10A2_TYPELESS=23;
+      DXGI_FORMAT_R10G10B10A2_UNORM=24;
+      DXGI_FORMAT_R10G10B10A2_UINT=25;
+      DXGI_FORMAT_R11G11B10_FLOAT=26;
+      DXGI_FORMAT_R8G8B8A8_TYPELESS=27;
+      DXGI_FORMAT_R8G8B8A8_UNORM=28;
+      DXGI_FORMAT_R8G8B8A8_UNORM_SRGB=29;
+      DXGI_FORMAT_R8G8B8A8_UINT=30;
+      DXGI_FORMAT_R8G8B8A8_SNORM=31;
+      DXGI_FORMAT_R8G8B8A8_SINT=32;
+      DXGI_FORMAT_R16G16_TYPELESS=33;
+      DXGI_FORMAT_R16G16_FLOAT=34;
+      DXGI_FORMAT_R16G16_UNORM=35;
+      DXGI_FORMAT_R16G16_UINT=36;
+      DXGI_FORMAT_R16G16_SNORM=37;
+      DXGI_FORMAT_R16G16_SINT=38;
+      DXGI_FORMAT_R32_TYPELESS=39;
+      DXGI_FORMAT_D32_FLOAT=40;
+      DXGI_FORMAT_R32_FLOAT=41;
+      DXGI_FORMAT_R32_UINT=42;
+      DXGI_FORMAT_R32_SINT=43;
+      DXGI_FORMAT_R24G8_TYPELESS=44;
+      DXGI_FORMAT_D24_UNORM_S8_UINT=45;
+      DXGI_FORMAT_R24_UNORM_X8_TYPELESS=46;
+      DXGI_FORMAT_X24_TYPELESS_G8_UINT=47;
+      DXGI_FORMAT_R8G8_TYPELESS=48;
+      DXGI_FORMAT_R8G8_UNORM=49;
+      DXGI_FORMAT_R8G8_UINT=50;
+      DXGI_FORMAT_R8G8_SNORM=51;
+      DXGI_FORMAT_R8G8_SINT=52;
+      DXGI_FORMAT_R16_TYPELESS=53;
+      DXGI_FORMAT_R16_FLOAT=54;
+      DXGI_FORMAT_D16_UNORM=55;
+      DXGI_FORMAT_R16_UNORM=56;
+      DXGI_FORMAT_R16_UINT=57;
+      DXGI_FORMAT_R16_SNORM=58;
+      DXGI_FORMAT_R16_SINT=59;
+      DXGI_FORMAT_R8_TYPELESS=60;
+      DXGI_FORMAT_R8_UNORM=61;
+      DXGI_FORMAT_R8_UINT=62;
+      DXGI_FORMAT_R8_SNORM=63;
+      DXGI_FORMAT_R8_SINT=64;
+      DXGI_FORMAT_A8_UNORM=65;
+      DXGI_FORMAT_R1_UNORM=66;
+      DXGI_FORMAT_R9G9B9E5_SHAREDEXP=67;
+      DXGI_FORMAT_R8G8_B8G8_UNORM=68;
+      DXGI_FORMAT_G8R8_G8B8_UNORM=69;
+      DXGI_FORMAT_BC1_TYPELESS=70;
+      DXGI_FORMAT_BC1_UNORM=71;
+      DXGI_FORMAT_BC1_UNORM_SRGB=72;
+      DXGI_FORMAT_BC2_TYPELESS=73;
+      DXGI_FORMAT_BC2_UNORM=74;
+      DXGI_FORMAT_BC2_UNORM_SRGB=75;
+      DXGI_FORMAT_BC3_TYPELESS=76;
+      DXGI_FORMAT_BC3_UNORM=77;
+      DXGI_FORMAT_BC3_UNORM_SRGB=78;
+      DXGI_FORMAT_BC4_TYPELESS=79;
+      DXGI_FORMAT_BC4_UNORM=80;
+      DXGI_FORMAT_BC4_SNORM=81;
+      DXGI_FORMAT_BC5_TYPELESS=82;
+      DXGI_FORMAT_BC5_UNORM=83;
+      DXGI_FORMAT_BC5_SNORM=84;
+      DXGI_FORMAT_B5G6R5_UNORM=85;
+      DXGI_FORMAT_B5G5R5A1_UNORM=86;
+      DXGI_FORMAT_B8G8R8A8_UNORM=87;
+      DXGI_FORMAT_B8G8R8X8_UNORM=88;
+      DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM=89;
+      DXGI_FORMAT_B8G8R8A8_TYPELESS=90;
+      DXGI_FORMAT_B8G8R8A8_UNORM_SRGB=91;
+      DXGI_FORMAT_B8G8R8X8_TYPELESS=92;
+      DXGI_FORMAT_B8G8R8X8_UNORM_SRGB=93;
+      DXGI_FORMAT_BC6H_TYPELESS=94;
+      DXGI_FORMAT_BC6H_UF16=95;
+      DXGI_FORMAT_BC6H_SF16=96;
+      DXGI_FORMAT_BC7_TYPELESS=97;
+      DXGI_FORMAT_BC7_UNORM=98;
+      DXGI_FORMAT_BC7_UNORM_SRGB=99;
+      DXGI_FORMAT_AYUV=100;
+      DXGI_FORMAT_Y410=101;
+      DXGI_FORMAT_Y416=102;
+      DXGI_FORMAT_NV12=103;
+      DXGI_FORMAT_P010=104;
+      DXGI_FORMAT_P016=105;
+      DXGI_FORMAT_420_OPAQUE=106;
+      DXGI_FORMAT_YUY2=107;
+      DXGI_FORMAT_Y210=108;
+      DXGI_FORMAT_Y216=109;
+      DXGI_FORMAT_NV11=110;
+      DXGI_FORMAT_AI44=111;
+      DXGI_FORMAT_IA44=112;
+      DXGI_FORMAT_P8=113;
+      DXGI_FORMAT_A8P8=114;
+      DXGI_FORMAT_B4G4R4A4_UNORM=115;
+type PDDSPixelFormat=^TDDSPixelFormat;
+     TDDSPixelFormat=packed record
+      dwSize:TVkUInt32;
+      dwFlags:TVkUInt32;
+      dwFourCC:TVkUInt32;
+      dwRGBBitCount:TVkUInt32;
+      dwRBitMask:TVkUInt32;
+      dwGBitMask:TVkUInt32;
+      dwBBitMask:TVkUInt32;
+      dwABitMask:TVkUInt32;
+     end;
+     PDDSCaps=^TDDSCaps;
+     TDDSCaps=packed record
+      dwCaps1:TVkUInt32;
+      dwCaps2:TVkUInt32;
+      dwDDSX:TVkUInt32;
+      dwReserved:TVkUInt32;
+     end;
+     PDDSHeader=^TDDSHeader;
+     TDDSHeader=packed record
+      dwMagic:TVkUInt32;
+      dwSize:TVkUInt32;
+      dwFlags:TVkUInt32;
+      dwHeight:TVkUInt32;
+      dwWidth:TVkUInt32;
+      dwPitchOrLinearSize:TVkUInt32;
+      dwDepth:TVkUInt32;
+      dwMipMapCount:TVkUInt32;
+      dwReserved:array[0..10] of TVkUInt32;
+      PixelFormat:TDDSPixelFormat;
+      Caps:TDDSCaps;
+      dwReserved2:TVkUInt32;
+     end;
+     PDDSHeaderDX10=^TDDSHeaderDX10;
+     TDDSHeaderDX10=packed record
+      dxgiFormat:TVkUInt32;
+      ResourceDimension:TVkUInt32;
+      MiscFlag:TVkUInt32;
+      ArraySize:TVkUInt32;
+      Reserved:TVkUInt32;
+     end;
+var Header:TDDSHeader;
+    HeaderDX10:TDDSHeaderDX10;
+    BlockSize,ImageWidth,ImageHeight,ImageDepth,ImageMipMaps,ImageFaces,ImageArrayElements:TVkUInt32;
+    ImageFormat:TVkFormat;
+    IsVolume:boolean;
+    DataSize:TVkSizeInt;
+    Data:TVkPointer;
+begin
+ if pStream.Read(Header,SizeOf(TDDSHeader))<>SizeOf(TDDSHeader) then begin
+  raise EVulkanTextureException.Create('Invalid DDS stream');
+ end;
+ if ((Header.dwMagic<>DDS_MAGIC) or (Header.dwSize<>124) or ((Header.dwFlags and DDSD_PIXELFORMAT)=0) or ((Header.dwFlags and DDSD_CAPS)=0)) then begin
+  raise EVulkanTextureException.Create('Invalid DDS stream');
+ end;
+ if (Header.dwFlags and DDSD_WIDTH)<>0 then begin
+  ImageWidth:=Header.dwWidth;
+ end else begin
+  ImageWidth:=1;
+ end;
+ if (Header.dwFlags and DDSD_HEIGHT)<>0 then begin
+  ImageHeight:=Header.dwHeight;
+ end else begin
+  ImageHeight:=1;
+ end;
+ if (Header.dwFlags and DDSD_DEPTH)<>0 then begin
+  ImageDepth:=Header.dwDepth;
+ end else begin
+  ImageDepth:=1;
+ end;
+ if (Header.dwFlags and DDSD_MIPMAPCOUNT)<>0 then begin
+  ImageMipMaps:=Max(1,Header.dwMipMapCount);
+ end else begin
+  ImageMipMaps:=1;
+ end;
+ ImageFaces:=1;
+ ImageArrayElements:=1;
+ IsVolume:=false;
+ if (Header.Caps.dwCaps1 and DDSCAPS_COMPLEX)<>0 then begin
+  if (Header.Caps.dwCaps2 and DDSCAPS2_CUBEMAP)<>0 then begin
+   if (Header.Caps.dwCaps2 and (DDSCAPS2_CUBEMAP_POSITIVEX or
+                                DDSCAPS2_CUBEMAP_NEGATIVEX or
+                                DDSCAPS2_CUBEMAP_POSITIVEY or
+                                DDSCAPS2_CUBEMAP_NEGATIVEY or
+                                DDSCAPS2_CUBEMAP_POSITIVEZ or
+                                DDSCAPS2_CUBEMAP_NEGATIVEZ))=(DDSCAPS2_CUBEMAP_POSITIVEX or
+                                                              DDSCAPS2_CUBEMAP_NEGATIVEX or
+                                                              DDSCAPS2_CUBEMAP_POSITIVEY or
+                                                              DDSCAPS2_CUBEMAP_NEGATIVEY or
+                                                              DDSCAPS2_CUBEMAP_POSITIVEZ or
+                                                              DDSCAPS2_CUBEMAP_NEGATIVEZ) then begin
+    ImageFaces:=6;
+   end else begin
+    raise EVulkanTextureException.Create('Invalid DDS stream');
+   end;
+  end else if (Header.Caps.dwCaps2 and DDSCAPS2_VOLUME)<>0 then begin
+   IsVolume:=true;
+  end;
+ end;
+ ImageFormat:=VK_FORMAT_UNDEFINED;
+ if (Header.dwFlags and DDSD_PIXELFORMAT)<>0 then begin
+  if (Header.PixelFormat.dwFlags and DDPF_FOURCC)<>0 then begin
+   case Header.PixelFormat.dwFourCC of
+    D3DFMT_DXT1:begin
+     ImageFormat:=VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+    end;
+    D3DFMT_DXT2,D3DFMT_DXT3:begin
+     ImageFormat:=VK_FORMAT_BC2_UNORM_BLOCK;
+    end;
+    D3DFMT_DXT4,D3DFMT_DXT5:begin
+     ImageFormat:=VK_FORMAT_BC3_UNORM_BLOCK;
+    end;
+    D3DFMT_ATI1,D3DFMT_BC4U:begin
+     ImageFormat:=VK_FORMAT_BC4_UNORM_BLOCK;
+    end;
+    D3DFMT_BC4S:begin
+     ImageFormat:=VK_FORMAT_BC4_SNORM_BLOCK;
+    end;
+    D3DFMT_ATI2,D3DFMT_BC5U:begin
+     ImageFormat:=VK_FORMAT_BC5_UNORM_BLOCK;
+    end;
+    D3DFMT_BC5S:begin
+     ImageFormat:=VK_FORMAT_BC5_SNORM_BLOCK;
+    end;
+    D3DFMT_DX10:begin
+     if pStream.Read(HeaderDX10,SizeOf(TDDSHeaderDX10))<>SizeOf(TDDSHeaderDX10) then begin
+      raise EVulkanTextureException.Create('Invalid DDS stream');
+     end;
+     case HeaderDX10.dxgiFormat of
+      DXGI_FORMAT_UNKNOWN:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_R32G32B32A32_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_R32G32B32A32_UINT;
+      end;
+      DXGI_FORMAT_R32G32B32A32_FLOAT:begin
+       ImageFormat:=VK_FORMAT_R32G32B32A32_SFLOAT;
+      end;
+      DXGI_FORMAT_R32G32B32A32_UINT:begin
+       ImageFormat:=VK_FORMAT_R32G32B32A32_UINT;
+      end;
+      DXGI_FORMAT_R32G32B32A32_SINT:begin
+       ImageFormat:=VK_FORMAT_R32G32B32A32_SINT;
+      end;
+      DXGI_FORMAT_R32G32B32_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_R32G32B32_UINT;
+      end;
+      DXGI_FORMAT_R32G32B32_FLOAT:begin
+       ImageFormat:=VK_FORMAT_R32G32B32_SFLOAT;
+      end;
+      DXGI_FORMAT_R32G32B32_UINT:begin
+       ImageFormat:=VK_FORMAT_R32G32B32_UINT;
+      end;
+      DXGI_FORMAT_R32G32B32_SINT:begin
+       ImageFormat:=VK_FORMAT_R32G32B32_SINT;
+      end;
+      DXGI_FORMAT_R16G16B16A16_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_R16G16B16A16_UINT;
+      end;
+      DXGI_FORMAT_R16G16B16A16_FLOAT:begin
+       ImageFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
+      end;
+      DXGI_FORMAT_R16G16B16A16_UNORM:begin
+       ImageFormat:=VK_FORMAT_R16G16B16A16_UNORM;
+      end;
+      DXGI_FORMAT_R16G16B16A16_UINT:begin
+       ImageFormat:=VK_FORMAT_R16G16B16A16_UINT;
+      end;
+      DXGI_FORMAT_R16G16B16A16_SNORM:begin
+       ImageFormat:=VK_FORMAT_R16G16B16A16_SNORM;
+      end;
+      DXGI_FORMAT_R16G16B16A16_SINT:begin
+       ImageFormat:=VK_FORMAT_R16G16B16A16_SINT;
+      end;
+      DXGI_FORMAT_R32G32_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_R32G32_UINT;
+      end;
+      DXGI_FORMAT_R32G32_FLOAT:begin
+       ImageFormat:=VK_FORMAT_R32G32_SFLOAT;
+      end;
+      DXGI_FORMAT_R32G32_UINT:begin
+       ImageFormat:=VK_FORMAT_R32G32_UINT;
+      end;
+      DXGI_FORMAT_R32G32_SINT:begin
+       ImageFormat:=VK_FORMAT_R32G32_SINT;
+      end;
+      DXGI_FORMAT_R32G8X24_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_D32_FLOAT_S8X24_UINT:begin
+       ImageFormat:=VK_FORMAT_D32_SFLOAT_S8_UINT;
+      end;
+      DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_D32_SFLOAT_S8_UINT;
+      end;
+      DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_R10G10B10A2_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_A2R10G10B10_UINT_PACK32;
+      end;
+      DXGI_FORMAT_R10G10B10A2_UNORM:begin
+       ImageFormat:=VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+      end;
+      DXGI_FORMAT_R10G10B10A2_UINT:begin
+       ImageFormat:=VK_FORMAT_A2R10G10B10_UINT_PACK32;
+      end;
+      DXGI_FORMAT_R11G11B10_FLOAT:begin
+       ImageFormat:=VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+      end;
+      DXGI_FORMAT_R8G8B8A8_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_R8G8B8A8_UINT;
+      end;
+      DXGI_FORMAT_R8G8B8A8_UNORM:begin
+       ImageFormat:=VK_FORMAT_R8G8B8A8_UNORM;
+      end;
+      DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:begin
+       ImageFormat:=VK_FORMAT_R8G8B8A8_SRGB;
+      end;
+      DXGI_FORMAT_R8G8B8A8_UINT:begin
+       ImageFormat:=VK_FORMAT_R8G8B8A8_UINT;
+      end;
+      DXGI_FORMAT_R8G8B8A8_SNORM:begin
+       ImageFormat:=VK_FORMAT_R8G8B8A8_SNORM;
+      end;
+      DXGI_FORMAT_R8G8B8A8_SINT:begin
+       ImageFormat:=VK_FORMAT_R8G8B8A8_SINT;
+      end;
+      DXGI_FORMAT_R16G16_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_R16G16_UINT;
+      end;
+      DXGI_FORMAT_R16G16_FLOAT:begin
+       ImageFormat:=VK_FORMAT_R16G16_SFLOAT;
+      end;
+      DXGI_FORMAT_R16G16_UNORM:begin
+       ImageFormat:=VK_FORMAT_R16G16_UNORM;
+      end;
+      DXGI_FORMAT_R16G16_UINT:begin
+       ImageFormat:=VK_FORMAT_R16G16_UINT;
+      end;
+      DXGI_FORMAT_R16G16_SNORM:begin
+       ImageFormat:=VK_FORMAT_R16G16_SNORM;
+      end;
+      DXGI_FORMAT_R16G16_SINT:begin
+       ImageFormat:=VK_FORMAT_R16G16_SINT;
+      end;
+      DXGI_FORMAT_R32_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_R32_UINT;
+      end;
+      DXGI_FORMAT_D32_FLOAT:begin
+       ImageFormat:=VK_FORMAT_D32_SFLOAT;
+      end;
+      DXGI_FORMAT_R32_FLOAT:begin
+       ImageFormat:=VK_FORMAT_R32_SFLOAT;
+      end;
+      DXGI_FORMAT_R32_UINT:begin
+       ImageFormat:=VK_FORMAT_R32_UINT;
+      end;
+      DXGI_FORMAT_R32_SINT:begin
+       ImageFormat:=VK_FORMAT_R32_SINT;
+      end;
+      DXGI_FORMAT_R24G8_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_D24_UNORM_S8_UINT:begin
+       ImageFormat:=VK_FORMAT_D24_UNORM_S8_UINT;
+      end;
+      DXGI_FORMAT_R24_UNORM_X8_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_X24_TYPELESS_G8_UINT:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_R8G8_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_R8G8_UINT;
+      end;
+      DXGI_FORMAT_R8G8_UNORM:begin
+       ImageFormat:=VK_FORMAT_R8G8_UNORM;
+      end;
+      DXGI_FORMAT_R8G8_UINT:begin
+       ImageFormat:=VK_FORMAT_R8G8_UINT;
+      end;
+      DXGI_FORMAT_R8G8_SNORM:begin
+       ImageFormat:=VK_FORMAT_R8G8_SNORM;
+      end;
+      DXGI_FORMAT_R8G8_SINT:begin
+       ImageFormat:=VK_FORMAT_R8G8_SINT;
+      end;
+      DXGI_FORMAT_R16_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_R16_UINT;
+      end;
+      DXGI_FORMAT_R16_FLOAT:begin
+       ImageFormat:=VK_FORMAT_R16_SFLOAT;
+      end;
+      DXGI_FORMAT_D16_UNORM:begin
+       ImageFormat:=VK_FORMAT_D16_UNORM;
+      end;
+      DXGI_FORMAT_R16_UNORM:begin
+       ImageFormat:=VK_FORMAT_R16_UNORM;
+      end;
+      DXGI_FORMAT_R16_UINT:begin
+       ImageFormat:=VK_FORMAT_R16_UINT;
+      end;
+      DXGI_FORMAT_R16_SNORM:begin
+       ImageFormat:=VK_FORMAT_R16_SNORM;
+      end;
+      DXGI_FORMAT_R16_SINT:begin
+       ImageFormat:=VK_FORMAT_R16_SINT;
+      end;
+      DXGI_FORMAT_R8_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_R8_UINT;
+      end;
+      DXGI_FORMAT_R8_UNORM:begin
+       ImageFormat:=VK_FORMAT_R8_UNORM;
+      end;
+      DXGI_FORMAT_R8_UINT:begin
+       ImageFormat:=VK_FORMAT_R8_UINT;
+      end;
+      DXGI_FORMAT_R8_SNORM:begin
+       ImageFormat:=VK_FORMAT_R8_SNORM;
+      end;
+      DXGI_FORMAT_R8_SINT:begin
+       ImageFormat:=VK_FORMAT_R8_SINT;
+      end;
+      DXGI_FORMAT_A8_UNORM:begin
+       ImageFormat:=VK_FORMAT_R8_UNORM;
+      end;
+      DXGI_FORMAT_R1_UNORM:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_R9G9B9E5_SHAREDEXP:begin
+       ImageFormat:=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
+      end;
+      DXGI_FORMAT_R8G8_B8G8_UNORM:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_G8R8_G8B8_UNORM:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_BC1_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC1_UNORM:begin
+       ImageFormat:=VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC1_UNORM_SRGB:begin
+       ImageFormat:=VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+      end;
+      DXGI_FORMAT_BC2_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC2_UNORM:begin
+       ImageFormat:=VK_FORMAT_BC2_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC2_UNORM_SRGB:begin
+       ImageFormat:=VK_FORMAT_BC2_SRGB_BLOCK;
+      end;
+      DXGI_FORMAT_BC3_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_BC2_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC3_UNORM:begin
+       ImageFormat:=VK_FORMAT_BC3_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC3_UNORM_SRGB:begin
+       ImageFormat:=VK_FORMAT_BC3_SRGB_BLOCK;
+      end;
+      DXGI_FORMAT_BC4_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_BC4_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC4_UNORM:begin
+       ImageFormat:=VK_FORMAT_BC4_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC4_SNORM:begin
+       ImageFormat:=VK_FORMAT_BC4_SNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC5_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_BC5_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC5_UNORM:begin
+       ImageFormat:=VK_FORMAT_BC5_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC5_SNORM:begin
+       ImageFormat:=VK_FORMAT_BC5_SNORM_BLOCK;
+      end;
+      DXGI_FORMAT_B5G6R5_UNORM:begin
+       ImageFormat:=VK_FORMAT_B5G6R5_UNORM_PACK16;
+      end;
+      DXGI_FORMAT_B5G5R5A1_UNORM:begin
+       ImageFormat:=VK_FORMAT_B5G5R5A1_UNORM_PACK16;
+      end;
+      DXGI_FORMAT_B8G8R8A8_UNORM:begin
+       ImageFormat:=VK_FORMAT_B8G8R8A8_UNORM;
+      end;
+      DXGI_FORMAT_B8G8R8X8_UNORM:begin
+       ImageFormat:=VK_FORMAT_B8G8R8_UNORM;
+      end;
+      DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_B8G8R8A8_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_B8G8R8A8_UINT;
+      end;
+      DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:begin
+       ImageFormat:=VK_FORMAT_B8G8R8A8_SRGB;
+      end;
+      DXGI_FORMAT_B8G8R8X8_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_B8G8R8_UINT;
+      end;
+      DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:begin
+       ImageFormat:=VK_FORMAT_B8G8R8_SRGB;
+      end;
+      DXGI_FORMAT_BC6H_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_BC6H_UFLOAT_BLOCK;
+      end;
+      DXGI_FORMAT_BC6H_UF16:begin
+       ImageFormat:=VK_FORMAT_BC6H_UFLOAT_BLOCK;
+      end;
+      DXGI_FORMAT_BC6H_SF16:begin
+       ImageFormat:=VK_FORMAT_BC6H_SFLOAT_BLOCK;
+      end;
+      DXGI_FORMAT_BC7_TYPELESS:begin
+       ImageFormat:=VK_FORMAT_BC7_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC7_UNORM:begin
+       ImageFormat:=VK_FORMAT_BC7_UNORM_BLOCK;
+      end;
+      DXGI_FORMAT_BC7_UNORM_SRGB:begin
+       ImageFormat:=VK_FORMAT_BC7_SRGB_BLOCK;
+      end;
+      DXGI_FORMAT_AYUV:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_Y410:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_Y416:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_NV12:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_P010:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_P016:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_420_OPAQUE:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_YUY2:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_Y210:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_Y216:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_NV11:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_AI44:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_IA44:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;                                                
+      DXGI_FORMAT_P8:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_A8P8:begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+      DXGI_FORMAT_B4G4R4A4_UNORM:begin
+       ImageFormat:=VK_FORMAT_B4G4R4A4_UNORM_PACK16;
+      end;
+      else begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+     end;
+     ImageArrayElements:=HeaderDX10.ArraySize;
+    end;
+   end;
+  end else begin
+   case Header.PixelFormat.dwRGBBitCount of
+    8:begin
+     if (Header.PixelFormat.dwFlags and DDPF_INDEXED)<>0 then begin
+      ImageFormat:=VK_FORMAT_UNDEFINED;
+     end else begin
+      if ((Header.PixelFormat.dwFlags and DDPF_LUMINANCE)<>0) or
+                  (Header.PixelFormat.dwRBitMask=$000000ff) and
+                  (Header.PixelFormat.dwGBitMask=$00000000) and
+                  (Header.PixelFormat.dwBBitMask=$00000000) and
+                  (Header.PixelFormat.dwABitMask=$00000000) then begin
+       ImageFormat:=VK_FORMAT_R8_UNORM;
+      end else if ((Header.PixelFormat.dwFlags and DDPF_ALPHA)<>0) or
+                  (Header.PixelFormat.dwRBitMask=$000000ff) and
+                  (Header.PixelFormat.dwGBitMask=$00000000) and
+                  (Header.PixelFormat.dwBBitMask=$00000000) and
+                  (Header.PixelFormat.dwABitMask=$00000000) then begin
+       ImageFormat:=VK_FORMAT_R8_UNORM;
+      end else begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+      end;
+     end;
+    end;
+    16:begin
+     if ((Header.PixelFormat.dwFlags and DDPF_RGB)<>0) and
+        (Header.PixelFormat.dwRBitMask=$0000f800) and
+        (Header.PixelFormat.dwGBitMask=$000007e0) and
+        (Header.PixelFormat.dwBBitMask=$0000001f) and
+        (Header.PixelFormat.dwABitMask=$00000000) then begin
+      ImageFormat:=VK_FORMAT_B5G6R5_UNORM_PACK16;
+     end else if ((Header.PixelFormat.dwFlags and DDPF_RGB)<>0) and
+                 (Header.PixelFormat.dwRBitMask=$00007c00) and
+                 (Header.PixelFormat.dwGBitMask=$000003e0) and
+                 (Header.PixelFormat.dwBBitMask=$0000001f) and
+                 (Header.PixelFormat.dwABitMask=$00008000) then begin
+      ImageFormat:=VK_FORMAT_B5G5R5A1_UNORM_PACK16;
+     end else if ((Header.PixelFormat.dwFlags and DDPF_RGB)<>0) and
+                 (Header.PixelFormat.dwRBitMask=$00000f00) and
+                 (Header.PixelFormat.dwGBitMask=$000000f0) and
+                 (Header.PixelFormat.dwBBitMask=$0000000f) and
+                 (Header.PixelFormat.dwABitMask=$0000f000) then begin
+      ImageFormat:=VK_FORMAT_B4G4R4A4_UNORM_PACK16;
+     end else if (Header.PixelFormat.dwRBitMask=$000000ff) and
+                 (Header.PixelFormat.dwGBitMask=$00000000) and
+                 (Header.PixelFormat.dwBBitMask=$00000000) and
+                 (Header.PixelFormat.dwABitMask=$0000ff00) then begin
+       ImageFormat:=VK_FORMAT_UNDEFINED;
+     end else if (Header.PixelFormat.dwRBitMask=$0000ffff) or
+                 (Header.PixelFormat.dwGBitMask=$0000ffff) or
+                 (Header.PixelFormat.dwBBitMask=$0000ffff) or
+                 (Header.PixelFormat.dwABitMask=$0000ffff) then begin
+      ImageFormat:=VK_FORMAT_R16_UNORM;
+      end else if ((Header.PixelFormat.dwFlags and DDPF_LUMINANCE)<>0) or
+                  (Header.PixelFormat.dwRBitMask=$0000ffff) and
+                  (Header.PixelFormat.dwGBitMask=$00000000) and
+                  (Header.PixelFormat.dwBBitMask=$00000000) and
+                  (Header.PixelFormat.dwABitMask=$00000000) then begin
+       ImageFormat:=VK_FORMAT_R16_UNORM;
+      end else if ((Header.PixelFormat.dwFlags and DDPF_LUMINANCE)<>0) or
+                  (Header.PixelFormat.dwRBitMask=$000000ff) and
+                  (Header.PixelFormat.dwGBitMask=$00000000) and
+                  (Header.PixelFormat.dwBBitMask=$00000000) and
+                  (Header.PixelFormat.dwABitMask=$0000ff00) then begin
+       ImageFormat:=VK_FORMAT_R8G8_UNORM;
+     end;
+    end;
+    24:begin
+     if ((Header.PixelFormat.dwFlags and DDPF_RGB)<>0) and
+        (Header.PixelFormat.dwRBitMask=$00ff0000) and
+        (Header.PixelFormat.dwGBitMask=$0000ff00) and
+        (Header.PixelFormat.dwBBitMask=$000000ff) then begin
+      ImageFormat:=VK_FORMAT_B8G8R8_UNORM;
+     end else if ((Header.PixelFormat.dwFlags and DDPF_RGB)<>0) and
+                 (Header.PixelFormat.dwRBitMask=$000000ff) and
+                 (Header.PixelFormat.dwGBitMask=$0000ff00) and
+                 (Header.PixelFormat.dwBBitMask=$00ff0000) then begin
+      ImageFormat:=VK_FORMAT_R8G8B8_UNORM;
+     end;
+    end;
+    32:begin
+     if ((Header.PixelFormat.dwFlags and DDPF_RGB)<>0) and
+        (Header.PixelFormat.dwRBitMask=$00ff0000) and
+        (Header.PixelFormat.dwGBitMask=$0000ff00) and
+        (Header.PixelFormat.dwBBitMask=$000000ff) and
+        (Header.PixelFormat.dwABitMask=$ff000000) then begin
+      ImageFormat:=VK_FORMAT_B8G8R8A8_UNORM;
+     end else if ((Header.PixelFormat.dwFlags and DDPF_RGB)<>0) and
+                 (Header.PixelFormat.dwRBitMask=$000000ff) and
+                 (Header.PixelFormat.dwGBitMask=$0000ff00) and
+                 (Header.PixelFormat.dwBBitMask=$00ff0000) and
+                 (Header.PixelFormat.dwABitMask=$ff000000) then begin
+      ImageFormat:=VK_FORMAT_R8G8B8A8_UNORM;
+     end else if ((Header.PixelFormat.dwFlags and DDPF_RGB)<>0) and
+                 (Header.PixelFormat.dwRBitMask=$000003ff) and
+                 (Header.PixelFormat.dwGBitMask=$000ffc00) and
+                 (Header.PixelFormat.dwBBitMask=$3ff00000) and
+                 (Header.PixelFormat.dwABitMask=$c0000000) then begin
+      ImageFormat:=VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+     end else if ((Header.PixelFormat.dwFlags and DDPF_RGB)<>0) and
+                 (Header.PixelFormat.dwRBitMask=$0000ffff) and
+                 (Header.PixelFormat.dwGBitMask=$fff00000) and
+                 (Header.PixelFormat.dwBBitMask=$00000000) and
+                 (Header.PixelFormat.dwABitMask=$00000000) then begin
+      ImageFormat:=VK_FORMAT_R16G16_UNORM;
+     end else if ((Header.PixelFormat.dwFlags and DDPF_RGB)<>0) and
+                 (Header.PixelFormat.dwRBitMask=$ffffffff) and
+                 (Header.PixelFormat.dwGBitMask=$00000000) and
+                 (Header.PixelFormat.dwBBitMask=$00000000) and
+                 (Header.PixelFormat.dwABitMask=$00000000) then begin
+      ImageFormat:=VK_FORMAT_R32_SFLOAT;
+     end;
+    end;
+   end;
+  end;
+ end;
+ if ImageFormat=VK_FORMAT_UNDEFINED then begin
+  raise EVulkanTextureException.Create('Invalid DDS stream');
+ end;
+ if (ImageDepth>1) and not IsVolume then begin
+  raise EVulkanTextureException.Create('Invalid DDS stream');
+ end;
+ DataSize:=pStream.Size-pStream.Position;
+ GetMem(Data,DataSize);
+ try
+  if pStream.Read(Data^,DataSize)<>DataSize then begin
+   raise EVulkanTextureException.Create('Stream read error');
+  end;
+  CreateFromMemory(pDevice,
+                   pQueue,
+                   pFence,
+                   pCommandBuffer,
+                   ImageFormat,
+                   VK_SAMPLE_COUNT_1_BIT,
+                   Max(1,ImageWidth),
+                   Max(1,ImageHeight),
+                   Max(1,ImageDepth),
+                   ImageArrayElements,
+                   ImageFaces,
+                   ImageMipMaps,
+                   [vtufSampled],
+                   Data,
+                   DataSize,
+                   false,
+                   false,
+                   1,
+                   true);
+ finally
+  FreeMem(Data);
+ end;     
+end;
+                   
 constructor TVulkanTexture.CreateDefault(const pDevice:TVulkanDevice;
                                          const pQueue:TVulkanQueue;
                                          const pFence:TVulkanFence;
@@ -15270,7 +16112,8 @@ begin
                    DataSize,
                    false,
                    false,
-                   1);
+                   1,
+                   false);
 
  finally
   SetLength(Data,0);
