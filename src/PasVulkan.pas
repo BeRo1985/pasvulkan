@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-16-03-30-0000                       *
+ *                        Version 2016-08-26-03-42-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2462,6 +2462,10 @@ const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling
         VK_IMAGE_TILING_LINEAR   // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
        );
 
+function VulkanGetFormatFromOpenGLFormat(const pFormat,pType:TVkUInt32):TVkFormat;
+function VulkanGetFormatFromOpenGLType(const pType,pNumComponents:TVkUInt32;const pNormalized:boolean):TVkFormat;
+function VulkanGetFormatFromOpenGLInternalFormat(const pInternalFormat:TVkUInt32):TVkFormat;
+
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
 
 function VulkanErrorToString(const ErrorCode:TVkResult):TVulkanCharString;
@@ -2488,6 +2492,1969 @@ const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
       CELL_DELETED=-2;
       ENT_EMPTY=-1;
       ENT_DELETED=-2;
+
+      GL_INVALID_VALUE=$0501;
+      GL_RED=$1903; // same as GL_RED_EXT
+      GL_GREEN=$1904; // deprecated
+      GL_BLUE=$1905; // deprecated
+      GL_ALPHA=$1906; // deprecated
+      GL_LUMINANCE=$1909; // deprecated
+      GL_SLUMINANCE=$8c46; // deprecated, same as GL_SLUMINANCE_EXT
+      GL_LUMINANCE_ALPHA=$190a; // deprecated
+      GL_SLUMINANCE_ALPHA=$8c44; // deprecated, same as GL_SLUMINANCE_ALPHA_EXT
+      GL_INTENSITY=$8049; // deprecated, same as GL_INTENSITY_EXT
+      GL_RG=$8227; // same as GL_RG_EXT
+      GL_RGB=$1907;
+      GL_BGR=$80e0; // same as GL_BGR_EXT
+      GL_RGBA=$1908;
+      GL_BGRA=$80e1; // same as GL_BGRA_EXT
+      GL_RED_INTEGER=$8d94; // same as GL_RED_INTEGER_EXT
+      GL_GREEN_INTEGER=$8d95; // deprecated, same as GL_GREEN_INTEGER_EXT
+      GL_BLUE_INTEGER=$8d96; // deprecated, same as GL_BLUE_INTEGER_EXT
+      GL_ALPHA_INTEGER=$8d97; // deprecated, same as GL_ALPHA_INTEGER_EXT
+      GL_LUMINANCE_INTEGER=$8d9c; // deprecated, same as GL_LUMINANCE_INTEGER_EXT
+      GL_LUMINANCE_ALPHA_INTEGER=$8d9d; // deprecated, same as GL_LUMINANCE_ALPHA_INTEGER_EXT
+      GL_RG_INTEGER=$8228; // same as GL_RG_INTEGER_EXT
+      GL_RGB_INTEGER=$8d98; // same as GL_RGB_INTEGER_EXT
+      GL_BGR_INTEGER=$8d9a; // same as GL_BGR_INTEGER_EXT
+      GL_RGBA_INTEGER=$8d99; // same as GL_RGBA_INTEGER_EXT
+      GL_BGRA_INTEGER=$8d9b; // same as GL_BGRA_INTEGER_EXT
+      GL_COLOR_INDEX=$1900; // deprecated
+      GL_STENCIL_INDEX=$1901;
+      GL_DEPTH_COMPONENT=$1902;
+      GL_DEPTH_STENCIL=$84f9; // same as GL_DEPTH_STENCIL_NV and GL_DEPTH_STENCIL_EXT and GL_DEPTH_STENCIL_OES
+      GL_BYTE=$1400;
+      GL_UNSIGNED_BYTE=$1401;
+      GL_SHORT=$1402;
+      GL_UNSIGNED_SHORT=$1403;
+      GL_INT=$1404;
+      GL_UNSIGNED_INT=$1405;
+      GL_INT64=$140e; // same as GL_INT64_NV and GL_INT64_ARB
+      GL_UNSIGNED_INT64=$140f; // same as GL_UNSIGNED_INT64_NV and GL_UNSIGNED_INT64_ARB
+      GL_HALF_FLOAT=$140b; // same as GL_HALF_FLOAT_NV and GL_HALF_FLOAT_ARB
+      GL_HALF_FLOAT_OES=$8d61; // Note that this different from GL_HALF_FLOAT.
+      GL_FLOAT=$1406;
+      GL_DOUBLE=$140a; // same as GL_DOUBLE_EXT
+      GL_UNSIGNED_BYTE_3_3_2=$8032; // same as GL_UNSIGNED_BYTE_3_3_2_EXT
+      GL_UNSIGNED_BYTE_2_3_3_REV=$8362; // same as GL_UNSIGNED_BYTE_2_3_3_REV_EXT
+      GL_UNSIGNED_SHORT_5_6_5=$8363; // same as GL_UNSIGNED_SHORT_5_6_5_EXT
+      GL_UNSIGNED_SHORT_5_6_5_REV=$8364; // same as GL_UNSIGNED_SHORT_5_6_5_REV_EXT
+      GL_UNSIGNED_SHORT_4_4_4_4=$8033; // same as GL_UNSIGNED_SHORT_4_4_4_4_EXT
+      GL_UNSIGNED_SHORT_4_4_4_4_REV=$8365; // same as GL_UNSIGNED_SHORT_4_4_4_4_REV_IMG and GL_UNSIGNED_SHORT_4_4_4_4_REV_EXT
+      GL_UNSIGNED_SHORT_5_5_5_1=$8034; // same as GL_UNSIGNED_SHORT_5_5_5_1_EXT
+      GL_UNSIGNED_SHORT_1_5_5_5_REV=$8366; // same as GL_UNSIGNED_SHORT_1_5_5_5_REV_EXT
+      GL_UNSIGNED_INT_8_8_8_8=$8035; // same as GL_UNSIGNED_INT_8_8_8_8_EXT
+      GL_UNSIGNED_INT_8_8_8_8_REV=$8367; // same as GL_UNSIGNED_INT_8_8_8_8_REV_EXT
+      GL_UNSIGNED_INT_10_10_10_2=$8036; // same as GL_UNSIGNED_INT_10_10_10_2_EXT
+      GL_UNSIGNED_INT_2_10_10_10_REV=$8368; // same as GL_UNSIGNED_INT_2_10_10_10_REV_EXT
+      GL_UNSIGNED_INT_10F_11F_11F_REV=$8c3b; // same as GL_UNSIGNED_INT_10F_11F_11F_REV_EXT
+      GL_UNSIGNED_INT_5_9_9_9_REV=$8c3e; // same as GL_UNSIGNED_INT_5_9_9_9_REV_EXT
+      GL_UNSIGNED_INT_24_8=$84fa; // same as GL_UNSIGNED_INT_24_8_NV and GL_UNSIGNED_INT_24_8_EXT and GL_UNSIGNED_INT_24_8_OES
+      GL_FLOAT_32_UNSIGNED_INT_24_8_REV=$8dad; // same as GL_FLOAT_32_UNSIGNED_INT_24_8_REV_NV and GL_FLOAT_32_UNSIGNED_INT_24_8_REV_ARB
+      GL_R8=$8229; // same as GL_R8_EXT
+      GL_RG8=$822b; // same as GL_RG8_EXT
+      GL_RGB8=$8051; // same as GL_RGB8_EXT and GL_RGB8_OES
+      GL_RGBA8=$8058; // same as GL_RGBA8_EXT and GL_RGBA8_OES
+      GL_R8_SNORM=$8f94;
+      GL_RG8_SNORM=$8f95;
+      GL_RGB8_SNORM=$8f96;
+      GL_RGBA8_SNORM=$8f97;
+      GL_R8UI=$8232;
+      GL_RG8UI=$8238;
+      GL_RGB8UI=$8d7d; // same as GL_RGB8UI_EXT
+      GL_RGBA8UI=$8d7c; // same as GL_RGBA8UI_EXT
+      GL_R8I=$8231;
+      GL_RG8I=$8237;
+      GL_RGB8I=$8d8f; // same as GL_RGB8I_EXT
+      GL_RGBA8I=$8d8e; // same as GL_RGBA8I_EXT
+      GL_SR8=$8fbd; // same as GL_SR8_EXT
+      GL_SRG8=$8fbe; // same as GL_SRG8_EXT
+      GL_SRGB8=$8c41; // same as GL_SRGB8_EXT
+      GL_SRGB8_ALPHA8=$8c43; // same as GL_SRGB8_ALPHA8_EXT
+      GL_R16=$822a; // same as GL_R16_EXT
+      GL_RG16=$822c; // same as GL_RG16_EXT
+      GL_RGB16=$8054; // same as GL_RGB16_EXT
+      GL_RGBA16=$805b; // same as GL_RGBA16_EXT
+      GL_R16_SNORM=$8f98; // same as GL_R16_SNORM_EXT
+      GL_RG16_SNORM=$8f99; // same as GL_RG16_SNORM_EXT
+      GL_RGB16_SNORM=$8f9a; // same as GL_RGB16_SNORM_EXT
+      GL_RGBA16_SNORM=$8f9b; // same as GL_RGBA16_SNORM_EXT
+      GL_R16UI=$8234;
+      GL_RG16UI=$823a;
+      GL_RGB16UI=$8d77; // same as GL_RGB16UI_EXT
+      GL_RGBA16UI=$8d76; // same as GL_RGBA16UI_EXT
+      GL_R16I=$8233;
+      GL_RG16I=$8239;
+      GL_RGB16I=$8d89; // same as GL_RGB16I_EXT
+      GL_RGBA16I=$8d88; // same as GL_RGBA16I_EXT
+      GL_R16F=$822d; // same as GL_R16F_EXT
+      GL_RG16F=$822f; // same as GL_RG16F_EXT
+      GL_RGB16F=$881b; // same as GL_RGB16F_EXT and GL_RGB16F_ARB
+      GL_RGBA16F=$881a; // sama as GL_RGBA16F_EXT and GL_RGBA16F_ARB
+      GL_R32UI=$8236;
+      GL_RG32UI=$823c;
+      GL_RGB32UI=$8d71; // same as GL_RGB32UI_EXT
+      GL_RGBA32UI=$8d70; // same as GL_RGBA32UI_EXT
+      GL_R32I=$8235;
+      GL_RG32I=$823b;
+      GL_RGB32I=$8d83; // same as GL_RGB32I_EXT
+      GL_RGBA32I=$8d82; // same as GL_RGBA32I_EXT
+      GL_R32F=$822e; // same as GL_R32F_EXT
+      GL_RG32F=$8230; // same as GL_RG32F_EXT
+      GL_RGB32F=$8815; // same as GL_RGB32F_EXT and GL_RGB32F_ARB
+      GL_RGBA32F=$8814; // same as GL_RGBA32F_EXT and GL_RGBA32F_ARB
+      GL_R3_G3_B2=$2a10;
+      GL_RGB4=$804f; // same as GL_RGB4_EXT
+      GL_RGB5=$8050; // same as GL_RGB5_EXT
+      GL_RGB565=$8d62; // same as GL_RGB565_EXT and GL_RGB565_OES
+      GL_RGB10=$8052; // same as GL_RGB10_EXT
+      GL_RGB12=$8053; // same as GL_RGB12_EXT
+      GL_RGBA2=$8055; // same as GL_RGBA2_EXT
+      GL_RGBA4=$8056; // same as GL_RGBA4_EXT and GL_RGBA4_OES
+      GL_RGBA12=$805a; // same as GL_RGBA12_EXT
+      GL_RGB5_A1=$8057; // same as GL_RGB5_A1_EXT and GL_RGB5_A1_OES
+      GL_RGB10_A2=$8059; // same as GL_RGB10_A2_EXT
+      GL_RGB10_A2UI=$906f;
+      GL_R11F_G11F_B10F=$8c3a; // same as GL_R11F_G11F_B10F_APPLE and GL_R11F_G11F_B10F_EXT
+      GL_RGB9_E5=$8c3d; // same as GL_RGB9_E5_APPLE and GL_RGB9_E5_EXT
+      GL_ALPHA4=$803b; // deprecated, same as GL_ALPHA4_EXT
+      GL_ALPHA8=$803c; // deprecated, same as GL_ALPHA8_EXT
+      GL_ALPHA8_SNORM=$9014; // deprecated
+      GL_ALPHA8UI_EXT=$8d7e; // deprecated
+      GL_ALPHA8I_EXT=$8d90; // deprecated
+      GL_ALPHA12=$803d; // deprecated, same as GL_ALPHA12_EXT
+      GL_ALPHA16=$803e; // deprecated, same as GL_ALPHA16_EXT
+      GL_ALPHA16_SNORM=$9018; // deprecated
+      GL_ALPHA16UI_EXT=$8d78; // deprecated
+      GL_ALPHA16I_EXT=$8d8a; // deprecated
+      GL_ALPHA16F_ARB=$881c; // deprecated, same as GL_ALPHA_FLOAT16_APPLE and GL_ALPHA_FLOAT16_ATI
+      GL_ALPHA32UI_EXT=$8d72; // deprecated
+      GL_ALPHA32I_EXT=$8d84; // deprecated
+      GL_ALPHA32F_ARB=$8816; // deprecated, same as GL_ALPHA_FLOAT32_APPLE and GL_ALPHA_FLOAT32_ATI
+      GL_LUMINANCE4=$803f; // deprecated, same as GL_LUMINANCE4_EXT
+      GL_LUMINANCE8=$8040; // deprecated, same as GL_LUMINANCE8_EXT
+      GL_LUMINANCE8_SNORM=$9015; // deprecated
+      GL_SLUMINANCE8=$8c47; // deprecated, same as GL_SLUMINANCE8_EXT
+      GL_LUMINANCE8UI_EXT=$8d80; // deprecated
+      GL_LUMINANCE8I_EXT=$8d92; // deprecated
+      GL_LUMINANCE12=$8041; // deprecated, same as GL_LUMINANCE12_EXT
+      GL_LUMINANCE16=$8042; // deprecated, same as GL_LUMINANCE16_EXT
+      GL_LUMINANCE16_SNORM=$9019; // deprecated
+      GL_LUMINANCE16UI_EXT=$8d7a; // deprecated
+      GL_LUMINANCE16I_EXT=$8d8c; // deprecated
+      GL_LUMINANCE16F_ARB=$881e; // deprecated, same as GL_LUMINANCE_FLOAT16_APPLE and GL_LUMINANCE_FLOAT16_ATI
+      GL_LUMINANCE32UI_EXT=$8d74; // deprecated
+      GL_LUMINANCE32I_EXT=$8d86; // deprecated
+      GL_LUMINANCE32F_ARB=$8818; // deprecated, same as GL_LUMINANCE_FLOAT32_APPLE and GL_LUMINANCE_FLOAT32_ATI
+      GL_LUMINANCE4_ALPHA4=$8043; // deprecated, same as GL_LUMINANCE4_ALPHA4_EXT
+      GL_LUMINANCE6_ALPHA2=$8044; // deprecated, same as GL_LUMINANCE6_ALPHA2_EXT
+      GL_LUMINANCE8_ALPHA8=$8045; // deprecated, same as GL_LUMINANCE8_ALPHA8_EXT
+      GL_LUMINANCE8_ALPHA8_SNORM=$9016; // deprecated
+      GL_SLUMINANCE8_ALPHA8=$8c45; // deprecated, same as GL_SLUMINANCE8_ALPHA8_EXT
+      GL_LUMINANCE_ALPHA8UI_EXT=$8d81; // deprecated
+      GL_LUMINANCE_ALPHA8I_EXT=$8d93; // deprecated
+      GL_LUMINANCE12_ALPHA4=$8046; // deprecated, same as GL_LUMINANCE12_ALPHA4_EXT
+      GL_LUMINANCE12_ALPHA12=$8047; // deprecated, same as GL_LUMINANCE12_ALPHA12_EXT
+      GL_LUMINANCE16_ALPHA16=$8048; // deprecated, same as GL_LUMINANCE16_ALPHA16_EXT
+      GL_LUMINANCE16_ALPHA16_SNORM=$901a; // deprecated
+      GL_LUMINANCE_ALPHA16UI_EXT=$8d7b; // deprecated
+      GL_LUMINANCE_ALPHA16I_EXT=$8d8d; // deprecated
+      GL_LUMINANCE_ALPHA16F_ARB=$881f; // deprecated, same as GL_LUMINANCE_ALPHA_FLOAT16_APPLE and GL_LUMINANCE_ALPHA_FLOAT16_ATI
+      GL_LUMINANCE_ALPHA32UI_EXT=$8d75; // deprecated
+      GL_LUMINANCE_ALPHA32I_EXT=$8d87; // deprecated
+      GL_LUMINANCE_ALPHA32F_ARB=$8819; // deprecated, same as GL_LUMINANCE_ALPHA_FLOAT32_APPLE and GL_LUMINANCE_ALPHA_FLOAT32_ATI
+      GL_INTENSITY4=$804a; // deprecated, same as GL_INTENSITY4_EXT
+      GL_INTENSITY8=$804b; // deprecated, same as GL_INTENSITY8_EXT
+      GL_INTENSITY8_SNORM=$9017; // deprecated
+      GL_INTENSITY8UI_EXT=$8d7f; // deprecated
+      GL_INTENSITY8I_EXT=$8d91; // deprecated
+      GL_INTENSITY12=$804c; // deprecated, same as GL_INTENSITY12_EXT
+      GL_INTENSITY16=$804d; // deprecated, same as GL_INTENSITY16_EXT
+      GL_INTENSITY16_SNORM=$901b; // deprecated
+      GL_INTENSITY16UI_EXT=$8d79; // deprecated
+      GL_INTENSITY16I_EXT=$8d8b; // deprecated
+      GL_INTENSITY16F_ARB=$881d; // deprecated, same as GL_INTENSITY_FLOAT16_APPLE and GL_INTENSITY_FLOAT16_ATI
+      GL_INTENSITY32UI_EXT=$8d73; // deprecated
+      GL_INTENSITY32I_EXT=$8d85; // deprecated
+      GL_INTENSITY32F_ARB=$8817; // deprecated, same as GL_INTENSITY_FLOAT32_APPLE and GL_INTENSITY_FLOAT32_ATI
+      GL_COMPRESSED_RED=$8225;
+      GL_COMPRESSED_ALPHA=$84e9; // deprecated, same as GL_COMPRESSED_ALPHA_ARB
+      GL_COMPRESSED_LUMINANCE=$84ea; // deprecated, same as GL_COMPRESSED_LUMINANCE_ARB
+      GL_COMPRESSED_SLUMINANCE=$8c4a; // deprecated, same as GL_COMPRESSED_SLUMINANCE_EXT
+      GL_COMPRESSED_LUMINANCE_ALPHA=$84eb; // deprecated, same as GL_COMPRESSED_LUMINANCE_ALPHA_ARB
+      GL_COMPRESSED_SLUMINANCE_ALPHA=$8c4b; // deprecated, same as GL_COMPRESSED_SLUMINANCE_ALPHA_EXT
+      GL_COMPRESSED_INTENSITY=$84ec; // deprecated, same as GL_COMPRESSED_INTENSITY_ARB
+      GL_COMPRESSED_RG=$8226;
+      GL_COMPRESSED_RGB=$84ed; // same as GL_COMPRESSED_RGB_ARB
+      GL_COMPRESSED_RGBA=$84ee; // same as GL_COMPRESSED_RGBA_ARB
+      GL_COMPRESSED_SRGB=$8c48; // same as GL_COMPRESSED_SRGB_EXT
+      GL_COMPRESSED_SRGB_ALPHA=$8c49; // same as GL_COMPRESSED_SRGB_ALPHA_EXT
+      GL_COMPRESSED_RGB_FXT1_3DFX=$86b0; // deprecated
+      GL_COMPRESSED_RGBA_FXT1_3DFX=$86b1; // deprecated
+      GL_COMPRESSED_RGB_S3TC_DXT1_EXT=$83f0;
+      GL_COMPRESSED_RGBA_S3TC_DXT1_EXT=$83f1;
+      GL_COMPRESSED_RGBA_S3TC_DXT3_EXT=$83f2;
+      GL_COMPRESSED_RGBA_S3TC_DXT5_EXT=$83f3;
+      GL_COMPRESSED_SRGB_S3TC_DXT1_EXT=$8c4c;
+      GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT=$8c4d;
+      GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT=$8c4e;
+      GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT=$8c4f;
+      GL_COMPRESSED_LUMINANCE_LATC1_EXT=$8c70;
+      GL_COMPRESSED_LUMINANCE_ALPHA_LATC2_EXT=$8c72;
+      GL_COMPRESSED_SIGNED_LUMINANCE_LATC1_EXT=$8c71;
+      GL_COMPRESSED_SIGNED_LUMINANCE_ALPHA_LATC2_EXT=$8c73;
+      GL_COMPRESSED_RED_RGTC1=$8dbb; // same as GL_COMPRESSED_RED_RGTC1_EXT
+      GL_COMPRESSED_RG_RGTC2=$8dbd; // same as GL_COMPRESSED_RG_RGTC2_EXT
+      GL_COMPRESSED_SIGNED_RED_RGTC1=$8dbc; // same as GL_COMPRESSED_SIGNED_RED_RGTC1_EXT
+      GL_COMPRESSED_SIGNED_RG_RGTC2=$8dbe; // same as GL_COMPRESSED_SIGNED_RG_RGTC2_EXT
+      GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT=$8e8e; // same as GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT_ARB
+      GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT=$8e8f; // same as GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT_ARB
+      GL_COMPRESSED_RGBA_BPTC_UNORM=$8e8c; // same as GL_COMPRESSED_RGBA_BPTC_UNORM_ARB
+      GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM=$8e8d; // same as GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM_ARB
+      GL_ETC1_RGB8_OES=$8d64;
+      GL_COMPRESSED_RGB8_ETC2=$9274;
+      GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2=$9276;
+      GL_COMPRESSED_RGBA8_ETC2_EAC=$9278;
+      GL_COMPRESSED_SRGB8_ETC2=$9275;
+      GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2=$9277;
+      GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC=$9279;
+      GL_COMPRESSED_R11_EAC=$9270;
+      GL_COMPRESSED_RG11_EAC=$9272;
+      GL_COMPRESSED_SIGNED_R11_EAC=$9271;
+      GL_COMPRESSED_SIGNED_RG11_EAC=$9273;
+      GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG=$8c01;
+      GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG=$8c00;
+      GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG=$8c03;
+      GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG=$8c02;
+      GL_COMPRESSED_RGBA_PVRTC_2BPPV2_IMG=$9137;
+      GL_COMPRESSED_RGBA_PVRTC_4BPPV2_IMG=$9138;
+      GL_COMPRESSED_SRGB_PVRTC_2BPPV1_EXT=$8a54;
+      GL_COMPRESSED_SRGB_PVRTC_4BPPV1_EXT=$8a55;
+      GL_COMPRESSED_SRGB_ALPHA_PVRTC_2BPPV1_EXT=$8a56;
+      GL_COMPRESSED_SRGB_ALPHA_PVRTC_4BPPV1_EXT=$8a57;
+      GL_COMPRESSED_SRGB_ALPHA_PVRTC_2BPPV2_IMG=$93f0;
+      GL_COMPRESSED_SRGB_ALPHA_PVRTC_4BPPV2_IMG=$93f1;
+      GL_COMPRESSED_RGBA_ASTC_4x4_KHR=$93b0;
+      GL_COMPRESSED_RGBA_ASTC_5x4_KHR=$93b1;
+      GL_COMPRESSED_RGBA_ASTC_5x5_KHR=$93b2;
+      GL_COMPRESSED_RGBA_ASTC_6x5_KHR=$93b3;
+      GL_COMPRESSED_RGBA_ASTC_6x6_KHR=$93b4;
+      GL_COMPRESSED_RGBA_ASTC_8x5_KHR=$93b5;
+      GL_COMPRESSED_RGBA_ASTC_8x6_KHR=$93b6;
+      GL_COMPRESSED_RGBA_ASTC_8x8_KHR=$93b7;
+      GL_COMPRESSED_RGBA_ASTC_10x5_KHR=$93b8;
+      GL_COMPRESSED_RGBA_ASTC_10x6_KHR=$93b9;
+      GL_COMPRESSED_RGBA_ASTC_10x8_KHR=$93ba;
+      GL_COMPRESSED_RGBA_ASTC_10x10_KHR=$93bb;
+      GL_COMPRESSED_RGBA_ASTC_12x10_KHR=$93bc;
+      GL_COMPRESSED_RGBA_ASTC_12x12_KHR=$93bd;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR=$93d0;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4_KHR=$93d1;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5_KHR=$93d2;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5_KHR=$93d3;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6_KHR=$93d4;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR=$93d5;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR=$93d6;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR=$93d7;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR=$93d8;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6_KHR=$93d9;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8_KHR=$93da;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR=$93db;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR=$93dc;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR=$93dd;
+      GL_COMPRESSED_RGBA_ASTC_3x3x3_OES=$93c0;
+      GL_COMPRESSED_RGBA_ASTC_4x3x3_OES=$93c1;
+      GL_COMPRESSED_RGBA_ASTC_4x4x3_OES=$93c2;
+      GL_COMPRESSED_RGBA_ASTC_4x4x4_OES=$93c3;
+      GL_COMPRESSED_RGBA_ASTC_5x4x4_OES=$93c4;
+      GL_COMPRESSED_RGBA_ASTC_5x5x4_OES=$93c5;
+      GL_COMPRESSED_RGBA_ASTC_5x5x5_OES=$93c6;
+      GL_COMPRESSED_RGBA_ASTC_6x5x5_OES=$93c7;
+      GL_COMPRESSED_RGBA_ASTC_6x6x5_OES=$93c8;
+      GL_COMPRESSED_RGBA_ASTC_6x6x6_OES=$93c9;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_3x3x3_OES=$93e0;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x3x3_OES=$93e1;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4x3_OES=$93e2;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4x4_OES=$93e3;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4x4_OES=$93e4;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5x4_OES=$93e5;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5x5_OES=$93e6;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5x5_OES=$93e7;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6x5_OES=$93e8;
+      GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6x6_OES=$93e9;
+      GL_ATC_RGB_AMD=$8c92;
+      GL_ATC_RGBA_EXPLICIT_ALPHA_AMD=$8c93;
+      GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD=$87ee;
+      GL_PALETTE4_RGB8_OES=$8b90;
+      GL_PALETTE4_RGBA8_OES=$8b91;
+      GL_PALETTE4_R5_G6_B5_OES=$8b92;
+      GL_PALETTE4_RGBA4_OES=$8b93;
+      GL_PALETTE4_RGB5_A1_OES=$8b94;
+      GL_PALETTE8_RGB8_OES=$8b95;
+      GL_PALETTE8_RGBA8_OES=$8b96;
+      GL_PALETTE8_R5_G6_B5_OES=$8b97;
+      GL_PALETTE8_RGBA4_OES=$8b98;
+      GL_PALETTE8_RGB5_A1_OES=$8b99;
+      GL_COLOR_INDEX1_EXT=$80e2; // deprecated
+      GL_COLOR_INDEX2_EXT=$80e3; // deprecated
+      GL_COLOR_INDEX4_EXT=$80e4; // deprecated
+      GL_COLOR_INDEX8_EXT=$80e5; // deprecated
+      GL_COLOR_INDEX12_EXT=$80e6; // deprecated
+      GL_COLOR_INDEX16_EXT=$80e7; // deprecated
+      GL_DEPTH_COMPONENT16=$81a5; // same as GL_DEPTH_COMPONENT16_SGIX and GL_DEPTH_COMPONENT16_ARB
+      GL_DEPTH_COMPONENT24=$81a6; // same as GL_DEPTH_COMPONENT24_SGIX and GL_DEPTH_COMPONENT24_ARB
+      GL_DEPTH_COMPONENT32=$81a7; // same as GL_DEPTH_COMPONENT32_SGIX and GL_DEPTH_COMPONENT32_ARB and GL_DEPTH_COMPONENT32_OES
+      GL_DEPTH_COMPONENT32F=$8cac; // same as GL_DEPTH_COMPONENT32F_ARB
+      GL_DEPTH_COMPONENT32F_NV=$8dab; // Note that this different from GL_DEPTH_COMPONENT32F.
+      GL_STENCIL_INDEX1=$8d46; // same as GL_STENCIL_INDEX1_EXT
+      GL_STENCIL_INDEX4=$8d47; // same as GL_STENCIL_INDEX4_EXT
+      GL_STENCIL_INDEX8=$8d48; // same as GL_STENCIL_INDEX8_EXT
+      GL_STENCIL_INDEX16=$8d49; // same as GL_STENCIL_INDEX16_EXT
+      GL_DEPTH24_STENCIL8=$88f0; // same as GL_DEPTH24_STENCIL8_EXT and GL_DEPTH24_STENCIL8_OES
+      GL_DEPTH32F_STENCIL8=$8cad; // same as GL_DEPTH32F_STENCIL8_ARB
+      GL_DEPTH32F_STENCIL8_NV=$8dac; // Note that this different from GL_DEPTH32F_STENCIL8.
+
+function VulkanGetFormatFromOpenGLFormat(const pFormat,pType:TVkUInt32):TVkFormat;
+begin
+ case pType of
+  GL_UNSIGNED_BYTE:begin
+   case pFormat of
+    GL_RED:begin
+     result:=VK_FORMAT_R8_UNORM;
+    end;
+    GL_RG:begin
+     result:=VK_FORMAT_R8G8_UNORM;
+    end;
+    GL_RGB:begin
+     result:=VK_FORMAT_R8G8B8_UNORM;
+    end;
+    GL_BGR:begin
+     result:=VK_FORMAT_B8G8R8_UNORM;
+    end;
+    GL_RGBA:begin
+     result:=VK_FORMAT_R8G8B8A8_UNORM;
+    end;
+    GL_BGRA:begin
+     result:=VK_FORMAT_B8G8R8A8_UNORM;
+    end;
+    GL_RED_INTEGER:begin
+     result:=VK_FORMAT_R8_UINT;
+    end;
+    GL_RG_INTEGER:begin
+     result:=VK_FORMAT_R8G8_UINT;
+    end;
+    GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_R8G8B8_UINT;
+    end;
+    GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_B8G8R8_UINT;
+    end;
+    GL_RGBA_INTEGER:begin
+     result:=VK_FORMAT_R8G8B8A8_UINT;
+    end;
+    GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_B8G8R8A8_UINT;
+    end;
+    GL_STENCIL_INDEX:begin
+     result:=VK_FORMAT_S8_UINT;
+    end;
+    GL_DEPTH_COMPONENT:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_BYTE:begin
+   case pFormat of
+    GL_RED:begin
+     result:=VK_FORMAT_R8_SNORM;
+    end;
+    GL_RG:begin
+     result:=VK_FORMAT_R8G8_SNORM;
+    end;
+    GL_RGB:begin
+     result:=VK_FORMAT_R8G8B8_SNORM;
+    end;
+    GL_BGR:begin
+     result:=VK_FORMAT_B8G8R8_SNORM;
+    end;
+    GL_RGBA:begin
+     result:=VK_FORMAT_R8G8B8A8_SNORM;
+    end;
+    GL_BGRA:begin
+     result:=VK_FORMAT_B8G8R8A8_SNORM;
+    end;
+    GL_RED_INTEGER:begin
+     result:=VK_FORMAT_R8_SINT;
+    end;
+    GL_RG_INTEGER:begin
+     result:=VK_FORMAT_R8G8_SINT;
+    end;
+    GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_R8G8B8_SINT;
+    end;
+    GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_B8G8R8_SINT;
+    end;
+    GL_RGBA_INTEGER:begin
+     result:=VK_FORMAT_R8G8B8A8_SINT;
+    end;
+    GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_B8G8R8A8_SINT;
+    end;
+    GL_STENCIL_INDEX:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_COMPONENT:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_SHORT:begin
+   case pFormat of
+    GL_RED:begin
+     result:=VK_FORMAT_R16_UNORM;
+    end;
+    GL_RG:begin
+     result:=VK_FORMAT_R16G16_UNORM;
+    end;
+    GL_RGB:begin
+     result:=VK_FORMAT_R16G16B16_UNORM;
+    end;
+    GL_BGR:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA:begin
+     result:=VK_FORMAT_R16G16B16A16_UNORM;
+    end;
+    GL_BGRA:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RED_INTEGER:begin
+     result:=VK_FORMAT_R16_UINT;
+    end;
+    GL_RG_INTEGER:begin
+     result:=VK_FORMAT_R16G16_UINT;
+    end;
+    GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_R16G16B16_UINT;
+    end;
+    GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA_INTEGER:begin
+     result:=VK_FORMAT_R16G16B16A16_UINT;
+    end;
+    GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_STENCIL_INDEX:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_COMPONENT:begin
+     result:=VK_FORMAT_D16_UNORM;
+    end;
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_D16_UNORM_S8_UINT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_SHORT:begin
+   case pFormat of
+    GL_RED:begin
+     result:=VK_FORMAT_R16_SNORM;
+    end;
+    GL_RG:begin
+     result:=VK_FORMAT_R16G16_SNORM;
+    end;
+    GL_RGB:begin
+     result:=VK_FORMAT_R16G16B16_SNORM;
+    end;
+    GL_BGR:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA:begin
+     result:=VK_FORMAT_R16G16B16A16_SNORM;
+    end;
+    GL_BGRA:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RED_INTEGER:begin
+     result:=VK_FORMAT_R16_SINT;
+    end;
+    GL_RG_INTEGER:begin
+     result:=VK_FORMAT_R16G16_SINT;
+    end;
+    GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_R16G16B16_SINT;
+    end;
+    GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA_INTEGER:begin
+     result:=VK_FORMAT_R16G16B16A16_SINT;
+    end;
+    GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_STENCIL_INDEX:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_COMPONENT:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_HALF_FLOAT,GL_HALF_FLOAT_OES:begin
+   case pFormat of
+    GL_RED:begin
+     result:=VK_FORMAT_R16_SFLOAT;
+    end;
+    GL_RG:begin
+     result:=VK_FORMAT_R16G16_SFLOAT;
+    end;
+    GL_RGB:begin
+     result:=VK_FORMAT_R16G16B16_SFLOAT;
+    end;
+    GL_BGR:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA:begin
+     result:=VK_FORMAT_R16G16B16A16_SFLOAT;
+    end;
+    GL_BGRA:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RED_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RG_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_STENCIL_INDEX:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_COMPONENT:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_INT:begin
+   case pFormat of
+    GL_RED:begin
+     result:=VK_FORMAT_R32_UINT;
+    end;
+    GL_RG:begin
+     result:=VK_FORMAT_R32G32_UINT;
+    end;
+    GL_RGB:begin
+     result:=VK_FORMAT_R32G32B32_UINT;
+    end;
+    GL_BGR:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA:begin
+     result:=VK_FORMAT_R32G32B32A32_UINT;
+    end;
+    GL_BGRA:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RED_INTEGER:begin
+     result:=VK_FORMAT_R32_UINT;
+    end;
+    GL_RG_INTEGER:begin
+     result:=VK_FORMAT_R32G32_UINT;
+    end;
+    GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_R32G32B32_UINT;
+    end;
+    GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA_INTEGER:begin
+     result:=VK_FORMAT_R32G32B32A32_UINT;
+    end;
+    GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_STENCIL_INDEX:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_COMPONENT:begin
+     result:=VK_FORMAT_X8_D24_UNORM_PACK32;
+    end;
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_D24_UNORM_S8_UINT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_INT:begin
+   case pFormat of
+    GL_RED:begin
+     result:=VK_FORMAT_R32_SINT;
+    end;
+    GL_RG:begin
+     result:=VK_FORMAT_R32G32_SINT;
+    end;
+    GL_RGB:begin
+     result:=VK_FORMAT_R32G32B32_SINT;
+    end;
+    GL_BGR:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA:begin
+     result:=VK_FORMAT_R32G32B32A32_SINT;
+    end;
+    GL_BGRA:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RED_INTEGER:begin
+     result:=VK_FORMAT_R32_SINT;
+    end;
+    GL_RG_INTEGER:begin
+     result:=VK_FORMAT_R32G32_SINT;
+    end;
+    GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_R32G32B32_SINT;
+    end;
+    GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA_INTEGER:begin
+     result:=VK_FORMAT_R32G32B32A32_SINT;
+    end;
+    GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_STENCIL_INDEX:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_COMPONENT:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_FLOAT:begin
+   case pFormat of
+    GL_RED:begin
+     result:=VK_FORMAT_R32_SFLOAT;
+    end;
+    GL_RG:begin
+     result:=VK_FORMAT_R32G32_SFLOAT;
+    end;
+    GL_RGB:begin
+     result:=VK_FORMAT_R32G32B32_SFLOAT;
+    end;
+    GL_BGR:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA:begin
+     result:=VK_FORMAT_R32G32B32A32_SFLOAT;
+    end;
+    GL_BGRA:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RED_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RG_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_STENCIL_INDEX:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_COMPONENT:begin
+     result:=VK_FORMAT_D32_SFLOAT;
+    end;
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_D32_SFLOAT_S8_UINT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_INT64:begin
+   case pFormat of
+    GL_RED:begin
+     result:=VK_FORMAT_R64_UINT;
+    end;
+    GL_RG:begin
+     result:=VK_FORMAT_R64G64_UINT;
+    end;
+    GL_RGB:begin
+     result:=VK_FORMAT_R64G64B64_UINT;
+    end;
+    GL_BGR:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA:begin
+     result:=VK_FORMAT_R64G64B64A64_UINT;
+    end;
+    GL_BGRA:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RED_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RG_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_STENCIL_INDEX:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_COMPONENT:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_INT64:begin
+   case pFormat of
+    GL_RED:begin
+     result:=VK_FORMAT_R64_SINT;
+    end;
+    GL_RG:begin
+     result:=VK_FORMAT_R64G64_SINT;
+    end;
+    GL_RGB:begin
+     result:=VK_FORMAT_R64G64B64_SINT;
+    end;
+    GL_BGR:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA:begin
+     result:=VK_FORMAT_R64G64B64A64_SINT;
+    end;
+    GL_BGRA:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RED_INTEGER:begin
+     result:=VK_FORMAT_R64_SINT;
+    end;
+    GL_RG_INTEGER:begin
+     result:=VK_FORMAT_R64G64_SINT;
+    end;
+    GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_R64G64B64_SINT;
+    end;
+    GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA_INTEGER:begin
+     result:=VK_FORMAT_R64G64B64A64_SINT;
+    end;
+    GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_STENCIL_INDEX:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_COMPONENT:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_DOUBLE:begin
+   case pFormat of
+    GL_RED:begin
+     result:=VK_FORMAT_R64_SFLOAT;
+    end;
+    GL_RG:begin
+     result:=VK_FORMAT_R64G64_SFLOAT;
+    end;
+    GL_RGB:begin
+     result:=VK_FORMAT_R64G64B64_SFLOAT;
+    end;
+    GL_BGR:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA:begin
+     result:=VK_FORMAT_R64G64B64A64_SFLOAT;
+    end;
+    GL_BGRA:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RED_INTEGER:begin
+     result:=VK_FORMAT_R64_SFLOAT;
+    end;
+    GL_RG_INTEGER:begin
+     result:=VK_FORMAT_R64G64_SFLOAT;
+    end;
+    GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_R64G64B64_SFLOAT;
+    end;
+    GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_RGBA_INTEGER:begin
+     result:=VK_FORMAT_R64G64B64A64_SFLOAT;
+    end;
+    GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_STENCIL_INDEX:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_COMPONENT:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_BYTE_3_3_2:begin
+   result:=VK_FORMAT_UNDEFINED;
+  end;
+  GL_UNSIGNED_BYTE_2_3_3_REV:begin
+   result:=VK_FORMAT_UNDEFINED;
+  end;
+  GL_UNSIGNED_SHORT_5_6_5:begin
+   case pFormat of
+    GL_RGB,GL_RGB_INTEGER:begin
+     result:=VK_FORMAT_R5G6B5_UNORM_PACK16;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_SHORT_5_6_5_REV:begin
+   case pFormat of
+    GL_BGR,GL_BGR_INTEGER:begin
+     result:=VK_FORMAT_B5G6R5_UNORM_PACK16;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_SHORT_4_4_4_4:begin
+   case pFormat of
+    GL_RGB,GL_BGRA,GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_R4G4B4A4_UNORM_PACK16;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_SHORT_4_4_4_4_REV:begin
+   case pFormat of
+    GL_RGB,GL_BGRA,GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_B4G4R4A4_UNORM_PACK16;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_SHORT_5_5_5_1:begin
+   case pFormat of
+    GL_RGB,GL_BGRA,GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_R5G5B5A1_UNORM_PACK16;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_SHORT_1_5_5_5_REV:begin
+   case pFormat of
+    GL_RGB,GL_BGRA,GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_A1R5G5B5_UNORM_PACK16;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_INT_8_8_8_8:begin
+   case pFormat of
+    GL_RGB,GL_BGRA:begin
+     result:=VK_FORMAT_R8G8B8A8_UNORM;
+    end;
+    GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_R8G8B8A8_UINT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_INT_8_8_8_8_REV:begin
+   case pFormat of
+    GL_RGB,GL_BGRA:begin
+     result:=VK_FORMAT_A8B8G8R8_UNORM_PACK32;
+    end;
+    GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_A8B8G8R8_UINT_PACK32;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_INT_10_10_10_2:begin
+   case pFormat of
+    GL_RGB,GL_BGRA:begin
+     result:=VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+    end;
+    GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_A2R10G10B10_UINT_PACK32;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_INT_2_10_10_10_REV:begin
+   case pFormat of
+    GL_RGB,GL_BGRA:begin
+     result:=VK_FORMAT_A2B10G10R10_UINT_PACK32;
+    end;
+    GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
+     result:=VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_INT_10F_11F_11F_REV:begin
+   case pFormat of
+    GL_RGB,GL_BGR:begin
+     result:=VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_INT_5_9_9_9_REV:begin
+   case pFormat of
+    GL_RGB,GL_BGR:begin
+     result:=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_INT_24_8:begin
+   case pFormat of
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_D24_UNORM_S8_UINT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_FLOAT_32_UNSIGNED_INT_24_8_REV:begin
+   case pFormat of
+    GL_DEPTH_STENCIL:begin
+     result:=VK_FORMAT_D32_SFLOAT_S8_UINT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  else begin
+   result:=VK_FORMAT_UNDEFINED;
+  end;
+ end;
+end;
+
+function VulkanGetFormatFromOpenGLType(const pType,pNumComponents:TVkUInt32;const pNormalized:boolean):TVkFormat;
+begin
+ case pType of
+  GL_UNSIGNED_BYTE:begin
+   case pNumComponents of
+    1:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R8_UNORM;
+     end else begin
+      result:=VK_FORMAT_R8_UINT;
+     end;
+    end;
+    2:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R8G8_UNORM;
+     end else begin
+      result:=VK_FORMAT_R8G8_UINT;
+     end;
+    end;
+    3:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R8G8B8_UNORM;
+     end else begin
+      result:=VK_FORMAT_R8G8B8_UINT;
+     end;
+    end;
+    4:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R8G8B8A8_UNORM;
+     end else begin
+      result:=VK_FORMAT_R8G8B8A8_UINT;
+     end;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_BYTE:begin
+   case pNumComponents of
+    1:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R8_SNORM;
+     end else begin
+      result:=VK_FORMAT_R8_SINT;
+     end;
+    end;
+    2:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R8G8_SNORM;
+     end else begin
+      result:=VK_FORMAT_R8G8_SINT;
+     end;
+    end;
+    3:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R8G8B8_SNORM;
+     end else begin
+      result:=VK_FORMAT_R8G8B8_SINT;
+     end;
+    end;
+    4:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R8G8B8A8_SNORM;
+     end else begin
+      result:=VK_FORMAT_R8G8B8A8_SINT;
+     end;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_SHORT:begin
+   case pNumComponents of
+    1:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R16_UNORM;
+     end else begin
+      result:=VK_FORMAT_R16_UINT;
+     end;
+    end;
+    2:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R16G16_UNORM;
+     end else begin
+      result:=VK_FORMAT_R16G16_UINT;
+     end;
+    end;
+    3:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R16G16B16_UNORM;
+     end else begin
+      result:=VK_FORMAT_R16G16B16_UINT;
+     end;
+    end;
+    4:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R16G16B16A16_UNORM;
+     end else begin
+      result:=VK_FORMAT_R16G16B16A16_UINT;
+     end;
+    end;
+
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_SHORT:begin
+   case pNumComponents of
+    1:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R16_SNORM;
+     end else begin
+      result:=VK_FORMAT_R16_SINT;
+     end;
+    end;
+    2:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R16G16_SNORM;
+     end else begin
+      result:=VK_FORMAT_R16G16_SINT;
+     end;
+    end;
+    3:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R16G16B16_SNORM;
+     end else begin
+      result:=VK_FORMAT_R16G16B16_SINT;
+     end;
+    end;
+    4:begin
+     if pNormalized then begin
+      result:=VK_FORMAT_R16G16B16A16_SNORM;
+     end else begin
+      result:=VK_FORMAT_R16G16B16A16_SINT;
+     end;
+    end;
+
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_HALF_FLOAT,GL_HALF_FLOAT_OES:begin
+   case pNumComponents of
+    1:begin
+     result:=VK_FORMAT_R16_SFLOAT;
+    end;
+    2:begin
+     result:=VK_FORMAT_R16G16_SFLOAT;
+    end;
+    3:begin
+     result:=VK_FORMAT_R16G16B16_SFLOAT;
+    end;
+    4:begin
+     result:=VK_FORMAT_R16G16B16A16_SFLOAT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_INT:begin
+   case pNumComponents of
+    1:begin
+     result:=VK_FORMAT_R32_UINT;
+    end;
+    2:begin
+     result:=VK_FORMAT_R32G32_UINT;
+    end;
+    3:begin
+     result:=VK_FORMAT_R32G32B32_UINT;
+    end;
+    4:begin
+     result:=VK_FORMAT_R32G32B32A32_UINT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_INT:begin
+   case pNumComponents of
+    1:begin
+     result:=VK_FORMAT_R32_SINT;
+    end;
+    2:begin
+     result:=VK_FORMAT_R32G32_SINT;
+    end;
+    3:begin
+     result:=VK_FORMAT_R32G32B32_SINT;
+    end;
+    4:begin
+     result:=VK_FORMAT_R32G32B32A32_SINT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_FLOAT:begin
+   case pNumComponents of
+    1:begin
+     result:=VK_FORMAT_R32_SFLOAT;
+    end;
+    2:begin
+     result:=VK_FORMAT_R32G32_SFLOAT;
+    end;
+    3:begin
+     result:=VK_FORMAT_R32G32B32_SFLOAT;
+    end;
+    4:begin
+     result:=VK_FORMAT_R32G32B32A32_SFLOAT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_INT64:begin
+   case pNumComponents of
+    1:begin
+     result:=VK_FORMAT_R64_UINT;
+    end;
+    2:begin
+     result:=VK_FORMAT_R64G64_UINT;
+    end;
+    3:begin
+     result:=VK_FORMAT_R64G64B64_UINT;
+    end;
+    4:begin
+     result:=VK_FORMAT_R64G64B64A64_UINT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_INT64:begin
+   case pNumComponents of
+    1:begin
+     result:=VK_FORMAT_R64_SINT;
+    end;
+    2:begin
+     result:=VK_FORMAT_R64G64_SINT;
+    end;
+    3:begin
+     result:=VK_FORMAT_R64G64B64_SINT;
+    end;
+    4:begin
+     result:=VK_FORMAT_R64G64B64A64_SINT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_DOUBLE:begin
+   case pNumComponents of
+    1:begin
+     result:=VK_FORMAT_R64_SFLOAT;
+    end;
+    2:begin
+     result:=VK_FORMAT_R64G64_SFLOAT;
+    end;
+    3:begin
+     result:=VK_FORMAT_R64G64B64_SFLOAT;
+    end;
+    4:begin
+     result:=VK_FORMAT_R64G64B64A64_SFLOAT;
+    end;
+    else begin
+     result:=VK_FORMAT_UNDEFINED;
+    end;
+   end;
+  end;
+  GL_UNSIGNED_BYTE_3_3_2:begin
+   result:=VK_FORMAT_UNDEFINED;
+  end;
+  GL_UNSIGNED_BYTE_2_3_3_REV:begin
+   result:=VK_FORMAT_UNDEFINED;
+  end;
+  GL_UNSIGNED_SHORT_5_6_5:begin
+   result:=VK_FORMAT_R5G6B5_UNORM_PACK16;
+  end;
+  GL_UNSIGNED_SHORT_5_6_5_REV:begin
+   result:=VK_FORMAT_B5G6R5_UNORM_PACK16;
+  end;
+  GL_UNSIGNED_SHORT_4_4_4_4:begin
+   result:=VK_FORMAT_R4G4B4A4_UNORM_PACK16;
+  end;
+  GL_UNSIGNED_SHORT_4_4_4_4_REV:begin
+   result:=VK_FORMAT_B4G4R4A4_UNORM_PACK16;
+  end;
+  GL_UNSIGNED_SHORT_5_5_5_1:begin
+   result:=VK_FORMAT_R5G5B5A1_UNORM_PACK16;
+  end;
+  GL_UNSIGNED_SHORT_1_5_5_5_REV:begin
+   result:=VK_FORMAT_A1R5G5B5_UNORM_PACK16;
+  end;
+  GL_UNSIGNED_INT_8_8_8_8:begin
+   if pNormalized then begin
+    result:=VK_FORMAT_R8G8B8A8_UNORM;
+   end else begin
+    result:=VK_FORMAT_R8G8B8A8_UINT;
+   end;
+  end;
+  GL_UNSIGNED_INT_8_8_8_8_REV:begin
+   if pNormalized then begin
+    result:=VK_FORMAT_A8B8G8R8_UNORM_PACK32;
+   end else begin
+    result:=VK_FORMAT_A8B8G8R8_UINT_PACK32;
+   end;
+  end;
+  GL_UNSIGNED_INT_10_10_10_2:begin
+   if pNormalized then begin
+    result:=VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+   end else begin
+    result:=VK_FORMAT_A2R10G10B10_UINT_PACK32;
+   end;
+  end;
+  GL_UNSIGNED_INT_2_10_10_10_REV:begin
+   if pNormalized then begin
+    result:=VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+   end else begin
+    result:=VK_FORMAT_A2B10G10R10_UINT_PACK32;
+   end;
+  end;
+  GL_UNSIGNED_INT_10F_11F_11F_REV:begin
+   result:=VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+  end;
+  GL_UNSIGNED_INT_5_9_9_9_REV:begin
+   result:=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
+  end;
+  GL_UNSIGNED_INT_24_8:begin
+   result:=VK_FORMAT_D24_UNORM_S8_UINT;
+  end;
+  GL_FLOAT_32_UNSIGNED_INT_24_8_REV:begin
+   result:=VK_FORMAT_D32_SFLOAT_S8_UINT;
+  end;
+  else begin
+   result:=VK_FORMAT_UNDEFINED;
+  end;
+ end;
+end;
+
+function VulkanGetFormatFromOpenGLInternalFormat(const pInternalFormat:TVkUInt32):TVkFormat;
+begin
+ case pInternalFormat of
+  GL_R8:begin
+   result:=VK_FORMAT_R8_UNORM; // 1-component, 8-bit unsigned normalized
+  end;
+  GL_RG8:begin
+   result:=VK_FORMAT_R8G8_UNORM; // 2-component, 8-bit unsigned normalized
+  end;
+  GL_RGB8:begin
+   result:=VK_FORMAT_R8G8B8_UNORM; // 3-component, 8-bit unsigned normalized
+  end;
+  GL_RGBA8:begin
+   result:=VK_FORMAT_R8G8B8A8_UNORM; // 4-component, 8-bit unsigned normalized
+  end;
+  GL_R8_SNORM:begin
+   result:=VK_FORMAT_R8_SNORM; // 1-component, 8-bit signed normalized
+  end;
+  GL_RG8_SNORM:begin
+   result:=VK_FORMAT_R8G8_SNORM; // 2-component, 8-bit signed normalized
+  end;
+  GL_RGB8_SNORM:begin
+   result:=VK_FORMAT_R8G8B8_SNORM; // 3-component, 8-bit signed normalized
+  end;
+  GL_RGBA8_SNORM:begin
+   result:=VK_FORMAT_R8G8B8A8_SNORM; // 4-component, 8-bit signed normalized
+  end;
+  GL_R8UI:begin
+   result:=VK_FORMAT_R8_UINT; // 1-component, 8-bit unsigned integer
+  end;
+  GL_RG8UI:begin
+   result:=VK_FORMAT_R8G8_UINT; // 2-component, 8-bit unsigned integer
+  end;
+  GL_RGB8UI:begin
+   result:=VK_FORMAT_R8G8B8_UINT; // 3-component, 8-bit unsigned integer
+  end;
+  GL_RGBA8UI:begin
+   result:=VK_FORMAT_R8G8B8A8_UINT; // 4-component, 8-bit unsigned integer
+  end;
+  GL_R8I:begin
+   result:=VK_FORMAT_R8_SINT; // 1-component, 8-bit signed integer
+  end;
+  GL_RG8I:begin
+   result:=VK_FORMAT_R8G8_SINT; // 2-component, 8-bit signed integer
+  end;
+  GL_RGB8I:begin
+   result:=VK_FORMAT_R8G8B8_SINT; // 3-component, 8-bit signed integer
+  end;
+  GL_RGBA8I:begin
+   result:=VK_FORMAT_R8G8B8A8_SINT; // 4-component, 8-bit signed integer
+  end;
+  GL_SR8:begin
+   result:=VK_FORMAT_R8_SRGB; // 1-component, 8-bit sRGB
+  end;
+  GL_SRG8:begin
+   result:=VK_FORMAT_R8G8_SRGB; // 2-component, 8-bit sRGB
+  end;
+  GL_SRGB8:begin
+   result:=VK_FORMAT_R8G8B8_SRGB; // 3-component, 8-bit sRGB
+  end;
+  GL_SRGB8_ALPHA8:begin
+   result:=VK_FORMAT_R8G8B8A8_SRGB; // 4-component, 8-bit sRGB
+  end;
+  GL_R16:begin
+   result:=VK_FORMAT_R16_UNORM; // 1-component, 16-bit unsigned normalized
+  end;
+  GL_RG16:begin
+   result:=VK_FORMAT_R16G16_UNORM; // 2-component, 16-bit unsigned normalized
+  end;
+  GL_RGB16:begin
+   result:=VK_FORMAT_R16G16B16_UNORM; // 3-component, 16-bit unsigned normalized
+  end;
+  GL_RGBA16:begin
+   result:=VK_FORMAT_R16G16B16A16_UNORM; // 4-component, 16-bit unsigned normalized
+  end;
+  GL_R16_SNORM:begin
+   result:=VK_FORMAT_R16_SNORM; // 1-component, 16-bit signed normalized
+  end;
+  GL_RG16_SNORM:begin
+   result:=VK_FORMAT_R16G16_SNORM; // 2-component, 16-bit signed normalized
+  end;
+  GL_RGB16_SNORM:begin
+   result:=VK_FORMAT_R16G16B16_SNORM; // 3-component, 16-bit signed normalized
+  end;
+  GL_RGBA16_SNORM:begin
+   result:=VK_FORMAT_R16G16B16A16_SNORM; // 4-component, 16-bit signed normalized
+  end;
+  GL_R16UI:begin
+   result:=VK_FORMAT_R16_UINT; // 1-component, 16-bit unsigned integer
+  end;
+  GL_RG16UI:begin
+   result:=VK_FORMAT_R16G16_UINT; // 2-component, 16-bit unsigned integer
+  end;
+  GL_RGB16UI:begin
+   result:=VK_FORMAT_R16G16B16_UINT; // 3-component, 16-bit unsigned integer
+  end;
+  GL_RGBA16UI:begin
+   result:=VK_FORMAT_R16G16B16A16_UINT; // 4-component, 16-bit unsigned integer
+  end;
+  GL_R16I:begin
+   result:=VK_FORMAT_R16_SINT; // 1-component, 16-bit signed integer
+  end;
+  GL_RG16I:begin
+   result:=VK_FORMAT_R16G16_SINT; // 2-component, 16-bit signed integer
+  end;
+  GL_RGB16I:begin
+   result:=VK_FORMAT_R16G16B16_SINT; // 3-component, 16-bit signed integer
+  end;
+  GL_RGBA16I:begin
+   result:=VK_FORMAT_R16G16B16A16_SINT; // 4-component, 16-bit signed integer
+  end;
+  GL_R16F:begin
+   result:=VK_FORMAT_R16_SFLOAT; // 1-component, 16-bit floating-point
+  end;
+  GL_RG16F:begin
+   result:=VK_FORMAT_R16G16_SFLOAT; // 2-component, 16-bit floating-point
+  end;
+  GL_RGB16F:begin
+   result:=VK_FORMAT_R16G16B16_SFLOAT; // 3-component, 16-bit floating-point
+  end;
+  GL_RGBA16F:begin
+   result:=VK_FORMAT_R16G16B16A16_SFLOAT; // 4-component, 16-bit floating-point
+  end;
+  GL_R32UI:begin
+   result:=VK_FORMAT_R32_UINT; // 1-component, 32-bit unsigned integer
+  end;
+  GL_RG32UI:begin
+   result:=VK_FORMAT_R32G32_UINT; // 2-component, 32-bit unsigned integer
+  end;
+  GL_RGB32UI:begin
+   result:=VK_FORMAT_R32G32B32_UINT; // 3-component, 32-bit unsigned integer
+  end;
+  GL_RGBA32UI:begin
+   result:=VK_FORMAT_R32G32B32A32_UINT; // 4-component, 32-bit unsigned integer
+  end;
+  GL_R32I:begin
+   result:=VK_FORMAT_R32_SINT; // 1-component, 32-bit signed integer
+  end;
+  GL_RG32I:begin
+   result:=VK_FORMAT_R32G32_SINT; // 2-component, 32-bit signed integer
+  end;
+  GL_RGB32I:begin
+   result:=VK_FORMAT_R32G32B32_SINT; // 3-component, 32-bit signed integer
+  end;
+  GL_RGBA32I:begin
+   result:=VK_FORMAT_R32G32B32A32_SINT; // 4-component, 32-bit signed integer
+  end;
+  GL_R32F:begin
+   result:=VK_FORMAT_R32_SFLOAT; // 1-component, 32-bit floating-point
+  end;
+  GL_RG32F:begin
+   result:=VK_FORMAT_R32G32_SFLOAT; // 2-component, 32-bit floating-point
+  end;
+  GL_RGB32F:begin
+   result:=VK_FORMAT_R32G32B32_SFLOAT; // 3-component, 32-bit floating-point
+  end;
+  GL_RGBA32F:begin
+   result:=VK_FORMAT_R32G32B32A32_SFLOAT; // 4-component, 32-bit floating-point
+  end;
+  GL_R3_G3_B2:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component 3:3:2, unsigned normalized
+  end;
+  GL_RGB4:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component 4:4:4, unsigned normalized
+  end;
+  GL_RGB5:begin
+   result:=VK_FORMAT_R5G5B5A1_UNORM_PACK16; // 3-component 5:5:5, unsigned normalized
+  end;
+  GL_RGB565:begin
+   result:=VK_FORMAT_R5G6B5_UNORM_PACK16; // 3-component 5:6:5, unsigned normalized
+  end;
+  GL_RGB10:begin
+   result:=VK_FORMAT_A2R10G10B10_UNORM_PACK32; // 3-component 10:10:10, unsigned normalized
+  end;
+  GL_RGB12:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component 12:12:12, unsigned normalized
+  end;
+  GL_RGBA2:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component 2:2:2:2, unsigned normalized
+  end;
+  GL_RGBA4:begin
+   result:=VK_FORMAT_R4G4B4A4_UNORM_PACK16; // 4-component 4:4:4:4, unsigned normalized
+  end;
+  GL_RGBA12:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component 12:12:12:12, unsigned normalized
+  end;
+  GL_RGB5_A1:begin
+   result:=VK_FORMAT_A1R5G5B5_UNORM_PACK16; // 4-component 5:5:5:1, unsigned normalized
+  end;
+  GL_RGB10_A2:begin
+   result:=VK_FORMAT_A2R10G10B10_UNORM_PACK32; // 4-component 10:10:10:2, unsigned normalized
+  end;
+  GL_RGB10_A2UI:begin
+   result:=VK_FORMAT_A2R10G10B10_UINT_PACK32; // 4-component 10:10:10:2, unsigned integer
+  end;
+  GL_R11F_G11F_B10F:begin
+   result:=VK_FORMAT_B10G11R11_UFLOAT_PACK32; // 3-component 11:11:10, floating-point
+  end;
+  GL_RGB9_E5:begin
+   result:=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32; // 3-component/exp 9:9:9/5, floating-point
+  end;
+  GL_COMPRESSED_RGB_S3TC_DXT1_EXT:begin
+   result:=VK_FORMAT_BC1_RGB_UNORM_BLOCK; // line through 3D space, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:begin
+   result:=VK_FORMAT_BC1_RGBA_UNORM_BLOCK; // line through 3D space plus 1-bit alpha, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:begin
+   result:=VK_FORMAT_BC2_UNORM_BLOCK; // line through 3D space plus line through 1D space, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:begin
+   result:=VK_FORMAT_BC3_UNORM_BLOCK; // line through 3D space plus 4-bit alpha, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_SRGB_S3TC_DXT1_EXT:begin
+   result:=VK_FORMAT_BC1_RGB_SRGB_BLOCK; // line through 3D space, 4x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT:begin
+   result:=VK_FORMAT_BC1_RGBA_SRGB_BLOCK; // line through 3D space plus 1-bit alpha, 4x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT:begin
+   result:=VK_FORMAT_BC2_SRGB_BLOCK; // line through 3D space plus line through 1D space, 4x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT:begin
+   result:=VK_FORMAT_BC3_SRGB_BLOCK; // line through 3D space plus 4-bit alpha, 4x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_LUMINANCE_LATC1_EXT:begin
+   result:=VK_FORMAT_BC4_UNORM_BLOCK; // line through 1D space, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_LUMINANCE_ALPHA_LATC2_EXT:begin
+   result:=VK_FORMAT_BC5_UNORM_BLOCK; // two lines through 1D space, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_SIGNED_LUMINANCE_LATC1_EXT:begin
+   result:=VK_FORMAT_BC4_SNORM_BLOCK; // line through 1D space, 4x4 blocks, signed normalized
+  end;
+  GL_COMPRESSED_SIGNED_LUMINANCE_ALPHA_LATC2_EXT:begin
+   result:=VK_FORMAT_BC5_SNORM_BLOCK; // two lines through 1D space, 4x4 blocks, signed normalized
+  end;
+  GL_COMPRESSED_RED_RGTC1:begin
+   result:=VK_FORMAT_BC4_UNORM_BLOCK; // line through 1D space, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RG_RGTC2:begin
+   result:=VK_FORMAT_BC5_UNORM_BLOCK; // two lines through 1D space, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_SIGNED_RED_RGTC1:begin
+   result:=VK_FORMAT_BC4_SNORM_BLOCK; // line through 1D space, 4x4 blocks, signed normalized
+  end;
+  GL_COMPRESSED_SIGNED_RG_RGTC2:begin
+   result:=VK_FORMAT_BC5_SNORM_BLOCK; // two lines through 1D space, 4x4 blocks, signed normalized
+  end;
+  GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT:begin
+   result:=VK_FORMAT_BC6H_UFLOAT_BLOCK; // 3-component, 4x4 blocks, unsigned floating-point
+  end;
+  GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT:begin
+   result:=VK_FORMAT_BC6H_SFLOAT_BLOCK; // 3-component, 4x4 blocks, signed floating-point
+  end;
+  GL_COMPRESSED_RGBA_BPTC_UNORM:begin
+   result:=VK_FORMAT_BC7_UNORM_BLOCK; // 4-component, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM:begin
+   result:=VK_FORMAT_BC7_SRGB_BLOCK; // 4-component, 4x4 blocks, sRGB
+  end;
+  GL_ETC1_RGB8_OES:begin
+   result:=VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK; // 3-component ETC1, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGB8_ETC2:begin
+   result:=VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK; // 3-component ETC2, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2:begin
+   result:=VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK; // 4-component ETC2 with 1-bit alpha, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA8_ETC2_EAC:begin
+   result:=VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK; // 4-component ETC2, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_SRGB8_ETC2:begin
+   result:=VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK; // 3-component ETC2, 4x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2:begin
+   result:=VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK; // 4-component ETC2 with 1-bit alpha, 4x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC:begin
+   result:=VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK; // 4-component ETC2, 4x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_R11_EAC:begin
+   result:=VK_FORMAT_EAC_R11_UNORM_BLOCK; // 1-component ETC, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RG11_EAC:begin
+   result:=VK_FORMAT_EAC_R11G11_UNORM_BLOCK; // 2-component ETC, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_SIGNED_R11_EAC:begin
+   result:=VK_FORMAT_EAC_R11_SNORM_BLOCK; // 1-component ETC, 4x4 blocks, signed normalized
+  end;
+  GL_COMPRESSED_SIGNED_RG11_EAC:begin
+   result:=VK_FORMAT_EAC_R11G11_SNORM_BLOCK; // 2-component ETC, 4x4 blocks, signed normalized
+  end;
+  GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component PVRTC, 16x8 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component PVRTC, 8x8 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component PVRTC, 16x8 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component PVRTC, 8x8 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_PVRTC_2BPPV2_IMG:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component PVRTC, 8x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_PVRTC_4BPPV2_IMG:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component PVRTC, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_SRGB_PVRTC_2BPPV1_EXT:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component PVRTC, 16x8 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB_PVRTC_4BPPV1_EXT:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component PVRTC, 8x8 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB_ALPHA_PVRTC_2BPPV1_EXT:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component PVRTC, 16x8 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB_ALPHA_PVRTC_4BPPV1_EXT:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component PVRTC, 8x8 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB_ALPHA_PVRTC_2BPPV2_IMG:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component PVRTC, 8x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB_ALPHA_PVRTC_4BPPV2_IMG:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component PVRTC, 4x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_RGBA_ASTC_4x4_KHR:begin
+   result:=VK_FORMAT_ASTC_4x4_UNORM_BLOCK; // 4-component ASTC, 4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_5x4_KHR:begin
+   result:=VK_FORMAT_ASTC_5x4_UNORM_BLOCK; // 4-component ASTC, 5x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_5x5_KHR:begin
+   result:=VK_FORMAT_ASTC_5x5_UNORM_BLOCK; // 4-component ASTC, 5x5 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_6x5_KHR:begin
+   result:=VK_FORMAT_ASTC_6x5_UNORM_BLOCK; // 4-component ASTC, 6x5 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_6x6_KHR:begin
+   result:=VK_FORMAT_ASTC_6x6_UNORM_BLOCK; // 4-component ASTC, 6x6 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_8x5_KHR:begin
+   result:=VK_FORMAT_ASTC_8x5_UNORM_BLOCK; // 4-component ASTC, 8x5 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_8x6_KHR:begin
+   result:=VK_FORMAT_ASTC_8x6_UNORM_BLOCK; // 4-component ASTC, 8x6 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_8x8_KHR:begin
+   result:=VK_FORMAT_ASTC_8x8_UNORM_BLOCK; // 4-component ASTC, 8x8 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_10x5_KHR:begin
+   result:=VK_FORMAT_ASTC_10x5_UNORM_BLOCK; // 4-component ASTC, 10x5 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_10x6_KHR:begin
+   result:=VK_FORMAT_ASTC_10x6_UNORM_BLOCK; // 4-component ASTC, 10x6 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_10x8_KHR:begin
+   result:=VK_FORMAT_ASTC_10x8_UNORM_BLOCK; // 4-component ASTC, 10x8 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_10x10_KHR:begin
+   result:=VK_FORMAT_ASTC_10x10_UNORM_BLOCK; // 4-component ASTC, 10x10 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_12x10_KHR:begin
+   result:=VK_FORMAT_ASTC_12x10_UNORM_BLOCK; // 4-component ASTC, 12x10 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_12x12_KHR:begin
+   result:=VK_FORMAT_ASTC_12x12_UNORM_BLOCK; // 4-component ASTC, 12x12 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR:begin
+   result:=VK_FORMAT_ASTC_4x4_SRGB_BLOCK; // 4-component ASTC, 4x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4_KHR:begin
+   result:=VK_FORMAT_ASTC_5x4_SRGB_BLOCK; // 4-component ASTC, 5x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5_KHR:begin
+   result:=VK_FORMAT_ASTC_5x5_SRGB_BLOCK; // 4-component ASTC, 5x5 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5_KHR:begin
+   result:=VK_FORMAT_ASTC_6x5_SRGB_BLOCK; // 4-component ASTC, 6x5 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6_KHR:begin
+   result:=VK_FORMAT_ASTC_6x6_SRGB_BLOCK; // 4-component ASTC, 6x6 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR:begin
+   result:=VK_FORMAT_ASTC_8x5_SRGB_BLOCK; // 4-component ASTC, 8x5 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR:begin
+   result:=VK_FORMAT_ASTC_8x6_SRGB_BLOCK; // 4-component ASTC, 8x6 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR:begin
+   result:=VK_FORMAT_ASTC_8x8_SRGB_BLOCK; // 4-component ASTC, 8x8 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR:begin
+   result:=VK_FORMAT_ASTC_10x5_SRGB_BLOCK; // 4-component ASTC, 10x5 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6_KHR:begin
+   result:=VK_FORMAT_ASTC_10x6_SRGB_BLOCK; // 4-component ASTC, 10x6 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8_KHR:begin
+   result:=VK_FORMAT_ASTC_10x8_SRGB_BLOCK; // 4-component ASTC, 10x8 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR:begin
+   result:=VK_FORMAT_ASTC_10x10_SRGB_BLOCK; // 4-component ASTC, 10x10 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR:begin
+   result:=VK_FORMAT_ASTC_12x10_SRGB_BLOCK; // 4-component ASTC, 12x10 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR:begin
+   result:=VK_FORMAT_ASTC_12x12_SRGB_BLOCK; // 4-component ASTC, 12x12 blocks, sRGB
+  end;
+  GL_COMPRESSED_RGBA_ASTC_3x3x3_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 3x3x3 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_4x3x3_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 4x3x3 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_4x4x3_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 4x4x3 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_4x4x4_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 4x4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_5x4x4_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 5x4x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_5x5x4_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 5x5x4 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_5x5x5_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 5x5x5 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_6x5x5_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 6x5x5 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_6x6x5_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 6x6x5 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_RGBA_ASTC_6x6x6_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 6x6x6 blocks, unsigned normalized
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_3x3x3_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 3x3x3 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x3x3_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 4x3x3 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4x3_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 4x4x3 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4x4_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 4x4x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4x4_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 5x4x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5x4_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 5x5x4 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5x5_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 5x5x5 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5x5_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 6x5x5 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6x5_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 6x6x5 blocks, sRGB
+  end;
+  GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6x6_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component ASTC, 6x6x6 blocks, sRGB
+  end;
+  GL_ATC_RGB_AMD:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component, 4x4 blocks, unsigned normalized
+  end;
+  GL_ATC_RGBA_EXPLICIT_ALPHA_AMD:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component, 4x4 blocks, unsigned normalized
+  end;
+  GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component, 4x4 blocks, unsigned normalized
+  end;
+  GL_PALETTE4_RGB8_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component 8:8:8, 4-bit palette, unsigned normalized
+  end;
+  GL_PALETTE4_RGBA8_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component 8:8:8:8, 4-bit palette, unsigned normalized
+  end;
+  GL_PALETTE4_R5_G6_B5_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component 5:6:5, 4-bit palette, unsigned normalized
+  end;
+  GL_PALETTE4_RGBA4_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component 4:4:4:4, 4-bit palette, unsigned normalized
+  end;
+  GL_PALETTE4_RGB5_A1_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component 5:5:5:1, 4-bit palette, unsigned normalized
+  end;
+  GL_PALETTE8_RGB8_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component 8:8:8, 8-bit palette, unsigned normalized
+  end;
+  GL_PALETTE8_RGBA8_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component 8:8:8:8, 8-bit palette, unsigned normalized
+  end;
+  GL_PALETTE8_R5_G6_B5_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 3-component 5:6:5, 8-bit palette, unsigned normalized
+  end;
+  GL_PALETTE8_RGBA4_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component 4:4:4:4, 8-bit palette, unsigned normalized
+  end;
+  GL_PALETTE8_RGB5_A1_OES:begin
+   result:=VK_FORMAT_UNDEFINED; // 4-component 5:5:5:1, 8-bit palette, unsigned normalized
+  end;
+  GL_DEPTH_COMPONENT16:begin
+   result:=VK_FORMAT_D16_UNORM;
+  end;
+  GL_DEPTH_COMPONENT24:begin
+   result:=VK_FORMAT_X8_D24_UNORM_PACK32;
+  end;
+  GL_DEPTH_COMPONENT32:begin
+   result:=VK_FORMAT_UNDEFINED;
+  end;
+  GL_DEPTH_COMPONENT32F:begin
+   result:=VK_FORMAT_D32_SFLOAT;
+  end;
+  GL_DEPTH_COMPONENT32F_NV:begin
+   result:=VK_FORMAT_D32_SFLOAT;
+  end;
+  GL_STENCIL_INDEX1:begin
+   result:=VK_FORMAT_UNDEFINED;
+  end;
+  GL_STENCIL_INDEX4:begin
+   result:=VK_FORMAT_UNDEFINED;
+  end;
+  GL_STENCIL_INDEX8:begin
+   result:=VK_FORMAT_S8_UINT;
+  end;
+  GL_STENCIL_INDEX16:begin
+   result:=VK_FORMAT_UNDEFINED;
+  end;
+  GL_DEPTH24_STENCIL8:begin
+   result:=VK_FORMAT_D24_UNORM_S8_UINT;
+  end;
+  GL_DEPTH32F_STENCIL8:begin
+   result:=VK_FORMAT_D32_SFLOAT_S8_UINT;
+  end;
+  GL_DEPTH32F_STENCIL8_NV:begin
+   result:=VK_FORMAT_D32_SFLOAT_S8_UINT;
+  end;
+  else begin
+   result:=VK_FORMAT_UNDEFINED;
+  end;
+ end;
+end;
 
 function HashData(const Data:pointer;const DataLength:TVkUInt32):TVkUInt32;
 const m=TVkUInt32($57559429);
