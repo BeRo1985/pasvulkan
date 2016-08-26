@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-26-11-01-0000                       *
+ *                        Version 2016-08-26-12-22-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2533,25 +2533,48 @@ type EVulkanException=class(Exception);
        fWrapModeW:TVulkanTextureWrapMode;
        fFilterMode:TVulkanTextureFilterMode;
        fMaxAnisotropy:double;
-       procedure CreateInternal(const pQueue:TVulkanQueue;
-                                const pFence:TVulkanFence;
-                                const pCommandBuffer:TVulkanCommandBuffer;
-                                const pFormat:TVkFormat;
-                                const pSampleCount:TVkSampleCountFlagBits;
-                                const pWidth:TVkInt32;
-                                const pHeight:TVkInt32;
-                                const pDepth:TVkInt32;
-                                const pCountArrayElements:TVkInt32;
-                                const pCountFaces:TVkInt32;
-                                const pCountMipMaps:TVkInt32;
-                                const pUsageFlags:TVulkanTextureUsageFlags;
-                                const pData:TVkPointer;
-                                const pDataSize:TVkSizeInt;
-                                const pMipMapSizeStored:boolean;
-                                const pSwapEndianness:boolean;
-                                const pSwapEndiannessTexels:TVkInt32);
       public
-       constructor Create(const pDevice:TVulkanDevice); reintroduce;
+       constructor Create; reintroduce;
+       constructor CreateFromMemory(const pDevice:TVulkanDevice;
+                                    const pQueue:TVulkanQueue;
+                                    const pFence:TVulkanFence;
+                                    const pCommandBuffer:TVulkanCommandBuffer;
+                                    const pFormat:TVkFormat;
+                                    const pSampleCount:TVkSampleCountFlagBits;
+                                    const pWidth:TVkInt32;
+                                    const pHeight:TVkInt32;
+                                    const pDepth:TVkInt32;
+                                    const pCountArrayElements:TVkInt32;
+                                    const pCountFaces:TVkInt32;
+                                    const pCountMipMaps:TVkInt32;
+                                    const pUsageFlags:TVulkanTextureUsageFlags;
+                                    const pData:TVkPointer;
+                                    const pDataSize:TVkSizeInt;
+                                    const pMipMapSizeStored:boolean;
+                                    const pSwapEndianness:boolean;
+                                    const pSwapEndiannessTexels:TVkInt32);
+       constructor CreateFromStream(const pDevice:TVulkanDevice;
+                                    const pQueue:TVulkanQueue;
+                                    const pFence:TVulkanFence;
+                                    const pCommandBuffer:TVulkanCommandBuffer;
+                                    const pFormat:TVkFormat;
+                                    const pSampleCount:TVkSampleCountFlagBits;
+                                    const pWidth:TVkInt32;
+                                    const pHeight:TVkInt32;
+                                    const pDepth:TVkInt32;
+                                    const pCountArrayElements:TVkInt32;
+                                    const pCountFaces:TVkInt32;
+                                    const pCountMipMaps:TVkInt32;
+                                    const pUsageFlags:TVulkanTextureUsageFlags;
+                                    const pStream:TStream;
+                                    const pMipMapSizeStored:boolean;
+                                    const pSwapEndianness:boolean;
+                                    const pSwapEndiannessTexels:TVkInt32);
+       constructor CreateFromKTX(const pDevice:TVulkanDevice;
+                                 const pQueue:TVulkanQueue;
+                                 const pFence:TVulkanFence;
+                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pStream:TStream);
        constructor CreateDefault(const pDevice:TVulkanDevice;
                                  const pQueue:TVulkanQueue;
                                  const pFence:TVulkanFence;
@@ -2564,11 +2587,6 @@ type EVulkanException=class(Exception);
                                  const pCountFaces:TVkInt32;
                                  const pMipmaps:boolean;
                                  const pBorder:boolean);
-       constructor CreateFromKTX(const pDevice:TVulkanDevice;
-                                 const pQueue:TVulkanQueue;
-                                 const pFence:TVulkanFence;
-                                 const pCommandBuffer:TVulkanCommandBuffer;
-                                 const pStream:TStream);
        destructor Destroy; override;
        procedure UpdateSampler;
       published
@@ -13933,418 +13951,29 @@ begin
  FreeAndNil(fGraphicsPipelineConstructor);
 end;
 
-constructor TVulkanTexture.Create(const pDevice:TVulkanDevice);
+constructor TVulkanTexture.Create;
 begin
-
- inherited Create;
-
- fDevice:=pDevice;
-
- fFormat:=VK_FORMAT_UNDEFINED;
-
- fImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-
- fImage:=nil;
-
- fImageView:=nil;
-
- fSampler:=nil;
-
- fMemoryBlock:=nil;
-
- fWidth:=0;
- fHeight:=0;
- fDepth:=0;
-
- fCountArrayLayers:=0;
-
- fCountMipMaps:=0;
-
- fSampleCount:=VK_SAMPLE_COUNT_1_BIT;
-
- fUsage:=vtufUndefined;
-
- fUsageFlags:=[];
-
- fWrapModeU:=vtwmRepeat;
- fWrapModeV:=vtwmRepeat;
- fWrapModeW:=vtwmRepeat;
-
- fFilterMode:=vtfmNearest;
-
- fMaxAnisotropy:=1.0;
-
+ raise EVulkanTextureException.Create('Invalid cobnstructor');
 end;
 
-constructor TVulkanTexture.CreateDefault(const pDevice:TVulkanDevice;
-                                         const pQueue:TVulkanQueue;
-                                         const pFence:TVulkanFence;
-                                         const pCommandBuffer:TVulkanCommandBuffer;
-                                         const pDefaultType:TVulkanTextureDefaultType;
-                                         const pWidth:TVkInt32;
-                                         const pHeight:TVkInt32;
-                                         const pDepth:TVkInt32;
-                                         const pCountArrayElements:TVkInt32;
-                                         const pCountFaces:TVkInt32;
-                                         const pMipmaps:boolean;
-                                         const pBorder:boolean);
-const TexelSize=4;
-      BlockShift=5;
-      BlockSize=1 shl BlockShift;
-      BlockMask=BlockSize-1;
-      Radius=10;
-      Colors:array[0..3,0..3] of TVkUInt8=
-       (($ff,$00,$00,$ff),
-        ($00,$ff,$00,$ff),
-        ($00,$00,$ff,$ff),
-        ($ff,$ff,$00,$ff));
-var LayerSize,DataSize,LayerIndex,x,y,Offset,lx,ly,rx,ry,cx,cy,m,Index,dx,dy,ds,Scale,CountMipMaps:TVkInt32;
-    Data:TVkUInt8Array;
-begin
-
- Create(pDevice);
-
- LayerSize:=pWidth*pHeight*TexelSize;
- DataSize:=LayerSize*pDepth*pCountArrayElements*pCountFaces;
-
- Data:=nil;
- try
-
-  SetLength(Data,DataSize);
-
-  case pDefaultType of
-   vtdtCheckerboard:begin
-    for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
-     for y:=0 to pHeight-1 do begin
-      for x:=0 to pWidth-1 do begin
-       Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+x)*TexelSize);
-       if (((x shr BlockShift) xor (y shr BlockShift)) and 1)<>0 then begin
-        if (LayerIndex and 1)<>0 then begin
-         Data[Offset+0]:=160;
-        end else begin
-         Data[Offset+0]:=96;
-        end;
-        Data[Offset+1]:=64;
-        if (LayerIndex and 1)<>0 then begin
-         Data[Offset+2]:=96;
-        end else begin
-         Data[Offset+2]:=255;
-        end;
-       end else begin
-        if (LayerIndex and 1)<>0 then begin
-         Data[Offset+0]:=160;
-        end else begin
-         Data[Offset+0]:=64;
-        end;
-        Data[Offset+1]:=32;
-        if (LayerIndex and 1)<>0 then begin
-         Data[Offset+2]:=64;
-        end else begin
-         Data[Offset+2]:=255;
-        end;
-       end;
-       Data[Offset+3]:=255;
-      end;
-     end;
-    end;
-   end;
-   vtdtPyramids:begin
-    for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
-     for y:=0 to pHeight-1 do begin
-      for x:=0 to pWidth-1 do begin
-       Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+x)*TexelSize);
-       lx:=x and BlockSize;
-       ly:=y and BlockSize;
-       rx:=BlockSize-lx;
-       ry:=BlockSize-ly;
-       cx:=0;
-       cy:=0;
-       if (lx<>ly) and (lx<>ry) then begin
-        m:=BlockSize;
-        if lx<m then begin
-         m:=lx;
-         cx:=-96;
-         cy:=0;
-        end;
-        if ly<m then begin
-         m:=ly;
-         cx:=0;
-         cy:=-96;
-        end;
-        if rx<m then begin
-         m:=rx;
-         cx:=96;
-         cy:=0;
-        end;
-        if ry<m then begin
-         m:=ry;
-         cx:=0;
-         cy:=96;
-        end;
-        if m>0 then begin
-        end;
-       end;
-       Data[Offset+0]:=128+cx;
-       Data[Offset+1]:=128+cy;
-       Data[Offset+2]:=128+85;
-       Data[Offset+3]:=255;
-      end;
-     end;
-    end;
-   end;
-   else {vtdtCircles:}begin
-    for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
-     for y:=0 to pHeight-1 do begin
-      for x:=0 to pWidth-1 do begin
-       Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+x)*TexelSize);
-       Index:=((((y shr (BlockShift-1)) and 2) xor ((y shr BlockShift) and 2))) or
-              (((((y shr BlockShift) and 1) xor ((y shr (BlockShift+1)) and 1))));
-       dx:=((x and not BlockMask)+(BlockSize shr 1))-x;
-       dy:=((y and not BlockMask)+(BlockSize shr 1))-y;
-       ds:=abs(((dx*dx)+(dy*dy))-(Radius*Radius));
-       Scale:=Min(ds,BlockSize);
-       Data[Offset+0]:=Min(Max((Colors[Index,0]*Scale) shr BlockShift,0),255);
-       Data[Offset+1]:=Min(Max((Colors[Index,1]*Scale) shr BlockShift,0),255);
-       Data[Offset+2]:=Min(Max((Colors[Index,2]*Scale) shr BlockShift,0),255);
-       Data[Offset+3]:=255;
-      end;
-     end;
-    end;
-   end;
-  end;
-
-  if pBorder then begin
-   for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
-    for y:=0 to pHeight-1 do begin
-     Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+0)*TexelSize);
-     Data[Offset+0]:=0;
-     Data[Offset+1]:=0;
-     Data[Offset+2]:=0;
-     Data[Offset+3]:=255;
-     Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+(pWidth-1))*TexelSize);
-     Data[Offset+0]:=0;
-     Data[Offset+1]:=0;
-     Data[Offset+2]:=0;
-     Data[Offset+3]:=255;
-    end;
-    for x:=0 to pWidth-1 do begin
-     Offset:=(LayerIndex*LayerSize)+(((0*pWidth)+x)*TexelSize);
-     Data[Offset+0]:=0;
-     Data[Offset+1]:=0;
-     Data[Offset+2]:=0;
-     Data[Offset+3]:=255;
-     Offset:=(LayerIndex*LayerSize)+((((pHeight-1)*pWidth)+x)*TexelSize);
-     Data[Offset+0]:=0;
-     Data[Offset+1]:=0;
-     Data[Offset+2]:=0;
-     Data[Offset+3]:=255;
-    end;
-   end;
-  end;
-
-  if pMipMaps then begin
-   CountMipMaps:=-1;
-  end else begin
-   CountMipMaps:=1;
-  end;
-
-  CreateInternal(pQueue,
-                 pFence,
-                 pCommandBuffer,
-                 VK_FORMAT_R8G8B8A8_UNORM,
-                 VK_SAMPLE_COUNT_1_BIT,
-                 pWidth,
-                 pHeight,
-                 pDepth,
-                 pCountArrayElements,
-                 pCountFaces,
-                 CountMipMaps,
-                 [vtufSampled],
-                 @Data[0],
-                 DataSize,
-                 false,
-                 false,
-                 1);
-
-
- finally
-  SetLength(Data,0);
- end;
-
-end;
-
-constructor TVulkanTexture.CreateFromKTX(const pDevice:TVulkanDevice;
-                                         const pQueue:TVulkanQueue;
-                                         const pFence:TVulkanFence;
-                                         const pCommandBuffer:TVulkanCommandBuffer;
-                                         const pStream:TStream);
-type PKTXIdentifier=^TKTXIdentifier;
-     TKTXIdentifier=array[0..11] of TVkUInt8;
-     PKTXHeader=^TKTXHeader;
-     TKTXHeader=packed record
-      Identifier:TKTXIdentifier;
-      Endianness:TVkUInt32;
-      GLType:TVkUInt32;
-      GLTypeSize:TVkUInt32;
-      GLFormat:TVkUInt32;
-      GLInternalFormat:TVkUInt32;
-      GLBaseInternalFormat:TVkUInt32;
-      PixelWidth:TVkUInt32;
-      PixelHeight:TVkUInt32;
-      PixelDepth:TVkUInt32;
-      NumberOfArrayElements:TVkUInt32;
-      NumberOfFaces:TVkUInt32;
-      NumberOfMipMapLevels:TVkUInt32;
-      BytesOfKeyValueData:TVkUInt32;
-     end;
- function Swap16(x:TVkUInt16):TVkUInt16;
- begin
-  result:=((x and $ff) shl 8) or ((x and $ff00) shr 8);
- end;
- function Swap32(x:TVkUInt32):TVkUInt32;
- begin
-  result:=(Swap16(x and $ffff) shl 16) or Swap16((x and $ffff0000) shr 16);
- end;
-var KTXHeader:TKTXHeader;
-    MustSwap:boolean;
-    NumberOfArrayElements:TVkUInt32;
-    NumberOfFaces:TVkUInt32;
-    NumberOfMipMapLevels:TVkUInt32;
-    Data:pointer;
-    DataSize:TVkSizeInt;
-    NewPosition:TVkInt64;
-begin
- Create(pDevice);
-
- if pStream.Read(KTXHeader,SizeOf(TKTXHeader))<>SizeOf(TKTXHeader) then begin
-  raise EVulkanTextureException.Create('Stream read error');
- end;
-
- if (KTXHeader.Identifier[0]<>$ab) or
-    (KTXHeader.Identifier[1]<>$4b) or
-    (KTXHeader.Identifier[2]<>$54) or
-    (KTXHeader.Identifier[3]<>$58) or
-    (KTXHeader.Identifier[4]<>$20) or
-    (KTXHeader.Identifier[5]<>$31) or
-    (KTXHeader.Identifier[6]<>$31) or
-    (KTXHeader.Identifier[7]<>$bb) or
-    (KTXHeader.Identifier[8]<>$0d) or
-    (KTXHeader.Identifier[9]<>$0a) or
-    (KTXHeader.Identifier[10]<>$1a) or
-    (KTXHeader.Identifier[11]<>$0a) then begin
-  raise EVulkanTextureException.Create('Invalid KTX stream');
- end;
-
- MustSwap:=false;
- case KTXHeader.Endianness of
-  $01020304:begin
-   MustSwap:=true;
-   KTXHeader.GLType:=Swap32(KTXHeader.GLType);
-   KTXHeader.GLTypeSize:=Swap32(KTXHeader.GLTypeSize);
-   KTXHeader.GLFormat:=Swap32(KTXHeader.GLFormat);
-   KTXHeader.GLInternalFormat:=Swap32(KTXHeader.GLInternalFormat);
-   KTXHeader.GLBaseInternalFormat:=Swap32(KTXHeader.GLBaseInternalFormat);
-   KTXHeader.PixelWidth:=Swap32(KTXHeader.PixelWidth);
-   KTXHeader.PixelHeight:=Swap32(KTXHeader.PixelHeight);
-   KTXHeader.PixelDepth:=Swap32(KTXHeader.PixelDepth);
-   KTXHeader.NumberOfArrayElements:=Swap32(KTXHeader.NumberOfArrayElements);
-   KTXHeader.NumberOfFaces:=Swap32(KTXHeader.NumberOfFaces);
-   KTXHeader.NumberOfMipmapLevels:=Swap32(KTXHeader.NumberOfMipmapLevels);
-   KTXHeader.BytesOfKeyValueData:=Swap32(KTXHeader.BytesOfKeyValueData);
-   if not (KTXHeader.GLTypeSize in [1,2,4]) then begin
-    exit;
-   end;
-  end;
-  $04030201:begin
-  end;
-  else begin
-   exit;
-  end;
- end;
-
- if (KTXHeader.GLType=0)<>(KTXHeader.GLFormat=0) then begin
-  raise EVulkanTextureException.Create('Invalid KTX stream');
- end;
- if (KTXHeader.PixelWidth=0) or ((KTXHeader.PixelDepth>0) and (KTXHeader.PixelHeight=0)) then begin
-  raise EVulkanTextureException.Create('Invalid KTX stream');
- end;
- if not ((KTXHeader.GLFormat=0) or (KTXHeader.GLTypeSize in [1,2,4,8])) then begin
-  raise EVulkanTextureException.Create('Invalid KTX stream');
- end;
- if not ((KTXHeader.GLFormat=0) or (KTXHeader.GLFormat=KTXHeader.GLBaseInternalFormat)) then begin
-  raise EVulkanTextureException.Create('Invalid KTX stream');
- end;
- if not ((KTXHeader.GLFormat<>0) or (KTXHeader.GLTypeSize=1)) then begin
-  raise EVulkanTextureException.Create('Invalid KTX stream');
- end;
-
- NumberOfArrayElements:=Max(1,KTXHeader.NumberOfArrayElements);
- NumberOfFaces:=Max(1,KTXHeader.NumberOfFaces);
- NumberOfMipMapLevels:=KTXHeader.NumberOfMipMapLevels;
-
- if KTXHeader.BytesOfKeyValueData>0 then begin
-  NewPosition:=pStream.Position+KTXHeader.BytesOfKeyValueData;
-  if pStream.Seek(NewPosition,soBeginning)<>NewPosition then begin
-   raise EVulkanTextureException.Create('Stream seek error');
-  end;
- end;
-
- DataSize:=pStream.Size-pStream.Position;
-
- GetMem(Data,DataSize);
- try
-  if pStream.Read(Data^,DataSize)<>DataSize then begin
-   raise EVulkanTextureException.Create('Stream read error');
-  end;
-  CreateInternal(pQueue,
-                 pFence,
-                 pCommandBuffer,
-                 VulkanGetFormatFromOpenGLInternalFormat(KTXHeader.GLInternalFormat),
-                 VK_SAMPLE_COUNT_1_BIT,
-                 Max(1,KTXHeader.PixelWidth),
-                 Max(1,KTXHeader.PixelHeight),
-                 Max(1,KTXHeader.PixelDepth),
-                 NumberOfArrayElements,
-                 NumberOfFaces,
-                 NumberOfMipMapLevels,
-                 [vtufSampled],
-                 Data,
-                 DataSize,
-                 true,
-                 MustSwap,
-                 KTXHeader.GLTypeSize);
- finally
-  FreeMem(Data);
- end;
-
-end;
-
-destructor TVulkanTexture.Destroy;
-begin
- FreeAndNil(fSampler);
- FreeAndNil(fImageView);
- FreeAndNil(fMemoryBlock);
- FreeAndNil(fImage);
- inherited Destroy;
-end;
-
-procedure TVulkanTexture.CreateInternal(const pQueue:TVulkanQueue;
-                                        const pFence:TVulkanFence;
-                                        const pCommandBuffer:TVulkanCommandBuffer;
-                                        const pFormat:TVkFormat;
-                                        const pSampleCount:TVkSampleCountFlagBits;
-                                        const pWidth:TVkInt32;
-                                        const pHeight:TVkInt32;
-                                        const pDepth:TVkInt32;
-                                        const pCountArrayElements:TVkInt32;
-                                        const pCountFaces:TVkInt32;
-                                        const pCountMipMaps:TVkInt32;
-                                        const pUsageFlags:TVulkanTextureUsageFlags;
-                                        const pData:TVkPointer;
-                                        const pDataSize:TVkSizeInt;
-                                        const pMipMapSizeStored:boolean;
-                                        const pSwapEndianness:boolean;
-                                        const pSwapEndiannessTexels:TVkInt32);
+constructor TVulkanTexture.CreateFromMemory(const pDevice:TVulkanDevice;
+                                            const pQueue:TVulkanQueue;
+                                            const pFence:TVulkanFence;
+                                            const pCommandBuffer:TVulkanCommandBuffer;
+                                            const pFormat:TVkFormat;
+                                            const pSampleCount:TVkSampleCountFlagBits;
+                                            const pWidth:TVkInt32;
+                                            const pHeight:TVkInt32;
+                                            const pDepth:TVkInt32;
+                                            const pCountArrayElements:TVkInt32;
+                                            const pCountFaces:TVkInt32;
+                                            const pCountMipMaps:TVkInt32;
+                                            const pUsageFlags:TVulkanTextureUsageFlags;
+                                            const pData:TVkPointer;
+                                            const pDataSize:TVkSizeInt;
+                                            const pMipMapSizeStored:boolean;
+                                            const pSwapEndianness:boolean;
+                                            const pSwapEndiannessTexels:TVkInt32);
 type PUInt8Array=^TUInt8Array;
      TUInt8Array=array[0..65535] of TVkUInt8;
  function Swap16(x:TVkUInt16):TVkUInt16;
@@ -14707,6 +14336,44 @@ var MaxDimension,MaxMipMapLevels,CountStorageLevels,CountArrayLayers,CountDataLe
   end;
  end;
 begin
+
+ inherited Create;
+
+ fDevice:=pDevice;
+
+ fFormat:=VK_FORMAT_UNDEFINED;
+
+ fImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+
+ fImage:=nil;
+
+ fImageView:=nil;
+
+ fSampler:=nil;
+
+ fMemoryBlock:=nil;
+
+ fWidth:=0;
+ fHeight:=0;
+ fDepth:=0;
+
+ fCountArrayLayers:=0;
+
+ fCountMipMaps:=0;
+
+ fSampleCount:=VK_SAMPLE_COUNT_1_BIT;
+
+ fUsage:=vtufUndefined;
+
+ fUsageFlags:=[];
+
+ fWrapModeU:=vtwmRepeat;
+ fWrapModeV:=vtwmRepeat;
+ fWrapModeW:=vtwmRepeat;
+
+ fFilterMode:=vtfmNearest;
+
+ fMaxAnisotropy:=1.0;
 
  if (pDepth<1) or (pCountArrayElements<1) or (pCountFaces<1) then begin
   raise EVulkanTextureException.Create('Invalid parameters');
@@ -15219,6 +14886,405 @@ begin
                                      0,
                                      fCountArrayLayers);
 
+end;
+
+constructor TVulkanTexture.CreateFromStream(const pDevice:TVulkanDevice;
+                                            const pQueue:TVulkanQueue;
+                                            const pFence:TVulkanFence;
+                                            const pCommandBuffer:TVulkanCommandBuffer;
+                                            const pFormat:TVkFormat;
+                                            const pSampleCount:TVkSampleCountFlagBits;
+                                            const pWidth:TVkInt32;
+                                            const pHeight:TVkInt32;
+                                            const pDepth:TVkInt32;
+                                            const pCountArrayElements:TVkInt32;
+                                            const pCountFaces:TVkInt32;
+                                            const pCountMipMaps:TVkInt32;
+                                            const pUsageFlags:TVulkanTextureUsageFlags;
+                                            const pStream:TStream;
+                                            const pMipMapSizeStored:boolean;
+                                            const pSwapEndianness:boolean;
+                                            const pSwapEndiannessTexels:TVkInt32);
+var Data:TVkPointer;
+    DataSize:TVkUInt32;
+begin
+ DataSize:=pStream.Size;
+ GetMem(Data,DataSize);
+ try
+  if TVkInt64(pStream.Read(Data^,DataSize))<>TVkInt64(DataSize) then begin
+   raise EVulkanTextureException.Create('Stream read error');
+  end;
+  CreateFromMemory(pDevice,
+                   pQueue,
+                   pFence,
+                   pCommandBuffer,
+                   pFormat,
+                   pSampleCount,
+                   pWidth,
+                   pHeight,
+                   pDepth,
+                   pCountArrayElements,
+                   pCountFaces,
+                   pCountMipMaps,
+                   pUsageFlags,
+                   Data,
+                   DataSize,
+                   pMipMapSizeStored,
+                   pSwapEndianness,
+                   pSwapEndiannessTexels);
+ finally
+  FreeMem(Data);
+ end;
+end;
+
+constructor TVulkanTexture.CreateFromKTX(const pDevice:TVulkanDevice;
+                                         const pQueue:TVulkanQueue;
+                                         const pFence:TVulkanFence;
+                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pStream:TStream);
+type PKTXIdentifier=^TKTXIdentifier;
+     TKTXIdentifier=array[0..11] of TVkUInt8;
+     PKTXHeader=^TKTXHeader;
+     TKTXHeader=packed record
+      Identifier:TKTXIdentifier;
+      Endianness:TVkUInt32;
+      GLType:TVkUInt32;
+      GLTypeSize:TVkUInt32;
+      GLFormat:TVkUInt32;
+      GLInternalFormat:TVkUInt32;
+      GLBaseInternalFormat:TVkUInt32;
+      PixelWidth:TVkUInt32;
+      PixelHeight:TVkUInt32;
+      PixelDepth:TVkUInt32;
+      NumberOfArrayElements:TVkUInt32;
+      NumberOfFaces:TVkUInt32;
+      NumberOfMipMapLevels:TVkUInt32;
+      BytesOfKeyValueData:TVkUInt32;
+     end;
+ function Swap16(x:TVkUInt16):TVkUInt16;
+ begin
+  result:=((x and $ff) shl 8) or ((x and $ff00) shr 8);
+ end;
+ function Swap32(x:TVkUInt32):TVkUInt32;
+ begin
+  result:=(Swap16(x and $ffff) shl 16) or Swap16((x and $ffff0000) shr 16);
+ end;
+var KTXHeader:TKTXHeader;
+    MustSwap:boolean;
+    NumberOfArrayElements:TVkUInt32;
+    NumberOfFaces:TVkUInt32;
+    NumberOfMipMapLevels:TVkUInt32;
+    Data:pointer;
+    DataSize:TVkSizeInt;
+    NewPosition:TVkInt64;
+begin
+
+ if pStream.Read(KTXHeader,SizeOf(TKTXHeader))<>SizeOf(TKTXHeader) then begin
+  raise EVulkanTextureException.Create('Stream read error');
+ end;
+
+ if (KTXHeader.Identifier[0]<>$ab) or
+    (KTXHeader.Identifier[1]<>$4b) or
+    (KTXHeader.Identifier[2]<>$54) or
+    (KTXHeader.Identifier[3]<>$58) or
+    (KTXHeader.Identifier[4]<>$20) or
+    (KTXHeader.Identifier[5]<>$31) or
+    (KTXHeader.Identifier[6]<>$31) or
+    (KTXHeader.Identifier[7]<>$bb) or
+    (KTXHeader.Identifier[8]<>$0d) or
+    (KTXHeader.Identifier[9]<>$0a) or
+    (KTXHeader.Identifier[10]<>$1a) or
+    (KTXHeader.Identifier[11]<>$0a) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+
+ MustSwap:=false;
+ case KTXHeader.Endianness of
+  $01020304:begin
+   MustSwap:=true;
+   KTXHeader.GLType:=Swap32(KTXHeader.GLType);
+   KTXHeader.GLTypeSize:=Swap32(KTXHeader.GLTypeSize);
+   KTXHeader.GLFormat:=Swap32(KTXHeader.GLFormat);
+   KTXHeader.GLInternalFormat:=Swap32(KTXHeader.GLInternalFormat);
+   KTXHeader.GLBaseInternalFormat:=Swap32(KTXHeader.GLBaseInternalFormat);
+   KTXHeader.PixelWidth:=Swap32(KTXHeader.PixelWidth);
+   KTXHeader.PixelHeight:=Swap32(KTXHeader.PixelHeight);
+   KTXHeader.PixelDepth:=Swap32(KTXHeader.PixelDepth);
+   KTXHeader.NumberOfArrayElements:=Swap32(KTXHeader.NumberOfArrayElements);
+   KTXHeader.NumberOfFaces:=Swap32(KTXHeader.NumberOfFaces);
+   KTXHeader.NumberOfMipmapLevels:=Swap32(KTXHeader.NumberOfMipmapLevels);
+   KTXHeader.BytesOfKeyValueData:=Swap32(KTXHeader.BytesOfKeyValueData);
+   if not (KTXHeader.GLTypeSize in [1,2,4]) then begin
+    exit;
+   end;
+  end;
+  $04030201:begin
+  end;
+  else begin
+   exit;
+  end;
+ end;
+
+ if (KTXHeader.GLType=0)<>(KTXHeader.GLFormat=0) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+ if (KTXHeader.PixelWidth=0) or ((KTXHeader.PixelDepth>0) and (KTXHeader.PixelHeight=0)) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+ if not ((KTXHeader.GLFormat=0) or (KTXHeader.GLTypeSize in [1,2,4,8])) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+ if not ((KTXHeader.GLFormat=0) or (KTXHeader.GLFormat=KTXHeader.GLBaseInternalFormat)) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+ if not ((KTXHeader.GLFormat<>0) or (KTXHeader.GLTypeSize=1)) then begin
+  raise EVulkanTextureException.Create('Invalid KTX stream');
+ end;
+
+ NumberOfArrayElements:=Max(1,KTXHeader.NumberOfArrayElements);
+ NumberOfFaces:=Max(1,KTXHeader.NumberOfFaces);
+ NumberOfMipMapLevels:=KTXHeader.NumberOfMipMapLevels;
+
+ if KTXHeader.BytesOfKeyValueData>0 then begin
+  NewPosition:=pStream.Position+KTXHeader.BytesOfKeyValueData;
+  if pStream.Seek(NewPosition,soBeginning)<>NewPosition then begin
+   raise EVulkanTextureException.Create('Stream seek error');
+  end;
+ end;
+
+ DataSize:=pStream.Size-pStream.Position;
+
+ GetMem(Data,DataSize);
+ try
+  if pStream.Read(Data^,DataSize)<>DataSize then begin
+   raise EVulkanTextureException.Create('Stream read error');
+  end;
+  CreateFromMemory(pDevice,
+                   pQueue,
+                   pFence,
+                   pCommandBuffer,
+                   VulkanGetFormatFromOpenGLInternalFormat(KTXHeader.GLInternalFormat),
+                   VK_SAMPLE_COUNT_1_BIT,
+                   Max(1,KTXHeader.PixelWidth),
+                   Max(1,KTXHeader.PixelHeight),
+                   Max(1,KTXHeader.PixelDepth),
+                   NumberOfArrayElements,
+                   NumberOfFaces,
+                   NumberOfMipMapLevels,
+                   [vtufSampled],
+                   Data,
+                   DataSize,
+                   true,
+                   MustSwap,
+                   KTXHeader.GLTypeSize);
+ finally
+  FreeMem(Data);
+ end;
+
+end;
+
+constructor TVulkanTexture.CreateDefault(const pDevice:TVulkanDevice;
+                                         const pQueue:TVulkanQueue;
+                                         const pFence:TVulkanFence;
+                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pDefaultType:TVulkanTextureDefaultType;
+                                         const pWidth:TVkInt32;
+                                         const pHeight:TVkInt32;
+                                         const pDepth:TVkInt32;
+                                         const pCountArrayElements:TVkInt32;
+                                         const pCountFaces:TVkInt32;
+                                         const pMipmaps:boolean;
+                                         const pBorder:boolean);
+const TexelSize=4;
+      BlockShift=5;
+      BlockSize=1 shl BlockShift;
+      BlockMask=BlockSize-1;
+      Radius=10;
+      Colors:array[0..3,0..3] of TVkUInt8=
+       (($ff,$00,$00,$ff),
+        ($00,$ff,$00,$ff),
+        ($00,$00,$ff,$ff),
+        ($ff,$ff,$00,$ff));
+var LayerSize,DataSize,LayerIndex,x,y,Offset,lx,ly,rx,ry,cx,cy,m,Index,dx,dy,ds,Scale,CountMipMaps:TVkInt32;
+    Data:TVkUInt8Array;
+begin
+
+ LayerSize:=pWidth*pHeight*TexelSize;
+ DataSize:=LayerSize*pDepth*pCountArrayElements*pCountFaces;
+
+ Data:=nil;
+ try
+
+  SetLength(Data,DataSize);
+
+  case pDefaultType of
+   vtdtCheckerboard:begin
+    for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
+     for y:=0 to pHeight-1 do begin
+      for x:=0 to pWidth-1 do begin
+       Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+x)*TexelSize);
+       if (((x shr BlockShift) xor (y shr BlockShift)) and 1)<>0 then begin
+        if (LayerIndex and 1)<>0 then begin
+         Data[Offset+0]:=160;
+        end else begin
+         Data[Offset+0]:=96;
+        end;
+        Data[Offset+1]:=64;
+        if (LayerIndex and 1)<>0 then begin
+         Data[Offset+2]:=96;
+        end else begin
+         Data[Offset+2]:=255;
+        end;
+       end else begin
+        if (LayerIndex and 1)<>0 then begin
+         Data[Offset+0]:=160;
+        end else begin
+         Data[Offset+0]:=64;
+        end;
+        Data[Offset+1]:=32;
+        if (LayerIndex and 1)<>0 then begin
+         Data[Offset+2]:=64;
+        end else begin
+         Data[Offset+2]:=255;
+        end;
+       end;
+       Data[Offset+3]:=255;
+      end;
+     end;
+    end;
+   end;
+   vtdtPyramids:begin
+    for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
+     for y:=0 to pHeight-1 do begin
+      for x:=0 to pWidth-1 do begin
+       Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+x)*TexelSize);
+       lx:=x and BlockSize;
+       ly:=y and BlockSize;
+       rx:=BlockSize-lx;
+       ry:=BlockSize-ly;
+       cx:=0;
+       cy:=0;
+       if (lx<>ly) and (lx<>ry) then begin
+        m:=BlockSize;
+        if lx<m then begin
+         m:=lx;
+         cx:=-96;
+         cy:=0;
+        end;
+        if ly<m then begin
+         m:=ly;
+         cx:=0;
+         cy:=-96;
+        end;
+        if rx<m then begin
+         m:=rx;
+         cx:=96;
+         cy:=0;
+        end;
+        if ry<m then begin
+         m:=ry;
+         cx:=0;
+         cy:=96;
+        end;
+        if m>0 then begin
+        end;
+       end;
+       Data[Offset+0]:=128+cx;
+       Data[Offset+1]:=128+cy;
+       Data[Offset+2]:=128+85;
+       Data[Offset+3]:=255;
+      end;
+     end;
+    end;
+   end;
+   else {vtdtCircles:}begin
+    for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
+     for y:=0 to pHeight-1 do begin
+      for x:=0 to pWidth-1 do begin
+       Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+x)*TexelSize);
+       Index:=((((y shr (BlockShift-1)) and 2) xor ((y shr BlockShift) and 2))) or
+              (((((y shr BlockShift) and 1) xor ((y shr (BlockShift+1)) and 1))));
+       dx:=((x and not BlockMask)+(BlockSize shr 1))-x;
+       dy:=((y and not BlockMask)+(BlockSize shr 1))-y;
+       ds:=abs(((dx*dx)+(dy*dy))-(Radius*Radius));
+       Scale:=Min(ds,BlockSize);
+       Data[Offset+0]:=Min(Max((Colors[Index,0]*Scale) shr BlockShift,0),255);
+       Data[Offset+1]:=Min(Max((Colors[Index,1]*Scale) shr BlockShift,0),255);
+       Data[Offset+2]:=Min(Max((Colors[Index,2]*Scale) shr BlockShift,0),255);
+       Data[Offset+3]:=255;
+      end;
+     end;
+    end;
+   end;
+  end;
+
+  if pBorder then begin
+   for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
+    for y:=0 to pHeight-1 do begin
+     Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+0)*TexelSize);
+     Data[Offset+0]:=0;
+     Data[Offset+1]:=0;
+     Data[Offset+2]:=0;
+     Data[Offset+3]:=255;
+     Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+(pWidth-1))*TexelSize);
+     Data[Offset+0]:=0;
+     Data[Offset+1]:=0;
+     Data[Offset+2]:=0;
+     Data[Offset+3]:=255;
+    end;
+    for x:=0 to pWidth-1 do begin
+     Offset:=(LayerIndex*LayerSize)+(((0*pWidth)+x)*TexelSize);
+     Data[Offset+0]:=0;
+     Data[Offset+1]:=0;
+     Data[Offset+2]:=0;
+     Data[Offset+3]:=255;
+     Offset:=(LayerIndex*LayerSize)+((((pHeight-1)*pWidth)+x)*TexelSize);
+     Data[Offset+0]:=0;
+     Data[Offset+1]:=0;
+     Data[Offset+2]:=0;
+     Data[Offset+3]:=255;
+    end;
+   end;
+  end;
+
+  if pMipMaps then begin
+   CountMipMaps:=-1;
+  end else begin
+   CountMipMaps:=1;
+  end;
+
+  CreateFromMemory(pDevice,
+                   pQueue,
+                   pFence,
+                   pCommandBuffer,
+                   VK_FORMAT_R8G8B8A8_UNORM,
+                   VK_SAMPLE_COUNT_1_BIT,
+                   pWidth,
+                   pHeight,
+                   pDepth,
+                   pCountArrayElements,
+                   pCountFaces,
+                   CountMipMaps,
+                   [vtufSampled],
+                   @Data[0],
+                   DataSize,
+                   false,
+                   false,
+                   1);
+
+ finally
+  SetLength(Data,0);
+ end;
+
+end;
+
+destructor TVulkanTexture.Destroy;
+begin
+ FreeAndNil(fSampler);
+ FreeAndNil(fImageView);
+ FreeAndNil(fMemoryBlock);
+ FreeAndNil(fImage);
+ inherited Destroy;
 end;
 
 procedure TVulkanTexture.UpdateSampler;
