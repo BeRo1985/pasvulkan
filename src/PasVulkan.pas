@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-08-26-18-06-0000                       *
+ *                        Version 2016-09-27-23-39-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -290,6 +290,8 @@ type EVulkanException=class(Exception);
      EVulkanMemoryAllocationException=class(EVulkanException);
 
      EVulkanTextureException=class(EVulkanException);
+
+     EVulkanSurfaceException=class(EVulkanException);
 
      EVulkanResultException=class(EVulkanException)
       private
@@ -877,12 +879,13 @@ type EVulkanException=class(Exception);
                           const pSurface:TVulkanSurface=nil;
                           const pAllocationManager:TVulkanAllocationManager=nil);
        destructor Destroy; override;
-       procedure AddQueue(const pQueueFamilyIndex:TVkUInt32;const pQueuePriorities:array of TVkFloat);
+       procedure AddQueue(const pQueueFamilyIndex:TVkUInt32;const pQueuePriorities:array of TVkFloat;const pSurface:TVulkanSurface=nil);
        procedure AddQueues(const pPresent:boolean=true;
                            const pGraphics:boolean=true;
                            const pCompute:boolean=true;
                            const pTransfer:boolean=true;
-                           const pSparseBinding:boolean=false);
+                           const pSparseBinding:boolean=false;
+                           const pSurface:TVulkanSurface=nil);
        procedure Initialize;
        procedure WaitIdle;
        property EnabledFeatures:PVkPhysicalDeviceFeatures read fPointerToEnabledFeatures;
@@ -1632,6 +1635,7 @@ type EVulkanException=class(Exception);
      TVulkanSwapChain=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
+       fSurface:TVulkanSurface;
        fSwapChainHandle:TVkSwapChainKHR;
        fQueueFamilyIndices:TVulkanQueueFamilyIndices;
        fCountQueueFamilyIndices:TVkInt32;
@@ -1646,6 +1650,7 @@ type EVulkanException=class(Exception);
        function GetCurrentImage:TVulkanImage;
       public
        constructor Create(const pDevice:TVulkanDevice;
+                          const pSurface:TVulkanSurface;
                           const pOldSwapChain:TVulkanSwapChain=nil;
                           const pDesiredImageWidth:TVkUInt32=0;
                           const pDesiredImageHeight:TVkUInt32=0;
@@ -1666,6 +1671,7 @@ type EVulkanException=class(Exception);
        property Images[const pImageIndex:TVkInt32]:TVulkanImage read GetImage; default;
       published
        property Device:TVulkanDevice read fDevice;
+       property Surface:TVulkanSurface read fSurface;
        property Handle:TVkSwapChainKHR read fSwapChainHandle;
        property ImageFormat:TVkFormat read fImageFormat;
        property ImageColorSpace:TVkColorSpaceKHR read fImageColorSpace;
@@ -7431,12 +7437,12 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanDevice.AddQueue(const pQueueFamilyIndex:TVkUInt32;const pQueuePriorities:array of TVkFloat);
+procedure TVulkanDevice.AddQueue(const pQueueFamilyIndex:TVkUInt32;const pQueuePriorities:array of TVkFloat;const pSurface:TVulkanSurface=nil);
 var QueueFamilyProperties:PVkQueueFamilyProperties;
 begin
  if pQueueFamilyIndex<TVkUInt32(length(fPhysicalDevice.fQueueFamilyProperties)) then begin
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[pQueueFamilyIndex];
-  if (fPresentQueueFamilyIndex<0) and assigned(fSurface) and fPhysicalDevice.GetSurfaceSupport(pQueueFamilyIndex,fSurface) then begin
+  if (fPresentQueueFamilyIndex<0) and ((assigned(pSurface) and fPhysicalDevice.GetSurfaceSupport(pQueueFamilyIndex,pSurface)) or not assigned(pSurface)) then begin
    fPresentQueueFamilyIndex:=pQueueFamilyIndex;
   end;
   if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
@@ -7458,7 +7464,8 @@ procedure TVulkanDevice.AddQueues(const pPresent:boolean=true;
                                   const pGraphics:boolean=true;
                                   const pCompute:boolean=true;
                                   const pTransfer:boolean=true;
-                                  const pSparseBinding:boolean=false);
+                                  const pSparseBinding:boolean=false;
+                                  const pSurface:TVulkanSurface=nil);
 var Index:TVkInt32;
     DoAdd:boolean;
     QueueFamilyProperties:PVkQueueFamilyProperties;
@@ -7466,7 +7473,7 @@ begin
  for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
   DoAdd:=false;
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
-  if (fPresentQueueFamilyIndex<0) and assigned(fSurface) and fPhysicalDevice.GetSurfaceSupport(Index,fSurface) then begin
+  if (fPresentQueueFamilyIndex<0) and ((assigned(pSurface) and fPhysicalDevice.GetSurfaceSupport(Index,pSurface)) or not assigned(pSurface)) then begin
    fPresentQueueFamilyIndex:=Index;
    if pPresent then begin
     DoAdd:=true;
@@ -10610,6 +10617,7 @@ begin
 end;
 
 constructor TVulkanSwapChain.Create(const pDevice:TVulkanDevice;
+                                    const pSurface:TVulkanSurface;
                                     const pOldSwapChain:TVulkanSwapChain=nil;
                                     const pDesiredImageWidth:TVkUInt32=0;
                                     const pDesiredImageHeight:TVkUInt32=0;
@@ -10636,6 +10644,8 @@ begin
 
  fDevice:=pDevice;
 
+ fSurface:=pSurface;
+
  fSwapChainHandle:=VK_NULL_HANDLE;
 
  fQueueFamilyIndices:=nil;
@@ -10652,6 +10662,11 @@ begin
 
  try
 
+  if (fDevice.fPresentQueueFamilyIndex<0) or not
+     fDevice.fPhysicalDevice.GetSurfaceSupport(fDevice.fPresentQueueFamilyIndex,fSurface) then begin
+   raise EVulkanSurfaceException.Create('Surface not supported by device');
+  end;
+
   if assigned(pQueueFamilyIndices) then begin
    fCountQueueFamilyIndices:=pQueueFamilyIndices.Count;
    SetLength(fQueueFamilyIndices,fCountQueueFamilyIndices);
@@ -10662,12 +10677,12 @@ begin
    fCountQueueFamilyIndices:=0;
   end;
 
-  SurfaceCapabilities:=fDevice.fPhysicalDevice.GetSurfaceCapabilities(fDevice.fSurface);
+  SurfaceCapabilities:=fDevice.fPhysicalDevice.GetSurfaceCapabilities(fSurface);
 
   FillChar(SwapChainCreateInfo,SizeOf(TVkSwapChainCreateInfoKHR),#0);
   SwapChainCreateInfo.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 
-  SwapChainCreateInfo.surface:=fDevice.fSurface.fSurfaceHandle;
+  SwapChainCreateInfo.surface:=fSurface.fSurfaceHandle;
 
   if SurfaceCapabilities.minImageCount>pDesiredImageCount then begin
    SwapChainCreateInfo.minImageCount:=SurfaceCapabilities.minImageCount;
@@ -10679,7 +10694,7 @@ begin
   end;
 
   if pImageFormat=VK_FORMAT_UNDEFINED then begin
-   SurfaceFormat:=fDevice.fPhysicalDevice.GetSurfaceFormat(fDevice.fSurface);
+   SurfaceFormat:=fDevice.fPhysicalDevice.GetSurfaceFormat(fSurface);
    SwapChainCreateInfo.imageFormat:=SurfaceFormat.format;
    SwapChainCreateInfo.imageColorSpace:=SurfaceFormat.colorSpace;
   end else begin
@@ -10729,7 +10744,7 @@ begin
 
   SurfacePresetModes:=nil;
   try
-   SurfacePresetModes:=fDevice.fPhysicalDevice.GetSurfacePresentModes(fDevice.fSurface);
+   SurfacePresetModes:=fDevice.fPhysicalDevice.GetSurfacePresentModes(fSurface);
    SwapChainCreateInfo.presentMode:=VK_PRESENT_MODE_FIFO_KHR;
    for Index:=0 to length(SurfacePresetModes)-1 do begin
     if SurfacePresetModes[Index]=pPresentMode then begin

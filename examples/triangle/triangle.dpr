@@ -237,7 +237,7 @@ begin
    try
     FreeAndNil(VulkanGraphicsPipeline);
     FreeAndNil(VulkanSwapChainSimpleDirectRenderTarget);
-    VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,OldVulkanSwapChain,SurfaceWidth,SurfaceHeight,MaxSwapChainImages,1);
+    VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,VulkanSurface,OldVulkanSwapChain,SurfaceWidth,SurfaceHeight,MaxSwapChainImages,1);
     VulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanDevice,VulkanSwapChain,VulkanInitializationCommandBuffer,VulkanInitializationCommandBufferFence);
     RecreateVulkanGraphicsPipeline;
    finally
@@ -492,7 +492,7 @@ begin
 
    VulkanInitializationCommandBuffer:=TVulkanCommandBuffer.Create(VulkanInitializationCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-   VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,nil,SurfaceWidth,SurfaceHeight,MaxSwapChainImages,1);
+   VulkanSwapChain:=TVulkanSwapChain.Create(VulkanDevice,VulkanSurface,nil,SurfaceWidth,SurfaceHeight,MaxSwapChainImages,1);
 
    VulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanDevice,VulkanSwapChain,VulkanInitializationCommandBuffer,VulkanInitializationCommandBufferFence);
 
