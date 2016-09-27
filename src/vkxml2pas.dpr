@@ -2893,7 +2893,7 @@ begin
     result:='PVkUInt16';
    end else if Type_='int32_t' then begin
     result:='PVkInt32';
-   end else if Type_='uint32_t' then begin
+   end else if (Type_='uint32_t') or (Type_='DWORD') then begin
     result:='PVkUInt32';
    end else if Type_='int64_t' then begin
     result:='PVkInt64';
@@ -2931,6 +2931,8 @@ begin
     result:='PMirSurface';
    end else if Type_='ANativeWindow' then begin
     result:='PANativeWindow';
+   end else if Type_='SECURITY_ATTRIBUTES' then begin
+    result:='PSecurityAttributes';
    end else begin
     result:='P'+Type_;
    end;
@@ -2954,7 +2956,7 @@ begin
     result:='PPVkUInt16';
    end else if Type_='int32_t' then begin
     result:='PPVkInt32';
-   end else if Type_='uint32_t' then begin
+   end else if (Type_='uint32_t') or (Type_='DWORD') then begin
     result:='PPVkUInt32';
    end else if Type_='int64_t' then begin
     result:='PPVkInt64';
@@ -3016,7 +3018,7 @@ begin
     result:='TVkUInt16';
    end else if Type_='int32_t' then begin
     result:='TVkInt32';
-   end else if Type_='uint32_t' then begin
+   end else if (Type_='uint32_t') or (Type_='DWORD') then begin
     result:='TVkUInt32';
    end else if Type_='int64_t' then begin
     result:='TVkInt64';
@@ -3641,7 +3643,7 @@ begin
             inc(TypeDefinitionMember^.Ptr);
            end;
           end;
-          if (Type_='HWND') or (Type_='HINSTANCE') then begin
+          if (Type_='HWND') or (Type_='HINSTANCE') or (Type_='SECURITY_ATTRIBUTES') then begin
            TypeDefinition^.Define:='Windows';
           end else if (Type_='Display') or (Type_='VisualID') or (Type_='Window') then begin
            TypeDefinition^.Define:='X11';

@@ -176,7 +176,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=24;
+      VK_HEADER_VERSION=28;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -260,16 +260,16 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_32_EXTENSION_NAME='VK_AMD_extension_32';
       VK_AMD_EXTENSION_33_SPEC_VERSION=0;
       VK_AMD_EXTENSION_33_EXTENSION_NAME='VK_AMD_extension_33';
-      VK_AMD_EXTENSION_34_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_34_EXTENSION_NAME='VK_AMD_extension_34';
+      VK_AMD_DRAW_INDIRECT_COUNT_SPEC_VERSION=1;
+      VK_AMD_DRAW_INDIRECT_COUNT_EXTENSION_NAME='VK_AMD_draw_indirect_count';
       VK_AMD_EXTENSION_35_SPEC_VERSION=0;
       VK_AMD_EXTENSION_35_EXTENSION_NAME='VK_AMD_extension_35';
-      VK_AMD_EXTENSION_36_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_36_EXTENSION_NAME='VK_AMD_extension_36';
-      VK_AMD_EXTENSION_37_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_37_EXTENSION_NAME='VK_AMD_extension_37';
-      VK_AMD_EXTENSION_38_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_38_EXTENSION_NAME='VK_AMD_extension_38';
+      VK_AMD_EXTENSION_NEGATIVE_VIEWPORT_HEIGHT_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_NEGATIVE_VIEWPORT_HEIGHT_EXTENSION_NAME='VK_AMD_negative_viewport_height';
+      VK_AMD_GPU_SHADER_HALF_FLOAT_SPEC_VERSION=1;
+      VK_AMD_GPU_SHADER_HALF_FLOAT_EXTENSION_NAME='VK_AMD_gpu_shader_half_float';
+      VK_AMD_EXTENSION_SHADER_BALLOT_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_SHADER_BALLOT_EXTENSION_NAME='VK_AMD_shader_ballot';
       VK_AMD_EXTENSION_39_SPEC_VERSION=0;
       VK_AMD_EXTENSION_39_EXTENSION_NAME='VK_AMD_extension_39';
       VK_AMD_EXTENSION_40_SPEC_VERSION=0;
@@ -304,6 +304,32 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_54_EXTENSION_NAME='VK_NV_extension_54';
       VK_IMG_FORMAT_PVRTC_SPEC_VERSION=1;
       VK_IMG_FORMAT_PVRTC_EXTENSION_NAME='VK_IMG_format_pvrtc';
+      VK_NV_EXTERNAL_MEMORY_CAPABILITIES_SPEC_VERSION=1;
+      VK_NV_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME='VK_NV_external_memory_capabilities';
+      VK_NV_EXTERNAL_MEMORY_SPEC_VERSION=1;
+      VK_NV_EXTERNAL_MEMORY_EXTENSION_NAME='VK_NV_external_memory';
+      VK_NV_EXTERNAL_MEMORY_WIN32_SPEC_VERSION=1;
+      VK_NV_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME='VK_NV_external_memory_win32';
+      VK_NV_WIN32_KEYED_MUTEX_SPEC_VERSION=1;
+      VK_NV_WIN32_KEYED_MUTEX_EXTENSION_NAME='VK_NV_win32_keyed_mutex';
+      VK_KHR_EXTENSION_60_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_60_EXTENSION_NAME='VK_KHR_extension_60';
+      VK_KHR_EXTENSION_61_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_61_EXTENSION_NAME='VK_KHR_extension_61';
+      VK_EXT_VALIDATION_FLAGS_SPEC_VERSION=1;
+      VK_EXT_VALIDATION_FLAGS_EXTENSION_NAME='VK_EXT_validation_flags';
+      VK_NV_EXTENSION_63_SPEC_VERSION=0;
+      VK_NV_EXTENSION_63_EXTENSION_NAME='VK_NV_extension_63';
+      VK_KHR_EXTENSION_64_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_64_EXTENSION_NAME='VK_KHR_extension_64';
+      VK_NV_EXTENSION_65_SPEC_VERSION=0;
+      VK_NV_EXTENSION_65_EXTENSION_NAME='VK_NV_extension_65';
+      VK_NV_EXTENSION_66_SPEC_VERSION=0;
+      VK_NV_EXTENSION_66_EXTENSION_NAME='VK_NV_extension_66';
+      VK_ARM_EXTENSION_01_SPEC_VERSION=0;
+      VK_ARM_EXTENSION_01_EXTENSION_NAME='VK_ARM_extension_01';
+      VK_ARM_EXTENSION_02_SPEC_VERSION=0;
+      VK_ARM_EXTENSION_02_EXTENSION_NAME='VK_ARM_extension_02';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -626,6 +652,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkDebugReportFlagsEXT=^PVkDebugReportFlagsEXT;
      PVkDebugReportFlagsEXT=^TVkDebugReportFlagsEXT;
      TVkDebugReportFlagsEXT=TVkFlags;
+
+     PPVkExternalMemoryHandleTypeFlagsNV=^PVkExternalMemoryHandleTypeFlagsNV;
+     PVkExternalMemoryHandleTypeFlagsNV=^TVkExternalMemoryHandleTypeFlagsNV;
+     TVkExternalMemoryHandleTypeFlagsNV=TVkFlags;
+
+     PPVkExternalMemoryFeatureFlagsNV=^PVkExternalMemoryFeatureFlagsNV;
+     PVkExternalMemoryFeatureFlagsNV=^TVkExternalMemoryFeatureFlagsNV;
+     TVkExternalMemoryFeatureFlagsNV=TVkFlags;
 
      PPVkInstance=^PVkInstance;
      PVkInstance=^TVkInstance;
@@ -1366,7 +1400,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT=1000022002,
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV=1000026000,
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV=1000026001,
-       VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV=1000026002
+       VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV=1000026002,
+       VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_NV=1000056000,
+       VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV=1000056001,
+       VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_NV=1000057000,
+       VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_NV=1000057001,
+       VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_NV=1000058000,
+       VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT=1000061000
       );
 
      PPVkSubpassContents=^PVkSubpassContents;
@@ -1642,8 +1682,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkSparseImageFormatFlagBits=^TVkSparseImageFormatFlagBits;
      TVkSparseImageFormatFlagBits=
       (
-       VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT=$00000001,                      //< Image uses a single miptail region for all array layers
-       VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT=$00000002,                    //< Image requires mip level dimensions to be an integer multiple of the sparse image block dimensions for non-miptail levels.
+       VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT=$00000001,                      //< Image uses a single mip tail region for all array layers
+       VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT=$00000002,                    //< Image requires mip level dimensions to be an integer multiple of the sparse image block dimensions for non-tail mip levels.
        VK_SPARSE_IMAGE_FORMAT_NONSTANDARD_BLOCK_SIZE_BIT=$00000004               //< Image uses a non-standard sparse image block dimensions
       );
 
@@ -1857,6 +1897,32 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_RASTERIZATION_ORDER_RELAXED_AMD=1
       );
 
+     PPVkExternalMemoryHandleTypeFlagBitsNV=^PVkExternalMemoryHandleTypeFlagBitsNV;
+     PVkExternalMemoryHandleTypeFlagBitsNV=^TVkExternalMemoryHandleTypeFlagBitsNV;
+     TVkExternalMemoryHandleTypeFlagBitsNV=
+      (
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_NV=$00000001,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT_NV=$00000002,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_IMAGE_BIT_NV=$00000004,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_IMAGE_KMT_BIT_NV=$00000008
+      );
+
+     PPVkExternalMemoryFeatureFlagBitsNV=^PVkExternalMemoryFeatureFlagBitsNV;
+     PVkExternalMemoryFeatureFlagBitsNV=^TVkExternalMemoryFeatureFlagBitsNV;
+     TVkExternalMemoryFeatureFlagBitsNV=
+      (
+       VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT_NV=$00000001,
+       VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT_NV=$00000002,
+       VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_NV=$00000004
+      );
+
+     PPVkValidationCheckEXT=^PVkValidationCheckEXT;
+     PVkValidationCheckEXT=^TVkValidationCheckEXT;
+     TVkValidationCheckEXT=
+      (
+       VK_VALIDATION_CHECK_ALL_EXT=0
+      );
+
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
      PPFN_vkInternalAllocationNotification=^TPFN_vkInternalAllocationNotification;
      TPFN_vkInternalAllocationNotification=procedure(pUserData:PVkVoid;size:TVkSize;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -2045,13 +2111,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        residencyStandard2DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (single sample) sparse resources using the standard sparse image block shapes (based on pixel format)
        residencyStandard2DMultisampleBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (multisample) sparse resources using the standard sparse image block shapes (based on pixel format)
        residencyStandard3DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 3D sparse resources using the standard sparse image block shapes (based on pixel format)
-       residencyAlignedMipSize:TVkBool32; //< Sparse resources support: Images with mip-level dimensions that are NOT a multiple of the sparse image block dimensions will be placed in the mip tail
+       residencyAlignedMipSize:TVkBool32; //< Sparse resources support: Images with mip level dimensions that are NOT a multiple of the sparse image block dimensions will be placed in the mip tail
        residencyNonResidentStrict:TVkBool32; //< Sparse resources support: GPU can consistently access non-resident regions of a resource, all reads return as if data is 0, writes are discarded
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pResidencyStandard2DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (single sample) sparse resources using the standard sparse image block shapes (based on pixel format)
                           const pResidencyStandard2DMultisampleBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (multisample) sparse resources using the standard sparse image block shapes (based on pixel format)
                           const pResidencyStandard3DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 3D sparse resources using the standard sparse image block shapes (based on pixel format)
-                          const pResidencyAlignedMipSize:TVkBool32; //< Sparse resources support: Images with mip-level dimensions that are NOT a multiple of the sparse image block dimensions will be placed in the mip tail
+                          const pResidencyAlignedMipSize:TVkBool32; //< Sparse resources support: Images with mip level dimensions that are NOT a multiple of the sparse image block dimensions will be placed in the mip tail
                           const pResidencyNonResidentStrict:TVkBool32); //< Sparse resources support: GPU can consistently access non-resident regions of a resource, all reads return as if data is 0, writes are discarded
 {$endif}
      end;
@@ -2111,9 +2177,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // pfnAllocation must: be a pointer to a valid user-defined PFN_vkAllocationFunction
-     // pfnReallocation must: be a pointer to a valid user-defined PFN_vkReallocationFunction
-     // pfnFree must: be a pointer to a valid user-defined PFN_vkFreeFunction
+     // pfnAllocation must: be a pointer to a valid user-defined tlink:PFN_vkAllocationFunction
+     // pfnReallocation must: be a pointer to a valid user-defined tlink:PFN_vkReallocationFunction
+     // pfnFree must: be a pointer to a valid user-defined tlink:PFN_vkFreeFunction
      // If either of pfnInternalAllocation or pfnInternalFree is not `NULL`, both must: be valid callbacks
      PPVkAllocationCallbacks=^PVkAllocationCallbacks;
      PVkAllocationCallbacks=^TVkAllocationCallbacks;
@@ -2582,7 +2648,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The sum of srcArrayElement and descriptorCount must: be less than or equal to the number of array elements in the descriptor set binding specified by srcBinding, and all applicable consecutive bindings, as described by <<descriptorsets-updates-consecutive>>
      // dstBinding must: be a valid binding within dstSet
      // The sum of dstArrayElement and descriptorCount must: be less than or equal to the number of array elements in the descriptor set binding specified by dstBinding, and all applicable consecutive bindings, as described by <<descriptorsets-updates-consecutive>>
-     // If srcSet is equal to dstSet, then the source and destination ranges of descriptors mustnot: overlap, where the ranges may: include array elements from consecutive bindings as described by <<descriptorsets-updates-consecutive>>
+     // If srcSet is equal to dstSet, then the source and destination ranges of descriptors must: not overlap, where the ranges may: include array elements from consecutive bindings as described by <<descriptorsets-updates-consecutive>>
      PPVkCopyDescriptorSet=^PVkCopyDescriptorSet;
      PVkCopyDescriptorSet=^TVkCopyDescriptorSet;
      TVkCopyDescriptorSet=record
@@ -2612,9 +2678,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // size must: be greater than `0`
      // If sharingMode is TVK_SHARING_MODE_CONCURRENT, pQueueFamilyIndices must: be a pointer to an array of queueFamilyIndexCount basetype:uint32_t values
      // If sharingMode is TVK_SHARING_MODE_CONCURRENT, queueFamilyIndexCount must: be greater than `1`
-     // If the <<features-features-sparseBinding,sparse bindings>> feature is not enabled, flags mustnot: contain TVK_BUFFER_CREATE_SPARSE_BINDING_BIT
-     // If the <<features-features-sparseResidencyBuffer,sparse buffer residency>> feature is not enabled, flags mustnot: contain TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT
-     // If the <<features-features-sparseResidencyAliased,sparse aliased residency>> feature is not enabled, flags mustnot: contain TVK_BUFFER_CREATE_SPARSE_ALIASED_BIT
+     // If the <<features-features-sparseBinding,sparse bindings>> feature is not enabled, flags must: not contain TVK_BUFFER_CREATE_SPARSE_BINDING_BIT
+     // If the <<features-features-sparseResidencyBuffer,sparse buffer residency>> feature is not enabled, flags must: not contain TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidencyAliased,sparse aliased residency>> feature is not enabled, flags must: not contain TVK_BUFFER_CREATE_SPARSE_ALIASED_BIT
      // If flags contains TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT or TVK_BUFFER_CREATE_SPARSE_ALIASED_BIT, it must: also contain TVK_BUFFER_CREATE_SPARSE_BINDING_BIT
      PPVkBufferCreateInfo=^PVkBufferCreateInfo;
      PVkBufferCreateInfo=^TVkBufferCreateInfo;
@@ -2690,8 +2756,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // If aspectMask contains TVK_IMAGE_ASPECT_COLOR_BIT, it mustnot: contain either of TVK_IMAGE_ASPECT_DEPTH_BIT or TVK_IMAGE_ASPECT_STENCIL_BIT
-     // aspectMask mustnot: contain TVK_IMAGE_ASPECT_METADATA_BIT
+     // If aspectMask contains TVK_IMAGE_ASPECT_COLOR_BIT, it must: not contain either of TVK_IMAGE_ASPECT_DEPTH_BIT or TVK_IMAGE_ASPECT_STENCIL_BIT
+     // aspectMask must: not contain TVK_IMAGE_ASPECT_METADATA_BIT
      // mipLevel must: be less than the mipLevels specified in slink:VkImageCreateInfo when the image was created
      // latexmath:[$(baseArrayLayer + layerCount)$] must: be less than or equal to the arrayLayers specified in slink:VkImageCreateInfo when the image was created
      PPVkImageSubresourceLayers=^PVkImageSubresourceLayers;
@@ -2783,7 +2849,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 
      // oldLayout must: be TVK_IMAGE_LAYOUT_UNDEFINED or the current layout of the image subresources affected by the barrier
-     // newLayout mustnot: be TVK_IMAGE_LAYOUT_UNDEFINED or TVK_IMAGE_LAYOUT_PREINITIALIZED
+     // newLayout must: not be TVK_IMAGE_LAYOUT_UNDEFINED or TVK_IMAGE_LAYOUT_PREINITIALIZED
      // If image was created with a sharing mode of TVK_SHARING_MODE_CONCURRENT, srcQueueFamilyIndex and dstQueueFamilyIndex must: both be TVK_QUEUE_FAMILY_IGNORED
      // If image was created with a sharing mode of TVK_SHARING_MODE_EXCLUSIVE, srcQueueFamilyIndex and dstQueueFamilyIndex must: either both be TVK_QUEUE_FAMILY_IGNORED, or both be a valid queue family (see <<devsandqueues-queueprops>>)
      // If image was created with a sharing mode of TVK_SHARING_MODE_EXCLUSIVE, and srcQueueFamilyIndex and dstQueueFamilyIndex are valid queue families, at least one of them must: be the same as the family of the queue that will execute this barrier
@@ -2825,7 +2891,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      // If sharingMode is TVK_SHARING_MODE_CONCURRENT, pQueueFamilyIndices must: be a pointer to an array of queueFamilyIndexCount basetype:uint32_t values
      // If sharingMode is TVK_SHARING_MODE_CONCURRENT, queueFamilyIndexCount must: be greater than `1`
-     // format mustnot: be TVK_FORMAT_UNDEFINED
+     // format must: not be TVK_FORMAT_UNDEFINED
      // The width, height, and depth members of extent must: all be greater than `0`
      // mipLevels must: be greater than `0`
      // arrayLayers must: be greater than `0`
@@ -2833,40 +2899,41 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If imageType is TVK_IMAGE_TYPE_1D, extent.width must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension1D, or TVkImageFormatProperties::maxExtent.width (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
      // If imageType is TVK_IMAGE_TYPE_2D and flags does not contain TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension2D, or TVkImageFormatProperties::maxExtent.width/height (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
      // If imageType is TVK_IMAGE_TYPE_2D and flags contains TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimensionCube, or TVkImageFormatProperties::maxExtent.width/height (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
-     // If imageType is TVK_IMAGE_TYPE_2D and flags contains TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be equal
+     // If imageType is TVK_IMAGE_TYPE_2D and flags contains TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, extent.width and extent.height must: be equal and arrayLayers must: be greater than or equal to 6
      // If imageType is TVK_IMAGE_TYPE_3D, extent.width, extent.height and extent.depth must: be less than or equal to TVkPhysicalDeviceLimits::maxImageDimension3D, or TVkImageFormatProperties::maxExtent.width/height/depth (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
      // If imageType is TVK_IMAGE_TYPE_1D, both extent.height and extent.depth must: be `1`
      // If imageType is TVK_IMAGE_TYPE_2D, extent.depth must: be `1`
      // mipLevels must: be less than or equal to latexmath:[$\lfloor\log_2(\max(\mathit{extent.width}, \mathit{extent.height}, \mathit{extent.depth}))\rfloor + 1$]
      // If any of extent.width, extent.height, or extent.depth are greater than the equivalently named members of TVkPhysicalDeviceLimits::maxImageDimension3D, mipLevels must: be less than or equal to TVkImageFormatProperties::maxMipLevels (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure)
      // arrayLayers must: be less than or equal to TVkPhysicalDeviceLimits::maxImageArrayLayers, or TVkImageFormatProperties::maxArrayLayers (as returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure) - whichever is higher
-     // If samples is not TVK_SAMPLE_COUNT_1_BIT, imageType must: be TVK_IMAGE_TYPE_2D, tiling must: be TVK_IMAGE_TILING_OPTIMAL, and mipLevels must: be equal to `1`
+     // If samples is not TVK_SAMPLE_COUNT_1_BIT, imageType must: be TVK_IMAGE_TYPE_2D, flags must: not contain TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, tiling must: be TVK_IMAGE_TILING_OPTIMAL, and mipLevels must: be equal to `1`
+     // If usage includes TVK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, then bits other than TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, and TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT must: not be set
      // If usage includes TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, TVK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, extent.width must: be less than or equal to TVkPhysicalDeviceLimits::maxFramebufferWidth
      // If usage includes TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, TVK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, or TVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, extent.height must: be less than or equal to TVkPhysicalDeviceLimits::maxFramebufferHeight
      // samples must: be a bit value that is set in TVkImageFormatProperties::sampleCounts returned by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, usage, and flags equal to those in this structure
-     // If the <<features-features-textureCompressionETC2,ETC2 texture compression>> feature is not enabled, format mustnot: be TVK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK, TVK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK, TVK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK, TVK_FORMAT_EAC_R11_UNORM_BLOCK, TVK_FORMAT_EAC_R11_SNORM_BLOCK, TVK_FORMAT_EAC_R11G11_UNORM_BLOCK, or TVK_FORMAT_EAC_R11G11_SNORM_BLOCK
-     // If the <<features-features-textureCompressionASTC_LDR,ASTC LDR texture compression>> feature is not enabled, format mustnot: be TVK_FORMAT_ASTC_4x4_UNORM_BLOCK, TVK_FORMAT_ASTC_4x4_SRGB_BLOCK, TVK_FORMAT_ASTC_5x4_UNORM_BLOCK, TVK_FORMAT_ASTC_5x4_SRGB_BLOCK, TVK_FORMAT_ASTC_5x5_UNORM_BLOCK, TVK_FORMAT_ASTC_5x5_SRGB_BLOCK, TVK_FORMAT_ASTC_6x5_UNORM_BLOCK, TVK_FORMAT_ASTC_6x5_SRGB_BLOCK, TVK_FORMAT_ASTC_6x6_UNORM_BLOCK, TVK_FORMAT_ASTC_6x6_SRGB_BLOCK, TVK_FORMAT_ASTC_8x5_UNORM_BLOCK, TVK_FORMAT_ASTC_8x5_SRGB_BLOCK,
+     // If the <<features-features-textureCompressionETC2,ETC2 texture compression>> feature is not enabled, format must: not be TVK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK, TVK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK, TVK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK, TVK_FORMAT_EAC_R11_UNORM_BLOCK, TVK_FORMAT_EAC_R11_SNORM_BLOCK, TVK_FORMAT_EAC_R11G11_UNORM_BLOCK, or TVK_FORMAT_EAC_R11G11_SNORM_BLOCK
+     // If the <<features-features-textureCompressionASTC_LDR,ASTC LDR texture compression>> feature is not enabled, format must: not be TVK_FORMAT_ASTC_4x4_UNORM_BLOCK, TVK_FORMAT_ASTC_4x4_SRGB_BLOCK, TVK_FORMAT_ASTC_5x4_UNORM_BLOCK, TVK_FORMAT_ASTC_5x4_SRGB_BLOCK, TVK_FORMAT_ASTC_5x5_UNORM_BLOCK, TVK_FORMAT_ASTC_5x5_SRGB_BLOCK, TVK_FORMAT_ASTC_6x5_UNORM_BLOCK, TVK_FORMAT_ASTC_6x5_SRGB_BLOCK, TVK_FORMAT_ASTC_6x6_UNORM_BLOCK, TVK_FORMAT_ASTC_6x6_SRGB_BLOCK, TVK_FORMAT_ASTC_8x5_UNORM_BLOCK, TVK_FORMAT_ASTC_8x5_SRGB_BLOCK,
      // TVK_FORMAT_ASTC_8x6_UNORM_BLOCK, TVK_FORMAT_ASTC_8x6_SRGB_BLOCK, TVK_FORMAT_ASTC_8x8_UNORM_BLOCK, TVK_FORMAT_ASTC_8x8_SRGB_BLOCK, TVK_FORMAT_ASTC_10x5_UNORM_BLOCK, TVK_FORMAT_ASTC_10x5_SRGB_BLOCK, TVK_FORMAT_ASTC_10x6_UNORM_BLOCK, TVK_FORMAT_ASTC_10x6_SRGB_BLOCK, TVK_FORMAT_ASTC_10x8_UNORM_BLOCK, TVK_FORMAT_ASTC_10x8_SRGB_BLOCK, TVK_FORMAT_ASTC_10x10_UNORM_BLOCK, TVK_FORMAT_ASTC_10x10_SRGB_BLOCK, TVK_FORMAT_ASTC_12x10_UNORM_BLOCK, TVK_FORMAT_ASTC_12x10_SRGB_BLOCK, TVK_FORMAT_ASTC_12x12_UNORM_BLOCK, or TVK_FORMAT_ASTC_12x12_SRGB_BLOCK
-     // If the <<features-features-textureCompressionBC,BC texture compression>> feature is not enabled, format mustnot: be TVK_FORMAT_BC1_RGB_UNORM_BLOCK, TVK_FORMAT_BC1_RGB_SRGB_BLOCK, TVK_FORMAT_BC1_RGBA_UNORM_BLOCK, TVK_FORMAT_BC1_RGBA_SRGB_BLOCK, TVK_FORMAT_BC2_UNORM_BLOCK, TVK_FORMAT_BC2_SRGB_BLOCK, TVK_FORMAT_BC3_UNORM_BLOCK, TVK_FORMAT_BC3_SRGB_BLOCK, TVK_FORMAT_BC4_UNORM_BLOCK, TVK_FORMAT_BC4_SNORM_BLOCK, TVK_FORMAT_BC5_UNORM_BLOCK, TVK_FORMAT_BC5_SNORM_BLOCK, TVK_FORMAT_BC6H_UFLOAT_BLOCK, TVK_FORMAT_BC6H_SFLOAT_BLOCK,
+     // If the <<features-features-textureCompressionBC,BC texture compression>> feature is not enabled, format must: not be TVK_FORMAT_BC1_RGB_UNORM_BLOCK, TVK_FORMAT_BC1_RGB_SRGB_BLOCK, TVK_FORMAT_BC1_RGBA_UNORM_BLOCK, TVK_FORMAT_BC1_RGBA_SRGB_BLOCK, TVK_FORMAT_BC2_UNORM_BLOCK, TVK_FORMAT_BC2_SRGB_BLOCK, TVK_FORMAT_BC3_UNORM_BLOCK, TVK_FORMAT_BC3_SRGB_BLOCK, TVK_FORMAT_BC4_UNORM_BLOCK, TVK_FORMAT_BC4_SNORM_BLOCK, TVK_FORMAT_BC5_UNORM_BLOCK, TVK_FORMAT_BC5_SNORM_BLOCK, TVK_FORMAT_BC6H_UFLOAT_BLOCK, TVK_FORMAT_BC6H_SFLOAT_BLOCK,
      // TVK_FORMAT_BC7_UNORM_BLOCK, or TVK_FORMAT_BC7_SRGB_BLOCK
      // If the <<features-features-shaderStorageImageMultisample,multisampled storage images>> feature is not enabled, and usage contains TVK_IMAGE_USAGE_STORAGE_BIT, samples must: be TVK_SAMPLE_COUNT_1_BIT
-     // If the <<features-features-sparseBinding,sparse bindings>> feature is not enabled, flags mustnot: contain TVK_IMAGE_CREATE_SPARSE_BINDING_BIT
-     // If the <<features-features-sparseResidencyImage2D,sparse residency for 2D images>> feature is not enabled, and imageType is TVK_IMAGE_TYPE_2D, flags mustnot: contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
-     // If the <<features-features-sparseResidencyImage3D,sparse residency for 3D images>> feature is not enabled, and imageType is TVK_IMAGE_TYPE_3D, flags mustnot: contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
-     // If the <<features-features-sparseResidency2Samples,sparse residency for images with 2 samples>> feature is not enabled, imageType is TVK_IMAGE_TYPE_2D, and samples is TVK_SAMPLE_COUNT_2_BIT, flags mustnot: contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
-     // If the <<features-features-sparseResidency4Samples,sparse residency for images with 4 samples>> feature is not enabled, imageType is TVK_IMAGE_TYPE_2D, and samples is TVK_SAMPLE_COUNT_4_BIT, flags mustnot: contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
-     // If the <<features-features-sparseResidency8Samples,sparse residency for images with 8 samples>> feature is not enabled, imageType is TVK_IMAGE_TYPE_2D, and samples is TVK_SAMPLE_COUNT_8_BIT, flags mustnot: contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
-     // If the <<features-features-sparseResidency16Samples,sparse residency for images with 16 samples>> feature is not enabled, imageType is TVK_IMAGE_TYPE_2D, and samples is TVK_SAMPLE_COUNT_16_BIT, flags mustnot: contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseBinding,sparse bindings>> feature is not enabled, flags must: not contain TVK_IMAGE_CREATE_SPARSE_BINDING_BIT
+     // If the <<features-features-sparseResidencyImage2D,sparse residency for 2D images>> feature is not enabled, and imageType is TVK_IMAGE_TYPE_2D, flags must: not contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidencyImage3D,sparse residency for 3D images>> feature is not enabled, and imageType is TVK_IMAGE_TYPE_3D, flags must: not contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidency2Samples,sparse residency for images with 2 samples>> feature is not enabled, imageType is TVK_IMAGE_TYPE_2D, and samples is TVK_SAMPLE_COUNT_2_BIT, flags must: not contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidency4Samples,sparse residency for images with 4 samples>> feature is not enabled, imageType is TVK_IMAGE_TYPE_2D, and samples is TVK_SAMPLE_COUNT_4_BIT, flags must: not contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidency8Samples,sparse residency for images with 8 samples>> feature is not enabled, imageType is TVK_IMAGE_TYPE_2D, and samples is TVK_SAMPLE_COUNT_8_BIT, flags must: not contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+     // If the <<features-features-sparseResidency16Samples,sparse residency for images with 16 samples>> feature is not enabled, imageType is TVK_IMAGE_TYPE_2D, and samples is TVK_SAMPLE_COUNT_16_BIT, flags must: not contain TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
      // If tiling is TVK_IMAGE_TILING_LINEAR, format must: be a format that has at least one supported feature bit present in the value of TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
-     // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, usage mustnot: contain TVK_IMAGE_USAGE_SAMPLED_BIT
-     // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, usage mustnot: contain TVK_IMAGE_USAGE_STORAGE_BIT
-     // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, usage mustnot: contain TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-     // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, usage mustnot: contain TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+     // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, usage must: not contain TVK_IMAGE_USAGE_SAMPLED_BIT
+     // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, usage must: not contain TVK_IMAGE_USAGE_STORAGE_BIT
+     // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, usage must: not contain TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+     // If tiling is TVK_IMAGE_TILING_LINEAR, and TVkFormatProperties::linearTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, usage must: not contain TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
      // If tiling is TVK_IMAGE_TILING_OPTIMAL, format must: be a format that has at least one supported feature bit present in the value of TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
-     // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, usage mustnot: contain TVK_IMAGE_USAGE_SAMPLED_BIT
-     // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, usage mustnot: contain TVK_IMAGE_USAGE_STORAGE_BIT
-     // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, usage mustnot: contain TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-     // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, usage mustnot: contain TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+     // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, usage must: not contain TVK_IMAGE_USAGE_SAMPLED_BIT
+     // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, usage must: not contain TVK_IMAGE_USAGE_STORAGE_BIT
+     // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, usage must: not contain TVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+     // If tiling is TVK_IMAGE_TILING_OPTIMAL, and TVkFormatProperties::optimalTilingFeatures (as returned by vkGetPhysicalDeviceFormatProperties with the same value of format) does not include TVK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, usage must: not contain TVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
      // If flags contains TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT or TVK_IMAGE_CREATE_SPARSE_ALIASED_BIT, it must: also contain TVK_IMAGE_CREATE_SPARSE_BINDING_BIT
      PPVkImageCreateInfo=^PVkImageCreateInfo;
      PVkImageCreateInfo=^TVkImageCreateInfo;
@@ -2926,12 +2993,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // If image was not created with TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT then viewType mustnot: be TVK_IMAGE_VIEW_TYPE_CUBE or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY
-     // If the <<features-features-imageCubeArray,image cubemap arrays>> feature is not enabled, viewType mustnot: be TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY
-     // If the <<features-features-textureCompressionETC2,ETC2 texture compression>> feature is not enabled, format mustnot: be TVK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK, TVK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK, TVK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK, TVK_FORMAT_EAC_R11_UNORM_BLOCK, TVK_FORMAT_EAC_R11_SNORM_BLOCK, TVK_FORMAT_EAC_R11G11_UNORM_BLOCK, or TVK_FORMAT_EAC_R11G11_SNORM_BLOCK
-     // If the <<features-features-textureCompressionASTC_LDR,ASTC LDR texture compression>> feature is not enabled, format mustnot: be TVK_FORMAT_ASTC_4x4_UNORM_BLOCK, TVK_FORMAT_ASTC_4x4_SRGB_BLOCK, TVK_FORMAT_ASTC_5x4_UNORM_BLOCK, TVK_FORMAT_ASTC_5x4_SRGB_BLOCK, TVK_FORMAT_ASTC_5x5_UNORM_BLOCK, TVK_FORMAT_ASTC_5x5_SRGB_BLOCK, TVK_FORMAT_ASTC_6x5_UNORM_BLOCK, TVK_FORMAT_ASTC_6x5_SRGB_BLOCK, TVK_FORMAT_ASTC_6x6_UNORM_BLOCK, TVK_FORMAT_ASTC_6x6_SRGB_BLOCK, TVK_FORMAT_ASTC_8x5_UNORM_BLOCK, TVK_FORMAT_ASTC_8x5_SRGB_BLOCK,
+     // If image was not created with TVK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT then viewType must: not be TVK_IMAGE_VIEW_TYPE_CUBE or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY
+     // If the <<features-features-imageCubeArray,image cubemap arrays>> feature is not enabled, viewType must: not be TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY
+     // If the <<features-features-textureCompressionETC2,ETC2 texture compression>> feature is not enabled, format must: not be TVK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK, TVK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK, TVK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK, TVK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK, TVK_FORMAT_EAC_R11_UNORM_BLOCK, TVK_FORMAT_EAC_R11_SNORM_BLOCK, TVK_FORMAT_EAC_R11G11_UNORM_BLOCK, or TVK_FORMAT_EAC_R11G11_SNORM_BLOCK
+     // If the <<features-features-textureCompressionASTC_LDR,ASTC LDR texture compression>> feature is not enabled, format must: not be TVK_FORMAT_ASTC_4x4_UNORM_BLOCK, TVK_FORMAT_ASTC_4x4_SRGB_BLOCK, TVK_FORMAT_ASTC_5x4_UNORM_BLOCK, TVK_FORMAT_ASTC_5x4_SRGB_BLOCK, TVK_FORMAT_ASTC_5x5_UNORM_BLOCK, TVK_FORMAT_ASTC_5x5_SRGB_BLOCK, TVK_FORMAT_ASTC_6x5_UNORM_BLOCK, TVK_FORMAT_ASTC_6x5_SRGB_BLOCK, TVK_FORMAT_ASTC_6x6_UNORM_BLOCK, TVK_FORMAT_ASTC_6x6_SRGB_BLOCK, TVK_FORMAT_ASTC_8x5_UNORM_BLOCK, TVK_FORMAT_ASTC_8x5_SRGB_BLOCK,
      // TVK_FORMAT_ASTC_8x6_UNORM_BLOCK, TVK_FORMAT_ASTC_8x6_SRGB_BLOCK, TVK_FORMAT_ASTC_8x8_UNORM_BLOCK, TVK_FORMAT_ASTC_8x8_SRGB_BLOCK, TVK_FORMAT_ASTC_10x5_UNORM_BLOCK, TVK_FORMAT_ASTC_10x5_SRGB_BLOCK, TVK_FORMAT_ASTC_10x6_UNORM_BLOCK, TVK_FORMAT_ASTC_10x6_SRGB_BLOCK, TVK_FORMAT_ASTC_10x8_UNORM_BLOCK, TVK_FORMAT_ASTC_10x8_SRGB_BLOCK, TVK_FORMAT_ASTC_10x10_UNORM_BLOCK, TVK_FORMAT_ASTC_10x10_SRGB_BLOCK, TVK_FORMAT_ASTC_12x10_UNORM_BLOCK, TVK_FORMAT_ASTC_12x10_SRGB_BLOCK, TVK_FORMAT_ASTC_12x12_UNORM_BLOCK, or TVK_FORMAT_ASTC_12x12_SRGB_BLOCK
-     // If the <<features-features-textureCompressionBC,BC texture compression>> feature is not enabled, format mustnot: be TVK_FORMAT_BC1_RGB_UNORM_BLOCK, TVK_FORMAT_BC1_RGB_SRGB_BLOCK, TVK_FORMAT_BC1_RGBA_UNORM_BLOCK, TVK_FORMAT_BC1_RGBA_SRGB_BLOCK, TVK_FORMAT_BC2_UNORM_BLOCK, TVK_FORMAT_BC2_SRGB_BLOCK, TVK_FORMAT_BC3_UNORM_BLOCK, TVK_FORMAT_BC3_SRGB_BLOCK, TVK_FORMAT_BC4_UNORM_BLOCK, TVK_FORMAT_BC4_SNORM_BLOCK, TVK_FORMAT_BC5_UNORM_BLOCK, TVK_FORMAT_BC5_SNORM_BLOCK, TVK_FORMAT_BC6H_UFLOAT_BLOCK, TVK_FORMAT_BC6H_SFLOAT_BLOCK,
+     // If the <<features-features-textureCompressionBC,BC texture compression>> feature is not enabled, format must: not be TVK_FORMAT_BC1_RGB_UNORM_BLOCK, TVK_FORMAT_BC1_RGB_SRGB_BLOCK, TVK_FORMAT_BC1_RGBA_UNORM_BLOCK, TVK_FORMAT_BC1_RGBA_SRGB_BLOCK, TVK_FORMAT_BC2_UNORM_BLOCK, TVK_FORMAT_BC2_SRGB_BLOCK, TVK_FORMAT_BC3_UNORM_BLOCK, TVK_FORMAT_BC3_SRGB_BLOCK, TVK_FORMAT_BC4_UNORM_BLOCK, TVK_FORMAT_BC4_SNORM_BLOCK, TVK_FORMAT_BC5_UNORM_BLOCK, TVK_FORMAT_BC5_SNORM_BLOCK, TVK_FORMAT_BC6H_UFLOAT_BLOCK, TVK_FORMAT_BC6H_SFLOAT_BLOCK,
      // TVK_FORMAT_BC7_UNORM_BLOCK, or TVK_FORMAT_BC7_SRGB_BLOCK
      // If image was created with TVK_IMAGE_TILING_LINEAR, format must: be format that has at least one supported feature bit present in the value of TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
      // If image was created with TVK_IMAGE_TILING_LINEAR and usage containing TVK_IMAGE_USAGE_SAMPLED_BIT, format must: be supported for sampled images, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT flag in TVkFormatProperties::linearTilingFeatures returned by vkGetPhysicalDeviceFormatProperties with the same value of format
@@ -2988,7 +3055,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 
      // If memory is not dlink:VK_NULL_HANDLE, memory and memoryOffset must: match the memory requirements of the resource, as described in section <<resources-association>>
-     // If memory is not dlink:VK_NULL_HANDLE, memory mustnot: have been created with a memory type that reports TVK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT bit set
+     // If memory is not dlink:VK_NULL_HANDLE, memory must: not have been created with a memory type that reports TVK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT bit set
      // size must: be greater than `0`
      // resourceOffset must: be less than the size of the resource
      // size must: be less than or equal to the size of the resource minus resourceOffset
@@ -3014,7 +3081,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // If the <<features-features-sparseResidencyAliased,sparse aliased residency>> feature is not enabled, and if any other resources are bound to ranges of memory, the range of memory being bound mustnot: overlap with those bound ranges
+     // If the <<features-features-sparseResidencyAliased,sparse aliased residency>> feature is not enabled, and if any other resources are bound to ranges of memory, the range of memory being bound must: not overlap with those bound ranges
      // memory and memoryOffset must: match the memory requirements of the calling command's image, as described in section <<resources-association>>
      // subresource must: be a valid image subresource for image (see <<resources-image-views>>)
      // offset.x must: be a multiple of the sparse image block width (TVkSparseImageFormatProperties::imageGranularity.width) of the image
@@ -3217,6 +3284,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The aspectMask member of imageSubresource must: specify aspects present in the calling command's TVkImage parameter
      // The aspectMask member of imageSubresource must: only have a single bit set
      // If the calling command's TVkImage parameter is of elink:VkImageType TVK_IMAGE_TYPE_3D, the baseArrayLayer and layerCount members of imageSubresource must: be `0` and `1`, respectively
+     // When copying to the depth aspect of an image subresource, the data in the source buffer must: be in the range latexmath:[$[0,1\]$]
      PPVkBufferImageCopy=^PVkBufferImageCopy;
      PVkBufferImageCopy=^TVkBufferImageCopy;
      TVkBufferImageCopy=record
@@ -3263,11 +3331,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 
      // codeSize must: be greater than 0
-     // codeSize must: be a multiple of 4
-     // pCode must: point to valid SPIR-V code, formatted and packed as described by https://www.khronos.org/registry/spir-v/specs/1.0/SPIRV.html[the SPIR-V Specification v1.0]
-     // pCode must: adhere to the validation rules described by the <<spirvenv-module-validation, Validation Rules within a Module>> section of the <<spirvenv-capabilities,SPIR-V Environment>> appendix
-     // pCode must: declare the code:Shader capability
-     // pCode mustnot: declare any capability that is not supported by the API, as described by the <<spirvenv-module-validation, Capabilities>> section of the <<spirvenv-capabilities,SPIR-V Environment>> appendix
+     // codeSize must: be a multiple of 4. If the +VK_NV_glsl_shader extension+ is enabled and pCode references GLSL code codeSize can be a multiple of 1
+     // pCode must: point to valid SPIR-V code, formatted and packed as described by the <<spirv-spec,Khronos SPIR-V Specification>>. If the +VK_NV_glsl_shader+ extension is enabled pCode can instead reference valid GLSL code and must: be written to the +GL_KHR_vulkan_glsl+ extension specification
+     // pCode must: adhere to the validation rules described by the <<spirvenv-module-validation, Validation Rules within a Module>> section of the <<spirvenv-capabilities,SPIR-V Environment>> appendix. If the +VK_NV_glsl_shader+ extension is enabled pCode can be valid GLSL code with respect to the +GL_KHR_vulkan_glsl+ GLSL extension specification
+     // pCode must: declare the code:Shader capability for SPIR-V code
+     // pCode must: not declare any capability that is not supported by the API, as described by the <<spirvenv-module-validation, Capabilities>> section of the <<spirvenv-capabilities,SPIR-V Environment>> appendix
      // If pCode declares any of the capabilities that are listed as not required by the implementation, the relevant feature must: be enabled, as listed in the <<spirvenv-capabilities-table,SPIR-V Environment>> appendix
      PPVkShaderModuleCreateInfo=^PVkShaderModuleCreateInfo;
      PVkShaderModuleCreateInfo=^TVkShaderModuleCreateInfo;
@@ -3363,7 +3431,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // descriptorSetCount mustnot: be greater than the number of sets that are currently available for allocation in descriptorPool
+     // descriptorSetCount must: not be greater than the number of sets that are currently available for allocation in descriptorPool
      // descriptorPool must: have enough free descriptor capacity remaining to allocate the descriptor sets of the specified layouts
      PPVkDescriptorSetAllocateInfo=^PVkDescriptorSetAllocateInfo;
      PVkDescriptorSetAllocateInfo=^TVkDescriptorSetAllocateInfo;
@@ -3383,7 +3451,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // For a constantID specialization constant declared in a shader, size must: match the byte size of the constantID. If the specialization constant is of type boolean, size must: be the byte size of VkBool32
+     // For a constantID specialization constant declared in a shader, size must: match the byte size of the constantID. If the specialization constant is of type code:boolean, size must: be the byte size of basetype:VkBool32
      PPVkSpecializationMapEntry=^PVkSpecializationMapEntry;
      PVkSpecializationMapEntry=^TVkSpecializationMapEntry;
      TVkSpecializationMapEntry=record
@@ -3420,21 +3488,21 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stage mustnot: be TVK_SHADER_STAGE_GEOMETRY_BIT
-     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stage mustnot: be TVK_SHADER_STAGE_TESSELLATION_CONTROL_BIT or TVK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT
-     // stage mustnot: be TVK_SHADER_STAGE_ALL_GRAPHICS, or TVK_SHADER_STAGE_ALL
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stage must: not be TVK_SHADER_STAGE_GEOMETRY_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stage must: not be TVK_SHADER_STAGE_TESSELLATION_CONTROL_BIT or TVK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT
+     // stage must: not be TVK_SHADER_STAGE_ALL_GRAPHICS, or TVK_SHADER_STAGE_ALL
      // pName must: be the name of an code:OpEntryPoint in module with an execution model that matches stage
-     // If the identified entry point includes any variable in its interface that is declared with the code:ClipDistance code:BuiltIn decoration, that variable mustnot: have an array size greater than TVkPhysicalDeviceLimits::maxClipDistances
-     // If the identified entry point includes any variable in its interface that is declared with the code:CullDistance code:BuiltIn decoration, that variable mustnot: have an array size greater than TVkPhysicalDeviceLimits::maxCullDistances
-     // If the identified entry point includes any variables in its interface that are declared with the code:ClipDistance or code:CullDistance code:BuiltIn decoration, those variables mustnot: have array sizes which sum to more than TVkPhysicalDeviceLimits::maxCombinedClipAndCullDistances
-     // If the identified entry point includes any variable in its interface that is declared with the code:SampleMask code:BuiltIn decoration, that variable mustnot: have an array size greater than TVkPhysicalDeviceLimits::maxSampleMaskWords
-     // If stage is TVK_SHADER_STAGE_VERTEX_BIT, the identified entry point mustnot: include any input variable in its interface that is decorated with code:CullDistance
+     // If the identified entry point includes any variable in its interface that is declared with the code:ClipDistance code:BuiltIn decoration, that variable must: not have an array size greater than TVkPhysicalDeviceLimits::maxClipDistances
+     // If the identified entry point includes any variable in its interface that is declared with the code:CullDistance code:BuiltIn decoration, that variable must: not have an array size greater than TVkPhysicalDeviceLimits::maxCullDistances
+     // If the identified entry point includes any variables in its interface that are declared with the code:ClipDistance or code:CullDistance code:BuiltIn decoration, those variables must: not have array sizes which sum to more than TVkPhysicalDeviceLimits::maxCombinedClipAndCullDistances
+     // If the identified entry point includes any variable in its interface that is declared with the code:SampleMask code:BuiltIn decoration, that variable must: not have an array size greater than TVkPhysicalDeviceLimits::maxSampleMaskWords
+     // If stage is TVK_SHADER_STAGE_VERTEX_BIT, the identified entry point must: not include any input variable in its interface that is decorated with code:CullDistance
      // If stage is TVK_SHADER_STAGE_TESSELLATION_CONTROL_BIT or TVK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, and the identified entry point has an code:OpExecutionMode instruction that specifies a patch size with code:OutputVertices, the patch size must: be greater than `0` and less than or equal to TVkPhysicalDeviceLimits::maxTessellationPatchSize
      // If stage is TVK_SHADER_STAGE_GEOMETRY_BIT, the identified entry point must: have an code:OpExecutionMode instruction that specifies a maximum output vertex count that is greater than `0` and less than or equal to TVkPhysicalDeviceLimits::maxGeometryOutputVertices
      // If stage is TVK_SHADER_STAGE_GEOMETRY_BIT, the identified entry point must: have an code:OpExecutionMode instruction that specifies an invocation count that is greater than `0` and less than or equal to TVkPhysicalDeviceLimits::maxGeometryShaderInvocations
      // If stage is TVK_SHADER_STAGE_GEOMETRY_BIT, and the identified entry point writes to code:Layer for any primitive, it must: write the same value to code:Layer for all vertices of a given primitive
      // If stage is TVK_SHADER_STAGE_GEOMETRY_BIT, and the identified entry point writes to code:ViewportIndex for any primitive, it must: write the same value to code:ViewportIndex for all vertices of a given primitive
-     // If stage is TVK_SHADER_STAGE_FRAGMENT_BIT, the identified entry point mustnot: include any output variables in its interface decorated with code:CullDistance
+     // If stage is TVK_SHADER_STAGE_FRAGMENT_BIT, the identified entry point must: not include any output variables in its interface decorated with code:CullDistance
      // If stage is TVK_SHADER_STAGE_FRAGMENT_BIT, and the identified entry point writes to code:FragDepth in any execution path, it must: write to code:FragDepth in all execution paths
      PPVkPipelineShaderStageCreateInfo=^PVkPipelineShaderStageCreateInfo;
      PVkPipelineShaderStageCreateInfo=^TVkPipelineShaderStageCreateInfo;
@@ -3556,8 +3624,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 
      // If topology is TVK_PRIMITIVE_TOPOLOGY_POINT_LIST, TVK_PRIMITIVE_TOPOLOGY_LINE_LIST, TVK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, TVK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY, TVK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY or TVK_PRIMITIVE_TOPOLOGY_PATCH_LIST, primitiveRestartEnable must: be TVK_FALSE
-     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, topology mustnot: be any of TVK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY, TVK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY, TVK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY or TVK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY
-     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, topology mustnot: be TVK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, topology must: not be any of TVK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY, TVK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY, TVK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY or TVK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, topology must: not be TVK_PRIMITIVE_TOPOLOGY_PATCH_LIST
      PPVkPipelineInputAssemblyStateCreateInfo=^PVkPipelineInputAssemblyStateCreateInfo;
      PVkPipelineInputAssemblyStateCreateInfo=^TVkPipelineInputAssemblyStateCreateInfo;
      TVkPipelineInputAssemblyStateCreateInfo=record
@@ -3685,10 +3753,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, srcColorBlendFactor mustnot: be TVK_BLEND_FACTOR_SRC1_COLOR, TVK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR, TVK_BLEND_FACTOR_SRC1_ALPHA, or TVK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
-     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, dstColorBlendFactor mustnot: be TVK_BLEND_FACTOR_SRC1_COLOR, TVK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR, TVK_BLEND_FACTOR_SRC1_ALPHA, or TVK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
-     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, srcAlphaBlendFactor mustnot: be TVK_BLEND_FACTOR_SRC1_COLOR, TVK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR, TVK_BLEND_FACTOR_SRC1_ALPHA, or TVK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
-     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, dstAlphaBlendFactor mustnot: be TVK_BLEND_FACTOR_SRC1_COLOR, TVK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR, TVK_BLEND_FACTOR_SRC1_ALPHA, or TVK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
+     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, srcColorBlendFactor must: not be TVK_BLEND_FACTOR_SRC1_COLOR, TVK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR, TVK_BLEND_FACTOR_SRC1_ALPHA, or TVK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
+     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, dstColorBlendFactor must: not be TVK_BLEND_FACTOR_SRC1_COLOR, TVK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR, TVK_BLEND_FACTOR_SRC1_ALPHA, or TVK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
+     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, srcAlphaBlendFactor must: not be TVK_BLEND_FACTOR_SRC1_COLOR, TVK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR, TVK_BLEND_FACTOR_SRC1_ALPHA, or TVK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
+     // If the <<features-features-dualSrcBlend,dual source blending>> feature is not enabled, dstAlphaBlendFactor must: not be TVK_BLEND_FACTOR_SRC1_COLOR, TVK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR, TVK_BLEND_FACTOR_SRC1_ALPHA, or TVK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
      PPVkPipelineColorBlendAttachmentState=^PVkPipelineColorBlendAttachmentState;
      PVkPipelineColorBlendAttachmentState=^TVkPipelineColorBlendAttachmentState;
      TVkPipelineColorBlendAttachmentState=record
@@ -3824,10 +3892,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If flags contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and basePipelineHandle is not dlink:VK_NULL_HANDLE, it must: be a valid handle to a graphics TVkPipeline
      // The stage member of each element of pStages must: be unique
      // The stage member of one element of pStages must: be TVK_SHADER_STAGE_VERTEX_BIT
-     // The stage member of any given element of pStages mustnot: be TVK_SHADER_STAGE_COMPUTE_BIT
+     // The stage member of any given element of pStages must: not be TVK_SHADER_STAGE_COMPUTE_BIT
      // If pStages includes a tessellation control shader stage, it must: include a tessellation evaluation shader stage
      // If pStages includes a tessellation evaluation shader stage, it must: include a tessellation control shader stage
-     // If pStages includes a tessellation control shader stage and a tessellation evaluation shader stage, pTessellationState mustnot: be `NULL`
+     // If pStages includes a tessellation control shader stage and a tessellation evaluation shader stage, pTessellationState must: not be `NULL`
      // If pStages includes tessellation shader stages, the shader code of at least one stage must: contain an code:OpExecutionMode instruction that specifies the type of subdivision in the pipeline
      // If pStages includes tessellation shader stages, and the shader code of both stages contain an code:OpExecutionMode instruction that specifies the type of subdivision in the pipeline, they must: both specify the same subdivision mode
      // If pStages includes tessellation shader stages, the shader code of at least one stage must: contain an code:OpExecutionMode instruction that specifies the output patch size in the pipeline
@@ -3837,14 +3905,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If pStages includes a geometry shader stage, and does not include any tessellation shader stages, its shader code must: contain an code:OpExecutionMode instruction that specifies an input primitive type that is <<shaders-geometry-execution, compatible>> with the primitive topology specified in pInputAssembly
      // If pStages includes a geometry shader stage, and also includes tessellation shader stages, its shader code must: contain an code:OpExecutionMode instruction that specifies an input primitive type that is <<shaders-geometry-execution, compatible>> with the primitive topology that is output by the tessellation stages
      // If pStages includes a fragment shader stage and a geometry shader stage, and the fragment shader code reads from an input variable that is decorated with code:PrimitiveID, then the geometry shader code must: write to a matching output variable, decorated with code:PrimitiveID, in all execution paths
-     // If pStages includes a fragment shader stage, its shader code mustnot: read from any input attachment that is defined as TVK_ATTACHMENT_UNUSED in subpass
+     // If pStages includes a fragment shader stage, its shader code must: not read from any input attachment that is defined as TVK_ATTACHMENT_UNUSED in subpass
      // The shader code for the entry points identified by pStages, and the rest of the state identified by this structure must: adhere to the pipeline linking rules described in the <<interfaces,Shader Interfaces>> chapter
      // If subpass uses a depth/stencil attachment in renderpass that has a layout of TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL in the TVkAttachmentReference defined by subpass, and pDepthStencilState is not `NULL`, the depthWriteEnable member of pDepthStencilState must: be TVK_FALSE
      // If subpass uses a depth/stencil attachment in renderpass that has a layout of TVK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL in the TVkAttachmentReference defined by subpass, and pDepthStencilState is not `NULL`, the failOp, passOp and depthFailOp members of each of the front and back members of pDepthStencilState must: be TVK_STENCIL_OP_KEEP
      // If pColorBlendState is not `NULL`, the blendEnable member of each element of the pAttachment member of pColorBlendState must: be TVK_FALSE if the format of the attachment referred to in subpass of renderPass does not support color blend operations, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT flag in TVkFormatProperties::linearTilingFeatures or TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
      // If pColorBlendState is not `NULL`, The attachmentCount member of pColorBlendState must: be equal to the colorAttachmentCount used to create subpass
-     // If no element of the pDynamicStates member of pDynamicState is TVK_DYNAMIC_STATE_VIEWPORT, the pViewports member of pViewportState must: be a pointer to an array of pViewportState->viewportCount TVkViewport structures
-     // If no element of the pDynamicStates member of pDynamicState is TVK_DYNAMIC_STATE_SCISSOR, the pScissors member of pViewportState must: be a pointer to an array of pViewportState->scissorCount TVkRect2D structures
+     // If no element of the pDynamicStates member of pDynamicState is TVK_DYNAMIC_STATE_VIEWPORT, the pViewports member of pViewportState must: be a pointer to an array of pViewportState::viewportCount TVkViewport structures
+     // If no element of the pDynamicStates member of pDynamicState is TVK_DYNAMIC_STATE_SCISSOR, the pScissors member of pViewportState must: be a pointer to an array of pViewportState::scissorCount TVkRect2D structures
      // If the wide lines feature is not enabled, and no element of the pDynamicStates member of pDynamicState is TVK_DYNAMIC_STATE_LINE_WIDTH, the lineWidth member of pRasterizationState must: be `1.0`
      // If the rasterizerDiscardEnable member of pRasterizationState is TVK_FALSE, pViewportState must: be a pointer to a valid TVkPipelineViewportStateCreateInfo structure
      // If the rasterizerDiscardEnable member of pRasterizationState is TVK_FALSE, pMultisampleState must: be a pointer to a valid TVkPipelineMultisampleStateCreateInfo structure
@@ -3948,6 +4016,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The total number of descriptors of the type TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER and TVK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC accessible to any given shader stage across all elements of pSetLayouts must: be less than or equal to TVkPhysicalDeviceLimits::maxPerStageDescriptorStorageBuffers
      // The total number of descriptors of the type TVK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, TVK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, and TVK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER accessible to any given shader stage across all elements of pSetLayouts must: be less than or equal to TVkPhysicalDeviceLimits::maxPerStageDescriptorSampledImages
      // The total number of descriptors of the type TVK_DESCRIPTOR_TYPE_STORAGE_IMAGE, and TVK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER accessible to any given shader stage across all elements of pSetLayouts must: be less than or equal to TVkPhysicalDeviceLimits::maxPerStageDescriptorStorageImages
+     // Any two elements of pPushConstantRanges must: not include the same stage in stageFlags
      PPVkPipelineLayoutCreateInfo=^PVkPipelineLayoutCreateInfo;
      PVkPipelineLayoutCreateInfo=^TVkPipelineLayoutCreateInfo;
      TVkPipelineLayoutCreateInfo=record
@@ -3980,7 +4049,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If unnormalizedCoordinates is TVK_TRUE, anisotropyEnable must: be TVK_FALSE
      // If unnormalizedCoordinates is TVK_TRUE, compareEnable must: be TVK_FALSE
      // If any of addressModeU, addressModeV or addressModeW are TVK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER, borderColor must: be a valid elink:VkBorderColor value
-     // If the VK_KHR_mirror_clamp_to_edge extension is not enabled, addressModeU, addressModeV and addressModeW mustnot: be TVK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
+     // If the +VK_KHR_sampler_mirror_clamp_to_edge+ extension is not enabled, addressModeU, addressModeV and addressModeW must: not be TVK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
      // If compareEnable is TVK_TRUE, compareOp must: be a valid elink:VkCompareOp value
      PPVkSamplerCreateInfo=^PVkSamplerCreateInfo;
      PVkSamplerCreateInfo=^TVkSamplerCreateInfo;
@@ -4123,6 +4192,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        );
      end;
 
+     // depth must: be between `0.0` and `1.0`, inclusive
      PPVkClearDepthStencilValue=^PVkClearDepthStencilValue;
      PVkClearDepthStencilValue=^TVkClearDepthStencilValue;
      TVkClearDepthStencilValue=record
@@ -4172,8 +4242,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // If aspectMask includes TVK_IMAGE_ASPECT_COLOR_BIT, it mustnot: include TVK_IMAGE_ASPECT_DEPTH_BIT or TVK_IMAGE_ASPECT_STENCIL_BIT
-     // aspectMask mustnot: include TVK_IMAGE_ASPECT_METADATA_BIT
+     // If aspectMask includes TVK_IMAGE_ASPECT_COLOR_BIT, it must: not include TVK_IMAGE_ASPECT_DEPTH_BIT or TVK_IMAGE_ASPECT_STENCIL_BIT
+     // aspectMask must: not include TVK_IMAGE_ASPECT_METADATA_BIT
      PPVkClearAttachment=^PVkClearAttachment;
      PVkClearAttachment=^TVkClearAttachment;
      TVkClearAttachment=record
@@ -4190,7 +4260,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // finalLayout mustnot: be TVK_IMAGE_LAYOUT_UNDEFINED or TVK_IMAGE_LAYOUT_PREINITIALIZED
+     // finalLayout must: not be TVK_IMAGE_LAYOUT_UNDEFINED or TVK_IMAGE_LAYOUT_PREINITIALIZED
      PPVkAttachmentDescription=^PVkAttachmentDescription;
      PVkAttachmentDescription=^TVkAttachmentDescription;
      TVkAttachmentDescription=record
@@ -4219,7 +4289,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // layout mustnot: be TVK_IMAGE_LAYOUT_UNDEFINED or TVK_IMAGE_LAYOUT_PREINITIALIZED
+     // layout must: not be TVK_IMAGE_LAYOUT_UNDEFINED or TVK_IMAGE_LAYOUT_PREINITIALIZED
      PPVkAttachmentReference=^PVkAttachmentReference;
      PVkAttachmentReference=^TVkAttachmentReference;
      TVkAttachmentReference=record
@@ -4235,16 +4305,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 
      // pipelineBindPoint must: be TVK_PIPELINE_BIND_POINT_GRAPHICS
-     // colorCount must: be less than or equal to TVkPhysicalDeviceLimits::maxColorAttachments
-     // If the first use of an attachment in this render pass is as an input attachment, and the attachment is not also used as a color or depth/stencil attachment in the same subpass, then loadOp mustnot: be TVK_ATTACHMENT_LOAD_OP_CLEAR
-     // If pResolveAttachments is not `NULL`, for each resolve attachment that does not have the value TVK_ATTACHMENT_UNUSED, the corresponding color attachment mustnot: have the value TVK_ATTACHMENT_UNUSED
+     // colorAttachmentCount must: be less than or equal to TVkPhysicalDeviceLimits::maxColorAttachments
+     // If the first use of an attachment in this render pass is as an input attachment, and the attachment is not also used as a color or depth/stencil attachment in the same subpass, then loadOp must: not be TVK_ATTACHMENT_LOAD_OP_CLEAR
+     // If pResolveAttachments is not `NULL`, for each resolve attachment that does not have the value TVK_ATTACHMENT_UNUSED, the corresponding color attachment must: not have the value TVK_ATTACHMENT_UNUSED
      // If pResolveAttachments is not `NULL`, the sample count of each element of pColorAttachments must: be anything other than TVK_SAMPLE_COUNT_1_BIT
      // Any given element of pResolveAttachments must: have a sample count of TVK_SAMPLE_COUNT_1_BIT
      // Any given element of pResolveAttachments must: have the same elink:VkFormat as its corresponding color attachment
      // All attachments in pColorAttachments and pDepthStencilAttachment that are not TVK_ATTACHMENT_UNUSED must: have the same sample count
-     // If any input attachments are TVK_ATTACHMENT_UNUSED, then any pipelines bound during the subpass mustnot: accesss those input attachments from the fragment shader
-     // The attachment member of any element of pPreserveAttachments mustnot: be TVK_ATTACHMENT_UNUSED
-     // Any given element of pPreserveAttachments mustnot: also be an element of any other member of the subpass description
+     // If any input attachments are TVK_ATTACHMENT_UNUSED, then any pipelines bound during the subpass must: not access those input attachments from the fragment shader
+     // The attachment member of any element of pPreserveAttachments must: not be TVK_ATTACHMENT_UNUSED
+     // Any given element of pPreserveAttachments must: not also be an element of any other member of the subpass description
      // If any attachment is used as both an input attachment and a color or depth/stencil attachment, then each use must: use the same layout
      PPVkSubpassDescription=^PVkSubpassDescription;
      PVkSubpassDescription=^TVkSubpassDescription;
@@ -4276,12 +4346,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
      // srcSubpass must: be less than or equal to dstSubpass, unless one of them is TVK_SUBPASS_EXTERNAL, to avoid cyclic dependencies and ensure a valid execution order
-     // srcSubpass and dstSubpass mustnot: both be equal to TVK_SUBPASS_EXTERNAL
+     // srcSubpass and dstSubpass must: not both be equal to TVK_SUBPASS_EXTERNAL
      // If srcSubpass is equal to dstSubpass, srcStageMask and dstStageMask must: only contain one of TVK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, TVK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, TVK_PIPELINE_STAGE_VERTEX_INPUT_BIT, TVK_PIPELINE_STAGE_VERTEX_SHADER_BIT, TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT, TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT, TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT, TVK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, TVK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, TVK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
      // TVK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, TVK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, or TVK_PIPELINE_STAGE_ALL_GRAPHICS_BIT
      // If srcSubpass is equal to dstSubpass, the highest bit value included in srcStageMask must: be less than or equal to the lowest bit value in dstStageMask
@@ -4312,7 +4382,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If any two subpasses operate on attachments with overlapping ranges of the same TVkDeviceMemory object, and at least one subpass writes to that area of TVkDeviceMemory, a subpass dependency must: be included (either directly or via some intermediate subpasses) between them
      // If the attachment member of any element of pInputAttachments, pColorAttachments, pResolveAttachments or pDepthStencilAttachment, or the attachment indexed by any element of pPreserveAttachments in any given element of pSubpasses is bound to a range of a TVkDeviceMemory object that overlaps with any other attachment in any subpass (including the same subpass), the TVkAttachmentDescription structures describing them must: include TVK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT in flags
      // If the attachment member of any element of pInputAttachments, pColorAttachments, pResolveAttachments or pDepthStencilAttachment, or any element of pPreserveAttachments in any given element of pSubpasses is not TVK_ATTACHMENT_UNUSED, it must: be less than attachmentCount
-     // The value of any element of the pPreserveAttachments member in any given element of pSubpasses mustnot: be TVK_ATTACHMENT_UNUSED
+     // The value of any element of the pPreserveAttachments member in any given element of pSubpasses must: not be TVK_ATTACHMENT_UNUSED
      PPVkRenderPassCreateInfo=^PVkRenderPassCreateInfo;
      PVkRenderPassCreateInfo=^TVkRenderPassCreateInfo;
      TVkRenderPassCreateInfo=record
@@ -4660,7 +4730,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // If the <<features-features-pipelineStatisticsQuery,pipeline statistics queries>> feature is not enabled, queryType mustnot: be TVK_QUERY_TYPE_PIPELINE_STATISTICS
+     // If the <<features-features-pipelineStatisticsQuery,pipeline statistics queries>> feature is not enabled, queryType must: not be TVK_QUERY_TYPE_PIPELINE_STATISTICS
      // If queryType is TVK_QUERY_TYPE_PIPELINE_STATISTICS, pipelineStatistics must: be a valid combination of elink:VkQueryPipelineStatisticFlagBits values
      PPVkQueryPoolCreateInfo=^PVkQueryPoolCreateInfo;
      PVkQueryPoolCreateInfo=^TVkQueryPoolCreateInfo;
@@ -4689,7 +4759,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // Any given element of pAttachments must: have been created with an elink:VkFormat value that matches the elink:VkFormat specified by the corresponding TVkAttachmentDescription in renderPass
      // Any given element of pAttachments must: have been created with a samples value that matches the samples value specified by the corresponding TVkAttachmentDescription in renderPass
      // Any given element of pAttachments must: have dimensions at least as large as the corresponding framebuffer dimension
-     // Any given element of pAttachments must: only specify a single mip-level
+     // Any given element of pAttachments must: only specify a single mip level
      // Any given element of pAttachments must: have been created with the identity swizzle
      // width must: be less than or equal to TVkPhysicalDeviceLimits::maxFramebufferWidth
      // height must: be less than or equal to TVkPhysicalDeviceLimits::maxFramebufferHeight
@@ -4786,14 +4856,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // Any given element of pCommandBuffers must: either have been recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT, or not currently be executing on the device
      // Any given element of pCommandBuffers must: be in the executable state
      // If any given element of pCommandBuffers contains commands that execute secondary command buffers, those secondary command buffers must: have been recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT, or not currently be executing on the device
-     // If any given element of pCommandBuffers was recorded with TVK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, it mustnot: have been previously submitted without re-recording that command buffer
-     // If any given element of pCommandBuffers contains commands that execute secondary command buffers recorded with TVK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, each such secondary command buffer mustnot: have been previously submitted without re-recording that command buffer
-     // Any given element of pCommandBuffers mustnot: contain commands that execute a secondary command buffer, if that secondary command buffer has been recorded in another primary command buffer after it was recorded into this TVkCommandBuffer
+     // If any given element of pCommandBuffers was recorded with TVK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, it must: not have been previously submitted without re-recording that command buffer
+     // If any given element of pCommandBuffers contains commands that execute secondary command buffers recorded with TVK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, each such secondary command buffer must: not have been previously submitted without re-recording that command buffer
+     // Any given element of pCommandBuffers must: not contain commands that execute a secondary command buffer, if that secondary command buffer has been recorded in another primary command buffer after it was recorded into this TVkCommandBuffer
      // Any given element of pCommandBuffers must: have been allocated from a TVkCommandPool that was created for the same queue family that the calling command's queue belongs to
-     // Any given element of pCommandBuffers mustnot: have been allocated with TVK_COMMAND_BUFFER_LEVEL_SECONDARY
+     // Any given element of pCommandBuffers must: not have been allocated with TVK_COMMAND_BUFFER_LEVEL_SECONDARY
      // Any given element of TVkSemaphore in pWaitSemaphores must: refer to a prior signal of that TVkSemaphore that will not be consumed by any other wait on that semaphore
-     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, any given element of pWaitDstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, any given element of pWaitDstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, any given element of pWaitDstStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, any given element of pWaitDstStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
      PPVkSubmitInfo=^PVkSubmitInfo;
      PVkSubmitInfo=^TVkSubmitInfo;
      TVkSubmitInfo=record
@@ -4864,10 +4934,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       visibleRegion:TVkExtent2D; //< Visible scannout region.
+       visibleRegion:TVkExtent2D; //< Visible scanout region.
        refreshRate:TVkUInt32; //< Number of times per second the display is updated.
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pVisibleRegion:TVkExtent2D; //< Visible scannout region.
+       constructor Create(const pVisibleRegion:TVkExtent2D; //< Visible scanout region.
                           const pRefreshRate:TVkUInt32); //< Number of times per second the display is updated.
 {$endif}
      end;
@@ -4950,7 +5020,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        displayMode:TVkDisplayModeKHR; //< The mode to use when displaying this surface
        planeIndex:TVkUInt32; //< The plane on which this surface appears. Must be between 0 and the value returned by vkGetPhysicalDeviceDisplayPlanePropertiesKHR() in pPropertyCount.
        planeStackIndex:TVkUInt32; //< The z-order of the plane.
-       transform:TVkSurfaceTransformFlagBitsKHR; //< Transform to apply to the images as part of the scannout operation
+       transform:TVkSurfaceTransformFlagBitsKHR; //< Transform to apply to the images as part of the scanout operation
        globalAlpha:TVkFloat; //< Global alpha value. Must be between 0 and 1, inclusive. Ignored if alphaMode is not VK_DISPLAY_PLANE_ALPHA_GLOBAL_BIT_KHR
        alphaMode:TVkDisplayPlaneAlphaFlagBitsKHR; //< What type of alpha blending to use. Must be a bit from vkGetDisplayPlanePropertiesKHR::supportedAlpha.
        imageExtent:TVkExtent2D; //< size of the images to use with this surface
@@ -4959,7 +5029,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const pDisplayMode:TVkDisplayModeKHR; //< The mode to use when displaying this surface
                           const pPlaneIndex:TVkUInt32; //< The plane on which this surface appears. Must be between 0 and the value returned by vkGetPhysicalDeviceDisplayPlanePropertiesKHR() in pPropertyCount.
                           const pPlaneStackIndex:TVkUInt32; //< The z-order of the plane.
-                          const pTransform:TVkSurfaceTransformFlagBitsKHR; //< Transform to apply to the images as part of the scannout operation
+                          const pTransform:TVkSurfaceTransformFlagBitsKHR; //< Transform to apply to the images as part of the scanout operation
                           const pGlobalAlpha:TVkFloat; //< Global alpha value. Must be between 0 and 1, inclusive. Ignored if alphaMode is not VK_DISPLAY_PLANE_ALPHA_GLOBAL_BIT_KHR
                           const pAlphaMode:TVkDisplayPlaneAlphaFlagBitsKHR; //< What type of alpha blending to use. Must be a bit from vkGetDisplayPlanePropertiesKHR::supportedAlpha.
                           const pImageExtent:TVkExtent2D); //< size of the images to use with this surface
@@ -5018,7 +5088,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 
 {$ifdef Android}
-     // window mustnot: be in a connected state
+     // window must: not be in a connected state
      PPVkAndroidSurfaceCreateInfoKHR=^PVkAndroidSurfaceCreateInfoKHR;
      PVkAndroidSurfaceCreateInfoKHR=^TVkAndroidSurfaceCreateInfoKHR;
      TVkAndroidSurfaceCreateInfoKHR=record
@@ -5143,18 +5213,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        format:TVkFormat; //< Supported pair of rendering format
-       colorSpace:TVkColorSpaceKHR; //< and colorspace for the surface
+       colorSpace:TVkColorSpaceKHR; //< and color space for the surface
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFormat:TVkFormat; //< Supported pair of rendering format
-                          const pColorSpace:TVkColorSpaceKHR); //< and colorspace for the surface
+                          const pColorSpace:TVkColorSpaceKHR); //< and color space for the surface
 {$endif}
      end;
 
      // surface must: be a surface that is supported by the device as determined using vkGetPhysicalDeviceSurfaceSupportKHR
-     // The native window referred to by surface mustnot: already be associated with a swapchain other than oldSwapchain, or with a non-Vulkan graphics API surface
+     // The native window referred to by surface must: not already be associated with a swapchain other than oldSwapchain, or with a non-Vulkan graphics API surface
      // minImageCount must: be greater than or equal to the value returned in the minImageCount member of the TVkSurfaceCapabilitiesKHR structure returned by vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface
      // minImageCount must: be less than or equal to the value returned in the maxImageCount member of the TVkSurfaceCapabilitiesKHR structure returned by vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface if the returned maxImageCount is not zero
-     // imageFormat and imageColorspace must: match the format and colorSpace members, respectively, of one of the TVkSurfaceFormatKHR structures returned by vkGetPhysicalDeviceSurfaceFormatsKHR for the surface
+     // imageFormat and imageColorSpace must: match the format and colorSpace members, respectively, of one of the TVkSurfaceFormatKHR structures returned by vkGetPhysicalDeviceSurfaceFormatsKHR for the surface
      // imageExtent must: be between minImageExtent and maxImageExtent, inclusive, where minImageExtent and maxImageExtent are members of the TVkSurfaceCapabilitiesKHR structure returned by vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface
      // imageArrayLayers must: be greater than `0` and less than or equal to the maxImageArrayLayers member of the TVkSurfaceCapabilitiesKHR structure returned by vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface
      // imageUsage must: be a subset of the supported usage flags present in the supportedUsageFlags member of the TVkSurfaceCapabilitiesKHR structure returned by vkGetPhysicalDeviceSurfaceCapabilitiesKHR for the surface
@@ -5251,6 +5321,22 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkValidationFlagsEXT=^PVkValidationFlagsEXT;
+     PVkValidationFlagsEXT=^TVkValidationFlagsEXT;
+     TVkValidationFlagsEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       disabledValidationCheckCount:TVkUInt32; //< Number of validation checks to disable
+       pDisabledValidationChecks:PVkValidationCheckEXT; //< Validation checks to disable
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pDisabledValidationCheckCount:TVkUInt32; //< Number of validation checks to disable
+                          const pPDisabledValidationChecks:PVkValidationCheckEXT); //< Validation checks to disable
+{$endif}
+     end;
+
      PPVkPipelineRasterizationStateRasterizationOrderAMD=^PVkPipelineRasterizationStateRasterizationOrderAMD;
      PVkPipelineRasterizationStateRasterizationOrderAMD=^TVkPipelineRasterizationStateRasterizationOrderAMD;
      TVkPipelineRasterizationStateRasterizationOrderAMD=record
@@ -5321,7 +5407,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // If dedicatedAllocation is TVK_TRUE, TVkImageCreateInfo::flags mustnot: include TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, or TVK_IMAGE_CREATE_SPARSE_ALIASED_BIT
+     // If dedicatedAllocation is TVK_TRUE, TVkImageCreateInfo::flags must: not include TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, TVK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, or TVK_IMAGE_CREATE_SPARSE_ALIASED_BIT
      PPVkDedicatedAllocationImageCreateInfoNV=^PVkDedicatedAllocationImageCreateInfoNV;
      PVkDedicatedAllocationImageCreateInfoNV=^TVkDedicatedAllocationImageCreateInfoNV;
      TVkDedicatedAllocationImageCreateInfoNV=record
@@ -5336,7 +5422,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     // If dedicatedAllocation is TVK_TRUE, TVkBufferCreateInfo::flags mustnot: include TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT, or TVK_BUFFER_CREATE_SPARSE_ALIASED_BIT
+     // If dedicatedAllocation is TVK_TRUE, TVkBufferCreateInfo::flags must: not include TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, TVK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT, or TVK_BUFFER_CREATE_SPARSE_ALIASED_BIT
      PPVkDedicatedAllocationBufferCreateInfoNV=^PVkDedicatedAllocationBufferCreateInfoNV;
      PVkDedicatedAllocationBufferCreateInfoNV=^TVkDedicatedAllocationBufferCreateInfoNV;
      TVkDedicatedAllocationBufferCreateInfoNV=record
@@ -5369,6 +5455,112 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pImage:TVkImage; //< Image that this allocation will be bound to
                           const pBuffer:TVkBuffer); //< Buffer that this allocation will be bound to
+{$endif}
+     end;
+
+     PPVkExternalImageFormatPropertiesNV=^PVkExternalImageFormatPropertiesNV;
+     PVkExternalImageFormatPropertiesNV=^TVkExternalImageFormatPropertiesNV;
+     TVkExternalImageFormatPropertiesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       imageFormatProperties:TVkImageFormatProperties;
+       externalMemoryFeatures:TVkExternalMemoryFeatureFlagsNV;
+       exportFromImportedHandleTypes:TVkExternalMemoryHandleTypeFlagsNV;
+       compatibleHandleTypes:TVkExternalMemoryHandleTypeFlagsNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pImageFormatProperties:TVkImageFormatProperties;
+                          const pExternalMemoryFeatures:TVkExternalMemoryFeatureFlagsNV;
+                          const pExportFromImportedHandleTypes:TVkExternalMemoryHandleTypeFlagsNV;
+                          const pCompatibleHandleTypes:TVkExternalMemoryHandleTypeFlagsNV);
+{$endif}
+     end;
+
+     PPVkExternalMemoryImageCreateInfoNV=^PVkExternalMemoryImageCreateInfoNV;
+     PVkExternalMemoryImageCreateInfoNV=^TVkExternalMemoryImageCreateInfoNV;
+     TVkExternalMemoryImageCreateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_NV
+       pNext:PVkVoid;
+       handleTypes:TVkExternalMemoryHandleTypeFlagsNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsNV);
+{$endif}
+     end;
+
+     PPVkExportMemoryAllocateInfoNV=^PVkExportMemoryAllocateInfoNV;
+     PVkExportMemoryAllocateInfoNV=^TVkExportMemoryAllocateInfoNV;
+     TVkExportMemoryAllocateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV
+       pNext:PVkVoid;
+       handleTypes:TVkExternalMemoryHandleTypeFlagsNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsNV);
+{$endif}
+     end;
+
+     PPVkImportMemoryWin32HandleInfoNV=^PVkImportMemoryWin32HandleInfoNV;
+     PVkImportMemoryWin32HandleInfoNV=^TVkImportMemoryWin32HandleInfoNV;
+     TVkImportMemoryWin32HandleInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_NV
+       pNext:PVkVoid;
+       handleType:TVkExternalMemoryHandleTypeFlagsNV;
+       handle:THANDLE;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleType:TVkExternalMemoryHandleTypeFlagsNV;
+                          const pHandle:THANDLE);
+{$endif}
+     end;
+
+{$ifdef Windows}
+     PPVkExportMemoryWin32HandleInfoNV=^PVkExportMemoryWin32HandleInfoNV;
+     PVkExportMemoryWin32HandleInfoNV=^TVkExportMemoryWin32HandleInfoNV;
+     TVkExportMemoryWin32HandleInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_NV
+       pNext:PVkVoid;
+       pAttributes:PSecurityAttributes;
+       dwAccess:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPAttributes:PSecurityAttributes;
+                          const pDwAccess:TVkUInt32);
+{$endif}
+     end;
+{$endif}
+
+     PPVkWin32KeyedMutexAcquireReleaseInfoNV=^PVkWin32KeyedMutexAcquireReleaseInfoNV;
+     PVkWin32KeyedMutexAcquireReleaseInfoNV=^TVkWin32KeyedMutexAcquireReleaseInfoNV;
+     TVkWin32KeyedMutexAcquireReleaseInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_NV
+       pNext:PVkVoid;
+       acquireCount:TVkUInt32;
+       pAcquireSyncs:PVkDeviceMemory;
+       pAcquireKeys:PVkUInt64;
+       pAcquireTimeoutMilliseconds:PVkUInt32;
+       releaseCount:TVkUInt32;
+       pReleaseSyncs:PVkDeviceMemory;
+       pReleaseKeys:PVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pAcquireCount:TVkUInt32;
+                          const pPAcquireSyncs:PVkDeviceMemory;
+                          const pPAcquireKeys:PVkUInt64;
+                          const pPAcquireTimeoutMilliseconds:PVkUInt32;
+                          const pReleaseCount:TVkUInt32;
+                          const pPReleaseSyncs:PVkDeviceMemory;
+                          const pPReleaseKeys:PVkUInt64);
 {$endif}
      end;
 
@@ -5419,7 +5611,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkGetDeviceQueue=procedure(device:TVkDevice;queueFamilyIndex:TVkUInt32;queueIndex:TVkUInt32;pQueue:PVkQueue); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // If fence is not dlink:VK_NULL_HANDLE, fence must: be unsignaled
-     // If fence is not dlink:VK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+     // If fence is not dlink:VK_NULL_HANDLE, fence must: not be associated with any other queue command that has not yet completed execution on that queue
      TvkQueueSubmit=function(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkQueueWaitIdle=function(queue:TVkQueue):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -5432,7 +5624,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // All submitted commands that refer to memory (via images or buffers) must: have completed execution
      TvkFreeMemory=procedure(device:TVkDevice;memory:TVkDeviceMemory;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // memory mustnot: currently be mapped
+     // memory must: not currently be mapped
      // offset must: be less than the size of memory
      // If size is not equal to TVK_WHOLE_SIZE, size must: be greater than `0`
      // If size is not equal to TVK_WHOLE_SIZE, size must: be less than or equal to the size of the memory minus offset
@@ -5451,8 +5643,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetBufferMemoryRequirements=procedure(device:TVkDevice;buffer:TVkBuffer;pMemoryRequirements:PVkMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // buffer mustnot: already be backed by a memory object
-     // buffer mustnot: have been created with any sparse memory binding flags
+     // buffer must: not already be backed by a memory object
+     // buffer must: not have been created with any sparse memory binding flags
      // memoryOffset must: be less than the size of memory
      // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT or TVK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minTexelBufferOffsetAlignment
      // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
@@ -5464,8 +5656,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetImageMemoryRequirements=procedure(device:TVkDevice;image:TVkImage;pMemoryRequirements:PVkMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // image mustnot: already be backed by a memory object
-     // image mustnot: have been created with any sparse memory binding flags
+     // image must: not already be backed by a memory object
+     // image must: not have been created with any sparse memory binding flags
      // memoryOffset must: be less than the size of memory
      // memory must: have been allocated using one of the memory types allowed in the memoryTypeBits member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image
      // memoryOffset must: be an integer multiple of the alignment member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image
@@ -5478,17 +5670,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkGetPhysicalDeviceSparseImageFormatProperties=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;samples:TVkSampleCountFlagBits;usage:TVkImageUsageFlags;tiling:TVkImageTiling;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // fence must: be unsignaled
-     // fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+     // fence must: not be associated with any other queue command that has not yet completed execution on that queue
      TvkQueueBindSparse=function(queue:TVkQueue;bindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCreateFence=function(device:TVkDevice;const pCreateInfo:PVkFenceCreateInfo;const pAllocator:PVkAllocationCallbacks;pFence:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // fence mustnot: be associated with any queue command that has not yet completed execution on that queue
+     // fence must: not be associated with any queue command that has not yet completed execution on that queue
      // If TVkAllocationCallbacks were provided when fence was created, a compatible set of callbacks must: be provided here
      // If no TVkAllocationCallbacks were provided when fence was created, pAllocator must: be `NULL`
      TvkDestroyFence=procedure(device:TVkDevice;fence:TVkFence;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // Any given element of pFences mustnot: currently be associated with any queue command that has not yet completed execution on that queue
+     // Any given element of pFences must: not currently be associated with any queue command that has not yet completed execution on that queue
      TvkResetFences=function(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetFenceStatus=function(device:TVkDevice;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -5497,7 +5689,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkCreateSemaphore=function(device:TVkDevice;const pCreateInfo:PVkSemaphoreCreateInfo;const pAllocator:PVkAllocationCallbacks;pSemaphore:PVkSemaphore):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // semaphore mustnot: be associated with any queue command that has not yet completed execution on that queue
+     // semaphore must: not be associated with any queue command that has not yet completed execution on that queue
      // If TVkAllocationCallbacks were provided when semaphore was created, a compatible set of callbacks must: be provided here
      // If no TVkAllocationCallbacks were provided when semaphore was created, pAllocator must: be `NULL`
      TvkDestroySemaphore=procedure(device:TVkDevice;semaphore:TVkSemaphore;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -5513,7 +5705,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkSetEvent=function(device:TVkDevice;event:TVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // event mustnot: be waited on by a vkCmdWaitEvents command that is currently executing
+     // event must: not be waited on by a vkCmdWaitEvents command that is currently executing
      TvkResetEvent=function(device:TVkDevice;event:TVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCreateQueryPool=function(device:TVkDevice;const pCreateInfo:PVkQueryPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pQueryPool:PVkQueryPool):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -5528,10 +5720,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If TVK_QUERY_RESULT_64_BIT is set in flags then pData and stride must: be multiples of `8`
      // The sum of firstQuery and queryCount must: be less than or equal to the number of queries in queryPool
      // dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
-     // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
+     // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags must: not contain TVK_QUERY_RESULT_PARTIAL_BIT
      TvkGetQueryPoolResults=function(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+     // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer must: not cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
      TvkCreateBuffer=function(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // All submitted commands that refer to buffer, either directly or via a TVkBufferView, must: have completed execution
@@ -5546,7 +5738,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If no TVkAllocationCallbacks were provided when bufferView was created, pAllocator must: be `NULL`
      TvkDestroyBufferView=procedure(device:TVkDevice;bufferView:TVkBufferView;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+     // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage must: not cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
      TvkCreateImage=function(device:TVkDevice;const pCreateInfo:PVkImageCreateInfo;const pAllocator:PVkAllocationCallbacks;pImage:PVkImage):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // All submitted commands that refer to image, either directly or via a TVkImageView, must: have completed execution
@@ -5579,7 +5771,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetPipelineCacheData=function(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // dstCache mustnot: appear in the list of source caches
+     // dstCache must: not appear in the list of source caches
      TvkMergePipelineCaches=function(device:TVkDevice;dstCache:TVkPipelineCache;srcCacheCount:TVkUInt32;const pSrcCaches:PVkPipelineCache):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // If the flags member of any given element of pCreateInfos contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the basePipelineIndex member of that same element is not `-1`, basePipelineIndex must: be less than the index into pCreateInfos that corresponds to that element
@@ -5650,33 +5842,33 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkCreateCommandPool=function(device:TVkDevice;const pCreateInfo:PVkCommandPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pCommandPool:PVkCommandPool):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // All TVkCommandBuffer objects allocated from commandPool mustnot: be pending execution
+     // All TVkCommandBuffer objects allocated from commandPool must: not be pending execution
      // If TVkAllocationCallbacks were provided when commandPool was created, a compatible set of callbacks must: be provided here
      // If no TVkAllocationCallbacks were provided when commandPool was created, pAllocator must: be `NULL`
      TvkDestroyCommandPool=procedure(device:TVkDevice;commandPool:TVkCommandPool;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // All TVkCommandBuffer objects allocated from commandPool mustnot: currently be pending execution
+     // All TVkCommandBuffer objects allocated from commandPool must: not currently be pending execution
      TvkResetCommandPool=function(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolResetFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkAllocateCommandBuffers=function(device:TVkDevice;const pAllocateInfo:PVkCommandBufferAllocateInfo;pCommandBuffers:PVkCommandBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // All elements of pCommandBuffers mustnot: be pending execution
-     // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
+     // All elements of pCommandBuffers must: not be pending execution
+     // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or code:NULL
      TvkFreeCommandBuffers=procedure(device:TVkDevice;commandPool:TVkCommandPool;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // commandBuffer mustnot: be in the recording state
-     // commandBuffer mustnot: currently be pending execution
-     // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state.
+     // commandBuffer must: not be in the recording state
+     // commandBuffer must: not currently be pending execution
+     // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state
      // If commandBuffer is a secondary command buffer, the pInheritanceInfo member of pBeginInfo must: be a valid TVkCommandBufferInheritanceInfo structure
-     // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
+     // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo must: not contain TVK_QUERY_CONTROL_PRECISE_BIT
      TvkBeginCommandBuffer=function(commandBuffer:TVkCommandBuffer;const pBeginInfo:PVkCommandBufferBeginInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // commandBuffer must: be in the recording state
-     // If commandBuffer is a primary command buffer, there mustnot: be an active render pass instance
+     // If commandBuffer is a primary command buffer, there must: not be an active render pass instance
      // All queries made <<queries-operation-active,active>> during the recording of commandBuffer must: have been made inactive
      TvkEndCommandBuffer=function(commandBuffer:TVkCommandBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // commandBuffer mustnot: currently be pending execution
+     // commandBuffer must: not currently be pending execution
      // commandBuffer must: have been allocated from a pool that was created with the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
      TvkResetCommandBuffer=function(commandBuffer:TVkCommandBuffer;flags:TVkCommandBufferResetFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -5696,8 +5888,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // firstScissor must: be less than TVkPhysicalDeviceLimits::maxViewports
      // The sum of firstScissor and scissorCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
      // The x and y members of offset must: be greater than or equal to `0`
-     // Evaluation of (offset.x + extent.width) mustnot: cause a signed integer addition overflow
-     // Evaluation of (offset.y + extent.height) mustnot: cause a signed integer addition overflow
+     // Evaluation of (offset.x + extent.width) must: not cause a signed integer addition overflow
+     // Evaluation of (offset.y + extent.height) must: not cause a signed integer addition overflow
      TvkCmdSetScissor=procedure(commandBuffer:TVkCommandBuffer;firstScissor:TVkUInt32;scissorCount:TVkUInt32;const pScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_LINE_WIDTH dynamic state enabled
@@ -5751,11 +5943,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
      // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
      // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
      // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
      TvkCmdDraw=procedure(commandBuffer:TVkCommandBuffer;vertexCount:TVkUInt32;instanceCount:TVkUInt32;firstVertex:TVkUInt32;firstInstance:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -5768,11 +5960,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
      // (indexSize * (firstIndex + indexCount) + offset) must: be less than or equal to the size of the currently bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer
      // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
      // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
      TvkCmdDrawIndexed=procedure(commandBuffer:TVkCommandBuffer;indexCount:TVkUInt32;instanceCount:TVkUInt32;firstIndex:TVkUInt32;vertexOffset:TVkInt32;firstInstance:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -5790,11 +5982,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If drawCount is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
      // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
      // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
      // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
      TvkCmdDrawIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -5812,11 +6004,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If drawCount is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
      // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
      // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
      // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
      TvkCmdDrawIndexedIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -5827,11 +6019,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
      // A valid compute pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_COMPUTE
      // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_COMPUTE, with a TVkPipelineLayout that is compatible for push constants with the one used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
      // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
      TvkCmdDispatch=procedure(commandBuffer:TVkCommandBuffer;x:TVkUInt32;y:TVkUInt32;z:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -5842,11 +6034,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // offset must: be a multiple of `4`
      // The sum of offset and the size of TVkDispatchIndirectCommand must: be less than or equal to the size of buffer
      // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_COMPUTE, with a TVkPipelineLayout that is compatible for push constants with the one used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
      // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
      TvkCmdDispatchIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -5855,14 +6047,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // The dstOffset member of a given element of pRegions must: be less than the size of dstBuffer
      // The size member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
      // The size member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
-     // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+     // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, must: not overlap in memory
      // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
      // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
      TvkCmdCopyBuffer=procedure(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
      // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
      // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
      // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
      // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
@@ -5875,7 +6067,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
      // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-     // The union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory with any texel that may: be sampled during the blit operation
+     // The union of all destination regions, specified by the elements of pRegions, must: not overlap in memory with any texel that may: be sampled during the blit operation
      // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
      // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
      // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -5896,7 +6088,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      // The buffer region specified by a given element of pRegions must: be a region that is contained within srcBuffer
      // The image region specified by a given element of pRegions must: be a region that is contained within dstImage
-     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
      // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
      // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
      // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
@@ -5906,7 +6098,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      // The image region specified by a given element of pRegions must: be a region that is contained within srcImage
      // The buffer region specified by a given element of pRegions must: be a region that is contained within dstBuffer
-     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
      // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
      // srcImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
      // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -5934,7 +6126,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
      // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
      // The image range of any given element of pRanges must: be an image subresource range that is contained within image
-     // image mustnot: have a compressed or depth/stencil format
+     // image must: not have a compressed or depth/stencil format
      TvkCmdClearColorImage=procedure(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pColor:PVkClearColorValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
@@ -5951,7 +6143,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
      // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+     // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
      // srcImage must: have a sample count equal to any valid sample count value other than TVK_SAMPLE_COUNT_1_BIT
      // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
      // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -5962,27 +6154,27 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If dstImage was created with tiling equal to TVK_IMAGE_TILING_OPTIMAL, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
      TvkCmdResolveImage=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageResolve); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
      TvkCmdSetEvent=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-     // When this command executes, event mustnot: be waited on by a vkCmdWaitEvents command that is currently executing
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // When this command executes, event must: not be waited on by a vkCmdWaitEvents command that is currently executing
      TvkCmdResetEvent=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // srcStageMask must: be the bitwise OR of the stageMask parameter used in previous calls to vkCmdSetEvent with any of the members of pEvents and TVK_PIPELINE_STAGE_HOST_BIT if any of the members of pEvents was set using vkSetEvent
-     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-     // If pEvents includes one or more events that will be signaled by vkSetEvent after commandBuffer has been submitted to a queue, then vkCmdWaitEvents mustnot: be called inside a render pass instance
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If pEvents includes one or more events that will be signaled by vkSetEvent after commandBuffer has been submitted to a queue, then vkCmdWaitEvents must: not be called inside a render pass instance
      TvkCmdWaitEvents=procedure(commandBuffer:TVkCommandBuffer;eventCount:TVkUInt32;const pEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+     // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
      // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: have been created with a TVkSubpassDependency instance in pDependencies that expresses a dependency from the current subpass to itself. Additionally:
      // ** srcStageMask must: contain a subset of the bit values in the srcStageMask member of that instance of TVkSubpassDependency
      // ** dstStageMask must: contain a subset of the bit values in the dstStageMask member of that instance of TVkSubpassDependency
@@ -5998,7 +6190,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      // The query identified by queryPool and query must: currently not be <<queries-operation-active,active>>
      // The query identified by queryPool and query must: be unavailable
-     // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
+     // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags must: not contain TVK_QUERY_CONTROL_PRECISE_BIT
      // queryPool must: have been created with a queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within commandBuffer
      // query must: be less than the number of queries in queryPool
      // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
@@ -6025,7 +6217,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If TVK_QUERY_RESULT_64_BIT is set in flags then dstOffset and stride must: be multiples of `8`
      // dstBuffer must: have enough storage, from dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
      // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
-     // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
+     // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags must: not contain TVK_QUERY_RESULT_PARTIAL_BIT
      TvkCmdCopyQueryPoolResults=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // stageFlags must: match exactly the shader stages used in layout for the range specified by offset and size
@@ -6042,7 +6234,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // set
      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
      // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
-     // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin.
+     // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin
      TvkCmdBeginRenderPass=procedure(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // The current subpass index must: be less than the number of subpasses in the render pass minus one
@@ -6053,8 +6245,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      // commandBuffer must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
      // Any given element of pCommandBuffers must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
-     // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
-     // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+     // Any given element of pCommandBuffers must: not be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+     // Any given element of pCommandBuffers must: not be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
      // Any given element of pCommandBuffers must: be in the executable state
      // Any given element of pCommandBuffers must: have been allocated from a TVkCommandPool that was created for the same queue family as the TVkCommandPool from which commandBuffer was allocated
      // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
@@ -6062,12 +6254,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
      // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
      // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
-     // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers mustnot: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-     // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
+     // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers must: not have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+     // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer must: not have any queries <<queries-operation-active,active>>
      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
      // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
      // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
-     // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
+     // Any given element of pCommandBuffers must: not begin any query types that are <<queries-operation-active,active>> in commandBuffer
      TvkCmdExecuteCommands=procedure(commandBuffer:TVkCommandBuffer;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Android}
@@ -6124,7 +6316,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkGetSwapchainImagesKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainImageCount:PVkUInt32;pSwapchainImages:PVkImage):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // If semaphore is not dlink:VK_NULL_HANDLE it must: be unsignaled
-     // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+     // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and must: not be associated with any other queue command that has not yet completed execution on that queue
      TvkAcquireNextImageKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;timeout:TVkUInt64;semaphore:TVkSemaphore;fence:TVkFence;pImageIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
@@ -6172,24 +6364,75 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      // flags must: be a combination of one or more of TVkDebugReportFlagBitsEXT
      // objType must: be one of TVkDebugReportObjectTypeEXT, TVK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if object is `NULL`
      // object may: be a Vulkan object
-     // pLayerPrefix must: be a `NULL` terminated string.
-     // pMsg must: be a `NULL` terminated string.
+     // pLayerPrefix must: be a `NULL` terminated string
+     // pMsg must: be a `NULL` terminated string
      TvkDebugReportMessageEXT=procedure(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // pNameInfo.object must: be a Vulkan object
      TvkDebugMarkerSetObjectNameEXT=function(device:TVkDevice;pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      // pTagInfo.object must: be a Vulkan object
-     // pTagInfo.tagName mustnot: be `0`
+     // pTagInfo.tagName must: not be `0`
      TvkDebugMarkerSetObjectTagEXT=function(device:TVkDevice;pTagInfo:PVkDebugMarkerObjectTagInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdDebugMarkerBeginEXT=procedure(commandBuffer:TVkCommandBuffer;pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     // There must: be an outstanding flink:vkCmdDebugMarkerBeginEXT command prior to the vkCmdDebugMarkerEndEXT on the queue that commandBuffer is submitted to.
-     // If the matching flink:vkCmdDebugMarkerBeginEXT command was in a secondary command buffer, the vkCmdDebugMarkerEndEXT must be in the same commandBuffer.
+     // There must: be an outstanding flink:vkCmdDebugMarkerBeginEXT command prior to the vkCmdDebugMarkerEndEXT on the queue that commandBuffer is submitted to
+     // If the matching flink:vkCmdDebugMarkerBeginEXT command was in a secondary command buffer, the vkCmdDebugMarkerEndEXT must be in the same commandBuffer
      TvkCmdDebugMarkerEndEXT=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdDebugMarkerInsertEXT=procedure(commandBuffer:TVkCommandBuffer;pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceExternalImageFormatPropertiesNV=function(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;externalHandleType:TVkExternalMemoryHandleTypeFlagsNV;pExternalImageFormatProperties:PVkExternalImageFormatPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // handleType must: be a flag specified in slink:VkExportMemoryAllocateInfoNV::handleTypes when allocating memory
+     TvkGetMemoryWin32HandleNV=function(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagsNV;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // offset must: be a multiple of `4`
+     // countBufferOffset must: be a multiple of `4`
+     // stride must: be a multiple of `4` and must: be greater than or equal to sizeof(TVkDrawIndirectCommand)
+     // If maxDrawCount is greater than or equal to `1`, (stride x (maxDrawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+     // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the firstInstance members of the TVkDrawIndirectCommand structures accessed by this command must: be code:0
+     // For each set _n_ that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for set _n_, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+     // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for push constants, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+     // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
+     // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+     // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
+     // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+     // If the count stored in countBuffer is equal to `1`, (offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+     // If the count stored in countBuffer is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+     // The count stored in countBuffer must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
+     // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+     // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
+     TvkCmdDrawIndirectCountAMD=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     // offset must: be a multiple of `4`
+     // countBufferOffset must: be a multiple of `4`
+     // stride must: be a multiple of `4` and must: be greater than or equal to sizeof(TVkDrawIndirectCommand)
+     // If maxDrawCount is greater than or equal to `1`, (stride x (maxDrawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+     // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the firstInstance members of the TVkDrawIndexedIndirectCommand structures accessed by this command must: be code:0
+     // For each set _n_ that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for set _n_, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+     // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for push constants, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+     // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
+     // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+     // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
+     // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+     // If count stored in countBuffer is equal to `1`, (offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
+     // If count stored in countBuffer is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
+     // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
+     // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+     // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+     // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+     // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
+     TvkCmdDrawIndexedIndirectCountAMD=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -6242,7 +6485,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       GetDeviceQueue:TvkGetDeviceQueue;
 
       // If fence is not dlink:VK_NULL_HANDLE, fence must: be unsignaled
-      // If fence is not dlink:VK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+      // If fence is not dlink:VK_NULL_HANDLE, fence must: not be associated with any other queue command that has not yet completed execution on that queue
       QueueSubmit:TvkQueueSubmit;
 
       QueueWaitIdle:TvkQueueWaitIdle;
@@ -6255,7 +6498,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // All submitted commands that refer to memory (via images or buffers) must: have completed execution
       FreeMemory:TvkFreeMemory;
 
-      // memory mustnot: currently be mapped
+      // memory must: not currently be mapped
       // offset must: be less than the size of memory
       // If size is not equal to TVK_WHOLE_SIZE, size must: be greater than `0`
       // If size is not equal to TVK_WHOLE_SIZE, size must: be less than or equal to the size of the memory minus offset
@@ -6274,8 +6517,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetBufferMemoryRequirements:TvkGetBufferMemoryRequirements;
 
-      // buffer mustnot: already be backed by a memory object
-      // buffer mustnot: have been created with any sparse memory binding flags
+      // buffer must: not already be backed by a memory object
+      // buffer must: not have been created with any sparse memory binding flags
       // memoryOffset must: be less than the size of memory
       // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT or TVK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minTexelBufferOffsetAlignment
       // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
@@ -6287,8 +6530,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetImageMemoryRequirements:TvkGetImageMemoryRequirements;
 
-      // image mustnot: already be backed by a memory object
-      // image mustnot: have been created with any sparse memory binding flags
+      // image must: not already be backed by a memory object
+      // image must: not have been created with any sparse memory binding flags
       // memoryOffset must: be less than the size of memory
       // memory must: have been allocated using one of the memory types allowed in the memoryTypeBits member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image
       // memoryOffset must: be an integer multiple of the alignment member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image
@@ -6301,17 +6544,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       GetPhysicalDeviceSparseImageFormatProperties:TvkGetPhysicalDeviceSparseImageFormatProperties;
 
       // fence must: be unsignaled
-      // fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+      // fence must: not be associated with any other queue command that has not yet completed execution on that queue
       QueueBindSparse:TvkQueueBindSparse;
 
       CreateFence:TvkCreateFence;
 
-      // fence mustnot: be associated with any queue command that has not yet completed execution on that queue
+      // fence must: not be associated with any queue command that has not yet completed execution on that queue
       // If TVkAllocationCallbacks were provided when fence was created, a compatible set of callbacks must: be provided here
       // If no TVkAllocationCallbacks were provided when fence was created, pAllocator must: be `NULL`
       DestroyFence:TvkDestroyFence;
 
-      // Any given element of pFences mustnot: currently be associated with any queue command that has not yet completed execution on that queue
+      // Any given element of pFences must: not currently be associated with any queue command that has not yet completed execution on that queue
       ResetFences:TvkResetFences;
 
       GetFenceStatus:TvkGetFenceStatus;
@@ -6320,7 +6563,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       CreateSemaphore:TvkCreateSemaphore;
 
-      // semaphore mustnot: be associated with any queue command that has not yet completed execution on that queue
+      // semaphore must: not be associated with any queue command that has not yet completed execution on that queue
       // If TVkAllocationCallbacks were provided when semaphore was created, a compatible set of callbacks must: be provided here
       // If no TVkAllocationCallbacks were provided when semaphore was created, pAllocator must: be `NULL`
       DestroySemaphore:TvkDestroySemaphore;
@@ -6336,7 +6579,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       SetEvent:TvkSetEvent;
 
-      // event mustnot: be waited on by a vkCmdWaitEvents command that is currently executing
+      // event must: not be waited on by a vkCmdWaitEvents command that is currently executing
       ResetEvent:TvkResetEvent;
 
       CreateQueryPool:TvkCreateQueryPool;
@@ -6351,10 +6594,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If TVK_QUERY_RESULT_64_BIT is set in flags then pData and stride must: be multiples of `8`
       // The sum of firstQuery and queryCount must: be less than or equal to the number of queries in queryPool
       // dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
-      // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
+      // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags must: not contain TVK_QUERY_RESULT_PARTIAL_BIT
       GetQueryPoolResults:TvkGetQueryPoolResults;
 
-      // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+      // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer must: not cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
       CreateBuffer:TvkCreateBuffer;
 
       // All submitted commands that refer to buffer, either directly or via a TVkBufferView, must: have completed execution
@@ -6369,7 +6612,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If no TVkAllocationCallbacks were provided when bufferView was created, pAllocator must: be `NULL`
       DestroyBufferView:TvkDestroyBufferView;
 
-      // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+      // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage must: not cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
       CreateImage:TvkCreateImage;
 
       // All submitted commands that refer to image, either directly or via a TVkImageView, must: have completed execution
@@ -6402,7 +6645,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetPipelineCacheData:TvkGetPipelineCacheData;
 
-      // dstCache mustnot: appear in the list of source caches
+      // dstCache must: not appear in the list of source caches
       MergePipelineCaches:TvkMergePipelineCaches;
 
       // If the flags member of any given element of pCreateInfos contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the basePipelineIndex member of that same element is not `-1`, basePipelineIndex must: be less than the index into pCreateInfos that corresponds to that element
@@ -6473,33 +6716,33 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       CreateCommandPool:TvkCreateCommandPool;
 
-      // All TVkCommandBuffer objects allocated from commandPool mustnot: be pending execution
+      // All TVkCommandBuffer objects allocated from commandPool must: not be pending execution
       // If TVkAllocationCallbacks were provided when commandPool was created, a compatible set of callbacks must: be provided here
       // If no TVkAllocationCallbacks were provided when commandPool was created, pAllocator must: be `NULL`
       DestroyCommandPool:TvkDestroyCommandPool;
 
-      // All TVkCommandBuffer objects allocated from commandPool mustnot: currently be pending execution
+      // All TVkCommandBuffer objects allocated from commandPool must: not currently be pending execution
       ResetCommandPool:TvkResetCommandPool;
 
       AllocateCommandBuffers:TvkAllocateCommandBuffers;
 
-      // All elements of pCommandBuffers mustnot: be pending execution
-      // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
+      // All elements of pCommandBuffers must: not be pending execution
+      // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or code:NULL
       FreeCommandBuffers:TvkFreeCommandBuffers;
 
-      // commandBuffer mustnot: be in the recording state
-      // commandBuffer mustnot: currently be pending execution
-      // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state.
+      // commandBuffer must: not be in the recording state
+      // commandBuffer must: not currently be pending execution
+      // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state
       // If commandBuffer is a secondary command buffer, the pInheritanceInfo member of pBeginInfo must: be a valid TVkCommandBufferInheritanceInfo structure
-      // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
+      // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo must: not contain TVK_QUERY_CONTROL_PRECISE_BIT
       BeginCommandBuffer:TvkBeginCommandBuffer;
 
       // commandBuffer must: be in the recording state
-      // If commandBuffer is a primary command buffer, there mustnot: be an active render pass instance
+      // If commandBuffer is a primary command buffer, there must: not be an active render pass instance
       // All queries made <<queries-operation-active,active>> during the recording of commandBuffer must: have been made inactive
       EndCommandBuffer:TvkEndCommandBuffer;
 
-      // commandBuffer mustnot: currently be pending execution
+      // commandBuffer must: not currently be pending execution
       // commandBuffer must: have been allocated from a pool that was created with the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
       ResetCommandBuffer:TvkResetCommandBuffer;
 
@@ -6519,8 +6762,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // firstScissor must: be less than TVkPhysicalDeviceLimits::maxViewports
       // The sum of firstScissor and scissorCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
       // The x and y members of offset must: be greater than or equal to `0`
-      // Evaluation of (offset.x + extent.width) mustnot: cause a signed integer addition overflow
-      // Evaluation of (offset.y + extent.height) mustnot: cause a signed integer addition overflow
+      // Evaluation of (offset.x + extent.width) must: not cause a signed integer addition overflow
+      // Evaluation of (offset.y + extent.height) must: not cause a signed integer addition overflow
       CmdSetScissor:TvkCmdSetScissor;
 
       // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_LINE_WIDTH dynamic state enabled
@@ -6574,11 +6817,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
       // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
       // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
       // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
       CmdDraw:TvkCmdDraw;
 
@@ -6591,11 +6834,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
       // (indexSize * (firstIndex + indexCount) + offset) must: be less than or equal to the size of the currently bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer
       // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
       // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
       CmdDrawIndexed:TvkCmdDrawIndexed;
 
@@ -6613,11 +6856,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If drawCount is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
       // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
       // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
       // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
       CmdDrawIndirect:TvkCmdDrawIndirect;
 
@@ -6635,11 +6878,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If drawCount is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
       // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
       // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
       // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
       CmdDrawIndexedIndirect:TvkCmdDrawIndexedIndirect;
 
@@ -6650,11 +6893,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
       // A valid compute pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_COMPUTE
       // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_COMPUTE, with a TVkPipelineLayout that is compatible for push constants with the one used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
       // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
       CmdDispatch:TvkCmdDispatch;
 
@@ -6665,11 +6908,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // offset must: be a multiple of `4`
       // The sum of offset and the size of TVkDispatchIndirectCommand must: be less than or equal to the size of buffer
       // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_COMPUTE, with a TVkPipelineLayout that is compatible for push constants with the one used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
       // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
       CmdDispatchIndirect:TvkCmdDispatchIndirect;
 
@@ -6678,14 +6921,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // The dstOffset member of a given element of pRegions must: be less than the size of dstBuffer
       // The size member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
       // The size member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
-      // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+      // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, must: not overlap in memory
       // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
       // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
       CmdCopyBuffer:TvkCmdCopyBuffer;
 
       // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
       // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
       // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
       // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
       // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
@@ -6698,7 +6941,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
       // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-      // The union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory with any texel that may: be sampled during the blit operation
+      // The union of all destination regions, specified by the elements of pRegions, must: not overlap in memory with any texel that may: be sampled during the blit operation
       // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
       // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
       // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -6719,7 +6962,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       // The buffer region specified by a given element of pRegions must: be a region that is contained within srcBuffer
       // The image region specified by a given element of pRegions must: be a region that is contained within dstImage
-      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
       // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
       // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
       // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
@@ -6729,7 +6972,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       // The image region specified by a given element of pRegions must: be a region that is contained within srcImage
       // The buffer region specified by a given element of pRegions must: be a region that is contained within dstBuffer
-      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
       // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
       // srcImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
       // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -6757,7 +7000,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
       // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
       // The image range of any given element of pRanges must: be an image subresource range that is contained within image
-      // image mustnot: have a compressed or depth/stencil format
+      // image must: not have a compressed or depth/stencil format
       CmdClearColorImage:TvkCmdClearColorImage;
 
       // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
@@ -6774,7 +7017,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
       // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+      // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
       // srcImage must: have a sample count equal to any valid sample count value other than TVK_SAMPLE_COUNT_1_BIT
       // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
       // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -6785,27 +7028,27 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If dstImage was created with tiling equal to TVK_IMAGE_TILING_OPTIMAL, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
       CmdResolveImage:TvkCmdResolveImage;
 
-      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
       CmdSetEvent:TvkCmdSetEvent;
 
-      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-      // When this command executes, event mustnot: be waited on by a vkCmdWaitEvents command that is currently executing
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+      // When this command executes, event must: not be waited on by a vkCmdWaitEvents command that is currently executing
       CmdResetEvent:TvkCmdResetEvent;
 
       // srcStageMask must: be the bitwise OR of the stageMask parameter used in previous calls to vkCmdSetEvent with any of the members of pEvents and TVK_PIPELINE_STAGE_HOST_BIT if any of the members of pEvents was set using vkSetEvent
-      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-      // If pEvents includes one or more events that will be signaled by vkSetEvent after commandBuffer has been submitted to a queue, then vkCmdWaitEvents mustnot: be called inside a render pass instance
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+      // If pEvents includes one or more events that will be signaled by vkSetEvent after commandBuffer has been submitted to a queue, then vkCmdWaitEvents must: not be called inside a render pass instance
       CmdWaitEvents:TvkCmdWaitEvents;
 
-      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+      // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
       // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: have been created with a TVkSubpassDependency instance in pDependencies that expresses a dependency from the current subpass to itself. Additionally:
       // ** srcStageMask must: contain a subset of the bit values in the srcStageMask member of that instance of TVkSubpassDependency
       // ** dstStageMask must: contain a subset of the bit values in the dstStageMask member of that instance of TVkSubpassDependency
@@ -6821,7 +7064,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       // The query identified by queryPool and query must: currently not be <<queries-operation-active,active>>
       // The query identified by queryPool and query must: be unavailable
-      // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
+      // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags must: not contain TVK_QUERY_CONTROL_PRECISE_BIT
       // queryPool must: have been created with a queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within commandBuffer
       // query must: be less than the number of queries in queryPool
       // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
@@ -6848,7 +7091,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If TVK_QUERY_RESULT_64_BIT is set in flags then dstOffset and stride must: be multiples of `8`
       // dstBuffer must: have enough storage, from dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
       // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
-      // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
+      // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags must: not contain TVK_QUERY_RESULT_PARTIAL_BIT
       CmdCopyQueryPoolResults:TvkCmdCopyQueryPoolResults;
 
       // stageFlags must: match exactly the shader stages used in layout for the range specified by offset and size
@@ -6865,7 +7108,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // set
       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
       // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
-      // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin.
+      // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin
       CmdBeginRenderPass:TvkCmdBeginRenderPass;
 
       // The current subpass index must: be less than the number of subpasses in the render pass minus one
@@ -6876,8 +7119,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       // commandBuffer must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
       // Any given element of pCommandBuffers must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
-      // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
-      // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+      // Any given element of pCommandBuffers must: not be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+      // Any given element of pCommandBuffers must: not be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
       // Any given element of pCommandBuffers must: be in the executable state
       // Any given element of pCommandBuffers must: have been allocated from a TVkCommandPool that was created for the same queue family as the TVkCommandPool from which commandBuffer was allocated
       // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
@@ -6885,12 +7128,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
       // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
       // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
-      // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers mustnot: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-      // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
+      // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers must: not have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+      // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer must: not have any queries <<queries-operation-active,active>>
       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
       // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
       // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
-      // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
+      // Any given element of pCommandBuffers must: not begin any query types that are <<queries-operation-active,active>> in commandBuffer
       CmdExecuteCommands:TvkCmdExecuteCommands;
 
 {$ifdef Android}
@@ -6947,7 +7190,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       GetSwapchainImagesKHR:TvkGetSwapchainImagesKHR;
 
       // If semaphore is not dlink:VK_NULL_HANDLE it must: be unsignaled
-      // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+      // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and must: not be associated with any other queue command that has not yet completed execution on that queue
       AcquireNextImageKHR:TvkAcquireNextImageKHR;
 
       // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
@@ -6995,24 +7238,75 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       // flags must: be a combination of one or more of TVkDebugReportFlagBitsEXT
       // objType must: be one of TVkDebugReportObjectTypeEXT, TVK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if object is `NULL`
       // object may: be a Vulkan object
-      // pLayerPrefix must: be a `NULL` terminated string.
-      // pMsg must: be a `NULL` terminated string.
+      // pLayerPrefix must: be a `NULL` terminated string
+      // pMsg must: be a `NULL` terminated string
       DebugReportMessageEXT:TvkDebugReportMessageEXT;
 
       // pNameInfo.object must: be a Vulkan object
       DebugMarkerSetObjectNameEXT:TvkDebugMarkerSetObjectNameEXT;
 
       // pTagInfo.object must: be a Vulkan object
-      // pTagInfo.tagName mustnot: be `0`
+      // pTagInfo.tagName must: not be `0`
       DebugMarkerSetObjectTagEXT:TvkDebugMarkerSetObjectTagEXT;
 
       CmdDebugMarkerBeginEXT:TvkCmdDebugMarkerBeginEXT;
 
-      // There must: be an outstanding flink:vkCmdDebugMarkerBeginEXT command prior to the vkCmdDebugMarkerEndEXT on the queue that commandBuffer is submitted to.
-      // If the matching flink:vkCmdDebugMarkerBeginEXT command was in a secondary command buffer, the vkCmdDebugMarkerEndEXT must be in the same commandBuffer.
+      // There must: be an outstanding flink:vkCmdDebugMarkerBeginEXT command prior to the vkCmdDebugMarkerEndEXT on the queue that commandBuffer is submitted to
+      // If the matching flink:vkCmdDebugMarkerBeginEXT command was in a secondary command buffer, the vkCmdDebugMarkerEndEXT must be in the same commandBuffer
       CmdDebugMarkerEndEXT:TvkCmdDebugMarkerEndEXT;
 
       CmdDebugMarkerInsertEXT:TvkCmdDebugMarkerInsertEXT;
+
+      GetPhysicalDeviceExternalImageFormatPropertiesNV:TvkGetPhysicalDeviceExternalImageFormatPropertiesNV;
+
+      // handleType must: be a flag specified in slink:VkExportMemoryAllocateInfoNV::handleTypes when allocating memory
+      GetMemoryWin32HandleNV:TvkGetMemoryWin32HandleNV;
+
+      // offset must: be a multiple of `4`
+      // countBufferOffset must: be a multiple of `4`
+      // stride must: be a multiple of `4` and must: be greater than or equal to sizeof(TVkDrawIndirectCommand)
+      // If maxDrawCount is greater than or equal to `1`, (stride x (maxDrawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+      // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the firstInstance members of the TVkDrawIndirectCommand structures accessed by this command must: be code:0
+      // For each set _n_ that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for set _n_, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+      // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for push constants, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+      // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
+      // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+      // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
+      // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+      // If the count stored in countBuffer is equal to `1`, (offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+      // If the count stored in countBuffer is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+      // The count stored in countBuffer must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
+      // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+      // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
+      CmdDrawIndirectCountAMD:TvkCmdDrawIndirectCountAMD;
+
+      // offset must: be a multiple of `4`
+      // countBufferOffset must: be a multiple of `4`
+      // stride must: be a multiple of `4` and must: be greater than or equal to sizeof(TVkDrawIndirectCommand)
+      // If maxDrawCount is greater than or equal to `1`, (stride x (maxDrawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+      // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the firstInstance members of the TVkDrawIndexedIndirectCommand structures accessed by this command must: be code:0
+      // For each set _n_ that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for set _n_, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+      // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for push constants, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+      // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
+      // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+      // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
+      // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+      // If count stored in countBuffer is equal to `1`, (offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
+      // If count stored in countBuffer is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
+      // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
+      // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+      // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+      // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+      // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
+      CmdDrawIndexedIndirectCountAMD:TvkCmdDrawIndexedIndirectCountAMD;
 
      end;
 
@@ -7070,7 +7364,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        procedure GetDeviceQueue(device:TVkDevice;queueFamilyIndex:TVkUInt32;queueIndex:TVkUInt32;pQueue:PVkQueue); virtual;
 
        // If fence is not dlink:VK_NULL_HANDLE, fence must: be unsignaled
-       // If fence is not dlink:VK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+       // If fence is not dlink:VK_NULL_HANDLE, fence must: not be associated with any other queue command that has not yet completed execution on that queue
        function QueueSubmit(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;fence:TVkFence):TVkResult; virtual;
 
        function QueueWaitIdle(queue:TVkQueue):TVkResult; virtual;
@@ -7083,7 +7377,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // All submitted commands that refer to memory (via images or buffers) must: have completed execution
        procedure FreeMemory(device:TVkDevice;memory:TVkDeviceMemory;const pAllocator:PVkAllocationCallbacks); virtual;
 
-       // memory mustnot: currently be mapped
+       // memory must: not currently be mapped
        // offset must: be less than the size of memory
        // If size is not equal to TVK_WHOLE_SIZE, size must: be greater than `0`
        // If size is not equal to TVK_WHOLE_SIZE, size must: be less than or equal to the size of the memory minus offset
@@ -7102,8 +7396,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure GetBufferMemoryRequirements(device:TVkDevice;buffer:TVkBuffer;pMemoryRequirements:PVkMemoryRequirements); virtual;
 
-       // buffer mustnot: already be backed by a memory object
-       // buffer mustnot: have been created with any sparse memory binding flags
+       // buffer must: not already be backed by a memory object
+       // buffer must: not have been created with any sparse memory binding flags
        // memoryOffset must: be less than the size of memory
        // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT or TVK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minTexelBufferOffsetAlignment
        // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
@@ -7115,8 +7409,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure GetImageMemoryRequirements(device:TVkDevice;image:TVkImage;pMemoryRequirements:PVkMemoryRequirements); virtual;
 
-       // image mustnot: already be backed by a memory object
-       // image mustnot: have been created with any sparse memory binding flags
+       // image must: not already be backed by a memory object
+       // image must: not have been created with any sparse memory binding flags
        // memoryOffset must: be less than the size of memory
        // memory must: have been allocated using one of the memory types allowed in the memoryTypeBits member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image
        // memoryOffset must: be an integer multiple of the alignment member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image
@@ -7129,17 +7423,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        procedure GetPhysicalDeviceSparseImageFormatProperties(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;samples:TVkSampleCountFlagBits;usage:TVkImageUsageFlags;tiling:TVkImageTiling;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties); virtual;
 
        // fence must: be unsignaled
-       // fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+       // fence must: not be associated with any other queue command that has not yet completed execution on that queue
        function QueueBindSparse(queue:TVkQueue;bindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;fence:TVkFence):TVkResult; virtual;
 
        function CreateFence(device:TVkDevice;const pCreateInfo:PVkFenceCreateInfo;const pAllocator:PVkAllocationCallbacks;pFence:PVkFence):TVkResult; virtual;
 
-       // fence mustnot: be associated with any queue command that has not yet completed execution on that queue
+       // fence must: not be associated with any queue command that has not yet completed execution on that queue
        // If TVkAllocationCallbacks were provided when fence was created, a compatible set of callbacks must: be provided here
        // If no TVkAllocationCallbacks were provided when fence was created, pAllocator must: be `NULL`
        procedure DestroyFence(device:TVkDevice;fence:TVkFence;const pAllocator:PVkAllocationCallbacks); virtual;
 
-       // Any given element of pFences mustnot: currently be associated with any queue command that has not yet completed execution on that queue
+       // Any given element of pFences must: not currently be associated with any queue command that has not yet completed execution on that queue
        function ResetFences(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence):TVkResult; virtual;
 
        function GetFenceStatus(device:TVkDevice;fence:TVkFence):TVkResult; virtual;
@@ -7148,7 +7442,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function CreateSemaphore(device:TVkDevice;const pCreateInfo:PVkSemaphoreCreateInfo;const pAllocator:PVkAllocationCallbacks;pSemaphore:PVkSemaphore):TVkResult; virtual;
 
-       // semaphore mustnot: be associated with any queue command that has not yet completed execution on that queue
+       // semaphore must: not be associated with any queue command that has not yet completed execution on that queue
        // If TVkAllocationCallbacks were provided when semaphore was created, a compatible set of callbacks must: be provided here
        // If no TVkAllocationCallbacks were provided when semaphore was created, pAllocator must: be `NULL`
        procedure DestroySemaphore(device:TVkDevice;semaphore:TVkSemaphore;const pAllocator:PVkAllocationCallbacks); virtual;
@@ -7164,7 +7458,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function SetEvent(device:TVkDevice;event:TVkEvent):TVkResult; virtual;
 
-       // event mustnot: be waited on by a vkCmdWaitEvents command that is currently executing
+       // event must: not be waited on by a vkCmdWaitEvents command that is currently executing
        function ResetEvent(device:TVkDevice;event:TVkEvent):TVkResult; virtual;
 
        function CreateQueryPool(device:TVkDevice;const pCreateInfo:PVkQueryPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pQueryPool:PVkQueryPool):TVkResult; virtual;
@@ -7179,10 +7473,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If TVK_QUERY_RESULT_64_BIT is set in flags then pData and stride must: be multiples of `8`
        // The sum of firstQuery and queryCount must: be less than or equal to the number of queries in queryPool
        // dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
-       // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
+       // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags must: not contain TVK_QUERY_RESULT_PARTIAL_BIT
        function GetQueryPoolResults(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; virtual;
 
-       // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+       // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer must: not cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
        function CreateBuffer(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; virtual;
 
        // All submitted commands that refer to buffer, either directly or via a TVkBufferView, must: have completed execution
@@ -7197,7 +7491,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If no TVkAllocationCallbacks were provided when bufferView was created, pAllocator must: be `NULL`
        procedure DestroyBufferView(device:TVkDevice;bufferView:TVkBufferView;const pAllocator:PVkAllocationCallbacks); virtual;
 
-       // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+       // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage must: not cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
        function CreateImage(device:TVkDevice;const pCreateInfo:PVkImageCreateInfo;const pAllocator:PVkAllocationCallbacks;pImage:PVkImage):TVkResult; virtual;
 
        // All submitted commands that refer to image, either directly or via a TVkImageView, must: have completed execution
@@ -7230,7 +7524,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function GetPipelineCacheData(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkSize;pData:PVkVoid):TVkResult; virtual;
 
-       // dstCache mustnot: appear in the list of source caches
+       // dstCache must: not appear in the list of source caches
        function MergePipelineCaches(device:TVkDevice;dstCache:TVkPipelineCache;srcCacheCount:TVkUInt32;const pSrcCaches:PVkPipelineCache):TVkResult; virtual;
 
        // If the flags member of any given element of pCreateInfos contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the basePipelineIndex member of that same element is not `-1`, basePipelineIndex must: be less than the index into pCreateInfos that corresponds to that element
@@ -7301,33 +7595,33 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function CreateCommandPool(device:TVkDevice;const pCreateInfo:PVkCommandPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pCommandPool:PVkCommandPool):TVkResult; virtual;
 
-       // All TVkCommandBuffer objects allocated from commandPool mustnot: be pending execution
+       // All TVkCommandBuffer objects allocated from commandPool must: not be pending execution
        // If TVkAllocationCallbacks were provided when commandPool was created, a compatible set of callbacks must: be provided here
        // If no TVkAllocationCallbacks were provided when commandPool was created, pAllocator must: be `NULL`
        procedure DestroyCommandPool(device:TVkDevice;commandPool:TVkCommandPool;const pAllocator:PVkAllocationCallbacks); virtual;
 
-       // All TVkCommandBuffer objects allocated from commandPool mustnot: currently be pending execution
+       // All TVkCommandBuffer objects allocated from commandPool must: not currently be pending execution
        function ResetCommandPool(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolResetFlags):TVkResult; virtual;
 
        function AllocateCommandBuffers(device:TVkDevice;const pAllocateInfo:PVkCommandBufferAllocateInfo;pCommandBuffers:PVkCommandBuffer):TVkResult; virtual;
 
-       // All elements of pCommandBuffers mustnot: be pending execution
-       // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
+       // All elements of pCommandBuffers must: not be pending execution
+       // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or code:NULL
        procedure FreeCommandBuffers(device:TVkDevice;commandPool:TVkCommandPool;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); virtual;
 
-       // commandBuffer mustnot: be in the recording state
-       // commandBuffer mustnot: currently be pending execution
-       // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state.
+       // commandBuffer must: not be in the recording state
+       // commandBuffer must: not currently be pending execution
+       // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state
        // If commandBuffer is a secondary command buffer, the pInheritanceInfo member of pBeginInfo must: be a valid TVkCommandBufferInheritanceInfo structure
-       // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
+       // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo must: not contain TVK_QUERY_CONTROL_PRECISE_BIT
        function BeginCommandBuffer(commandBuffer:TVkCommandBuffer;const pBeginInfo:PVkCommandBufferBeginInfo):TVkResult; virtual;
 
        // commandBuffer must: be in the recording state
-       // If commandBuffer is a primary command buffer, there mustnot: be an active render pass instance
+       // If commandBuffer is a primary command buffer, there must: not be an active render pass instance
        // All queries made <<queries-operation-active,active>> during the recording of commandBuffer must: have been made inactive
        function EndCommandBuffer(commandBuffer:TVkCommandBuffer):TVkResult; virtual;
 
-       // commandBuffer mustnot: currently be pending execution
+       // commandBuffer must: not currently be pending execution
        // commandBuffer must: have been allocated from a pool that was created with the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
        function ResetCommandBuffer(commandBuffer:TVkCommandBuffer;flags:TVkCommandBufferResetFlags):TVkResult; virtual;
 
@@ -7347,8 +7641,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // firstScissor must: be less than TVkPhysicalDeviceLimits::maxViewports
        // The sum of firstScissor and scissorCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
        // The x and y members of offset must: be greater than or equal to `0`
-       // Evaluation of (offset.x + extent.width) mustnot: cause a signed integer addition overflow
-       // Evaluation of (offset.y + extent.height) mustnot: cause a signed integer addition overflow
+       // Evaluation of (offset.x + extent.width) must: not cause a signed integer addition overflow
+       // Evaluation of (offset.y + extent.height) must: not cause a signed integer addition overflow
        procedure CmdSetScissor(commandBuffer:TVkCommandBuffer;firstScissor:TVkUInt32;scissorCount:TVkUInt32;const pScissors:PVkRect2D); virtual;
 
        // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_LINE_WIDTH dynamic state enabled
@@ -7402,11 +7696,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
        // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
        // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
        // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
        procedure CmdDraw(commandBuffer:TVkCommandBuffer;vertexCount:TVkUInt32;instanceCount:TVkUInt32;firstVertex:TVkUInt32;firstInstance:TVkUInt32); virtual;
 
@@ -7419,11 +7713,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
        // (indexSize * (firstIndex + indexCount) + offset) must: be less than or equal to the size of the currently bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer
        // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
        // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
        procedure CmdDrawIndexed(commandBuffer:TVkCommandBuffer;indexCount:TVkUInt32;instanceCount:TVkUInt32;firstIndex:TVkUInt32;vertexOffset:TVkInt32;firstInstance:TVkUInt32); virtual;
 
@@ -7441,11 +7735,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If drawCount is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
        // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
        // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
        // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
        procedure CmdDrawIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); virtual;
 
@@ -7463,11 +7757,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If drawCount is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
        // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
        // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
        // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
        procedure CmdDrawIndexedIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); virtual;
 
@@ -7478,11 +7772,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
        // A valid compute pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_COMPUTE
        // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_COMPUTE, with a TVkPipelineLayout that is compatible for push constants with the one used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
        // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
        procedure CmdDispatch(commandBuffer:TVkCommandBuffer;x:TVkUInt32;y:TVkUInt32;z:TVkUInt32); virtual;
 
@@ -7493,11 +7787,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // offset must: be a multiple of `4`
        // The sum of offset and the size of TVkDispatchIndirectCommand must: be less than or equal to the size of buffer
        // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_COMPUTE, with a TVkPipelineLayout that is compatible for push constants with the one used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
        // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
        procedure CmdDispatchIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); virtual;
 
@@ -7506,14 +7800,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // The dstOffset member of a given element of pRegions must: be less than the size of dstBuffer
        // The size member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
        // The size member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
-       // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+       // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, must: not overlap in memory
        // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
        // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
        procedure CmdCopyBuffer(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferCopy); virtual;
 
        // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
        // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
        // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
        // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
        // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
@@ -7526,7 +7820,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
        // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-       // The union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory with any texel that may: be sampled during the blit operation
+       // The union of all destination regions, specified by the elements of pRegions, must: not overlap in memory with any texel that may: be sampled during the blit operation
        // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
        // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
        // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -7547,7 +7841,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        // The buffer region specified by a given element of pRegions must: be a region that is contained within srcBuffer
        // The image region specified by a given element of pRegions must: be a region that is contained within dstImage
-       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
        // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
        // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
        // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
@@ -7557,7 +7851,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        // The image region specified by a given element of pRegions must: be a region that is contained within srcImage
        // The buffer region specified by a given element of pRegions must: be a region that is contained within dstBuffer
-       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
        // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
        // srcImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
        // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -7585,7 +7879,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
        // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
        // The image range of any given element of pRanges must: be an image subresource range that is contained within image
-       // image mustnot: have a compressed or depth/stencil format
+       // image must: not have a compressed or depth/stencil format
        procedure CmdClearColorImage(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pColor:PVkClearColorValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); virtual;
 
        // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
@@ -7602,7 +7896,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
        // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+       // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
        // srcImage must: have a sample count equal to any valid sample count value other than TVK_SAMPLE_COUNT_1_BIT
        // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
        // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -7613,27 +7907,27 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If dstImage was created with tiling equal to TVK_IMAGE_TILING_OPTIMAL, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
        procedure CmdResolveImage(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageResolve); virtual;
 
-       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
        procedure CmdSetEvent(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); virtual;
 
-       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-       // When this command executes, event mustnot: be waited on by a vkCmdWaitEvents command that is currently executing
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+       // When this command executes, event must: not be waited on by a vkCmdWaitEvents command that is currently executing
        procedure CmdResetEvent(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); virtual;
 
        // srcStageMask must: be the bitwise OR of the stageMask parameter used in previous calls to vkCmdSetEvent with any of the members of pEvents and TVK_PIPELINE_STAGE_HOST_BIT if any of the members of pEvents was set using vkSetEvent
-       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-       // If pEvents includes one or more events that will be signaled by vkSetEvent after commandBuffer has been submitted to a queue, then vkCmdWaitEvents mustnot: be called inside a render pass instance
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+       // If pEvents includes one or more events that will be signaled by vkSetEvent after commandBuffer has been submitted to a queue, then vkCmdWaitEvents must: not be called inside a render pass instance
        procedure CmdWaitEvents(commandBuffer:TVkCommandBuffer;eventCount:TVkUInt32;const pEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); virtual;
 
-       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+       // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
        // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: have been created with a TVkSubpassDependency instance in pDependencies that expresses a dependency from the current subpass to itself. Additionally:
        // ** srcStageMask must: contain a subset of the bit values in the srcStageMask member of that instance of TVkSubpassDependency
        // ** dstStageMask must: contain a subset of the bit values in the dstStageMask member of that instance of TVkSubpassDependency
@@ -7649,7 +7943,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        // The query identified by queryPool and query must: currently not be <<queries-operation-active,active>>
        // The query identified by queryPool and query must: be unavailable
-       // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
+       // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags must: not contain TVK_QUERY_CONTROL_PRECISE_BIT
        // queryPool must: have been created with a queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within commandBuffer
        // query must: be less than the number of queries in queryPool
        // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
@@ -7676,7 +7970,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If TVK_QUERY_RESULT_64_BIT is set in flags then dstOffset and stride must: be multiples of `8`
        // dstBuffer must: have enough storage, from dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
        // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
-       // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
+       // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags must: not contain TVK_QUERY_RESULT_PARTIAL_BIT
        procedure CmdCopyQueryPoolResults(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags); virtual;
 
        // stageFlags must: match exactly the shader stages used in layout for the range specified by offset and size
@@ -7693,7 +7987,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // set
        // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
        // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
-       // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin.
+       // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin
        procedure CmdBeginRenderPass(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents); virtual;
 
        // The current subpass index must: be less than the number of subpasses in the render pass minus one
@@ -7704,8 +7998,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        // commandBuffer must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
        // Any given element of pCommandBuffers must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
-       // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
-       // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+       // Any given element of pCommandBuffers must: not be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+       // Any given element of pCommandBuffers must: not be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
        // Any given element of pCommandBuffers must: be in the executable state
        // Any given element of pCommandBuffers must: have been allocated from a TVkCommandPool that was created for the same queue family as the TVkCommandPool from which commandBuffer was allocated
        // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
@@ -7713,12 +8007,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
        // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
        // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
-       // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers mustnot: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-       // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
+       // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers must: not have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+       // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer must: not have any queries <<queries-operation-active,active>>
        // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
        // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
        // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
-       // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
+       // Any given element of pCommandBuffers must: not begin any query types that are <<queries-operation-active,active>> in commandBuffer
        procedure CmdExecuteCommands(commandBuffer:TVkCommandBuffer;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); virtual;
 
 {$ifdef Android}
@@ -7775,7 +8069,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function GetSwapchainImagesKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainImageCount:PVkUInt32;pSwapchainImages:PVkImage):TVkResult; virtual;
 
        // If semaphore is not dlink:VK_NULL_HANDLE it must: be unsignaled
-       // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+       // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and must: not be associated with any other queue command that has not yet completed execution on that queue
        function AcquireNextImageKHR(device:TVkDevice;swapchain:TVkSwapchainKHR;timeout:TVkUInt64;semaphore:TVkSemaphore;fence:TVkFence;pImageIndex:PVkUInt32):TVkResult; virtual;
 
        // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
@@ -7823,24 +8117,75 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        // flags must: be a combination of one or more of TVkDebugReportFlagBitsEXT
        // objType must: be one of TVkDebugReportObjectTypeEXT, TVK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if object is `NULL`
        // object may: be a Vulkan object
-       // pLayerPrefix must: be a `NULL` terminated string.
-       // pMsg must: be a `NULL` terminated string.
+       // pLayerPrefix must: be a `NULL` terminated string
+       // pMsg must: be a `NULL` terminated string
        procedure DebugReportMessageEXT(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); virtual;
 
        // pNameInfo.object must: be a Vulkan object
        function DebugMarkerSetObjectNameEXT(device:TVkDevice;pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult; virtual;
 
        // pTagInfo.object must: be a Vulkan object
-       // pTagInfo.tagName mustnot: be `0`
+       // pTagInfo.tagName must: not be `0`
        function DebugMarkerSetObjectTagEXT(device:TVkDevice;pTagInfo:PVkDebugMarkerObjectTagInfoEXT):TVkResult; virtual;
 
        procedure CmdDebugMarkerBeginEXT(commandBuffer:TVkCommandBuffer;pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); virtual;
 
-       // There must: be an outstanding flink:vkCmdDebugMarkerBeginEXT command prior to the vkCmdDebugMarkerEndEXT on the queue that commandBuffer is submitted to.
-       // If the matching flink:vkCmdDebugMarkerBeginEXT command was in a secondary command buffer, the vkCmdDebugMarkerEndEXT must be in the same commandBuffer.
+       // There must: be an outstanding flink:vkCmdDebugMarkerBeginEXT command prior to the vkCmdDebugMarkerEndEXT on the queue that commandBuffer is submitted to
+       // If the matching flink:vkCmdDebugMarkerBeginEXT command was in a secondary command buffer, the vkCmdDebugMarkerEndEXT must be in the same commandBuffer
        procedure CmdDebugMarkerEndEXT(commandBuffer:TVkCommandBuffer); virtual;
 
        procedure CmdDebugMarkerInsertEXT(commandBuffer:TVkCommandBuffer;pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); virtual;
+
+       function GetPhysicalDeviceExternalImageFormatPropertiesNV(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;externalHandleType:TVkExternalMemoryHandleTypeFlagsNV;pExternalImageFormatProperties:PVkExternalImageFormatPropertiesNV):TVkResult; virtual;
+
+       // handleType must: be a flag specified in slink:VkExportMemoryAllocateInfoNV::handleTypes when allocating memory
+       function GetMemoryWin32HandleNV(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagsNV;pHandle:PHANDLE):TVkResult; virtual;
+
+       // offset must: be a multiple of `4`
+       // countBufferOffset must: be a multiple of `4`
+       // stride must: be a multiple of `4` and must: be greater than or equal to sizeof(TVkDrawIndirectCommand)
+       // If maxDrawCount is greater than or equal to `1`, (stride x (maxDrawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+       // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the firstInstance members of the TVkDrawIndirectCommand structures accessed by this command must: be code:0
+       // For each set _n_ that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for set _n_, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+       // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for push constants, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+       // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
+       // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+       // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
+       // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+       // If the count stored in countBuffer is equal to `1`, (offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+       // If the count stored in countBuffer is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+       // The count stored in countBuffer must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
+       // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+       // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
+       procedure CmdDrawIndirectCountAMD(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); virtual;
+
+       // offset must: be a multiple of `4`
+       // countBufferOffset must: be a multiple of `4`
+       // stride must: be a multiple of `4` and must: be greater than or equal to sizeof(TVkDrawIndirectCommand)
+       // If maxDrawCount is greater than or equal to `1`, (stride x (maxDrawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+       // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the firstInstance members of the TVkDrawIndexedIndirectCommand structures accessed by this command must: be code:0
+       // For each set _n_ that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for set _n_, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+       // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for push constants, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+       // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
+       // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+       // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
+       // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+       // If count stored in countBuffer is equal to `1`, (offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
+       // If count stored in countBuffer is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
+       // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
+       // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+       // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+       // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+       // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
+       procedure CmdDrawIndexedIndirectCountAMD(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); virtual;
 
        property Commands:TVulkanCommands read fCommands;
      end;
@@ -7896,7 +8241,7 @@ var LibVulkan:pointer=nil;
     vkGetDeviceQueue:TvkGetDeviceQueue=nil;
 
     // If fence is not dlink:VK_NULL_HANDLE, fence must: be unsignaled
-    // If fence is not dlink:VK_NULL_HANDLE, fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+    // If fence is not dlink:VK_NULL_HANDLE, fence must: not be associated with any other queue command that has not yet completed execution on that queue
     vkQueueSubmit:TvkQueueSubmit=nil;
 
     vkQueueWaitIdle:TvkQueueWaitIdle=nil;
@@ -7909,7 +8254,7 @@ var LibVulkan:pointer=nil;
     // All submitted commands that refer to memory (via images or buffers) must: have completed execution
     vkFreeMemory:TvkFreeMemory=nil;
 
-    // memory mustnot: currently be mapped
+    // memory must: not currently be mapped
     // offset must: be less than the size of memory
     // If size is not equal to TVK_WHOLE_SIZE, size must: be greater than `0`
     // If size is not equal to TVK_WHOLE_SIZE, size must: be less than or equal to the size of the memory minus offset
@@ -7928,8 +8273,8 @@ var LibVulkan:pointer=nil;
 
     vkGetBufferMemoryRequirements:TvkGetBufferMemoryRequirements=nil;
 
-    // buffer mustnot: already be backed by a memory object
-    // buffer mustnot: have been created with any sparse memory binding flags
+    // buffer must: not already be backed by a memory object
+    // buffer must: not have been created with any sparse memory binding flags
     // memoryOffset must: be less than the size of memory
     // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT or TVK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minTexelBufferOffsetAlignment
     // If buffer was created with the TVK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, memoryOffset must: be a multiple of TVkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
@@ -7941,8 +8286,8 @@ var LibVulkan:pointer=nil;
 
     vkGetImageMemoryRequirements:TvkGetImageMemoryRequirements=nil;
 
-    // image mustnot: already be backed by a memory object
-    // image mustnot: have been created with any sparse memory binding flags
+    // image must: not already be backed by a memory object
+    // image must: not have been created with any sparse memory binding flags
     // memoryOffset must: be less than the size of memory
     // memory must: have been allocated using one of the memory types allowed in the memoryTypeBits member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image
     // memoryOffset must: be an integer multiple of the alignment member of the TVkMemoryRequirements structure returned from a call to vkGetImageMemoryRequirements with image
@@ -7955,17 +8300,17 @@ var LibVulkan:pointer=nil;
     vkGetPhysicalDeviceSparseImageFormatProperties:TvkGetPhysicalDeviceSparseImageFormatProperties=nil;
 
     // fence must: be unsignaled
-    // fence mustnot: be associated with any other queue command that has not yet completed execution on that queue
+    // fence must: not be associated with any other queue command that has not yet completed execution on that queue
     vkQueueBindSparse:TvkQueueBindSparse=nil;
 
     vkCreateFence:TvkCreateFence=nil;
 
-    // fence mustnot: be associated with any queue command that has not yet completed execution on that queue
+    // fence must: not be associated with any queue command that has not yet completed execution on that queue
     // If TVkAllocationCallbacks were provided when fence was created, a compatible set of callbacks must: be provided here
     // If no TVkAllocationCallbacks were provided when fence was created, pAllocator must: be `NULL`
     vkDestroyFence:TvkDestroyFence=nil;
 
-    // Any given element of pFences mustnot: currently be associated with any queue command that has not yet completed execution on that queue
+    // Any given element of pFences must: not currently be associated with any queue command that has not yet completed execution on that queue
     vkResetFences:TvkResetFences=nil;
 
     vkGetFenceStatus:TvkGetFenceStatus=nil;
@@ -7974,7 +8319,7 @@ var LibVulkan:pointer=nil;
 
     vkCreateSemaphore:TvkCreateSemaphore=nil;
 
-    // semaphore mustnot: be associated with any queue command that has not yet completed execution on that queue
+    // semaphore must: not be associated with any queue command that has not yet completed execution on that queue
     // If TVkAllocationCallbacks were provided when semaphore was created, a compatible set of callbacks must: be provided here
     // If no TVkAllocationCallbacks were provided when semaphore was created, pAllocator must: be `NULL`
     vkDestroySemaphore:TvkDestroySemaphore=nil;
@@ -7990,7 +8335,7 @@ var LibVulkan:pointer=nil;
 
     vkSetEvent:TvkSetEvent=nil;
 
-    // event mustnot: be waited on by a vkCmdWaitEvents command that is currently executing
+    // event must: not be waited on by a vkCmdWaitEvents command that is currently executing
     vkResetEvent:TvkResetEvent=nil;
 
     vkCreateQueryPool:TvkCreateQueryPool=nil;
@@ -8005,10 +8350,10 @@ var LibVulkan:pointer=nil;
     // If TVK_QUERY_RESULT_64_BIT is set in flags then pData and stride must: be multiples of `8`
     // The sum of firstQuery and queryCount must: be less than or equal to the number of queries in queryPool
     // dataSize must: be large enough to contain the result of each query, as described <<queries-operation-memorylayout,here>>
-    // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
+    // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags must: not contain TVK_QUERY_RESULT_PARTIAL_BIT
     vkGetQueryPoolResults:TvkGetQueryPoolResults=nil;
 
-    // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+    // If the flags member of pCreateInfo includes TVK_BUFFER_CREATE_SPARSE_BINDING_BIT, creating this TVkBuffer must: not cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
     vkCreateBuffer:TvkCreateBuffer=nil;
 
     // All submitted commands that refer to buffer, either directly or via a TVkBufferView, must: have completed execution
@@ -8023,7 +8368,7 @@ var LibVulkan:pointer=nil;
     // If no TVkAllocationCallbacks were provided when bufferView was created, pAllocator must: be `NULL`
     vkDestroyBufferView:TvkDestroyBufferView=nil;
 
-    // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage mustnot: cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
+    // If the flags member of pCreateInfo includes TVK_IMAGE_CREATE_SPARSE_BINDING_BIT, creating this TVkImage must: not cause the total required sparse memory for all currently valid sparse resources on the device to exceed TVkPhysicalDeviceLimits::sparseAddressSpaceSize
     vkCreateImage:TvkCreateImage=nil;
 
     // All submitted commands that refer to image, either directly or via a TVkImageView, must: have completed execution
@@ -8056,7 +8401,7 @@ var LibVulkan:pointer=nil;
 
     vkGetPipelineCacheData:TvkGetPipelineCacheData=nil;
 
-    // dstCache mustnot: appear in the list of source caches
+    // dstCache must: not appear in the list of source caches
     vkMergePipelineCaches:TvkMergePipelineCaches=nil;
 
     // If the flags member of any given element of pCreateInfos contains the TVK_PIPELINE_CREATE_DERIVATIVE_BIT flag, and the basePipelineIndex member of that same element is not `-1`, basePipelineIndex must: be less than the index into pCreateInfos that corresponds to that element
@@ -8127,33 +8472,33 @@ var LibVulkan:pointer=nil;
 
     vkCreateCommandPool:TvkCreateCommandPool=nil;
 
-    // All TVkCommandBuffer objects allocated from commandPool mustnot: be pending execution
+    // All TVkCommandBuffer objects allocated from commandPool must: not be pending execution
     // If TVkAllocationCallbacks were provided when commandPool was created, a compatible set of callbacks must: be provided here
     // If no TVkAllocationCallbacks were provided when commandPool was created, pAllocator must: be `NULL`
     vkDestroyCommandPool:TvkDestroyCommandPool=nil;
 
-    // All TVkCommandBuffer objects allocated from commandPool mustnot: currently be pending execution
+    // All TVkCommandBuffer objects allocated from commandPool must: not currently be pending execution
     vkResetCommandPool:TvkResetCommandPool=nil;
 
     vkAllocateCommandBuffers:TvkAllocateCommandBuffers=nil;
 
-    // All elements of pCommandBuffers mustnot: be pending execution
-    // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or dlink:VK_NULL_HANDLE
+    // All elements of pCommandBuffers must: not be pending execution
+    // pCommandBuffers must: be a pointer to an array of commandBufferCount TVkCommandBuffer handles, each element of which must: either be a valid handle or code:NULL
     vkFreeCommandBuffers:TvkFreeCommandBuffers=nil;
 
-    // commandBuffer mustnot: be in the recording state
-    // commandBuffer mustnot: currently be pending execution
-    // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state.
+    // commandBuffer must: not be in the recording state
+    // commandBuffer must: not currently be pending execution
+    // If commandBuffer was allocated from a TVkCommandPool which did not have the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, commandBuffer must: be in the initial state
     // If commandBuffer is a secondary command buffer, the pInheritanceInfo member of pBeginInfo must: be a valid TVkCommandBufferInheritanceInfo structure
-    // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
+    // If commandBuffer is a secondary command buffer and either the occlusionQueryEnable member of the pInheritanceInfo member of pBeginInfo is TVK_FALSE, or the precise occlusion queries feature is not enabled, the queryFlags member of the pInheritanceInfo member pBeginInfo must: not contain TVK_QUERY_CONTROL_PRECISE_BIT
     vkBeginCommandBuffer:TvkBeginCommandBuffer=nil;
 
     // commandBuffer must: be in the recording state
-    // If commandBuffer is a primary command buffer, there mustnot: be an active render pass instance
+    // If commandBuffer is a primary command buffer, there must: not be an active render pass instance
     // All queries made <<queries-operation-active,active>> during the recording of commandBuffer must: have been made inactive
     vkEndCommandBuffer:TvkEndCommandBuffer=nil;
 
-    // commandBuffer mustnot: currently be pending execution
+    // commandBuffer must: not currently be pending execution
     // commandBuffer must: have been allocated from a pool that was created with the TVK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
     vkResetCommandBuffer:TvkResetCommandBuffer=nil;
 
@@ -8173,8 +8518,8 @@ var LibVulkan:pointer=nil;
     // firstScissor must: be less than TVkPhysicalDeviceLimits::maxViewports
     // The sum of firstScissor and scissorCount must: be between `1` and TVkPhysicalDeviceLimits::maxViewports, inclusive
     // The x and y members of offset must: be greater than or equal to `0`
-    // Evaluation of (offset.x + extent.width) mustnot: cause a signed integer addition overflow
-    // Evaluation of (offset.y + extent.height) mustnot: cause a signed integer addition overflow
+    // Evaluation of (offset.x + extent.width) must: not cause a signed integer addition overflow
+    // Evaluation of (offset.y + extent.height) must: not cause a signed integer addition overflow
     vkCmdSetScissor:TvkCmdSetScissor=nil;
 
     // The currently bound graphics pipeline must: have been created with the TVK_DYNAMIC_STATE_LINE_WIDTH dynamic state enabled
@@ -8228,11 +8573,11 @@ var LibVulkan:pointer=nil;
     // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
     // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
     // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
     // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
     vkCmdDraw:TvkCmdDraw=nil;
 
@@ -8245,11 +8590,11 @@ var LibVulkan:pointer=nil;
     // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
     // (indexSize * (firstIndex + indexCount) + offset) must: be less than or equal to the size of the currently bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer
     // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
     // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
     vkCmdDrawIndexed:TvkCmdDrawIndexed=nil;
 
@@ -8267,11 +8612,11 @@ var LibVulkan:pointer=nil;
     // If drawCount is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
     // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
     // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
     // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
     vkCmdDrawIndirect:TvkCmdDrawIndirect=nil;
 
@@ -8289,11 +8634,11 @@ var LibVulkan:pointer=nil;
     // If drawCount is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
     // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
     // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
     // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
     vkCmdDrawIndexedIndirect:TvkCmdDrawIndexedIndirect=nil;
 
@@ -8304,11 +8649,11 @@ var LibVulkan:pointer=nil;
     // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
     // A valid compute pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_COMPUTE
     // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_COMPUTE, with a TVkPipelineLayout that is compatible for push constants with the one used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
     // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
     vkCmdDispatch:TvkCmdDispatch=nil;
 
@@ -8319,11 +8664,11 @@ var LibVulkan:pointer=nil;
     // offset must: be a multiple of `4`
     // The sum of offset and the size of TVkDispatchIndirectCommand must: be less than or equal to the size of buffer
     // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_COMPUTE, with a TVkPipelineLayout that is compatible for push constants with the one used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
-    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it mustnot: be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a lod bias or any offset values, in any shader stage
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
-    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it mustnot: access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_COMPUTE accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
     // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
     vkCmdDispatchIndirect:TvkCmdDispatchIndirect=nil;
 
@@ -8332,14 +8677,14 @@ var LibVulkan:pointer=nil;
     // The dstOffset member of a given element of pRegions must: be less than the size of dstBuffer
     // The size member of a given element of pRegions must: be less than or equal to the size of srcBuffer minus srcOffset
     // The size member of a given element of pRegions must: be less than or equal to the size of dstBuffer minus dstOffset
-    // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+    // The union of the source regions, and the union of the destination regions, specified by the elements of pRegions, must: not overlap in memory
     // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
     // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
     vkCmdCopyBuffer:TvkCmdCopyBuffer=nil;
 
     // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
     // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-    // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+    // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
     // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
     // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
     // srcImageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
@@ -8352,7 +8697,7 @@ var LibVulkan:pointer=nil;
 
     // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
     // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-    // The union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory with any texel that may: be sampled during the blit operation
+    // The union of all destination regions, specified by the elements of pRegions, must: not overlap in memory with any texel that may: be sampled during the blit operation
     // srcImage must: use a format that supports TVK_FORMAT_FEATURE_BLIT_SRC_BIT, which is indicated by TVkFormatProperties::linearTilingFeatures (for linear tiled images) or TVkFormatProperties::optimalTilingFeatures (for optimally tiled images) - as returned by vkGetPhysicalDeviceFormatProperties
     // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
     // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -8373,7 +8718,7 @@ var LibVulkan:pointer=nil;
 
     // The buffer region specified by a given element of pRegions must: be a region that is contained within srcBuffer
     // The image region specified by a given element of pRegions must: be a region that is contained within dstImage
-    // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+    // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
     // srcBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_SRC_BIT usage flag
     // dstImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
     // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
@@ -8383,7 +8728,7 @@ var LibVulkan:pointer=nil;
 
     // The image region specified by a given element of pRegions must: be a region that is contained within srcImage
     // The buffer region specified by a given element of pRegions must: be a region that is contained within dstBuffer
-    // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+    // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
     // srcImage must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag
     // srcImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
     // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -8411,7 +8756,7 @@ var LibVulkan:pointer=nil;
     // imageLayout must: specify the layout of the image subresource ranges of image specified in pRanges at the time this command is executed on a TVkDevice
     // imageLayout must: be either of TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or TVK_IMAGE_LAYOUT_GENERAL
     // The image range of any given element of pRanges must: be an image subresource range that is contained within image
-    // image mustnot: have a compressed or depth/stencil format
+    // image must: not have a compressed or depth/stencil format
     vkCmdClearColorImage:TvkCmdClearColorImage=nil;
 
     // image must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT usage flag
@@ -8428,7 +8773,7 @@ var LibVulkan:pointer=nil;
 
     // The source region specified by a given element of pRegions must: be a region that is contained within srcImage
     // The destination region specified by a given element of pRegions must: be a region that is contained within dstImage
-    // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, mustnot: overlap in memory
+    // The union of all source regions, and the union of all destination regions, specified by the elements of pRegions, must: not overlap in memory
     // srcImage must: have a sample count equal to any valid sample count value other than TVK_SAMPLE_COUNT_1_BIT
     // dstImage must: have a sample count equal to TVK_SAMPLE_COUNT_1_BIT
     // srcImageLayout must: specify the layout of the image subresources of srcImage specified in pRegions at the time this command is executed on a TVkDevice
@@ -8439,27 +8784,27 @@ var LibVulkan:pointer=nil;
     // If dstImage was created with tiling equal to TVK_IMAGE_TILING_OPTIMAL, dstImage must: have been created with a format that supports being a color attachment, as specified by the TVK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT flag in TVkFormatProperties::optimalTilingFeatures returned by vkGetPhysicalDeviceFormatProperties
     vkCmdResolveImage:TvkCmdResolveImage=nil;
 
-    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
     vkCmdSetEvent:TvkCmdSetEvent=nil;
 
-    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-    // When this command executes, event mustnot: be waited on by a vkCmdWaitEvents command that is currently executing
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, stageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+    // When this command executes, event must: not be waited on by a vkCmdWaitEvents command that is currently executing
     vkCmdResetEvent:TvkCmdResetEvent=nil;
 
     // srcStageMask must: be the bitwise OR of the stageMask parameter used in previous calls to vkCmdSetEvent with any of the members of pEvents and TVK_PIPELINE_STAGE_HOST_BIT if any of the members of pEvents was set using vkSetEvent
-    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-    // If pEvents includes one or more events that will be signaled by vkSetEvent after commandBuffer has been submitted to a queue, then vkCmdWaitEvents mustnot: be called inside a render pass instance
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+    // If pEvents includes one or more events that will be signaled by vkSetEvent after commandBuffer has been submitted to a queue, then vkCmdWaitEvents must: not be called inside a render pass instance
     vkCmdWaitEvents:TvkCmdWaitEvents=nil;
 
-    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask mustnot: contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-geometryShader,geometry shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, srcStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+    // If the <<features-features-tessellationShader,tessellation shaders>> feature is not enabled, dstStageMask must: not contain TVK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT or TVK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
     // If vkCmdPipelineBarrier is called within a render pass instance, the render pass must: have been created with a TVkSubpassDependency instance in pDependencies that expresses a dependency from the current subpass to itself. Additionally:
     // ** srcStageMask must: contain a subset of the bit values in the srcStageMask member of that instance of TVkSubpassDependency
     // ** dstStageMask must: contain a subset of the bit values in the dstStageMask member of that instance of TVkSubpassDependency
@@ -8475,7 +8820,7 @@ var LibVulkan:pointer=nil;
 
     // The query identified by queryPool and query must: currently not be <<queries-operation-active,active>>
     // The query identified by queryPool and query must: be unavailable
-    // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags mustnot: contain TVK_QUERY_CONTROL_PRECISE_BIT
+    // If the <<features-features-occlusionQueryPrecise,precise occlusion queries>> feature is not enabled, or the queryType used to create queryPool was not TVK_QUERY_TYPE_OCCLUSION, flags must: not contain TVK_QUERY_CONTROL_PRECISE_BIT
     // queryPool must: have been created with a queryType that differs from that of any other queries that have been made <<queries-operation-active,active>>, and are currently still active within commandBuffer
     // query must: be less than the number of queries in queryPool
     // If the queryType used to create queryPool was TVK_QUERY_TYPE_OCCLUSION, the TVkCommandPool that commandBuffer was allocated from must: support graphics operations
@@ -8502,7 +8847,7 @@ var LibVulkan:pointer=nil;
     // If TVK_QUERY_RESULT_64_BIT is set in flags then dstOffset and stride must: be multiples of `8`
     // dstBuffer must: have enough storage, from dstOffset, to contain the result of each query, as described <<queries-operation-memorylayout,here>>
     // dstBuffer must: have been created with TVK_BUFFER_USAGE_TRANSFER_DST_BIT usage flag
-    // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags mustnot: contain TVK_QUERY_RESULT_PARTIAL_BIT
+    // If the queryType used to create queryPool was TVK_QUERY_TYPE_TIMESTAMP, flags must: not contain TVK_QUERY_RESULT_PARTIAL_BIT
     vkCmdCopyQueryPoolResults:TvkCmdCopyQueryPoolResults=nil;
 
     // stageFlags must: match exactly the shader stages used in layout for the range specified by offset and size
@@ -8519,7 +8864,7 @@ var LibVulkan:pointer=nil;
     // set
     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_SRC_BIT set
     // If any of the initialLayout or finalLayout member of the TVkAttachmentDescription structures or the layout member of the TVkAttachmentReference structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is TVK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin must: have been created with TVK_IMAGE_USAGE_TRANSFER_DST_BIT set
-    // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin.
+    // If any of the initialLayout members of the TVkAttachmentDescription structures specified when creating the render pass specified in the renderPass member of pRenderPassBegin is not TVK_IMAGE_LAYOUT_UNDEFINED, then each such initialLayout must: be equal to the current layout of the corresponding attachment image subresource of the framebuffer specified in the framebuffer member of pRenderPassBegin
     vkCmdBeginRenderPass:TvkCmdBeginRenderPass=nil;
 
     // The current subpass index must: be less than the number of subpasses in the render pass minus one
@@ -8530,8 +8875,8 @@ var LibVulkan:pointer=nil;
 
     // commandBuffer must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_PRIMARY
     // Any given element of pCommandBuffers must: have been allocated with a level of TVK_COMMAND_BUFFER_LEVEL_SECONDARY
-    // Any given element of pCommandBuffers mustnot: be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
-    // Any given element of pCommandBuffers mustnot: be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+    // Any given element of pCommandBuffers must: not be already pending execution in commandBuffer, or appear twice in pCommandBuffers, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
+    // Any given element of pCommandBuffers must: not be already pending execution in any other TVkCommandBuffer, unless it was recorded with the TVK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag
     // Any given element of pCommandBuffers must: be in the executable state
     // Any given element of pCommandBuffers must: have been allocated from a TVkCommandPool that was created for the same queue family as the TVkCommandPool from which commandBuffer was allocated
     // If vkCmdExecuteCommands is being called within a render pass instance, that render pass instance must: have been begun with the contents parameter of vkCmdBeginRenderPass set to TVK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
@@ -8539,12 +8884,12 @@ var LibVulkan:pointer=nil;
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::subpass set to the index of the subpass which the given command buffer will be executed in
     // If vkCmdExecuteCommands is being called within a render pass instance, any given element of pCommandBuffers must: have been recorded with a render pass that is compatible with the current render pass - see <<renderpass-compatibility>>
     // If vkCmdExecuteCommands is being called within a render pass instance, and any given element of pCommandBuffers was recorded with TVkCommandBufferInheritanceInfo::framebuffer not equal to dlink:VK_NULL_HANDLE, that TVkFramebuffer must: match the TVkFramebuffer used in the current render pass instance
-    // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers mustnot: have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-    // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer mustnot: have any queries <<queries-operation-active,active>>
+    // If vkCmdExecuteCommands is not being called within a render pass instance, any given element of pCommandBuffers must: not have been recorded with the TVK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+    // If the <<features-features-inheritedQueries,inherited queries>> feature is not enabled, commandBuffer must: not have any queries <<queries-operation-active,active>>
     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::occlusionQueryEnable set to TVK_TRUE
     // If commandBuffer has a TVK_QUERY_TYPE_OCCLUSION query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::queryFlags having all bits set that are set for the query
     // If commandBuffer has a TVK_QUERY_TYPE_PIPELINE_STATISTICS query <<queries-operation-active,active>>, then each element of pCommandBuffers must: have been recorded with TVkCommandBufferInheritanceInfo::pipelineStatistics having all bits set that are set in the TVkQueryPool the query uses
-    // Any given element of pCommandBuffers mustnot: begin any query types that are <<queries-operation-active,active>> in commandBuffer
+    // Any given element of pCommandBuffers must: not begin any query types that are <<queries-operation-active,active>> in commandBuffer
     vkCmdExecuteCommands:TvkCmdExecuteCommands=nil;
 
 {$ifdef Android}
@@ -8601,7 +8946,7 @@ var LibVulkan:pointer=nil;
     vkGetSwapchainImagesKHR:TvkGetSwapchainImagesKHR=nil;
 
     // If semaphore is not dlink:VK_NULL_HANDLE it must: be unsignaled
-    // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and mustnot: be associated with any other queue command that has not yet completed execution on that queue
+    // If fence is not dlink:VK_NULL_HANDLE it must: be unsignaled and must: not be associated with any other queue command that has not yet completed execution on that queue
     vkAcquireNextImageKHR:TvkAcquireNextImageKHR=nil;
 
     // Any given element of pSwapchains member of pPresentInfo must: be a swapchain that is created for a surface for which presentation is supported from queue as determined using a call to vkGetPhysicalDeviceSurfaceSupportKHR
@@ -8649,24 +8994,75 @@ var LibVulkan:pointer=nil;
     // flags must: be a combination of one or more of TVkDebugReportFlagBitsEXT
     // objType must: be one of TVkDebugReportObjectTypeEXT, TVK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if object is `NULL`
     // object may: be a Vulkan object
-    // pLayerPrefix must: be a `NULL` terminated string.
-    // pMsg must: be a `NULL` terminated string.
+    // pLayerPrefix must: be a `NULL` terminated string
+    // pMsg must: be a `NULL` terminated string
     vkDebugReportMessageEXT:TvkDebugReportMessageEXT=nil;
 
     // pNameInfo.object must: be a Vulkan object
     vkDebugMarkerSetObjectNameEXT:TvkDebugMarkerSetObjectNameEXT=nil;
 
     // pTagInfo.object must: be a Vulkan object
-    // pTagInfo.tagName mustnot: be `0`
+    // pTagInfo.tagName must: not be `0`
     vkDebugMarkerSetObjectTagEXT:TvkDebugMarkerSetObjectTagEXT=nil;
 
     vkCmdDebugMarkerBeginEXT:TvkCmdDebugMarkerBeginEXT=nil;
 
-    // There must: be an outstanding flink:vkCmdDebugMarkerBeginEXT command prior to the vkCmdDebugMarkerEndEXT on the queue that commandBuffer is submitted to.
-    // If the matching flink:vkCmdDebugMarkerBeginEXT command was in a secondary command buffer, the vkCmdDebugMarkerEndEXT must be in the same commandBuffer.
+    // There must: be an outstanding flink:vkCmdDebugMarkerBeginEXT command prior to the vkCmdDebugMarkerEndEXT on the queue that commandBuffer is submitted to
+    // If the matching flink:vkCmdDebugMarkerBeginEXT command was in a secondary command buffer, the vkCmdDebugMarkerEndEXT must be in the same commandBuffer
     vkCmdDebugMarkerEndEXT:TvkCmdDebugMarkerEndEXT=nil;
 
     vkCmdDebugMarkerInsertEXT:TvkCmdDebugMarkerInsertEXT=nil;
+
+    vkGetPhysicalDeviceExternalImageFormatPropertiesNV:TvkGetPhysicalDeviceExternalImageFormatPropertiesNV=nil;
+
+    // handleType must: be a flag specified in slink:VkExportMemoryAllocateInfoNV::handleTypes when allocating memory
+    vkGetMemoryWin32HandleNV:TvkGetMemoryWin32HandleNV=nil;
+
+    // offset must: be a multiple of `4`
+    // countBufferOffset must: be a multiple of `4`
+    // stride must: be a multiple of `4` and must: be greater than or equal to sizeof(TVkDrawIndirectCommand)
+    // If maxDrawCount is greater than or equal to `1`, (stride x (maxDrawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+    // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the firstInstance members of the TVkDrawIndirectCommand structures accessed by this command must: be code:0
+    // For each set _n_ that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for set _n_, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+    // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for push constants, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+    // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
+    // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+    // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
+    // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+    // If the count stored in countBuffer is equal to `1`, (offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+    // If the count stored in countBuffer is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+    // The count stored in countBuffer must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
+    // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+    // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
+    vkCmdDrawIndirectCountAMD:TvkCmdDrawIndirectCountAMD=nil;
+
+    // offset must: be a multiple of `4`
+    // countBufferOffset must: be a multiple of `4`
+    // stride must: be a multiple of `4` and must: be greater than or equal to sizeof(TVkDrawIndirectCommand)
+    // If maxDrawCount is greater than or equal to `1`, (stride x (maxDrawCount - 1) + offset + sizeof(TVkDrawIndirectCommand)) must: be less than or equal to the size of buffer
+    // If the <<features-features-drawIndirectFirstInstance,drawIndirectFirstInstance>> feature is not enabled, all the firstInstance members of the TVkDrawIndexedIndirectCommand structures accessed by this command must: be code:0
+    // For each set _n_ that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a descriptor set must: have been bound to _n_ at TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for set _n_, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+    // For each push constant that is statically used by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS, a push constant value must: have been set for TVK_PIPELINE_BIND_POINT_GRAPHICS, with a TVkPipelineLayout that is compatible for push constants, with the TVkPipelineLayout used to create the current TVkPipeline, as described in <<descriptorsets-compatibility>>
+    // Descriptors in each bound descriptor set, specified via vkCmdBindDescriptorSets, must: be valid if they are statically used by the currently bound TVkPipeline object, specified via vkCmdBindPipeline
+    // All vertex input bindings accessed via vertex input variables declared in the vertex shader entry point's interface must: have valid buffers bound
+    // A valid graphics pipeline must: be bound to the current command buffer with TVK_PIPELINE_BIND_POINT_GRAPHICS
+    // If the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS requires any dynamic state, that state must: have been set on the current command buffer
+    // If count stored in countBuffer is equal to `1`, (offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
+    // If count stored in countBuffer is greater than `1`, (stride x (drawCount - 1) + offset + sizeof(TVkDrawIndexedIndirectCommand)) must: be less than or equal to the size of buffer
+    // drawCount must: be less than or equal to TVkPhysicalDeviceLimits::maxDrawIndirectCount
+    // Every input attachment used by the current subpass must: be bound to the pipeline via a descriptor set
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used to sample from any TVkImage with a TVkImageView of the type TVK_IMAGE_VIEW_TYPE_3D, TVK_IMAGE_VIEW_TYPE_CUBE, TVK_IMAGE_VIEW_TYPE_1D_ARRAY, TVK_IMAGE_VIEW_TYPE_2D_ARRAY or TVK_IMAGE_VIEW_TYPE_CUBE_ARRAY, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions with code:ImplicitLod, code:Dref or code:Proj in their name, in any shader stage
+    // If any TVkSampler object that is accessed from a shader by the TVkPipeline currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS uses unnormalized coordinates, it must: not be used with any of the SPIR-V `OpImageSample*` or `OpImageSparseSample*` instructions that includes a LOD bias or any offset values, in any shader stage
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a uniform buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+    // If the <<features-features-robustBufferAccess,robust buffer access>> feature is not enabled, and any shader stage in the TVkPipeline object currently bound to TVK_PIPELINE_BIND_POINT_GRAPHICS accesses a storage buffer, it must: not access values outside of the range of that buffer specified in the currently bound descriptor set
+    // Any TVkImageView being sampled with TVK_FILTER_LINEAR as a result of this command must: be of a format which supports linear filtering, as specified by the TVK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT flag in TVkFormatProperties::linearTilingFeatures (for a linear image) or TVkFormatProperties::optimalTilingFeatures(for an optimally tiled image) returned by vkGetPhysicalDeviceFormatProperties
+    vkCmdDrawIndexedIndirectCountAMD:TvkCmdDrawIndexedIndirectCountAMD=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -9494,6 +9890,22 @@ begin
    @vkCmdDebugMarkerInsertEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDebugMarkerInsertEXT'));
    @vk.fCommands.CmdDebugMarkerInsertEXT:=addr(vkCmdDebugMarkerInsertEXT);
   end;
+  if not assigned(vkGetPhysicalDeviceExternalImageFormatPropertiesNV) then begin
+   @vkGetPhysicalDeviceExternalImageFormatPropertiesNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceExternalImageFormatPropertiesNV'));
+   @vk.fCommands.GetPhysicalDeviceExternalImageFormatPropertiesNV:=addr(vkGetPhysicalDeviceExternalImageFormatPropertiesNV);
+  end;
+  if not assigned(vkGetMemoryWin32HandleNV) then begin
+   @vkGetMemoryWin32HandleNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetMemoryWin32HandleNV'));
+   @vk.fCommands.GetMemoryWin32HandleNV:=addr(vkGetMemoryWin32HandleNV);
+  end;
+  if not assigned(vkCmdDrawIndirectCountAMD) then begin
+   @vkCmdDrawIndirectCountAMD:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndirectCountAMD'));
+   @vk.fCommands.CmdDrawIndirectCountAMD:=addr(vkCmdDrawIndirectCountAMD);
+  end;
+  if not assigned(vkCmdDrawIndexedIndirectCountAMD) then begin
+   @vkCmdDrawIndexedIndirectCountAMD:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndexedIndirectCountAMD'));
+   @vk.fCommands.CmdDrawIndexedIndirectCountAMD:=addr(vkCmdDrawIndexedIndirectCountAMD);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -9695,6 +10107,10 @@ begin
   @InstanceCommands.CmdDebugMarkerBeginEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDebugMarkerBeginEXT')));
   @InstanceCommands.CmdDebugMarkerEndEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDebugMarkerEndEXT')));
   @InstanceCommands.CmdDebugMarkerInsertEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDebugMarkerInsertEXT')));
+  @InstanceCommands.GetPhysicalDeviceExternalImageFormatPropertiesNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceExternalImageFormatPropertiesNV')));
+  @InstanceCommands.GetMemoryWin32HandleNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryWin32HandleNV')));
+  @InstanceCommands.CmdDrawIndirectCountAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndirectCountAMD')));
+  @InstanceCommands.CmdDrawIndexedIndirectCountAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndexedIndirectCountAMD')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -9846,6 +10262,9 @@ begin
   @DeviceCommands.CmdDebugMarkerBeginEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDebugMarkerBeginEXT')));
   @DeviceCommands.CmdDebugMarkerEndEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDebugMarkerEndEXT')));
   @DeviceCommands.CmdDebugMarkerInsertEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDebugMarkerInsertEXT')));
+  @DeviceCommands.GetMemoryWin32HandleNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetMemoryWin32HandleNV')));
+  @DeviceCommands.CmdDrawIndirectCountAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndirectCountAMD')));
+  @DeviceCommands.CmdDrawIndexedIndirectCountAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndexedIndirectCountAMD')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -11958,6 +12377,15 @@ begin
  pUserData:=pPUserData;
 end;
 
+constructor TVkValidationFlagsEXT.Create(const pDisabledValidationCheckCount:TVkUInt32;
+                                         const pPDisabledValidationChecks:PVkValidationCheckEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT;
+ pNext:=nil;
+ disabledValidationCheckCount:=pDisabledValidationCheckCount;
+ pDisabledValidationChecks:=pPDisabledValidationChecks;
+end;
+
 constructor TVkPipelineRasterizationStateRasterizationOrderAMD.Create(const pRasterizationOrder:TVkRasterizationOrderAMD);
 begin
  sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD;
@@ -12029,6 +12457,70 @@ begin
  pNext:=nil;
  image:=pImage;
  buffer:=pBuffer;
+end;
+
+constructor TVkExternalImageFormatPropertiesNV.Create(const pImageFormatProperties:TVkImageFormatProperties;
+                                                      const pExternalMemoryFeatures:TVkExternalMemoryFeatureFlagsNV;
+                                                      const pExportFromImportedHandleTypes:TVkExternalMemoryHandleTypeFlagsNV;
+                                                      const pCompatibleHandleTypes:TVkExternalMemoryHandleTypeFlagsNV);
+begin
+ imageFormatProperties:=pImageFormatProperties;
+ externalMemoryFeatures:=pExternalMemoryFeatures;
+ exportFromImportedHandleTypes:=pExportFromImportedHandleTypes;
+ compatibleHandleTypes:=pCompatibleHandleTypes;
+end;
+
+constructor TVkExternalMemoryImageCreateInfoNV.Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsNV);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_NV;
+ pNext:=nil;
+ handleTypes:=pHandleTypes;
+end;
+
+constructor TVkExportMemoryAllocateInfoNV.Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsNV);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV;
+ pNext:=nil;
+ handleTypes:=pHandleTypes;
+end;
+
+constructor TVkImportMemoryWin32HandleInfoNV.Create(const pHandleType:TVkExternalMemoryHandleTypeFlagsNV;
+                                                    const pHandle:THANDLE);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_NV;
+ pNext:=nil;
+ handleType:=pHandleType;
+ handle:=pHandle;
+end;
+
+{$ifdef Windows}
+constructor TVkExportMemoryWin32HandleInfoNV.Create(const pPAttributes:PSecurityAttributes;
+                                                    const pDwAccess:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_NV;
+ pNext:=nil;
+ pAttributes:=pPAttributes;
+ dwAccess:=pDwAccess;
+end;
+{$endif}
+
+constructor TVkWin32KeyedMutexAcquireReleaseInfoNV.Create(const pAcquireCount:TVkUInt32;
+                                                          const pPAcquireSyncs:PVkDeviceMemory;
+                                                          const pPAcquireKeys:PVkUInt64;
+                                                          const pPAcquireTimeoutMilliseconds:PVkUInt32;
+                                                          const pReleaseCount:TVkUInt32;
+                                                          const pPReleaseSyncs:PVkDeviceMemory;
+                                                          const pPReleaseKeys:PVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_NV;
+ pNext:=nil;
+ acquireCount:=pAcquireCount;
+ pAcquireSyncs:=pPAcquireSyncs;
+ pAcquireKeys:=pPAcquireKeys;
+ pAcquireTimeoutMilliseconds:=pPAcquireTimeoutMilliseconds;
+ releaseCount:=pReleaseCount;
+ pReleaseSyncs:=pPReleaseSyncs;
+ pReleaseKeys:=pPReleaseKeys;
 end;
 {$endif}
 
@@ -12935,6 +13427,26 @@ end;
 procedure TVulkan.CmdDebugMarkerInsertEXT(commandBuffer:TVkCommandBuffer;pMarkerInfo:PVkDebugMarkerMarkerInfoEXT);
 begin
  fCommands.CmdDebugMarkerInsertEXT(commandBuffer,pMarkerInfo);
+end;
+
+function TVulkan.GetPhysicalDeviceExternalImageFormatPropertiesNV(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;externalHandleType:TVkExternalMemoryHandleTypeFlagsNV;pExternalImageFormatProperties:PVkExternalImageFormatPropertiesNV):TVkResult;
+begin
+ result:=fCommands.GetPhysicalDeviceExternalImageFormatPropertiesNV(physicalDevice,format,type_,tiling,usage,flags,externalHandleType,pExternalImageFormatProperties);
+end;
+
+function TVulkan.GetMemoryWin32HandleNV(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagsNV;pHandle:PHANDLE):TVkResult;
+begin
+ result:=fCommands.GetMemoryWin32HandleNV(device,memory,handleType,pHandle);
+end;
+
+procedure TVulkan.CmdDrawIndirectCountAMD(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32);
+begin
+ fCommands.CmdDrawIndirectCountAMD(commandBuffer,buffer,offset,countBuffer,countBufferOffset,maxDrawCount,stride);
+end;
+
+procedure TVulkan.CmdDrawIndexedIndirectCountAMD(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32);
+begin
+ fCommands.CmdDrawIndexedIndirectCountAMD(commandBuffer,buffer,offset,countBuffer,countBufferOffset,maxDrawCount,stride);
 end;
 
 initialization
