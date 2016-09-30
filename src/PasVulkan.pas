@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-09-27-23-39-0000                       *
+ *                        Version 2016-09-30-18-59-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -801,7 +801,7 @@ type EVulkanException=class(Exception);
 {$elseif defined(Windows)}
      TVulkanSurfaceCreateInfo=TVkWin32SurfaceCreateInfoKHR;
 {$elseif defined(X11)}
-     TVulkanSurfaceCreateInfo=TVkX11SurfaceCreateInfoKHR;
+     TVulkanSurfaceCreateInfo=TVkXlibSurfaceCreateInfoKHR;
 {$elseif defined(XCB)}
      TVulkanSurfaceCreateInfo=TVkXCBSurfaceCreateInfoKHR;
 {$ifend}
@@ -7267,7 +7267,7 @@ begin
 {$elseif defined(Windows)}
  HandleResultCode(fInstance.fVulkan.CreateWin32SurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
 {$elseif defined(X11)}
- HandleResultCode(fInstance.fVulkan.CreateX11SurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+ HandleResultCode(fInstance.fVulkan.CreateXlibSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
 {$elseif defined(XCB)}
  HandleResultCode(fInstance.fVulkan.CreateXCBSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
 {$else}

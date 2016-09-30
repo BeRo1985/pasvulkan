@@ -4177,7 +4177,7 @@ begin
          Parameters:=Parameters+',';
         end;
         Parameters:=Parameters+ParamName;
-        if (ParamType='HWND') or (ParamType='HINSTANCE') then begin
+        if (ParamType='HWND') or (ParamType='HINSTANCE') or (pos('Win32',ProtoName)>0) then begin
          Define:='Windows';
         end else if (ParamType='Display') or (ParamType='VisualID') or (ParamType='Window') or (pos('Xlib',ParamType)>0) then begin
          Define:='X11';

@@ -6331,10 +6331,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkGetPhysicalDeviceWaylandPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:Pwl_display):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
+{$ifdef Windows}
      TvkCreateWin32SurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkWin32SurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
+{$ifdef Windows}
      // queueFamilyIndex must: be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties for the given physicalDevice
      TvkGetPhysicalDeviceWin32PresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
 {$ifdef X11}
      TvkCreateXlibSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkXlibSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -6385,8 +6389,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetPhysicalDeviceExternalImageFormatPropertiesNV=function(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;externalHandleType:TVkExternalMemoryHandleTypeFlagsNV;pExternalImageFormatProperties:PVkExternalImageFormatPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+{$ifdef Windows}
      // handleType must: be a flag specified in slink:VkExportMemoryAllocateInfoNV::handleTypes when allocating memory
      TvkGetMemoryWin32HandleNV=function(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagsNV;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
      // offset must: be a multiple of `4`
      // countBufferOffset must: be a multiple of `4`
@@ -7205,10 +7211,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       GetPhysicalDeviceWaylandPresentationSupportKHR:TvkGetPhysicalDeviceWaylandPresentationSupportKHR;
 {$endif}
 
+{$ifdef Windows}
       CreateWin32SurfaceKHR:TvkCreateWin32SurfaceKHR;
+{$endif}
 
+{$ifdef Windows}
       // queueFamilyIndex must: be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties for the given physicalDevice
       GetPhysicalDeviceWin32PresentationSupportKHR:TvkGetPhysicalDeviceWin32PresentationSupportKHR;
+{$endif}
 
 {$ifdef X11}
       CreateXlibSurfaceKHR:TvkCreateXlibSurfaceKHR;
@@ -7259,8 +7269,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetPhysicalDeviceExternalImageFormatPropertiesNV:TvkGetPhysicalDeviceExternalImageFormatPropertiesNV;
 
+{$ifdef Windows}
       // handleType must: be a flag specified in slink:VkExportMemoryAllocateInfoNV::handleTypes when allocating memory
       GetMemoryWin32HandleNV:TvkGetMemoryWin32HandleNV;
+{$endif}
 
       // offset must: be a multiple of `4`
       // countBufferOffset must: be a multiple of `4`
@@ -8084,10 +8096,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function GetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:Pwl_display):TVkBool32; virtual;
 {$endif}
 
+{$ifdef Windows}
        function CreateWin32SurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkWin32SurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
+{$endif}
 
+{$ifdef Windows}
        // queueFamilyIndex must: be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties for the given physicalDevice
        function GetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32):TVkBool32; virtual;
+{$endif}
 
 {$ifdef X11}
        function CreateXlibSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkXlibSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
@@ -8138,8 +8154,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function GetPhysicalDeviceExternalImageFormatPropertiesNV(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;externalHandleType:TVkExternalMemoryHandleTypeFlagsNV;pExternalImageFormatProperties:PVkExternalImageFormatPropertiesNV):TVkResult; virtual;
 
+{$ifdef Windows}
        // handleType must: be a flag specified in slink:VkExportMemoryAllocateInfoNV::handleTypes when allocating memory
        function GetMemoryWin32HandleNV(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagsNV;pHandle:PHANDLE):TVkResult; virtual;
+{$endif}
 
        // offset must: be a multiple of `4`
        // countBufferOffset must: be a multiple of `4`
@@ -8961,10 +8979,14 @@ var LibVulkan:pointer=nil;
     vkGetPhysicalDeviceWaylandPresentationSupportKHR:TvkGetPhysicalDeviceWaylandPresentationSupportKHR=nil;
 {$endif}
 
+{$ifdef Windows}
     vkCreateWin32SurfaceKHR:TvkCreateWin32SurfaceKHR=nil;
+{$endif}
 
+{$ifdef Windows}
     // queueFamilyIndex must: be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties for the given physicalDevice
     vkGetPhysicalDeviceWin32PresentationSupportKHR:TvkGetPhysicalDeviceWin32PresentationSupportKHR=nil;
+{$endif}
 
 {$ifdef X11}
     vkCreateXlibSurfaceKHR:TvkCreateXlibSurfaceKHR=nil;
@@ -9015,8 +9037,10 @@ var LibVulkan:pointer=nil;
 
     vkGetPhysicalDeviceExternalImageFormatPropertiesNV:TvkGetPhysicalDeviceExternalImageFormatPropertiesNV=nil;
 
+{$ifdef Windows}
     // handleType must: be a flag specified in slink:VkExportMemoryAllocateInfoNV::handleTypes when allocating memory
     vkGetMemoryWin32HandleNV:TvkGetMemoryWin32HandleNV=nil;
+{$endif}
 
     // offset must: be a multiple of `4`
     // countBufferOffset must: be a multiple of `4`
@@ -9826,14 +9850,18 @@ begin
    @vk.fCommands.GetPhysicalDeviceWaylandPresentationSupportKHR:=addr(vkGetPhysicalDeviceWaylandPresentationSupportKHR);
   end;
 {$endif}
+{$ifdef Windows}
   if not assigned(vkCreateWin32SurfaceKHR) then begin
    @vkCreateWin32SurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateWin32SurfaceKHR'));
    @vk.fCommands.CreateWin32SurfaceKHR:=addr(vkCreateWin32SurfaceKHR);
   end;
+{$endif}
+{$ifdef Windows}
   if not assigned(vkGetPhysicalDeviceWin32PresentationSupportKHR) then begin
    @vkGetPhysicalDeviceWin32PresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceWin32PresentationSupportKHR'));
    @vk.fCommands.GetPhysicalDeviceWin32PresentationSupportKHR:=addr(vkGetPhysicalDeviceWin32PresentationSupportKHR);
   end;
+{$endif}
 {$ifdef X11}
   if not assigned(vkCreateXlibSurfaceKHR) then begin
    @vkCreateXlibSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateXlibSurfaceKHR'));
@@ -9894,10 +9922,12 @@ begin
    @vkGetPhysicalDeviceExternalImageFormatPropertiesNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceExternalImageFormatPropertiesNV'));
    @vk.fCommands.GetPhysicalDeviceExternalImageFormatPropertiesNV:=addr(vkGetPhysicalDeviceExternalImageFormatPropertiesNV);
   end;
+{$ifdef Windows}
   if not assigned(vkGetMemoryWin32HandleNV) then begin
    @vkGetMemoryWin32HandleNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetMemoryWin32HandleNV'));
    @vk.fCommands.GetMemoryWin32HandleNV:=addr(vkGetMemoryWin32HandleNV);
   end;
+{$endif}
   if not assigned(vkCmdDrawIndirectCountAMD) then begin
    @vkCmdDrawIndirectCountAMD:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndirectCountAMD'));
    @vk.fCommands.CmdDrawIndirectCountAMD:=addr(vkCmdDrawIndirectCountAMD);
@@ -10085,8 +10115,12 @@ begin
 {$ifdef Wayland}
   @InstanceCommands.GetPhysicalDeviceWaylandPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceWaylandPresentationSupportKHR')));
 {$endif}
+{$ifdef Windows}
   @InstanceCommands.CreateWin32SurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateWin32SurfaceKHR')));
+{$endif}
+{$ifdef Windows}
   @InstanceCommands.GetPhysicalDeviceWin32PresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceWin32PresentationSupportKHR')));
+{$endif}
 {$ifdef X11}
   @InstanceCommands.CreateXlibSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateXlibSurfaceKHR')));
 {$endif}
@@ -10108,7 +10142,9 @@ begin
   @InstanceCommands.CmdDebugMarkerEndEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDebugMarkerEndEXT')));
   @InstanceCommands.CmdDebugMarkerInsertEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDebugMarkerInsertEXT')));
   @InstanceCommands.GetPhysicalDeviceExternalImageFormatPropertiesNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceExternalImageFormatPropertiesNV')));
+{$ifdef Windows}
   @InstanceCommands.GetMemoryWin32HandleNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryWin32HandleNV')));
+{$endif}
   @InstanceCommands.CmdDrawIndirectCountAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndirectCountAMD')));
   @InstanceCommands.CmdDrawIndexedIndirectCountAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndexedIndirectCountAMD')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
@@ -10262,7 +10298,9 @@ begin
   @DeviceCommands.CmdDebugMarkerBeginEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDebugMarkerBeginEXT')));
   @DeviceCommands.CmdDebugMarkerEndEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDebugMarkerEndEXT')));
   @DeviceCommands.CmdDebugMarkerInsertEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDebugMarkerInsertEXT')));
+{$ifdef Windows}
   @DeviceCommands.GetMemoryWin32HandleNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetMemoryWin32HandleNV')));
+{$endif}
   @DeviceCommands.CmdDrawIndirectCountAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndirectCountAMD')));
   @DeviceCommands.CmdDrawIndexedIndirectCountAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndexedIndirectCountAMD')));
   result:=assigned(DeviceCommands.DestroyDevice);
@@ -13351,15 +13389,19 @@ begin
 end;
 {$endif}
 
+{$ifdef Windows}
 function TVulkan.CreateWin32SurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkWin32SurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
  result:=fCommands.CreateWin32SurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
 end;
+{$endif}
 
+{$ifdef Windows}
 function TVulkan.GetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32):TVkBool32;
 begin
  result:=fCommands.GetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice,queueFamilyIndex);
 end;
+{$endif}
 
 {$ifdef X11}
 function TVulkan.CreateXlibSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkXlibSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
@@ -13434,10 +13476,12 @@ begin
  result:=fCommands.GetPhysicalDeviceExternalImageFormatPropertiesNV(physicalDevice,format,type_,tiling,usage,flags,externalHandleType,pExternalImageFormatProperties);
 end;
 
+{$ifdef Windows}
 function TVulkan.GetMemoryWin32HandleNV(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagsNV;pHandle:PHANDLE):TVkResult;
 begin
  result:=fCommands.GetMemoryWin32HandleNV(device,memory,handleType,pHandle);
 end;
+{$endif}
 
 procedure TVulkan.CmdDrawIndirectCountAMD(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32);
 begin
