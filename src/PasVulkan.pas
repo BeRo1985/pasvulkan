@@ -6505,6 +6505,7 @@ constructor TVulkanInstance.Create(const pApplicationName:TVulkanCharString='Vul
                                       const pAllocationManager:TVulkanAllocationManager=nil);
 var Index,SubIndex:TVkInt32;
     Count,SubCount:TVkUInt32;
+    LayerName:PVkChar;
     LayerProperties:TVkLayerPropertiesArray;
     LayerProperty:PVulkanAvailableLayer;
     ExtensionProperties:TVkExtensionPropertiesArray;
@@ -6592,14 +6593,18 @@ begin
  try
   fAvailableExtensions:=nil;
   Count:=0;
-  for Index:=0 to length(fAvailableLayers)-1 do begin
-   HandleResultCode(fVulkan.EnumerateInstanceExtensionProperties(PVkChar(fAvailableLayers[Index].layerName),@SubCount,nil));
+  for Index:=-1 to length(fAvailableLayers)-1 do begin
+   if Index = -1 then
+    LayerName:=nil
+   else
+    LayerName:=PVkChar(fAvailableLayers[Index].layerName);
+   HandleResultCode(fVulkan.EnumerateInstanceExtensionProperties(LayerName,@SubCount,nil));
    if SubCount>0 then begin
     if SubCount>TVkUInt32(length(ExtensionProperties)) then begin
      SetLength(ExtensionProperties,SubCount);
     end;
     SetLength(fAvailableExtensions,Count+SubCount);
-    HandleResultCode(fVulkan.EnumerateInstanceExtensionProperties(PVkChar(fAvailableLayers[Index].layerName),@SubCount,@ExtensionProperties[0]));
+    HandleResultCode(fVulkan.EnumerateInstanceExtensionProperties(LayerName,@SubCount,@ExtensionProperties[0]));
     for SubIndex:=0 to SubCount-1 do begin
      ExtensionProperty:=@fAvailableExtensions[Count+TVkUInt32(SubIndex)];
      ExtensionProperty^.LayerIndex:=Index;
@@ -6839,6 +6844,7 @@ end;
 constructor TVulkanPhysicalDevice.Create(const pInstance:TVulkanInstance;const pPhysicalDevice:TVkPhysicalDevice);
 var Index,SubIndex:TVkInt32;
     Count,SubCount:TVkUInt32;
+    LayerName:PVkChar;
     LayerProperties:TVkLayerPropertiesArray;
     LayerProperty:PVulkanAvailableLayer;
     ExtensionProperties:TVkExtensionPropertiesArray;
@@ -6899,14 +6905,18 @@ begin
  try
   fAvailableExtensions:=nil;
   Count:=0;
-  for Index:=0 to length(fAvailableLayers)-1 do begin
-   HandleResultCode(fInstance.fVulkan.EnumerateDeviceExtensionProperties(fPhysicalDeviceHandle,PVkChar(fAvailableLayers[Index].layerName),@SubCount,nil));
+  for Index:=-1 to length(fAvailableLayers)-1 do begin
+   if Index = -1 then
+    LayerName:=nil
+   else
+    LayerName:=PVkChar(fAvailableLayers[Index].layerName);
+   HandleResultCode(fInstance.fVulkan.EnumerateDeviceExtensionProperties(fPhysicalDeviceHandle,LayerName,@SubCount,nil));
    if SubCount>0 then begin
     if SubCount>TVkUInt32(length(ExtensionProperties)) then begin
      SetLength(ExtensionProperties,SubCount);
     end;
     SetLength(fAvailableExtensions,Count+SubCount);
-    HandleResultCode(fInstance.fVulkan.EnumerateDeviceExtensionProperties(fPhysicalDeviceHandle,PVkChar(fAvailableLayers[Index].layerName),@SubCount,@ExtensionProperties[0]));
+    HandleResultCode(fInstance.fVulkan.EnumerateDeviceExtensionProperties(fPhysicalDeviceHandle,LayerName,@SubCount,@ExtensionProperties[0]));
     for SubIndex:=0 to SubCount-1 do begin
      ExtensionProperty:=@fAvailableExtensions[Count+TVkUInt32(SubIndex)];
      ExtensionProperty^.LayerIndex:=Index;
@@ -18247,5 +18257,4 @@ begin
 end;
 
 end.
-
 
