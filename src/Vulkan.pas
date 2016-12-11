@@ -176,7 +176,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=32;
+      VK_HEADER_VERSION=37;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -216,7 +216,7 @@ const VK_NULL_HANDLE=0;
       VK_ANDROID_NATIVE_BUFFER_SPEC_VERSION=4;
       VK_ANDROID_NATIVE_BUFFER_NUMBER=11;
       VK_ANDROID_NATIVE_BUFFER_NAME='VK_ANDROID_native_buffer';
-      VK_EXT_DEBUG_REPORT_SPEC_VERSION=3;
+      VK_EXT_DEBUG_REPORT_SPEC_VERSION=4;
       VK_EXT_DEBUG_REPORT_EXTENSION_NAME='VK_EXT_debug_report';
       VK_NV_GLSL_SHADER_SPEC_VERSION=1;
       VK_NV_GLSL_SHADER_EXTENSION_NAME='VK_NV_glsl_shader';
@@ -362,6 +362,48 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_83_EXTENSION_NAME='VK_KHR_extension_83';
       VK_KHR_EXTENSION_84_SPEC_VERSION=0;
       VK_KHR_EXTENSION_84_EXTENSION_NAME='VK_KHR_extension_84';
+      VK_KHR_EXTENSION_85_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_85_EXTENSION_NAME='VK_KHR_extension_85';
+      VK_KHR_EXTENSION_86_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_86_EXTENSION_NAME='VK_KHR_extension_86';
+      VK_NVX_DEVICE_GENERATED_COMMANDS_SPEC_VERSION=1;
+      VK_NVX_DEVICE_GENERATED_COMMANDS_EXTENSION_NAME='VK_NVX_device_generated_commands';
+      VK_KHR_EXTENSION_88_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_88_EXTENSION_NAME='VK_KHR_extension_88';
+      VK_EXT_EXTENSION_89_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_89_EXTENSION_NAME='VK_EXT_extension_89';
+      VK_EXT_EXTENSION_90_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_90_EXTENSION_NAME='VK_EXT_extension_90';
+      VK_EXT_EXTENSION_91_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_91_EXTENSION_NAME='VK_EXT_extension_91';
+      VK_EXT_EXTENSION_92_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_92_EXTENSION_NAME='VK_EXT_extension_92';
+      VK_GOOGLE_EXTENSION_93_SPEC_VERSION=0;
+      VK_GOOGLE_EXTENSION_93_EXTENSION_NAME='VK_GOOGLE_extension_93';
+      VK_KHR_EXTENSION_94_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_94_EXTENSION_NAME='VK_KHR_extension_94';
+      VK_NV_EXTENSION_95_SPEC_VERSION=0;
+      VK_NV_EXTENSION_95_EXTENSION_NAME='VK_NV_extension_95';
+      VK_NV_EXTENSION_96_SPEC_VERSION=0;
+      VK_NV_EXTENSION_96_EXTENSION_NAME='VK_NV_extension_96';
+      VK_NV_EXTENSION_97_SPEC_VERSION=0;
+      VK_NV_EXTENSION_97_EXTENSION_NAME='VK_NV_extension_97';
+      VK_NV_EXTENSION_98_SPEC_VERSION=0;
+      VK_NV_EXTENSION_98_EXTENSION_NAME='VK_NV_extension_98';
+      VK_NV_EXTENSION_99_SPEC_VERSION=0;
+      VK_NV_EXTENSION_99_EXTENSION_NAME='VK_NV_extension_99';
+      VK_NV_EXTENSION_100_SPEC_VERSION=0;
+      VK_NV_EXTENSION_100_EXTENSION_NAME='VK_NV_extension_100';
+      VK_NV_EXTENSION_101_SPEC_VERSION=0;
+      VK_NV_EXTENSION_101_EXTENSION_NAME='VK_NV_extension_101';
+      VK_NV_EXTENSION_102_SPEC_VERSION=0;
+      VK_NV_EXTENSION_102_EXTENSION_NAME='VK_NV_extension_102';
+      VK_NV_EXTENSION_103_SPEC_VERSION=0;
+      VK_NV_EXTENSION_103_EXTENSION_NAME='VK_NV_extension_103';
+      VK_NV_EXTENSION_104_SPEC_VERSION=0;
+      VK_NV_EXTENSION_104_EXTENSION_NAME='VK_NV_extension_104';
+      VK_KHR_EXTENSION_105_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_105_EXTENSION_NAME='VK_EXT_extension_105';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -633,6 +675,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDependencyFlags=^TVkDependencyFlags;
      TVkDependencyFlags=TVkFlags;
 
+     PPVkIndirectCommandsLayoutUsageFlagsNVX=^PVkIndirectCommandsLayoutUsageFlagsNVX;
+     PVkIndirectCommandsLayoutUsageFlagsNVX=^TVkIndirectCommandsLayoutUsageFlagsNVX;
+     TVkIndirectCommandsLayoutUsageFlagsNVX=TVkFlags;
+
+     PPVkObjectEntryUsageFlagsNVX=^PVkObjectEntryUsageFlagsNVX;
+     PVkObjectEntryUsageFlagsNVX=^TVkObjectEntryUsageFlagsNVX;
+     TVkObjectEntryUsageFlagsNVX=TVkFlags;
+
      PPVkCompositeAlphaFlagsKHR=^PVkCompositeAlphaFlagsKHR;
      PVkCompositeAlphaFlagsKHR=^TVkCompositeAlphaFlagsKHR;
      TVkCompositeAlphaFlagsKHR=TVkFlags;
@@ -792,6 +842,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkPipelineCache=^PVkPipelineCache;
      PVkPipelineCache=^TVkPipelineCache;
      TVkPipelineCache=TVkNonDispatchableHandle;
+
+     PPVkObjectTableNVX=^PVkObjectTableNVX;
+     PVkObjectTableNVX=^TVkObjectTableNVX;
+     TVkObjectTableNVX=TVkNonDispatchableHandle;
+
+     PPVkIndirectCommandsLayoutNVX=^PVkIndirectCommandsLayoutNVX;
+     PVkIndirectCommandsLayoutNVX=^TVkIndirectCommandsLayoutNVX;
+     TVkIndirectCommandsLayoutNVX=TVkNonDispatchableHandle;
 
      PPVkDisplayKHR=^PVkDisplayKHR;
      PVkDisplayKHR=^TVkDisplayKHR;
@@ -1438,7 +1496,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_NV=1000057000,
        VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_NV=1000057001,
        VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_NV=1000058000,
-       VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT=1000061000
+       VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT=1000061000,
+       VK_STRUCTURE_TYPE_OBJECT_TABLE_CREATE_INFO_NVX=1000086000,
+       VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NVX=1000086001,
+       VK_STRUCTURE_TYPE_CMD_PROCESS_COMMANDS_INFO_NVX=1000086002,
+       VK_STRUCTURE_TYPE_CMD_RESERVE_SPACE_FOR_COMMANDS_INFO_NVX=1000086003,
+       VK_STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_LIMITS_NVX=1000086004,
+       VK_STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_FEATURES_NVX=1000086005
       );
 
      PPVkSubpassContents=^PVkSubpassContents;
@@ -1545,7 +1609,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ACCESS_HOST_READ_BIT=$00002000,                                        //< Controls coherency of host reads
        VK_ACCESS_HOST_WRITE_BIT=$00004000,                                       //< Controls coherency of host writes
        VK_ACCESS_MEMORY_READ_BIT=$00008000,                                      //< Controls coherency of memory reads
-       VK_ACCESS_MEMORY_WRITE_BIT=$00010000                                      //< Controls coherency of memory writes
+       VK_ACCESS_MEMORY_WRITE_BIT=$00010000,                                     //< Controls coherency of memory writes
+       VK_ACCESS_COMMAND_PROCESS_READ_BIT_NVX=$00020000,
+       VK_ACCESS_COMMAND_PROCESS_WRITE_BIT_NVX=$00040000
       );
 
      PPVkBufferUsageFlagBits=^PVkBufferUsageFlagBits;
@@ -1746,7 +1812,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT=$00002000,                           //< After previous commands have completed
        VK_PIPELINE_STAGE_HOST_BIT=$00004000,                                     //< Indicates host (CPU) is a source/sink of the dependency
        VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT=$00008000,                             //< All stages of the graphics pipeline
-       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT=$00010000                              //< All stages supported on the queue
+       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT=$00010000,                             //< All stages supported on the queue
+       VK_PIPELINE_STAGE_COMMAND_PROCESS_BIT_NVX=$00020000
       );
 
      PPVkCommandPoolCreateFlagBits=^PVkCommandPoolCreateFlagBits;
@@ -1910,7 +1977,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT=25,
        VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT=26,
        VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT=27,
-       VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT=28
+       VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT=28,
+       VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_KHR_EXT=29,
+       VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT=30,
+       VK_DEBUG_REPORT_OBJECT_TYPE_OBJECT_TABLE_NVX_EXT=31,
+       VK_DEBUG_REPORT_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX_EXT=32
       );
 
      PPVkDebugReportErrorEXT=^PVkDebugReportErrorEXT;
@@ -1953,6 +2024,49 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkValidationCheckEXT=
       (
        VK_VALIDATION_CHECK_ALL_EXT=0
+      );
+
+     PPVkIndirectCommandsLayoutUsageFlagBitsNVX=^PVkIndirectCommandsLayoutUsageFlagBitsNVX;
+     PVkIndirectCommandsLayoutUsageFlagBitsNVX=^TVkIndirectCommandsLayoutUsageFlagBitsNVX;
+     TVkIndirectCommandsLayoutUsageFlagBitsNVX=
+      (
+       VK_INDIRECT_COMMANDS_LAYOUT_USAGE_UNORDERED_SEQUENCES_BIT_NVX=$00000001,
+       VK_INDIRECT_COMMANDS_LAYOUT_USAGE_SPARSE_SEQUENCES_BIT_NVX=$00000002,
+       VK_INDIRECT_COMMANDS_LAYOUT_USAGE_EMPTY_EXECUTIONS_BIT_NVX=$00000004,
+       VK_INDIRECT_COMMANDS_LAYOUT_USAGE_INDEXED_SEQUENCES_BIT_NVX=$00000008
+      );
+
+     PPVkObjectEntryUsageFlagBitsNVX=^PVkObjectEntryUsageFlagBitsNVX;
+     PVkObjectEntryUsageFlagBitsNVX=^TVkObjectEntryUsageFlagBitsNVX;
+     TVkObjectEntryUsageFlagBitsNVX=
+      (
+       VK_OBJECT_ENTRY_USAGE_GRAPHICS_BIT_NVX=$00000001,
+       VK_OBJECT_ENTRY_USAGE_COMPUTE_BIT_NVX=$00000002
+      );
+
+     PPVkIndirectCommandsTokenTypeNVX=^PVkIndirectCommandsTokenTypeNVX;
+     PVkIndirectCommandsTokenTypeNVX=^TVkIndirectCommandsTokenTypeNVX;
+     TVkIndirectCommandsTokenTypeNVX=
+      (
+       VK_INDIRECT_COMMANDS_TOKEN_PIPELINE_NVX=0,
+       VK_INDIRECT_COMMANDS_TOKEN_DESCRIPTOR_SET_NVX=1,
+       VK_INDIRECT_COMMANDS_TOKEN_INDEX_BUFFER_NVX=2,
+       VK_INDIRECT_COMMANDS_TOKEN_VERTEX_BUFFER_NVX=3,
+       VK_INDIRECT_COMMANDS_TOKEN_PUSH_CONSTANT_NVX=4,
+       VK_INDIRECT_COMMANDS_TOKEN_DRAW_INDEXED_NVX=5,
+       VK_INDIRECT_COMMANDS_TOKEN_DRAW_NVX=6,
+       VK_INDIRECT_COMMANDS_TOKEN_DISPATCH_NVX=7
+      );
+
+     PPVkObjectEntryTypeNVX=^PVkObjectEntryTypeNVX;
+     PVkObjectEntryTypeNVX=^TVkObjectEntryTypeNVX;
+     TVkObjectEntryTypeNVX=
+      (
+       VK_OBJECT_ENTRY_DESCRIPTOR_SET_NVX=0,
+       VK_OBJECT_ENTRY_PIPELINE_NVX=1,
+       VK_OBJECT_ENTRY_INDEX_BUFFER_NVX=2,
+       VK_OBJECT_ENTRY_VERTEX_BUFFER_NVX=3,
+       VK_OBJECT_ENTRY_PUSH_CONSTANT_NVX=4
       );
 
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
@@ -5118,6 +5232,274 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkDeviceGeneratedCommandsFeaturesNVX=^PVkDeviceGeneratedCommandsFeaturesNVX;
+     PVkDeviceGeneratedCommandsFeaturesNVX=^TVkDeviceGeneratedCommandsFeaturesNVX;
+     TVkDeviceGeneratedCommandsFeaturesNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_FEATURES_NVX
+       pNext:PVkVoid;
+       computeBindingPointSupport:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pComputeBindingPointSupport:TVkBool32);
+{$endif}
+     end;
+
+     PPVkDeviceGeneratedCommandsLimitsNVX=^PVkDeviceGeneratedCommandsLimitsNVX;
+     PVkDeviceGeneratedCommandsLimitsNVX=^TVkDeviceGeneratedCommandsLimitsNVX;
+     TVkDeviceGeneratedCommandsLimitsNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_LIMITS_NVX
+       pNext:PVkVoid;
+       maxIndirectCommandsLayoutTokenCount:TVkUInt32;
+       maxObjectEntryCounts:TVkUInt32;
+       minSequenceCountBufferOffsetAlignment:TVkUInt32;
+       minSequenceIndexBufferOffsetAlignment:TVkUInt32;
+       minCommandsTokenBufferOffsetAlignment:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pMaxIndirectCommandsLayoutTokenCount:TVkUInt32;
+                          const pMaxObjectEntryCounts:TVkUInt32;
+                          const pMinSequenceCountBufferOffsetAlignment:TVkUInt32;
+                          const pMinSequenceIndexBufferOffsetAlignment:TVkUInt32;
+                          const pMinCommandsTokenBufferOffsetAlignment:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkIndirectCommandsTokenNVX=^PVkIndirectCommandsTokenNVX;
+     PVkIndirectCommandsTokenNVX=^TVkIndirectCommandsTokenNVX;
+     TVkIndirectCommandsTokenNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       tokenType:TVkIndirectCommandsTokenTypeNVX;
+       buffer:TVkBuffer; //< buffer containing tableEntries and additional data for indirectCommands
+       offset:TVkDeviceSize; //< offset from the base address of the buffer
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pTokenType:TVkIndirectCommandsTokenTypeNVX;
+                          const pBuffer:TVkBuffer; //< buffer containing tableEntries and additional data for indirectCommands
+                          const pOffset:TVkDeviceSize); //< offset from the base address of the buffer
+{$endif}
+     end;
+
+     PPVkIndirectCommandsLayoutTokenNVX=^PVkIndirectCommandsLayoutTokenNVX;
+     PVkIndirectCommandsLayoutTokenNVX=^TVkIndirectCommandsLayoutTokenNVX;
+     TVkIndirectCommandsLayoutTokenNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       tokenType:TVkIndirectCommandsTokenTypeNVX;
+       bindingUnit:TVkUInt32; //< Binding unit for vertex attribute / descriptor set, offset for pushconstants
+       dynamicCount:TVkUInt32; //< Number of variable dynamic values for descriptor set / push constants
+       divisor:TVkUInt32; //< Rate the which the array is advanced per element (must be power of 2, minimum 1)
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pTokenType:TVkIndirectCommandsTokenTypeNVX;
+                          const pBindingUnit:TVkUInt32; //< Binding unit for vertex attribute / descriptor set, offset for pushconstants
+                          const pDynamicCount:TVkUInt32; //< Number of variable dynamic values for descriptor set / push constants
+                          const pDivisor:TVkUInt32); //< Rate the which the array is advanced per element (must be power of 2, minimum 1)
+{$endif}
+     end;
+
+     PPVkIndirectCommandsLayoutCreateInfoNVX=^PVkIndirectCommandsLayoutCreateInfoNVX;
+     PVkIndirectCommandsLayoutCreateInfoNVX=^TVkIndirectCommandsLayoutCreateInfoNVX;
+     TVkIndirectCommandsLayoutCreateInfoNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NVX
+       pNext:PVkVoid;
+       pipelineBindPoint:TVkPipelineBindPoint;
+       flags:TVkIndirectCommandsLayoutUsageFlagsNVX;
+       tokenCount:TVkUInt32;
+       pTokens:PVkIndirectCommandsLayoutTokenNVX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPipelineBindPoint:TVkPipelineBindPoint;
+                          const pFlags:TVkIndirectCommandsLayoutUsageFlagsNVX;
+                          const pTokenCount:TVkUInt32;
+                          const pPTokens:PVkIndirectCommandsLayoutTokenNVX);
+{$endif}
+     end;
+
+     PPVkCmdProcessCommandsInfoNVX=^PVkCmdProcessCommandsInfoNVX;
+     PVkCmdProcessCommandsInfoNVX=^TVkCmdProcessCommandsInfoNVX;
+     TVkCmdProcessCommandsInfoNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_CMD_PROCESS_COMMANDS_INFO_NVX
+       pNext:PVkVoid;
+       objectTable:TVkObjectTableNVX;
+       indirectCommandsLayout:TVkIndirectCommandsLayoutNVX;
+       indirectCommandsTokenCount:TVkUInt32;
+       pIndirectCommandsTokens:PVkIndirectCommandsTokenNVX;
+       maxSequencesCount:TVkUInt32;
+       targetCommandBuffer:TVkCommandBuffer;
+       sequencesCountBuffer:TVkBuffer;
+       sequencesCountOffset:TVkDeviceSize;
+       sequencesIndexBuffer:TVkBuffer;
+       sequencesIndexOffset:TVkDeviceSize;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pObjectTable:TVkObjectTableNVX;
+                          const pIndirectCommandsLayout:TVkIndirectCommandsLayoutNVX;
+                          const pIndirectCommandsTokenCount:TVkUInt32;
+                          const pPIndirectCommandsTokens:PVkIndirectCommandsTokenNVX;
+                          const pMaxSequencesCount:TVkUInt32;
+                          const pTargetCommandBuffer:TVkCommandBuffer;
+                          const pSequencesCountBuffer:TVkBuffer;
+                          const pSequencesCountOffset:TVkDeviceSize;
+                          const pSequencesIndexBuffer:TVkBuffer;
+                          const pSequencesIndexOffset:TVkDeviceSize);
+{$endif}
+     end;
+
+     PPVkCmdReserveSpaceForCommandsInfoNVX=^PVkCmdReserveSpaceForCommandsInfoNVX;
+     PVkCmdReserveSpaceForCommandsInfoNVX=^TVkCmdReserveSpaceForCommandsInfoNVX;
+     TVkCmdReserveSpaceForCommandsInfoNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_CMD_RESERVE_SPACE_FOR_COMMANDS_INFO_NVX
+       pNext:PVkVoid;
+       objectTable:TVkObjectTableNVX;
+       indirectCommandsLayout:TVkIndirectCommandsLayoutNVX;
+       maxSequencesCount:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pObjectTable:TVkObjectTableNVX;
+                          const pIndirectCommandsLayout:TVkIndirectCommandsLayoutNVX;
+                          const pMaxSequencesCount:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkObjectTableCreateInfoNVX=^PVkObjectTableCreateInfoNVX;
+     PVkObjectTableCreateInfoNVX=^TVkObjectTableCreateInfoNVX;
+     TVkObjectTableCreateInfoNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_OBJECT_TABLE_CREATE_INFO_NVX
+       pNext:PVkVoid;
+       objectCount:TVkUInt32;
+       pObjectEntryTypes:PVkObjectEntryTypeNVX;
+       pObjectEntryCounts:PVkUInt32;
+       pObjectEntryUsageFlags:PVkObjectEntryUsageFlagsNVX;
+       maxUniformBuffersPerDescriptor:TVkUInt32;
+       maxStorageBuffersPerDescriptor:TVkUInt32;
+       maxStorageImagesPerDescriptor:TVkUInt32;
+       maxSampledImagesPerDescriptor:TVkUInt32;
+       maxPipelineLayouts:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pObjectCount:TVkUInt32;
+                          const pPObjectEntryTypes:PVkObjectEntryTypeNVX;
+                          const pPObjectEntryCounts:PVkUInt32;
+                          const pPObjectEntryUsageFlags:PVkObjectEntryUsageFlagsNVX;
+                          const pMaxUniformBuffersPerDescriptor:TVkUInt32;
+                          const pMaxStorageBuffersPerDescriptor:TVkUInt32;
+                          const pMaxStorageImagesPerDescriptor:TVkUInt32;
+                          const pMaxSampledImagesPerDescriptor:TVkUInt32;
+                          const pMaxPipelineLayouts:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkObjectTableEntryNVX=^PVkObjectTableEntryNVX;
+     PVkObjectTableEntryNVX=^TVkObjectTableEntryNVX;
+     TVkObjectTableEntryNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       type_:TVkObjectEntryTypeNVX;
+       flags:TVkObjectEntryUsageFlagsNVX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pType_:TVkObjectEntryTypeNVX;
+                          const pFlags:TVkObjectEntryUsageFlagsNVX);
+{$endif}
+     end;
+
+     PPVkObjectTablePipelineEntryNVX=^PVkObjectTablePipelineEntryNVX;
+     PVkObjectTablePipelineEntryNVX=^TVkObjectTablePipelineEntryNVX;
+     TVkObjectTablePipelineEntryNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       type_:TVkObjectEntryTypeNVX;
+       flags:TVkObjectEntryUsageFlagsNVX;
+       pipeline:TVkPipeline;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pType_:TVkObjectEntryTypeNVX;
+                          const pFlags:TVkObjectEntryUsageFlagsNVX;
+                          const pPipeline:TVkPipeline);
+{$endif}
+     end;
+
+     PPVkObjectTableDescriptorSetEntryNVX=^PVkObjectTableDescriptorSetEntryNVX;
+     PVkObjectTableDescriptorSetEntryNVX=^TVkObjectTableDescriptorSetEntryNVX;
+     TVkObjectTableDescriptorSetEntryNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       type_:TVkObjectEntryTypeNVX;
+       flags:TVkObjectEntryUsageFlagsNVX;
+       pipelineLayout:TVkPipelineLayout;
+       descriptorSet:TVkDescriptorSet;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pType_:TVkObjectEntryTypeNVX;
+                          const pFlags:TVkObjectEntryUsageFlagsNVX;
+                          const pPipelineLayout:TVkPipelineLayout;
+                          const pDescriptorSet:TVkDescriptorSet);
+{$endif}
+     end;
+
+     PPVkObjectTableVertexBufferEntryNVX=^PVkObjectTableVertexBufferEntryNVX;
+     PVkObjectTableVertexBufferEntryNVX=^TVkObjectTableVertexBufferEntryNVX;
+     TVkObjectTableVertexBufferEntryNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       type_:TVkObjectEntryTypeNVX;
+       flags:TVkObjectEntryUsageFlagsNVX;
+       buffer:TVkBuffer;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pType_:TVkObjectEntryTypeNVX;
+                          const pFlags:TVkObjectEntryUsageFlagsNVX;
+                          const pBuffer:TVkBuffer);
+{$endif}
+     end;
+
+     PPVkObjectTableIndexBufferEntryNVX=^PVkObjectTableIndexBufferEntryNVX;
+     PVkObjectTableIndexBufferEntryNVX=^TVkObjectTableIndexBufferEntryNVX;
+     TVkObjectTableIndexBufferEntryNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       type_:TVkObjectEntryTypeNVX;
+       flags:TVkObjectEntryUsageFlagsNVX;
+       buffer:TVkBuffer;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pType_:TVkObjectEntryTypeNVX;
+                          const pFlags:TVkObjectEntryUsageFlagsNVX;
+                          const pBuffer:TVkBuffer);
+{$endif}
+     end;
+
+     PPVkObjectTablePushConstantEntryNVX=^PVkObjectTablePushConstantEntryNVX;
+     PVkObjectTablePushConstantEntryNVX=^TVkObjectTablePushConstantEntryNVX;
+     TVkObjectTablePushConstantEntryNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       type_:TVkObjectEntryTypeNVX;
+       flags:TVkObjectEntryUsageFlagsNVX;
+       pipelineLayout:TVkPipelineLayout;
+       stageFlags:TVkShaderStageFlags;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pType_:TVkObjectEntryTypeNVX;
+                          const pFlags:TVkObjectEntryUsageFlagsNVX;
+                          const pPipelineLayout:TVkPipelineLayout;
+                          const pStageFlags:TVkShaderStageFlags);
+{$endif}
+     end;
+
      TvkCreateInstance=function(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkDestroyInstance=procedure(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -5497,6 +5879,24 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCmdDrawIndirectCountAMD=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdDrawIndexedIndirectCountAMD=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdProcessCommandsNVX=procedure(commandBuffer:TVkCommandBuffer;const pProcessCommandsInfo:PVkCmdProcessCommandsInfoNVX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdReserveSpaceForCommandsNVX=procedure(commandBuffer:TVkCommandBuffer;const pReserveSpaceInfo:PVkCmdReserveSpaceForCommandsInfoNVX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCreateIndirectCommandsLayoutNVX=function(device:TVkDevice;const pCreateInfo:PVkIndirectCommandsLayoutCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pIndirectCommandsLayout:PVkIndirectCommandsLayoutNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkDestroyIndirectCommandsLayoutNVX=procedure(device:TVkDevice;indirectCommandsLayout:TVkIndirectCommandsLayoutNVX;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCreateObjectTableNVX=function(device:TVkDevice;const pCreateInfo:PVkObjectTableCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pObjectTable:PVkObjectTableNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkDestroyObjectTableNVX=procedure(device:TVkDevice;objectTable:TVkObjectTableNVX;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkRegisterObjectsNVX=function(device:TVkDevice;objectTable:TVkObjectTableNVX;objectCount:TVkUInt32;const ppObjectTableEntries:PPVkObjectTableEntryNVX;const pObjectIndices:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkUnregisterObjectsNVX=function(device:TVkDevice;objectTable:TVkObjectTableNVX;objectCount:TVkUInt32;const pObjectEntryTypes:PVkObjectEntryTypeNVX;const pObjectIndices:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceGeneratedCommandsPropertiesNVX=procedure(physicalDevice:TVkPhysicalDevice;pFeatures:PVkDeviceGeneratedCommandsFeaturesNVX;pLimits:PVkDeviceGeneratedCommandsLimitsNVX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -5881,6 +6281,24 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CmdDrawIndirectCountAMD:TvkCmdDrawIndirectCountAMD;
 
       CmdDrawIndexedIndirectCountAMD:TvkCmdDrawIndexedIndirectCountAMD;
+
+      CmdProcessCommandsNVX:TvkCmdProcessCommandsNVX;
+
+      CmdReserveSpaceForCommandsNVX:TvkCmdReserveSpaceForCommandsNVX;
+
+      CreateIndirectCommandsLayoutNVX:TvkCreateIndirectCommandsLayoutNVX;
+
+      DestroyIndirectCommandsLayoutNVX:TvkDestroyIndirectCommandsLayoutNVX;
+
+      CreateObjectTableNVX:TvkCreateObjectTableNVX;
+
+      DestroyObjectTableNVX:TvkDestroyObjectTableNVX;
+
+      RegisterObjectsNVX:TvkRegisterObjectsNVX;
+
+      UnregisterObjectsNVX:TvkUnregisterObjectsNVX;
+
+      GetPhysicalDeviceGeneratedCommandsPropertiesNVX:TvkGetPhysicalDeviceGeneratedCommandsPropertiesNVX;
 
      end;
 
@@ -6271,6 +6689,24 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure CmdDrawIndexedIndirectCountAMD(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); virtual;
 
+       procedure CmdProcessCommandsNVX(commandBuffer:TVkCommandBuffer;const pProcessCommandsInfo:PVkCmdProcessCommandsInfoNVX); virtual;
+
+       procedure CmdReserveSpaceForCommandsNVX(commandBuffer:TVkCommandBuffer;const pReserveSpaceInfo:PVkCmdReserveSpaceForCommandsInfoNVX); virtual;
+
+       function CreateIndirectCommandsLayoutNVX(device:TVkDevice;const pCreateInfo:PVkIndirectCommandsLayoutCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pIndirectCommandsLayout:PVkIndirectCommandsLayoutNVX):TVkResult; virtual;
+
+       procedure DestroyIndirectCommandsLayoutNVX(device:TVkDevice;indirectCommandsLayout:TVkIndirectCommandsLayoutNVX;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       function CreateObjectTableNVX(device:TVkDevice;const pCreateInfo:PVkObjectTableCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pObjectTable:PVkObjectTableNVX):TVkResult; virtual;
+
+       procedure DestroyObjectTableNVX(device:TVkDevice;objectTable:TVkObjectTableNVX;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       function RegisterObjectsNVX(device:TVkDevice;objectTable:TVkObjectTableNVX;objectCount:TVkUInt32;const ppObjectTableEntries:PPVkObjectTableEntryNVX;const pObjectIndices:PVkUInt32):TVkResult; virtual;
+
+       function UnregisterObjectsNVX(device:TVkDevice;objectTable:TVkObjectTableNVX;objectCount:TVkUInt32;const pObjectEntryTypes:PVkObjectEntryTypeNVX;const pObjectIndices:PVkUInt32):TVkResult; virtual;
+
+       procedure GetPhysicalDeviceGeneratedCommandsPropertiesNVX(physicalDevice:TVkPhysicalDevice;pFeatures:PVkDeviceGeneratedCommandsFeaturesNVX;pLimits:PVkDeviceGeneratedCommandsLimitsNVX); virtual;
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -6657,6 +7093,24 @@ var LibVulkan:pointer=nil;
     vkCmdDrawIndirectCountAMD:TvkCmdDrawIndirectCountAMD=nil;
 
     vkCmdDrawIndexedIndirectCountAMD:TvkCmdDrawIndexedIndirectCountAMD=nil;
+
+    vkCmdProcessCommandsNVX:TvkCmdProcessCommandsNVX=nil;
+
+    vkCmdReserveSpaceForCommandsNVX:TvkCmdReserveSpaceForCommandsNVX=nil;
+
+    vkCreateIndirectCommandsLayoutNVX:TvkCreateIndirectCommandsLayoutNVX=nil;
+
+    vkDestroyIndirectCommandsLayoutNVX:TvkDestroyIndirectCommandsLayoutNVX=nil;
+
+    vkCreateObjectTableNVX:TvkCreateObjectTableNVX=nil;
+
+    vkDestroyObjectTableNVX:TvkDestroyObjectTableNVX=nil;
+
+    vkRegisterObjectsNVX:TvkRegisterObjectsNVX=nil;
+
+    vkUnregisterObjectsNVX:TvkUnregisterObjectsNVX=nil;
+
+    vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX:TvkGetPhysicalDeviceGeneratedCommandsPropertiesNVX=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -7506,6 +7960,42 @@ begin
    @vkCmdDrawIndexedIndirectCountAMD:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndexedIndirectCountAMD'));
    @vk.fCommands.CmdDrawIndexedIndirectCountAMD:=addr(vkCmdDrawIndexedIndirectCountAMD);
   end;
+  if not assigned(vkCmdProcessCommandsNVX) then begin
+   @vkCmdProcessCommandsNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdProcessCommandsNVX'));
+   @vk.fCommands.CmdProcessCommandsNVX:=addr(vkCmdProcessCommandsNVX);
+  end;
+  if not assigned(vkCmdReserveSpaceForCommandsNVX) then begin
+   @vkCmdReserveSpaceForCommandsNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdReserveSpaceForCommandsNVX'));
+   @vk.fCommands.CmdReserveSpaceForCommandsNVX:=addr(vkCmdReserveSpaceForCommandsNVX);
+  end;
+  if not assigned(vkCreateIndirectCommandsLayoutNVX) then begin
+   @vkCreateIndirectCommandsLayoutNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateIndirectCommandsLayoutNVX'));
+   @vk.fCommands.CreateIndirectCommandsLayoutNVX:=addr(vkCreateIndirectCommandsLayoutNVX);
+  end;
+  if not assigned(vkDestroyIndirectCommandsLayoutNVX) then begin
+   @vkDestroyIndirectCommandsLayoutNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyIndirectCommandsLayoutNVX'));
+   @vk.fCommands.DestroyIndirectCommandsLayoutNVX:=addr(vkDestroyIndirectCommandsLayoutNVX);
+  end;
+  if not assigned(vkCreateObjectTableNVX) then begin
+   @vkCreateObjectTableNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateObjectTableNVX'));
+   @vk.fCommands.CreateObjectTableNVX:=addr(vkCreateObjectTableNVX);
+  end;
+  if not assigned(vkDestroyObjectTableNVX) then begin
+   @vkDestroyObjectTableNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyObjectTableNVX'));
+   @vk.fCommands.DestroyObjectTableNVX:=addr(vkDestroyObjectTableNVX);
+  end;
+  if not assigned(vkRegisterObjectsNVX) then begin
+   @vkRegisterObjectsNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkRegisterObjectsNVX'));
+   @vk.fCommands.RegisterObjectsNVX:=addr(vkRegisterObjectsNVX);
+  end;
+  if not assigned(vkUnregisterObjectsNVX) then begin
+   @vkUnregisterObjectsNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkUnregisterObjectsNVX'));
+   @vk.fCommands.UnregisterObjectsNVX:=addr(vkUnregisterObjectsNVX);
+  end;
+  if not assigned(vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX) then begin
+   @vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX'));
+   @vk.fCommands.GetPhysicalDeviceGeneratedCommandsPropertiesNVX:=addr(vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -7717,6 +8207,15 @@ begin
 {$endif}
   @InstanceCommands.CmdDrawIndirectCountAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndirectCountAMD')));
   @InstanceCommands.CmdDrawIndexedIndirectCountAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndexedIndirectCountAMD')));
+  @InstanceCommands.CmdProcessCommandsNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdProcessCommandsNVX')));
+  @InstanceCommands.CmdReserveSpaceForCommandsNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdReserveSpaceForCommandsNVX')));
+  @InstanceCommands.CreateIndirectCommandsLayoutNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateIndirectCommandsLayoutNVX')));
+  @InstanceCommands.DestroyIndirectCommandsLayoutNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyIndirectCommandsLayoutNVX')));
+  @InstanceCommands.CreateObjectTableNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateObjectTableNVX')));
+  @InstanceCommands.DestroyObjectTableNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyObjectTableNVX')));
+  @InstanceCommands.RegisterObjectsNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkRegisterObjectsNVX')));
+  @InstanceCommands.UnregisterObjectsNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkUnregisterObjectsNVX')));
+  @InstanceCommands.GetPhysicalDeviceGeneratedCommandsPropertiesNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -7873,6 +8372,14 @@ begin
 {$endif}
   @DeviceCommands.CmdDrawIndirectCountAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndirectCountAMD')));
   @DeviceCommands.CmdDrawIndexedIndirectCountAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndexedIndirectCountAMD')));
+  @DeviceCommands.CmdProcessCommandsNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdProcessCommandsNVX')));
+  @DeviceCommands.CmdReserveSpaceForCommandsNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdReserveSpaceForCommandsNVX')));
+  @DeviceCommands.CreateIndirectCommandsLayoutNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateIndirectCommandsLayoutNVX')));
+  @DeviceCommands.DestroyIndirectCommandsLayoutNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyIndirectCommandsLayoutNVX')));
+  @DeviceCommands.CreateObjectTableNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateObjectTableNVX')));
+  @DeviceCommands.DestroyObjectTableNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyObjectTableNVX')));
+  @DeviceCommands.RegisterObjectsNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkRegisterObjectsNVX')));
+  @DeviceCommands.UnregisterObjectsNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkUnregisterObjectsNVX')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -10130,6 +10637,176 @@ begin
  pReleaseSyncs:=pPReleaseSyncs;
  pReleaseKeys:=pPReleaseKeys;
 end;
+
+constructor TVkDeviceGeneratedCommandsFeaturesNVX.Create(const pComputeBindingPointSupport:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_FEATURES_NVX;
+ pNext:=nil;
+ computeBindingPointSupport:=pComputeBindingPointSupport;
+end;
+
+constructor TVkDeviceGeneratedCommandsLimitsNVX.Create(const pMaxIndirectCommandsLayoutTokenCount:TVkUInt32;
+                                                       const pMaxObjectEntryCounts:TVkUInt32;
+                                                       const pMinSequenceCountBufferOffsetAlignment:TVkUInt32;
+                                                       const pMinSequenceIndexBufferOffsetAlignment:TVkUInt32;
+                                                       const pMinCommandsTokenBufferOffsetAlignment:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_LIMITS_NVX;
+ pNext:=nil;
+ maxIndirectCommandsLayoutTokenCount:=pMaxIndirectCommandsLayoutTokenCount;
+ maxObjectEntryCounts:=pMaxObjectEntryCounts;
+ minSequenceCountBufferOffsetAlignment:=pMinSequenceCountBufferOffsetAlignment;
+ minSequenceIndexBufferOffsetAlignment:=pMinSequenceIndexBufferOffsetAlignment;
+ minCommandsTokenBufferOffsetAlignment:=pMinCommandsTokenBufferOffsetAlignment;
+end;
+
+constructor TVkIndirectCommandsTokenNVX.Create(const pTokenType:TVkIndirectCommandsTokenTypeNVX;
+                                               const pBuffer:TVkBuffer;
+                                               const pOffset:TVkDeviceSize);
+begin
+ tokenType:=pTokenType;
+ buffer:=pBuffer;
+ offset:=pOffset;
+end;
+
+constructor TVkIndirectCommandsLayoutTokenNVX.Create(const pTokenType:TVkIndirectCommandsTokenTypeNVX;
+                                                     const pBindingUnit:TVkUInt32;
+                                                     const pDynamicCount:TVkUInt32;
+                                                     const pDivisor:TVkUInt32);
+begin
+ tokenType:=pTokenType;
+ bindingUnit:=pBindingUnit;
+ dynamicCount:=pDynamicCount;
+ divisor:=pDivisor;
+end;
+
+constructor TVkIndirectCommandsLayoutCreateInfoNVX.Create(const pPipelineBindPoint:TVkPipelineBindPoint;
+                                                          const pFlags:TVkIndirectCommandsLayoutUsageFlagsNVX;
+                                                          const pTokenCount:TVkUInt32;
+                                                          const pPTokens:PVkIndirectCommandsLayoutTokenNVX);
+begin
+ sType:=VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NVX;
+ pNext:=nil;
+ pipelineBindPoint:=pPipelineBindPoint;
+ flags:=pFlags;
+ tokenCount:=pTokenCount;
+ pTokens:=pPTokens;
+end;
+
+constructor TVkCmdProcessCommandsInfoNVX.Create(const pObjectTable:TVkObjectTableNVX;
+                                                const pIndirectCommandsLayout:TVkIndirectCommandsLayoutNVX;
+                                                const pIndirectCommandsTokenCount:TVkUInt32;
+                                                const pPIndirectCommandsTokens:PVkIndirectCommandsTokenNVX;
+                                                const pMaxSequencesCount:TVkUInt32;
+                                                const pTargetCommandBuffer:TVkCommandBuffer;
+                                                const pSequencesCountBuffer:TVkBuffer;
+                                                const pSequencesCountOffset:TVkDeviceSize;
+                                                const pSequencesIndexBuffer:TVkBuffer;
+                                                const pSequencesIndexOffset:TVkDeviceSize);
+begin
+ sType:=VK_STRUCTURE_TYPE_CMD_PROCESS_COMMANDS_INFO_NVX;
+ pNext:=nil;
+ objectTable:=pObjectTable;
+ indirectCommandsLayout:=pIndirectCommandsLayout;
+ indirectCommandsTokenCount:=pIndirectCommandsTokenCount;
+ pIndirectCommandsTokens:=pPIndirectCommandsTokens;
+ maxSequencesCount:=pMaxSequencesCount;
+ targetCommandBuffer:=pTargetCommandBuffer;
+ sequencesCountBuffer:=pSequencesCountBuffer;
+ sequencesCountOffset:=pSequencesCountOffset;
+ sequencesIndexBuffer:=pSequencesIndexBuffer;
+ sequencesIndexOffset:=pSequencesIndexOffset;
+end;
+
+constructor TVkCmdReserveSpaceForCommandsInfoNVX.Create(const pObjectTable:TVkObjectTableNVX;
+                                                        const pIndirectCommandsLayout:TVkIndirectCommandsLayoutNVX;
+                                                        const pMaxSequencesCount:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_CMD_RESERVE_SPACE_FOR_COMMANDS_INFO_NVX;
+ pNext:=nil;
+ objectTable:=pObjectTable;
+ indirectCommandsLayout:=pIndirectCommandsLayout;
+ maxSequencesCount:=pMaxSequencesCount;
+end;
+
+constructor TVkObjectTableCreateInfoNVX.Create(const pObjectCount:TVkUInt32;
+                                               const pPObjectEntryTypes:PVkObjectEntryTypeNVX;
+                                               const pPObjectEntryCounts:PVkUInt32;
+                                               const pPObjectEntryUsageFlags:PVkObjectEntryUsageFlagsNVX;
+                                               const pMaxUniformBuffersPerDescriptor:TVkUInt32;
+                                               const pMaxStorageBuffersPerDescriptor:TVkUInt32;
+                                               const pMaxStorageImagesPerDescriptor:TVkUInt32;
+                                               const pMaxSampledImagesPerDescriptor:TVkUInt32;
+                                               const pMaxPipelineLayouts:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_OBJECT_TABLE_CREATE_INFO_NVX;
+ pNext:=nil;
+ objectCount:=pObjectCount;
+ pObjectEntryTypes:=pPObjectEntryTypes;
+ pObjectEntryCounts:=pPObjectEntryCounts;
+ pObjectEntryUsageFlags:=pPObjectEntryUsageFlags;
+ maxUniformBuffersPerDescriptor:=pMaxUniformBuffersPerDescriptor;
+ maxStorageBuffersPerDescriptor:=pMaxStorageBuffersPerDescriptor;
+ maxStorageImagesPerDescriptor:=pMaxStorageImagesPerDescriptor;
+ maxSampledImagesPerDescriptor:=pMaxSampledImagesPerDescriptor;
+ maxPipelineLayouts:=pMaxPipelineLayouts;
+end;
+
+constructor TVkObjectTableEntryNVX.Create(const pType_:TVkObjectEntryTypeNVX;
+                                          const pFlags:TVkObjectEntryUsageFlagsNVX);
+begin
+ type_:=pType_;
+ flags:=pFlags;
+end;
+
+constructor TVkObjectTablePipelineEntryNVX.Create(const pType_:TVkObjectEntryTypeNVX;
+                                                  const pFlags:TVkObjectEntryUsageFlagsNVX;
+                                                  const pPipeline:TVkPipeline);
+begin
+ type_:=pType_;
+ flags:=pFlags;
+ pipeline:=pPipeline;
+end;
+
+constructor TVkObjectTableDescriptorSetEntryNVX.Create(const pType_:TVkObjectEntryTypeNVX;
+                                                       const pFlags:TVkObjectEntryUsageFlagsNVX;
+                                                       const pPipelineLayout:TVkPipelineLayout;
+                                                       const pDescriptorSet:TVkDescriptorSet);
+begin
+ type_:=pType_;
+ flags:=pFlags;
+ pipelineLayout:=pPipelineLayout;
+ descriptorSet:=pDescriptorSet;
+end;
+
+constructor TVkObjectTableVertexBufferEntryNVX.Create(const pType_:TVkObjectEntryTypeNVX;
+                                                      const pFlags:TVkObjectEntryUsageFlagsNVX;
+                                                      const pBuffer:TVkBuffer);
+begin
+ type_:=pType_;
+ flags:=pFlags;
+ buffer:=pBuffer;
+end;
+
+constructor TVkObjectTableIndexBufferEntryNVX.Create(const pType_:TVkObjectEntryTypeNVX;
+                                                     const pFlags:TVkObjectEntryUsageFlagsNVX;
+                                                     const pBuffer:TVkBuffer);
+begin
+ type_:=pType_;
+ flags:=pFlags;
+ buffer:=pBuffer;
+end;
+
+constructor TVkObjectTablePushConstantEntryNVX.Create(const pType_:TVkObjectEntryTypeNVX;
+                                                      const pFlags:TVkObjectEntryUsageFlagsNVX;
+                                                      const pPipelineLayout:TVkPipelineLayout;
+                                                      const pStageFlags:TVkShaderStageFlags);
+begin
+ type_:=pType_;
+ flags:=pFlags;
+ pipelineLayout:=pPipelineLayout;
+ stageFlags:=pStageFlags;
+end;
 {$endif}
 
 constructor TVulkan.Create;
@@ -11061,6 +11738,51 @@ end;
 procedure TVulkan.CmdDrawIndexedIndirectCountAMD(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32);
 begin
  fCommands.CmdDrawIndexedIndirectCountAMD(commandBuffer,buffer,offset,countBuffer,countBufferOffset,maxDrawCount,stride);
+end;
+
+procedure TVulkan.CmdProcessCommandsNVX(commandBuffer:TVkCommandBuffer;const pProcessCommandsInfo:PVkCmdProcessCommandsInfoNVX);
+begin
+ fCommands.CmdProcessCommandsNVX(commandBuffer,pProcessCommandsInfo);
+end;
+
+procedure TVulkan.CmdReserveSpaceForCommandsNVX(commandBuffer:TVkCommandBuffer;const pReserveSpaceInfo:PVkCmdReserveSpaceForCommandsInfoNVX);
+begin
+ fCommands.CmdReserveSpaceForCommandsNVX(commandBuffer,pReserveSpaceInfo);
+end;
+
+function TVulkan.CreateIndirectCommandsLayoutNVX(device:TVkDevice;const pCreateInfo:PVkIndirectCommandsLayoutCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pIndirectCommandsLayout:PVkIndirectCommandsLayoutNVX):TVkResult;
+begin
+ result:=fCommands.CreateIndirectCommandsLayoutNVX(device,pCreateInfo,pAllocator,pIndirectCommandsLayout);
+end;
+
+procedure TVulkan.DestroyIndirectCommandsLayoutNVX(device:TVkDevice;indirectCommandsLayout:TVkIndirectCommandsLayoutNVX;const pAllocator:PVkAllocationCallbacks);
+begin
+ fCommands.DestroyIndirectCommandsLayoutNVX(device,indirectCommandsLayout,pAllocator);
+end;
+
+function TVulkan.CreateObjectTableNVX(device:TVkDevice;const pCreateInfo:PVkObjectTableCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pObjectTable:PVkObjectTableNVX):TVkResult;
+begin
+ result:=fCommands.CreateObjectTableNVX(device,pCreateInfo,pAllocator,pObjectTable);
+end;
+
+procedure TVulkan.DestroyObjectTableNVX(device:TVkDevice;objectTable:TVkObjectTableNVX;const pAllocator:PVkAllocationCallbacks);
+begin
+ fCommands.DestroyObjectTableNVX(device,objectTable,pAllocator);
+end;
+
+function TVulkan.RegisterObjectsNVX(device:TVkDevice;objectTable:TVkObjectTableNVX;objectCount:TVkUInt32;const ppObjectTableEntries:PPVkObjectTableEntryNVX;const pObjectIndices:PVkUInt32):TVkResult;
+begin
+ result:=fCommands.RegisterObjectsNVX(device,objectTable,objectCount,ppObjectTableEntries,pObjectIndices);
+end;
+
+function TVulkan.UnregisterObjectsNVX(device:TVkDevice;objectTable:TVkObjectTableNVX;objectCount:TVkUInt32;const pObjectEntryTypes:PVkObjectEntryTypeNVX;const pObjectIndices:PVkUInt32):TVkResult;
+begin
+ result:=fCommands.UnregisterObjectsNVX(device,objectTable,objectCount,pObjectEntryTypes,pObjectIndices);
+end;
+
+procedure TVulkan.GetPhysicalDeviceGeneratedCommandsPropertiesNVX(physicalDevice:TVkPhysicalDevice;pFeatures:PVkDeviceGeneratedCommandsFeaturesNVX;pLimits:PVkDeviceGeneratedCommandsLimitsNVX);
+begin
+ fCommands.GetPhysicalDeviceGeneratedCommandsPropertiesNVX(physicalDevice,pFeatures,pLimits);
 end;
 
 initialization
