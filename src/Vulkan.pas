@@ -6269,7 +6269,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkAcquireXlibDisplayEXT=function(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-{$ifdef X11}
+{$ifdef RandR}
      TvkGetRandROutputDisplayEXT=function(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;rrOutput:TRROutput;pDisplay:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
@@ -6709,7 +6709,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       AcquireXlibDisplayEXT:TvkAcquireXlibDisplayEXT;
 {$endif}
 
-{$ifdef X11}
+{$ifdef RandR}
       GetRandROutputDisplayEXT:TvkGetRandROutputDisplayEXT;
 {$endif}
 
@@ -7154,7 +7154,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function AcquireXlibDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;display:TVkDisplayKHR):TVkResult; virtual;
 {$endif}
 
-{$ifdef X11}
+{$ifdef RandR}
        function GetRandROutputDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;rrOutput:TRROutput;pDisplay:PVkDisplayKHR):TVkResult; virtual;
 {$endif}
 
@@ -7597,7 +7597,7 @@ var LibVulkan:pointer=nil;
     vkAcquireXlibDisplayEXT:TvkAcquireXlibDisplayEXT=nil;
 {$endif}
 
-{$ifdef X11}
+{$ifdef RandR}
     vkGetRandROutputDisplayEXT:TvkGetRandROutputDisplayEXT=nil;
 {$endif}
 
@@ -8541,7 +8541,7 @@ begin
    @vk.fCommands.AcquireXlibDisplayEXT:=addr(vkAcquireXlibDisplayEXT);
   end;
 {$endif}
-{$ifdef X11}
+{$ifdef RandR}
   if not assigned(vkGetRandROutputDisplayEXT) then begin
    @vkGetRandROutputDisplayEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetRandROutputDisplayEXT'));
    @vk.fCommands.GetRandROutputDisplayEXT:=addr(vkGetRandROutputDisplayEXT);
@@ -8800,7 +8800,7 @@ begin
 {$ifdef X11}
   @InstanceCommands.AcquireXlibDisplayEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkAcquireXlibDisplayEXT')));
 {$endif}
-{$ifdef X11}
+{$ifdef RandR}
   @InstanceCommands.GetRandROutputDisplayEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetRandROutputDisplayEXT')));
 {$endif}
   @InstanceCommands.DisplayPowerControlEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDisplayPowerControlEXT')));
@@ -12584,7 +12584,7 @@ begin
 end;
 {$endif}
 
-{$ifdef X11}
+{$ifdef RandR}
 function TVulkan.GetRandROutputDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;rrOutput:TRROutput;pDisplay:PVkDisplayKHR):TVkResult;
 begin
  result:=fCommands.GetRandROutputDisplayEXT(physicalDevice,dpy,rrOutput,pDisplay);

@@ -393,8 +393,6 @@ type PEngineListClasses=^TXMLClasses;
      end;
 
      TXMLTag=class(TXMLItem)
-      private
-       StringTree:TXMLStringTree;
       public
        Name:ansistring;
        Parameter:array of TXMLParameter;
@@ -1553,7 +1551,6 @@ end;
 constructor TXMLTag.Create;
 begin
  inherited Create;
- StringTree:=TXMLStringTree.Create;
  Name:='';
  Parameter:=nil;
 end;
@@ -1561,8 +1558,6 @@ end;
 destructor TXMLTag.Destroy;
 begin
  Clear;
- StringTree.Destroy;
- StringTree:=nil;
  inherited Destroy;
 end;
 
@@ -1570,9 +1565,6 @@ procedure TXMLTag.Clear;
 var Counter:longint;
 begin
  inherited Clear;
- if assigned(StringTree) then begin
-  StringTree.Clear;
- end;
  for Counter:=0 to length(Parameter)-1 do begin
   Parameter[Counter].Free;
  end;
@@ -1597,25 +1589,27 @@ begin
 end;
 
 function TXMLTag.FindParameter(ParameterName:ansistring):TXMLParameter;
-var Link:TXMLStringTreeData;
-    LinkClass:TXMLParameter absolute Link;
+var i:longint;
 begin
- if StringTree.Find(ParameterName,Link) then begin
-  result:=LinkClass;
- end else begin
-  result:=nil;
+ for i:=0 to length(Parameter)-1 do begin
+  if Parameter[i].Name=ParameterName then begin
+   result:=Parameter[i];
+   exit;
+  end;
  end;
+ result:=nil;
 end;
 
 function TXMLTag.GetParameter(ParameterName:ansistring;default:ansistring=''):ansistring;
-var Link:TXMLStringTreeData;
-    LinkClass:TXMLParameter absolute Link;
+var i:longint;
 begin
- if StringTree.Find(ParameterName,Link) then begin
-  result:=LinkClass.Value;
- end else begin
-  result:=default;
+ for i:=0 to length(Parameter)-1 do begin
+  if Parameter[i].Name=ParameterName then begin
+   result:=Parameter[i].Value;
+   exit;
+  end;
  end;
+ result:=default;
 end;
 
 function TXMLTag.AddParameter(AParameter:TXMLParameter):boolean;
@@ -1625,7 +1619,6 @@ begin
   Index:=length(Parameter);
   SetLength(Parameter,Index+1);
   Parameter[Index]:=AParameter;
-  StringTree.Add(AParameter.Name,longword(AParameter),true);
   result:=true;
  except
   result:=false;
@@ -1658,14 +1651,6 @@ begin
     Parameter[Counter]:=Parameter[Counter+1];
    end;
    SetLength(Parameter,length(Parameter)-1);
-   if Found>=length(Parameter) then begin
-    StringTree.Delete(AParameter.Name);
-   end else begin
-    StringTree.Clear;
-    for Counter:=0 to length(Parameter)-1 do begin
-     StringTree.Add(Parameter[Counter].Name,Counter);
-    end;
-   end;
    AParameter.Destroy;
    result:=true;
   end;
@@ -3645,6 +3630,8 @@ begin
           end;
           if (Type_='HWND') or (Type_='HINSTANCE') or (Type_='SECURITY_ATTRIBUTES') then begin
            TypeDefinition^.Define:='Windows';
+          end else if Type_='RROutput' then begin
+           TypeDefinition^.Define:='RandR';
           end else if (Type_='Display') or (Type_='VisualID') or (Type_='Window') then begin
            TypeDefinition^.Define:='X11';
           end else if (Type_='xcb_connection_t') or (Type_='xcb_visualid_t') or (Type_='xcb_window_t') then begin
@@ -4179,6 +4166,8 @@ begin
         Parameters:=Parameters+ParamName;
         if (ParamType='HWND') or (ParamType='HINSTANCE') or (pos('Win32',ProtoName)>0) then begin
          Define:='Windows';
+        end else if ParamType='RROutput' then begin
+         Define:='RandR';
         end else if (ParamType='Display') or (ParamType='VisualID') or (ParamType='Window') or (pos('Xlib',ParamType)>0) then begin
          Define:='X11';
         end else if (ParamType='xcb_connection_t') or (ParamType='xcb_visualid_t') or (ParamType='xcb_window_t') or (pos('Xcb',ParamType)>0) then begin
