@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2016-11-12-00-09-0000                       *
+ *                        Version 2017-03-03-04-14-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -283,7 +283,7 @@ unit PasVulkan;
 
 interface
 
-uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef X11}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils,Classes,SyncObjs,Math,Vulkan;
+uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef XLIB}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils,Classes,SyncObjs,Math,Vulkan;
 
 type EVulkanException=class(Exception);
 
@@ -800,7 +800,7 @@ type EVulkanException=class(Exception);
      TVulkanSurfaceCreateInfo=TVkWaylandSurfaceCreateInfoKHR;
 {$elseif defined(Windows)}
      TVulkanSurfaceCreateInfo=TVkWin32SurfaceCreateInfoKHR;
-{$elseif defined(X11)}
+{$elseif defined(XLIB)}
      TVulkanSurfaceCreateInfo=TVkXlibSurfaceCreateInfoKHR;
 {$elseif defined(XCB)}
      TVulkanSurfaceCreateInfo=TVkXCBSurfaceCreateInfoKHR;
@@ -822,7 +822,7 @@ type EVulkanException=class(Exception);
                           const pDisplay:Pwl_display;const pSurface:Pwl_surface
 {$elseif defined(Windows)}
                           const pInstanceHandle,pWindowHandle:THandle
-{$elseif defined(X11)}
+{$elseif defined(XLIB)}
                           const pDisplay:PDisplay;const pWindow:TWindow
 {$elseif defined(XCB)}
                           const pConnection:Pxcb_connection;pWindow:Pxcb_window
@@ -7232,7 +7232,7 @@ constructor TVulkanSurface.Create(const pInstance:TVulkanInstance;
                                   const pDisplay:Pwl_display;const pSurface:Pwl_surface
 {$elseif defined(Windows)}
                                   const pInstanceHandle,pWindowHandle:THandle
-{$elseif defined(X11)}
+{$elseif defined(XLIB)}
                                   const pDisplay:PDisplay;const pWindow:TWindow
 {$elseif defined(XCB)}
                                   const pConnection:Pxcb_connection;pWindow:Pxcb_window
@@ -7261,7 +7261,7 @@ begin
  fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
  fSurfaceCreateInfo.hinstance_:=pInstanceHandle;
  fSurfaceCreateInfo.hwnd_:=pWindowHandle;
-{$elseif defined(X11)}
+{$elseif defined(XLIB)}
  fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
  fSurfaceCreateInfo.dpy:=pDisplay;
  fSurfaceCreateInfo.window:=pWindow;
@@ -7278,7 +7278,7 @@ begin
  HandleResultCode(fInstance.fVulkan.CreateWaylandSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
 {$elseif defined(Windows)}
  HandleResultCode(fInstance.fVulkan.CreateWin32SurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
-{$elseif defined(X11)}
+{$elseif defined(XLIB)}
  HandleResultCode(fInstance.fVulkan.CreateXlibSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
 {$elseif defined(XCB)}
  HandleResultCode(fInstance.fVulkan.CreateXCBSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));

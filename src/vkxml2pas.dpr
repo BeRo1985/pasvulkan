@@ -2876,7 +2876,7 @@ begin
     result:='PVkInt16';
    end else if Type_='uint16_t' then begin
     result:='PVkUInt16';
-   end else if Type_='int32_t' then begin
+   end else if (Type_='int32_t') or (Type_='int') then begin
     result:='PVkInt32';
    end else if (Type_='uint32_t') or (Type_='DWORD') then begin
     result:='PVkUInt32';
@@ -2939,7 +2939,7 @@ begin
     result:='PPVkInt16';
    end else if Type_='uint16_t' then begin
     result:='PPVkUInt16';
-   end else if Type_='int32_t' then begin
+   end else if (Type_='int32_t') or (Type_='int') then begin
     result:='PPVkInt32';
    end else if (Type_='uint32_t') or (Type_='DWORD') then begin
     result:='PPVkUInt32';
@@ -3001,7 +3001,7 @@ begin
     result:='TVkInt16';
    end else if Type_='uint16_t' then begin
     result:='TVkUInt16';
-   end else if Type_='int32_t' then begin
+   end else if (Type_='int32_t') or (Type_='int') then begin
     result:='TVkInt32';
    end else if (Type_='uint32_t') or (Type_='DWORD') then begin
     result:='TVkUInt32';
@@ -3520,6 +3520,8 @@ begin
             Constant:=false;
             if Text='object' then begin
              Text:='object_';
+            end else if Text='set' then begin
+             Text:='set_';
             end;
             TypeDefinitionMember^.Name:=Text;
             TypeDefinitionMember^.ArraySizeInt:=0;
@@ -3603,6 +3605,8 @@ begin
            Name:='hwnd_';
           end else if Name='object' then begin
            Name:='object_';
+          end else if Name='set' then begin
+           Name:='set_';
           end;
           TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
           inc(TypeDefinition^.CountMembers);
@@ -3633,7 +3637,7 @@ begin
           end else if Type_='RROutput' then begin
            TypeDefinition^.Define:='RandR';
           end else if (Type_='Display') or (Type_='VisualID') or (Type_='Window') then begin
-           TypeDefinition^.Define:='X11';
+           TypeDefinition^.Define:='XLIB';
           end else if (Type_='xcb_connection_t') or (Type_='xcb_visualid_t') or (Type_='xcb_window_t') then begin
            TypeDefinition^.Define:='XCB';
           end else if (Type_='wl_display') or (Type_='wl_surface') then begin
@@ -4152,9 +4156,10 @@ begin
         end;
         if ParamName='type' then begin
          ParamName:='type_';
-        end;
-        if ParamName='object' then begin
+        end else if ParamName='object' then begin
          ParamName:='object_';
+        end else if ParamName='set' then begin
+         ParamName:='set_';
         end;
         if pos('const ',trim(Text))=1 then begin
          Line:=Line+'const ';
@@ -4169,7 +4174,7 @@ begin
         end else if ParamType='RROutput' then begin
          Define:='RandR';
         end else if (ParamType='Display') or (ParamType='VisualID') or (ParamType='Window') or (pos('Xlib',ParamType)>0) then begin
-         Define:='X11';
+         Define:='XLIB';
         end else if (ParamType='xcb_connection_t') or (ParamType='xcb_visualid_t') or (ParamType='xcb_window_t') or (pos('Xcb',ParamType)>0) then begin
          Define:='XCB';
         end else if (ParamType='wl_display') or (ParamType='wl_surface') or (pos('Wayland',ParamType)>0) then begin
@@ -4470,7 +4475,7 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('interface');
    OutputPAS.Add('');
-   OutputPAS.Add('uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef X11}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils;');
+   OutputPAS.Add('uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef XLIB}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils;');
    OutputPAS.Add('');
    OutputPAS.Add('const VK_DEFAULT_LIB_NAME={$ifdef Windows}''vulkan-1.dll''{$else}{$ifdef Unix}''libvulkan.so''{$else}''libvulkan''{$endif}{$endif};');
    OutputPAS.Add('');

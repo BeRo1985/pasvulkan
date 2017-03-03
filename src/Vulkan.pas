@@ -62,7 +62,7 @@ unit Vulkan;
 
 interface
 
-uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef X11}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils;
+uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef XLIB}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils;
 
 const VK_DEFAULT_LIB_NAME={$ifdef Windows}'vulkan-1.dll'{$else}{$ifdef Unix}'libvulkan.so'{$else}'libvulkan'{$endif}{$endif};
 
@@ -176,10 +176,11 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=39;
+      VK_HEADER_VERSION=42;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
+      VK_LUID_SIZE_KHX=8;
       VK_MAX_EXTENSION_NAME_SIZE=256;
       VK_MAX_DESCRIPTION_SIZE=256;
       VK_MAX_MEMORY_TYPES=32;
@@ -192,7 +193,9 @@ const VK_NULL_HANDLE=0;
       VK_TRUE=1;
       VK_FALSE=0;
       VK_QUEUE_FAMILY_IGNORED=TVkUInt32($ffffffff);
+      VK_QUEUE_FAMILY_EXTERNAL_KHX=0;
       VK_SUBPASS_EXTERNAL=TVkUInt32($ffffffff);
+      VK_MAX_DEVICE_GROUP_SIZE_KHX=32;
       VK_KHR_SURFACE_SPEC_VERSION=25;
       VK_KHR_SURFACE_EXTENSION_NAME='VK_KHR_surface';
       VK_KHR_SWAPCHAIN_SPEC_VERSION=68;
@@ -216,7 +219,7 @@ const VK_NULL_HANDLE=0;
       VK_ANDROID_NATIVE_BUFFER_SPEC_VERSION=4;
       VK_ANDROID_NATIVE_BUFFER_NUMBER=11;
       VK_ANDROID_NATIVE_BUFFER_NAME='VK_ANDROID_native_buffer';
-      VK_EXT_DEBUG_REPORT_SPEC_VERSION=4;
+      VK_EXT_DEBUG_REPORT_SPEC_VERSION=5;
       VK_EXT_DEBUG_REPORT_EXTENSION_NAME='VK_EXT_debug_report';
       VK_NV_GLSL_SHADER_SPEC_VERSION=1;
       VK_NV_GLSL_SHADER_EXTENSION_NAME='VK_NV_glsl_shader';
@@ -238,7 +241,7 @@ const VK_NULL_HANDLE=0;
       VK_AMD_SHADER_TRINARY_MINMAX_EXTENSION_NAME='VK_AMD_shader_trinary_minmax';
       VK_AMD_SHADER_EXPLICIT_VERTEX_PARAMETER_SPEC_VERSION=1;
       VK_AMD_SHADER_EXPLICIT_VERTEX_PARAMETER_EXTENSION_NAME='VK_AMD_shader_explicit_vertex_parameter';
-      VK_EXT_DEBUG_MARKER_SPEC_VERSION=3;
+      VK_EXT_DEBUG_MARKER_SPEC_VERSION=4;
       VK_EXT_DEBUG_MARKER_EXTENSION_NAME='VK_EXT_debug_marker';
       VK_AMD_EXTENSION_24_SPEC_VERSION=0;
       VK_AMD_EXTENSION_24_EXTENSION_NAME='VK_AMD_extension_24';
@@ -300,8 +303,8 @@ const VK_NULL_HANDLE=0;
       VK_NVX_EXTENSION_52_EXTENSION_NAME='VK_NVX_extension_52';
       VK_NV_EXTENSION_53_SPEC_VERSION=0;
       VK_NV_EXTENSION_53_EXTENSION_NAME='VK_NV_extension_53';
-      VK_NV_EXTENSION_54_SPEC_VERSION=0;
-      VK_NV_EXTENSION_54_EXTENSION_NAME='VK_NV_extension_54';
+      VK_KHX_MULTIVIEW_SPEC_VERSION=1;
+      VK_KHX_MULTIVIEW_EXTENSION_NAME='VK_KHX_multiview';
       VK_IMG_FORMAT_PVRTC_SPEC_VERSION=1;
       VK_IMG_FORMAT_PVRTC_EXTENSION_NAME='VK_IMG_format_pvrtc';
       VK_NV_EXTERNAL_MEMORY_CAPABILITIES_SPEC_VERSION=1;
@@ -314,8 +317,8 @@ const VK_NULL_HANDLE=0;
       VK_NV_WIN32_KEYED_MUTEX_EXTENSION_NAME='VK_NV_win32_keyed_mutex';
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_SPEC_VERSION=1;
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME='VK_KHR_get_physical_device_properties2';
-      VK_KHR_EXTENSION_61_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_61_EXTENSION_NAME='VK_KHR_extension_61';
+      VK_KHX_DEVICE_GROUP_SPEC_VERSION=1;
+      VK_KHX_DEVICE_GROUP_EXTENSION_NAME='VK_KHX_device_group';
       VK_EXT_VALIDATION_FLAGS_SPEC_VERSION=1;
       VK_EXT_VALIDATION_FLAGS_EXTENSION_NAME='VK_EXT_validation_flags';
       VK_NN_VI_SURFACE_SPEC_VERSION=1;
@@ -334,28 +337,28 @@ const VK_NULL_HANDLE=0;
       VK_IMG_EXTENSION_69_EXTENSION_NAME='VK_IMG_extension_69';
       VK_KHR_MAINTENANCE1_SPEC_VERSION=1;
       VK_KHR_MAINTENANCE1_EXTENSION_NAME='VK_KHR_maintenance1';
-      VK_KHR_EXTENSION_71_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_71_EXTENSION_NAME='VK_KHR_extension_71';
-      VK_KHR_EXTENSION_72_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_72_EXTENSION_NAME='VK_KHR_extension_72';
-      VK_KHR_EXTENSION_73_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_73_EXTENSION_NAME='VK_KHR_extension_73';
-      VK_KHR_EXTENSION_74_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_74_EXTENSION_NAME='VK_KHR_extension_74';
-      VK_KHR_EXTENSION_75_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_75_EXTENSION_NAME='VK_KHR_extension_75';
-      VK_KHR_EXTENSION_76_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_76_EXTENSION_NAME='VK_KHR_extension_76';
-      VK_KHR_EXTENSION_77_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_77_EXTENSION_NAME='VK_KHR_extension_77';
-      VK_KHR_EXTENSION_78_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_78_EXTENSION_NAME='VK_KHR_extension_78';
-      VK_KHR_EXTENSION_79_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_79_EXTENSION_NAME='VK_KHR_extension_79';
-      VK_KHR_EXTENSION_80_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_80_EXTENSION_NAME='VK_KHR_extension_80';
-      VK_KHR_EXTENSION_81_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_81_EXTENSION_NAME='VK_KHR_extension_81';
+      VK_KHX_DEVICE_GROUP_CREATION_SPEC_VERSION=1;
+      VK_KHX_DEVICE_GROUP_CREATION_EXTENSION_NAME='VK_KHX_device_group_creation';
+      VK_KHX_EXTERNAL_MEMORY_CAPABILITIES_SPEC_VERSION=1;
+      VK_KHX_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME='VK_KHX_external_memory_capabilities';
+      VK_KHX_EXTERNAL_MEMORY_SPEC_VERSION=1;
+      VK_KHX_EXTERNAL_MEMORY_EXTENSION_NAME='VK_KHX_external_memory';
+      VK_KHX_EXTERNAL_MEMORY_WIN32_SPEC_VERSION=1;
+      VK_KHX_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME='VK_KHX_external_memory_win32';
+      VK_KHX_EXTERNAL_MEMORY_FD_SPEC_VERSION=1;
+      VK_KHX_EXTERNAL_MEMORY_FD_EXTENSION_NAME='VK_KHX_external_memory_fd';
+      VK_KHX_WIN32_KEYED_MUTEX_SPEC_VERSION=1;
+      VK_KHX_WIN32_KEYED_MUTEX_EXTENSION_NAME='VK_KHX_win32_keyed_mutex';
+      VK_KHX_EXTERNAL_SEMAPHORE_CAPABILITIES_SPEC_VERSION=1;
+      VK_KHX_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME='VK_KHX_external_semaphore_capabilities';
+      VK_KHX_EXTERNAL_SEMAPHORE_SPEC_VERSION=1;
+      VK_KHX_EXTERNAL_SEMAPHORE_EXTENSION_NAME='VK_KHX_external_semaphore';
+      VK_KHX_EXTERNAL_SEMAPHORE_WIN32_SPEC_VERSION=1;
+      VK_KHX_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME='VK_KHX_external_semaphore_win32';
+      VK_KHX_EXTERNAL_SEMAPHORE_FD_SPEC_VERSION=1;
+      VK_KHX_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME='VK_KHX_external_semaphore_fd';
+      VK_KHR_PUSH_DESCRIPTOR_SPEC_VERSION=1;
+      VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME='VK_KHR_push_descriptor';
       VK_KHR_EXTENSION_82_SPEC_VERSION=0;
       VK_KHR_EXTENSION_82_EXTENSION_NAME='VK_KHR_extension_82';
       VK_KHR_EXTENSION_83_SPEC_VERSION=0;
@@ -364,12 +367,12 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_84_EXTENSION_NAME='VK_KHR_extension_84';
       VK_KHR_EXTENSION_85_SPEC_VERSION=0;
       VK_KHR_EXTENSION_85_EXTENSION_NAME='VK_KHR_extension_85';
-      VK_KHR_EXTENSION_86_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_86_EXTENSION_NAME='VK_KHR_extension_86';
+      VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_SPEC_VERSION=1;
+      VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME='VK_KHR_descriptor_update_template';
       VK_NVX_DEVICE_GENERATED_COMMANDS_SPEC_VERSION=1;
       VK_NVX_DEVICE_GENERATED_COMMANDS_EXTENSION_NAME='VK_NVX_device_generated_commands';
-      VK_KHR_EXTENSION_88_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_88_EXTENSION_NAME='VK_KHR_extension_88';
+      VK_NV_CLIP_SPACE_W_SCALING_SPEC_VERSION=1;
+      VK_NV_CLIP_SPACE_W_SCALING_EXTENSION_NAME='VK_NV_clip_space_w_scaling';
       VK_EXT_DIRECT_MODE_DISPLAY_SPEC_VERSION=1;
       VK_EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME='VK_EXT_direct_mode_display';
       VK_EXT_ACQUIRE_XLIB_DISPLAY_SPEC_VERSION=1;
@@ -382,18 +385,18 @@ const VK_NULL_HANDLE=0;
       VK_GOOGLE_EXTENSION_93_EXTENSION_NAME='VK_GOOGLE_extension_93';
       VK_KHR_EXTENSION_94_SPEC_VERSION=0;
       VK_KHR_EXTENSION_94_EXTENSION_NAME='VK_KHR_extension_94';
-      VK_NV_EXTENSION_95_SPEC_VERSION=0;
-      VK_NV_EXTENSION_95_EXTENSION_NAME='VK_NV_extension_95';
-      VK_NV_EXTENSION_96_SPEC_VERSION=0;
-      VK_NV_EXTENSION_96_EXTENSION_NAME='VK_NV_extension_96';
-      VK_NV_EXTENSION_97_SPEC_VERSION=0;
-      VK_NV_EXTENSION_97_EXTENSION_NAME='VK_NV_extension_97';
-      VK_NV_EXTENSION_98_SPEC_VERSION=0;
-      VK_NV_EXTENSION_98_EXTENSION_NAME='VK_NV_extension_98';
-      VK_NV_EXTENSION_99_SPEC_VERSION=0;
-      VK_NV_EXTENSION_99_EXTENSION_NAME='VK_NV_extension_99';
-      VK_NV_EXTENSION_100_SPEC_VERSION=0;
-      VK_NV_EXTENSION_100_EXTENSION_NAME='VK_NV_extension_100';
+      VK_NV_SAMPLE_MASK_OVERRIDE_COVERAGE_SPEC_VERSION=1;
+      VK_NV_SAMPLE_MASK_OVERRIDE_COVERAGE_EXTENSION_NAME='VK_NV_sample_mask_override_coverage';
+      VK_NV_GEOMETRY_SHADER_PASSTHROUGH_SPEC_VERSION=1;
+      VK_NV_GEOMETRY_SHADER_PASSTHROUGH_EXTENSION_NAME='VK_NV_geometry_shader_passthrough';
+      VK_NV_VIEWPORT_ARRAY2_SPEC_VERSION=1;
+      VK_NV_VIEWPORT_ARRAY2_EXTENSION_NAME='VK_NV_viewport_array2';
+      VK_NVX_MULTIVIEW_PER_VIEW_ATTRIBUTES_SPEC_VERSION=1;
+      VK_NVX_MULTIVIEW_PER_VIEW_ATTRIBUTES_EXTENSION_NAME='VK_NVX_multiview_per_view_attributes';
+      VK_NV_VIEWPORT_SWIZZLE_SPEC_VERSION=1;
+      VK_NV_VIEWPORT_SWIZZLE_EXTENSION_NAME='VK_NV_viewport_swizzle';
+      VK_EXT_DISCARD_RECTANGLES_SPEC_VERSION=1;
+      VK_EXT_DISCARD_RECTANGLES_EXTENSION_NAME='VK_EXT_discard_rectangles';
       VK_NV_EXTENSION_101_SPEC_VERSION=0;
       VK_NV_EXTENSION_101_EXTENSION_NAME='VK_NV_extension_101';
       VK_NV_EXTENSION_102_SPEC_VERSION=0;
@@ -402,10 +405,10 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_103_EXTENSION_NAME='VK_NV_extension_103';
       VK_NV_EXTENSION_104_SPEC_VERSION=0;
       VK_NV_EXTENSION_104_EXTENSION_NAME='VK_NV_extension_104';
-      VK_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION=1;
-      VK_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME='VK_EXT_swapchain_colorspace';
-      VK_KHR_EXTENSION_106_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_106_EXTENSION_NAME='VK_EXT_extension_106';
+      VK_EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION=1;
+      VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME='VK_EXT_swapchain_colorspace';
+      VK_EXT_SMPTE2086_METADATA_SPEC_VERSION=0;
+      VK_EXT_SMPTE2086_METADATA_EXTENSION_NAME='VK_EXT_SMPTE2086_metadata';
       VK_IMG_EXTENSION_107_SPEC_VERSION=0;
       VK_IMG_EXTENSION_107_EXTENSION_NAME='VK_IMG_extension_107';
       VK_IMG_EXTENSION_108_SPEC_VERSION=0;
@@ -428,6 +431,26 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_116_EXTENSION_NAME='VK_KHR_extension_116';
       VK_KHR_EXTENSION_117_SPEC_VERSION=0;
       VK_KHR_EXTENSION_117_EXTENSION_NAME='VK_KHR_extension_117';
+      VK_KHR_EXTENSION_118_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_118_EXTENSION_NAME='VK_KHR_extension_118';
+      VK_KHR_EXTENSION_119_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_119_EXTENSION_NAME='VK_KHR_extension_119';
+      VK_KHR_EXTENSION_120_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_120_EXTENSION_NAME='VK_KHR_extension_120';
+      VK_KHR_variable_pointers_SPEC_VERSION=0;
+      VK_KHR_variable_pointers_EXTENSION_NAME='VK_KHR_variable_pointers';
+      VK_KHR_EXTENSION_122_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_122_EXTENSION_NAME='VK_KHR_extension_122';
+      VK_MVK_IOS_SURFACE_SPEC_VERSION=2;
+      VK_MVK_IOS_SURFACE_EXTENSION_NAME='VK_MVK_ios_surface';
+      VK_MVK_MACOS_SURFACE_SPEC_VERSION=2;
+      VK_MVK_MACOS_SURFACE_EXTENSION_NAME='VK_MVK_macos_surface';
+      VK_MVK_MOLTENVK_SPEC_VERSION=0;
+      VK_MVK_MOLTENVK_EXTENSION_NAME='VK_MVK_moltenvk';
+      VK_MESA_EXTENSION_126_SPEC_VERSION=0;
+      VK_MESA_EXTENSION_126_EXTENSION_NAME='VK_MESA_extension_126';
+      VK_MESA_EXTENSION_127_SPEC_VERSION=0;
+      VK_MESA_EXTENSION_127_EXTENSION_NAME='VK_MESA_extension_127';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -707,6 +730,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkObjectEntryUsageFlagsNVX=^TVkObjectEntryUsageFlagsNVX;
      TVkObjectEntryUsageFlagsNVX=TVkFlags;
 
+     PPVkDescriptorUpdateTemplateCreateFlagsKHR=^PVkDescriptorUpdateTemplateCreateFlagsKHR;
+     PVkDescriptorUpdateTemplateCreateFlagsKHR=^TVkDescriptorUpdateTemplateCreateFlagsKHR;
+     TVkDescriptorUpdateTemplateCreateFlagsKHR=TVkFlags;
+
      PPVkCompositeAlphaFlagsKHR=^PVkCompositeAlphaFlagsKHR;
      PVkCompositeAlphaFlagsKHR=^TVkCompositeAlphaFlagsKHR;
      TVkCompositeAlphaFlagsKHR=TVkFlags;
@@ -759,6 +786,26 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkXcbSurfaceCreateFlagsKHR=^TVkXcbSurfaceCreateFlagsKHR;
      TVkXcbSurfaceCreateFlagsKHR=TVkFlags;
 
+     PPVkIOSSurfaceCreateFlagsMVK=^PVkIOSSurfaceCreateFlagsMVK;
+     PVkIOSSurfaceCreateFlagsMVK=^TVkIOSSurfaceCreateFlagsMVK;
+     TVkIOSSurfaceCreateFlagsMVK=TVkFlags;
+
+     PPVkMacOSSurfaceCreateFlagsMVK=^PVkMacOSSurfaceCreateFlagsMVK;
+     PVkMacOSSurfaceCreateFlagsMVK=^TVkMacOSSurfaceCreateFlagsMVK;
+     TVkMacOSSurfaceCreateFlagsMVK=TVkFlags;
+
+     PPVkPeerMemoryFeatureFlagsKHX=^PVkPeerMemoryFeatureFlagsKHX;
+     PVkPeerMemoryFeatureFlagsKHX=^TVkPeerMemoryFeatureFlagsKHX;
+     TVkPeerMemoryFeatureFlagsKHX=TVkFlags;
+
+     PPVkMemoryAllocateFlagsKHX=^PVkMemoryAllocateFlagsKHX;
+     PVkMemoryAllocateFlagsKHX=^TVkMemoryAllocateFlagsKHX;
+     TVkMemoryAllocateFlagsKHX=TVkFlags;
+
+     PPVkDeviceGroupPresentModeFlagsKHX=^PVkDeviceGroupPresentModeFlagsKHX;
+     PVkDeviceGroupPresentModeFlagsKHX=^TVkDeviceGroupPresentModeFlagsKHX;
+     TVkDeviceGroupPresentModeFlagsKHX=TVkFlags;
+
      PPVkDebugReportFlagsEXT=^PVkDebugReportFlagsEXT;
      PVkDebugReportFlagsEXT=^TVkDebugReportFlagsEXT;
      TVkDebugReportFlagsEXT=TVkFlags;
@@ -775,9 +822,33 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkExternalMemoryFeatureFlagsNV=^TVkExternalMemoryFeatureFlagsNV;
      TVkExternalMemoryFeatureFlagsNV=TVkFlags;
 
+     PPVkExternalMemoryHandleTypeFlagsKHX=^PVkExternalMemoryHandleTypeFlagsKHX;
+     PVkExternalMemoryHandleTypeFlagsKHX=^TVkExternalMemoryHandleTypeFlagsKHX;
+     TVkExternalMemoryHandleTypeFlagsKHX=TVkFlags;
+
+     PPVkExternalMemoryFeatureFlagsKHX=^PVkExternalMemoryFeatureFlagsKHX;
+     PVkExternalMemoryFeatureFlagsKHX=^TVkExternalMemoryFeatureFlagsKHX;
+     TVkExternalMemoryFeatureFlagsKHX=TVkFlags;
+
+     PPVkExternalSemaphoreHandleTypeFlagsKHX=^PVkExternalSemaphoreHandleTypeFlagsKHX;
+     PVkExternalSemaphoreHandleTypeFlagsKHX=^TVkExternalSemaphoreHandleTypeFlagsKHX;
+     TVkExternalSemaphoreHandleTypeFlagsKHX=TVkFlags;
+
+     PPVkExternalSemaphoreFeatureFlagsKHX=^PVkExternalSemaphoreFeatureFlagsKHX;
+     PVkExternalSemaphoreFeatureFlagsKHX=^TVkExternalSemaphoreFeatureFlagsKHX;
+     TVkExternalSemaphoreFeatureFlagsKHX=TVkFlags;
+
      PPVkSurfaceCounterFlagsEXT=^PVkSurfaceCounterFlagsEXT;
      PVkSurfaceCounterFlagsEXT=^TVkSurfaceCounterFlagsEXT;
      TVkSurfaceCounterFlagsEXT=TVkFlags;
+
+     PPVkPipelineViewportSwizzleStateCreateFlagsNV=^PVkPipelineViewportSwizzleStateCreateFlagsNV;
+     PVkPipelineViewportSwizzleStateCreateFlagsNV=^TVkPipelineViewportSwizzleStateCreateFlagsNV;
+     TVkPipelineViewportSwizzleStateCreateFlagsNV=TVkFlags;
+
+     PPVkPipelineDiscardRectangleStateCreateFlagsEXT=^PVkPipelineDiscardRectangleStateCreateFlagsEXT;
+     PVkPipelineDiscardRectangleStateCreateFlagsEXT=^TVkPipelineDiscardRectangleStateCreateFlagsEXT;
+     TVkPipelineDiscardRectangleStateCreateFlagsEXT=TVkFlags;
 
      PPVkInstance=^PVkInstance;
      PVkInstance=^TVkInstance;
@@ -886,6 +957,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkIndirectCommandsLayoutNVX=^PVkIndirectCommandsLayoutNVX;
      PVkIndirectCommandsLayoutNVX=^TVkIndirectCommandsLayoutNVX;
      TVkIndirectCommandsLayoutNVX=TVkNonDispatchableHandle;
+
+     PPVkDescriptorUpdateTemplateKHR=^PVkDescriptorUpdateTemplateKHR;
+     PVkDescriptorUpdateTemplateKHR=^TVkDescriptorUpdateTemplateKHR;
+     TVkDescriptorUpdateTemplateKHR=TVkNonDispatchableHandle;
 
      PPVkDisplayKHR=^PVkDisplayKHR;
      PVkDisplayKHR=^TVkDisplayKHR;
@@ -1527,6 +1602,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV=1000026000,
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV=1000026001,
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV=1000026002,
+       VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO_KHX=1000053000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHX=1000053001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHX=1000053002,
        VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_NV=1000056000,
        VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV=1000056001,
        VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_NV=1000057000,
@@ -1541,19 +1619,67 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR=1000059006,
        VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2_KHR=1000059007,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2_KHR=1000059008,
+       VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHX=1000060000,
+       VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHX=1000060001,
+       VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHX=1000060002,
+       VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO_KHX=1000060003,
+       VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO_KHX=1000060004,
+       VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO_KHX=1000060005,
+       VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO_KHX=1000060006,
+       VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_CAPABILITIES_KHX=1000060007,
+       VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHX=1000060008,
+       VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHX=1000060009,
+       VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHX=1000060010,
+       VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHX=1000060011,
+       VK_STRUCTURE_TYPE_DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHX=1000060012,
        VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT=1000061000,
        VK_STRUCTURE_TYPE_VI_SURFACE_CREATE_INFO_NN=1000062000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES_KHX=1000070000,
+       VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO_KHX=1000070001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO_KHX=1000071000,
+       VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES_KHX=1000071001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO_KHX=1000071002,
+       VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES_KHX=1000071003,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES_KHX=1000071004,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHX=1000071005,
+       VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHX=1000071006,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHX=1000071007,
+       VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHX=1000072000,
+       VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHX=1000072001,
+       VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHX=1000072002,
+       VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHX=1000073000,
+       VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHX=1000073001,
+       VK_STRUCTURE_TYPE_MEMORY_WIN32_HANDLE_PROPERTIES_KHX=1000073002,
+       VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHX=1000074000,
+       VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHX=1000074001,
+       VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_KHX=1000075000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO_KHX=1000076000,
+       VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES_KHX=1000076001,
+       VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO_KHX=1000077000,
+       VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHX=1000078000,
+       VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHX=1000078001,
+       VK_STRUCTURE_TYPE_D3D12_FENCE_SUBMIT_INFO_KHX=1000078002,
+       VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHX=1000079000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR=1000080000,
+       VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR=1000085000,
        VK_STRUCTURE_TYPE_OBJECT_TABLE_CREATE_INFO_NVX=1000086000,
        VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NVX=1000086001,
        VK_STRUCTURE_TYPE_CMD_PROCESS_COMMANDS_INFO_NVX=1000086002,
        VK_STRUCTURE_TYPE_CMD_RESERVE_SPACE_FOR_COMMANDS_INFO_NVX=1000086003,
        VK_STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_LIMITS_NVX=1000086004,
        VK_STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_FEATURES_NVX=1000086005,
+       VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV=1000087000,
        VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES2_EXT=1000090000,
        VK_STRUCTURE_TYPE_DISPLAY_POWER_INFO_EXT=1000091000,
        VK_STRUCTURE_TYPE_DEVICE_EVENT_INFO_EXT=1000091001,
        VK_STRUCTURE_TYPE_DISPLAY_EVENT_INFO_EXT=1000091002,
-       VK_STRUCTURE_TYPE_SWAPCHAIN_COUNTER_CREATE_INFO_EXT=1000091003
+       VK_STRUCTURE_TYPE_SWAPCHAIN_COUNTER_CREATE_INFO_EXT=1000091003,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX=1000097000,
+       VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV=1000098000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT=1000099000,
+       VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT=1000099001,
+       VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK=1000122000,
+       VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK=1000123000
       );
 
      PPVkSubpassContents=^PVkSubpassContents;
@@ -1568,6 +1694,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkResult=^TVkResult;
      TVkResult=
       (
+       VK_ERROR_INVALID_EXTERNAL_HANDLE_KHX=-1000072003,
        VK_ERROR_OUT_OF_POOL_MEMORY_KHR=-1000069000,
        VK_NV_EXTENSION_1_ERROR=-1000013000,
        VK_ERROR_INVALID_SHADER_NV=-1000012000,
@@ -1610,7 +1737,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DYNAMIC_STATE_DEPTH_BOUNDS=5,
        VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK=6,
        VK_DYNAMIC_STATE_STENCIL_WRITE_MASK=7,
-       VK_DYNAMIC_STATE_STENCIL_REFERENCE=8
+       VK_DYNAMIC_STATE_STENCIL_REFERENCE=8,
+       VK_DYNAMIC_STATE_VIEWPORT_W_SCALING_NV=1000087000,
+       VK_DYNAMIC_STATE_DISCARD_RECTANGLE_EXT=1000099000
+      );
+
+     PPVkDescriptorUpdateTemplateTypeKHR=^PVkDescriptorUpdateTemplateTypeKHR;
+     PVkDescriptorUpdateTemplateTypeKHR=^TVkDescriptorUpdateTemplateTypeKHR;
+     TVkDescriptorUpdateTemplateTypeKHR=
+      (
+       VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET_KHR=0,                  //< Create descriptor update template for descriptor set updates
+       VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR=1                 //< Create descriptor update template for pushed descriptor updates
       );
 
      PPVkQueueFlagBits=^PVkQueueFlagBits;
@@ -1638,7 +1775,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkMemoryHeapFlagBits=^TVkMemoryHeapFlagBits;
      TVkMemoryHeapFlagBits=
       (
-       VK_MEMORY_HEAP_DEVICE_LOCAL_BIT=$00000001                                 //< If set, heap represents device memory
+       VK_MEMORY_HEAP_DEVICE_LOCAL_BIT=$00000001,                                //< If set, heap represents device memory
+       VK_MEMORY_HEAP_MULTI_INSTANCE_BIT_KHX=$00000002
       );
 
      PPVkAccessFlagBits=^PVkAccessFlagBits;
@@ -1727,7 +1865,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_CREATE_SPARSE_ALIASED_BIT=$00000004,                             //< Image should support constent data access to physical memory ranges mapped into multiple locations of sparse images
        VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT=$00000008,                             //< Allows image views to have different format than the base image
        VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT=$00000010,                            //< Allows creating image views with cube type from the created image
-       VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR=$00000020
+       VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR=$00000020,
+       VK_IMAGE_CREATE_BIND_SFR_BIT_KHX=$00000040
       );
 
      PPVkPipelineCreateFlagBits=^PVkPipelineCreateFlagBits;
@@ -1736,7 +1875,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT=$00000001,
        VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT=$00000002,
-       VK_PIPELINE_CREATE_DERIVATIVE_BIT=$00000004
+       VK_PIPELINE_CREATE_DERIVATIVE_BIT=$00000004,
+       VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHX=$00000008,
+       VK_PIPELINE_CREATE_DISPATCH_BASE_KHX=$00000010
       );
 
      PPVkColorComponentFlagBits=^PVkColorComponentFlagBits;
@@ -1933,7 +2074,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDependencyFlagBits=^TVkDependencyFlagBits;
      TVkDependencyFlagBits=
       (
-       VK_DEPENDENCY_BY_REGION_BIT=$00000001                                     //< Dependency is per pixel region 
+       VK_DEPENDENCY_BY_REGION_BIT=$00000001,                                    //< Dependency is per pixel region 
+       VK_DEPENDENCY_VIEW_LOCAL_BIT_KHX=$00000002,
+       VK_DEPENDENCY_DEVICE_GROUP_BIT_KHX=$00000004
       );
 
      PPVkPresentModeKHR=^PVkPresentModeKHR;
@@ -2136,6 +2279,54 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_OBJECT_ENTRY_PUSH_CONSTANT_NVX=4
       );
 
+     PPVkDescriptorSetLayoutCreateFlagBits=^PVkDescriptorSetLayoutCreateFlagBits;
+     PVkDescriptorSetLayoutCreateFlagBits=^TVkDescriptorSetLayoutCreateFlagBits;
+     TVkDescriptorSetLayoutCreateFlagBits=
+      (
+       VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR=$00000001
+      );
+
+     PPVkExternalMemoryHandleTypeFlagBitsKHX=^PVkExternalMemoryHandleTypeFlagBitsKHX;
+     PVkExternalMemoryHandleTypeFlagBitsKHX=^TVkExternalMemoryHandleTypeFlagBitsKHX;
+     TVkExternalMemoryHandleTypeFlagBitsKHX=
+      (
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHX=$00000001,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHX=$00000002,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT_KHX=$00000004,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT_KHX=$00000008,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_KMT_BIT_KHX=$00000010,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT_KHX=$00000020,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT_KHX=$00000040
+      );
+
+     PPVkExternalMemoryFeatureFlagBitsKHX=^PVkExternalMemoryFeatureFlagBitsKHX;
+     PVkExternalMemoryFeatureFlagBitsKHX=^TVkExternalMemoryFeatureFlagBitsKHX;
+     TVkExternalMemoryFeatureFlagBitsKHX=
+      (
+       VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT_KHX=$00000001,
+       VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT_KHX=$00000002,
+       VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_KHX=$00000004
+      );
+
+     PPVkExternalSemaphoreHandleTypeFlagBitsKHX=^PVkExternalSemaphoreHandleTypeFlagBitsKHX;
+     PVkExternalSemaphoreHandleTypeFlagBitsKHX=^TVkExternalSemaphoreHandleTypeFlagBitsKHX;
+     TVkExternalSemaphoreHandleTypeFlagBitsKHX=
+      (
+       VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHX=$00000001,
+       VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHX=$00000002,
+       VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT_KHX=$00000004,
+       VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_D3D12_FENCE_BIT_KHX=$00000008,
+       VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FENCE_FD_BIT_KHX=$00000010
+      );
+
+     PPVkExternalSemaphoreFeatureFlagBitsKHX=^PVkExternalSemaphoreFeatureFlagBitsKHX;
+     PVkExternalSemaphoreFeatureFlagBitsKHX=^TVkExternalSemaphoreFeatureFlagBitsKHX;
+     TVkExternalSemaphoreFeatureFlagBitsKHX=
+      (
+       VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT_KHX=$00000001,
+       VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT_KHX=$00000002
+      );
+
      PPVkSurfaceCounterFlagBitsEXT=^PVkSurfaceCounterFlagBitsEXT;
      PVkSurfaceCounterFlagBitsEXT=^TVkSurfaceCounterFlagBitsEXT;
      TVkSurfaceCounterFlagBitsEXT=
@@ -2164,6 +2355,70 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkDisplayEventTypeEXT=
       (
        VK_DISPLAY_EVENT_TYPE_FIRST_PIXEL_OUT_EXT=0
+      );
+
+     PPVkPeerMemoryFeatureFlagBitsKHX=^PVkPeerMemoryFeatureFlagBitsKHX;
+     PVkPeerMemoryFeatureFlagBitsKHX=^TVkPeerMemoryFeatureFlagBitsKHX;
+     TVkPeerMemoryFeatureFlagBitsKHX=
+      (
+       VK_PEER_MEMORY_FEATURE_COPY_SRC_BIT_KHX=$00000001,                        //< Can read with vkCmdCopy commands
+       VK_PEER_MEMORY_FEATURE_COPY_DST_BIT_KHX=$00000002,                        //< Can write with vkCmdCopy commands
+       VK_PEER_MEMORY_FEATURE_GENERIC_SRC_BIT_KHX=$00000004,                     //< Can read with any access type/command
+       VK_PEER_MEMORY_FEATURE_GENERIC_DST_BIT_KHX=$00000008                      //< Can write with and access type/command
+      );
+
+     PPVkMemoryAllocateFlagBitsKHX=^PVkMemoryAllocateFlagBitsKHX;
+     PVkMemoryAllocateFlagBitsKHX=^TVkMemoryAllocateFlagBitsKHX;
+     TVkMemoryAllocateFlagBitsKHX=
+      (
+       VK_MEMORY_ALLOCATE_DEVICE_MASK_BIT_KHX=$00000001                          //< Force allocation on specific devices
+      );
+
+     PPVkDeviceGroupPresentModeFlagBitsKHX=^PVkDeviceGroupPresentModeFlagBitsKHX;
+     PVkDeviceGroupPresentModeFlagBitsKHX=^TVkDeviceGroupPresentModeFlagBitsKHX;
+     TVkDeviceGroupPresentModeFlagBitsKHX=
+      (
+       VK_DEVICE_GROUP_PRESENT_MODE_LOCAL_BIT_KHX=$00000001,                     //< Present from local memory
+       VK_DEVICE_GROUP_PRESENT_MODE_REMOTE_BIT_KHX=$00000002,                    //< Present from remote memory
+       VK_DEVICE_GROUP_PRESENT_MODE_SUM_BIT_KHX=$00000004,                       //< Present sum of local and/or remote memory
+       VK_DEVICE_GROUP_PRESENT_MODE_LOCAL_MULTI_DEVICE_BIT_KHX=$00000008         //< Each physical device presents from local memory
+      );
+
+     PPVkSwapchainCreateFlagBitsKHR=^PVkSwapchainCreateFlagBitsKHR;
+     PVkSwapchainCreateFlagBitsKHR=^TVkSwapchainCreateFlagBitsKHR;
+     TVkSwapchainCreateFlagBitsKHR=
+      (
+       VK_SWAPCHAIN_CREATE_BIND_SFR_BIT_KHX=$00000001
+      );
+
+     PPVkViewportCoordinateSwizzleNV=^PVkViewportCoordinateSwizzleNV;
+     PVkViewportCoordinateSwizzleNV=^TVkViewportCoordinateSwizzleNV;
+     TVkViewportCoordinateSwizzleNV=
+      (
+       VK_VIEWPORT_COORDINATE_SWIZZLE_POSITIVE_X_NV=0,
+       VK_VIEWPORT_COORDINATE_SWIZZLE_NEGATIVE_X_NV=1,
+       VK_VIEWPORT_COORDINATE_SWIZZLE_POSITIVE_Y_NV=2,
+       VK_VIEWPORT_COORDINATE_SWIZZLE_NEGATIVE_Y_NV=3,
+       VK_VIEWPORT_COORDINATE_SWIZZLE_POSITIVE_Z_NV=4,
+       VK_VIEWPORT_COORDINATE_SWIZZLE_NEGATIVE_Z_NV=5,
+       VK_VIEWPORT_COORDINATE_SWIZZLE_POSITIVE_W_NV=6,
+       VK_VIEWPORT_COORDINATE_SWIZZLE_NEGATIVE_W_NV=7
+      );
+
+     PPVkDiscardRectangleModeEXT=^PVkDiscardRectangleModeEXT;
+     PVkDiscardRectangleModeEXT=^TVkDiscardRectangleModeEXT;
+     TVkDiscardRectangleModeEXT=
+      (
+       VK_DISCARD_RECTANGLE_MODE_INCLUSIVE_EXT=0,
+       VK_DISCARD_RECTANGLE_MODE_EXCLUSIVE_EXT=1
+      );
+
+     PPVkSubpassDescriptionFlagBits=^PVkSubpassDescriptionFlagBits;
+     PVkSubpassDescriptionFlagBits=^TVkSubpassDescriptionFlagBits;
+     TVkSubpassDescriptionFlagBits=
+      (
+       VK_SUBPASS_DESCRIPTION_PER_VIEW_ATTRIBUTES_BIT_NVX=$00000001,
+       VK_SUBPASS_DESCRIPTION_PER_VIEW_POSITION_X_ONLY_BIT_NVX=$00000002
       );
 
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
@@ -4969,7 +5224,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
      PPVkXlibSurfaceCreateInfoKHR=^PVkXlibSurfaceCreateInfoKHR;
      PVkXlibSurfaceCreateInfoKHR=^TVkXlibSurfaceCreateInfoKHR;
      TVkXlibSurfaceCreateInfoKHR=record
@@ -5077,16 +5332,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        pNext:PVkVoid; //< Pointer to next structure
        waitSemaphoreCount:TVkUInt32; //< Number of semaphores to wait for before presenting
        pWaitSemaphores:PVkSemaphore; //< Semaphores to wait for before presenting
-       swapchainCount:TVkUInt32; //< Number of swap chains to present in this call
+       swapchainCount:TVkUInt32; //< Number of swapchains to present in this call
        pSwapchains:PVkSwapchainKHR; //< Swapchains to present an image from
-       pImageIndices:PVkUInt32; //< Indices of which swapchain images to present
+       pImageIndices:PVkUInt32; //< Indices of which presentable images to present
        pResults:PVkResult; //< Optional (i.e. if non-NULL) VkResult for each swapchain
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pWaitSemaphoreCount:TVkUInt32; //< Number of semaphores to wait for before presenting
                           const pPWaitSemaphores:PVkSemaphore; //< Semaphores to wait for before presenting
-                          const pSwapchainCount:TVkUInt32; //< Number of swap chains to present in this call
+                          const pSwapchainCount:TVkUInt32; //< Number of swapchains to present in this call
                           const pPSwapchains:PVkSwapchainKHR; //< Swapchains to present an image from
-                          const pPImageIndices:PVkUInt32; //< Indices of which swapchain images to present
+                          const pPImageIndices:PVkUInt32; //< Indices of which presentable images to present
                           const pPResults:PVkResult); //< Optional (i.e. if non-NULL) VkResult for each swapchain
 {$endif}
      end;
@@ -5757,6 +6012,494 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDevicePushDescriptorPropertiesKHR=^PVkPhysicalDevicePushDescriptorPropertiesKHR;
+     PVkPhysicalDevicePushDescriptorPropertiesKHR=^TVkPhysicalDevicePushDescriptorPropertiesKHR;
+     TVkPhysicalDevicePushDescriptorPropertiesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR
+       pNext:PVkVoid; //< Pointer to next structure
+       maxPushDescriptors:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pMaxPushDescriptors:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceProperties2KHX=^PVkPhysicalDeviceProperties2KHX;
+     PVkPhysicalDeviceProperties2KHX=^TVkPhysicalDeviceProperties2KHX;
+     TVkPhysicalDeviceProperties2KHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       properties:TVkPhysicalDeviceProperties;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pProperties:TVkPhysicalDeviceProperties);
+{$endif}
+     end;
+
+     PPVkImageFormatProperties2KHX=^PVkImageFormatProperties2KHX;
+     PVkImageFormatProperties2KHX=^TVkImageFormatProperties2KHX;
+     TVkImageFormatProperties2KHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       imageFormatProperties:TVkImageFormatProperties;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pImageFormatProperties:TVkImageFormatProperties);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceImageFormatInfo2KHX=^PVkPhysicalDeviceImageFormatInfo2KHX;
+     PVkPhysicalDeviceImageFormatInfo2KHX=^TVkPhysicalDeviceImageFormatInfo2KHX;
+     TVkPhysicalDeviceImageFormatInfo2KHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       format:TVkFormat;
+       type_:TVkImageType;
+       tiling:TVkImageTiling;
+       usage:TVkImageUsageFlags;
+       flags:TVkImageCreateFlags;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFormat:TVkFormat;
+                          const pType_:TVkImageType;
+                          const pTiling:TVkImageTiling;
+                          const pUsage:TVkImageUsageFlags;
+                          const pFlags:TVkImageCreateFlags);
+{$endif}
+     end;
+
+     PPVkExternalMemoryPropertiesKHX=^PVkExternalMemoryPropertiesKHX;
+     PVkExternalMemoryPropertiesKHX=^TVkExternalMemoryPropertiesKHX;
+     TVkExternalMemoryPropertiesKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       externalMemoryFeatures:TVkExternalMemoryFeatureFlagsKHX;
+       exportFromImportedHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX;
+       compatibleHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pExternalMemoryFeatures:TVkExternalMemoryFeatureFlagsKHX;
+                          const pExportFromImportedHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX;
+                          const pCompatibleHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceExternalImageFormatInfoKHX=^PVkPhysicalDeviceExternalImageFormatInfoKHX;
+     PVkPhysicalDeviceExternalImageFormatInfoKHX=^TVkPhysicalDeviceExternalImageFormatInfoKHX;
+     TVkPhysicalDeviceExternalImageFormatInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleType:TVkExternalMemoryHandleTypeFlagBitsKHX);
+{$endif}
+     end;
+
+     PPVkExternalImageFormatPropertiesKHX=^PVkExternalImageFormatPropertiesKHX;
+     PVkExternalImageFormatPropertiesKHX=^TVkExternalImageFormatPropertiesKHX;
+     TVkExternalImageFormatPropertiesKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       externalMemoryProperties:TVkExternalMemoryPropertiesKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pExternalMemoryProperties:TVkExternalMemoryPropertiesKHX);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceExternalBufferInfoKHX=^PVkPhysicalDeviceExternalBufferInfoKHX;
+     PVkPhysicalDeviceExternalBufferInfoKHX=^TVkPhysicalDeviceExternalBufferInfoKHX;
+     TVkPhysicalDeviceExternalBufferInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkBufferCreateFlags;
+       usage:TVkBufferUsageFlags;
+       handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFlags:TVkBufferCreateFlags;
+                          const pUsage:TVkBufferUsageFlags;
+                          const pHandleType:TVkExternalMemoryHandleTypeFlagBitsKHX);
+{$endif}
+     end;
+
+     PPVkExternalBufferPropertiesKHX=^PVkExternalBufferPropertiesKHX;
+     PVkExternalBufferPropertiesKHX=^TVkExternalBufferPropertiesKHX;
+     TVkExternalBufferPropertiesKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       externalMemoryProperties:TVkExternalMemoryPropertiesKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pExternalMemoryProperties:TVkExternalMemoryPropertiesKHX);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceIDPropertiesKHX=^PVkPhysicalDeviceIDPropertiesKHX;
+     PVkPhysicalDeviceIDPropertiesKHX=^TVkPhysicalDeviceIDPropertiesKHX;
+     TVkPhysicalDeviceIDPropertiesKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       deviceUUID:array[0..VK_UUID_SIZE-1] of TVkUInt8;
+       driverUUID:array[0..VK_UUID_SIZE-1] of TVkUInt8;
+       deviceLUID:array[0..VK_LUID_SIZE_KHX-1] of TVkUInt8;
+       deviceLUIDValid:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pDeviceUUID:array of TVkUInt8;
+                          const pDriverUUID:array of TVkUInt8;
+                          const pDeviceLUID:array of TVkUInt8;
+                          const pDeviceLUIDValid:TVkBool32);
+{$endif}
+     end;
+
+     PPVkExternalMemoryImageCreateInfoKHX=^PVkExternalMemoryImageCreateInfoKHX;
+     PVkExternalMemoryImageCreateInfoKHX=^TVkExternalMemoryImageCreateInfoKHX;
+     TVkExternalMemoryImageCreateInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       handleTypes:TVkExternalMemoryHandleTypeFlagsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX);
+{$endif}
+     end;
+
+     PPVkExternalMemoryBufferCreateInfoKHX=^PVkExternalMemoryBufferCreateInfoKHX;
+     PVkExternalMemoryBufferCreateInfoKHX=^TVkExternalMemoryBufferCreateInfoKHX;
+     TVkExternalMemoryBufferCreateInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       handleTypes:TVkExternalMemoryHandleTypeFlagsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX);
+{$endif}
+     end;
+
+     PPVkExportMemoryAllocateInfoKHX=^PVkExportMemoryAllocateInfoKHX;
+     PVkExportMemoryAllocateInfoKHX=^TVkExportMemoryAllocateInfoKHX;
+     TVkExportMemoryAllocateInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       handleTypes:TVkExternalMemoryHandleTypeFlagsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX);
+{$endif}
+     end;
+
+     PPVkImportMemoryWin32HandleInfoKHX=^PVkImportMemoryWin32HandleInfoKHX;
+     PVkImportMemoryWin32HandleInfoKHX=^TVkImportMemoryWin32HandleInfoKHX;
+     TVkImportMemoryWin32HandleInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;
+       handle:THANDLE;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleType:TVkExternalMemoryHandleTypeFlagBitsKHX;
+                          const pHandle:THANDLE);
+{$endif}
+     end;
+
+{$ifdef Windows}
+     PPVkExportMemoryWin32HandleInfoKHX=^PVkExportMemoryWin32HandleInfoKHX;
+     PVkExportMemoryWin32HandleInfoKHX=^TVkExportMemoryWin32HandleInfoKHX;
+     TVkExportMemoryWin32HandleInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       pAttributes:PSecurityAttributes;
+       dwAccess:TVkUInt32;
+       name:TLPCWSTR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPAttributes:PSecurityAttributes;
+                          const pDwAccess:TVkUInt32;
+                          const pName:TLPCWSTR);
+{$endif}
+     end;
+{$endif}
+
+     PPVkMemoryWin32HandlePropertiesKHX=^PVkMemoryWin32HandlePropertiesKHX;
+     PVkMemoryWin32HandlePropertiesKHX=^TVkMemoryWin32HandlePropertiesKHX;
+     TVkMemoryWin32HandlePropertiesKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_WIN32_HANDLE_PROPERTIES_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       memoryTypeBits:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pMemoryTypeBits:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkImportMemoryFdInfoKHX=^PVkImportMemoryFdInfoKHX;
+     PVkImportMemoryFdInfoKHX=^TVkImportMemoryFdInfoKHX;
+     TVkImportMemoryFdInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;
+       fd:TVkInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleType:TVkExternalMemoryHandleTypeFlagBitsKHX;
+                          const pFd:TVkInt32);
+{$endif}
+     end;
+
+     PPVkMemoryFdPropertiesKHX=^PVkMemoryFdPropertiesKHX;
+     PVkMemoryFdPropertiesKHX=^TVkMemoryFdPropertiesKHX;
+     TVkMemoryFdPropertiesKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       memoryTypeBits:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pMemoryTypeBits:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkWin32KeyedMutexAcquireReleaseInfoKHX=^PVkWin32KeyedMutexAcquireReleaseInfoKHX;
+     PVkWin32KeyedMutexAcquireReleaseInfoKHX=^TVkWin32KeyedMutexAcquireReleaseInfoKHX;
+     TVkWin32KeyedMutexAcquireReleaseInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       acquireCount:TVkUInt32;
+       pAcquireSyncs:PVkDeviceMemory;
+       pAcquireKeys:PVkUInt64;
+       pAcquireTimeouts:PVkUInt32;
+       releaseCount:TVkUInt32;
+       pReleaseSyncs:PVkDeviceMemory;
+       pReleaseKeys:PVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pAcquireCount:TVkUInt32;
+                          const pPAcquireSyncs:PVkDeviceMemory;
+                          const pPAcquireKeys:PVkUInt64;
+                          const pPAcquireTimeouts:PVkUInt32;
+                          const pReleaseCount:TVkUInt32;
+                          const pPReleaseSyncs:PVkDeviceMemory;
+                          const pPReleaseKeys:PVkUInt64);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceExternalSemaphoreInfoKHX=^PVkPhysicalDeviceExternalSemaphoreInfoKHX;
+     PVkPhysicalDeviceExternalSemaphoreInfoKHX=^TVkPhysicalDeviceExternalSemaphoreInfoKHX;
+     TVkPhysicalDeviceExternalSemaphoreInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX);
+{$endif}
+     end;
+
+     PPVkExternalSemaphorePropertiesKHX=^PVkExternalSemaphorePropertiesKHX;
+     PVkExternalSemaphorePropertiesKHX=^TVkExternalSemaphorePropertiesKHX;
+     TVkExternalSemaphorePropertiesKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       exportFromImportedHandleTypes:TVkExternalSemaphoreHandleTypeFlagsKHX;
+       compatibleHandleTypes:TVkExternalSemaphoreHandleTypeFlagsKHX;
+       externalSemaphoreFeatures:TVkExternalSemaphoreFeatureFlagsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pExportFromImportedHandleTypes:TVkExternalSemaphoreHandleTypeFlagsKHX;
+                          const pCompatibleHandleTypes:TVkExternalSemaphoreHandleTypeFlagsKHX;
+                          const pExternalSemaphoreFeatures:TVkExternalSemaphoreFeatureFlagsKHX);
+{$endif}
+     end;
+
+     PPVkExportSemaphoreCreateInfoKHX=^PVkExportSemaphoreCreateInfoKHX;
+     PVkExportSemaphoreCreateInfoKHX=^TVkExportSemaphoreCreateInfoKHX;
+     TVkExportSemaphoreCreateInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       handleTypes:TVkExternalSemaphoreHandleTypeFlagsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleTypes:TVkExternalSemaphoreHandleTypeFlagsKHX);
+{$endif}
+     end;
+
+     PPVkImportSemaphoreWin32HandleInfoKHX=^PVkImportSemaphoreWin32HandleInfoKHX;
+     PVkImportSemaphoreWin32HandleInfoKHX=^TVkImportSemaphoreWin32HandleInfoKHX;
+     TVkImportSemaphoreWin32HandleInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       semaphore:TVkSemaphore;
+       handleType:TVkExternalSemaphoreHandleTypeFlagsKHX;
+       handle:THANDLE;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSemaphore:TVkSemaphore;
+                          const pHandleType:TVkExternalSemaphoreHandleTypeFlagsKHX;
+                          const pHandle:THANDLE);
+{$endif}
+     end;
+
+{$ifdef Windows}
+     PPVkExportSemaphoreWin32HandleInfoKHX=^PVkExportSemaphoreWin32HandleInfoKHX;
+     PVkExportSemaphoreWin32HandleInfoKHX=^TVkExportSemaphoreWin32HandleInfoKHX;
+     TVkExportSemaphoreWin32HandleInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       pAttributes:PSecurityAttributes;
+       dwAccess:TVkUInt32;
+       name:TLPCWSTR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPAttributes:PSecurityAttributes;
+                          const pDwAccess:TVkUInt32;
+                          const pName:TLPCWSTR);
+{$endif}
+     end;
+{$endif}
+
+     PPVkD3D12FenceSubmitInfoKHX=^PVkD3D12FenceSubmitInfoKHX;
+     PVkD3D12FenceSubmitInfoKHX=^TVkD3D12FenceSubmitInfoKHX;
+     TVkD3D12FenceSubmitInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_D3D12_FENCE_SUBMIT_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       waitSemaphoreValuesCount:TVkUInt32;
+       pWaitSemaphoreValues:PVkUInt64;
+       signalSemaphoreValuesCount:TVkUInt32;
+       pSignalSemaphoreValues:PVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pWaitSemaphoreValuesCount:TVkUInt32;
+                          const pPWaitSemaphoreValues:PVkUInt64;
+                          const pSignalSemaphoreValuesCount:TVkUInt32;
+                          const pPSignalSemaphoreValues:PVkUInt64);
+{$endif}
+     end;
+
+     PPVkImportSemaphoreFdInfoKHX=^PVkImportSemaphoreFdInfoKHX;
+     PVkImportSemaphoreFdInfoKHX=^TVkImportSemaphoreFdInfoKHX;
+     TVkImportSemaphoreFdInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       semaphore:TVkSemaphore;
+       handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX;
+       fd:TVkInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSemaphore:TVkSemaphore;
+                          const pHandleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX;
+                          const pFd:TVkInt32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceMultiviewFeaturesKHX=^PVkPhysicalDeviceMultiviewFeaturesKHX;
+     PVkPhysicalDeviceMultiviewFeaturesKHX=^TVkPhysicalDeviceMultiviewFeaturesKHX;
+     TVkPhysicalDeviceMultiviewFeaturesKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       multiview:TVkBool32; //< Multiple views in a renderpass
+       multiviewGeometryShader:TVkBool32; //< Multiple views in a renderpass w/ geometry shader
+       multiviewTessellationShader:TVkBool32; //< Multiple views in a renderpass w/ tessellation shader
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pMultiview:TVkBool32; //< Multiple views in a renderpass
+                          const pMultiviewGeometryShader:TVkBool32; //< Multiple views in a renderpass w/ geometry shader
+                          const pMultiviewTessellationShader:TVkBool32); //< Multiple views in a renderpass w/ tessellation shader
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceMultiviewPropertiesKHX=^PVkPhysicalDeviceMultiviewPropertiesKHX;
+     PVkPhysicalDeviceMultiviewPropertiesKHX=^TVkPhysicalDeviceMultiviewPropertiesKHX;
+     TVkPhysicalDeviceMultiviewPropertiesKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       maxMultiviewViewCount:TVkUInt32; //< max number of views in a subpass
+       maxMultiviewInstanceIndex:TVkUInt32; //< max instance index for a draw in a multiview subpass
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pMaxMultiviewViewCount:TVkUInt32; //< max number of views in a subpass
+                          const pMaxMultiviewInstanceIndex:TVkUInt32); //< max instance index for a draw in a multiview subpass
+{$endif}
+     end;
+
+     PPVkRenderPassMultiviewCreateInfoKHX=^PVkRenderPassMultiviewCreateInfoKHX;
+     PVkRenderPassMultiviewCreateInfoKHX=^TVkRenderPassMultiviewCreateInfoKHX;
+     TVkRenderPassMultiviewCreateInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       subpassCount:TVkUInt32;
+       pViewMasks:PVkUInt32;
+       dependencyCount:TVkUInt32;
+       pViewOffsets:PVkInt32;
+       correlationMaskCount:TVkUInt32;
+       pCorrelationMasks:PVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSubpassCount:TVkUInt32;
+                          const pPViewMasks:PVkUInt32;
+                          const pDependencyCount:TVkUInt32;
+                          const pPViewOffsets:PVkInt32;
+                          const pCorrelationMaskCount:TVkUInt32;
+                          const pPCorrelationMasks:PVkUInt32);
+{$endif}
+     end;
+
      PPVkSurfaceCapabilities2EXT=^PVkSurfaceCapabilities2EXT;
      PVkSurfaceCapabilities2EXT=^TVkSurfaceCapabilities2EXT;
      TVkSurfaceCapabilities2EXT=record
@@ -5844,6 +6587,510 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        surfaceCounters:TVkSurfaceCounterFlagsEXT;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pSurfaceCounters:TVkSurfaceCounterFlagsEXT);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceGroupPropertiesKHX=^PVkPhysicalDeviceGroupPropertiesKHX;
+     PVkPhysicalDeviceGroupPropertiesKHX=^TVkPhysicalDeviceGroupPropertiesKHX;
+     TVkPhysicalDeviceGroupPropertiesKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       physicalDeviceCount:TVkUInt32;
+       physicalDevices:array[0..VK_MAX_DEVICE_GROUP_SIZE_KHX-1] of TVkPhysicalDevice;
+       subsetAllocation:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPhysicalDeviceCount:TVkUInt32;
+                          const pPhysicalDevices:array of TVkPhysicalDevice;
+                          const pSubsetAllocation:TVkBool32);
+{$endif}
+     end;
+
+     PPVkMemoryAllocateFlagsInfoKHX=^PVkMemoryAllocateFlagsInfoKHX;
+     PVkMemoryAllocateFlagsInfoKHX=^TVkMemoryAllocateFlagsInfoKHX;
+     TVkMemoryAllocateFlagsInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkMemoryAllocateFlagsKHX;
+       deviceMask:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFlags:TVkMemoryAllocateFlagsKHX;
+                          const pDeviceMask:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkBindBufferMemoryInfoKHX=^PVkBindBufferMemoryInfoKHX;
+     PVkBindBufferMemoryInfoKHX=^TVkBindBufferMemoryInfoKHX;
+     TVkBindBufferMemoryInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       buffer:TVkBuffer;
+       memory:TVkDeviceMemory;
+       memoryOffset:TVkDeviceSize;
+       deviceIndexCount:TVkUInt32;
+       pDeviceIndices:PVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pBuffer:TVkBuffer;
+                          const pMemory:TVkDeviceMemory;
+                          const pMemoryOffset:TVkDeviceSize;
+                          const pDeviceIndexCount:TVkUInt32;
+                          const pPDeviceIndices:PVkUInt32);
+{$endif}
+     end;
+
+     PPVkBindImageMemoryInfoKHX=^PVkBindImageMemoryInfoKHX;
+     PVkBindImageMemoryInfoKHX=^TVkBindImageMemoryInfoKHX;
+     TVkBindImageMemoryInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       image:TVkImage;
+       memory:TVkDeviceMemory;
+       memoryOffset:TVkDeviceSize;
+       deviceIndexCount:TVkUInt32;
+       pDeviceIndices:PVkUInt32;
+       SFRRectCount:TVkUInt32;
+       pSFRRects:PVkRect2D;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pImage:TVkImage;
+                          const pMemory:TVkDeviceMemory;
+                          const pMemoryOffset:TVkDeviceSize;
+                          const pDeviceIndexCount:TVkUInt32;
+                          const pPDeviceIndices:PVkUInt32;
+                          const pSFRRectCount:TVkUInt32;
+                          const pPSFRRects:PVkRect2D);
+{$endif}
+     end;
+
+     PPVkDeviceGroupRenderPassBeginInfoKHX=^PVkDeviceGroupRenderPassBeginInfoKHX;
+     PVkDeviceGroupRenderPassBeginInfoKHX=^TVkDeviceGroupRenderPassBeginInfoKHX;
+     TVkDeviceGroupRenderPassBeginInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       deviceMask:TVkUInt32;
+       deviceRenderAreaCount:TVkUInt32;
+       pDeviceRenderAreas:PVkRect2D;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pDeviceMask:TVkUInt32;
+                          const pDeviceRenderAreaCount:TVkUInt32;
+                          const pPDeviceRenderAreas:PVkRect2D);
+{$endif}
+     end;
+
+     PPVkDeviceGroupCommandBufferBeginInfoKHX=^PVkDeviceGroupCommandBufferBeginInfoKHX;
+     PVkDeviceGroupCommandBufferBeginInfoKHX=^TVkDeviceGroupCommandBufferBeginInfoKHX;
+     TVkDeviceGroupCommandBufferBeginInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       deviceMask:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pDeviceMask:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkDeviceGroupSubmitInfoKHX=^PVkDeviceGroupSubmitInfoKHX;
+     PVkDeviceGroupSubmitInfoKHX=^TVkDeviceGroupSubmitInfoKHX;
+     TVkDeviceGroupSubmitInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       waitSemaphoreCount:TVkUInt32;
+       pWaitSemaphoreDeviceIndices:PVkUInt32;
+       commandBufferCount:TVkUInt32;
+       pCommandBufferDeviceMasks:PVkUInt32;
+       signalSemaphoreCount:TVkUInt32;
+       pSignalSemaphoreDeviceIndices:PVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pWaitSemaphoreCount:TVkUInt32;
+                          const pPWaitSemaphoreDeviceIndices:PVkUInt32;
+                          const pCommandBufferCount:TVkUInt32;
+                          const pPCommandBufferDeviceMasks:PVkUInt32;
+                          const pSignalSemaphoreCount:TVkUInt32;
+                          const pPSignalSemaphoreDeviceIndices:PVkUInt32);
+{$endif}
+     end;
+
+     PPVkDeviceGroupBindSparseInfoKHX=^PVkDeviceGroupBindSparseInfoKHX;
+     PVkDeviceGroupBindSparseInfoKHX=^TVkDeviceGroupBindSparseInfoKHX;
+     TVkDeviceGroupBindSparseInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       resourceDeviceIndex:TVkUInt32;
+       memoryDeviceIndex:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pResourceDeviceIndex:TVkUInt32;
+                          const pMemoryDeviceIndex:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkDeviceGroupPresentCapabilitiesKHX=^PVkDeviceGroupPresentCapabilitiesKHX;
+     PVkDeviceGroupPresentCapabilitiesKHX=^TVkDeviceGroupPresentCapabilitiesKHX;
+     TVkDeviceGroupPresentCapabilitiesKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_CAPABILITIES_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       presentMask:array[0..VK_MAX_DEVICE_GROUP_SIZE_KHX-1] of TVkUInt32;
+       modes:TVkDeviceGroupPresentModeFlagsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPresentMask:array of TVkUInt32;
+                          const pModes:TVkDeviceGroupPresentModeFlagsKHX);
+{$endif}
+     end;
+
+     PPVkImageSwapchainCreateInfoKHX=^PVkImageSwapchainCreateInfoKHX;
+     PVkImageSwapchainCreateInfoKHX=^TVkImageSwapchainCreateInfoKHX;
+     TVkImageSwapchainCreateInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       swapchain:TVkSwapchainKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSwapchain:TVkSwapchainKHR);
+{$endif}
+     end;
+
+     PPVkBindImageMemorySwapchainInfoKHX=^PVkBindImageMemorySwapchainInfoKHX;
+     PVkBindImageMemorySwapchainInfoKHX=^TVkBindImageMemorySwapchainInfoKHX;
+     TVkBindImageMemorySwapchainInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       swapchain:TVkSwapchainKHR;
+       imageIndex:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSwapchain:TVkSwapchainKHR;
+                          const pImageIndex:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkAcquireNextImageInfoKHX=^PVkAcquireNextImageInfoKHX;
+     PVkAcquireNextImageInfoKHX=^TVkAcquireNextImageInfoKHX;
+     TVkAcquireNextImageInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       swapchain:TVkSwapchainKHR;
+       timeout:TVkUInt64;
+       semaphore:TVkSemaphore;
+       fence:TVkFence;
+       deviceMask:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSwapchain:TVkSwapchainKHR;
+                          const pTimeout:TVkUInt64;
+                          const pSemaphore:TVkSemaphore;
+                          const pFence:TVkFence;
+                          const pDeviceMask:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkDeviceGroupPresentInfoKHX=^PVkDeviceGroupPresentInfoKHX;
+     PVkDeviceGroupPresentInfoKHX=^TVkDeviceGroupPresentInfoKHX;
+     TVkDeviceGroupPresentInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       swapchainCount:TVkUInt32;
+       pDeviceMasks:PVkUInt32;
+       mode:TVkDeviceGroupPresentModeFlagBitsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSwapchainCount:TVkUInt32;
+                          const pPDeviceMasks:PVkUInt32;
+                          const pMode:TVkDeviceGroupPresentModeFlagBitsKHX);
+{$endif}
+     end;
+
+     PPVkDeviceGroupDeviceCreateInfoKHX=^PVkDeviceGroupDeviceCreateInfoKHX;
+     PVkDeviceGroupDeviceCreateInfoKHX=^TVkDeviceGroupDeviceCreateInfoKHX;
+     TVkDeviceGroupDeviceCreateInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       physicalDeviceCount:TVkUInt32;
+       pPhysicalDevices:PVkPhysicalDevice;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPhysicalDeviceCount:TVkUInt32;
+                          const pPPhysicalDevices:PVkPhysicalDevice);
+{$endif}
+     end;
+
+     PPVkDeviceGroupSwapchainCreateInfoKHX=^PVkDeviceGroupSwapchainCreateInfoKHX;
+     PVkDeviceGroupSwapchainCreateInfoKHX=^TVkDeviceGroupSwapchainCreateInfoKHX;
+     TVkDeviceGroupSwapchainCreateInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHX
+       pNext:PVkVoid; //< Pointer to next structure
+       modes:TVkDeviceGroupPresentModeFlagsKHX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pModes:TVkDeviceGroupPresentModeFlagsKHX);
+{$endif}
+     end;
+
+     PPVkDescriptorUpdateTemplateEntryKHR=^PVkDescriptorUpdateTemplateEntryKHR;
+     PVkDescriptorUpdateTemplateEntryKHR=^TVkDescriptorUpdateTemplateEntryKHR;
+     TVkDescriptorUpdateTemplateEntryKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       dstBinding:TVkUInt32; //< Binding within the destination descriptor set to write
+       dstArrayElement:TVkUInt32; //< Array element within the destination binding to write
+       descriptorCount:TVkUInt32; //< Number of descriptors to write
+       descriptorType:TVkDescriptorType; //< Descriptor type to write
+       offset:TVkSize; //< Offset into pData where the descriptors to update are stored
+       stride:TVkSize; //< Stride between two descriptors in pData when writing more than one descriptor
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pDstBinding:TVkUInt32; //< Binding within the destination descriptor set to write
+                          const pDstArrayElement:TVkUInt32; //< Array element within the destination binding to write
+                          const pDescriptorCount:TVkUInt32; //< Number of descriptors to write
+                          const pDescriptorType:TVkDescriptorType; //< Descriptor type to write
+                          const pOffset:TVkSize; //< Offset into pData where the descriptors to update are stored
+                          const pStride:TVkSize); //< Stride between two descriptors in pData when writing more than one descriptor
+{$endif}
+     end;
+
+     PPVkDescriptorUpdateTemplateCreateInfoKHR=^PVkDescriptorUpdateTemplateCreateInfoKHR;
+     PVkDescriptorUpdateTemplateCreateInfoKHR=^TVkDescriptorUpdateTemplateCreateInfoKHR;
+     TVkDescriptorUpdateTemplateCreateInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkDescriptorUpdateTemplateCreateFlagsKHR; //< Reserved
+       descriptorUpdateEntryCount:TVkUInt32; //< Number of descriptor update entries to use for the update template
+       pDescriptorUpdateEntries:PVkDescriptorUpdateTemplateEntryKHR; //< Descriptor update entries for the template
+       templateType:TVkDescriptorUpdateTemplateTypeKHR;
+       descriptorSetLayout:TVkDescriptorSetLayout;
+       pipelineBindPoint:TVkPipelineBindPoint;
+       pipelineLayout:TVkPipelineLayout; //< If used for push descriptors, this is the only allowed layout
+       set_:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFlags:TVkDescriptorUpdateTemplateCreateFlagsKHR; //< Reserved
+                          const pDescriptorUpdateEntryCount:TVkUInt32; //< Number of descriptor update entries to use for the update template
+                          const pPDescriptorUpdateEntries:PVkDescriptorUpdateTemplateEntryKHR; //< Descriptor update entries for the template
+                          const pTemplateType:TVkDescriptorUpdateTemplateTypeKHR;
+                          const pDescriptorSetLayout:TVkDescriptorSetLayout;
+                          const pPipelineBindPoint:TVkPipelineBindPoint;
+                          const pPipelineLayout:TVkPipelineLayout; //< If used for push descriptors, this is the only allowed layout
+                          const pSet_:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkXYColorEXT=^PVkXYColorEXT;
+     PVkXYColorEXT=^TVkXYColorEXT;
+     TVkXYColorEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       x:TVkFloat;
+       y:TVkFloat;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pX:TVkFloat;
+                          const pY:TVkFloat);
+{$endif}
+     end;
+
+     PPVkSMPTE2086MetadataEXT=^PVkSMPTE2086MetadataEXT;
+     PVkSMPTE2086MetadataEXT=^TVkSMPTE2086MetadataEXT;
+     TVkSMPTE2086MetadataEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       displayPrimaryRed:TVkXYColorEXT; //< Display primary's Red
+       displayPrimaryGreen:TVkXYColorEXT; //< Display primary's Green
+       displayPrimaryBlue:TVkXYColorEXT; //< Display primary's Blue
+       whitePoint:TVkXYColorEXT; //< Display primary's Blue
+       maxLuminance:TVkFloat; //< Display maximum luminance
+       minLuminance:TVkFloat; //< Display minimum luminance
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pDisplayPrimaryRed:TVkXYColorEXT; //< Display primary's Red
+                          const pDisplayPrimaryGreen:TVkXYColorEXT; //< Display primary's Green
+                          const pDisplayPrimaryBlue:TVkXYColorEXT; //< Display primary's Blue
+                          const pWhitePoint:TVkXYColorEXT; //< Display primary's Blue
+                          const pMaxLuminance:TVkFloat; //< Display maximum luminance
+                          const pMinLuminance:TVkFloat); //< Display minimum luminance
+{$endif}
+     end;
+
+     PPVkIOSSurfaceCreateInfoMVK=^PVkIOSSurfaceCreateInfoMVK;
+     PVkIOSSurfaceCreateInfoMVK=^TVkIOSSurfaceCreateInfoMVK;
+     TVkIOSSurfaceCreateInfoMVK=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkIOSSurfaceCreateFlagsMVK; //< Reserved
+       pView:PVkVoid;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFlags:TVkIOSSurfaceCreateFlagsMVK; //< Reserved
+                          const pPView:PVkVoid);
+{$endif}
+     end;
+
+     PPVkMacOSSurfaceCreateInfoMVK=^PVkMacOSSurfaceCreateInfoMVK;
+     PVkMacOSSurfaceCreateInfoMVK=^TVkMacOSSurfaceCreateInfoMVK;
+     TVkMacOSSurfaceCreateInfoMVK=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkMacOSSurfaceCreateFlagsMVK; //< Reserved
+       pView:PVkVoid;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFlags:TVkMacOSSurfaceCreateFlagsMVK; //< Reserved
+                          const pPView:PVkVoid);
+{$endif}
+     end;
+
+     PPVkViewportWScalingNV=^PVkViewportWScalingNV;
+     PVkViewportWScalingNV=^TVkViewportWScalingNV;
+     TVkViewportWScalingNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       xcoeff:TVkFloat;
+       ycoeff:TVkFloat;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pXcoeff:TVkFloat;
+                          const pYcoeff:TVkFloat);
+{$endif}
+     end;
+
+     PPVkPipelineViewportWScalingStateCreateInfoNV=^PVkPipelineViewportWScalingStateCreateInfoNV;
+     PVkPipelineViewportWScalingStateCreateInfoNV=^TVkPipelineViewportWScalingStateCreateInfoNV;
+     TVkPipelineViewportWScalingStateCreateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV
+       pNext:PVkVoid; //< Pointer to next structure
+       viewportWScalingEnable:TVkBool32;
+       viewportCount:TVkUInt32;
+       pViewportWScalings:PVkViewportWScalingNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pViewportWScalingEnable:TVkBool32;
+                          const pViewportCount:TVkUInt32;
+                          const pPViewportWScalings:PVkViewportWScalingNV);
+{$endif}
+     end;
+
+     PPVkViewportSwizzleNV=^PVkViewportSwizzleNV;
+     PVkViewportSwizzleNV=^TVkViewportSwizzleNV;
+     TVkViewportSwizzleNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       x:TVkViewportCoordinateSwizzleNV;
+       y:TVkViewportCoordinateSwizzleNV;
+       z:TVkViewportCoordinateSwizzleNV;
+       w:TVkViewportCoordinateSwizzleNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pX:TVkViewportCoordinateSwizzleNV;
+                          const pY:TVkViewportCoordinateSwizzleNV;
+                          const pZ:TVkViewportCoordinateSwizzleNV;
+                          const pW:TVkViewportCoordinateSwizzleNV);
+{$endif}
+     end;
+
+     PPVkPipelineViewportSwizzleStateCreateInfoNV=^PVkPipelineViewportSwizzleStateCreateInfoNV;
+     PVkPipelineViewportSwizzleStateCreateInfoNV=^TVkPipelineViewportSwizzleStateCreateInfoNV;
+     TVkPipelineViewportSwizzleStateCreateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkPipelineViewportSwizzleStateCreateFlagsNV; //< Reserved
+       viewportCount:TVkUInt32;
+       pViewportSwizzles:PVkViewportSwizzleNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFlags:TVkPipelineViewportSwizzleStateCreateFlagsNV; //< Reserved
+                          const pViewportCount:TVkUInt32;
+                          const pPViewportSwizzles:PVkViewportSwizzleNV);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceDiscardRectanglePropertiesEXT=^PVkPhysicalDeviceDiscardRectanglePropertiesEXT;
+     PVkPhysicalDeviceDiscardRectanglePropertiesEXT=^TVkPhysicalDeviceDiscardRectanglePropertiesEXT;
+     TVkPhysicalDeviceDiscardRectanglePropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       maxDiscardRectangles:TVkUInt32; //< max number of active discard rectangles
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pMaxDiscardRectangles:TVkUInt32); //< max number of active discard rectangles
+{$endif}
+     end;
+
+     PPVkPipelineDiscardRectangleStateCreateInfoEXT=^PVkPipelineDiscardRectangleStateCreateInfoEXT;
+     PVkPipelineDiscardRectangleStateCreateInfoEXT=^TVkPipelineDiscardRectangleStateCreateInfoEXT;
+     TVkPipelineDiscardRectangleStateCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkPipelineDiscardRectangleStateCreateFlagsEXT; //< Reserved
+       discardRectangleMode:TVkDiscardRectangleModeEXT;
+       discardRectangleCount:TVkUInt32;
+       pDiscardRectangles:PVkRect2D;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFlags:TVkPipelineDiscardRectangleStateCreateFlagsEXT; //< Reserved
+                          const pDiscardRectangleMode:TVkDiscardRectangleModeEXT;
+                          const pDiscardRectangleCount:TVkUInt32;
+                          const pPDiscardRectangles:PVkRect2D);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX=^PVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX;
+     PVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX=^TVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX;
+     TVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX
+       pNext:PVkVoid; //< Pointer to next structure
+       perViewPositionAllComponents:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPerViewPositionAllComponents:TVkBool32);
 {$endif}
      end;
 
@@ -6067,7 +7314,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkCmdDrawIndexedIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDispatch=procedure(commandBuffer:TVkCommandBuffer;x:TVkUInt32;y:TVkUInt32;z:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDispatch=procedure(commandBuffer:TVkCommandBuffer;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdDispatchIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -6187,11 +7434,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkGetPhysicalDeviceWin32PresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
      TvkCreateXlibSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkXlibSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
      TvkGetPhysicalDeviceXlibPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PDisplay;visualID:TVisualID):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
@@ -6261,11 +7508,45 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetPhysicalDeviceSparseImageFormatProperties2KHR=procedure(physicalDevice:TVkPhysicalDevice;const pFormatInfo:PVkPhysicalDeviceSparseImageFormatInfo2KHR;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties2KHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     TvkCmdPushDescriptorSetKHR=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;set_:TVkUInt32;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkTrimCommandPoolKHR=procedure(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolTrimFlagsKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceProperties2KHX=procedure(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties2KHX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceImageFormatProperties2KHX=function(physicalDevice:TVkPhysicalDevice;const pImageFormatInfo:PVkPhysicalDeviceImageFormatInfo2KHX;pImageFormatProperties:PVkImageFormatProperties2KHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceExternalBufferPropertiesKHX=procedure(physicalDevice:TVkPhysicalDevice;const pExternalBufferInfo:PVkPhysicalDeviceExternalBufferInfoKHX;pExternalBufferProperties:PVkExternalBufferPropertiesKHX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+{$ifdef Windows}
+     TvkGetMemoryWin32HandleKHX=function(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+{$ifdef Windows}
+     TvkGetMemoryWin32HandlePropertiesKHX=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;handle:THANDLE;pMemoryWin32HandleProperties:PVkMemoryWin32HandlePropertiesKHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+     TvkGetMemoryFdKHX=function(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;pFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetMemoryFdPropertiesKHX=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;fd:TVkInt32;pMemoryFdProperties:PVkMemoryFdPropertiesKHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceExternalSemaphorePropertiesKHX=procedure(physicalDevice:TVkPhysicalDevice;const pExternalSemaphoreInfo:PVkPhysicalDeviceExternalSemaphoreInfoKHX;pExternalSemaphoreProperties:PVkExternalSemaphorePropertiesKHX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+{$ifdef Windows}
+     TvkGetSemaphoreWin32HandleKHX=function(device:TVkDevice;semaphore:TVkSemaphore;handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+{$ifdef Windows}
+     TvkImportSemaphoreWin32HandleKHX=function(device:TVkDevice;const pImportSemaphoreWin32HandleInfo:PVkImportSemaphoreWin32HandleInfoKHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+     TvkGetSemaphoreFdKHX=function(device:TVkDevice;semaphore:TVkSemaphore;handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX;pFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkImportSemaphoreFdKHX=function(device:TVkDevice;const pImportSemaphoreFdInfo:PVkImportSemaphoreFdInfoKHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkReleaseDisplayEXT=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
      TvkAcquireXlibDisplayEXT=function(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
@@ -6282,6 +7563,44 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkGetSwapchainCounterEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR;counter:TVkSurfaceCounterFlagBitsEXT;pCounterValue:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetPhysicalDeviceSurfaceCapabilities2EXT=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceCapabilities:PVkSurfaceCapabilities2EXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkEnumeratePhysicalDeviceGroupsKHX=function(instance:TVkInstance;pPhysicalDeviceGroupCount:PVkUInt32;pPhysicalDeviceGroupProperties:PVkPhysicalDeviceGroupPropertiesKHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetDeviceGroupPeerMemoryFeaturesKHX=procedure(device:TVkDevice;heapIndex:TVkUInt32;localDeviceIndex:TVkUInt32;remoteDeviceIndex:TVkUInt32;pPeerMemoryFeatures:PVkPeerMemoryFeatureFlagsKHX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkBindBufferMemory2KHX=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfoKHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkBindImageMemory2KHX=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfoKHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdSetDeviceMaskKHX=procedure(commandBuffer:TVkCommandBuffer;deviceMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetDeviceGroupPresentCapabilitiesKHX=function(device:TVkDevice;pDeviceGroupPresentCapabilities:PVkDeviceGroupPresentCapabilitiesKHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetDeviceGroupSurfacePresentModesKHX=function(device:TVkDevice;surface:TVkSurfaceKHR;pModes:PVkDeviceGroupPresentModeFlagsKHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkAcquireNextImage2KHX=function(device:TVkDevice;const pAcquireInfo:PVkAcquireNextImageInfoKHX;pImageIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdDispatchBaseKHX=procedure(commandBuffer:TVkCommandBuffer;baseGroupX:TVkUInt32;baseGroupY:TVkUInt32;baseGroupZ:TVkUInt32;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDevicePresentRectanglesKHX=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pRectCount:PVkUInt32;pRects:PVkRect2D):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCreateDescriptorUpdateTemplateKHR=function(device:TVkDevice;const pCreateInfo:PVkDescriptorUpdateTemplateCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pDescriptorUpdateTemplate:PVkDescriptorUpdateTemplateKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkDestroyDescriptorUpdateTemplateKHR=procedure(device:TVkDevice;descriptorUpdateTemplate:TVkDescriptorUpdateTemplateKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkUpdateDescriptorSetWithTemplateKHR=procedure(device:TVkDevice;descriptorSet:TVkDescriptorSet;descriptorUpdateTemplate:TVkDescriptorUpdateTemplateKHR;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdPushDescriptorSetWithTemplateKHR=procedure(commandBuffer:TVkCommandBuffer;descriptorUpdateTemplate:TVkDescriptorUpdateTemplateKHR;layout:TVkPipelineLayout;set_:TVkUInt32;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkSetSMPTE2086MetadataEXT=procedure(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkSMPTE2086MetadataEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCreateIOSSurfaceMVK=function(instance:TVkInstance;const pCreateInfo:PVkIOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCreateMacOSSurfaceMVK=function(instance:TVkInstance;const pCreateInfo:PVkMacOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdSetViewportWScalingNV=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdSetDiscardRectangleEXT=procedure(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -6627,11 +7946,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       GetPhysicalDeviceWin32PresentationSupportKHR:TvkGetPhysicalDeviceWin32PresentationSupportKHR;
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
       CreateXlibSurfaceKHR:TvkCreateXlibSurfaceKHR;
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
       GetPhysicalDeviceXlibPresentationSupportKHR:TvkGetPhysicalDeviceXlibPresentationSupportKHR;
 {$endif}
 
@@ -6701,11 +8020,45 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetPhysicalDeviceSparseImageFormatProperties2KHR:TvkGetPhysicalDeviceSparseImageFormatProperties2KHR;
 
+      CmdPushDescriptorSetKHR:TvkCmdPushDescriptorSetKHR;
+
       TrimCommandPoolKHR:TvkTrimCommandPoolKHR;
+
+      GetPhysicalDeviceProperties2KHX:TvkGetPhysicalDeviceProperties2KHX;
+
+      GetPhysicalDeviceImageFormatProperties2KHX:TvkGetPhysicalDeviceImageFormatProperties2KHX;
+
+      GetPhysicalDeviceExternalBufferPropertiesKHX:TvkGetPhysicalDeviceExternalBufferPropertiesKHX;
+
+{$ifdef Windows}
+      GetMemoryWin32HandleKHX:TvkGetMemoryWin32HandleKHX;
+{$endif}
+
+{$ifdef Windows}
+      GetMemoryWin32HandlePropertiesKHX:TvkGetMemoryWin32HandlePropertiesKHX;
+{$endif}
+
+      GetMemoryFdKHX:TvkGetMemoryFdKHX;
+
+      GetMemoryFdPropertiesKHX:TvkGetMemoryFdPropertiesKHX;
+
+      GetPhysicalDeviceExternalSemaphorePropertiesKHX:TvkGetPhysicalDeviceExternalSemaphorePropertiesKHX;
+
+{$ifdef Windows}
+      GetSemaphoreWin32HandleKHX:TvkGetSemaphoreWin32HandleKHX;
+{$endif}
+
+{$ifdef Windows}
+      ImportSemaphoreWin32HandleKHX:TvkImportSemaphoreWin32HandleKHX;
+{$endif}
+
+      GetSemaphoreFdKHX:TvkGetSemaphoreFdKHX;
+
+      ImportSemaphoreFdKHX:TvkImportSemaphoreFdKHX;
 
       ReleaseDisplayEXT:TvkReleaseDisplayEXT;
 
-{$ifdef X11}
+{$ifdef XLIB}
       AcquireXlibDisplayEXT:TvkAcquireXlibDisplayEXT;
 {$endif}
 
@@ -6722,6 +8075,44 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       GetSwapchainCounterEXT:TvkGetSwapchainCounterEXT;
 
       GetPhysicalDeviceSurfaceCapabilities2EXT:TvkGetPhysicalDeviceSurfaceCapabilities2EXT;
+
+      EnumeratePhysicalDeviceGroupsKHX:TvkEnumeratePhysicalDeviceGroupsKHX;
+
+      GetDeviceGroupPeerMemoryFeaturesKHX:TvkGetDeviceGroupPeerMemoryFeaturesKHX;
+
+      BindBufferMemory2KHX:TvkBindBufferMemory2KHX;
+
+      BindImageMemory2KHX:TvkBindImageMemory2KHX;
+
+      CmdSetDeviceMaskKHX:TvkCmdSetDeviceMaskKHX;
+
+      GetDeviceGroupPresentCapabilitiesKHX:TvkGetDeviceGroupPresentCapabilitiesKHX;
+
+      GetDeviceGroupSurfacePresentModesKHX:TvkGetDeviceGroupSurfacePresentModesKHX;
+
+      AcquireNextImage2KHX:TvkAcquireNextImage2KHX;
+
+      CmdDispatchBaseKHX:TvkCmdDispatchBaseKHX;
+
+      GetPhysicalDevicePresentRectanglesKHX:TvkGetPhysicalDevicePresentRectanglesKHX;
+
+      CreateDescriptorUpdateTemplateKHR:TvkCreateDescriptorUpdateTemplateKHR;
+
+      DestroyDescriptorUpdateTemplateKHR:TvkDestroyDescriptorUpdateTemplateKHR;
+
+      UpdateDescriptorSetWithTemplateKHR:TvkUpdateDescriptorSetWithTemplateKHR;
+
+      CmdPushDescriptorSetWithTemplateKHR:TvkCmdPushDescriptorSetWithTemplateKHR;
+
+      SetSMPTE2086MetadataEXT:TvkSetSMPTE2086MetadataEXT;
+
+      CreateIOSSurfaceMVK:TvkCreateIOSSurfaceMVK;
+
+      CreateMacOSSurfaceMVK:TvkCreateMacOSSurfaceMVK;
+
+      CmdSetViewportWScalingNV:TvkCmdSetViewportWScalingNV;
+
+      CmdSetDiscardRectangleEXT:TvkCmdSetDiscardRectangleEXT;
 
      end;
 
@@ -6952,7 +8343,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure CmdDrawIndexedIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); virtual;
 
-       procedure CmdDispatch(commandBuffer:TVkCommandBuffer;x:TVkUInt32;y:TVkUInt32;z:TVkUInt32); virtual;
+       procedure CmdDispatch(commandBuffer:TVkCommandBuffer;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); virtual;
 
        procedure CmdDispatchIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); virtual;
 
@@ -7072,11 +8463,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function GetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32):TVkBool32; virtual;
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
        function CreateXlibSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkXlibSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
        function GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PDisplay;visualID:TVisualID):TVkBool32; virtual;
 {$endif}
 
@@ -7146,11 +8537,45 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure GetPhysicalDeviceSparseImageFormatProperties2KHR(physicalDevice:TVkPhysicalDevice;const pFormatInfo:PVkPhysicalDeviceSparseImageFormatInfo2KHR;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties2KHR); virtual;
 
+       procedure CmdPushDescriptorSetKHR(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;set_:TVkUInt32;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet); virtual;
+
        procedure TrimCommandPoolKHR(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolTrimFlagsKHR); virtual;
+
+       procedure GetPhysicalDeviceProperties2KHX(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties2KHX); virtual;
+
+       function GetPhysicalDeviceImageFormatProperties2KHX(physicalDevice:TVkPhysicalDevice;const pImageFormatInfo:PVkPhysicalDeviceImageFormatInfo2KHX;pImageFormatProperties:PVkImageFormatProperties2KHX):TVkResult; virtual;
+
+       procedure GetPhysicalDeviceExternalBufferPropertiesKHX(physicalDevice:TVkPhysicalDevice;const pExternalBufferInfo:PVkPhysicalDeviceExternalBufferInfoKHX;pExternalBufferProperties:PVkExternalBufferPropertiesKHX); virtual;
+
+{$ifdef Windows}
+       function GetMemoryWin32HandleKHX(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;pHandle:PHANDLE):TVkResult; virtual;
+{$endif}
+
+{$ifdef Windows}
+       function GetMemoryWin32HandlePropertiesKHX(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;handle:THANDLE;pMemoryWin32HandleProperties:PVkMemoryWin32HandlePropertiesKHX):TVkResult; virtual;
+{$endif}
+
+       function GetMemoryFdKHX(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;pFd:PVkInt32):TVkResult; virtual;
+
+       function GetMemoryFdPropertiesKHX(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;fd:TVkInt32;pMemoryFdProperties:PVkMemoryFdPropertiesKHX):TVkResult; virtual;
+
+       procedure GetPhysicalDeviceExternalSemaphorePropertiesKHX(physicalDevice:TVkPhysicalDevice;const pExternalSemaphoreInfo:PVkPhysicalDeviceExternalSemaphoreInfoKHX;pExternalSemaphoreProperties:PVkExternalSemaphorePropertiesKHX); virtual;
+
+{$ifdef Windows}
+       function GetSemaphoreWin32HandleKHX(device:TVkDevice;semaphore:TVkSemaphore;handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX;pHandle:PHANDLE):TVkResult; virtual;
+{$endif}
+
+{$ifdef Windows}
+       function ImportSemaphoreWin32HandleKHX(device:TVkDevice;const pImportSemaphoreWin32HandleInfo:PVkImportSemaphoreWin32HandleInfoKHX):TVkResult; virtual;
+{$endif}
+
+       function GetSemaphoreFdKHX(device:TVkDevice;semaphore:TVkSemaphore;handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX;pFd:PVkInt32):TVkResult; virtual;
+
+       function ImportSemaphoreFdKHX(device:TVkDevice;const pImportSemaphoreFdInfo:PVkImportSemaphoreFdInfoKHX):TVkResult; virtual;
 
        function ReleaseDisplayEXT(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR):TVkResult; virtual;
 
-{$ifdef X11}
+{$ifdef XLIB}
        function AcquireXlibDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;display:TVkDisplayKHR):TVkResult; virtual;
 {$endif}
 
@@ -7167,6 +8592,44 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function GetSwapchainCounterEXT(device:TVkDevice;swapchain:TVkSwapchainKHR;counter:TVkSurfaceCounterFlagBitsEXT;pCounterValue:PVkUInt64):TVkResult; virtual;
 
        function GetPhysicalDeviceSurfaceCapabilities2EXT(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceCapabilities:PVkSurfaceCapabilities2EXT):TVkResult; virtual;
+
+       function EnumeratePhysicalDeviceGroupsKHX(instance:TVkInstance;pPhysicalDeviceGroupCount:PVkUInt32;pPhysicalDeviceGroupProperties:PVkPhysicalDeviceGroupPropertiesKHX):TVkResult; virtual;
+
+       procedure GetDeviceGroupPeerMemoryFeaturesKHX(device:TVkDevice;heapIndex:TVkUInt32;localDeviceIndex:TVkUInt32;remoteDeviceIndex:TVkUInt32;pPeerMemoryFeatures:PVkPeerMemoryFeatureFlagsKHX); virtual;
+
+       function BindBufferMemory2KHX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfoKHX):TVkResult; virtual;
+
+       function BindImageMemory2KHX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfoKHX):TVkResult; virtual;
+
+       procedure CmdSetDeviceMaskKHX(commandBuffer:TVkCommandBuffer;deviceMask:TVkUInt32); virtual;
+
+       function GetDeviceGroupPresentCapabilitiesKHX(device:TVkDevice;pDeviceGroupPresentCapabilities:PVkDeviceGroupPresentCapabilitiesKHX):TVkResult; virtual;
+
+       function GetDeviceGroupSurfacePresentModesKHX(device:TVkDevice;surface:TVkSurfaceKHR;pModes:PVkDeviceGroupPresentModeFlagsKHX):TVkResult; virtual;
+
+       function AcquireNextImage2KHX(device:TVkDevice;const pAcquireInfo:PVkAcquireNextImageInfoKHX;pImageIndex:PVkUInt32):TVkResult; virtual;
+
+       procedure CmdDispatchBaseKHX(commandBuffer:TVkCommandBuffer;baseGroupX:TVkUInt32;baseGroupY:TVkUInt32;baseGroupZ:TVkUInt32;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); virtual;
+
+       function GetPhysicalDevicePresentRectanglesKHX(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pRectCount:PVkUInt32;pRects:PVkRect2D):TVkResult; virtual;
+
+       function CreateDescriptorUpdateTemplateKHR(device:TVkDevice;const pCreateInfo:PVkDescriptorUpdateTemplateCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pDescriptorUpdateTemplate:PVkDescriptorUpdateTemplateKHR):TVkResult; virtual;
+
+       procedure DestroyDescriptorUpdateTemplateKHR(device:TVkDevice;descriptorUpdateTemplate:TVkDescriptorUpdateTemplateKHR;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       procedure UpdateDescriptorSetWithTemplateKHR(device:TVkDevice;descriptorSet:TVkDescriptorSet;descriptorUpdateTemplate:TVkDescriptorUpdateTemplateKHR;const pData:PVkVoid); virtual;
+
+       procedure CmdPushDescriptorSetWithTemplateKHR(commandBuffer:TVkCommandBuffer;descriptorUpdateTemplate:TVkDescriptorUpdateTemplateKHR;layout:TVkPipelineLayout;set_:TVkUInt32;const pData:PVkVoid); virtual;
+
+       procedure SetSMPTE2086MetadataEXT(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkSMPTE2086MetadataEXT); virtual;
+
+       function CreateIOSSurfaceMVK(instance:TVkInstance;const pCreateInfo:PVkIOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
+
+       function CreateMacOSSurfaceMVK(instance:TVkInstance;const pCreateInfo:PVkMacOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
+
+       procedure CmdSetViewportWScalingNV(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV); virtual;
+
+       procedure CmdSetDiscardRectangleEXT(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D); virtual;
 
        property Commands:TVulkanCommands read fCommands;
      end;
@@ -7515,11 +8978,11 @@ var LibVulkan:pointer=nil;
     vkGetPhysicalDeviceWin32PresentationSupportKHR:TvkGetPhysicalDeviceWin32PresentationSupportKHR=nil;
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
     vkCreateXlibSurfaceKHR:TvkCreateXlibSurfaceKHR=nil;
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
     vkGetPhysicalDeviceXlibPresentationSupportKHR:TvkGetPhysicalDeviceXlibPresentationSupportKHR=nil;
 {$endif}
 
@@ -7589,11 +9052,45 @@ var LibVulkan:pointer=nil;
 
     vkGetPhysicalDeviceSparseImageFormatProperties2KHR:TvkGetPhysicalDeviceSparseImageFormatProperties2KHR=nil;
 
+    vkCmdPushDescriptorSetKHR:TvkCmdPushDescriptorSetKHR=nil;
+
     vkTrimCommandPoolKHR:TvkTrimCommandPoolKHR=nil;
+
+    vkGetPhysicalDeviceProperties2KHX:TvkGetPhysicalDeviceProperties2KHX=nil;
+
+    vkGetPhysicalDeviceImageFormatProperties2KHX:TvkGetPhysicalDeviceImageFormatProperties2KHX=nil;
+
+    vkGetPhysicalDeviceExternalBufferPropertiesKHX:TvkGetPhysicalDeviceExternalBufferPropertiesKHX=nil;
+
+{$ifdef Windows}
+    vkGetMemoryWin32HandleKHX:TvkGetMemoryWin32HandleKHX=nil;
+{$endif}
+
+{$ifdef Windows}
+    vkGetMemoryWin32HandlePropertiesKHX:TvkGetMemoryWin32HandlePropertiesKHX=nil;
+{$endif}
+
+    vkGetMemoryFdKHX:TvkGetMemoryFdKHX=nil;
+
+    vkGetMemoryFdPropertiesKHX:TvkGetMemoryFdPropertiesKHX=nil;
+
+    vkGetPhysicalDeviceExternalSemaphorePropertiesKHX:TvkGetPhysicalDeviceExternalSemaphorePropertiesKHX=nil;
+
+{$ifdef Windows}
+    vkGetSemaphoreWin32HandleKHX:TvkGetSemaphoreWin32HandleKHX=nil;
+{$endif}
+
+{$ifdef Windows}
+    vkImportSemaphoreWin32HandleKHX:TvkImportSemaphoreWin32HandleKHX=nil;
+{$endif}
+
+    vkGetSemaphoreFdKHX:TvkGetSemaphoreFdKHX=nil;
+
+    vkImportSemaphoreFdKHX:TvkImportSemaphoreFdKHX=nil;
 
     vkReleaseDisplayEXT:TvkReleaseDisplayEXT=nil;
 
-{$ifdef X11}
+{$ifdef XLIB}
     vkAcquireXlibDisplayEXT:TvkAcquireXlibDisplayEXT=nil;
 {$endif}
 
@@ -7610,6 +9107,44 @@ var LibVulkan:pointer=nil;
     vkGetSwapchainCounterEXT:TvkGetSwapchainCounterEXT=nil;
 
     vkGetPhysicalDeviceSurfaceCapabilities2EXT:TvkGetPhysicalDeviceSurfaceCapabilities2EXT=nil;
+
+    vkEnumeratePhysicalDeviceGroupsKHX:TvkEnumeratePhysicalDeviceGroupsKHX=nil;
+
+    vkGetDeviceGroupPeerMemoryFeaturesKHX:TvkGetDeviceGroupPeerMemoryFeaturesKHX=nil;
+
+    vkBindBufferMemory2KHX:TvkBindBufferMemory2KHX=nil;
+
+    vkBindImageMemory2KHX:TvkBindImageMemory2KHX=nil;
+
+    vkCmdSetDeviceMaskKHX:TvkCmdSetDeviceMaskKHX=nil;
+
+    vkGetDeviceGroupPresentCapabilitiesKHX:TvkGetDeviceGroupPresentCapabilitiesKHX=nil;
+
+    vkGetDeviceGroupSurfacePresentModesKHX:TvkGetDeviceGroupSurfacePresentModesKHX=nil;
+
+    vkAcquireNextImage2KHX:TvkAcquireNextImage2KHX=nil;
+
+    vkCmdDispatchBaseKHX:TvkCmdDispatchBaseKHX=nil;
+
+    vkGetPhysicalDevicePresentRectanglesKHX:TvkGetPhysicalDevicePresentRectanglesKHX=nil;
+
+    vkCreateDescriptorUpdateTemplateKHR:TvkCreateDescriptorUpdateTemplateKHR=nil;
+
+    vkDestroyDescriptorUpdateTemplateKHR:TvkDestroyDescriptorUpdateTemplateKHR=nil;
+
+    vkUpdateDescriptorSetWithTemplateKHR:TvkUpdateDescriptorSetWithTemplateKHR=nil;
+
+    vkCmdPushDescriptorSetWithTemplateKHR:TvkCmdPushDescriptorSetWithTemplateKHR=nil;
+
+    vkSetSMPTE2086MetadataEXT:TvkSetSMPTE2086MetadataEXT=nil;
+
+    vkCreateIOSSurfaceMVK:TvkCreateIOSSurfaceMVK=nil;
+
+    vkCreateMacOSSurfaceMVK:TvkCreateMacOSSurfaceMVK=nil;
+
+    vkCmdSetViewportWScalingNV:TvkCmdSetViewportWScalingNV=nil;
+
+    vkCmdSetDiscardRectangleEXT:TvkCmdSetDiscardRectangleEXT=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -8389,13 +9924,13 @@ begin
    @vk.fCommands.GetPhysicalDeviceWin32PresentationSupportKHR:=addr(vkGetPhysicalDeviceWin32PresentationSupportKHR);
   end;
 {$endif}
-{$ifdef X11}
+{$ifdef XLIB}
   if not assigned(vkCreateXlibSurfaceKHR) then begin
    @vkCreateXlibSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateXlibSurfaceKHR'));
    @vk.fCommands.CreateXlibSurfaceKHR:=addr(vkCreateXlibSurfaceKHR);
   end;
 {$endif}
-{$ifdef X11}
+{$ifdef XLIB}
   if not assigned(vkGetPhysicalDeviceXlibPresentationSupportKHR) then begin
    @vkGetPhysicalDeviceXlibPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceXlibPresentationSupportKHR'));
    @vk.fCommands.GetPhysicalDeviceXlibPresentationSupportKHR:=addr(vkGetPhysicalDeviceXlibPresentationSupportKHR);
@@ -8527,15 +10062,75 @@ begin
    @vkGetPhysicalDeviceSparseImageFormatProperties2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSparseImageFormatProperties2KHR'));
    @vk.fCommands.GetPhysicalDeviceSparseImageFormatProperties2KHR:=addr(vkGetPhysicalDeviceSparseImageFormatProperties2KHR);
   end;
+  if not assigned(vkCmdPushDescriptorSetKHR) then begin
+   @vkCmdPushDescriptorSetKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdPushDescriptorSetKHR'));
+   @vk.fCommands.CmdPushDescriptorSetKHR:=addr(vkCmdPushDescriptorSetKHR);
+  end;
   if not assigned(vkTrimCommandPoolKHR) then begin
    @vkTrimCommandPoolKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkTrimCommandPoolKHR'));
    @vk.fCommands.TrimCommandPoolKHR:=addr(vkTrimCommandPoolKHR);
+  end;
+  if not assigned(vkGetPhysicalDeviceProperties2KHX) then begin
+   @vkGetPhysicalDeviceProperties2KHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceProperties2KHX'));
+   @vk.fCommands.GetPhysicalDeviceProperties2KHX:=addr(vkGetPhysicalDeviceProperties2KHX);
+  end;
+  if not assigned(vkGetPhysicalDeviceImageFormatProperties2KHX) then begin
+   @vkGetPhysicalDeviceImageFormatProperties2KHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceImageFormatProperties2KHX'));
+   @vk.fCommands.GetPhysicalDeviceImageFormatProperties2KHX:=addr(vkGetPhysicalDeviceImageFormatProperties2KHX);
+  end;
+  if not assigned(vkGetPhysicalDeviceExternalBufferPropertiesKHX) then begin
+   @vkGetPhysicalDeviceExternalBufferPropertiesKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceExternalBufferPropertiesKHX'));
+   @vk.fCommands.GetPhysicalDeviceExternalBufferPropertiesKHX:=addr(vkGetPhysicalDeviceExternalBufferPropertiesKHX);
+  end;
+{$ifdef Windows}
+  if not assigned(vkGetMemoryWin32HandleKHX) then begin
+   @vkGetMemoryWin32HandleKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetMemoryWin32HandleKHX'));
+   @vk.fCommands.GetMemoryWin32HandleKHX:=addr(vkGetMemoryWin32HandleKHX);
+  end;
+{$endif}
+{$ifdef Windows}
+  if not assigned(vkGetMemoryWin32HandlePropertiesKHX) then begin
+   @vkGetMemoryWin32HandlePropertiesKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetMemoryWin32HandlePropertiesKHX'));
+   @vk.fCommands.GetMemoryWin32HandlePropertiesKHX:=addr(vkGetMemoryWin32HandlePropertiesKHX);
+  end;
+{$endif}
+  if not assigned(vkGetMemoryFdKHX) then begin
+   @vkGetMemoryFdKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetMemoryFdKHX'));
+   @vk.fCommands.GetMemoryFdKHX:=addr(vkGetMemoryFdKHX);
+  end;
+  if not assigned(vkGetMemoryFdPropertiesKHX) then begin
+   @vkGetMemoryFdPropertiesKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetMemoryFdPropertiesKHX'));
+   @vk.fCommands.GetMemoryFdPropertiesKHX:=addr(vkGetMemoryFdPropertiesKHX);
+  end;
+  if not assigned(vkGetPhysicalDeviceExternalSemaphorePropertiesKHX) then begin
+   @vkGetPhysicalDeviceExternalSemaphorePropertiesKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceExternalSemaphorePropertiesKHX'));
+   @vk.fCommands.GetPhysicalDeviceExternalSemaphorePropertiesKHX:=addr(vkGetPhysicalDeviceExternalSemaphorePropertiesKHX);
+  end;
+{$ifdef Windows}
+  if not assigned(vkGetSemaphoreWin32HandleKHX) then begin
+   @vkGetSemaphoreWin32HandleKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetSemaphoreWin32HandleKHX'));
+   @vk.fCommands.GetSemaphoreWin32HandleKHX:=addr(vkGetSemaphoreWin32HandleKHX);
+  end;
+{$endif}
+{$ifdef Windows}
+  if not assigned(vkImportSemaphoreWin32HandleKHX) then begin
+   @vkImportSemaphoreWin32HandleKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkImportSemaphoreWin32HandleKHX'));
+   @vk.fCommands.ImportSemaphoreWin32HandleKHX:=addr(vkImportSemaphoreWin32HandleKHX);
+  end;
+{$endif}
+  if not assigned(vkGetSemaphoreFdKHX) then begin
+   @vkGetSemaphoreFdKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetSemaphoreFdKHX'));
+   @vk.fCommands.GetSemaphoreFdKHX:=addr(vkGetSemaphoreFdKHX);
+  end;
+  if not assigned(vkImportSemaphoreFdKHX) then begin
+   @vkImportSemaphoreFdKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkImportSemaphoreFdKHX'));
+   @vk.fCommands.ImportSemaphoreFdKHX:=addr(vkImportSemaphoreFdKHX);
   end;
   if not assigned(vkReleaseDisplayEXT) then begin
    @vkReleaseDisplayEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkReleaseDisplayEXT'));
    @vk.fCommands.ReleaseDisplayEXT:=addr(vkReleaseDisplayEXT);
   end;
-{$ifdef X11}
+{$ifdef XLIB}
   if not assigned(vkAcquireXlibDisplayEXT) then begin
    @vkAcquireXlibDisplayEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAcquireXlibDisplayEXT'));
    @vk.fCommands.AcquireXlibDisplayEXT:=addr(vkAcquireXlibDisplayEXT);
@@ -8566,6 +10161,82 @@ begin
   if not assigned(vkGetPhysicalDeviceSurfaceCapabilities2EXT) then begin
    @vkGetPhysicalDeviceSurfaceCapabilities2EXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfaceCapabilities2EXT'));
    @vk.fCommands.GetPhysicalDeviceSurfaceCapabilities2EXT:=addr(vkGetPhysicalDeviceSurfaceCapabilities2EXT);
+  end;
+  if not assigned(vkEnumeratePhysicalDeviceGroupsKHX) then begin
+   @vkEnumeratePhysicalDeviceGroupsKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkEnumeratePhysicalDeviceGroupsKHX'));
+   @vk.fCommands.EnumeratePhysicalDeviceGroupsKHX:=addr(vkEnumeratePhysicalDeviceGroupsKHX);
+  end;
+  if not assigned(vkGetDeviceGroupPeerMemoryFeaturesKHX) then begin
+   @vkGetDeviceGroupPeerMemoryFeaturesKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceGroupPeerMemoryFeaturesKHX'));
+   @vk.fCommands.GetDeviceGroupPeerMemoryFeaturesKHX:=addr(vkGetDeviceGroupPeerMemoryFeaturesKHX);
+  end;
+  if not assigned(vkBindBufferMemory2KHX) then begin
+   @vkBindBufferMemory2KHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindBufferMemory2KHX'));
+   @vk.fCommands.BindBufferMemory2KHX:=addr(vkBindBufferMemory2KHX);
+  end;
+  if not assigned(vkBindImageMemory2KHX) then begin
+   @vkBindImageMemory2KHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindImageMemory2KHX'));
+   @vk.fCommands.BindImageMemory2KHX:=addr(vkBindImageMemory2KHX);
+  end;
+  if not assigned(vkCmdSetDeviceMaskKHX) then begin
+   @vkCmdSetDeviceMaskKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetDeviceMaskKHX'));
+   @vk.fCommands.CmdSetDeviceMaskKHX:=addr(vkCmdSetDeviceMaskKHX);
+  end;
+  if not assigned(vkGetDeviceGroupPresentCapabilitiesKHX) then begin
+   @vkGetDeviceGroupPresentCapabilitiesKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceGroupPresentCapabilitiesKHX'));
+   @vk.fCommands.GetDeviceGroupPresentCapabilitiesKHX:=addr(vkGetDeviceGroupPresentCapabilitiesKHX);
+  end;
+  if not assigned(vkGetDeviceGroupSurfacePresentModesKHX) then begin
+   @vkGetDeviceGroupSurfacePresentModesKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceGroupSurfacePresentModesKHX'));
+   @vk.fCommands.GetDeviceGroupSurfacePresentModesKHX:=addr(vkGetDeviceGroupSurfacePresentModesKHX);
+  end;
+  if not assigned(vkAcquireNextImage2KHX) then begin
+   @vkAcquireNextImage2KHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAcquireNextImage2KHX'));
+   @vk.fCommands.AcquireNextImage2KHX:=addr(vkAcquireNextImage2KHX);
+  end;
+  if not assigned(vkCmdDispatchBaseKHX) then begin
+   @vkCmdDispatchBaseKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDispatchBaseKHX'));
+   @vk.fCommands.CmdDispatchBaseKHX:=addr(vkCmdDispatchBaseKHX);
+  end;
+  if not assigned(vkGetPhysicalDevicePresentRectanglesKHX) then begin
+   @vkGetPhysicalDevicePresentRectanglesKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDevicePresentRectanglesKHX'));
+   @vk.fCommands.GetPhysicalDevicePresentRectanglesKHX:=addr(vkGetPhysicalDevicePresentRectanglesKHX);
+  end;
+  if not assigned(vkCreateDescriptorUpdateTemplateKHR) then begin
+   @vkCreateDescriptorUpdateTemplateKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDescriptorUpdateTemplateKHR'));
+   @vk.fCommands.CreateDescriptorUpdateTemplateKHR:=addr(vkCreateDescriptorUpdateTemplateKHR);
+  end;
+  if not assigned(vkDestroyDescriptorUpdateTemplateKHR) then begin
+   @vkDestroyDescriptorUpdateTemplateKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyDescriptorUpdateTemplateKHR'));
+   @vk.fCommands.DestroyDescriptorUpdateTemplateKHR:=addr(vkDestroyDescriptorUpdateTemplateKHR);
+  end;
+  if not assigned(vkUpdateDescriptorSetWithTemplateKHR) then begin
+   @vkUpdateDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkUpdateDescriptorSetWithTemplateKHR'));
+   @vk.fCommands.UpdateDescriptorSetWithTemplateKHR:=addr(vkUpdateDescriptorSetWithTemplateKHR);
+  end;
+  if not assigned(vkCmdPushDescriptorSetWithTemplateKHR) then begin
+   @vkCmdPushDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdPushDescriptorSetWithTemplateKHR'));
+   @vk.fCommands.CmdPushDescriptorSetWithTemplateKHR:=addr(vkCmdPushDescriptorSetWithTemplateKHR);
+  end;
+  if not assigned(vkSetSMPTE2086MetadataEXT) then begin
+   @vkSetSMPTE2086MetadataEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkSetSMPTE2086MetadataEXT'));
+   @vk.fCommands.SetSMPTE2086MetadataEXT:=addr(vkSetSMPTE2086MetadataEXT);
+  end;
+  if not assigned(vkCreateIOSSurfaceMVK) then begin
+   @vkCreateIOSSurfaceMVK:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateIOSSurfaceMVK'));
+   @vk.fCommands.CreateIOSSurfaceMVK:=addr(vkCreateIOSSurfaceMVK);
+  end;
+  if not assigned(vkCreateMacOSSurfaceMVK) then begin
+   @vkCreateMacOSSurfaceMVK:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateMacOSSurfaceMVK'));
+   @vk.fCommands.CreateMacOSSurfaceMVK:=addr(vkCreateMacOSSurfaceMVK);
+  end;
+  if not assigned(vkCmdSetViewportWScalingNV) then begin
+   @vkCmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetViewportWScalingNV'));
+   @vk.fCommands.CmdSetViewportWScalingNV:=addr(vkCmdSetViewportWScalingNV);
+  end;
+  if not assigned(vkCmdSetDiscardRectangleEXT) then begin
+   @vkCmdSetDiscardRectangleEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetDiscardRectangleEXT'));
+   @vk.fCommands.CmdSetDiscardRectangleEXT:=addr(vkCmdSetDiscardRectangleEXT);
   end;
   result:=assigned(vkCreateInstance);
  end;
@@ -8753,10 +10424,10 @@ begin
 {$ifdef Windows}
   @InstanceCommands.GetPhysicalDeviceWin32PresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceWin32PresentationSupportKHR')));
 {$endif}
-{$ifdef X11}
+{$ifdef XLIB}
   @InstanceCommands.CreateXlibSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateXlibSurfaceKHR')));
 {$endif}
-{$ifdef X11}
+{$ifdef XLIB}
   @InstanceCommands.GetPhysicalDeviceXlibPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceXlibPresentationSupportKHR')));
 {$endif}
 {$ifdef XCB}
@@ -8795,9 +10466,30 @@ begin
   @InstanceCommands.GetPhysicalDeviceQueueFamilyProperties2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceQueueFamilyProperties2KHR')));
   @InstanceCommands.GetPhysicalDeviceMemoryProperties2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceMemoryProperties2KHR')));
   @InstanceCommands.GetPhysicalDeviceSparseImageFormatProperties2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSparseImageFormatProperties2KHR')));
+  @InstanceCommands.CmdPushDescriptorSetKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdPushDescriptorSetKHR')));
   @InstanceCommands.TrimCommandPoolKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkTrimCommandPoolKHR')));
+  @InstanceCommands.GetPhysicalDeviceProperties2KHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceProperties2KHX')));
+  @InstanceCommands.GetPhysicalDeviceImageFormatProperties2KHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceImageFormatProperties2KHX')));
+  @InstanceCommands.GetPhysicalDeviceExternalBufferPropertiesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceExternalBufferPropertiesKHX')));
+{$ifdef Windows}
+  @InstanceCommands.GetMemoryWin32HandleKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryWin32HandleKHX')));
+{$endif}
+{$ifdef Windows}
+  @InstanceCommands.GetMemoryWin32HandlePropertiesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryWin32HandlePropertiesKHX')));
+{$endif}
+  @InstanceCommands.GetMemoryFdKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryFdKHX')));
+  @InstanceCommands.GetMemoryFdPropertiesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryFdPropertiesKHX')));
+  @InstanceCommands.GetPhysicalDeviceExternalSemaphorePropertiesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceExternalSemaphorePropertiesKHX')));
+{$ifdef Windows}
+  @InstanceCommands.GetSemaphoreWin32HandleKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetSemaphoreWin32HandleKHX')));
+{$endif}
+{$ifdef Windows}
+  @InstanceCommands.ImportSemaphoreWin32HandleKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkImportSemaphoreWin32HandleKHX')));
+{$endif}
+  @InstanceCommands.GetSemaphoreFdKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetSemaphoreFdKHX')));
+  @InstanceCommands.ImportSemaphoreFdKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkImportSemaphoreFdKHX')));
   @InstanceCommands.ReleaseDisplayEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkReleaseDisplayEXT')));
-{$ifdef X11}
+{$ifdef XLIB}
   @InstanceCommands.AcquireXlibDisplayEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkAcquireXlibDisplayEXT')));
 {$endif}
 {$ifdef RandR}
@@ -8808,6 +10500,25 @@ begin
   @InstanceCommands.RegisterDisplayEventEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkRegisterDisplayEventEXT')));
   @InstanceCommands.GetSwapchainCounterEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetSwapchainCounterEXT')));
   @InstanceCommands.GetPhysicalDeviceSurfaceCapabilities2EXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSurfaceCapabilities2EXT')));
+  @InstanceCommands.EnumeratePhysicalDeviceGroupsKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkEnumeratePhysicalDeviceGroupsKHX')));
+  @InstanceCommands.GetDeviceGroupPeerMemoryFeaturesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetDeviceGroupPeerMemoryFeaturesKHX')));
+  @InstanceCommands.BindBufferMemory2KHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkBindBufferMemory2KHX')));
+  @InstanceCommands.BindImageMemory2KHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkBindImageMemory2KHX')));
+  @InstanceCommands.CmdSetDeviceMaskKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetDeviceMaskKHX')));
+  @InstanceCommands.GetDeviceGroupPresentCapabilitiesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetDeviceGroupPresentCapabilitiesKHX')));
+  @InstanceCommands.GetDeviceGroupSurfacePresentModesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetDeviceGroupSurfacePresentModesKHX')));
+  @InstanceCommands.AcquireNextImage2KHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkAcquireNextImage2KHX')));
+  @InstanceCommands.CmdDispatchBaseKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDispatchBaseKHX')));
+  @InstanceCommands.GetPhysicalDevicePresentRectanglesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDevicePresentRectanglesKHX')));
+  @InstanceCommands.CreateDescriptorUpdateTemplateKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateDescriptorUpdateTemplateKHR')));
+  @InstanceCommands.DestroyDescriptorUpdateTemplateKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyDescriptorUpdateTemplateKHR')));
+  @InstanceCommands.UpdateDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkUpdateDescriptorSetWithTemplateKHR')));
+  @InstanceCommands.CmdPushDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdPushDescriptorSetWithTemplateKHR')));
+  @InstanceCommands.SetSMPTE2086MetadataEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkSetSMPTE2086MetadataEXT')));
+  @InstanceCommands.CreateIOSSurfaceMVK:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateIOSSurfaceMVK')));
+  @InstanceCommands.CreateMacOSSurfaceMVK:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateMacOSSurfaceMVK')));
+  @InstanceCommands.CmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetViewportWScalingNV')));
+  @InstanceCommands.CmdSetDiscardRectangleEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetDiscardRectangleEXT')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -8972,11 +10683,43 @@ begin
   @DeviceCommands.DestroyObjectTableNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyObjectTableNVX')));
   @DeviceCommands.RegisterObjectsNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkRegisterObjectsNVX')));
   @DeviceCommands.UnregisterObjectsNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkUnregisterObjectsNVX')));
+  @DeviceCommands.CmdPushDescriptorSetKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdPushDescriptorSetKHR')));
   @DeviceCommands.TrimCommandPoolKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkTrimCommandPoolKHR')));
+{$ifdef Windows}
+  @DeviceCommands.GetMemoryWin32HandleKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetMemoryWin32HandleKHX')));
+{$endif}
+{$ifdef Windows}
+  @DeviceCommands.GetMemoryWin32HandlePropertiesKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetMemoryWin32HandlePropertiesKHX')));
+{$endif}
+  @DeviceCommands.GetMemoryFdKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetMemoryFdKHX')));
+  @DeviceCommands.GetMemoryFdPropertiesKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetMemoryFdPropertiesKHX')));
+{$ifdef Windows}
+  @DeviceCommands.GetSemaphoreWin32HandleKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetSemaphoreWin32HandleKHX')));
+{$endif}
+{$ifdef Windows}
+  @DeviceCommands.ImportSemaphoreWin32HandleKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkImportSemaphoreWin32HandleKHX')));
+{$endif}
+  @DeviceCommands.GetSemaphoreFdKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetSemaphoreFdKHX')));
+  @DeviceCommands.ImportSemaphoreFdKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkImportSemaphoreFdKHX')));
   @DeviceCommands.DisplayPowerControlEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDisplayPowerControlEXT')));
   @DeviceCommands.RegisterDeviceEventEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkRegisterDeviceEventEXT')));
   @DeviceCommands.RegisterDisplayEventEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkRegisterDisplayEventEXT')));
   @DeviceCommands.GetSwapchainCounterEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetSwapchainCounterEXT')));
+  @DeviceCommands.GetDeviceGroupPeerMemoryFeaturesKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetDeviceGroupPeerMemoryFeaturesKHX')));
+  @DeviceCommands.BindBufferMemory2KHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkBindBufferMemory2KHX')));
+  @DeviceCommands.BindImageMemory2KHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkBindImageMemory2KHX')));
+  @DeviceCommands.CmdSetDeviceMaskKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetDeviceMaskKHX')));
+  @DeviceCommands.GetDeviceGroupPresentCapabilitiesKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetDeviceGroupPresentCapabilitiesKHX')));
+  @DeviceCommands.GetDeviceGroupSurfacePresentModesKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetDeviceGroupSurfacePresentModesKHX')));
+  @DeviceCommands.AcquireNextImage2KHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkAcquireNextImage2KHX')));
+  @DeviceCommands.CmdDispatchBaseKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDispatchBaseKHX')));
+  @DeviceCommands.CreateDescriptorUpdateTemplateKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateDescriptorUpdateTemplateKHR')));
+  @DeviceCommands.DestroyDescriptorUpdateTemplateKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyDescriptorUpdateTemplateKHR')));
+  @DeviceCommands.UpdateDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkUpdateDescriptorSetWithTemplateKHR')));
+  @DeviceCommands.CmdPushDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdPushDescriptorSetWithTemplateKHR')));
+  @DeviceCommands.SetSMPTE2086MetadataEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkSetSMPTE2086MetadataEXT')));
+  @DeviceCommands.CmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetViewportWScalingNV')));
+  @DeviceCommands.CmdSetDiscardRectangleEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetDiscardRectangleEXT')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -11000,7 +12743,7 @@ begin
 end;
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
 constructor TVkXlibSurfaceCreateInfoKHR.Create(const pFlags:TVkXlibSurfaceCreateFlagsKHR;
                                                const pDpy:PDisplay;
                                                const pWindow:TWindow);
@@ -11495,6 +13238,311 @@ begin
  tiling:=pTiling;
 end;
 
+constructor TVkPhysicalDevicePushDescriptorPropertiesKHR.Create(const pMaxPushDescriptors:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR;
+ pNext:=nil;
+ maxPushDescriptors:=pMaxPushDescriptors;
+end;
+
+constructor TVkPhysicalDeviceProperties2KHX.Create(const pProperties:TVkPhysicalDeviceProperties);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHX;
+ pNext:=nil;
+ properties:=pProperties;
+end;
+
+constructor TVkImageFormatProperties2KHX.Create(const pImageFormatProperties:TVkImageFormatProperties);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHX;
+ pNext:=nil;
+ imageFormatProperties:=pImageFormatProperties;
+end;
+
+constructor TVkPhysicalDeviceImageFormatInfo2KHX.Create(const pFormat:TVkFormat;
+                                                        const pType_:TVkImageType;
+                                                        const pTiling:TVkImageTiling;
+                                                        const pUsage:TVkImageUsageFlags;
+                                                        const pFlags:TVkImageCreateFlags);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHX;
+ pNext:=nil;
+ format:=pFormat;
+ type_:=pType_;
+ tiling:=pTiling;
+ usage:=pUsage;
+ flags:=pFlags;
+end;
+
+constructor TVkExternalMemoryPropertiesKHX.Create(const pExternalMemoryFeatures:TVkExternalMemoryFeatureFlagsKHX;
+                                                  const pExportFromImportedHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX;
+                                                  const pCompatibleHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX);
+begin
+ externalMemoryFeatures:=pExternalMemoryFeatures;
+ exportFromImportedHandleTypes:=pExportFromImportedHandleTypes;
+ compatibleHandleTypes:=pCompatibleHandleTypes;
+end;
+
+constructor TVkPhysicalDeviceExternalImageFormatInfoKHX.Create(const pHandleType:TVkExternalMemoryHandleTypeFlagBitsKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO_KHX;
+ pNext:=nil;
+ handleType:=pHandleType;
+end;
+
+constructor TVkExternalImageFormatPropertiesKHX.Create(const pExternalMemoryProperties:TVkExternalMemoryPropertiesKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES_KHX;
+ pNext:=nil;
+ externalMemoryProperties:=pExternalMemoryProperties;
+end;
+
+constructor TVkPhysicalDeviceExternalBufferInfoKHX.Create(const pFlags:TVkBufferCreateFlags;
+                                                          const pUsage:TVkBufferUsageFlags;
+                                                          const pHandleType:TVkExternalMemoryHandleTypeFlagBitsKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO_KHX;
+ pNext:=nil;
+ flags:=pFlags;
+ usage:=pUsage;
+ handleType:=pHandleType;
+end;
+
+constructor TVkExternalBufferPropertiesKHX.Create(const pExternalMemoryProperties:TVkExternalMemoryPropertiesKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES_KHX;
+ pNext:=nil;
+ externalMemoryProperties:=pExternalMemoryProperties;
+end;
+
+constructor TVkPhysicalDeviceIDPropertiesKHX.Create(const pDeviceUUID:array of TVkUInt8;
+                                                    const pDriverUUID:array of TVkUInt8;
+                                                    const pDeviceLUID:array of TVkUInt8;
+                                                    const pDeviceLUIDValid:TVkBool32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TVkPhysicalDeviceIDPropertiesKHX),#0);
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES_KHX;
+ pNext:=nil;
+ ArrayItemCount:=length(pDeviceUUID);
+ if ArrayItemCount>length(deviceUUID) then begin
+  ArrayItemCount:=length(deviceUUID);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(pDeviceUUID[0],deviceUUID[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(pDriverUUID);
+ if ArrayItemCount>length(driverUUID) then begin
+  ArrayItemCount:=length(driverUUID);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(pDriverUUID[0],driverUUID[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(pDeviceLUID);
+ if ArrayItemCount>length(deviceLUID) then begin
+  ArrayItemCount:=length(deviceLUID);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(pDeviceLUID[0],deviceLUID[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ deviceLUIDValid:=pDeviceLUIDValid;
+end;
+
+constructor TVkExternalMemoryImageCreateInfoKHX.Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHX;
+ pNext:=nil;
+ handleTypes:=pHandleTypes;
+end;
+
+constructor TVkExternalMemoryBufferCreateInfoKHX.Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHX;
+ pNext:=nil;
+ handleTypes:=pHandleTypes;
+end;
+
+constructor TVkExportMemoryAllocateInfoKHX.Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHX;
+ pNext:=nil;
+ handleTypes:=pHandleTypes;
+end;
+
+constructor TVkImportMemoryWin32HandleInfoKHX.Create(const pHandleType:TVkExternalMemoryHandleTypeFlagBitsKHX;
+                                                     const pHandle:THANDLE);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHX;
+ pNext:=nil;
+ handleType:=pHandleType;
+ handle:=pHandle;
+end;
+
+{$ifdef Windows}
+constructor TVkExportMemoryWin32HandleInfoKHX.Create(const pPAttributes:PSecurityAttributes;
+                                                     const pDwAccess:TVkUInt32;
+                                                     const pName:TLPCWSTR);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHX;
+ pNext:=nil;
+ pAttributes:=pPAttributes;
+ dwAccess:=pDwAccess;
+ name:=pName;
+end;
+{$endif}
+
+constructor TVkMemoryWin32HandlePropertiesKHX.Create(const pMemoryTypeBits:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_MEMORY_WIN32_HANDLE_PROPERTIES_KHX;
+ pNext:=nil;
+ memoryTypeBits:=pMemoryTypeBits;
+end;
+
+constructor TVkImportMemoryFdInfoKHX.Create(const pHandleType:TVkExternalMemoryHandleTypeFlagBitsKHX;
+                                            const pFd:TVkInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHX;
+ pNext:=nil;
+ handleType:=pHandleType;
+ fd:=pFd;
+end;
+
+constructor TVkMemoryFdPropertiesKHX.Create(const pMemoryTypeBits:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHX;
+ pNext:=nil;
+ memoryTypeBits:=pMemoryTypeBits;
+end;
+
+constructor TVkWin32KeyedMutexAcquireReleaseInfoKHX.Create(const pAcquireCount:TVkUInt32;
+                                                           const pPAcquireSyncs:PVkDeviceMemory;
+                                                           const pPAcquireKeys:PVkUInt64;
+                                                           const pPAcquireTimeouts:PVkUInt32;
+                                                           const pReleaseCount:TVkUInt32;
+                                                           const pPReleaseSyncs:PVkDeviceMemory;
+                                                           const pPReleaseKeys:PVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_KHX;
+ pNext:=nil;
+ acquireCount:=pAcquireCount;
+ pAcquireSyncs:=pPAcquireSyncs;
+ pAcquireKeys:=pPAcquireKeys;
+ pAcquireTimeouts:=pPAcquireTimeouts;
+ releaseCount:=pReleaseCount;
+ pReleaseSyncs:=pPReleaseSyncs;
+ pReleaseKeys:=pPReleaseKeys;
+end;
+
+constructor TVkPhysicalDeviceExternalSemaphoreInfoKHX.Create(const pHandleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO_KHX;
+ pNext:=nil;
+ handleType:=pHandleType;
+end;
+
+constructor TVkExternalSemaphorePropertiesKHX.Create(const pExportFromImportedHandleTypes:TVkExternalSemaphoreHandleTypeFlagsKHX;
+                                                     const pCompatibleHandleTypes:TVkExternalSemaphoreHandleTypeFlagsKHX;
+                                                     const pExternalSemaphoreFeatures:TVkExternalSemaphoreFeatureFlagsKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES_KHX;
+ pNext:=nil;
+ exportFromImportedHandleTypes:=pExportFromImportedHandleTypes;
+ compatibleHandleTypes:=pCompatibleHandleTypes;
+ externalSemaphoreFeatures:=pExternalSemaphoreFeatures;
+end;
+
+constructor TVkExportSemaphoreCreateInfoKHX.Create(const pHandleTypes:TVkExternalSemaphoreHandleTypeFlagsKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO_KHX;
+ pNext:=nil;
+ handleTypes:=pHandleTypes;
+end;
+
+constructor TVkImportSemaphoreWin32HandleInfoKHX.Create(const pSemaphore:TVkSemaphore;
+                                                        const pHandleType:TVkExternalSemaphoreHandleTypeFlagsKHX;
+                                                        const pHandle:THANDLE);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHX;
+ pNext:=nil;
+ semaphore:=pSemaphore;
+ handleType:=pHandleType;
+ handle:=pHandle;
+end;
+
+{$ifdef Windows}
+constructor TVkExportSemaphoreWin32HandleInfoKHX.Create(const pPAttributes:PSecurityAttributes;
+                                                        const pDwAccess:TVkUInt32;
+                                                        const pName:TLPCWSTR);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHX;
+ pNext:=nil;
+ pAttributes:=pPAttributes;
+ dwAccess:=pDwAccess;
+ name:=pName;
+end;
+{$endif}
+
+constructor TVkD3D12FenceSubmitInfoKHX.Create(const pWaitSemaphoreValuesCount:TVkUInt32;
+                                              const pPWaitSemaphoreValues:PVkUInt64;
+                                              const pSignalSemaphoreValuesCount:TVkUInt32;
+                                              const pPSignalSemaphoreValues:PVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_D3D12_FENCE_SUBMIT_INFO_KHX;
+ pNext:=nil;
+ waitSemaphoreValuesCount:=pWaitSemaphoreValuesCount;
+ pWaitSemaphoreValues:=pPWaitSemaphoreValues;
+ signalSemaphoreValuesCount:=pSignalSemaphoreValuesCount;
+ pSignalSemaphoreValues:=pPSignalSemaphoreValues;
+end;
+
+constructor TVkImportSemaphoreFdInfoKHX.Create(const pSemaphore:TVkSemaphore;
+                                               const pHandleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX;
+                                               const pFd:TVkInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHX;
+ pNext:=nil;
+ semaphore:=pSemaphore;
+ handleType:=pHandleType;
+ fd:=pFd;
+end;
+
+constructor TVkPhysicalDeviceMultiviewFeaturesKHX.Create(const pMultiview:TVkBool32;
+                                                         const pMultiviewGeometryShader:TVkBool32;
+                                                         const pMultiviewTessellationShader:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHX;
+ pNext:=nil;
+ multiview:=pMultiview;
+ multiviewGeometryShader:=pMultiviewGeometryShader;
+ multiviewTessellationShader:=pMultiviewTessellationShader;
+end;
+
+constructor TVkPhysicalDeviceMultiviewPropertiesKHX.Create(const pMaxMultiviewViewCount:TVkUInt32;
+                                                           const pMaxMultiviewInstanceIndex:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHX;
+ pNext:=nil;
+ maxMultiviewViewCount:=pMaxMultiviewViewCount;
+ maxMultiviewInstanceIndex:=pMaxMultiviewInstanceIndex;
+end;
+
+constructor TVkRenderPassMultiviewCreateInfoKHX.Create(const pSubpassCount:TVkUInt32;
+                                                       const pPViewMasks:PVkUInt32;
+                                                       const pDependencyCount:TVkUInt32;
+                                                       const pPViewOffsets:PVkInt32;
+                                                       const pCorrelationMaskCount:TVkUInt32;
+                                                       const pPCorrelationMasks:PVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO_KHX;
+ pNext:=nil;
+ subpassCount:=pSubpassCount;
+ pViewMasks:=pPViewMasks;
+ dependencyCount:=pDependencyCount;
+ pViewOffsets:=pPViewOffsets;
+ correlationMaskCount:=pCorrelationMaskCount;
+ pCorrelationMasks:=pPCorrelationMasks;
+end;
+
 constructor TVkSurfaceCapabilities2EXT.Create(const pMinImageCount:TVkUInt32;
                                               const pMaxImageCount:TVkUInt32;
                                               const pCurrentExtent:TVkExtent2D;
@@ -11548,6 +13596,330 @@ begin
  sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_COUNTER_CREATE_INFO_EXT;
  pNext:=nil;
  surfaceCounters:=pSurfaceCounters;
+end;
+
+constructor TVkPhysicalDeviceGroupPropertiesKHX.Create(const pPhysicalDeviceCount:TVkUInt32;
+                                                       const pPhysicalDevices:array of TVkPhysicalDevice;
+                                                       const pSubsetAllocation:TVkBool32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TVkPhysicalDeviceGroupPropertiesKHX),#0);
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES_KHX;
+ pNext:=nil;
+ physicalDeviceCount:=pPhysicalDeviceCount;
+ ArrayItemCount:=length(pPhysicalDevices);
+ if ArrayItemCount>length(physicalDevices) then begin
+  ArrayItemCount:=length(physicalDevices);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(pPhysicalDevices[0],physicalDevices[0],ArrayItemCount*SizeOf(TVkPhysicalDevice));
+ end;
+ subsetAllocation:=pSubsetAllocation;
+end;
+
+constructor TVkMemoryAllocateFlagsInfoKHX.Create(const pFlags:TVkMemoryAllocateFlagsKHX;
+                                                 const pDeviceMask:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHX;
+ pNext:=nil;
+ flags:=pFlags;
+ deviceMask:=pDeviceMask;
+end;
+
+constructor TVkBindBufferMemoryInfoKHX.Create(const pBuffer:TVkBuffer;
+                                              const pMemory:TVkDeviceMemory;
+                                              const pMemoryOffset:TVkDeviceSize;
+                                              const pDeviceIndexCount:TVkUInt32;
+                                              const pPDeviceIndices:PVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHX;
+ pNext:=nil;
+ buffer:=pBuffer;
+ memory:=pMemory;
+ memoryOffset:=pMemoryOffset;
+ deviceIndexCount:=pDeviceIndexCount;
+ pDeviceIndices:=pPDeviceIndices;
+end;
+
+constructor TVkBindImageMemoryInfoKHX.Create(const pImage:TVkImage;
+                                             const pMemory:TVkDeviceMemory;
+                                             const pMemoryOffset:TVkDeviceSize;
+                                             const pDeviceIndexCount:TVkUInt32;
+                                             const pPDeviceIndices:PVkUInt32;
+                                             const pSFRRectCount:TVkUInt32;
+                                             const pPSFRRects:PVkRect2D);
+begin
+ sType:=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHX;
+ pNext:=nil;
+ image:=pImage;
+ memory:=pMemory;
+ memoryOffset:=pMemoryOffset;
+ deviceIndexCount:=pDeviceIndexCount;
+ pDeviceIndices:=pPDeviceIndices;
+ SFRRectCount:=pSFRRectCount;
+ pSFRRects:=pPSFRRects;
+end;
+
+constructor TVkDeviceGroupRenderPassBeginInfoKHX.Create(const pDeviceMask:TVkUInt32;
+                                                        const pDeviceRenderAreaCount:TVkUInt32;
+                                                        const pPDeviceRenderAreas:PVkRect2D);
+begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO_KHX;
+ pNext:=nil;
+ deviceMask:=pDeviceMask;
+ deviceRenderAreaCount:=pDeviceRenderAreaCount;
+ pDeviceRenderAreas:=pPDeviceRenderAreas;
+end;
+
+constructor TVkDeviceGroupCommandBufferBeginInfoKHX.Create(const pDeviceMask:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO_KHX;
+ pNext:=nil;
+ deviceMask:=pDeviceMask;
+end;
+
+constructor TVkDeviceGroupSubmitInfoKHX.Create(const pWaitSemaphoreCount:TVkUInt32;
+                                               const pPWaitSemaphoreDeviceIndices:PVkUInt32;
+                                               const pCommandBufferCount:TVkUInt32;
+                                               const pPCommandBufferDeviceMasks:PVkUInt32;
+                                               const pSignalSemaphoreCount:TVkUInt32;
+                                               const pPSignalSemaphoreDeviceIndices:PVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO_KHX;
+ pNext:=nil;
+ waitSemaphoreCount:=pWaitSemaphoreCount;
+ pWaitSemaphoreDeviceIndices:=pPWaitSemaphoreDeviceIndices;
+ commandBufferCount:=pCommandBufferCount;
+ pCommandBufferDeviceMasks:=pPCommandBufferDeviceMasks;
+ signalSemaphoreCount:=pSignalSemaphoreCount;
+ pSignalSemaphoreDeviceIndices:=pPSignalSemaphoreDeviceIndices;
+end;
+
+constructor TVkDeviceGroupBindSparseInfoKHX.Create(const pResourceDeviceIndex:TVkUInt32;
+                                                   const pMemoryDeviceIndex:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO_KHX;
+ pNext:=nil;
+ resourceDeviceIndex:=pResourceDeviceIndex;
+ memoryDeviceIndex:=pMemoryDeviceIndex;
+end;
+
+constructor TVkDeviceGroupPresentCapabilitiesKHX.Create(const pPresentMask:array of TVkUInt32;
+                                                        const pModes:TVkDeviceGroupPresentModeFlagsKHX);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TVkDeviceGroupPresentCapabilitiesKHX),#0);
+ sType:=VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_CAPABILITIES_KHX;
+ pNext:=nil;
+ ArrayItemCount:=length(pPresentMask);
+ if ArrayItemCount>length(presentMask) then begin
+  ArrayItemCount:=length(presentMask);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(pPresentMask[0],presentMask[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ modes:=pModes;
+end;
+
+constructor TVkImageSwapchainCreateInfoKHX.Create(const pSwapchain:TVkSwapchainKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHX;
+ pNext:=nil;
+ swapchain:=pSwapchain;
+end;
+
+constructor TVkBindImageMemorySwapchainInfoKHX.Create(const pSwapchain:TVkSwapchainKHR;
+                                                      const pImageIndex:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHX;
+ pNext:=nil;
+ swapchain:=pSwapchain;
+ imageIndex:=pImageIndex;
+end;
+
+constructor TVkAcquireNextImageInfoKHX.Create(const pSwapchain:TVkSwapchainKHR;
+                                              const pTimeout:TVkUInt64;
+                                              const pSemaphore:TVkSemaphore;
+                                              const pFence:TVkFence;
+                                              const pDeviceMask:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHX;
+ pNext:=nil;
+ swapchain:=pSwapchain;
+ timeout:=pTimeout;
+ semaphore:=pSemaphore;
+ fence:=pFence;
+ deviceMask:=pDeviceMask;
+end;
+
+constructor TVkDeviceGroupPresentInfoKHX.Create(const pSwapchainCount:TVkUInt32;
+                                                const pPDeviceMasks:PVkUInt32;
+                                                const pMode:TVkDeviceGroupPresentModeFlagBitsKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHX;
+ pNext:=nil;
+ swapchainCount:=pSwapchainCount;
+ pDeviceMasks:=pPDeviceMasks;
+ mode:=pMode;
+end;
+
+constructor TVkDeviceGroupDeviceCreateInfoKHX.Create(const pPhysicalDeviceCount:TVkUInt32;
+                                                     const pPPhysicalDevices:PVkPhysicalDevice);
+begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO_KHX;
+ pNext:=nil;
+ physicalDeviceCount:=pPhysicalDeviceCount;
+ pPhysicalDevices:=pPPhysicalDevices;
+end;
+
+constructor TVkDeviceGroupSwapchainCreateInfoKHX.Create(const pModes:TVkDeviceGroupPresentModeFlagsKHX);
+begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHX;
+ pNext:=nil;
+ modes:=pModes;
+end;
+
+constructor TVkDescriptorUpdateTemplateEntryKHR.Create(const pDstBinding:TVkUInt32;
+                                                       const pDstArrayElement:TVkUInt32;
+                                                       const pDescriptorCount:TVkUInt32;
+                                                       const pDescriptorType:TVkDescriptorType;
+                                                       const pOffset:TVkSize;
+                                                       const pStride:TVkSize);
+begin
+ dstBinding:=pDstBinding;
+ dstArrayElement:=pDstArrayElement;
+ descriptorCount:=pDescriptorCount;
+ descriptorType:=pDescriptorType;
+ offset:=pOffset;
+ stride:=pStride;
+end;
+
+constructor TVkDescriptorUpdateTemplateCreateInfoKHR.Create(const pFlags:TVkDescriptorUpdateTemplateCreateFlagsKHR;
+                                                            const pDescriptorUpdateEntryCount:TVkUInt32;
+                                                            const pPDescriptorUpdateEntries:PVkDescriptorUpdateTemplateEntryKHR;
+                                                            const pTemplateType:TVkDescriptorUpdateTemplateTypeKHR;
+                                                            const pDescriptorSetLayout:TVkDescriptorSetLayout;
+                                                            const pPipelineBindPoint:TVkPipelineBindPoint;
+                                                            const pPipelineLayout:TVkPipelineLayout;
+                                                            const pSet_:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR;
+ pNext:=nil;
+ flags:=pFlags;
+ descriptorUpdateEntryCount:=pDescriptorUpdateEntryCount;
+ pDescriptorUpdateEntries:=pPDescriptorUpdateEntries;
+ templateType:=pTemplateType;
+ descriptorSetLayout:=pDescriptorSetLayout;
+ pipelineBindPoint:=pPipelineBindPoint;
+ pipelineLayout:=pPipelineLayout;
+ set_:=pSet_;
+end;
+
+constructor TVkXYColorEXT.Create(const pX:TVkFloat;
+                                 const pY:TVkFloat);
+begin
+ x:=pX;
+ y:=pY;
+end;
+
+constructor TVkSMPTE2086MetadataEXT.Create(const pDisplayPrimaryRed:TVkXYColorEXT;
+                                           const pDisplayPrimaryGreen:TVkXYColorEXT;
+                                           const pDisplayPrimaryBlue:TVkXYColorEXT;
+                                           const pWhitePoint:TVkXYColorEXT;
+                                           const pMaxLuminance:TVkFloat;
+                                           const pMinLuminance:TVkFloat);
+begin
+ displayPrimaryRed:=pDisplayPrimaryRed;
+ displayPrimaryGreen:=pDisplayPrimaryGreen;
+ displayPrimaryBlue:=pDisplayPrimaryBlue;
+ whitePoint:=pWhitePoint;
+ maxLuminance:=pMaxLuminance;
+ minLuminance:=pMinLuminance;
+end;
+
+constructor TVkIOSSurfaceCreateInfoMVK.Create(const pFlags:TVkIOSSurfaceCreateFlagsMVK;
+                                              const pPView:PVkVoid);
+begin
+ sType:=VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK;
+ pNext:=nil;
+ flags:=pFlags;
+ pView:=pPView;
+end;
+
+constructor TVkMacOSSurfaceCreateInfoMVK.Create(const pFlags:TVkMacOSSurfaceCreateFlagsMVK;
+                                                const pPView:PVkVoid);
+begin
+ sType:=VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK;
+ pNext:=nil;
+ flags:=pFlags;
+ pView:=pPView;
+end;
+
+constructor TVkViewportWScalingNV.Create(const pXcoeff:TVkFloat;
+                                         const pYcoeff:TVkFloat);
+begin
+ xcoeff:=pXcoeff;
+ ycoeff:=pYcoeff;
+end;
+
+constructor TVkPipelineViewportWScalingStateCreateInfoNV.Create(const pViewportWScalingEnable:TVkBool32;
+                                                                const pViewportCount:TVkUInt32;
+                                                                const pPViewportWScalings:PVkViewportWScalingNV);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV;
+ pNext:=nil;
+ viewportWScalingEnable:=pViewportWScalingEnable;
+ viewportCount:=pViewportCount;
+ pViewportWScalings:=pPViewportWScalings;
+end;
+
+constructor TVkViewportSwizzleNV.Create(const pX:TVkViewportCoordinateSwizzleNV;
+                                        const pY:TVkViewportCoordinateSwizzleNV;
+                                        const pZ:TVkViewportCoordinateSwizzleNV;
+                                        const pW:TVkViewportCoordinateSwizzleNV);
+begin
+ x:=pX;
+ y:=pY;
+ z:=pZ;
+ w:=pW;
+end;
+
+constructor TVkPipelineViewportSwizzleStateCreateInfoNV.Create(const pFlags:TVkPipelineViewportSwizzleStateCreateFlagsNV;
+                                                               const pViewportCount:TVkUInt32;
+                                                               const pPViewportSwizzles:PVkViewportSwizzleNV);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV;
+ pNext:=nil;
+ flags:=pFlags;
+ viewportCount:=pViewportCount;
+ pViewportSwizzles:=pPViewportSwizzles;
+end;
+
+constructor TVkPhysicalDeviceDiscardRectanglePropertiesEXT.Create(const pMaxDiscardRectangles:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT;
+ pNext:=nil;
+ maxDiscardRectangles:=pMaxDiscardRectangles;
+end;
+
+constructor TVkPipelineDiscardRectangleStateCreateInfoEXT.Create(const pFlags:TVkPipelineDiscardRectangleStateCreateFlagsEXT;
+                                                                 const pDiscardRectangleMode:TVkDiscardRectangleModeEXT;
+                                                                 const pDiscardRectangleCount:TVkUInt32;
+                                                                 const pPDiscardRectangles:PVkRect2D);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT;
+ pNext:=nil;
+ flags:=pFlags;
+ discardRectangleMode:=pDiscardRectangleMode;
+ discardRectangleCount:=pDiscardRectangleCount;
+ pDiscardRectangles:=pPDiscardRectangles;
+end;
+
+constructor TVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX.Create(const pPerViewPositionAllComponents:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX;
+ pNext:=nil;
+ perViewPositionAllComponents:=pPerViewPositionAllComponents;
 end;
 {$endif}
 
@@ -12118,9 +14490,9 @@ begin
  fCommands.CmdDrawIndexedIndirect(commandBuffer,buffer,offset,drawCount,stride);
 end;
 
-procedure TVulkan.CmdDispatch(commandBuffer:TVkCommandBuffer;x:TVkUInt32;y:TVkUInt32;z:TVkUInt32);
+procedure TVulkan.CmdDispatch(commandBuffer:TVkCommandBuffer;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32);
 begin
- fCommands.CmdDispatch(commandBuffer,x,y,z);
+ fCommands.CmdDispatch(commandBuffer,groupCountX,groupCountY,groupCountZ);
 end;
 
 procedure TVulkan.CmdDispatchIndirect(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize);
@@ -12397,14 +14769,14 @@ begin
 end;
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
 function TVulkan.CreateXlibSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkXlibSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
  result:=fCommands.CreateXlibSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
 end;
 {$endif}
 
-{$ifdef X11}
+{$ifdef XLIB}
 function TVulkan.GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PDisplay;visualID:TVisualID):TVkBool32;
 begin
  result:=fCommands.GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice,queueFamilyIndex,dpy,visualID);
@@ -12567,9 +14939,82 @@ begin
  fCommands.GetPhysicalDeviceSparseImageFormatProperties2KHR(physicalDevice,pFormatInfo,pPropertyCount,pProperties);
 end;
 
+procedure TVulkan.CmdPushDescriptorSetKHR(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;set_:TVkUInt32;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet);
+begin
+ fCommands.CmdPushDescriptorSetKHR(commandBuffer,pipelineBindPoint,layout,set_,descriptorWriteCount,pDescriptorWrites);
+end;
+
 procedure TVulkan.TrimCommandPoolKHR(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolTrimFlagsKHR);
 begin
  fCommands.TrimCommandPoolKHR(device,commandPool,flags);
+end;
+
+procedure TVulkan.GetPhysicalDeviceProperties2KHX(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties2KHX);
+begin
+ fCommands.GetPhysicalDeviceProperties2KHX(physicalDevice,pProperties);
+end;
+
+function TVulkan.GetPhysicalDeviceImageFormatProperties2KHX(physicalDevice:TVkPhysicalDevice;const pImageFormatInfo:PVkPhysicalDeviceImageFormatInfo2KHX;pImageFormatProperties:PVkImageFormatProperties2KHX):TVkResult;
+begin
+ result:=fCommands.GetPhysicalDeviceImageFormatProperties2KHX(physicalDevice,pImageFormatInfo,pImageFormatProperties);
+end;
+
+procedure TVulkan.GetPhysicalDeviceExternalBufferPropertiesKHX(physicalDevice:TVkPhysicalDevice;const pExternalBufferInfo:PVkPhysicalDeviceExternalBufferInfoKHX;pExternalBufferProperties:PVkExternalBufferPropertiesKHX);
+begin
+ fCommands.GetPhysicalDeviceExternalBufferPropertiesKHX(physicalDevice,pExternalBufferInfo,pExternalBufferProperties);
+end;
+
+{$ifdef Windows}
+function TVulkan.GetMemoryWin32HandleKHX(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;pHandle:PHANDLE):TVkResult;
+begin
+ result:=fCommands.GetMemoryWin32HandleKHX(device,memory,handleType,pHandle);
+end;
+{$endif}
+
+{$ifdef Windows}
+function TVulkan.GetMemoryWin32HandlePropertiesKHX(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;handle:THANDLE;pMemoryWin32HandleProperties:PVkMemoryWin32HandlePropertiesKHX):TVkResult;
+begin
+ result:=fCommands.GetMemoryWin32HandlePropertiesKHX(device,handleType,handle,pMemoryWin32HandleProperties);
+end;
+{$endif}
+
+function TVulkan.GetMemoryFdKHX(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;pFd:PVkInt32):TVkResult;
+begin
+ result:=fCommands.GetMemoryFdKHX(device,memory,handleType,pFd);
+end;
+
+function TVulkan.GetMemoryFdPropertiesKHX(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHX;fd:TVkInt32;pMemoryFdProperties:PVkMemoryFdPropertiesKHX):TVkResult;
+begin
+ result:=fCommands.GetMemoryFdPropertiesKHX(device,handleType,fd,pMemoryFdProperties);
+end;
+
+procedure TVulkan.GetPhysicalDeviceExternalSemaphorePropertiesKHX(physicalDevice:TVkPhysicalDevice;const pExternalSemaphoreInfo:PVkPhysicalDeviceExternalSemaphoreInfoKHX;pExternalSemaphoreProperties:PVkExternalSemaphorePropertiesKHX);
+begin
+ fCommands.GetPhysicalDeviceExternalSemaphorePropertiesKHX(physicalDevice,pExternalSemaphoreInfo,pExternalSemaphoreProperties);
+end;
+
+{$ifdef Windows}
+function TVulkan.GetSemaphoreWin32HandleKHX(device:TVkDevice;semaphore:TVkSemaphore;handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX;pHandle:PHANDLE):TVkResult;
+begin
+ result:=fCommands.GetSemaphoreWin32HandleKHX(device,semaphore,handleType,pHandle);
+end;
+{$endif}
+
+{$ifdef Windows}
+function TVulkan.ImportSemaphoreWin32HandleKHX(device:TVkDevice;const pImportSemaphoreWin32HandleInfo:PVkImportSemaphoreWin32HandleInfoKHX):TVkResult;
+begin
+ result:=fCommands.ImportSemaphoreWin32HandleKHX(device,pImportSemaphoreWin32HandleInfo);
+end;
+{$endif}
+
+function TVulkan.GetSemaphoreFdKHX(device:TVkDevice;semaphore:TVkSemaphore;handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHX;pFd:PVkInt32):TVkResult;
+begin
+ result:=fCommands.GetSemaphoreFdKHX(device,semaphore,handleType,pFd);
+end;
+
+function TVulkan.ImportSemaphoreFdKHX(device:TVkDevice;const pImportSemaphoreFdInfo:PVkImportSemaphoreFdInfoKHX):TVkResult;
+begin
+ result:=fCommands.ImportSemaphoreFdKHX(device,pImportSemaphoreFdInfo);
 end;
 
 function TVulkan.ReleaseDisplayEXT(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR):TVkResult;
@@ -12577,7 +15022,7 @@ begin
  result:=fCommands.ReleaseDisplayEXT(physicalDevice,display);
 end;
 
-{$ifdef X11}
+{$ifdef XLIB}
 function TVulkan.AcquireXlibDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;display:TVkDisplayKHR):TVkResult;
 begin
  result:=fCommands.AcquireXlibDisplayEXT(physicalDevice,dpy,display);
@@ -12614,6 +15059,101 @@ end;
 function TVulkan.GetPhysicalDeviceSurfaceCapabilities2EXT(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceCapabilities:PVkSurfaceCapabilities2EXT):TVkResult;
 begin
  result:=fCommands.GetPhysicalDeviceSurfaceCapabilities2EXT(physicalDevice,surface,pSurfaceCapabilities);
+end;
+
+function TVulkan.EnumeratePhysicalDeviceGroupsKHX(instance:TVkInstance;pPhysicalDeviceGroupCount:PVkUInt32;pPhysicalDeviceGroupProperties:PVkPhysicalDeviceGroupPropertiesKHX):TVkResult;
+begin
+ result:=fCommands.EnumeratePhysicalDeviceGroupsKHX(instance,pPhysicalDeviceGroupCount,pPhysicalDeviceGroupProperties);
+end;
+
+procedure TVulkan.GetDeviceGroupPeerMemoryFeaturesKHX(device:TVkDevice;heapIndex:TVkUInt32;localDeviceIndex:TVkUInt32;remoteDeviceIndex:TVkUInt32;pPeerMemoryFeatures:PVkPeerMemoryFeatureFlagsKHX);
+begin
+ fCommands.GetDeviceGroupPeerMemoryFeaturesKHX(device,heapIndex,localDeviceIndex,remoteDeviceIndex,pPeerMemoryFeatures);
+end;
+
+function TVulkan.BindBufferMemory2KHX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfoKHX):TVkResult;
+begin
+ result:=fCommands.BindBufferMemory2KHX(device,bindInfoCount,pBindInfos);
+end;
+
+function TVulkan.BindImageMemory2KHX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfoKHX):TVkResult;
+begin
+ result:=fCommands.BindImageMemory2KHX(device,bindInfoCount,pBindInfos);
+end;
+
+procedure TVulkan.CmdSetDeviceMaskKHX(commandBuffer:TVkCommandBuffer;deviceMask:TVkUInt32);
+begin
+ fCommands.CmdSetDeviceMaskKHX(commandBuffer,deviceMask);
+end;
+
+function TVulkan.GetDeviceGroupPresentCapabilitiesKHX(device:TVkDevice;pDeviceGroupPresentCapabilities:PVkDeviceGroupPresentCapabilitiesKHX):TVkResult;
+begin
+ result:=fCommands.GetDeviceGroupPresentCapabilitiesKHX(device,pDeviceGroupPresentCapabilities);
+end;
+
+function TVulkan.GetDeviceGroupSurfacePresentModesKHX(device:TVkDevice;surface:TVkSurfaceKHR;pModes:PVkDeviceGroupPresentModeFlagsKHX):TVkResult;
+begin
+ result:=fCommands.GetDeviceGroupSurfacePresentModesKHX(device,surface,pModes);
+end;
+
+function TVulkan.AcquireNextImage2KHX(device:TVkDevice;const pAcquireInfo:PVkAcquireNextImageInfoKHX;pImageIndex:PVkUInt32):TVkResult;
+begin
+ result:=fCommands.AcquireNextImage2KHX(device,pAcquireInfo,pImageIndex);
+end;
+
+procedure TVulkan.CmdDispatchBaseKHX(commandBuffer:TVkCommandBuffer;baseGroupX:TVkUInt32;baseGroupY:TVkUInt32;baseGroupZ:TVkUInt32;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32);
+begin
+ fCommands.CmdDispatchBaseKHX(commandBuffer,baseGroupX,baseGroupY,baseGroupZ,groupCountX,groupCountY,groupCountZ);
+end;
+
+function TVulkan.GetPhysicalDevicePresentRectanglesKHX(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pRectCount:PVkUInt32;pRects:PVkRect2D):TVkResult;
+begin
+ result:=fCommands.GetPhysicalDevicePresentRectanglesKHX(physicalDevice,surface,pRectCount,pRects);
+end;
+
+function TVulkan.CreateDescriptorUpdateTemplateKHR(device:TVkDevice;const pCreateInfo:PVkDescriptorUpdateTemplateCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pDescriptorUpdateTemplate:PVkDescriptorUpdateTemplateKHR):TVkResult;
+begin
+ result:=fCommands.CreateDescriptorUpdateTemplateKHR(device,pCreateInfo,pAllocator,pDescriptorUpdateTemplate);
+end;
+
+procedure TVulkan.DestroyDescriptorUpdateTemplateKHR(device:TVkDevice;descriptorUpdateTemplate:TVkDescriptorUpdateTemplateKHR;const pAllocator:PVkAllocationCallbacks);
+begin
+ fCommands.DestroyDescriptorUpdateTemplateKHR(device,descriptorUpdateTemplate,pAllocator);
+end;
+
+procedure TVulkan.UpdateDescriptorSetWithTemplateKHR(device:TVkDevice;descriptorSet:TVkDescriptorSet;descriptorUpdateTemplate:TVkDescriptorUpdateTemplateKHR;const pData:PVkVoid);
+begin
+ fCommands.UpdateDescriptorSetWithTemplateKHR(device,descriptorSet,descriptorUpdateTemplate,pData);
+end;
+
+procedure TVulkan.CmdPushDescriptorSetWithTemplateKHR(commandBuffer:TVkCommandBuffer;descriptorUpdateTemplate:TVkDescriptorUpdateTemplateKHR;layout:TVkPipelineLayout;set_:TVkUInt32;const pData:PVkVoid);
+begin
+ fCommands.CmdPushDescriptorSetWithTemplateKHR(commandBuffer,descriptorUpdateTemplate,layout,set_,pData);
+end;
+
+procedure TVulkan.SetSMPTE2086MetadataEXT(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkSMPTE2086MetadataEXT);
+begin
+ fCommands.SetSMPTE2086MetadataEXT(device,swapchainCount,pSwapchains,pMetadata);
+end;
+
+function TVulkan.CreateIOSSurfaceMVK(instance:TVkInstance;const pCreateInfo:PVkIOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
+begin
+ result:=fCommands.CreateIOSSurfaceMVK(instance,pCreateInfo,pAllocator,pSurface);
+end;
+
+function TVulkan.CreateMacOSSurfaceMVK(instance:TVkInstance;const pCreateInfo:PVkMacOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
+begin
+ result:=fCommands.CreateMacOSSurfaceMVK(instance,pCreateInfo,pAllocator,pSurface);
+end;
+
+procedure TVulkan.CmdSetViewportWScalingNV(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV);
+begin
+ fCommands.CmdSetViewportWScalingNV(commandBuffer,firstViewport,viewportCount,pViewportWScalings);
+end;
+
+procedure TVulkan.CmdSetDiscardRectangleEXT(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D);
+begin
+ fCommands.CmdSetDiscardRectangleEXT(commandBuffer,firstDiscardRectangle,discardRectangleCount,pDiscardRectangles);
 end;
 
 initialization
