@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-03-03-04-14-0000                       *
+ *                        Version 2017-03-04-03-19-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -7262,10 +7262,11 @@ begin
  fSurfaceCreateInfo.hinstance_:=pInstanceHandle;
  fSurfaceCreateInfo.hwnd_:=pWindowHandle;
 {$elseif defined(XLIB)}
- fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+ fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
  fSurfaceCreateInfo.dpy:=pDisplay;
  fSurfaceCreateInfo.window:=pWindow;
 {$elseif defined(XCB)}
+ fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
  fSurfaceCreateInfo.connection:=pConnection;
  fSurfaceCreateInfo.window:=pWindow;
 {$ifend}
