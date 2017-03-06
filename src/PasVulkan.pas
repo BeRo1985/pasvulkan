@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-03-06-03-58-0000                       *
+ *                        Version 2017-03-06-04-33-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -283,7 +283,18 @@ unit PasVulkan;
 
 interface
 
-uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef XLIB}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils,Classes,SyncObjs,Math,Vulkan;
+uses {$if defined(Windows)}
+      Windows,
+     {$elseif defined(Unix)}
+      BaseUnix,UnixType,dl,
+     {$ifend}
+     {$if defined(XLIB) and defined(VulkanUseXLIBUnits)}x,xlib,{$ifend}
+     {$if defined(XCB) and defined(VulkanUseXCBUnits)}xcb,{$ifend}
+     {$if defined(Mir) and defined(VulkanUseMirUnits)}Mir,{$ifend}
+     {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}
+     {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}
+     SysUtils,Classes,SyncObjs,Math,
+     Vulkan;
 
 type EVulkanException=class(Exception);
 
@@ -858,7 +869,7 @@ type EVulkanException=class(Exception);
        constructor CreateMir(const pInstance:TVulkanInstance;const pConnection:PVkMirConnection;const pSurface:PVkMirSurface);
 {$ifend}
 {$if defined(Wayland) and defined(Unix)}
-       constructor CreateWayland(const pInstance:TVulkanInstance;const pDisplay:PVkWaylandConnection;const pSurface:PVkWaylandSurface);
+       constructor CreateWayland(const pInstance:TVulkanInstance;const pDisplay:PVkWaylandDisplay;const pSurface:PVkWaylandSurface);
 {$ifend}
 {$if defined(Windows)}
        constructor CreateWin32(const pInstance:TVulkanInstance;const pInstanceHandle,pWindowHandle:THandle);
@@ -7346,13 +7357,13 @@ begin
  FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
  SurfaceCreateInfo.Mir.sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
  SurfaceCreateInfo.Mir.connection:=pConnection;
- SurfaceCreateInfo.Mir.mirSurface:=pMirSurface;
+ SurfaceCreateInfo.Mir.mirSurface:=pSurface;
  Create(pInstance,SurfaceCreateInfo);
 end;
 {$ifend}
 
 {$if defined(Wayland) and defined(Unix)}
-constructor TVulkanSurface.CreateWayland(const pInstance:TVulkanInstance;const pDisplay:PVkWaylandConnection;const pSurface:PVkWaylandSurface);
+constructor TVulkanSurface.CreateWayland(const pInstance:TVulkanInstance;const pDisplay:PVkWaylandDisplay;const pSurface:PVkWaylandSurface);
 var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
 begin
  FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
