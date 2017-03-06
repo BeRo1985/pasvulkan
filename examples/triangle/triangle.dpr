@@ -474,7 +474,7 @@ begin
     VulkanInstance.InstallDebugReportCallback;
    end;
 
-   VulkanSurface:=TVulkanSurface.Create(VulkanInstance,hInstance,hWindow);
+   VulkanSurface:=TVulkanSurface.CreateWin32(VulkanInstance,hInstance,hWindow);
 
    if GetClientRect(hWindow,R) then begin
     SurfaceWidth:=R.Right-R.Left;
