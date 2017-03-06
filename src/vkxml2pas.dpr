@@ -2895,27 +2895,27 @@ begin
    end else if Type_='HWND' then begin
     result:='PVkHWND';
    end else if Type_='Display' then begin
-    result:='PDisplay';
+    result:='PVkXLIBDisplay';
    end else if Type_='VisualID' then begin
-    result:='PVisualID';
+    result:='PVkXLIBVisualID';
    end else if Type_='Window' then begin
-    result:='PWindow';
+    result:='PVkXLIBWindow';
    end else if Type_='xcb_connection_t' then begin
-    result:='Pxcb_connection';
+    result:='PVkXCBConnection';
    end else if Type_='xcb_visualid_t' then begin
-    result:='Pxcb_visualid';
+    result:='PVkXCBVisualID';
    end else if Type_='xcb_window_t' then begin
-    result:='Pxcb_window';
+    result:='PVkXCBWindow';
    end else if Type_='wl_display' then begin
-    result:='Pwl_display';
+    result:='PVkWaylandDisplay';
    end else if Type_='wl_surface' then begin
-    result:='Pwl_surface';
+    result:='PVkWaylandSurface';
    end else if Type_='MirConnection' then begin
-    result:='PMirConnection';
+    result:='PVkMirConnection';
    end else if Type_='MirSurface' then begin
-    result:='PMirSurface';
+    result:='PVkMirSurface';
    end else if Type_='ANativeWindow' then begin
-    result:='PANativeWindow';
+    result:='PVkAndroidANativeWindow';
    end else if Type_='SECURITY_ATTRIBUTES' then begin
     result:='PSecurityAttributes';
    end else begin
@@ -2958,27 +2958,27 @@ begin
    end else if Type_='HWND' then begin
     result:='PPVkHWND';
    end else if Type_='Display' then begin
-    result:='PPDisplay';
+    result:='PPVkXLIBDisplay';
    end else if Type_='VisualID' then begin
-    result:='PPVisualID';
+    result:='PPVkXLIBVisualID';
    end else if Type_='Window' then begin
-    result:='PPWindow';
+    result:='PPVkXLIBWindow';
    end else if Type_='xcb_connection_t' then begin
-    result:='PPxcb_connection';
+    result:='PPVkXCBConnection';
    end else if Type_='xcb_visualid_t' then begin
-    result:='PPxcb_visualid';
+    result:='PPVkXCBVisualID';
    end else if Type_='xcb_window_t' then begin
-    result:='PPxcb_window';
+    result:='PPVkXCBWindow';
    end else if Type_='wl_display' then begin
-    result:='PPwl_display';
+    result:='PPVkWaylandDisplay';
    end else if Type_='wl_surface' then begin
-    result:='PPwl_surface';
+    result:='PPVkWaylandSurface';
    end else if Type_='MirConnection' then begin
-    result:='PPMirConnection';
+    result:='PPVkMirConnection';
    end else if Type_='MirSurface' then begin
-    result:='PPMirSurface';
+    result:='PPVkMirSurface';
    end else if Type_='ANativeWindow' then begin
-    result:='PPANativeWindow';
+    result:='PPVkAndroidANativeWindow';
    end else begin
     result:='PP'+Type_;
    end;
@@ -3020,27 +3020,27 @@ begin
    end else if Type_='HWND' then begin
     result:='TVkHWND';
    end else if Type_='Display' then begin
-    result:='TDisplay';
+    result:='TVkXLIBDisplay';
    end else if Type_='VisualID' then begin
-    result:='TVisualID';
+    result:='TVkXLIBVisualID';
    end else if Type_='Window' then begin
-    result:='TWindow';
+    result:='TVkXLIBWindow';
    end else if Type_='xcb_connection_t' then begin
-    result:='Txcb_connection';
+    result:='TVkXCBConnection';
    end else if Type_='xcb_visualid_t' then begin
-    result:='Txcb_visualid';
+    result:='TVkXCBVisualID';
    end else if Type_='xcb_window_t' then begin
-    result:='Txcb_window';
+    result:='TVkXCBWindow';
    end else if Type_='wl_display' then begin
-    result:='Twl_display';
+    result:='TVkWaylandDisplay';
    end else if Type_='wl_surface' then begin
-    result:='Twl_surface';
+    result:='TVkWaylandSurface';
    end else if Type_='MirConnection' then begin
-    result:='TMirConnection';
+    result:='TVkMirConnection';
    end else if Type_='MirSurface' then begin
-    result:='TMirSurface';
+    result:='TVkMirSurface';
    end else if Type_='ANativeWindow' then begin
-    result:='TANativeWindow';
+    result:='TVkAndroidANativeWindow';
    end else begin
     result:='T'+Type_;
    end;
@@ -4469,47 +4469,72 @@ begin
    OutputPAS.Add('{$ifdef WinCE}');
    OutputPAS.Add(' {$define Windows}');
    OutputPAS.Add('{$endif}');
-   OutputPAS.Add('{$ifdef Windows}');
+   OutputPAS.Add('{$if defined(Android)}');
+   OutputPAS.Add(' {$define VK_USE_PLATFORM_ANDROID_KHR}');
+   OutputPAS.Add('{$elseif defined(Windows)}');
    OutputPAS.Add(' {$define VK_USE_PLATFORM_WIN32_KHR}');
-   OutputPAS.Add('{$endif}');
+   OutputPAS.Add('{$elseif defined(Unix) or defined(Linux)}');
+   OutputPAS.Add(' {$ifdef MIR}');
+   OutputPAS.Add('  {$define VK_USE_PLATFORM_MIR_KHR}');
+   OutputPAS.Add(' {$endif}');
+   OutputPAS.Add(' {$ifdef WAYLAND}');
+   OutputPAS.Add('  {$define VK_USE_PLATFORM_WAYLAND_KHR}');
+   OutputPAS.Add(' {$endif}');
+   OutputPAS.Add(' {$ifdef XCB}');
+   OutputPAS.Add('  {$define VK_USE_PLATFORM_XCB_KHR}');
+   OutputPAS.Add(' {$endif}');
+   OutputPAS.Add(' {$ifdef XLIB}');
+   OutputPAS.Add('  {$define VK_USE_PLATFORM_XLIB_KHR}');
+   OutputPAS.Add(' {$endif}');
+   OutputPAS.Add('{$ifend}');
    OutputPAS.Add('');
    OutputPAS.Add('interface');
    OutputPAS.Add('');
-   OutputPAS.Add('uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef XLIB}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils;');
+   OutputPAS.Add('uses {$if defined(Windows)}');
+   OutputPAS.Add('      Windows,');
+   OutputPAS.Add('     {$elseif defined(Unix)}');
+   OutputPAS.Add('      BaseUnix,UnixType,dl,');
+   OutputPAS.Add('     {$ifend}');
+   OutputPAS.Add('     {$if defined(XLIB) and defined(VulkanUseXLIBUnits)}x,xlib,{$ifend}');
+   OutputPAS.Add('     {$if defined(XCB) and defined(VulkanUseXCBUnits)}xcb,{$ifend}');
+   OutputPAS.Add('     {$if defined(Mir) and defined(VulkanUseMirUnits)}Mir,{$ifend}');
+   OutputPAS.Add('     {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}');
+   OutputPAS.Add('     {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}');
+   OutputPAS.Add('     SysUtils;');
    OutputPAS.Add('');
    OutputPAS.Add('const VK_DEFAULT_LIB_NAME={$ifdef Windows}''vulkan-1.dll''{$else}{$ifdef Unix}''libvulkan.so''{$else}''libvulkan''{$endif}{$endif};');
    OutputPAS.Add('');
    OutputPAS.Add('type PPVkInt8=^PVkInt8;');
    OutputPAS.Add('     PVkInt8=^TVkInt8;');
-   OutputPAS.Add('     TVkInt8=shortint;');
+   OutputPAS.Add('     TVkInt8={$ifdef FPC}Int8{$else}ShortInt{$endif};');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkUInt8=^PVkUInt8;');
    OutputPAS.Add('     PVkUInt8=^TVkUInt8;');
-   OutputPAS.Add('     TVkUInt8=byte;');
+   OutputPAS.Add('     TVkUInt8={$ifdef FPC}UInt8{$else}Byte{$endif};');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkInt16=^PVkInt16;');
    OutputPAS.Add('     PVkInt16=^TVkInt16;');
-   OutputPAS.Add('     TVkInt16=smallint;');
+   OutputPAS.Add('     TVkInt16={$ifdef FPC}Int16{$else}SmallInt{$endif};');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkUInt16=^PVkUInt16;');
    OutputPAS.Add('     PVkUInt16=^TVkUInt16;');
-   OutputPAS.Add('     TVkUInt16=word;');
+   OutputPAS.Add('     TVkUInt16={$ifdef FPC}UInt16{$else}Word{$endif};');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkInt32=^PVkInt32;');
    OutputPAS.Add('     PVkInt32=^TVkInt32;');
-   OutputPAS.Add('     TVkInt32=longint;');
+   OutputPAS.Add('     TVkInt32={$ifdef FPC}Int32{$else}LongInt{$endif};');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkUInt32=^PVkUInt32;');
    OutputPAS.Add('     PVkUInt32=^TVkUInt32;');
-   OutputPAS.Add('     TVkUInt32=longword;');
+   OutputPAS.Add('     TVkUInt32={$ifdef FPC}UInt32{$else}LongWord{$endif};');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkInt64=^PVkInt64;');
    OutputPAS.Add('     PVkInt64=^TVkInt64;');
-   OutputPAS.Add('     TVkInt64=int64;');
+   OutputPAS.Add('     TVkInt64=Int64;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkUInt64=^PVkUInt64;');
    OutputPAS.Add('     PVkUInt64=^TVkUInt64;');
-   OutputPAS.Add('     TVkUInt64=uint64;');
+   OutputPAS.Add('     TVkUInt64=UInt64;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkChar=^PVkChar;');
    OutputPAS.Add('     PVkChar=PAnsiChar;');
@@ -4517,18 +4542,18 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkPointer=^PVkPointer;');
    OutputPAS.Add('     PVkPointer=^TVkPointer;');
-   OutputPAS.Add('     TVkPointer=pointer;');
+   OutputPAS.Add('     TVkPointer=Pointer;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkVoid=^PVkVoid;');
-   OutputPAS.Add('     PVkVoid=pointer;');
+   OutputPAS.Add('     PVkVoid=Pointer;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkFloat=^PVkFloat;');
    OutputPAS.Add('     PVkFloat=^TVkFloat;');
-   OutputPAS.Add('     TVkFloat=single;');
+   OutputPAS.Add('     TVkFloat=Single;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkDouble=^PVkDouble;');
    OutputPAS.Add('     PVkDouble=^TVkDouble;');
-   OutputPAS.Add('     TVkDouble=double;');
+   OutputPAS.Add('     TVkDouble=Double;');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkPtrUInt=^PVkPtrUInt;');
    OutputPAS.Add('     PPVkPtrInt=^PVkPtrInt;');
@@ -4553,11 +4578,11 @@ begin
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('{$ifdef OldDelphi}');
    OutputPAS.Add('{$ifdef cpu64}');
-   OutputPAS.Add('     TVkPtrUInt=uint64;');
-   OutputPAS.Add('     TVkPtrInt=int64;');
+   OutputPAS.Add('     TVkPtrUInt=TVkUInt64;');
+   OutputPAS.Add('     TVkPtrInt=TVkInt64;');
    OutputPAS.Add('{$else}');
-   OutputPAS.Add('     TVkPtrUInt=longword;');
-   OutputPAS.Add('     TVkPtrInt=longint;');
+   OutputPAS.Add('     TVkPtrUInt=TVkUInt32;');
+   OutputPAS.Add('     TVkPtrInt=TVkInt32;');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('');
@@ -4580,6 +4605,54 @@ begin
    OutputPAS.Add('     PPVkCharString=^PVkCharString;');
    OutputPAS.Add('     PVkCharString=^TVkCharString;');
    OutputPAS.Add('     TVkCharString=AnsiString;');
+   OutputPAS.Add('');
+   OutputPAS.Add('{$ifdef Android}');
+   OutputPAS.Add('     PPVkAndroidANativeWindow=^PVkAndroidANativeWindow;');
+   OutputPAS.Add('     PVkAndroidANativeWindow={$ifdef VulkanUseAndroidUnits}PANativeWindow{$else}TVkPointer{$endif};');
+   OutputPAS.Add('{$endif}');
+   OutputPAS.Add('');
+   OutputPAS.Add('{$ifdef Mir}');
+   OutputPAS.Add('     PPVkMirConnection=^PVkMirConnection;');
+   OutputPAS.Add('     PVkMirConnection={$ifdef VulkanUseMirUnits}PMirConnection{$else}TVkPointer{$endif};');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkMirSurface=^PVkMirSurface;');
+   OutputPAS.Add('     PVkMirSurface={$ifdef VulkanUseMirUnits}PMirSurface{$else}TVkPointer{$endif};');
+   OutputPAS.Add('{$endif}');
+   OutputPAS.Add('');
+   OutputPAS.Add('{$ifdef Wayland}');
+   OutputPAS.Add('     PPVkWaylandDisplay=^PVkWaylandDisplay;');
+   OutputPAS.Add('     PVkWaylandDisplay={$ifdef VulkanUseWaylandUnits}Pwl_display{$else}TVkPointer{$endif};');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkWaylandSurface=^PVkWaylandSurface;');
+   OutputPAS.Add('     PVkWaylandSurface={$ifdef VulkanUseWaylandUnits}Pwl_surface{$else}TVkPointer{$endif};');
+   OutputPAS.Add('{$endif}');
+   OutputPAS.Add('');
+   OutputPAS.Add('{$ifdef XCB}');
+   OutputPAS.Add('     PPVkXCBConnection=^PVkXCBConnection;');
+   OutputPAS.Add('     PVkXCBConnection={$ifdef VulkanUseXCBUnits}Pxcb_connection_t{$else}TVkPointer{$endif};');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkXCBVisualID=^PVkXCBVisualID;');
+   OutputPAS.Add('     PVkXCBVisualID={$ifdef VulkanUseXCBUnits}Pxcb_visualid_t{$else}^TVkXCBVisualID{$endif};');
+   OutputPAS.Add('     TVkXCBVisualID={$if defined(VulkanUseXCBUnits)}Pxcb_visualid_t{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkXCBWindow=^PVkXCBWindow;');
+   OutputPAS.Add('     PVkXCBWindow={$ifdef VulkanUseXCBUnits}Pxcb_window_t{$else}^TVkXCBWindow{$endif};');
+   OutputPAS.Add('     TVkXCBWindow={$if defined(VulkanUseXCBUnits)}Txcb_window_t{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};');
+   OutputPAS.Add('{$endif}');
+   OutputPAS.Add('');
+   OutputPAS.Add('{$ifdef XLIB}');
+   OutputPAS.Add('     PPVkXLIBDisplay=^PVkXLIBDisplay;');
+   OutputPAS.Add('     PVkXLIBDisplay={$ifdef VulkanUseXLIBUnits}PDisplay{$else}TVkPointer{$endif};');
+   OutputPAS.Add('     {$ifdef VulkanUseXLIBUnits}TVkXLIBDisplay=TDisplay;{$endif}');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkXLIBVisualID=^PVkXLIBVisualID;');
+   OutputPAS.Add('     PVkXLIBVisualID={$ifdef VulkanUseXLIBUnits}PVisualID{$else}^TVkXLIBVisualID{$endif};');
+   OutputPAS.Add('     TVkXLIBVisualID={$if defined(VulkanUseXLIBUnits)}TVisualID{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkXLIBWindow=^PVkXLIBWindow;');
+   OutputPAS.Add('     PVkXLIBWindow={$ifdef VulkanUseXLIBUnits}PWindow{$else}^TVkXLIBWindow{$endif};');
+   OutputPAS.Add('     TVkXLIBWindow={$if defined(VulkanUseXLIBUnits)}TWindow{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};');
+   OutputPAS.Add('{$endif}');
    OutputPAS.Add('');
    OutputPAS.Add('const VK_NULL_HANDLE=0;');
    OutputPAS.Add('');

@@ -56,47 +56,72 @@ unit Vulkan;
 {$ifdef WinCE}
  {$define Windows}
 {$endif}
-{$ifdef Windows}
+{$if defined(Android)}
+ {$define VK_USE_PLATFORM_ANDROID_KHR}
+{$elseif defined(Windows)}
  {$define VK_USE_PLATFORM_WIN32_KHR}
-{$endif}
+{$elseif defined(Unix) or defined(Linux)}
+ {$ifdef MIR}
+  {$define VK_USE_PLATFORM_MIR_KHR}
+ {$endif}
+ {$ifdef WAYLAND}
+  {$define VK_USE_PLATFORM_WAYLAND_KHR}
+ {$endif}
+ {$ifdef XCB}
+  {$define VK_USE_PLATFORM_XCB_KHR}
+ {$endif}
+ {$ifdef XLIB}
+  {$define VK_USE_PLATFORM_XLIB_KHR}
+ {$endif}
+{$ifend}
 
 interface
 
-uses {$ifdef Windows}Windows,{$endif}{$ifdef Unix}BaseUnix,UnixType,dl,{$endif}{$ifdef XLIB}x,xlib,{$endif}{$ifdef XCB}xcb,{$endif}{$ifdef Mir}Mir,{$endif}{$ifdef Wayland}Wayland,{$endif}{$ifdef Android}Android,{$endif}SysUtils;
+uses {$if defined(Windows)}
+      Windows,
+     {$elseif defined(Unix)}
+      BaseUnix,UnixType,dl,
+     {$ifend}
+     {$if defined(XLIB) and defined(VulkanUseXLIBUnits)}x,xlib,{$ifend}
+     {$if defined(XCB) and defined(VulkanUseXCBUnits)}xcb,{$ifend}
+     {$if defined(Mir) and defined(VulkanUseMirUnits)}Mir,{$ifend}
+     {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}
+     {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}
+     SysUtils;
 
 const VK_DEFAULT_LIB_NAME={$ifdef Windows}'vulkan-1.dll'{$else}{$ifdef Unix}'libvulkan.so'{$else}'libvulkan'{$endif}{$endif};
 
 type PPVkInt8=^PVkInt8;
      PVkInt8=^TVkInt8;
-     TVkInt8=shortint;
+     TVkInt8={$ifdef FPC}Int8{$else}ShortInt{$endif};
 
      PPVkUInt8=^PVkUInt8;
      PVkUInt8=^TVkUInt8;
-     TVkUInt8=byte;
+     TVkUInt8={$ifdef FPC}UInt8{$else}Byte{$endif};
 
      PPVkInt16=^PVkInt16;
      PVkInt16=^TVkInt16;
-     TVkInt16=smallint;
+     TVkInt16={$ifdef FPC}Int16{$else}SmallInt{$endif};
 
      PPVkUInt16=^PVkUInt16;
      PVkUInt16=^TVkUInt16;
-     TVkUInt16=word;
+     TVkUInt16={$ifdef FPC}UInt16{$else}Word{$endif};
 
      PPVkInt32=^PVkInt32;
      PVkInt32=^TVkInt32;
-     TVkInt32=longint;
+     TVkInt32={$ifdef FPC}Int32{$else}LongInt{$endif};
 
      PPVkUInt32=^PVkUInt32;
      PVkUInt32=^TVkUInt32;
-     TVkUInt32=longword;
+     TVkUInt32={$ifdef FPC}UInt32{$else}LongWord{$endif};
 
      PPVkInt64=^PVkInt64;
      PVkInt64=^TVkInt64;
-     TVkInt64=int64;
+     TVkInt64=Int64;
 
      PPVkUInt64=^PVkUInt64;
      PVkUInt64=^TVkUInt64;
-     TVkUInt64=uint64;
+     TVkUInt64=UInt64;
 
      PPVkChar=^PVkChar;
      PVkChar=PAnsiChar;
@@ -104,18 +129,18 @@ type PPVkInt8=^PVkInt8;
 
      PPVkPointer=^PVkPointer;
      PVkPointer=^TVkPointer;
-     TVkPointer=pointer;
+     TVkPointer=Pointer;
 
      PPVkVoid=^PVkVoid;
-     PVkVoid=pointer;
+     PVkVoid=Pointer;
 
      PPVkFloat=^PVkFloat;
      PVkFloat=^TVkFloat;
-     TVkFloat=single;
+     TVkFloat=Single;
 
      PPVkDouble=^PVkDouble;
      PVkDouble=^TVkDouble;
-     TVkDouble=double;
+     TVkDouble=Double;
 
      PPVkPtrUInt=^PVkPtrUInt;
      PPVkPtrInt=^PVkPtrInt;
@@ -140,11 +165,11 @@ type PPVkInt8=^PVkInt8;
 {$endif}
 {$ifdef OldDelphi}
 {$ifdef cpu64}
-     TVkPtrUInt=uint64;
-     TVkPtrInt=int64;
+     TVkPtrUInt=TVkUInt64;
+     TVkPtrInt=TVkInt64;
 {$else}
-     TVkPtrUInt=longword;
-     TVkPtrInt=longint;
+     TVkPtrUInt=TVkUInt32;
+     TVkPtrInt=TVkInt32;
 {$endif}
 {$endif}
 
@@ -167,6 +192,54 @@ type PPVkInt8=^PVkInt8;
      PPVkCharString=^PVkCharString;
      PVkCharString=^TVkCharString;
      TVkCharString=AnsiString;
+
+{$ifdef Android}
+     PPVkAndroidANativeWindow=^PVkAndroidANativeWindow;
+     PVkAndroidANativeWindow={$ifdef VulkanUseAndroidUnits}PANativeWindow{$else}TVkPointer{$endif};
+{$endif}
+
+{$ifdef Mir}
+     PPVkMirConnection=^PVkMirConnection;
+     PVkMirConnection={$ifdef VulkanUseMirUnits}PMirConnection{$else}TVkPointer{$endif};
+
+     PPVkMirSurface=^PVkMirSurface;
+     PVkMirSurface={$ifdef VulkanUseMirUnits}PMirSurface{$else}TVkPointer{$endif};
+{$endif}
+
+{$ifdef Wayland}
+     PPVkWaylandDisplay=^PVkWaylandDisplay;
+     PVkWaylandDisplay={$ifdef VulkanUseWaylandUnits}Pwl_display{$else}TVkPointer{$endif};
+
+     PPVkWaylandSurface=^PVkWaylandSurface;
+     PVkWaylandSurface={$ifdef VulkanUseWaylandUnits}Pwl_surface{$else}TVkPointer{$endif};
+{$endif}
+
+{$ifdef XCB}
+     PPVkXCBConnection=^PVkXCBConnection;
+     PVkXCBConnection={$ifdef VulkanUseXCBUnits}Pxcb_connection_t{$else}TVkPointer{$endif};
+
+     PPVkXCBVisualID=^PVkXCBVisualID;
+     PVkXCBVisualID={$ifdef VulkanUseXCBUnits}Pxcb_visualid_t{$else}^TVkXCBVisualID{$endif};
+     TVkXCBVisualID={$if defined(VulkanUseXCBUnits)}Pxcb_visualid_t{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};
+
+     PPVkXCBWindow=^PVkXCBWindow;
+     PVkXCBWindow={$ifdef VulkanUseXCBUnits}Pxcb_window_t{$else}^TVkXCBWindow{$endif};
+     TVkXCBWindow={$if defined(VulkanUseXCBUnits)}Txcb_window_t{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};
+{$endif}
+
+{$ifdef XLIB}
+     PPVkXLIBDisplay=^PVkXLIBDisplay;
+     PVkXLIBDisplay={$ifdef VulkanUseXLIBUnits}PDisplay{$else}TVkPointer{$endif};
+     {$ifdef VulkanUseXLIBUnits}TVkXLIBDisplay=TDisplay;{$endif}
+
+     PPVkXLIBVisualID=^PVkXLIBVisualID;
+     PVkXLIBVisualID={$ifdef VulkanUseXLIBUnits}PVisualID{$else}^TVkXLIBVisualID{$endif};
+     TVkXLIBVisualID={$if defined(VulkanUseXLIBUnits)}TVisualID{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};
+
+     PPVkXLIBWindow=^PVkXLIBWindow;
+     PVkXLIBWindow={$ifdef VulkanUseXLIBUnits}PWindow{$else}^TVkXLIBWindow{$endif};
+     TVkXLIBWindow={$if defined(VulkanUseXLIBUnits)}TWindow{$elseif defined(CPU64)}TVkUInt64{$else}TVKUInt32{$ifend};
+{$endif}
 
 const VK_NULL_HANDLE=0;
 
@@ -5140,10 +5213,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkAndroidSurfaceCreateFlagsKHR; //< Reserved
-       window:PANativeWindow;
+       window:PVkAndroidANativeWindow;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFlags:TVkAndroidSurfaceCreateFlagsKHR; //< Reserved
-                          const pWindow:PANativeWindow);
+                          const pWindow:PVkAndroidANativeWindow);
 {$endif}
      end;
 {$endif}
@@ -5158,12 +5231,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkMirSurfaceCreateFlagsKHR; //< Reserved
-       connection:PMirConnection;
-       mirSurface:PMirSurface;
+       connection:PVkMirConnection;
+       mirSurface:PVkMirSurface;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFlags:TVkMirSurfaceCreateFlagsKHR; //< Reserved
-                          const pConnection:PMirConnection;
-                          const pMirSurface:PMirSurface);
+                          const pConnection:PVkMirConnection;
+                          const pMirSurface:PVkMirSurface);
 {$endif}
      end;
 {$endif}
@@ -5194,12 +5267,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkWaylandSurfaceCreateFlagsKHR; //< Reserved
-       display:Pwl_display;
-       surface:Pwl_surface;
+       display:PVkWaylandDisplay;
+       surface:PVkWaylandSurface;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFlags:TVkWaylandSurfaceCreateFlagsKHR; //< Reserved
-                          const pDisplay:Pwl_display;
-                          const pSurface:Pwl_surface);
+                          const pDisplay:PVkWaylandDisplay;
+                          const pSurface:PVkWaylandSurface);
 {$endif}
      end;
 {$endif}
@@ -5234,12 +5307,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkXlibSurfaceCreateFlagsKHR; //< Reserved
-       dpy:PDisplay;
-       window:TWindow;
+       dpy:PVkXLIBDisplay;
+       window:TVkXLIBWindow;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFlags:TVkXlibSurfaceCreateFlagsKHR; //< Reserved
-                          const pDpy:PDisplay;
-                          const pWindow:TWindow);
+                          const pDpy:PVkXLIBDisplay;
+                          const pWindow:TVkXLIBWindow);
 {$endif}
      end;
 {$endif}
@@ -5254,12 +5327,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR
        pNext:PVkVoid; //< Pointer to next structure
        flags:TVkXcbSurfaceCreateFlagsKHR; //< Reserved
-       connection:Pxcb_connection;
-       window:Txcb_window;
+       connection:PVkXCBConnection;
+       window:TVkXCBWindow;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFlags:TVkXcbSurfaceCreateFlagsKHR; //< Reserved
-                          const pConnection:Pxcb_connection;
-                          const pWindow:Txcb_window);
+                          const pConnection:PVkXCBConnection;
+                          const pWindow:TVkXCBWindow);
 {$endif}
      end;
 {$endif}
@@ -7393,7 +7466,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
 
 {$ifdef Mir}
-     TvkGetPhysicalDeviceMirPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PMirConnection):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceMirPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkMirConnection):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
      TvkDestroySurfaceKHR=procedure(instance:TVkInstance;surface:TVkSurfaceKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -7423,7 +7496,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
 
 {$ifdef Wayland}
-     TvkGetPhysicalDeviceWaylandPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:Pwl_display):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceWaylandPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:PVkWaylandDisplay):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Windows}
@@ -7439,7 +7512,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
 
 {$ifdef XLIB}
-     TvkGetPhysicalDeviceXlibPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PDisplay;visualID:TVisualID):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceXlibPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PVkXLIBDisplay;visualID:TVkXLIBVisualID):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef XCB}
@@ -7447,7 +7520,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
 
 {$ifdef XCB}
-     TvkGetPhysicalDeviceXcbPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:Pxcb_connection;visual_id:Txcb_visualid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceXcbPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkXCBConnection;visual_id:TVkXCBVisualID):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
      TvkCreateDebugReportCallbackEXT=function(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -7547,11 +7620,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkReleaseDisplayEXT=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef XLIB}
-     TvkAcquireXlibDisplayEXT=function(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAcquireXlibDisplayEXT=function(physicalDevice:TVkPhysicalDevice;dpy:PVkXLIBDisplay;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef RandR}
-     TvkGetRandROutputDisplayEXT=function(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;rrOutput:TRROutput;pDisplay:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetRandROutputDisplayEXT=function(physicalDevice:TVkPhysicalDevice;dpy:PVkXLIBDisplay;rrOutput:TRROutput;pDisplay:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
      TvkDisplayPowerControlEXT=function(device:TVkDevice;display:TVkDisplayKHR;const pDisplayPowerInfo:PVkDisplayPowerInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -8422,7 +8495,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
 
 {$ifdef Mir}
-       function GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PMirConnection):TVkBool32; virtual;
+       function GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkMirConnection):TVkBool32; virtual;
 {$endif}
 
        procedure DestroySurfaceKHR(instance:TVkInstance;surface:TVkSurfaceKHR;const pAllocator:PVkAllocationCallbacks); virtual;
@@ -8452,7 +8525,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
 
 {$ifdef Wayland}
-       function GetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:Pwl_display):TVkBool32; virtual;
+       function GetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:PVkWaylandDisplay):TVkBool32; virtual;
 {$endif}
 
 {$ifdef Windows}
@@ -8468,7 +8541,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
 
 {$ifdef XLIB}
-       function GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PDisplay;visualID:TVisualID):TVkBool32; virtual;
+       function GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PVkXLIBDisplay;visualID:TVkXLIBVisualID):TVkBool32; virtual;
 {$endif}
 
 {$ifdef XCB}
@@ -8476,7 +8549,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
 
 {$ifdef XCB}
-       function GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:Pxcb_connection;visual_id:Txcb_visualid):TVkBool32; virtual;
+       function GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkXCBConnection;visual_id:TVkXCBVisualID):TVkBool32; virtual;
 {$endif}
 
        function CreateDebugReportCallbackEXT(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; virtual;
@@ -8576,11 +8649,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function ReleaseDisplayEXT(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR):TVkResult; virtual;
 
 {$ifdef XLIB}
-       function AcquireXlibDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;display:TVkDisplayKHR):TVkResult; virtual;
+       function AcquireXlibDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PVkXLIBDisplay;display:TVkDisplayKHR):TVkResult; virtual;
 {$endif}
 
 {$ifdef RandR}
-       function GetRandROutputDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;rrOutput:TRROutput;pDisplay:PVkDisplayKHR):TVkResult; virtual;
+       function GetRandROutputDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PVkXLIBDisplay;rrOutput:TRROutput;pDisplay:PVkDisplayKHR):TVkResult; virtual;
 {$endif}
 
        function DisplayPowerControlEXT(device:TVkDevice;display:TVkDisplayKHR;const pDisplayPowerInfo:PVkDisplayPowerInfoEXT):TVkResult; virtual;
@@ -12686,7 +12759,7 @@ end;
 
 {$ifdef Android}
 constructor TVkAndroidSurfaceCreateInfoKHR.Create(const pFlags:TVkAndroidSurfaceCreateFlagsKHR;
-                                                  const pWindow:PANativeWindow);
+                                                  const pWindow:PVkAndroidANativeWindow);
 begin
  sType:=VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
  pNext:=nil;
@@ -12697,8 +12770,8 @@ end;
 
 {$ifdef Mir}
 constructor TVkMirSurfaceCreateInfoKHR.Create(const pFlags:TVkMirSurfaceCreateFlagsKHR;
-                                              const pConnection:PMirConnection;
-                                              const pMirSurface:PMirSurface);
+                                              const pConnection:PVkMirConnection;
+                                              const pMirSurface:PVkMirSurface);
 begin
  sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
  pNext:=nil;
@@ -12719,8 +12792,8 @@ end;
 
 {$ifdef Wayland}
 constructor TVkWaylandSurfaceCreateInfoKHR.Create(const pFlags:TVkWaylandSurfaceCreateFlagsKHR;
-                                                  const pDisplay:Pwl_display;
-                                                  const pSurface:Pwl_surface);
+                                                  const pDisplay:PVkWaylandDisplay;
+                                                  const pSurface:PVkWaylandSurface);
 begin
  sType:=VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
  pNext:=nil;
@@ -12745,8 +12818,8 @@ end;
 
 {$ifdef XLIB}
 constructor TVkXlibSurfaceCreateInfoKHR.Create(const pFlags:TVkXlibSurfaceCreateFlagsKHR;
-                                               const pDpy:PDisplay;
-                                               const pWindow:TWindow);
+                                               const pDpy:PVkXLIBDisplay;
+                                               const pWindow:TVkXLIBWindow);
 begin
  sType:=VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
  pNext:=nil;
@@ -12758,8 +12831,8 @@ end;
 
 {$ifdef XCB}
 constructor TVkXcbSurfaceCreateInfoKHR.Create(const pFlags:TVkXcbSurfaceCreateFlagsKHR;
-                                              const pConnection:Pxcb_connection;
-                                              const pWindow:Txcb_window);
+                                              const pConnection:PVkXCBConnection;
+                                              const pWindow:TVkXCBWindow);
 begin
  sType:=VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
  pNext:=nil;
@@ -14680,7 +14753,7 @@ end;
 {$endif}
 
 {$ifdef Mir}
-function TVulkan.GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PMirConnection):TVkBool32;
+function TVulkan.GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkMirConnection):TVkBool32;
 begin
  result:=fCommands.GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice,queueFamilyIndex,connection);
 end;
@@ -14749,7 +14822,7 @@ end;
 {$endif}
 
 {$ifdef Wayland}
-function TVulkan.GetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:Pwl_display):TVkBool32;
+function TVulkan.GetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:PVkWaylandDisplay):TVkBool32;
 begin
  result:=fCommands.GetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice,queueFamilyIndex,display);
 end;
@@ -14777,7 +14850,7 @@ end;
 {$endif}
 
 {$ifdef XLIB}
-function TVulkan.GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PDisplay;visualID:TVisualID):TVkBool32;
+function TVulkan.GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PVkXLIBDisplay;visualID:TVkXLIBVisualID):TVkBool32;
 begin
  result:=fCommands.GetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice,queueFamilyIndex,dpy,visualID);
 end;
@@ -14791,7 +14864,7 @@ end;
 {$endif}
 
 {$ifdef XCB}
-function TVulkan.GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:Pxcb_connection;visual_id:Txcb_visualid):TVkBool32;
+function TVulkan.GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkXCBConnection;visual_id:TVkXCBVisualID):TVkBool32;
 begin
  result:=fCommands.GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice,queueFamilyIndex,connection,visual_id);
 end;
@@ -15023,14 +15096,14 @@ begin
 end;
 
 {$ifdef XLIB}
-function TVulkan.AcquireXlibDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;display:TVkDisplayKHR):TVkResult;
+function TVulkan.AcquireXlibDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PVkXLIBDisplay;display:TVkDisplayKHR):TVkResult;
 begin
  result:=fCommands.AcquireXlibDisplayEXT(physicalDevice,dpy,display);
 end;
 {$endif}
 
 {$ifdef RandR}
-function TVulkan.GetRandROutputDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PDisplay;rrOutput:TRROutput;pDisplay:PVkDisplayKHR):TVkResult;
+function TVulkan.GetRandROutputDisplayEXT(physicalDevice:TVkPhysicalDevice;dpy:PVkXLIBDisplay;rrOutput:TRROutput;pDisplay:PVkDisplayKHR):TVkResult;
 begin
  result:=fCommands.GetRandROutputDisplayEXT(physicalDevice,dpy,rrOutput,pDisplay);
 end;
