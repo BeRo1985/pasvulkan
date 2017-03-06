@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-03-04-03-19-0000                       *
+ *                        Version 2017-03-06-03-58-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -791,20 +791,57 @@ type EVulkanException=class(Exception);
        property Items[const Index:TVkSizeInt]:TVulkanPhysicalDevice read GetItem write SetItem; default;
      end;
 
+     PVulkanSurfacePlatform=^TVulkanSurfacePlatform;
+     TVulkanSurfacePlatform=
+      (
+       vspUnknown,
+       vspAndroid,
+       vspMir,
+       vspWayland,
+       vspWin32,
+       vspXCB,
+       vspXLIB
+      );
+
      PVulkanSurfaceCreateInfo=^TVulkanSurfaceCreateInfo;
-{$if defined(Android)}
-     TVulkanSurfaceCreateInfo=TVkAndroidSurfaceCreateInfoKHR;
-{$elseif defined(Mir)}
-     TVulkanSurfaceCreateInfo=TVkMirSurfaceCreateInfoKHR;
-{$elseif defined(Wayland)}
-     TVulkanSurfaceCreateInfo=TVkWaylandSurfaceCreateInfoKHR;
-{$elseif defined(Windows)}
-     TVulkanSurfaceCreateInfo=TVkWin32SurfaceCreateInfoKHR;
-{$elseif defined(XLIB)}
-     TVulkanSurfaceCreateInfo=TVkXlibSurfaceCreateInfoKHR;
-{$elseif defined(XCB)}
-     TVulkanSurfaceCreateInfo=TVkXCBSurfaceCreateInfoKHR;
-{$ifend}
+     TVulkanSurfaceCreateInfo=record
+      case TVulkanSurfacePlatform of
+       vspUnknown:(
+        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_*_SURFACE_CREATE_INFO_KHR
+        pNext:PVkVoid; //< Pointer to next structure
+        flags:TVkFlags; //< Reserved
+       );
+{$if defined(Android) and defined(Unix)}
+       vspAndroid:(
+        Android:TVkAndroidSurfaceCreateInfoKHR;
+       );
+{$endif}
+{$if defined(Mir) and defined(Unix)}
+       vspMir:(
+        Mir:TVkMirSurfaceCreateInfoKHR;
+       );
+{$endif}
+{$if defined(Wayland) and defined(Unix)}
+       vspWayland:(
+        Wayland:TVkWaylandSurfaceCreateInfoKHR;
+       );
+{$endif}
+{$if defined(Windows)}
+       vspWin32:(
+        Win32:TVkWin32SurfaceCreateInfoKHR;
+       );
+{$endif}
+{$if defined(XCB) and defined(Unix)}
+       vspXCB:(
+        XCB:TVkXCBSurfaceCreateInfoKHR;
+       );
+{$endif}
+{$if defined(XLIB) and defined(Unix)}
+       vspXLIB:(
+        XLIB:TVkXLIBSurfaceCreateInfoKHR;
+       );
+{$endif}
+     end;
 
      TVulkanSurface=class(TVulkanObject)
       private
@@ -813,21 +850,25 @@ type EVulkanException=class(Exception);
        fSurfaceHandle:TVkSurfaceKHR;
       protected
       public
-       constructor Create(const pInstance:TVulkanInstance;
+       constructor Create(const pInstance:TVulkanInstance;const pSurfaceCreateInfo:TVulkanSurfaceCreateInfo);
 {$if defined(Android)}
-                          const pWindow:PANativeWindow
-{$elseif defined(Mir)}
-                          const pConnection:PMirConnection;const pMirSurface:PMirSurface
-{$elseif defined(Wayland)}
-                          const pDisplay:Pwl_display;const pSurface:Pwl_surface
-{$elseif defined(Windows)}
-                          const pInstanceHandle,pWindowHandle:THandle
-{$elseif defined(XLIB)}
-                          const pDisplay:PDisplay;const pWindow:TWindow
-{$elseif defined(XCB)}
-                          const pConnection:Pxcb_connection;pWindow:Pxcb_window
+       constructor CreateAndroid(const pInstance:TVulkanInstance;const pWindow:PVkAndroidANativeWindow);
 {$ifend}
-                         );
+{$if defined(Mir) and defined(Unix)}
+       constructor CreateMir(const pInstance:TVulkanInstance;const pConnection:PVkMirConnection;const pSurface:PVkMirSurface);
+{$ifend}
+{$if defined(Wayland) and defined(Unix)}
+       constructor CreateWayland(const pInstance:TVulkanInstance;const pDisplay:PVkWaylandConnection;const pSurface:PVkWaylandSurface);
+{$ifend}
+{$if defined(Windows)}
+       constructor CreateWin32(const pInstance:TVulkanInstance;const pInstanceHandle,pWindowHandle:THandle);
+{$ifend}
+{$if defined(XCB) and defined(Unix)}
+       constructor CreateXCB(const pInstance:TVulkanInstance;const pConnection:PVkXCBConnection;const pWindow:TVkXCBWindow);
+{$ifend}
+{$if defined(XLIB) and defined(Unix)}
+       constructor CreateXLIB(const pInstance:TVulkanInstance;const pDisplay:PVkXLIBDisplay;const pWindow:TVkXLIBWindow);
+{$ifend}
        destructor Destroy; override;
       published
        property Handle:TVkSurfaceKHR read fSurfaceHandle;
@@ -7223,7 +7264,7 @@ begin
  inherited Items[Index]:=Item;
 end;
 
-constructor TVulkanSurface.Create(const pInstance:TVulkanInstance;
+(*constructor TVulkanSurface.Create(const pInstance:TVulkanInstance;
 {$if defined(Android)}
                                   const pWindow:PANativeWindow
 {$elseif defined(Mir)}
@@ -7237,7 +7278,9 @@ constructor TVulkanSurface.Create(const pInstance:TVulkanInstance;
 {$elseif defined(XCB)}
                                   const pConnection:Pxcb_connection;pWindow:Pxcb_window
 {$ifend}
-                                 );
+                                 );*)
+
+constructor TVulkanSurface.Create(const pInstance:TVulkanInstance;const pSurfaceCreateInfo:TVulkanSurfaceCreateInfo);
 begin
  inherited Create;
 
@@ -7245,49 +7288,116 @@ begin
 
  fSurfaceHandle:=VK_NULL_HANDLE;
 
- FillChar(fSurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
-{$if defined(Android)}
- fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
- fSurfaceCreateInfo.window:=pWindow;
-{$elseif defined(Mir)}
- fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
- fSurfaceCreateInfo.connection:=pConnection;
- fSurfaceCreateInfo.mirSurface:=pMirSurface;
-{$elseif defined(Wayland)}
- fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
- fSurfaceCreateInfo.display:=pDisplay;
- fSurfaceCreateInfo.surface:=pSurface;
-{$elseif defined(Windows)}
- fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
- fSurfaceCreateInfo.hinstance_:=pInstanceHandle;
- fSurfaceCreateInfo.hwnd_:=pWindowHandle;
-{$elseif defined(XLIB)}
- fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
- fSurfaceCreateInfo.dpy:=pDisplay;
- fSurfaceCreateInfo.window:=pWindow;
-{$elseif defined(XCB)}
- fSurfaceCreateInfo.sType:=VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
- fSurfaceCreateInfo.connection:=pConnection;
- fSurfaceCreateInfo.window:=pWindow;
-{$ifend}
+ fSurfaceCreateInfo:=pSurfaceCreateInfo;
 
+ case fSurfaceCreateInfo.sType of
 {$if defined(Android)}
- HandleResultCode(fInstance.fVulkan.CreateAndroidSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
-{$elseif defined(Mir)}
- HandleResultCode(fInstance.fVulkan.CreateMirSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
-{$elseif defined(Wayland)}
- HandleResultCode(fInstance.fVulkan.CreateWaylandSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
-{$elseif defined(Windows)}
- HandleResultCode(fInstance.fVulkan.CreateWin32SurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
-{$elseif defined(XLIB)}
- HandleResultCode(fInstance.fVulkan.CreateXlibSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
-{$elseif defined(XCB)}
- HandleResultCode(fInstance.fVulkan.CreateXCBSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo,fInstance.fAllocationCallbacks,@fSurfaceHandle));
-{$else}
- HandleResultCode(VK_ERROR_INCOMPATIBLE_DRIVER);
+  VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR:begin
+   HandleResultCode(fInstance.fVulkan.CreateAndroidSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Android,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+  end;
 {$ifend}
+{$if defined(Mir) and defined(Unix)}
+  VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR:begin
+   HandleResultCode(fInstance.fVulkan.CreateMirSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Mir,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+  end;
+{$ifend}
+{$if defined(Wayland) and defined(Unix)}
+  VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:begin
+   HandleResultCode(fInstance.fVulkan.CreateWaylandSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Wayland,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+  end;
+{$ifend}
+{$if defined(Windows)}
+  VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:begin
+   HandleResultCode(fInstance.fVulkan.CreateWin32SurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Win32,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+  end;
+{$ifend}
+{$if defined(XCB) and defined(Unix)}
+  VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR:begin
+   HandleResultCode(fInstance.fVulkan.CreateXCBSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.XCB,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+  end;
+{$ifend}
+{$if defined(XLIB) and defined(Unix)}
+  VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR:begin
+   HandleResultCode(fInstance.fVulkan.CreateXLIBSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.XLIB,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+  end;
+{$ifend}
+  else begin
+   HandleResultCode(VK_ERROR_INCOMPATIBLE_DRIVER);
+  end;
+ end;
 
 end;
+
+{$if defined(Android)}
+constructor TVulkanSurface.CreateAndroid(const pInstance:TVulkanInstance;const pWindow:PVkAndroidANativeWindow);
+var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
+begin
+ FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
+ SurfaceCreateInfo.Android.sType:=VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
+ SurfaceCreateInfo.Android.window:=pWindow;
+ Create(pInstance,SurfaceCreateInfo);
+end;
+{$ifend}
+
+{$if defined(Mir) and defined(Unix)}
+constructor TVulkanSurface.CreateMir(const pInstance:TVulkanInstance;const pConnection:PVkMirConnection;const pSurface:PVkMirSurface);
+var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
+begin
+ FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
+ SurfaceCreateInfo.Mir.sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
+ SurfaceCreateInfo.Mir.connection:=pConnection;
+ SurfaceCreateInfo.Mir.mirSurface:=pMirSurface;
+ Create(pInstance,SurfaceCreateInfo);
+end;
+{$ifend}
+
+{$if defined(Wayland) and defined(Unix)}
+constructor TVulkanSurface.CreateWayland(const pInstance:TVulkanInstance;const pDisplay:PVkWaylandConnection;const pSurface:PVkWaylandSurface);
+var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
+begin
+ FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
+ SurfaceCreateInfo.Wayland.sType:=VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+ SurfaceCreateInfo.Wayland.display:=pDisplay;
+ SurfaceCreateInfo.Wayland.surface:=pSurface;
+ Create(pInstance,SurfaceCreateInfo);
+end;
+{$ifend}
+
+{$if defined(Windows)}
+constructor TVulkanSurface.CreateWin32(const pInstance:TVulkanInstance;const pInstanceHandle,pWindowHandle:THandle);
+var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
+begin
+ FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
+ SurfaceCreateInfo.Win32.sType:=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+ SurfaceCreateInfo.Win32.hinstance_:=pInstanceHandle;
+ SurfaceCreateInfo.Win32.hwnd_:=pWindowHandle;
+ Create(pInstance,SurfaceCreateInfo);
+end;
+{$ifend}
+
+{$if defined(XCB) and defined(Unix)}
+constructor TVulkanSurface.CreateXCB(const pInstance:TVulkanInstance;const pConnection:PVkXCBConnection;const pWindow:TVkXCBWindow);
+var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
+begin
+ FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
+ SurfaceCreateInfo.XCB.sType:=VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+ SurfaceCreateInfo.XCB.connection:=pConnection;
+ SurfaceCreateInfo.XCB.window:=pWindow;
+ Create(pInstance,SurfaceCreateInfo);
+end;
+{$ifend}
+
+{$if defined(XLIB) and defined(Unix)}
+constructor TVulkanSurface.CreateXLIB(const pInstance:TVulkanInstance;const pDisplay:PVkXLIBDisplay;const pWindow:TVkXLIBWindow);
+var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
+begin
+ FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
+ SurfaceCreateInfo.XLIB.sType:=VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+ SurfaceCreateInfo.XLIB.dpy:=pDisplay;
+ SurfaceCreateInfo.XLIB.window:=pWindow;
+ Create(pInstance,SurfaceCreateInfo);
+end;
+{$ifend}
 
 destructor TVulkanSurface.Destroy;
 begin
