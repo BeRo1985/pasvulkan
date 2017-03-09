@@ -826,32 +826,32 @@ type EVulkanException=class(Exception);
        vspAndroid:(
         Android:TVkAndroidSurfaceCreateInfoKHR;
        );
-{$endif}
+{$ifend}
 {$if defined(Mir) and defined(Unix)}
        vspMir:(
         Mir:TVkMirSurfaceCreateInfoKHR;
        );
-{$endif}
+{$ifend}
 {$if defined(Wayland) and defined(Unix)}
        vspWayland:(
         Wayland:TVkWaylandSurfaceCreateInfoKHR;
        );
-{$endif}
+{$ifend}
 {$if defined(Windows)}
        vspWin32:(
         Win32:TVkWin32SurfaceCreateInfoKHR;
        );
-{$endif}
+{$ifend}
 {$if defined(XCB) and defined(Unix)}
        vspXCB:(
         XCB:TVkXCBSurfaceCreateInfoKHR;
        );
-{$endif}
+{$ifend}
 {$if defined(XLIB) and defined(Unix)}
        vspXLIB:(
         XLIB:TVkXLIBSurfaceCreateInfoKHR;
        );
-{$endif}
+{$ifend}
      end;
 
      TVulkanSurface=class(TVulkanObject)
@@ -7318,7 +7318,7 @@ begin
   end;
 {$ifend}
 {$if defined(Windows)}
-  VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:begin
+  VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR:begin
    HandleResultCode(fInstance.fVulkan.CreateWin32SurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Win32,fInstance.fAllocationCallbacks,@fSurfaceHandle));
   end;
 {$ifend}
