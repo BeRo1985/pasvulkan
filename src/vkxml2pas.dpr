@@ -3041,6 +3041,8 @@ begin
     result:='TVkMirSurface';
    end else if Type_='ANativeWindow' then begin
     result:='TVkAndroidANativeWindow';
+   end else if Type_='LPCWSTR' then begin
+    result:='PWideChar';
    end else begin
     result:='T'+Type_;
    end;

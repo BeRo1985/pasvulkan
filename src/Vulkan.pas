@@ -6314,11 +6314,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        pNext:PVkVoid; //< Pointer to next structure
        pAttributes:PSecurityAttributes;
        dwAccess:TVkUInt32;
-       name:TLPCWSTR;
+       name:PWideChar;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pPAttributes:PSecurityAttributes;
                           const pDwAccess:TVkUInt32;
-                          const pName:TLPCWSTR);
+                          const pName:PWideChar);
 {$endif}
      end;
 {$endif}
@@ -6468,11 +6468,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        pNext:PVkVoid; //< Pointer to next structure
        pAttributes:PSecurityAttributes;
        dwAccess:TVkUInt32;
-       name:TLPCWSTR;
+       name:PWideChar;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pPAttributes:PSecurityAttributes;
                           const pDwAccess:TVkUInt32;
-                          const pName:TLPCWSTR);
+                          const pName:PWideChar);
 {$endif}
      end;
 {$endif}
@@ -13454,7 +13454,7 @@ end;
 {$ifdef Windows}
 constructor TVkExportMemoryWin32HandleInfoKHX.Create(const pPAttributes:PSecurityAttributes;
                                                      const pDwAccess:TVkUInt32;
-                                                     const pName:TLPCWSTR);
+                                                     const pName:PWideChar);
 begin
  sType:=VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHX;
  pNext:=nil;
@@ -13545,7 +13545,7 @@ end;
 {$ifdef Windows}
 constructor TVkExportSemaphoreWin32HandleInfoKHX.Create(const pPAttributes:PSecurityAttributes;
                                                         const pDwAccess:TVkUInt32;
-                                                        const pName:TLPCWSTR);
+                                                        const pName:PWideChar);
 begin
  sType:=VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHX;
  pNext:=nil;
