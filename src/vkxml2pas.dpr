@@ -3550,6 +3550,13 @@ begin
        TypeDefinition^.Comment:=ChildTag.GetParameter('comment');
        TypeDefinition^.Members:=nil;
        TypeDefinition^.Define:='';
+       if (pos('IOS',UpperCase(Name))>0) and (pos('MVK',Name)>0) then begin
+        TypeDefinition^.Define:='MoltenVK_IOS';
+       end else if (pos('MACOS',UpperCase(Name))>0) and (pos('MVK',Name)>0) then begin
+        TypeDefinition^.Define:='MoltenVK_MacOS';
+       end else if (pos('MVK',Name)>0) or (pos('MOLTENVK',UpperCase(Name))>0) then begin
+        TypeDefinition^.Define:='MoltenVK';
+       end;
        SetLength(TypeDefinition^.Members,ChildTag.Items.Count);
        TypeDefinition^.CountMembers:=0;
        for j:=0 to ChildTag.Items.Count-1 do begin
@@ -4183,6 +4190,12 @@ begin
          Define:='Wayland';
         end else if (ParamType='MirConnection') or (ParamType='MirSurface') or (pos('Mir',ParamType)>0) then begin
          Define:='Mir';
+        end else if (pos('IOS',UpperCase(ParamType))>0) and (pos('MVK',ParamType)>0) then begin
+         Define:='MoltenVK_IOS';
+        end else if (pos('MACOS',UpperCase(ParamType))>0) and (pos('MVK',ParamType)>0) then begin
+         Define:='MoltenVK_MacOS';
+        end else if (pos('MVK',ParamType)>0) or (pos('MOLTENVK',UpperCase(ParamType))>0) then begin
+         Define:='MoltenVK';
         end else if (ParamType='ANativeWindow') or (pos('Android',ParamType)>0) then begin
          Define:='Android';
         end;

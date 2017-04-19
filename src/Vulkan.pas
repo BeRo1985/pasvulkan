@@ -249,7 +249,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=42;
+      VK_HEADER_VERSION=48;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -281,7 +281,7 @@ const VK_NULL_HANDLE=0;
       VK_KHR_XLIB_SURFACE_EXTENSION_NAME='VK_KHR_xlib_surface';
       VK_KHR_XCB_SURFACE_SPEC_VERSION=6;
       VK_KHR_XCB_SURFACE_EXTENSION_NAME='VK_KHR_xcb_surface';
-      VK_KHR_WAYLAND_SURFACE_SPEC_VERSION=5;
+      VK_KHR_WAYLAND_SURFACE_SPEC_VERSION=6;
       VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME='VK_KHR_wayland_surface';
       VK_KHR_MIR_SURFACE_SPEC_VERSION=4;
       VK_KHR_MIR_SURFACE_EXTENSION_NAME='VK_KHR_mir_surface';
@@ -292,7 +292,7 @@ const VK_NULL_HANDLE=0;
       VK_ANDROID_NATIVE_BUFFER_SPEC_VERSION=4;
       VK_ANDROID_NATIVE_BUFFER_NUMBER=11;
       VK_ANDROID_NATIVE_BUFFER_NAME='VK_ANDROID_native_buffer';
-      VK_EXT_DEBUG_REPORT_SPEC_VERSION=5;
+      VK_EXT_DEBUG_REPORT_SPEC_VERSION=6;
       VK_EXT_DEBUG_REPORT_EXTENSION_NAME='VK_EXT_debug_report';
       VK_NV_GLSL_SHADER_SPEC_VERSION=1;
       VK_NV_GLSL_SHADER_EXTENSION_NAME='VK_NV_glsl_shader';
@@ -438,8 +438,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_83_EXTENSION_NAME='VK_KHR_extension_83';
       VK_KHR_EXTENSION_84_SPEC_VERSION=0;
       VK_KHR_EXTENSION_84_EXTENSION_NAME='VK_KHR_extension_84';
-      VK_KHR_EXTENSION_85_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_85_EXTENSION_NAME='VK_KHR_extension_85';
+      VK_KHR_INCREMENTAL_PRESENT_SPEC_VERSION=1;
+      VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME='VK_KHR_incremental_present';
       VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_SPEC_VERSION=1;
       VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME='VK_KHR_descriptor_update_template';
       VK_NVX_DEVICE_GENERATED_COMMANDS_SPEC_VERSION=1;
@@ -454,8 +454,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_DISPLAY_SURFACE_COUNTER_EXTENSION_NAME='VK_EXT_display_surface_counter';
       VK_EXT_DISPLAY_CONTROL_SPEC_VERSION=1;
       VK_EXT_DISPLAY_CONTROL_EXTENSION_NAME='VK_EXT_display_control';
-      VK_GOOGLE_EXTENSION_93_SPEC_VERSION=0;
-      VK_GOOGLE_EXTENSION_93_EXTENSION_NAME='VK_GOOGLE_extension_93';
+      VK_GOOGLE_DISPLAY_TIMING_SPEC_VERSION=1;
+      VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME='VK_GOOGLE_display_timing';
       VK_KHR_EXTENSION_94_SPEC_VERSION=0;
       VK_KHR_EXTENSION_94_EXTENSION_NAME='VK_KHR_extension_94';
       VK_NV_SAMPLE_MASK_OVERRIDE_COVERAGE_SPEC_VERSION=1;
@@ -478,10 +478,10 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_103_EXTENSION_NAME='VK_NV_extension_103';
       VK_NV_EXTENSION_104_SPEC_VERSION=0;
       VK_NV_EXTENSION_104_EXTENSION_NAME='VK_NV_extension_104';
-      VK_EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION=1;
+      VK_EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION=2;
       VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME='VK_EXT_swapchain_colorspace';
-      VK_EXT_SMPTE2086_METADATA_SPEC_VERSION=0;
-      VK_EXT_SMPTE2086_METADATA_EXTENSION_NAME='VK_EXT_SMPTE2086_metadata';
+      VK_EXT_HDR_METADATA_SPEC_VERSION=1;
+      VK_EXT_HDR_METADATA_EXTENSION_NAME='VK_EXT_hdr_metadata';
       VK_IMG_EXTENSION_107_SPEC_VERSION=0;
       VK_IMG_EXTENSION_107_EXTENSION_NAME='VK_IMG_extension_107';
       VK_IMG_EXTENSION_108_SPEC_VERSION=0;
@@ -524,6 +524,58 @@ const VK_NULL_HANDLE=0;
       VK_MESA_EXTENSION_126_EXTENSION_NAME='VK_MESA_extension_126';
       VK_MESA_EXTENSION_127_SPEC_VERSION=0;
       VK_MESA_EXTENSION_127_EXTENSION_NAME='VK_MESA_extension_127';
+      VK_KHR_EXTENSION_128_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_128_EXTENSION_NAME='VK_KHR_extension_128';
+      VK_KHR_EXTENSION_129_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_129_EXTENSION_NAME='VK_EXT_extension_129';
+      VK_KHR_EXTENSION_130_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_130_EXTENSION_NAME='VK_KHR_extension_130';
+      VK_KHR_EXTENSION_131_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_131_EXTENSION_NAME='VK_KHR_extension_131';
+      VK_KHR_EXTENSION_132_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_132_EXTENSION_NAME='VK_KHR_extension_132';
+      VK_AMD_EXTENSION_133_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_133_EXTENSION_NAME='VK_AMD_extension_133';
+      VK_AMD_EXTENSION_134_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_134_EXTENSION_NAME='VK_AMD_extension_134';
+      VK_AMD_EXTENSION_135_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_135_EXTENSION_NAME='VK_AMD_extension_135';
+      VK_AMD_EXTENSION_136_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_136_EXTENSION_NAME='VK_AMD_extension_136';
+      VK_AMD_EXTENSION_137_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_137_EXTENSION_NAME='VK_AMD_extension_137';
+      VK_AMD_EXTENSION_138_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_138_EXTENSION_NAME='VK_AMD_extension_138';
+      VK_AMD_EXTENSION_139_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_139_EXTENSION_NAME='VK_AMD_extension_139';
+      VK_AMD_EXTENSION_140_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_140_EXTENSION_NAME='VK_AMD_extension_140';
+      VK_AMD_EXTENSION_141_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_141_EXTENSION_NAME='VK_AMD_extension_141';
+      VK_AMD_EXTENSION_142_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_142_EXTENSION_NAME='VK_AMD_extension_142';
+      VK_AMD_EXTENSION_143_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_143_EXTENSION_NAME='VK_AMD_extension_143';
+      VK_AMD_EXTENSION_144_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_144_EXTENSION_NAME='VK_AMD_extension_144';
+      VK_KHR_relaxed_block_layout_SPEC_VERSION=0;
+      VK_KHR_relaxed_block_layout_EXTENSION_NAME='VK_KHR_relaxed_block_layout';
+      VK_KHR_extension_146_SPEC_VERSION=0;
+      VK_KHR_extension_146_EXTENSION_NAME='VK_KHR_extension_146';
+      VK_KHR_extension_147_SPEC_VERSION=0;
+      VK_KHR_extension_147_EXTENSION_NAME='VK_KHR_extension_147';
+      VK_KHR_EXTENSION_148_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_148_EXTENSION_NAME='VK_EXT_extension_148';
+      VK_NV_EXTENSION_149_SPEC_VERSION=0;
+      VK_NV_EXTENSION_149_EXTENSION_NAME='VK_NV_extension_149';
+      VK_NV_EXTENSION_150_SPEC_VERSION=0;
+      VK_NV_EXTENSION_150_EXTENSION_NAME='VK_NV_extension_150';
+      VK_NV_EXTENSION_151_SPEC_VERSION=0;
+      VK_NV_EXTENSION_151_EXTENSION_NAME='VK_NV_extension_151';
+      VK_NV_EXTENSION_152_SPEC_VERSION=0;
+      VK_NV_EXTENSION_152_EXTENSION_NAME='VK_NV_extension_152';
+      VK_NV_EXTENSION_153_SPEC_VERSION=0;
+      VK_NV_EXTENSION_153_EXTENSION_NAME='VK_NV_extension_153';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1714,9 +1766,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO_KHX=1000071002,
        VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES_KHX=1000071003,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES_KHX=1000071004,
-       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHX=1000071005,
-       VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHX=1000071006,
-       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHX=1000071007,
        VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHX=1000072000,
        VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHX=1000072001,
        VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHX=1000072002,
@@ -1734,6 +1783,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_D3D12_FENCE_SUBMIT_INFO_KHX=1000078002,
        VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHX=1000079000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR=1000080000,
+       VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR=1000084000,
        VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR=1000085000,
        VK_STRUCTURE_TYPE_OBJECT_TABLE_CREATE_INFO_NVX=1000086000,
        VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NVX=1000086001,
@@ -1747,10 +1797,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_DEVICE_EVENT_INFO_EXT=1000091001,
        VK_STRUCTURE_TYPE_DISPLAY_EVENT_INFO_EXT=1000091002,
        VK_STRUCTURE_TYPE_SWAPCHAIN_COUNTER_CREATE_INFO_EXT=1000091003,
+       VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE=1000092000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX=1000097000,
        VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV=1000098000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT=1000099000,
        VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT=1000099001,
+       VK_STRUCTURE_TYPE_HDR_METADATA_EXT=1000105000,
        VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK=1000122000,
        VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK=1000123000
       );
@@ -2168,18 +2220,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_COLOR_SPACE_SRGB_NONLINEAR_KHR=0,
        VK_COLORSPACE_SRGB_NONLINEAR_KHR=0,
-       VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT=1000104001,
-       VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT=1000104002,
-       VK_COLOR_SPACE_SCRGB_LINEAR_EXT=1000104003,
-       VK_COLOR_SPACE_SCRGB_NONLINEAR_EXT=1000104004,
-       VK_COLOR_SPACE_DCI_P3_LINEAR_EXT=1000104005,
-       VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT=1000104006,
-       VK_COLOR_SPACE_BT709_LINEAR_EXT=1000104007,
-       VK_COLOR_SPACE_BT709_NONLINEAR_EXT=1000104008,
-       VK_COLOR_SPACE_BT2020_LINEAR_EXT=1000104009,
-       VK_COLOR_SPACE_BT2020_NONLINEAR_EXT=1000104010,
+       VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT=1000104001,
+       VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT=1000104002,
+       VK_COLOR_SPACE_DCI_P3_LINEAR_EXT=1000104003,
+       VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT=1000104004,
+       VK_COLOR_SPACE_BT709_LINEAR_EXT=1000104005,
+       VK_COLOR_SPACE_BT709_NONLINEAR_EXT=1000104006,
+       VK_COLOR_SPACE_BT2020_LINEAR_EXT=1000104007,
+       VK_COLOR_SPACE_HDR10_ST2084_EXT=1000104008,
+       VK_COLOR_SPACE_DOLBYVISION_EXT=1000104009,
+       VK_COLOR_SPACE_HDR10_HLG_EXT=1000104010,
        VK_COLOR_SPACE_ADOBERGB_LINEAR_EXT=1000104011,
-       VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT=1000104012
+       VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT=1000104012,
+       VK_COLOR_SPACE_PASS_THROUGH_EXT=1000104013
       );
 
      PPVkDisplayPlaneAlphaFlagBitsKHR=^PVkDisplayPlaneAlphaFlagBitsKHR;
@@ -2264,7 +2317,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_KHR_EXT=29,
        VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT=30,
        VK_DEBUG_REPORT_OBJECT_TYPE_OBJECT_TABLE_NVX_EXT=31,
-       VK_DEBUG_REPORT_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX_EXT=32
+       VK_DEBUG_REPORT_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX_EXT=32,
+       VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR_EXT=1000085000
       );
 
      PPVkDebugReportErrorEXT=^PVkDebugReportErrorEXT;
@@ -6099,53 +6153,49 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     PPVkPhysicalDeviceProperties2KHX=^PVkPhysicalDeviceProperties2KHX;
-     PVkPhysicalDeviceProperties2KHX=^TVkPhysicalDeviceProperties2KHX;
-     TVkPhysicalDeviceProperties2KHX=record
+     PPVkRectLayerKHR=^PVkRectLayerKHR;
+     PVkRectLayerKHR=^TVkRectLayerKHR;
+     TVkRectLayerKHR=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHX
-       pNext:PVkVoid; //< Pointer to next structure
-       properties:TVkPhysicalDeviceProperties;
+       offset:TVkOffset2D; //< upper-left corner of a rectangle that has not changed, in pixels of a presentation images
+       extent:TVkExtent2D; //< Dimensions of a rectangle that has not changed, in pixels of a presentation images
+       layer:TVkUInt32; //< Layer of a swapchain's image(s), for stereoscopic-3D images
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pProperties:TVkPhysicalDeviceProperties);
+       constructor Create(const pOffset:TVkOffset2D; //< upper-left corner of a rectangle that has not changed, in pixels of a presentation images
+                          const pExtent:TVkExtent2D; //< Dimensions of a rectangle that has not changed, in pixels of a presentation images
+                          const pLayer:TVkUInt32); //< Layer of a swapchain's image(s), for stereoscopic-3D images
 {$endif}
      end;
 
-     PPVkImageFormatProperties2KHX=^PVkImageFormatProperties2KHX;
-     PVkImageFormatProperties2KHX=^TVkImageFormatProperties2KHX;
-     TVkImageFormatProperties2KHX=record
+     PPVkPresentRegionKHR=^PVkPresentRegionKHR;
+     PVkPresentRegionKHR=^TVkPresentRegionKHR;
+     TVkPresentRegionKHR=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHX
-       pNext:PVkVoid; //< Pointer to next structure
-       imageFormatProperties:TVkImageFormatProperties;
+       rectangleCount:TVkUInt32; //< Number of rectangles in pRectangles
+       pRectangles:PVkRectLayerKHR; //< Array of rectangles that have changed in a swapchain's image(s)
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pImageFormatProperties:TVkImageFormatProperties);
+       constructor Create(const pRectangleCount:TVkUInt32; //< Number of rectangles in pRectangles
+                          const pPRectangles:PVkRectLayerKHR); //< Array of rectangles that have changed in a swapchain's image(s)
 {$endif}
      end;
 
-     PPVkPhysicalDeviceImageFormatInfo2KHX=^PVkPhysicalDeviceImageFormatInfo2KHX;
-     PVkPhysicalDeviceImageFormatInfo2KHX=^TVkPhysicalDeviceImageFormatInfo2KHX;
-     TVkPhysicalDeviceImageFormatInfo2KHX=record
+     PPVkPresentRegionsKHR=^PVkPresentRegionsKHR;
+     PVkPresentRegionsKHR=^TVkPresentRegionsKHR;
+     TVkPresentRegionsKHR=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR
        pNext:PVkVoid; //< Pointer to next structure
-       format:TVkFormat;
-       type_:TVkImageType;
-       tiling:TVkImageTiling;
-       usage:TVkImageUsageFlags;
-       flags:TVkImageCreateFlags;
+       swapchainCount:TVkUInt32; //< Copy of VkPresentInfoKHR::swapchainCount
+       pRegions:PVkPresentRegionKHR; //< The regions that have changed
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFormat:TVkFormat;
-                          const pType_:TVkImageType;
-                          const pTiling:TVkImageTiling;
-                          const pUsage:TVkImageUsageFlags;
-                          const pFlags:TVkImageCreateFlags);
+       constructor Create(const pSwapchainCount:TVkUInt32; //< Copy of VkPresentInfoKHR::swapchainCount
+                          const pPRegions:PVkPresentRegionKHR); //< The regions that have changed
 {$endif}
      end;
 
@@ -6997,28 +7047,97 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     PPVkSMPTE2086MetadataEXT=^PVkSMPTE2086MetadataEXT;
-     PVkSMPTE2086MetadataEXT=^TVkSMPTE2086MetadataEXT;
-     TVkSMPTE2086MetadataEXT=record
+     PPVkHdrMetadataEXT=^PVkHdrMetadataEXT;
+     PVkHdrMetadataEXT=^TVkHdrMetadataEXT;
+     TVkHdrMetadataEXT=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_HDR_METADATA_EXT
+       pNext:PVkVoid; //< From SMPTE 2086
        displayPrimaryRed:TVkXYColorEXT; //< Display primary's Red
        displayPrimaryGreen:TVkXYColorEXT; //< Display primary's Green
        displayPrimaryBlue:TVkXYColorEXT; //< Display primary's Blue
        whitePoint:TVkXYColorEXT; //< Display primary's Blue
        maxLuminance:TVkFloat; //< Display maximum luminance
        minLuminance:TVkFloat; //< Display minimum luminance
+       maxContentLightLevel:TVkFloat; //< Content maximum luminance
+       maxFrameAverageLightLevel:TVkFloat;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pDisplayPrimaryRed:TVkXYColorEXT; //< Display primary's Red
                           const pDisplayPrimaryGreen:TVkXYColorEXT; //< Display primary's Green
                           const pDisplayPrimaryBlue:TVkXYColorEXT; //< Display primary's Blue
                           const pWhitePoint:TVkXYColorEXT; //< Display primary's Blue
                           const pMaxLuminance:TVkFloat; //< Display maximum luminance
-                          const pMinLuminance:TVkFloat); //< Display minimum luminance
+                          const pMinLuminance:TVkFloat; //< Display minimum luminance
+                          const pMaxContentLightLevel:TVkFloat; //< Content maximum luminance
+                          const pMaxFrameAverageLightLevel:TVkFloat);
 {$endif}
      end;
 
+     PPVkRefreshCycleDurationGOOGLE=^PVkRefreshCycleDurationGOOGLE;
+     PVkRefreshCycleDurationGOOGLE=^TVkRefreshCycleDurationGOOGLE;
+     TVkRefreshCycleDurationGOOGLE=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       refreshDuration:TVkUInt64; //< Number of nanoseconds from the start of one refresh cycle to the next
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pRefreshDuration:TVkUInt64); //< Number of nanoseconds from the start of one refresh cycle to the next
+{$endif}
+     end;
+
+     PPVkPastPresentationTimingGOOGLE=^PVkPastPresentationTimingGOOGLE;
+     PVkPastPresentationTimingGOOGLE=^TVkPastPresentationTimingGOOGLE;
+     TVkPastPresentationTimingGOOGLE=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       presentID:TVkUInt32; //< Application-provided identifier, previously given to vkQueuePresentKHR
+       desiredPresentTime:TVkUInt64; //< Earliest time an image should have been presented, previously given to vkQueuePresentKHR
+       actualPresentTime:TVkUInt64; //< Time the image was actually displayed
+       earliestPresentTime:TVkUInt64; //< Earliest time the image could have been displayed
+       presentMargin:TVkUInt64; //< How early vkQueuePresentKHR was processed vs. how soon it needed to be and make earliestPresentTime
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPresentID:TVkUInt32; //< Application-provided identifier, previously given to vkQueuePresentKHR
+                          const pDesiredPresentTime:TVkUInt64; //< Earliest time an image should have been presented, previously given to vkQueuePresentKHR
+                          const pActualPresentTime:TVkUInt64; //< Time the image was actually displayed
+                          const pEarliestPresentTime:TVkUInt64; //< Earliest time the image could have been displayed
+                          const pPresentMargin:TVkUInt64); //< How early vkQueuePresentKHR was processed vs. how soon it needed to be and make earliestPresentTime
+{$endif}
+     end;
+
+     PPVkPresentTimeGOOGLE=^PVkPresentTimeGOOGLE;
+     PVkPresentTimeGOOGLE=^TVkPresentTimeGOOGLE;
+     TVkPresentTimeGOOGLE=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       presentID:TVkUInt32; //< Application-provided identifier
+       desiredPresentTime:TVkUInt64; //< Earliest time an image should be presented
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPresentID:TVkUInt32; //< Application-provided identifier
+                          const pDesiredPresentTime:TVkUInt64); //< Earliest time an image should be presented
+{$endif}
+     end;
+
+     PPVkPresentTimesInfoGOOGLE=^PVkPresentTimesInfoGOOGLE;
+     PVkPresentTimesInfoGOOGLE=^TVkPresentTimesInfoGOOGLE;
+     TVkPresentTimesInfoGOOGLE=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE
+       pNext:PVkVoid; //< Pointer to next structure
+       swapchainCount:TVkUInt32; //< Copy of VkPresentInfoKHR::swapchainCount
+       pTimes:PVkPresentTimeGOOGLE; //< The earliest times to present images
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSwapchainCount:TVkUInt32; //< Copy of VkPresentInfoKHR::swapchainCount
+                          const pPTimes:PVkPresentTimeGOOGLE); //< The earliest times to present images
+{$endif}
+     end;
+
+{$ifdef MoltenVK_IOS}
      PPVkIOSSurfaceCreateInfoMVK=^PVkIOSSurfaceCreateInfoMVK;
      PVkIOSSurfaceCreateInfoMVK=^TVkIOSSurfaceCreateInfoMVK;
      TVkIOSSurfaceCreateInfoMVK=record
@@ -7034,7 +7153,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const pPView:PVkVoid);
 {$endif}
      end;
+{$endif}
 
+{$ifdef MoltenVK_MacOS}
      PPVkMacOSSurfaceCreateInfoMVK=^PVkMacOSSurfaceCreateInfoMVK;
      PVkMacOSSurfaceCreateInfoMVK=^TVkMacOSSurfaceCreateInfoMVK;
      TVkMacOSSurfaceCreateInfoMVK=record
@@ -7050,6 +7171,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const pPView:PVkVoid);
 {$endif}
      end;
+{$endif}
 
      PPVkViewportWScalingNV=^PVkViewportWScalingNV;
      PVkViewportWScalingNV=^TVkViewportWScalingNV;
@@ -7585,10 +7707,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkTrimCommandPoolKHR=procedure(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolTrimFlagsKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceProperties2KHX=procedure(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties2KHX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-
-     TvkGetPhysicalDeviceImageFormatProperties2KHX=function(physicalDevice:TVkPhysicalDevice;const pImageFormatInfo:PVkPhysicalDeviceImageFormatInfo2KHX;pImageFormatProperties:PVkImageFormatProperties2KHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-
      TvkGetPhysicalDeviceExternalBufferPropertiesKHX=procedure(physicalDevice:TVkPhysicalDevice;const pExternalBufferInfo:PVkPhysicalDeviceExternalBufferInfoKHX;pExternalBufferProperties:PVkExternalBufferPropertiesKHX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Windows}
@@ -7665,11 +7783,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkCmdPushDescriptorSetWithTemplateKHR=procedure(commandBuffer:TVkCommandBuffer;descriptorUpdateTemplate:TVkDescriptorUpdateTemplateKHR;layout:TVkPipelineLayout;set_:TVkUInt32;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetSMPTE2086MetadataEXT=procedure(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkSMPTE2086MetadataEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetHdrMetadataEXT=procedure(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkHdrMetadataEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     TvkGetRefreshCycleDurationGOOGLE=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pDisplayTimingProperties:PVkRefreshCycleDurationGOOGLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPastPresentationTimingGOOGLE=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pPresentationTimingCount:PVkUInt32;pPresentationTimings:PVkPastPresentationTimingGOOGLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+{$ifdef MoltenVK_IOS}
      TvkCreateIOSSurfaceMVK=function(instance:TVkInstance;const pCreateInfo:PVkIOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
+{$ifdef MoltenVK_MacOS}
      TvkCreateMacOSSurfaceMVK=function(instance:TVkInstance;const pCreateInfo:PVkMacOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
      TvkCmdSetViewportWScalingNV=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -8097,10 +8223,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       TrimCommandPoolKHR:TvkTrimCommandPoolKHR;
 
-      GetPhysicalDeviceProperties2KHX:TvkGetPhysicalDeviceProperties2KHX;
-
-      GetPhysicalDeviceImageFormatProperties2KHX:TvkGetPhysicalDeviceImageFormatProperties2KHX;
-
       GetPhysicalDeviceExternalBufferPropertiesKHX:TvkGetPhysicalDeviceExternalBufferPropertiesKHX;
 
 {$ifdef Windows}
@@ -8177,11 +8299,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       CmdPushDescriptorSetWithTemplateKHR:TvkCmdPushDescriptorSetWithTemplateKHR;
 
-      SetSMPTE2086MetadataEXT:TvkSetSMPTE2086MetadataEXT;
+      SetHdrMetadataEXT:TvkSetHdrMetadataEXT;
 
+      GetRefreshCycleDurationGOOGLE:TvkGetRefreshCycleDurationGOOGLE;
+
+      GetPastPresentationTimingGOOGLE:TvkGetPastPresentationTimingGOOGLE;
+
+{$ifdef MoltenVK_IOS}
       CreateIOSSurfaceMVK:TvkCreateIOSSurfaceMVK;
+{$endif}
 
+{$ifdef MoltenVK_MacOS}
       CreateMacOSSurfaceMVK:TvkCreateMacOSSurfaceMVK;
+{$endif}
 
       CmdSetViewportWScalingNV:TvkCmdSetViewportWScalingNV;
 
@@ -8614,10 +8744,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure TrimCommandPoolKHR(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolTrimFlagsKHR); virtual;
 
-       procedure GetPhysicalDeviceProperties2KHX(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties2KHX); virtual;
-
-       function GetPhysicalDeviceImageFormatProperties2KHX(physicalDevice:TVkPhysicalDevice;const pImageFormatInfo:PVkPhysicalDeviceImageFormatInfo2KHX;pImageFormatProperties:PVkImageFormatProperties2KHX):TVkResult; virtual;
-
        procedure GetPhysicalDeviceExternalBufferPropertiesKHX(physicalDevice:TVkPhysicalDevice;const pExternalBufferInfo:PVkPhysicalDeviceExternalBufferInfoKHX;pExternalBufferProperties:PVkExternalBufferPropertiesKHX); virtual;
 
 {$ifdef Windows}
@@ -8694,11 +8820,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure CmdPushDescriptorSetWithTemplateKHR(commandBuffer:TVkCommandBuffer;descriptorUpdateTemplate:TVkDescriptorUpdateTemplateKHR;layout:TVkPipelineLayout;set_:TVkUInt32;const pData:PVkVoid); virtual;
 
-       procedure SetSMPTE2086MetadataEXT(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkSMPTE2086MetadataEXT); virtual;
+       procedure SetHdrMetadataEXT(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkHdrMetadataEXT); virtual;
 
+       function GetRefreshCycleDurationGOOGLE(device:TVkDevice;swapchain:TVkSwapchainKHR;pDisplayTimingProperties:PVkRefreshCycleDurationGOOGLE):TVkResult; virtual;
+
+       function GetPastPresentationTimingGOOGLE(device:TVkDevice;swapchain:TVkSwapchainKHR;pPresentationTimingCount:PVkUInt32;pPresentationTimings:PVkPastPresentationTimingGOOGLE):TVkResult; virtual;
+
+{$ifdef MoltenVK_IOS}
        function CreateIOSSurfaceMVK(instance:TVkInstance;const pCreateInfo:PVkIOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
+{$endif}
 
+{$ifdef MoltenVK_MacOS}
        function CreateMacOSSurfaceMVK(instance:TVkInstance;const pCreateInfo:PVkMacOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
+{$endif}
 
        procedure CmdSetViewportWScalingNV(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV); virtual;
 
@@ -9129,10 +9263,6 @@ var LibVulkan:pointer=nil;
 
     vkTrimCommandPoolKHR:TvkTrimCommandPoolKHR=nil;
 
-    vkGetPhysicalDeviceProperties2KHX:TvkGetPhysicalDeviceProperties2KHX=nil;
-
-    vkGetPhysicalDeviceImageFormatProperties2KHX:TvkGetPhysicalDeviceImageFormatProperties2KHX=nil;
-
     vkGetPhysicalDeviceExternalBufferPropertiesKHX:TvkGetPhysicalDeviceExternalBufferPropertiesKHX=nil;
 
 {$ifdef Windows}
@@ -9209,11 +9339,19 @@ var LibVulkan:pointer=nil;
 
     vkCmdPushDescriptorSetWithTemplateKHR:TvkCmdPushDescriptorSetWithTemplateKHR=nil;
 
-    vkSetSMPTE2086MetadataEXT:TvkSetSMPTE2086MetadataEXT=nil;
+    vkSetHdrMetadataEXT:TvkSetHdrMetadataEXT=nil;
 
+    vkGetRefreshCycleDurationGOOGLE:TvkGetRefreshCycleDurationGOOGLE=nil;
+
+    vkGetPastPresentationTimingGOOGLE:TvkGetPastPresentationTimingGOOGLE=nil;
+
+{$ifdef MoltenVK_IOS}
     vkCreateIOSSurfaceMVK:TvkCreateIOSSurfaceMVK=nil;
+{$endif}
 
+{$ifdef MoltenVK_MacOS}
     vkCreateMacOSSurfaceMVK:TvkCreateMacOSSurfaceMVK=nil;
+{$endif}
 
     vkCmdSetViewportWScalingNV:TvkCmdSetViewportWScalingNV=nil;
 
@@ -10143,14 +10281,6 @@ begin
    @vkTrimCommandPoolKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkTrimCommandPoolKHR'));
    @vk.fCommands.TrimCommandPoolKHR:=addr(vkTrimCommandPoolKHR);
   end;
-  if not assigned(vkGetPhysicalDeviceProperties2KHX) then begin
-   @vkGetPhysicalDeviceProperties2KHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceProperties2KHX'));
-   @vk.fCommands.GetPhysicalDeviceProperties2KHX:=addr(vkGetPhysicalDeviceProperties2KHX);
-  end;
-  if not assigned(vkGetPhysicalDeviceImageFormatProperties2KHX) then begin
-   @vkGetPhysicalDeviceImageFormatProperties2KHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceImageFormatProperties2KHX'));
-   @vk.fCommands.GetPhysicalDeviceImageFormatProperties2KHX:=addr(vkGetPhysicalDeviceImageFormatProperties2KHX);
-  end;
   if not assigned(vkGetPhysicalDeviceExternalBufferPropertiesKHX) then begin
    @vkGetPhysicalDeviceExternalBufferPropertiesKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceExternalBufferPropertiesKHX'));
    @vk.fCommands.GetPhysicalDeviceExternalBufferPropertiesKHX:=addr(vkGetPhysicalDeviceExternalBufferPropertiesKHX);
@@ -10291,18 +10421,30 @@ begin
    @vkCmdPushDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdPushDescriptorSetWithTemplateKHR'));
    @vk.fCommands.CmdPushDescriptorSetWithTemplateKHR:=addr(vkCmdPushDescriptorSetWithTemplateKHR);
   end;
-  if not assigned(vkSetSMPTE2086MetadataEXT) then begin
-   @vkSetSMPTE2086MetadataEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkSetSMPTE2086MetadataEXT'));
-   @vk.fCommands.SetSMPTE2086MetadataEXT:=addr(vkSetSMPTE2086MetadataEXT);
+  if not assigned(vkSetHdrMetadataEXT) then begin
+   @vkSetHdrMetadataEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkSetHdrMetadataEXT'));
+   @vk.fCommands.SetHdrMetadataEXT:=addr(vkSetHdrMetadataEXT);
   end;
+  if not assigned(vkGetRefreshCycleDurationGOOGLE) then begin
+   @vkGetRefreshCycleDurationGOOGLE:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetRefreshCycleDurationGOOGLE'));
+   @vk.fCommands.GetRefreshCycleDurationGOOGLE:=addr(vkGetRefreshCycleDurationGOOGLE);
+  end;
+  if not assigned(vkGetPastPresentationTimingGOOGLE) then begin
+   @vkGetPastPresentationTimingGOOGLE:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPastPresentationTimingGOOGLE'));
+   @vk.fCommands.GetPastPresentationTimingGOOGLE:=addr(vkGetPastPresentationTimingGOOGLE);
+  end;
+{$ifdef MoltenVK_IOS}
   if not assigned(vkCreateIOSSurfaceMVK) then begin
    @vkCreateIOSSurfaceMVK:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateIOSSurfaceMVK'));
    @vk.fCommands.CreateIOSSurfaceMVK:=addr(vkCreateIOSSurfaceMVK);
   end;
+{$endif}
+{$ifdef MoltenVK_MacOS}
   if not assigned(vkCreateMacOSSurfaceMVK) then begin
    @vkCreateMacOSSurfaceMVK:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateMacOSSurfaceMVK'));
    @vk.fCommands.CreateMacOSSurfaceMVK:=addr(vkCreateMacOSSurfaceMVK);
   end;
+{$endif}
   if not assigned(vkCmdSetViewportWScalingNV) then begin
    @vkCmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetViewportWScalingNV'));
    @vk.fCommands.CmdSetViewportWScalingNV:=addr(vkCmdSetViewportWScalingNV);
@@ -10541,8 +10683,6 @@ begin
   @InstanceCommands.GetPhysicalDeviceSparseImageFormatProperties2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSparseImageFormatProperties2KHR')));
   @InstanceCommands.CmdPushDescriptorSetKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdPushDescriptorSetKHR')));
   @InstanceCommands.TrimCommandPoolKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkTrimCommandPoolKHR')));
-  @InstanceCommands.GetPhysicalDeviceProperties2KHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceProperties2KHX')));
-  @InstanceCommands.GetPhysicalDeviceImageFormatProperties2KHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceImageFormatProperties2KHX')));
   @InstanceCommands.GetPhysicalDeviceExternalBufferPropertiesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceExternalBufferPropertiesKHX')));
 {$ifdef Windows}
   @InstanceCommands.GetMemoryWin32HandleKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryWin32HandleKHX')));
@@ -10587,9 +10727,15 @@ begin
   @InstanceCommands.DestroyDescriptorUpdateTemplateKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyDescriptorUpdateTemplateKHR')));
   @InstanceCommands.UpdateDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkUpdateDescriptorSetWithTemplateKHR')));
   @InstanceCommands.CmdPushDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdPushDescriptorSetWithTemplateKHR')));
-  @InstanceCommands.SetSMPTE2086MetadataEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkSetSMPTE2086MetadataEXT')));
+  @InstanceCommands.SetHdrMetadataEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkSetHdrMetadataEXT')));
+  @InstanceCommands.GetRefreshCycleDurationGOOGLE:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetRefreshCycleDurationGOOGLE')));
+  @InstanceCommands.GetPastPresentationTimingGOOGLE:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPastPresentationTimingGOOGLE')));
+{$ifdef MoltenVK_IOS}
   @InstanceCommands.CreateIOSSurfaceMVK:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateIOSSurfaceMVK')));
+{$endif}
+{$ifdef MoltenVK_MacOS}
   @InstanceCommands.CreateMacOSSurfaceMVK:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateMacOSSurfaceMVK')));
+{$endif}
   @InstanceCommands.CmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetViewportWScalingNV')));
   @InstanceCommands.CmdSetDiscardRectangleEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetDiscardRectangleEXT')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
@@ -10790,7 +10936,9 @@ begin
   @DeviceCommands.DestroyDescriptorUpdateTemplateKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyDescriptorUpdateTemplateKHR')));
   @DeviceCommands.UpdateDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkUpdateDescriptorSetWithTemplateKHR')));
   @DeviceCommands.CmdPushDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdPushDescriptorSetWithTemplateKHR')));
-  @DeviceCommands.SetSMPTE2086MetadataEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkSetSMPTE2086MetadataEXT')));
+  @DeviceCommands.SetHdrMetadataEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkSetHdrMetadataEXT')));
+  @DeviceCommands.GetRefreshCycleDurationGOOGLE:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetRefreshCycleDurationGOOGLE')));
+  @DeviceCommands.GetPastPresentationTimingGOOGLE:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetPastPresentationTimingGOOGLE')));
   @DeviceCommands.CmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetViewportWScalingNV')));
   @DeviceCommands.CmdSetDiscardRectangleEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetDiscardRectangleEXT')));
   result:=assigned(DeviceCommands.DestroyDevice);
@@ -13318,33 +13466,29 @@ begin
  maxPushDescriptors:=pMaxPushDescriptors;
 end;
 
-constructor TVkPhysicalDeviceProperties2KHX.Create(const pProperties:TVkPhysicalDeviceProperties);
+constructor TVkRectLayerKHR.Create(const pOffset:TVkOffset2D;
+                                   const pExtent:TVkExtent2D;
+                                   const pLayer:TVkUInt32);
 begin
- sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHX;
- pNext:=nil;
- properties:=pProperties;
+ offset:=pOffset;
+ extent:=pExtent;
+ layer:=pLayer;
 end;
 
-constructor TVkImageFormatProperties2KHX.Create(const pImageFormatProperties:TVkImageFormatProperties);
+constructor TVkPresentRegionKHR.Create(const pRectangleCount:TVkUInt32;
+                                       const pPRectangles:PVkRectLayerKHR);
 begin
- sType:=VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHX;
- pNext:=nil;
- imageFormatProperties:=pImageFormatProperties;
+ rectangleCount:=pRectangleCount;
+ pRectangles:=pPRectangles;
 end;
 
-constructor TVkPhysicalDeviceImageFormatInfo2KHX.Create(const pFormat:TVkFormat;
-                                                        const pType_:TVkImageType;
-                                                        const pTiling:TVkImageTiling;
-                                                        const pUsage:TVkImageUsageFlags;
-                                                        const pFlags:TVkImageCreateFlags);
+constructor TVkPresentRegionsKHR.Create(const pSwapchainCount:TVkUInt32;
+                                        const pPRegions:PVkPresentRegionKHR);
 begin
- sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHX;
+ sType:=VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR;
  pNext:=nil;
- format:=pFormat;
- type_:=pType_;
- tiling:=pTiling;
- usage:=pUsage;
- flags:=pFlags;
+ swapchainCount:=pSwapchainCount;
+ pRegions:=pPRegions;
 end;
 
 constructor TVkExternalMemoryPropertiesKHX.Create(const pExternalMemoryFeatures:TVkExternalMemoryFeatureFlagsKHX;
@@ -13895,21 +14039,62 @@ begin
  y:=pY;
 end;
 
-constructor TVkSMPTE2086MetadataEXT.Create(const pDisplayPrimaryRed:TVkXYColorEXT;
-                                           const pDisplayPrimaryGreen:TVkXYColorEXT;
-                                           const pDisplayPrimaryBlue:TVkXYColorEXT;
-                                           const pWhitePoint:TVkXYColorEXT;
-                                           const pMaxLuminance:TVkFloat;
-                                           const pMinLuminance:TVkFloat);
+constructor TVkHdrMetadataEXT.Create(const pDisplayPrimaryRed:TVkXYColorEXT;
+                                     const pDisplayPrimaryGreen:TVkXYColorEXT;
+                                     const pDisplayPrimaryBlue:TVkXYColorEXT;
+                                     const pWhitePoint:TVkXYColorEXT;
+                                     const pMaxLuminance:TVkFloat;
+                                     const pMinLuminance:TVkFloat;
+                                     const pMaxContentLightLevel:TVkFloat;
+                                     const pMaxFrameAverageLightLevel:TVkFloat);
 begin
+ sType:=VK_STRUCTURE_TYPE_HDR_METADATA_EXT;
+ pNext:=nil;
  displayPrimaryRed:=pDisplayPrimaryRed;
  displayPrimaryGreen:=pDisplayPrimaryGreen;
  displayPrimaryBlue:=pDisplayPrimaryBlue;
  whitePoint:=pWhitePoint;
  maxLuminance:=pMaxLuminance;
  minLuminance:=pMinLuminance;
+ maxContentLightLevel:=pMaxContentLightLevel;
+ maxFrameAverageLightLevel:=pMaxFrameAverageLightLevel;
 end;
 
+constructor TVkRefreshCycleDurationGOOGLE.Create(const pRefreshDuration:TVkUInt64);
+begin
+ refreshDuration:=pRefreshDuration;
+end;
+
+constructor TVkPastPresentationTimingGOOGLE.Create(const pPresentID:TVkUInt32;
+                                                   const pDesiredPresentTime:TVkUInt64;
+                                                   const pActualPresentTime:TVkUInt64;
+                                                   const pEarliestPresentTime:TVkUInt64;
+                                                   const pPresentMargin:TVkUInt64);
+begin
+ presentID:=pPresentID;
+ desiredPresentTime:=pDesiredPresentTime;
+ actualPresentTime:=pActualPresentTime;
+ earliestPresentTime:=pEarliestPresentTime;
+ presentMargin:=pPresentMargin;
+end;
+
+constructor TVkPresentTimeGOOGLE.Create(const pPresentID:TVkUInt32;
+                                        const pDesiredPresentTime:TVkUInt64);
+begin
+ presentID:=pPresentID;
+ desiredPresentTime:=pDesiredPresentTime;
+end;
+
+constructor TVkPresentTimesInfoGOOGLE.Create(const pSwapchainCount:TVkUInt32;
+                                             const pPTimes:PVkPresentTimeGOOGLE);
+begin
+ sType:=VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE;
+ pNext:=nil;
+ swapchainCount:=pSwapchainCount;
+ pTimes:=pPTimes;
+end;
+
+{$ifdef MoltenVK_IOS}
 constructor TVkIOSSurfaceCreateInfoMVK.Create(const pFlags:TVkIOSSurfaceCreateFlagsMVK;
                                               const pPView:PVkVoid);
 begin
@@ -13918,7 +14103,9 @@ begin
  flags:=pFlags;
  pView:=pPView;
 end;
+{$endif}
 
+{$ifdef MoltenVK_MacOS}
 constructor TVkMacOSSurfaceCreateInfoMVK.Create(const pFlags:TVkMacOSSurfaceCreateFlagsMVK;
                                                 const pPView:PVkVoid);
 begin
@@ -13927,6 +14114,7 @@ begin
  flags:=pFlags;
  pView:=pPView;
 end;
+{$endif}
 
 constructor TVkViewportWScalingNV.Create(const pXcoeff:TVkFloat;
                                          const pYcoeff:TVkFloat);
@@ -15022,16 +15210,6 @@ begin
  fCommands.TrimCommandPoolKHR(device,commandPool,flags);
 end;
 
-procedure TVulkan.GetPhysicalDeviceProperties2KHX(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties2KHX);
-begin
- fCommands.GetPhysicalDeviceProperties2KHX(physicalDevice,pProperties);
-end;
-
-function TVulkan.GetPhysicalDeviceImageFormatProperties2KHX(physicalDevice:TVkPhysicalDevice;const pImageFormatInfo:PVkPhysicalDeviceImageFormatInfo2KHX;pImageFormatProperties:PVkImageFormatProperties2KHX):TVkResult;
-begin
- result:=fCommands.GetPhysicalDeviceImageFormatProperties2KHX(physicalDevice,pImageFormatInfo,pImageFormatProperties);
-end;
-
 procedure TVulkan.GetPhysicalDeviceExternalBufferPropertiesKHX(physicalDevice:TVkPhysicalDevice;const pExternalBufferInfo:PVkPhysicalDeviceExternalBufferInfoKHX;pExternalBufferProperties:PVkExternalBufferPropertiesKHX);
 begin
  fCommands.GetPhysicalDeviceExternalBufferPropertiesKHX(physicalDevice,pExternalBufferInfo,pExternalBufferProperties);
@@ -15204,20 +15382,34 @@ begin
  fCommands.CmdPushDescriptorSetWithTemplateKHR(commandBuffer,descriptorUpdateTemplate,layout,set_,pData);
 end;
 
-procedure TVulkan.SetSMPTE2086MetadataEXT(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkSMPTE2086MetadataEXT);
+procedure TVulkan.SetHdrMetadataEXT(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkHdrMetadataEXT);
 begin
- fCommands.SetSMPTE2086MetadataEXT(device,swapchainCount,pSwapchains,pMetadata);
+ fCommands.SetHdrMetadataEXT(device,swapchainCount,pSwapchains,pMetadata);
 end;
 
+function TVulkan.GetRefreshCycleDurationGOOGLE(device:TVkDevice;swapchain:TVkSwapchainKHR;pDisplayTimingProperties:PVkRefreshCycleDurationGOOGLE):TVkResult;
+begin
+ result:=fCommands.GetRefreshCycleDurationGOOGLE(device,swapchain,pDisplayTimingProperties);
+end;
+
+function TVulkan.GetPastPresentationTimingGOOGLE(device:TVkDevice;swapchain:TVkSwapchainKHR;pPresentationTimingCount:PVkUInt32;pPresentationTimings:PVkPastPresentationTimingGOOGLE):TVkResult;
+begin
+ result:=fCommands.GetPastPresentationTimingGOOGLE(device,swapchain,pPresentationTimingCount,pPresentationTimings);
+end;
+
+{$ifdef MoltenVK_IOS}
 function TVulkan.CreateIOSSurfaceMVK(instance:TVkInstance;const pCreateInfo:PVkIOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
  result:=fCommands.CreateIOSSurfaceMVK(instance,pCreateInfo,pAllocator,pSurface);
 end;
+{$endif}
 
+{$ifdef MoltenVK_MacOS}
 function TVulkan.CreateMacOSSurfaceMVK(instance:TVkInstance;const pCreateInfo:PVkMacOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
 begin
  result:=fCommands.CreateMacOSSurfaceMVK(instance,pCreateInfo,pAllocator,pSurface);
 end;
+{$endif}
 
 procedure TVulkan.CmdSetViewportWScalingNV(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV);
 begin

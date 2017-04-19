@@ -349,11 +349,11 @@ end;
 function GetConsoleWindow:HWND; stdcall; external kernel32 name 'GetConsoleWindow';
 {$endif}
 
-function MonitorEnumProc(pMonitor:HMONITOR;pHDC:HDC;lprcMonitor:PRECT;dwData:LPARAM):boolean; stdcall;
-var mi:TMonitorInfoA;
+function MonitorEnumProc(pMonitor:HMONITOR;pHDC:HDC;lprcMonitor:PRECT;dwData:LPARAM):{$ifdef fpc}longbool{$else}boolean{$endif}; stdcall;
+var mi:TMonitorInfo;
 begin
- mi.cbSize:=SizeOf(TMonitorInfoA);
- GetMonitorInfoA(pMonitor,@mi);
+ mi.cbSize:=SizeOf(TMonitorInfo);
+ GetMonitorInfo(pMonitor,@mi);
  if (mi.dwFlags and MONITORINFOF_PRIMARY)<>0 then begin
   HMONITOR(pointer(dwData)^):=pMonitor;
   result:=false;
@@ -373,11 +373,11 @@ end;
 var Index,MonitorLeft,MonitorTop,MonitorWidth,MonitorHeight:TVkInt32;
     ConsoleHwnd:HWND;
     R:TRect;
-    MonitorInfo:TMonitorInfoA;
+    MonitorInfo:TMonitorInfo;
 begin
 
- MonitorInfo.cbSize:=SizeOf(TMonitorInfoA);
- GetMonitorInfoA(GetPrimaryMonitor,@MonitorInfo);
+ MonitorInfo.cbSize:=SizeOf(TMonitorInfo);
+ GetMonitorInfo(GetPrimaryMonitor,@MonitorInfo);
 
  MonitorLeft:=MonitorInfo.rcWork.Left;
  MonitorTop:=MonitorInfo.rcWork.Top;
