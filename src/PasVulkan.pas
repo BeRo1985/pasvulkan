@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-03-06-04-33-0000                       *
+ *                        Version 2017-04-22-17-03-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -811,7 +811,9 @@ type EVulkanException=class(Exception);
        vspWayland,
        vspWin32,
        vspXCB,
-       vspXLIB
+       vspXLIB,
+       vspMolkenVK_IOS,
+       vspMolkenVK_MacOS
       );
 
      PVulkanSurfaceCreateInfo=^TVulkanSurfaceCreateInfo;
@@ -852,6 +854,16 @@ type EVulkanException=class(Exception);
         XLIB:TVkXLIBSurfaceCreateInfoKHR;
        );
 {$ifend}
+{$if defined(MoltenVK_IOS) and defined(Darwin)}
+       vspMolkenVK_IOS:(
+        MolkenVK_IOS:TVkIOSSurfaceCreateInfoMVK;
+       );
+{$ifend}
+{$if defined(MoltenVK_MacOS) and defined(Darwin)}
+       vspMolkenVK_MacOS:(
+        MolkenVK_MacOS:TVkMacOSSurfaceCreateInfoMVK;
+       );
+{$ifend}
      end;
 
      TVulkanSurface=class(TVulkanObject)
@@ -879,6 +891,12 @@ type EVulkanException=class(Exception);
 {$ifend}
 {$if defined(XLIB) and defined(Unix)}
        constructor CreateXLIB(const pInstance:TVulkanInstance;const pDisplay:PVkXLIBDisplay;const pWindow:TVkXLIBWindow);
+{$ifend}
+{$if defined(MoltenVK_IOS) and defined(Darwin)}
+       constructor CreateMoltenVK_IOS(const pInstance:TVulkanInstance;const pView:PVkVoid);
+{$ifend}
+{$if defined(MoltenVK_MacOS) and defined(Darwin)}
+       constructor CreateMoltenVK_MacOS(const pInstance:TVulkanInstance;const pView:PVkVoid);
 {$ifend}
        destructor Destroy; override;
       published
@@ -7332,6 +7350,16 @@ begin
    HandleResultCode(fInstance.fVulkan.CreateXLIBSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.XLIB,fInstance.fAllocationCallbacks,@fSurfaceHandle));
   end;
 {$ifend}
+{$if defined(MoltenVK_IOS) and defined(Darwin)}
+  VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK:begin
+   HandleResultCode(fInstance.fVulkan.CreateIOSSurfaceMVK(fInstance.fInstanceHandle,@fSurfaceCreateInfo.MoltenVK_IOS,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+  end;
+{$ifend}
+{$if defined(MoltenVK_MacOS) and defined(Darwin)}
+  VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK:begin
+   HandleResultCode(fInstance.fVulkan.CreateMacOSSurfaceMVK(fInstance.fInstanceHandle,@fSurfaceCreateInfo.MoltenVK_MacOS,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+  end;
+{$ifend}
   else begin
    HandleResultCode(VK_ERROR_INCOMPATIBLE_DRIVER);
   end;
@@ -7406,6 +7434,28 @@ begin
  SurfaceCreateInfo.XLIB.sType:=VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
  SurfaceCreateInfo.XLIB.dpy:=pDisplay;
  SurfaceCreateInfo.XLIB.window:=pWindow;
+ Create(pInstance,SurfaceCreateInfo);
+end;
+{$ifend}
+
+{$if defined(MoltenVK_IOS) and defined(Darwin)}
+constructor TVulkanSurface.CreateMoltenVK_IOS(const pInstance:TVulkanInstance;const pView:PVkVoid);
+var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
+begin
+ FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
+ SurfaceCreateInfo.MoltenVK_IOS.sType:=VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK;
+ SurfaceCreateInfo.MoltenVK_IOS.pView:=pView;
+ Create(pInstance,SurfaceCreateInfo);
+end;
+{$ifend}
+
+{$if defined(MoltenVK_MacOS) and defined(Darwin)}
+constructor TVulkanSurface.CreateMoltenVK_MacOS(const pInstance:TVulkanInstance;const pView:PVkVoid);
+var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
+begin
+ FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
+ SurfaceCreateInfo.MoltenVK_MacOS.sType:=VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK;
+ SurfaceCreateInfo.MoltenVK_MacOS.pView:=pView;
  Create(pInstance,SurfaceCreateInfo);
 end;
 {$ifend}
