@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-04-22-17-03-0000                       *
+ *                        Version 2017-04-22-17-34-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2747,6 +2747,8 @@ procedure VulkanSetImageLayout(const pImage:TVkImage;
                                const pBeginAndExecuteCommandBuffer:boolean=false;
                                const pSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
                                const pDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
+
+procedure VulkanDisableFloatingPointExceptions;
 
 implementation
 
@@ -5500,6 +5502,13 @@ begin
   pCommandBuffer.Execute(pQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),nil,nil,pFence,true);
  end;
 
+end;
+
+procedure VulkanDisableFloatingPointExceptions;
+begin
+{$if declared(SetExceptionMask)}
+ SetExceptionMask([exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
+{$ifend}
 end;
 
 constructor EVulkanResultException.Create(const pResultCode:TVkResult);
@@ -18430,6 +18439,8 @@ begin
                                  false);
 end;
 
+{initialization
+finalization}
 end.
 
 
