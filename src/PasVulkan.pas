@@ -8822,7 +8822,7 @@ begin
   while assigned(MemoryChunkList^.First) do begin
    MemoryChunkList^.First.Free;
   end;
- enD;
+ end;
  fLock.Free;
  inherited Destroy;
 end;
