@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-03-03-11-0000                       *
+ *                        Version 2017-05-03-04-34-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -87,6 +87,8 @@ unit PasVulkan;
  {$else}
   {$undef HAS_TYPE_SINGLE}
  {$endif}
+ {$define CAN_INLINE}
+ {$define HAS_ADVANCED_RECORDS}
 {$else}
  {$realcompatibility off}
  {$localsymbols on}
@@ -97,6 +99,8 @@ unit PasVulkan;
  {$define HAS_TYPE_EXTENDED}
  {$define HAS_TYPE_DOUBLE}
  {$define HAS_TYPE_SINGLE}
+ {$undef CAN_INLINE}
+ {$undef HAS_ADVANCED_RECORDS}
  {$ifndef BCB}
   {$ifdef ver120}
    {$define Delphi4or5}
@@ -150,6 +154,8 @@ unit PasVulkan;
     {$define Delphi2006}
    {$ifend}
    {$define Delphi2006AndUp}
+   {$define CAN_INLINE}
+   {$define HAS_ADVANCED_RECORDS}
   {$ifend}
   {$if CompilerVersion>=18.5}
    {$if CompilerVersion=18.5}
@@ -1857,6 +1863,47 @@ type EVulkanException=class(Exception);
        property DepthImageFormat:TVkFormat read fDepthImageFormat;
      end;
 
+     PVulkanShaderModuleVariableStorageClass=^TVulkanShaderModuleVariableStorageClass;
+     TVulkanShaderModuleVariableStorageClass=
+      (      
+       vsmcscUniformConstant=0,
+       vsmcscInput=1,
+       vsmcscUniform=2,
+       vsmcscOutput=3,
+       vsmcscWorkgroup=4,
+       vsmcscCrossWorkgroup=5,
+       vsmcscPrivate=6,
+       vsmcscFunction=7,
+       vsmcscGeneric=8,
+       vsmcscPushConstant=9,
+       vsmcscAtomicCounter=10,
+       vsmcscImage=11,
+       vsmcscStorageBuffer=12,
+       vsmcscMax=$7fffffff
+      );
+
+     PVulkanShaderModuleVariable=^TVulkanShaderModuleVariable;
+     TVulkanShaderModuleVariable={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
+      private
+       fDebugName:TVkCharString;
+       fName:TVkInt32;
+       fLocation:TVkInt32;
+       fBinding:TVkInt32;
+       fDescriptorSet:TVkInt32;
+       fInstruction:TVkInt32;
+       fStorageClass:TVulkanShaderModuleVariableStorageClass;
+      public
+       property DebugName:TVkCharString read fDebugName;                                 // The name of the variable
+       property Name:TVkInt32 read fName;                                                // The internal name (integer) of the variable
+       property Location:TVkInt32 read fLocation;                                        // The location in the binding
+       property Binding:TVkInt32 read fBinding;                                          // The binding in the descriptor set or I/O channel
+       property DescriptorSet:TVkInt32 read fDescriptorSet;                              // The descriptor set (for uniforms)
+       property Instruction:TVkInt32 read fInstruction;                                  // The instruction index
+       property StorageClass:TVulkanShaderModuleVariableStorageClass read fStorageClass; // Storage class of the variable
+     end;
+
+     TVulkanShaderModuleVariables=array of TVulkanShaderModuleVariable;
+
      TVulkanShaderModule=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
@@ -1870,6 +1917,7 @@ type EVulkanException=class(Exception);
        constructor Create(const pDevice:TVulkanDevice;const pStream:TStream); overload;
        constructor Create(const pDevice:TVulkanDevice;const pFileName:string); overload;
        destructor Destroy; override;
+       function GetVariables:TVulkanShaderModuleVariables;
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkShaderModule read fShaderModuleHandle;
@@ -11550,6 +11598,139 @@ begin
   ShaderModuleCreateInfo.codeSize:=fDataSize;
   ShaderModuleCreateInfo.pCode:=fData;
   HandleResultCode(fDevice.fDeviceVulkan.CreateShaderModule(fDevice.fDeviceHandle,@ShaderModuleCreateInfo,fDevice.fAllocationCallbacks,@fShaderModuleHandle));
+ end;
+end;
+
+function TVulkanShaderModule.GetVariables:TVulkanShaderModuleVariables;
+// https://www.khronos.org/registry/spir-v/specs/1.1/SPIRV.html
+type PVkUInt32Array=^TVkUInt32Array;
+     TVkUInt32Array=array[0..65535] of TVkUInt32;
+var Position,Size:TVkInt32;
+    Opcode,Index,Count,CountNames:TVkUInt32;
+    Opcodes:PVkUInt32Array;
+    Endian:boolean;
+    Variable:PVulkanShaderModuleVariable;
+    Bindings,Locations,DescriptorSets:array of TVkUInt32;
+    DebugNames:array of TVkCharString;
+ function SwapEndian(const Value:TVkUInt32):TVkUInt32;
+ begin
+  if Endian then begin
+   result:=(((Value shr 0) and $ff) shl 24) or
+           (((Value shr 8) and $ff) shl 16) or
+           (((Value shr 16) and $ff) shl 8) or
+           (((Value shr 24) and $ff) shl 0);
+  end else begin
+   result:=Value;
+  end;
+ end;
+begin
+ result:=nil;
+ Bindings:=nil;
+ Locations:=nil;
+ DescriptorSets:=nil;
+ DebugNames:=nil;
+ Count:=0;
+ try
+  Opcodes:=fData;
+  if assigned(Opcodes) and (fDataSize>=(6*SizeOf(TVkUInt32))) and ((Opcodes^[0]=$07230203) or (Opcodes^[0]=$03022307)) then begin
+
+   Endian:=Opcodes[0]=$03022307;
+
+   Opcodes:=pointer(@Opcodes[5]);
+
+   Size:=(fDataSize shr 2)-5;
+
+   CountNames:=0;
+
+   Position:=0;
+   while Position<Size do begin
+    Opcode:=SwapEndian(Opcodes^[Position]);
+    case Opcode and $ffff of
+     $0005{OpName}:begin
+      CountNames:=Max(CountNames,SwapEndian(Opcodes^[Position+1])+1);
+     end;
+     $003b{OpVariable}:begin
+      inc(Count);
+     end;
+     $0047{OpOpDecorate}:begin
+      CountNames:=Max(CountNames,SwapEndian(Opcodes^[Position+1])+1);
+     end;
+    end;
+    inc(Position,Opcode shr 16);
+   end;
+
+   SetLength(result,Count);
+
+   try
+
+    SetLength(Bindings,CountNames);
+    SetLength(Locations,CountNames);
+    SetLength(DescriptorSets,CountNames);
+    SetLength(DebugNames,CountNames);
+
+    Position:=0;
+    while Position<Size do begin
+     Opcode:=SwapEndian(Opcodes^[Position]);
+     case Opcode and $ffff of
+      $0005{OpName}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if Index<CountNames then begin
+        DebugNames[Index]:=PVkChar(pointer(@Opcodes^[Position+2]));
+       end;
+      end;
+      $0047{OpOpDecorate}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if Index<CountNames then begin
+        case Opcodes^[Position+2] of
+         $0000001e{Location}:begin
+          Locations[Index]:=SwapEndian(Opcodes^[Position+3]);
+         end;
+         $00000021{Binding}:begin
+          Bindings[Index]:=SwapEndian(Opcodes^[Position+3]);
+         end;
+         $00000022{DescriptorSet}:begin
+          DescriptorSets[Index]:=SwapEndian(Opcodes^[Position+3]);
+         end;
+        end;
+       end;
+      end;
+     end;
+     inc(Position,Opcode shr 16);
+    end;
+
+    Count:=0;
+    Position:=0;
+    while Position<Size do begin
+     Opcode:=SwapEndian(Opcodes^[Position]);
+     case Opcode and $ffff of
+      $003b{OpVariable}:begin
+       Index:=SwapEndian(Opcodes^[Position+1]);
+       if Index<CountNames then begin
+        Variable:=@result[Count];
+        inc(Count);
+        Variable^.fDebugName:=DebugNames[Index];
+        Variable^.fName:=Index;
+        Variable^.fLocation:=Locations[Index];
+        Variable^.fBinding:=Bindings[Index];
+        Variable^.fDescriptorSet:=DescriptorSets[Index];
+        Variable^.fInstruction:=Position;
+        Variable^.fStorageClass:=TVulkanShaderModuleVariableStorageClass(SwapEndian(Opcodes^[Position+3]));
+       end;
+      end;
+     end;
+     inc(Position,Opcode shr 16);
+    end;
+
+   finally
+    Bindings:=nil;
+    Locations:=nil;
+    DescriptorSets:=nil;
+    DebugNames:=nil;
+   end;
+
+  end;
+ finally
+  SetLength(result,Count);
  end;
 end;
 
