@@ -308,90 +308,126 @@ begin
  try
 
   AllocateVulkanInstance;
-  AllocateVulkanSurface;
 
-  StartGraphics;
-  GraphicsReady:=true;
+  Main:=nil;
+  try
+   AllocateVulkanSurface;
 
-  VulkanPresentationSurface.SetSize(WindowWidth,WindowHeight);
-  ResizeGraphics(WindowWidth,WindowHeight);
+   Main.StartGraphics;
+   GraphicsReady:=true;
 
-  while SDLRunning do begin
+   VulkanPresentationSurface.SetSize(WindowWidth,WindowHeight);
+   Main.ResizeGraphics(WindowWidth,WindowHeight);
 
-   while SDL_PollEvent(@Event)<>0 do begin
-    case Event.type_ of
-     SDL_QUITEV,SDL_APP_TERMINATING:begin
-      SDLRunning:=false;
-      break;
-     end;
-     SDL_APP_WILLENTERBACKGROUND:begin
-      if GraphicsReady then begin
-       try
-        StopGraphics;
-        FreeVulkanSurface;
-       except
-       end;
-       GraphicsReady:=false;
+   while SDLRunning do begin
+
+    while SDL_PollEvent(@Event)<>0 do begin
+     case Event.type_ of
+      SDL_QUITEV,SDL_APP_TERMINATING:begin
+       SDLRunning:=false;
+       break;
       end;
-      //SDL_PauseAudio(1);
-     end;
-     SDL_APP_DIDENTERFOREGROUND:begin
-      if not GraphicsReady then begin
-       try
-        AllocateVulkanSurface;
-        StartGraphics;
-       except
-        SDLRunning:=false;
-        break;
+      SDL_APP_WILLENTERBACKGROUND:begin
+       if GraphicsReady then begin
+        try
+         Main.StopGraphics;
+         FreeVulkanSurface;
+        except
+        end;
+        GraphicsReady:=false;
        end;
-       GraphicsReady:=true;
+       //SDL_PauseAudio(1);
       end;
-      //SDL_PauseAudio(0);
-     end;
-     SDL_RENDER_TARGETS_RESET,SDL_RENDER_DEVICE_RESET:begin
-      if GraphicsReady then begin
-       try
-        StopGraphics;
-        FreeVulkanSurface;
-       except
-       end;
-       GraphicsReady:=false;
-      end;
-      if not GraphicsReady then begin
-       try
-        AllocateVulkanSurface;
-        StartGraphics;
-       except
-        SDLRunning:=false;
-        break;
-       end;
-       GraphicsReady:=true;
-      end;
-     end;
-     SDL_KEYDOWN:begin
-      case Event.key.keysym.sym of
-       SDLK_ESCAPE:begin
- //     BackKey;
-        SDLRunning:=false;
-        break;
-       end;
-       SDLK_F4:begin
-        if (Event.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0 then begin
+      SDL_APP_DIDENTERFOREGROUND:begin
+       if not GraphicsReady then begin
+        try
+         AllocateVulkanSurface;
+         Main.StartGraphics;
+        except
          SDLRunning:=false;
          break;
         end;
+        GraphicsReady:=true;
        end;
-       SDLK_RETURN:begin
-        if (Event.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0 then begin
-         FullScreen:=not FullScreen;
-         if FullScreen then begin
-          SDL_SetWindowFullscreen(SurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
-         end else begin
-          SDL_SetWindowFullscreen(SurfaceWindow,0);
+       //SDL_PauseAudio(0);
+      end;
+      SDL_RENDER_TARGETS_RESET,SDL_RENDER_DEVICE_RESET:begin
+       if GraphicsReady then begin
+        try
+         Main.StopGraphics;
+         FreeVulkanSurface;
+        except
+        end;
+        GraphicsReady:=false;
+       end;
+       if not GraphicsReady then begin
+        try
+         AllocateVulkanSurface;
+         Main.StartGraphics;
+        except
+         SDLRunning:=false;
+         break;
+        end;
+        GraphicsReady:=true;
+       end;
+      end;
+      SDL_KEYDOWN:begin
+       case Event.key.keysym.sym of
+        SDLK_ESCAPE:begin
+  //     BackKey;
+         SDLRunning:=false;
+         break;
+        end;
+        SDLK_F4:begin
+         if (Event.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0 then begin
+          SDLRunning:=false;
+          break;
          end;
- {       if GraphicsReady then begin
+        end;
+        SDLK_RETURN:begin
+         if (Event.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0 then begin
+          FullScreen:=not FullScreen;
+          if FullScreen then begin
+           SDL_SetWindowFullscreen(SurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
+          end else begin
+           SDL_SetWindowFullscreen(SurfaceWindow,0);
+          end;
+  {       if GraphicsReady then begin
+           try
+            StopGraphics;
+            FreeVulkanSurface;
+           except
+           end;
+           GraphicsReady:=false;
+          end;
+          if not GraphicsReady then begin
+           try
+            AllocateVulkanSurface;
+            StartGraphics;
+           except
+            TPasMPInterlocked.Write(SDLRunning,TPasMPBool32(false));
+            break;
+           end;
+           GraphicsReady:=true;
+          end;}
+         end;
+        end;
+        SDLK_SPACE:begin
+        end;
+       end;
+      end;
+      SDL_KEYUP:begin
+      end;
+      SDL_WINDOWEVENT:begin
+       case event.window.event of
+        SDL_WINDOWEVENT_RESIZED:begin
+         WindowWidth:=event.window.Data1;
+         WindowHeight:=event.window.Data2;
+         VulkanPresentationSurface.SetSize(WindowWidth,WindowHeight);
+         Main.ResizeGraphics(WindowWidth,WindowHeight);
+  {      if GraphicsReady then begin
           try
-           StopGraphics;
+           Main.StopGraphics;
            FreeVulkanSurface;
           except
           end;
@@ -400,81 +436,52 @@ begin
          if not GraphicsReady then begin
           try
            AllocateVulkanSurface;
-           StartGraphics;
+           Main.StartGraphics;
           except
-           TPasMPInterlocked.Write(SDLRunning,TPasMPBool32(false));
+           SDLRunning:=false;
            break;
           end;
           GraphicsReady:=true;
          end;}
         end;
        end;
-       SDLK_SPACE:begin
-       end;
+      end;
+      SDL_MOUSEMOTION:begin
+      end;
+      SDL_MOUSEBUTTONDOWN:begin
+      end;
+      SDL_MOUSEBUTTONUP:begin
+      end;
+      SDL_JOYDEVICEADDED:begin
+      end;
+      SDL_JOYDEVICEREMOVED:begin
+      end;
+      SDL_CONTROLLERDEVICEADDED:begin
+      end;
+      SDL_CONTROLLERDEVICEREMOVED:begin
+      end;
+      SDL_CONTROLLERDEVICEREMAPPED:begin
       end;
      end;
-     SDL_KEYUP:begin
-     end;
-     SDL_WINDOWEVENT:begin
-      case event.window.event of
-       SDL_WINDOWEVENT_RESIZED:begin
-        WindowWidth:=event.window.Data1;
-        WindowHeight:=event.window.Data2;
-        VulkanPresentationSurface.SetSize(WindowWidth,WindowHeight);
-        ResizeGraphics(WindowWidth,WindowHeight);
- {      if GraphicsReady then begin
-         try
-          StopGraphics;
-          FreeVulkanSurface;
-         except
-         end;
-         GraphicsReady:=false;
-        end;
-        if not GraphicsReady then begin
-         try
-          AllocateVulkanSurface;
-          StartGraphics;
-         except
-          TPasMPInterlocked.Write(SDLRunning,TPasMPBool32(false));
-          break;
-         end;
-         GraphicsReady:=true;
-        end;}
-       end;
-      end;
-     end;
-     SDL_MOUSEMOTION:begin
-     end;
-     SDL_MOUSEBUTTONDOWN:begin
-     end;
-     SDL_MOUSEBUTTONUP:begin
-     end;
-     SDL_JOYDEVICEADDED:begin
-     end;
-     SDL_JOYDEVICEREMOVED:begin
-     end;
-     SDL_CONTROLLERDEVICEADDED:begin
-     end;
-     SDL_CONTROLLERDEVICEREMOVED:begin
-     end;
-     SDL_CONTROLLERDEVICEREMAPPED:begin
+    end;
+
+    if GraphicsReady then begin
+     if VulkanPresentationSurface.AcquireBackBuffer(VulkanBlock) then begin
+      VulkanPresentationSurface.PresentBackBuffer;
      end;
     end;
+
    end;
 
-   if GraphicsReady then begin
-    if VulkanPresentationSurface.AcquireBackBuffer(VulkanBlock) then begin
-     DrawGraphics;
-     VulkanPresentationSurface.PresentBackBuffer;
-    end;
-   end;
+   GraphicsReady:=false;
+   Main.StopGraphics;
 
+   FreeVulkanSurface;
+
+  finally
+   FreeAndNil(Main);
   end;
 
-  GraphicsReady:=false;
-  StopGraphics;
-
-  FreeVulkanSurface;
   FreeVulkanInstance;
 
   if assigned(SurfaceWindow) then begin

@@ -23,7 +23,12 @@ uses {$if defined(Windows)}
 
 const MaxSwapChainImages=3;
 
-type TVulkanPresentationSurface=class
+type TVulkanPresentationSurface=class;
+
+     TVulkanPresentationSurfaceOnAfterCreateSwapChain=procedure(const pSurface:TVulkanPresentationSurface) of object;
+     TVulkanPresentationSurfaceOnBeforeDestroySwapChain=procedure(const pSurface:TVulkanPresentationSurface) of object;
+
+     TVulkanPresentationSurface=class
       private
        fVulkanInstance:TVulkanInstance;
        fVulkanSurface:TVulkanSurface;
@@ -49,8 +54,10 @@ type TVulkanPresentationSurface=class
        fCurrentImageIndex:TVkInt32;
        fReady:boolean;
        fVSync:boolean;
-       procedure CreateGraphicsPipelines;
-       procedure DestroyGraphicsPipelines;
+       fOnAfterCreateSwapChain:TVulkanPresentationSurfaceOnAfterCreateSwapChain;
+       fOnBeforeDestroySwapChain:TVulkanPresentationSurfaceOnBeforeDestroySwapChain;
+       procedure AfterCreateSwapChain;
+       procedure BeforeDestroySwapChain;
       public
        constructor Create(const pWidth,pHeight:TVkInt32;
                           const pVSync:boolean;
@@ -68,13 +75,14 @@ type TVulkanPresentationSurface=class
        property CurrentImageIndex:TVkInt32 read fCurrentImageIndex;
        property Ready:boolean read fReady write fReady;
        property VSync:boolean read fVSync write SetVSync;
+       property VulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget read fVulkanSwapChainSimpleDirectRenderTarget;
      end;
 
 var VulkanPresentationSurface:TVulkanPresentationSurface=nil;
 
 implementation
 
-uses UnitGlobals,UnitSDL2Main;
+uses UnitGlobals,UnitSDL2Main,UnitMain;
 
 constructor TVulkanPresentationSurface.Create(const pWidth,pHeight:TVkInt32;
                                               const pVSync:boolean;
@@ -112,11 +120,6 @@ begin
    end;
   end;
 
-{ TVulkanDevice.Create(fVulkanInstance,nil,fVulkanSurface);
-  fVulkanDevice.AddQueues;
-  fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-  fVulkanDevice.Initialize;{}
-
   fVulkanInitializationCommandBufferFence:=TVulkanFence.Create(fVulkanDevice);
 
   fVulkanInitializationCommandPool:=TVulkanCommandPool.Create(fVulkanDevice,fVulkanDevice.GraphicsQueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
@@ -152,13 +155,16 @@ begin
    fVulkanDrawCompleteSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
   end;
 
-  CreateGraphicsPipelines;
-
   fDoNeedToRecreateVulkanSwapChain:=false;
 
- except
+  Main:=TMain.Create;
+  
+  fOnAfterCreateSwapChain:=Main.OnAfterCreateSwapChain;
+  fOnBeforeDestroySwapChain:=Main.OnBeforeDestroySwapChain;
 
-  DestroyGraphicsPipelines;
+  AfterCreateSwapChain;
+
+ except
 
   for Index:=0 to MaxSwapChainImages-1 do begin
    FreeAndNil(fVulkanSwapChainImageFences[Index]);
@@ -198,7 +204,6 @@ begin
   fVulkanDevice.WaitIdle;
  end;
  ClearAll;
- DestroyGraphicsPipelines;
  if assigned(fVulkanDevice) then begin
   fVulkanDevice.WaitIdle;
  end;
@@ -242,17 +247,23 @@ procedure TVulkanPresentationSurface.ClearAll;
 begin
 end;
 
-procedure TVulkanPresentationSurface.CreateGraphicsPipelines;
+procedure TVulkanPresentationSurface.AfterCreateSwapChain;
 begin
  if not fGraphicsPipelinesReady then begin
+  if assigned(fOnAfterCreateSwapChain) then begin
+   fOnAfterCreateSwapChain(self);
+  end;
   fGraphicsPipelinesReady:=true;
  end;
 end;
 
-procedure TVulkanPresentationSurface.DestroyGraphicsPipelines;
+procedure TVulkanPresentationSurface.BeforeDestroySwapChain;
 begin
  if fGraphicsPipelinesReady then begin
   fGraphicsPipelinesReady:=false;
+  if assigned(fOnBeforeDestroySwapChain) then begin
+   fOnBeforeDestroySwapChain(self);
+  end;
  end;
 end;
 
@@ -350,7 +361,7 @@ begin
   fDoNeedToRecreateVulkanSwapChain:=false;
   OldVulkanSwapChain:=fVulkanSwapChain;
   try
-   DestroyGraphicsPipelines;
+   BeforeDestroySwapChain;
    FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
    fVulkanSwapChain:=TVulkanSwapChain.Create(fVulkanDevice,
                                              fVulkanSurface,
@@ -367,7 +378,7 @@ begin
                                              VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
                                              TVkPresentModeKHR(integer(IfThen(fVSync,integer(VK_PRESENT_MODE_MAILBOX_KHR),integer(VK_PRESENT_MODE_IMMEDIATE_KHR)))));
    fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(fVulkanDevice,fVulkanSwapChain,fVulkanInitializationCommandBuffer,fVulkanInitializationCommandBufferFence);
-   CreateGraphicsPipelines;
+   AfterCreateSwapChain;
   finally
    OldVulkanSwapChain.Free;
   end;
@@ -410,8 +421,7 @@ begin
                                                                      fVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
                                                                      VK_SUBPASS_CONTENTS_INLINE,
                                                                      0,0,fVulkanSwapChain.Width,fVulkanSwapChain.Height);
-// VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
-// VulkanCommandBuffer.CmdDraw(3,1,0,0);
+ Main.DrawGraphics(VulkanCommandBuffer); 
  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
 
  VulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(fVulkanSwapChain.CurrentImage);
