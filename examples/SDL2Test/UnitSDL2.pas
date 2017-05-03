@@ -1241,6 +1241,8 @@ type PSDLInt8=^TSDLInt8;
       version:TSDL_version;
       subsystem:TSDL_SysWm;
       window:HWnd;	// The display window
+      hdc_:Hdc;
+      hinstance:HModule;
      end;
 {$elseif defined(Unix)}
      // The Unix custom window manager information structure
