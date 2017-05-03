@@ -239,7 +239,7 @@ procedure signal_handler(pSignal:cint); cdecl;
 begin
  case pSignal of
   SIGINT,SIGTERM,SIGKILL:begin
-   TPasMPInterlocked.Write(SDLRunning,TPasMPBool32(false));
+   SDLRunning:=false;
   end;
  end;
 end;
@@ -405,7 +405,7 @@ begin
             AllocateVulkanSurface;
             StartGraphics;
            except
-            TPasMPInterlocked.Write(SDLRunning,TPasMPBool32(false));
+            SDLRunning:=false;
             break;
            end;
            GraphicsReady:=true;
