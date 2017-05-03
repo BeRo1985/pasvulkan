@@ -6,7 +6,7 @@ program SDL2Test;
  {$apptype console}
 {$ifend}
 
-//{$ifdef Unix}cthreads,{$endif}
+// {$if defined(fpc) and defined(Unix)}cthreads,{$ifend}
 
 uses
   {$if defined(fpc) and defined(Unix)}cthreads,{$ifend}

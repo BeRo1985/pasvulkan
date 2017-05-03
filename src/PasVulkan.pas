@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-04-22-17-34-0000                       *
+ *                        Version 2017-05-03-03-11-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1236,8 +1236,8 @@ type EVulkanException=class(Exception);
        constructor Create(const pDevice:TVulkanDevice;
                           const pBuffer:TVulkanBuffer;
                           const pFormat:TVkFormat;
-                          const pOffset:TVkDeviceSize;
-                          const pRange:TVkDeviceSize); reintroduce; overload;
+                          const pOffset:TVkDeviceSize=0;
+                          const pRange:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)); reintroduce; overload;
        constructor Create(const pDevice:TVulkanDevice;
                           const pBufferView:TVkBufferView;
                           const pBuffer:TVulkanBuffer=nil); reintroduce; overload;
@@ -1246,6 +1246,72 @@ type EVulkanException=class(Exception);
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkRenderPass read fBufferViewHandle;
        property Buffer:TVulkanBuffer read fBuffer write fBuffer;
+     end;
+
+     TVulkanVertexBuffer=class(TVulkanBuffer)
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pSize:TVkDeviceSize;
+                          const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                          const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                          const pQueueFamilyIndices:TVkUInt32List=nil;
+                          const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                          const pOwnSingleMemoryChunk:boolean=false); reintroduce;
+     end;
+
+     TVulkanIndexBuffer=class(TVulkanBuffer)
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pSize:TVkDeviceSize;
+                          const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                          const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                          const pQueueFamilyIndices:TVkUInt32List=nil;
+                          const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                          const pOwnSingleMemoryChunk:boolean=false); reintroduce;
+     end;
+
+     TVulkanUniformBuffer=class(TVulkanBuffer)
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pSize:TVkDeviceSize;
+                          const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                          const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                          const pQueueFamilyIndices:TVkUInt32List=nil;
+                          const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                          const pOwnSingleMemoryChunk:boolean=false); reintroduce;
+     end;
+
+     TVulkanUniformTexelBuffer=class(TVulkanBuffer)
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pSize:TVkDeviceSize;
+                          const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                          const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                          const pQueueFamilyIndices:TVkUInt32List=nil;
+                          const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                          const pOwnSingleMemoryChunk:boolean=false); reintroduce;
+     end;
+
+     TVulkanUniformTexelStorageBuffer=class(TVulkanBuffer)
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pSize:TVkDeviceSize;
+                          const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                          const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                          const pQueueFamilyIndices:TVkUInt32List=nil;
+                          const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                          const pOwnSingleMemoryChunk:boolean=false); reintroduce;
+     end;
+
+     TVulkanStorageBuffer=class(TVulkanBuffer)
+      public
+       constructor Create(const pDevice:TVulkanDevice;
+                          const pSize:TVkDeviceSize;
+                          const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                          const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                          const pQueueFamilyIndices:TVkUInt32List=nil;
+                          const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                          const pOwnSingleMemoryChunk:boolean=false); reintroduce;
      end;
 
      TVulkanEvent=class(TVulkanObject)
@@ -9031,8 +9097,8 @@ end;
 constructor TVulkanBufferView.Create(const pDevice:TVulkanDevice;
                                      const pBuffer:TVulkanBuffer;
                                      const pFormat:TVkFormat;
-                                     const pOffset:TVkDeviceSize;
-                                     const pRange:TVkDeviceSize);
+                                     const pOffset:TVkDeviceSize=0;
+                                     const pRange:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE));
 var BufferViewCreateInfo:TVkBufferViewCreateInfo;
 begin
 
@@ -9080,6 +9146,108 @@ begin
   fBufferViewHandle:=VK_NULL_HANDLE;
  end;
  inherited Destroy;
+end;
+
+constructor TVulkanVertexBuffer.Create(const pDevice:TVulkanDevice;
+                                       const pSize:TVkDeviceSize;
+                                       const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                                       const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                       const pQueueFamilyIndices:TVkUInt32List=nil;
+                                       const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                       const pOwnSingleMemoryChunk:boolean=false);
+begin
+ inherited Create(pDevice,
+                  pSize,
+                  pUsage or (TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)),
+                  pSharingMode,
+                  pQueueFamilyIndices,
+                  pMemoryProperties,
+                  pOwnSingleMemoryChunk);
+end;
+
+constructor TVulkanIndexBuffer.Create(const pDevice:TVulkanDevice;
+                                      const pSize:TVkDeviceSize;
+                                      const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                                      const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                      const pQueueFamilyIndices:TVkUInt32List=nil;
+                                      const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                      const pOwnSingleMemoryChunk:boolean=false);
+begin
+ inherited Create(pDevice,
+                  pSize,
+                  pUsage or (TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT)),
+                  pSharingMode,
+                  pQueueFamilyIndices,
+                  pMemoryProperties,
+                  pOwnSingleMemoryChunk);
+end;
+
+constructor TVulkanUniformBuffer.Create(const pDevice:TVulkanDevice;
+                                        const pSize:TVkDeviceSize;
+                                        const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                                        const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                        const pQueueFamilyIndices:TVkUInt32List=nil;
+                                        const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                        const pOwnSingleMemoryChunk:boolean=false);
+begin
+ inherited Create(pDevice,
+                  pSize,
+                  pUsage or (TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)),
+                  pSharingMode,
+                  pQueueFamilyIndices,
+                  pMemoryProperties,
+                  pOwnSingleMemoryChunk);
+end;
+
+constructor TVulkanUniformTexelBuffer.Create(const pDevice:TVulkanDevice;
+                                             const pSize:TVkDeviceSize;
+                                             const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                                             const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                             const pQueueFamilyIndices:TVkUInt32List=nil;
+                                             const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                             const pOwnSingleMemoryChunk:boolean=false);
+begin
+ inherited Create(pDevice,
+                  pSize,
+                  pUsage or (TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)),
+                  pSharingMode,
+                  pQueueFamilyIndices,
+                  pMemoryProperties,
+                  pOwnSingleMemoryChunk);
+end;
+
+constructor TVulkanUniformTexelStorageBuffer.Create(const pDevice:TVulkanDevice;
+                                                    const pSize:TVkDeviceSize;
+                                                    const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                                                    const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                                    const pQueueFamilyIndices:TVkUInt32List=nil;
+                                                    const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                                    const pOwnSingleMemoryChunk:boolean=false);
+begin
+ inherited Create(pDevice,
+                  pSize,
+                  pUsage or (TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)),
+                  pSharingMode,
+                  pQueueFamilyIndices,
+                  pMemoryProperties,
+                  pOwnSingleMemoryChunk);
+end;
+
+constructor TVulkanStorageBuffer.Create(const pDevice:TVulkanDevice;
+                                        const pSize:TVkDeviceSize;
+                                        const pUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(0);
+                                        const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                        const pQueueFamilyIndices:TVkUInt32List=nil;
+                                        const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                        const pOwnSingleMemoryChunk:boolean=false);
+begin
+ inherited Create(pDevice,
+                  pSize,
+                  pUsage or (TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)),
+                  pSharingMode,
+                  pQueueFamilyIndices,
+                  pMemoryProperties,
+                  pOwnSingleMemoryChunk);
 end;
 
 constructor TVulkanEvent.Create(const pDevice:TVulkanDevice;
