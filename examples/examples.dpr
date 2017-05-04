@@ -19,9 +19,13 @@ uses
   PasVulkanApplication in '..\src\PasVulkanApplication.pas',
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas';
 
+type TExampleVulkanApplication=class(TVulkanApplication)
+      public
+     end;
+
 procedure SDLMain;
 begin
- VulkanApplication:=TVulkanApplication.Create;
+ VulkanApplication:=TExampleVulkanApplication.Create;
  try
 {$ifndef Release}
   VulkanApplication.VulkanDebugging:=true;
