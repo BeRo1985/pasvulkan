@@ -26,6 +26,8 @@ type TScreenExampleTriangle=class(TVulkanScreen)
        fVulkanPipelineLayout:TVulkanPipelineLayout;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
        fVulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget;
+       fVulkanVertexBuffer:TVulkanBuffer;
+       fVulkanIndexBuffer:TVulkanBuffer;
       public
 
        constructor Create; override;
@@ -55,6 +57,13 @@ type TScreenExampleTriangle=class(TVulkanScreen)
      end;
 
 implementation
+
+const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
+       (((0.5,0.5,0.0),(1.0,0.0,0.0)),
+        ((-0.5,0.5,0.0),(0.0,1.0,0.0)),
+        ((0.5,-0.5,0.0),(0.0,0.0,1.0)));
+
+      TriangleIndices:array[0..2] of TVkInt32=(0,1,2);
 
 constructor TScreenExampleTriangle.Create;
 var Stream:TStream;
@@ -88,10 +97,43 @@ begin
 
  fVulkanSwapChainSimpleDirectRenderTarget:=nil;
 
+ fVulkanVertexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
+                                           SizeOf(TriangleVertices),
+                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                           nil,
+                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                                          );
+ fVulkanVertexBuffer.UploadData(VulkanApplication.VulkanDevice.TransferQueue,
+                                VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                TriangleVertices,
+                                0,
+                                SizeOf(TriangleVertices),
+                                true);
+
+ fVulkanIndexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
+                                          SizeOf(TriangleIndices),
+                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                          nil,
+                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                                         );
+ fVulkanIndexBuffer.UploadData(VulkanApplication.VulkanDevice.TransferQueue,
+                               VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                               VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                               TriangleIndices,
+                               0,
+                               SizeOf(TriangleIndices),
+                               true);
+
+
 end;
 
 destructor TScreenExampleTriangle.Destroy;
 begin
+ FreeAndNil(fVulkanIndexBuffer);
+ FreeAndNil(fVulkanVertexBuffer);
  FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
  FreeAndNil(fVulkanGraphicsPipeline);
  FreeAndNil(fVulkanPipelineLayout);

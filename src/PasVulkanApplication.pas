@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-04-23-49-0000                       *
+ *                        Version 2017-05-05-01-39-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -193,6 +193,12 @@ type EVulkanApplication=class(Exception);
        function ExistAsset(const pFileName:string):boolean;
      end;
 
+     TVulkanApplicationCommandPools=array of array of TVulkanCommandPool;
+
+     TVulkanApplicationCommandBuffers=array of array of TVulkanCommandBuffer;
+
+     TVulkanApplicationCommandBufferFences=array of array of TVulkanFence;
+
      TVulkanApplication=class
       private
 
@@ -245,6 +251,30 @@ type EVulkanApplication=class(Exception);
        fVulkanInstance:TVulkanInstance;
 
        fVulkanDevice:TVulkanDevice;
+
+       fCountThreads:TVkInt32;
+
+       fVulkanCountCommandQueues:TVkInt32;
+
+       fVulkanCommandPools:array of TVulkanApplicationCommandPools;
+       fVulkanCommandBuffers:array of TVulkanApplicationCommandBuffers;
+       fVulkanCommandBufferFences:array of TVulkanApplicationCommandBufferFences;
+
+       fVulkanPresentCommandPools:TVulkanApplicationCommandPools;
+       fVulkanPresentCommandBuffers:TVulkanApplicationCommandBuffers;
+       fVulkanPresentCommandBufferFences:TVulkanApplicationCommandBufferFences;
+
+       fVulkanGraphicsCommandPools:TVulkanApplicationCommandPools;
+       fVulkanGraphicsCommandBuffers:TVulkanApplicationCommandBuffers;
+       fVulkanGraphicsCommandBufferFences:TVulkanApplicationCommandBufferFences;
+
+       fVulkanComputeCommandPools:TVulkanApplicationCommandPools;
+       fVulkanComputeCommandBuffers:TVulkanApplicationCommandBuffers;
+       fVulkanComputeCommandBufferFences:TVulkanApplicationCommandBufferFences;
+
+       fVulkanTransferCommandPools:TVulkanApplicationCommandPools;
+       fVulkanTransferCommandBuffers:TVulkanApplicationCommandBuffers;
+       fVulkanTransferCommandBufferFences:TVulkanApplicationCommandBufferFences;
 
        fVulkanPresentationSurface:TVulkanPresentationSurface;
 
@@ -328,6 +358,8 @@ type EVulkanApplication=class(Exception);
 
        property Terminated:boolean read fTerminated;
 
+       property CountThreads:TVkInt32 read fCountThreads write fCountThreads;
+
        property OnEvent:TVulkanApplicationOnEvent read fOnEvent write fOnEvent;
        property OnStep:TVulkanApplicationOnStep read fOnStep write fOnStep;
 
@@ -340,6 +372,22 @@ type EVulkanApplication=class(Exception);
        property VulkanInstance:TVulkanInstance read fVulkanInstance;
 
        property VulkanDevice:TVulkanDevice read fVulkanDevice;
+
+       property VulkanPresentCommandPools:TVulkanApplicationCommandPools read fVulkanPresentCommandPools;
+       property VulkanPresentCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanPresentCommandBuffers;
+       property VulkanPresentCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanPresentCommandBufferFences;
+
+       property VulkanGraphicsCommandPools:TVulkanApplicationCommandPools read fVulkanGraphicsCommandPools;
+       property VulkanGraphicsCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanGraphicsCommandBuffers;
+       property VulkanGraphicsCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanGraphicsCommandBufferFences;
+
+       property VulkanComputeCommandPools:TVulkanApplicationCommandPools read fVulkanComputeCommandPools;
+       property VulkanComputeCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanComputeCommandBuffers;
+       property VulkanComputeCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanComputeCommandBufferFences;
+
+       property VulkanTransferCommandPools:TVulkanApplicationCommandPools read fVulkanTransferCommandPools;
+       property VulkanTransferCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanTransferCommandBuffers;
+       property VulkanTransferCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanTransferCommandBufferFences;
 
        property VulkanPresentationSurface:TVulkanPresentationSurface read fVulkanPresentationSurface;
 
@@ -915,6 +963,30 @@ begin
 
  fVulkanDevice:=nil;
 
+ fCountThreads:=1;
+
+ fVulkanCountCommandQueues:=0;
+ 
+ fVulkanCommandPools:=nil;
+ fVulkanCommandBuffers:=nil;
+ fVulkanCommandBufferFences:=nil;
+
+ fVulkanPresentCommandPools:=nil;
+ fVulkanPresentCommandBuffers:=nil;
+ fVulkanPresentCommandBufferFences:=nil;
+
+ fVulkanGraphicsCommandPools:=nil;
+ fVulkanGraphicsCommandBuffers:=nil;
+ fVulkanGraphicsCommandBufferFences:=nil;
+
+ fVulkanComputeCommandPools:=nil;
+ fVulkanComputeCommandBuffers:=nil;
+ fVulkanComputeCommandBufferFences:=nil;
+
+ fVulkanTransferCommandPools:=nil;
+ fVulkanTransferCommandBuffers:=nil;
+ fVulkanTransferCommandBufferFences:=nil;
+
  fVulkanPresentationSurface:=nil;
 
  fScreen:=nil;
@@ -959,12 +1031,74 @@ begin
 end;
 
 procedure TVulkanApplication.CreateVulkanDevice(const pSurface:TVulkanSurface=nil);
+var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex:TVkInt32;
 begin
  if not assigned(VulkanDevice) then begin
+
   fVulkanDevice:=TVulkanDevice.Create(VulkanInstance,nil,pSurface,nil);
   fVulkanDevice.AddQueues;
   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   fVulkanDevice.Initialize;
+
+  fVulkanCountCommandQueues:=length(fVulkanDevice.PhysicalDevice.QueueFamilyProperties);
+  SetLength(fVulkanCommandPools,fVulkanCountCommandQueues,fCountThreads,MaxSwapChainImages);
+  SetLength(fVulkanCommandBuffers,fVulkanCountCommandQueues,fCountThreads,MaxSwapChainImages);
+  SetLength(fVulkanCommandBufferFences,fVulkanCountCommandQueues,fCountThreads,MaxSwapChainImages);
+  for QueueFamilyIndex:=0 to length(fVulkanDevice.PhysicalDevice.QueueFamilyProperties)-1 do begin
+   if (QueueFamilyIndex=fVulkanDevice.PresentQueueFamilyIndex) or
+      (QueueFamilyIndex=fVulkanDevice.GraphicsQueueFamilyIndex) or
+      (QueueFamilyIndex=fVulkanDevice.ComputeQueueFamilyIndex) or
+      (QueueFamilyIndex=fVulkanDevice.TransferQueueFamilyIndex) then begin
+    for ThreadIndex:=0 to fCountThreads-1 do begin
+     for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+      fVulkanCommandPools[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex]:=TVulkanCommandPool.Create(fVulkanDevice,QueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+      fVulkanCommandBuffers[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex]:=TVulkanCommandBuffer.Create(fVulkanCommandPools[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex],VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+      fVulkanCommandBufferFences[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex]:=TVulkanFence.Create(fVulkanDevice);
+     end;
+    end;
+   end;
+  end;
+
+  if fVulkanDevice.PresentQueueFamilyIndex>=0 then begin
+   fVulkanPresentCommandPools:=fVulkanCommandPools[fVulkanDevice.PresentQueueFamilyIndex];
+   fVulkanPresentCommandBuffers:=fVulkanCommandBuffers[fVulkanDevice.PresentQueueFamilyIndex];
+   fVulkanPresentCommandBufferFences:=fVulkanCommandBufferFences[fVulkanDevice.PresentQueueFamilyIndex];
+  end else begin
+   fVulkanPresentCommandPools:=nil;
+   fVulkanPresentCommandBuffers:=nil;
+   fVulkanPresentCommandBufferFences:=nil;
+  end;
+
+  if fVulkanDevice.GraphicsQueueFamilyIndex>=0 then begin
+   fVulkanGraphicsCommandPools:=fVulkanCommandPools[fVulkanDevice.GraphicsQueueFamilyIndex];
+   fVulkanGraphicsCommandBuffers:=fVulkanCommandBuffers[fVulkanDevice.GraphicsQueueFamilyIndex];
+   fVulkanGraphicsCommandBufferFences:=fVulkanCommandBufferFences[fVulkanDevice.GraphicsQueueFamilyIndex];
+  end else begin
+   fVulkanGraphicsCommandPools:=nil;
+   fVulkanGraphicsCommandBuffers:=nil;
+   fVulkanGraphicsCommandBufferFences:=nil;
+  end;
+
+  if fVulkanDevice.ComputeQueueFamilyIndex>=0 then begin
+   fVulkanComputeCommandPools:=fVulkanCommandPools[fVulkanDevice.ComputeQueueFamilyIndex];
+   fVulkanComputeCommandBuffers:=fVulkanCommandBuffers[fVulkanDevice.ComputeQueueFamilyIndex];
+   fVulkanComputeCommandBufferFences:=fVulkanCommandBufferFences[fVulkanDevice.ComputeQueueFamilyIndex];
+  end else begin
+   fVulkanComputeCommandPools:=nil;
+   fVulkanComputeCommandBuffers:=nil;
+   fVulkanComputeCommandBufferFences:=nil;
+  end;
+
+  if fVulkanDevice.TransferQueueFamilyIndex>=0 then begin
+   fVulkanTransferCommandPools:=fVulkanCommandPools[fVulkanDevice.TransferQueueFamilyIndex];
+   fVulkanTransferCommandBuffers:=fVulkanCommandBuffers[fVulkanDevice.TransferQueueFamilyIndex];
+   fVulkanTransferCommandBufferFences:=fVulkanCommandBufferFences[fVulkanDevice.TransferQueueFamilyIndex];
+  end else begin
+   fVulkanTransferCommandPools:=nil;
+   fVulkanTransferCommandBuffers:=nil;
+   fVulkanTransferCommandBufferFences:=nil;
+  end;
+
  end;
 end;
 
@@ -1041,13 +1175,47 @@ begin
 end;
 
 procedure TVulkanApplication.FreeVulkanInstance;
+var Index,SubIndex,SubSubIndex:TVkInt32;
 begin
-//FreeAndNil(VulkanPresentationSurface);
+
+ fVulkanPresentCommandPools:=nil;
+ fVulkanPresentCommandBuffers:=nil;
+ fVulkanPresentCommandBufferFences:=nil;
+
+ fVulkanGraphicsCommandPools:=nil;
+ fVulkanGraphicsCommandBuffers:=nil;
+ fVulkanGraphicsCommandBufferFences:=nil;
+
+ fVulkanComputeCommandPools:=nil;
+ fVulkanComputeCommandBuffers:=nil;
+ fVulkanComputeCommandBufferFences:=nil;
+
+ fVulkanTransferCommandPools:=nil;
+ fVulkanTransferCommandBuffers:=nil;
+ fVulkanTransferCommandBufferFences:=nil;
+
+ for Index:=0 to fVulkanCountCommandQueues-1 do begin
+  for SubIndex:=0 to fCountThreads-1 do begin
+   for SubSubIndex:=0 to MaxSwapChainImages-1 do begin
+    FreeAndNil(fVulkanCommandBufferFences[Index,SubIndex,SubSubIndex]);
+    FreeAndNil(fVulkanCommandBuffers[Index,SubIndex,SubSubIndex]);
+    FreeAndNil(fVulkanCommandPools[Index,SubIndex,SubSubIndex]);
+   end;
+  end;
+ end;
+
+ fVulkanCommandPools:=nil;
+ fVulkanCommandBuffers:=nil;
+ fVulkanCommandBufferFences:=nil;
+
+ //FreeAndNil(VulkanPresentationSurface);
  FreeAndNil(fVulkanDevice);
  FreeAndNil(fVulkanInstance);
 //VulkanPresentationSurface:=nil;
+
  fVulkanDevice:=nil;
  fVulkanInstance:=nil;
+
 end;
 
 procedure TVulkanApplication.AllocateVulkanSurface;
@@ -1354,6 +1522,10 @@ end;
 
 procedure TVulkanApplication.Run;
 begin
+
+ if fCountThreads<1 then begin
+  fCountThreads:=1;
+ end;
 
  if SDL_Init(SDL_INIT_VIDEO or SDL_INIT_EVENTS or SDL_INIT_TIMER)<0 then begin
   raise EVulkanApplication.Create('Unable to initialize SDL: '+SDL_GetError);

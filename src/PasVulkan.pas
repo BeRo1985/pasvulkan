@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-03-18-03-0000                       *
+ *                        Version 2017-05-05-01-39-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -976,6 +976,7 @@ type EVulkanException=class(Exception);
        property GraphicsQueueFamilyIndex:TVkInt32 read fGraphicsQueueFamilyIndex;
        property ComputeQueueFamilyIndex:TVkInt32 read fComputeQueueFamilyIndex;
        property TransferQueueFamilyIndex:TVkInt32 read fTransferQueueFamilyIndex;
+       property Queues:TVulkanQueues read fQueues;
        property PresentQueue:TVulkanQueue read fPresentQueue;
        property GraphicsQueue:TVulkanQueue read fGraphicsQueue;
        property ComputeQueue:TVulkanQueue read fComputeQueue;
@@ -1205,6 +1206,10 @@ type EVulkanException=class(Exception);
 
      TVulkanQueueFamilyIndices=array of TVkUInt32;
 
+     TVulkanFence=class;
+
+     TVulkanCommandBuffer=class;
+
      TVulkanBuffer=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
@@ -1226,6 +1231,13 @@ type EVulkanException=class(Exception);
                           const pOwnSingleMemoryChunk:boolean=false);
        destructor Destroy; override;
        procedure Bind;
+       procedure UploadData(const pQueue:TVulkanQueue;
+                            const pFence:TVulkanFence;
+                            const pCommandBuffer:TVulkanCommandBuffer;
+                            const pData;
+                            const pDataOffset:TVkDeviceSize;
+                            const pDataSize:TVkDeviceSize;
+                            const pUseTemporaryStagingBuffer:boolean=true);
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkBuffer read fBufferHandle;
@@ -9074,6 +9086,71 @@ end;
 procedure TVulkanBuffer.Bind;
 begin
  HandleResultCode(fDevice.Commands.BindBufferMemory(fDevice.fDeviceHandle,fBufferHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
+end;
+
+procedure TVulkanBuffer.UploadData(const pQueue:TVulkanQueue;
+                                   const pFence:TVulkanFence;
+                                   const pCommandBuffer:TVulkanCommandBuffer;
+                                   const pData;
+                                   const pDataOffset:TVkDeviceSize;
+                                   const pDataSize:TVkDeviceSize;
+                                   const pUseTemporaryStagingBuffer:boolean=true);
+var StagingBuffer:TVulkanBuffer;
+    p:pointer;
+    VkBufferCopy:TVkBufferCopy;
+begin
+ if pUseTemporaryStagingBuffer then begin
+  StagingBuffer:=TVulkanBuffer.Create(fDevice,
+                                      pDataSize,
+                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+                                      VK_SHARING_MODE_EXCLUSIVE,
+                                      nil,
+                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                      true);
+  try
+
+   p:=StagingBuffer.Memory.MapMemory;
+   try
+    if assigned(p) then begin
+     Move(pData,p^,pDataSize);
+    end else begin
+     raise EVulkanException.Create('Vulkan buffer memory block map failed');
+    end;
+   finally
+    StagingBuffer.Memory.UnmapMemory;
+   end;
+
+   StagingBuffer.Bind;
+   Bind;
+
+   VkBufferCopy.srcOffset:=0;
+   VkBufferCopy.dstOffset:=pDataOffset;
+   VkBufferCopy.size:=pDataSize;
+
+   pCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   pCommandBuffer.BeginRecording;
+   pCommandBuffer.CmdCopyBuffer(StagingBuffer.Handle,Handle,1,@VkBufferCopy);
+   pCommandBuffer.EndRecording;
+   pCommandBuffer.Execute(pQueue,0,nil,nil,pFence,true);
+
+  finally
+   StagingBuffer.Free;
+  end;
+  
+ end else begin
+
+  p:=Memory.MapMemory(pDataOffset,pDataSize);
+  try
+   if assigned(p) then begin
+    Move(pData,p^,pDataSize);
+   end else begin
+    raise EVulkanException.Create('Vulkan buffer memory block map failed');
+   end;
+  finally
+   Memory.UnmapMemory;
+  end;
+
+ end;
 end;
 
 constructor TVulkanBufferView.Create(const pDevice:TVulkanDevice;
