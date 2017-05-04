@@ -175,11 +175,24 @@ type EVulkanApplication=class(Exception);
 
      TVulkanScreenClass=class of TVulkanScreen;
 
+     TVulkanApplicationAssets=class
+      private
+       fVulkanApplication:TVulkanApplication;
+       fBasePath:string;
+      public
+       constructor Create(const pVulkanApplication:TVulkanApplication);
+       destructor Destroy; override;
+       function GetAsset(const pFileName:string):TStream;
+       function ExistAsset(const pFileName:string):boolean;
+     end;
+
      TVulkanApplication=class
       private
 
        fTitle:string;
        fVersion:TVkUInt32;
+
+       fAssets:TVulkanApplicationAssets;
 
        fCurrentWidth:TSDLInt32;
        fCurrentHeight:TSDLInt32;
@@ -281,6 +294,8 @@ type EVulkanApplication=class(Exception);
        procedure Pause; virtual;
 
       published
+
+       property Assets:TVulkanApplicationAssets read fAssets;
 
        property Title:string read fTitle write fTitle;
        property Version:TVkUInt32 read fVersion write fVersion;
@@ -789,6 +804,27 @@ procedure TVulkanScreen.Draw(const pVulkanCommandBuffer:TVulkanCommandBuffer);
 begin
 end;
 
+constructor TVulkanApplicationAssets.Create(const pVulkanApplication:TVulkanApplication);
+begin
+ inherited Create;
+ fBasePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'assets');
+end;
+
+destructor TVulkanApplicationAssets.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TVulkanApplicationAssets.GetAsset(const pFileName:string):TStream;
+begin
+ result:=TFileStream.Create(StringReplace(StringReplace(fBasePath+pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]),fmOpenRead or fmShareDenyWrite);
+end;
+
+function TVulkanApplicationAssets.ExistAsset(const pFileName:string):boolean;
+begin
+ result:=FileExists(StringReplace(StringReplace(fBasePath+pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]));
+end;
+
 constructor TVulkanApplication.Create;
 begin
 
@@ -800,6 +836,8 @@ begin
 
  fTitle:='SDL2 Vulkan Application';
  fVersion:=$0100;
+
+ fAssets:=TVulkanApplicationAssets.Create(self);
 
  fCurrentWidth:=-1;
  fCurrentHeight:=-1;
@@ -851,6 +889,7 @@ end;
 
 destructor TVulkanApplication.Destroy;
 begin
+ FreeAndNil(fAssets);
  VulkanApplication:=nil;
  inherited Destroy;
 end;

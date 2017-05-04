@@ -56,13 +56,23 @@ type TScreenExampleTriangle=class(TVulkanScreen)
 implementation
 
 constructor TScreenExampleTriangle.Create;
+var Stream:TStream;
 begin
  inherited Create;
 
- fTriangleVertexShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,'shaders/triangle_vert.spv');
- fTriangleVertexShaderModule.GetVariables;
+ Stream:=VulkanApplication.Assets.GetAsset('shaders/triangle_vert.spv');
+ try
+  fTriangleVertexShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
 
- fTriangleFragmentShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,'shaders/triangle_frag.spv');
+ Stream:=VulkanApplication.Assets.GetAsset('shaders/triangle_frag.spv');
+ try
+  fTriangleFragmentShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
 
  fVulkanPipelineShaderStageTriangleVertex:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fTriangleVertexShaderModule,'main');
 
