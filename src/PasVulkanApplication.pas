@@ -490,6 +490,10 @@ begin
  if assigned(fVulkanDevice) then begin
   fVulkanDevice.WaitIdle;
  end;
+ BeforeDestroySwapChain;
+ if assigned(fVulkanDevice) then begin
+  fVulkanDevice.WaitIdle;
+ end;
  FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
  if assigned(fVulkanDevice) then begin
   fVulkanDevice.WaitIdle;
@@ -1323,30 +1327,27 @@ begin
    AllocateVulkanSurface;
    try
 
+    Resume;
+
     if assigned(fStartScreen) then begin
      SetScreen(fStartScreen.Create);
     end;
 
-    Resume;
-    try
-
-     while not fTerminated do begin
-      ProcessMessages;
-     end;
-
-    finally
-
-     SetScreen(nil);
-
-     FreeAndNil(fNextScreen);
-     FreeAndNil(fScreen);
-
-     Pause;
-
+    while not fTerminated do begin
+     ProcessMessages;
     end;
 
-   finally
+  finally
+
+    Pause;
+
     FreeVulkanSurface;
+
+    SetScreen(nil);
+
+    FreeAndNil(fNextScreen);
+    FreeAndNil(fScreen);
+
    end;
 
   finally

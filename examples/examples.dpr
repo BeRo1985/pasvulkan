@@ -21,7 +21,27 @@ uses
 
 type TExampleVulkanApplication=class(TVulkanApplication)
       public
+       function HandleEvent(const pEvent:TSDL_Event):boolean; override;
      end;
+
+function TExampleVulkanApplication.HandleEvent(const pEvent:TSDL_Event):boolean;
+begin
+ result:=inherited HandleEvent(pEvent);
+ if not result then begin
+  case pEvent.type_ of
+   SDL_KEYDOWN:begin
+    case pEvent.key.keysym.sym of
+     SDLK_ESCAPE:begin
+      if ((pEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))=0) and (pEvent.key.repeat_=0) then begin
+       Terminate;
+       result:=true;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
 
 procedure SDLMain;
 begin
