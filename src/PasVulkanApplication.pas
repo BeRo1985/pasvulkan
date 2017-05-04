@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-04-05-07-0000                       *
+ *                        Version 2017-05-04-06-48-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -546,6 +546,7 @@ procedure TVulkanPresentationSurface.BeforeDestroySwapChain;
 begin
  if fGraphicsPipelinesReady then begin
   fGraphicsPipelinesReady:=false;
+  fVulkanDevice.WaitIdle;
   if assigned(fOnBeforeDestroySwapChain) then begin
    fOnBeforeDestroySwapChain(self);
   end;
