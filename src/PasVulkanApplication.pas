@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-04-08-36-0000                       *
+ *                        Version 2017-05-04-23-49-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -106,6 +106,7 @@ type EVulkanApplication=class(Exception);
        fVulkanSwapChainImageFencesReady:array[0..MaxSwapChainImages-1] of boolean;
        fVulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget;
        fVulkanCommandPool:TVulkanCommandPool;
+       fVulkanCommandBuffer:TVulkanCommandBuffer;
        fVulkanCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
        fVulkanCommandBufferFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
        fVulkanCommandBufferFencesReady:array[0..MaxSwapChainImages-1] of boolean;
@@ -142,6 +143,11 @@ type EVulkanApplication=class(Exception);
        property CurrentImageIndex:TVkInt32 read fCurrentImageIndex;
        property Ready:boolean read fReady write fReady;
        property VSync:boolean read fVSync write SetVSync;
+       property VulkanInitializationCommandBufferFence:TVulkanFence read fVulkanInitializationCommandBufferFence;
+       property VulkanInitializationCommandPool:TVulkanCommandPool read fVulkanInitializationCommandPool;
+       property VulkanInitializationCommandBuffer:TVulkanCommandBuffer read fVulkanInitializationCommandBuffer;
+       property VulkanSwapChain:TVulkanSwapChain read fVulkanSwapChain;
+       property VulkanCommandBuffer:TVulkanCommandBuffer read fVulkanCommandBuffer;
        property VulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget read fVulkanSwapChainSimpleDirectRenderTarget;
      end;
 
@@ -170,7 +176,7 @@ type EVulkanApplication=class(Exception);
 
        procedure Update(const pDeltaTime:double); virtual;
 
-       procedure Draw(const pVulkanCommandBuffer:TVulkanCommandBuffer); virtual;
+       procedure Draw; virtual;
 
      end;
 
@@ -436,7 +442,13 @@ begin
 
   fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(fVulkanDevice,fVulkanSwapChain,fVulkanInitializationCommandBuffer,fVulkanInitializationCommandBufferFence);
 
+  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=0.0;
+  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=0.0;
+  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=0.0;
+
   fVulkanCommandPool:=TVulkanCommandPool.Create(fVulkanDevice,fVulkanDevice.GraphicsQueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+  fVulkanCommandBuffer:=nil;
 
   for Index:=0 to MaxSwapChainImages-1 do begin
    fVulkanSwapChainImageFences[Index]:=TVulkanFence.Create(fVulkanDevice);
@@ -714,47 +726,43 @@ begin
 end;
 
 function TVulkanPresentationSurface.PresentBackBuffer:boolean;
-var VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
 
  result:=false;
+                                
+ fVulkanCommandBuffer:=fVulkanCommandBuffers[fCurrentImageIndex];
 
- VulkanCommandBuffer:=fVulkanCommandBuffers[fCurrentImageIndex];
+ fVulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
- VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+ fVulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
- VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+ fVulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(fVulkanSwapChain.CurrentImage);
 
- VulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(fVulkanSwapChain.CurrentImage);
-
-{fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=(cos(Now*86400.0*2.0*pi)*0.5)+0.5;
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=(sin(Now*86400.0*2.0*pi)*0.5)+0.5;
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=(cos(Now*86400.0*pi*0.731)*0.5)+0.5;{}
-
-{
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=(cos(Now*86400.0*2.0*pi)*0.5)+0.5;
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0];
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0];{}
-
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                                                     fVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
-                                                                     VK_SUBPASS_CONTENTS_INLINE,
-                                                                     0,0,fVulkanSwapChain.Width,fVulkanSwapChain.Height);
  if assigned(fVulkanApplication.fScreen) then begin
-  fVulkanApplication.fScreen.Draw(VulkanCommandBuffer);
+
+  fVulkanApplication.fScreen.Draw;
+
+ end else begin
+
+  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.BeginRenderPass(fVulkanCommandBuffer,
+                                                                      fVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
+                                                                      VK_SUBPASS_CONTENTS_INLINE,
+                                                                      0,0,fVulkanSwapChain.Width,fVulkanSwapChain.Height);
+
+  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(fVulkanCommandBuffer);
+
  end;
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
 
- VulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(fVulkanSwapChain.CurrentImage);
+ fVulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(fVulkanSwapChain.CurrentImage);
 
- VulkanCommandBuffer.EndRecording;
+ fVulkanCommandBuffer.EndRecording;
 
- VulkanCommandBuffer.Execute(fVulkanDevice.GraphicsQueue,
-                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                             fVulkanPresentCompleteSemaphores[fCurrentImageIndex],
-                             fVulkanDrawCompleteSemaphores[fCurrentImageIndex],
-                             fVulkanCommandBufferFences[fCurrentImageIndex],
-                             false);
+ fVulkanCommandBuffer.Execute(fVulkanDevice.GraphicsQueue,
+                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                              fVulkanPresentCompleteSemaphores[fCurrentImageIndex],
+                              fVulkanDrawCompleteSemaphores[fCurrentImageIndex],
+                              fVulkanCommandBufferFences[fCurrentImageIndex],
+                              false);
  fVulkanCommandBufferFencesReady[fCurrentImageIndex]:=true;
 
  try
@@ -831,7 +839,7 @@ procedure TVulkanScreen.Update(const pDeltaTime:double);
 begin
 end;
 
-procedure TVulkanScreen.Draw(const pVulkanCommandBuffer:TVulkanCommandBuffer);
+procedure TVulkanScreen.Draw;
 begin
 end;
 

@@ -25,6 +25,7 @@ type TScreenExampleTriangle=class(TVulkanScreen)
        fVulkanPipelineCache:TVulkanPipelineCache;
        fVulkanPipelineLayout:TVulkanPipelineLayout;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
+       fVulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget;
       public
 
        constructor Create; override;
@@ -49,7 +50,7 @@ type TScreenExampleTriangle=class(TVulkanScreen)
 
        procedure Update(const pDeltaTime:double); override;
 
-       procedure Draw(const pVulkanCommandBuffer:TVulkanCommandBuffer); override;
+       procedure Draw; override;
 
      end;
 
@@ -84,11 +85,14 @@ begin
  fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=nil;
- 
+
+ fVulkanSwapChainSimpleDirectRenderTarget:=nil;
+
 end;
 
 destructor TScreenExampleTriangle.Destroy;
 begin
+ FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
  FreeAndNil(fVulkanGraphicsPipeline);
  FreeAndNil(fVulkanPipelineLayout);
  FreeAndNil(fVulkanPipelineCache);
@@ -189,10 +193,22 @@ begin
 
  fVulkanGraphicsPipeline.FreeMemory;
 
+ fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanApplication.VulkanDevice,
+                                                                                           VulkanApplication.VulkanPresentationSurface.VulkanSwapChain,
+                                                                                           VulkanApplication.VulkanPresentationSurface.VulkanInitializationCommandBuffer,
+                                                                                           VulkanApplication.VulkanPresentationSurface.VulkanInitializationCommandBufferFence,
+                                                                                           VK_FORMAT_UNDEFINED,
+                                                                                           false);
+
+ fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=0.0;
+ fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=0.0;
+ fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=0.0;
+
 end;
 
 procedure TScreenExampleTriangle.BeforeDestroySwapChain;
 begin
+ FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
  FreeAndNil(fVulkanGraphicsPipeline);
  inherited BeforeDestroySwapChain;
 end;
@@ -207,12 +223,29 @@ begin
  inherited Update(pDeltaTime);
 end;
 
-procedure TScreenExampleTriangle.Draw(const pVulkanCommandBuffer:TVulkanCommandBuffer);
+procedure TScreenExampleTriangle.Draw;
+var VulkanCommandBuffer:TVulkanCommandBuffer;
+    VulkanSwapChain:TVulkanSwapChain;
 begin
- inherited Draw(pVulkanCommandBuffer);
+ inherited Draw;
  if assigned(fVulkanGraphicsPipeline) then begin
-  pVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
-  pVulkanCommandBuffer.CmdDraw(3,1,0,0);
+
+  VulkanCommandBuffer:=VulkanApplication.VulkanPresentationSurface.VulkanCommandBuffer;
+  VulkanSwapChain:=VulkanApplication.VulkanPresentationSurface.VulkanSwapChain;
+
+  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.BeginRenderPass(VulkanCommandBuffer,
+                                                                      fVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
+                                                                      VK_SUBPASS_CONTENTS_INLINE,
+                                                                      0,
+                                                                      0,
+                                                                      VulkanSwapChain.Width,
+                                                                      VulkanSwapChain.Height);
+
+  VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+  VulkanCommandBuffer.CmdDraw(3,1,0,0);
+
+  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
+
  end;
 end;
 
