@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-04-06-48-0000                       *
+ *                        Version 2017-05-04-08-36-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -132,6 +132,7 @@ type EVulkanApplication=class(Exception);
        procedure SetSize(const pNewWidth,pNewHeight:TVkInt32);
        procedure SetVSync(const pVSync:boolean);
        procedure ClearAll;
+       procedure WaitIdle;
        function AcquireBackBuffer(const pBlock:boolean):boolean;
        function PresentBackBuffer:boolean;
       published
@@ -200,6 +201,7 @@ type EVulkanApplication=class(Exception);
        fCurrentVSync:TSDLInt32;
        fCurrentVisibleMouseCursor:TSDLInt32;
        fCurrentCatchMouse:TSDLInt32;
+       fCurrentBlocking:TSDLInt32;
        fCurrentActive:TSDLInt32;
 
        fWidth:TSDLInt32;
@@ -209,6 +211,7 @@ type EVulkanApplication=class(Exception);
        fResizable:boolean;
        fVisibleMouseCursor:boolean;
        fCatchMouse:boolean;
+       fBlocking:boolean;
 
        fActive:boolean;
 
@@ -312,6 +315,8 @@ type EVulkanApplication=class(Exception);
        property VisibleMouseCursor:boolean read fVisibleMouseCursor write fVisibleMouseCursor;
 
        property CatchMouse:boolean read fCatchMouse write fCatchMouse;
+
+       property Blocking:boolean read fBlocking write fBlocking;
 
        property Active:boolean read fActive;
 
@@ -533,6 +538,27 @@ procedure TVulkanPresentationSurface.ClearAll;
 begin
 end;
 
+procedure TVulkanPresentationSurface.WaitIdle;
+var Index:TVkInt32;
+begin
+ if assigned(fVulkanDevice) then begin
+  fVulkanDevice.WaitIdle;
+  for Index:=0 to MaxSwapChainImages-1 do begin
+   if fVulkanSwapChainImageFencesReady[Index] and assigned(fVulkanSwapChainImageFences[Index]) then begin
+    fVulkanSwapChainImageFences[Index].WaitFor;
+    fVulkanSwapChainImageFences[Index].Reset;
+    fVulkanSwapChainImageFencesReady[Index]:=false;
+   end;
+   if fVulkanCommandBufferFencesReady[Index] and assigned(fVulkanCommandBufferFences[Index]) then begin
+    fVulkanCommandBufferFences[Index].WaitFor;
+    fVulkanCommandBufferFences[Index].Reset;
+    fVulkanCommandBufferFencesReady[Index]:=false;
+   end;
+  end;
+  fVulkanDevice.WaitIdle;
+ end;
+end;
+
 procedure TVulkanPresentationSurface.AfterCreateSwapChain;
 begin
  if not fGraphicsPipelinesReady then begin
@@ -550,7 +576,7 @@ procedure TVulkanPresentationSurface.BeforeDestroySwapChain;
 begin
  if fGraphicsPipelinesReady then begin
   fGraphicsPipelinesReady:=false;
-  fVulkanDevice.WaitIdle;
+  WaitIdle;
   if assigned(fOnBeforeDestroySwapChain) then begin
    fOnBeforeDestroySwapChain(self);
   end;
@@ -812,6 +838,7 @@ end;
 constructor TVulkanApplicationAssets.Create(const pVulkanApplication:TVulkanApplication);
 begin
  inherited Create;
+ fVulkanApplication:=pVulkanApplication;
  fBasePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'assets');
 end;
 
@@ -850,6 +877,7 @@ begin
  fCurrentVSync:=-1;
  fCurrentVisibleMouseCursor:=-1;
  fCurrentCatchMouse:=-1;
+ fCurrentBlocking:=-1;
  fCurrentActive:=-1;
 
  fWidth:=1280;
@@ -859,6 +887,7 @@ begin
  fResizable:=true;
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
+ fBlocking:=true;
 
  fActive:=true;
 
@@ -1096,6 +1125,9 @@ begin
  if fScreen<>pScreen then begin
   if assigned(fScreen) then begin
    fScreen.Pause;
+   if assigned(fVulkanPresentationSurface) then begin
+    fVulkanPresentationSurface.WaitIdle;
+   end;
    fScreen.BeforeDestroySwapChain;
    fScreen.Hide;
    fScreen.Free;
@@ -1105,6 +1137,9 @@ begin
    fScreen.Show;
    if assigned(fScreen) then begin
     fScreen.Resize(fWidth,fHeight);
+   end;
+   if assigned(fVulkanPresentationSurface) then begin
+    fVulkanPresentationSurface.WaitIdle;
    end;
    fScreen.AfterCreateSwapChain;
    fScreen.Resume;
@@ -1169,6 +1204,45 @@ end;
 procedure TVulkanApplication.ProcessMessages;
 begin
 
+ if fCurrentVisibleMouseCursor<>ord(fVisibleMouseCursor) then begin
+  fCurrentVisibleMouseCursor:=ord(fVisibleMouseCursor);
+  if fVisibleMouseCursor then begin
+   SDL_ShowCursor(1);
+  end else begin
+   SDL_ShowCursor(0);
+  end;
+ end;
+
+ if fCurrentCatchMouse<>ord(fCatchMouse) then begin
+  fCurrentCatchMouse:=ord(fCatchMouse);
+  if fCatchMouse then begin
+   SDL_SetRelativeMouseMode(1);
+  end else begin
+   SDL_SetRelativeMouseMode(0);
+  end;
+ end;
+
+ if fHasNewNextScreen then begin
+  fHasNewNextScreen:=false;
+  if fScreen<>fNextScreen then begin
+   SetScreen(fNextScreen);
+  end;
+  fNextScreen:=nil;
+ end;
+
+ if (fCurrentWidth<>fWidth) or (fCurrentHeight<>fHeight) or (fCurrentVSync<>ord(fVSync)) then begin
+  fCurrentWidth:=fWidth;
+  fCurrentHeight:=fHeight;
+  fCurrentVSync:=ord(fVSync);
+  if not fFullscreen then begin
+   SDL_SetWindowSize(fSurfaceWindow,fWidth,fHeight);
+  end;
+  if assigned(fVulkanPresentationSurface) then begin
+   fVulkanPresentationSurface.SetSize(fWidth,fHeight);
+   fVulkanPresentationSurface.SetVSync(fVSync);
+  end;
+ end;
+
  while SDL_PollEvent(@fEvent)<>0 do begin
   if HandleEvent(fEvent) then begin
    continue;
@@ -1212,6 +1286,8 @@ begin
      SDL_WINDOWEVENT_RESIZED:begin
       fWidth:=fEvent.window.Data1;
       fHeight:=fEvent.window.Data2;
+      fCurrentWidth:=fWidth;
+      fCurrentHeight:=fHeight;
       fVulkanPresentationSurface.SetSize(fWidth,fHeight);
       if assigned(fScreen) then begin
        fScreen.Resize(fWidth,fHeight);
@@ -1220,14 +1296,6 @@ begin
     end;
    end;
   end;
- end;
-
- if fHasNewNextScreen then begin
-  fHasNewNextScreen:=false;
-  if fScreen<>fNextScreen then begin
-   SetScreen(fNextScreen);
-  end;
-  fNextScreen:=nil;
  end;
 
  if assigned(fOnStep) then begin
@@ -1269,7 +1337,7 @@ begin
   if assigned(fScreen) then begin
    fScreen.Update(0.0);
   end;
-  if fVulkanPresentationSurface.AcquireBackBuffer(true) then begin
+  if fVulkanPresentationSurface.AcquireBackBuffer(fBlocking) then begin
    fVulkanPresentationSurface.PresentBackBuffer;
   end;
  end;
@@ -1302,8 +1370,9 @@ begin
   end else begin
    fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN;
   end;
-  fCurrentFullscreen:=1;
-  fFullscreen:=true;
+  fCurrentFullscreen:=ord(true);
+ end else begin
+  fCurrentFullscreen:=0;
  end;
  if fResizable then begin
   fVideoFlags:=fVideoFlags or SDL_WINDOW_RESIZABLE;
@@ -1319,6 +1388,11 @@ begin
   raise EVulkanApplication.Create('Unable to initialize SDL: '+SDL_GetError);
  end;
 
+ fCurrentWidth:=fWidth;
+ fCurrentHeight:=fHeight;
+
+ fCurrentVSync:=ord(fVSync);
+
  try
 
   AllocateVulkanInstance;
@@ -1328,25 +1402,30 @@ begin
    try
 
     Resume;
+    try
 
-    if assigned(fStartScreen) then begin
-     SetScreen(fStartScreen.Create);
+     if assigned(fStartScreen) then begin
+      SetScreen(fStartScreen.Create);
+     end;
+
+     while not fTerminated do begin
+      ProcessMessages;
+     end;
+
+    finally
+
+     Pause;
+
+     SetScreen(nil);
+
+     FreeAndNil(fNextScreen);
+     FreeAndNil(fScreen);
+
     end;
 
-    while not fTerminated do begin
-     ProcessMessages;
-    end;
-
-  finally
-
-    Pause;
+   finally
 
     FreeVulkanSurface;
-
-    SetScreen(nil);
-
-    FreeAndNil(fNextScreen);
-    FreeAndNil(fScreen);
 
    end;
 

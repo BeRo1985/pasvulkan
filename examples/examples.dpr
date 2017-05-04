@@ -26,20 +26,21 @@ type TExampleVulkanApplication=class(TVulkanApplication)
 
 function TExampleVulkanApplication.HandleEvent(const pEvent:TSDL_Event):boolean;
 begin
- result:=inherited HandleEvent(pEvent);
- if not result then begin
-  case pEvent.type_ of
-   SDL_KEYDOWN:begin
-    case pEvent.key.keysym.sym of
-     SDLK_ESCAPE:begin
-      if ((pEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))=0) and (pEvent.key.repeat_=0) then begin
-       Terminate;
-       result:=true;
-      end;
+ result:=false;
+ case pEvent.type_ of
+  SDL_KEYDOWN:begin
+   case pEvent.key.keysym.sym of
+    SDLK_F4:begin
+     if ((pEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) and (pEvent.key.repeat_=0) then begin
+      Terminate;
+      result:=true;
      end;
     end;
    end;
   end;
+ end;
+ if not result then begin
+  result:=inherited HandleEvent(pEvent);
  end;
 end;
 
@@ -53,6 +54,8 @@ begin
 {$endif}
   VulkanApplication.Title:='SDL Vulkan Examples Application';
   VulkanApplication.StartScreen:=TScreenExampleTriangle;
+  VulkanApplication.VisibleMouseCursor:=true;
+  VulkanApplication.CatchMouse:=false;
   VulkanApplication.Run;
  finally
   FreeAndNil(VulkanApplication);
