@@ -95,7 +95,7 @@ UnitOutputDir=
 PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=
-Packages=vcl;rtl;vclx;indy;vclie;xmlrtl;inetdbbde;inet;inetdbxpress;dbrtl;soaprtl;dsnap;VclSmp;dbexpress;vcldb;dbxcds;inetdb;bdertl;vcldbx;adortl;teeui;teedb;tee;ibxpress;visualclx;visualdbclx;vclactnband;vclshlctrls;IntrawebDB_50_70;Intraweb_50_70;Rave50CLX;Rave50VCL;dclOfficeXP;acntD7_R;JclDeveloperTools;Jcl;JclVcl;JclContainers;JvCore;JvSystem;JvStdCtrls;JvAppFrm;JvBands;JvDB;JvDlgs;JvBDE;JvControls;JvCmp;JvCrypt;JvCustom;JvDocking;JvDotNetCtrls;JvGlobus;JvHMI;JvJans;JvManagedThreads;JvMM;JvNet;JvPageComps;JvPascalInterpreter;JvPluginSystem;JvPrintPreview;JvRuntimeDesign;JvTimeFramework;JvWizards;JvXPCtrls
+Packages=vcl;rtl;vclx;indy;vclie;xmlrtl;inetdbbde;inet;inetdbxpress;dbrtl;soaprtl;dsnap;VclSmp;dbexpress;vcldb;dbxcds;inetdb;bdertl;vcldbx;adortl;teeui;teedb;tee;ibxpress;visualclx;visualdbclx;vclactnband;vclshlctrls;IntrawebDB_50_70;Intraweb_50_70;Rave50CLX;Rave50VCL;dclOfficeXP;KHexEditor_D7R;acntD7_R;JclDeveloperTools;Jcl;JclVcl;JclContainers;JvCore;JvSystem;JvStdCtrls;JvAppFrm;JvBands;JvDB;JvDlgs;JvBDE;JvControls;JvCmp;JvCrypt;JvCustom;JvDocking;JvDotNetCtrls;JvGlobus;JvHMI;JvJans;JvManagedThreads;JvMM;JvNet;JvPageComps;JvPascalInterpreter;JvPluginSystem;JvPrintPreview;JvRuntimeDesign;JvTimeFramework;JvWizards;JvXPCtrls
 Conditionals=
 DebugSourceDirs=
 UsePackages=0
@@ -108,7 +108,7 @@ DebugCWD=
 [Language]
 ActiveLang=
 ProjectLang=
-RootDir=
+RootDir=D:\GitHubSVN\PASVULKAN.github\trunk\examples\SDL2Test\
 [Version Info]
 IncludeVerInfo=0
 AutoIncBuild=0
