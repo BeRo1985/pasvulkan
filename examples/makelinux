@@ -1,0 +1,2 @@
+#!/bin/sh
+fpc -dXLIB -g -gl -B examples.dpr
