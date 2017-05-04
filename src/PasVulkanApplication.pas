@@ -169,6 +169,8 @@ type EVulkanApplication=class(Exception);
 
        procedure BeforeDestroySwapChain; virtual;
 
+       function HandleEvent(const pEvent:TSDL_Event):boolean; virtual;
+
        procedure Update(const pDeltaTime:double); virtual;
 
        procedure Draw; virtual;
@@ -271,6 +273,8 @@ type EVulkanApplication=class(Exception);
        procedure Initialize;
 
        procedure Terminate;
+
+       function HandleEvent(const pEvent:TSDL_Event):boolean; virtual;
 
        procedure ProcessMessages;
 
@@ -775,6 +779,11 @@ procedure TVulkanScreen.BeforeDestroySwapChain;
 begin
 end;
 
+function TVulkanScreen.HandleEvent(const pEvent:TSDL_Event):boolean;
+begin
+ result:=false;
+end;
+
 procedure TVulkanScreen.Update(const pDeltaTime:double);
 begin
 end;
@@ -1103,11 +1112,22 @@ begin
  end;
 end;
 
+function TVulkanApplication.HandleEvent(const pEvent:TSDL_Event):boolean;
+begin
+ if assigned(fOnEvent) and fOnEvent(self,pEvent) then begin
+  result:=true;
+ end else if assigned(fScreen) and fScreen.HandleEvent(pEvent) then begin
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
 procedure TVulkanApplication.ProcessMessages;
 begin
 
  while SDL_PollEvent(@fEvent)<>0 do begin
-  if assigned(fOnEvent) and fOnEvent(self,fEvent) then begin
+  if HandleEvent(fEvent) then begin
    continue;
   end;
   case fEvent.type_ of
@@ -1130,7 +1150,7 @@ begin
    SDL_KEYDOWN:begin
     case fEvent.key.keysym.sym of
      SDLK_F4:begin
-      if (fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0 then begin
+      if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) and (fEvent.key.repeat_=0) then begin
        Terminate;
        break;
       end;
@@ -1157,22 +1177,6 @@ begin
       end;
      end;
     end;
-   end;
-   SDL_MOUSEMOTION:begin
-   end;
-   SDL_MOUSEBUTTONDOWN:begin
-   end;
-   SDL_MOUSEBUTTONUP:begin
-   end;
-   SDL_JOYDEVICEADDED:begin
-   end;
-   SDL_JOYDEVICEREMOVED:begin
-   end;
-   SDL_CONTROLLERDEVICEADDED:begin
-   end;
-   SDL_CONTROLLERDEVICEREMOVED:begin
-   end;
-   SDL_CONTROLLERDEVICEREMAPPED:begin
    end;
   end;
  end;
