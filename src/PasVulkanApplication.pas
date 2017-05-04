@@ -145,13 +145,9 @@ type EVulkanApplication=class(Exception);
      end;
 
      TVulkanScreen=class
-      private
-
-       fVulkanApplication:TVulkanApplication;
-
       public
 
-       constructor Create(const pVulkanApplication:TVulkanApplication); virtual;
+       constructor Create; virtual;
 
        destructor Destroy; override;
 
@@ -173,16 +169,12 @@ type EVulkanApplication=class(Exception);
 
        procedure Update(const pDeltaTime:double); virtual;
 
-       procedure Draw; virtual;
-
-      published
-
-       property VulkanApplication:TVulkanApplication read fVulkanApplication;
+       procedure Draw(const pVulkanCommandBuffer:TVulkanCommandBuffer); virtual;
 
      end;
 
      TVulkanScreenClass=class of TVulkanScreen;
-      
+
      TVulkanApplication=class
       private
 
@@ -703,7 +695,7 @@ begin
                                                                      VK_SUBPASS_CONTENTS_INLINE,
                                                                      0,0,fVulkanSwapChain.Width,fVulkanSwapChain.Height);
  if assigned(fVulkanApplication.fScreen) then begin
-  fVulkanApplication.fScreen.Draw;
+  fVulkanApplication.fScreen.Draw(VulkanCommandBuffer);
  end;
  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
 
@@ -746,10 +738,9 @@ begin
 
 end;
 
-constructor TVulkanScreen.Create(const pVulkanApplication:TVulkanApplication);
+constructor TVulkanScreen.Create;
 begin
  inherited Create;
- fVulkanApplication:=pVulkanApplication;
 end;
 
 destructor TVulkanScreen.Destroy;
@@ -794,7 +785,7 @@ procedure TVulkanScreen.Update(const pDeltaTime:double);
 begin
 end;
 
-procedure TVulkanScreen.Draw;
+procedure TVulkanScreen.Draw(const pVulkanCommandBuffer:TVulkanCommandBuffer);
 begin
 end;
 
@@ -1061,6 +1052,7 @@ begin
  if fScreen<>pScreen then begin
   if assigned(fScreen) then begin
    fScreen.Pause;
+   fScreen.BeforeDestroySwapChain;
    fScreen.Hide;
    fScreen.Free;
   end;
@@ -1070,6 +1062,7 @@ begin
    if assigned(fScreen) then begin
     fScreen.Resize(fWidth,fHeight);
    end;
+   fScreen.AfterCreateSwapChain;
    fScreen.Resume;
   end;
  end;
@@ -1293,7 +1286,7 @@ begin
    try
 
     if assigned(fStartScreen) then begin
-     SetScreen(fStartScreen.Create(self));
+     SetScreen(fStartScreen.Create);
     end;
 
     Resume;
