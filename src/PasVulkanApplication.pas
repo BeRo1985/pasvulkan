@@ -163,6 +163,8 @@ type EVulkanApplication=class(Exception);
 
        procedure Pause; virtual;
 
+       procedure Resize(const pWidth,pHeight:TSDLInt32); virtual;
+
        procedure AfterCreateSwapChain; virtual;
 
        procedure BeforeDestroySwapChain; virtual;
@@ -236,6 +238,8 @@ type EVulkanApplication=class(Exception);
 
        fNextScreen:TVulkanScreen;
 
+       fHasNewNextScreen:boolean;
+
        procedure Activate;
        procedure Deactivate;
 
@@ -255,6 +259,9 @@ type EVulkanApplication=class(Exception);
 
        procedure StartGraphics;
        procedure StopGraphics;
+
+       procedure SetScreen(const pScreen:TVulkanScreen);
+       procedure SetNextScreen(const pNextScreen:TVulkanScreen);
 
       public
 
@@ -309,6 +316,10 @@ type EVulkanApplication=class(Exception);
        property VulkanDevice:TVulkanDevice read fVulkanDevice;
 
        property VulkanPresentationSurface:TVulkanPresentationSurface read fVulkanPresentationSurface;
+
+       property Screen:TVulkanScreen read fScreen write SetScreen;
+
+       property NextScreen:TVulkanScreen read fNextScreen write SetNextScreen;
 
      end;
 
@@ -752,6 +763,10 @@ procedure TVulkanScreen.Pause;
 begin
 end;
 
+procedure TVulkanScreen.Resize(const pWidth,pHeight:TSDLInt32);
+begin
+end;
+
 procedure TVulkanScreen.AfterCreateSwapChain;
 begin
 end;
@@ -819,6 +834,8 @@ begin
  fScreen:=nil;
 
  fNextScreen:=nil;
+
+ fHasNewNextScreen:=false;
 
  fOnEvent:=nil;
 
@@ -1024,6 +1041,36 @@ procedure TVulkanApplication.StopGraphics;
 begin
 end;
 
+procedure TVulkanApplication.SetScreen(const pScreen:TVulkanScreen);
+begin
+ if fScreen<>pScreen then begin
+  if assigned(fScreen) then begin
+   fScreen.Pause;
+   fScreen.Hide;
+   fScreen.Free;
+  end;
+  fScreen:=pScreen;
+  if assigned(fScreen) then begin
+   fScreen.Show;
+   if assigned(fScreen) then begin
+    fScreen.Resize(fWidth,fHeight);
+   end;
+   fScreen.Resume;
+  end;
+ end;
+end;
+
+procedure TVulkanApplication.SetNextScreen(const pNextScreen:TVulkanScreen);
+begin
+ if (fScreen<>pNextScreen) and (fNextScreen<>pNextScreen) then begin
+  if assigned(fNextScreen) then begin
+   fNextScreen.Free;
+  end;
+  fNextScreen:=pNextScreen;
+  fHasNewNextScreen:=true;
+ end;
+end;
+
 procedure TVulkanApplication.Initialize;
 begin
 end;
@@ -1104,8 +1151,10 @@ begin
      SDL_WINDOWEVENT_RESIZED:begin
       fWidth:=fEvent.window.Data1;
       fHeight:=fEvent.window.Data2;
-//    VulkanPresentationSurface.SetSize(WindowWidth,WindowHeight);
-//    Main.ResizeGraphics(WindowWidth,WindowHeight);
+      fVulkanPresentationSurface.SetSize(fWidth,fHeight);
+      if assigned(fScreen) then begin
+       fScreen.Resize(fWidth,fHeight);
+      end;
      end;
     end;
    end;
@@ -1128,23 +1177,18 @@ begin
   end;
  end;
 
- if fScreen<>fNextScreen then begin
-  if assigned(fScreen) then begin
-   fScreen.Pause;
-   fScreen.Hide;
-   fScreen.Free;
+ if fHasNewNextScreen then begin
+  fHasNewNextScreen:=false;
+  if fScreen<>fNextScreen then begin
+   SetScreen(fNextScreen);
   end;
-  fScreen:=fNextScreen;
-  if assigned(fScreen) then begin
-   fScreen.Show;
-   fScreen.Resume;
-  end;
+  fNextScreen:=nil;
  end;
 
  if assigned(fOnStep) then begin
   fOnStep(self);
  end;
- 
+
  if fCurrentFullScreen<>ord(fFullScreen) then begin
   fCurrentFullScreen:=ord(fFullScreen);
   if fFullScreen then begin
@@ -1246,6 +1290,10 @@ begin
      end;
 
     finally
+
+     FreeAndNil(fNextScreen);
+     FreeAndNil(fScreen);
+
      Pause;
     end;
 
