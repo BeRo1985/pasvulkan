@@ -1174,7 +1174,6 @@ begin
    SDL_APP_TERMINATING:begin
     fActive:=false;
     Terminate;
-    break;
    end;
    SDL_APP_WILLENTERBACKGROUND:begin
     fActive:=false;
@@ -1191,7 +1190,6 @@ begin
      SDLK_F4:begin
       if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) and (fEvent.key.repeat_=0) then begin
        Terminate;
-       break;
       end;
      end;
      SDLK_RETURN:begin
