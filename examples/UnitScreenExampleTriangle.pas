@@ -193,7 +193,7 @@ end;
 
 procedure TScreenExampleTriangle.BeforeDestroySwapChain;
 begin
-  FreeAndNil(fVulkanGraphicsPipeline);
+ FreeAndNil(fVulkanGraphicsPipeline);
  inherited BeforeDestroySwapChain;
 end;
 
