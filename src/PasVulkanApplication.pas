@@ -181,6 +181,8 @@ type EVulkanApplication=class(Exception);
 
      end;
 
+     TVulkanScreenClass=class of TVulkanScreen;
+      
      TVulkanApplication=class
       private
 
@@ -237,6 +239,8 @@ type EVulkanApplication=class(Exception);
        fOnStep:TVulkanApplicationOnStep;
 
        fScreen:TVulkanScreen;
+
+       fStartScreen:TVulkanScreenClass;
 
        fNextScreen:TVulkanScreen;
 
@@ -320,6 +324,8 @@ type EVulkanApplication=class(Exception);
        property VulkanDevice:TVulkanDevice read fVulkanDevice;
 
        property VulkanPresentationSurface:TVulkanPresentationSurface read fVulkanPresentationSurface;
+
+       property StartScreen:TVulkanScreenClass read fStartScreen write fStartScreen;
 
        property Screen:TVulkanScreen read fScreen write SetScreen;
 
@@ -1286,6 +1292,10 @@ begin
    AllocateVulkanSurface;
    try
 
+    if assigned(fStartScreen) then begin
+     SetScreen(fStartScreen.Create(self));
+    end;
+
     Resume;
     try
 
@@ -1295,10 +1305,13 @@ begin
 
     finally
 
+     SetScreen(nil);
+
      FreeAndNil(fNextScreen);
      FreeAndNil(fScreen);
 
      Pause;
+
     end;
 
    finally

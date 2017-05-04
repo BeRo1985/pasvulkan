@@ -16,7 +16,8 @@ uses
   PasVulkan in '..\src\PasVulkan.pas',
   PasVulkanSDL2 in '..\src\PasVulkanSDL2.pas',
   PasVulkanStaticLinking in '..\src\PasVulkanStaticLinking.pas',
-  PasVulkanApplication in '..\src\PasVulkanApplication.pas';
+  PasVulkanApplication in '..\src\PasVulkanApplication.pas',
+  UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas';
 
 procedure SDLMain;
 begin
@@ -27,6 +28,7 @@ begin
   VulkanApplication.VulkanValidation:=true;
 {$endif}
   VulkanApplication.Title:='SDL Vulkan Examples Application';
+  VulkanApplication.StartScreen:=TScreenExampleTriangle;
   VulkanApplication.Run;
  finally
   FreeAndNil(VulkanApplication);
