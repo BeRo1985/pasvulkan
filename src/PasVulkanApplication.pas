@@ -144,6 +144,39 @@ type EVulkanApplication=class(Exception);
        property VulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget read fVulkanSwapChainSimpleDirectRenderTarget;
      end;
 
+     TVulkanScreen=class
+      private
+
+       fVulkanApplication:TVulkanApplication;
+
+      public
+
+       constructor Create(const pVulkanApplication:TVulkanApplication); virtual;
+
+       destructor Destroy; override;
+
+       procedure Show; virtual;
+
+       procedure Hide; virtual;
+
+       procedure Resume; virtual;
+
+       procedure Pause; virtual;
+
+       procedure AfterCreateSwapChain; virtual;
+
+       procedure BeforeDestroySwapChain; virtual;
+
+       procedure Update(const pDeltaTime:double); virtual;
+
+       procedure Draw; virtual;
+
+      published
+
+       property VulkanApplication:TVulkanApplication read fVulkanApplication;
+
+     end;
+
      TVulkanApplication=class
       private
 
@@ -199,6 +232,10 @@ type EVulkanApplication=class(Exception);
 
        fOnStep:TVulkanApplicationOnStep;
 
+       fScreen:TVulkanScreen;
+
+       fNextScreen:TVulkanScreen;
+
        procedure Activate;
        procedure Deactivate;
 
@@ -223,10 +260,18 @@ type EVulkanApplication=class(Exception);
 
        constructor Create; reintroduce;
        destructor Destroy; override;
+
        procedure Initialize;
+
        procedure Terminate;
+
        procedure ProcessMessages;
+
        procedure Run;
+
+       procedure Resume; virtual;
+
+       procedure Pause; virtual;
 
       published
 
@@ -319,6 +364,9 @@ begin
 
  fGraphicsPipelinesReady:=false;
 
+ fOnAfterCreateSwapChain:=nil;
+ fOnBeforeDestroySwapChain:=nil;
+ 
  try
 
   fVulkanSurface:=TVulkanSurface.Create(fVulkanInstance,pSurfaceCreateInfo);
@@ -368,6 +416,8 @@ begin
   end;
 
   fDoNeedToRecreateVulkanSwapChain:=false;
+
+  AfterCreateSwapChain;
 
  except
 
@@ -454,6 +504,9 @@ end;
 procedure TVulkanPresentationSurface.AfterCreateSwapChain;
 begin
  if not fGraphicsPipelinesReady then begin
+  if assigned(fVulkanApplication.fScreen) then begin
+   fVulkanApplication.fScreen.AfterCreateSwapChain;
+  end;
   if assigned(fOnAfterCreateSwapChain) then begin
    fOnAfterCreateSwapChain(self);
   end;
@@ -467,6 +520,9 @@ begin
   fGraphicsPipelinesReady:=false;
   if assigned(fOnBeforeDestroySwapChain) then begin
    fOnBeforeDestroySwapChain(self);
+  end;
+  if assigned(fVulkanApplication.fScreen) then begin
+   fVulkanApplication.fScreen.BeforeDestroySwapChain;
   end;
  end;
 end;
@@ -598,11 +654,6 @@ begin
 
 end;
 
-{  fOnAfterCreateSwapChain:=Main.OnAfterCreateSwapChain;
-  fOnBeforeDestroySwapChain:=Main.OnBeforeDestroySwapChain;
-
-  AfterCreateSwapChain;
-}
 function TVulkanPresentationSurface.PresentBackBuffer:boolean;
 var VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
@@ -630,7 +681,9 @@ begin
                                                                      fVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
                                                                      VK_SUBPASS_CONTENTS_INLINE,
                                                                      0,0,fVulkanSwapChain.Width,fVulkanSwapChain.Height);
- //Main.DrawGraphics(VulkanCommandBuffer);
+ if assigned(fVulkanApplication.fScreen) then begin
+  fVulkanApplication.fScreen.Draw;
+ end;
  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
 
  VulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(fVulkanSwapChain.CurrentImage);
@@ -670,6 +723,49 @@ begin
   end;
  end;
 
+end;
+
+constructor TVulkanScreen.Create(const pVulkanApplication:TVulkanApplication);
+begin
+ inherited Create;
+ fVulkanApplication:=pVulkanApplication;
+end;
+
+destructor TVulkanScreen.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TVulkanScreen.Show;
+begin
+end;
+
+procedure TVulkanScreen.Hide;
+begin
+end;
+
+procedure TVulkanScreen.Resume;
+begin
+end;
+
+procedure TVulkanScreen.Pause;
+begin
+end;
+
+procedure TVulkanScreen.AfterCreateSwapChain;
+begin
+end;
+
+procedure TVulkanScreen.BeforeDestroySwapChain; 
+begin
+end;
+
+procedure TVulkanScreen.Update(const pDeltaTime:double);
+begin
+end;
+
+procedure TVulkanScreen.Draw;
+begin
 end;
 
 constructor TVulkanApplication.Create;
@@ -720,6 +816,10 @@ begin
 
  fVulkanPresentationSurface:=nil;
 
+ fScreen:=nil;
+
+ fNextScreen:=nil;
+
  fOnEvent:=nil;
 
  VulkanApplication:=self;
@@ -735,7 +835,7 @@ end;
 procedure TVulkanApplication.VulkanDebugLn(const What:TVkCharString);
 {$ifdef Windows}
 var StdOut:THandle;
-begin 
+begin
  StdOut:=GetStdHandle(Std_Output_Handle);
  Win32Check(StdOut<>Invalid_Handle_Value);
  if StdOut<>0 then begin
@@ -1028,6 +1128,19 @@ begin
   end;
  end;
 
+ if fScreen<>fNextScreen then begin
+  if assigned(fScreen) then begin
+   fScreen.Pause;
+   fScreen.Hide;
+   fScreen.Free;
+  end;
+  fScreen:=fNextScreen;
+  if assigned(fScreen) then begin
+   fScreen.Show;
+   fScreen.Resume;
+  end;
+ end;
+
  if assigned(fOnStep) then begin
   fOnStep(self);
  end;
@@ -1045,8 +1158,10 @@ begin
  if fResetGraphics then begin
   fResetGraphics:=false;
   if fActive then begin
+   Pause;
    Deactivate;
    Activate;
+   Resume;
   end;
  end;
 
@@ -1054,12 +1169,17 @@ begin
   fCurrentActive:=ord(fActive);
   if fActive then begin
    Activate;
+   Resume;
   end else begin
+   Pause;
    Deactivate;
   end;
  end;
 
  if fGraphicsReady then begin
+  if assigned(fScreen) then begin
+   fScreen.Update(0.0);
+  end;
   if fVulkanPresentationSurface.AcquireBackBuffer(true) then begin
    fVulkanPresentationSurface.PresentBackBuffer;
   end;
@@ -1118,8 +1238,15 @@ begin
    AllocateVulkanSurface;
    try
 
-    while not fTerminated do begin
-     ProcessMessages;
+    Resume;
+    try
+
+     while not fTerminated do begin
+      ProcessMessages;
+     end;
+
+    finally
+     Pause;
     end;
 
    finally
@@ -1139,6 +1266,20 @@ begin
 
  end;
 
+end;
+
+procedure TVulkanApplication.Resume;
+begin
+ if assigned(fScreen) then begin
+  fScreen.Resume;
+ end;
+end;
+
+procedure TVulkanApplication.Pause;
+begin
+ if assigned(fScreen) then begin
+  fScreen.Pause;
+ end;
 end;
 
 end.
