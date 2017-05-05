@@ -15111,248 +15111,257 @@ begin
     BufferImageCopyArray:=nil;
     try
 
-     pTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-     pTransferCommandBuffer.BeginRecording;
-     try
+     if (pGraphicsCommandBuffer=pTransferCommandBuffer) and
+        (pGraphicsFence=pTransferFence) then begin
 
-      FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-      ImageMemoryBarrier.srcAccessMask:=0;
-      ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-      ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-      ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-      ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-      ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-      ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-      ImageMemoryBarrier.image:=fImage.fImageHandle;
-      ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-      ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-      ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
-      ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-      ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-      pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                0,
-                                                0,
-                                                nil,
-                                                0,
-                                                nil,
-                                                1,
-                                                @ImageMemoryBarrier);
+      pTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+      pTransferCommandBuffer.BeginRecording;
+      try
 
-      FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
-      BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-      BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT);
-      BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
-      BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-      BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-      BufferMemoryBarrier.buffer:=StagingBuffer.fBufferHandle;
-      BufferMemoryBarrier.offset:=StagingMemoryBlock.fOffset;
-      BufferMemoryBarrier.size:=pDataSize;
-      pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                0,
-                                                0,
-                                                nil,
-                                                1,
-                                                @BufferMemoryBarrier,
-                                                0,
-                                                nil);
+       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+       ImageMemoryBarrier.srcAccessMask:=0;
+       ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+       ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+       ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+       ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.image:=fImage.fImageHandle;
+       ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+       ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+       ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
+       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+       ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
+       pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                 0,
+                                                 0,
+                                                 nil,
+                                                 0,
+                                                 nil,
+                                                 1,
+                                                 @ImageMemoryBarrier);
 
-      SetLength(BufferImageCopyArray,CountDataLevels*fCountArrayLayers*fDepth);
-      BufferImageCopyArraySize:=0;
-      DataOffset:=0;
-      if pFromDDS then begin
-       for LayerIndex:=0 to fCountArrayLayers-1 do begin
+       FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
+       BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+       BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT);
+       BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+       BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       BufferMemoryBarrier.buffer:=StagingBuffer.fBufferHandle;
+       BufferMemoryBarrier.offset:=StagingMemoryBlock.fOffset;
+       BufferMemoryBarrier.size:=pDataSize;
+       pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                 0,
+                                                 0,
+                                                 nil,
+                                                 1,
+                                                 @BufferMemoryBarrier,
+                                                 0,
+                                                 nil);
+
+       SetLength(BufferImageCopyArray,CountDataLevels*fCountArrayLayers*fDepth);
+       BufferImageCopyArraySize:=0;
+       DataOffset:=0;
+       if pFromDDS then begin
+        for LayerIndex:=0 to fCountArrayLayers-1 do begin
+         for MipMapLevelIndex:=0 to CountDataLevels-1 do begin
+          MipMapWidth:=Max(1,fWidth shr MipMapLevelIndex);
+          MipMapHeight:=Max(1,fHeight shr MipMapLevelIndex);
+          MipMapDepth:=Max(1,fDepth shr MipMapLevelIndex);
+          for DepthIndex:=0 to MipMapDepth-1 do begin
+           BufferImageCopy:=@BufferImageCopyArray[BufferImageCopyArraySize];
+           inc(BufferImageCopyArraySize);
+           FillChar(BufferImageCopy^,SizeOf(TVkBufferImageCopy),#0);
+           BufferImageCopy^.bufferOffset:=DataOffset;
+           BufferImageCopy^.bufferRowLength:=0;
+           BufferImageCopy^.bufferImageHeight:=0;
+           BufferImageCopy^.imageSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+           BufferImageCopy^.imageSubresource.mipLevel:=MipMapLevelIndex;
+           BufferImageCopy^.imageSubresource.baseArrayLayer:=LayerIndex;
+           BufferImageCopy^.imageSubresource.layerCount:=1;
+           BufferImageCopy^.imageOffset.x:=0;
+           BufferImageCopy^.imageOffset.y:=0;
+           BufferImageCopy^.imageOffset.z:=DepthIndex;
+           BufferImageCopy^.imageExtent.width:=fWidth;
+           BufferImageCopy^.imageExtent.height:=fHeight;
+           BufferImageCopy^.imageExtent.depth:=1;
+           MipMapSize:=0;
+           GetMipMapSize;
+           Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
+           inc(DataOffset,MipMapSize);
+          end;
+         end;
+        end;
+       end else begin
         for MipMapLevelIndex:=0 to CountDataLevels-1 do begin
          MipMapWidth:=Max(1,fWidth shr MipMapLevelIndex);
          MipMapHeight:=Max(1,fHeight shr MipMapLevelIndex);
          MipMapDepth:=Max(1,fDepth shr MipMapLevelIndex);
-         for DepthIndex:=0 to MipMapDepth-1 do begin
-          BufferImageCopy:=@BufferImageCopyArray[BufferImageCopyArraySize];
-          inc(BufferImageCopyArraySize);
-          FillChar(BufferImageCopy^,SizeOf(TVkBufferImageCopy),#0);
-          BufferImageCopy^.bufferOffset:=DataOffset;
-          BufferImageCopy^.bufferRowLength:=0;
-          BufferImageCopy^.bufferImageHeight:=0;
-          BufferImageCopy^.imageSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-          BufferImageCopy^.imageSubresource.mipLevel:=MipMapLevelIndex;
-          BufferImageCopy^.imageSubresource.baseArrayLayer:=LayerIndex;
-          BufferImageCopy^.imageSubresource.layerCount:=1;
-          BufferImageCopy^.imageOffset.x:=0;
-          BufferImageCopy^.imageOffset.y:=0;
-          BufferImageCopy^.imageOffset.z:=DepthIndex;
-          BufferImageCopy^.imageExtent.width:=fWidth;
-          BufferImageCopy^.imageExtent.height:=fHeight;
-          BufferImageCopy^.imageExtent.depth:=1;
-          MipMapSize:=0;
-          GetMipMapSize;
-          Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
-          inc(DataOffset,MipMapSize);
-         end;
-        end;
-       end;
-      end else begin
-       for MipMapLevelIndex:=0 to CountDataLevels-1 do begin
-        MipMapWidth:=Max(1,fWidth shr MipMapLevelIndex);
-        MipMapHeight:=Max(1,fHeight shr MipMapLevelIndex);
-        MipMapDepth:=Max(1,fDepth shr MipMapLevelIndex);
-        TotalMipMapSize:=0;
-        StoredMipMapSize:=0;
-        if pMipMapSizeStored then begin
-         Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(pDataSize));
-         StoredMipMapSize:=TVkUInt32(pointer(@TUInt8Array(pointer(pData)^)[DataOffset])^);
-         inc(DataOffset,SizeOf(TVkUInt32));
-         if pSwapEndianness then begin
-          StoredMipMapSize:=Swap32(StoredMipMapSize);
-         end;
-         if StoredMipMapSize<>0 then begin
-         end;
-        end;
-        for LayerIndex:=0 to fCountArrayLayers-1 do begin
-         for DepthIndex:=0 to MipMapDepth-1 do begin
-          BufferImageCopy:=@BufferImageCopyArray[BufferImageCopyArraySize];
-          inc(BufferImageCopyArraySize);
-          FillChar(BufferImageCopy^,SizeOf(TVkBufferImageCopy),#0);
-          BufferImageCopy^.bufferOffset:=DataOffset;
-          BufferImageCopy^.bufferRowLength:=0;
-          BufferImageCopy^.bufferImageHeight:=0;
-          BufferImageCopy^.imageSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-          BufferImageCopy^.imageSubresource.mipLevel:=MipMapLevelIndex;
-          BufferImageCopy^.imageSubresource.baseArrayLayer:=LayerIndex;
-          BufferImageCopy^.imageSubresource.layerCount:=1;
-          BufferImageCopy^.imageOffset.x:=0;
-          BufferImageCopy^.imageOffset.y:=0;
-          BufferImageCopy^.imageOffset.z:=DepthIndex;
-          BufferImageCopy^.imageExtent.width:=fWidth;
-          BufferImageCopy^.imageExtent.height:=fHeight;
-          BufferImageCopy^.imageExtent.depth:=1;
-          MipMapSize:=0;
-          GetMipMapSize;
-          Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
-          inc(TotalMipMapSize,MipMapSize);
-          inc(DataOffset,MipMapSize);
-          if pMipMapSizeStored and ((fDepth<=1) and (pCountArrayElements<=1)) then begin
-           Assert(TotalMipMapSize=StoredMipMapSize);
-           inc(DataOffset,3-((MipMapSize+3) and 3));
+         TotalMipMapSize:=0;
+         StoredMipMapSize:=0;
+         if pMipMapSizeStored then begin
+          Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(pDataSize));
+          StoredMipMapSize:=TVkUInt32(pointer(@TUInt8Array(pointer(pData)^)[DataOffset])^);
+          inc(DataOffset,SizeOf(TVkUInt32));
+          if pSwapEndianness then begin
+           StoredMipMapSize:=Swap32(StoredMipMapSize);
+          end;
+          if StoredMipMapSize<>0 then begin
           end;
          end;
-        end;
-        if pMipMapSizeStored and ((fDepth>1) or (pCountArrayElements>1)) then begin
-         Assert(TotalMipMapSize=StoredMipMapSize);
-         inc(DataOffset,3-((TotalMipMapSize+3) and 3));
+         for LayerIndex:=0 to fCountArrayLayers-1 do begin
+          for DepthIndex:=0 to MipMapDepth-1 do begin
+           BufferImageCopy:=@BufferImageCopyArray[BufferImageCopyArraySize];
+           inc(BufferImageCopyArraySize);
+           FillChar(BufferImageCopy^,SizeOf(TVkBufferImageCopy),#0);
+           BufferImageCopy^.bufferOffset:=DataOffset;
+           BufferImageCopy^.bufferRowLength:=0;
+           BufferImageCopy^.bufferImageHeight:=0;
+           BufferImageCopy^.imageSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+           BufferImageCopy^.imageSubresource.mipLevel:=MipMapLevelIndex;
+           BufferImageCopy^.imageSubresource.baseArrayLayer:=LayerIndex;
+           BufferImageCopy^.imageSubresource.layerCount:=1;
+           BufferImageCopy^.imageOffset.x:=0;
+           BufferImageCopy^.imageOffset.y:=0;
+           BufferImageCopy^.imageOffset.z:=DepthIndex;
+           BufferImageCopy^.imageExtent.width:=fWidth;
+           BufferImageCopy^.imageExtent.height:=fHeight;
+           BufferImageCopy^.imageExtent.depth:=1;
+           MipMapSize:=0;
+           GetMipMapSize;
+           Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
+           inc(TotalMipMapSize,MipMapSize);
+           inc(DataOffset,MipMapSize);
+           if pMipMapSizeStored and ((fDepth<=1) and (pCountArrayElements<=1)) then begin
+            Assert(TotalMipMapSize=StoredMipMapSize);
+            inc(DataOffset,3-((MipMapSize+3) and 3));
+           end;
+          end;
+         end;
+         if pMipMapSizeStored and ((fDepth>1) or (pCountArrayElements>1)) then begin
+          Assert(TotalMipMapSize=StoredMipMapSize);
+          inc(DataOffset,3-((TotalMipMapSize+3) and 3));
+         end;
         end;
        end;
-      end;
-      SetLength(BufferImageCopyArray,BufferImageCopyArraySize);
+       SetLength(BufferImageCopyArray,BufferImageCopyArraySize);
 
-      Assert(TVkSizeInt(DataOffset)=TVkSizeInt(pDataSize));
+       Assert(TVkSizeInt(DataOffset)=TVkSizeInt(pDataSize));
 
-      pTransferCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
+       pTransferCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
 
-      if pCountMipMaps<1 then begin
+       if pCountMipMaps<1 then begin
 
-       if Compressed then begin
-        raise EVulkanTextureException.Create('Mip map levels can''t generated for compressed textures automatically');
+        if Compressed then begin
+         raise EVulkanTextureException.Create('Mip map levels can''t generated for compressed textures automatically');
+        end;
+
+        for MipMapLevelIndex:=1 to CountStorageLevels do begin
+
+         PreviousMipMapLevelIndex:=MipMapLevelIndex-1;
+
+         FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+         ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+         ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+         ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+         ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+         ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+         ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+         ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+         ImageMemoryBarrier.image:=fImage.fImageHandle;
+         ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+         ImageMemoryBarrier.subresourceRange.baseMipLevel:=PreviousMipMapLevelIndex;
+         ImageMemoryBarrier.subresourceRange.levelCount:=1;
+         ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+         ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
+         pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                   0,
+                                                   0,
+                                                   nil,
+                                                   0,
+                                                   nil,
+                                                   1,
+                                                   @ImageMemoryBarrier);
+
+         if MipMapLevelIndex<CountStorageLevels then begin
+          FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
+          ImageBlit.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+          ImageBlit.srcSubresource.mipLevel:=PreviousMipMapLevelIndex;
+          ImageBlit.srcSubresource.baseArrayLayer:=0;
+          ImageBlit.srcSubresource.layerCount:=fCountArrayLayers;
+          ImageBlit.srcOffsets[0].x:=0;
+          ImageBlit.srcOffsets[0].y:=0;
+          ImageBlit.srcOffsets[0].z:=0;
+          ImageBlit.srcOffsets[1].x:=Max(0,fWidth shr PreviousMipMapLevelIndex);
+          ImageBlit.srcOffsets[1].y:=Max(0,fHeight shr PreviousMipMapLevelIndex);
+          ImageBlit.srcOffsets[1].z:=Max(0,fDepth shr PreviousMipMapLevelIndex);
+          ImageBlit.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+          ImageBlit.dstSubresource.mipLevel:=MipMapLevelIndex;
+          ImageBlit.dstSubresource.baseArrayLayer:=0;
+          ImageBlit.dstSubresource.layerCount:=fCountArrayLayers;
+          ImageBlit.dstOffsets[0].x:=0;
+          ImageBlit.dstOffsets[0].y:=0;
+          ImageBlit.dstOffsets[0].z:=0;
+          ImageBlit.dstOffsets[1].x:=Max(0,fWidth shr MipMapLevelIndex);
+          ImageBlit.dstOffsets[1].y:=Max(0,fHeight shr MipMapLevelIndex);
+          ImageBlit.dstOffsets[1].z:=Max(0,fDepth shr MipMapLevelIndex);
+          pTransferCommandBuffer.CmdBlitImage(fImage.fImageHandle,
+                                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                              fImage.fImageHandle,
+                                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                              1,
+                                              @ImageBlit,
+                                              VK_FILTER_LINEAR);
+         end;
+
+        end;
+
        end;
 
-       for MipMapLevelIndex:=1 to CountStorageLevels do begin
-
-        PreviousMipMapLevelIndex:=MipMapLevelIndex-1;
-
-        FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-        ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+       ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       if pCountMipMaps>=1 then begin
         ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-        ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
-        ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-        ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-        ImageMemoryBarrier.image:=fImage.fImageHandle;
-        ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-        ImageMemoryBarrier.subresourceRange.baseMipLevel:=PreviousMipMapLevelIndex;
-        ImageMemoryBarrier.subresourceRange.levelCount:=1;
-        ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-        ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-        pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                  0,
-                                                  0,
-                                                  nil,
-                                                  0,
-                                                  nil,
-                                                  1,
-                                                  @ImageMemoryBarrier);
-
-        if MipMapLevelIndex<CountStorageLevels then begin
-         FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
-         ImageBlit.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-         ImageBlit.srcSubresource.mipLevel:=PreviousMipMapLevelIndex;
-         ImageBlit.srcSubresource.baseArrayLayer:=0;
-         ImageBlit.srcSubresource.layerCount:=fCountArrayLayers;
-         ImageBlit.srcOffsets[0].x:=0;
-         ImageBlit.srcOffsets[0].y:=0;
-         ImageBlit.srcOffsets[0].z:=0;
-         ImageBlit.srcOffsets[1].x:=Max(0,fWidth shr PreviousMipMapLevelIndex);
-         ImageBlit.srcOffsets[1].y:=Max(0,fHeight shr PreviousMipMapLevelIndex);
-         ImageBlit.srcOffsets[1].z:=Max(0,fDepth shr PreviousMipMapLevelIndex);
-         ImageBlit.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-         ImageBlit.dstSubresource.mipLevel:=MipMapLevelIndex;
-         ImageBlit.dstSubresource.baseArrayLayer:=0;
-         ImageBlit.dstSubresource.layerCount:=fCountArrayLayers;
-         ImageBlit.dstOffsets[0].x:=0;
-         ImageBlit.dstOffsets[0].y:=0;
-         ImageBlit.dstOffsets[0].z:=0;
-         ImageBlit.dstOffsets[1].x:=Max(0,fWidth shr MipMapLevelIndex);
-         ImageBlit.dstOffsets[1].y:=Max(0,fHeight shr MipMapLevelIndex);
-         ImageBlit.dstOffsets[1].z:=Max(0,fDepth shr MipMapLevelIndex);
-         pTransferCommandBuffer.CmdBlitImage(fImage.fImageHandle,
-                                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                             fImage.fImageHandle,
-                                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                             1,
-                                             @ImageBlit,
-                                             VK_FILTER_LINEAR);
-        end;
-
+       end else begin
+        ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
        end;
+       ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
+       if pCountMipMaps>=1 then begin
+        ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+       end else begin
+        ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+       end;
+       ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+       ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.image:=fImage.fImageHandle;
+       ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+       ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+       ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
+       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+       ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
+       pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                 0,
+                                                 0,
+                                                 nil,
+                                                 0,
+                                                 nil,
+                                                 1,
+                                                 @ImageMemoryBarrier);
 
+      finally
+       pTransferCommandBuffer.EndRecording;
+       pTransferCommandBuffer.Execute(pDevice.TransferQueue,0,nil,nil,pTransferFence,true);
       end;
 
-      FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-      ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-      if pCountMipMaps>=1 then begin
-       ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-      end else begin
-       ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
-      end;
-      ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
-      if pCountMipMaps>=1 then begin
-       ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-      end else begin
-       ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-      end;
-      ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-      ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-      ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-      ImageMemoryBarrier.image:=fImage.fImageHandle;
-      ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-      ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-      ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
-      ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-      ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-      pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                0,
-                                                0,
-                                                nil,
-                                                0,
-                                                nil,
-                                                1,
-                                                @ImageMemoryBarrier);
+     end else begin
 
-     finally
-      pTransferCommandBuffer.EndRecording;
-      pTransferCommandBuffer.Execute(pDevice.TransferQueue,0,nil,nil,pTransferFence,true);
+      raise EVulkanTextureException.Create('TODO');
+
      end;
 
     finally
