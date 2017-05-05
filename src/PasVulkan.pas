@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-05-01-39-0000                       *
+ *                        Version 2017-05-05-02-17-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2673,9 +2673,10 @@ type EVulkanException=class(Exception);
       public
        constructor Create; reintroduce;
        constructor CreateFromMemory(const pDevice:TVulkanDevice;
-                                    const pQueue:TVulkanQueue;
-                                    const pFence:TVulkanFence;
-                                    const pCommandBuffer:TVulkanCommandBuffer;
+                                    const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                    const pGraphicsFence:TVulkanFence;
+                                    const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                    const pTransferFence:TVulkanFence;
                                     const pFormat:TVkFormat;
                                     const pSampleCount:TVkSampleCountFlagBits;
                                     const pWidth:TVkInt32;
@@ -2692,9 +2693,10 @@ type EVulkanException=class(Exception);
                                     const pSwapEndiannessTexels:TVkInt32;
                                     const pFromDDS:boolean=false);
        constructor CreateFromStream(const pDevice:TVulkanDevice;
-                                    const pQueue:TVulkanQueue;
-                                    const pFence:TVulkanFence;
-                                    const pCommandBuffer:TVulkanCommandBuffer;
+                                    const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                    const pGraphicsFence:TVulkanFence;
+                                    const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                    const pTransferFence:TVulkanFence;
                                     const pFormat:TVkFormat;
                                     const pSampleCount:TVkSampleCountFlagBits;
                                     const pWidth:TVkInt32;
@@ -2710,37 +2712,43 @@ type EVulkanException=class(Exception);
                                     const pSwapEndiannessTexels:TVkInt32;
                                     const pFromDDS:boolean=false);
        constructor CreateFromKTX(const pDevice:TVulkanDevice;
-                                 const pQueue:TVulkanQueue;
-                                 const pFence:TVulkanFence;
-                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsFence:TVulkanFence;
+                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const pTransferFence:TVulkanFence;
                                  const pStream:TStream);
        constructor CreateFromDDS(const pDevice:TVulkanDevice;
-                                 const pQueue:TVulkanQueue;
-                                 const pFence:TVulkanFence;
-                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsFence:TVulkanFence;
+                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const pTransferFence:TVulkanFence;
                                  const pStream:TStream);
        constructor CreateFromHDR(const pDevice:TVulkanDevice;
-                                 const pQueue:TVulkanQueue;
-                                 const pFence:TVulkanFence;
-                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsFence:TVulkanFence;
+                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const pTransferFence:TVulkanFence;
                                  const pStream:TStream;
                                  const pMipMaps:boolean);
        constructor CreateFromTGA(const pDevice:TVulkanDevice;
-                                 const pQueue:TVulkanQueue;
-                                 const pFence:TVulkanFence;
-                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsFence:TVulkanFence;
+                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const pTransferFence:TVulkanFence;
                                  const pStream:TStream;
                                  const pMipMaps:boolean);
        constructor CreateFromPNG(const pDevice:TVulkanDevice;
-                                 const pQueue:TVulkanQueue;
-                                 const pFence:TVulkanFence;
-                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsFence:TVulkanFence;
+                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const pTransferFence:TVulkanFence;
                                  const pStream:TStream;
                                  const pMipMaps:boolean);
        constructor CreateDefault(const pDevice:TVulkanDevice;
-                                 const pQueue:TVulkanQueue;
-                                 const pFence:TVulkanFence;
-                                 const pCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const pGraphicsFence:TVulkanFence;
+                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const pTransferFence:TVulkanFence;
                                  const pDefaultType:TVulkanTextureDefaultType;
                                  const pWidth:TVkInt32;
                                  const pHeight:TVkInt32;
@@ -14460,9 +14468,10 @@ begin
 end;
 
 constructor TVulkanTexture.CreateFromMemory(const pDevice:TVulkanDevice;
-                                            const pQueue:TVulkanQueue;
-                                            const pFence:TVulkanFence;
-                                            const pCommandBuffer:TVulkanCommandBuffer;
+                                            const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                            const pGraphicsFence:TVulkanFence;
+                                            const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                            const pTransferFence:TVulkanFence;
                                             const pFormat:TVkFormat;
                                             const pSampleCount:TVkSampleCountFlagBits;
                                             const pWidth:TVkInt32;
@@ -15102,8 +15111,8 @@ begin
     BufferImageCopyArray:=nil;
     try
 
-     pCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-     pCommandBuffer.BeginRecording;
+     pTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+     pTransferCommandBuffer.BeginRecording;
      try
 
       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -15120,15 +15129,15 @@ begin
       ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
       ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-      pCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                        0,
-                                        0,
-                                        nil,
-                                        0,
-                                        nil,
-                                        1,
-                                        @ImageMemoryBarrier);
+      pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                0,
+                                                0,
+                                                nil,
+                                                0,
+                                                nil,
+                                                1,
+                                                @ImageMemoryBarrier);
 
       FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
       BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -15139,15 +15148,15 @@ begin
       BufferMemoryBarrier.buffer:=StagingBuffer.fBufferHandle;
       BufferMemoryBarrier.offset:=StagingMemoryBlock.fOffset;
       BufferMemoryBarrier.size:=pDataSize;
-      pCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                        0,
-                                        0,
-                                        nil,
-                                        1,
-                                        @BufferMemoryBarrier,
-                                        0,
-                                        nil);
+      pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                0,
+                                                0,
+                                                nil,
+                                                1,
+                                                @BufferMemoryBarrier,
+                                                0,
+                                                nil);
 
       SetLength(BufferImageCopyArray,CountDataLevels*fCountArrayLayers*fDepth);
       BufferImageCopyArraySize:=0;
@@ -15238,7 +15247,7 @@ begin
 
       Assert(TVkSizeInt(DataOffset)=TVkSizeInt(pDataSize));
 
-      pCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
+      pTransferCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
 
       if pCountMipMaps<1 then begin
 
@@ -15264,15 +15273,15 @@ begin
         ImageMemoryBarrier.subresourceRange.levelCount:=1;
         ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
         ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-        pCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                          0,
-                                          0,
-                                          nil,
-                                          0,
-                                          nil,
-                                          1,
-                                          @ImageMemoryBarrier);
+        pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                  0,
+                                                  0,
+                                                  nil,
+                                                  0,
+                                                  nil,
+                                                  1,
+                                                  @ImageMemoryBarrier);
 
         if MipMapLevelIndex<CountStorageLevels then begin
          FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
@@ -15296,13 +15305,13 @@ begin
          ImageBlit.dstOffsets[1].x:=Max(0,fWidth shr MipMapLevelIndex);
          ImageBlit.dstOffsets[1].y:=Max(0,fHeight shr MipMapLevelIndex);
          ImageBlit.dstOffsets[1].z:=Max(0,fDepth shr MipMapLevelIndex);
-         pCommandBuffer.CmdBlitImage(fImage.fImageHandle,
-                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                     fImage.fImageHandle,
-                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                     1,
-                                     @ImageBlit,
-                                     VK_FILTER_LINEAR);
+         pTransferCommandBuffer.CmdBlitImage(fImage.fImageHandle,
+                                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                             fImage.fImageHandle,
+                                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                             1,
+                                             @ImageBlit,
+                                             VK_FILTER_LINEAR);
         end;
 
        end;
@@ -15331,19 +15340,19 @@ begin
       ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
       ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-      pCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                        0,
-                                        0,
-                                        nil,
-                                        0,
-                                        nil,
-                                        1,
-                                        @ImageMemoryBarrier);
+      pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                0,
+                                                0,
+                                                nil,
+                                                0,
+                                                nil,
+                                                1,
+                                                @ImageMemoryBarrier);
 
      finally
-      pCommandBuffer.EndRecording;
-      pCommandBuffer.Execute(pQueue,0,nil,nil,pFence,true);
+      pTransferCommandBuffer.EndRecording;
+      pTransferCommandBuffer.Execute(pDevice.TransferQueue,0,nil,nil,pTransferFence,true);
      end;
 
     finally
@@ -15374,19 +15383,19 @@ begin
   ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
   ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-  pCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-  pCommandBuffer.BeginRecording;
-  pCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                    0,
-                                    0,
-                                    nil,
-                                    0,
-                                    nil,
-                                    1,
-                                    @ImageMemoryBarrier);
-  pCommandBuffer.EndRecording;
-  pCommandBuffer.Execute(pQueue,0,nil,nil,pFence,true);
+  pTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  pTransferCommandBuffer.BeginRecording;
+  pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                            0,
+                                            0,
+                                            nil,
+                                            0,
+                                            nil,
+                                            1,
+                                            @ImageMemoryBarrier);
+  pTransferCommandBuffer.EndRecording;
+  pTransferCommandBuffer.Execute(pDevice.TransferQueue,0,nil,nil,pTransferFence,true);
 
  end;
 
@@ -15428,9 +15437,10 @@ begin
 end;
 
 constructor TVulkanTexture.CreateFromStream(const pDevice:TVulkanDevice;
-                                            const pQueue:TVulkanQueue;
-                                            const pFence:TVulkanFence;
-                                            const pCommandBuffer:TVulkanCommandBuffer;
+                                            const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                            const pGraphicsFence:TVulkanFence;
+                                            const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                            const pTransferFence:TVulkanFence;
                                             const pFormat:TVkFormat;
                                             const pSampleCount:TVkSampleCountFlagBits;
                                             const pWidth:TVkInt32;
@@ -15455,9 +15465,10 @@ begin
    raise EVulkanTextureException.Create('Stream read error');
   end;
   CreateFromMemory(pDevice,
-                   pQueue,
-                   pFence,
-                   pCommandBuffer,
+                   pGraphicsCommandBuffer,
+                   pGraphicsFence,
+                   pTransferCommandBuffer,
+                   pTransferFence,
                    pFormat,
                    pSampleCount,
                    pWidth,
@@ -15479,9 +15490,10 @@ begin
 end;
 
 constructor TVulkanTexture.CreateFromKTX(const pDevice:TVulkanDevice;
-                                         const pQueue:TVulkanQueue;
-                                         const pFence:TVulkanFence;
-                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsFence:TVulkanFence;
+                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const pTransferFence:TVulkanFence;
                                          const pStream:TStream);
 type PKTXIdentifier=^TKTXIdentifier;
      TKTXIdentifier=array[0..11] of TVkUInt8;
@@ -15601,9 +15613,10 @@ begin
    raise EVulkanTextureException.Create('Stream read error');
   end;
   CreateFromMemory(pDevice,
-                   pQueue,
-                   pFence,
-                   pCommandBuffer,
+                   pGraphicsCommandBuffer,
+                   pGraphicsFence,
+                   pTransferCommandBuffer,
+                   pTransferFence,
                    VulkanGetFormatFromOpenGLInternalFormat(KTXHeader.GLInternalFormat),
                    VK_SAMPLE_COUNT_1_BIT,
                    Max(1,KTXHeader.PixelWidth),
@@ -15626,9 +15639,10 @@ begin
 end;
 
 constructor TVulkanTexture.CreateFromDDS(const pDevice:TVulkanDevice;
-                                         const pQueue:TVulkanQueue;
-                                         const pFence:TVulkanFence;
-                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsFence:TVulkanFence;
+                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const pTransferFence:TVulkanFence;
                                          const pStream:TStream);
 const DDS_MAGIC=$20534444;
       DDSD_CAPS=$00000001;
@@ -16398,9 +16412,10 @@ begin
    raise EVulkanTextureException.Create('Stream read error');
   end;
   CreateFromMemory(pDevice,
-                   pQueue,
-                   pFence,
-                   pCommandBuffer,
+                   pGraphicsCommandBuffer,
+                   pGraphicsFence,
+                   pTransferCommandBuffer,
+                   pTransferFence,
                    ImageFormat,
                    VK_SAMPLE_COUNT_1_BIT,
                    Max(1,ImageWidth),
@@ -16422,9 +16437,10 @@ begin
 end;
 
 constructor TVulkanTexture.CreateFromHDR(const pDevice:TVulkanDevice;
-                                         const pQueue:TVulkanQueue;
-                                         const pFence:TVulkanFence;
-                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsFence:TVulkanFence;
+                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const pTransferFence:TVulkanFence;
                                          const pStream:TStream;
                                          const pMipMaps:boolean);
 const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
@@ -16692,9 +16708,10 @@ begin
  try
   if LoadHDRImage(ImageData,ImageWidth,ImageHeight) then begin
    CreateFromMemory(pDevice,
-                    pQueue,
-                    pFence,
-                    pCommandBuffer,
+                    pGraphicsCommandBuffer,
+                    pGraphicsFence,
+                    pTransferCommandBuffer,
+                    pTransferFence,
                     VK_FORMAT_R32G32B32A32_SFLOAT,
                     VK_SAMPLE_COUNT_1_BIT,
                     Max(1,ImageWidth),
@@ -16721,9 +16738,10 @@ begin
 end;
 
 constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
-                                         const pQueue:TVulkanQueue;
-                                         const pFence:TVulkanFence;
-                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsFence:TVulkanFence;
+                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const pTransferFence:TVulkanFence;
                                          const pStream:TStream;
                                          const pMipMaps:boolean);
 const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
@@ -17078,9 +17096,10 @@ begin
  try
   if LoadTGAImage(ImageData,ImageWidth,ImageHeight) then begin
    CreateFromMemory(pDevice,
-                    pQueue,
-                    pFence,
-                    pCommandBuffer,
+                    pGraphicsCommandBuffer,
+                    pGraphicsFence,
+                    pTransferCommandBuffer,
+                    pTransferFence,
                     VK_FORMAT_R8G8B8A8_UNORM,
                     VK_SAMPLE_COUNT_1_BIT,
                     Max(1,ImageWidth),
@@ -17107,9 +17126,10 @@ begin
 end;
 
 constructor TVulkanTexture.CreateFromPNG(const pDevice:TVulkanDevice;
-                                         const pQueue:TVulkanQueue;
-                                         const pFence:TVulkanFence;
-                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsFence:TVulkanFence;
+                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const pTransferFence:TVulkanFence;
                                          const pStream:TStream;
                                          const pMipMaps:boolean);
 const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
@@ -18394,9 +18414,10 @@ begin
   try
    if LoadPNGImage(Data,DataSize,ImageData,ImageWidth,ImageHeight,false) then begin
     CreateFromMemory(pDevice,
-                     pQueue,
-                     pFence,
-                     pCommandBuffer,
+                     pGraphicsCommandBuffer,
+                     pGraphicsFence,
+                     pTransferCommandBuffer,
+                     pTransferFence,
                      VK_FORMAT_R8G8B8A8_UNORM,
                      VK_SAMPLE_COUNT_1_BIT,
                      Max(1,ImageWidth),
@@ -18426,9 +18447,10 @@ begin
 end;
 
 constructor TVulkanTexture.CreateDefault(const pDevice:TVulkanDevice;
-                                         const pQueue:TVulkanQueue;
-                                         const pFence:TVulkanFence;
-                                         const pCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const pGraphicsFence:TVulkanFence;
+                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const pTransferFence:TVulkanFence;
                                          const pDefaultType:TVulkanTextureDefaultType;
                                          const pWidth:TVkInt32;
                                          const pHeight:TVkInt32;
@@ -18596,9 +18618,10 @@ begin
   end;
 
   CreateFromMemory(pDevice,
-                   pQueue,
-                   pFence,
-                   pCommandBuffer,
+                   pGraphicsCommandBuffer,
+                   pGraphicsFence,
+                   pTransferCommandBuffer,
+                   pTransferFence,
                    VK_FORMAT_R8G8B8A8_UNORM,
                    VK_SAMPLE_COUNT_1_BIT,
                    pWidth,
