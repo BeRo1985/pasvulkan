@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-05-02-22-0000                       *
+ *                        Version 2017-05-05-03-13-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -7766,6 +7766,21 @@ begin
    fDeviceQueueCreateInfoList.Add(TVulkanDeviceQueueCreateInfo.Create(Index,[1.0]));
   end;
  end;
+ if ((fTransferQueueFamilyIndex<0) and pTransfer) and
+    (((fGraphicsQueueFamilyIndex>=0) and pGraphics) or
+     ((fComputeQueueFamilyIndex>=0) and pCompute)) then begin
+  // https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueueFamilyProperties.html
+  // Quote: "All commands that are allowed on a queue that supports transfer operations are
+  //         also allowed on a queue that supports either graphics or compute operations thus
+  //         if the capabilities of a queue family include VK_QUEUE_GRAPHICS_BIT or
+  //         VK_QUEUE_COMPUTE_BIT then reporting the VK_QUEUE_TRANSFER_BIT capability separately
+  //         for that queue family is optional."
+  if (fGraphicsQueueFamilyIndex>=0) and pGraphics then begin
+   fTransferQueueFamilyIndex:=fGraphicsQueueFamilyIndex;
+  end else if (fComputeQueueFamilyIndex>=0) and pCompute then begin
+   fTransferQueueFamilyIndex:=fComputeQueueFamilyIndex;
+  end;
+ end;
  if ((fPresentQueueFamilyIndex<0) and pPresent) or
     ((fGraphicsQueueFamilyIndex<0) and pGraphics) or
     ((fComputeQueueFamilyIndex<0) and pCompute) or
@@ -7838,6 +7853,20 @@ begin
    end;
   finally
    FreeMem(DeviceCommands);
+  end;
+
+  if (fTransferQueueFamilyIndex<0) and ((fGraphicsQueueFamilyIndex>=0) or (fComputeQueueFamilyIndex>=0)) then begin
+   // https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueueFamilyProperties.html
+   // Quote: "All commands that are allowed on a queue that supports transfer operations are
+   //         also allowed on a queue that supports either graphics or compute operations thus
+   //         if the capabilities of a queue family include VK_QUEUE_GRAPHICS_BIT or
+   //         VK_QUEUE_COMPUTE_BIT then reporting the VK_QUEUE_TRANSFER_BIT capability separately
+   //         for that queue family is optional."
+   if fGraphicsQueueFamilyIndex>=0 then begin
+    fTransferQueueFamilyIndex:=fGraphicsQueueFamilyIndex;
+   end else if fComputeQueueFamilyIndex>=0 then begin
+    fTransferQueueFamilyIndex:=fComputeQueueFamilyIndex;
+   end;
   end;
 
   SetLength(fQueues,length(fPhysicalDevice.fQueueFamilyProperties));
