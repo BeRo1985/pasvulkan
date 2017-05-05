@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-05-02-17-0000                       *
+ *                        Version 2017-05-05-02-22-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -15111,7 +15111,8 @@ begin
     BufferImageCopyArray:=nil;
     try
 
-     if (pGraphicsCommandBuffer=pTransferCommandBuffer) and
+     if (pDevice.GraphicsQueue=pDevice.TransferQueue) and
+        (pGraphicsCommandBuffer=pTransferCommandBuffer) and
         (pGraphicsFence=pTransferFence) then begin
 
       pTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
