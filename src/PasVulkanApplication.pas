@@ -98,9 +98,6 @@ type EVulkanApplication=class(Exception);
        fVulkanInstance:TVulkanInstance;
        fVulkanSurface:TVulkanSurface;
        fVulkanDevice:TVulkanDevice;
-       fVulkanInitializationCommandBufferFence:TVulkanFence;
-       fVulkanInitializationCommandPool:TVulkanCommandPool;
-       fVulkanInitializationCommandBuffer:TVulkanCommandBuffer;
        fVulkanSwapChain:TVulkanSwapChain;
        fVulkanSwapChainImageFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
        fVulkanSwapChainImageFencesReady:array[0..MaxSwapChainImages-1] of boolean;
@@ -143,9 +140,6 @@ type EVulkanApplication=class(Exception);
        property CurrentImageIndex:TVkInt32 read fCurrentImageIndex;
        property Ready:boolean read fReady write fReady;
        property VSync:boolean read fVSync write SetVSync;
-       property VulkanInitializationCommandBufferFence:TVulkanFence read fVulkanInitializationCommandBufferFence;
-       property VulkanInitializationCommandPool:TVulkanCommandPool read fVulkanInitializationCommandPool;
-       property VulkanInitializationCommandBuffer:TVulkanCommandBuffer read fVulkanInitializationCommandBuffer;
        property VulkanSwapChain:TVulkanSwapChain read fVulkanSwapChain;
        property VulkanCommandBuffer:TVulkanCommandBuffer read fVulkanCommandBuffer;
        property VulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget read fVulkanSwapChainSimpleDirectRenderTarget;
@@ -467,12 +461,6 @@ begin
    end;
   end;
 
-  fVulkanInitializationCommandBufferFence:=TVulkanFence.Create(fVulkanDevice);
-
-  fVulkanInitializationCommandPool:=TVulkanCommandPool.Create(fVulkanDevice,fVulkanDevice.GraphicsQueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
-
-  fVulkanInitializationCommandBuffer:=TVulkanCommandBuffer.Create(fVulkanInitializationCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
   fVulkanSwapChain:=TVulkanSwapChain.Create(fVulkanDevice,
                                             fVulkanSurface,
                                             nil,
@@ -488,13 +476,20 @@ begin
                                             VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
                                             TVkPresentModeKHR(integer(IfThen(pVSync,integer(VK_PRESENT_MODE_MAILBOX_KHR),integer(VK_PRESENT_MODE_IMMEDIATE_KHR)))));
 
-  fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(fVulkanDevice,fVulkanSwapChain,fVulkanInitializationCommandBuffer,fVulkanInitializationCommandBufferFence);
+  fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(fVulkanDevice,
+                                                                                            fVulkanSwapChain,
+                                                                                            fVulkanApplication.VulkanPresentCommandBuffers[0,0],
+                                                                                            fVulkanApplication.VulkanPresentCommandBufferFences[0,0],
+                                                                                            fVulkanApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                                                            fVulkanApplication.VulkanGraphicsCommandBufferFences[0,0]);
 
   fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=0.0;
   fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=0.0;
   fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=0.0;
 
-  fVulkanCommandPool:=TVulkanCommandPool.Create(fVulkanDevice,fVulkanDevice.GraphicsQueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+  fVulkanCommandPool:=TVulkanCommandPool.Create(fVulkanDevice,
+                                                fVulkanDevice.GraphicsQueueFamilyIndex,
+                                                TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
   fVulkanCommandBuffer:=nil;
 
@@ -523,9 +518,6 @@ begin
   end;
   FreeAndNil(fVulkanCommandPool);
   FreeAndNil(fVulkanSwapChain);
-  FreeAndNil(fVulkanInitializationCommandBuffer);
-  FreeAndNil(fVulkanInitializationCommandPool);
-  FreeAndNil(fVulkanInitializationCommandBufferFence);
 //FreeAndNil(fVulkanDevice);
   FreeAndNil(fVulkanSurface);
   raise;
@@ -572,9 +564,6 @@ begin
  end;
  FreeAndNil(fVulkanCommandPool);
  FreeAndNil(fVulkanSwapChain);
- FreeAndNil(fVulkanInitializationCommandBuffer);
- FreeAndNil(fVulkanInitializationCommandPool);
- FreeAndNil(fVulkanInitializationCommandBufferFence);
 //FreeAndNil(fVulkanDevice);
  FreeAndNil(fVulkanSurface);
  inherited Destroy;
@@ -756,7 +745,12 @@ begin
                                              nil,
                                              VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
                                              TVkPresentModeKHR(integer(IfThen(fVSync,integer(VK_PRESENT_MODE_MAILBOX_KHR),integer(VK_PRESENT_MODE_IMMEDIATE_KHR)))));
-   fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(fVulkanDevice,fVulkanSwapChain,fVulkanInitializationCommandBuffer,fVulkanInitializationCommandBufferFence);
+   fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(fVulkanDevice,
+                                                                                             fVulkanSwapChain,
+                                                                                             fVulkanApplication.VulkanPresentCommandBuffers[0,0],
+                                                                                             fVulkanApplication.VulkanPresentCommandBufferFences[0,0],
+                                                                                             fVulkanApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                                                             fVulkanApplication.VulkanGraphicsCommandBufferFences[0,0]);
    AfterCreateSwapChain;
   finally
    OldVulkanSwapChain.Free;

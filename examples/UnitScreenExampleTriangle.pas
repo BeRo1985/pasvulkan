@@ -104,9 +104,8 @@ begin
                                            nil,
                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
                                           );
- fVulkanVertexBuffer.UploadData(VulkanApplication.VulkanDevice.TransferQueue,
+ fVulkanVertexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                 VulkanApplication.VulkanTransferCommandBufferFences[0,0],
-                                VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                 TriangleVertices,
                                 0,
                                 SizeOf(TriangleVertices),
@@ -119,9 +118,8 @@ begin
                                           nil,
                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
                                          );
- fVulkanIndexBuffer.UploadData(VulkanApplication.VulkanDevice.TransferQueue,
+ fVulkanIndexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                VulkanApplication.VulkanTransferCommandBufferFences[0,0],
-                               VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                TriangleIndices,
                                0,
                                SizeOf(TriangleIndices),
@@ -237,8 +235,10 @@ begin
 
  fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanApplication.VulkanDevice,
                                                                                            VulkanApplication.VulkanPresentationSurface.VulkanSwapChain,
-                                                                                           VulkanApplication.VulkanPresentationSurface.VulkanInitializationCommandBuffer,
-                                                                                           VulkanApplication.VulkanPresentationSurface.VulkanInitializationCommandBufferFence,
+                                                                                           VulkanApplication.VulkanPresentCommandBuffers[0,0],
+                                                                                           VulkanApplication.VulkanPresentCommandBufferFences[0,0],
+                                                                                           VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                                                           VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
                                                                                            VK_FORMAT_UNDEFINED,
                                                                                            false);
 

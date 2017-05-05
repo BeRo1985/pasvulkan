@@ -1231,9 +1231,8 @@ type EVulkanException=class(Exception);
                           const pOwnSingleMemoryChunk:boolean=false);
        destructor Destroy; override;
        procedure Bind;
-       procedure UploadData(const pQueue:TVulkanQueue;
-                            const pFence:TVulkanFence;
-                            const pCommandBuffer:TVulkanCommandBuffer;
+       procedure UploadData(const pTransferCommandBuffer:TVulkanCommandBuffer;
+                            const pTransferFence:TVulkanFence;
                             const pData;
                             const pDataOffset:TVkDeviceSize;
                             const pDataSize:TVkDeviceSize;
@@ -1640,8 +1639,8 @@ type EVulkanException=class(Exception);
        fDoDestroy:boolean;
       public
        constructor Create(const pDevice:TVulkanDevice;
-                          const pCommandBuffer:TVulkanCommandBuffer;
-                          const pCommandBufferFence:TVulkanFence;
+                          const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                          const pGraphicsCommandBufferFence:TVulkanFence;
                           const pWidth:TVkUInt32;
                           const pHeight:TVkUInt32;
                           const pFormat:TVkFormat;
@@ -1798,8 +1797,10 @@ type EVulkanException=class(Exception);
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pSwapChain:TVulkanSwapChain;
-                          const pCommandBuffer:TVulkanCommandBuffer;
-                          const pCommandBufferFence:TVulkanFence;
+                          const pPresentCommandBuffer:TVulkanCommandBuffer;
+                          const pPresentCommandBufferFence:TVulkanFence;
+                          const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                          const pGraphicsCommandBufferFence:TVulkanFence;
                           const pDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
                           const pDepthImageFormatWithStencil:boolean=false);
        destructor Destroy; override;
@@ -9088,9 +9089,8 @@ begin
  HandleResultCode(fDevice.Commands.BindBufferMemory(fDevice.fDeviceHandle,fBufferHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
 end;
 
-procedure TVulkanBuffer.UploadData(const pQueue:TVulkanQueue;
-                                   const pFence:TVulkanFence;
-                                   const pCommandBuffer:TVulkanCommandBuffer;
+procedure TVulkanBuffer.UploadData(const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                   const pTransferFence:TVulkanFence;
                                    const pData;
                                    const pDataOffset:TVkDeviceSize;
                                    const pDataSize:TVkDeviceSize;
@@ -9127,11 +9127,11 @@ begin
    VkBufferCopy.dstOffset:=pDataOffset;
    VkBufferCopy.size:=pDataSize;
 
-   pCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-   pCommandBuffer.BeginRecording;
-   pCommandBuffer.CmdCopyBuffer(StagingBuffer.Handle,Handle,1,@VkBufferCopy);
-   pCommandBuffer.EndRecording;
-   pCommandBuffer.Execute(pQueue,0,nil,nil,pFence,true);
+   pTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   pTransferCommandBuffer.BeginRecording;
+   pTransferCommandBuffer.CmdCopyBuffer(StagingBuffer.Handle,Handle,1,@VkBufferCopy);
+   pTransferCommandBuffer.EndRecording;
+   pTransferCommandBuffer.Execute(fDevice.TransferQueue,0,nil,nil,pTransferFence,true);
 
   finally
    StagingBuffer.Free;
@@ -10565,8 +10565,8 @@ begin
 end;
 
 constructor TVulkanFrameBufferAttachment.Create(const pDevice:TVulkanDevice;
-                                                const pCommandBuffer:TVulkanCommandBuffer;
-                                                const pCommandBufferFence:TVulkanFence;
+                                                const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                                const pGraphicsCommandBufferFence:TVulkanFence;
                                                 const pWidth:TVkUInt32;
                                                 const pHeight:TVkUInt32;
                                                 const pFormat:TVkFormat;
@@ -10642,18 +10642,18 @@ begin
                     VK_IMAGE_LAYOUT_UNDEFINED,
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     nil,
-                    pCommandBuffer,
+                    pGraphicsCommandBuffer,
                     fDevice.fGraphicsQueue,
-                    pCommandBufferFence,
+                    pGraphicsCommandBufferFence,
                     true);
   end else begin
    fImage.SetLayout(AspectMask,
                     VK_IMAGE_LAYOUT_UNDEFINED,
                     ImageLayout,
                     nil,
-                    pCommandBuffer,
+                    pGraphicsCommandBuffer,
                     fDevice.fGraphicsQueue,
-                    pCommandBufferFence,
+                    pGraphicsCommandBufferFence,
                     true);
   end;
           
@@ -11199,8 +11199,10 @@ end;
 
 constructor TVulkanSwapChainSimpleDirectRenderTarget.Create(const pDevice:TVulkanDevice;
                                                             const pSwapChain:TVulkanSwapChain;
-                                                            const pCommandBuffer:TVulkanCommandBuffer;
-                                                            const pCommandBufferFence:TVulkanFence;
+                                                            const pPresentCommandBuffer:TVulkanCommandBuffer;
+                                                            const pPresentCommandBufferFence:TVulkanFence;
+                                                            const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                                            const pGraphicsCommandBufferFence:TVulkanFence;
                                                             const pDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
                                                             const pDepthImageFormatWithStencil:boolean=false);
 var Index:TVkInt32;
@@ -11293,9 +11295,9 @@ begin
                                    VK_IMAGE_LAYOUT_UNDEFINED,
                                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                                    nil,
-                                   pCommandBuffer,
+                                   pPresentCommandBuffer,
                                    fDevice.fPresentQueue,
-                                   pCommandBufferFence,
+                                   pPresentCommandBufferFence,
                                    true);
 
     ColorAttachmentImageView:=TVulkanImageView.Create(Device,
@@ -11333,8 +11335,8 @@ begin
   end;
 
   fDepthFrameBufferAttachment:=TVulkanFrameBufferAttachment.Create(fDevice,
-                                                                   pCommandBuffer,
-                                                                   pCommandBufferFence,
+                                                                   pGraphicsCommandBuffer,
+                                                                   pGraphicsCommandBufferFence,
                                                                    fSwapChain.Width,
                                                                    fSwapChain.Height,
                                                                    fDepthImageFormat,
