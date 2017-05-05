@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-05-03-18-0000                       *
+ *                        Version 2017-05-05-06-02-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -12011,8 +12011,10 @@ procedure TVulkanDescriptorSet.WriteToDescriptorSet(const pDestinationBinding:TV
  begin
   FillChar(WriteDescriptorSet,SizeOf(TVkWriteDescriptorSet),#0);
   WriteDescriptorSet.sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  WriteDescriptorSet.dstSet:=fDescriptorSetHandle;
   WriteDescriptorSet.dstBinding:=pDestinationBinding;
   WriteDescriptorSet.dstArrayElement:=pDestinationArrayElement;
+  WriteDescriptorSet.descriptorType:=pDescriptorType;
   WriteDescriptorSet.descriptorCount:=pDescriptorCount;
   if length(pImageInfo)>0 then begin
    WriteDescriptorSet.pImageInfo:=@pImageInfo[0];
@@ -12050,8 +12052,10 @@ begin
   WriteDescriptorSetMetaData:=@fWriteDescriptorSetQueueMetaData[Index];
   FillChar(WriteDescriptorSet^,SizeOf(TVkWriteDescriptorSet),#0);
   WriteDescriptorSet^.sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  WriteDescriptorSet^.dstSet:=fDescriptorSetHandle;
   WriteDescriptorSet^.dstBinding:=pDestinationBinding;
   WriteDescriptorSet^.dstArrayElement:=pDestinationArrayElement;
+  WriteDescriptorSet^.descriptorType:=pDescriptorType;
   WriteDescriptorSet^.descriptorCount:=pDescriptorCount;
   WriteDescriptorSet^.pImageInfo:=nil;
   WriteDescriptorSet^.pBufferInfo:=nil;

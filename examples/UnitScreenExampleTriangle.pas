@@ -23,11 +23,15 @@ type TScreenExampleTriangle=class(TVulkanScreen)
        fVulkanPipelineShaderStageTriangleVertex:TVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageTriangleFragment:TVulkanPipelineShaderStage;
        fVulkanPipelineCache:TVulkanPipelineCache;
-       fVulkanPipelineLayout:TVulkanPipelineLayout;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
        fVulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget;
        fVulkanVertexBuffer:TVulkanBuffer;
        fVulkanIndexBuffer:TVulkanBuffer;
+       fVulkanUniformBuffer:TVulkanBuffer;
+       fVulkanDescriptorPool:TVulkanDescriptorPool;
+       fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
+       fVulkanDescriptorSet:TVulkanDescriptorSet;
+       fVulkanPipelineLayout:TVulkanPipelineLayout;
       public
 
        constructor Create; override;
@@ -65,19 +69,25 @@ const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
 
       TriangleIndices:array[0..2] of TVkInt32=(0,1,2);
 
+      UniformBuffer:array[0..2,0..3,0..3] of TVkFloat=
+       (((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)),  // Projection matrix
+        ((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)),  // Model matrix
+        ((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0))); // View matrix
+
 constructor TScreenExampleTriangle.Create;
 var Stream:TStream;
+    UniformDescriptorBufferInfo:TVkDescriptorBufferInfo;
 begin
  inherited Create;
 
- Stream:=VulkanApplication.Assets.GetAsset('shaders/triangle_vert.spv');
+ Stream:=VulkanApplication.Assets.GetAsset('shaders/triangle/triangle_vert.spv');
  try
   fTriangleVertexShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=VulkanApplication.Assets.GetAsset('shaders/triangle_frag.spv');
+ Stream:=VulkanApplication.Assets.GetAsset('shaders/triangle/triangle_frag.spv');
  try
   fTriangleFragmentShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
  finally
@@ -89,9 +99,6 @@ begin
  fVulkanPipelineShaderStageTriangleFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fTriangleFragmentShaderModule,'main');
 
  fVulkanPipelineCache:=TVulkanPipelineCache.Create(VulkanApplication.VulkanDevice);
-
- fVulkanPipelineLayout:=TVulkanPipelineLayout.Create(VulkanApplication.VulkanDevice);
- fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=nil;
 
@@ -125,16 +132,68 @@ begin
                                SizeOf(TriangleIndices),
                                true);
 
+ fVulkanUniformBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
+                                            SizeOf(UniformBuffer),
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                            nil,
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                                           );
+ fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                 VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                 UniformBuffer,
+                                 0,
+                                 SizeOf(UniformBuffer),
+                                 true);
+
+ fVulkanDescriptorPool:=TVulkanDescriptorPool.Create(VulkanApplication.VulkanDevice,
+                                                     TVkDescriptorPoolCreateFlags( VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                     1);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
+ fVulkanDescriptorPool.Initialize;
+
+ fVulkanDescriptorSetLayout:=TVulkanDescriptorSetLayout.Create(VulkanApplication.VulkanDevice);
+ fVulkanDescriptorSetLayout.AddBinding(0,
+                                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.Initialize;
+
+ UniformDescriptorBufferInfo.buffer:=fVulkanUniformBuffer.Handle;
+ UniformDescriptorBufferInfo.offset:=0;
+ UniformDescriptorBufferInfo.range:=SizeOf(UniformBuffer);
+
+ fVulkanDescriptorSet:=TVulkanDescriptorSet.Create(fVulkanDescriptorPool,
+                                                   fVulkanDescriptorSetLayout);
+ fVulkanDescriptorSet.WriteToDescriptorSet(0,
+                                           0,
+                                           1,
+                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                           [],
+                                           [UniformDescriptorBufferInfo],
+                                           [],
+                                           false
+                                          );
+ fVulkanDescriptorSet.Flush;
+ 
+ fVulkanPipelineLayout:=TVulkanPipelineLayout.Create(VulkanApplication.VulkanDevice);
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.Initialize;
 
 end;
 
 destructor TScreenExampleTriangle.Destroy;
 begin
+ FreeAndNil(fVulkanPipelineLayout);
+ FreeAndNil(fVulkanDescriptorSet);
+ FreeAndNil(fVulkanDescriptorSetLayout);
+ FreeAndNil(fVulkanDescriptorPool);
+ FreeAndNil(fVulkanUniformBuffer);
  FreeAndNil(fVulkanIndexBuffer);
  FreeAndNil(fVulkanVertexBuffer);
  FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
  FreeAndNil(fVulkanGraphicsPipeline);
- FreeAndNil(fVulkanPipelineLayout);
  FreeAndNil(fVulkanPipelineCache);
  FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
  FreeAndNil(fVulkanPipelineShaderStageTriangleFragment);
@@ -189,6 +248,10 @@ begin
 
  fVulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  fVulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVkFloat)*6,VK_VERTEX_INPUT_RATE_VERTEX);
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TVkFloat)*0);
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TVkFloat)*3);
 
  fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,VulkanApplication.VulkanPresentationSurface.Width,VulkanApplication.VulkanPresentationSurface.Height,0.0,1.0);
  fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,VulkanApplication.VulkanPresentationSurface.Width,VulkanApplication.VulkanPresentationSurface.Height);
@@ -266,6 +329,7 @@ begin
 end;
 
 procedure TScreenExampleTriangle.Draw;
+const Offsets:array[0..0] of TVkDeviceSize=(0);
 var VulkanCommandBuffer:TVulkanCommandBuffer;
     VulkanSwapChain:TVulkanSwapChain;
 begin
@@ -283,8 +347,11 @@ begin
                                                                       VulkanSwapChain.Width,
                                                                       VulkanSwapChain.Height);
 
+  VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSet.Handle,0,nil);
   VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
-  VulkanCommandBuffer.CmdDraw(3,1,0,0);
+  VulkanCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanVertexBuffer.Handle,@Offsets);
+  VulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+  VulkanCommandBuffer.CmdDrawIndexed(length(TriangleIndices),1,0,0,1);
 
   fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
 
