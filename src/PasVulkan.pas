@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-05-06-02-0000                       *
+ *                        Version 2017-05-05-06-09-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1221,6 +1221,7 @@ type EVulkanException=class(Exception);
        fMemoryBlock:TVulkanDeviceMemoryBlock;
        fQueueFamilyIndices:TVulkanQueueFamilyIndices;
        fCountQueueFamilyIndices:TVkInt32;
+       fDescriptorBufferInfo:TVkDescriptorBufferInfo;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pSize:TVkDeviceSize;
@@ -1237,6 +1238,7 @@ type EVulkanException=class(Exception);
                             const pDataOffset:TVkDeviceSize;
                             const pDataSize:TVkDeviceSize;
                             const pUseTemporaryStagingBuffer:boolean=true);
+       property DescriptorBufferInfo:TVkDescriptorBufferInfo read fDescriptorBufferInfo;
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkBuffer read fBufferHandle;
@@ -9087,6 +9089,11 @@ begin
                                                            fMemoryProperties,
                                                            fMemoryRequirements.Alignment,
                                                            fOwnSingleMemoryChunk);
+
+  fDescriptorBufferInfo.buffer:=fBufferHandle;
+  fDescriptorBufferInfo.offset:=0;
+  fDescriptorBufferInfo.range:=fSize;
+
  except
 
   if fBufferHandle<>VK_NULL_HANDLE then begin

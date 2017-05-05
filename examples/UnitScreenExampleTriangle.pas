@@ -65,7 +65,7 @@ implementation
 const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
        (((0.5,0.5,0.0),(1.0,0.0,0.0)),
         ((-0.5,0.5,0.0),(0.0,1.0,0.0)),
-        ((0.5,-0.5,0.0),(0.0,0.0,1.0)));
+        ((0.0,-0.5,0.0),(0.0,0.0,1.0)));
 
       TriangleIndices:array[0..2] of TVkInt32=(0,1,2);
 
@@ -76,7 +76,6 @@ const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
 
 constructor TScreenExampleTriangle.Create;
 var Stream:TStream;
-    UniformDescriptorBufferInfo:TVkDescriptorBufferInfo;
 begin
  inherited Create;
 
@@ -160,10 +159,6 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.Initialize;
 
- UniformDescriptorBufferInfo.buffer:=fVulkanUniformBuffer.Handle;
- UniformDescriptorBufferInfo.offset:=0;
- UniformDescriptorBufferInfo.range:=SizeOf(UniformBuffer);
-
  fVulkanDescriptorSet:=TVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                    fVulkanDescriptorSetLayout);
  fVulkanDescriptorSet.WriteToDescriptorSet(0,
@@ -171,12 +166,12 @@ begin
                                            1,
                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                            [],
-                                           [UniformDescriptorBufferInfo],
+                                           [fVulkanUniformBuffer.DescriptorBufferInfo],
                                            [],
                                            false
                                           );
  fVulkanDescriptorSet.Flush;
- 
+
  fVulkanPipelineLayout:=TVulkanPipelineLayout.Create(VulkanApplication.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
