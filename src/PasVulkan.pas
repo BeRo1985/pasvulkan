@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-05-03-13-0000                       *
+ *                        Version 2017-05-05-03-18-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -14493,7 +14493,7 @@ end;
 
 constructor TVulkanTexture.Create;
 begin
- raise EVulkanTextureException.Create('Invalid cobnstructor');
+ raise EVulkanTextureException.Create('Invalid constructor');
 end;
 
 constructor TVulkanTexture.CreateFromMemory(const pDevice:TVulkanDevice;
@@ -15144,8 +15144,8 @@ begin
         (pGraphicsCommandBuffer=pTransferCommandBuffer) and
         (pGraphicsFence=pTransferFence) then begin
 
-      pTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-      pTransferCommandBuffer.BeginRecording;
+      pGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+      pGraphicsCommandBuffer.BeginRecording;
       try
 
        FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -15162,7 +15162,7 @@ begin
        ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
        ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
        ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-       pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+       pGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                  0,
                                                  0,
@@ -15181,7 +15181,7 @@ begin
        BufferMemoryBarrier.buffer:=StagingBuffer.fBufferHandle;
        BufferMemoryBarrier.offset:=StagingMemoryBlock.fOffset;
        BufferMemoryBarrier.size:=pDataSize;
-       pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+       pGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                  0,
                                                  0,
@@ -15280,7 +15280,7 @@ begin
 
        Assert(TVkSizeInt(DataOffset)=TVkSizeInt(pDataSize));
 
-       pTransferCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
+       pGraphicsCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
 
        if pCountMipMaps<1 then begin
 
@@ -15306,7 +15306,7 @@ begin
          ImageMemoryBarrier.subresourceRange.levelCount:=1;
          ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
          ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-         pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+         pGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                    0,
                                                    0,
@@ -15338,7 +15338,7 @@ begin
           ImageBlit.dstOffsets[1].x:=Max(0,fWidth shr MipMapLevelIndex);
           ImageBlit.dstOffsets[1].y:=Max(0,fHeight shr MipMapLevelIndex);
           ImageBlit.dstOffsets[1].z:=Max(0,fDepth shr MipMapLevelIndex);
-          pTransferCommandBuffer.CmdBlitImage(fImage.fImageHandle,
+          pGraphicsCommandBuffer.CmdBlitImage(fImage.fImageHandle,
                                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                               fImage.fImageHandle,
                                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -15373,7 +15373,7 @@ begin
        ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
        ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
        ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-       pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+       pGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                  0,
                                                  0,
@@ -15384,8 +15384,8 @@ begin
                                                  @ImageMemoryBarrier);
 
       finally
-       pTransferCommandBuffer.EndRecording;
-       pTransferCommandBuffer.Execute(pDevice.TransferQueue,0,nil,nil,pTransferFence,true);
+       pGraphicsCommandBuffer.EndRecording;
+       pGraphicsCommandBuffer.Execute(pDevice.GraphicsQueue,0,nil,nil,pGraphicsFence,true);
       end;
 
      end else begin
@@ -15422,9 +15422,9 @@ begin
   ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
   ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-  pTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-  pTransferCommandBuffer.BeginRecording;
-  pTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+  pGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  pGraphicsCommandBuffer.BeginRecording;
+  pGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                             0,
                                             0,
@@ -15433,8 +15433,8 @@ begin
                                             nil,
                                             1,
                                             @ImageMemoryBarrier);
-  pTransferCommandBuffer.EndRecording;
-  pTransferCommandBuffer.Execute(pDevice.TransferQueue,0,nil,nil,pTransferFence,true);
+  pGraphicsCommandBuffer.EndRecording;
+  pGraphicsCommandBuffer.Execute(pDevice.GraphicsQueue,0,nil,nil,pGraphicsFence,true);
 
  end;
 
