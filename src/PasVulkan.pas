@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-05-06-09-0000                       *
+ *                        Version 2017-05-05-06-45-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1373,7 +1373,7 @@ type EVulkanException=class(Exception);
                                const pCommandBufferCount:TVkUInt32=1):TVulkanObjectList;
        procedure BeginRecording(const pFlags:TVkCommandBufferUsageFlags=0;const pInheritanceInfo:PVkCommandBufferInheritanceInfo=nil);
        procedure BeginRecordingPrimary;
-       procedure BeginRecordingSecondary(const pRenderPass:TVkRenderPass;const pSubPass:TVkUInt32;const pFrameBuffer:TVkFramebuffer;const pOcclusionQueryEnable:boolean;const pQueryFlags:TVkQueryControlFlags;const pPipelineStatistics:TVkQueryPipelineStatisticFlags);
+       procedure BeginRecordingSecondary(const pRenderPass:TVkRenderPass;const pSubPass:TVkUInt32;const pFrameBuffer:TVkFramebuffer;const pOcclusionQueryEnable:boolean;const pQueryFlags:TVkQueryControlFlags;const pPipelineStatistics:TVkQueryPipelineStatisticFlags;const pFlags:TVkCommandBufferUsageFlags=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
        procedure EndRecording;
        procedure Reset(const pFlags:TVkCommandBufferResetFlags=TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
        procedure CmdBindPipeline(pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline);
@@ -9618,7 +9618,7 @@ begin
  end;
 end;
 
-procedure TVulkanCommandBuffer.BeginRecordingSecondary(const pRenderPass:TVkRenderPass;const pSubPass:TVkUInt32;const pFrameBuffer:TVkFramebuffer;const pOcclusionQueryEnable:boolean;const pQueryFlags:TVkQueryControlFlags;const pPipelineStatistics:TVkQueryPipelineStatisticFlags);
+procedure TVulkanCommandBuffer.BeginRecordingSecondary(const pRenderPass:TVkRenderPass;const pSubPass:TVkUInt32;const pFrameBuffer:TVkFramebuffer;const pOcclusionQueryEnable:boolean;const pQueryFlags:TVkQueryControlFlags;const pPipelineStatistics:TVkQueryPipelineStatisticFlags;const pFlags:TVkCommandBufferUsageFlags=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
 var CommandBufferBeginInfo:TVkCommandBufferBeginInfo;
     InheritanceInfo:TVkCommandBufferInheritanceInfo;
 begin
@@ -9639,7 +9639,7 @@ begin
   FillChar(CommandBufferBeginInfo,SizeOf(TVkCommandBufferBeginInfo),#0);
   CommandBufferBeginInfo.sType:=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   CommandBufferBeginInfo.pNext:=nil;
-  CommandBufferBeginInfo.flags:=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+  CommandBufferBeginInfo.flags:=pFlags;
   CommandBufferBeginInfo.pInheritanceInfo:=@InheritanceInfo;
   HandleResultCode(fDevice.fDeviceVulkan.BeginCommandBuffer(fCommandBufferHandle,@CommandBufferBeginInfo));
  end else begin

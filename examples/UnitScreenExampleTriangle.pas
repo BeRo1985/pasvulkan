@@ -74,6 +74,8 @@ const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
         ((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)),  // Model matrix
         ((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0))); // View matrix
 
+      Offsets:array[0..0] of TVkDeviceSize=(0);
+
 constructor TScreenExampleTriangle.Create;
 var Stream:TStream;
 begin
@@ -324,7 +326,6 @@ begin
 end;
 
 procedure TScreenExampleTriangle.Draw;
-const Offsets:array[0..0] of TVkDeviceSize=(0);
 var VulkanCommandBuffer:TVulkanCommandBuffer;
     VulkanSwapChain:TVulkanSwapChain;
 begin
