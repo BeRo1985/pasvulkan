@@ -48,6 +48,9 @@ done
 rm -f ./*.ppu >/dev/null 2>/dev/null
 rm -f ./*.a >/dev/null 2>/dev/null
 rm -f ./*.o >/dev/null 2>/dev/null
+rm -f ./../src/*.ppu >/dev/null 2>/dev/null
+rm -f ./../src/*.a >/dev/null 2>/dev/null
+rm -f ./../src/*.o >/dev/null 2>/dev/null
 
 if [ "$BITS" == "32" ]; then
 
@@ -90,4 +93,8 @@ fi
 rm -f ./*.ppu >/dev/null 2>/dev/null
 rm -f ./*.a >/dev/null 2>/dev/null
 rm -f ./*.o >/dev/null 2>/dev/null
+rm -f ./../src/*.ppu >/dev/null 2>/dev/null
+rm -f ./../src/*.a >/dev/null 2>/dev/null
+rm -f ./../src/*.o >/dev/null 2>/dev/null
+
 
