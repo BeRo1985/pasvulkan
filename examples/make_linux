@@ -48,14 +48,11 @@ done
 rm -f ./*.ppu >/dev/null 2>/dev/null
 rm -f ./*.a >/dev/null 2>/dev/null
 rm -f ./*.o >/dev/null 2>/dev/null
-rm -f ./../bin/*.a >/dev/null 2>/dev/null
-rm -f ./../bin/*.o >/dev/null 2>/dev/null
-rm -f ./../bin/*.ppu >/dev/null 2>/dev/null
 
 if [ "$BITS" == "32" ]; then
 
   if [ "$STATICLINK" == "y" ]; then
-    cp ./libs/sdl20linux32/*.a ./
+    cp ./../libs/sdl20linux32/*.a ./
   fi 
   if which ppcross386 >/dev/null 2>/dev/null; then 
     fpcbin="ppcross386"
@@ -71,7 +68,7 @@ if [ "$BITS" == "32" ]; then
 elif [ "$BITS" == "64" ]; then
 
   if [ "$STATICLINK" == "y" ]; then
-    cp ./libs/sdl20linux64/*.a ./ >/dev/null 2>/dev/null 
+    cp ./../libs/sdl20linux64/*.a ./ >/dev/null 2>/dev/null 
   fi 
   if which ppcrossx64 >/dev/null 2>/dev/null; then 
     fpcbin="ppcrossx64"
@@ -92,6 +89,5 @@ fi
 
 rm -f ./*.ppu >/dev/null 2>/dev/null
 rm -f ./*.a >/dev/null 2>/dev/null
-rm -f ./../bin/*.a >/dev/null 2>/dev/null
-rm -f ./../bin/*.o >/dev/null 2>/dev/null
-rm -f ./../bin/*.ppu >/dev/null 2>/dev/null
+rm -f ./*.o >/dev/null 2>/dev/null
+
