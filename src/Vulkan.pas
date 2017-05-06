@@ -9401,7 +9401,7 @@ begin
 {$ifdef Windows}
  result:=pointer(LoadLibrary(PChar(LibraryName)));
 {$else}
-{$ifdef Linux}
+{$ifdef Unix}
  result:=dlopen(PChar(LibraryName),RTLD_NOW or RTLD_LAZY);
 {$else}
  result:=nil;
