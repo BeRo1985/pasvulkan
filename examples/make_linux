@@ -79,9 +79,9 @@ elif [ "$BITS" == "64" ]; then
     fpcbin="ppcx64"
   fi
   if [ "$STATICLINK" == "y" ]; then
-    $fpcbin -Px86_64 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -B -O3 "-oexamples_x86_32_fpc_linux_release_statically_linked" examples.dpr
+    $fpcbin -Px86_64 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -B -O3 "-oexamples_x86_64_fpc_linux_release_statically_linked" examples.dpr
   else
-    $fpcbin -Px86_64 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -B -O3 "-oexamples_x86_32_fpc_linux_release_dynamically_linked" examples.dpr
+    $fpcbin -Px86_64 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -B -O3 "-oexamples_x86_64_fpc_linux_release_dynamically_linked" examples.dpr
   fi  
  
 else
