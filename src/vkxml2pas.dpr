@@ -4767,7 +4767,7 @@ begin
    OutputPAS.Add('{$ifdef Windows}');
    OutputPAS.Add(' result:=pointer(LoadLibrary(PChar(LibraryName)));');
    OutputPAS.Add('{$else}');
-   OutputPAS.Add('{$ifdef Linux}');
+   OutputPAS.Add('{$ifdef Unix}');
    OutputPAS.Add(' result:=dlopen(PChar(LibraryName),RTLD_NOW or RTLD_LAZY);');
    OutputPAS.Add('{$else}');
    OutputPAS.Add(' result:=nil;');
