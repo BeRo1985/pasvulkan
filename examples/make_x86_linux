@@ -22,8 +22,8 @@ while [ $# -gt 0 ]; do
   
   case $key in
       -h|--help)
-        echo "PasVulkan examples make_linux script"
-        echo "  Usage: ./make_linux [options]"
+        echo "PasVulkan examples make_x86_linux script"
+        echo "  Usage: ./make_x86_linux [options]"
         echo "Options: -b|--bits [32/64]    Select target bitness "
         echo "         -s|--static-link     Enable static linking"
         exit 0
