@@ -62,11 +62,13 @@ if [ "$BITS" == "32" ]; then
   else
     fpcbin="ppc386"
   fi
+  outname="-oexamples_x86_32_fpc_linux_release_"
   if [ "$STATICLINK" == "y" ]; then
-    $fpcbin -Pi386 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -dc_int64 -B -b -O3 "-oexamples_x86_32_fpc_linux_release_statically_linked" -Cg- examples.dpr
+    outname+="statically_linked"
   else
-    $fpcbin -Pi386 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -dc_int64 -B -b -O3 "-oexamples_x86_32_fpc_linux_release_dynamically_linked" -Cg- examples.dpr
+    outname+="dynamically_linked"
   fi
+  $fpcbin -Pi386 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -dc_int64 -B -b -O3 $outname -Cg- examples.dpr
 
 elif [ "$BITS" == "64" ]; then
 
@@ -78,12 +80,14 @@ elif [ "$BITS" == "64" ]; then
   else
     fpcbin="ppcx64"
   fi
+  outname="-oexamples_x86_64_fpc_linux_release_"
   if [ "$STATICLINK" == "y" ]; then
-    $fpcbin -Px86_64 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -B -O3 "-oexamples_x86_64_fpc_linux_release_statically_linked" examples.dpr
+    outname+="statically_linked"
   else
-    $fpcbin -Px86_64 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -B -O3 "-oexamples_x86_64_fpc_linux_release_dynamically_linked" examples.dpr
-  fi  
- 
+    outname+="dynamically_linked"
+  fi
+  $fpcbin -Px86_64 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -B -O3 $outname examples.dpr
+  
 else
 
   echo Non-supported bitness
