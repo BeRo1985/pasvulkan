@@ -5,15 +5,14 @@ program examples;
 {$if defined(win32) or defined(win64)}
  {$apptype console}
 {$ifend}
-
-// {$if defined(fpc) and defined(Unix)}cthreads,{$ifend}
-
+ 
 uses
   {$if defined(fpc) and defined(Unix)}cthreads,{$ifend}
   SysUtils,
   Classes,
   Vulkan in '..\src\Vulkan.pas',
   PasVulkan in '..\src\PasVulkan.pas',
+  PasVulkanAndroid in '..\src\PasVulkanAndroid.pas',
   PasVulkanSDL2 in '..\src\PasVulkanSDL2.pas',
   PasVulkanStaticLinking in '..\src\PasVulkanStaticLinking.pas',
   PasVulkanApplication in '..\src\PasVulkanApplication.pas',
