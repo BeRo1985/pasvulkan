@@ -796,10 +796,8 @@ function JNI_GetCreatedJavaVMs(vm:PPJavaVM;ASize:jsize;p:Pjsize):jint;{$ifdef ms
   curVM:PJavaVM=nil;
   curEnv:PJNIEnv=nil;}
 
-(*
 function JNI_OnLoad(vm:PJavaVM;reserved:pointer):jint;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
 procedure JNI_OnUnload(vm:PJavaVM;reserved:pointer);{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
-*)
 
 type PARect=^TARect;
      TARect=packed record
@@ -1515,7 +1513,7 @@ procedure ANativeActivity_hideSoftInput(activity:PANativeActivity;flags:cuint32)
 implementation
 
 {$if defined(fpc) and defined(Android)}
-(*function JNI_OnLoad(vm:PJavaVM;reserved:pointer):jint;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
+function JNI_OnLoad(vm:PJavaVM;reserved:pointer):jint;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
 begin
  curVM:=vm;
  result:=JNI_VERSION_1_6;
@@ -1523,7 +1521,7 @@ end;
 
 procedure JNI_OnUnload(vm:PJavaVM;reserved:pointer);{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
 begin
-end;*)
+end;
 
 procedure LOGW(const Text:PAnsiChar;const Tag:PAnsiChar='');
 begin

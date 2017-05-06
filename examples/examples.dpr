@@ -1,11 +1,11 @@
-program examples;
+{$if defined(fpc) and defined(android)}library{$else}program{$ifend} examples;
 {$ifdef fpc}
  {$mode delphi}
-{$endif} 
+{$endif}
 {$if defined(win32) or defined(win64)}
  {$apptype console}
 {$ifend}
- 
+
 uses
   {$if defined(fpc) and defined(Unix)}cthreads,{$ifend}
   SysUtils,
@@ -61,7 +61,17 @@ begin
  end;
 end;
 
+{$if defined(fpc) and defined(android)}
+exports JNI_OnLoad name 'JNI_OnLoad',
+        JNI_OnUnload name 'JNI_OnUnload',
+        SDL_GetEnv name 'Android_JNI_GetEnv',
+        SDL_Init name 'Java_org_libsdl_app_SDLActivity_nativeInit',
+        Native_Create name 'ANativeActivity_onCreate';
+{$ifend}
+
 begin
+{$if defined(fpc) and defined(android)}
+{$else}
  SDLMain;
 {$ifndef fpc}
  if DebugHook<>0 then begin
@@ -69,4 +79,5 @@ begin
   readln;
  end;
 {$endif}
+{$ifend}
 end.
