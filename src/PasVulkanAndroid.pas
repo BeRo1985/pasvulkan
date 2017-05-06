@@ -792,9 +792,8 @@ function JNI_GetCreatedJavaVMs(vm:PPJavaVM;ASize:jsize;p:Pjsize):jint;{$ifdef ms
  * called by JNI, not provided by JNI.
  *)
 
-{var
-  curVM:PJavaVM=nil;
-  curEnv:PJNIEnv=nil;}
+var CurrentJavaVM:PJavaVM=nil;
+    CurrentJNIEnv:PJNIEnv=nil;
 
 function JNI_OnLoad(vm:PJavaVM;reserved:pointer):jint;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
 procedure JNI_OnUnload(vm:PJavaVM;reserved:pointer);{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
@@ -1515,12 +1514,24 @@ implementation
 {$if defined(fpc) and defined(Android)}
 function JNI_OnLoad(vm:PJavaVM;reserved:pointer):jint;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
 begin
- curVM:=vm;
+{$ifndef Release}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering JNI_OnLoad . . .');
+{$endif}
+ CurrentJavaVM:=vm;
  result:=JNI_VERSION_1_6;
+{$ifndef Release}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving JNI_OnLoad . . .');
+{$endif}
 end;
 
 procedure JNI_OnUnload(vm:PJavaVM;reserved:pointer);{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
 begin
+{$ifndef Release}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering JNI_OnUnload . . .');
+{$endif}
+{$ifndef Release}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving JNI_OnUnload . . .');
+{$endif}
 end;
 
 procedure LOGW(const Text:PAnsiChar;const Tag:PAnsiChar='');

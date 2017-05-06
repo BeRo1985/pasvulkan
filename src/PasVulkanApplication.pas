@@ -292,6 +292,10 @@ type EVulkanApplication=class(Exception);
 
        fAndroidActivity:PANativeActivity;
 
+       fAndroidInternalDataPath:string;
+       fAndroidExternalDataPath:string;
+       fAndroidLibraryPath:string;
+       
 {$ifend}
 
        procedure Activate;
@@ -344,6 +348,10 @@ type EVulkanApplication=class(Exception);
        property JavaObject:jobject read fJavaObject write fJavaObject;
 
        property AndroidActivity:PANativeActivity read fAndroidActivity write fAndroidActivity;
+
+       property AndroidInternalDataPath:string read fAndroidInternalDataPath write fAndroidInternalDataPath;
+       property AndroidExternalDataPath:string read fAndroidExternalDataPath write fAndroidExternalDataPath;
+       property AndroidLibraryPath:string read fAndroidLibraryPath write fAndroidLibraryPath;
 
 {$ifend}
 
@@ -1661,18 +1669,33 @@ end;
 {$if defined(fpc) and defined(android)}
 function Android_JNI_GetEnv:PJNIEnv; cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_JNI_GetEnv . . .');
+{$ifend}
  if assigned(VulkanApplication) then begin
   result:=VulkanApplication.JavaEnv;
  end else begin
   result:=nil;
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_JNI_GetEnv . . .');
+{$ifend}
 end;
 
 procedure ANativeActivity_onCreate(pActivity:PANativeActivity;pSavedState:pointer;pSavedStateSize:cuint32); cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering ANativeActivity_onCreate . . .');
+{$ifend}
  if assigned(VulkanApplication) then begin
   VulkanApplication.AndroidActivity:=pActivity;
+  VulkanApplication.AndroidInternalDataPath:=pActivity^.internalDataPath;
+  VulkanApplication.AndroidExternalDataPath:=pActivity^.externalDataPath;
+  VulkanApplication.AndroidLibraryPath:=IncludeTrailingPathDelimiter(ExtractFilePath(pActivity^.internalDataPath))+'lib';
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving ANativeActivity_onCreate . . .');
+{$ifend}
 end;
 {$ifend}
 

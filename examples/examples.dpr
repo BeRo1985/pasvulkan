@@ -49,6 +49,9 @@ procedure Java_org_libsdl_app_SDLActivity_nativeInit(pJavaEnv:PJNIEnv;pJavaClass
 procedure SDLMain;
 {$ifend}
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Java_org_libsdl_app_SDLActivity_nativeInit . . .');
+{$ifend}
  VulkanApplication:=TExampleVulkanApplication.Create;
  try
 {$if defined(fpc) and defined(android)}
@@ -68,6 +71,9 @@ begin
  finally
   FreeAndNil(VulkanApplication);
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Java_org_libsdl_app_SDLActivity_nativeInit . . .');
+{$ifend}
 end;
 
 {$if defined(fpc) and defined(android)}
