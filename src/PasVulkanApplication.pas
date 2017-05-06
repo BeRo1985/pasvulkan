@@ -289,6 +289,9 @@ type EVulkanApplication=class(Exception);
        fJavaEnv:PJNIEnv;
        fJavaClass:jclass;
        fJavaObject:jobject;
+
+       fAndroidActivity:PANativeActivity;
+
 {$ifend}
 
        procedure Activate;
@@ -339,6 +342,9 @@ type EVulkanApplication=class(Exception);
        property JavaEnv:PJNIEnv read fJavaEnv write fJavaEnv;
        property JavaClass:jclass read fJavaClass write fJavaClass;
        property JavaObject:jobject read fJavaObject write fJavaObject;
+
+       property AndroidActivity:PANativeActivity read fAndroidActivity write fAndroidActivity;
+
 {$ifend}
 
       published
@@ -409,6 +415,11 @@ type EVulkanApplication=class(Exception);
      end;
 
 var VulkanApplication:TVulkanApplication=nil;
+
+{$if defined(fpc) and defined(android)}
+function Android_JNI_GetEnv:PJNIEnv; cdecl;
+procedure ANativeActivity_onCreate(pActivity:PANativeActivity;pSavedState:pointer;pSavedStateSize:cuint32); cdecl;
+{$ifend}
 
 implementation
 
@@ -1646,5 +1657,23 @@ begin
   fScreen.Pause;
  end;
 end;
+
+{$if defined(fpc) and defined(android)}
+function Android_JNI_GetEnv:PJNIEnv; cdecl;
+begin
+ if assigned(VulkanApplication) then begin
+  result:=VulkanApplication.JavaEnv;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure ANativeActivity_onCreate(pActivity:PANativeActivity;pSavedState:pointer;pSavedStateSize:cuint32); cdecl;
+begin
+ if assigned(VulkanApplication) then begin
+  VulkanApplication.AndroidActivity:=pActivity;
+ end;
+end;
+{$ifend}
 
 end.

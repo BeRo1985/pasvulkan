@@ -73,9 +73,9 @@ end;
 {$if defined(fpc) and defined(android)}
 exports JNI_OnLoad name 'JNI_OnLoad',
         JNI_OnUnload name 'JNI_OnUnload',
-        SDL_GetEnv name 'Android_JNI_GetEnv',
+        Android_JNI_GetEnv name 'Android_JNI_GetEnv',
         Java_org_libsdl_app_SDLActivity_nativeInit name 'Java_org_libsdl_app_SDLActivity_nativeInit',
-        Native_Create name 'ANativeActivity_onCreate';
+        ANativeActivity_onCreate name 'ANativeActivity_onCreate';
 {$ifend}
 
 begin
