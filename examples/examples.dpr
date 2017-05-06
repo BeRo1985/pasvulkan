@@ -44,7 +44,7 @@ begin
 end;
 
 {$if defined(fpc) and defined(android)}
-procedure SDL_Init(pJavaEnv:PJNIEnv;pJavaClass:jclass;pJavaObject:jobject); cdecl;
+procedure Java_org_libsdl_app_SDLActivity_nativeInit(pJavaEnv:PJNIEnv;pJavaClass:jclass;pJavaObject:jobject); cdecl;
 {$else}
 procedure SDLMain;
 {$ifend}
@@ -74,7 +74,7 @@ end;
 exports JNI_OnLoad name 'JNI_OnLoad',
         JNI_OnUnload name 'JNI_OnUnload',
         SDL_GetEnv name 'Android_JNI_GetEnv',
-        SDL_Init name 'Java_org_libsdl_app_SDLActivity_nativeInit',
+        Java_org_libsdl_app_SDLActivity_nativeInit name 'Java_org_libsdl_app_SDLActivity_nativeInit',
         Native_Create name 'ANativeActivity_onCreate';
 {$ifend}
 
