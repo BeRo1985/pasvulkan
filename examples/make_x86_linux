@@ -68,7 +68,7 @@ if [ "$BITS" == "32" ]; then
   else
     outname+="dynamically_linked"
   fi
-  $fpcbin -Pi386 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -dc_int64 -B -b -O3 $outname -Cg- examples.dpr
+  $fpcbin -Pi386 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -dc_int64 -B -b -g -gl -O3 $outname -Cg- examples.dpr
 
 elif [ "$BITS" == "64" ]; then
 
@@ -86,7 +86,7 @@ elif [ "$BITS" == "64" ]; then
   else
     outname+="dynamically_linked"
   fi
-  $fpcbin -Px86_64 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -B -O3 $outname examples.dpr
+  $fpcbin -Px86_64 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -B -g -gl -O3 $outname examples.dpr
   
 else
 
