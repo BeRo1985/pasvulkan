@@ -43,10 +43,19 @@ begin
  end;
 end;
 
+{$if defined(fpc) and defined(android)}
+procedure SDL_Init(pJavaEnv:PJNIEnv;pJavaClass:jclass;pJavaObject:jobject); cdecl;
+{$else}
 procedure SDLMain;
+{$ifend}
 begin
  VulkanApplication:=TExampleVulkanApplication.Create;
  try
+{$if defined(fpc) and defined(android)}
+  VulkanApplication.JavaEnv:=pJavaEnv;
+  VulkanApplication.JavaClass:=pJavaClass;
+  VulkanApplication.JavaObject:=pJavaObject;
+{$ifend}
 {$ifndef Release}
   VulkanApplication.VulkanDebugging:=true;
   VulkanApplication.VulkanValidation:=true;

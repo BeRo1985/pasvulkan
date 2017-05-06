@@ -75,7 +75,8 @@ uses {$if defined(Unix)}
      SysUtils,Classes,Math,
      Vulkan,
      PasVulkan,
-     PasVulkanSDL2;
+     PasVulkanSDL2,
+     PasVulkanAndroid;
 
 const MaxSwapChainImages=3;
 
@@ -284,6 +285,12 @@ type EVulkanApplication=class(Exception);
 
        fHasNewNextScreen:boolean;
 
+{$if defined(fpc) and defined(android)}
+       fJavaEnv:PJNIEnv;
+       fJavaClass:jclass;
+       fJavaObject:jobject;
+{$ifend}
+
        procedure Activate;
        procedure Deactivate;
 
@@ -325,6 +332,14 @@ type EVulkanApplication=class(Exception);
        procedure Resume; virtual;
 
        procedure Pause; virtual;
+
+     public
+
+{$if defined(fpc) and defined(android)}
+       property JavaEnv:PJNIEnv read fJavaEnv write fJavaEnv;
+       property JavaClass:jclass read fJavaClass write fJavaClass;
+       property JavaObject:jobject read fJavaObject write fJavaObject;
+{$ifend}
 
       published
 
