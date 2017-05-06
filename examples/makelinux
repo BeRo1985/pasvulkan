@@ -1,2 +1,0 @@
-#!/bin/sh
-fpc -dXLIB -dXCB -dWayland -dMir -g -gl -B examples.dpr

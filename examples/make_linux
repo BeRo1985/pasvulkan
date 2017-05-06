@@ -1,0 +1,97 @@
+#!/bin/bash
+
+if which getconf >/dev/null 2>/dev/null; then
+  BITS="$(getconf LONG_BIT)"
+else
+  BITS=""
+fi  
+if [ -z "$BITS" ]; then
+  if [ "$(uname -m)" == "x86_64" ]; then
+    BITS="64"
+  else
+    BITS="32"
+  fi
+fi
+
+DEFINES=" -dRELEASE "
+STATICLINK="n"
+
+while [ $# -gt 0 ]; do
+
+  key="$1"
+  
+  case $key in
+      -h|--help)
+        echo "PasVulkan examples make_linux script"
+        echo "  Usage: ./make_linux [options]"
+        echo "Options: -b|--bits [32/64]    Select target bitness "
+        echo "         -s|--static-link     Enable static linking"
+        exit 0
+        ;;
+      -b|--bits)
+        BITS="$2"
+        shift
+        ;;
+      -s|--static-link)
+        DEFINES+=" -dSTATICLINK "
+        STATICLINK="y"
+        ;;
+      *)
+        echo "Unknown option \"$1\", ignoring . . ."   
+        ;;
+  esac
+
+  shift
+ 
+done
+
+rm -f ./*.ppu >/dev/null 2>/dev/null
+rm -f ./*.a >/dev/null 2>/dev/null
+rm -f ./*.o >/dev/null 2>/dev/null
+rm -f ./../bin/*.a >/dev/null 2>/dev/null
+rm -f ./../bin/*.o >/dev/null 2>/dev/null
+rm -f ./../bin/*.ppu >/dev/null 2>/dev/null
+
+if [ "$BITS" == "32" ]; then
+
+  if [ "$STATICLINK" == "y" ]; then
+    cp ./libs/sdl20linux32/*.a ./
+  fi 
+  if which ppcross386 >/dev/null 2>/dev/null; then 
+    fpcbin="ppcross386"
+  else
+    fpcbin="ppc386"
+  fi
+  if [ "$STATICLINK" == "y" ]; then
+    $fpcbin -Pi386 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -dc_int64 -B -b -O3 "-oexamples_x86_32_fpc_linux_release_statically_linked" -Cg- examples.dpr
+  else
+    $fpcbin -Pi386 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -dc_int64 -B -b -O3 "-oexamples_x86_32_fpc_linux_release_dynamically_linked" -Cg- examples.dpr
+  fi
+
+elif [ "$BITS" == "64" ]; then
+
+  if [ "$STATICLINK" == "y" ]; then
+    cp ./libs/sdl20linux64/*.a ./ >/dev/null 2>/dev/null 
+  fi 
+  if which ppcrossx64 >/dev/null 2>/dev/null; then 
+    fpcbin="ppcrossx64"
+  else
+    fpcbin="ppcx64"
+  fi
+  if [ "$STATICLINK" == "y" ]; then
+    $fpcbin -Px86_64 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -B -O3 "-oexamples_x86_32_fpc_linux_release_statically_linked" examples.dpr
+  else
+    $fpcbin -Px86_64 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -B -O3 "-oexamples_x86_32_fpc_linux_release_dynamically_linked" examples.dpr
+  fi  
+ 
+else
+
+  echo Non-supported bitness
+  
+fi
+
+rm -f ./*.ppu >/dev/null 2>/dev/null
+rm -f ./*.a >/dev/null 2>/dev/null
+rm -f ./../bin/*.a >/dev/null 2>/dev/null
+rm -f ./../bin/*.o >/dev/null 2>/dev/null
+rm -f ./../bin/*.ppu >/dev/null 2>/dev/null
