@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-05-06-45-0000                       *
+ *                        Version 2017-05-06-07-47-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2506,6 +2506,7 @@ type EVulkanException=class(Exception);
        function AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
        function AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
        procedure Initialize;
+       property Stages:TVkPipelineShaderStageCreateInfoArray read fStages;
       published
        property CountStages:TVkInt32 read fCountStages;
        property VertexInputState:TVulkanPipelineVertexInputState read fVertexInputState;
