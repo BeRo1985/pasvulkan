@@ -104,6 +104,9 @@ uses {$if defined(Windows)}
      {$ifdef staticlink}
       PasVulkanStaticLinking,
      {$endif}
+     {$ifdef Android}
+      PasVulkanAndroid,
+     {$endif}
      SysUtils,Classes;
 
 const SDL2LibName={$if defined(Win32)}
@@ -1243,6 +1246,15 @@ type PSDLInt8=^TSDLInt8;
       window:HWnd;	// The display window
       hdc_:Hdc;
       hinstance:HModule;
+     end;
+{$elseif defined(Android)}
+     // The Windows custom window manager information structure
+     PSDL_SysWMinfo=^TSDL_SysWMinfo;
+     TSDL_SysWMinfo=record
+      version:TSDL_version;
+      subsystem:TSDL_SysWm;
+      window:PANativeWindow;	// The display window
+      EGLsurface:pointer;
      end;
 {$elseif defined(Unix)}
      // The Unix custom window manager information structure

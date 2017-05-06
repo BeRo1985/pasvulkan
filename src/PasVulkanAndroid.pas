@@ -1307,7 +1307,7 @@ type android_LogPriority=cint;
      PANativeWindow_Buffer=^TANativeWindow_Buffer;
      TANativeWindow_Buffer=packed record
       width:cint32;
-      heightcint32;
+      height:cint32;
       stride:cint32;
       format:cint32;
       bits:pointer;
@@ -1319,7 +1319,7 @@ type android_LogPriority=cint;
      end;
 
      PPAInputEvent=^PAInputEvent;
-     PAInputEvent=^AInputEvent;
+     PAInputEvent=^TAInputEvent;
      TAInputEvent=record
      end;
 
@@ -1399,7 +1399,7 @@ type android_LogPriority=cint;
 
      TANativeActivity_createFunc=procedure(activity:PANativeActivity;savedState:pointer;savedStateSize:SizeInt); cdecl;
 
-var ANativeActivity_onCreate:TANativeActivity_createFunc; external;
+//var ANativeActivity_onCreate:TANativeActivity_createFunc; external;
 
 function __android_log_write(prio:cint;tag,text:PAnsiChar):cint; cdecl; external LibLogName name '__android_log_write';
 function LOGI(prio:longint;tag,text:PAnsiChar):cint; cdecl; varargs; external LibLogName name '__android_log_print';
@@ -1425,8 +1425,6 @@ function ALooper_pollAll(timeoutMillis:cint;outFd,outEvents:Pint;outData:PPointe
 procedure ALooper_wake(looper:PALooper); cdecl; external LibAndroidName name 'ALooper_wake';
 function ALooper_addFd(looper:PALooper;fd,ident,events:cint;callback:TALooper_callbackFunc;data:Pointer):cint; cdecl; external LibAndroidName name 'ALooper_addFd';
 function ALooper_removeFd(looper:PALooper;fd:cint):cint; cdecl; external LibAndroidName name 'ALooper_removeFd';
-
-procedure ANativeWindow_acquire(window:PANativeWindow);cdecl;external LibAndroidName name 'ANativeWindow_acquire';
 
 function AInputEvent_getType(event:PAInputEvent):cint32; cdecl; external LibAndroidName name 'AInputEvent_getType';
 function AInputEvent_getDeviceId(event:PAInputEvent):cint32; cdecl; external LibAndroidName name 'AInputEvent_getDeviceId';
@@ -1476,7 +1474,7 @@ function AMotionEvent_getHistoricalToolMajor(motion_event:PAInputEvent;pointer_i
 function AMotionEvent_getHistoricalToolMinor(motion_event:PAInputEvent;pointer_index,history_index:csize_t):cfloat; cdecl; external LibAndroidName name 'AMotionEvent_getHistoricalToolMinor';
 function AMotionEvent_getHistoricalOrientation(motion_event:PAInputEvent;pointer_index,history_index:csize_t):cfloat; cdecl; external LibAndroidName name 'AMotionEvent_getHistoricalOrientation';
 
-procedure AInputQueue_attachLooper(queue:PAInputQueue;looper:PALooper;ident:cint;callback:ALooper_callbackFunc;data:Pointer); cdecl; external LibAndroidName name 'AInputQueue_attachLooper';
+procedure AInputQueue_attachLooper(queue:PAInputQueue;looper:PALooper;ident:cint;callback:TALooper_callbackFunc;data:Pointer); cdecl; external LibAndroidName name 'AInputQueue_attachLooper';
 procedure AInputQueue_detachLooper(queue:PAInputQueue); cdecl; external LibAndroidName name 'AInputQueue_detachLooper';
 function AInputQueue_hasEvents(queue:PAInputQueue):cint32; cdecl; external LibAndroidName name 'AInputQueue_hasEvents';
 function AInputQueue_getEvent(queue:PAInputQueue;outEvent:PPAInputEvent):cint32; cdecl; external LibAndroidName name 'AInputQueue_getEvent';
