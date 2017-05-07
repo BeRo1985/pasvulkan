@@ -1,5 +1,6 @@
 <manifest package="com.bero.demos.pasvulkanexamples"
-          xmlns:android="http://schemas.android.com/apk/res/android">
+          xmlns:android="http://schemas.android.com/apk/res/android"
+          android:installLocation="auto">
 
     <!--android:fullBackupContent="false"-->
 

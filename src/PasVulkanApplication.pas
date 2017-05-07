@@ -1581,10 +1581,21 @@ begin
 {$ifdef Android}
  fVideoFlags:=fVideoFlags or SDL_WINDOW_OPENGL;
 {$endif}
+                        
+{$if defined(fpc) and defined(android)}
+ fWidth:=fScreenWidth;
+ fHeight:=fScreenHeight;
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('Window size: '+IntToStr(fWidth)+'x'+IntToStr(fHeight))));
+{$ifend}
 
  fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(fTitle),
+{$ifdef Android}
+                                  SDL_WINDOWPOS_CENTERED_MASK,
+                                  SDL_WINDOWPOS_CENTERED_MASK,
+{$else}
                                   ((fScreenWidth-fWidth)+1) div 2,
                                   ((fScreenHeight-fHeight)+1) div 2,
+{$endif}
                                   fWidth,
                                   fHeight,
                                   SDL_WINDOW_SHOWN or fVideoFlags);
