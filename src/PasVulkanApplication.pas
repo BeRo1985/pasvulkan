@@ -1277,6 +1277,9 @@ procedure TVulkanApplication.AllocateVulkanSurface;
 var SDL_SysWMinfo:TSDL_SysWMinfo;
     VulkanSurfaceCreateInfo:TVulkanSurfaceCreateInfo;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TVulkanApplication.AllocateVulkanSurface');
+{$ifend}
  if not assigned(fVulkanPresentationSurface) then begin
   SDL_VERSION(SDL_SysWMinfo.version);
   if SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0 then begin
@@ -1336,14 +1339,23 @@ begin
                                                                  VulkanSurfaceCreateInfo);
   end;
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TVulkanApplication.AllocateVulkanSurface');
+{$ifend}
 end;
 
 procedure TVulkanApplication.FreeVulkanSurface;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TVulkanApplication.FreeVulkanSurface');
+{$ifend}
  if assigned(fVulkanPresentationSurface) then begin
   fVulkanPresentationSurface.Free;
   fVulkanPresentationSurface:=nil;
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TVulkanApplication.FreeVulkanSurface');
+{$ifend}
 end;
 
 procedure TVulkanApplication.StartGraphics;
@@ -1488,10 +1500,29 @@ begin
     Terminate;
    end;
    SDL_APP_WILLENTERBACKGROUND:begin
+{$if defined(fpc) and defined(android)}
+    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_WILLENTERBACKGROUND')));
+{$ifend}
     fActive:=false;
+{$ifdef Android}
+    Terminate;
+{$endif}
+   end;
+   SDL_APP_DIDENTERBACKGROUND:begin
+{$if defined(fpc) and defined(android)}
+    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_DIDENTERBACKGROUND')));
+{$ifend}
+   end;
+   SDL_APP_WILLENTERFOREGROUND:begin
+{$if defined(fpc) and defined(android)}
+    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_WILLENTERFOREGROUND')));
+{$ifend}
    end;
    SDL_APP_DIDENTERFOREGROUND:begin
     fActive:=true;
+{$if defined(fpc) and defined(android)}
+    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_DIDENTERFOREGROUND')));
+{$ifend}
    end;
    SDL_RENDER_TARGETS_RESET,
    SDL_RENDER_DEVICE_RESET:begin
@@ -1564,6 +1595,7 @@ begin
   end else begin
    Pause;
    Deactivate;
+   fGraphicsReady:=false;
   end;
  end;
 

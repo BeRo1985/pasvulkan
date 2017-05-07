@@ -1036,8 +1036,8 @@ class SDLMain implements Runnable {
 		// Runs SDL_main()
 		SDLActivity.nativeSetAssetManager(SDLActivity.mAssetManager);
 		SDLActivity.nativeInit(SDLActivity.mSingleton.getArguments());
-
-        Log.v("SDL", "SDL thread terminated");
+    Log.v("SDL", "SDL thread terminated");
+		android.os.Process.killProcess(android.os.Process.myPid());
 	}
 }
 
