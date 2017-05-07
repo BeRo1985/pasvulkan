@@ -285,19 +285,6 @@ type EVulkanApplication=class(Exception);
 
        fHasNewNextScreen:boolean;
 
-{$if defined(fpc) and defined(android)}
-       fJavaEnv:PJNIEnv;
-       fJavaClass:jclass;
-       fJavaObject:jobject;
-
-       fAndroidActivity:PANativeActivity;
-
-       fAndroidInternalDataPath:string;
-       fAndroidExternalDataPath:string;
-       fAndroidLibraryPath:string;
-       
-{$ifend}
-
        procedure Activate;
        procedure Deactivate;
 
@@ -339,21 +326,6 @@ type EVulkanApplication=class(Exception);
        procedure Resume; virtual;
 
        procedure Pause; virtual;
-
-     public
-
-{$if defined(fpc) and defined(android)}
-       property JavaEnv:PJNIEnv read fJavaEnv write fJavaEnv;
-       property JavaClass:jclass read fJavaClass write fJavaClass;
-       property JavaObject:jobject read fJavaObject write fJavaObject;
-
-       property AndroidActivity:PANativeActivity read fAndroidActivity write fAndroidActivity;
-
-       property AndroidInternalDataPath:string read fAndroidInternalDataPath write fAndroidInternalDataPath;
-       property AndroidExternalDataPath:string read fAndroidExternalDataPath write fAndroidExternalDataPath;
-       property AndroidLibraryPath:string read fAndroidLibraryPath write fAndroidLibraryPath;
-
-{$ifend}
 
       published
 
@@ -425,6 +397,16 @@ type EVulkanApplication=class(Exception);
 var VulkanApplication:TVulkanApplication=nil;
 
 {$if defined(fpc) and defined(android)}
+     AndroidJavaEnv:PJNIEnv=nil;
+     AndroidJavaClass:jclass=nil;
+     AndroidJavaObject:jobject=nil;
+
+     AndroidActivity:PANativeActivity=nil;
+
+     AndroidInternalDataPath:string='';
+     AndroidExternalDataPath:string='';
+     AndroidLibraryPath:string='';
+
 function Android_JNI_GetEnv:PJNIEnv; cdecl;
 procedure ANativeActivity_onCreate(pActivity:PANativeActivity;pSavedState:pointer;pSavedStateSize:cuint32); cdecl;
 {$ifend}
@@ -1673,7 +1655,7 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_JNI_GetEnv . . .');
 {$ifend}
  if assigned(VulkanApplication) then begin
-  result:=VulkanApplication.JavaEnv;
+  result:=AndroidJavaEnv;
  end else begin
   result:=nil;
  end;
@@ -1687,12 +1669,10 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering ANativeActivity_onCreate . . .');
 {$ifend}
- if assigned(VulkanApplication) then begin
-  VulkanApplication.AndroidActivity:=pActivity;
-  VulkanApplication.AndroidInternalDataPath:=pActivity^.internalDataPath;
-  VulkanApplication.AndroidExternalDataPath:=pActivity^.externalDataPath;
-  VulkanApplication.AndroidLibraryPath:=IncludeTrailingPathDelimiter(ExtractFilePath(pActivity^.internalDataPath))+'lib';
- end;
+ AndroidActivity:=pActivity;
+ AndroidInternalDataPath:=pActivity^.internalDataPath;
+ AndroidExternalDataPath:=pActivity^.externalDataPath;
+ AndroidLibraryPath:=IncludeTrailingPathDelimiter(ExtractFilePath(pActivity^.internalDataPath))+'lib';
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving ANativeActivity_onCreate . . .');
 {$ifend}
