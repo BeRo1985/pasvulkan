@@ -1596,7 +1596,7 @@ begin
 {$endif}
 
 {$if defined(fpc) and defined(android)}
- fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN;
+ fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN or SDL_WINDOW_VULKAN;
  fFullscreen:=true;
  fCurrentFullscreen:=ord(true);
  fWidth:=fScreenWidth;

@@ -228,7 +228,14 @@ const SDL2LibName={$if defined(Win32)}
       SDL_WINDOW_MOUSE_FOCUS=$00000400;      //*< window has mouse focus */
       SDL_WINDOW_FOREIGN=$00000800;      //*< window not created by SDL */
       SDL_WINDOW_FULLSCREEN_DESKTOP=SDL_WINDOW_FULLSCREEN or $00001000; //*< fake fullscreen window, that takes the size of the desktop */
-      SDL_WINDOW_ALLOW_HIGHDPI=$00002000;
+      SDL_WINDOW_ALLOW_HIGHDPI=$00002000;      //**< window should be created in high-DPI mode if supported */
+      SDL_WINDOW_MOUSE_CAPTURE=$00004000;      //**< window has mouse captured (unrelated to INPUT_GRABBED) */
+      SDL_WINDOW_ALWAYS_ON_TOP=$00008000;      //**< window should always be above others */
+      SDL_WINDOW_SKIP_TASKBAR=$00010000;     //**< window should not be added to the taskbar */
+      SDL_WINDOW_UTILITY=$00020000;      //**< window should be treated as a utility window */
+      SDL_WINDOW_TOOLTIP=$00040000;      //**< window should be treated as a tooltip */
+      SDL_WINDOW_POPUP_MENU=$00080000;      //**< window should be treated as a popup menu */
+    	SDL_WINDOW_VULKAN=$10000000;          //**< window usable with Vulkan *//* value matches Tizen's implementation */
 
       SDL_WINDOWPOS_CENTERED_MASK=$2FFF0000;
 
