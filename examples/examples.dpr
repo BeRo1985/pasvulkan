@@ -73,6 +73,8 @@ begin
 {$ifend}
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Java_org_libsdl_app_SDLActivity_nativeInit . . .');
+{$ifend}
+{$if defined(fpc) and defined(android)}
  try
 {$ifend}
   VulkanApplication:=TExampleVulkanApplication.Create;
@@ -89,13 +91,17 @@ begin
   finally
    FreeAndNil(VulkanApplication);
   end;
-{$if (defined(fpc) and defined(android)) and not defined(Release)}
+{$if defined(fpc) and defined(android)}
  except
   on e:Exception do begin
-   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
   end;
  end;
+{$ifend}
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Java_org_libsdl_app_SDLActivity_nativeInit . . .');
+{$ifend}
+{$if defined(fpc) and defined(android)}
  SDL_Quit;
 {$ifend}
 end;
