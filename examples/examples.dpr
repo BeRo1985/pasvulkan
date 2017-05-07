@@ -44,6 +44,22 @@ begin
 end;
 
 {$if defined(fpc) and defined(android)}
+function DumpExceptionCallStack(e:Exception):string;
+var i:int32;
+    Frames:PPointer;
+begin
+ result:='Program exception! '+LineEnding+'Stack trace:'+LineEnding+LineEnding;
+ if assigned(e) then begin
+  result:=result+'Exception class: '+e.ClassName+LineEnding+'Message: '+E.Message+LineEnding;
+ end;
+ result:=result+BackTraceStrFunc(ExceptAddr);
+ Frames:=ExceptFrames;
+ for i:=0 to ExceptFrameCount-1 do begin
+  result:=result+LineEnding+BackTraceStrFunc(Frames);
+  inc(Frames);
+ end;
+end;
+
 procedure Java_org_libsdl_app_SDLActivity_nativeInit(pJavaEnv:PJNIEnv;pJavaClass:jclass;pJavaObject:jobject); cdecl;
 {$else}
 procedure SDLMain;
@@ -57,22 +73,28 @@ begin
 {$ifend}
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Java_org_libsdl_app_SDLActivity_nativeInit . . .');
-{$ifend}
- VulkanApplication:=TExampleVulkanApplication.Create;
  try
-{$ifndef Release}
-  VulkanApplication.VulkanDebugging:=true;
-  VulkanApplication.VulkanValidation:=true;
-{$endif}
-  VulkanApplication.Title:='SDL Vulkan Examples Application';
-  VulkanApplication.StartScreen:=TScreenExampleTriangle;
-  VulkanApplication.VisibleMouseCursor:=true;
-  VulkanApplication.CatchMouse:=false;
-  VulkanApplication.Run;
- finally
-  FreeAndNil(VulkanApplication);
- end;
+{$ifend}
+  VulkanApplication:=TExampleVulkanApplication.Create;
+  try
+ {$ifndef Release}
+   VulkanApplication.VulkanDebugging:=true;
+   VulkanApplication.VulkanValidation:=true;
+ {$endif}
+   VulkanApplication.Title:='SDL Vulkan Examples Application';
+   VulkanApplication.StartScreen:=TScreenExampleTriangle;
+   VulkanApplication.VisibleMouseCursor:=true;
+   VulkanApplication.CatchMouse:=false;
+   VulkanApplication.Run;
+  finally
+   FreeAndNil(VulkanApplication);
+  end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
+ except
+  on e:Exception do begin
+   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+  end;
+ end;
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Java_org_libsdl_app_SDLActivity_nativeInit . . .');
 {$ifend}
 end;

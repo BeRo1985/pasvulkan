@@ -1243,6 +1243,9 @@ begin
    case SDL_SysWMinfo.subsystem of
 {$if defined(Android)}
     SDL_SYSWM_ANDROID:begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar('Got native window 0x'+IntToHex(PtrUInt(SDL_SysWMinfo.Window),SizeOf(PtrUInt)*2)));
+{$ifend}
      VulkanSurfaceCreateInfo.Android.sType:=VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
      VulkanSurfaceCreateInfo.Android.window:=SDL_SysWMinfo.Window;
     end;
@@ -1559,18 +1562,25 @@ begin
 
  fVideoFlags:=0;
  if fFullscreen then begin
+{$ifndef Android}
   if (fWidth=fScreenWidth) and (fHeight=fScreenHeight) then begin
    fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN_DESKTOP;
   end else begin
    fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN;
   end;
+{$endif}
   fCurrentFullscreen:=ord(true);
  end else begin
   fCurrentFullscreen:=0;
  end;
+{$ifndef Android}
  if fResizable then begin
   fVideoFlags:=fVideoFlags or SDL_WINDOW_RESIZABLE;
  end;
+{$endif}
+{$ifdef Android}
+ fVideoFlags:=fVideoFlags or SDL_WINDOW_OPENGL;
+{$endif}
 
  fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(fTitle),
                                   ((fScreenWidth-fWidth)+1) div 2,
