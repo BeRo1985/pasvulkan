@@ -928,7 +928,11 @@ begin
    AAsset_read(Asset,TMemoryStream(result).Memory,Size);
  //Move(AAsset_getBuffer(Asset)^,Data^,Size);
    AAsset_close(Asset);
+  end else begin
+   raise Exception.Create('Asset "'+pFileName+'" not found');
   end;
+ end else begin
+  raise Exception.Create('Asset manager is null');
  end;
 end;
 {$else}
@@ -936,7 +940,7 @@ begin
  result:=TFileStream.Create(StringReplace(StringReplace(fBasePath+pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]),fmOpenRead or fmShareDenyWrite);
 end;
 {$endif}
-
+         
 function TVulkanApplicationAssets.ExistAsset(const pFileName:string):boolean;
 {$ifdef Android}
 var Asset:PAAsset;
@@ -948,6 +952,8 @@ begin
    AAsset_close(Asset);
    result:=true;
   end;
+ end else begin
+  raise Exception.Create('Asset manager is null');
  end;
 end;
 {$else}
