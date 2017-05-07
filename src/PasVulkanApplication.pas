@@ -1581,8 +1581,11 @@ begin
 {$ifdef Android}
  fVideoFlags:=fVideoFlags or SDL_WINDOW_OPENGL;
 {$endif}
-                        
+
 {$if defined(fpc) and defined(android)}
+ fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN;
+ fFullscreen:=true;
+ fCurrentFullscreen:=ord(true);
  fWidth:=fScreenWidth;
  fHeight:=fScreenHeight;
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('Window size: '+IntToStr(fWidth)+'x'+IntToStr(fHeight))));
