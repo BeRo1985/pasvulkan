@@ -96,6 +96,7 @@ begin
   end;
  end;
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Java_org_libsdl_app_SDLActivity_nativeInit . . .');
+ SDL_Quit;
 {$ifend}
 end;
 
@@ -117,5 +118,6 @@ begin
   readln;
  end;
 {$endif}
+ SDL_Quit;
 {$ifend}
 end.
