@@ -1,0 +1,43 @@
+1307c1307
+<     (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN)
+---
+>     (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP)
+1362c1362
+<     if((SDL_strcmp(_this->name, "dummy") != 0) && !(flags & SDL_WINDOW_VULKAN)) {
+---
+>     if (SDL_strcmp(_this->name, "dummy") != 0) {
+73,76c73,79
+< 	if (window->flags & SDL_WINDOW_VULKAN) {
+< 		data->egl_surface = EGL_NO_SURFACE;
+< 	} else {
+< 		data->egl_surface = SDL_EGL_CreateSurface(_this, (NativeWindowType)data->native_window);
+---
+>     data->egl_surface = SDL_EGL_CreateSurface(_this, (NativeWindowType) data->native_window);
+> 
+>     if (data->egl_surface == EGL_NO_SURFACE) {
+>         ANativeWindow_release(data->native_window);
+>         SDL_free(data);
+>         return SDL_SetError("Could not create GLES window surface");
+>     }
+78,83d80
+< 		if (data->egl_surface == EGL_NO_SURFACE) {
+< 			ANativeWindow_release(data->native_window);
+< 			SDL_free(data);
+< 			return SDL_SetError("Could not create GLES window surface");
+< 		}
+< 	}
+110,114c107,109
+< 			if (!(window->flags & SDL_WINDOW_VULKAN)) {
+< 				if (data->egl_surface != EGL_NO_SURFACE) {
+< 					SDL_EGL_DestroySurface(_this, data->egl_surface);
+< 				}
+< 			}
+---
+>             if (data->egl_surface != EGL_NO_SURFACE) {
+>                 SDL_EGL_DestroySurface(_this, data->egl_surface);
+>             }
+119,120c119
+<     SDL_WINDOW_POPUP_MENU    = 0x00080000,      /**< window should be treated as a popup menu */
+< 	SDL_WINDOW_VULKAN        = 0x10000000       /**< window usable with Vulkan *//* value matches Tizen's implementation */
+---
+>     SDL_WINDOW_POPUP_MENU    = 0x00080000       /**< window should be treated as a popup menu */
