@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-06-22-19-0000                       *
+ *                        Version 2017-05-07-02-11-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1019,7 +1019,7 @@ begin
 end;
 
 procedure TVulkanApplication.VulkanDebugLn(const What:TVkCharString);
-{$ifdef Windows}
+{$if defined(Windows)}
 var StdOut:THandle;
 begin
  StdOut:=GetStdHandle(Std_Output_Handle);
@@ -1028,11 +1028,15 @@ begin
   WriteLn(What);
  end;
 end;
+{$elseif (defined(fpc) and defined(android)) and not defined(Release)}
+begin
+ __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar(What));
+end;
 {$else}
 begin
  WriteLn(What);
 end;
-{$endif}
+{$ifend}
 
 function TVulkanApplication.VulkanOnDebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:TVulkaNCharString;const pMessage:TVulkanCharString):TVkBool32;
 begin
