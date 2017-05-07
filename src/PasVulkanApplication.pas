@@ -1579,7 +1579,20 @@ begin
  end;
 {$endif}
 {$ifdef Android}
- fVideoFlags:=fVideoFlags or SDL_WINDOW_OPENGL;
+ fVideoFlags:=fVideoFlags or SDL_WINDOW_ALLOW_HIGHDPI;
+
+ SDL_GL_SetAttribute(SDL_GL_RED_SIZE,8);
+ SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);
+ SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,8);
+ SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE,8);
+ SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE,0);
+ SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,24);
+
+ SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION,3);
+ SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION,2);
+ SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,SDL_GL_CONTEXT_PROFILE_ES);
+ SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,0);
+ 
 {$endif}
 
 {$if defined(fpc) and defined(android)}

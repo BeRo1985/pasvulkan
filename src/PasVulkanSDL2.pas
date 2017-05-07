@@ -228,6 +228,7 @@ const SDL2LibName={$if defined(Win32)}
       SDL_WINDOW_MOUSE_FOCUS=$00000400;      //*< window has mouse focus */
       SDL_WINDOW_FOREIGN=$00000800;      //*< window not created by SDL */
       SDL_WINDOW_FULLSCREEN_DESKTOP=SDL_WINDOW_FULLSCREEN or $00001000; //*< fake fullscreen window, that takes the size of the desktop */
+      SDL_WINDOW_ALLOW_HIGHDPI=$00002000;
 
       SDL_WINDOWPOS_CENTERED_MASK=$2FFF0000;
 
