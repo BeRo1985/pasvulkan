@@ -1033,6 +1033,10 @@ const SDL2LibName={$if defined(Win32)}
       SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING='SDL_WINDOWS_DISABLE_THREAD_NAMING';
       SDL_HINT_RPI_VIDEO_LAYER='SDL_RPI_VIDEO_LAYER';
 
+      SDL_MESSAGEBOX_ERROR=$00000010;   //**< error dialog */
+      SDL_MESSAGEBOX_WARNING=$00000020;   //**< warning dialog */
+      SDL_MESSAGEBOX_INFORMATION=$00000040;   //**< informational dialog */
+
 type PSDLInt8=^TSDLInt8;
      TSDLInt8={$ifdef fpc}Int8{$else}ShortInt{$endif};
 
@@ -1892,6 +1896,8 @@ procedure SDL_LogMessage(category:TSDL_LogCategory;priority:TSDL_LogPriority;con
 //procedure SDL_LogMessageV(category:TSDL_LogCategory;priority:TSDL_LogPriority;const fmt:PAnsiChar;ap:TVA_List); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_LogGetOutputFunction(LogCallback:PSDL_LogOutputCallback;UserData:PPointer); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_LogSetOutputFunction(LogCallback:TSDL_LogOutputCallback;UserData:pointer); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+function SDL_ShowSimpleMessageBox(flags:TSDLUInt32;title,message_:PAnsiChar;window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_SetHintWithPriority(name,value:PAnsiChar;priority:TSDL_HintPriority):boolean; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_SetHint(name,value:PAnsichar):boolean; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};

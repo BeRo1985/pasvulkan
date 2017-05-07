@@ -61,6 +61,7 @@ begin
 end;
 
 procedure Java_org_libsdl_app_SDLActivity_nativeInit(pJavaEnv:PJNIEnv;pJavaClass:jclass;pJavaObject:jobject); cdecl;
+var s:string;
 {$else}
 procedure SDLMain;
 {$ifend}
@@ -94,7 +95,9 @@ begin
 {$if defined(fpc) and defined(android)}
  except
   on e:Exception do begin
-   __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   s:=DumpExceptionCallStack(e);
+   __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(s)));
+   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'PasVulkanApplication',PAnsiChar(AnsiString(s)),nil);
   end;
  end;
 {$ifend}
