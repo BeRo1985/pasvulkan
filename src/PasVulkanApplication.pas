@@ -914,14 +914,47 @@ begin
 end;
 
 function TVulkanApplicationAssets.GetAsset(const pFileName:string):TStream;
+{$ifdef Android}
+var Asset:PAAsset;
+    Size:int64;
+begin
+ result:=nil;
+ if assigned(AndroidActivity) then begin
+  Asset:=AAssetManager_open(AndroidActivity^.AssetManager,pansichar(AnsiString(StringReplace(StringReplace(pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]))),AASSET_MODE_UNKNOWN);
+  if assigned(Asset) then begin
+   Size:=AAsset_getLength(Asset);
+   result:=TMemoryStream.Create;
+   result.Size:=Size;
+   AAsset_read(Asset,TMemoryStream(result).Memory,Size);
+ //Move(AAsset_getBuffer(Asset)^,Data^,Size);
+   AAsset_close(Asset);
+  end;
+ end;
+end;
+{$else}
 begin
  result:=TFileStream.Create(StringReplace(StringReplace(fBasePath+pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]),fmOpenRead or fmShareDenyWrite);
 end;
+{$endif}
 
 function TVulkanApplicationAssets.ExistAsset(const pFileName:string):boolean;
+{$ifdef Android}
+var Asset:PAAsset;
+begin
+ result:=false;
+ if assigned(AndroidActivity) then begin
+  Asset:=AAssetManager_open(AndroidActivity^.AssetManager,pansichar(AnsiString(StringReplace(StringReplace(pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]))),AASSET_MODE_UNKNOWN);
+  if assigned(Asset) then begin
+   AAsset_close(Asset);
+   result:=true;
+  end;
+ end;
+end;
+{$else}
 begin
  result:=FileExists(StringReplace(StringReplace(fBasePath+pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]));
 end;
+{$endif}
 
 constructor TVulkanApplication.Create;
 begin
