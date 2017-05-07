@@ -11,6 +11,7 @@ import java.lang.reflect.Method;
 
 import android.app.*;
 import android.content.*;
+import android.content.res.AssetManager;
 import android.text.InputType;
 import android.view.*;
 import android.view.inputmethod.BaseInputConnection;
@@ -60,6 +61,8 @@ public class SDLActivity extends Activity {
 	// Audio
 	protected static AudioTrack mAudioTrack;
 	protected static AudioRecord mAudioRecord;
+
+	protected static AssetManager mAssetManager;
 
 	/**
 	 * This method is called by SDL before loading the native shared libraries.
@@ -125,6 +128,8 @@ public class SDLActivity extends Activity {
 		Log.v(TAG, "Model: " + android.os.Build.MODEL);
 		Log.v(TAG, "onCreate(): " + mSingleton);
 		super.onCreate(savedInstanceState);
+
+		mAssetManager = this.getAssets();
 
 		SDLActivity.initialize();
 		// So we can call stuff from static callbacks
@@ -413,6 +418,7 @@ public class SDLActivity extends Activity {
 	}
 
 	// C functions we call
+	public static native void nativeSetAssetManager(Object assetManager);
 	public static native int nativeInit(Object arguments);
 	public static native void nativeLowMemory();
 	public static native void nativeQuit();
@@ -1028,6 +1034,7 @@ class SDLMain implements Runnable {
 	@Override
 	public void run() {
 		// Runs SDL_main()
+		SDLActivity.nativeSetAssetManager(SDLActivity.mAssetManager);
 		SDLActivity.nativeInit(SDLActivity.mSingleton.getArguments());
 
         Log.v("SDL", "SDL thread terminated");

@@ -402,6 +402,8 @@ var VulkanApplication:TVulkanApplication=nil;
      AndroidJavaObject:jobject=nil;
 
      AndroidActivity:PANativeActivity=nil;
+     
+     AndroidAssetManager:PAAssetManager=nil;
 
      AndroidInternalDataPath:string='';
      AndroidExternalDataPath:string='';
@@ -919,8 +921,8 @@ var Asset:PAAsset;
     Size:int64;
 begin
  result:=nil;
- if assigned(AndroidActivity) then begin
-  Asset:=AAssetManager_open(AndroidActivity^.AssetManager,pansichar(AnsiString(StringReplace(StringReplace(pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]))),AASSET_MODE_UNKNOWN);
+ if assigned(AndroidAssetManager) then begin
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(AnsiString(StringReplace(StringReplace(pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]))),AASSET_MODE_UNKNOWN);
   if assigned(Asset) then begin
    Size:=AAsset_getLength(Asset);
    result:=TMemoryStream.Create;
@@ -946,8 +948,8 @@ function TVulkanApplicationAssets.ExistAsset(const pFileName:string):boolean;
 var Asset:PAAsset;
 begin
  result:=false;
- if assigned(AndroidActivity) then begin
-  Asset:=AAssetManager_open(AndroidActivity^.AssetManager,pansichar(AnsiString(StringReplace(StringReplace(pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]))),AASSET_MODE_UNKNOWN);
+ if assigned(AndroidAssetManager) then begin
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(AnsiString(StringReplace(StringReplace(pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]))),AASSET_MODE_UNKNOWN);
   if assigned(Asset) then begin
    AAsset_close(Asset);
    result:=true;
@@ -1750,6 +1752,7 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering ANativeActivity_onCreate . . .');
 {$ifend}
  AndroidActivity:=pActivity;
+ AndroidAssetManager:=pActivity^.assetManager;
  AndroidInternalDataPath:=pActivity^.internalDataPath;
  AndroidExternalDataPath:=pActivity^.externalDataPath;
  AndroidLibraryPath:=IncludeTrailingPathDelimiter(ExtractFilePath(pActivity^.internalDataPath))+'lib';

@@ -1485,6 +1485,7 @@ function AndroidBitmap_getInfo(env:PJNIEnv;jbitmap:jobject;info: PAndroidBitmapI
 function AndroidBitmap_lockPixels(env:PJNIEnv;jbitmap:jobject;addrPtr:PPointer):cint; cdecl; external LibJNIGraphicsName name 'AndroidBitmap_lockPixels';
 function AndroidBitmap_unlockPixels(env:PJNIEnv;jbitmap:jobject):cint; cdecl; external LibJNIGraphicsName name 'AndroidBitmap_unlockPixels';
 
+function AAssetManager_fromJava(env:PJNIEnv;assetManager:JObject): PAAssetManager; cdecl; external LibAndroidName name 'AAssetManager_fromJava';
 function AAssetManager_openDir(mgr:PAAssetManager;dirName:PAnsiChar):PAAssetDir; cdecl; external LibAndroidName name 'AAssetManager_openDir';
 function AAssetManager_open(mgr:PAAssetManager;filename:PAnsiChar;mode:cint):PAAsset; cdecl; external LibAndroidName name 'AAssetManager_open';
 function AAssetDir_getNextFileName(assetDir:PAAssetDir):PAnsiChar; cdecl; external LibAndroidName name 'AAssetDir_getNextFileName';

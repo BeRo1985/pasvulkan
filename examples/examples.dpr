@@ -28,7 +28,16 @@ begin
  result:=false;
  case pEvent.type_ of
   SDL_KEYDOWN:begin
+{$if defined(fpc) and defined(android)}
+   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('Keydown: '+IntToStr(pEvent.key.keysym.sym))));
+{$ifend}
    case pEvent.key.keysym.sym of
+{$ifdef Android}
+    SDLK_AC_BACK:begin
+     Terminate;
+     result:=true;
+    end;
+{$endif}
     SDLK_F4:begin
      if ((pEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) and (pEvent.key.repeat_=0) then begin
       Terminate;
@@ -58,6 +67,17 @@ begin
   result:=result+LineEnding+BackTraceStrFunc(Frames);
   inc(Frames);
  end;
+end;
+
+procedure Java_org_libsdl_app_SDLActivity_nativeSetAssetManager(pJavaEnv:PJNIEnv;pJavaClass:jclass;pAssetManager:JObject); cdecl;
+begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Java_org_libsdl_app_SDLActivity_nativeSetAssetManager . . .');
+{$ifend}
+ AndroidAssetManager:=AAssetManager_fromJava(pJavaEnv,pAssetManager);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Java_org_libsdl_app_SDLActivity_nativeSetAssetManager . . .');
+{$ifend}
 end;
 
 procedure Java_org_libsdl_app_SDLActivity_nativeInit(pJavaEnv:PJNIEnv;pJavaClass:jclass;pJavaObject:jobject); cdecl;
@@ -113,6 +133,7 @@ end;
 exports JNI_OnLoad name 'JNI_OnLoad',
         JNI_OnUnload name 'JNI_OnUnload',
         Android_JNI_GetEnv name 'Android_JNI_GetEnv',
+        Java_org_libsdl_app_SDLActivity_nativeSetAssetManager name 'Java_org_libsdl_app_SDLActivity_nativeSetAssetManager',
         Java_org_libsdl_app_SDLActivity_nativeInit name 'Java_org_libsdl_app_SDLActivity_nativeInit',
         ANativeActivity_onCreate name 'ANativeActivity_onCreate';
 {$ifend}
