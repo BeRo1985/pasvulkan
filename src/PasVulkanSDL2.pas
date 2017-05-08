@@ -1037,6 +1037,9 @@ const SDL2LibName={$if defined(Win32)}
       SDL_MESSAGEBOX_WARNING=$00000020;   //**< warning dialog */
       SDL_MESSAGEBOX_INFORMATION=$00000040;   //**< informational dialog */
 
+      SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT=$00000001;
+      SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT=$00000002;
+      
 type PSDLInt8=^TSDLInt8;
      TSDLInt8={$ifdef fpc}Int8{$else}ShortInt{$endif};
 
@@ -1566,11 +1569,39 @@ type PSDLInt8=^TSDLInt8;
 
      TSDL_EventFilter=function(event:PSDL_Event):TSDLInt32; cdecl;
 
-     PUInt8Array=^TUInt8Array;
-     TUInt8Array=array[0..65535] of TSDLUInt8;
+     PSDL_MessageBoxColor=^TSDL_MessageBoxColor;
+     TSDL_MessageBoxColor=record
+      r,g,b:TSDLUInt8;
+     end;
 
-     PUInt32Array=^TUInt32Array;
-     TUInt32Array=array[0..16383] of TSDLUInt32;
+     PSDL_MessageBoxColorScheme=^TSDL_MessageBoxColorScheme;
+     TSDL_MessageBoxColorScheme=record
+      colors:array[0..4] of TSDL_MessageBoxColor;
+     end;
+
+     PSDL_MessageBoxButtonData=^TSDL_MessageBoxButtonData;
+     TSDL_MessageBoxButtonData=record
+      flags:TSDLUInt32;
+      buttonid:TSDLInt32;
+      text:PAnsiChar;
+     end;
+
+     PSDL_MessageBoxData=^TSDL_MessageBoxData;
+     TSDL_MessageBoxData=record
+      flags:TSDLUInt32;
+      window:PSDL_Window;
+      title:PAnsiChar;
+      message:PAnsiChar;
+      numbuttons:TSDLInt32;
+      buttons:PSDL_MessageBoxButtonData;
+      colorScheme:PSDL_MessageBoxColorScheme;
+     end;
+
+     PSDLUInt8Array=^TSDLUInt8Array;
+     TSDLUInt8Array=array[0..65535] of TSDLUInt8;
+
+     PSDLUInt32Array=^TSDLUInt32Array;
+     TSDLUInt32Array=array[0..16383] of TSDLUInt32;
 
      PSDL_Thread=Pointer;
      PSDL_mutex=Pointer;
@@ -1896,6 +1927,8 @@ procedure SDL_LogMessage(category:TSDL_LogCategory;priority:TSDL_LogPriority;con
 //procedure SDL_LogMessageV(category:TSDL_LogCategory;priority:TSDL_LogPriority;const fmt:PAnsiChar;ap:TVA_List); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_LogGetOutputFunction(LogCallback:PSDL_LogOutputCallback;UserData:PPointer); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_LogSetOutputFunction(LogCallback:TSDL_LogOutputCallback;UserData:pointer); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+function SDL_ShowMessageBox(const messageboxdata:PSDL_MessageBoxData;const buttonid:PSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_ShowSimpleMessageBox(flags:TSDLUInt32;title,message_:PAnsiChar;window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
