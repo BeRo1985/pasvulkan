@@ -232,8 +232,6 @@ type EVulkanApplication=class(Exception);
 
        fVideoFlags:TSDLUInt32;
 
-       fResetGraphics:boolean;
-
        fGraphicsReady:boolean;
 
        fVulkanDebugging:boolean;
@@ -284,10 +282,8 @@ type EVulkanApplication=class(Exception);
 
        fHasNewNextScreen:boolean;
 
-       procedure Activate;
-       procedure Deactivate;
-
-       procedure ResetGraphics;
+       procedure InitializeGraphics;
+       procedure DeinitializeGraphics;
 
       protected
 
@@ -302,9 +298,6 @@ type EVulkanApplication=class(Exception);
 
        procedure AllocateVulkanSurface;
        procedure FreeVulkanSurface;
-
-       procedure StartGraphics;
-       procedure StopGraphics;
 
        procedure SetScreen(const pScreen:TVulkanScreen);
        procedure SetNextScreen(const pNextScreen:TVulkanScreen);
@@ -979,8 +972,6 @@ begin
 
  fTerminated:=false;
 
- fResetGraphics:=false;
-
  fGraphicsReady:=false;
 
  fVulkanDebugging:=false;
@@ -1317,9 +1308,7 @@ begin
                                                                  fVSync,
                                                                  VulkanSurfaceCreateInfo);
    fVulkanPresentationSurface.WaitIdle;
-   if assigned(fScreen) then begin
-    fScreen.AfterCreateSwapChain;
-   end;
+   fVulkanPresentationSurface.AfterCreateSwapChain;
   end;
  end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -1335,9 +1324,7 @@ begin
 {$ifend}
  if assigned(fVulkanPresentationSurface) then begin
   fVulkanPresentationSurface.WaitIdle;
-  if assigned(fScreen) then begin
-   fScreen.BeforeDestroySwapChain;
-  end;
+  fVulkanPresentationSurface.BeforeDestroySwapChain;
   fVulkanPresentationSurface.Free;
   fVulkanPresentationSurface:=nil;
  end;
@@ -1346,23 +1333,19 @@ begin
 {$ifend}
 end;
 
-procedure TVulkanApplication.StartGraphics;
-begin
-end;
-
-procedure TVulkanApplication.StopGraphics;
-begin
-end;
-
 procedure TVulkanApplication.SetScreen(const pScreen:TVulkanScreen);
 begin
  if fScreen<>pScreen then begin
   if assigned(fScreen) then begin
-   fScreen.Pause;
    if assigned(fVulkanPresentationSurface) then begin
     fVulkanPresentationSurface.WaitIdle;
+    if fVulkanPresentationSurface.fGraphicsPipelinesReady then begin
+     fScreen.BeforeDestroySwapChain;
+    end else begin
+     fVulkanPresentationSurface.BeforeDestroySwapChain;
+    end;
    end;
-   fScreen.BeforeDestroySwapChain;
+   fScreen.Pause;
    fScreen.Hide;
    fScreen.Free;
   end;
@@ -1372,11 +1355,15 @@ begin
    if assigned(fScreen) then begin
     fScreen.Resize(fWidth,fHeight);
    end;
+   fScreen.Resume;
    if assigned(fVulkanPresentationSurface) then begin
     fVulkanPresentationSurface.WaitIdle;
+    if fVulkanPresentationSurface.fGraphicsPipelinesReady then begin
+     fScreen.AfterCreateSwapChain;
+    end else begin
+     fVulkanPresentationSurface.AfterCreateSwapChain;
+    end;
    end;
-   fScreen.AfterCreateSwapChain;
-   fScreen.Resume;
   end;
  end;
 end;
@@ -1401,38 +1388,24 @@ begin
  fTerminated:=true;
 end;
 
-procedure TVulkanApplication.Activate;
+procedure TVulkanApplication.InitializeGraphics;
 begin
  if not fGraphicsReady then begin
   try
    AllocateVulkanSurface;
-   StartGraphics;
    fGraphicsReady:=true;
   except
    Terminate;
    raise;
   end;
  end;
- fActive:=true;
 end;
 
-procedure TVulkanApplication.Deactivate;
+procedure TVulkanApplication.DeinitializeGraphics;
 begin
  if fGraphicsReady then begin
-  StopGraphics;
   FreeVulkanSurface;
   fGraphicsReady:=false;
- end;
- fActive:=false;
-end;
-
-procedure TVulkanApplication.ResetGraphics;
-begin
- if fActive then begin
-  Pause;
-  Deactivate;
-  Activate;
-  Resume;
  end;
 end;
 
@@ -1497,7 +1470,7 @@ begin
    SDL_QUITEV,
    SDL_APP_TERMINATING:begin
     Pause;
-    Deactivate;
+    DeinitializeGraphics;
     Terminate;
    end;
    SDL_APP_WILLENTERBACKGROUND:begin
@@ -1506,10 +1479,7 @@ begin
 {$ifend}
     fActive:=false;
     Pause;
-    Deactivate;
-{$ifdef Android}
-    //Terminate;
-{$endif}
+    DeinitializeGraphics;
    end;
    SDL_APP_DIDENTERBACKGROUND:begin
 {$if defined(fpc) and defined(android)}
@@ -1522,7 +1492,7 @@ begin
 {$ifend}
    end;
    SDL_APP_DIDENTERFOREGROUND:begin
-    Activate;
+    InitializeGraphics;
     Resume;
     fActive:=true;
 {$if defined(fpc) and defined(android)}
@@ -1531,7 +1501,16 @@ begin
    end;
    SDL_RENDER_TARGETS_RESET,
    SDL_RENDER_DEVICE_RESET:begin
-    ResetGraphics;
+    if fActive then begin
+     Pause;
+    end;
+    if fGraphicsReady then begin
+     DeinitializeGraphics;
+     InitializeGraphics;
+    end;
+    if fActive then begin
+     Resume;
+    end;
    end;
    SDL_KEYDOWN:begin
     case fEvent.key.keysym.sym of
@@ -1579,7 +1558,6 @@ begin
   end else begin
    SDL_SetWindowFullscreen(fSurfaceWindow,0);
   end;
-  //ResetGraphics;
  end;
 
  if fGraphicsReady then begin
@@ -1685,8 +1663,8 @@ begin
   AllocateVulkanInstance;
   try
 
-   AllocateVulkanSurface;
-   fGraphicsReady:=true;
+   InitializeGraphics;
+
    try
 
     if assigned(fStartScreen) then begin
@@ -1709,7 +1687,7 @@ begin
 
    finally
 
-    FreeVulkanSurface;
+    DeinitializeGraphics;
 
    end;
 
