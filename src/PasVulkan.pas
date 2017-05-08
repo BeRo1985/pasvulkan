@@ -3994,7 +3994,6 @@ begin
       result:=VK_FORMAT_R16G16B16A16_UINT;
      end;
     end;
-
     else begin
      result:=VK_FORMAT_UNDEFINED;
     end;
@@ -4030,7 +4029,6 @@ begin
       result:=VK_FORMAT_R16G16B16A16_SINT;
      end;
     end;
-
     else begin
      result:=VK_FORMAT_UNDEFINED;
     end;
