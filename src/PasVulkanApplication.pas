@@ -209,7 +209,6 @@ type EVulkanApplication=class(Exception);
        fCurrentVisibleMouseCursor:TSDLInt32;
        fCurrentCatchMouse:TSDLInt32;
        fCurrentBlocking:TSDLInt32;
-       fCurrentActive:TSDLInt32;
 
        fWidth:TSDLInt32;
        fHeight:TSDLInt32;
@@ -287,6 +286,8 @@ type EVulkanApplication=class(Exception);
 
        procedure Activate;
        procedure Deactivate;
+
+       procedure ResetGraphics;
 
       protected
 
@@ -523,8 +524,6 @@ begin
 
   fDoNeedToRecreateVulkanSwapChain:=false;
 
-  AfterCreateSwapChain;
-
  except
 
   for Index:=0 to MaxSwapChainImages-1 do begin
@@ -545,27 +544,8 @@ end;
 destructor TVulkanPresentationSurface.Destroy;
 var Index:TVkInt32;
 begin
- if assigned(fVulkanDevice) then begin
-  fVulkanDevice.WaitIdle;
-  for Index:=0 to MaxSwapChainImages-1 do begin
-   if fVulkanSwapChainImageFencesReady[Index] and assigned(fVulkanSwapChainImageFences[Index]) then begin
-    fVulkanSwapChainImageFences[Index].WaitFor;
-    fVulkanSwapChainImageFences[Index].Reset;
-    fVulkanSwapChainImageFencesReady[Index]:=false;
-   end;
-   if fVulkanCommandBufferFencesReady[Index] and assigned(fVulkanCommandBufferFences[Index]) then begin
-    fVulkanCommandBufferFences[Index].WaitFor;
-    fVulkanCommandBufferFences[Index].Reset;
-    fVulkanCommandBufferFencesReady[Index]:=false;
-   end;
-  end;
-  fVulkanDevice.WaitIdle;
- end;
+ WaitIdle;
  ClearAll;
- if assigned(fVulkanDevice) then begin
-  fVulkanDevice.WaitIdle;
- end;
- BeforeDestroySwapChain;
  if assigned(fVulkanDevice) then begin
   fVulkanDevice.WaitIdle;
  end;
@@ -985,7 +965,6 @@ begin
  fCurrentVisibleMouseCursor:=-1;
  fCurrentCatchMouse:=-1;
  fCurrentBlocking:=-1;
- fCurrentActive:=-1;
 
  fWidth:=1280;
  fHeight:=720;
@@ -1337,6 +1316,10 @@ begin
                                                                  fHeight,
                                                                  fVSync,
                                                                  VulkanSurfaceCreateInfo);
+   fVulkanPresentationSurface.WaitIdle;
+   if assigned(fScreen) then begin
+    fScreen.AfterCreateSwapChain;
+   end;
   end;
  end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -1350,6 +1333,10 @@ begin
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TVulkanApplication.FreeVulkanSurface');
 {$ifend}
  if assigned(fVulkanPresentationSurface) then begin
+  fVulkanPresentationSurface.WaitIdle;
+  if assigned(fScreen) then begin
+   fScreen.BeforeDestroySwapChain;
+  end;
   fVulkanPresentationSurface.Free;
   fVulkanPresentationSurface:=nil;
  end;
@@ -1425,6 +1412,7 @@ begin
    raise;
   end;
  end;
+ fActive:=true;
 end;
 
 procedure TVulkanApplication.Deactivate;
@@ -1433,6 +1421,17 @@ begin
   StopGraphics;
   FreeVulkanSurface;
   fGraphicsReady:=false;
+ end;
+ fActive:=false;
+end;
+
+procedure TVulkanApplication.ResetGraphics;
+begin
+ if fActive then begin
+  Pause;
+  Deactivate;
+  Activate;
+  Resume;
  end;
 end;
 
@@ -1496,7 +1495,8 @@ begin
   case fEvent.type_ of
    SDL_QUITEV,
    SDL_APP_TERMINATING:begin
-    fActive:=false;
+    Pause;
+    Deactivate;
     Terminate;
    end;
    SDL_APP_WILLENTERBACKGROUND:begin
@@ -1504,8 +1504,10 @@ begin
     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_WILLENTERBACKGROUND')));
 {$ifend}
     fActive:=false;
+    Pause;
+    Deactivate;
 {$ifdef Android}
-    Terminate;
+    //Terminate;
 {$endif}
    end;
    SDL_APP_DIDENTERBACKGROUND:begin
@@ -1519,6 +1521,8 @@ begin
 {$ifend}
    end;
    SDL_APP_DIDENTERFOREGROUND:begin
+    Activate;
+    Resume;
     fActive:=true;
 {$if defined(fpc) and defined(android)}
     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_DIDENTERFOREGROUND')));
@@ -1526,7 +1530,7 @@ begin
    end;
    SDL_RENDER_TARGETS_RESET,
    SDL_RENDER_DEVICE_RESET:begin
-    fResetGraphics:=true;
+    ResetGraphics;
    end;
    SDL_KEYDOWN:begin
     case fEvent.key.keysym.sym of
@@ -1574,29 +1578,7 @@ begin
   end else begin
    SDL_SetWindowFullscreen(fSurfaceWindow,0);
   end;
-  //fResetGraphics:=true;
- end;
-
- if fResetGraphics then begin
-  fResetGraphics:=false;
-  if fActive then begin
-   Pause;
-   Deactivate;
-   Activate;
-   Resume;
-  end;
- end;
-
- if fCurrentActive<>ord(fActive) then begin
-  fCurrentActive:=ord(fActive);
-  if fActive then begin
-   Activate;
-   Resume;
-  end else begin
-   Pause;
-   Deactivate;
-   fGraphicsReady:=false;
-  end;
+  //ResetGraphics;
  end;
 
  if fGraphicsReady then begin
@@ -1705,7 +1687,9 @@ begin
    AllocateVulkanSurface;
    try
 
+    Activate;
     Resume;
+
     try
 
      if assigned(fStartScreen) then begin
@@ -1717,8 +1701,6 @@ begin
      end;
 
     finally
-
-     Pause;
 
      SetScreen(nil);
 
