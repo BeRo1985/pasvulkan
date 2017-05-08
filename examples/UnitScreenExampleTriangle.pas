@@ -228,6 +228,7 @@ procedure TScreenExampleTriangle.AfterCreateSwapChain;
 begin
  inherited AfterCreateSwapChain;
 
+ FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
  FreeAndNil(fVulkanGraphicsPipeline);
 
  fVulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(VulkanApplication.VulkanDevice,

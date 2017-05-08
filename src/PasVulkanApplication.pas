@@ -1323,7 +1323,8 @@ begin
   end;
  end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
-  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TVulkanApplication.AllocateVulkanSurface');
+
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TVulkanApplication.AllocateVulkanSurface');
 {$ifend}
 end;
 
@@ -1685,16 +1686,13 @@ begin
   try
 
    AllocateVulkanSurface;
+   fGraphicsReady:=true;
    try
 
-    Activate;
-    Resume;
-
+    if assigned(fStartScreen) then begin
+     SetScreen(fStartScreen.Create);
+    end;
     try
-
-     if assigned(fStartScreen) then begin
-      SetScreen(fStartScreen.Create);
-     end;
 
      while not fTerminated do begin
       ProcessMessages;
