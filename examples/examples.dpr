@@ -24,6 +24,31 @@ type TExampleVulkanApplication=class(TVulkanApplication)
      end;
 
 function TExampleVulkanApplication.HandleEvent(const pEvent:TSDL_Event):boolean;
+const QuitMsgBoxButtons:array[0..1] of TSDL_MessageBoxButtonData=
+{$ifdef Android}
+       ((flags:SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;buttonid:1;text:'Yes'),
+        (flags:SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;buttonid:0;text:'No'));
+{$else}
+       ((flags:SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;buttonid:0;text:'No'),
+        (flags:SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;buttonid:1;text:'Yes'));
+{$endif}
+      QuitMsgBoxColorScheme:TSDL_MessageBoxColorScheme=
+       (colors:((r:0;g:0;b:0),
+                (r:255;g:255;b:255),
+                (r:192;g:192;b:192),
+                (r:64;g:64;b:64),
+                (r:128;g:128;b:128)));
+      QuitMsgBoxData:TSDL_MessageBoxData=
+       (
+        flags:SDL_MESSAGEBOX_WARNING;
+        window:nil;
+        title:'PasVulkanApplication';
+        message:'Are you sure to exit?';
+        numbuttons:length(QuitMsgBoxButtons);
+        buttons:@QuitMsgBoxButtons[0];
+        colorScheme:@QuitMsgBoxColorScheme;
+       );
+var QuitMsgBoxDataButtonID:TSDLInt32;
 begin
  result:=false;
  case pEvent.type_ of
@@ -32,12 +57,13 @@ begin
    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('Keydown: '+IntToStr(pEvent.key.keysym.sym))));
 {$ifend}
    case pEvent.key.keysym.sym of
-{$ifdef Android}
-    SDLK_AC_BACK:begin
-     Terminate;
+{$ifdef Android}SDLK_AC_BACK,{$endif}SDLK_ESCAPE:begin
+     QuitMsgBoxDataButtonID:=-1;
+     if (SDL_ShowMessageBox(@QuitMsgBoxData,@QuitMsgBoxDataButtonID)=0) and (QuitMsgBoxDataButtonID<>0) then begin
+      Terminate;
+     end;
      result:=true;
     end;
-{$endif}
     SDLK_F4:begin
      if ((pEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) and (pEvent.key.repeat_=0) then begin
       Terminate;
