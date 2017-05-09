@@ -1,43 +1,147 @@
-1307c1307
-<     (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN)
----
->     (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP)
-1362c1362
-<     if((SDL_strcmp(_this->name, "dummy") != 0) && !(flags & SDL_WINDOW_VULKAN)) {
----
->     if (SDL_strcmp(_this->name, "dummy") != 0) {
-73,76c73,79
-< 	if (window->flags & SDL_WINDOW_VULKAN) {
-< 		data->egl_surface = EGL_NO_SURFACE;
-< 	} else {
-< 		data->egl_surface = SDL_EGL_CreateSurface(_this, (NativeWindowType)data->native_window);
----
->     data->egl_surface = SDL_EGL_CreateSurface(_this, (NativeWindowType) data->native_window);
-> 
->     if (data->egl_surface == EGL_NO_SURFACE) {
->         ANativeWindow_release(data->native_window);
->         SDL_free(data);
->         return SDL_SetError("Could not create GLES window surface");
->     }
-78,83d80
-< 		if (data->egl_surface == EGL_NO_SURFACE) {
-< 			ANativeWindow_release(data->native_window);
-< 			SDL_free(data);
-< 			return SDL_SetError("Could not create GLES window surface");
-< 		}
-< 	}
-110,114c107,109
-< 			if (!(window->flags & SDL_WINDOW_VULKAN)) {
-< 				if (data->egl_surface != EGL_NO_SURFACE) {
-< 					SDL_EGL_DestroySurface(_this, data->egl_surface);
-< 				}
-< 			}
----
->             if (data->egl_surface != EGL_NO_SURFACE) {
->                 SDL_EGL_DestroySurface(_this, data->egl_surface);
->             }
-119,120c119
-<     SDL_WINDOW_POPUP_MENU    = 0x00080000,      /**< window should be treated as a popup menu */
-< 	SDL_WINDOW_VULKAN        = 0x10000000       /**< window usable with Vulkan *//* value matches Tizen's implementation */
----
->     SDL_WINDOW_POPUP_MENU    = 0x00080000       /**< window should be treated as a popup menu */
+diff -Naur SDL2original/include/SDL_hints.h SDL2/include/SDL_hints.h
+--- SDL2original/include/SDL_hints.h	2017-03-17 05:50:44.000000000 +0100
++++ SDL2/include/SDL_hints.h	2017-05-09 09:43:47.295166600 +0200
+@@ -707,6 +707,31 @@
+  */
+ #define SDL_HINT_RPI_VIDEO_LAYER           "SDL_RPI_VIDEO_LAYER"
+ 
++/**
++ * \brief A hint to control whether the system shall remember the preferred fullscreen mode.
++ *
++ * This hint will work for WinRT only.
++ *
++ * The variable can be set to the following values:
++ *    "0"       - No action. System does not remember whether the app wants to run in fullscreen.
++ *    "1"       - Remember preferred app setting (fullscreen or windowed).
++ *
++ * The default is "0".
++ *
++ */
++#define SDL_HINT_WINRT_REMEMBER_WINDOW_FULLSCREEN_PREFERENCE "SDL_WINRT_REMEMBER_WINDOW_FULLSCREEN_PREFERENCE"
++
++/**
++ * \brief A hint to control whether an Android app shall try to dim resp. remove the system bars.
++ *
++ * This hint, when set to 1, will try to set "low profile mode" or "sticky immersive mode",
++ * depending on which Android API was found. If the API version is too low for either,
++ * nothing will happen.
++ *
++ */
++#define SDL_HINT_ANDROID_HIDE_SYSTEM_BARS "SDL_ANDROID_HIDE_SYSTEM_BARS"
++	
++
+ /**
+  *  \brief  An enumeration of hint priorities
+  */
+diff -Naur SDL2original/include/SDL_video.h SDL2/include/SDL_video.h
+--- SDL2original/include/SDL_video.h	2017-03-17 05:50:44.000000000 +0100
++++ SDL2/include/SDL_video.h	2017-05-07 05:16:15.233781100 +0200
+@@ -116,7 +116,8 @@
+     SDL_WINDOW_SKIP_TASKBAR  = 0x00010000,      /**< window should not be added to the taskbar */
+     SDL_WINDOW_UTILITY       = 0x00020000,      /**< window should be treated as a utility window */
+     SDL_WINDOW_TOOLTIP       = 0x00040000,      /**< window should be treated as a tooltip */
+-    SDL_WINDOW_POPUP_MENU    = 0x00080000       /**< window should be treated as a popup menu */
++    SDL_WINDOW_POPUP_MENU    = 0x00080000,      /**< window should be treated as a popup menu */
++	SDL_WINDOW_VULKAN        = 0x10000000       /**< window usable with Vulkan *//* value matches Tizen's implementation */
+ } SDL_WindowFlags;
+ 
+ /**
+diff -Naur SDL2original/src/core/android/SDL_android.c SDL2/src/core/android/SDL_android.c
+--- SDL2original/src/core/android/SDL_android.c	2017-03-17 05:50:44.000000000 +0100
++++ SDL2/src/core/android/SDL_android.c	2017-05-09 08:54:47.713795700 +0200
+@@ -421,6 +421,31 @@
+     return result;
+ }
+ 
++void Android_JNI_HintCallback(void *userdata, const char *name, const char *oldValue, const char *newValue) {
++	JNIEnv *env = Android_JNI_GetEnv();
++	
++	jobject callback = (jobject)userdata;
++	jclass cls = (*env)->GetObjectClass(env, callback);
++	jmethodID method = (*env)->GetMethodID(env, cls, "callback", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
++	
++	jstring javaName = (*env)->NewStringUTF(env, name);
++	jstring javaOldValue = (*env)->NewStringUTF(env, oldValue);
++	jstring javaNewValue = (*env)->NewStringUTF(env, newValue);
++	
++	(*env)->CallVoidMethod(env, callback, method, javaName, javaOldValue, javaNewValue);
++	
++	(*env)->DeleteLocalRef(env, javaName);
++	(*env)->DeleteLocalRef(env, javaOldValue);
++	(*env)->DeleteLocalRef(env, javaNewValue);
++
++}
++
++JNIEXPORT void JNICALL Java_org_libsdl_app_SDLActivity_nativeAddHintCallback(JNIEnv* env, jclass cls, jstring name, jobject callback) {
++   const char *utfname = (*env)->GetStringUTFChars(env, name, NULL);
++   SDL_AddHintCallback(utfname, Android_JNI_HintCallback, (*env)->NewGlobalRef(env, callback));
++   (*env)->ReleaseStringUTFChars(env, name, utfname);
++}
++
+ /*******************************************************************************
+              Functions called by SDL into Java
+ *******************************************************************************/
+diff -Naur SDL2original/src/video/android/SDL_androidwindow.c SDL2/src/video/android/SDL_androidwindow.c
+--- SDL2original/src/video/android/SDL_androidwindow.c	2017-03-17 05:50:44.000000000 +0100
++++ SDL2/src/video/android/SDL_androidwindow.c	2017-05-07 05:27:32.925666300 +0200
+@@ -70,14 +70,17 @@
+         return SDL_SetError("Could not fetch native window");
+     }
+     
+-    data->egl_surface = SDL_EGL_CreateSurface(_this, (NativeWindowType) data->native_window);
+-
+-    if (data->egl_surface == EGL_NO_SURFACE) {
+-        ANativeWindow_release(data->native_window);
+-        SDL_free(data);
+-        return SDL_SetError("Could not create GLES window surface");
+-    }
++	if (window->flags & SDL_WINDOW_VULKAN) {
++		data->egl_surface = EGL_NO_SURFACE;
++	} else {
++		data->egl_surface = SDL_EGL_CreateSurface(_this, (NativeWindowType)data->native_window);
+ 
++		if (data->egl_surface == EGL_NO_SURFACE) {
++			ANativeWindow_release(data->native_window);
++			SDL_free(data);
++			return SDL_SetError("Could not create GLES window surface");
++		}
++	}
+     window->driverdata = data;
+     Android_Window = window;
+     
+@@ -104,9 +107,11 @@
+         
+         if(window->driverdata) {
+             data = (SDL_WindowData *) window->driverdata;
+-            if (data->egl_surface != EGL_NO_SURFACE) {
+-                SDL_EGL_DestroySurface(_this, data->egl_surface);
+-            }
++			if (!(window->flags & SDL_WINDOW_VULKAN)) {
++				if (data->egl_surface != EGL_NO_SURFACE) {
++					SDL_EGL_DestroySurface(_this, data->egl_surface);
++				}
++			}
+             if (data->native_window) {
+                 ANativeWindow_release(data->native_window);
+             }
+diff -Naur SDL2original/src/video/SDL_video.c SDL2/src/video/SDL_video.c
+--- SDL2original/src/video/SDL_video.c	2017-03-17 05:50:44.000000000 +0100
++++ SDL2/src/video/SDL_video.c	2017-05-07 05:18:23.616716600 +0200
+@@ -1304,7 +1304,7 @@
+ }
+ 
+ #define CREATE_FLAGS \
+-    (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP)
++    (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN)
+ 
+ static void
+ SDL_FinishWindowCreation(SDL_Window *window, Uint32 flags)
+@@ -1359,7 +1359,7 @@
+ 
+     /* Some platforms have OpenGL enabled by default */
+ #if (SDL_VIDEO_OPENGL && __MACOSX__) || __IPHONEOS__ || __ANDROID__ || __NACL__
+-    if (SDL_strcmp(_this->name, "dummy") != 0) {
++    if((SDL_strcmp(_this->name, "dummy") != 0) && !(flags & SDL_WINDOW_VULKAN)) {
+         flags |= SDL_WINDOW_OPENGL;
+     }
+ #endif
