@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-09-06-25-0000                       *
+ *                        Version 2017-05-09-06-46-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -727,7 +727,7 @@ type EVulkanApplication=class(Exception);
        function IsCursorCatched:boolean;
        procedure SetCursorPosition(const pX,pY:TVkInt32);
        function GetJoystickCount:TVkInt32;
-       function GetJoystick(const pIndex:TVkInt32):TVulkanApplicationJoystick;
+       function GetJoystick(const pIndex:TVkInt32=-1):TVulkanApplicationJoystick;
      end;
 
      TVulkanPresentationSurface=class;
@@ -3800,17 +3800,19 @@ begin
  result:=SDL_NumJoysticks;
 end;
 
-function TVulkanApplicationInput.GetJoystick(const pIndex:TVkInt32):TVulkanApplicationJoystick;
+function TVulkanApplicationInput.GetJoystick(const pIndex:TVkInt32=-1):TVulkanApplicationJoystick;
 var ListIndex:TVkInt32;
 begin
- result:=nil;
  if (pIndex>=0) and (pIndex<SDL_NumJoysticks) then begin
+  result:=nil;
   for ListIndex:=0 to fJoysticks.Count-1 do begin
    if TVulkanApplicationJoystick(fJoysticks[ListIndex]).fIndex=pIndex then begin
     result:=TVulkanApplicationJoystick(fJoysticks[ListIndex]);
     exit;
    end;
   end;
+ end else begin
+  result:=fMainJoystick;
  end;
 end;
 
@@ -4811,8 +4813,10 @@ var Index,Counter:TVkInt32;
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
     NowTime:TVulkanApplicationHighResolutionTime;
-    OK,Found:boolean;
+    OK,Found,DoUpdateMainJoystick:boolean;
 begin
+
+ DoUpdateMainJoystick:=false;
 
  if fCurrentVisibleMouseCursor<>ord(fVisibleMouseCursor) then begin
   fCurrentVisibleMouseCursor:=ord(fVisibleMouseCursor);
@@ -4968,6 +4972,7 @@ begin
         fInput.fJoysticks.Add(Joystick);
        end;
        Joystick.Initialize;
+       DoUpdateMainJoystick:=true;
       end;
      end;
     end;
@@ -4977,6 +4982,7 @@ begin
       if assigned(Joystick) and (Joystick.ID=fEvent.jdevice.which) then begin
        Joystick.Free;
        fInput.fJoysticks.Delete(Counter);
+       DoUpdateMainJoystick:=true;
        break;
       end;
      end;
@@ -5058,6 +5064,18 @@ begin
     end;
     SDL_FINGERUP:begin
      fInput.AddEvent(fEvent);
+    end;
+   end;
+  end;
+  if DoUpdateMainJoystick then begin
+   fInput.fMainJoystick:=nil;
+   if fInput.fJoysticks.Count>0 then begin
+    for Counter:=0 to fInput.fJoysticks.Count-1 do begin
+     Joystick:=TVulkanApplicationJoystick(fInput.fJoysticks.Items[Counter]);
+     if assigned(Joystick) then begin
+      fInput.fMainJoystick:=Joystick;
+      break;
+     end;
     end;
    end;
   end;
