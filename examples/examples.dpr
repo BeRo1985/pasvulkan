@@ -125,6 +125,7 @@ begin
    VulkanApplication.VulkanValidation:=true;
  {$endif}
    VulkanApplication.Title:='SDL Vulkan Examples Application';
+   VulkanApplication.PathName:='SDLVulkanExamplesApplication';
    VulkanApplication.StartScreen:=TScreenExampleTriangle;
    VulkanApplication.VisibleMouseCursor:=true;
    VulkanApplication.CatchMouse:=false;

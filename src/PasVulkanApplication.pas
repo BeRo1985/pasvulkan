@@ -78,6 +78,7 @@ uses {$if defined(Unix)}
      {$elseif defined(Windows)}
       Windows,
       MMSystem,
+      Registry,
      {$ifend}
      SysUtils,
      Classes,
@@ -835,6 +836,20 @@ type EVulkanApplication=class(Exception);
        function GetAssetSize(const pFileName:string):int64;
      end;
 
+     TVulkanApplicationFiles=class
+      private
+       fVulkanApplication:TVulkanApplication;
+      public
+       constructor Create(const pVulkanApplication:TVulkanApplication);
+       destructor Destroy; override;
+       function GetLocalStoragePath:string;
+       function GetRoamingStoragePath:string;
+       function GetExternalStoragePath:string;
+       function IsLocalStorageAvailable:boolean;
+       function IsRoamingStorageAvailable:boolean;
+       function IsExternalStorageAvailable:boolean;
+     end;
+
      TVulkanApplicationCommandPools=array of array of TVulkanCommandPool;
 
      TVulkanApplicationCommandBuffers=array of array of TVulkanCommandBuffer;
@@ -847,9 +862,17 @@ type EVulkanApplication=class(Exception);
        fTitle:string;
        fVersion:TVkUInt32;
 
+       fPathName:string;
+
+       fLocalDataPath:string;
+       fRoamingDataPath:string;
+       fExternalStoragePath:string;
+
        fHighResolutionTimer:TVulkanApplicationHighResolutionTimer;
 
        fAssets:TVulkanApplicationAssets;
+
+       fFiles:TVulkanApplicationFiles;
 
        fInput:TVulkanApplicationInput;
 
@@ -972,6 +995,9 @@ type EVulkanApplication=class(Exception);
        constructor Create; reintroduce;
        destructor Destroy; override;
 
+       procedure ReadConfig; virtual;
+       procedure SaveConfig; virtual;
+
        procedure Initialize;
 
        procedure Terminate;
@@ -996,10 +1022,14 @@ type EVulkanApplication=class(Exception);
 
        property Assets:TVulkanApplicationAssets read fAssets;
 
+       property Files:TVulkanApplicationFiles read fFiles;
+
        property Input:TVulkanApplicationInput read fInput;
 
        property Title:string read fTitle write fTitle;
        property Version:TVkUInt32 read fVersion write fVersion;
+
+       property PathName:string read fPathName write fPathName;
 
        property Width:TSDLInt32 read fWidth write fWidth;
        property Height:TSDLInt32 read fHeight write fHeight;
@@ -1111,6 +1141,339 @@ begin
  fpsignal(SIGWINCH,signalhandler(SIG_IGN));
 end;
 {$ifend}
+
+{$ifdef unix}
+function GetAppDataLocalPath(Postfix:ansistring):ansistring;
+{$ifdef darwin}
+var TruePath:ansistring;
+{$endif}
+begin
+{$ifdef darwin}
+{$ifdef darwinsandbox}
+ if DirectoryExists(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Containers') then begin
+  if length(Postfix)>0 then begin
+   TruePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Containers')+Postfix;
+   if not DirectoryExists(TruePath) then begin
+    CreateDir(TruePath);
+   end;
+   result:=TruePath;
+  end else begin
+   result:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Containers';
+  end;
+ end else{$endif} begin
+  if length(Postfix)>0 then begin
+   result:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'.'+Postfix;
+   if not DirectoryExists(result) then begin
+    TruePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Engine Support')+Postfix;
+    if not DirectoryExists(TruePath) then begin
+     CreateDir(TruePath);
+    end;
+    if DirectoryExists(TruePath) then begin
+     fpSymLink(PAnsiChar(TruePath),PAnsiChar(result));
+    end else begin
+     TruePath:=result;
+    end;
+    if not DirectoryExists(result) then begin
+     CreateDir(result);
+    end;
+   end;
+  end else begin
+   result:=GetEnvironmentVariable('HOME');
+   if DirectoryExists(result) then begin
+    TruePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(result)+'Library')+'Application Support';
+    if DirectoryExists(TruePath) then begin
+     result:=TruePath;
+    end;
+   end;
+  end;
+ end;
+ result:=IncludeTrailingPathDelimiter(result);
+{$else}
+ result:=GetEnvironmentVariable('HOME');
+ if not DirectoryExists(result) then begin
+  CreateDir(result);
+ end;
+ if length(Postfix)>0 then begin
+  result:=IncludeTrailingPathDelimiter(result)+'.'+Postfix;
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+ end;
+ result:=IncludeTrailingPathDelimiter(result);
+{$endif}
+ result:=IncludeTrailingPathDelimiter(result)+'local';
+ if not DirectoryExists(result) then begin
+  CreateDir(result);
+ end;
+ result:=IncludeTrailingPathDelimiter(result);
+end;
+
+function GetAppDataRoamingPath(Postfix:ansistring):ansistring;
+{$ifdef darwin}
+var TruePath:ansistring;
+{$endif}
+begin
+{$ifdef darwin}
+{$ifdef darwinsandbox}
+ if DirectoryExists(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Containers') then begin
+  if length(Postfix)>0 then begin
+   TruePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Containers')+Postfix;
+   if not DirectoryExists(TruePath) then begin
+    CreateDir(TruePath);
+   end;
+   result:=TruePath;
+  end else begin
+   result:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Containers';
+  end;
+ end else{$endif} begin
+  if length(Postfix)>0 then begin
+   result:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'.'+Postfix;
+   if not DirectoryExists(result) then begin
+    TruePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Engine Support')+Postfix;
+    if not DirectoryExists(TruePath) then begin
+     CreateDir(TruePath);
+    end;
+    if DirectoryExists(TruePath) then begin
+     fpSymLink(PAnsiChar(TruePath),PAnsiChar(result));
+    end else begin
+     TruePath:=result;
+    end;
+    if not DirectoryExists(result) then begin
+     CreateDir(result);
+    end;
+   end;
+  end else begin
+   result:=GetEnvironmentVariable('HOME');
+   if DirectoryExists(result) then begin
+    TruePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(result)+'Library')+'Application Support';
+    if DirectoryExists(TruePath) then begin
+     result:=TruePath;
+    end;
+   end;
+  end;
+ end;
+ result:=IncludeTrailingPathDelimiter(result);
+{$else}
+ result:=GetEnvironmentVariable('HOME');
+ if not DirectoryExists(result) then begin
+  CreateDir(result);
+ end;
+ if length(Postfix)>0 then begin
+  result:=IncludeTrailingPathDelimiter(result)+'.'+Postfix;
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+ end;
+ result:=IncludeTrailingPathDelimiter(result);
+{$endif}
+ result:=IncludeTrailingPathDelimiter(result)+'roaming';
+ if not DirectoryExists(result) then begin
+  CreateDir(result);
+ end;
+ result:=IncludeTrailingPathDelimiter(result);
+end;
+{$else}
+function ExpandEnvironmentStrings(const s:ansistring):ansistring;
+var i:TVkInt32;
+begin
+ i:=ExpandEnvironmentStringsA(pansichar(s),nil,0);
+ if i>0 then begin
+  SetLength(result,i);
+  ExpandEnvironmentStringsA(pansichar(s),pansichar(result),i);
+  SetLength(result,i-1);
+ end else begin
+  result:='';
+ end;
+end;
+
+function GetEnvironmentVariable(const s:ansistring):ansistring;
+var i:TVkInt32;
+begin
+ i:=GetEnvironmentVariableA(pansichar(s),nil,0);
+ if i>0 then begin
+  SetLength(result,i);
+  GetEnvironmentVariableA(pansichar(s),pansichar(result),i);
+  SetLength(result,i-1);
+ end else begin
+  result:='';
+ end;
+end;
+
+function GetAppDataLocalPath(Postfix:ansistring):ansistring;
+type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TVkInt32;nToken:Windows.THandle;dwFlags:TVkInt32;lpszPath:PAnsiChar):hresult; stdcall;
+const CSIDL_LOCALAPPDATA=$001c;
+var SHGetFolderPath:TSHGetFolderPath;
+    FilePath:PAnsiChar;
+    LibHandle:Windows.THandle;
+    Reg:TRegistry;
+begin
+ result:='';
+ try
+  // First try over the SHFOLDER.DLL from MSIE >= 5.0 on Win9x or from Windows >= 2000
+  LibHandle:=LoadLibrary('SHFOLDER.DLL');
+  if LibHandle<>0 then begin
+   try
+    SHGetFolderPath:=GetProcAddress(LibHandle,'SHGetFolderPathA');
+    GetMem(FilePath,4096);
+    FillChar(FilePath^,4096,ansichar(#0));
+    try
+     if SHGetFolderPath(0,CSIDL_LOCALAPPDATA,0,0,FilePath)=0 then begin
+      result:=FilePath;
+     end;
+    finally
+     FreeMem(FilePath);
+    end;
+   finally
+    FreeLibrary(LibHandle);
+   end;
+  end;
+ except
+  result:='';
+ end;
+ if length(result)=0 then begin
+   // Other try over the %localappdata% enviroment variable
+  result:=GetEnvironmentVariable('localappdata');
+  if length(result)=0 then begin
+   try
+    // Again ather try over the windows registry
+    Reg:=TRegistry.Create;
+    try
+     Reg.RootKey:=HKEY_CURRENT_USER;
+     if Reg.OpenKeyReadOnly('Volatile Environment') then begin
+      try
+       try
+        result:=Reg.ReadString('LOCALAPPDATA');
+       except
+        result:='';
+       end;
+      finally
+       Reg.CloseKey;
+      end;
+     end;
+    finally
+     Reg.Free;
+    end;
+   except
+    result:='';
+   end;
+   if length(result)=0 then begin
+    // Fallback for Win9x without SHFOLDER.DLL from MSIE >= 5.0
+    result:=GetEnvironmentVariable('windir');
+    if length(result)>0 then begin
+     // For german Win9x installations
+     result:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(result)+'Lokale Einstellungen')+'Anwendungsdaten';
+     if not DirectoryExists(result) then begin
+      // For all other language Win9x installations
+      result:=IncludeTrailingPathDelimiter(result)+'Local Settings';
+      if not DirectoryExists(result) then begin
+       result:=IncludeTrailingPathDelimiter(result)+'Engine Data';
+       if not DirectoryExists(result) then begin
+        CreateDir(result);
+       end;
+      end;
+     end;
+    end else begin
+     // Oops!!! So use simply our own program directory then!
+     result:=ExtractFilePath(ParamStr(0));
+    end;
+   end;
+  end;
+ end;
+ if length(Postfix)>0 then begin
+  result:=IncludeTrailingPathDelimiter(result)+Postfix;
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+ end;
+ result:=IncludeTrailingPathDelimiter(result);
+end;
+
+function GetAppDataRoamingPath(Postfix:ansistring):ansistring;
+type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TVkInt32;nToken:Windows.THandle;dwFlags:TVkInt32;lpszPath:PAnsiChar):hresult; stdcall;
+const CSIDL_APPDATA=$001a;
+var SHGetFolderPath:TSHGetFolderPath;
+    FilePath:PAnsiChar;
+    LibHandle:Windows.THandle;
+    Reg:TRegistry;
+begin
+ result:='';
+ try
+  // First try over the SHFOLDER.DLL from MSIE >= 5.0 on Win9x or from Windows >= 2000
+  LibHandle:=LoadLibrary('SHFOLDER.DLL');
+  if LibHandle<>0 then begin
+   try
+    SHGetFolderPath:=GetProcAddress(LibHandle,'SHGetFolderPathA');
+    GetMem(FilePath,4096);
+    FillChar(FilePath^,4096,ansichar(#0));
+    try
+     if SHGetFolderPath(0,CSIDL_APPDATA,0,0,FilePath)=0 then begin
+      result:=FilePath;
+     end;
+    finally
+     FreeMem(FilePath);
+    end;
+   finally
+    FreeLibrary(LibHandle);
+   end;
+  end;
+ except
+  result:='';
+ end;
+ if length(result)=0 then begin
+   // Other try over the %appdata% enviroment variable
+  result:=GetEnvironmentVariable('appdata');
+  if length(result)=0 then begin
+   try
+    // Again ather try over the windows registry
+    Reg:=TRegistry.Create;
+    try
+     Reg.RootKey:=HKEY_CURRENT_USER;
+     if Reg.OpenKeyReadOnly('Volatile Environment') then begin
+      try
+       try
+        result:=Reg.ReadString('APPDATA');
+       except
+        result:='';
+       end;
+      finally
+       Reg.CloseKey;
+      end;
+     end;
+    finally
+     Reg.Free;
+    end;
+   except
+    result:='';
+   end;
+   if length(result)=0 then begin
+    // Fallback for Win9x without SHFOLDER.DLL from MSIE >= 5.0
+    result:=GetEnvironmentVariable('windir');
+    if length(result)>0 then begin
+     // For german Win9x installations
+     result:=IncludeTrailingPathDelimiter(result)+'Anwendungsdaten';
+     if not DirectoryExists(result) then begin
+      // For all other language Win9x installations
+      result:=IncludeTrailingPathDelimiter(result)+'Engine Data';
+      if not DirectoryExists(result) then begin
+       CreateDir(result);
+      end;
+     end;
+    end else begin
+     // Oops!!! So use simply our own program directory then!
+     result:=ExtractFilePath(ParamStr(0));
+    end;
+   end;
+  end;
+ end;
+ if length(Postfix)>0 then begin
+  result:=IncludeTrailingPathDelimiter(result)+Postfix;
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+ end;
+ result:=IncludeTrailingPathDelimiter(result);
+end;
+{$endif}
 
 constructor TVulkanApplicationHighResolutionTimer.Create;
 begin
@@ -4359,6 +4722,59 @@ begin
 end;
 {$endif}
 
+constructor TVulkanApplicationFiles.Create(const pVulkanApplication:TVulkanApplication);
+begin
+ inherited Create;
+ fVulkanApplication:=pVulkanApplication;
+end;
+
+destructor TVulkanApplicationFiles.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TVulkanApplicationFiles.GetLocalStoragePath:string;
+begin
+ if length(fVulkanApplication.fLocalDataPath)>0 then begin
+  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fLocalDataPath);
+ end else begin
+  result:='';
+ end;
+end;
+
+function TVulkanApplicationFiles.GetRoamingStoragePath:string;
+begin
+ if length(fVulkanApplication.fRoamingDataPath)>0 then begin
+  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fRoamingDataPath);
+ end else begin
+  result:='';
+ end;
+end;
+
+function TVulkanApplicationFiles.GetExternalStoragePath:string;
+begin
+ if length(fVulkanApplication.fExternalStoragePath)>0 then begin
+  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fExternalStoragePath);
+ end else begin
+  result:='';
+ end;
+end;
+
+function TVulkanApplicationFiles.IsLocalStorageAvailable:boolean;
+begin
+ result:=length(fVulkanApplication.fLocalDataPath)>0;
+end;
+
+function TVulkanApplicationFiles.IsRoamingStorageAvailable:boolean;
+begin
+ result:=length(fVulkanApplication.fRoamingDataPath)>0;
+end;
+
+function TVulkanApplicationFiles.IsExternalStorageAvailable:boolean;
+begin
+ result:=length(fVulkanApplication.fExternalStoragePath)>0;
+end;
+
 constructor TVulkanApplication.Create;
 begin
 
@@ -4372,9 +4788,19 @@ begin
  fTitle:='SDL2 Vulkan Application';
  fVersion:=$0100;
 
+ fPathName:='SDL2VulkanApplication';
+
+ fLocalDataPath:='';
+
+ fRoamingDataPath:='';
+
+ fExternalStoragePath:='';
+
  fHighResolutionTimer:=TVulkanApplicationHighResolutionTimer.Create;
 
  fAssets:=TVulkanApplicationAssets.Create(self);
+
+ fFiles:=TVulkanApplicationFiles.Create(self);
 
  fInput:=TVulkanApplicationInput.Create(self);
 
@@ -4465,6 +4891,7 @@ end;
 destructor TVulkanApplication.Destroy;
 begin
  FreeAndNil(fAssets);
+ FreeAndNil(fFiles);
  FreeAndNil(fHighResolutionTimer);
  FreeAndNil(fInput);
  VulkanApplication:=nil;
@@ -4819,6 +5246,14 @@ begin
   fNextScreen:=pNextScreen;
   fHasNewNextScreen:=true;
  end;
+end;
+
+procedure TVulkanApplication.ReadConfig;
+begin
+end;
+
+procedure TVulkanApplication.SaveConfig;
+begin
 end;
 
 procedure TVulkanApplication.Initialize;
@@ -5184,6 +5619,29 @@ end;
 procedure TVulkanApplication.Run;
 begin
 
+{$if defined(Android)}
+
+ fLocalDataPath:=IncludeTrailingPathDelimiter(GetAppConfigDir(false));
+
+ fRoamingDataPath:=IncludeTrailingPathDelimiter(GetAppConfigDir(false));
+
+ fExternalStoragePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('EXTERNAL_STORAGE'));
+
+{$elseif (defined(Windows) or defined(Linux) or defined(Unix)) and not defined(Android)}
+ fLocalDataPath:=GetAppDataLocalPath(fPathName);
+
+ fRoamingDataPath:=GetAppDataRoamingPath(fPathName);
+
+{$if defined(Windows)}
+ fExternalStoragePath:='C:\';
+{$else}
+ fExternalStoragePath:='/';
+{$ifend}
+
+{$ifend}
+
+ ReadConfig;
+
  if fCountThreads<1 then begin
   fCountThreads:=1;
  end;
@@ -5325,6 +5783,8 @@ begin
    fSurfaceWindow:=nil;
   end;
 
+  SaveConfig;
+  
  end;
 
 end;
