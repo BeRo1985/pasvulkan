@@ -4313,7 +4313,8 @@ begin
  SDL_SetMainReady;
 
  SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING,'1');
-
+ SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'1');
+                                              
  inherited Create;
 
  fTitle:='SDL2 Vulkan Application';
