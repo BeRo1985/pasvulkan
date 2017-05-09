@@ -620,8 +620,8 @@ type EVulkanApplication=class(Exception);
 
      TVulkanApplicationJoystick=class
       private
-       fInput:TVulkanApplicationInput;
        fIndex:TVkInt32;
+       fID:TVkInt32;
        fJoystick:PSDL_Joystick;
        fGameController:PSDL_GameController;
        fCountAxes:TVkInt32;
@@ -630,7 +630,7 @@ type EVulkanApplication=class(Exception);
        fCountButtons:TVkInt32;
        procedure Initialize;
       public
-       constructor Create; reintroduce;
+       constructor Create(const pIndex:TVkInt32;const pJoystick:PSDL_Joystick;const pGameController:PSDL_GameController); reintroduce;
        destructor Destroy; override;
        function IsGameController:boolean;
        function Index:TVkInt32;
@@ -682,6 +682,7 @@ type EVulkanApplication=class(Exception);
        fJustTouched:longbool;
        fMaxPointerID:TVkInt32;
        fJoysticks:TList;
+       fMainJoystick:TVulkanApplicationJoystick;
        function TranslateSDLKeyCode(const pKeyCode,pScanCode:TVkInt32):TVkInt32;
        function TranslateSDLKeyModifier(const pKeyModifier:TVkInt32):TVkInt32;
        procedure AddEvent(const pEvent:TSDL_Event);
@@ -1839,11 +1840,17 @@ begin
  end;
 end;
 
-constructor TVulkanApplicationJoystick.Create;
+constructor TVulkanApplicationJoystick.Create(const pIndex:TVkInt32;const pJoystick:PSDL_Joystick;const pGameController:PSDL_GameController);
 begin
  inherited Create;
- fJoystick:=nil;
- fGameController:=nil;
+ fIndex:=pIndex;
+ fJoystick:=pJoystick;
+ fGameController:=pGameController;
+ if assigned(fJoystick) then begin
+  fID:=SDL_JoystickInstanceID(fJoystick);
+ end else begin
+  fID:=-1;
+ end;
 end;
 
 destructor TVulkanApplicationJoystick.Destroy;
@@ -1853,7 +1860,6 @@ begin
  end else if assigned(fJoystick) then begin
   SDL_JoystickClose(fJoystick);
  end;
- fInput.fJoysticks.Remove(self);
  inherited Destroy;
 end;
 
@@ -2416,12 +2422,14 @@ begin
  SetLength(fEvents,1024);
  SetLength(fEventTimes,1024);
  fJoysticks:=TList.Create;
+ fMainJoystick:=nil;
 end;
 
 destructor TVulkanApplicationInput.Destroy;
 begin
  while fJoysticks.Count>0 do begin
-  TVulkanApplicationJoystick(fJoysticks[0]).Free;
+  TVulkanApplicationJoystick(fJoysticks[fJoysticks.Count-1]).Free;
+  fJoysticks.Delete(fJoysticks.Count-1);
  end;
  fJoysticks.Free;
  SetLength(fEvents,0);
@@ -3793,9 +3801,7 @@ begin
 end;
 
 function TVulkanApplicationInput.GetJoystick(const pIndex:TVkInt32):TVulkanApplicationJoystick;
-var Joystick:PSDL_Joystick;
-    GameController:PSDL_GameController;
-    ListIndex:TVkInt32;
+var ListIndex:TVkInt32;
 begin
  result:=nil;
  if (pIndex>=0) and (pIndex<SDL_NumJoysticks) then begin
@@ -3804,24 +3810,6 @@ begin
     result:=TVulkanApplicationJoystick(fJoysticks[ListIndex]);
     exit;
    end;
-  end;
-  if SDL_IsGameController(pIndex)<>0 then begin
-   GameController:=SDL_GameControllerOpen(pIndex);
-   if assigned(GameController) then begin
-    Joystick:=SDL_GameControllerGetJoystick(GameController);
-   end;
-  end else begin
-   GameController:=nil;
-   Joystick:=SDL_JoystickOpen(pIndex);
-  end;
-  if assigned(Joystick) then begin
-   result:=TVulkanApplicationJoystick.Create;
-   TVulkanApplicationJoystick(result).fInput:=self;
-   TVulkanApplicationJoystick(result).fIndex:=pIndex;
-   TVulkanApplicationJoystick(result).fJoystick:=Joystick;
-   TVulkanApplicationJoystick(result).fGameController:=GameController;
-   fJoysticks.Add(result);
-   TVulkanApplicationJoystick(result).Initialize;
   end;
  end;
 end;
@@ -4818,8 +4806,12 @@ begin
 end;
 
 procedure TVulkanApplication.ProcessMessages;
-var NowTime:TVulkanApplicationHighResolutionTime;
-    OK:boolean;
+var Index,Counter:TVkInt32;
+    Joystick:TVulkanApplicationJoystick;
+    SDLJoystick:PSDL_Joystick;
+    SDLGameController:PSDL_GameController;
+    NowTime:TVulkanApplicationHighResolutionTime;
+    OK,Found:boolean;
 begin
 
  if fCurrentVisibleMouseCursor<>ord(fVisibleMouseCursor) then begin
@@ -4944,6 +4936,56 @@ begin
        end;
       end;
      end;
+    end;
+    SDL_JOYDEVICEADDED:begin
+     Index:=fEvent.jdevice.which;
+     Found:=false;
+     for Counter:=0 to fInput.fJoysticks.Count-1 do begin
+      Joystick:=TVulkanApplicationJoystick(fInput.fJoysticks.Items[Counter]);
+      if assigned(Joystick) and (Joystick.Index=Index) then begin
+       Found:=true;
+       break;
+      end;
+     end;
+     if not Found then begin
+      if SDL_IsGameController(Index)<>0 then begin
+       SDLGameController:=SDL_GameControllerOpen(Index);
+       if assigned(SDLGameController) then begin
+        SDLJoystick:=SDL_GameControllerGetJoystick(SDLGameController);
+       end;
+      end else begin
+       SDLGameController:=nil;
+       SDLJoystick:=SDL_JoystickOpen(Index);
+      end;
+      if assigned(SDLJoystick) then begin
+       Joystick:=TVulkanApplicationJoystick.Create(Index,SDLJoystick,SDLGameController);
+       if Index<fInput.fJoysticks.Count then begin
+        fInput.fJoysticks.Items[Index]:=Joystick;
+       end else begin
+        while fInput.fJoysticks.Count<Index do begin
+         fInput.fJoysticks.Add(nil);
+        end;
+        fInput.fJoysticks.Add(Joystick);
+       end;
+       Joystick.Initialize;
+      end;
+     end;
+    end;
+    SDL_JOYDEVICEREMOVED:begin
+     for Counter:=0 to fInput.fJoysticks.Count-1 do begin
+      Joystick:=TVulkanApplicationJoystick(fInput.fJoysticks.Items[Counter]);
+      if assigned(Joystick) and (Joystick.ID=fEvent.jdevice.which) then begin
+       Joystick.Free;
+       fInput.fJoysticks.Delete(Counter);
+       break;
+      end;
+     end;
+    end;
+    SDL_CONTROLLERDEVICEADDED:begin
+    end;
+    SDL_CONTROLLERDEVICEREMOVED:begin
+    end;
+    SDL_CONTROLLERDEVICEREMAPPED:begin
     end;
     SDL_KEYDOWN:begin
      OK:=true;
@@ -5144,6 +5186,12 @@ begin
  fCurrentHeight:=fHeight;
 
  fCurrentVSync:=ord(fVSync);
+
+ SDL_EventState(SDL_MOUSEMOTION,SDL_ENABLE);
+ SDL_EventState(SDL_MOUSEBUTTONDOWN,SDL_ENABLE);
+ SDL_EventState(SDL_KEYDOWN,SDL_ENABLE);
+ SDL_EventState(SDL_QUITEV,SDL_ENABLE);
+ SDL_EventState(SDL_WINDOWEVENT,SDL_ENABLE);
 
  try
 
