@@ -1,7 +1,7 @@
 @echo off 
 SET PATH=c:\FPC\3.1.1\bin\i386-win32\
 SET nodosfilewarning=1
-del examples_i386_win32_release_fpc_dynamically_linked.exe
+del examples_i386_win32_release_fpc_statically_linked.exe
 del *.a
 del *.ppu
 del *.o
