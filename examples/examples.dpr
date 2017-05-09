@@ -64,12 +64,6 @@ begin
      end;
      result:=true;
     end;
-    SDLK_F4:begin
-     if ((pEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) and (pEvent.key.repeat_=0) then begin
-      Terminate;
-      result:=true;
-     end;
-    end;
    end;
   end;
  end;

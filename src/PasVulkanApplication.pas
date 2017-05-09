@@ -90,6 +90,396 @@ uses {$if defined(Unix)}
 
 const MaxSwapChainImages=3;
 
+      LOG_NONE=0;
+      LOG_ERROR=1;
+      LOG_INFO=2;
+      LOG_DEBUG=3;
+
+      EVENT_NONE=0;
+      EVENT_KEY_DOWN=1;
+      EVENT_KEY_UP=2;
+      EVENT_KEY_TYPED=3;
+      EVENT_TOUCH_DOWN=4;
+      EVENT_TOUCH_UP=5;
+      EVENT_TOUCH_DRAGGED=6;
+      EVENT_MOUSE_MOVED=7;
+      EVENT_SCROLLED=8;
+
+      KEYCODE_ANYKEY=-1;
+      KEYCODE_UNKNOWN=0;
+      KEYCODE_FIRST=0;
+      KEYCODE_BACKSPACE=8;
+      KEYCODE_TAB=9;
+      KEYCODE_RETURN=13;
+      KEYCODE_PAUSE=19;
+      KEYCODE_ESCAPE=27;
+      KEYCODE_SPACE=32;
+      KEYCODE_EXCLAIM=33;
+      KEYCODE_QUOTEDBL=34;
+      KEYCODE_HASH=35;
+      KEYCODE_DOLLAR=36;
+      KEYCODE_AMPERSAND=38;
+      KEYCODE_QUOTE=39;
+      KEYCODE_LEFTPAREN=40;
+      KEYCODE_RIGHTPAREN=41;
+      KEYCODE_ASTERISK=42;
+      KEYCODE_PLUS=43;
+      KEYCODE_COMMA=44;
+      KEYCODE_MINUS=45;
+      KEYCODE_PERIOD=46;
+      KEYCODE_SLASH=47;
+      KEYCODE_0=48;
+      KEYCODE_1=49;
+      KEYCODE_2=50;
+      KEYCODE_3=51;
+      KEYCODE_4=52;
+      KEYCODE_5=53;
+      KEYCODE_6=54;
+      KEYCODE_7=55;
+      KEYCODE_8=56;
+      KEYCODE_9=57;
+      KEYCODE_COLON=58;
+      KEYCODE_SEMICOLON=59;
+      KEYCODE_LESS=60;
+      KEYCODE_EQUALS=61;
+      KEYCODE_GREATER=62;
+      KEYCODE_QUESTION=63;
+      KEYCODE_AT=64;
+      KEYCODE_LEFTBRACKET=91;
+      KEYCODE_BACKSLASH=92;
+      KEYCODE_RIGHTBRACKET=93;
+      KEYCODE_CARET=94;
+      KEYCODE_UNDERSCORE=95;
+      KEYCODE_BACKQUOTE=96;
+      KEYCODE_a=97;
+      KEYCODE_b=98;
+      KEYCODE_c=99;
+      KEYCODE_d=100;
+      KEYCODE_e=101;
+      KEYCODE_f=102;
+      KEYCODE_g=103;
+      KEYCODE_h=104;
+      KEYCODE_i=105;
+      KEYCODE_j=106;
+      KEYCODE_k=107;
+      KEYCODE_l=108;
+      KEYCODE_m=109;
+      KEYCODE_n=110;
+      KEYCODE_o=111;
+      KEYCODE_p=112;
+      KEYCODE_q=113;
+      KEYCODE_r=114;
+      KEYCODE_s=115;
+      KEYCODE_t=116;
+      KEYCODE_u=117;
+      KEYCODE_v=118;
+      KEYCODE_w=119;
+      KEYCODE_x=120;
+      KEYCODE_y=121;
+      KEYCODE_z=122;
+      KEYCODE_DELETE=177;
+      KEYCODE_F1=256;
+      KEYCODE_F2=257;
+      KEYCODE_F3=258;
+      KEYCODE_F4=259;
+      KEYCODE_F5=260;
+      KEYCODE_F6=261;
+      KEYCODE_F7=262;
+      KEYCODE_F8=263;
+      KEYCODE_F9=264;
+      KEYCODE_F10=265;
+      KEYCODE_F11=266;
+      KEYCODE_F12=267;
+      KEYCODE_F13=268;
+      KEYCODE_F14=269;
+      KEYCODE_F15=270;
+      KEYCODE_F16=271;
+      KEYCODE_F17=272;
+      KEYCODE_F18=273;
+      KEYCODE_F19=274;
+      KEYCODE_F20=275;
+      KEYCODE_F21=276;
+      KEYCODE_F22=277;
+      KEYCODE_F23=278;
+      KEYCODE_F24=279;
+      KEYCODE_KP0=280;
+      KEYCODE_KP1=281;
+      KEYCODE_KP2=282;
+      KEYCODE_KP3=283;
+      KEYCODE_KP4=284;
+      KEYCODE_KP5=285;
+      KEYCODE_KP6=286;
+      KEYCODE_KP7=287;
+      KEYCODE_KP8=288;
+      KEYCODE_KP9=289;
+      KEYCODE_KP_PERIOD=290;
+      KEYCODE_KP_DIVIDE=291;
+      KEYCODE_KP_MULTIPLY=292;
+      KEYCODE_KP_MINUS=293;
+      KEYCODE_KP_PLUS=294;
+      KEYCODE_KP_ENTER=295;
+      KEYCODE_KP_EQUALS=296;
+      KEYCODE_UP=297;
+      KEYCODE_DOWN=298;
+      KEYCODE_RIGHT=299;
+      KEYCODE_LEFT=300;
+      KEYCODE_INSERT=301;
+      KEYCODE_HOME=302;
+      KEYCODE_END=303;
+      KEYCODE_PAGEUP=304;
+      KEYCODE_PAGEDOWN=305;
+      KEYCODE_CAPSLOCK=306;
+      KEYCODE_NUMLOCK=307;
+      KEYCODE_SCROLLOCK=308;
+      KEYCODE_RSHIFT=309;
+      KEYCODE_LSHIFT=310;
+      KEYCODE_RCTRL=311;
+      KEYCODE_LCTRL=312;
+      KEYCODE_RALT=313;
+      KEYCODE_LALT=314;
+      KEYCODE_MODE=315;
+      KEYCODE_HELP=316;
+      KEYCODE_PRINTSCREEN=317;
+      KEYCODE_SYSREQ=318;
+      KEYCODE_MENU=319;
+      KEYCODE_POWER=320;
+      KEYCODE_APPLICATION=321;
+      KEYCODE_SELECT=322;
+      KEYCODE_STOP=323;
+      KEYCODE_AGAIN=324;
+      KEYCODE_UNDO=325;
+      KEYCODE_CUT=326;
+      KEYCODE_COPY=327;
+      KEYCODE_PASTE=328;
+      KEYCODE_FIND=329;
+      KEYCODE_MUTE=330;
+      KEYCODE_VOLUMEUP=331;
+      KEYCODE_VOLUMEDOWN=332;
+      KEYCODE_KP_EQUALSAS400=333;
+      KEYCODE_ALTERASE=334;
+      KEYCODE_CANCEL=335;
+      KEYCODE_CLEAR=336;
+      KEYCODE_PRIOR=337;
+      KEYCODE_RETURN2=338;
+      KEYCODE_SEPARATOR=339;
+      KEYCODE_OUT=340;
+      KEYCODE_OPER=341;
+      KEYCODE_CLEARAGAIN=342;
+      KEYCODE_CRSEL=343;
+      KEYCODE_EXSEL=344;
+      KEYCODE_KP_00=345;
+      KEYCODE_KP_000=346;
+      KEYCODE_THOUSANDSSEPARATOR=34;
+      KEYCODE_DECIMALSEPARATOR=348;
+      KEYCODE_CURRENCYUNIT=349;
+      KEYCODE_CURRENCYSUBUNIT=350;
+      KEYCODE_KP_LEFTPAREN=351;
+      KEYCODE_KP_RIGHTPAREN=352;
+      KEYCODE_KP_LEFTBRACE=353;
+      KEYCODE_KP_RIGHTBRACE=354;
+      KEYCODE_KP_TAB=355;
+      KEYCODE_KP_BACKSPACE=356;
+      KEYCODE_KP_A=357;
+      KEYCODE_KP_B=358;
+      KEYCODE_KP_C=359;
+      KEYCODE_KP_D=360;
+      KEYCODE_KP_E=361;
+      KEYCODE_KP_F=362;
+      KEYCODE_KP_XOR=363;
+      KEYCODE_KP_POWER=364;
+      KEYCODE_KP_PERCENT=365;
+      KEYCODE_KP_LESS=366;
+      KEYCODE_KP_GREATER=368;
+      KEYCODE_KP_AMPERSAND=369;
+      KEYCODE_KP_DBLAMPERSAND=370;
+      KEYCODE_KP_VERTICALBAR=371;
+      KEYCODE_KP_DBLVERTICALBAR=372;
+      KEYCODE_KP_COLON=373;
+      KEYCODE_KP_HASH=374;
+      KEYCODE_KP_SPACE=375;
+      KEYCODE_KP_AT=376;
+      KEYCODE_KP_EXCLAM=377;
+      KEYCODE_KP_MEMSTORE=378;
+      KEYCODE_KP_MEMRECALL=379;
+      KEYCODE_KP_MEMCLEAR=380;
+      KEYCODE_KP_MEMADD=381;
+      KEYCODE_KP_MEMSUBTRACT=382;
+      KEYCODE_KP_MEMMULTIPLY=383;
+      KEYCODE_KP_MEMDIVIDE=384;
+      KEYCODE_KP_PLUSMINUS=385;
+      KEYCODE_KP_CLEAR=386;
+      KEYCODE_KP_CLEARENTRY=387;
+      KEYCODE_KP_BINARY=388;
+      KEYCODE_KP_OCTAL=389;
+      KEYCODE_KP_DECIMAL=390;
+      KEYCODE_KP_HEXADECIMAL=391;
+      KEYCODE_LGUI=392;
+      KEYCODE_RGUI=393;
+      KEYCODE_AUDIONEXT=394;
+      KEYCODE_AUDIOPREV=395;
+      KEYCODE_AUDIOSTOP=396;
+      KEYCODE_AUDIOPLAY=397;
+      KEYCODE_AUDIOMUTE=398;
+      KEYCODE_MEDIASELECT=399;
+      KEYCODE_WWW=400;
+      KEYCODE_MAIL=401;
+      KEYCODE_CALCULATOR=402;
+      KEYCODE_COMPUTER=403;
+      KEYCODE_AC_SEARCH=404;
+      KEYCODE_AC_HOME=405;
+      KEYCODE_AC_BACK=406;
+      KEYCODE_AC_FORWARD=407;
+      KEYCODE_AC_STOP=408;
+      KEYCODE_AC_REFRESH=409;
+      KEYCODE_AC_BOOKMARKS=410;
+      KEYCODE_BRIGHTNESSDOWN=411;
+      KEYCODE_BRIGHTNESSUP=412;
+      KEYCODE_DISPLAYSWITCH=413;
+      KEYCODE_KBDILLUMTOGGLE=414;
+      KEYCODE_KBDILLUMDOWN=415;
+      KEYCODE_KBDILLUMUP=416;
+      KEYCODE_EJECT=417;
+      KEYCODE_SLEEP=418;
+      KEYCODE_INTERNATIONAL1=419;
+      KEYCODE_INTERNATIONAL2=420;
+      KEYCODE_INTERNATIONAL3=421;
+      KEYCODE_INTERNATIONAL4=422;
+      KEYCODE_INTERNATIONAL5=423;
+      KEYCODE_INTERNATIONAL6=424;
+      KEYCODE_INTERNATIONAL7=425;
+      KEYCODE_INTERNATIONAL8=426;
+      KEYCODE_INTERNATIONAL9=427;
+      KEYCODE_LANG1=428;
+      KEYCODE_LANG2=429;
+      KEYCODE_LANG3=430;
+      KEYCODE_LANG4=431;
+      KEYCODE_LANG5=432;
+      KEYCODE_LANG6=433;
+      KEYCODE_LANG7=434;
+      KEYCODE_LANG8=435;
+      KEYCODE_LANG9=436;
+      KEYCODE_LOCKINGCAPSLOCK=437;
+      KEYCODE_LOCKINGNUMLOCK=438;
+      KEYCODE_LOCKINGSCROLLLOCK=439;
+      KEYCODE_NONUSBACKSLASH=440;
+      KEYCODE_NONUSHASH=441;
+      KEYCODE_BACK=442;
+      KEYCODE_CAMERA=443;
+      KEYCODE_CALL=444;
+      KEYCODE_CENTER=445;
+      KEYCODE_FORWARD_DEL=446;
+      KEYCODE_DPAD_CENTER=447;
+      KEYCODE_DPAD_LEFT=448;
+      KEYCODE_DPAD_RIGHT=449;
+      KEYCODE_DPAD_DOWN=450;
+      KEYCODE_DPAD_UP=451;
+      KEYCODE_ENDCALL=452;
+      KEYCODE_ENVELOPE=453;
+      KEYCODE_EXPLORER=454;
+      KEYCODE_FOCUS=455;
+      KEYCODE_GRAVE=456;
+      KEYCODE_HEADSETHOOK=457;
+      KEYCODE_AUDIO_FAST_FORWARD=458;
+      KEYCODE_AUDIO_REWIND=459;
+      KEYCODE_NOTIFICATION=460;
+      KEYCODE_PICTSYMBOLS=461;
+      KEYCODE_SWITCH_CHARSET=462;
+      KEYCODE_BUTTON_CIRCLE=463;
+      KEYCODE_BUTTON_A=464;
+      KEYCODE_BUTTON_B=465;
+      KEYCODE_BUTTON_C=466;
+      KEYCODE_BUTTON_X=467;
+      KEYCODE_BUTTON_Y=468;
+      KEYCODE_BUTTON_Z=469;
+      KEYCODE_BUTTON_L1=470;
+      KEYCODE_BUTTON_R1=471;
+      KEYCODE_BUTTON_L2=472;
+      KEYCODE_BUTTON_R2=473;
+      KEYCODE_BUTTON_THUMBL=474;
+      KEYCODE_BUTTON_THUMBR=475;
+      KEYCODE_BUTTON_START=476;
+      KEYCODE_BUTTON_SELECT=477;
+      KEYCODE_BUTTON_MODE=478;
+
+      KEYMODIFIER_NONE=$0000;
+      KEYMODIFIER_LSHIFT=$0001;
+      KEYMODIFIER_RSHIFT=$0002;
+      KEYMODIFIER_LCTRL=$0040;
+      KEYMODIFIER_RCTRL=$0080;
+      KEYMODIFIER_LALT=$0100;
+      KEYMODIFIER_RALT=$0200;
+      KEYMODIFIER_LMETA=$0400;
+      KEYMODIFIER_RMETA=$0800;
+      KEYMODIFIER_NUM=$1000;
+      KEYMODIFIER_CAPS=$2000;
+      KEYMODIFIER_MODE=$4000;
+      KEYMODIFIER_RESERVED=$8000;
+
+      KEYMODIFIER_CTRL=(KEYMODIFIER_LCTRL or KEYMODIFIER_RCTRL);
+      KEYMODIFIER_SHIFT=(KEYMODIFIER_LSHIFT or KEYMODIFIER_RSHIFT);
+      KEYMODIFIER_ALT=(KEYMODIFIER_LALT or KEYMODIFIER_RALT);
+      KEYMODIFIER_META=(KEYMODIFIER_LMETA or KEYMODIFIER_RMETA);
+
+      BUTTON_NONE=0;
+      BUTTON_LEFT=1;
+      BUTTON_MIDDLE=2;
+      BUTTON_RIGHT=3;
+      BUTTON_WHEELDOWN=4;
+      BUTTON_WHEELUP=5;
+
+      ORIENTATION_LANDSCAPE=0;
+      ORIENTATION_PORTRAIT=1;
+
+      PERIPHERAL_HARDWAREKEYBOARD=0;
+      PERIPHERAL_ONSCEENKEYBOARD=1;
+      PERIPHERAL_MULTITOUCHSCREEN=2;
+      PERIPHERAL_ACCELEROMETER=3;
+      PERIPHERAL_COMPASS=4;
+      PERIPHERAL_VIBRATOR=5;
+
+      JOYSTICK_HAT_NONE=0;
+      JOYSTICK_HAT_LEFTUP=1;
+      JOYSTICK_HAT_UP=2;
+      JOYSTICK_HAT_RIGHTUP=3;
+      JOYSTICK_HAT_LEFT=4;
+      JOYSTICK_HAT_CENTERED=5;
+      JOYSTICK_HAT_RIGHT=6;
+      JOYSTICK_HAT_LEFTDOWN=7;
+      JOYSTICK_HAT_DOWN=8;
+      JOYSTICK_HAT_RIGHTDOWN=9;
+
+      GAME_CONTROLLER_BINDTYPE_NONE=0;
+      GAME_CONTROLLER_BINDTYPE_BUTTON=1;
+      GAME_CONTROLLER_BINDTYPE_AXIS=2;
+      GAME_CONTROLLER_BINDTYPE_HAT=3;
+
+      GAME_CONTROLLER_AXIS_INVALID=-1;
+      GAME_CONTROLLER_AXIS_LEFTX=0;
+      GAME_CONTROLLER_AXIS_LEFTY=1;
+      GAME_CONTROLLER_AXIS_RIGHTX=2;
+      GAME_CONTROLLER_AXIS_RIGHTY=3;
+      GAME_CONTROLLER_AXIS_TRIGGERLEFT=4;
+      GAME_CONTROLLER_AXIS_TRIGGERRIGHT=5;
+      GAME_CONTROLLER_AXIS_MAX=6;
+
+      GAME_CONTROLLER_BUTTON_INVALID=-1;
+      GAME_CONTROLLER_BUTTON_A=0;
+      GAME_CONTROLLER_BUTTON_B=1;
+      GAME_CONTROLLER_BUTTON_X=2;
+      GAME_CONTROLLER_BUTTON_Y=3;
+      GAME_CONTROLLER_BUTTON_BACK=4;
+      GAME_CONTROLLER_BUTTON_GUIDE=5;
+      GAME_CONTROLLER_BUTTON_START=6;
+      GAME_CONTROLLER_BUTTON_LEFTSTICK=7;
+      GAME_CONTROLLER_BUTTON_RIGHTSTICK=8;
+      GAME_CONTROLLER_BUTTON_LEFTSHOULDER=9;
+      GAME_CONTROLLER_BUTTON_RIGHTSHOULDER=10;
+      GAME_CONTROLLER_BUTTON_DPAD_UP=11;
+      GAME_CONTROLLER_BUTTON_DPAD_DOWN=12;
+      GAME_CONTROLLER_BUTTON_DPAD_LEFT=13;
+      GAME_CONTROLLER_BUTTON_DPAD_RIGHT=14;
+      GAME_CONTROLLER_BUTTON_MAX=15;
+
 type EVulkanApplication=class(Exception);
 
      TVulkanApplication=class;
@@ -98,41 +488,245 @@ type EVulkanApplication=class(Exception);
 
      TVulkanApplicationOnStep=procedure(const fVulkanApplication:TVulkanApplication) of object;
 
-     PPVulkanHighResolutionTime=^PVulkanHighResolutionTime;
-     PVulkanHighResolutionTime=^TVulkanHighResolutionTime;
-     TVulkanHighResolutionTime=TVkInt64;
+     PPVulkanApplicationHighResolutionTime=^PVulkanApplicationHighResolutionTime;
+     PVulkanApplicationHighResolutionTime=^TVulkanApplicationHighResolutionTime;
+     TVulkanApplicationHighResolutionTime=TVkInt64;
 
-     TVulkanHighResolutionTimer=class
+     TVulkanApplicationHighResolutionTimer=class
       private
        fFrequency:TVkInt64;
        fFrequencyShift:TVkInt32;
-       fMillisecondInterval:TVulkanHighResolutionTime;
-       fTwoMillisecondsInterval:TVulkanHighResolutionTime;
-       fFourMillisecondsInterval:TVulkanHighResolutionTime;
-       fQuarterSecondInterval:TVulkanHighResolutionTime;
-       fMinuteInterval:TVulkanHighResolutionTime;
-       fHourInterval:TVulkanHighResolutionTime;
+       fMillisecondInterval:TVulkanApplicationHighResolutionTime;
+       fTwoMillisecondsInterval:TVulkanApplicationHighResolutionTime;
+       fFourMillisecondsInterval:TVulkanApplicationHighResolutionTime;
+       fQuarterSecondInterval:TVulkanApplicationHighResolutionTime;
+       fMinuteInterval:TVulkanApplicationHighResolutionTime;
+       fHourInterval:TVulkanApplicationHighResolutionTime;
       public
        constructor Create;
        destructor Destroy; override;
        function GetTime:TVkInt64;
-       procedure Sleep(const pDelay:TVulkanHighResolutionTime);
-       function ToFloatSeconds(const pTime:TVulkanHighResolutionTime):double;
-       function FromFloatSeconds(const pTime:double):TVulkanHighResolutionTime;
-       function ToMilliseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
-       function FromMilliseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
-       function ToMicroseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
-       function FromMicroseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
-       function ToNanoseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
-       function FromNanoseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
+       procedure Sleep(const pDelay:TVulkanApplicationHighResolutionTime);
+       function ToFloatSeconds(const pTime:TVulkanApplicationHighResolutionTime):double;
+       function FromFloatSeconds(const pTime:double):TVulkanApplicationHighResolutionTime;
+       function ToMilliseconds(const pTime:TVulkanApplicationHighResolutionTime):TVkInt64;
+       function FromMilliseconds(const pTime:TVkInt64):TVulkanApplicationHighResolutionTime;
+       function ToMicroseconds(const pTime:TVulkanApplicationHighResolutionTime):TVkInt64;
+       function FromMicroseconds(const pTime:TVkInt64):TVulkanApplicationHighResolutionTime;
+       function ToNanoseconds(const pTime:TVulkanApplicationHighResolutionTime):TVkInt64;
+       function FromNanoseconds(const pTime:TVkInt64):TVulkanApplicationHighResolutionTime;
        property Frequency:TVkInt64 read fFrequency;
-       property MillisecondInterval:TVulkanHighResolutionTime read fMillisecondInterval;
-       property TwoMillisecondsInterval:TVulkanHighResolutionTime read fTwoMillisecondsInterval;
-       property FourMillisecondsInterval:TVulkanHighResolutionTime read fFourMillisecondsInterval;
-       property QuarterSecondInterval:TVulkanHighResolutionTime read fQuarterSecondInterval;
-       property SecondInterval:TVulkanHighResolutionTime read fFrequency;
-       property MinuteInterval:TVulkanHighResolutionTime read fMinuteInterval;
-       property HourInterval:TVulkanHighResolutionTime read fHourInterval;
+       property MillisecondInterval:TVulkanApplicationHighResolutionTime read fMillisecondInterval;
+       property TwoMillisecondsInterval:TVulkanApplicationHighResolutionTime read fTwoMillisecondsInterval;
+       property FourMillisecondsInterval:TVulkanApplicationHighResolutionTime read fFourMillisecondsInterval;
+       property QuarterSecondInterval:TVulkanApplicationHighResolutionTime read fQuarterSecondInterval;
+       property SecondInterval:TVulkanApplicationHighResolutionTime read fFrequency;
+       property MinuteInterval:TVulkanApplicationHighResolutionTime read fMinuteInterval;
+       property HourInterval:TVulkanApplicationHighResolutionTime read fHourInterval;
+     end;
+
+     TVulkanApplicationInputProcessor=class
+      public
+       constructor Create; virtual;
+       destructor Destroy; override;
+       function KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean; virtual;
+       function KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean; virtual;
+       function KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean; virtual;
+       function TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; virtual;
+       function TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; virtual;
+       function TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean; virtual;
+       function MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean; virtual;
+       function Scrolled(const pAmount:TVkInt32):boolean; virtual;
+     end;
+
+     PVulkanApplicationInputProcessorQueueEvent=^TVulkanApplicationInputProcessorQueueEvent;
+     TVulkanApplicationInputProcessorQueueEvent=record
+      Next:PVulkanApplicationInputProcessorQueueEvent;
+      Time:TVkInt64;
+      case Event:TVkInt32 of
+       EVENT_KEY_DOWN,EVENT_KEY_UP,EVENT_KEY_TYPED:(
+        KeyCode:TVkInt32;
+        KeyModifier:TVkInt32;
+       );
+       EVENT_TOUCH_DOWN,EVENT_TOUCH_UP,EVENT_TOUCH_DRAGGED:(
+        ScreenX:single;
+        ScreenY:single;
+        Pressure:single;
+        PointerID:TVkInt32;
+        Button:TVkInt32;
+       );
+       EVENT_MOUSE_MOVED:(
+        MouseScreenX:TVkInt32;
+        MouseScreenY:TVkInt32;
+       );
+       EVENT_SCROLLED:(
+        Amount:TVkInt32;
+       );
+     end;
+
+     TVulkanApplicationInputProcessorQueue=class(TVulkanApplicationInputProcessor)
+      private
+       fProcessor:TVulkanApplicationInputProcessor;
+       fCriticalSection:TCriticalSection;
+       fQueuedEvents:PVulkanApplicationInputProcessorQueueEvent;
+       fLastQueuedEvent:PVulkanApplicationInputProcessorQueueEvent;
+       fFreeEvents:PVulkanApplicationInputProcessorQueueEvent;
+       fCurrentEventTime:TVkInt64;
+       function NewEvent:PVulkanApplicationInputProcessorQueueEvent;
+       procedure PushEvent(Event:PVulkanApplicationInputProcessorQueueEvent);
+      public
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure SetProcessor(pProcessor:TVulkanApplicationInputProcessor);
+       function GetProcessor:TVulkanApplicationInputProcessor;
+       procedure Drain;
+       function GetCurrentEventTime:TVkInt64;
+       function KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+       function TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+       function TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean; override;
+       function MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean; override;
+       function Scrolled(const pAmount:TVkInt32):boolean; override;
+     end;
+
+     TVulkanApplicationInputMultiplexer=class(TVulkanApplicationInputProcessor)
+      private
+       fProcessors:TList;
+      public
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure AddProcessor(const pProcessor:TVulkanApplicationInputProcessor);
+       procedure AddProcessors(const pProcessors:array of TVulkanApplicationInputProcessor);
+       procedure InsertProcessor(const pIndex:TVkInt32;const pProcessor:TVulkanApplicationInputProcessor);
+       procedure RemoveProcessor(const pProcessor:TVulkanApplicationInputProcessor); overload;
+       procedure RemoveProcessor(const pIndex:TVkInt32); overload;
+       procedure ClearProcessors;
+       function CountProcessors:TVkInt32;
+       function KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+       function TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+       function TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean; override;
+       function MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean; override;
+       function Scrolled(const pAmount:TVkInt32):boolean; override;
+     end;
+
+     TVulkanApplicationInputTextInputCallback=procedure(pSuccessful:boolean;const pText:ansistring) of object;
+
+     TVulkanApplicationInput=class;
+
+     TVulkanApplicationJoystick=class
+      private
+       fInput:TVulkanApplicationInput;
+       fIndex:TVkInt32;
+       fJoystick:PSDL_Joystick;
+       fGameController:PSDL_GameController;
+       fCountAxes:TVkInt32;
+       fCountBalls:TVkInt32;
+       fCountHats:TVkInt32;
+       fCountButtons:TVkInt32;
+       procedure Initialize;
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+       function IsGameController:boolean;
+       function Index:TVkInt32;
+       function ID:TVkInt32;
+       function Name:ansistring;
+       function GUID:TGUID;
+       function DeviceGUID:TGUID;
+       function CountAxes:TVkInt32;
+       function CountBalls:TVkInt32;
+       function CountHats:TVkInt32;
+       function CountButtons:TVkInt32;
+       procedure Update;
+       function GetAxis(const pAxisIndex:TVkInt32):TVkInt32;
+       function GetBall(const pBallIndex:TVkInt32;out pDeltaX,pDeltaY:TVkInt32):boolean;
+       function GetHat(const pHatIndex:TVkInt32):TVkInt32;
+       function GetButton(const pButtonIndex:TVkInt32):boolean;
+       function IsGameControllerAttached:boolean;
+       function GetGameControllerAxis(const pAxis:TVkInt32):TVkInt32;
+       function GetGameControllerButton(const pButton:TVkInt32):boolean;
+       function GetGameControllerName:ansistring;
+       function GetGameControllerMapping:ansistring;
+     end;
+
+     TVulkanApplicationInput=class
+      private
+       fKeyCodeNames:array[-1..1023] of ansistring;
+       fCriticalSection:TCriticalSection;
+       fProcessor:TVulkanApplicationInputProcessor;
+       fEvents:array of TSDL_Event;
+       fEventTimes:array of int64;
+       fEventCount:TVkInt32;
+       fCurrentEventTime:int64;
+       fKeyDown:array[0..$ffff] of boolean;
+       fKeyDownCount:TVkInt32;
+       fPointerX:array[0..$ffff] of single;
+       fPointerY:array[0..$ffff] of single;
+       fPointerDown:array[0..$ffff] of boolean;
+       fPointerJustDown:array[0..$ffff] of boolean;
+       fPointerPressure:array[0..$ffff] of single;
+       fPointerDeltaX:array[0..$ffff] of single;
+       fPointerDeltaY:array[0..$ffff] of single;
+       fPointerDownCount:TVkInt32;
+       fMouseX:TVkInt32;
+       fMouseY:TVkInt32;
+       fMouseDown:TVkInt32;
+       fMouseJustDown:TVkInt32;
+       fMouseDeltaX:TVkInt32;
+       fMouseDeltaY:TVkInt32;
+       fJustTouched:longbool;
+       fMaxPointerID:TVkInt32;
+       fJoysticks:TList;
+       function TranslateSDLKeyCode(const pKeyCode,pScanCode:TVkInt32):TVkInt32;
+       function TranslateSDLKeyModifier(const pKeyModifier:TVkInt32):TVkInt32;
+       procedure AddEvent(const pEvent:TSDL_Event);
+       procedure ProcessEvents;
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+       function GetAccelerometerX:single;
+       function GetAccelerometerY:single;
+       function GetAccelerometerZ:single;
+       function GetOrientationAzimuth:single;
+       function GetOrientationPitch:single;
+       function GetOrientationRoll:single;
+       function GetMaxPointerID:TVkInt32;
+       function GetPointerX(const pPointerID:TVkInt32=0):single;
+       function GetPointerDeltaX(const pPointerID:TVkInt32=0):single;
+       function GetPointerY(const pPointerID:TVkInt32=0):single;
+       function GetPointerDeltaY(const pPointerID:TVkInt32=0):single;
+       function GetPointerPressure(const pPointerID:TVkInt32=0):single;
+       function IsPointerTouched(const pPointerID:TVkInt32=0):boolean;
+       function IsPointerJustTouched(const pPointerID:TVkInt32=0):boolean;
+       function IsTouched:boolean;
+       function JustTouched:boolean;
+       function IsButtonPressed(const pButton:TVkInt32):boolean;
+       function IsKeyPressed(const pKeyCode:TVkInt32):boolean;
+       function GetKeyName(const pKeyCode:TVkInt32):ansistring;
+       function GetKeyModifier:TVkInt32;
+       procedure GetTextInput(const pCallback:TVulkanApplicationInputTextInputCallback;const pTitle,pText:ansistring;const pPlaceholder:ansistring='');
+       procedure SetOnscreenKeyboardVisible(const pVisible:boolean);
+       procedure Vibrate(const pMilliseconds:TVkInt32); overload;
+       procedure Vibrate(const pPattern:array of TVkInt32;const pRepeats:TVkInt32); overload;
+       procedure CancelVibrate;
+       procedure GetRotationMatrix(const pMatrix3x3:pointer);
+       function GetCurrentEventTime:TVkInt64;
+       procedure SetCatchBackKey(const pCatchBack:boolean);
+       procedure SetCatchMenuKey(const pCatchMenu:boolean);
+       procedure SetInputProcessor(const pProcessor:TVulkanApplicationInputProcessor);
+       function GetInputProcessor:TVulkanApplicationInputProcessor;
+       function IsPeripheralAvailable(const pPeripheral:TVkInt32):boolean;
+       function GetNativeOrientation:TVkInt32;
+       procedure SetCursorCatched(const pCatched:boolean);
+       function IsCursorCatched:boolean;
+       procedure SetCursorPosition(const pX,pY:TVkInt32);
+       function GetJoystickCount:TVkInt32;
+       function GetJoystick(const pIndex:TVkInt32):TVulkanApplicationJoystick;
      end;
 
      TVulkanPresentationSurface=class;
@@ -247,9 +841,11 @@ type EVulkanApplication=class(Exception);
        fTitle:string;
        fVersion:TVkUInt32;
 
-       fHighResolutionTimer:TVulkanHighResolutionTimer;
+       fHighResolutionTimer:TVulkanApplicationHighResolutionTimer;
 
        fAssets:TVulkanApplicationAssets;
+
+       fInput:TVulkanApplicationInput;
 
        fCurrentWidth:TSDLInt32;
        fCurrentHeight:TSDLInt32;
@@ -274,7 +870,13 @@ type EVulkanApplication=class(Exception);
 
        fSDLDisplayMode:TSDL_DisplayMode;
        fSurfaceWindow:PSDL_Window;
+
        fEvent:TSDL_Event;
+
+       fLastPressedKeyEvent:TSDL_Event;
+       fKeyRepeatTimeAccumulator:TVulkanApplicationHighResolutionTime;
+       fKeyRepeatInterval:TVulkanApplicationHighResolutionTime;
+       fKeyRepeatInitialInterval:TVulkanApplicationHighResolutionTime;
 
        fScreenWidth:TSDLInt32;
        fScreenHeight:TSDLInt32;
@@ -333,9 +935,9 @@ type EVulkanApplication=class(Exception);
 
        fHasLastTime:boolean;
 
-       fLastTime:TVulkanHighResolutionTime;
+       fLastTime:TVulkanApplicationHighResolutionTime;
 
-       fDeltaTime:TVulkanHighResolutionTime;
+       fDeltaTime:TVulkanApplicationHighResolutionTime;
 
        procedure InitializeGraphics;
        procedure DeinitializeGraphics;
@@ -372,15 +974,21 @@ type EVulkanApplication=class(Exception);
 
        procedure Run;
 
+       procedure Update(const pDeltaTime:double); virtual;
+
+       procedure Draw; virtual;
+
        procedure Resume; virtual;
 
        procedure Pause; virtual;
 
       published
 
-       property HighResolutionTimer:TVulkanHighResolutionTimer read fHighResolutionTimer;
+       property HighResolutionTimer:TVulkanApplicationHighResolutionTimer read fHighResolutionTimer;
 
        property Assets:TVulkanApplicationAssets read fAssets;
+
+       property Input:TVulkanApplicationInput read fInput;
 
        property Title:string read fTitle write fTitle;
        property Version:TVkUInt32 read fVersion write fVersion;
@@ -466,6 +1074,10 @@ procedure ANativeActivity_onCreate(pActivity:PANativeActivity;pSavedState:pointe
 
 implementation
 
+const BoolToInt:array[boolean] of TVkInt32=(0,1);
+
+      BoolToLongBool:array[boolean] of longbool=(false,true);
+
 {$if defined(Unix)}
 procedure signal_handler(pSignal:cint); cdecl;
 begin
@@ -490,7 +1102,7 @@ begin
 end;
 {$ifend}
 
-constructor TVulkanHighResolutionTimer.Create;
+constructor TVulkanApplicationHighResolutionTimer.Create;
 begin
  inherited Create;
  fFrequencyShift:=0;
@@ -522,12 +1134,12 @@ begin
  fHourInterval:=fFrequency*3600;
 end;
 
-destructor TVulkanHighResolutionTimer.Destroy;
+destructor TVulkanApplicationHighResolutionTimer.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TVulkanHighResolutionTimer.GetTime:TVkInt64;
+function TVulkanApplicationHighResolutionTimer.GetTime:TVkInt64;
 {$ifdef linux}
 var NowTimeSpec:TimeSpec;
     ia,ib:TVkInt64;
@@ -565,7 +1177,7 @@ begin
  result:=result shr fFrequencyShift;
 end;
 
-procedure TVulkanHighResolutionTimer.Sleep(const pDelay:TVkInt64);
+procedure TVulkanApplicationHighResolutionTimer.Sleep(const pDelay:TVkInt64);
 var EndTime,NowTime{$ifdef unix},SleepTime{$endif}:TVkInt64;
 {$ifdef unix}
     req,rem:timespec;
@@ -656,7 +1268,7 @@ begin
  end;
 end;
 
-function TVulkanHighResolutionTimer.ToFloatSeconds(const pTime:TVulkanHighResolutionTime):double;
+function TVulkanApplicationHighResolutionTimer.ToFloatSeconds(const pTime:TVulkanApplicationHighResolutionTime):double;
 begin
  if fFrequency<>0 then begin
   result:=pTime/fFrequency;
@@ -665,7 +1277,7 @@ begin
  end;
 end;
 
-function TVulkanHighResolutionTimer.FromFloatSeconds(const pTime:double):TVulkanHighResolutionTime;
+function TVulkanApplicationHighResolutionTimer.FromFloatSeconds(const pTime:double):TVulkanApplicationHighResolutionTime;
 begin
  if fFrequency<>0 then begin
   result:=trunc(pTime*fFrequency);
@@ -674,7 +1286,7 @@ begin
  end;
 end;
 
-function TVulkanHighResolutionTimer.ToMilliseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
+function TVulkanApplicationHighResolutionTimer.ToMilliseconds(const pTime:TVulkanApplicationHighResolutionTime):TVkInt64;
 begin
  result:=pTime;
  if fFrequency<>1000 then begin
@@ -682,7 +1294,7 @@ begin
  end;
 end;
 
-function TVulkanHighResolutionTimer.FromMilliseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
+function TVulkanApplicationHighResolutionTimer.FromMilliseconds(const pTime:TVkInt64):TVulkanApplicationHighResolutionTime;
 begin
  result:=pTime;
  if fFrequency<>1000 then begin
@@ -690,7 +1302,7 @@ begin
  end;
 end;
 
-function TVulkanHighResolutionTimer.ToMicroseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
+function TVulkanApplicationHighResolutionTimer.ToMicroseconds(const pTime:TVulkanApplicationHighResolutionTime):TVkInt64;
 begin
  result:=pTime;
  if fFrequency<>1000000 then begin
@@ -698,7 +1310,7 @@ begin
  end;
 end;
 
-function TVulkanHighResolutionTimer.FromMicroseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
+function TVulkanApplicationHighResolutionTimer.FromMicroseconds(const pTime:TVkInt64):TVulkanApplicationHighResolutionTime;
 begin
  result:=pTime;
  if fFrequency<>1000000 then begin
@@ -706,7 +1318,7 @@ begin
  end;
 end;
 
-function TVulkanHighResolutionTimer.ToNanoseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
+function TVulkanApplicationHighResolutionTimer.ToNanoseconds(const pTime:TVulkanApplicationHighResolutionTime):TVkInt64;
 begin
  result:=pTime;
  if fFrequency<>1000000000 then begin
@@ -714,11 +1326,2207 @@ begin
  end;
 end;
 
-function TVulkanHighResolutionTimer.FromNanoseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
+function TVulkanApplicationHighResolutionTimer.FromNanoseconds(const pTime:TVkInt64):TVulkanApplicationHighResolutionTime;
 begin
  result:=pTime;
  if fFrequency<>1000000000 then begin
   result:=((pTime*fFrequency)+500000000) div 1000000000;
+ end;
+end;
+
+constructor TVulkanApplicationInputProcessor.Create;
+begin
+end;
+
+destructor TVulkanApplicationInputProcessor.Destroy;
+begin
+end;
+
+function TVulkanApplicationInputProcessor.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TVulkanApplicationInputProcessor.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TVulkanApplicationInputProcessor.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TVulkanApplicationInputProcessor.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TVulkanApplicationInputProcessor.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TVulkanApplicationInputProcessor.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TVulkanApplicationInputProcessor.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TVulkanApplicationInputProcessor.Scrolled(const pAmount:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+constructor TVulkanApplicationInputProcessorQueue.Create;
+begin
+ inherited Create;
+ fProcessor:=nil;
+ fCriticalSection:=TCriticalSection.Create;
+ fQueuedEvents:=nil;
+ fLastQueuedEvent:=nil;
+ fFreeEvents:=nil;
+ fCurrentEventTime:=0;
+end;
+
+destructor TVulkanApplicationInputProcessorQueue.Destroy;
+var CurrentEvent,NextEvent:PVulkanApplicationInputProcessorQueueEvent;
+begin
+ CurrentEvent:=fQueuedEvents;
+ while assigned(CurrentEvent) do begin
+  NextEvent:=CurrentEvent^.Next;
+  FreeMem(CurrentEvent);
+  CurrentEvent:=NextEvent;
+ end;
+ CurrentEvent:=fFreeEvents;
+ while assigned(CurrentEvent) do begin
+  NextEvent:=CurrentEvent^.Next;
+  FreeMem(CurrentEvent);
+  CurrentEvent:=NextEvent;
+ end;
+ FreeAndNil(fCriticalSection);
+ inherited Destroy;
+end;
+
+function TVulkanApplicationInputProcessorQueue.NewEvent:PVulkanApplicationInputProcessorQueueEvent;
+begin
+ if assigned(fFreeEvents) then begin
+  result:=fFreeEvents;
+  fFreeEvents:=result^.Next;
+  result^.Next:=nil;
+  result^.Event:=EVENT_NONE;
+ end else begin
+  GetMem(result,SizeOf(TVulkanApplicationInputProcessorQueueEvent));
+  FillChar(result^,SizeOf(TVulkanApplicationInputProcessorQueueEvent),AnsiChar(#0));
+ end;
+ result^.Time:=VulkanApplication.fHighResolutionTimer.GetTime;
+end;
+
+procedure TVulkanApplicationInputProcessorQueue.PushEvent(Event:PVulkanApplicationInputProcessorQueueEvent);
+begin
+ if assigned(fLastQueuedEvent) then begin
+  fLastQueuedEvent^.Next:=Event;
+ end else begin
+  fQueuedEvents:=Event;
+ end;
+ fLastQueuedEvent:=Event;
+ Event^.Next:=nil;
+end;
+
+procedure TVulkanApplicationInputProcessorQueue.SetProcessor(pProcessor:TVulkanApplicationInputProcessor);
+begin
+ fProcessor:=pProcessor;
+end;
+
+function TVulkanApplicationInputProcessorQueue.GetProcessor:TVulkanApplicationInputProcessor;
+begin
+ result:=fProcessor;
+end;
+
+procedure TVulkanApplicationInputProcessorQueue.Drain;
+var Events,LastQueuedEvent,CurrentEvent,NextEvent:PVulkanApplicationInputProcessorQueueEvent;
+begin
+ fCriticalSection.Acquire;
+ try
+  Events:=fQueuedEvents;
+  LastQueuedEvent:=fLastQueuedEvent;
+  fQueuedEvents:=nil;
+  fLastQueuedEvent:=nil;
+ finally
+  fCriticalSection.Release;
+ end;
+ CurrentEvent:=Events;
+ while assigned(CurrentEvent) do begin
+  NextEvent:=CurrentEvent^.Next;
+  fCurrentEventTime:=CurrentEvent^.Time;
+  if assigned(fProcessor) then begin
+   case CurrentEvent^.Event of
+    EVENT_KEY_DOWN:begin
+     fProcessor.KeyDown(CurrentEvent^.KeyCode,CurrentEvent^.KeyModifier);
+    end;
+    EVENT_KEY_UP:begin
+     fProcessor.KeyUp(CurrentEvent^.KeyCode,CurrentEvent^.KeyModifier);
+    end;
+    EVENT_KEY_TYPED:begin
+     fProcessor.KeyTyped(CurrentEvent^.KeyCode,CurrentEvent^.KeyModifier);
+    end;
+    EVENT_TOUCH_DOWN:begin
+     fProcessor.TouchDown(CurrentEvent^.ScreenX,CurrentEvent^.ScreenY,CurrentEvent^.Pressure,CurrentEvent^.PointerID,CurrentEvent^.Button);
+    end;
+    EVENT_TOUCH_UP:begin
+     fProcessor.TouchUp(CurrentEvent^.ScreenX,CurrentEvent^.ScreenY,CurrentEvent^.Pressure,CurrentEvent^.PointerID,CurrentEvent^.Button);
+    end;
+    EVENT_TOUCH_DRAGGED:begin
+     fProcessor.TouchDragged(CurrentEvent^.ScreenX,CurrentEvent^.ScreenY,CurrentEvent^.Pressure,CurrentEvent^.PointerID);
+    end;
+    EVENT_MOUSE_MOVED:begin
+     fProcessor.MouseMoved(CurrentEvent^.MouseScreenX,CurrentEvent^.MouseScreenY);
+    end;
+    EVENT_SCROLLED:begin
+     fProcessor.Scrolled(CurrentEvent^.Amount);
+    end;
+   end;
+  end;
+  CurrentEvent:=NextEvent;
+ end;
+ fCriticalSection.Acquire;
+ try
+  if assigned(fLastQueuedEvent) then begin
+   fLastQueuedEvent^.Next:=Events;
+  end else begin
+   fQueuedEvents:=Events;
+  end;
+  fLastQueuedEvent:=LastQueuedEvent;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInputProcessorQueue.GetCurrentEventTime:TVkInt64;
+begin
+ result:=fCurrentEventTime;
+end;
+
+function TVulkanApplicationInputProcessorQueue.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+var Event:PVulkanApplicationInputProcessorQueueEvent;
+begin
+ result:=false;
+ fCriticalSection.Acquire;
+ try
+  Event:=NewEvent;
+  if assigned(Event) then begin
+   Event^.Event:=EVENT_KEY_DOWN;
+   Event^.KeyCode:=pKeyCode;
+   Event^.KeyModifier:=pKeyModifier;
+   PushEvent(Event);
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInputProcessorQueue.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+var Event:PVulkanApplicationInputProcessorQueueEvent;
+begin
+ result:=false;
+ fCriticalSection.Acquire;
+ try
+  Event:=NewEvent;
+  if assigned(Event) then begin
+   Event^.Event:=EVENT_KEY_UP;
+   Event^.KeyCode:=pKeyCode;
+   Event^.KeyModifier:=pKeyModifier;
+   PushEvent(Event);
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInputProcessorQueue.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+var Event:PVulkanApplicationInputProcessorQueueEvent;
+begin
+ result:=false;
+ fCriticalSection.Acquire;
+ try
+  Event:=NewEvent;
+  if assigned(Event) then begin
+   Event^.Event:=EVENT_KEY_TYPED;
+   Event^.KeyCode:=pKeyCode;
+   Event^.KeyModifier:=pKeyModifier;
+   PushEvent(Event);
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInputProcessorQueue.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+var Event:PVulkanApplicationInputProcessorQueueEvent;
+begin
+ result:=false;
+ fCriticalSection.Acquire;
+ try
+  Event:=NewEvent;
+  if assigned(Event) then begin
+   Event^.Event:=EVENT_TOUCH_DOWN;
+   Event^.ScreenX:=pScreenX;
+   Event^.ScreenY:=pScreenY;
+   Event^.Pressure:=pPressure;
+   Event^.PointerID:=pPointerID;
+   Event^.Button:=pButton;
+   PushEvent(Event);
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInputProcessorQueue.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+var Event:PVulkanApplicationInputProcessorQueueEvent;
+begin
+ result:=false;
+ fCriticalSection.Acquire;
+ try
+  Event:=NewEvent;
+  if assigned(Event) then begin
+   Event^.Event:=EVENT_TOUCH_UP;
+   Event^.ScreenX:=pScreenX;
+   Event^.ScreenY:=pScreenY;
+   Event^.Pressure:=pPressure;
+   Event^.PointerID:=pPointerID;
+   Event^.Button:=pButton;
+   PushEvent(Event);
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInputProcessorQueue.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+var Event:PVulkanApplicationInputProcessorQueueEvent;
+begin
+ result:=false;
+ fCriticalSection.Acquire;
+ try
+  Event:=NewEvent;
+  if assigned(Event) then begin
+   Event^.Event:=EVENT_TOUCH_DRAGGED;
+   Event^.ScreenX:=pScreenX;
+   Event^.ScreenY:=pScreenY;
+   Event^.PointerID:=pPointerID;
+   PushEvent(Event);
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInputProcessorQueue.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+var Event:PVulkanApplicationInputProcessorQueueEvent;
+begin
+ result:=false;
+ fCriticalSection.Acquire;
+ try
+  Event:=NewEvent;
+  if assigned(Event) then begin
+   Event^.Event:=EVENT_MOUSE_MOVED;
+   Event^.MouseScreenX:=pScreenX;
+   Event^.MouseScreenY:=pScreenY;
+   PushEvent(Event);
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInputProcessorQueue.Scrolled(const pAmount:TVkInt32):boolean;
+var Event:PVulkanApplicationInputProcessorQueueEvent;
+begin
+ result:=false;
+ fCriticalSection.Acquire;
+ try
+  Event:=NewEvent;
+  if assigned(Event) then begin
+   Event^.Event:=EVENT_SCROLled;
+   Event^.Amount:=pAmount;
+   PushEvent(Event);
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+constructor TVulkanApplicationInputMultiplexer.Create;
+begin
+ inherited Create;
+ fProcessors:=TList.Create;
+end;
+
+destructor TVulkanApplicationInputMultiplexer.Destroy;
+begin
+ FreeAndNil(fProcessors);
+ inherited Destroy;
+end;
+
+procedure TVulkanApplicationInputMultiplexer.AddProcessor(const pProcessor:TVulkanApplicationInputProcessor);
+begin
+ fProcessors.Add(pProcessor);
+end;
+
+procedure TVulkanApplicationInputMultiplexer.AddProcessors(const pProcessors:array of TVulkanApplicationInputProcessor);
+var i:TVkInt32;
+begin
+ for i:=0 to length(pProcessors)-1 do begin
+  fProcessors.Add(pProcessors[i]);
+ end;
+end;
+
+procedure TVulkanApplicationInputMultiplexer.InsertProcessor(const pIndex:TVkInt32;const pProcessor:TVulkanApplicationInputProcessor);
+begin
+ fProcessors.Insert(pIndex,pProcessor);
+end;
+
+procedure TVulkanApplicationInputMultiplexer.RemoveProcessor(const pProcessor:TVulkanApplicationInputProcessor);
+begin
+ fProcessors.Remove(pProcessor);
+end;
+
+procedure TVulkanApplicationInputMultiplexer.RemoveProcessor(const pIndex:TVkInt32);
+begin
+ fProcessors.Delete(pIndex);
+end;
+
+procedure TVulkanApplicationInputMultiplexer.ClearProcessors;
+begin
+ fProcessors.Clear;
+end;
+
+function TVulkanApplicationInputMultiplexer.CountProcessors:TVkInt32;
+begin
+ result:=fProcessors.Count;
+end;
+
+function TVulkanApplicationInputMultiplexer.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+var i:TVkInt32;
+    p:TVulkanApplicationInputProcessor;
+begin
+ result:=false;
+ for i:=0 to fProcessors.Count-1 do begin
+  p:=fProcessors.Items[i];
+  if assigned(p) then begin
+   if p.KeyDown(pKeyCode,pKeyModifier) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanApplicationInputMultiplexer.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+var i:TVkInt32;
+    p:TVulkanApplicationInputProcessor;
+begin
+ result:=false;
+ for i:=0 to fProcessors.Count-1 do begin
+  p:=fProcessors.Items[i];
+  if assigned(p) then begin
+   if p.KeyUp(pKeyCode,pKeyModifier) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanApplicationInputMultiplexer.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+var i:TVkInt32;
+    p:TVulkanApplicationInputProcessor;
+begin
+ result:=false;
+ for i:=0 to fProcessors.Count-1 do begin
+  p:=fProcessors.Items[i];
+  if assigned(p) then begin
+   if p.KeyTyped(pKeyCode,pKeyModifier) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanApplicationInputMultiplexer.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+var i:TVkInt32;
+    p:TVulkanApplicationInputProcessor;
+begin
+ result:=false;
+ for i:=0 to fProcessors.Count-1 do begin
+  p:=fProcessors.Items[i];
+  if assigned(p) then begin
+   if p.TouchDown(pScreenX,pScreenY,pPressure,pPointerID,pButton) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanApplicationInputMultiplexer.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+var i:TVkInt32;
+    p:TVulkanApplicationInputProcessor;
+begin
+ result:=false;
+ for i:=0 to fProcessors.Count-1 do begin
+  p:=fProcessors.Items[i];
+  if assigned(p) then begin
+   if p.TouchUp(pScreenX,pScreenY,pPressure,pPointerID,pButton) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanApplicationInputMultiplexer.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+var i:TVkInt32;
+    p:TVulkanApplicationInputProcessor;
+begin
+ result:=false;
+ for i:=0 to fProcessors.Count-1 do begin
+  p:=fProcessors.Items[i];
+  if assigned(p) then begin
+   if p.TouchDragged(pScreenX,pScreenY,pPressure,pPointerID) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanApplicationInputMultiplexer.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+var i:TVkInt32;
+    p:TVulkanApplicationInputProcessor;
+begin
+ result:=false;
+ for i:=0 to fProcessors.Count-1 do begin
+  p:=fProcessors.Items[i];
+  if assigned(p) then begin
+   if p.MouseMoved(pScreenX,pScreenY) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanApplicationInputMultiplexer.Scrolled(const pAmount:TVkInt32):boolean;
+var i:TVkInt32;
+    p:TVulkanApplicationInputProcessor;
+begin
+ result:=false;
+ for i:=0 to fProcessors.Count-1 do begin
+  p:=fProcessors.Items[i];
+  if assigned(p) then begin
+   if p.Scrolled(pAmount) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+constructor TVulkanApplicationJoystick.Create;
+begin
+ inherited Create;
+ fJoystick:=nil;
+ fGameController:=nil;
+end;
+
+destructor TVulkanApplicationJoystick.Destroy;
+begin
+ if assigned(fGameController) then begin
+  SDL_GameControllerClose(fGameController);
+ end else if assigned(fJoystick) then begin
+  SDL_JoystickClose(fJoystick);
+ end;
+ fInput.fJoysticks.Remove(self);
+ inherited Destroy;
+end;
+
+procedure TVulkanApplicationJoystick.Initialize;
+begin
+ fCountAxes:=SDL_JoystickNumAxes(fJoystick);
+ fCountBalls:=SDL_JoystickNumBalls(fJoystick);
+ fCountHats:=SDL_JoystickNumHats(fJoystick);
+ fCountButtons:=SDL_JoystickNumButtons(fJoystick);
+end;
+
+function TVulkanApplicationJoystick.IsGameController:boolean;
+begin
+ result:=assigned(fGameController);
+end;
+
+function TVulkanApplicationJoystick.Index:TVkInt32;
+begin
+ result:=fIndex;
+end;
+
+function TVulkanApplicationJoystick.ID:TVkInt32;
+begin
+ result:=SDL_JoystickInstanceID(fJoystick);
+end;
+
+function TVulkanApplicationJoystick.Name:ansistring;
+begin
+ result:=SDL_JoystickName(fJoystick);
+end;
+
+function TVulkanApplicationJoystick.GUID:TGUID;
+begin
+ result:=SDL_JoystickGetGUID(fJoystick);
+end;
+
+function TVulkanApplicationJoystick.DeviceGUID:TGUID;
+begin
+ result:=SDL_JoystickGetDeviceGUID(fJoystick);
+end;
+
+function TVulkanApplicationJoystick.CountAxes:TVkInt32;
+begin
+ result:=fCountAxes;
+end;
+
+function TVulkanApplicationJoystick.CountBalls:TVkInt32;
+begin
+ result:=fCountBalls;
+end;
+
+function TVulkanApplicationJoystick.CountHats:TVkInt32;
+begin
+ result:=fCountHats;
+end;
+
+function TVulkanApplicationJoystick.CountButtons:TVkInt32;
+begin
+ result:=fCountButtons;
+end;
+
+procedure TVulkanApplicationJoystick.Update;
+begin
+ SDL_JoystickUpdate;
+end;
+
+function TVulkanApplicationJoystick.GetAxis(const pAxisIndex:TVkInt32):TVkInt32;
+begin
+ result:=SDL_JoystickGetAxis(fJoystick,pAxisIndex);
+end;
+
+function TVulkanApplicationJoystick.GetBall(const pBallIndex:TVkInt32;out pDeltaX,pDeltaY:TVkInt32):boolean;
+begin
+ result:=SDL_JoystickGetBall(fJoystick,pBallIndex,@pDeltaX,@pDeltaY)<>0;
+end;
+
+function TVulkanApplicationJoystick.GetHat(const pHatIndex:TVkInt32):TVkInt32;
+begin
+ case SDL_JoystickGetHat(fJoystick,pHatIndex) of
+  SDL_HAT_LEFTUP:begin
+   result:=JOYSTICK_HAT_LEFTUP;
+  end;
+  SDL_HAT_UP:begin
+   result:=JOYSTICK_HAT_UP;
+  end;
+  SDL_HAT_RIGHTUP:begin
+   result:=JOYSTICK_HAT_RIGHTUP;
+  end;
+  SDL_HAT_LEFT:begin
+   result:=JOYSTICK_HAT_LEFT;
+  end;
+  SDL_HAT_CENTERED:begin
+   result:=JOYSTICK_HAT_CENTERED;
+  end;
+  SDL_HAT_RIGHT:begin
+   result:=JOYSTICK_HAT_RIGHT;
+  end;
+  SDL_HAT_LEFTDOWN:begin
+   result:=JOYSTICK_HAT_LEFTDOWN;
+  end;
+  SDL_HAT_DOWN:begin
+   result:=JOYSTICK_HAT_DOWN;
+  end;
+  SDL_HAT_RIGHTDOWN:begin
+   result:=JOYSTICK_HAT_RIGHTDOWN;
+  end;
+  else begin
+   result:=JOYSTICK_HAT_NONE;
+  end;
+ end;
+end;
+
+function TVulkanApplicationJoystick.GetButton(const pButtonIndex:TVkInt32):boolean;
+begin
+ result:=SDL_JoystickGetButton(fJoystick,pButtonIndex)<>0;
+end;
+
+function TVulkanApplicationJoystick.IsGameControllerAttached:boolean;
+begin
+ if assigned(fGameController) then begin
+  result:=SDL_GameControllerGetAttached(fGameController)<>0;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TVulkanApplicationJoystick.GetGameControllerAxis(const pAxis:TVkInt32):TVkInt32;
+begin
+ if assigned(fGameController) then begin
+  case pAxis of
+   GAME_CONTROLLER_AXIS_LEFTX:begin
+    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_LEFTX);
+   end;
+   GAME_CONTROLLER_AXIS_LEFTY:begin
+    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_LEFTY);
+   end;
+   GAME_CONTROLLER_AXIS_RIGHTX:begin
+    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_RIGHTX);
+   end;
+   GAME_CONTROLLER_AXIS_RIGHTY:begin
+    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_RIGHTY);
+   end;
+   GAME_CONTROLLER_AXIS_TRIGGERLEFT:begin
+    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+   end;
+   GAME_CONTROLLER_AXIS_TRIGGERRIGHT:begin
+    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+   end;
+   GAME_CONTROLLER_AXIS_MAX:begin
+    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_MAX);
+   end;
+   else begin
+    result:=0;
+   end;
+  end;
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TVulkanApplicationJoystick.GetGameControllerButton(const pButton:TVkInt32):boolean;
+begin
+ if assigned(fGameController) then begin
+  case pButton of
+   GAME_CONTROLLER_BUTTON_A:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_A)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_B:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_B)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_X:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_X)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_Y:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_Y)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_BACK:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_BACK)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_GUIDE:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_GUIDE)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_START:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_START)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_LEFTSTICK:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_LEFTSTICK)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_RIGHTSTICK:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_RIGHTSTICK)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_LEFTSHOULDER:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_LEFTSHOULDER)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_RIGHTSHOULDER:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_DPAD_UP:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_DPAD_UP)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_DPAD_DOWN:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_DPAD_DOWN)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_DPAD_LEFT:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_DPAD_LEFT)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_DPAD_RIGHT:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_DPAD_RIGHT)<>0;
+   end;
+   else begin
+    result:=false;
+   end;
+  end;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TVulkanApplicationJoystick.GetGameControllerName:ansistring;
+begin
+ if assigned(fGameController) then begin
+  result:=SDL_GameControllerName(fGameController);
+ end else begin
+  result:='';
+ end;
+end;
+
+function TVulkanApplicationJoystick.GetGameControllerMapping:ansistring;
+begin
+ if assigned(fGameController) then begin
+  result:=SDL_GameControllerMapping(fGameController);
+ end else begin
+  result:='';
+ end;
+end;
+
+constructor TVulkanApplicationInput.Create;
+begin
+ inherited Create;
+ fCriticalSection:=TCriticalSection.Create;
+ fProcessor:=nil;
+ fEvents:=nil;
+ fEventTimes:=nil;
+ fEventCount:=0;
+ fCurrentEventTime:=0;
+ FillChar(fKeyDown,SizeOf(fKeyDown),AnsiChar(#0));
+ fKeyDownCount:=0;
+ FillChar(fPointerX,SizeOf(fPointerX),AnsiChar(#0));
+ FillChar(fPointerY,SizeOf(fPointerY),AnsiChar(#0));
+ FillChar(fPointerDown,SizeOf(fPointerDown),AnsiChar(#0));
+ FillChar(fPointerJustDown,SizeOf(fPointerJustDown),AnsiChar(#0));
+ FillChar(fPointerPressure,SizeOf(fPointerPressure),AnsiChar(#0));
+ FillChar(fPointerDeltaX,SizeOf(fPointerDeltaX),AnsiChar(#0));
+ FillChar(fPointerDeltaY,SizeOf(fPointerDeltaY),AnsiChar(#0));
+ fPointerDownCount:=0;
+ fMouseX:=0;
+ fMouseY:=0;
+ fMouseDown:=0;
+ fMouseJustDown:=0;
+ fMouseDeltaX:=0;
+ fMouseDeltaY:=0;
+ fJustTouched:=false;
+ fMaxPointerID:=-1;
+ SetLength(fEvents,1024);
+ SetLength(fEventTimes,1024);
+ fJoysticks:=TList.Create;
+end;
+
+destructor TVulkanApplicationInput.Destroy;
+begin
+ while fJoysticks.Count>0 do begin
+  TVulkanApplicationJoystick(fJoysticks[0]).Free;
+ end;
+ fJoysticks.Free;
+ SetLength(fEvents,0);
+ fCriticalSection.Free;
+ inherited Destroy;
+end;
+
+function TVulkanApplicationInput.TranslateSDLKeyCode(const pKeyCode,pScanCode:TVkInt32):TVkInt32;
+begin
+ case pKeyCode of
+  SDLK_BACKSPACE:begin
+   result:=KEYCODE_BACKSPACE;
+  end;
+  SDLK_TAB:begin
+   result:=KEYCODE_TAB;
+  end;
+  SDLK_RETURN:begin
+   result:=KEYCODE_RETURN;
+  end;
+  SDLK_PAUSE:begin
+   result:=KEYCODE_PAUSE;
+  end;
+  SDLK_ESCAPE:begin
+   result:=KEYCODE_ESCAPE;
+  end;
+  SDLK_SPACE:begin
+   result:=KEYCODE_SPACE;
+  end;
+  SDLK_EXCLAIM:begin
+   result:=KEYCODE_EXCLAIM;
+  end;
+  SDLK_QUOTEDBL:begin
+   result:=KEYCODE_QUOTEDBL;
+  end;
+  SDLK_HASH:begin
+   result:=KEYCODE_HASH;
+  end;
+  SDLK_DOLLAR:begin
+   result:=KEYCODE_DOLLAR;
+  end;
+  SDLK_AMPERSAND:begin
+   result:=KEYCODE_AMPERSAND;
+  end;
+  SDLK_QUOTE:begin
+   result:=KEYCODE_QUOTE;
+  end;
+  SDLK_LEFTPAREN:begin
+   result:=KEYCODE_LEFTPAREN;
+  end;
+  SDLK_RIGHTPAREN:begin
+   result:=KEYCODE_RIGHTPAREN;
+  end;
+  SDLK_ASTERISK:begin
+   result:=KEYCODE_ASTERISK;
+  end;
+  SDLK_PLUS:begin
+   result:=KEYCODE_PLUS;
+  end;
+  SDLK_COMMA:begin
+   result:=KEYCODE_COMMA;
+  end;
+  SDLK_MINUS:begin
+   result:=KEYCODE_MINUS;
+  end;
+  SDLK_PERIOD:begin
+   result:=KEYCODE_PERIOD;
+  end;
+  SDLK_SLASH:begin
+   result:=KEYCODE_SLASH;
+  end;
+  SDLK_0:begin
+   result:=KEYCODE_0;
+  end;
+  SDLK_1:begin
+   result:=KEYCODE_1;
+  end;
+  SDLK_2:begin
+   result:=KEYCODE_2;
+  end;
+  SDLK_3:begin
+   result:=KEYCODE_3;
+  end;
+  SDLK_4:begin
+   result:=KEYCODE_4;
+  end;
+  SDLK_5:begin
+   result:=KEYCODE_5;
+  end;
+  SDLK_6:begin
+   result:=KEYCODE_6;
+  end;
+  SDLK_7:begin
+   result:=KEYCODE_7;
+  end;
+  SDLK_8:begin
+   result:=KEYCODE_8;
+  end;
+  SDLK_9:begin
+   result:=KEYCODE_9;
+  end;
+  SDLK_COLON:begin
+   result:=KEYCODE_COLON;
+  end;
+  SDLK_SEMICOLON:begin
+   result:=KEYCODE_SEMICOLON;
+  end;
+  SDLK_LESS:begin
+   result:=KEYCODE_LESS;
+  end;
+  SDLK_EQUALS:begin
+   result:=KEYCODE_EQUALS;
+  end;
+  SDLK_GREATER:begin
+   result:=KEYCODE_GREATER;
+  end;
+  SDLK_QUESTION:begin
+   result:=KEYCODE_QUESTION;
+  end;
+  SDLK_AT:begin
+   result:=KEYCODE_AT;
+  end;
+  SDLK_LEFTBRACKET:begin
+   result:=KEYCODE_LEFTBRACKET;
+  end;
+  SDLK_BACKSLASH:begin
+   result:=KEYCODE_BACKSLASH;
+  end;
+  SDLK_RIGHTBRACKET:begin
+   result:=KEYCODE_RIGHTBRACKET;
+  end;
+  SDLK_CARET:begin
+   result:=KEYCODE_CARET;
+  end;
+  SDLK_UNDERSCORE:begin
+   result:=KEYCODE_UNDERSCORE;
+  end;
+  SDLK_BACKQUOTE:begin
+   result:=KEYCODE_BACKQUOTE;
+  end;
+  SDLK_a:begin
+   result:=KEYCODE_a;
+  end;
+  SDLK_b:begin
+   result:=KEYCODE_b;
+  end;
+  SDLK_c:begin
+   result:=KEYCODE_c;
+  end;
+  SDLK_d:begin
+   result:=KEYCODE_d;
+  end;
+  SDLK_e:begin
+   result:=KEYCODE_e;
+  end;
+  SDLK_f:begin
+   result:=KEYCODE_f;
+  end;
+  SDLK_g:begin
+   result:=KEYCODE_g;
+  end;
+  SDLK_h:begin
+   result:=KEYCODE_h;
+  end;
+  SDLK_i:begin
+   result:=KEYCODE_i;
+  end;
+  SDLK_j:begin
+   result:=KEYCODE_j;
+  end;
+  SDLK_k:begin
+   result:=KEYCODE_k;
+  end;
+  SDLK_l:begin
+   result:=KEYCODE_l;
+  end;
+  SDLK_m:begin
+   result:=KEYCODE_m;
+  end;
+  SDLK_n:begin
+   result:=KEYCODE_n;
+  end;
+  SDLK_o:begin
+   result:=KEYCODE_o;
+  end;
+  SDLK_p:begin
+   result:=KEYCODE_p;
+  end;
+  SDLK_q:begin
+   result:=KEYCODE_q;
+  end;
+  SDLK_r:begin
+   result:=KEYCODE_r;
+  end;
+  SDLK_s:begin
+   result:=KEYCODE_s;
+  end;
+  SDLK_t:begin
+   result:=KEYCODE_t;
+  end;
+  SDLK_u:begin
+   result:=KEYCODE_u;
+  end;
+  SDLK_v:begin
+   result:=KEYCODE_v;
+  end;
+  SDLK_w:begin
+   result:=KEYCODE_w;
+  end;
+  SDLK_x:begin
+   result:=KEYCODE_x;
+  end;
+  SDLK_y:begin
+   result:=KEYCODE_y;
+  end;
+  SDLK_z:begin
+   result:=KEYCODE_z;
+  end;
+  SDLK_DELETE:begin
+   result:=KEYCODE_DELETE;
+  end;
+  SDLK_F1:begin
+   result:=KEYCODE_F1;
+  end;
+  SDLK_F2:begin
+   result:=KEYCODE_F2;
+  end;
+  SDLK_F3:begin
+   result:=KEYCODE_F3;
+  end;
+  SDLK_F4:begin
+   result:=KEYCODE_F4;
+  end;
+  SDLK_F5:begin
+   result:=KEYCODE_F5;
+  end;
+  SDLK_F6:begin
+   result:=KEYCODE_F6;
+  end;
+  SDLK_F7:begin
+   result:=KEYCODE_F7;
+  end;
+  SDLK_F8:begin
+   result:=KEYCODE_F8;
+  end;
+  SDLK_F9:begin
+   result:=KEYCODE_F9;
+  end;
+  SDLK_F10:begin
+   result:=KEYCODE_F10;
+  end;
+  SDLK_F11:begin
+   result:=KEYCODE_F11;
+  end;
+  SDLK_F12:begin
+   result:=KEYCODE_F12;
+  end;
+  SDLK_F13:begin
+   result:=KEYCODE_F13;
+  end;
+  SDLK_F14:begin
+   result:=KEYCODE_F14;
+  end;
+  SDLK_F15:begin
+   result:=KEYCODE_F15;
+  end;
+  SDLK_F16:begin
+   result:=KEYCODE_F16;
+  end;
+  SDLK_F17:begin
+   result:=KEYCODE_F17;
+  end;
+  SDLK_F18:begin
+   result:=KEYCODE_F18;
+  end;
+  SDLK_F19:begin
+   result:=KEYCODE_F19;
+  end;
+  SDLK_F20:begin
+   result:=KEYCODE_F20;
+  end;
+  SDLK_F21:begin
+   result:=KEYCODE_F21;
+  end;
+  SDLK_F22:begin
+   result:=KEYCODE_F22;
+  end;
+  SDLK_F23:begin
+   result:=KEYCODE_F23;
+  end;
+  SDLK_F24:begin
+   result:=KEYCODE_F24;
+  end;
+  SDLK_KP0:begin
+   result:=KEYCODE_KP0;
+  end;
+  SDLK_KP1:begin
+   result:=KEYCODE_KP1;
+  end;
+  SDLK_KP2:begin
+   result:=KEYCODE_KP2;
+  end;
+  SDLK_KP3:begin
+   result:=KEYCODE_KP3;
+  end;
+  SDLK_KP4:begin
+   result:=KEYCODE_KP4;
+  end;
+  SDLK_KP5:begin
+   result:=KEYCODE_KP5;
+  end;
+  SDLK_KP6:begin
+   result:=KEYCODE_KP6;
+  end;
+  SDLK_KP7:begin
+   result:=KEYCODE_KP7;
+  end;
+  SDLK_KP8:begin
+   result:=KEYCODE_KP8;
+  end;
+  SDLK_KP9:begin
+   result:=KEYCODE_KP9;
+  end;
+  SDLK_KP_PERIOD:begin
+   result:=KEYCODE_KP_PERIOD;
+  end;
+  SDLK_KP_DIVIDE:begin
+   result:=KEYCODE_KP_DIVIDE;
+  end;
+  SDLK_KP_MULTIPLY:begin
+   result:=KEYCODE_KP_MULTIPLY;
+  end;
+  SDLK_KP_MINUS:begin
+   result:=KEYCODE_KP_MINUS;
+  end;
+  SDLK_KP_PLUS:begin
+   result:=KEYCODE_KP_PLUS;
+  end;
+  SDLK_KP_ENTER:begin
+   result:=KEYCODE_KP_ENTER;
+  end;
+  SDLK_KP_EQUALS:begin
+   result:=KEYCODE_KP_EQUALS;
+  end;
+  SDLK_UP:begin
+   result:=KEYCODE_UP;
+  end;
+  SDLK_DOWN:begin
+   result:=KEYCODE_DOWN;
+  end;
+  SDLK_RIGHT:begin
+   result:=KEYCODE_RIGHT;
+  end;
+  SDLK_LEFT:begin
+   result:=KEYCODE_LEFT;
+  end;
+  SDLK_INSERT:begin
+   result:=KEYCODE_INSERT;
+  end;
+  SDLK_HOME:begin
+   result:=KEYCODE_HOME;
+  end;
+  SDLK_END:begin
+   result:=KEYCODE_END;
+  end;
+  SDLK_PAGEUP:begin
+   result:=KEYCODE_PAGEUP;
+  end;
+  SDLK_PAGEDOWN:begin
+   result:=KEYCODE_PAGEDOWN;
+  end;
+  SDLK_CAPSLOCK:begin
+   result:=KEYCODE_CAPSLOCK;
+  end;
+  SDLK_NUMLOCK:begin
+   result:=KEYCODE_NUMLOCK;
+  end;
+  SDLK_SCROLLOCK:begin
+   result:=KEYCODE_SCROLLOCK;
+  end;
+  SDLK_RSHIFT:begin
+   result:=KEYCODE_RSHIFT;
+  end;
+  SDLK_LSHIFT:begin
+   result:=KEYCODE_LSHIFT;
+  end;
+  SDLK_RCTRL:begin
+   result:=KEYCODE_RCTRL;
+  end;
+  SDLK_LCTRL:begin
+   result:=KEYCODE_LCTRL;
+  end;
+  SDLK_RALT:begin
+   result:=KEYCODE_RALT;
+  end;
+  SDLK_LALT:begin
+   result:=KEYCODE_LALT;
+  end;
+  SDLK_MODE:begin
+   result:=KEYCODE_MODE;
+  end;
+  SDLK_HELP:begin
+   result:=KEYCODE_HELP;
+  end;
+  SDLK_PRINTSCREEN:begin
+   result:=KEYCODE_PRINTSCREEN;
+  end;
+  SDLK_SYSREQ:begin
+   result:=KEYCODE_SYSREQ;
+  end;
+  SDLK_MENU:begin
+   result:=KEYCODE_MENU;
+  end;
+  SDLK_POWER:begin
+   result:=KEYCODE_POWER;
+  end;
+  SDLK_APPLICATION:begin
+   result:=KEYCODE_APPLICATION;
+  end;
+  SDLK_SELECT:begin
+   result:=KEYCODE_SELECT;
+  end;
+  SDLK_STOP:begin
+   result:=KEYCODE_STOP;
+  end;
+  SDLK_AGAIN:begin
+   result:=KEYCODE_AGAIN;
+  end;
+  SDLK_UNDO:begin
+   result:=KEYCODE_UNDO;
+  end;
+  SDLK_CUT:begin
+   result:=KEYCODE_CUT;
+  end;
+  SDLK_COPY:begin
+   result:=KEYCODE_COPY;
+  end;
+  SDLK_PASTE:begin
+   result:=KEYCODE_PASTE;
+  end;
+  SDLK_FIND:begin
+   result:=KEYCODE_FIND;
+  end;
+  SDLK_MUTE:begin
+   result:=KEYCODE_MUTE;
+  end;
+  SDLK_VOLUMEUP:begin
+   result:=KEYCODE_VOLUMEUP;
+  end;
+  SDLK_VOLUMEDOWN:begin
+   result:=KEYCODE_VOLUMEDOWN;
+  end;
+  SDLK_KP_EQUALSAS400:begin
+   result:=KEYCODE_KP_EQUALSAS400;
+  end;
+  SDLK_ALTERASE:begin
+   result:=KEYCODE_ALTERASE;
+  end;
+  SDLK_CANCEL:begin
+   result:=KEYCODE_CANCEL;
+  end;
+  SDLK_CLEAR:begin
+   result:=KEYCODE_CLEAR;
+  end;
+  SDLK_PRIOR:begin
+   result:=KEYCODE_PRIOR;
+  end;
+  SDLK_RETURN2:begin
+   result:=KEYCODE_RETURN2;
+  end;
+  SDLK_SEPARATOR:begin
+   result:=KEYCODE_SEPARATOR;
+  end;
+  SDLK_OUT:begin
+   result:=KEYCODE_OUT;
+  end;
+  SDLK_OPER:begin
+   result:=KEYCODE_OPER;
+  end;
+  SDLK_CLEARAGAIN:begin
+   result:=KEYCODE_CLEARAGAIN;
+  end;
+  SDLK_CRSEL:begin
+   result:=KEYCODE_CRSEL;
+  end;
+  SDLK_EXSEL:begin
+   result:=KEYCODE_EXSEL;
+  end;
+  SDLK_KP_00:begin
+   result:=KEYCODE_KP_00;
+  end;
+  SDLK_KP_000:begin
+   result:=KEYCODE_KP_000;
+  end;
+  SDLK_THOUSANDSSEPARATOR:begin
+   result:=KEYCODE_THOUSANDSSEPARATOR;
+  end;
+  SDLK_DECIMALSEPARATOR:begin
+   result:=KEYCODE_DECIMALSEPARATOR;
+  end;
+  SDLK_CURRENCYUNIT:begin
+   result:=KEYCODE_CURRENCYUNIT;
+  end;
+  SDLK_CURRENCYSUBUNIT:begin
+   result:=KEYCODE_CURRENCYSUBUNIT;
+  end;
+  SDLK_KP_LEFTPAREN:begin
+   result:=KEYCODE_KP_LEFTPAREN;
+  end;
+  SDLK_KP_RIGHTPAREN:begin
+   result:=KEYCODE_KP_RIGHTPAREN;
+  end;
+  SDLK_KP_LEFTBRACE:begin
+   result:=KEYCODE_KP_LEFTBRACE;
+  end;
+  SDLK_KP_RIGHTBRACE:begin
+   result:=KEYCODE_KP_RIGHTBRACE;
+  end;
+  SDLK_KP_TAB:begin
+   result:=KEYCODE_KP_TAB;
+  end;
+  SDLK_KP_BACKSPACE:begin
+   result:=KEYCODE_KP_BACKSPACE;
+  end;
+  SDLK_KP_A:begin
+   result:=KEYCODE_KP_A;
+  end;
+  SDLK_KP_B:begin
+   result:=KEYCODE_KP_B;
+  end;
+  SDLK_KP_C:begin
+   result:=KEYCODE_KP_C;
+  end;
+  SDLK_KP_D:begin
+   result:=KEYCODE_KP_D;
+  end;
+  SDLK_KP_E:begin
+   result:=KEYCODE_KP_E;
+  end;
+  SDLK_KP_F:begin
+   result:=KEYCODE_KP_F;
+  end;
+  SDLK_KP_XOR:begin
+   result:=KEYCODE_KP_XOR;
+  end;
+  SDLK_KP_POWER:begin
+   result:=KEYCODE_KP_POWER;
+  end;
+  SDLK_KP_PERCENT:begin
+   result:=KEYCODE_KP_PERCENT;
+  end;
+  SDLK_KP_LESS:begin
+   result:=KEYCODE_KP_LESS;
+  end;
+  SDLK_KP_GREATER:begin
+   result:=KEYCODE_KP_GREATER;
+  end;
+  SDLK_KP_AMPERSAND:begin
+   result:=KEYCODE_KP_AMPERSAND;
+  end;
+  SDLK_KP_DBLAMPERSAND:begin
+   result:=KEYCODE_KP_DBLAMPERSAND;
+  end;
+  SDLK_KP_VERTICALBAR:begin
+   result:=KEYCODE_KP_VERTICALBAR;
+  end;
+  SDLK_KP_DBLVERTICALBAR:begin
+   result:=KEYCODE_KP_DBLVERTICALBAR;
+  end;
+  SDLK_KP_COLON:begin
+   result:=KEYCODE_KP_COLON;
+  end;
+  SDLK_KP_HASH:begin
+   result:=KEYCODE_KP_HASH;
+  end;
+  SDLK_KP_SPACE:begin
+   result:=KEYCODE_KP_SPACE;
+  end;
+  SDLK_KP_AT:begin
+   result:=KEYCODE_KP_AT;
+  end;
+  SDLK_KP_EXCLAM:begin
+   result:=KEYCODE_KP_EXCLAM;
+  end;
+  SDLK_KP_MEMSTORE:begin
+   result:=KEYCODE_KP_MEMSTORE;
+  end;
+  SDLK_KP_MEMRECALL:begin
+   result:=KEYCODE_KP_MEMRECALL;
+  end;
+  SDLK_KP_MEMCLEAR:begin
+   result:=KEYCODE_KP_MEMCLEAR;
+  end;
+  SDLK_KP_MEMADD:begin
+   result:=KEYCODE_KP_MEMADD;
+  end;
+  SDLK_KP_MEMSUBTRACT:begin
+   result:=KEYCODE_KP_MEMSUBTRACT;
+  end;
+  SDLK_KP_MEMMULTIPLY:begin
+   result:=KEYCODE_KP_MEMMULTIPLY;
+  end;
+  SDLK_KP_MEMDIVIDE:begin
+   result:=KEYCODE_KP_MEMDIVIDE;
+  end;
+  SDLK_KP_PLUSMINUS:begin
+   result:=KEYCODE_KP_PLUSMINUS;
+  end;
+  SDLK_KP_CLEAR:begin
+   result:=KEYCODE_KP_CLEAR;
+  end;
+  SDLK_KP_CLEARENTRY:begin
+   result:=KEYCODE_KP_CLEARENTRY;
+  end;
+  SDLK_KP_BINARY:begin
+   result:=KEYCODE_KP_BINARY;
+  end;
+  SDLK_KP_OCTAL:begin
+   result:=KEYCODE_KP_OCTAL;
+  end;
+  SDLK_KP_DECIMAL:begin
+   result:=KEYCODE_KP_DECIMAL;
+  end;
+  SDLK_KP_HEXADECIMAL:begin
+   result:=KEYCODE_KP_HEXADECIMAL;
+  end;
+  SDLK_LGUI:begin
+   result:=KEYCODE_LGUI;
+  end;
+  SDLK_RGUI:begin
+   result:=KEYCODE_RGUI;
+  end;
+  SDLK_AUDIONEXT:begin
+   result:=KEYCODE_AUDIONEXT;
+  end;
+  SDLK_AUDIOPREV:begin
+   result:=KEYCODE_AUDIOPREV;
+  end;
+  SDLK_AUDIOSTOP:begin
+   result:=KEYCODE_AUDIOSTOP;
+  end;
+  SDLK_AUDIOPLAY:begin
+   result:=KEYCODE_AUDIOPLAY;
+  end;
+  SDLK_AUDIOMUTE:begin
+   result:=KEYCODE_AUDIOMUTE;
+  end;
+  SDLK_MEDIASELECT:begin
+   result:=KEYCODE_MEDIASELECT;
+  end;
+  SDLK_WWW:begin
+   result:=KEYCODE_WWW;
+  end;
+  SDLK_MAIL:begin
+   result:=KEYCODE_MAIL;
+  end;
+  SDLK_CALCULATOR:begin
+   result:=KEYCODE_CALCULATOR;
+  end;
+  SDLK_COMPUTER:begin
+   result:=KEYCODE_COMPUTER;
+  end;
+  SDLK_AC_SEARCH:begin
+   result:=KEYCODE_AC_SEARCH;
+  end;
+  SDLK_AC_HOME:begin
+   result:=KEYCODE_AC_HOME;
+  end;
+  SDLK_AC_BACK:begin
+   result:=KEYCODE_AC_BACK;
+  end;
+  SDLK_AC_FORWARD:begin
+   result:=KEYCODE_AC_FORWARD;
+  end;
+  SDLK_AC_STOP:begin
+   result:=KEYCODE_AC_STOP;
+  end;
+  SDLK_AC_REFRESH:begin
+   result:=KEYCODE_AC_REFRESH;
+  end;
+  SDLK_AC_BOOKMARKS:begin
+   result:=KEYCODE_AC_BOOKMARKS;
+  end;
+  SDLK_BRIGHTNESSDOWN:begin
+   result:=KEYCODE_BRIGHTNESSDOWN;
+  end;
+  SDLK_BRIGHTNESSUP:begin
+   result:=KEYCODE_BRIGHTNESSUP;
+  end;
+  SDLK_DISPLAYSWITCH:begin
+   result:=KEYCODE_DISPLAYSWITCH;
+  end;
+  SDLK_KBDILLUMTOGGLE:begin
+   result:=KEYCODE_KBDILLUMTOGGLE;
+  end;
+  SDLK_KBDILLUMDOWN:begin
+   result:=KEYCODE_KBDILLUMDOWN;
+  end;
+  SDLK_KBDILLUMUP:begin
+   result:=KEYCODE_KBDILLUMUP;
+  end;
+  SDLK_EJECT:begin
+   result:=KEYCODE_EJECT;
+  end;
+  SDLK_SLEEP:begin
+   result:=KEYCODE_SLEEP;
+  end;
+  else begin
+   case pScanCode of
+    SDL_SCANCODE_INTERNATIONAL1:begin
+     result:=KEYCODE_INTERNATIONAL1;
+    end;
+    SDL_SCANCODE_INTERNATIONAL2:begin
+     result:=KEYCODE_INTERNATIONAL2;
+    end;
+    SDL_SCANCODE_INTERNATIONAL3:begin
+     result:=KEYCODE_INTERNATIONAL3;
+    end;
+    SDL_SCANCODE_INTERNATIONAL4:begin
+     result:=KEYCODE_INTERNATIONAL4;
+    end;
+    SDL_SCANCODE_INTERNATIONAL5:begin
+     result:=KEYCODE_INTERNATIONAL5;
+    end;
+    SDL_SCANCODE_INTERNATIONAL6:begin
+     result:=KEYCODE_INTERNATIONAL6;
+    end;
+    SDL_SCANCODE_INTERNATIONAL7:begin
+     result:=KEYCODE_INTERNATIONAL7;
+    end;
+    SDL_SCANCODE_INTERNATIONAL8:begin
+     result:=KEYCODE_INTERNATIONAL8;
+    end;
+    SDL_SCANCODE_INTERNATIONAL9:begin
+     result:=KEYCODE_INTERNATIONAL9;
+    end;
+    SDL_SCANCODE_LANG1:begin
+     result:=KEYCODE_LANG1;
+    end;
+    SDL_SCANCODE_LANG2:begin
+     result:=KEYCODE_LANG2;
+    end;
+    SDL_SCANCODE_LANG3:begin
+     result:=KEYCODE_LANG3;
+    end;
+    SDL_SCANCODE_LANG4:begin
+     result:=KEYCODE_LANG4;
+    end;
+    SDL_SCANCODE_LANG5:begin
+     result:=KEYCODE_LANG5;
+    end;
+    SDL_SCANCODE_LANG6:begin
+     result:=KEYCODE_LANG6;
+    end;
+    SDL_SCANCODE_LANG7:begin
+     result:=KEYCODE_LANG7;
+    end;
+    SDL_SCANCODE_LANG8:begin
+     result:=KEYCODE_LANG8;
+    end;
+    SDL_SCANCODE_LANG9:begin
+     result:=KEYCODE_LANG9;
+    end;
+    SDL_SCANCODE_LOCKINGCAPSLOCK:begin
+     result:=KEYCODE_LOCKINGCAPSLOCK;
+    end;
+    SDL_SCANCODE_LOCKINGNUMLOCK:begin
+     result:=KEYCODE_LOCKINGNUMLOCK;
+    end;
+    SDL_SCANCODE_LOCKINGSCROLLLOCK:begin
+     result:=KEYCODE_LOCKINGSCROLLLOCK;
+    end;
+    SDL_SCANCODE_NONUSBACKSLASH:begin
+     result:=KEYCODE_NONUSBACKSLASH;
+    end;
+    SDL_SCANCODE_NONUSHASH:begin
+     result:=KEYCODE_NONUSHASH;
+    end;
+    else begin
+     result:=KEYCODE_UNKNOWN;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TVulkanApplicationInput.TranslateSDLKeyModifier(const pKeyModifier:TVkInt32):TVkInt32;
+begin
+ result:=0;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_LSHIFT)<>0 then begin
+  result:=result or KEYMODIFIER_LSHIFT;
+ end;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_RSHIFT)<>0 then begin
+  result:=result or KEYMODIFIER_RSHIFT;
+ end;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_LCTRL)<>0 then begin
+  result:=result or KEYMODIFIER_LCTRL;
+ end;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_RCTRL)<>0 then begin
+  result:=result or KEYMODIFIER_RCTRL;
+ end;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_LALT)<>0 then begin
+  result:=result or KEYMODIFIER_LALT;
+ end;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_RALT)<>0 then begin
+  result:=result or KEYMODIFIER_RALT;
+ end;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_LMETA)<>0 then begin
+  result:=result or KEYMODIFIER_LMETA;
+ end;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_RMETA)<>0 then begin
+  result:=result or KEYMODIFIER_RMETA;
+ end;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_NUM)<>0 then begin
+  result:=result or KEYMODIFIER_NUM;
+ end;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_CAPS)<>0 then begin
+  result:=result or KEYMODIFIER_CAPS;
+ end;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_MODE)<>0 then begin
+  result:=result or KEYMODIFIER_MODE;
+ end;
+ if (pKeyModifier and PasVulkanSDL2.KMOD_RESERVED)<>0 then begin
+  result:=result or KEYMODIFIER_RESERVED;
+ end;
+end;
+
+const SDL_KEYTYPED=$30000;
+
+procedure TVulkanApplicationInput.AddEvent(const pEvent:TSDL_Event);
+begin
+ if fEventCount>=length(fEvents) then begin
+  SetLength(fEvents,(fEventCount+1)*2);
+  SetLength(fEventTimes,(fEventCount+1)*2);
+ end;
+ fEvents[fEventCount]:=pEvent;
+ fEventTimes[fEventCount]:=VulkanApplication.fHighResolutionTimer.ToNanoseconds(VulkanApplication.fHighResolutionTimer.GetTime);
+ inc(fEventCount);
+end;
+
+procedure TVulkanApplicationInput.ProcessEvents;
+var Index,PointerID,KeyCode,KeyModifier:TVkInt32;
+    Event:PSDL_Event;
+begin
+ fCriticalSection.Acquire;
+ try
+  fJustTouched:=false;
+  if fEventCount>0 then begin
+   for Index:=0 to fEventCount-1 do begin
+    Event:=@fEvents[Index];
+    fCurrentEventTime:=fEventTimes[fEventCount];
+    case Event^.type_ of
+     SDL_KEYDOWN,SDL_KEYUP,SDL_KEYTYPED:begin
+      KeyCode:=TranslateSDLKeyCode(Event^.key.keysym.sym,Event^.key.keysym.scancode);
+      KeyModifier:=TranslateSDLKeyModifier(Event^.key.keysym.modifier);
+      case Event^.type_ of
+       SDL_KEYDOWN:begin
+        fKeyDown[KeyCode and $ffff]:=true;
+        inc(fKeyDownCount);
+        if assigned(fProcessor) then begin
+         fProcessor.KeyDown(KeyCode,KeyModifier);
+        end;
+       end;
+       SDL_KEYUP:begin
+        fKeyDown[KeyCode and $ffff]:=false;
+        if fKeyDownCount>0 then begin
+         dec(fKeyDownCount);
+        end;
+        if assigned(fProcessor) then begin
+         fProcessor.KeyUp(KeyCode,KeyModifier);
+        end;
+       end;
+       SDL_KEYTYPED:begin
+        if assigned(fProcessor) then begin
+         fProcessor.KeyTyped(KeyCode,KeyModifier);
+        end;
+       end;
+      end;
+     end;
+     SDL_MOUSEMOTION:begin
+      fMouseX:=Event^.motion.x;
+      fMouseY:=Event^.motion.y;
+      fMouseDeltaX:=Event^.motion.xrel;
+      fMouseDeltaY:=Event^.motion.yrel;
+      if assigned(fProcessor) then begin
+       if fMouseDown<>0 then begin
+        fProcessor.TouchDragged(Event^.motion.x,Event^.motion.y,1.0,0);
+       end else begin
+        fProcessor.MouseMoved(Event^.motion.x,Event^.motion.y);
+       end;
+      end;
+     end;
+     SDL_MOUSEBUTTONDOWN:begin
+      fMaxPointerID:=max(fMaxPointerID,0);
+ {    fMouseDeltaX:=Event^.button.x-fMouseX;
+      fMouseDeltaY:=Event^.button.y-fMouseY;}
+      fMouseX:=Event^.button.x;
+      fMouseY:=Event^.button.y;
+      case Event^.button.button of
+       SDL_BUTTON_LEFT:begin
+        fMouseDown:=fMouseDown or 1;
+        fMouseJustDown:=fMouseJustDown or 1;
+        fJustTouched:=true;
+        if assigned(fProcessor) then begin
+         fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT);
+        end;
+       end;
+       SDL_BUTTON_RIGHT:begin
+        fMouseDown:=fMouseDown or 2;
+        fMouseJustDown:=fMouseJustDown or 2;
+        fJustTouched:=true;
+        if assigned(fProcessor) then begin
+         fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT);
+        end;
+       end;
+       SDL_BUTTON_MIDDLE:begin
+        fMouseDown:=fMouseDown or 4;
+        fMouseJustDown:=fMouseJustDown or 4;
+        fJustTouched:=true;
+        if assigned(fProcessor) then begin
+         fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE);
+        end;
+       end;
+      end;
+     end;
+     SDL_MOUSEBUTTONUP:begin
+      fMaxPointerID:=max(fMaxPointerID,0);
+ {    fMouseDeltaX:=Event^.button.x-fMouseX;
+      fMouseDeltaY:=Event^.button.y-fMouseY;}
+      fMouseX:=Event^.button.x;
+      fMouseY:=Event^.button.y;
+      case Event^.button.button of
+       SDL_BUTTON_LEFT:begin
+        fMouseDown:=fMouseDown and not 1;
+        fMouseJustDown:=fMouseJustDown and not 1;
+        if assigned(fProcessor) then begin
+         fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT);
+        end;
+       end;
+       SDL_BUTTON_RIGHT:begin
+        fMouseDown:=fMouseDown and not 2;
+        fMouseJustDown:=fMouseJustDown and not 2;
+        if assigned(fProcessor) then begin
+         fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT);
+        end;
+       end;
+       SDL_BUTTON_MIDDLE:begin
+        fMouseDown:=fMouseDown and not 4;
+        fMouseJustDown:=fMouseJustDown and not 4;
+        if assigned(fProcessor) then begin
+         fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE);
+        end;
+       end;
+      end;
+     end;
+     SDL_MOUSEWHEEL:begin
+      if assigned(fProcessor) then begin
+       fProcessor.Scrolled(Event^.wheel.x+Event^.wheel.y);
+      end;
+     end;
+     SDL_FINGERMOTION:begin
+      PointerID:=Event^.tfinger.fingerId and $ffff;
+      fMaxPointerID:=max(fMaxPointerID,PointerID+1);
+      fPointerX[PointerID]:=Event^.tfinger.x*VulkanApplication.fWidth;
+      fPointerY[PointerID]:=Event^.tfinger.y*VulkanApplication.fHeight;
+      fPointerPressure[PointerID]:=Event^.tfinger.pressure;
+      fPointerDeltaX[PointerID]:=Event^.tfinger.dx*VulkanApplication.fWidth;
+      fPointerDeltaY[PointerID]:=Event^.tfinger.dy*VulkanApplication.fHeight;
+      if assigned(fProcessor) then begin
+       fProcessor.TouchDragged(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1);
+      end;
+     end;
+     SDL_FINGERDOWN:begin
+      inc(fPointerDownCount);
+      PointerID:=Event^.tfinger.fingerId and $ffff;
+      fMaxPointerID:=max(fMaxPointerID,PointerID+1);
+      fPointerX[PointerID]:=Event^.tfinger.x;
+      fPointerY[PointerID]:=Event^.tfinger.y;
+      fPointerPressure[PointerID]:=Event^.tfinger.pressure;
+      fPointerDeltaX[PointerID]:=Event^.tfinger.dx;
+      fPointerDeltaY[PointerID]:=Event^.tfinger.dy;
+      fPointerDown[PointerID]:=true;
+      fPointerJustDown[PointerID]:=true;
+      fJustTouched:=true;
+      if assigned(fProcessor) then begin
+       fProcessor.TouchDown(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0);
+      end;
+     end;
+     SDL_FINGERUP:begin
+      if fPointerDownCount>0 then begin
+       dec(fPointerDownCount);
+      end;
+      PointerID:=Event^.tfinger.fingerId and $ffff;
+      fMaxPointerID:=max(fMaxPointerID,PointerID+1);
+      fPointerX[PointerID]:=Event^.tfinger.x;
+      fPointerY[PointerID]:=Event^.tfinger.y;
+      fPointerPressure[PointerID]:=Event^.tfinger.pressure;
+      fPointerDeltaX[PointerID]:=Event^.tfinger.dx;
+      fPointerDeltaY[PointerID]:=Event^.tfinger.dy;
+      fPointerDown[PointerID]:=false;
+      fPointerJustDown[PointerID]:=false;
+      if assigned(fProcessor) then begin
+       fProcessor.TouchUp(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0);
+      end;
+     end;
+    end;
+   end;
+  end;
+ finally
+  fCriticalSection.Release;
+  fEventCount:=0;
+ end;
+end;
+
+function TVulkanApplicationInput.GetAccelerometerX:single;
+begin
+ result:=0.0;
+end;
+
+function TVulkanApplicationInput.GetAccelerometerY:single;
+begin
+ result:=0.0;
+end;
+
+function TVulkanApplicationInput.GetAccelerometerZ:single;
+begin
+ result:=0.0;
+end;
+
+function TVulkanApplicationInput.GetOrientationAzimuth:single;
+begin
+ result:=0.0;
+end;
+
+function TVulkanApplicationInput.GetOrientationPitch:single;
+begin
+ result:=0.0;
+end;
+
+function TVulkanApplicationInput.GetOrientationRoll:single;
+begin
+ result:=0.0;
+end;
+
+function TVulkanApplicationInput.GetMaxPointerID:TVkInt32;
+begin
+ fCriticalSection.Acquire;
+ try
+  result:=fMaxPointerID;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.GetPointerX(const pPointerID:TVkInt32=0):single;
+begin
+ fCriticalSection.Acquire;
+ try
+  if pPointerID=0 then begin
+   result:=fMouseX;
+  end else if (pPointerID>0) and (pPointerID<=$10000) then begin
+   result:=fPointerX[pPointerID-1];
+  end else begin
+   result:=0.0;
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.GetPointerDeltaX(const pPointerID:TVkInt32=0):single;
+begin
+ fCriticalSection.Acquire;
+ try
+  if pPointerID=0 then begin
+   result:=fMouseDeltaX;
+  end else if (pPointerID>0) and (pPointerID<=$10000) then begin
+   result:=fPointerDeltaX[pPointerID-1];
+  end else begin
+   result:=0.0;
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.GetPointerY(const pPointerID:TVkInt32=0):single;
+begin
+ fCriticalSection.Acquire;
+ try
+  if pPointerID=0 then begin
+   result:=fMouseY;
+  end else if (pPointerID>0) and (pPointerID<=$10000) then begin
+   result:=fPointerY[pPointerID-1];
+  end else begin
+   result:=0.0;
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.GetPointerDeltaY(const pPointerID:TVkInt32=0):single;
+begin
+ fCriticalSection.Acquire;
+ try
+  if pPointerID=0 then begin
+   result:=fMouseDeltaY;
+  end else if (pPointerID>0) and (pPointerID<=$10000) then begin
+   result:=fPointerDeltaY[pPointerID-1];
+  end else begin
+   result:=0.0;
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.GetPointerPressure(const pPointerID:TVkInt32=0):single;
+begin
+ fCriticalSection.Acquire;
+ try
+  if pPointerID=0 then begin
+   result:=ord(fMouseDown<>0) and 1;
+  end else if (pPointerID>0) and (pPointerID<=$10000) then begin
+   result:=fPointerPressure[pPointerID-1];
+  end else begin
+   result:=0.0;
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.IsPointerTouched(const pPointerID:TVkInt32=0):boolean;
+begin
+ fCriticalSection.Acquire;
+ try
+  if pPointerID=0 then begin
+   result:=fMouseDown<>0;
+  end else if (pPointerID>0) and (pPointerID<=$10000) then begin
+   result:=fPointerDown[pPointerID-1];
+  end else begin
+   result:=false;
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.IsPointerJustTouched(const pPointerID:TVkInt32=0):boolean;
+begin
+ fCriticalSection.Acquire;
+ try
+  if pPointerID=0 then begin
+   result:=fMouseJustDown<>0;
+   fMouseJustDown:=0;
+  end else if (pPointerID>0) and (pPointerID<=$10000) then begin
+   result:=fPointerJustDown[pPointerID-1];
+   fPointerJustDown[pPointerID-1]:=false;
+  end else begin
+   result:=false;
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.IsTouched:boolean;
+begin
+ fCriticalSection.Acquire;
+ try
+  result:=(fMouseDown<>0) or (fPointerDownCount<>0);
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.JustTouched:boolean;
+begin
+ fCriticalSection.Acquire;
+ try
+  result:=fJustTouched;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.IsButtonPressed(const pButton:TVkInt32):boolean;
+begin
+ fCriticalSection.Acquire;
+ try
+  case pButton of
+   BUTTON_LEFT:begin
+    result:=(fMouseDown and 1)<>0;
+   end;
+   BUTTON_RIGHT:begin
+    result:=(fMouseDown and 2)<>0;
+   end;
+   BUTTON_MIDDLE:begin
+    result:=(fMouseDown and 4)<>0;
+   end;
+   else begin
+    result:=false;
+   end;
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.IsKeyPressed(const pKeyCode:TVkInt32):boolean;
+begin
+ fCriticalSection.Acquire;
+ try
+  case pKeyCode of
+   KEYCODE_ANYKEY:begin
+    result:=fKeyDownCount>0;
+   end;
+   $0000..$ffffF:begin
+    result:=fKeyDown[pKeyCode and $ffff];
+   end;
+   else begin
+    result:=false;
+   end;
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.GetKeyName(const pKeyCode:TVkInt32):ansistring;
+begin
+ if (pKeyCode>=low(fKeyCodeNames)) and (pKeyCode<=high(fKeyCodeNames)) then begin
+  result:=fKeyCodeNames[pKeyCode];
+ end else begin
+  result:='';
+ end;
+end;
+
+function TVulkanApplicationInput.GetKeyModifier:TVkInt32;
+begin
+ result:=TranslateSDLKeyModifier(SDL_GetModState);
+end;
+
+procedure TVulkanApplicationInput.GetTextInput(const pCallback:TVulkanApplicationInputTextInputCallback;const pTitle,pText:ansistring;const pPlaceholder:ansistring='');
+begin
+end;
+
+procedure TVulkanApplicationInput.SetOnscreenKeyboardVisible(const pVisible:boolean);
+begin
+end;
+
+procedure TVulkanApplicationInput.Vibrate(const pMilliseconds:TVkInt32);
+begin
+end;
+
+procedure TVulkanApplicationInput.Vibrate(const pPattern:array of TVkInt32;const pRepeats:TVkInt32);
+begin
+end;
+
+procedure TVulkanApplicationInput.CancelVibrate;
+begin
+end;
+
+procedure TVulkanApplicationInput.GetRotationMatrix(const pMatrix3x3:pointer);
+begin
+end;
+
+function TVulkanApplicationInput.GetCurrentEventTime:int64;
+begin
+ result:=fCurrentEventTime;
+end;
+
+procedure TVulkanApplicationInput.SetCatchBackKey(const pCatchBack:boolean);
+begin
+end;
+
+procedure TVulkanApplicationInput.SetCatchMenuKey(const pCatchMenu:boolean);
+begin
+end;
+
+procedure TVulkanApplicationInput.SetInputProcessor(const pProcessor:TVulkanApplicationInputProcessor);
+begin
+ fCriticalSection.Acquire;
+ try
+  fProcessor:=pProcessor;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.GetInputProcessor:TVulkanApplicationInputProcessor;
+begin
+ fCriticalSection.Acquire;
+ try
+  result:=fProcessor;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.IsPeripheralAvailable(const pPeripheral:TVkInt32):boolean;
+begin
+ fCriticalSection.Acquire;
+ try
+  case pPeripheral of
+   PERIPHERAL_HARDWAREKEYBOARD,PERIPHERAL_MULTITOUCHSCREEN:begin
+    result:=true;
+   end;
+   PERIPHERAL_ONSCEENKEYBOARD,PERIPHERAL_ACCELEROMETER,PERIPHERAL_COMPASS,PERIPHERAL_VIBRATOR:begin
+    result:=false;
+   end;
+   else begin
+    result:=false;
+   end;
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.GetNativeOrientation:TVkInt32;
+var SDLDisplayMode:TSDL_DisplayMode;
+begin
+ if SDL_GetDesktopDisplayMode(SDL_GetWindowDisplayIndex(VulkanApplication.fSurfaceWindow),@SDLDisplayMode)=0 then begin
+  if SDLDisplayMode.w<SDLDisplayMode.h then begin
+   result:=ORIENTATION_LANDSCAPE;
+  end else begin
+   result:=ORIENTATION_PORTRAIT;
+  end;
+ end else begin
+  result:=ORIENTATION_LANDSCAPE;
+ end;
+end;
+
+procedure TVulkanApplicationInput.SetCursorCatched(const pCatched:boolean);
+begin
+ fCriticalSection.Acquire;
+ try
+  VulkanApplication.fCatchMouse:=pCatched;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.IsCursorCatched:boolean;
+begin
+ fCriticalSection.Acquire;
+ try
+  result:=VulkanApplication.fCatchMouse;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+procedure TVulkanApplicationInput.SetCursorPosition(const pX,pY:TVkInt32);
+begin
+ fCriticalSection.Acquire;
+ try
+  SDL_WarpMouseInWindow(VulkanApplication.fSurfaceWindow,pX,pY);
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.GetJoystickCount:TVkInt32;
+begin
+ result:=SDL_NumJoysticks;
+end;
+
+function TVulkanApplicationInput.GetJoystick(const pIndex:TVkInt32):TVulkanApplicationJoystick;
+var Joystick:PSDL_Joystick;
+    GameController:PSDL_GameController;
+    ListIndex:TVkInt32;
+begin
+ result:=nil;
+ if (pIndex>=0) and (pIndex<SDL_NumJoysticks) then begin
+  for ListIndex:=0 to fJoysticks.Count-1 do begin
+   if TVulkanApplicationJoystick(fJoysticks[ListIndex]).fIndex=pIndex then begin
+    result:=TVulkanApplicationJoystick(fJoysticks[ListIndex]);
+    exit;
+   end;
+  end;
+  if SDL_IsGameController(pIndex)<>0 then begin
+   GameController:=SDL_GameControllerOpen(pIndex);
+   if assigned(GameController) then begin
+    Joystick:=SDL_GameControllerGetJoystick(GameController);
+   end;
+  end else begin
+   GameController:=nil;
+   Joystick:=SDL_JoystickOpen(pIndex);
+  end;
+  if assigned(Joystick) then begin
+   result:=TVulkanApplicationJoystick.Create;
+   TVulkanApplicationJoystick(result).fInput:=self;
+   TVulkanApplicationJoystick(result).fIndex:=pIndex;
+   TVulkanApplicationJoystick(result).fJoystick:=Joystick;
+   TVulkanApplicationJoystick(result).fGameController:=GameController;
+   fJoysticks.Add(result);
+   TVulkanApplicationJoystick(result).Initialize;
+  end;
  end;
 end;
 
@@ -1060,20 +3868,7 @@ begin
 
  fVulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(fVulkanSwapChain.CurrentImage);
 
- if assigned(fVulkanApplication.fScreen) then begin
-
-  fVulkanApplication.fScreen.Draw;
-
- end else begin
-
-  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.BeginRenderPass(fVulkanCommandBuffer,
-                                                                      fVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
-                                                                      VK_SUBPASS_CONTENTS_INLINE,
-                                                                      0,0,fVulkanSwapChain.Width,fVulkanSwapChain.Height);
-
-  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(fVulkanCommandBuffer);
-
- end;
+ fVulkanApplication.Draw;
 
  fVulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(fVulkanSwapChain.CurrentImage);
 
@@ -1238,9 +4033,16 @@ begin
  fTitle:='SDL2 Vulkan Application';
  fVersion:=$0100;
 
- fHighResolutionTimer:=TVulkanHighResolutionTimer.Create;
+ fHighResolutionTimer:=TVulkanApplicationHighResolutionTimer.Create;
 
  fAssets:=TVulkanApplicationAssets.Create(self);
+
+ fInput:=TVulkanApplicationInput.Create;
+
+ fLastPressedKeyEvent.type_:=0;
+ fKeyRepeatTimeAccumulator:=0;
+ fKeyRepeatInterval:=fHighResolutionTimer.MillisecondInterval*100;
+ fKeyRepeatInitialInterval:=fHighResolutionTimer.MillisecondInterval*400;
 
  fCurrentWidth:=-1;
  fCurrentHeight:=-1;
@@ -1323,6 +4125,7 @@ destructor TVulkanApplication.Destroy;
 begin
  FreeAndNil(fAssets);
  FreeAndNil(fHighResolutionTimer);
+ FreeAndNil(fInput);
  VulkanApplication:=nil;
  inherited Destroy;
 end;
@@ -1719,7 +4522,8 @@ begin
 end;
 
 procedure TVulkanApplication.ProcessMessages;
-var NowTime:TVulkanHighResolutionTime;
+var NowTime:TVulkanApplicationHighResolutionTime;
+    OK:boolean;
 begin
 
  if fCurrentVisibleMouseCursor<>ord(fVisibleMouseCursor) then begin
@@ -1761,92 +4565,167 @@ begin
   end;
  end;
 
- while SDL_PollEvent(@fEvent)<>0 do begin
-  if HandleEvent(fEvent) then begin
-   continue;
+ fInput.fCriticalSection.Acquire;
+ try
+  fInput.fEventCount:=0;
+
+  fInput.fMouseDeltaX:=0;
+  fInput.fMouseDeltaY:=0;
+  FillChar(fInput.fPointerDeltaX,SizeOf(fInput.fPointerDeltaX[0])*max(fInput.fMaxPointerID+1,0),AnsiChar(#0));
+  FillChar(fInput.fPointerDeltaY,SizeOf(fInput.fPointerDeltaY[0])*max(fInput.fMaxPointerID+1,0),AnsiChar(#0));
+
+  if fLastPressedKeyEvent.type_<>0 then begin
+   dec(fKeyRepeatTimeAccumulator,fDeltaTime);
+   while fKeyRepeatTimeAccumulator<0 do begin
+    inc(fKeyRepeatTimeAccumulator,fKeyRepeatInterval);
+    fInput.AddEvent(fLastPressedKeyEvent);
+   end;
   end;
-  case fEvent.type_ of
-   SDL_QUITEV,
-   SDL_APP_TERMINATING:begin
-    Pause;
-    DeinitializeGraphics;
-    Terminate;
+
+  while SDL_PollEvent(@fEvent)<>0 do begin
+   if HandleEvent(fEvent) then begin
+    continue;
    end;
-   SDL_APP_WILLENTERBACKGROUND:begin
-{$if defined(fpc) and defined(android)}
-    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_WILLENTERBACKGROUND')));
-{$ifend}
-    fActive:=false;
-    Pause;
-    DeinitializeGraphics;
-    fHasLastTime:=false;
-   end;
-   SDL_APP_DIDENTERBACKGROUND:begin
-{$if defined(fpc) and defined(android)}
-    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_DIDENTERBACKGROUND')));
-{$ifend}
-   end;
-   SDL_APP_WILLENTERFOREGROUND:begin
-{$if defined(fpc) and defined(android)}
-    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_WILLENTERFOREGROUND')));
-{$ifend}
-   end;
-   SDL_APP_DIDENTERFOREGROUND:begin
-    InitializeGraphics;
-    Resume;
-    fActive:=true;
-    fHasLastTime:=false;
-{$if defined(fpc) and defined(android)}
-    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_DIDENTERFOREGROUND')));
-{$ifend}
-   end;
-   SDL_RENDER_TARGETS_RESET,
-   SDL_RENDER_DEVICE_RESET:begin
-    if fActive then begin
+   case fEvent.type_ of
+    SDL_QUITEV,
+    SDL_APP_TERMINATING:begin
      Pause;
-    end;
-    if fGraphicsReady then begin
      DeinitializeGraphics;
+     Terminate;
+    end;
+    SDL_APP_WILLENTERBACKGROUND:begin
+{$if defined(fpc) and defined(android)}
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_WILLENTERBACKGROUND')));
+{$ifend}
+     fActive:=false;
+     Pause;
+     DeinitializeGraphics;
+     fHasLastTime:=false;
+    end;
+    SDL_APP_DIDENTERBACKGROUND:begin
+{$if defined(fpc) and defined(android)}
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_DIDENTERBACKGROUND')));
+{$ifend}
+    end;
+    SDL_APP_WILLENTERFOREGROUND:begin
+{$if defined(fpc) and defined(android)}
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_WILLENTERFOREGROUND')));
+{$ifend}
+    end;
+    SDL_APP_DIDENTERFOREGROUND:begin
      InitializeGraphics;
-    end;
-    if fActive then begin
      Resume;
+     fActive:=true;
+     fHasLastTime:=false;
+{$if defined(fpc) and defined(android)}
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_DIDENTERFOREGROUND')));
+{$ifend}
     end;
-    fHasLastTime:=false;
-   end;
-   SDL_KEYDOWN:begin
-    case fEvent.key.keysym.sym of
-     SDLK_F4:begin
-      if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) and (fEvent.key.repeat_=0) then begin
-       Terminate;
-      end;
+    SDL_RENDER_TARGETS_RESET,
+    SDL_RENDER_DEVICE_RESET:begin
+     if fActive then begin
+      Pause;
      end;
-     SDLK_RETURN:begin
-      if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) and (fEvent.key.repeat_=0) then begin
-       fFullScreen:=not fFullScreen;
-      end;
+     if fGraphicsReady then begin
+      DeinitializeGraphics;
+      InitializeGraphics;
      end;
-     SDLK_SPACE:begin
+     if fActive then begin
+      Resume;
+     end;
+     fHasLastTime:=false;
+    end;
+    SDL_WINDOWEVENT:begin
+     case fEvent.window.event of
+      SDL_WINDOWEVENT_RESIZED:begin
+       fWidth:=fEvent.window.Data1;
+       fHeight:=fEvent.window.Data2;
+       fCurrentWidth:=fWidth;
+       fCurrentHeight:=fHeight;
+       fVulkanPresentationSurface.SetSize(fWidth,fHeight);
+       if assigned(fScreen) then begin
+        fScreen.Resize(fWidth,fHeight);
+       end;
+      end;
      end;
     end;
-   end;
-   SDL_KEYUP:begin
-   end;
-   SDL_WINDOWEVENT:begin
-    case fEvent.window.event of
-     SDL_WINDOWEVENT_RESIZED:begin
-      fWidth:=fEvent.window.Data1;
-      fHeight:=fEvent.window.Data2;
-      fCurrentWidth:=fWidth;
-      fCurrentHeight:=fHeight;
-      fVulkanPresentationSurface.SetSize(fWidth,fHeight);
-      if assigned(fScreen) then begin
-       fScreen.Resize(fWidth,fHeight);
+    SDL_KEYDOWN:begin
+     OK:=true;
+     case fEvent.key.keysym.sym of
+      SDLK_F4:begin
+       if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+        OK:=false;
+        if fEvent.key.repeat_=0 then begin
+         Terminate;
+        end;
+       end;
+      end;
+      SDLK_RETURN:begin
+       if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+        if fEvent.key.repeat_=0 then begin
+         OK:=false;
+         fFullScreen:=not fFullScreen;
+        end;
+       end;
       end;
      end;
+     if OK then begin
+      if fEvent.key.repeat_=0 then begin
+       fInput.AddEvent(fEvent);
+       fEvent.type_:=SDL_KEYTYPED;
+       fInput.AddEvent(fEvent);
+       fLastPressedKeyEvent:=fEvent;
+       fKeyRepeatTimeAccumulator:=fKeyRepeatInitialInterval;
+      end;
+     end;
+    end;
+    SDL_KEYUP:begin
+     OK:=true;
+     case fEvent.key.keysym.sym of
+      SDLK_F4:begin
+       if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+        OK:=false;
+       end;
+      end;
+      SDLK_RETURN:begin
+       if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+        OK:=false;
+       end;
+      end;
+     end;
+     if OK then begin
+      if fEvent.key.repeat_=0 then begin
+       fInput.AddEvent(fEvent);
+       fLastPressedKeyEvent.type_:=0;
+      end;
+     end;
+    end;
+    SDL_MOUSEMOTION:begin
+     fInput.AddEvent(fEvent);
+    end;
+    SDL_MOUSEBUTTONDOWN:begin
+     fInput.AddEvent(fEvent);
+    end;
+    SDL_MOUSEBUTTONUP:begin
+     fInput.AddEvent(fEvent);
+    end;
+    SDL_MOUSEWHEEL:begin
+     fInput.AddEvent(fEvent);
+    end;
+    SDL_FINGERMOTION:begin
+     fInput.AddEvent(fEvent);
+    end;
+    SDL_FINGERDOWN:begin
+     fInput.AddEvent(fEvent);
+    end;
+    SDL_FINGERUP:begin
+     fInput.AddEvent(fEvent);
     end;
    end;
   end;
+  fInput.ProcessEvents;
+ finally
+  fInput.fCriticalSection.Release;
  end;
 
  if assigned(fOnStep) then begin
@@ -1873,14 +4752,12 @@ begin
   fLastTime:=NowTime;
   fHasLastTime:=true;
 
-  if assigned(fScreen) then begin
-   fScreen.Update(Min(Max(fHighResolutionTimer.ToFloatSeconds(fDeltaTime),0.0),0.25));
-  end;
-  
+  Update(Min(Max(fHighResolutionTimer.ToFloatSeconds(fDeltaTime),0.0),0.25));
+
   if fVulkanPresentationSurface.AcquireBackBuffer(fBlocking) then begin
    fVulkanPresentationSurface.PresentBackBuffer;
   end;
-  
+
  end;
 
 end;
@@ -2018,6 +4895,26 @@ begin
 
  end;
 
+end;
+
+procedure TVulkanApplication.Update(const pDeltaTime:double);
+begin
+ if assigned(fScreen) then begin
+  fScreen.Update(pDeltaTime);
+ end;
+end;
+
+procedure TVulkanApplication.Draw;
+begin
+ if assigned(fScreen) then begin
+  fScreen.Draw;
+ end else begin
+  fVulkanPresentationSurface.fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.BeginRenderPass(fVulkanPresentationSurface.fVulkanCommandBuffer,
+                                                                                                 fVulkanPresentationSurface.fVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
+                                                                                                 VK_SUBPASS_CONTENTS_INLINE,
+                                                                                                 0,0,fVulkanPresentationSurface.fVulkanSwapChain.Width,fVulkanPresentationSurface.fVulkanSwapChain.Height);
+  fVulkanPresentationSurface.fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(fVulkanPresentationSurface.fVulkanCommandBuffer);
+ end;
 end;
 
 procedure TVulkanApplication.Resume;
