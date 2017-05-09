@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-07-02-11-0000                       *
+ *                        Version 2017-05-09-05-36-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -68,11 +68,21 @@ unit PasVulkanApplication;
 interface
 
 uses {$if defined(Unix)}
-      BaseUnix,Unix,UnixType,ctypes,
+      BaseUnix,
+      Unix,
+      UnixType,
+      {$ifdef linux}
+       linux,
+      {$endif}
+      ctypes,
      {$elseif defined(Windows)}
       Windows,
+      MMSystem,
      {$ifend}
-     SysUtils,Classes,Math,
+     SysUtils,
+     Classes,
+     SyncObjs,
+     Math,
      Vulkan,
      PasVulkan,
      PasVulkanSDL2,
@@ -87,6 +97,43 @@ type EVulkanApplication=class(Exception);
      TVulkanApplicationOnEvent=function(const fVulkanApplication:TVulkanApplication;const pEvent:TSDL_Event):boolean of object;
 
      TVulkanApplicationOnStep=procedure(const fVulkanApplication:TVulkanApplication) of object;
+
+     PPVulkanHighResolutionTime=^PVulkanHighResolutionTime;
+     PVulkanHighResolutionTime=^TVulkanHighResolutionTime;
+     TVulkanHighResolutionTime=TVkInt64;
+
+     TVulkanHighResolutionTimer=class
+      private
+       fFrequency:TVkInt64;
+       fFrequencyShift:TVkInt32;
+       fMillisecondInterval:TVulkanHighResolutionTime;
+       fTwoMillisecondsInterval:TVulkanHighResolutionTime;
+       fFourMillisecondsInterval:TVulkanHighResolutionTime;
+       fQuarterSecondInterval:TVulkanHighResolutionTime;
+       fMinuteInterval:TVulkanHighResolutionTime;
+       fHourInterval:TVulkanHighResolutionTime;
+      public
+       constructor Create;
+       destructor Destroy; override;
+       function GetTime:TVkInt64;
+       procedure Sleep(const pDelay:TVulkanHighResolutionTime);
+       function ToFloatSeconds(const pTime:TVulkanHighResolutionTime):double;
+       function FromFloatSeconds(const pTime:double):TVulkanHighResolutionTime;
+       function ToMilliseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
+       function FromMilliseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
+       function ToMicroseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
+       function FromMicroseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
+       function ToNanoseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
+       function FromNanoseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
+       property Frequency:TVkInt64 read fFrequency;
+       property MillisecondInterval:TVulkanHighResolutionTime read fMillisecondInterval;
+       property TwoMillisecondsInterval:TVulkanHighResolutionTime read fTwoMillisecondsInterval;
+       property FourMillisecondsInterval:TVulkanHighResolutionTime read fFourMillisecondsInterval;
+       property QuarterSecondInterval:TVulkanHighResolutionTime read fQuarterSecondInterval;
+       property SecondInterval:TVulkanHighResolutionTime read fFrequency;
+       property MinuteInterval:TVulkanHighResolutionTime read fMinuteInterval;
+       property HourInterval:TVulkanHighResolutionTime read fHourInterval;
+     end;
 
      TVulkanPresentationSurface=class;
 
@@ -200,6 +247,8 @@ type EVulkanApplication=class(Exception);
        fTitle:string;
        fVersion:TVkUInt32;
 
+       fHighResolutionTimer:TVulkanHighResolutionTimer;
+
        fAssets:TVulkanApplicationAssets;
 
        fCurrentWidth:TSDLInt32;
@@ -282,6 +331,12 @@ type EVulkanApplication=class(Exception);
 
        fHasNewNextScreen:boolean;
 
+       fHasLastTime:boolean;
+
+       fLastTime:TVulkanHighResolutionTime;
+
+       fDeltaTime:TVulkanHighResolutionTime;
+
        procedure InitializeGraphics;
        procedure DeinitializeGraphics;
 
@@ -322,6 +377,8 @@ type EVulkanApplication=class(Exception);
        procedure Pause; virtual;
 
       published
+
+       property HighResolutionTimer:TVulkanHighResolutionTimer read fHighResolutionTimer;
 
        property Assets:TVulkanApplicationAssets read fAssets;
 
@@ -396,7 +453,7 @@ var VulkanApplication:TVulkanApplication=nil;
      AndroidJavaObject:jobject=nil;
 
      AndroidActivity:PANativeActivity=nil;
-     
+
      AndroidAssetManager:PAAssetManager=nil;
 
      AndroidInternalDataPath:string='';
@@ -432,6 +489,238 @@ begin
  fpsignal(SIGWINCH,signalhandler(SIG_IGN));
 end;
 {$ifend}
+
+constructor TVulkanHighResolutionTimer.Create;
+begin
+ inherited Create;
+ fFrequencyShift:=0;
+{$ifdef windows}
+ if QueryPerformanceFrequency(fFrequency) then begin
+  while (fFrequency and $ffffffffe0000000)<>0 do begin
+   fFrequency:=fFrequency shr 1;
+   inc(fFrequencyShift);
+  end;
+ end else begin
+  fFrequency:=1000;
+ end;
+{$else}
+{$ifdef linux}
+  fFrequency:=1000000000;
+{$else}
+{$ifdef unix}
+  fFrequency:=1000000;
+{$else}
+  fFrequency:=1000;
+{$endif}
+{$endif}
+{$endif}
+ fMillisecondInterval:=(fFrequency+500) div 1000;
+ fTwoMillisecondsInterval:=(fFrequency+250) div 500;
+ fFourMillisecondsInterval:=(fFrequency+125) div 250;
+ fQuarterSecondInterval:=(fFrequency+2) div 4;
+ fMinuteInterval:=fFrequency*60;
+ fHourInterval:=fFrequency*3600;
+end;
+
+destructor TVulkanHighResolutionTimer.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TVulkanHighResolutionTimer.GetTime:TVkInt64;
+{$ifdef linux}
+var NowTimeSpec:TimeSpec;
+    ia,ib:TVkInt64;
+{$else}
+{$ifdef unix}
+var tv:timeval;
+    tz:timezone;
+    ia,ib:TVkInt64;
+{$endif}
+{$endif}
+begin
+{$ifdef windows}
+ if not QueryPerformanceCounter(result) then begin
+  result:=timeGetTime;
+ end;
+{$else}
+{$ifdef linux}
+ clock_gettime(CLOCK_MONOTONIC,@NowTimeSpec);
+ ia:=TVkInt64(NowTimeSpec.tv_sec)*TVkInt64(1000000000);
+ ib:=NowTimeSpec.tv_nsec;
+ result:=ia+ib;
+{$else}
+{$ifdef unix}
+  tz.tz_minuteswest:=0;
+  tz.tz_dsttime:=0;
+  fpgettimeofday(@tv,@tz);
+  ia:=TVkInt64(tv.tv_sec)*TVkInt64(1000000);
+  ib:=tv.tv_usec;
+  result:=ia+ib;
+{$else}
+ result:=SDL_GetTicks;
+{$endif}
+{$endif}
+{$endif}
+ result:=result shr fFrequencyShift;
+end;
+
+procedure TVulkanHighResolutionTimer.Sleep(const pDelay:TVkInt64);
+var EndTime,NowTime{$ifdef unix},SleepTime{$endif}:TVkInt64;
+{$ifdef unix}
+    req,rem:timespec;
+{$endif}
+begin
+ if pDelay>0 then begin
+{$ifdef windows}
+  NowTime:=GetTime;
+  EndTime:=NowTime+pDelay;
+  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
+   Sleep(1);
+   NowTime:=GetTime;
+  end;
+  while (NowTime+fMillisecondInterval)<EndTime do begin
+   Sleep(0);
+   NowTime:=GetTime;
+  end;
+  while NowTime<EndTime do begin
+   NowTime:=GetTime;
+  end;
+{$else}
+{$ifdef linux}
+  NowTime:=GetTime;
+  EndTime:=NowTime+pDelay;
+  while true do begin
+   SleepTime:=abs(EndTime-NowTime);
+   if SleepTime>=fFourMillisecondsInterval then begin
+    SleepTime:=(SleepTime+2) shr 2;
+    if SleepTime>0 then begin
+     req.tv_sec:=SleepTime div 1000000000;
+     req.tv_nsec:=SleepTime mod 10000000000;
+     fpNanoSleep(@req,@rem);
+     NowTime:=GetTime;
+     continue;
+    end;
+   end;
+   break;
+  end;
+  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
+   ThreadSwitch;
+   NowTime:=GetTime;
+  end;
+  while NowTime<EndTime do begin
+   NowTime:=GetTime;
+  end;
+{$else}
+{$ifdef unix}
+  NowTime:=GetTime;
+  EndTime:=NowTime+pDelay;
+  while true do begin
+   SleepTime:=abs(EndTime-NowTime);
+   if SleepTime>=fFourMillisecondsInterval then begin
+    SleepTime:=(SleepTime+2) shr 2;
+    if SleepTime>0 then begin
+     req.tv_sec:=SleepTime div 1000000;
+     req.tv_nsec:=(SleepTime mod 1000000)*1000;
+     fpNanoSleep(@req,@rem);
+     NowTime:=GetTime;
+     continue;
+    end;
+   end;
+   break;
+  end;
+  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
+   ThreadSwitch;
+   NowTime:=GetTime;
+  end;
+  while NowTime<EndTime do begin
+   NowTime:=GetTime;
+  end;
+{$else}
+  NowTime:=GetTime;
+  EndTime:=NowTime+pDelay;
+  while (NowTime+4)<EndTime then begin
+   SDL_Delay(1);
+   NowTime:=GetTime;
+  end;
+  while (NowTime+2)<EndTime do begin
+   SDL_Delay(0);
+   NowTime:=GetTime;
+  end;
+  while NowTime<EndTime do begin
+   NowTime:=GetTime;
+  end;
+{$endif}
+{$endif}
+{$endif}
+ end;
+end;
+
+function TVulkanHighResolutionTimer.ToFloatSeconds(const pTime:TVulkanHighResolutionTime):double;
+begin
+ if fFrequency<>0 then begin
+  result:=pTime/fFrequency;
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TVulkanHighResolutionTimer.FromFloatSeconds(const pTime:double):TVulkanHighResolutionTime;
+begin
+ if fFrequency<>0 then begin
+  result:=trunc(pTime*fFrequency);
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TVulkanHighResolutionTimer.ToMilliseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
+begin
+ result:=pTime;
+ if fFrequency<>1000 then begin
+  result:=((pTime*1000)+((fFrequency+1) shr 1)) div fFrequency;
+ end;
+end;
+
+function TVulkanHighResolutionTimer.FromMilliseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
+begin
+ result:=pTime;
+ if fFrequency<>1000 then begin
+  result:=((pTime*fFrequency)+500) div 1000;
+ end;
+end;
+
+function TVulkanHighResolutionTimer.ToMicroseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
+begin
+ result:=pTime;
+ if fFrequency<>1000000 then begin
+  result:=((pTime*1000000)+((fFrequency+1) shr 1)) div fFrequency;
+ end;
+end;
+
+function TVulkanHighResolutionTimer.FromMicroseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
+begin
+ result:=pTime;
+ if fFrequency<>1000000 then begin
+  result:=((pTime*fFrequency)+500000) div 1000000;
+ end;
+end;
+
+function TVulkanHighResolutionTimer.ToNanoseconds(const pTime:TVulkanHighResolutionTime):TVkInt64;
+begin
+ result:=pTime;
+ if fFrequency<>1000000000 then begin
+  result:=((pTime*1000000000)+((fFrequency+1) shr 1)) div fFrequency;
+ end;
+end;
+
+function TVulkanHighResolutionTimer.FromNanoseconds(const pTime:TVkInt64):TVulkanHighResolutionTime;
+begin
+ result:=pTime;
+ if fFrequency<>1000000000 then begin
+  result:=((pTime*fFrequency)+500000000) div 1000000000;
+ end;
+end;
 
 constructor TVulkanPresentationSurface.Create(const pVulkanApplication:TVulkanApplication;
                                               const pWidth,pHeight:TVkInt32;
@@ -949,6 +1238,8 @@ begin
  fTitle:='SDL2 Vulkan Application';
  fVersion:=$0100;
 
+ fHighResolutionTimer:=TVulkanHighResolutionTimer.Create;
+
  fAssets:=TVulkanApplicationAssets.Create(self);
 
  fCurrentWidth:=-1;
@@ -1016,6 +1307,12 @@ begin
 
  fHasNewNextScreen:=false;
 
+ fHasLastTime:=false;
+
+ fLastTime:=0;
+
+ fDeltaTime:=0;
+
  fOnEvent:=nil;
 
  VulkanApplication:=self;
@@ -1025,6 +1322,7 @@ end;
 destructor TVulkanApplication.Destroy;
 begin
  FreeAndNil(fAssets);
+ FreeAndNil(fHighResolutionTimer);
  VulkanApplication:=nil;
  inherited Destroy;
 end;
@@ -1421,6 +1719,7 @@ begin
 end;
 
 procedure TVulkanApplication.ProcessMessages;
+var NowTime:TVulkanHighResolutionTime;
 begin
 
  if fCurrentVisibleMouseCursor<>ord(fVisibleMouseCursor) then begin
@@ -1480,6 +1779,7 @@ begin
     fActive:=false;
     Pause;
     DeinitializeGraphics;
+    fHasLastTime:=false;
    end;
    SDL_APP_DIDENTERBACKGROUND:begin
 {$if defined(fpc) and defined(android)}
@@ -1495,6 +1795,7 @@ begin
     InitializeGraphics;
     Resume;
     fActive:=true;
+    fHasLastTime:=false;
 {$if defined(fpc) and defined(android)}
     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_DIDENTERFOREGROUND')));
 {$ifend}
@@ -1511,6 +1812,7 @@ begin
     if fActive then begin
      Resume;
     end;
+    fHasLastTime:=false;
    end;
    SDL_KEYDOWN:begin
     case fEvent.key.keysym.sym of
@@ -1561,12 +1863,24 @@ begin
  end;
 
  if fGraphicsReady then begin
-  if assigned(fScreen) then begin
-   fScreen.Update(0.0);
+
+  NowTime:=fHighResolutionTimer.GetTime;
+  if fHasLastTime then begin
+   fDeltaTime:=NowTime-fLastTime;
+  end else begin
+   fDeltaTime:=0;
   end;
+  fLastTime:=NowTime;
+  fHasLastTime:=true;
+
+  if assigned(fScreen) then begin
+   fScreen.Update(Min(Max(fHighResolutionTimer.ToFloatSeconds(fDeltaTime),0.0),0.25));
+  end;
+  
   if fVulkanPresentationSurface.AcquireBackBuffer(fBlocking) then begin
    fVulkanPresentationSurface.PresentBackBuffer;
   end;
+  
  end;
 
 end;
@@ -1752,4 +2066,10 @@ begin
 end;
 {$ifend}
 
+{$ifdef Windows}
+initialization
+ timeBeginPeriod(1);
+finalization
+ timeEndPeriod(1);
+{$endif}
 end.
