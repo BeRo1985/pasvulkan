@@ -81,14 +81,14 @@ var Stream:TStream;
 begin
  inherited Create;
 
- Stream:=VulkanApplication.Assets.GetAsset('shaders/triangle/triangle_vert.spv');
+ Stream:=VulkanApplication.Assets.GetAssetStream('shaders/triangle/triangle_vert.spv');
  try
   fTriangleVertexShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=VulkanApplication.Assets.GetAsset('shaders/triangle/triangle_frag.spv');
+ Stream:=VulkanApplication.Assets.GetAssetStream('shaders/triangle/triangle_frag.spv');
  try
   fTriangleFragmentShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
  finally

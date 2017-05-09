@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-09-06-46-0000                       *
+ *                        Version 2017-05-09-09-55-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -656,6 +656,7 @@ type EVulkanApplication=class(Exception);
 
      TVulkanApplicationInput=class
       private
+       fVulkanApplication:TVulkanApplication;
        fKeyCodeNames:array[-1..1023] of ansistring;
        fCriticalSection:TCriticalSection;
        fProcessor:TVulkanApplicationInputProcessor;
@@ -688,7 +689,7 @@ type EVulkanApplication=class(Exception);
        procedure AddEvent(const pEvent:TSDL_Event);
        procedure ProcessEvents;
       public
-       constructor Create; reintroduce;
+       constructor Create(const pVulkanApplication:TVulkanApplication); reintroduce;
        destructor Destroy; override;
        function GetAccelerometerX:single;
        function GetAccelerometerY:single;
@@ -822,12 +823,16 @@ type EVulkanApplication=class(Exception);
      TVulkanApplicationAssets=class
       private
        fVulkanApplication:TVulkanApplication;
+{$ifndef Android}
        fBasePath:string;
+{$endif}
+       function CorrectFileName(const pFileName:string):string;
       public
        constructor Create(const pVulkanApplication:TVulkanApplication);
        destructor Destroy; override;
-       function GetAsset(const pFileName:string):TStream;
        function ExistAsset(const pFileName:string):boolean;
+       function GetAssetStream(const pFileName:string):TStream;
+       function GetAssetSize(const pFileName:string):int64;
      end;
 
      TVulkanApplicationCommandPools=array of array of TVulkanCommandPool;
@@ -2100,9 +2105,10 @@ begin
  end;
 end;
 
-constructor TVulkanApplicationInput.Create;
+constructor TVulkanApplicationInput.Create(const pVulkanApplication:TVulkanApplication);
 begin
  inherited Create;
+ fVulkanApplication:=pVulkanApplication;
  FillChar(fKeyCodeNames,SizeOf(fKeyCodeNames),AnsiChar(#0));
  fKeyCodeNames[KEYCODE_ANYKEY]:='ANYKEY';
  fKeyCodeNames[KEYCODE_UNKNOWN]:='UNKNOWN';
@@ -4254,7 +4260,9 @@ constructor TVulkanApplicationAssets.Create(const pVulkanApplication:TVulkanAppl
 begin
  inherited Create;
  fVulkanApplication:=pVulkanApplication;
+{$ifndef Android}
  fBasePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'assets');
+{$endif}
 end;
 
 destructor TVulkanApplicationAssets.Destroy;
@@ -4262,41 +4270,18 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanApplicationAssets.GetAsset(const pFileName:string):TStream;
-{$ifdef Android}
-var Asset:PAAsset;
-    Size:int64;
+function TVulkanApplicationAssets.CorrectFileName(const pFileName:string):string;
 begin
- result:=nil;
- if assigned(AndroidAssetManager) then begin
-  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(AnsiString(StringReplace(StringReplace(pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]))),AASSET_MODE_UNKNOWN);
-  if assigned(Asset) then begin
-   Size:=AAsset_getLength(Asset);
-   result:=TMemoryStream.Create;
-   result.Size:=Size;
-   AAsset_read(Asset,TMemoryStream(result).Memory,Size);
- //Move(AAsset_getBuffer(Asset)^,Data^,Size);
-   AAsset_close(Asset);
-  end else begin
-   raise Exception.Create('Asset "'+pFileName+'" not found');
-  end;
- end else begin
-  raise Exception.Create('Asset manager is null');
- end;
+ result:=StringReplace(StringReplace({$ifndef Android}fBasePath+{$endif}pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]);
 end;
-{$else}
-begin
- result:=TFileStream.Create(StringReplace(StringReplace(fBasePath+pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]),fmOpenRead or fmShareDenyWrite);
-end;
-{$endif}
-         
+
 function TVulkanApplicationAssets.ExistAsset(const pFileName:string):boolean;
 {$ifdef Android}
 var Asset:PAAsset;
 begin
  result:=false;
  if assigned(AndroidAssetManager) then begin
-  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(AnsiString(StringReplace(StringReplace(pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]))),AASSET_MODE_UNKNOWN);
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(AnsiString(CorrectFileName(pFileName))),AASSET_MODE_UNKNOWN);
   if assigned(Asset) then begin
    AAsset_close(Asset);
    result:=true;
@@ -4307,7 +4292,70 @@ begin
 end;
 {$else}
 begin
- result:=FileExists(StringReplace(StringReplace(fBasePath+pFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]));
+ result:=FileExists(CorrectFileName(pFileName));
+end;
+{$endif}
+
+function TVulkanApplicationAssets.GetAssetStream(const pFileName:string):TStream;
+{$ifdef Android}
+var Asset:PAAsset;
+    Size:int64;
+begin
+ result:=nil;
+ if assigned(AndroidAssetManager) then begin
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(AnsiString(CorrectFileName(pFileName))),AASSET_MODE_UNKNOWN);
+  if assigned(Asset) then begin
+   try
+    Size:=AAsset_getLength(Asset);
+    result:=TMemoryStream.Create;
+    result.Size:=Size;
+    AAsset_read(Asset,TMemoryStream(result).Memory,Size);
+  //Move(AAsset_getBuffer(Asset)^,Data^,Size);
+   finally
+    AAsset_close(Asset);
+   end;
+  end else begin
+   raise Exception.Create('Asset "'+pFileName+'" not found');
+  end;
+ end else begin
+  raise Exception.Create('Asset manager is null');
+ end;
+end;
+{$else}
+begin
+ result:=TFileStream.Create(CorrectFileName(pFileName),fmOpenRead or fmShareDenyWrite);
+end;
+{$endif}
+
+function TVulkanApplicationAssets.GetAssetSize(const pFileName:string):int64;
+{$ifdef Android}
+var Asset:PAAsset;
+begin
+ result:=0;
+ if assigned(AndroidAssetManager) then begin
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(AnsiString(CorrectFileName(pFileName))),AASSET_MODE_UNKNOWN);
+  if assigned(Asset) then begin
+   try
+    result:=AAsset_getLength(Asset);
+   finally
+    AAsset_close(Asset);
+   end;
+  end else begin
+   raise Exception.Create('Asset "'+pFileName+'" not found');
+  end;
+ end else begin
+  raise Exception.Create('Asset manager is null');
+ end;
+end;
+{$else}
+var Stream:TStream;
+begin
+ Stream:=TFileStream.Create(CorrectFileName(pFileName),fmOpenRead or fmShareDenyWrite);
+ try
+  result:=Stream.Size;
+ finally
+  Stream.Free;
+ end;
 end;
 {$endif}
 
@@ -4328,7 +4376,7 @@ begin
 
  fAssets:=TVulkanApplicationAssets.Create(self);
 
- fInput:=TVulkanApplicationInput.Create;
+ fInput:=TVulkanApplicationInput.Create(self);
 
  fLastPressedKeyEvent.type_:=0;
  fKeyRepeatTimeAccumulator:=0;
