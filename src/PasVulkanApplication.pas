@@ -854,6 +854,7 @@ type EVulkanApplication=class(Exception);
        fCurrentVSync:TSDLInt32;
        fCurrentVisibleMouseCursor:TSDLInt32;
        fCurrentCatchMouse:TSDLInt32;
+       fCurrentHideSystemBars:TSDLInt32;
        fCurrentBlocking:TSDLInt32;
 
        fWidth:TSDLInt32;
@@ -863,6 +864,7 @@ type EVulkanApplication=class(Exception);
        fResizable:boolean;
        fVisibleMouseCursor:boolean;
        fCatchMouse:boolean;
+       fHideSystemBars:boolean;
        fBlocking:boolean;
 
        fActive:boolean;
@@ -1006,6 +1008,8 @@ type EVulkanApplication=class(Exception);
        property VisibleMouseCursor:boolean read fVisibleMouseCursor write fVisibleMouseCursor;
 
        property CatchMouse:boolean read fCatchMouse write fCatchMouse;
+
+       property HideSystemBars:boolean read fHideSystemBars write fHideSystemBars; 
 
        property Blocking:boolean read fBlocking write fBlocking;
 
@@ -4313,8 +4317,8 @@ begin
  SDL_SetMainReady;
 
  SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING,'1');
- SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'1');
-                                              
+ SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'1');
+
  inherited Create;
 
  fTitle:='SDL2 Vulkan Application';
@@ -4337,6 +4341,7 @@ begin
  fCurrentVSync:=-1;
  fCurrentVisibleMouseCursor:=-1;
  fCurrentCatchMouse:=-1;
+ fCurrentHideSystemBars:=-1;
  fCurrentBlocking:=-1;
 
  fWidth:=1280;
@@ -4346,6 +4351,7 @@ begin
  fResizable:=true;
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
+ fHideSystemBars:=false;
  fBlocking:=true;
 
  fActive:=true;
@@ -4819,6 +4825,14 @@ begin
 
  DoUpdateMainJoystick:=false;
 
+ if fCurrentHideSystemBars<>ord(fHideSystemBars) then begin
+  if fHideSystemBars then begin
+   SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'1');
+  end else begin
+   SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'0');
+  end;
+ end;
+
  if fCurrentVisibleMouseCursor<>ord(fVisibleMouseCursor) then begin
   fCurrentVisibleMouseCursor:=ord(fVisibleMouseCursor);
   if fVisibleMouseCursor then begin
@@ -5125,6 +5139,13 @@ begin
  if fCountThreads<1 then begin
   fCountThreads:=1;
  end;
+
+ if fHideSystemBars then begin
+  SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'1');
+ end else begin
+  SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'0');
+ end;
+ fCurrentHideSystemBars:=ord(fHideSystemBars);
 
  if SDL_Init(SDL_INIT_VIDEO or SDL_INIT_EVENTS or SDL_INIT_TIMER)<0 then begin
   raise EVulkanApplication.Create('Unable to initialize SDL: '+SDL_GetError);

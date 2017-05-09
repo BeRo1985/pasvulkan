@@ -128,6 +128,7 @@ begin
    VulkanApplication.StartScreen:=TScreenExampleTriangle;
    VulkanApplication.VisibleMouseCursor:=true;
    VulkanApplication.CatchMouse:=false;
+   VulkanApplication.HideSystemBars:=true;
    VulkanApplication.Run;
   finally
    FreeAndNil(VulkanApplication);
