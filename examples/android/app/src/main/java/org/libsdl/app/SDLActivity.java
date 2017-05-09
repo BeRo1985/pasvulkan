@@ -37,6 +37,8 @@ import android.content.pm.ActivityInfo;
 public class SDLActivity extends Activity {
 	private static final String TAG = "SDL";
 
+	private static final String SDL_HINT_ANDROID_HIDE_SYSTEM_BARS = "SDL_ANDROID_HIDE_SYSTEM_BARS";
+
 	// Keep track of the paused state
 	public static boolean mIsPaused, mIsSurfaceReady, mHasFocus;
 	public static boolean mExitCalledFromJava;
@@ -174,6 +176,13 @@ public class SDLActivity extends Activity {
 		// Set up the surface
 		mSurface = new SDLSurface(getApplication());
 
+		nativeAddHintCallback(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS, new SDLHintCallback() {
+            @Override
+            public void callback(String name, String oldValue, String newValue) {
+				                updateSystemBarsStatus(newValue);
+				            }
+        });
+
 		if(Build.VERSION.SDK_INT >= 12) {
 			mJoystickHandler = new SDLJoystickHandler_API12();
 		}
@@ -221,6 +230,8 @@ public class SDLActivity extends Activity {
 		}
 
 		SDLActivity.handleResume();
+
+		updateSystemBarsStatus(nativeGetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS));
 	}
 
 
@@ -333,6 +344,27 @@ public class SDLActivity extends Activity {
 		mSingleton.finish();
 	}
 
+	void updateSystemBarsStatus(String value) {
+		if ("1".equals(value)) {
+		  runOnUiThread(new Runnable() {
+        @Override
+        public void run() {
+					// first try immersive mode (sticky immersive)
+					if (Build.VERSION.SDK_INT >= 19) {
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+							                                               View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+																														 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+							                                               View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+							                                               View.SYSTEM_UI_FLAG_FULLSCREEN |
+							                                               View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+					} else if (Build.VERSION.SDK_INT >= 14) {
+						// if not available, use at least low profile mode
+						getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
+				  }
+				}
+			});
+		}
+	}
 
 	// Messages from the SDLMain thread
 	static final int COMMAND_CHANGE_TITLE = 1;
@@ -446,6 +478,10 @@ public class SDLActivity extends Activity {
 																						 int is_accelerometer, int nbuttons,
 																						 int naxes, int nhats, int nballs);
 	public static native int nativeRemoveJoystick(int device_id);
+	interface SDLHintCallback {
+       void callback(String name, String oldValue, String newValue);
+  }
+  public static native void nativeAddHintCallback(String name, SDLHintCallback callback);
 	public static native String nativeGetHint(String name);
 
 	/**
