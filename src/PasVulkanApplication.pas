@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-10-08-33-0000                       *
+ *                        Version 2017-05-10-14-14-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -91,6 +91,8 @@ uses {$if defined(Unix)}
      PasVulkanAndroid;
 
 const MaxSwapChainImages=3;
+
+      FrameTimesHistorySize=1 shl 10;
 
       LOG_NONE=0;
       LOG_ERROR=1;
@@ -974,8 +976,16 @@ type EVulkanApplication=class(Exception);
        fHasLastTime:boolean;
 
        fLastTime:TVulkanApplicationHighResolutionTime;
-
+       fNowTime:TVulkanApplicationHighResolutionTime;
        fDeltaTime:TVulkanApplicationHighResolutionTime;
+       fFloatDeltaTime:double;
+
+       fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of double;
+       fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TVulkanApplicationHighResolutionTime;
+       fFrameTimesHistoryReadIndex:TPasMPInt32;
+       fFrameTimesHistoryWriteIndex:TPasMPInt32;
+
+       fFramesPerSecond:double;
 
        procedure InitializeGraphics;
        procedure DeinitializeGraphics;
@@ -996,6 +1006,8 @@ type EVulkanApplication=class(Exception);
 
        procedure SetScreen(const pScreen:TVulkanScreen);
        procedure SetNextScreen(const pNextScreen:TVulkanScreen);
+
+       procedure UpdateFrameTimesHistory;
 
        procedure UpdateJobFunction(const pJob:PPasMPJob;const pThreadIndex:TPasMPInt32);
        procedure DrawJobFunction(const pJob:PPasMPJob;const pThreadIndex:TPasMPInt32);
@@ -1102,6 +1114,8 @@ type EVulkanApplication=class(Exception);
        property Screen:TVulkanScreen read fScreen write SetScreen;
 
        property NextScreen:TVulkanScreen read fNextScreen write SetNextScreen;
+
+       property FramesPerSecond:double read fFramesPerSecond;
 
      end;
 
@@ -4901,7 +4915,7 @@ begin
  fHasLastTime:=false;
 
  fLastTime:=0;
-
+ fNowTime:=0;
  fDeltaTime:=0;
 
  fOnEvent:=nil;
@@ -5320,9 +5334,53 @@ begin
  end;
 end;
 
+procedure TVulkanApplication.UpdateFrameTimesHistory;
+var Index,Count:TVkInt32;
+    SumOfFrameTimes:double;
+begin
+
+ if fFloatDeltaTime>0.0 then begin
+
+  fFrameTimesHistoryDeltaTimes[fFrameTimesHistoryWriteIndex]:=fFloatDeltaTime;
+  fFrameTimesHistoryTimePoints[fFrameTimesHistoryWriteIndex]:=fNowTime;
+  inc(fFrameTimesHistoryWriteIndex);
+  if fFrameTimesHistoryWriteIndex>=FrameTimesHistorySize then begin
+   fFrameTimesHistoryWriteIndex:=0;
+  end;
+
+  while (fFrameTimesHistoryReadIndex<>fFrameTimesHistoryWriteIndex) and
+        ((fNowTime-fFrameTimesHistoryTimePoints[fFrameTimesHistoryReadIndex])>=fHighResolutionTimer.SecondInterval) do begin
+   inc(fFrameTimesHistoryReadIndex);
+   if fFrameTimesHistoryReadIndex>=FrameTimesHistorySize then begin
+    fFrameTimesHistoryReadIndex:=0;
+   end;
+  end;
+ end;
+ 
+ SumOfFrameTimes:=0.0;
+ Count:=0;
+ Index:=fFrameTimesHistoryReadIndex;
+ while Index<>fFrameTimesHistoryWriteIndex do begin
+  SumOfFrameTimes:=SumOfFrameTimes+fFrameTimesHistoryDeltaTimes[Index];
+  inc(Count);
+  inc(Index);
+  if Index>FrameTimesHistorySize then begin
+   Index:=0;
+  end;
+ end;
+ if (Count>0) and (SumOfFrameTimes>0.0) then begin
+  fFramesPerSecond:=Count/SumOfFrameTimes;
+ end else if fFloatDeltaTime>0.0 then begin
+  fFramesPerSecond:=1.0/fFloatDeltaTime;
+ end else begin
+  fFramesPerSecond:=0.0;
+ end;
+
+end;
+
 procedure TVulkanApplication.UpdateJobFunction(const pJob:PPasMPJob;const pThreadIndex:TPasMPInt32);
 begin
- Update(Min(Max(fHighResolutionTimer.ToFloatSeconds(fDeltaTime),0.0),0.25));
+ Update(Min(Max(fFloatDeltaTime,0.0),0.25));
 end;
 
 procedure TVulkanApplication.DrawJobFunction(const pJob:PPasMPJob;const pThreadIndex:TPasMPInt32);
@@ -5337,7 +5395,6 @@ var Index,Counter:TVkInt32;
     Joystick:TVulkanApplicationJoystick;
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
-    NowTime:TVulkanApplicationHighResolutionTime;
     OK,Found,DoUpdateMainJoystick:boolean;
     Jobs:array[0..1] of PPasMPJob;
 begin
@@ -5633,14 +5690,17 @@ begin
 
  if fGraphicsReady then begin
 
-  NowTime:=fHighResolutionTimer.GetTime;
+  fNowTime:=fHighResolutionTimer.GetTime;
   if fHasLastTime then begin
-   fDeltaTime:=NowTime-fLastTime;
+   fDeltaTime:=fNowTime-fLastTime;
   end else begin
    fDeltaTime:=0;
   end;
-  fLastTime:=NowTime;
+  fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
+  fLastTime:=fNowTime;
   fHasLastTime:=true;
+
+  UpdateFrameTimesHistory;
 
   if assigned(fScreen) and fScreen.CanBeParallelProcessed then begin
 
@@ -5777,6 +5837,13 @@ begin
  SDL_EventState(SDL_KEYDOWN,SDL_ENABLE);
  SDL_EventState(SDL_QUITEV,SDL_ENABLE);
  SDL_EventState(SDL_WINDOWEVENT,SDL_ENABLE);
+
+ FillChar(fFrameTimesHistoryDeltaTimes,SizeOf(fFrameTimesHistoryDeltaTimes),#0);
+ FillChar(fFrameTimesHistoryTimePoints,SizeOf(fFrameTimesHistoryTimePoints),#$ff);
+ fFrameTimesHistoryReadIndex:=0;
+ fFrameTimesHistoryWriteIndex:=0;
+
+ fFramesPerSecond:=0.0;
 
  try
 
