@@ -90,7 +90,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        procedure AfterCreateSwapChain;
        procedure BeforeDestroySwapChain;
        procedure Reset;
-       procedure AddText(const pX,pY:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pR:single=1.0;const pG:single=1.0;const pB:single=1.0);
+       procedure AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pR:single=1.0;const pG:single=1.0;const pB:single=1.0);
        procedure Update(const pDeltaTime:double);
        procedure Draw;
      end;
@@ -164,7 +164,7 @@ begin
                                                 VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
                                                 VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                                 VulkanApplication.VulkanTransferCommandBufferFences[0,0],
-                                                VK_FORMAT_R16_UNORM,
+                                                VK_FORMAT_R8_UNORM,
                                                 VK_SAMPLE_COUNT_1_BIT,
                                                 SDFFontWidth,
                                                 SDFFontHeight,
@@ -380,6 +380,23 @@ begin
                                                                                            false,
                                                                                            false);
 
+ fFontCharWidth:=VulkanApplication.Width/160.0;
+ fFontCharHeight:=fFontCharWidth*2.0;
+
+ fInvWidth:=1.0/VulkanApplication.Width;
+ fInvHeight:=1.0/VulkanApplication.Height;
+
+ if assigned(fVulkanUniformBuffer) then begin
+  fUniformBuffer.uThreshold:=(SDFFontSpreadScale/sqrt(sqr(fFontCharWidth)+sqr(fFontCharHeight)))*1.0;
+  fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                  VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                  fUniformBuffer,
+                                  0,
+                                  SizeOf(TTextOverlayUniformBuffer),
+                                  false);
+
+ end;
+
 end;
 
 procedure TTextOverlay.BeforeDestroySwapChain;
@@ -391,13 +408,9 @@ end;
 procedure TTextOverlay.Reset;
 begin
  fCountBufferChars:=0;
- fInvWidth:=1.0/VulkanApplication.Width;
- fInvHeight:=1.0/VulkanApplication.Height;
- fFontCharWidth:=VulkanApplication.Width/160.0;
- fFontCharHeight:=fFontCharWidth*2.0;
 end;
 
-procedure TTextOverlay.AddText(const pX,pY:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pR:single=1.0;const pG:single=1.0;const pB:single=1.0);
+procedure TTextOverlay.AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pR:single=1.0;const pG:single=1.0;const pB:single=1.0);
 var Index,EdgeIndex:TVkInt32;
     BufferChar:PTextOverlayBufferChar;
     CurrentChar:byte;
@@ -408,10 +421,10 @@ begin
    cX:=pX;
   end;
   toaCenter:begin
-   cX:=pX-((length(pText)*fFontCharWidth)*0.5);
+   cX:=pX-((length(pText)*fFontCharWidth*pSize)*0.5);
   end;
   else {toaRight:}begin
-   cX:=pX-(length(pText)*fFontCharWidth);
+   cX:=pX-(length(pText)*fFontCharWidth*pSize);
   end;
  end;
  for Index:=1 to length(pText) do begin
@@ -421,8 +434,8 @@ begin
     BufferChar:=@fBufferChars^[fCountBufferChars];
     inc(fCountBufferChars);
     for EdgeIndex:=0 to 3 do begin
-     BufferChar^.Vertices[EdgeIndex].x:=(((cX+((EdgeIndex and 1)*fFontCharWidth))*fInvWidth)*2.0)-1.0;
-     BufferChar^.Vertices[EdgeIndex].y:=(((pY+((EdgeIndex shr 1)*fFontCharHeight))*fInvHeight)*2.0)-1.0;
+     BufferChar^.Vertices[EdgeIndex].x:=(((cX+((EdgeIndex and 1)*fFontCharWidth*pSize))*fInvWidth)*2.0)-1.0;
+     BufferChar^.Vertices[EdgeIndex].y:=(((pY+((EdgeIndex shr 1)*fFontCharHeight*pSize))*fInvHeight)*2.0)-1.0;
      BufferChar^.Vertices[EdgeIndex].u:=EdgeIndex and 1;
      BufferChar^.Vertices[EdgeIndex].v:=EdgeIndex shr 1;
      BufferChar^.Vertices[EdgeIndex].w:=CurrentChar;
@@ -432,7 +445,7 @@ begin
     end;
    end;
   end;
-  cX:=cX+fFontCharWidth;
+  cX:=cX+(fFontCharWidth*pSize);
  end;
 end;
 
@@ -444,10 +457,10 @@ begin
  fBufferChars:=@fBufferCharsBuffers[BufferIndex];
  begin
   Reset;
-  AddText(0.0,fFontCharHeight*0.0,toaLeft,'Device: '+VulkanApplication.VulkanDevice.PhysicalDevice.DeviceName);
-  AddText(0.0,fFontCharHeight*1.0,toaLeft,'Vulkan API version: '+IntToStr(VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 22)+'.'+IntToStr((VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 12) and $3ff)+'.'+IntToStr((VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 0) and $fff));
+  AddText(0.0,fFontCharHeight*0.0,1.0,toaLeft,'Device: '+VulkanApplication.VulkanDevice.PhysicalDevice.DeviceName);
+  AddText(0.0,fFontCharHeight*1.0,1.0,toaLeft,'Vulkan API version: '+IntToStr(VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 22)+'.'+IntToStr((VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 12) and $3ff)+'.'+IntToStr((VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 0) and $fff));
   Str(VulkanApplication.FramesPerSecond:1:1,s);
-  AddText(0.0,fFontCharHeight*2.0,toaLeft,'Frame rate: '+s+' FPS');
+  AddText(0.0,fFontCharHeight*2.0,1.0,toaLeft,'Frame rate: '+s+' FPS');
  end;
  fCountBufferCharsBuffers[BufferIndex]:=fCountBufferChars;
 end;
@@ -468,14 +481,6 @@ begin
                                  0,
                                  SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex],
                                  false);
-
-  fUniformBuffer.uThreshold:=(SDFFontSpreadScale/sqrt(sqr(fFontCharWidth)+sqr(fFontCharHeight)))*1.0;
-  fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
-                                  VulkanApplication.VulkanTransferCommandBufferFences[0,0],
-                                  fUniformBuffer,
-                                  0,
-                                  SizeOf(TTextOverlayUniformBuffer),
-                                  false);
 
   if assigned(fVulkanGraphicsPipeline) then begin
 

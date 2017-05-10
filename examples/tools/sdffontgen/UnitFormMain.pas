@@ -1,6 +1,6 @@
 unit UnitFormMain;
 // Copyright (C) 2017, Benjamin 'BeRo' Rosseaux
-// License: zlib 
+// License: zlib
 
 interface
 
@@ -12,7 +12,7 @@ const BitmapWidth=64;
       BitmapHeight=128;
       BitmapDepth=256; // 0x00 .. 0xff
 
-      SpreadScale=1.0;
+      SpreadScale=16.0;
 
 type
   PCorrespondingBorderPoint=^TCorrespondingBorderPoint;
@@ -715,14 +715,14 @@ begin
  writeln(t,'      SDFFontHeight=',BitmapHeight,';');
  writeln(t,'      SDFFontDepth=',BitmapDepth,';');
  writeln(t,'      SDFFontSpreadScale=',SpreadScale:1:8,';');
- writeln(t,'      SDFFontData:array[0..',(BitmapWidth*BitmapHeight*BitmapDepth)-1,'] of word=(');
+ writeln(t,'      SDFFontData:array[0..',(BitmapWidth*BitmapHeight*BitmapDepth)-1,'] of byte=(');
  write(t,'       ');
  i:=0;
  for z:=0 to BitmapDepth-1 do begin
   for y:=0 to BitmapHeight-1 do begin
    for x:=0 to BitmapWidth-1 do begin
-    write(t,Min(Max(round(SignedDistanceField[z,y,x]*32768)+32768,0),65535):5);
-//  write(t,Min(Max(round(SignedDistanceField[z,y,x]*128)+128,0),255):3);
+//  write(t,Min(Max(round(SignedDistanceField[z,y,x]*32768)+32768,0),65535):5);
+    write(t,Min(Max(round(SignedDistanceField[z,y,x]*128)+128,0),255):3);
 //  write(t,SignedDistanceField[z,y,x]:14:8);
     if not ((x=(BitmapWidth-1)) and (y=(BitmapHeight-1)) and (z=(BitmapDepth-1))) then begin
      write(t,',');
