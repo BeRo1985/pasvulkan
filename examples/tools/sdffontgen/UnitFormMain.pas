@@ -707,7 +707,7 @@ procedure TFormMain.SaveSignedDistanceField;
 var x,y,z,i:longint;
     t:textfile;
 begin
- AssignFile(t,'../UnitSDFFont.pas');
+ AssignFile(t,'../../UnitSDFFont.pas');
  Rewrite(t);
  writeln(t,'unit UnitSDFFont;');
  writeln(t,'interface');
