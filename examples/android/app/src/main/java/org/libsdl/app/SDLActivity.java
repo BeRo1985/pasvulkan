@@ -1200,7 +1200,7 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
 	public void surfaceCreated(SurfaceHolder holder) {
 		Log.v("SDL", "surfaceCreated()");
 		holder.setType(SurfaceHolder.SURFACE_TYPE_GPU);
-		holder.setFormat(PixelFormat.RGBX_8888);
+		holder.setFormat(PixelFormat.RGBA_8888);
 	}
 
 	// Called when we lose the surface
