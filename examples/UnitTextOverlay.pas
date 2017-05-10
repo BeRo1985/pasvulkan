@@ -117,14 +117,14 @@ begin
 
   fLoaded:=true;
 
-  Stream:=VulkanApplication.Assets.GetAssetStream('shaders/triangle/triangle_vert.spv');
+  Stream:=VulkanApplication.Assets.GetAssetStream('shaders/textoverlay/textoverlay_vert.spv');
   try
    fTextOverlayVertexShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
   finally
    Stream.Free;
   end;
 
-  Stream:=VulkanApplication.Assets.GetAssetStream('shaders/triangle/triangle_frag.spv');
+  Stream:=VulkanApplication.Assets.GetAssetStream('shaders/textoverlay/textoverlay_frag.spv');
   try
    fTextOverlayFragmentShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
   finally
@@ -223,7 +223,22 @@ begin
 
  if fLoaded then begin
 
-  fLoaded:=true;
+  fLoaded:=false;
+
+  FreeAndNil(fVulkanPipelineLayout);
+  FreeAndNil(fVulkanDescriptorSet);
+  FreeAndNil(fVulkanDescriptorSetLayout);
+  FreeAndNil(fVulkanDescriptorPool);
+  FreeAndNil(fVulkanUniformBuffer);
+  FreeAndNil(fVulkanIndexBuffer);
+  FreeAndNil(fVulkanVertexBuffer);
+  FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
+  FreeAndNil(fVulkanGraphicsPipeline);
+  FreeAndNil(fVulkanPipelineCache);
+  FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
+  FreeAndNil(fVulkanPipelineShaderStageTriangleFragment);
+  FreeAndNil(fTextOverlayFragmentShaderModule);
+  FreeAndNil(fTextOverlayVertexShaderModule);
 
  end;
 end;
