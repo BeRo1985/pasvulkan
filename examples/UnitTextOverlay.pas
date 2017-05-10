@@ -78,6 +78,10 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fVulkanPipelineLayout:TVulkanPipelineLayout;
        fUniformBuffer:TTextOverlayUniformBuffer;
        fFontTexture:TVulkanTexture;
+       fFontCharWidth:single;
+       fFontCharHeight:single;
+       fInvWidth:single;
+       fInvHeight:single;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -387,27 +391,27 @@ end;
 procedure TTextOverlay.Reset;
 begin
  fCountBufferChars:=0;
+ fInvWidth:=1.0/VulkanApplication.Width;
+ fInvHeight:=1.0/VulkanApplication.Height;
+ fFontCharWidth:=VulkanApplication.Width/80.0;
+ fFontCharHeight:=fFontCharWidth*2.0;//VulkanApplication.Height/40.0;
 end;
 
 procedure TTextOverlay.AddText(const pX,pY:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pR:single=1.0;const pG:single=1.0;const pB:single=1.0);
 var Index,EdgeIndex:TVkInt32;
     BufferChar:PTextOverlayBufferChar;
     CurrentChar:byte;
-    FontCharWidth,FontCharHeight,InvWidth,InvHeight,cX:single;
+    cX:single;
 begin
- InvWidth:=1.0/VulkanApplication.Width;
- InvHeight:=1.0/VulkanApplication.Height;
- FontCharWidth:=VulkanApplication.Width/80.0;
- FontCharHeight:=VulkanApplication.Height/25.0;
  case pAlignment of
   toaLeft:begin
    cX:=pX;
   end;
   toaCenter:begin
-   cX:=pX-((length(pText)*FontCharWidth)*0.5);
+   cX:=pX-((length(pText)*fFontCharWidth)*0.5);
   end;
   else {toaRight:}begin
-   cX:=pX-(length(pText)*FontCharWidth);
+   cX:=pX-(length(pText)*fFontCharWidth);
   end;
  end;
  for Index:=1 to length(pText) do begin
@@ -417,8 +421,8 @@ begin
     BufferChar:=@fBufferChars[fCountBufferChars];
     inc(fCountBufferChars);
     for EdgeIndex:=0 to 3 do begin
-     BufferChar^.Vertices[EdgeIndex].x:=(((cX+((EdgeIndex and 1)*FontCharWidth))*InvWidth)*2.0)-1.0;
-     BufferChar^.Vertices[EdgeIndex].y:=(((pY+((EdgeIndex shr 1)*FontCharHeight))*InvHeight)*2.0)-1.0;
+     BufferChar^.Vertices[EdgeIndex].x:=(((cX+((EdgeIndex and 1)*fFontCharWidth))*fInvWidth)*2.0)-1.0;
+     BufferChar^.Vertices[EdgeIndex].y:=(((pY+((EdgeIndex shr 1)*fFontCharHeight))*fInvHeight)*2.0)-1.0;
      BufferChar^.Vertices[EdgeIndex].u:=EdgeIndex and 1;
      BufferChar^.Vertices[EdgeIndex].v:=EdgeIndex shr 1;
      BufferChar^.Vertices[EdgeIndex].w:=CurrentChar;
@@ -428,7 +432,7 @@ begin
     end;
    end;
   end;
-  cX:=cX+FontCharWidth;
+  cX:=cX+fFontCharWidth;
  end;
 end;
 
@@ -463,7 +467,7 @@ begin
                                  SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex],
                                  false);
 
-  fUniformBuffer.uThreshold:=0.1;                               
+  fUniformBuffer.uThreshold:=(SDFFontSpreadScale/sqrt(sqr(fFontCharWidth)+sqr(fFontCharHeight)))*1.0;
   fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                   VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                   fUniformBuffer,

@@ -8,8 +8,8 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls, Math, PasMP;
 
-const BitmapWidth=16;
-      BitmapHeight=32;
+const BitmapWidth=64;
+      BitmapHeight=128;
       BitmapDepth=256; // 0x00 .. 0xff
 
       SpreadScale=1.0;
