@@ -8,7 +8,7 @@ del .\..\src\*.a
 del .\..\src\*.ppu
 del .\..\src\*.o
 del libmain.so 
-del .\libSDL2.so
+del libSDL2.so
 del "android\\app\\src\\main\\jniLibs\\armeabi-v7a\\libmain.so"
 del libmain.so
 copy .\..\libs\sdl20androidarm32\libSDL2.so libSDL2.so
@@ -20,4 +20,4 @@ del *.o
 del .\..\src\*.a
 del .\..\src\*.ppu
 del .\..\src\*.o
-del .\libSDL2.so
+del libSDL2.so

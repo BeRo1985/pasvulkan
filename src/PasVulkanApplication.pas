@@ -4864,6 +4864,9 @@ begin
  fVulkanDevice:=nil;
 
  fCountCPUThreads:=Max(1,TPasMP.GetCountOfHardwareThreads(fAvailableCPUCores));
+{$if defined(fpc) and defined(android)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('Detected CPU thread count: '+IntToStr(fCountCPUThreads))));
+{$ifend}
 
  fVulkanCountCommandQueues:=0;
  
