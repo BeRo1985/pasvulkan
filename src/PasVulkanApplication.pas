@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-10-17-03-0000                       *
+ *                        Version 2017-05-10-21-27-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -4276,7 +4276,7 @@ begin
                                             VK_SHARING_MODE_EXCLUSIVE,
                                             nil,
                                             VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-                                            TVkPresentModeKHR(integer(IfThen(pVSync,integer(VK_PRESENT_MODE_MAILBOX_KHR),integer(VK_PRESENT_MODE_IMMEDIATE_KHR)))));
+                                            TVkPresentModeKHR(integer(IfThen(pVSync,integer(VK_PRESENT_MODE_FIFO_KHR),integer(VK_PRESENT_MODE_IMMEDIATE_KHR)))));
 
   fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(fVulkanDevice,
                                                                                             fVulkanSwapChain,
