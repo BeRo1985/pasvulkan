@@ -20,8 +20,9 @@ const TextOverlayBufferCharSize=65536;
 
 type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      TTextOverlayBufferCharVertex=packed record
-      x,y,u,v:single;
-      r,g,b,c:single;
+      x,y:single;
+      u,v,w:single;
+      r,g,b:single;
      end;
 
      PTextOverlayBufferCharVertices=^TTextOverlayBufferCharVertices;
@@ -70,8 +71,8 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
        fVulkanDescriptorSet:TVulkanDescriptorSet;
        fVulkanPipelineLayout:TVulkanPipelineLayout;
-       fFontTexture:TVulkanTexture;
        fUniformBuffer:TTextOverlayUniformBuffer;
+       fFontTexture:TVulkanTexture;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -166,6 +167,7 @@ begin
                                                 0,
                                                 false
                                                );
+  fFontTexture.UpdateSampler;                                             
 
   fVulkanVertexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
                                             SizeOf(TTextOverlayBufferChars),
@@ -211,8 +213,9 @@ begin
 
   fVulkanDescriptorPool:=TVulkanDescriptorPool.Create(VulkanApplication.VulkanDevice,
                                                       TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                      1);
+                                                      2);
   fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
   fVulkanDescriptorPool.Initialize;
 
   fVulkanDescriptorSetLayout:=TVulkanDescriptorSetLayout.Create(VulkanApplication.VulkanDevice);
@@ -220,6 +223,11 @@ begin
                                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                         1,
                                         TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                        []);
+  fVulkanDescriptorSetLayout.AddBinding(1,
+                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                         []);
   fVulkanDescriptorSetLayout.Initialize;
 
@@ -231,6 +239,15 @@ begin
                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                             [],
                                             [fVulkanUniformBuffer.DescriptorBufferInfo],
+                                            [],
+                                            false
+                                           );
+  fVulkanDescriptorSet.WriteToDescriptorSet(1,
+                                            0,
+                                            1,
+                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                            [fFontTexture.DescriptorImageInfo],
+                                            [],
                                             [],
                                             false
                                            );
@@ -272,10 +289,93 @@ end;
 
 procedure TTextOverlay.AfterCreateSwapChain;
 begin
+
+ FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
+ FreeAndNil(fVulkanGraphicsPipeline);
+
+ fVulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(VulkanApplication.VulkanDevice,
+                                                         fVulkanPipelineCache,
+                                                         0,
+                                                         [],
+                                                         fVulkanPipelineLayout,
+                                                         VulkanApplication.VulkanPresentationSurface.VulkanSwapChainSimpleDirectRenderTarget.RenderPass,
+                                                         0,
+                                                         nil,
+                                                         0);
+
+ fVulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleVertex);
+ fVulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleFragment);
+
+ fVulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+ fVulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVkFloat)*(2+3+3),VK_VERTEX_INPUT_RATE_VERTEX);
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,SizeOf(TVkFloat)*0);
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TVkFloat)*2);
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TVkFloat)*(2+3));
+
+ fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,VulkanApplication.VulkanPresentationSurface.Width,VulkanApplication.VulkanPresentationSurface.Height,0.0,1.0);
+ fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,VulkanApplication.VulkanPresentationSurface.Width,VulkanApplication.VulkanPresentationSurface.Height);
+
+ fVulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
+ fVulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+ fVulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+ fVulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+ fVulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+ fVulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+
+ fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+ fVulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+ fVulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+ fVulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+ fVulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+ fVulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+ fVulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
+ fVulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+ fVulkanGraphicsPipeline.Initialize;
+
+ fVulkanGraphicsPipeline.FreeMemory;
+
+ fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanApplication.VulkanDevice,
+                                                                                           VulkanApplication.VulkanPresentationSurface.VulkanSwapChain,
+                                                                                           VulkanApplication.VulkanPresentCommandBuffers[0,0],
+                                                                                           VulkanApplication.VulkanPresentCommandBufferFences[0,0],
+                                                                                           VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                                                           VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                                                           VK_FORMAT_UNDEFINED,
+                                                                                           false);
+
+ fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=0.0;
+ fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=0.0;
+ fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=0.0;
+
 end;
 
 procedure TTextOverlay.BeforeDestroySwapChain;
 begin
+ FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
+ FreeAndNil(fVulkanGraphicsPipeline);
 end;
 
 procedure TTextOverlay.Reset;
@@ -315,10 +415,10 @@ begin
      BufferChar^.Vertices[EdgeIndex].y:=(pY+((EdgeIndex shr 1)*FontCharHeight))*InvHeight;
      BufferChar^.Vertices[EdgeIndex].u:=EdgeIndex and 1;
      BufferChar^.Vertices[EdgeIndex].v:=EdgeIndex shr 1;
+     BufferChar^.Vertices[EdgeIndex].w:=CurrentChar;
      BufferChar^.Vertices[EdgeIndex].r:=pR;
      BufferChar^.Vertices[EdgeIndex].g:=pG;
      BufferChar^.Vertices[EdgeIndex].b:=pB;
-     BufferChar^.Vertices[EdgeIndex].c:=CurrentChar;
     end;
    end;
   end;

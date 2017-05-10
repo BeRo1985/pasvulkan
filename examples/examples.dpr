@@ -90,18 +90,17 @@ end;
 procedure TExampleVulkanApplication.Start;
 begin
  fTextOverlay:=TTextOverlay.Create;
- fTextOverlay.Load;
 end;
 
 procedure TExampleVulkanApplication.Stop;
 begin
- fTextOverlay.Unload;
  FreeAndNil(fTextOverlay);
 end;
 
 procedure TExampleVulkanApplication.AfterCreateSwapChain;
 begin
  inherited AfterCreateSwapChain;
+ fTextOverlay.Load;
  fTextOverlay.AfterCreateSwapChain;
 end;
 
@@ -109,6 +108,7 @@ procedure TExampleVulkanApplication.BeforeDestroySwapChain;
 begin
  inherited BeforeDestroySwapChain;
  fTextOverlay.BeforeDestroySwapChain;
+ fTextOverlay.Unload;
 end;
 
 procedure TExampleVulkanApplication.Resume;
