@@ -4,6 +4,7 @@
 {$endif}
 {$if defined(win32) or defined(win64)}
  {$apptype console}
+ {$define Windows}
 {$ifend}
 
 uses
@@ -25,12 +26,12 @@ type TExampleVulkanApplication=class(TVulkanApplication)
 
 function TExampleVulkanApplication.HandleEvent(const pEvent:TSDL_Event):boolean;
 const QuitMsgBoxButtons:array[0..1] of TSDL_MessageBoxButtonData=
-{$ifdef Android}
-       ((flags:SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;buttonid:1;text:'Yes'),
-        (flags:SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;buttonid:0;text:'No'));
-{$else}
+{$ifdef Windows}
        ((flags:SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;buttonid:0;text:'No'),
         (flags:SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;buttonid:1;text:'Yes'));
+{$else}
+       ((flags:SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;buttonid:1;text:'Yes'),
+        (flags:SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;buttonid:0;text:'No'));
 {$endif}
       QuitMsgBoxColorScheme:TSDL_MessageBoxColorScheme=
        (colors:((r:0;g:0;b:0),
@@ -160,12 +161,16 @@ exports JNI_OnLoad name 'JNI_OnLoad',
         ANativeActivity_onCreate name 'ANativeActivity_onCreate';
 {$ifend}
 
+{$if defined(fpc) and defined(Windows)}
+function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
+{$ifend}
+
 begin
 {$if defined(fpc) and defined(android)}
 {$else}
  SDLMain;
-{$ifndef fpc}
- if DebugHook<>0 then begin
+{$ifdef Windows}
+ if {$ifdef fpc}IsDebuggerPresent{$else}DebugHook<>0{$endif} then begin
   writeln('Press return to exit . . . ');
   readln;
  end;
