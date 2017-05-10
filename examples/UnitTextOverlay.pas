@@ -397,8 +397,8 @@ var Index,EdgeIndex:TVkInt32;
 begin
  InvWidth:=1.0/VulkanApplication.Width;
  InvHeight:=1.0/VulkanApplication.Height;
- FontCharWidth:=VulkanApplication.Width/40.0;
- FontCharHeight:=VulkanApplication.Height/20.0;
+ FontCharWidth:=VulkanApplication.Width/80.0;
+ FontCharHeight:=VulkanApplication.Height/25.0;
  case pAlignment of
   toaLeft:begin
    cX:=pX;
@@ -417,8 +417,8 @@ begin
     BufferChar:=@fBufferChars[fCountBufferChars];
     inc(fCountBufferChars);
     for EdgeIndex:=0 to 3 do begin
-     BufferChar^.Vertices[EdgeIndex].x:=(cX+((EdgeIndex and 1)*FontCharWidth))*InvWidth;
-     BufferChar^.Vertices[EdgeIndex].y:=(pY+((EdgeIndex shr 1)*FontCharHeight))*InvHeight;
+     BufferChar^.Vertices[EdgeIndex].x:=(((cX+((EdgeIndex and 1)*FontCharWidth))*InvWidth)*2.0)-1.0;
+     BufferChar^.Vertices[EdgeIndex].y:=(((pY+((EdgeIndex shr 1)*FontCharHeight))*InvHeight)*2.0)-1.0;
      BufferChar^.Vertices[EdgeIndex].u:=EdgeIndex and 1;
      BufferChar^.Vertices[EdgeIndex].v:=EdgeIndex shr 1;
      BufferChar^.Vertices[EdgeIndex].w:=CurrentChar;
@@ -437,7 +437,7 @@ var BufferIndex:TVkInt32;
 begin
  begin
   Reset;
-  AddText(0.0,0.0,toaLeft,'Test');
+  AddText(0.0,0.0,toaLeft,'Hello world! :-)');
  end;
  BufferIndex:=VulkanApplication.FrameCounter and 1;
  if fCountBufferChars>0 then begin
