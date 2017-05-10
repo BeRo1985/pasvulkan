@@ -70,6 +70,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
        fVulkanDescriptorSet:TVulkanDescriptorSet;
        fVulkanPipelineLayout:TVulkanPipelineLayout;
+       fFontTexture:TVulkanTexture;
        fUniformBuffer:TTextOverlayUniformBuffer;
       public
        constructor Create; reintroduce;
@@ -84,6 +85,8 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      end;
 
 implementation
+
+uses UnitSDFFont;
 
 constructor TTextOverlay.Create;
 var Index:TVkInt32;
@@ -141,6 +144,28 @@ begin
   fVulkanGraphicsPipeline:=nil;
 
   fVulkanSwapChainSimpleDirectRenderTarget:=nil;
+
+  fFontTexture:=TVulkanTexture.CreateFromMemory(VulkanApplication.VulkanDevice,
+                                                VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                                VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                                VK_FORMAT_R16_UNORM,
+                                                VK_SAMPLE_COUNT_1_BIT,
+                                                SDFFontWidth,
+                                                SDFFontHeight,
+                                                1,
+                                                SDFFontDepth,
+                                                1,
+                                                1,
+                                                [vtufTransferDst,vtufSampled],
+                                                @SDFFontData,
+                                                SizeOf(SDFFontData),
+                                                false,
+                                                false,
+                                                0,
+                                                false
+                                               );
 
   fVulkanVertexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
                                             SizeOf(TTextOverlayBufferChars),
@@ -240,6 +265,7 @@ begin
   FreeAndNil(fVulkanPipelineShaderStageTriangleFragment);
   FreeAndNil(fTextOverlayFragmentShaderModule);
   FreeAndNil(fTextOverlayVertexShaderModule);
+  FreeAndNil(fFontTexture);
 
  end;
 end;

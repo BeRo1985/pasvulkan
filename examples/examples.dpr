@@ -21,7 +21,8 @@ uses
   PasVulkanStaticLinking in '..\src\PasVulkanStaticLinking.pas',
   PasVulkanApplication in '..\src\PasVulkanApplication.pas',
   UnitTextOverlay in 'UnitTextOverlay.pas',
-  UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas';
+  UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas',
+  UnitSDFFont in 'UnitSDFFont.pas';
 
 type TExampleVulkanApplication=class(TVulkanApplication)
       private
