@@ -307,6 +307,7 @@ begin
  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=0.0;
  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=0.0;
  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=0.0;
+ fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[3]:=1.0;
 
 end;
 

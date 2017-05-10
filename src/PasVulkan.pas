@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-10-17-13-0000                       *
+ *                        Version 2017-05-10-20-53-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -11362,6 +11362,13 @@ begin
    end;
 
    fRenderPass.Initialize;
+
+   if pClear then begin
+    fRenderPass.ClearValues[0].color.float32[0]:=0.0;
+    fRenderPass.ClearValues[0].color.float32[1]:=0.0;
+    fRenderPass.ClearValues[0].color.float32[2]:=0.0;
+    fRenderPass.ClearValues[0].color.float32[3]:=1.0;
+   end;
 
   end;
 
