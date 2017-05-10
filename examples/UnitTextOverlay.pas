@@ -57,7 +57,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      TTextOverlay=class
       private
        fLoaded:boolean;
-       fBufferChars:TTextOverlayBufferChars;
+       fBufferChars:PTextOverlayBufferChars;
        fBufferCharsBuffers:TTextOverlayBufferCharsBuffers;
        fCountBufferChars:TVkInt32;
        fCountBufferCharsBuffers:array[0..1] of TVkInt32;
@@ -191,7 +191,7 @@ begin
                                            );
   fVulkanVertexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                  VulkanApplication.VulkanTransferCommandBufferFences[0,0],
-                                 fBufferChars,
+                                 fBufferCharsBuffers[0],
                                  0,
                                  SizeOf(TTextOverlayBufferChars),
                                  false);
@@ -393,8 +393,8 @@ begin
  fCountBufferChars:=0;
  fInvWidth:=1.0/VulkanApplication.Width;
  fInvHeight:=1.0/VulkanApplication.Height;
- fFontCharWidth:=VulkanApplication.Width/80.0;
- fFontCharHeight:=fFontCharWidth*2.0;//VulkanApplication.Height/40.0;
+ fFontCharWidth:=VulkanApplication.Width/160.0;
+ fFontCharHeight:=fFontCharWidth*2.0;
 end;
 
 procedure TTextOverlay.AddText(const pX,pY:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pR:single=1.0;const pG:single=1.0;const pB:single=1.0);
@@ -418,7 +418,7 @@ begin
   CurrentChar:=Byte(AnsiChar(pText[Index]));
   if CurrentChar<>32 then begin
    if fCountBufferChars<TextOverlayBufferCharSize then begin
-    BufferChar:=@fBufferChars[fCountBufferChars];
+    BufferChar:=@fBufferChars^[fCountBufferChars];
     inc(fCountBufferChars);
     for EdgeIndex:=0 to 3 do begin
      BufferChar^.Vertices[EdgeIndex].x:=(((cX+((EdgeIndex and 1)*fFontCharWidth))*fInvWidth)*2.0)-1.0;
@@ -438,14 +438,16 @@ end;
 
 procedure TTextOverlay.Update(const pDeltaTime:double);
 var BufferIndex:TVkInt32;
+    s:string;
 begin
+ BufferIndex:=VulkanApplication.FrameCounter and 1;
+ fBufferChars:=@fBufferCharsBuffers[BufferIndex];
  begin
   Reset;
-  AddText(0.0,0.0,toaLeft,'Hello world! :-)');
- end;
- BufferIndex:=VulkanApplication.FrameCounter and 1;
- if fCountBufferChars>0 then begin
-  Move(fBufferChars,fBufferCharsBuffers[BufferIndex],SizeOf(TTextOverlayBufferChar)*fCountBufferChars);
+  AddText(0.0,fFontCharHeight*0.0,toaLeft,'Device: '+VulkanApplication.VulkanDevice.PhysicalDevice.DeviceName);
+  AddText(0.0,fFontCharHeight*1.0,toaLeft,'Vulkan API version: '+IntToStr(VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 22)+'.'+IntToStr((VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 12) and $3ff)+'.'+IntToStr((VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 0) and $fff));
+  Str(VulkanApplication.FramesPerSecond:1:1,s);
+  AddText(0.0,fFontCharHeight*2.0,toaLeft,'Frame rate: '+s+' FPS');
  end;
  fCountBufferCharsBuffers[BufferIndex]:=fCountBufferChars;
 end;
