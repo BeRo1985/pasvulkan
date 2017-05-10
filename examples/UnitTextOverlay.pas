@@ -42,17 +42,17 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      PTextOverlayIndices=^TTextOverlayIndices;
      TTextOverlayIndices=array[0..(TextOverlayBufferCharSize*6)-1] of TVkInt32;
 
-     PTextOverlayUniformBuffer=^TTextOverlayUniformBuffer;
-     TTextOverlayUniformBuffer=record
-      Dummy:TVkInt32;
-     end;
-
      TTextOverlayAlignment=
       (
        toaLeft,
        toaCenter,
        toaRight
       );
+
+     PTextOverlayUniformBuffer=^TTextOverlayUniformBuffer;
+     TTextOverlayUniformBuffer=record
+      uThreshold:single;
+     end;
 
      TTextOverlay=class
       private
@@ -211,14 +211,14 @@ begin
                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                              nil,
-                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
                                             );
   fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                   VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                   fUniformBuffer,
                                   0,
                                   SizeOf(TTextOverlayUniformBuffer),
-                                  true);
+                                  false);
 
   fVulkanDescriptorPool:=TVulkanDescriptorPool.Create(VulkanApplication.VulkanDevice,
                                                       TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -231,7 +231,7 @@ begin
   fVulkanDescriptorSetLayout.AddBinding(0,
                                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                         1,
-                                        TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                         []);
   fVulkanDescriptorSetLayout.AddBinding(1,
                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -350,9 +350,9 @@ begin
  fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
  fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
  fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
- fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
-                                                                      VK_BLEND_FACTOR_ZERO,
-                                                                      VK_BLEND_FACTOR_ZERO,
+ fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                                      VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
                                                                       VK_BLEND_OP_ADD,
                                                                       VK_BLEND_FACTOR_ZERO,
                                                                       VK_BLEND_FACTOR_ZERO,
@@ -462,6 +462,14 @@ begin
                                  0,
                                  SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex],
                                  false);
+
+  fUniformBuffer.uThreshold:=0.1;                               
+  fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                  VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                  fUniformBuffer,
+                                  0,
+                                  SizeOf(TTextOverlayUniformBuffer),
+                                  false);
 
   if assigned(fVulkanGraphicsPipeline) then begin
 
