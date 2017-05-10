@@ -10169,7 +10169,7 @@ begin
  fCountClearValues:=0;
  for Index:=0 to fCountAttachmentDescriptions-1 do begin
   AttachmentDescription:=@fAttachmentDescriptions[Index];
-  if AttachmentDescription^.loadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR,VK_ATTACHMENT_LOAD_OP_CLEAR] then begin
+  if AttachmentDescription^.loadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR] then begin
    fCountClearValues:=Max(fCountClearValues,Index+1);
   end;
  end;
