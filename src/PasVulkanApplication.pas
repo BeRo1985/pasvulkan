@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-10-16-43-0000                       *
+ *                        Version 2017-05-10-16-47-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1028,6 +1028,10 @@ type EVulkanApplication=class(Exception);
        procedure Start; virtual;
 
        procedure Stop; virtual;
+
+       procedure Load; virtual;
+
+       procedure Unload; virtual;
 
        procedure AfterCreateSwapChain; virtual;
 
@@ -5846,24 +5850,31 @@ begin
     InitializeGraphics;
     try
 
-     if assigned(fStartScreen) then begin
-      SetScreen(fStartScreen.Create);
-     end;
+     Load;
      try
 
-      while not fTerminated do begin
-       ProcessMessages;
+      if assigned(fStartScreen) then begin
+       SetScreen(fStartScreen.Create);
+      end;
+      try
+
+       while not fTerminated do begin
+        ProcessMessages;
+       end;
+
+      finally
+
+       SetScreen(nil);
+
+       FreeAndNil(fNextScreen);
+       FreeAndNil(fScreen);
+
       end;
 
      finally
-
-      SetScreen(nil);
-
-      FreeAndNil(fNextScreen);
-      FreeAndNil(fScreen);
-
+      Unload;
      end;
-     
+
     finally
      DeinitializeGraphics;
     end;
@@ -5896,6 +5907,14 @@ begin
 end;
 
 procedure TVulkanApplication.Stop; 
+begin
+end;
+
+procedure TVulkanApplication.Load;
+begin
+end;
+
+procedure TVulkanApplication.Unload;
 begin
 end;
 

@@ -31,6 +31,8 @@ type TExampleVulkanApplication=class(TVulkanApplication)
        function HandleEvent(const pEvent:TSDL_Event):boolean; override;
        procedure Start; override;
        procedure Stop; override;
+       procedure Load; override;
+       procedure Unload; override;
        procedure AfterCreateSwapChain; override;
        procedure BeforeDestroySwapChain; override;
        procedure Resume; override;
@@ -89,12 +91,26 @@ end;
 
 procedure TExampleVulkanApplication.Start;
 begin
+ inherited Start;
  fTextOverlay:=TTextOverlay.Create;
 end;
 
 procedure TExampleVulkanApplication.Stop;
 begin
  FreeAndNil(fTextOverlay);
+ inherited Stop;
+end;
+
+procedure TExampleVulkanApplication.Load;
+begin
+ inherited Load;
+ fTextOverlay.Load;
+end;
+
+procedure TExampleVulkanApplication.Unload;
+begin
+ fTextOverlay.Unload;
+ inherited Unload;
 end;
 
 procedure TExampleVulkanApplication.AfterCreateSwapChain;
@@ -108,7 +124,6 @@ procedure TExampleVulkanApplication.BeforeDestroySwapChain;
 begin
  inherited BeforeDestroySwapChain;
  fTextOverlay.BeforeDestroySwapChain;
- fTextOverlay.Unload;
 end;
 
 procedure TExampleVulkanApplication.Resume;
