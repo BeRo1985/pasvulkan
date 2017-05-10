@@ -1,6 +1,6 @@
 diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2/android-project/src/org/libsdl/app/SDLActivity.java
 --- SDL2original/android-project/src/org/libsdl/app/SDLActivity.java	2017-05-07 04:03:10.277317300 +0200
-+++ SDL2/android-project/src/org/libsdl/app/SDLActivity.java	2017-05-09 11:19:30.533098800 +0200
++++ SDL2/android-project/src/org/libsdl/app/SDLActivity.java	2017-05-10 20:45:43.907350400 +0200
 @@ -11,6 +11,7 @@
  
  import android.app.*;
@@ -25,7 +25,7 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
  
      public static boolean mIsResumedCalled, mIsSurfaceReady, mHasFocus;
  
-@@ -46,275 +49,291 @@
+@@ -46,275 +49,293 @@
      public static NativeState mNextNativeState;
      public static NativeState mCurrentNativeState;
  
@@ -528,6 +528,8 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
 +		super.onDestroy();
 +		// Reset everything in case the user re opens the app
 +		SDLActivity.initialize();
++
++		System.exit(0);
 +	}
 +
 +	@Override
@@ -552,7 +554,7 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
  
      /* Transition to next state */
      public static void handleNativeState() {
-@@ -334,7 +353,7 @@
+@@ -334,7 +355,7 @@
          // Try a transition to paused state
          if (mNextNativeState == NativeState.PAUSED) {
              nativePause();
@@ -561,7 +563,7 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
              mCurrentNativeState = mNextNativeState;
              return;
          }
-@@ -365,1414 +384,1442 @@
+@@ -365,1414 +386,1441 @@
                                if (! mExitCalledFromJava) {
                                    handleNativeExit();
                                }
@@ -770,20 +772,9 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
 -            this.w = w;
 -            this.h = h;
 -        }
-+		}
-+	}
- 
-+	/* The native thread has finished */
-+	public static void handleNativeExit() {
-+		SDLActivity.mSDLThread = null;
-+		mSingleton.finish();
-+	}
-+
-+	void updateSystemBarsStatus(String value) {
-+		if ("1".equals(value)) {
-+		  runOnUiThread(new Runnable() {
-         @Override
-         public void run() {
+-
+-        @Override
+-        public void run() {
 -            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(w, h + HEIGHT_PADDING);
 -            params.leftMargin = x;
 -            params.topMargin = y;
@@ -1117,7 +1108,9 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
 -        messageboxSelection[0] = -1;
 -
 -        // sanity checks
--
++		}
++	}
+ 
 -        if ((buttonFlags.length != buttonIds.length) && (buttonIds.length != buttonTexts.length)) {
 -            return -1; // implementation broken
 -        }
@@ -1185,18 +1178,29 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
 -            buttonBackgroundColor = Color.TRANSPARENT;
 -            buttonSelectedColor = Color.TRANSPARENT;
 -        }
++	/* The native thread has finished */
++	public static void handleNativeExit() {
++		SDLActivity.mSDLThread = null;
++		mSingleton.finish();
++	}
++
++	void updateSystemBarsStatus(String value) {
++		if ("1".equals(value)) {
++			runOnUiThread(new Runnable() {
++				@Override
++				public void run() {
 +					// first try immersive mode (sticky immersive)
 +					if (Build.VERSION.SDK_INT >= 19) {
-+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-+							                                               View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-+																														 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-+							                                               View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-+							                                               View.SYSTEM_UI_FLAG_FULLSCREEN |
-+							                                               View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
++						getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
++							View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
++							View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
++							View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
++							View.SYSTEM_UI_FLAG_FULLSCREEN |
++							View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 +					} else if (Build.VERSION.SDK_INT >= 14) {
 +						// if not available, use at least low profile mode
 +						getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
-+				  }
++					}
 +				}
 +			});
 +		}
@@ -2023,7 +2027,6 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
 +		SDLActivity.nativeSetAssetManager(SDLActivity.mAssetManager);
 +		SDLActivity.nativeInit(SDLActivity.mSingleton.getArguments());
 +        Log.v("SDL", "SDL thread terminated");
-+		android.os.Process.killProcess(android.os.Process.myPid());
 +	}
  }
  
@@ -2741,14 +2744,22 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
   */
  class DummyEdit extends View implements View.OnKeyListener {
 -    InputConnection ic;
-+	InputConnection ic;
- 
+-
 -    public DummyEdit(Context context) {
 -        super(context);
 -        setFocusableInTouchMode(true);
 -        setFocusable(true);
 -        setOnKeyListener(this);
 -    }
+-
+-    @Override
+-    public boolean onCheckIsTextEditor() {
+-        return true;
+-    }
++	InputConnection ic;
+ 
+-    @Override
+-    public boolean onKey(View v, int keyCode, KeyEvent event) {
 +	public DummyEdit(Context context) {
 +		super(context);
 +		setFocusableInTouchMode(true);
@@ -2808,14 +2819,6 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
 +		outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI
 +			| 33554432 /* API 11: EditorInfo.IME_FLAG_NO_FULLSCREEN */;
  
--    @Override
--    public boolean onCheckIsTextEditor() {
--        return true;
--    }
--
--    @Override
--    public boolean onKey(View v, int keyCode, KeyEvent event) {
--
 -        // This handles the hardware keyboard input
 -        if (event.isPrintingKey() || keyCode == KeyEvent.KEYCODE_SPACE) {
 -            if (event.getAction() == KeyEvent.ACTION_DOWN) {
@@ -2907,6 +2910,27 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
 -
 -        return super.commitText(text, newCursorPosition);
 -    }
+-
+-    @Override
+-    public boolean setComposingText(CharSequence text, int newCursorPosition) {
+-
+-        nativeSetComposingText(text.toString(), newCursorPosition);
+-
+-        return super.setComposingText(text, newCursorPosition);
+-    }
+-
+-    public native void nativeCommitText(String text, int newCursorPosition);
+-
+-    public native void nativeSetComposingText(String text, int newCursorPosition);
+-
+-    @Override
+-    public boolean deleteSurroundingText(int beforeLength, int afterLength) {
+-        // Workaround to capture backspace key. Ref: http://stackoverflow.com/questions/14560344/android-backspace-in-webview-baseinputconnection
+-        if (beforeLength == 1 && afterLength == 0) {
+-            // backspace
+-            return super.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+-                && super.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL));
+-        }
 +		int keyCode = event.getKeyCode();
 +		if (event.getAction() == KeyEvent.ACTION_DOWN) {
 +			if (event.isPrintingKey() || keyCode == KeyEvent.KEYCODE_SPACE) {
@@ -2951,27 +2975,6 @@ diff -Naur SDL2original/android-project/src/org/libsdl/app/SDLActivity.java SDL2
 +				&& super.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL));
 +		}
  
--    @Override
--    public boolean setComposingText(CharSequence text, int newCursorPosition) {
--
--        nativeSetComposingText(text.toString(), newCursorPosition);
--
--        return super.setComposingText(text, newCursorPosition);
--    }
--
--    public native void nativeCommitText(String text, int newCursorPosition);
--
--    public native void nativeSetComposingText(String text, int newCursorPosition);
--
--    @Override
--    public boolean deleteSurroundingText(int beforeLength, int afterLength) {
--        // Workaround to capture backspace key. Ref: http://stackoverflow.com/questions/14560344/android-backspace-in-webview-baseinputconnection
--        if (beforeLength == 1 && afterLength == 0) {
--            // backspace
--            return super.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
--                && super.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL));
--        }
--
 -        return super.deleteSurroundingText(beforeLength, afterLength);
 -    }
 +		return super.deleteSurroundingText(beforeLength, afterLength);

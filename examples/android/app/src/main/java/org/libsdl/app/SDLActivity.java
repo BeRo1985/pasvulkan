@@ -313,6 +313,8 @@ public class SDLActivity extends Activity {
 		super.onDestroy();
 		// Reset everything in case the user re opens the app
 		SDLActivity.initialize();
+
+		System.exit(0);
 	}
 
 	@Override
@@ -407,21 +409,21 @@ public class SDLActivity extends Activity {
 
 	void updateSystemBarsStatus(String value) {
 		if ("1".equals(value)) {
-		  runOnUiThread(new Runnable() {
-        @Override
-        public void run() {
+			runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
 					// first try immersive mode (sticky immersive)
 					if (Build.VERSION.SDK_INT >= 19) {
-            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-							                                               View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-																														 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-							                                               View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-							                                               View.SYSTEM_UI_FLAG_FULLSCREEN |
-							                                               View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+						getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+							View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+							View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+							View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+							View.SYSTEM_UI_FLAG_FULLSCREEN |
+							View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 					} else if (Build.VERSION.SDK_INT >= 14) {
 						// if not available, use at least low profile mode
 						getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
-				  }
+					}
 				}
 			});
 		}
@@ -1134,7 +1136,6 @@ class SDLMain implements Runnable {
 		SDLActivity.nativeSetAssetManager(SDLActivity.mAssetManager);
 		SDLActivity.nativeInit(SDLActivity.mSingleton.getArguments());
         Log.v("SDL", "SDL thread terminated");
-		android.os.Process.killProcess(android.os.Process.myPid());
 	}
 }
 
