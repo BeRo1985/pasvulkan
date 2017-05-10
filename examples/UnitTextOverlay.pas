@@ -428,6 +428,14 @@ end;
 
 procedure TTextOverlay.Draw;
 begin
+ if fCountBufferChars>0 then begin
+  fVulkanVertexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                 VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                 fBufferChars,
+                                 0,
+                                 SizeOf(TTextOverlayBufferChar)*fCountBufferChars,
+                                 false);
+ end;
 end;
 
 end.
