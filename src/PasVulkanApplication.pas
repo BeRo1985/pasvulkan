@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-09-09-55-0000                       *
+ *                        Version 2017-05-10-07-55-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -814,6 +814,8 @@ type EVulkanApplication=class(Exception);
 
        function HandleEvent(const pEvent:TSDL_Event):boolean; virtual;
 
+       function CanBeParallelProcessed:boolean; virtual;
+
        procedure Update(const pDeltaTime:double); virtual;
 
        procedure Draw; virtual;
@@ -992,6 +994,9 @@ type EVulkanApplication=class(Exception);
 
        procedure SetScreen(const pScreen:TVulkanScreen);
        procedure SetNextScreen(const pNextScreen:TVulkanScreen);
+
+       procedure UpdateJobFunction(const pJob:PPasMPJob;const pThreadIndex:TPasMPInt32);
+       procedure DrawJobFunction(const pJob:PPasMPJob;const pThreadIndex:TPasMPInt32);
 
       public
 
@@ -4616,6 +4621,11 @@ begin
  result:=false;
 end;
 
+function TVulkanScreen.CanBeParallelProcessed:boolean;
+begin
+ result:=false;
+end;
+
 procedure TVulkanScreen.Update(const pDeltaTime:double);
 begin
 end;
@@ -5305,6 +5315,18 @@ begin
  end;
 end;
 
+procedure TVulkanApplication.UpdateJobFunction(const pJob:PPasMPJob;const pThreadIndex:TPasMPInt32);
+begin
+ Update(Min(Max(fHighResolutionTimer.ToFloatSeconds(fDeltaTime),0.0),0.25));
+end;
+
+procedure TVulkanApplication.DrawJobFunction(const pJob:PPasMPJob;const pThreadIndex:TPasMPInt32);
+begin
+ if fVulkanPresentationSurface.AcquireBackBuffer(fBlocking) then begin
+  fVulkanPresentationSurface.PresentBackBuffer;
+ end;
+end;
+
 procedure TVulkanApplication.ProcessMessages;
 var Index,Counter:TVkInt32;
     Joystick:TVulkanApplicationJoystick;
@@ -5312,6 +5334,7 @@ var Index,Counter:TVkInt32;
     SDLGameController:PSDL_GameController;
     NowTime:TVulkanApplicationHighResolutionTime;
     OK,Found,DoUpdateMainJoystick:boolean;
+    Jobs:array[0..1] of PPasMPJob;
 begin
 
  DoUpdateMainJoystick:=false;
@@ -5614,10 +5637,17 @@ begin
   fLastTime:=NowTime;
   fHasLastTime:=true;
 
-  Update(Min(Max(fHighResolutionTimer.ToFloatSeconds(fDeltaTime),0.0),0.25));
+  if assigned(fScreen) and fScreen.CanBeParallelProcessed then begin
 
-  if fVulkanPresentationSurface.AcquireBackBuffer(fBlocking) then begin
-   fVulkanPresentationSurface.PresentBackBuffer;
+   Jobs[0]:=fPasMPInstance.Acquire(UpdateJobFunction);
+   Jobs[1]:=fPasMPInstance.Acquire(DrawJobFunction);
+   fPasMPInstance.Invoke(Jobs);
+
+  end else begin
+
+   UpdateJobFunction(nil,0);
+   DrawJobFunction(nil,0);
+
   end;
 
  end;
