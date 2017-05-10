@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-10-14-14-0000                       *
+ *                        Version 2017-05-10-16-43-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -5839,12 +5839,11 @@ begin
 
   AllocateVulkanInstance;
   try
-
-   InitializeGraphics;
-
+          
+   Start;
    try
 
-    Start;
+    InitializeGraphics;
     try
 
      if assigned(fStartScreen) then begin
@@ -5866,12 +5865,12 @@ begin
      end;
      
     finally
-     Stop;
+     DeinitializeGraphics;
     end;
 
    finally
 
-    DeinitializeGraphics;
+    Stop;
 
    end;
 

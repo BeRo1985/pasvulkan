@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-10-16-07-0000                       *
+ *                        Version 2017-05-10-16-43-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2659,6 +2659,7 @@ type EVulkanException=class(Exception);
        fImage:TVulkanImage;
        fImageView:TVulkanImageView;
        fSampler:TVulkanSampler;
+       fDescriptorImageInfo:TVkDescriptorImageInfo;
        fMemoryBlock:TVulkanDeviceMemoryBlock;
        fWidth:TVkInt32;
        fHeight:TVkInt32;
@@ -2762,6 +2763,7 @@ type EVulkanException=class(Exception);
                                  const pBorder:boolean);
        destructor Destroy; override;
        procedure UpdateSampler;
+       property DescriptorImageInfo:TVkDescriptorImageInfo read fDescriptorImageInfo;
       published
        property Device:TVulkanDevice read fDevice;
        property Format:TVkFormat read fFormat;
@@ -15473,6 +15475,19 @@ begin
                                      0,
                                      fCountArrayLayers);
 
+
+ if assigned(fSampler) then begin
+  fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
+ end else begin
+  fDescriptorImageInfo.sampler:=VK_NULL_HANDLE;
+ end;
+ if assigned(fImageView) then begin
+  fDescriptorImageInfo.imageView:=fImageView.fImageViewHandle;
+ end else begin
+  fDescriptorImageInfo.imageView:=VK_NULL_HANDLE;
+ end;
+ fDescriptorImageInfo.imageLayout:=fImageLayout;
+
 end;
 
 constructor TVulkanTexture.CreateFromStream(const pDevice:TVulkanDevice;
@@ -18769,6 +18784,11 @@ begin
                                  CountMipMaps,
                                  VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
                                  false);
+ if assigned(fSampler) then begin
+  fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
+ end else begin
+  fDescriptorImageInfo.sampler:=VK_NULL_HANDLE;
+ end;
 end;
 
 {initialization
