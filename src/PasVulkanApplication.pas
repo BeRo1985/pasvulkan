@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-10-16-58-0000                       *
+ *                        Version 2017-05-10-17-03-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -982,6 +982,8 @@ type EVulkanApplication=class(Exception);
 
        fFramesPerSecond:double;
 
+       fFrameCounter:TVkInt64;
+
        procedure InitializeGraphics;
        procedure DeinitializeGraphics;
 
@@ -1123,6 +1125,8 @@ type EVulkanApplication=class(Exception);
        property NextScreen:TVulkanScreen read fNextScreen write SetNextScreen;
 
        property FramesPerSecond:double read fFramesPerSecond;
+
+       property FrameCounter:TVkInt64 read fFrameCounter; 
 
      end;
 
@@ -4912,6 +4916,8 @@ begin
  fNowTime:=0;
  fDeltaTime:=0;
 
+ fFrameCounter:=0;
+
  fOnEvent:=nil;
 
  VulkanApplication:=self;
@@ -5709,6 +5715,8 @@ begin
 
   end;
 
+  inc(fFrameCounter);
+  
  end;
 
 end;

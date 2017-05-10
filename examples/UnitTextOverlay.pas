@@ -36,6 +36,9 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      PTextOverlayBufferChars=^TTextOverlayBufferChars;
      TTextOverlayBufferChars=array[0..TextOverlayBufferCharSize-1] of TTextOverlayBufferChar;
 
+     PTextOverlayBufferCharsBuffers=^TTextOverlayBufferCharsBuffers;
+     TTextOverlayBufferCharsBuffers=array[0..1] of TTextOverlayBufferChars;
+
      PTextOverlayIndices=^TTextOverlayIndices;
      TTextOverlayIndices=array[0..(TextOverlayBufferCharSize*6)-1] of TVkInt32;
 
@@ -55,7 +58,9 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
       private
        fLoaded:boolean;
        fBufferChars:TTextOverlayBufferChars;
+       fBufferCharsBuffers:TTextOverlayBufferCharsBuffers;
        fCountBufferChars:TVkInt32;
+       fCountBufferCharsBuffers:array[0..1] of TVkInt32;
        fIndices:TTextOverlayIndices;
        fTextOverlayVertexShaderModule:TVulkanShaderModule;
        fTextOverlayFragmentShaderModule:TVulkanShaderModule;
@@ -82,6 +87,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        procedure BeforeDestroySwapChain;
        procedure Reset;
        procedure AddText(const pX,pY:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pR:single=1.0;const pG:single=1.0;const pB:single=1.0);
+       procedure Update(const pDeltaTime:double);
        procedure Draw;
      end;
 
@@ -106,6 +112,9 @@ begin
  end;
 
  fCountBufferChars:=0;
+
+ fCountBufferCharsBuffers[0]:=0;
+ fCountBufferCharsBuffers[1]:=0;
 
 end;
 
@@ -426,14 +435,26 @@ begin
  end;
 end;
 
-procedure TTextOverlay.Draw;
+procedure TTextOverlay.Update(const pDeltaTime:double);
+var BufferIndex:TVkInt32;
 begin
+ BufferIndex:=VulkanApplication.FrameCounter and 1;
  if fCountBufferChars>0 then begin
+  Move(fBufferChars,fBufferCharsBuffers[BufferIndex],SizeOf(TTextOverlayBufferChar)*fCountBufferChars);
+ end;
+ fCountBufferCharsBuffers[BufferIndex]:=fCountBufferChars;
+end;
+
+procedure TTextOverlay.Draw;
+var BufferIndex:TVkInt32;
+begin
+ BufferIndex:=(VulkanApplication.FrameCounter+1) and 1;
+ if fCountBufferCharsBuffers[BufferIndex]>0 then begin
   fVulkanVertexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                  VulkanApplication.VulkanTransferCommandBufferFences[0,0],
-                                 fBufferChars,
+                                 fBufferCharsBuffers[BufferIndex],
                                  0,
-                                 SizeOf(TTextOverlayBufferChar)*fCountBufferChars,
+                                 SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex],
                                  false);
  end;
 end;
