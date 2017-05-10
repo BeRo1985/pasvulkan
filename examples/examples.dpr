@@ -7,10 +7,13 @@
  {$define Windows}
 {$ifend}
 
+//{$if defined(fpc) and defined(Unix)}cthreads,{$ifend}
+
 uses
   {$if defined(fpc) and defined(Unix)}cthreads,{$ifend}
   SysUtils,
   Classes,
+  PasMP in '..\externals\pasmp\src\PasMP.pas',
   Vulkan in '..\src\Vulkan.pas',
   PasVulkan in '..\src\PasVulkan.pas',
   PasVulkanAndroid in '..\src\PasVulkanAndroid.pas',

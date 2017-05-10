@@ -84,6 +84,7 @@ uses {$if defined(Unix)}
      Classes,
      SyncObjs,
      Math,
+     PasMP,
      Vulkan,
      PasVulkan,
      PasVulkanSDL2,
@@ -568,7 +569,7 @@ type EVulkanApplication=class(Exception);
      TVulkanApplicationInputProcessorQueue=class(TVulkanApplicationInputProcessor)
       private
        fProcessor:TVulkanApplicationInputProcessor;
-       fCriticalSection:TCriticalSection;
+       fCriticalSection:TPasMPCriticalSection;
        fQueuedEvents:PVulkanApplicationInputProcessorQueueEvent;
        fLastQueuedEvent:PVulkanApplicationInputProcessorQueueEvent;
        fFreeEvents:PVulkanApplicationInputProcessorQueueEvent;
@@ -659,7 +660,7 @@ type EVulkanApplication=class(Exception);
       private
        fVulkanApplication:TVulkanApplication;
        fKeyCodeNames:array[-1..1023] of ansistring;
-       fCriticalSection:TCriticalSection;
+       fCriticalSection:TPasMPCriticalSection;
        fProcessor:TVulkanApplicationInputProcessor;
        fEvents:array of TSDL_Event;
        fEventTimes:array of int64;
@@ -868,6 +869,8 @@ type EVulkanApplication=class(Exception);
        fRoamingDataPath:string;
        fExternalStoragePath:string;
 
+       fPasMPInstance:TPasMP;
+
        fHighResolutionTimer:TVulkanApplicationHighResolutionTimer;
 
        fAssets:TVulkanApplicationAssets;
@@ -884,7 +887,7 @@ type EVulkanApplication=class(Exception);
        fCurrentCatchMouse:TSDLInt32;
        fCurrentHideSystemBars:TSDLInt32;
        fCurrentBlocking:TSDLInt32;
-
+       
        fWidth:TSDLInt32;
        fHeight:TSDLInt32;
        fFullscreen:boolean;
@@ -1017,6 +1020,8 @@ type EVulkanApplication=class(Exception);
        procedure Pause; virtual;
 
       published
+
+       property PasMPInstance:TPasMP read fPasMPInstance;
 
        property HighResolutionTimer:TVulkanApplicationHighResolutionTimer read fHighResolutionTimer;
 
@@ -1759,7 +1764,7 @@ constructor TVulkanApplicationInputProcessorQueue.Create;
 begin
  inherited Create;
  fProcessor:=nil;
- fCriticalSection:=TCriticalSection.Create;
+ fCriticalSection:=TPasMPCriticalSection.Create;
  fQueuedEvents:=nil;
  fLastQueuedEvent:=nil;
  fFreeEvents:=nil;
@@ -2768,7 +2773,7 @@ begin
  fKeyCodeNames[KEYCODE_BUTTON_START]:='BUTTON_START';
  fKeyCodeNames[KEYCODE_BUTTON_SELECT]:='BUTTON_SELECT';
  fKeyCodeNames[KEYCODE_BUTTON_MODE]:='BUTTON_MODE';
- fCriticalSection:=TCriticalSection.Create;
+ fCriticalSection:=TPasMPCriticalSection.Create;
  fProcessor:=nil;
  fEvents:=nil;
  fEventTimes:=nil;
@@ -4796,6 +4801,8 @@ begin
 
  fExternalStoragePath:='';
 
+ fPasMPInstance:=TPasMP.Create(-1,0,false,true,false,false);
+
  fHighResolutionTimer:=TVulkanApplicationHighResolutionTimer.Create;
 
  fAssets:=TVulkanApplicationAssets.Create(self);
@@ -4890,10 +4897,11 @@ end;
 
 destructor TVulkanApplication.Destroy;
 begin
- FreeAndNil(fAssets);
- FreeAndNil(fFiles);
- FreeAndNil(fHighResolutionTimer);
  FreeAndNil(fInput);
+ FreeAndNil(fFiles);
+ FreeAndNil(fAssets);
+ FreeAndNil(fHighResolutionTimer);
+ FreeAndNil(fPasMPInstance);
  VulkanApplication:=nil;
  inherited Destroy;
 end;
