@@ -106,9 +106,9 @@ begin
   fIndices[(Index*6)+0]:=(Index*4)+0;
   fIndices[(Index*6)+1]:=(Index*4)+1;
   fIndices[(Index*6)+2]:=(Index*4)+2;
-  fIndices[(Index*6)+3]:=(Index*4)+2;
+  fIndices[(Index*6)+3]:=(Index*4)+1;
   fIndices[(Index*6)+4]:=(Index*4)+3;
-  fIndices[(Index*6)+5]:=(Index*4)+0;
+  fIndices[(Index*6)+5]:=(Index*4)+2;
  end;
 
  fCountBufferChars:=0;
@@ -397,8 +397,8 @@ var Index,EdgeIndex:TVkInt32;
 begin
  InvWidth:=1.0/VulkanApplication.Width;
  InvHeight:=1.0/VulkanApplication.Height;
- FontCharWidth:=VulkanApplication.Width/24.0;
- FontCharHeight:=VulkanApplication.Height/80.0;
+ FontCharWidth:=VulkanApplication.Width/40.0;
+ FontCharHeight:=VulkanApplication.Height/20.0;
  case pAlignment of
   toaLeft:begin
    cX:=pX;
