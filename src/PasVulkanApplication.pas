@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-10-07-55-0000                       *
+ *                        Version 2017-05-10-08-33-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -931,7 +931,9 @@ type EVulkanApplication=class(Exception);
 
        fVulkanDevice:TVulkanDevice;
 
-       fCountThreads:TVkInt32;
+       fCountCPUThreads:TVkInt32;
+
+       fAvailableCPUCores:TPasMPAvailableCPUCores;
 
        fVulkanCountCommandQueues:TVkInt32;
 
@@ -1062,7 +1064,7 @@ type EVulkanApplication=class(Exception);
 
        property Terminated:boolean read fTerminated;
 
-       property CountThreads:TVkInt32 read fCountThreads write fCountThreads;
+       property CountCPUThreads:TVkInt32 read fCountCPUThreads;
 
        property OnEvent:TVulkanApplicationOnEvent read fOnEvent write fOnEvent;
        property OnStep:TVulkanApplicationOnStep read fOnStep write fOnStep;
@@ -4861,7 +4863,7 @@ begin
 
  fVulkanDevice:=nil;
 
- fCountThreads:=1;
+ fCountCPUThreads:=Max(1,TPasMP.GetCountOfHardwareThreads(fAvailableCPUCores));
 
  fVulkanCountCommandQueues:=0;
  
@@ -4953,15 +4955,15 @@ begin
   fVulkanDevice.Initialize;
 
   fVulkanCountCommandQueues:=length(fVulkanDevice.PhysicalDevice.QueueFamilyProperties);
-  SetLength(fVulkanCommandPools,fVulkanCountCommandQueues,fCountThreads,MaxSwapChainImages);
-  SetLength(fVulkanCommandBuffers,fVulkanCountCommandQueues,fCountThreads,MaxSwapChainImages);
-  SetLength(fVulkanCommandBufferFences,fVulkanCountCommandQueues,fCountThreads,MaxSwapChainImages);
+  SetLength(fVulkanCommandPools,fVulkanCountCommandQueues,fCountCPUThreads,MaxSwapChainImages);
+  SetLength(fVulkanCommandBuffers,fVulkanCountCommandQueues,fCountCPUThreads,MaxSwapChainImages);
+  SetLength(fVulkanCommandBufferFences,fVulkanCountCommandQueues,fCountCPUThreads,MaxSwapChainImages);
   for QueueFamilyIndex:=0 to length(fVulkanDevice.PhysicalDevice.QueueFamilyProperties)-1 do begin
    if (QueueFamilyIndex=fVulkanDevice.PresentQueueFamilyIndex) or
       (QueueFamilyIndex=fVulkanDevice.GraphicsQueueFamilyIndex) or
       (QueueFamilyIndex=fVulkanDevice.ComputeQueueFamilyIndex) or
       (QueueFamilyIndex=fVulkanDevice.TransferQueueFamilyIndex) then begin
-    for ThreadIndex:=0 to fCountThreads-1 do begin
+    for ThreadIndex:=0 to fCountCPUThreads-1 do begin
      for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
       fVulkanCommandPools[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex]:=TVulkanCommandPool.Create(fVulkanDevice,QueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
       fVulkanCommandBuffers[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex]:=TVulkanCommandBuffer.Create(fVulkanCommandPools[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex],VK_COMMAND_BUFFER_LEVEL_PRIMARY);
@@ -5107,7 +5109,7 @@ begin
  fVulkanTransferCommandBufferFences:=nil;
 
  for Index:=0 to fVulkanCountCommandQueues-1 do begin
-  for SubIndex:=0 to fCountThreads-1 do begin
+  for SubIndex:=0 to fCountCPUThreads-1 do begin
    for SubSubIndex:=0 to MaxSwapChainImages-1 do begin
     FreeAndNil(fVulkanCommandBufferFences[Index,SubIndex,SubSubIndex]);
     FreeAndNil(fVulkanCommandBuffers[Index,SubIndex,SubSubIndex]);
@@ -5679,10 +5681,6 @@ begin
 {$ifend}
 
  ReadConfig;
-
- if fCountThreads<1 then begin
-  fCountThreads:=1;
- end;
 
  if fHideSystemBars then begin
   SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'1');
