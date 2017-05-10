@@ -737,9 +737,6 @@ type EVulkanApplication=class(Exception);
 
      TVulkanPresentationSurface=class;
 
-     TVulkanPresentationSurfaceOnAfterCreateSwapChain=procedure(const pSurface:TVulkanPresentationSurface) of object;
-     TVulkanPresentationSurfaceOnBeforeDestroySwapChain=procedure(const pSurface:TVulkanPresentationSurface) of object;
-
      TVulkanPresentationSurface=class
       private
        fVulkanApplication:TVulkanApplication;
@@ -765,8 +762,6 @@ type EVulkanApplication=class(Exception);
        fCurrentImageIndex:TVkInt32;
        fReady:boolean;
        fVSync:boolean;
-       fOnAfterCreateSwapChain:TVulkanPresentationSurfaceOnAfterCreateSwapChain;
-       fOnBeforeDestroySwapChain:TVulkanPresentationSurfaceOnBeforeDestroySwapChain;
        procedure AfterCreateSwapChain;
        procedure BeforeDestroySwapChain;
       public
@@ -1029,6 +1024,14 @@ type EVulkanApplication=class(Exception);
        procedure ProcessMessages;
 
        procedure Run;
+
+       procedure Start; virtual;
+
+       procedure Stop; virtual;
+
+       procedure AfterCreateSwapChain; virtual;
+
+       procedure BeforeDestroySwapChain; virtual;
 
        procedure Update(const pDeltaTime:double); virtual;
 
@@ -4239,9 +4242,6 @@ begin
 
  fGraphicsPipelinesReady:=false;
 
- fOnAfterCreateSwapChain:=nil;
- fOnBeforeDestroySwapChain:=nil;
- 
  try
 
   fVulkanSurface:=TVulkanSurface.Create(fVulkanInstance,pSurfaceCreateInfo);
@@ -4384,12 +4384,7 @@ end;
 procedure TVulkanPresentationSurface.AfterCreateSwapChain;
 begin
  if not fGraphicsPipelinesReady then begin
-  if assigned(fVulkanApplication.fScreen) then begin
-   fVulkanApplication.fScreen.AfterCreateSwapChain;
-  end;
-  if assigned(fOnAfterCreateSwapChain) then begin
-   fOnAfterCreateSwapChain(self);
-  end;
+  fVulkanApplication.AfterCreateSwapChain;
   fGraphicsPipelinesReady:=true;
  end;
 end;
@@ -4399,12 +4394,7 @@ begin
  if fGraphicsPipelinesReady then begin
   fGraphicsPipelinesReady:=false;
   WaitIdle;
-  if assigned(fOnBeforeDestroySwapChain) then begin
-   fOnBeforeDestroySwapChain(self);
-  end;
-  if assigned(fVulkanApplication.fScreen) then begin
-   fVulkanApplication.fScreen.BeforeDestroySwapChain;
-  end;
+  fVulkanApplication.BeforeDestroySwapChain;
  end;
 end;
 
@@ -5854,22 +5844,29 @@ begin
 
    try
 
-    if assigned(fStartScreen) then begin
-     SetScreen(fStartScreen.Create);
-    end;
+    Start;
     try
 
-     while not fTerminated do begin
-      ProcessMessages;
+     if assigned(fStartScreen) then begin
+      SetScreen(fStartScreen.Create);
      end;
+     try
 
+      while not fTerminated do begin
+       ProcessMessages;
+      end;
+
+     finally
+
+      SetScreen(nil);
+
+      FreeAndNil(fNextScreen);
+      FreeAndNil(fScreen);
+
+     end;
+     
     finally
-
-     SetScreen(nil);
-
-     FreeAndNil(fNextScreen);
-     FreeAndNil(fScreen);
-
+     Stop;
     end;
 
    finally
@@ -5890,9 +5887,31 @@ begin
   end;
 
   SaveConfig;
-  
+
  end;
 
+end;
+
+procedure TVulkanApplication.Start;
+begin
+end;
+
+procedure TVulkanApplication.Stop; 
+begin
+end;
+
+procedure TVulkanApplication.AfterCreateSwapChain;
+begin
+ if assigned(fScreen) then begin
+  fScreen.AfterCreateSwapChain;
+ end;
+end;                           
+
+procedure TVulkanApplication.BeforeDestroySwapChain;
+begin
+ if assigned(fScreen) then begin
+  fScreen.BeforeDestroySwapChain;
+ end;
 end;
 
 procedure TVulkanApplication.Update(const pDeltaTime:double);

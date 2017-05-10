@@ -20,11 +20,21 @@ uses
   PasVulkanSDL2 in '..\src\PasVulkanSDL2.pas',
   PasVulkanStaticLinking in '..\src\PasVulkanStaticLinking.pas',
   PasVulkanApplication in '..\src\PasVulkanApplication.pas',
+  UnitTextOverlay in 'UnitTextOverlay.pas',
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas';
 
 type TExampleVulkanApplication=class(TVulkanApplication)
+      private
+       fTextOverlay:TTextOverlay;
       public
        function HandleEvent(const pEvent:TSDL_Event):boolean; override;
+       procedure Start; override;
+       procedure Stop; override;
+       procedure AfterCreateSwapChain; override;
+       procedure BeforeDestroySwapChain; override;
+       procedure Resume; override;
+       procedure Pause; override;
+       procedure Draw; override;
      end;
 
 function TExampleVulkanApplication.HandleEvent(const pEvent:TSDL_Event):boolean;
@@ -74,6 +84,47 @@ begin
  if not result then begin
   result:=inherited HandleEvent(pEvent);
  end;
+end;
+
+procedure TExampleVulkanApplication.Start;
+begin
+ fTextOverlay:=TTextOverlay.Create;
+ fTextOverlay.Load;
+end;
+
+procedure TExampleVulkanApplication.Stop;
+begin
+ fTextOverlay.Unload;
+ FreeAndNil(fTextOverlay);
+end;
+
+procedure TExampleVulkanApplication.AfterCreateSwapChain;
+begin
+ inherited AfterCreateSwapChain;
+ fTextOverlay.AfterCreateSwapChain;
+end;
+
+procedure TExampleVulkanApplication.BeforeDestroySwapChain;
+begin
+ inherited BeforeDestroySwapChain;
+ fTextOverlay.BeforeDestroySwapChain;
+end;
+
+procedure TExampleVulkanApplication.Resume;
+begin
+ inherited Resume;
+ fTextOverlay.Load;
+end;
+
+procedure TExampleVulkanApplication.Pause;
+begin
+ fTextOverlay.Unload;
+ inherited Pause;
+end;
+
+procedure TExampleVulkanApplication.Draw;
+begin
+ inherited Draw;
 end;
 
 {$if defined(fpc) and defined(android)}
