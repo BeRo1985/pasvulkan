@@ -38,6 +38,11 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      PTextOverlayIndices=^TTextOverlayIndices;
      TTextOverlayIndices=array[0..(TextOverlayBufferCharSize*6)-1] of TVkInt32;
 
+     PTextOverlayUniformBuffer=^TTextOverlayUniformBuffer;
+     TTextOverlayUniformBuffer=record
+      Dummy:TVkInt32;
+     end;
+
      TTextOverlayAlignment=
       (
        toaLeft,
@@ -51,6 +56,21 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fBufferChars:TTextOverlayBufferChars;
        fCountBufferChars:TVkInt32;
        fIndices:TTextOverlayIndices;
+       fTextOverlayVertexShaderModule:TVulkanShaderModule;
+       fTextOverlayFragmentShaderModule:TVulkanShaderModule;
+       fVulkanPipelineShaderStageTriangleVertex:TVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageTriangleFragment:TVulkanPipelineShaderStage;
+       fVulkanPipelineCache:TVulkanPipelineCache;
+       fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
+       fVulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget;
+       fVulkanVertexBuffer:TVulkanBuffer;
+       fVulkanIndexBuffer:TVulkanBuffer;
+       fVulkanUniformBuffer:TVulkanBuffer;
+       fVulkanDescriptorPool:TVulkanDescriptorPool;
+       fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
+       fVulkanDescriptorSet:TVulkanDescriptorSet;
+       fVulkanPipelineLayout:TVulkanPipelineLayout;
+       fUniformBuffer:TTextOverlayUniformBuffer;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -68,6 +88,8 @@ constructor TTextOverlay.Create;
 var Index:TVkInt32;
 begin
  inherited Create;
+
+ fLoaded:=false;
 
  for Index:=0 to TextOverlayBufferCharSize-1 do begin
   fIndices[(Index*6)+0]:=(Index*4)+0;
@@ -88,11 +110,122 @@ begin
 end;
 
 procedure TTextOverlay.Load;
+var Stream:TStream;
 begin
+
+ if not fLoaded then begin
+
+  fLoaded:=true;
+
+  Stream:=VulkanApplication.Assets.GetAssetStream('shaders/triangle/triangle_vert.spv');
+  try
+   fTextOverlayVertexShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  Stream:=VulkanApplication.Assets.GetAssetStream('shaders/triangle/triangle_frag.spv');
+  try
+   fTextOverlayFragmentShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  fVulkanPipelineShaderStageTriangleVertex:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fTextOverlayVertexShaderModule,'main');
+
+  fVulkanPipelineShaderStageTriangleFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fTextOverlayFragmentShaderModule,'main');
+
+  fVulkanPipelineCache:=TVulkanPipelineCache.Create(VulkanApplication.VulkanDevice);
+
+  fVulkanGraphicsPipeline:=nil;
+
+  fVulkanSwapChainSimpleDirectRenderTarget:=nil;
+
+  fVulkanVertexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
+                                            SizeOf(TTextOverlayBufferChars),
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                            nil,
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                                           );
+  fVulkanVertexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                 VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                 fBufferChars,
+                                 0,
+                                 SizeOf(TTextOverlayBufferChars),
+                                 true);
+
+  fVulkanIndexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
+                                           SizeOf(TTextOverlayIndices),
+                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                           nil,
+                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                                          );
+  fVulkanIndexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                fIndices,
+                                0,
+                                SizeOf(TTextOverlayIndices),
+                                true);
+
+  fVulkanUniformBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
+                                             SizeOf(TTextOverlayUniformBuffer),
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                             nil,
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                                            );
+  fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                  VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                  fUniformBuffer,
+                                  0,
+                                  SizeOf(TTextOverlayUniformBuffer),
+                                  true);
+
+  fVulkanDescriptorPool:=TVulkanDescriptorPool.Create(VulkanApplication.VulkanDevice,
+                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                      1);
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
+  fVulkanDescriptorPool.Initialize;
+
+  fVulkanDescriptorSetLayout:=TVulkanDescriptorSetLayout.Create(VulkanApplication.VulkanDevice);
+  fVulkanDescriptorSetLayout.AddBinding(0,
+                                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                        []);
+  fVulkanDescriptorSetLayout.Initialize;
+
+  fVulkanDescriptorSet:=TVulkanDescriptorSet.Create(fVulkanDescriptorPool,
+                                                    fVulkanDescriptorSetLayout);
+  fVulkanDescriptorSet.WriteToDescriptorSet(0,
+                                            0,
+                                            1,
+                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                            [],
+                                            [fVulkanUniformBuffer.DescriptorBufferInfo],
+                                            [],
+                                            false
+                                           );
+  fVulkanDescriptorSet.Flush;
+
+  fVulkanPipelineLayout:=TVulkanPipelineLayout.Create(VulkanApplication.VulkanDevice);
+  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
+  fVulkanPipelineLayout.Initialize;
+
+ end;
+
 end;
 
 procedure TTextOverlay.Unload;
 begin
+
+ if fLoaded then begin
+
+  fLoaded:=true;
+
+ end;
 end;
 
 procedure TTextOverlay.AfterCreateSwapChain;
