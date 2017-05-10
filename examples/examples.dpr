@@ -37,6 +37,7 @@ type TExampleVulkanApplication=class(TVulkanApplication)
        procedure BeforeDestroySwapChain; override;
        procedure Resume; override;
        procedure Pause; override;
+       procedure Update(const pDeltaTime:double); override;
        procedure Draw; override;
      end;
 
@@ -138,9 +139,16 @@ begin
  inherited Pause;
 end;
 
+procedure TExampleVulkanApplication.Update(const pDeltaTime:double);
+begin
+ inherited Update(pDeltaTime);
+ fTextOverlay.Update(pDeltaTime);
+end;
+
 procedure TExampleVulkanApplication.Draw;
 begin
  inherited Draw;
+ fTextOverlay.Draw;
 end;
 
 {$if defined(fpc) and defined(android)}

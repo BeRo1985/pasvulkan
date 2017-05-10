@@ -277,6 +277,8 @@ begin
 
   fLoaded:=false;
 
+  FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
+  FreeAndNil(fVulkanGraphicsPipeline);
   FreeAndNil(fVulkanPipelineLayout);
   FreeAndNil(fVulkanDescriptorSet);
   FreeAndNil(fVulkanDescriptorSetLayout);
@@ -284,8 +286,6 @@ begin
   FreeAndNil(fVulkanUniformBuffer);
   FreeAndNil(fVulkanIndexBuffer);
   FreeAndNil(fVulkanVertexBuffer);
-  FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
-  FreeAndNil(fVulkanGraphicsPipeline);
   FreeAndNil(fVulkanPipelineCache);
   FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
   FreeAndNil(fVulkanPipelineShaderStageTriangleFragment);
@@ -376,10 +376,6 @@ begin
                                                                                            false,
                                                                                            false);
 
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=0.0;
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=0.0;
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=0.0;
-
 end;
 
 procedure TTextOverlay.BeforeDestroySwapChain;
@@ -439,6 +435,10 @@ end;
 procedure TTextOverlay.Update(const pDeltaTime:double);
 var BufferIndex:TVkInt32;
 begin
+ begin
+  Reset;
+  AddText(0.0,0.0,toaLeft,'Test');
+ end;
  BufferIndex:=VulkanApplication.FrameCounter and 1;
  if fCountBufferChars>0 then begin
   Move(fBufferChars,fBufferCharsBuffers[BufferIndex],SizeOf(TTextOverlayBufferChar)*fCountBufferChars);

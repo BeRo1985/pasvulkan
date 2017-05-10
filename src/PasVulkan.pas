@@ -1222,6 +1222,7 @@ type EVulkanException=class(Exception);
        fQueueFamilyIndices:TVulkanQueueFamilyIndices;
        fCountQueueFamilyIndices:TVkInt32;
        fDescriptorBufferInfo:TVkDescriptorBufferInfo;
+       procedure Bind;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pSize:TVkDeviceSize;
@@ -1231,7 +1232,6 @@ type EVulkanException=class(Exception);
                           const pMemoryProperties:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
                           const pOwnSingleMemoryChunk:boolean=false);
        destructor Destroy; override;
-       procedure Bind;
        procedure UploadData(const pTransferCommandBuffer:TVulkanCommandBuffer;
                             const pTransferFence:TVulkanFence;
                             const pData;
@@ -9092,6 +9092,8 @@ begin
                                                            fMemoryRequirements.Alignment,
                                                            fOwnSingleMemoryChunk);
 
+  Bind;
+                                                           
   fDescriptorBufferInfo.buffer:=fBufferHandle;
   fDescriptorBufferInfo.offset:=0;
   fDescriptorBufferInfo.range:=fSize;
@@ -9165,9 +9167,6 @@ begin
    finally
     StagingBuffer.Memory.UnmapMemory;
    end;
-
-   StagingBuffer.Bind;
-   Bind;
 
    VkBufferCopy.srcOffset:=0;
    VkBufferCopy.dstOffset:=pDataOffset;
@@ -10150,7 +10149,7 @@ begin
 end;
 
 procedure TVulkanRenderPass.Initialize;
-var Index,SubIndex:TVkInt32;
+var Index,SubIndex,fCountClearValues:TVkInt32;
     AttachmentDescription:PVkAttachmentDescription;
     SubpassDescription:PVkSubpassDescription;
     RenderPassSubpassDescription:PVulkanRenderPassSubpassDescription;
@@ -10167,29 +10166,36 @@ begin
  SetLength(fSubpassDescriptions,fCountSubpassDescriptions);
  SetLength(fSubpassDependencies,fCountSubpassDependencies);
 
- SetLength(fClearValues,fCountAttachmentDescriptions);
-
- if fCountAttachmentDescriptions>0 then begin
-  for Index:=0 to fCountAttachmentDescriptions-1 do begin
-   AttachmentDescription:=@fAttachmentDescriptions[Index];
-   ClearValue:=@fClearValues[Index];
-   case AttachmentDescription^.format of
-    VK_FORMAT_D32_SFLOAT_S8_UINT,
-    VK_FORMAT_D32_SFLOAT,
-    VK_FORMAT_D24_UNORM_S8_UINT,
-    VK_FORMAT_D16_UNORM_S8_UINT,
-    VK_FORMAT_D16_UNORM:begin
-     ClearValue^.depthStencil.depth:=1.0;
-     ClearValue^.depthStencil.stencil:=0;
-    end;
-    else begin
-     ClearValue^.color.uint32[0]:=0;
-     ClearValue^.color.uint32[1]:=0;
-     ClearValue^.color.uint32[2]:=0;
-     ClearValue^.color.uint32[3]:=0;
-    end;
+ fCountClearValues:=0;
+ for Index:=0 to fCountAttachmentDescriptions-1 do begin
+  AttachmentDescription:=@fAttachmentDescriptions[Index];
+  if AttachmentDescription^.loadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR,VK_ATTACHMENT_LOAD_OP_CLEAR] then begin
+   fCountClearValues:=Max(fCountClearValues,Index+1);
+  end;
+ end;
+ SetLength(fClearValues,fCountClearValues);
+ for Index:=0 to fCountClearValues-1 do begin
+  AttachmentDescription:=@fAttachmentDescriptions[Index];
+  ClearValue:=@fClearValues[Index];
+  case AttachmentDescription^.format of
+   VK_FORMAT_D32_SFLOAT_S8_UINT,
+   VK_FORMAT_D32_SFLOAT,
+   VK_FORMAT_D24_UNORM_S8_UINT,
+   VK_FORMAT_D16_UNORM_S8_UINT,
+   VK_FORMAT_D16_UNORM:begin
+    ClearValue^.depthStencil.depth:=1.0;
+    ClearValue^.depthStencil.stencil:=0;
+   end;
+   else begin
+    ClearValue^.color.uint32[0]:=0;
+    ClearValue^.color.uint32[1]:=0;
+    ClearValue^.color.uint32[2]:=0;
+    ClearValue^.color.uint32[3]:=0;
    end;
   end;
+ end;
+
+ if fCountAttachmentDescriptions>0 then begin
   RenderPassCreateInfo.attachmentCount:=fCountAttachmentDescriptions;
   RenderPassCreateInfo.pAttachments:=@fAttachmentDescriptions[0];
  end;
@@ -15108,8 +15114,6 @@ begin
                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
                                       true);
   try
-
-   StagingBuffer.Bind;
 
    //HandleResultCode(fDevice.fDeviceVulkan.BindBufferMemory(fDevice.fDeviceHandle,StagingBuffer.fBufferHandle,StagingMemoryBlock.fMemoryChunk.fMemoryHandle,StagingMemoryBlock.fOffset));
 

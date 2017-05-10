@@ -5472,6 +5472,9 @@ begin
    case fEvent.type_ of
     SDL_QUITEV,
     SDL_APP_TERMINATING:begin
+     if assigned(fVulkanPresentationSurface) then begin
+      fVulkanPresentationSurface.WaitIdle;
+     end;
      Pause;
      DeinitializeGraphics;
      Terminate;
@@ -5481,6 +5484,9 @@ begin
      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_WILLENTERBACKGROUND')));
 {$ifend}
      fActive:=false;
+     if assigned(fVulkanPresentationSurface) then begin
+      fVulkanPresentationSurface.WaitIdle;
+     end;
      Pause;
      DeinitializeGraphics;
      fHasLastTime:=false;
@@ -5506,6 +5512,9 @@ begin
     end;
     SDL_RENDER_TARGETS_RESET,
     SDL_RENDER_DEVICE_RESET:begin
+     if assigned(fVulkanPresentationSurface) then begin
+      fVulkanPresentationSurface.WaitIdle;
+     end;
      if fActive then begin
       Pause;
      end;
@@ -5880,7 +5889,15 @@ begin
       end;
 
      finally
+
+      if assigned(fVulkanPresentationSurface) then begin
+       fVulkanPresentationSurface.WaitIdle;
+      end;
+
+      fVulkanDevice.WaitIdle;
+
       Unload;
+
      end;
 
     finally
