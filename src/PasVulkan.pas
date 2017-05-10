@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-10-16-43-0000                       *
+ *                        Version 2017-05-10-17-13-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1804,7 +1804,8 @@ type EVulkanException=class(Exception);
                           const pGraphicsCommandBuffer:TVulkanCommandBuffer;
                           const pGraphicsCommandBufferFence:TVulkanFence;
                           const pDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
-                          const pDepthImageFormatWithStencil:boolean=false);
+                          const pDepthImageFormatWithStencil:boolean=false;
+                          const pClear:boolean=true);
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
@@ -11249,7 +11250,8 @@ constructor TVulkanSwapChainSimpleDirectRenderTarget.Create(const pDevice:TVulka
                                                             const pGraphicsCommandBuffer:TVulkanCommandBuffer;
                                                             const pGraphicsCommandBufferFence:TVulkanFence;
                                                             const pDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
-                                                            const pDepthImageFormatWithStencil:boolean=false);
+                                                            const pDepthImageFormatWithStencil:boolean=false;
+                                                            const pClear:boolean=true);
 var Index:TVkInt32;
     FormatProperties:TVkFormatProperties;
     ColorAttachmentImage:TVulkanImage;
@@ -11287,35 +11289,71 @@ begin
 
    fRenderPass:=TVulkanRenderPass.Create(fDevice);
 
-   fRenderPass.AddSubpassDescription(0,
-                                     VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                     [],
-                                     [fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
-                                                                                                              fSwapChain.ImageFormat,
+   if pClear then begin
+
+    fRenderPass.AddSubpassDescription(0,
+                                      VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      [],
+                                      [fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
+                                                                                                               fSwapChain.ImageFormat,
+                                                                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                                                                               VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
+                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                                                              ),
+                                                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                         )],
+                                      [],
+                                      fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
+                                                                                                              fDepthImageFormat,
                                                                                                               VK_SAMPLE_COUNT_1_BIT,
                                                                                                               VK_ATTACHMENT_LOAD_OP_CLEAR,
                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                                                                                                              ),
-                                                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                        )],
-                                     [],
-                                     fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
-                                                                                                             fDepthImageFormat,
-                                                                                                             VK_SAMPLE_COUNT_1_BIT,
-                                                                                                             VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                             VK_ATTACHMENT_STORE_OP_STORE,
-                                                                                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                             VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                                                            ),
-                                                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                       ),
-                                     []);
+                                                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                                        ),
+                                      []);
+
+   end else begin
+
+    fRenderPass.AddSubpassDescription(0,
+                                      VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      [],
+                                      [fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
+                                                                                                               fSwapChain.ImageFormat,
+                                                                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                                                                               VK_ATTACHMENT_LOAD_OP_LOAD,
+                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
+                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                                                              ),
+                                                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                         )],
+                                      [],
+                                      fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
+                                                                                                              fDepthImageFormat,
+                                                                                                              VK_SAMPLE_COUNT_1_BIT,
+                                                                                                              VK_ATTACHMENT_LOAD_OP_LOAD,
+                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
+                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                                                                             ),
+                                                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                                        ),
+                                      []);
+
+   end;
 
    fRenderPass.Initialize;
 

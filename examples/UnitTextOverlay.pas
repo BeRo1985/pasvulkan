@@ -373,6 +373,7 @@ begin
                                                                                            VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
                                                                                            VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
                                                                                            VK_FORMAT_UNDEFINED,
+                                                                                           false,
                                                                                            false);
 
  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=0.0;
@@ -446,16 +447,44 @@ begin
 end;
 
 procedure TTextOverlay.Draw;
+const Offsets:array[0..0] of TVkDeviceSize=(0);
 var BufferIndex:TVkInt32;
+    VulkanCommandBuffer:TVulkanCommandBuffer;
+    VulkanSwapChain:TVulkanSwapChain;
 begin
+
  BufferIndex:=(VulkanApplication.FrameCounter+1) and 1;
  if fCountBufferCharsBuffers[BufferIndex]>0 then begin
+
   fVulkanVertexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                  VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                  fBufferCharsBuffers[BufferIndex],
                                  0,
                                  SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex],
                                  false);
+
+  if assigned(fVulkanGraphicsPipeline) then begin
+
+   VulkanCommandBuffer:=VulkanApplication.VulkanPresentationSurface.VulkanCommandBuffer;
+   VulkanSwapChain:=VulkanApplication.VulkanPresentationSurface.VulkanSwapChain;
+
+   fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.BeginRenderPass(VulkanCommandBuffer,
+                                                                       fVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
+                                                                       VK_SUBPASS_CONTENTS_INLINE,
+                                                                       0,
+                                                                       0,
+                                                                       VulkanSwapChain.Width,
+                                                                       VulkanSwapChain.Height);
+
+   VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSet.Handle,0,nil);
+   VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+   VulkanCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanVertexBuffer.Handle,@Offsets);
+   VulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+   VulkanCommandBuffer.CmdDrawIndexed(fCountBufferCharsBuffers[BufferIndex]*6,1,0,0,1);
+
+   fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
+
+  end;
  end;
 end;
 
