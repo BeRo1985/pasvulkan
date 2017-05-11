@@ -749,11 +749,16 @@ type EVulkanApplication=class(Exception);
        fVulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget;
        fVulkanCommandPool:TVulkanCommandPool;
        fVulkanCommandBuffer:TVulkanCommandBuffer;
+       fVulkanPrepareCommandBuffer:TVulkanCommandBuffer;
+       fVulkanPresentCommandBuffer:TVulkanCommandBuffer;
        fVulkanCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
+       fVulkanPrepareCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
+       fVulkanPresentCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
        fVulkanCommandBufferFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
        fVulkanCommandBufferFencesReady:array[0..MaxSwapChainImages-1] of boolean;
        fVulkanPresentCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
        fVulkanDrawCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fVulkanLastWaitSemaphore:TVulkanSemaphore;
        fDoNeedToRecreateVulkanSwapChain:boolean;
        fGraphicsPipelinesReady:boolean;
        fWidth:TVkInt32;
@@ -785,6 +790,7 @@ type EVulkanApplication=class(Exception);
        property VSync:boolean read fVSync write SetVSync;
        property VulkanSwapChain:TVulkanSwapChain read fVulkanSwapChain;
        property VulkanCommandBuffer:TVulkanCommandBuffer read fVulkanCommandBuffer;
+       property VulkanLastWaitSemaphore:TVulkanSemaphore read fVulkanLastWaitSemaphore;
        property VulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget read fVulkanSwapChainSimpleDirectRenderTarget;
      end;
 
@@ -1011,7 +1017,7 @@ type EVulkanApplication=class(Exception);
 
       public
 
-       constructor Create; reintroduce;
+       constructor Create; reintroduce; virtual;
        destructor Destroy; override;
 
        procedure ReadConfig; virtual;
@@ -1046,6 +1052,8 @@ type EVulkanApplication=class(Exception);
        procedure Resume; virtual;
 
        procedure Pause; virtual;
+
+       class procedure Main; virtual;
 
       published
 
@@ -4294,11 +4302,17 @@ begin
                                                 TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
   fVulkanCommandBuffer:=nil;
+  fVulkanPrepareCommandBuffer:=nil;
+  fVulkanPresentCommandBuffer:=nil;
+
+  fVulkanLastWaitSemaphore:=nil;
 
   for Index:=0 to MaxSwapChainImages-1 do begin
    fVulkanSwapChainImageFences[Index]:=TVulkanFence.Create(fVulkanDevice);
    fVulkanSwapChainImageFencesReady[Index]:=false;
    fVulkanCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   fVulkanPrepareCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   fVulkanPresentCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
    fVulkanCommandBufferFences[Index]:=TVulkanFence.Create(fVulkanDevice);
    fVulkanCommandBufferFencesReady[Index]:=false;
    fVulkanPresentCompleteSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
@@ -4312,6 +4326,8 @@ begin
   for Index:=0 to MaxSwapChainImages-1 do begin
    FreeAndNil(fVulkanSwapChainImageFences[Index]);
    FreeAndNil(fVulkanCommandBuffers[Index]);
+   FreeAndNil(fVulkanPrepareCommandBuffers[Index]);
+   FreeAndNil(fVulkanPresentCommandBuffers[Index]);
    FreeAndNil(fVulkanCommandBufferFences[Index]);
    FreeAndNil(fVulkanPresentCompleteSemaphores[Index]);
    FreeAndNil(fVulkanDrawCompleteSemaphores[Index]);
@@ -4339,6 +4355,8 @@ begin
  for Index:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fVulkanSwapChainImageFences[Index]);
   FreeAndNil(fVulkanCommandBuffers[Index]);
+  FreeAndNil(fVulkanPrepareCommandBuffers[Index]);
+  FreeAndNil(fVulkanPresentCommandBuffers[Index]);
   FreeAndNil(fVulkanCommandBufferFences[Index]);
   FreeAndNil(fVulkanPresentCompleteSemaphores[Index]);
   FreeAndNil(fVulkanDrawCompleteSemaphores[Index]);
@@ -4530,9 +4548,25 @@ begin
 
   fCurrentImageIndex:=fVulkanSwapChain.CurrentImageIndex;
 
+  fVulkanLastWaitSemaphore:=nil;
+
  end else begin
 
   result:=true;
+
+  fVulkanCommandBuffer:=fVulkanCommandBuffers[fCurrentImageIndex];
+
+  fVulkanPrepareCommandBuffer:=fVulkanPrepareCommandBuffers[fCurrentImageIndex];
+
+  fVulkanPresentCommandBuffer:=fVulkanPresentCommandBuffers[fCurrentImageIndex];
+
+  fVulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
+  fVulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+  fVulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(fVulkanSwapChain.CurrentImage);
+
+  fVulkanLastWaitSemaphore:=nil;
 
  end;
 
@@ -4542,16 +4576,6 @@ function TVulkanPresentationSurface.PresentBackBuffer:boolean;
 begin
 
  result:=false;
-                                
- fVulkanCommandBuffer:=fVulkanCommandBuffers[fCurrentImageIndex];
-
- fVulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-
- fVulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
-
- fVulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(fVulkanSwapChain.CurrentImage);
-
- fVulkanApplication.Draw;
 
  fVulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(fVulkanSwapChain.CurrentImage);
 
@@ -5386,7 +5410,11 @@ end;
 procedure TVulkanApplication.DrawJobFunction(const pJob:PPasMPJob;const pThreadIndex:TPasMPInt32);
 begin
  if fVulkanPresentationSurface.AcquireBackBuffer(fBlocking) then begin
-  fVulkanPresentationSurface.PresentBackBuffer;
+  try
+   Draw;
+  finally
+   fVulkanPresentationSurface.PresentBackBuffer;
+  end;
  end;
 end;
 
@@ -5989,6 +6017,10 @@ begin
  if assigned(fScreen) then begin
   fScreen.Pause;
  end;
+end;
+
+class procedure TVulkanApplication.Main; 
+begin
 end;
 
 {$if defined(fpc) and defined(android)}

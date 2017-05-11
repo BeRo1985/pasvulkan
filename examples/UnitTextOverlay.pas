@@ -77,6 +77,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
        fVulkanDescriptorSet:TVulkanDescriptorSet;
        fVulkanPipelineLayout:TVulkanPipelineLayout;
+       fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
        fUniformBuffer:TTextOverlayUniformBuffer;
        fFontTexture:TVulkanTexture;
        fFontCharWidth:single;
@@ -131,11 +132,16 @@ end;
 
 procedure TTextOverlay.Load;
 var Stream:TStream;
+    Index:TVkInt32;
 begin
 
  if not fLoaded then begin
 
   fLoaded:=true;
+
+  for Index:=0 to MaxSwapChainImages-1 do begin
+   fVulkanRenderSemaphores[Index]:=TVulkanSemaphore.Create(VulkanApplication.VulkanDevice);
+  end;
 
   Stream:=VulkanApplication.Assets.GetAssetStream('shaders/textoverlay/textoverlay_vert.spv');
   try
@@ -277,6 +283,7 @@ begin
 end;
 
 procedure TTextOverlay.Unload;
+var Index:TVkInt32;
 begin
 
  if fLoaded then begin
@@ -298,6 +305,10 @@ begin
   FreeAndNil(fTextOverlayFragmentShaderModule);
   FreeAndNil(fTextOverlayVertexShaderModule);
   FreeAndNil(fFontTexture);
+
+  for Index:=0 to MaxSwapChainImages-1 do begin
+   FreeAndNil(fVulkanRenderSemaphores[Index]);
+  end;
 
  end;
 end;

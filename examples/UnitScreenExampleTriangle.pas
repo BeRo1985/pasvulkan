@@ -32,6 +32,7 @@ type TScreenExampleTriangle=class(TVulkanScreen)
        fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
        fVulkanDescriptorSet:TVulkanDescriptorSet;
        fVulkanPipelineLayout:TVulkanPipelineLayout;
+       fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
       public
 
        constructor Create; override;
@@ -78,8 +79,13 @@ const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
 
 constructor TScreenExampleTriangle.Create;
 var Stream:TStream;
+    Index:TVkInt32;
 begin
  inherited Create;
+
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  fVulkanRenderSemaphores[Index]:=TVulkanSemaphore.Create(VulkanApplication.VulkanDevice);
+ end;
 
  Stream:=VulkanApplication.Assets.GetAssetStream('shaders/triangle/triangle_vert.spv');
  try
@@ -182,6 +188,7 @@ begin
 end;
 
 destructor TScreenExampleTriangle.Destroy;
+var Index:TVkInt32;
 begin
  FreeAndNil(fVulkanPipelineLayout);
  FreeAndNil(fVulkanDescriptorSet);
@@ -197,6 +204,9 @@ begin
  FreeAndNil(fVulkanPipelineShaderStageTriangleFragment);
  FreeAndNil(fTriangleFragmentShaderModule);
  FreeAndNil(fTriangleVertexShaderModule);
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  FreeAndNil(fVulkanRenderSemaphores[Index]);
+ end;
  inherited Destroy;
 end;
 
