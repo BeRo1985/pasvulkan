@@ -57,6 +57,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      TTextOverlay=class
       private
        fLoaded:boolean;
+       fUpdateBufferIndex:TVkInt32;
        fBufferChars:PTextOverlayBufferChars;
        fBufferCharsBuffers:TTextOverlayBufferCharsBuffers;
        fCountBufferChars:TVkInt32;
@@ -91,7 +92,8 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        procedure BeforeDestroySwapChain;
        procedure Reset;
        procedure AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pR:single=1.0;const pG:single=1.0;const pB:single=1.0);
-       procedure Update(const pDeltaTime:double);
+       procedure PreUpdate(const pDeltaTime:double);
+       procedure PostUpdate(const pDeltaTime:double);
        procedure Draw;
      end;
 
@@ -449,12 +451,11 @@ begin
  end;
 end;
 
-procedure TTextOverlay.Update(const pDeltaTime:double);
-var BufferIndex:TVkInt32;
-    s:string;
+procedure TTextOverlay.PreUpdate(const pDeltaTime:double);
+var s:string;
 begin
- BufferIndex:=VulkanApplication.FrameCounter and 1;
- fBufferChars:=@fBufferCharsBuffers[BufferIndex];
+ fUpdateBufferIndex:=VulkanApplication.FrameCounter and 1;
+ fBufferChars:=@fBufferCharsBuffers[fUpdateBufferIndex];
  begin
   Reset;
   AddText(0.0,fFontCharHeight*0.0,1.0,toaLeft,'Device: '+VulkanApplication.VulkanDevice.PhysicalDevice.DeviceName);
@@ -462,7 +463,11 @@ begin
   Str(VulkanApplication.FramesPerSecond:1:1,s);
   AddText(0.0,fFontCharHeight*2.0,1.0,toaLeft,'Frame rate: '+s+' FPS');
  end;
- fCountBufferCharsBuffers[BufferIndex]:=fCountBufferChars;
+end;
+
+procedure TTextOverlay.PostUpdate(const pDeltaTime:double);
+begin
+ fCountBufferCharsBuffers[fUpdateBufferIndex]:=fCountBufferChars;
 end;
 
 procedure TTextOverlay.Draw;
