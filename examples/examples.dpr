@@ -20,7 +20,7 @@ uses
   PasVulkanSDL2 in '..\src\PasVulkanSDL2.pas',
   PasVulkanStaticLinking in '..\src\PasVulkanStaticLinking.pas',
   PasVulkanApplication in '..\src\PasVulkanApplication.pas',
-  UnitExampleApplication in 'UnitExampleApplication.pas',
+  UnitExampleVulkanApplication in 'UnitExampleVulkanApplication.pas',
   UnitTextOverlay in 'UnitTextOverlay.pas',
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas',
   UnitSDFFont in 'UnitSDFFont.pas';
@@ -71,22 +71,7 @@ begin
 {$if defined(fpc) and defined(android)}
  try
 {$ifend}
-  VulkanApplication:=TExampleVulkanApplication.Create;
-  try
- {$ifndef Release}
-   VulkanApplication.VulkanDebugging:=true;
-   VulkanApplication.VulkanValidation:=true;
- {$endif}
-   VulkanApplication.Title:='SDL Vulkan Examples Application';
-   VulkanApplication.PathName:='SDLVulkanExamplesApplication';
-   VulkanApplication.StartScreen:=TScreenExampleTriangle;
-   VulkanApplication.VisibleMouseCursor:=true;
-   VulkanApplication.CatchMouse:=false;
-   VulkanApplication.HideSystemBars:=true;
-   VulkanApplication.Run;
-  finally
-   FreeAndNil(VulkanApplication);
-  end;
+  TExampleVulkanApplication.Main;
 {$if defined(fpc) and defined(android)}
  except
   on e:Exception do begin
@@ -117,9 +102,8 @@ exports JNI_OnLoad name 'JNI_OnLoad',
 function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
 {$ifend}
 
+{$if not (defined(fpc) and defined(android))}
 begin
-{$if defined(fpc) and defined(android)}
-{$else}
  SDLMain;
 {$ifdef Windows}
  if {$ifdef fpc}IsDebuggerPresent{$else}DebugHook<>0{$endif} then begin

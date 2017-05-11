@@ -1,4 +1,4 @@
-unit UnitExampleApplication;
+unit UnitExampleVulkanApplication;
 {$ifdef fpc}
  {$mode delphi}
  {$ifdef cpu386}
@@ -33,6 +33,7 @@ type TExampleVulkanApplication=class(TVulkanApplication)
        procedure Pause; override;
        procedure Update(const pDeltaTime:double); override;
        procedure Draw; override;
+       class procedure Main; override;
       published
        property TextOverlay:TTextOverlay read fTextOverlay;
      end;
@@ -40,6 +41,8 @@ type TExampleVulkanApplication=class(TVulkanApplication)
 var ExampleVulkanApplication:TExampleVulkanApplication=nil;
 
 implementation
+
+uses UnitScreenExampleTriangle;
 
 constructor TExampleVulkanApplication.Create;
 begin
@@ -163,6 +166,26 @@ procedure TExampleVulkanApplication.Draw;
 begin
  inherited Draw;
  fTextOverlay.Draw;
+end;
+
+class procedure TExampleVulkanApplication.Main;
+begin
+ VulkanApplication:=TExampleVulkanApplication.Create;
+ try
+{$ifndef Release}
+  VulkanApplication.VulkanDebugging:=true;
+  VulkanApplication.VulkanValidation:=true;
+{$endif}
+  VulkanApplication.Title:='SDL Vulkan Examples Application';
+  VulkanApplication.PathName:='SDLVulkanExamplesApplication';
+  VulkanApplication.StartScreen:=TScreenExampleTriangle;
+  VulkanApplication.VisibleMouseCursor:=true;
+  VulkanApplication.CatchMouse:=false;
+  VulkanApplication.HideSystemBars:=true;
+  VulkanApplication.Run;
+ finally
+  FreeAndNil(VulkanApplication);
+ end;
 end;
 
 end.
