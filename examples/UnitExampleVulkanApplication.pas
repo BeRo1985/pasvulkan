@@ -14,7 +14,7 @@ unit UnitExampleVulkanApplication;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanSDL2,PasVulkanApplication,UnitTextOverlay;
+uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanSDL2,PasVulkanApplication,UnitTextOverlay;
 
 type TExampleVulkanApplication=class(TVulkanApplication)
       private
