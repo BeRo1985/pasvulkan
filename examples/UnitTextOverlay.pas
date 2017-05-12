@@ -206,7 +206,7 @@ begin
                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                      nil,
-                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)}
                                                     );
    fVulkanVertexBuffers[Index].UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                           VulkanApplication.VulkanTransferCommandBufferFences[0,0],
@@ -533,11 +533,11 @@ end;
 
 procedure TTextOverlay.Draw;
 const Offsets:array[0..0] of TVkDeviceSize=(0);
-var BufferIndex,CurrentImageIndex:TVkInt32;
+var BufferIndex,CurrentImageIndex,Size:TVkInt32;
     VulkanVertexBuffer:TVulkanBuffer;
     VulkanCommandBuffer:TVulkanCommandBuffer;
     VulkanSwapChain:TVulkanSwapChain;
-    ImageMemoryBarrier:TVkImageMemoryBarrier;
+    p:pointer;
 begin
 
  BufferIndex:=(VulkanApplication.FrameCounter+1) and 1;
@@ -547,12 +547,16 @@ begin
 
   VulkanVertexBuffer:=fVulkanVertexBuffers[CurrentImageIndex];
 
-  VulkanVertexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
-                                VulkanApplication.VulkanTransferCommandBufferFences[0,0],
-                                fBufferCharsBuffers[BufferIndex],
-                                0,
-                                SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex],
-                                false);
+  Size:=SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex];
+  p:=VulkanVertexBuffer.Memory.MapMemory(0,Size);
+  if assigned(p) then begin
+   try
+    Move(fBufferCharsBuffers[BufferIndex],p^,Size);
+    VulkanVertexBuffer.Memory.FlushMappedMemory;
+   finally
+    VulkanVertexBuffer.Memory.UnmapMemory;
+   end;
+  end;
 
   if assigned(fVulkanGraphicsPipeline) then begin
 
@@ -562,29 +566,6 @@ begin
    VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
    VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
-
-{  // A non-layout-change image memory barrier, otherwise the text overlay can be flicker at least on some GPUs
-   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-   ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-   ImageMemoryBarrier.image:=VulkanApplication.VulkanPresentationSurface.VulkanSwapChain.Images[CurrentImageIndex].Handle;
-   ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-   ImageMemoryBarrier.subresourceRange.levelCount:=1;
-   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-   ImageMemoryBarrier.subresourceRange.layerCount:=1;
-   ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-   ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
-   VulkanCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                          0,
-                                          0,
-                                          nil,
-                                          0,
-                                          nil,
-                                          1,
-                                          @ImageMemoryBarrier);}
 
    fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
                                      VulkanApplication.VulkanPresentationSurface.VulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
