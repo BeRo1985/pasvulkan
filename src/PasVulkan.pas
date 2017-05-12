@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-10-20-53-0000                       *
+ *                        Version 2017-05-12-10-50-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -11445,6 +11445,22 @@ begin
                                       []);
 
    end;
+
+   fRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
+                                    0,
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                    TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                    TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+
+   fRenderPass.AddSubpassDependency(0,
+                                    VK_SUBPASS_EXTERNAL,
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                    TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                    TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
 
    fRenderPass.Initialize;
 

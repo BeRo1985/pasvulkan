@@ -4600,10 +4600,12 @@ begin
 
  fVulkanDrawToPresentImageBarrierCommandBufferFencesReady[fCurrentImageIndex]:=true;
 
+ //fVulkanDevice.GraphicsQueue.WaitIdle; // A GPU/CPU graphics queue synchronization point only for debug cases here, when something got run wrong
+
  try
   case fVulkanSwapChain.QueuePresent(fVulkanDevice.GraphicsQueue,fVulkanDrawToPresentImageBarrierCommandBufferCompleteSemaphores[fCurrentImageIndex]) of
    VK_SUCCESS:begin
-    //VulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
+    //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
     result:=true;
    end;
    VK_SUBOPTIMAL_KHR:begin
