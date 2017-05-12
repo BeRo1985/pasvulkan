@@ -77,6 +77,8 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
        fVulkanDescriptorSet:TVulkanDescriptorSet;
        fVulkanPipelineLayout:TVulkanPipelineLayout;
+       fVulkanCommandPool:TVulkanCommandPool;
+       fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
        fUniformBuffer:TTextOverlayUniformBuffer;
        fFontTexture:TVulkanTexture;
@@ -139,7 +141,11 @@ begin
 
   fLoaded:=true;
 
+  fVulkanCommandPool:=TVulkanCommandPool.Create(VulkanApplication.VulkanDevice,
+                                                VulkanApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
   for Index:=0 to MaxSwapChainImages-1 do begin
+   fVulkanRenderCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
    fVulkanRenderSemaphores[Index]:=TVulkanSemaphore.Create(VulkanApplication.VulkanDevice);
   end;
 
@@ -307,8 +313,10 @@ begin
   FreeAndNil(fFontTexture);
 
   for Index:=0 to MaxSwapChainImages-1 do begin
+   FreeAndNil(fVulkanRenderCommandBuffers[Index]);
    FreeAndNil(fVulkanRenderSemaphores[Index]);
   end;
+  FreeAndNil(fVulkanCommandPool);
 
  end;
 end;
@@ -483,7 +491,7 @@ end;
 
 procedure TTextOverlay.Draw;
 const Offsets:array[0..0] of TVkDeviceSize=(0);
-var BufferIndex:TVkInt32;
+var BufferIndex,CurrentImageIndex:TVkInt32;
     VulkanCommandBuffer:TVulkanCommandBuffer;
     VulkanSwapChain:TVulkanSwapChain;
 begin
@@ -491,6 +499,8 @@ begin
  BufferIndex:=(VulkanApplication.FrameCounter+1) and 1;
  if fCountBufferCharsBuffers[BufferIndex]>0 then begin
 
+  CurrentImageIndex:=VulkanApplication.VulkanPresentationSurface.CurrentImageIndex;
+  
   fVulkanVertexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                  VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                  fBufferCharsBuffers[BufferIndex],
@@ -500,8 +510,12 @@ begin
 
   if assigned(fVulkanGraphicsPipeline) then begin
 
-   VulkanCommandBuffer:=VulkanApplication.VulkanPresentationSurface.VulkanCommandBuffer;
+   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[CurrentImageIndex];
    VulkanSwapChain:=VulkanApplication.VulkanPresentationSurface.VulkanSwapChain;
+
+   VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
+   VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
    fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.BeginRenderPass(VulkanCommandBuffer,
                                                                        fVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
@@ -520,6 +534,16 @@ begin
    VulkanCommandBuffer.CmdDrawIndexed(fCountBufferCharsBuffers[BufferIndex]*6,1,0,0,1);
 
    fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
+
+   VulkanCommandBuffer.EndRecording;
+
+   VulkanCommandBuffer.Execute(VulkanApplication.VulkanDevice.GraphicsQueue,
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                               VulkanApplication.VulkanPresentationSurface.VulkanLastWaitSemaphore,
+                               fVulkanRenderSemaphores[CurrentImageIndex],
+                               nil,
+                               false);
+   VulkanApplication.VulkanPresentationSurface.VulkanLastWaitSemaphore:=fVulkanRenderSemaphores[CurrentImageIndex];
 
   end;
  end;

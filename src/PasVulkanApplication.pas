@@ -749,15 +749,16 @@ type EVulkanApplication=class(Exception);
        fVulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget;
        fVulkanCommandPool:TVulkanCommandPool;
        fVulkanCommandBuffer:TVulkanCommandBuffer;
-       fVulkanPrepareCommandBuffer:TVulkanCommandBuffer;
-       fVulkanPresentCommandBuffer:TVulkanCommandBuffer;
+       fVulkanPresentToDrawImageBarrierCommandBuffer:TVulkanCommandBuffer;
+       fVulkanDrawToPresentImageBarrierCommandBuffer:TVulkanCommandBuffer;
        fVulkanCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
-       fVulkanPrepareCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
-       fVulkanPresentCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
-       fVulkanCommandBufferFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
-       fVulkanCommandBufferFencesReady:array[0..MaxSwapChainImages-1] of boolean;
-       fVulkanPresentCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
-       fVulkanDrawCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fVulkanPresentAcquireNextImageCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fVulkanPresentToDrawImageBarrierCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
+       fVulkanPresentToDrawImageBarrierCommandBufferCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fVulkanDrawToPresentImageBarrierCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
+       fVulkanDrawToPresentImageBarrierCommandBufferCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fVulkanDrawToPresentImageBarrierCommandBufferFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
+       fVulkanDrawToPresentImageBarrierCommandBufferFencesReady:array[0..MaxSwapChainImages-1] of boolean;
        fVulkanLastWaitSemaphore:TVulkanSemaphore;
        fDoNeedToRecreateVulkanSwapChain:boolean;
        fGraphicsPipelinesReady:boolean;
@@ -790,7 +791,7 @@ type EVulkanApplication=class(Exception);
        property VSync:boolean read fVSync write SetVSync;
        property VulkanSwapChain:TVulkanSwapChain read fVulkanSwapChain;
        property VulkanCommandBuffer:TVulkanCommandBuffer read fVulkanCommandBuffer;
-       property VulkanLastWaitSemaphore:TVulkanSemaphore read fVulkanLastWaitSemaphore;
+       property VulkanLastWaitSemaphore:TVulkanSemaphore read fVulkanLastWaitSemaphore write fVulkanLastWaitSemaphore;
        property VulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget read fVulkanSwapChainSimpleDirectRenderTarget;
      end;
 
@@ -945,8 +946,8 @@ type EVulkanApplication=class(Exception);
        fVulkanCommandBufferFences:array of TVulkanApplicationCommandBufferFences;
 
        fVulkanPresentCommandPools:TVulkanApplicationCommandPools;
-       fVulkanPresentCommandBuffers:TVulkanApplicationCommandBuffers;
-       fVulkanPresentCommandBufferFences:TVulkanApplicationCommandBufferFences;
+       fVulkanDrawToPresentImageBarrierCommandBuffers:TVulkanApplicationCommandBuffers;
+       fVulkanDrawToPresentImageBarrierCommandBufferFences:TVulkanApplicationCommandBufferFences;
 
        fVulkanGraphicsCommandPools:TVulkanApplicationCommandPools;
        fVulkanGraphicsCommandBuffers:TVulkanApplicationCommandBuffers;
@@ -1109,8 +1110,8 @@ type EVulkanApplication=class(Exception);
        property VulkanDevice:TVulkanDevice read fVulkanDevice;
 
        property VulkanPresentCommandPools:TVulkanApplicationCommandPools read fVulkanPresentCommandPools;
-       property VulkanPresentCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanPresentCommandBuffers;
-       property VulkanPresentCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanPresentCommandBufferFences;
+       property VulkanPresentCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanDrawToPresentImageBarrierCommandBuffers;
+       property VulkanPresentCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanDrawToPresentImageBarrierCommandBufferFences;
 
        property VulkanGraphicsCommandPools:TVulkanApplicationCommandPools read fVulkanGraphicsCommandPools;
        property VulkanGraphicsCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanGraphicsCommandBuffers;
@@ -4302,8 +4303,8 @@ begin
                                                 TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
   fVulkanCommandBuffer:=nil;
-  fVulkanPrepareCommandBuffer:=nil;
-  fVulkanPresentCommandBuffer:=nil;
+  fVulkanPresentToDrawImageBarrierCommandBuffer:=nil;
+  fVulkanDrawToPresentImageBarrierCommandBuffer:=nil;
 
   fVulkanLastWaitSemaphore:=nil;
 
@@ -4311,12 +4312,13 @@ begin
    fVulkanSwapChainImageFences[Index]:=TVulkanFence.Create(fVulkanDevice);
    fVulkanSwapChainImageFencesReady[Index]:=false;
    fVulkanCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-   fVulkanPrepareCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-   fVulkanPresentCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-   fVulkanCommandBufferFences[Index]:=TVulkanFence.Create(fVulkanDevice);
-   fVulkanCommandBufferFencesReady[Index]:=false;
-   fVulkanPresentCompleteSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
-   fVulkanDrawCompleteSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanPresentAcquireNextImageCompleteSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanPresentToDrawImageBarrierCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   fVulkanPresentToDrawImageBarrierCommandBufferCompleteSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanDrawToPresentImageBarrierCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   fVulkanDrawToPresentImageBarrierCommandBufferCompleteSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanDrawToPresentImageBarrierCommandBufferFences[Index]:=TVulkanFence.Create(fVulkanDevice);
+   fVulkanDrawToPresentImageBarrierCommandBufferFencesReady[Index]:=false;
   end;
 
   fDoNeedToRecreateVulkanSwapChain:=false;
@@ -4326,11 +4328,12 @@ begin
   for Index:=0 to MaxSwapChainImages-1 do begin
    FreeAndNil(fVulkanSwapChainImageFences[Index]);
    FreeAndNil(fVulkanCommandBuffers[Index]);
-   FreeAndNil(fVulkanPrepareCommandBuffers[Index]);
-   FreeAndNil(fVulkanPresentCommandBuffers[Index]);
-   FreeAndNil(fVulkanCommandBufferFences[Index]);
-   FreeAndNil(fVulkanPresentCompleteSemaphores[Index]);
-   FreeAndNil(fVulkanDrawCompleteSemaphores[Index]);
+   FreeAndNil(fVulkanPresentAcquireNextImageCompleteSemaphores[Index]);
+   FreeAndNil(fVulkanPresentToDrawImageBarrierCommandBuffers[Index]);
+   FreeAndNil(fVulkanPresentToDrawImageBarrierCommandBufferCompleteSemaphores[Index]);
+   FreeAndNil(fVulkanDrawToPresentImageBarrierCommandBuffers[Index]);
+   FreeAndNil(fVulkanDrawToPresentImageBarrierCommandBufferCompleteSemaphores[Index]);
+   FreeAndNil(fVulkanDrawToPresentImageBarrierCommandBufferFences[Index]);
   end;
   FreeAndNil(fVulkanCommandPool);
   FreeAndNil(fVulkanSwapChain);
@@ -4355,11 +4358,12 @@ begin
  for Index:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fVulkanSwapChainImageFences[Index]);
   FreeAndNil(fVulkanCommandBuffers[Index]);
-  FreeAndNil(fVulkanPrepareCommandBuffers[Index]);
-  FreeAndNil(fVulkanPresentCommandBuffers[Index]);
-  FreeAndNil(fVulkanCommandBufferFences[Index]);
-  FreeAndNil(fVulkanPresentCompleteSemaphores[Index]);
-  FreeAndNil(fVulkanDrawCompleteSemaphores[Index]);
+  FreeAndNil(fVulkanPresentAcquireNextImageCompleteSemaphores[Index]);
+  FreeAndNil(fVulkanPresentToDrawImageBarrierCommandBuffers[Index]);
+  FreeAndNil(fVulkanPresentToDrawImageBarrierCommandBufferCompleteSemaphores[Index]);
+  FreeAndNil(fVulkanDrawToPresentImageBarrierCommandBuffers[Index]);
+  FreeAndNil(fVulkanDrawToPresentImageBarrierCommandBufferCompleteSemaphores[Index]);
+  FreeAndNil(fVulkanDrawToPresentImageBarrierCommandBufferFences[Index]);
  end;
  FreeAndNil(fVulkanCommandPool);
  FreeAndNil(fVulkanSwapChain);
@@ -4397,10 +4401,10 @@ begin
     fVulkanSwapChainImageFences[Index].Reset;
     fVulkanSwapChainImageFencesReady[Index]:=false;
    end;
-   if fVulkanCommandBufferFencesReady[Index] and assigned(fVulkanCommandBufferFences[Index]) then begin
-    fVulkanCommandBufferFences[Index].WaitFor;
-    fVulkanCommandBufferFences[Index].Reset;
-    fVulkanCommandBufferFencesReady[Index]:=false;
+   if fVulkanDrawToPresentImageBarrierCommandBufferFencesReady[Index] and assigned(fVulkanDrawToPresentImageBarrierCommandBufferFences[Index]) then begin
+    fVulkanDrawToPresentImageBarrierCommandBufferFences[Index].WaitFor;
+    fVulkanDrawToPresentImageBarrierCommandBufferFences[Index].Reset;
+    fVulkanDrawToPresentImageBarrierCommandBufferFencesReady[Index]:=false;
    end;
   end;
   fVulkanDevice.WaitIdle;
@@ -4451,16 +4455,16 @@ begin
   fVulkanSwapChainImageFencesReady[fCurrentImageIndex]:=false;
  end;
 
- if fVulkanCommandBufferFencesReady[fCurrentImageIndex] then begin
-  if fVulkanCommandBufferFences[fCurrentImageIndex].GetStatus<>VK_SUCCESS then begin
+ if fVulkanDrawToPresentImageBarrierCommandBufferFencesReady[fCurrentImageIndex] then begin
+  if fVulkanDrawToPresentImageBarrierCommandBufferFences[fCurrentImageIndex].GetStatus<>VK_SUCCESS then begin
    if pBlock then begin
-    fVulkanCommandBufferFences[fCurrentImageIndex].WaitFor;
+    fVulkanDrawToPresentImageBarrierCommandBufferFences[fCurrentImageIndex].WaitFor;
    end else begin
     exit;
    end;
   end;
-  fVulkanCommandBufferFences[fCurrentImageIndex].Reset;
-  fVulkanCommandBufferFencesReady[fCurrentImageIndex]:=false;
+  fVulkanDrawToPresentImageBarrierCommandBufferFences[fCurrentImageIndex].Reset;
+  fVulkanDrawToPresentImageBarrierCommandBufferFencesReady[fCurrentImageIndex]:=false;
  end;
 
  if (fVulkanSwapChain.Width<>Width) or (fVulkanSwapChain.Height<>Height) then begin
@@ -4473,7 +4477,7 @@ begin
    end else begin
     TimeOut:=0;
    end;
-   case fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fCurrentImageIndex],fVulkanSwapChainImageFences[fCurrentImageIndex],TimeOut) of
+   case fVulkanSwapChain.AcquireNextImage(fVulkanPresentAcquireNextImageCompleteSemaphores[fCurrentImageIndex],fVulkanSwapChainImageFences[fCurrentImageIndex],TimeOut) of
     VK_SUCCESS:begin
      fVulkanSwapChainImageFencesReady[fCurrentImageIndex]:=true;
     end;
@@ -4505,10 +4509,10 @@ begin
  if fDoNeedToRecreateVulkanSwapChain then begin
 
   for ImageIndex:=0 to MaxSwapChainImages-1 do begin
-   if fVulkanCommandBufferFencesReady[ImageIndex] then begin
-    fVulkanCommandBufferFences[ImageIndex].WaitFor;
-    fVulkanCommandBufferFences[ImageIndex].Reset;
-    fVulkanCommandBufferFencesReady[ImageIndex]:=false;
+   if fVulkanDrawToPresentImageBarrierCommandBufferFencesReady[ImageIndex] then begin
+    fVulkanDrawToPresentImageBarrierCommandBufferFences[ImageIndex].WaitFor;
+    fVulkanDrawToPresentImageBarrierCommandBufferFences[ImageIndex].Reset;
+    fVulkanDrawToPresentImageBarrierCommandBufferFencesReady[ImageIndex]:=false;
    end;
   end;
 
@@ -4552,21 +4556,26 @@ begin
 
  end else begin
 
-  result:=true;
-
   fVulkanCommandBuffer:=fVulkanCommandBuffers[fCurrentImageIndex];
 
-  fVulkanPrepareCommandBuffer:=fVulkanPrepareCommandBuffers[fCurrentImageIndex];
+  fVulkanPresentToDrawImageBarrierCommandBuffer:=fVulkanPresentToDrawImageBarrierCommandBuffers[fCurrentImageIndex];
+  fVulkanDrawToPresentImageBarrierCommandBuffer:=fVulkanDrawToPresentImageBarrierCommandBuffers[fCurrentImageIndex];
 
-  fVulkanPresentCommandBuffer:=fVulkanPresentCommandBuffers[fCurrentImageIndex];
+  fVulkanLastWaitSemaphore:=fVulkanPresentAcquireNextImageCompleteSemaphores[fCurrentImageIndex];
 
-  fVulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  fVulkanPresentToDrawImageBarrierCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  fVulkanPresentToDrawImageBarrierCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+  fVulkanPresentToDrawImageBarrierCommandBuffer.MetaCmdPresentToDrawImageBarrier(fVulkanSwapChain.CurrentImage);
+  fVulkanPresentToDrawImageBarrierCommandBuffer.EndRecording;
+  fVulkanPresentToDrawImageBarrierCommandBuffer.Execute(fVulkanDevice.GraphicsQueue,
+                                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                        fVulkanLastWaitSemaphore,
+                                                        fVulkanPresentToDrawImageBarrierCommandBufferCompleteSemaphores[fCurrentImageIndex],
+                                                        nil,
+                                                        false);
+  fVulkanLastWaitSemaphore:=fVulkanPresentToDrawImageBarrierCommandBufferCompleteSemaphores[fCurrentImageIndex];
 
-  fVulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
-
-  fVulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(fVulkanSwapChain.CurrentImage);
-
-  fVulkanLastWaitSemaphore:=nil;
+  result:=true;
 
  end;
 
@@ -4577,20 +4586,22 @@ begin
 
  result:=false;
 
- fVulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(fVulkanSwapChain.CurrentImage);
+ fVulkanDrawToPresentImageBarrierCommandBuffer.Reset();
+ fVulkanDrawToPresentImageBarrierCommandBuffer.BeginRecording;
+ fVulkanDrawToPresentImageBarrierCommandBuffer.MetaCmdDrawToPresentImageBarrier(fVulkanSwapChain.CurrentImage);
+ fVulkanDrawToPresentImageBarrierCommandBuffer.EndRecording;
+ fVulkanDrawToPresentImageBarrierCommandBuffer.Execute(fVulkanDevice.GraphicsQueue,
+                                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                       fVulkanLastWaitSemaphore,
+                                                       fVulkanDrawToPresentImageBarrierCommandBufferCompleteSemaphores[fCurrentImageIndex],
+                                                       fVulkanDrawToPresentImageBarrierCommandBufferFences[fCurrentImageIndex],
+                                                       false);
+ fVulkanLastWaitSemaphore:=fVulkanDrawToPresentImageBarrierCommandBufferCompleteSemaphores[fCurrentImageIndex];
 
- fVulkanCommandBuffer.EndRecording;
-
- fVulkanCommandBuffer.Execute(fVulkanDevice.GraphicsQueue,
-                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                              fVulkanPresentCompleteSemaphores[fCurrentImageIndex],
-                              fVulkanDrawCompleteSemaphores[fCurrentImageIndex],
-                              fVulkanCommandBufferFences[fCurrentImageIndex],
-                              false);
- fVulkanCommandBufferFencesReady[fCurrentImageIndex]:=true;
+ fVulkanDrawToPresentImageBarrierCommandBufferFencesReady[fCurrentImageIndex]:=true;
 
  try
-  case fVulkanSwapChain.QueuePresent(fVulkanDevice.GraphicsQueue,fVulkanDrawCompleteSemaphores[fCurrentImageIndex]) of
+  case fVulkanSwapChain.QueuePresent(fVulkanDevice.GraphicsQueue,fVulkanDrawToPresentImageBarrierCommandBufferCompleteSemaphores[fCurrentImageIndex]) of
    VK_SUCCESS:begin
     //VulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
     result:=true;
@@ -4911,8 +4922,8 @@ begin
  fVulkanCommandBufferFences:=nil;
 
  fVulkanPresentCommandPools:=nil;
- fVulkanPresentCommandBuffers:=nil;
- fVulkanPresentCommandBufferFences:=nil;
+ fVulkanDrawToPresentImageBarrierCommandBuffers:=nil;
+ fVulkanDrawToPresentImageBarrierCommandBufferFences:=nil;
 
  fVulkanGraphicsCommandPools:=nil;
  fVulkanGraphicsCommandBuffers:=nil;
@@ -5016,12 +5027,12 @@ begin
 
   if fVulkanDevice.PresentQueueFamilyIndex>=0 then begin
    fVulkanPresentCommandPools:=fVulkanCommandPools[fVulkanDevice.PresentQueueFamilyIndex];
-   fVulkanPresentCommandBuffers:=fVulkanCommandBuffers[fVulkanDevice.PresentQueueFamilyIndex];
-   fVulkanPresentCommandBufferFences:=fVulkanCommandBufferFences[fVulkanDevice.PresentQueueFamilyIndex];
+   fVulkanDrawToPresentImageBarrierCommandBuffers:=fVulkanCommandBuffers[fVulkanDevice.PresentQueueFamilyIndex];
+   fVulkanDrawToPresentImageBarrierCommandBufferFences:=fVulkanCommandBufferFences[fVulkanDevice.PresentQueueFamilyIndex];
   end else begin
    fVulkanPresentCommandPools:=nil;
-   fVulkanPresentCommandBuffers:=nil;
-   fVulkanPresentCommandBufferFences:=nil;
+   fVulkanDrawToPresentImageBarrierCommandBuffers:=nil;
+   fVulkanDrawToPresentImageBarrierCommandBufferFences:=nil;
   end;
 
   if fVulkanDevice.GraphicsQueueFamilyIndex>=0 then begin
@@ -5134,8 +5145,8 @@ var Index,SubIndex,SubSubIndex:TVkInt32;
 begin
 
  fVulkanPresentCommandPools:=nil;
- fVulkanPresentCommandBuffers:=nil;
- fVulkanPresentCommandBufferFences:=nil;
+ fVulkanDrawToPresentImageBarrierCommandBuffers:=nil;
+ fVulkanDrawToPresentImageBarrierCommandBufferFences:=nil;
 
  fVulkanGraphicsCommandPools:=nil;
  fVulkanGraphicsCommandBuffers:=nil;
