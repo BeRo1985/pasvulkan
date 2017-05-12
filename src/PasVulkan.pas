@@ -9199,13 +9199,16 @@ begin
   finally
    StagingBuffer.Free;
   end;
-  
+
  end else begin
 
   p:=Memory.MapMemory(pDataOffset,pDataSize);
   try
    if assigned(p) then begin
     Move(pData,p^,pDataSize);
+    if (fMemoryProperties and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
+     Memory.FlushMappedMemory;
+    end;
    end else begin
     raise EVulkanException.Create('Vulkan buffer memory block map failed');
    end;
