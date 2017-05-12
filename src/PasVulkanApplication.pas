@@ -5420,13 +5420,7 @@ end;
 
 procedure TVulkanApplication.DrawJobFunction(const pJob:PPasMPJob;const pThreadIndex:TPasMPInt32);
 begin
- if fVulkanPresentationSurface.AcquireBackBuffer(fBlocking) then begin
-  try
-   Draw;
-  finally
-   fVulkanPresentationSurface.PresentBackBuffer;
-  end;
- end;
+ Draw;
 end;
 
 procedure TVulkanApplication.ProcessMessages;
@@ -5738,33 +5732,45 @@ begin
 
  if fGraphicsReady then begin
 
-  fNowTime:=fHighResolutionTimer.GetTime;
-  if fHasLastTime then begin
-   fDeltaTime:=fNowTime-fLastTime;
-  end else begin
-   fDeltaTime:=0;
+  if fVulkanPresentationSurface.AcquireBackBuffer(fBlocking) then begin
+
+   fNowTime:=fHighResolutionTimer.GetTime;
+   if fHasLastTime then begin
+    fDeltaTime:=fNowTime-fLastTime;
+   end else begin
+    fDeltaTime:=0;
+   end;
+   fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
+   fLastTime:=fNowTime;
+   fHasLastTime:=true;
+
+   UpdateFrameTimesHistory;
+
+   try
+
+    if assigned(fScreen) and fScreen.CanBeParallelProcessed then begin
+
+     Jobs[0]:=fPasMPInstance.Acquire(UpdateJobFunction);
+     Jobs[1]:=fPasMPInstance.Acquire(DrawJobFunction);
+     fPasMPInstance.Invoke(Jobs);
+
+    end else begin
+
+     UpdateJobFunction(nil,0);
+     DrawJobFunction(nil,0);
+
+    end;
+
+   finally
+    fVulkanPresentationSurface.PresentBackBuffer;
+   end;
+
+   inc(fFrameCounter);
+   
   end;
-  fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
-  fLastTime:=fNowTime;
-  fHasLastTime:=true;
 
-  UpdateFrameTimesHistory;
-
-  if assigned(fScreen) and fScreen.CanBeParallelProcessed then begin
-
-   Jobs[0]:=fPasMPInstance.Acquire(UpdateJobFunction);
-   Jobs[1]:=fPasMPInstance.Acquire(DrawJobFunction);
-   fPasMPInstance.Invoke(Jobs);
-
-  end else begin
-
-   UpdateJobFunction(nil,0);
-   DrawJobFunction(nil,0);
-
-  end;
-
-  inc(fFrameCounter);
-  
+ end else begin
+  fDeltaTime:=0;
  end;
 
 end;
