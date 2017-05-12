@@ -70,7 +70,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fVulkanPipelineCache:TVulkanPipelineCache;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
        fVulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget;
-       fVulkanVertexBuffer:TVulkanBuffer;
+       fVulkanVertexBuffers:array[0..MaxSwapChainImages-1] of TVulkanBuffer;
        fVulkanIndexBuffer:TVulkanBuffer;
        fVulkanUniformBuffer:TVulkanBuffer;
        fVulkanDescriptorPool:TVulkanDescriptorPool;
@@ -196,20 +196,22 @@ begin
                                                );
   fFontTexture.UpdateSampler;                                             
 
-  fVulkanVertexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
-                                            SizeOf(TTextOverlayBufferChars),
-                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                            nil,
-                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-                                           );
-  fVulkanVertexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
-                                 VulkanApplication.VulkanTransferCommandBufferFences[0,0],
-                                 fBufferCharsBuffers[0],
-                                 0,
-                                 SizeOf(TTextOverlayBufferChars),
-                                 false);
-
+  for Index:=0 to MaxSwapChainImages-1 do begin
+   fVulkanVertexBuffers[Index]:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
+                                                     SizeOf(TTextOverlayBufferChars),
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     nil,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                                                    );
+   fVulkanVertexBuffers[Index].UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                          VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                          fBufferCharsBuffers[0],
+                                          0,
+                                          SizeOf(TTextOverlayBufferChars),
+                                          false);
+  end;
+  
   fVulkanIndexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
                                            SizeOf(TTextOverlayIndices),
                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
@@ -304,7 +306,9 @@ begin
   FreeAndNil(fVulkanDescriptorPool);
   FreeAndNil(fVulkanUniformBuffer);
   FreeAndNil(fVulkanIndexBuffer);
-  FreeAndNil(fVulkanVertexBuffer);
+  for Index:=0 to MaxSwapChainImages-1 do begin
+   FreeAndNil(fVulkanVertexBuffers[Index]);
+  end;
   FreeAndNil(fVulkanPipelineCache);
   FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
   FreeAndNil(fVulkanPipelineShaderStageTriangleFragment);
@@ -492,21 +496,25 @@ end;
 procedure TTextOverlay.Draw;
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var BufferIndex,CurrentImageIndex:TVkInt32;
+    VulkanVertexBuffer:TVulkanBuffer;
     VulkanCommandBuffer:TVulkanCommandBuffer;
     VulkanSwapChain:TVulkanSwapChain;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
  BufferIndex:=(VulkanApplication.FrameCounter+1) and 1;
  if fCountBufferCharsBuffers[BufferIndex]>0 then begin
 
   CurrentImageIndex:=VulkanApplication.VulkanPresentationSurface.CurrentImageIndex;
-  
-  fVulkanVertexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
-                                 VulkanApplication.VulkanTransferCommandBufferFences[0,0],
-                                 fBufferCharsBuffers[BufferIndex],
-                                 0,
-                                 SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex],
-                                 false);
+
+  VulkanVertexBuffer:=fVulkanVertexBuffers[CurrentImageIndex];
+
+  VulkanVertexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                fBufferCharsBuffers[BufferIndex],
+                                0,
+                                SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex],
+                                false);
 
   if assigned(fVulkanGraphicsPipeline) then begin
 
@@ -516,6 +524,29 @@ begin
    VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
    VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+   // A non-layout-change image memory barrier, otherwise the text overlay can be flicker at least on some GPUs
+   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+   ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+   ImageMemoryBarrier.image:=VulkanApplication.VulkanPresentationSurface.VulkanSwapChain.Images[CurrentImageIndex].Handle;
+   ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+   ImageMemoryBarrier.subresourceRange.levelCount:=1;
+   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+   ImageMemoryBarrier.subresourceRange.layerCount:=1;
+   ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+   VulkanCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                          0,
+                                          0,
+                                          nil,
+                                          0,
+                                          nil,
+                                          1,
+                                          @ImageMemoryBarrier);
 
    fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.BeginRenderPass(VulkanCommandBuffer,
                                                                        fVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
@@ -527,9 +558,9 @@ begin
 
    VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSet.Handle,0,nil);
    VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
-   VulkanCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanVertexBuffer.Handle,@Offsets);
-   VulkanCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanVertexBuffer.Handle,@Offsets);
-   VulkanCommandBuffer.CmdBindVertexBuffers(2,1,@fVulkanVertexBuffer.Handle,@Offsets);
+   VulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+   VulkanCommandBuffer.CmdBindVertexBuffers(1,1,@VulkanVertexBuffer.Handle,@Offsets);
+   VulkanCommandBuffer.CmdBindVertexBuffers(2,1,@VulkanVertexBuffer.Handle,@Offsets);
    VulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
    VulkanCommandBuffer.CmdDrawIndexed(fCountBufferCharsBuffers[BufferIndex]*6,1,0,0,1);
 
