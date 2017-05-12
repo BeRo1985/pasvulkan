@@ -194,7 +194,11 @@ begin
                                                 0,
                                                 false
                                                );
-  fFontTexture.UpdateSampler;                                             
+  fFontTexture.WrapModeU:=vtwmClampToBorder;
+  fFontTexture.WrapModeV:=vtwmClampToBorder;
+  fFontTexture.WrapModeW:=vtwmClampToBorder;
+  fFontTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+  fFontTexture.UpdateSampler;
 
   for Index:=0 to MaxSwapChainImages-1 do begin
    fVulkanVertexBuffers[Index]:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,

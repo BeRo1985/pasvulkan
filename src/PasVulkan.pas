@@ -2690,6 +2690,7 @@ type EVulkanException=class(Exception);
        fWrapModeV:TVulkanTextureWrapMode;
        fWrapModeW:TVulkanTextureWrapMode;
        fFilterMode:TVulkanTextureFilterMode;
+       fBorderColor:TVkBorderColor;
        fMaxAnisotropy:double;
       public
        constructor Create; reintroduce;
@@ -2801,6 +2802,7 @@ type EVulkanException=class(Exception);
        property WrapModeV:TVulkanTextureWrapMode read fWrapModeV write fWrapModeV;
        property WrapModeW:TVulkanTextureWrapMode read fWrapModeW write fWrapModeW;
        property FilterMode:TVulkanTextureFilterMode read fFilterMode write fFilterMode;
+       property BorderColor:TVkBorderColor read fBorderColor write fBorderColor;
        property MaxAnisotropy:double read fMaxAnisotropy write fMaxAnisotropy;
      end;
 
@@ -15056,6 +15058,8 @@ begin
 
  fFilterMode:=vtfmNearest;
 
+ fBorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+
  fMaxAnisotropy:=1.0;
 
  if (pDepth<1) or (pCountArrayElements<1) or (pCountFaces<1) then begin
@@ -15118,6 +15122,7 @@ begin
  end else begin
   fFilterMode:=vtfmLinear;
  end;
+ fBorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
  fMaxAnisotropy:=1.0;
  fFormat:=pFormat;
 
@@ -18909,7 +18914,7 @@ begin
                                  VK_COMPARE_OP_NEVER,
                                  0.0,
                                  CountMipMaps,
-                                 VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
+                                 fBorderColor,
                                  false);
  if assigned(fSampler) then begin
   fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
