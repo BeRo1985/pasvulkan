@@ -24,7 +24,7 @@ type TScreenExampleTriangle=class(TVulkanScreen)
        fVulkanPipelineShaderStageTriangleFragment:TVulkanPipelineShaderStage;
        fVulkanPipelineCache:TVulkanPipelineCache;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
-       fVulkanSwapChainSimpleDirectRenderTarget:TVulkanSwapChainSimpleDirectRenderTarget;
+       fVulkanRenderPass:TVulkanRenderPass;
        fVulkanVertexBuffer:TVulkanBuffer;
        fVulkanIndexBuffer:TVulkanBuffer;
        fVulkanUniformBuffer:TVulkanBuffer;
@@ -115,7 +115,7 @@ begin
 
  fVulkanGraphicsPipeline:=nil;
 
- fVulkanSwapChainSimpleDirectRenderTarget:=nil;
+ fVulkanRenderPass:=nil;
 
  fVulkanVertexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
                                            SizeOf(TriangleVertices),
@@ -203,7 +203,7 @@ begin
  FreeAndNil(fVulkanUniformBuffer);
  FreeAndNil(fVulkanIndexBuffer);
  FreeAndNil(fVulkanVertexBuffer);
- FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
+ FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fVulkanGraphicsPipeline);
  FreeAndNil(fVulkanPipelineCache);
  FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
@@ -247,7 +247,7 @@ procedure TScreenExampleTriangle.AfterCreateSwapChain;
 begin
  inherited AfterCreateSwapChain;
 
- FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
+ FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fVulkanGraphicsPipeline);
 
  fVulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(VulkanApplication.VulkanDevice,
@@ -313,25 +313,50 @@ begin
 
  fVulkanGraphicsPipeline.FreeMemory;
 
- fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanApplication.VulkanDevice,
-                                                                                           VulkanApplication.VulkanPresentationSurface.VulkanSwapChain,
-                                                                                           VulkanApplication.VulkanPresentCommandBuffers[0,0],
-                                                                                           VulkanApplication.VulkanPresentCommandBufferFences[0,0],
-                                                                                           VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
-                                                                                           VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
-                                                                                           VK_FORMAT_UNDEFINED,
-                                                                                           false);
+ fVulkanRenderPass:=TVulkanRenderPass.Create(VulkanApplication.VulkanDevice);
 
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[0]:=0.0;
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[1]:=0.0;
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[2]:=0.0;
- fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.ClearValues[0].color.float32[3]:=1.0;
+ fVulkanRenderPass.AddSubpassDescription(0,
+                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                         [],
+                                         [fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
+                                                                                                                              VulkanApplication.VulkanPresentationSurface.VulkanSwapChain.ImageFormat,
+                                                                                                                              VK_SAMPLE_COUNT_1_BIT,
+                                                                                                                              VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
+                                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                                                                             ),
+                                                                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                            )],
+                                         [],
+                                         fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
+                                                                                                                             VulkanApplication.VulkanPresentationSurface.VulkanSwapChainSimpleDirectRenderTarget.DepthImageFormat,
+                                                                                                                             VK_SAMPLE_COUNT_1_BIT,
+                                                                                                                             VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                                                                                             VK_ATTACHMENT_STORE_OP_STORE,
+                                                                                                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                                                                             VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                                                                                            ),
+                                                                                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                                                 ),
+                                         []);
+
+ fVulkanRenderPass.Initialize;
+
+ fVulkanRenderPass.ClearValues[0].color.float32[0]:=0.0;
+ fVulkanRenderPass.ClearValues[0].color.float32[1]:=0.0;
+ fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
+ fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
 end;
 
 procedure TScreenExampleTriangle.BeforeDestroySwapChain;
 begin
- FreeAndNil(fVulkanSwapChainSimpleDirectRenderTarget);
+ FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fVulkanGraphicsPipeline);
  inherited BeforeDestroySwapChain;
 end;
@@ -362,13 +387,13 @@ begin
 
   VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
-  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                                                      fVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
-                                                                      VK_SUBPASS_CONTENTS_INLINE,
-                                                                      0,
-                                                                      0,
-                                                                      VulkanSwapChain.Width,
-                                                                      VulkanSwapChain.Height);
+  fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
+                                    VulkanApplication.VulkanPresentationSurface.VulkanSwapChainSimpleDirectRenderTarget.FrameBuffer,
+                                    VK_SUBPASS_CONTENTS_INLINE,
+                                    0,
+                                    0,
+                                    VulkanSwapChain.Width,
+                                    VulkanSwapChain.Height);
 
   VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSet.Handle,0,nil);
   VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
@@ -377,7 +402,7 @@ begin
   VulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
   VulkanCommandBuffer.CmdDrawIndexed(length(TriangleIndices),1,0,0,1);
 
-  fVulkanSwapChainSimpleDirectRenderTarget.RenderPass.EndRenderPass(VulkanCommandBuffer);
+  fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 
   VulkanCommandBuffer.EndRecording;
 
