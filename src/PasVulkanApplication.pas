@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-13-18-09-0000                       *
+ *                        Version 2017-05-13-18-54-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -873,6 +873,7 @@ type EVulkanApplication=class(Exception);
        fVisibleMouseCursor:boolean;
        fCatchMouse:boolean;
        fHideSystemBars:boolean;
+       fAndroidSeparateMouseAndTouch:boolean;
        fBlocking:boolean;
 
        fActive:boolean;
@@ -1126,6 +1127,8 @@ type EVulkanApplication=class(Exception);
        property CatchMouse:boolean read fCatchMouse write fCatchMouse;
 
        property HideSystemBars:boolean read fHideSystemBars write fHideSystemBars;
+
+       property AndroidSeparateMouseAndTouch:boolean read fAndroidSeparateMouseAndTouch write fAndroidSeparateMouseAndTouch;
 
        property Blocking:boolean read fBlocking write fBlocking;
 
@@ -4633,7 +4636,6 @@ begin
  SDL_SetMainReady;
 
  SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING,'1');
- SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'1');
 
  inherited Create;
 
@@ -4680,6 +4682,7 @@ begin
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
  fHideSystemBars:=false;
+ fAndroidSeparateMouseAndTouch:=true;
  fBlocking:=true;
 
  fActive:=true;
@@ -6091,6 +6094,12 @@ begin
 {$ifend}
 
  ReadConfig;
+
+ if fAndroidSeparateMouseAndTouch then begin
+  SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'1');
+ end else begin
+  SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'0');
+ end;
 
  if fHideSystemBars then begin
   SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'1');
