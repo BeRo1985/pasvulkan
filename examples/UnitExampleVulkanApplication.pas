@@ -32,7 +32,7 @@ type TExampleVulkanApplication=class(TVulkanApplication)
        procedure Resume; override;
        procedure Pause; override;
        procedure Update(const pDeltaTime:double); override;
-       procedure Draw; override;
+       procedure Draw(var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil); override;
        class procedure Main; override;
       published
        property TextOverlay:TTextOverlay read fTextOverlay;
@@ -162,10 +162,12 @@ begin
  fTextOverlay.PostUpdate(pDeltaTime);
 end;
 
-procedure TExampleVulkanApplication.Draw;
+procedure TExampleVulkanApplication.Draw(var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
 begin
- inherited Draw;
- fTextOverlay.Draw;
+{ inherited Draw(pWaitSemaphore,pWaitFence);
+ //fTextOverlay.Draw;}
+ inherited Draw(pWaitSemaphore,nil);
+ fTextOverlay.Draw(pWaitSemaphore,pWaitFence);
 end;
 
 class procedure TExampleVulkanApplication.Main;

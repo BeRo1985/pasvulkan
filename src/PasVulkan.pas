@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-12-10-50-0000                       *
+ *                        Version 2017-05-13-09-49-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1812,6 +1812,7 @@ type EVulkanException=class(Exception);
       protected
        function GetRenderPass:TVulkanRenderPass; override;
        function GetFrameBuffer:TVulkanFrameBuffer; override;
+       function GetFrameBufferAtIndex(const pIndex:TVkInt32):TVulkanFrameBuffer;
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pSwapChain:TVulkanSwapChain;
@@ -1823,6 +1824,7 @@ type EVulkanException=class(Exception);
                           const pDepthImageFormatWithStencil:boolean=false;
                           const pClear:boolean=true);
        destructor Destroy; override;
+       property FrameBuffers[const pIndex:TVkInt32]:TVulkanFrameBuffer read GetFrameBufferAtIndex;
       published
        property Device:TVulkanDevice read fDevice;
        property SwapChain:TVulkanSwapChain read fSwapChain;
@@ -11246,6 +11248,8 @@ begin
    SetLength(SwapChainImages,0);
   end;
 
+  fCurrentImageIndex:=fCountImages-1;
+
  except
 
   for Index:=0 to length(fImages)-1 do begin
@@ -11607,6 +11611,11 @@ end;
 function TVulkanSwapChainSimpleDirectRenderTarget.GetFrameBuffer:TVulkanFrameBuffer;
 begin
  result:=fFrameBuffers[fSwapChain.CurrentImageIndex];
+end;
+
+function TVulkanSwapChainSimpleDirectRenderTarget.GetFrameBufferAtIndex(const pIndex:TVkInt32):TVulkanFrameBuffer;
+begin
+ result:=fFrameBuffers[pIndex];
 end;
 
 constructor TVulkanShaderModule.Create(const pDevice:TVulkanDevice;const pData;const pDataSize:TVkSize);
