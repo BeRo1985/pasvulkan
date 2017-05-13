@@ -59,7 +59,7 @@ type TScreenExampleTriangle=class(TVulkanScreen)
 
        procedure Update(const pDeltaTime:double); override;
 
-       procedure Draw(var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil); override;
 
      end;
 
@@ -425,19 +425,19 @@ begin
  inherited Update(pDeltaTime);
 end;
 
-procedure TScreenExampleTriangle.Draw(var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
+procedure TScreenExampleTriangle.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
 begin
- inherited Draw(pWaitSemaphore,nil);
+ inherited Draw(pSwapChainImageIndex,pWaitSemaphore,nil);
  if assigned(fVulkanGraphicsPipeline) then begin
 
-  fVulkanRenderCommandBuffers[VulkanApplication.CurrentSwapChainImageIndex].Execute(VulkanApplication.VulkanDevice.GraphicsQueue,
-                                                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                                                    pWaitSemaphore,                     
-                                                                                    fVulkanRenderSemaphores[VulkanApplication.CurrentSwapChainImageIndex],
-                                                                                    pWaitFence,
-                                                                                    false);
-                                                       
-  pWaitSemaphore:=fVulkanRenderSemaphores[VulkanApplication.CurrentSwapChainImageIndex];
+  fVulkanRenderCommandBuffers[pSwapChainImageIndex].Execute(VulkanApplication.VulkanDevice.GraphicsQueue,
+                                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                            pWaitSemaphore,
+                                                            fVulkanRenderSemaphores[pSwapChainImageIndex],
+                                                            pWaitFence,
+                                                            false);
+
+  pWaitSemaphore:=fVulkanRenderSemaphores[pSwapChainImageIndex];
 
  end;
 end;

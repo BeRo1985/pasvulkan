@@ -97,7 +97,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        procedure AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pR:single=1.0;const pG:single=1.0;const pB:single=1.0);
        procedure PreUpdate(const pDeltaTime:double);
        procedure PostUpdate(const pDeltaTime:double);
-       procedure Draw(var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
+       procedure Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
      end;
 
 implementation
@@ -194,9 +194,9 @@ begin
                                                 0,
                                                 false
                                                );
-  fFontTexture.WrapModeU:=vtwmClampToEdge;
-  fFontTexture.WrapModeV:=vtwmClampToEdge;
-  fFontTexture.WrapModeW:=vtwmClampToEdge;
+  fFontTexture.WrapModeU:=vtwmClampToBorder;
+  fFontTexture.WrapModeV:=vtwmClampToBorder;
+  fFontTexture.WrapModeW:=vtwmClampToBorder;
   fFontTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
   fFontTexture.UpdateSampler;
 
@@ -452,16 +452,6 @@ begin
 
  fVulkanGraphicsPipeline.FreeMemory;
 
-{fVulkanSwapChainSimpleDirectRenderTarget:=TVulkanSwapChainSimpleDirectRenderTarget.Create(VulkanApplication.VulkanDevice,
-                                                                                           VulkanApplication.VulkanPresentationSurface.VulkanSwapChain,
-                                                                                           VulkanApplication.VulkanPresentCommandBuffers[0,0],
-                                                                                           VulkanApplication.VulkanPresentCommandBufferFences[0,0],
-                                                                                           VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
-                                                                                           VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
-                                                                                           VK_FORMAT_UNDEFINED,
-                                                                                           false,
-                                                                                           false);}
-
  fFontCharWidth:=VulkanApplication.Width/160.0;
  fFontCharHeight:=fFontCharWidth*2.0;
 
@@ -550,9 +540,9 @@ begin
  fCountBufferCharsBuffers[fUpdateBufferIndex]:=fCountBufferChars;
 end;
 
-procedure TTextOverlay.Draw(var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
+procedure TTextOverlay.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
-var BufferIndex,CurrentImageIndex,Size:TVkInt32;
+var BufferIndex,Size:TVkInt32;
     VulkanVertexBuffer:TVulkanBuffer;
     VulkanCommandBuffer:TVulkanCommandBuffer;
     VulkanSwapChain:TVulkanSwapChain;
@@ -566,9 +556,8 @@ begin
  end;
 
  begin
-  CurrentImageIndex:=VulkanApplication.CurrentSwapChainImageIndex;
 
-  VulkanVertexBuffer:=fVulkanVertexBuffers[CurrentImageIndex];
+  VulkanVertexBuffer:=fVulkanVertexBuffers[pSwapChainImageIndex];
 
   Size:=SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex];
   p:=VulkanVertexBuffer.Memory.MapMemory(0,Size);
@@ -583,7 +572,7 @@ begin
 
   if assigned(fVulkanGraphicsPipeline) then begin
 
-   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[CurrentImageIndex];
+   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[pSwapChainImageIndex];
    VulkanSwapChain:=VulkanApplication.VulkanSwapChain;
 
    VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
@@ -591,7 +580,7 @@ begin
    VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
    fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                     VulkanApplication.VulkanFrameBuffers[CurrentImageIndex],
+                                     VulkanApplication.VulkanFrameBuffers[pSwapChainImageIndex],
                                      VK_SUBPASS_CONTENTS_INLINE,
                                      0,
                                      0,
@@ -613,11 +602,11 @@ begin
    VulkanCommandBuffer.Execute(VulkanApplication.VulkanDevice.GraphicsQueue,
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                pWaitSemaphore,
-                               fVulkanRenderSemaphores[CurrentImageIndex],
+                               fVulkanRenderSemaphores[pSwapChainImageIndex],
                                pWaitFence,
                                false);
 
-   pWaitSemaphore:=fVulkanRenderSemaphores[CurrentImageIndex];
+   pWaitSemaphore:=fVulkanRenderSemaphores[pSwapChainImageIndex];
 
   end;
  end;
