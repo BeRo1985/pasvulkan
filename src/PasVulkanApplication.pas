@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-13-18-03-0000                       *
+ *                        Version 2017-05-13-18-09-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -4633,7 +4633,7 @@ begin
  SDL_SetMainReady;
 
  SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING,'1');
- SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'0');
+ SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'1');
 
  inherited Create;
 
