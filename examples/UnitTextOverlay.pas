@@ -22,7 +22,8 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      TTextOverlayBufferCharVertex=packed record
       x,y:single;
       u,v,w:single;
-      r,g,b:single;
+      br,bg,bb,ba:single;
+      fr,fg,fb,fa:single;
      end;
 
      PTextOverlayBufferCharVertices=^TTextOverlayBufferCharVertices;
@@ -94,7 +95,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        procedure AfterCreateSwapChain;
        procedure BeforeDestroySwapChain;
        procedure Reset;
-       procedure AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pR:single=1.0;const pG:single=1.0;const pB:single=1.0);
+       procedure AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
        procedure PreUpdate(const pDeltaTime:double);
        procedure PostUpdate(const pDeltaTime:double);
        procedure Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
@@ -398,10 +399,11 @@ begin
  fVulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  fVulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
- fVulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVkFloat)*(2+3+3),VK_VERTEX_INPUT_RATE_VERTEX);
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVkFloat)*(2+3+4+4),VK_VERTEX_INPUT_RATE_VERTEX);
  fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,SizeOf(TVkFloat)*0);
  fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TVkFloat)*2);
- fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TVkFloat)*(2+3));
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32A32_SFLOAT,SizeOf(TVkFloat)*(2+3));
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32G32B32A32_SFLOAT,SizeOf(TVkFloat)*(2+3+4));
 
  fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,VulkanApplication.VulkanSwapChain.Width,VulkanApplication.VulkanSwapChain.Height,0.0,1.0);
  fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,VulkanApplication.VulkanSwapChain.Width,VulkanApplication.VulkanSwapChain.Height);
@@ -482,42 +484,49 @@ begin
  fCountBufferChars:=0;
 end;
 
-procedure TTextOverlay.AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pR:single=1.0;const pG:single=1.0;const pB:single=1.0);
+procedure TTextOverlay.AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
 var Index,EdgeIndex:TVkInt32;
     BufferChar:PTextOverlayBufferChar;
     CurrentChar:byte;
     cX:single;
 begin
- case pAlignment of
-  toaLeft:begin
-   cX:=pX;
-  end;
-  toaCenter:begin
-   cX:=pX-((length(pText)*fFontCharWidth*pSize)*0.5);
-  end;
-  else {toaRight:}begin
-   cX:=pX-(length(pText)*fFontCharWidth*pSize);
-  end;
- end;
- for Index:=1 to length(pText) do begin
-  CurrentChar:=Byte(AnsiChar(pText[Index]));
-  if CurrentChar<>32 then begin
-   if fCountBufferChars<TextOverlayBufferCharSize then begin
-    BufferChar:=@fBufferChars^[fCountBufferChars];
-    inc(fCountBufferChars);
-    for EdgeIndex:=0 to 3 do begin
-     BufferChar^.Vertices[EdgeIndex].x:=(((cX+((EdgeIndex and 1)*fFontCharWidth*pSize))*fInvWidth)*2.0)-1.0;
-     BufferChar^.Vertices[EdgeIndex].y:=(((pY+((EdgeIndex shr 1)*fFontCharHeight*pSize))*fInvHeight)*2.0)-1.0;
-     BufferChar^.Vertices[EdgeIndex].u:=EdgeIndex and 1;
-     BufferChar^.Vertices[EdgeIndex].v:=EdgeIndex shr 1;
-     BufferChar^.Vertices[EdgeIndex].w:=CurrentChar;
-     BufferChar^.Vertices[EdgeIndex].r:=pR;
-     BufferChar^.Vertices[EdgeIndex].g:=pG;
-     BufferChar^.Vertices[EdgeIndex].b:=pB;
-    end;
+ if (pBA>0.0) or (pFA>0.0) then begin
+  case pAlignment of
+   toaLeft:begin
+    cX:=pX;
+   end;
+   toaCenter:begin
+    cX:=pX-((length(pText)*fFontCharWidth*pSize)*0.5);
+   end;
+   else {toaRight:}begin
+    cX:=pX-(length(pText)*fFontCharWidth*pSize);
    end;
   end;
-  cX:=cX+(fFontCharWidth*pSize);
+  for Index:=1 to length(pText) do begin
+   CurrentChar:=Byte(AnsiChar(pText[Index]));
+   if (CurrentChar<>32) or (pBA>0.0) then begin
+    if fCountBufferChars<TextOverlayBufferCharSize then begin
+     BufferChar:=@fBufferChars^[fCountBufferChars];
+     inc(fCountBufferChars);
+     for EdgeIndex:=0 to 3 do begin
+      BufferChar^.Vertices[EdgeIndex].x:=(((cX+((EdgeIndex and 1)*fFontCharWidth*pSize))*fInvWidth)*2.0)-1.0;
+      BufferChar^.Vertices[EdgeIndex].y:=(((pY+((EdgeIndex shr 1)*fFontCharHeight*pSize))*fInvHeight)*2.0)-1.0;
+      BufferChar^.Vertices[EdgeIndex].u:=EdgeIndex and 1;
+      BufferChar^.Vertices[EdgeIndex].v:=EdgeIndex shr 1;
+      BufferChar^.Vertices[EdgeIndex].w:=CurrentChar;
+      BufferChar^.Vertices[EdgeIndex].br:=pBR;
+      BufferChar^.Vertices[EdgeIndex].bg:=pBG;
+      BufferChar^.Vertices[EdgeIndex].bb:=pBB;
+      BufferChar^.Vertices[EdgeIndex].ba:=pBA;
+      BufferChar^.Vertices[EdgeIndex].fr:=pFR;
+      BufferChar^.Vertices[EdgeIndex].fg:=pFG;
+      BufferChar^.Vertices[EdgeIndex].fb:=pFB;
+      BufferChar^.Vertices[EdgeIndex].fa:=pFA;
+     end;
+    end;
+   end;
+   cX:=cX+(fFontCharWidth*pSize);
+  end;
  end;
 end;
 
