@@ -249,7 +249,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=48;
+      VK_HEADER_VERSION=49;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -492,8 +492,8 @@ const VK_NULL_HANDLE=0;
       VK_IMG_EXTENSION_110_EXTENSION_NAME='VK_IMG_extension_110';
       VK_IMG_EXTENSION_111_SPEC_VERSION=0;
       VK_IMG_EXTENSION_111_EXTENSION_NAME='VK_IMG_extension_111';
-      VK_KHR_EXTENSION_112_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_112_EXTENSION_NAME='VK_KHR_extension_112';
+      VK_KHR_SHARED_PRESENTABLE_IMAGE_SPEC_VERSION=1;
+      VK_KHR_SHARED_PRESENTABLE_IMAGE_EXTENSION_NAME='VK_KHR_shared_presentable_image';
       VK_KHR_EXTENSION_113_SPEC_VERSION=0;
       VK_KHR_EXTENSION_113_EXTENSION_NAME='VK_KHR_extension_113';
       VK_KHR_EXTENSION_114_SPEC_VERSION=0;
@@ -508,8 +508,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_118_EXTENSION_NAME='VK_KHR_extension_118';
       VK_KHR_EXTENSION_119_SPEC_VERSION=0;
       VK_KHR_EXTENSION_119_EXTENSION_NAME='VK_KHR_extension_119';
-      VK_KHR_EXTENSION_120_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_120_EXTENSION_NAME='VK_KHR_extension_120';
+      VK_KHR_GET_SURFACE_CAPABILITIES_2_SPEC_VERSION=1;
+      VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME='VK_KHR_get_surface_capabilities2';
       VK_KHR_variable_pointers_SPEC_VERSION=0;
       VK_KHR_variable_pointers_EXTENSION_NAME='VK_KHR_variable_pointers';
       VK_KHR_EXTENSION_122_SPEC_VERSION=0;
@@ -576,6 +576,12 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_152_EXTENSION_NAME='VK_NV_extension_152';
       VK_NV_EXTENSION_153_SPEC_VERSION=0;
       VK_NV_EXTENSION_153_EXTENSION_NAME='VK_NV_extension_153';
+      VK_NV_EXTENSION_154_SPEC_VERSION=0;
+      VK_NV_EXTENSION_154_EXTENSION_NAME='VK_NV_extension_154';
+      VK_NV_EXTENSION_155_SPEC_VERSION=0;
+      VK_NV_EXTENSION_155_EXTENSION_NAME='VK_NV_extension_155';
+      VK_NV_EXTENSION_156_SPEC_VERSION=0;
+      VK_NV_EXTENSION_156_EXTENSION_NAME='VK_NV_extension_156';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1120,7 +1126,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL=6,                                   //< Optimal layout when image is used only as source of transfer operations
        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL=7,                                   //< Optimal layout when image is used only as destination of transfer operations
        VK_IMAGE_LAYOUT_PREINITIALIZED=8,                                         //< Initial layout used when the data is populated by the CPU
-       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR=1000001002
+       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR=1000001002,
+       VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR=1000111000
       );
 
      PPVkAttachmentLoadOp=^PVkAttachmentLoadOp;
@@ -1803,6 +1810,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT=1000099000,
        VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT=1000099001,
        VK_STRUCTURE_TYPE_HDR_METADATA_EXT=1000105000,
+       VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR=1000111000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR=1000119000,
+       VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR=1000119001,
+       VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR=1000119002,
        VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK=1000122000,
        VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK=1000123000
       );
@@ -1873,6 +1884,46 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET_KHR=0,                  //< Create descriptor update template for descriptor set updates
        VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR=1                 //< Create descriptor update template for pushed descriptor updates
+      );
+
+     PPVkObjectType=^PVkObjectType;
+     PVkObjectType=^TVkObjectType;
+     TVkObjectType=
+      (
+       VK_OBJECT_TYPE_UNKNOWN=0,
+       VK_OBJECT_TYPE_INSTANCE=1,                                                //< VkInstance
+       VK_OBJECT_TYPE_PHYSICAL_DEVICE=2,                                         //< VkPhysicalDevice
+       VK_OBJECT_TYPE_DEVICE=3,                                                  //< VkDevice
+       VK_OBJECT_TYPE_QUEUE=4,                                                   //< VkQueue
+       VK_OBJECT_TYPE_SEMAPHORE=5,                                               //< VkSemaphore
+       VK_OBJECT_TYPE_COMMAND_BUFFER=6,                                          //< VkCommandBuffer
+       VK_OBJECT_TYPE_FENCE=7,                                                   //< VkFence
+       VK_OBJECT_TYPE_DEVICE_MEMORY=8,                                           //< VkDeviceMemory
+       VK_OBJECT_TYPE_BUFFER=9,                                                  //< VkBuffer
+       VK_OBJECT_TYPE_IMAGE=10,                                                  //< VkImage
+       VK_OBJECT_TYPE_EVENT=11,                                                  //< VkEvent
+       VK_OBJECT_TYPE_QUERY_POOL=12,                                             //< VkQueryPool
+       VK_OBJECT_TYPE_BUFFER_VIEW=13,                                            //< VkBufferView
+       VK_OBJECT_TYPE_IMAGE_VIEW=14,                                             //< VkImageView
+       VK_OBJECT_TYPE_SHADER_MODULE=15,                                          //< VkShaderModule
+       VK_OBJECT_TYPE_PIPELINE_CACHE=16,                                         //< VkPipelineCache
+       VK_OBJECT_TYPE_PIPELINE_LAYOUT=17,                                        //< VkPipelineLayout
+       VK_OBJECT_TYPE_RENDER_PASS=18,                                            //< VkRenderPass
+       VK_OBJECT_TYPE_PIPELINE=19,                                               //< VkPipeline
+       VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT=20,                                  //< VkDescriptorSetLayout
+       VK_OBJECT_TYPE_SAMPLER=21,                                                //< VkSampler
+       VK_OBJECT_TYPE_DESCRIPTOR_POOL=22,                                        //< VkDescriptorPool
+       VK_OBJECT_TYPE_DESCRIPTOR_SET=23,                                         //< VkDescriptorSet
+       VK_OBJECT_TYPE_FRAMEBUFFER=24,                                            //< VkFramebuffer
+       VK_OBJECT_TYPE_COMMAND_POOL=25,                                           //< VkCommandPool
+       VK_OBJECT_TYPE_SURFACE_KHR=1000000000,
+       VK_OBJECT_TYPE_SWAPCHAIN_KHR=1000001000,
+       VK_OBJECT_TYPE_DISPLAY_KHR=1000002000,
+       VK_OBJECT_TYPE_DISPLAY_MODE_KHR=1000002001,
+       VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT=1000011000,
+       VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR=1000085000,
+       VK_OBJECT_TYPE_OBJECT_TABLE_NVX=1000086000,
+       VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX=1000086001
       );
 
      PPVkQueueFlagBits=^PVkQueueFlagBits;
@@ -2211,7 +2262,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PRESENT_MODE_IMMEDIATE_KHR=0,
        VK_PRESENT_MODE_MAILBOX_KHR=1,
        VK_PRESENT_MODE_FIFO_KHR=2,
-       VK_PRESENT_MODE_FIFO_RELAXED_KHR=3
+       VK_PRESENT_MODE_FIFO_RELAXED_KHR=3,
+       VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR=1000111000,
+       VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR=1000111001
       );
 
      PPVkColorSpaceKHR=^PVkColorSpaceKHR;
@@ -7289,6 +7342,62 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDeviceSurfaceInfo2KHR=^PVkPhysicalDeviceSurfaceInfo2KHR;
+     PVkPhysicalDeviceSurfaceInfo2KHR=^TVkPhysicalDeviceSurfaceInfo2KHR;
+     TVkPhysicalDeviceSurfaceInfo2KHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR
+       pNext:PVkVoid;
+       surface:TVkSurfaceKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSurface:TVkSurfaceKHR);
+{$endif}
+     end;
+
+     PPVkSurfaceCapabilities2KHR=^PVkSurfaceCapabilities2KHR;
+     PVkSurfaceCapabilities2KHR=^TVkSurfaceCapabilities2KHR;
+     TVkSurfaceCapabilities2KHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR
+       pNext:PVkVoid; //< Pointer to next structure
+       surfaceCapabilities:TVkSurfaceCapabilitiesKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSurfaceCapabilities:TVkSurfaceCapabilitiesKHR);
+{$endif}
+     end;
+
+     PPVkSurfaceFormat2KHR=^PVkSurfaceFormat2KHR;
+     PVkSurfaceFormat2KHR=^TVkSurfaceFormat2KHR;
+     TVkSurfaceFormat2KHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR
+       pNext:PVkVoid;
+       surfaceFormat:TVkSurfaceFormatKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSurfaceFormat:TVkSurfaceFormatKHR);
+{$endif}
+     end;
+
+     PPVkSharedPresentSurfaceCapabilitiesKHR=^PVkSharedPresentSurfaceCapabilitiesKHR;
+     PVkSharedPresentSurfaceCapabilitiesKHR=^TVkSharedPresentSurfaceCapabilitiesKHR;
+     TVkSharedPresentSurfaceCapabilitiesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR
+       pNext:PVkVoid; //< Pointer to next structure
+       sharedPresentSupportedUsageFlags:TVkImageUsageFlags; //< Supported image usage flags if swapchain created using a shared present mode
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSharedPresentSupportedUsageFlags:TVkImageUsageFlags); //< Supported image usage flags if swapchain created using a shared present mode
+{$endif}
+     end;
+
      TvkCreateInstance=function(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkDestroyInstance=procedure(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -7785,6 +7894,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkSetHdrMetadataEXT=procedure(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkHdrMetadataEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     TvkGetSwapchainStatusKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetRefreshCycleDurationGOOGLE=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pDisplayTimingProperties:PVkRefreshCycleDurationGOOGLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetPastPresentationTimingGOOGLE=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pPresentationTimingCount:PVkUInt32;pPresentationTimings:PVkPastPresentationTimingGOOGLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -7800,6 +7911,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCmdSetViewportWScalingNV=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdSetDiscardRectangleEXT=procedure(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceSurfaceCapabilities2KHR=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceCapabilities:PVkSurfaceCapabilities2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceSurfaceFormats2KHR=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormat2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -8301,6 +8416,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       SetHdrMetadataEXT:TvkSetHdrMetadataEXT;
 
+      GetSwapchainStatusKHR:TvkGetSwapchainStatusKHR;
+
       GetRefreshCycleDurationGOOGLE:TvkGetRefreshCycleDurationGOOGLE;
 
       GetPastPresentationTimingGOOGLE:TvkGetPastPresentationTimingGOOGLE;
@@ -8316,6 +8433,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CmdSetViewportWScalingNV:TvkCmdSetViewportWScalingNV;
 
       CmdSetDiscardRectangleEXT:TvkCmdSetDiscardRectangleEXT;
+
+      GetPhysicalDeviceSurfaceCapabilities2KHR:TvkGetPhysicalDeviceSurfaceCapabilities2KHR;
+
+      GetPhysicalDeviceSurfaceFormats2KHR:TvkGetPhysicalDeviceSurfaceFormats2KHR;
 
      end;
 
@@ -8822,6 +8943,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure SetHdrMetadataEXT(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkHdrMetadataEXT); virtual;
 
+       function GetSwapchainStatusKHR(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; virtual;
+
        function GetRefreshCycleDurationGOOGLE(device:TVkDevice;swapchain:TVkSwapchainKHR;pDisplayTimingProperties:PVkRefreshCycleDurationGOOGLE):TVkResult; virtual;
 
        function GetPastPresentationTimingGOOGLE(device:TVkDevice;swapchain:TVkSwapchainKHR;pPresentationTimingCount:PVkUInt32;pPresentationTimings:PVkPastPresentationTimingGOOGLE):TVkResult; virtual;
@@ -8837,6 +8960,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        procedure CmdSetViewportWScalingNV(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV); virtual;
 
        procedure CmdSetDiscardRectangleEXT(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D); virtual;
+
+       function GetPhysicalDeviceSurfaceCapabilities2KHR(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceCapabilities:PVkSurfaceCapabilities2KHR):TVkResult; virtual;
+
+       function GetPhysicalDeviceSurfaceFormats2KHR(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormat2KHR):TVkResult; virtual;
 
        property Commands:TVulkanCommands read fCommands;
      end;
@@ -9341,6 +9468,8 @@ var LibVulkan:pointer=nil;
 
     vkSetHdrMetadataEXT:TvkSetHdrMetadataEXT=nil;
 
+    vkGetSwapchainStatusKHR:TvkGetSwapchainStatusKHR=nil;
+
     vkGetRefreshCycleDurationGOOGLE:TvkGetRefreshCycleDurationGOOGLE=nil;
 
     vkGetPastPresentationTimingGOOGLE:TvkGetPastPresentationTimingGOOGLE=nil;
@@ -9356,6 +9485,10 @@ var LibVulkan:pointer=nil;
     vkCmdSetViewportWScalingNV:TvkCmdSetViewportWScalingNV=nil;
 
     vkCmdSetDiscardRectangleEXT:TvkCmdSetDiscardRectangleEXT=nil;
+
+    vkGetPhysicalDeviceSurfaceCapabilities2KHR:TvkGetPhysicalDeviceSurfaceCapabilities2KHR=nil;
+
+    vkGetPhysicalDeviceSurfaceFormats2KHR:TvkGetPhysicalDeviceSurfaceFormats2KHR=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -10425,6 +10558,10 @@ begin
    @vkSetHdrMetadataEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkSetHdrMetadataEXT'));
    @vk.fCommands.SetHdrMetadataEXT:=addr(vkSetHdrMetadataEXT);
   end;
+  if not assigned(vkGetSwapchainStatusKHR) then begin
+   @vkGetSwapchainStatusKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetSwapchainStatusKHR'));
+   @vk.fCommands.GetSwapchainStatusKHR:=addr(vkGetSwapchainStatusKHR);
+  end;
   if not assigned(vkGetRefreshCycleDurationGOOGLE) then begin
    @vkGetRefreshCycleDurationGOOGLE:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetRefreshCycleDurationGOOGLE'));
    @vk.fCommands.GetRefreshCycleDurationGOOGLE:=addr(vkGetRefreshCycleDurationGOOGLE);
@@ -10452,6 +10589,14 @@ begin
   if not assigned(vkCmdSetDiscardRectangleEXT) then begin
    @vkCmdSetDiscardRectangleEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetDiscardRectangleEXT'));
    @vk.fCommands.CmdSetDiscardRectangleEXT:=addr(vkCmdSetDiscardRectangleEXT);
+  end;
+  if not assigned(vkGetPhysicalDeviceSurfaceCapabilities2KHR) then begin
+   @vkGetPhysicalDeviceSurfaceCapabilities2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfaceCapabilities2KHR'));
+   @vk.fCommands.GetPhysicalDeviceSurfaceCapabilities2KHR:=addr(vkGetPhysicalDeviceSurfaceCapabilities2KHR);
+  end;
+  if not assigned(vkGetPhysicalDeviceSurfaceFormats2KHR) then begin
+   @vkGetPhysicalDeviceSurfaceFormats2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfaceFormats2KHR'));
+   @vk.fCommands.GetPhysicalDeviceSurfaceFormats2KHR:=addr(vkGetPhysicalDeviceSurfaceFormats2KHR);
   end;
   result:=assigned(vkCreateInstance);
  end;
@@ -10728,6 +10873,7 @@ begin
   @InstanceCommands.UpdateDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkUpdateDescriptorSetWithTemplateKHR')));
   @InstanceCommands.CmdPushDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdPushDescriptorSetWithTemplateKHR')));
   @InstanceCommands.SetHdrMetadataEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkSetHdrMetadataEXT')));
+  @InstanceCommands.GetSwapchainStatusKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetSwapchainStatusKHR')));
   @InstanceCommands.GetRefreshCycleDurationGOOGLE:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetRefreshCycleDurationGOOGLE')));
   @InstanceCommands.GetPastPresentationTimingGOOGLE:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPastPresentationTimingGOOGLE')));
 {$ifdef MoltenVK_IOS}
@@ -10738,6 +10884,8 @@ begin
 {$endif}
   @InstanceCommands.CmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetViewportWScalingNV')));
   @InstanceCommands.CmdSetDiscardRectangleEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetDiscardRectangleEXT')));
+  @InstanceCommands.GetPhysicalDeviceSurfaceCapabilities2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSurfaceCapabilities2KHR')));
+  @InstanceCommands.GetPhysicalDeviceSurfaceFormats2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSurfaceFormats2KHR')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -10937,6 +11085,7 @@ begin
   @DeviceCommands.UpdateDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkUpdateDescriptorSetWithTemplateKHR')));
   @DeviceCommands.CmdPushDescriptorSetWithTemplateKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdPushDescriptorSetWithTemplateKHR')));
   @DeviceCommands.SetHdrMetadataEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkSetHdrMetadataEXT')));
+  @DeviceCommands.GetSwapchainStatusKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetSwapchainStatusKHR')));
   @DeviceCommands.GetRefreshCycleDurationGOOGLE:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetRefreshCycleDurationGOOGLE')));
   @DeviceCommands.GetPastPresentationTimingGOOGLE:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetPastPresentationTimingGOOGLE')));
   @DeviceCommands.CmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetViewportWScalingNV')));
@@ -14182,6 +14331,34 @@ begin
  pNext:=nil;
  perViewPositionAllComponents:=pPerViewPositionAllComponents;
 end;
+
+constructor TVkPhysicalDeviceSurfaceInfo2KHR.Create(const pSurface:TVkSurfaceKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
+ pNext:=nil;
+ surface:=pSurface;
+end;
+
+constructor TVkSurfaceCapabilities2KHR.Create(const pSurfaceCapabilities:TVkSurfaceCapabilitiesKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
+ pNext:=nil;
+ surfaceCapabilities:=pSurfaceCapabilities;
+end;
+
+constructor TVkSurfaceFormat2KHR.Create(const pSurfaceFormat:TVkSurfaceFormatKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR;
+ pNext:=nil;
+ surfaceFormat:=pSurfaceFormat;
+end;
+
+constructor TVkSharedPresentSurfaceCapabilitiesKHR.Create(const pSharedPresentSupportedUsageFlags:TVkImageUsageFlags);
+begin
+ sType:=VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR;
+ pNext:=nil;
+ sharedPresentSupportedUsageFlags:=pSharedPresentSupportedUsageFlags;
+end;
 {$endif}
 
 constructor TVulkan.Create;
@@ -15387,6 +15564,11 @@ begin
  fCommands.SetHdrMetadataEXT(device,swapchainCount,pSwapchains,pMetadata);
 end;
 
+function TVulkan.GetSwapchainStatusKHR(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult;
+begin
+ result:=fCommands.GetSwapchainStatusKHR(device,swapchain);
+end;
+
 function TVulkan.GetRefreshCycleDurationGOOGLE(device:TVkDevice;swapchain:TVkSwapchainKHR;pDisplayTimingProperties:PVkRefreshCycleDurationGOOGLE):TVkResult;
 begin
  result:=fCommands.GetRefreshCycleDurationGOOGLE(device,swapchain,pDisplayTimingProperties);
@@ -15419,6 +15601,16 @@ end;
 procedure TVulkan.CmdSetDiscardRectangleEXT(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D);
 begin
  fCommands.CmdSetDiscardRectangleEXT(commandBuffer,firstDiscardRectangle,discardRectangleCount,pDiscardRectangles);
+end;
+
+function TVulkan.GetPhysicalDeviceSurfaceCapabilities2KHR(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceCapabilities:PVkSurfaceCapabilities2KHR):TVkResult;
+begin
+ result:=fCommands.GetPhysicalDeviceSurfaceCapabilities2KHR(physicalDevice,pSurfaceInfo,pSurfaceCapabilities);
+end;
+
+function TVulkan.GetPhysicalDeviceSurfaceFormats2KHR(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormat2KHR):TVkResult;
+begin
+ result:=fCommands.GetPhysicalDeviceSurfaceFormats2KHR(physicalDevice,pSurfaceInfo,pSurfaceFormatCount,pSurfaceFormats);
 end;
 
 initialization
