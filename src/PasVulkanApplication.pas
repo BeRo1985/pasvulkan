@@ -718,7 +718,7 @@ type EVulkanApplication=class(Exception);
        function JustTouched:boolean;
        function IsButtonPressed(const pButton:TVkInt32):boolean;
        function IsKeyPressed(const pKeyCode:TVkInt32):boolean;
-       function IsJustKeyPressed(const pKeyCode:TVkInt32):boolean;
+       function IsKeyJustPressed(const pKeyCode:TVkInt32):boolean;
        function GetKeyName(const pKeyCode:TVkInt32):TVulkanApplicationRawByteString;
        function GetKeyModifier:TVkInt32;
        procedure GetTextInput(const pCallback:TVulkanApplicationInputTextInputCallback;const pTitle,pText:TVulkanApplicationRawByteString;const pPlaceholder:TVulkanApplicationRawByteString='');
@@ -4124,7 +4124,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsJustKeyPressed(const pKeyCode:TVkInt32):boolean;
+function TVulkanApplicationInput.IsKeyJustPressed(const pKeyCode:TVkInt32):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4516,7 +4516,7 @@ begin
  SDL_SetMainReady;
 
  SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING,'1');
- SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'1');
+ SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'0');
 
  inherited Create;
 

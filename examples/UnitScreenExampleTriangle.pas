@@ -425,7 +425,7 @@ end;
 procedure TScreenExampleTriangle.Update(const pDeltaTime:double);
 begin
  inherited Update(pDeltaTime);
- if VulkanApplication.Input.IsJustKeyPressed(KEYCODE_AC_BACK) or VulkanApplication.Input.IsJustKeyPressed(KEYCODE_ESCAPE) then begin
+ if VulkanApplication.Input.IsKeyJustPressed(KEYCODE_AC_BACK) or VulkanApplication.Input.IsKeyJustPressed(KEYCODE_ESCAPE) then begin
   VulkanApplication.NextScreen:=TScreenMainMenu.Create;
  end;
 end;

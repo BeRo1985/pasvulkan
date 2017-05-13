@@ -106,7 +106,7 @@ begin
 
  fVulkanRenderPass:=nil;
 
- fSelectedIndex:=0;
+ fSelectedIndex:=-1;
 
 end;
 
@@ -287,27 +287,48 @@ end;
 
 procedure TScreenMainMenu.Update(const pDeltaTime:double);
 const BoolToInt:array[boolean] of TVkInt32=(0,1);
-var Index:TVkInt32;
-    y:single;
+var Index,PointerIndex:TVkInt32;
+    y,pX,pY:single;
     s:string;
     IsSelected:boolean;
 begin
- if VulkanApplication.Input.IsJustKeyPressed(KEYCODE_UP) then begin
+ inherited Update(pDeltaTime);
+ if VulkanApplication.Input.IsKeyJustPressed(KEYCODE_UP) then begin
   if fSelectedIndex<=0 then begin
    fSelectedIndex:=RegisteredExamplesList.Count-1;
   end else begin
    dec(fSelectedIndex);
   end;
- end else if VulkanApplication.Input.IsJustKeyPressed(KEYCODE_DOWN) then begin
+ end else if VulkanApplication.Input.IsKeyJustPressed(KEYCODE_DOWN) then begin
   if fSelectedIndex>=(RegisteredExamplesList.Count-1) then begin
    fSelectedIndex:=0;
   end else begin
    inc(fSelectedIndex);
   end;
- end else if VulkanApplication.Input.IsJustKeyPressed(KEYCODE_RETURN) then begin
+ end else if VulkanApplication.Input.IsKeyJustPressed(KEYCODE_RETURN) then begin
   VulkanApplication.NextScreen:=TVulkanScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
  end;
- inherited Update(pDeltaTime);
+ y:=ExampleVulkanApplication.TextOverlay.FontCharHeight*5.0;
+ for Index:=0 to RegisteredExamplesList.Count-1 do begin
+  if (VulkanApplication.Input.GetPointerDeltaX(0)<>0) or (VulkanApplication.Input.GetPointerDeltaY(0)<>0) then begin
+   pX:=VulkanApplication.Input.GetPointerX(0);
+   pY:=VulkanApplication.Input.GetPointerY(0);
+   if (pY>=y) and (pY<=(y+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0))) then begin
+    fSelectedIndex:=Index;
+   end;
+  end;
+  for PointerIndex:=0 to VulkanApplication.Input.GetMaxPointerID do begin
+   if VulkanApplication.Input.IsPointerJustTouched(PointerIndex) then begin
+    pX:=VulkanApplication.Input.GetPointerX(PointerIndex);
+    pY:=VulkanApplication.Input.GetPointerY(PointerIndex);
+    if (pY>=y) and (pY<=(y+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0))) then begin
+     fSelectedIndex:=Index;
+     VulkanApplication.NextScreen:=TVulkanScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
+    end;
+   end;
+  end;
+  y:=y+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0)+8;
+ end;
  y:=ExampleVulkanApplication.TextOverlay.FontCharHeight*5.0;
  for Index:=0 to RegisteredExamplesList.Count-1 do begin
   IsSelected:=fSelectedIndex=Index;
@@ -315,8 +336,8 @@ begin
   if IsSelected then begin
    s:='>'+s+'<';
   end;
-  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,y,2.0,toaCenter,s,1.0-BoolToInt[IsSelected],1.0-BoolToInt[IsSelected],1.0,BoolToInt[IsSelected],1.0,1.0,1.0,1.0);
-  y:=y+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0);
+  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,y,2.0,toaCenter,s,1.0-BoolToInt[IsSelected],1.0-BoolToInt[IsSelected],1.0,(BoolToInt[IsSelected]*0.95)+0.05,1.0,1.0,1.0,1.0);
+  y:=y+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0)+8;
  end;
 end;
 
