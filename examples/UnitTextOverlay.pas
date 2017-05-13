@@ -533,7 +533,7 @@ end;
 procedure TTextOverlay.PreUpdate(const pDeltaTime:double);
 var s:string;
 begin
- fUpdateBufferIndex:=VulkanApplication.FrameCounter and 1;
+ fUpdateBufferIndex:=VulkanApplication.UpdateFrameCounter and 1;
  fBufferChars:=@fBufferCharsBuffers[fUpdateBufferIndex];
  begin
   Reset;
@@ -558,7 +558,7 @@ var BufferIndex,Size:TVkInt32;
     p:pointer;
 begin
 
- BufferIndex:=(VulkanApplication.FrameCounter+1) and 1;
+ BufferIndex:=VulkanApplication.DrawFrameCounter and 1;
  if fCountBufferCharsBuffers[BufferIndex]=0 then begin
   fCountBufferCharsBuffers[BufferIndex]:=1;
   FillChar(fBufferCharsBuffers[BufferIndex],SizeOf(TTextOverlayBufferChar),#0);

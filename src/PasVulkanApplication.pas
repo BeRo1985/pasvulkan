@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-13-14-03-0000                       *
+ *                        Version 2017-05-13-14-14-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -948,6 +948,10 @@ type EVulkanApplication=class(Exception);
 
        fFrameCounter:TVkInt64;
 
+       fUpdateFrameCounter:TVkInt64;
+       
+       fDrawFrameCounter:TVkInt64;
+
        fCountSwapChainImages:TVkInt32;
 
        fCurrentImageIndex:TVkInt32;
@@ -1154,6 +1158,10 @@ type EVulkanApplication=class(Exception);
        property FramesPerSecond:double read fFramesPerSecond;
 
        property FrameCounter:TVkInt64 read fFrameCounter;
+
+       property UpdateFrameCounter:TVkInt64 read fUpdateFrameCounter;
+
+       property DrawFrameCounter:TVkInt64 read fDrawFrameCounter;
 
        property CountSwapChainImages:TVkInt32 read fCountSwapChainImages;
 
@@ -4592,6 +4600,10 @@ begin
 
  fFrameCounter:=0;
 
+ fUpdateFrameCounter:=0;
+
+ fDrawFrameCounter:=0;
+
  fCountSwapChainImages:=1;
 
  fCurrentImageIndex:=0;
@@ -5863,17 +5875,21 @@ begin
 
     if assigned(fScreen) and fScreen.CanBeParallelProcessed then begin
 
+     fUpdateFrameCounter:=fFrameCounter;
+
+     fDrawFrameCounter:=fFrameCounter-1;
+
      Jobs[0]:=fPasMPInstance.Acquire(UpdateJobFunction);
      Jobs[1]:=fPasMPInstance.Acquire(DrawJobFunction);
      fPasMPInstance.Invoke(Jobs);
 
-     inc(fFrameCounter);
-     
     end else begin
 
-     UpdateJobFunction(nil,0);
+     fUpdateFrameCounter:=fFrameCounter;
+     
+     fDrawFrameCounter:=fFrameCounter;
 
-     inc(fFrameCounter);
+     UpdateJobFunction(nil,0);
 
      DrawJobFunction(nil,0);
 
@@ -5882,6 +5898,8 @@ begin
    finally
     PresentVulkanBackBuffer;
    end;
+
+   inc(fFrameCounter);
 
   end;
 
