@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-13-11-48-0000                       *
+ *                        Version 2017-05-13-12-15-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -803,6 +803,15 @@ type EVulkanApplication=class(Exception);
 
      TVulkanApplicationCommandBufferFences=array of array of TVulkanFence;
 
+     PVulkanApplicationVulkanRecreationKind=^TVulkanApplicationVulkanRecreationKind;
+     TVulkanApplicationVulkanRecreationKind=
+      (
+       vavrkNone,
+       vavrkSwapChain,
+       vavrkSurface,
+       vavrkDevice
+      );
+
      TVulkanApplication=class
       private
 
@@ -833,7 +842,7 @@ type EVulkanApplication=class(Exception);
        fCurrentCatchMouse:TSDLInt32;
        fCurrentHideSystemBars:TSDLInt32;
        fCurrentBlocking:TSDLInt32;
-       
+
        fWidth:TSDLInt32;
        fHeight:TSDLInt32;
        fFullscreen:boolean;
@@ -941,9 +950,7 @@ type EVulkanApplication=class(Exception);
 
        fCurrentSwapChainImageIndex:TVkInt32;
 
-       fDoNeedToRecreateVulkanSurface:boolean;
-
-       fDoNeedToRecreateVulkanSwapChain:boolean;
+       fVulkanRecreationKind:TVulkanApplicationVulkanRecreationKind;
 
        fVulkanWaitSemaphore:TVulkanSemaphore;
 
@@ -4556,9 +4563,7 @@ begin
  fVulkanTransferCommandBuffers:=nil;
  fVulkanTransferCommandBufferFences:=nil;
 
- fDoNeedToRecreateVulkanSurface:=false;
-
- fDoNeedToRecreateVulkanSwapChain:=false;
+ fVulkanRecreationKind:=vavrkNone;
 
  fVulkanSwapChain:=nil;
 
@@ -5213,52 +5218,66 @@ var ImageIndex:TVkInt32;
 begin
  result:=false;
 
- if (fVulkanSwapChain.Width<>Width) or (fVulkanSwapChain.Height<>Height) or (fCurrentVSync<>ord(fVSync)) then begin
-  fDoNeedToRecreateVulkanSwapChain:=true;
-  VulkanDebugLn('New surface dimension size detected!');
- end else begin
-  try
-   if fBlocking then begin
-    TimeOut:=TVkUInt64(high(TVkUInt64));
-   end else begin
-    TimeOut:=0;
+ if fVulkanRecreationKind=vavrkNone then begin
+
+  if (fVulkanSwapChain.Width<>Width) or
+     (fVulkanSwapChain.Height<>Height) or
+     ((fVSync and (fVulkanSwapChain.PresentMode<>VK_PRESENT_MODE_FIFO_KHR)) or
+      ((not fVSync) and (fVulkanSwapChain.PresentMode<>VK_PRESENT_MODE_IMMEDIATE_KHR))) then begin
+   if fVulkanRecreationKind<vavrkSwapChain then begin
+    fVulkanRecreationKind:=vavrkSwapChain;
    end;
-   case fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fCurrentImageIndex],
-                                          nil,
-                                          TimeOut) of
-    VK_SUCCESS:begin
-     fCurrentSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
+   VulkanDebugLn('New surface dimension size and/or vertical synchronization setting detected!');
+  end else begin
+   try
+    if fBlocking then begin
+     TimeOut:=TVkUInt64(high(TVkUInt64));
+    end else begin
+     TimeOut:=0;
     end;
-    VK_SUBOPTIMAL_KHR:begin
-     fDoNeedToRecreateVulkanSwapChain:=true;
-     VulkanDebugLn('Suboptimal surface detected!');
-    end;
-    else {VK_SUCCESS,VK_TIMEOUT:}begin
-     exit;
-    end;
-   end;
-  except
-   on VulkanResultException:EVulkanResultException do begin
-    case VulkanResultException.ResultCode of
-     VK_ERROR_SURFACE_LOST_KHR:begin
-      fDoNeedToRecreateVulkanSurface:=true;
-      fDoNeedToRecreateVulkanSwapChain:=true;
-      VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
+    case fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fCurrentImageIndex],
+                                           nil,
+                                           TimeOut) of
+     VK_SUCCESS:begin
+      fCurrentSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
      end;
-     VK_ERROR_OUT_OF_DATE_KHR,
      VK_SUBOPTIMAL_KHR:begin
-      fDoNeedToRecreateVulkanSwapChain:=true;
-      VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
+      if fVulkanRecreationKind<vavrkSwapChain then begin
+       fVulkanRecreationKind:=vavrkSwapChain;
+      end;
+      VulkanDebugLn('Suboptimal surface detected!');
      end;
-     else begin
-      raise;
+     else {VK_SUCCESS,VK_TIMEOUT:}begin
+      exit;
+     end;
+    end;
+   except
+    on VulkanResultException:EVulkanResultException do begin
+     case VulkanResultException.ResultCode of
+      VK_ERROR_SURFACE_LOST_KHR:begin
+       if fVulkanRecreationKind<vavrkSurface then begin
+        fVulkanRecreationKind:=vavrkSurface;
+       end;
+       VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
+      end;
+      VK_ERROR_OUT_OF_DATE_KHR,
+      VK_SUBOPTIMAL_KHR:begin
+       if fVulkanRecreationKind<vavrkSwapChain then begin
+        fVulkanRecreationKind:=vavrkSwapChain;
+       end;
+       VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
+      end;
+      else begin
+       raise;
+      end;
      end;
     end;
    end;
   end;
+
  end;
 
- if fDoNeedToRecreateVulkanSwapChain or fDoNeedToRecreateVulkanSurface then begin
+ if fVulkanRecreationKind in [vavrkSwapChain,vavrkSurface] then begin
 
   for ImageIndex:=0 to fCountSwapChainImages-1 do begin
    if fVulkanWaitFencesReady[ImageIndex] then begin
@@ -5270,10 +5289,10 @@ begin
 
   fVulkanDevice.WaitIdle;
 
-  if fDoNeedToRecreateVulkanSurface then begin
-   VulkanDebugLn('Recreating surface... ');
+  if fVulkanRecreationKind=vavrkSurface then begin
+   VulkanDebugLn('Recreating vulkan surface... ');
   end else begin
-   VulkanDebugLn('Recreating swap chain... ');
+   VulkanDebugLn('Recreating vulkan swap chain... ');
   end;
   fVulkanOldSwapChain:=fVulkanSwapChain;
   try
@@ -5284,7 +5303,7 @@ begin
    DestroyVulkanFrameBuffers;
    DestroyVulkanRenderPass;
    DestroyVulkanSwapChain;
-   if fDoNeedToRecreateVulkanSurface then begin
+   if fVulkanRecreationKind=vavrkSurface then begin
     DestroyVulkanSurface;
     CreateVulkanSurface;
    end;
@@ -5297,15 +5316,13 @@ begin
   finally
    FreeAndNil(fVulkanOldSwapChain);
   end;
-  if fDoNeedToRecreateVulkanSurface then begin
-   VulkanDebugLn('Recreated surface... ');
+  if fVulkanRecreationKind=vavrkSurface then begin
+   VulkanDebugLn('Recreated vulkan surface... ');
   end else begin
-   VulkanDebugLn('Recreated swap chain... ');
+   VulkanDebugLn('Recreated vulkan swap chain... ');
   end;
 
-  fDoNeedToRecreateVulkanSurface:=false;
-
-  fDoNeedToRecreateVulkanSwapChain:=false;
+  fVulkanRecreationKind:=vavrkNone;
 
   fVulkanWaitSemaphore:=nil;
   fVulkanWaitFence:=nil;
@@ -5352,19 +5369,24 @@ begin
     result:=true;
    end;
    VK_SUBOPTIMAL_KHR:begin
-    fDoNeedToRecreateVulkanSwapChain:=true;
+    if fVulkanRecreationKind<vavrkSwapChain then begin
+     fVulkanRecreationKind:=vavrkSwapChain;
+    end;
    end;
   end;
  except
   on VulkanResultException:EVulkanResultException do begin
    case VulkanResultException.ResultCode of
     VK_ERROR_SURFACE_LOST_KHR:begin
-     fDoNeedToRecreateVulkanSurface:=true;
-     fDoNeedToRecreateVulkanSwapChain:=true;
+     if fVulkanRecreationKind<vavrkSurface then begin
+      fVulkanRecreationKind:=vavrkSurface;
+     end;
     end;
     VK_ERROR_OUT_OF_DATE_KHR,
     VK_SUBOPTIMAL_KHR:begin
-     fDoNeedToRecreateVulkanSwapChain:=true;
+     if fVulkanRecreationKind<vavrkSwapChain then begin
+      fVulkanRecreationKind:=vavrkSwapChain;
+     end;
     end;
     else begin
      raise;
@@ -5640,8 +5662,15 @@ begin
        fCurrentWidth:=fWidth;
        fCurrentHeight:=fHeight;
        if fGraphicsReady then begin
+        VulkanDebugLn('New surface dimension size detected!');
+{$if true}
+        if fVulkanRecreationKind<vavrkSwapChain then begin
+         fVulkanRecreationKind:=vavrkSwapChain;
+        end;
+{$else}
         DeinitializeGraphics;
         InitializeGraphics;
+{$ifend}
        end;
        if assigned(fScreen) then begin
         fScreen.Resize(fWidth,fHeight);

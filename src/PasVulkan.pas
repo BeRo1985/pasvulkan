@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-13-10-33-0000                       *
+ *                        Version 2017-05-13-12-00S-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1756,6 +1756,7 @@ type EVulkanException=class(Exception);
        fImageFormat:TVkFormat;
        fImageColorSpace:TVkColorSpaceKHR;
        fImages:TVulkanSwapChainImages;
+       fPresentMode:TVkPresentModeKHR;
        fCurrentImageIndex:TVkUInt32;
        fCountImages:TVkUInt32;
        fWidth:TVkInt32;
@@ -1789,6 +1790,7 @@ type EVulkanException=class(Exception);
        property Handle:TVkSwapChainKHR read fSwapChainHandle;
        property ImageFormat:TVkFormat read fImageFormat;
        property ImageColorSpace:TVkColorSpaceKHR read fImageColorSpace;
+       property PresentMode:TVkPresentModeKHR read fPresentMode;
        property CurrentImageIndex:TVkUInt32 read fCurrentImageIndex;
        property CountImages:TVkUInt32 read fCountImages;
        property CurrentImage:TVulkanImage read GetCurrentImage;
@@ -11175,7 +11177,9 @@ begin
  fQueueFamilyIndices:=nil;
 
  fImages:=nil;
- 
+
+ fPresentMode:=pPresentMode;
+
  fCurrentImageIndex:=0;
 
  fCountImages:=0;
