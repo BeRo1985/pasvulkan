@@ -645,12 +645,12 @@ type va_list=pointer;
 
       NewString:function(Env:PJNIEnv;const Unicode:PJChar;Len:JSize):JString;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
       GetStringLength:function(Env:PJNIEnv;Str:JString):JSize;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
-      GetStringChars:function(Env:PJNIEnv;Str:JString;var IsCopy:JBoolean):PJChar;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
+      GetStringChars:function(Env:PJNIEnv;Str:JString;IsCopy:PJBoolean):PJChar;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
       ReleaseStringChars:procedure(Env:PJNIEnv;Str:JString;const Chars:PJChar);{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
 
       NewStringUTF:function(Env:PJNIEnv;const UTF:pchar):JString;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
       GetStringUTFLength:function(Env:PJNIEnv;Str:JString):JSize;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
-      GetStringUTFChars:function(Env:PJNIEnv;Str:JString; IsCopy: PJBoolean):pchar;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
+      GetStringUTFChars:function(Env:PJNIEnv;Str:JString;IsCopy:PJBoolean):pchar;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
       ReleaseStringUTFChars:procedure(Env:PJNIEnv;Str:JString;const Chars:pchar);{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
 
       GetArrayLength:function(Env:PJNIEnv;AArray:JArray):JSize;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}

@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-13-12-15-0000                       *
+ *                        Version 2017-05-13-13-51-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -488,6 +488,10 @@ type EVulkanApplication=class(Exception);
 
      TVulkanApplication=class;
 
+     TVulkanApplicationRawByteString={$if declared(RawByteString)}RawByteString{$else}AnsiString{$ifend};
+
+     TVulkanApplicationUnicodeString={$if declared(UnicodeString)}UnicodeString{$else}WideString{$ifend};
+
      TVulkanApplicationOnEvent=function(const fVulkanApplication:TVulkanApplication;const pEvent:TSDL_Event):boolean of object;
 
      TVulkanApplicationOnStep=procedure(const fVulkanApplication:TVulkanApplication) of object;
@@ -618,7 +622,7 @@ type EVulkanApplication=class(Exception);
        function Scrolled(const pAmount:TVkInt32):boolean; override;
      end;
 
-     TVulkanApplicationInputTextInputCallback=procedure(pSuccessful:boolean;const pText:ansistring) of object;
+     TVulkanApplicationInputTextInputCallback=procedure(pSuccessful:boolean;const pText:TVulkanApplicationRawByteString) of object;
 
      TVulkanApplicationInput=class;
 
@@ -639,7 +643,7 @@ type EVulkanApplication=class(Exception);
        function IsGameController:boolean;
        function Index:TVkInt32;
        function ID:TVkInt32;
-       function Name:ansistring;
+       function Name:TVulkanApplicationRawByteString;
        function GUID:TGUID;
        function DeviceGUID:TGUID;
        function CountAxes:TVkInt32;
@@ -654,14 +658,14 @@ type EVulkanApplication=class(Exception);
        function IsGameControllerAttached:boolean;
        function GetGameControllerAxis(const pAxis:TVkInt32):TVkInt32;
        function GetGameControllerButton(const pButton:TVkInt32):boolean;
-       function GetGameControllerName:ansistring;
-       function GetGameControllerMapping:ansistring;
+       function GetGameControllerName:TVulkanApplicationRawByteString;
+       function GetGameControllerMapping:TVulkanApplicationRawByteString;
      end;
 
      TVulkanApplicationInput=class
       private
        fVulkanApplication:TVulkanApplication;
-       fKeyCodeNames:array[-1..1023] of ansistring;
+       fKeyCodeNames:array[-1..1023] of TVulkanApplicationRawByteString;
        fCriticalSection:TPasMPCriticalSection;
        fProcessor:TVulkanApplicationInputProcessor;
        fEvents:array of TSDL_Event;
@@ -713,9 +717,9 @@ type EVulkanApplication=class(Exception);
        function JustTouched:boolean;
        function IsButtonPressed(const pButton:TVkInt32):boolean;
        function IsKeyPressed(const pKeyCode:TVkInt32):boolean;
-       function GetKeyName(const pKeyCode:TVkInt32):ansistring;
+       function GetKeyName(const pKeyCode:TVkInt32):TVulkanApplicationRawByteString;
        function GetKeyModifier:TVkInt32;
-       procedure GetTextInput(const pCallback:TVulkanApplicationInputTextInputCallback;const pTitle,pText:ansistring;const pPlaceholder:ansistring='');
+       procedure GetTextInput(const pCallback:TVulkanApplicationInputTextInputCallback;const pTitle,pText:TVulkanApplicationRawByteString;const pPlaceholder:TVulkanApplicationRawByteString='');
        procedure SetOnscreenKeyboardVisible(const pVisible:boolean);
        procedure Vibrate(const pMilliseconds:TVkInt32); overload;
        procedure Vibrate(const pPattern:array of TVkInt32;const pRepeats:TVkInt32); overload;
@@ -1172,6 +1176,9 @@ var VulkanApplication:TVulkanApplication=nil;
      AndroidExternalDataPath:string='';
      AndroidLibraryPath:string='';
 
+     AndroidDeviceName:string='';
+
+function AndroidGetDeviceName:TVulkanApplicationUnicodeString;
 function Android_JNI_GetEnv:PJNIEnv; cdecl;
 procedure ANativeActivity_onCreate(pActivity:PANativeActivity;pSavedState:pointer;pSavedStateSize:cuint32); cdecl;
 {$ifend}
@@ -1207,9 +1214,9 @@ end;
 {$ifend}
 
 {$ifdef unix}
-function GetAppDataLocalPath(Postfix:ansistring):ansistring;
+function GetAppDataLocalPath(Postfix:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
 {$ifdef darwin}
-var TruePath:ansistring;
+var TruePath:TVulkanApplicationRawByteString;
 {$endif}
 begin
 {$ifdef darwin}
@@ -1272,9 +1279,9 @@ begin
  result:=IncludeTrailingPathDelimiter(result);
 end;
 
-function GetAppDataRoamingPath(Postfix:ansistring):ansistring;
+function GetAppDataRoamingPath(Postfix:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
 {$ifdef darwin}
-var TruePath:ansistring;
+var TruePath:TVulkanApplicationRawByteString;
 {$endif}
 begin
 {$ifdef darwin}
@@ -1337,7 +1344,7 @@ begin
  result:=IncludeTrailingPathDelimiter(result);
 end;
 {$else}
-function ExpandEnvironmentStrings(const s:ansistring):ansistring;
+function ExpandEnvironmentStrings(const s:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
 var i:TVkInt32;
 begin
  i:=ExpandEnvironmentStringsA(pansichar(s),nil,0);
@@ -1350,7 +1357,7 @@ begin
  end;
 end;
 
-function GetEnvironmentVariable(const s:ansistring):ansistring;
+function GetEnvironmentVariable(const s:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
 var i:TVkInt32;
 begin
  i:=GetEnvironmentVariableA(pansichar(s),nil,0);
@@ -1363,7 +1370,7 @@ begin
  end;
 end;
 
-function GetAppDataLocalPath(Postfix:ansistring):ansistring;
+function GetAppDataLocalPath(Postfix:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
 type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TVkInt32;nToken:Windows.THandle;dwFlags:TVkInt32;lpszPath:PAnsiChar):hresult; stdcall;
 const CSIDL_LOCALAPPDATA=$001c;
 var SHGetFolderPath:TSHGetFolderPath;
@@ -1452,7 +1459,7 @@ begin
  result:=IncludeTrailingPathDelimiter(result);
 end;
 
-function GetAppDataRoamingPath(Postfix:ansistring):ansistring;
+function GetAppDataRoamingPath(Postfix:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
 type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TVkInt32;nToken:Windows.THandle;dwFlags:TVkInt32;lpszPath:PAnsiChar):hresult; stdcall;
 const CSIDL_APPDATA=$001a;
 var SHGetFolderPath:TSHGetFolderPath;
@@ -2322,7 +2329,7 @@ begin
  result:=SDL_JoystickInstanceID(fJoystick);
 end;
 
-function TVulkanApplicationJoystick.Name:ansistring;
+function TVulkanApplicationJoystick.Name:TVulkanApplicationRawByteString;
 begin
  result:=SDL_JoystickName(fJoystick);
 end;
@@ -2514,7 +2521,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationJoystick.GetGameControllerName:ansistring;
+function TVulkanApplicationJoystick.GetGameControllerName:TVulkanApplicationRawByteString;
 begin
  if assigned(fGameController) then begin
   result:=SDL_GameControllerName(fGameController);
@@ -2523,7 +2530,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationJoystick.GetGameControllerMapping:ansistring;
+function TVulkanApplicationJoystick.GetGameControllerMapping:TVulkanApplicationRawByteString;
 begin
  if assigned(fGameController) then begin
   result:=SDL_GameControllerMapping(fGameController);
@@ -4097,7 +4104,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetKeyName(const pKeyCode:TVkInt32):ansistring;
+function TVulkanApplicationInput.GetKeyName(const pKeyCode:TVkInt32):TVulkanApplicationRawByteString;
 begin
  if (pKeyCode>=low(fKeyCodeNames)) and (pKeyCode<=high(fKeyCodeNames)) then begin
   result:=fKeyCodeNames[pKeyCode];
@@ -4111,7 +4118,7 @@ begin
  result:=TranslateSDLKeyModifier(SDL_GetModState);
 end;
 
-procedure TVulkanApplicationInput.GetTextInput(const pCallback:TVulkanApplicationInputTextInputCallback;const pTitle,pText:ansistring;const pPlaceholder:ansistring='');
+procedure TVulkanApplicationInput.GetTextInput(const pCallback:TVulkanApplicationInputTextInputCallback;const pTitle,pText:TVulkanApplicationRawByteString;const pPlaceholder:TVulkanApplicationRawByteString='');
 begin
 end;
 
@@ -4334,7 +4341,7 @@ var Asset:PAAsset;
 begin
  result:=false;
  if assigned(AndroidAssetManager) then begin
-  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(AnsiString(CorrectFileName(pFileName))),AASSET_MODE_UNKNOWN);
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(TVulkanApplicationRawByteString(CorrectFileName(pFileName))),AASSET_MODE_UNKNOWN);
   if assigned(Asset) then begin
    AAsset_close(Asset);
    result:=true;
@@ -4356,7 +4363,7 @@ var Asset:PAAsset;
 begin
  result:=nil;
  if assigned(AndroidAssetManager) then begin
-  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(AnsiString(CorrectFileName(pFileName))),AASSET_MODE_UNKNOWN);
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(TVulkanApplicationRawByteString(CorrectFileName(pFileName))),AASSET_MODE_UNKNOWN);
   if assigned(Asset) then begin
    try
     Size:=AAsset_getLength(Asset);
@@ -4386,7 +4393,7 @@ var Asset:PAAsset;
 begin
  result:=0;
  if assigned(AndroidAssetManager) then begin
-  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(AnsiString(CorrectFileName(pFileName))),AASSET_MODE_UNKNOWN);
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(TVulkanApplicationRawByteString(CorrectFileName(pFileName))),AASSET_MODE_UNKNOWN);
   if assigned(Asset) then begin
    try
     result:=AAsset_getLength(Asset);
@@ -4538,7 +4545,7 @@ begin
 
  fCountCPUThreads:=Max(1,TPasMP.GetCountOfHardwareThreads(fAvailableCPUCores));
 {$if defined(fpc) and defined(android)}
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('Detected CPU thread count: '+IntToStr(fCountCPUThreads))));
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('Detected CPU thread count: '+IntToStr(fCountCPUThreads))));
 {$ifend}
 
  fVulkanCountCommandQueues:=0;
@@ -5612,7 +5619,7 @@ begin
     end;
     SDL_APP_WILLENTERBACKGROUND:begin
 {$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_WILLENTERBACKGROUND')));
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
 {$ifend}
      fActive:=false;
      VulkanWaitIdle;
@@ -5622,12 +5629,12 @@ begin
     end;
     SDL_APP_DIDENTERBACKGROUND:begin
 {$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_DIDENTERBACKGROUND')));
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_DIDENTERBACKGROUND')));
 {$ifend}
     end;
     SDL_APP_WILLENTERFOREGROUND:begin
 {$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_WILLENTERFOREGROUND')));
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_WILLENTERFOREGROUND')));
 {$ifend}
     end;
     SDL_APP_DIDENTERFOREGROUND:begin
@@ -5636,7 +5643,7 @@ begin
      fActive:=true;
      fHasLastTime:=false;
 {$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('SDL_APP_DIDENTERFOREGROUND')));
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_DIDENTERFOREGROUND')));
 {$ifend}
     end;
     SDL_RENDER_TARGETS_RESET,
@@ -5972,10 +5979,10 @@ begin
  fCurrentFullscreen:=ord(true);
  fWidth:=fScreenWidth;
  fHeight:=fScreenHeight;
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('Window size: '+IntToStr(fWidth)+'x'+IntToStr(fHeight))));
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('Window size: '+IntToStr(fWidth)+'x'+IntToStr(fHeight))));
 {$ifend}
 
- fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(fTitle),
+ fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TVulkanApplicationRawByteString(fTitle)),
 {$ifdef Android}
                                   SDL_WINDOWPOS_CENTERED_MASK,
                                   SDL_WINDOWPOS_CENTERED_MASK,
@@ -6161,11 +6168,25 @@ begin
  end;
 end;
 
-class procedure TVulkanApplication.Main; 
+class procedure TVulkanApplication.Main;
 begin
 end;
 
 {$if defined(fpc) and defined(android)}
+function AndroidGetDeviceName:TVulkanApplicationUnicodeString;
+var AndroisOSBuild:jclass;
+    ModelID:JFieldID;
+    ModelStringObject:JString;
+    ModelStringChars:PJChar;
+begin
+ AndroisOSBuild:=AndroidJavaEnv^.FindClass(AndroidJavaEnv,'android/os/Build');
+ ModelID:=AndroidJavaEnv^.GetStaticFieldID(AndroidJavaEnv,AndroisOSBuild,'MODEL','Ljava/lang/String;');
+ ModelStringObject:=AndroidJavaEnv^.GetStaticObjectField(AndroidJavaEnv,AndroisOSBuild,ModelID);
+ ModelStringChars:=AndroidJavaEnv^.GetStringChars(AndroidJavaEnv,ModelStringObject,nil);
+ result:=PWideChar(Pointer(ModelStringChars));
+ AndroidJavaEnv^.ReleaseStringChars(AndroidJavaEnv,ModelStringObject,ModelStringChars);
+end;
+
 function Android_JNI_GetEnv:PJNIEnv; cdecl;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}

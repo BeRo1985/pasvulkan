@@ -95,7 +95,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        procedure AfterCreateSwapChain;
        procedure BeforeDestroySwapChain;
        procedure Reset;
-       procedure AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
+       procedure AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:TVulkanApplicationRawByteString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
        procedure PreUpdate(const pDeltaTime:double);
        procedure PostUpdate(const pDeltaTime:double);
        procedure Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
@@ -484,7 +484,7 @@ begin
  fCountBufferChars:=0;
 end;
 
-procedure TTextOverlay.AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:AnsiString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
+procedure TTextOverlay.AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:TVulkanApplicationRawByteString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
 var Index,EdgeIndex:TVkInt32;
     BufferChar:PTextOverlayBufferChar;
     CurrentChar:byte;
@@ -537,7 +537,7 @@ begin
  fBufferChars:=@fBufferCharsBuffers[fUpdateBufferIndex];
  begin
   Reset;
-  AddText(0.0,fFontCharHeight*0.0,1.0,toaLeft,'Device: '+VulkanApplication.VulkanDevice.PhysicalDevice.DeviceName);
+  AddText(0.0,fFontCharHeight*0.0,1.0,toaLeft,'Device: '+VulkanApplication.VulkanDevice.PhysicalDevice.DeviceName{$ifdef Android}+' ('+TVulkanApplicationRawByteString(AndroidDeviceName)+')'{$endif});
   AddText(0.0,fFontCharHeight*1.0,1.0,toaLeft,'Vulkan API version: '+IntToStr(VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 22)+'.'+IntToStr((VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 12) and $3ff)+'.'+IntToStr((VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 0) and $fff));
   Str(VulkanApplication.FramesPerSecond:1:1,s);
   AddText(0.0,fFontCharHeight*2.0,1.0,toaLeft,'Frame rate: '+s+' FPS');

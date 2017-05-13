@@ -63,6 +63,7 @@ begin
  AndroidJavaEnv:=pJavaEnv;
  AndroidJavaClass:=pJavaClass;
  AndroidJavaObject:=pJavaObject;
+ AndroidDeviceName:=AndroidGetDeviceName;
  SDL_Android_Init(pJavaEnv,pJavaClass);
 {$ifend}
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
