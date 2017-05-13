@@ -16,7 +16,7 @@ interface
 
 uses SysUtils,Classes;
 
-var RegisterExamplesList:TStringList=nil;
+var RegisteredExamplesList:TStringList=nil;
 
 procedure RegisterExample(const pTitle:string;const pClass:TClass);
 
@@ -24,12 +24,12 @@ implementation
 
 procedure RegisterExample(const pTitle:string;const pClass:TClass);
 begin
- RegisterExamplesList.AddObject(pTitle,pointer(pClass));
+ RegisteredExamplesList.AddObject(pTitle,pointer(pClass));
 end;                                                 
 
 initialization
- RegisterExamplesList:=TStringList.Create;
+ RegisteredExamplesList:=TStringList.Create;
 finalization
- FreeAndNil(RegisterExamplesList);
+ FreeAndNil(RegisteredExamplesList);
 end.
  

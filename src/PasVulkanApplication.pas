@@ -674,6 +674,7 @@ type EVulkanApplication=class(Exception);
        fCurrentEventTime:int64;
        fKeyDown:array[0..$ffff] of boolean;
        fKeyDownCount:TVkInt32;
+       fJustKeyDown:array[0..$ffff] of boolean;
        fPointerX:array[0..$ffff] of single;
        fPointerY:array[0..$ffff] of single;
        fPointerDown:array[0..$ffff] of boolean;
@@ -717,6 +718,7 @@ type EVulkanApplication=class(Exception);
        function JustTouched:boolean;
        function IsButtonPressed(const pButton:TVkInt32):boolean;
        function IsKeyPressed(const pKeyCode:TVkInt32):boolean;
+       function IsJustKeyPressed(const pKeyCode:TVkInt32):boolean;
        function GetKeyName(const pKeyCode:TVkInt32):TVulkanApplicationRawByteString;
        function GetKeyModifier:TVkInt32;
        procedure GetTextInput(const pCallback:TVulkanApplicationInputTextInputCallback;const pTitle,pText:TVulkanApplicationRawByteString;const pPlaceholder:TVulkanApplicationRawByteString='');
@@ -930,6 +932,8 @@ type EVulkanApplication=class(Exception);
 
        fNextScreen:TVulkanScreen;
 
+       fNextScreenClass:TVulkanScreenClass;
+
        fHasNewNextScreen:boolean;
 
        fHasLastTime:boolean;
@@ -1026,6 +1030,7 @@ type EVulkanApplication=class(Exception);
 
        procedure SetScreen(const pScreen:TVulkanScreen);
        procedure SetNextScreen(const pNextScreen:TVulkanScreen);
+       procedure SetNextScreenClass(const pNextScreenClass:TVulkanScreenClass);
 
        procedure UpdateFrameTimesHistory;
 
@@ -1154,6 +1159,8 @@ type EVulkanApplication=class(Exception);
        property Screen:TVulkanScreen read fScreen write SetScreen;
 
        property NextScreen:TVulkanScreen read fNextScreen write SetNextScreen;
+
+       property NextScreenClass:TVulkanScreenClass read fNextScreenClass write SetNextScreenClass;
 
        property FramesPerSecond:double read fFramesPerSecond;
 
@@ -2857,6 +2864,7 @@ begin
  fCurrentEventTime:=0;
  FillChar(fKeyDown,SizeOf(fKeyDown),AnsiChar(#0));
  fKeyDownCount:=0;
+ FillChar(fJustKeyDown,SizeOf(fJustKeyDown),AnsiChar(#0));
  FillChar(fPointerX,SizeOf(fPointerX),AnsiChar(#0));
  FillChar(fPointerY,SizeOf(fPointerY),AnsiChar(#0));
  FillChar(fPointerDown,SizeOf(fPointerDown),AnsiChar(#0));
@@ -3742,6 +3750,7 @@ begin
        SDL_KEYDOWN:begin
         fKeyDown[KeyCode and $ffff]:=true;
         inc(fKeyDownCount);
+        fJustKeyDown[KeyCode and $ffff]:=true;
         if assigned(fProcessor) then begin
          fProcessor.KeyDown(KeyCode,KeyModifier);
         end;
@@ -3751,6 +3760,7 @@ begin
         if fKeyDownCount>0 then begin
          dec(fKeyDownCount);
         end;
+        fJustKeyDown[KeyCode and $ffff]:=false;
         if assigned(fProcessor) then begin
          fProcessor.KeyUp(KeyCode,KeyModifier);
         end;
@@ -4102,8 +4112,26 @@ begin
    KEYCODE_ANYKEY:begin
     result:=fKeyDownCount>0;
    end;
-   $0000..$ffffF:begin
+   $0000..$ffff:begin
     result:=fKeyDown[pKeyCode and $ffff];
+   end;
+   else begin
+    result:=false;
+   end;
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TVulkanApplicationInput.IsJustKeyPressed(const pKeyCode:TVkInt32):boolean;
+begin
+ fCriticalSection.Acquire;
+ try
+  case pKeyCode of
+   $0000..$ffff:begin
+    result:=fJustKeyDown[pKeyCode and $ffff];
+    fJustKeyDown[pKeyCode and $ffff]:=false;
    end;
    else begin
     result:=false;
@@ -4590,6 +4618,8 @@ begin
 
  fNextScreen:=nil;
 
+ fNextScreenClass:=nil;
+ 
  fHasNewNextScreen:=false;
 
  fHasLastTime:=false;
@@ -5429,6 +5459,14 @@ begin
  end;
 end;
 
+procedure TVulkanApplication.SetNextScreenClass(const pNextScreenClass:TVulkanScreenClass);
+begin
+ if (not (fScreen is pNextScreenClass)) and (fNextScreenClass<>pNextScreenClass) then begin
+  fNextScreenClass:=pNextScreenClass;
+  fHasNewNextScreen:=true;
+ end;
+end;
+
 procedure TVulkanApplication.ReadConfig;
 begin
 end;
@@ -5583,7 +5621,9 @@ begin
 
  if fHasNewNextScreen then begin
   fHasNewNextScreen:=false;
-  if fScreen<>fNextScreen then begin
+  if assigned(fNextScreenClass) then begin
+   SetScreen(fNextScreenClass.Create);
+  end else if fScreen<>fNextScreen then begin
    SetScreen(fNextScreen);
   end;
   fNextScreen:=nil;

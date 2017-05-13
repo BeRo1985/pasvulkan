@@ -99,6 +99,9 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        procedure PreUpdate(const pDeltaTime:double);
        procedure PostUpdate(const pDeltaTime:double);
        procedure Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
+      published
+       property FontCharWidth:single read fFontCharWidth;
+       property FontCharHeight:single read fFontCharHeight;
      end;
 
 implementation

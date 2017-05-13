@@ -65,6 +65,8 @@ type TScreenExampleTriangle=class(TVulkanScreen)
 
 implementation
 
+uses UnitScreenMainMenu;
+
 const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
        (((0.5,0.5,0.0),(1.0,0.0,0.0)),
         ((-0.5,0.5,0.0),(0.0,1.0,0.0)),
@@ -80,10 +82,20 @@ const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
       Offsets:array[0..0] of TVkDeviceSize=(0);
 
 constructor TScreenExampleTriangle.Create;
+begin
+ inherited Create;
+end;
+
+destructor TScreenExampleTriangle.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TScreenExampleTriangle.Show;
 var Stream:TStream;
     Index:TVkInt32;
 begin
- inherited Create;
+ inherited Show;
 
  fVulkanCommandPool:=TVulkanCommandPool.Create(VulkanApplication.VulkanDevice,
                                                VulkanApplication.VulkanDevice.GraphicsQueueFamilyIndex,
@@ -193,7 +205,7 @@ begin
 
 end;
 
-destructor TScreenExampleTriangle.Destroy;
+procedure TScreenExampleTriangle.Hide;
 var Index:TVkInt32;
 begin
  FreeAndNil(fVulkanPipelineLayout);
@@ -215,16 +227,6 @@ begin
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
  FreeAndNil(fVulkanCommandPool);
- inherited Destroy;
-end;
-
-procedure TScreenExampleTriangle.Show;
-begin
- inherited Show;
-end;
-
-procedure TScreenExampleTriangle.Hide;
-begin
  inherited Hide;
 end;
 
@@ -423,6 +425,9 @@ end;
 procedure TScreenExampleTriangle.Update(const pDeltaTime:double);
 begin
  inherited Update(pDeltaTime);
+ if VulkanApplication.Input.IsJustKeyPressed(KEYCODE_AC_BACK) or VulkanApplication.Input.IsJustKeyPressed(KEYCODE_ESCAPE) then begin
+  VulkanApplication.NextScreen:=TScreenMainMenu.Create;
+ end;
 end;
 
 procedure TScreenExampleTriangle.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
@@ -442,4 +447,6 @@ begin
  end;
 end;
 
+initialization
+ RegisterExample('Triangle',TScreenExampleTriangle);
 end.

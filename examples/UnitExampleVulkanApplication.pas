@@ -22,7 +22,7 @@ type TExampleVulkanApplication=class(TVulkanApplication)
       public
        constructor Create; override;
        destructor Destroy; override;
-       function HandleEvent(const pEvent:TSDL_Event):boolean; override;
+//     function HandleEvent(const pEvent:TSDL_Event):boolean; override;
        procedure Start; override;
        procedure Stop; override;
        procedure Load; override;
@@ -42,7 +42,7 @@ var ExampleVulkanApplication:TExampleVulkanApplication=nil;
 
 implementation
 
-uses UnitScreenExampleTriangle;
+uses UnitScreenMainMenu;
 
 constructor TExampleVulkanApplication.Create;
 begin
@@ -57,6 +57,7 @@ begin
  inherited Destroy;
 end;
 
+(*
 function TExampleVulkanApplication.HandleEvent(const pEvent:TSDL_Event):boolean;
 const QuitMsgBoxButtons:array[0..1] of TSDL_MessageBoxButtonData=
 {$ifdef Windows}
@@ -104,7 +105,7 @@ begin
  if not result then begin
   result:=inherited HandleEvent(pEvent);
  end;
-end;
+end;(**)
 
 procedure TExampleVulkanApplication.Start;
 begin
@@ -178,7 +179,7 @@ begin
 {$endif}
   VulkanApplication.Title:='SDL Vulkan Examples Application';
   VulkanApplication.PathName:='SDLVulkanExamplesApplication';
-  VulkanApplication.StartScreen:=TScreenExampleTriangle;
+  VulkanApplication.StartScreen:=TScreenMainMenu;
   VulkanApplication.VisibleMouseCursor:=true;
   VulkanApplication.CatchMouse:=false;
   VulkanApplication.HideSystemBars:=true;
@@ -188,6 +189,4 @@ begin
  end;
 end;
 
-initialization
- RegisterExample('Triangle',TExampleVulkanApplication);
 end.
