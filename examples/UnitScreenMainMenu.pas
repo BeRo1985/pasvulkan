@@ -27,6 +27,7 @@ type TScreenMainMenu=class(TVulkanScreen)
        fVulkanCommandPool:TVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fReady:boolean;
        fSelectedIndex:TVkInt32;
       public
 
@@ -50,6 +51,22 @@ type TScreenMainMenu=class(TVulkanScreen)
 
        function HandleEvent(const pEvent:TSDL_Event):boolean; override;
 
+       function KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+
+       function KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+
+       function KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+
+       function TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+
+       function TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+
+       function TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean; override;
+
+       function MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean; override;
+
+       function Scrolled(const pAmount:TVkInt32):boolean; override;
+
        procedure Update(const pDeltaTime:double); override;
 
        procedure Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil); override;
@@ -60,9 +77,11 @@ implementation
 
 uses UnitExampleVulkanApplication,UnitTextOverlay;
 
+
 constructor TScreenMainMenu.Create;
 begin
  inherited Create;
+ fReady:=false;
 end;
 
 destructor TScreenMainMenu.Destroy;
@@ -285,15 +304,110 @@ begin
  end;
 end;
 
+function TScreenMainMenu.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TScreenMainMenu.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ result:=false;
+ if fReady then begin
+  case pKeyCode of
+   KEYCODE_UP:begin
+    if fSelectedIndex<=0 then begin
+     fSelectedIndex:=RegisteredExamplesList.Count-1;
+    end else begin
+     dec(fSelectedIndex);
+    end;
+   end;
+   KEYCODE_DOWN:begin
+    if fSelectedIndex>=(RegisteredExamplesList.Count-1) then begin
+     fSelectedIndex:=0;
+    end else begin
+     inc(fSelectedIndex);
+    end;
+   end;
+   KEYCODE_RETURN:begin
+    VulkanApplication.NextScreen:=TVulkanScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
+   end;
+  end;
+ end;
+end;
+
+function TScreenMainMenu.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TScreenMainMenu.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+var Index:TVkInt32;
+    cy:single;
+begin
+ result:=false;
+ if fReady then begin
+  cy:=ExampleVulkanApplication.TextOverlay.FontCharHeight*5.0;
+  for Index:=0 to RegisteredExamplesList.Count-1 do begin
+   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0))) then begin
+    fSelectedIndex:=Index;
+    VulkanApplication.NextScreen:=TVulkanScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
+   end;
+   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0)+8;
+  end;
+ end;
+end;
+
+function TScreenMainMenu.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TScreenMainMenu.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+var Index:TVkInt32;
+    cy:single;
+begin
+ result:=false;
+ if fReady then begin
+  cy:=ExampleVulkanApplication.TextOverlay.FontCharHeight*5.0;
+  for Index:=0 to RegisteredExamplesList.Count-1 do begin
+   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0))) then begin
+    fSelectedIndex:=Index;
+   end;
+   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0)+8;
+  end;
+ end;
+end;
+
+function TScreenMainMenu.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+var Index:TVkInt32;
+    cy:single;
+begin
+ result:=false;
+ if fReady then begin
+  cy:=ExampleVulkanApplication.TextOverlay.FontCharHeight*5.0;
+  for Index:=0 to RegisteredExamplesList.Count-1 do begin
+   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0))) then begin
+    fSelectedIndex:=Index;
+   end;
+   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0)+8;
+  end;
+ end;
+end;
+
+function TScreenMainMenu.Scrolled(const pAmount:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
 procedure TScreenMainMenu.Update(const pDeltaTime:double);
 const BoolToInt:array[boolean] of TVkInt32=(0,1);
-var Index,PointerIndex:TVkInt32;
-    y,pX,pY:single;
+var Index:TVkInt32;
+    cy:single;
     s:string;
     IsSelected:boolean;
 begin
  inherited Update(pDeltaTime);
- if VulkanApplication.Input.IsKeyJustPressed(KEYCODE_UP) then begin
+{if VulkanApplication.Input.IsKeyJustPressed(KEYCODE_UP) then begin
   if fSelectedIndex<=0 then begin
    fSelectedIndex:=RegisteredExamplesList.Count-1;
   end else begin
@@ -328,17 +442,18 @@ begin
    end;
   end;
   y:=y+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0)+8;
- end;
- y:=ExampleVulkanApplication.TextOverlay.FontCharHeight*5.0;
+ end;}
+ cy:=ExampleVulkanApplication.TextOverlay.FontCharHeight*5.0;
  for Index:=0 to RegisteredExamplesList.Count-1 do begin
   IsSelected:=fSelectedIndex=Index;
   s:=' '+RegisteredExamplesList[Index]+' ';
   if IsSelected then begin
    s:='>'+s+'<';
   end;
-  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,y,2.0,toaCenter,s,1.0-BoolToInt[IsSelected],1.0-BoolToInt[IsSelected],1.0,(BoolToInt[IsSelected]*0.95)+0.05,1.0,1.0,1.0,1.0);
-  y:=y+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0)+8;
+  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,cy,2.0,toaCenter,s,1.0-BoolToInt[IsSelected],1.0-BoolToInt[IsSelected],1.0,(BoolToInt[IsSelected]*0.95)+0.05,1.0,1.0,1.0,1.0);
+  cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*2.0)+8;
  end;
+ fReady:=true;
 end;
 
 procedure TScreenMainMenu.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
