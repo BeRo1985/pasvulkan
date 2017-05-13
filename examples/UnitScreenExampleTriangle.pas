@@ -383,8 +383,6 @@ begin
 
   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[SwapChainImageIndex];
 
-//VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-
   VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
 
   fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
@@ -404,7 +402,7 @@ begin
 
   fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 
-  VulkanCommandBuffer.EndRecording;{}
+  VulkanCommandBuffer.EndRecording;
 
  end;
 
@@ -428,35 +426,9 @@ begin
 end;
 
 procedure TScreenExampleTriangle.Draw(var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
-//var VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
  inherited Draw(pWaitSemaphore,nil);
  if assigned(fVulkanGraphicsPipeline) then begin
-
-//  VulkanCommandBuffer:=fVulkanRenderCommandBuffers[VulkanApplication.CurrentSwapChainImageIndex];
-
-{ VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-
-  VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
-
-  fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                    VulkanApplication.VulkanPresentationSurface.VulkanSwapChainSimpleDirectRenderTarget.FrameBuffers[VulkanApplication.CurrentSwapChainImageIndex],
-                                    VK_SUBPASS_CONTENTS_INLINE,
-                                    0,
-                                    0,
-                                    VulkanApplication.VulkanPresentationSurface.VulkanSwapChain.Width,
-                                    VulkanApplication.VulkanPresentationSurface.VulkanSwapChain.Height);
-
-  VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSet.Handle,0,nil);
-  VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
-  VulkanCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanVertexBuffer.Handle,@Offsets);
-  VulkanCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanVertexBuffer.Handle,@Offsets);
-  VulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-  VulkanCommandBuffer.CmdDrawIndexed(length(TriangleIndices),1,0,0,1);
-
-  fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
-
-  VulkanCommandBuffer.EndRecording;}
 
   fVulkanRenderCommandBuffers[VulkanApplication.CurrentSwapChainImageIndex].Execute(VulkanApplication.VulkanDevice.GraphicsQueue,
                                                                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),

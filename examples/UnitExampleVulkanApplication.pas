@@ -164,8 +164,6 @@ end;
 
 procedure TExampleVulkanApplication.Draw(var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
 begin
-{ inherited Draw(pWaitSemaphore,pWaitFence);
- //fTextOverlay.Draw;}
  inherited Draw(pWaitSemaphore,nil);
  fTextOverlay.Draw(pWaitSemaphore,pWaitFence);
 end;
