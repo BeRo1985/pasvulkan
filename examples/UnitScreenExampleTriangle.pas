@@ -35,6 +35,7 @@ type TScreenExampleTriangle=class(TVulkanScreen)
        fVulkanCommandPool:TVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fReady:boolean;
       public
 
        constructor Create; override;
@@ -56,6 +57,22 @@ type TScreenExampleTriangle=class(TVulkanScreen)
        procedure BeforeDestroySwapChain; override;
 
        function HandleEvent(const pEvent:TSDL_Event):boolean; override;
+
+       function KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+
+       function KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+
+       function KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+
+       function TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+
+       function TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+
+       function TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean; override;
+
+       function MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean; override;
+
+       function Scrolled(const pAmount:TVkInt32):boolean; override;
 
        procedure Update(const pDeltaTime:double); override;
 
@@ -84,6 +101,7 @@ const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
 constructor TScreenExampleTriangle.Create;
 begin
  inherited Create;
+ fReady:=false;
 end;
 
 destructor TScreenExampleTriangle.Destroy;
@@ -422,12 +440,58 @@ begin
  result:=inherited HandleEvent(pEvent);
 end;
 
+function TScreenExampleTriangle.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ result:=false;
+ if fReady then begin
+  case pKeyCode of
+   KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
+    VulkanApplication.NextScreen:=TScreenMainMenu.Create;
+   end;
+  end;
+ end;
+end;
+
+function TScreenExampleTriangle.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TScreenExampleTriangle.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TScreenExampleTriangle.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+begin
+ result:=false;
+ VulkanApplication.NextScreen:=TScreenMainMenu.Create;
+end;
+
+function TScreenExampleTriangle.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TScreenExampleTriangle.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TScreenExampleTriangle.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TScreenExampleTriangle.Scrolled(const pAmount:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
 procedure TScreenExampleTriangle.Update(const pDeltaTime:double);
 begin
  inherited Update(pDeltaTime);
- if VulkanApplication.Input.IsKeyJustPressed(KEYCODE_AC_BACK) or VulkanApplication.Input.IsKeyJustPressed(KEYCODE_ESCAPE) then begin
-  VulkanApplication.NextScreen:=TScreenMainMenu.Create;
- end;
+ fReady:=true;
 end;
 
 procedure TScreenExampleTriangle.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
