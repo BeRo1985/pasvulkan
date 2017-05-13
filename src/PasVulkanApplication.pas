@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-13-13-57-0000                       *
+ *                        Version 2017-05-13-14-03-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1178,6 +1178,8 @@ var VulkanApplication:TVulkanApplication=nil;
 
      AndroidDeviceName:string='';
 
+function AndroidGetManufacturerName:TVulkanApplicationUnicodeString;
+function AndroidGetModelName:TVulkanApplicationUnicodeString;
 function AndroidGetDeviceName:TVulkanApplicationUnicodeString;
 function Android_JNI_GetEnv:PJNIEnv; cdecl;
 procedure ANativeActivity_onCreate(pActivity:PANativeActivity;pSavedState:pointer;pSavedStateSize:cuint32); cdecl;
@@ -6173,7 +6175,29 @@ begin
 end;
 
 {$if defined(fpc) and defined(android)}
-function AndroidGetDeviceName:TVulkanApplicationUnicodeString;
+function AndroidGetManufacturerName:TVulkanApplicationUnicodeString;
+var AndroisOSBuild:jclass;
+    ManufacturerID:JFieldID;
+    ManufacturerStringObject:JString;
+    ManufacturerStringLength:JSize;
+    ManufacturerStringChars:PJChar;
+begin
+ result:='';
+ AndroisOSBuild:=AndroidJavaEnv^.FindClass(AndroidJavaEnv,'android/os/Build');
+ ManufacturerID:=AndroidJavaEnv^.GetStaticFieldID(AndroidJavaEnv,AndroisOSBuild,'MANUFACTURER','Ljava/lang/String;');
+ ManufacturerStringObject:=AndroidJavaEnv^.GetStaticObjectField(AndroidJavaEnv,AndroisOSBuild,ManufacturerID);
+ ManufacturerStringLength:=AndroidJavaEnv^.GetStringLength(AndroidJavaEnv,ManufacturerStringObject);
+ ManufacturerStringChars:=AndroidJavaEnv^.GetStringChars(AndroidJavaEnv,ManufacturerStringObject,nil);
+ if assigned(ManufacturerStringChars) then begin
+  if ManufacturerStringLength>0 then begin
+   SetLength(result,ManufacturerStringLength);
+   Move(ManufacturerStringChars^,result[1],ManufacturerStringLength*SizeOf(WideChar));
+  end;
+  AndroidJavaEnv^.ReleaseStringChars(AndroidJavaEnv,ManufacturerStringObject,ManufacturerStringChars);
+ end;
+end;
+
+function AndroidGetModelName:TVulkanApplicationUnicodeString;
 var AndroisOSBuild:jclass;
     ModelID:JFieldID;
     ModelStringObject:JString;
@@ -6193,6 +6217,11 @@ begin
   end;
   AndroidJavaEnv^.ReleaseStringChars(AndroidJavaEnv,ModelStringObject,ModelStringChars);
  end;
+end;
+
+function AndroidGetDeviceName:TVulkanApplicationUnicodeString;
+begin
+ result:=AndroidGetManufacturerName+' '+AndroidGetModelName;
 end;
 
 function Android_JNI_GetEnv:PJNIEnv; cdecl;
