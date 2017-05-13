@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-13-13-51-0000                       *
+ *                        Version 2017-05-13-13-57-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -6177,14 +6177,22 @@ function AndroidGetDeviceName:TVulkanApplicationUnicodeString;
 var AndroisOSBuild:jclass;
     ModelID:JFieldID;
     ModelStringObject:JString;
+    ModelStringLength:JSize;
     ModelStringChars:PJChar;
 begin
+ result:='';
  AndroisOSBuild:=AndroidJavaEnv^.FindClass(AndroidJavaEnv,'android/os/Build');
  ModelID:=AndroidJavaEnv^.GetStaticFieldID(AndroidJavaEnv,AndroisOSBuild,'MODEL','Ljava/lang/String;');
  ModelStringObject:=AndroidJavaEnv^.GetStaticObjectField(AndroidJavaEnv,AndroisOSBuild,ModelID);
+ ModelStringLength:=AndroidJavaEnv^.GetStringLength(AndroidJavaEnv,ModelStringObject);
  ModelStringChars:=AndroidJavaEnv^.GetStringChars(AndroidJavaEnv,ModelStringObject,nil);
- result:=PWideChar(Pointer(ModelStringChars));
- AndroidJavaEnv^.ReleaseStringChars(AndroidJavaEnv,ModelStringObject,ModelStringChars);
+ if assigned(ModelStringChars) then begin
+  if ModelStringLength>0 then begin
+   SetLength(result,ModelStringLength);
+   Move(ModelStringChars^,result[1],ModelStringLength*SizeOf(WideChar));
+  end;
+  AndroidJavaEnv^.ReleaseStringChars(AndroidJavaEnv,ModelStringObject,ModelStringChars);
+ end;
 end;
 
 function Android_JNI_GetEnv:PJNIEnv; cdecl;
