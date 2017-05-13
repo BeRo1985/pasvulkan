@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-13-09-49-0000                       *
+ *                        Version 2017-05-13-10-33-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1423,7 +1423,7 @@ type EVulkanException=class(Exception);
        procedure CmdExecute(const pCommandBuffer:TVulkanCommandBuffer);
        procedure MetaCmdPresentToDrawImageBarrier(const pImage:TVulkanImage);
        procedure MetaCmdDrawToPresentImageBarrier(const pImage:TVulkanImage);
-       procedure Execute(const pQueue:TVulkanQueue;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
+       procedure Execute(const pQueue:TVulkanQueue;const pWaitDstStageFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
       published
        property Device:TVulkanDevice read fDevice;
        property CommandPool:TVulkanCommandPool read fCommandPool;
@@ -1433,17 +1433,26 @@ type EVulkanException=class(Exception);
 
      TVulkanCommandBufferSubmitQueueSubmitInfos=array of TVkSubmitInfo;
 
+     TVulkanCommandBufferSubmitQueueSubmitInfoSubmitInfoWaitSemaphores=array of TVkSemaphore;
+
+     TVulkanCommandBufferSubmitQueueSubmitInfoWaitDstStageFlags=array of TVkPipelineStageFlags;
+
+     TVulkanCommandBufferSubmitQueueSubmitInfoSubmitInfoSignalSemaphores=array of TVkSemaphore;
+
      TVulkanCommandBufferSubmitQueue=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
        fQueue:TVulkanQueue;
        fSubmitInfos:TVulkanCommandBufferSubmitQueueSubmitInfos;
+       fSubmitInfoWaitSemaphores:TVulkanCommandBufferSubmitQueueSubmitInfoSubmitInfoWaitSemaphores;
+       fSubmitInfoWaitDstStageFlags:TVulkanCommandBufferSubmitQueueSubmitInfoWaitDstStageFlags;
+       fSubmitInfoSignalSemaphores:TVulkanCommandBufferSubmitQueueSubmitInfoSubmitInfoSignalSemaphores;
        fCountSubmitInfos:TVkInt32;
       public
        constructor Create(const pQueue:TVulkanQueue); reintroduce;
        destructor Destroy; override;
        procedure Reset;
-       procedure QueueSubmit(const pCommandBuffer:TVulkanCommandBuffer;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
+       procedure QueueSubmit(const pCommandBuffer:TVulkanCommandBuffer;const pWaitDstStageFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
        procedure SubmitQueued(const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
      end;
 
@@ -9970,7 +9979,7 @@ begin
                     1,@ImageMemoryBarrier);
 end;
 
-procedure TVulkanCommandBuffer.Execute(const pQueue:TVulkanQueue;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
+procedure TVulkanCommandBuffer.Execute(const pQueue:TVulkanQueue;const pWaitDstStageFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
 var SubmitInfo:TVkSubmitInfo;
 begin
  if fLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
@@ -9981,11 +9990,12 @@ begin
   if assigned(pWaitSemaphore) then begin
    SubmitInfo.waitSemaphoreCount:=1;
    SubmitInfo.pWaitSemaphores:=@pWaitSemaphore.fSemaphoreHandle;
+   SubmitInfo.pWaitDstStageMask:=@pWaitDstStageFlags;
   end else begin
    SubmitInfo.waitSemaphoreCount:=0;
    SubmitInfo.pWaitSemaphores:=nil;
+   SubmitInfo.pWaitDstStageMask:=nil;
   end;
-  SubmitInfo.pWaitDstStageMask:=@pFlags;
   SubmitInfo.commandBufferCount:=1;
   SubmitInfo.pCommandBuffers:=@fCommandBufferHandle;
   if assigned(pSignalSemaphore) then begin
@@ -10022,12 +10032,18 @@ begin
  fDevice:=pQueue.fDevice;
  fQueue:=pQueue;
  fSubmitInfos:=nil;
+ fSubmitInfoWaitSemaphores:=nil;
+ fSubmitInfoWaitDstStageFlags:=nil;
+ fSubmitInfoSignalSemaphores:=nil;
  fCountSubmitInfos:=0;
 end;
 
 destructor TVulkanCommandBufferSubmitQueue.Destroy;
 begin
  fSubmitInfos:=nil;
+ fSubmitInfoWaitSemaphores:=nil;
+ fSubmitInfoWaitDstStageFlags:=nil;
+ fSubmitInfoSignalSemaphores:=nil;
  fCountSubmitInfos:=0;
  inherited Destroy;
 end;
@@ -10037,7 +10053,7 @@ begin
  fCountSubmitInfos:=0;
 end;
                                                  
-procedure TVulkanCommandBufferSubmitQueue.QueueSubmit(const pCommandBuffer:TVulkanCommandBuffer;const pFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
+procedure TVulkanCommandBufferSubmitQueue.QueueSubmit(const pCommandBuffer:TVulkanCommandBuffer;const pWaitDstStageFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
 var Index:TVkInt32;
     SubmitInfo:PVkSubmitInfo;
 begin
@@ -10047,29 +10063,36 @@ begin
   inc(fCountSubmitInfos);
   if length(fSubmitInfos)<fCountSubmitInfos then begin
    SetLength(fSubmitInfos,fCountSubmitInfos*2);
+   SetLength(fSubmitInfoWaitSemaphores,fCountSubmitInfos*2);
+   SetLength(fSubmitInfoWaitDstStageFlags,fCountSubmitInfos*2);
+   SetLength(fSubmitInfoSignalSemaphores,fCountSubmitInfos*2);
   end;
   SubmitInfo:=@fSubmitInfos[Index];
 
-  FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
-  SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  SubmitInfo.pNext:=nil;
+  FillChar(SubmitInfo^,SizeOf(TVkSubmitInfo),#0);
+  SubmitInfo^.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  SubmitInfo^.pNext:=nil;
   if assigned(pWaitSemaphore) then begin
-   SubmitInfo.waitSemaphoreCount:=1;
-   SubmitInfo.pWaitSemaphores:=@pWaitSemaphore.fSemaphoreHandle;
+   SubmitInfo^.waitSemaphoreCount:=1;
+   fSubmitInfoWaitSemaphores[Index]:=pWaitSemaphore.fSemaphoreHandle;
+   fSubmitInfoWaitDstStageFlags[Index]:=pWaitDstStageFlags;
   end else begin
-   SubmitInfo.waitSemaphoreCount:=0;
-   SubmitInfo.pWaitSemaphores:=nil;
+   SubmitInfo^.waitSemaphoreCount:=0;
+   fSubmitInfoWaitSemaphores[Index]:=VK_NULL_HANDLE;
+   fSubmitInfoWaitDstStageFlags[Index]:=0;
   end;
-  SubmitInfo.pWaitDstStageMask:=@pFlags;
-  SubmitInfo.commandBufferCount:=1;
-  SubmitInfo.pCommandBuffers:=@pCommandBuffer.fCommandBufferHandle;
+  SubmitInfo^.pWaitSemaphores:=nil;
+  SubmitInfo^.pWaitDstStageMask:=nil;
+  SubmitInfo^.commandBufferCount:=1;
+  SubmitInfo^.pCommandBuffers:=@pCommandBuffer.fCommandBufferHandle;
   if assigned(pSignalSemaphore) then begin
-   SubmitInfo.signalSemaphoreCount:=1;
-   SubmitInfo.pSignalSemaphores:=@pSignalSemaphore.fSemaphoreHandle;
+   SubmitInfo^.signalSemaphoreCount:=1;
+   fSubmitInfoSignalSemaphores[Index]:=pSignalSemaphore.fSemaphoreHandle;
   end else begin
-   SubmitInfo.signalSemaphoreCount:=0;
-   SubmitInfo.pSignalSemaphores:=nil;
+   SubmitInfo^.signalSemaphoreCount:=0;
+   fSubmitInfoSignalSemaphores[Index]:=VK_NULL_HANDLE;
   end;
+  SubmitInfo^.pSignalSemaphores:=nil;
 
  end else begin
   raise EVulkanException.Create('Execute called from a non-primary command buffer!');
@@ -10077,7 +10100,51 @@ begin
 end;
 
 procedure TVulkanCommandBufferSubmitQueue.SubmitQueued(const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
+var Index:TVkInt32;
+    SubmitInfo:PVkSubmitInfo;
 begin
+
+ if fCountSubmitInfos>0 then begin
+
+  for Index:=0 to fCountSubmitInfos-1 do begin
+   SubmitInfo:=@fSubmitInfos[Index];
+   if SubmitInfo^.waitSemaphoreCount>0 then begin
+    SubmitInfo^.pWaitSemaphores:=@fSubmitInfoWaitSemaphores[Index];
+    SubmitInfo^.pWaitDstStageMask:=@fSubmitInfoWaitDstStageFlags[Index];
+   end else begin
+    SubmitInfo^.pWaitSemaphores:=nil;
+    SubmitInfo^.pWaitDstStageMask:=nil;
+   end;
+   if SubmitInfo^.signalSemaphoreCount>0 then begin
+    SubmitInfo^.pSignalSemaphores:=@fSubmitInfoSignalSemaphores[Index];
+   end else begin
+    SubmitInfo^.pSignalSemaphores:=nil;
+   end;
+  end;
+
+  if assigned(pFence) then begin
+
+   fQueue.Submit(fCountSubmitInfos,@fSubmitInfos[0],pFence);
+
+   if pDoWaitAndResetFence then begin
+    pFence.WaitFor;
+    pFence.Reset;
+   end;
+
+  end else begin
+
+   fQueue.Submit(fCountSubmitInfos,@fSubmitInfos[0],nil);
+
+  end;
+
+ end else begin
+
+  if pDoWaitAndResetFence then begin
+   pFence.Reset;
+  end;
+
+ end;
+
 end;
 
 constructor TVulkanRenderPass.Create(const pDevice:TVulkanDevice);
