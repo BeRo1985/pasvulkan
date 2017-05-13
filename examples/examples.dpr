@@ -20,6 +20,7 @@ uses
   PasVulkanSDL2 in '..\src\PasVulkanSDL2.pas',
   PasVulkanStaticLinking in '..\src\PasVulkanStaticLinking.pas',
   PasVulkanApplication in '..\src\PasVulkanApplication.pas',
+  UnitRegisteredExamplesList in 'UnitRegisteredExamplesList.pas',
   UnitExampleVulkanApplication in 'UnitExampleVulkanApplication.pas',
   UnitTextOverlay in 'UnitTextOverlay.pas',
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas',
