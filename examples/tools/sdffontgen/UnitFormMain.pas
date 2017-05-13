@@ -10,7 +10,7 @@ uses
 
 const BitmapWidth=64;
       BitmapHeight=128;
-      BitmapDepth=128; // 0x00 .. 0xff
+      BitmapDepth=256; // 0x00 .. 0xff
 
       SpreadScale=8.0;
 
@@ -690,8 +690,8 @@ var x,y,lx,ly:longint;
 begin
  b:=ImageBitmap.Picture.Bitmap;
  b.Width:=BitmapWidth*16;
- b.Height:=BitmapHeight*8;
- for ly:=0 to 7 do begin
+ b.Height:=BitmapHeight*16;
+ for ly:=0 to 15 do begin
   for lx:=0 to 15 do begin
    for y:=0 to BitmapHeight-1 do begin
     l:=b.ScanLine[(ly*BitmapHeight)+y];
