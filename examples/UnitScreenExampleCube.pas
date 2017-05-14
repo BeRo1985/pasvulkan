@@ -19,7 +19,7 @@ uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanSDL2,PasVulkanApplication,UnitRe
 type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
      TScreenExampleCubeUniformBuffer=record
       ModelViewProjectionMatrix:TMatrix4x4;
-      ModelViewNormalMatrix:TMatrix3x3;
+      ModelViewNormalMatrix:TMatrix4x4; // actually mat3, but it would have then a mat3x4 alignment, according to https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout  
      end;
 
      TScreenExampleCube=class(TVulkanScreen)
@@ -732,7 +732,7 @@ begin
   ProjectionMatrix:=Matrix4x4Perspective(45.0,VulkanApplication.Width/VulkanApplication.Height,1.0,128.0);
 
   fUniformBuffer.ModelViewProjectionMatrix:=Matrix4x4TermMul(Matrix4x4TermMul(ModelMatrix,ViewMatrix),ProjectionMatrix);
-  fUniformBuffer.ModelViewNormalMatrix:=Matrix3x3TermTranspose(Matrix3x3TermInverse(Matrix3x3(Matrix4x4TermMul(ModelMatrix,ViewMatrix))));
+  fUniformBuffer.ModelViewNormalMatrix:=Matrix4x4(Matrix3x3TermTranspose(Matrix3x3TermInverse(Matrix3x3(Matrix4x4TermMul(ModelMatrix,ViewMatrix)))));
 
   p:=fVulkanUniformBuffer.Memory.MapMemory(0,SizeOf(TScreenExampleCubeUniformBuffer));
   if assigned(p) then begin

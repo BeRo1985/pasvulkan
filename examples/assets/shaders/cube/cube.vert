@@ -11,7 +11,7 @@ layout (location = 4) in vec2 inTexCoord;
 
 layout (binding = 0) uniform UBO {
 	mat4 modelViewProjectionMatrix;
-	mat3 modelViewNormalMatrix;
+	mat4 modelViewNormalMatrix; // actually mat3, but it would have then a mat3x4 alignment, according to https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout
 } ubo;
 
 layout (location = 0) out vec3 outNormal;
@@ -22,7 +22,7 @@ out gl_PerVertex {
 };
 
 void main() {
-  outNormal = ubo.modelViewNormalMatrix * inNormal;
+  outNormal = (ubo.modelViewNormalMatrix * vec4(inNormal, 1.0)).xyz;
 	outTexCoord = inTexCoord;
 	gl_Position = ubo.modelViewProjectionMatrix * vec4(inPosition, 1.0);
 }
