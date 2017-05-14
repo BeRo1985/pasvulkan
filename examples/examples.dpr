@@ -20,6 +20,7 @@ uses
   PasVulkanSDL2 in '..\src\PasVulkanSDL2.pas',
   PasVulkanStaticLinking in '..\src\PasVulkanStaticLinking.pas',
   PasVulkanApplication in '..\src\PasVulkanApplication.pas',
+  UnitMath3D in 'UnitMath3D.pas',
   UnitRegisteredExamplesList in 'UnitRegisteredExamplesList.pas',
   UnitExampleVulkanApplication in 'UnitExampleVulkanApplication.pas',
   UnitTextOverlay in 'UnitTextOverlay.pas',
@@ -27,6 +28,7 @@ uses
   UnitScreenMainMenu in 'UnitScreenMainMenu.pas',
   UnitScreenExit in 'UnitScreenExit.pas',
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas',
+  UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
   UnitSDFFont in 'UnitSDFFont.pas';
 
 {$if defined(fpc) and defined(android)}

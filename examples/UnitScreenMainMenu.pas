@@ -114,7 +114,7 @@ begin
    KEYCODE_RETURN:begin
     if fSelectedIndex=RegisteredExamplesList.Count then begin
      VulkanApplication.NextScreen:=TScreenExit.Create;
-    end else begin
+    end else if fSelectedIndex>0 then begin
      VulkanApplication.NextScreen:=TVulkanScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
     end;
    end;
@@ -145,7 +145,7 @@ begin
     fSelectedIndex:=Index;
     if fSelectedIndex=RegisteredExamplesList.Count then begin
      VulkanApplication.NextScreen:=TScreenExit.Create;
-    end else begin
+    end else if fSelectedIndex>0 then begin
      VulkanApplication.NextScreen:=TVulkanScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
     end;
    end;

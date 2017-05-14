@@ -1,0 +1,16 @@
+@echo off
+
+cd textoverlay
+call compileshaders.bat
+cd ..
+
+cd triangle
+call compileshaders.bat
+cd ..
+
+cd cube
+call compileshaders.bat
+cd ..
+
+echo.
+pause
