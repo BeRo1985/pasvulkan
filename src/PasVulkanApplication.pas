@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-14-10-13-0000                       *
+ *                        Version 2017-05-14-14-53-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -5478,6 +5478,16 @@ begin
 
  if fVulkanRecreationKind=vavrkNone then begin
 
+  if not fBlocking then begin
+   if fVulkanWaitFencesReady[fCurrentSwapChainImageIndex] then begin
+    if fVulkanWaitFences[fCurrentSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
+     exit;
+    end;
+    fVulkanWaitFences[fCurrentSwapChainImageIndex].Reset;
+    fVulkanWaitFencesReady[fCurrentSwapChainImageIndex]:=false;
+   end;
+  end;
+
   if (fVulkanSwapChain.Width<>Width) or
      (fVulkanSwapChain.Height<>Height) or
      ((fVSync and (fVulkanSwapChain.PresentMode<>VK_PRESENT_MODE_FIFO_KHR)) or
@@ -5587,16 +5597,14 @@ begin
 
  end else begin
 
-  if fVulkanWaitFencesReady[fCurrentSwapChainImageIndex] then begin
-   if fVulkanWaitFences[fCurrentSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
-    if fBlocking then begin
+  if fBlocking then begin
+   if fVulkanWaitFencesReady[fCurrentSwapChainImageIndex] then begin
+    if fVulkanWaitFences[fCurrentSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
      fVulkanWaitFences[fCurrentSwapChainImageIndex].WaitFor;
-    end else begin
-     exit;
     end;
+    fVulkanWaitFences[fCurrentSwapChainImageIndex].Reset;
+    fVulkanWaitFencesReady[fCurrentSwapChainImageIndex]:=false;
    end;
-   fVulkanWaitFences[fCurrentSwapChainImageIndex].Reset;
-   fVulkanWaitFencesReady[fCurrentSwapChainImageIndex]:=false;
   end;
 
   fVulkanWaitSemaphore:=fVulkanPresentCompleteSemaphores[fCurrentImageIndex];
