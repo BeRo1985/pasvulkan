@@ -56,6 +56,7 @@ const FontSize=3.0;
 constructor TScreenMainMenu.Create;
 begin
  inherited Create;
+ fSelectedIndex:=-1;
  fReady:=false;
 end;
 
