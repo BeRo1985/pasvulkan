@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-14-04-41-0000                       *
+ *                        Version 2017-05-14-10-08-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -16721,7 +16721,7 @@ begin
                    ImageArrayElements,
                    ImageFaces,
                    ImageMipMaps,
-                   [vtufSampled],
+                   [vtufTransferDst,vtufSampled],
                    Data,
                    DataSize,
                    false,
@@ -17017,7 +17017,7 @@ begin
                     1,
                     1,
                     MipMapLevels[pMipMaps],
-                    [vtufSampled],
+                    [vtufTransferDst,vtufSampled],
                     ImageData,
                     ImageWidth*ImageHeight*SizeOf(TVkFloat)*4,
                     false,
@@ -17405,7 +17405,7 @@ begin
                     1,
                     1,
                     MipMapLevels[pMipMaps],
-                    [vtufSampled],
+                    [vtufTransferDst,vtufSampled],
                     ImageData,
                     ImageWidth*ImageHeight*SizeOf(TVkUInt8)*4,
                     false,
@@ -18723,7 +18723,7 @@ begin
                      1,
                      1,
                      MipMapLevels[pMipMaps],
-                     [vtufSampled],
+                     [vtufTransferDst,vtufSampled],
                      ImageData,
                      ImageWidth*ImageHeight*SizeOf(TVkUInt8)*4,
                      false,
@@ -18927,7 +18927,7 @@ begin
                    pCountArrayElements,
                    pCountFaces,
                    CountMipMaps,
-                   [vtufSampled],
+                   [vtufTransferDst,vtufSampled],
                    @Data[0],
                    DataSize,
                    false,

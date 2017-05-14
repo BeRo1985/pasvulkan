@@ -10,8 +10,8 @@ layout (location = 3) in vec3 inNormal;
 layout (location = 4) in vec2 inTexCoord;
 
 layout (binding = 0) uniform UBO {
-	mat4 viewModelProjectionMatrix;
-	mat3 normalViewMatrix;
+	mat4 modelViewProjectionMatrix;
+	mat3 modelViewNormalMatrix;
 } ubo;
 
 layout (location = 0) out vec3 outNormal;
@@ -22,7 +22,7 @@ out gl_PerVertex {
 };
 
 void main() {
-  outNormal = ubo.normalViewMatrix * inNormal;
+  outNormal = ubo.modelViewNormalMatrix * inNormal;
 	outTexCoord = inTexCoord;
-	gl_Position = ubo.viewModelProjectionMatrix * vec4(inPosition, 1.0);
+	gl_Position = ubo.modelViewProjectionMatrix * vec4(inPosition, 1.0);
 }

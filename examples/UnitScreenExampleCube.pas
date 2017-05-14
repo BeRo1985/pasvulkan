@@ -226,8 +226,8 @@ begin
                                                  1,
                                                  true,
                                                  true);
-                                                 
-{ Stream:=VulkanApplication.Assets.GetAssetStream('textures/box_albedo.png');
+
+{Stream:=VulkanApplication.Assets.GetAssetStream('textures/box_albedo.png');
  try
   fBoxAlbedoTexture:=TVulkanTexture.CreateFromPNG(VulkanApplication.VulkanDevice,
                                                   VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
@@ -235,10 +235,11 @@ begin
                                                   VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                                   VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                                   Stream,
-                                                  false);
+                                                  true);
  finally
   Stream.Free;
  end;}
+ 
  fBoxAlbedoTexture.WrapModeU:=vtwmClampToEdge;
  fBoxAlbedoTexture.WrapModeV:=vtwmClampToEdge;
  fBoxAlbedoTexture.WrapModeW:=vtwmClampToEdge;
@@ -476,8 +477,8 @@ begin
  fVulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
  fVulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
  fVulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
- fVulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
- fVulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
+ fVulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+ fVulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
  fVulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
  fVulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
  fVulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
@@ -511,7 +512,7 @@ begin
 
  fVulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
  fVulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;
- fVulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+ fVulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS;
  fVulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
  fVulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
 
@@ -728,7 +729,7 @@ begin
   ModelMatrix:=Matrix4x4TermMul(Matrix4x4Rotate(fTimes[VulkanApplication.DrawFrameCounter and 1]*1.0,Vector3(0.0,0.0,1.0)),
                                 Matrix4x4Rotate(fTimes[VulkanApplication.DrawFrameCounter and 1]*0.5,Vector3(0.0,1.0,0.0)));
   ViewMatrix:=Matrix4x4Translate(0.0,0.0,-6.0);
-  ProjectionMatrix:=Matrix4x4Perspective(45.0,VulkanApplication.Width/VulkanApplication.Height,0.01,128.0);
+  ProjectionMatrix:=Matrix4x4Perspective(45.0,VulkanApplication.Width/VulkanApplication.Height,1.0,128.0);
 
   fUniformBuffer.ModelViewProjectionMatrix:=Matrix4x4TermMul(Matrix4x4TermMul(ModelMatrix,ViewMatrix),ProjectionMatrix);
   fUniformBuffer.ModelViewNormalMatrix:=Matrix3x3TermTranspose(Matrix3x3TermInverse(Matrix3x3(Matrix4x4TermMul(ModelMatrix,ViewMatrix))));
