@@ -534,7 +534,7 @@ begin
 end;
 
 procedure TTextOverlay.PreUpdate(const pDeltaTime:double);
-var s:string;
+var FPS,ms:string;
 begin
  fUpdateBufferIndex:=VulkanApplication.UpdateFrameCounter and 1;
  fBufferChars:=@fBufferCharsBuffers[fUpdateBufferIndex];
@@ -542,8 +542,10 @@ begin
   Reset;
   AddText(0.0,fFontCharHeight*0.0,1.0,toaLeft,'Device: '+VulkanApplication.VulkanDevice.PhysicalDevice.DeviceName{$ifdef Android}+' ('+TVulkanApplicationRawByteString(AndroidDeviceName)+')'{$endif});
   AddText(0.0,fFontCharHeight*1.0,1.0,toaLeft,'Vulkan API version: '+IntToStr(VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 22)+'.'+IntToStr((VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 12) and $3ff)+'.'+IntToStr((VulkanApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 0) and $fff));
-  Str(VulkanApplication.FramesPerSecond:1:1,s);
-  AddText(0.0,fFontCharHeight*2.0,1.0,toaLeft,'Frame rate: '+s+' FPS');
+  Str(VulkanApplication.FramesPerSecond:1:1,FPS);
+  Str(VulkanApplication.DeltaTime*1000.0:1:2,ms);
+  AddText(0.0,fFontCharHeight*2.0,1.0,toaLeft,'Frame rate: '+FPS+' FPS');
+  AddText(0.0,fFontCharHeight*3.0,1.0,toaLeft,'Frame time: '+MS+' ms');
  end;
 end;
 

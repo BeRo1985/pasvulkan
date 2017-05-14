@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-14-05-17-0000                       *
+ *                        Version 2017-05-14-10-13-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1188,6 +1188,8 @@ type EVulkanApplication=class(Exception);
        property NextScreen:TVulkanScreen read fNextScreen write SetNextScreen;
 
        property NextScreenClass:TVulkanScreenClass read fNextScreenClass write SetNextScreenClass;
+
+       property DeltaTime:double read fFloatDeltaTime;
 
        property FramesPerSecond:double read fFramesPerSecond;
 
