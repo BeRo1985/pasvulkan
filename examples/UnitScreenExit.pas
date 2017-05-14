@@ -51,7 +51,7 @@ implementation
 
 uses UnitExampleVulkanApplication,UnitTextOverlay,UnitScreenMainMenu;
 
-const FontSize=4.0;
+const FontSize=3.0;
 
 constructor TScreenExit.Create;
 begin
@@ -124,7 +124,7 @@ begin
      VulkanApplication.NextScreen:=TScreenMainMenu.Create;
     end;
    end;
-   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -146,7 +146,7 @@ begin
    if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
-   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -163,7 +163,7 @@ begin
    if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
-   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -183,7 +183,7 @@ var Index:TVkInt32;
 begin
  inherited Update(pDeltaTime);
  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Are you sure to exit?');
- fStartY:=(VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8)*2)-8))*0.5;
+ fStartY:=(VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*2)-(4*FontSize)))*0.5;
  cy:=fStartY;
  for Index:=0 to 1 do begin
   IsSelected:=fSelectedIndex=Index;
@@ -192,7 +192,7 @@ begin
    s:='>'+s+'<';
   end;
   ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,cy,FontSize,toaCenter,s,1.0-BoolToInt[IsSelected],1.0-BoolToInt[IsSelected],1.0,(BoolToInt[IsSelected]*0.95)+0.05,1.0,1.0,1.0,1.0);
-  cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+  cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
  end;
  fReady:=true;
 end;

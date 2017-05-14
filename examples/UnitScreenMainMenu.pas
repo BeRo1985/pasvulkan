@@ -51,7 +51,7 @@ implementation
 
 uses UnitExampleVulkanApplication,UnitTextOverlay,UnitScreenExit;
 
-const FontSize=2.0;
+const FontSize=3.0;
 
 constructor TScreenMainMenu.Create;
 begin
@@ -124,7 +124,7 @@ begin
      VulkanApplication.NextScreen:=TVulkanScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
     end;
    end;
-   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -146,7 +146,7 @@ begin
    if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
-   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -163,7 +163,7 @@ begin
    if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
-   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -182,7 +182,7 @@ var Index:TVkInt32;
 begin
  inherited Update(pDeltaTime);
  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Main menu');
- fStartY:=(VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8)*(RegisteredExamplesList.Count+1))-8))*0.5;
+ fStartY:=(VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*(RegisteredExamplesList.Count+1))-(4*FontSize)))*0.5;
  cy:=fStartY;
  for Index:=0 to RegisteredExamplesList.Count-1 do begin
   IsSelected:=fSelectedIndex=Index;
@@ -191,7 +191,7 @@ begin
    s:='>'+s+'<';
   end;
   ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,cy,FontSize,toaCenter,s,1.0-BoolToInt[IsSelected],1.0-BoolToInt[IsSelected],1.0,(BoolToInt[IsSelected]*0.95)+0.05,1.0,1.0,1.0,1.0);
-  cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+  cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
  end;
  begin
   IsSelected:=fSelectedIndex=RegisteredExamplesList.Count;
