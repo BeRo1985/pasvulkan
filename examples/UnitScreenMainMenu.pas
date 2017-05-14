@@ -87,6 +87,30 @@ begin
      inc(fSelectedIndex);
     end;
    end;
+   KEYCODE_PAGEUP:begin
+    if fSelectedIndex<0 then begin
+     fSelectedIndex:=RegisteredExamplesList.Count;
+    end;
+    dec(fSelectedIndex,5);
+    while fSelectedIndex<0 do begin
+     inc(fSelectedIndex,RegisteredExamplesList.Count+1);
+    end;
+   end;
+   KEYCODE_PAGEDOWN:begin
+    if fSelectedIndex<0 then begin
+     fSelectedIndex:=0;
+    end;
+    inc(fSelectedIndex,5);
+    while fSelectedIndex>RegisteredExamplesList.Count do begin
+     dec(fSelectedIndex,RegisteredExamplesList.Count+1);
+    end;
+   end;
+   KEYCODE_HOME:begin
+    fSelectedIndex:=0;
+   end;
+   KEYCODE_END:begin
+    fSelectedIndex:=RegisteredExamplesList.Count;
+   end;
    KEYCODE_RETURN:begin
     if fSelectedIndex=RegisteredExamplesList.Count then begin
      VulkanApplication.NextScreen:=TScreenExit.Create;

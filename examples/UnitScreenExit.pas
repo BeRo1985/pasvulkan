@@ -87,6 +87,30 @@ begin
      inc(fSelectedIndex);
     end;
    end;
+   KEYCODE_PAGEUP:begin
+    if fSelectedIndex<0 then begin
+     fSelectedIndex:=1;
+    end;
+    dec(fSelectedIndex,5);
+    while fSelectedIndex<0 do begin
+     inc(fSelectedIndex,2);
+    end;
+   end;
+   KEYCODE_PAGEDOWN:begin
+    if fSelectedIndex<0 then begin
+     fSelectedIndex:=0;
+    end;
+    inc(fSelectedIndex,5);
+    while fSelectedIndex>=2 do begin
+     dec(fSelectedIndex,2);
+    end;
+   end;
+   KEYCODE_HOME:begin
+    fSelectedIndex:=0;
+   end;
+   KEYCODE_END:begin
+    fSelectedIndex:=1;
+   end;
    KEYCODE_RETURN:begin
     if fSelectedIndex=0 then begin
      VulkanApplication.Terminate;

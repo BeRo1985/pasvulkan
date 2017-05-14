@@ -467,6 +467,22 @@ begin
      inc(fSelectedIndex);
     end;
    end;
+   KEYCODE_PAGEUP:begin
+    if fSelectedIndex<0 then begin
+     fSelectedIndex:=0;
+    end;
+   end;
+   KEYCODE_PAGEDOWN:begin
+    if fSelectedIndex<0 then begin
+     fSelectedIndex:=0;
+    end;
+   end;
+   KEYCODE_HOME:begin
+    fSelectedIndex:=0;
+   end;
+   KEYCODE_END:begin
+    fSelectedIndex:=0
+   end;
    KEYCODE_RETURN:begin
     if fSelectedIndex=0 then begin
      VulkanApplication.NextScreen:=TScreenMainMenu.Create;
