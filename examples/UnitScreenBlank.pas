@@ -232,52 +232,8 @@ begin
 end;
 
 function TScreenBlank.HandleEvent(const pEvent:TSDL_Event):boolean;
-const QuitMsgBoxButtons:array[0..1] of TSDL_MessageBoxButtonData=
-{$ifdef Windows}
-       ((flags:SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;buttonid:0;text:'No'),
-        (flags:SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;buttonid:1;text:'Yes'));
-{$else}
-       ((flags:SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;buttonid:1;text:'Yes'),
-        (flags:SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;buttonid:0;text:'No'));
-{$endif}
-      QuitMsgBoxColorScheme:TSDL_MessageBoxColorScheme=
-       (colors:((r:0;g:0;b:0),
-                (r:255;g:255;b:255),
-                (r:192;g:192;b:192),
-                (r:64;g:64;b:64),
-                (r:128;g:128;b:128)));
-      QuitMsgBoxData:TSDL_MessageBoxData=
-       (
-        flags:SDL_MESSAGEBOX_WARNING;
-        window:nil;
-        title:'PasVulkanApplication';
-        message:'Are you sure to exit?';
-        numbuttons:length(QuitMsgBoxButtons);
-        buttons:@QuitMsgBoxButtons[0];
-        colorScheme:@QuitMsgBoxColorScheme;
-       );
-var QuitMsgBoxDataButtonID:TSDLInt32;
 begin
- result:=false;
- case pEvent.type_ of
-  SDL_KEYDOWN:begin
-{$if defined(fpc) and defined(android)}
-   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(AnsiString('Keydown: '+IntToStr(pEvent.key.keysym.sym))));
-{$ifend}
-   case pEvent.key.keysym.sym of
-    SDLK_AC_BACK,SDLK_ESCAPE:begin
-     QuitMsgBoxDataButtonID:=-1;
-     if (SDL_ShowMessageBox(@QuitMsgBoxData,@QuitMsgBoxDataButtonID)=0) and (QuitMsgBoxDataButtonID<>0) then begin
-      VulkanApplication.Terminate;
-     end;
-     result:=true;
-    end;
-   end;
-  end;
- end;
- if not result then begin
-  result:=inherited HandleEvent(pEvent);
- end;
+ result:=inherited HandleEvent(pEvent);
 end;
 
 procedure TScreenBlank.Update(const pDeltaTime:double);

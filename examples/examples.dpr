@@ -25,6 +25,7 @@ uses
   UnitTextOverlay in 'UnitTextOverlay.pas',
   UnitScreenBlank in 'UnitScreenBlank.pas',
   UnitScreenMainMenu in 'UnitScreenMainMenu.pas',
+  UnitScreenExit in 'UnitScreenExit.pas',
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas',
   UnitSDFFont in 'UnitSDFFont.pas';
 

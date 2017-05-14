@@ -36,6 +36,8 @@ type TScreenExampleTriangle=class(TVulkanScreen)
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
        fReady:boolean;
+       fSelectedIndex:TVkInt32;
+       fStartY:single;
       public
 
        constructor Create; override;
@@ -82,7 +84,7 @@ type TScreenExampleTriangle=class(TVulkanScreen)
 
 implementation
 
-uses UnitScreenMainMenu;
+uses UnitExampleVulkanApplication,UnitTextOverlay,UnitScreenMainMenu;
 
 const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
        (((0.5,0.5,0.0),(1.0,0.0,0.0)),
@@ -98,9 +100,12 @@ const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
 
       Offsets:array[0..0] of TVkDeviceSize=(0);
 
+      FontSize=2.0;
+
 constructor TScreenExampleTriangle.Create;
 begin
  inherited Create;
+ fSelectedIndex:=-1;
  fReady:=false;
 end;
 
@@ -448,6 +453,25 @@ begin
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
     VulkanApplication.NextScreen:=TScreenMainMenu.Create;
    end;
+   KEYCODE_UP:begin
+    if fSelectedIndex<=0 then begin
+     fSelectedIndex:=0;
+    end else begin
+     dec(fSelectedIndex);
+    end;
+   end;
+   KEYCODE_DOWN:begin
+    if fSelectedIndex>=0 then begin
+     fSelectedIndex:=0;
+    end else begin
+     inc(fSelectedIndex);
+    end;
+   end;
+   KEYCODE_RETURN:begin
+    if fSelectedIndex=0 then begin
+     VulkanApplication.NextScreen:=TScreenMainMenu.Create;
+    end;
+   end;
   end;
  end;
 end;
@@ -463,9 +487,23 @@ begin
 end;
 
 function TScreenExampleTriangle.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+var Index:TVkInt32;
+    cy:single;
 begin
  result:=false;
- VulkanApplication.NextScreen:=TScreenMainMenu.Create;
+ if fReady then begin
+  fSelectedIndex:=-1;
+  cy:=fStartY;
+  for Index:=0 to 0 do begin
+   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+    fSelectedIndex:=Index;
+    if fSelectedIndex=0 then begin
+     VulkanApplication.NextScreen:=TScreenMainMenu.Create;
+    end;
+   end;
+   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+  end;
+ end;
 end;
 
 function TScreenExampleTriangle.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
@@ -474,13 +512,37 @@ begin
 end;
 
 function TScreenExampleTriangle.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+var Index:TVkInt32;
+    cy:single;
 begin
  result:=false;
+ if fReady then begin
+  fSelectedIndex:=-1;
+  cy:=fStartY;
+  for Index:=0 to 0 do begin
+   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+    fSelectedIndex:=Index;
+   end;
+   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+  end;
+ end;
 end;
 
 function TScreenExampleTriangle.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+var Index:TVkInt32;
+    cy:single;
 begin
  result:=false;
+ if fReady then begin
+  fSelectedIndex:=-1;
+  cy:=fStartY;
+  for Index:=0 to 0 do begin
+   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+    fSelectedIndex:=Index;
+   end;
+   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+  end;
+ end;
 end;
 
 function TScreenExampleTriangle.Scrolled(const pAmount:TVkInt32):boolean;
@@ -489,8 +551,26 @@ begin
 end;
 
 procedure TScreenExampleTriangle.Update(const pDeltaTime:double);
+const BoolToInt:array[boolean] of TVkInt32=(0,1);
+      Options:array[0..0] of string=('Back');
+var Index:TVkInt32;
+    cy:single;
+    s:string;
+    IsSelected:boolean;
 begin
  inherited Update(pDeltaTime);
+ ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Triangle');
+ fStartY:=(VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8)*2)-8));
+ cy:=fStartY;
+ for Index:=0 to 0 do begin
+  IsSelected:=fSelectedIndex=Index;
+  s:=' '+Options[Index]+' ';
+  if IsSelected then begin
+   s:='>'+s+'<';
+  end;
+  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,cy,FontSize,toaCenter,s,1.0-BoolToInt[IsSelected],1.0-BoolToInt[IsSelected],1.0,(BoolToInt[IsSelected]*0.95)+0.05,1.0,1.0,1.0,1.0);
+  cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
+ end;
  fReady:=true;
 end;
 

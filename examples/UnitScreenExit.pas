@@ -1,4 +1,4 @@
-unit UnitScreenMainMenu;
+unit UnitScreenExit;
 {$ifdef fpc}
  {$mode delphi}
  {$ifdef cpu386}
@@ -14,9 +14,9 @@ unit UnitScreenMainMenu;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanSDL2,PasVulkanApplication,UnitRegisteredExamplesList,UnitScreenBlank;
+uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanSDL2,PasVulkanApplication,UnitScreenBlank;
 
-type TScreenMainMenu=class(TScreenBlank)
+type TScreenExit=class(TScreenBlank)
       private
        fReady:boolean;
        fSelectedIndex:TVkInt32;
@@ -49,65 +49,65 @@ type TScreenMainMenu=class(TScreenBlank)
 
 implementation
 
-uses UnitExampleVulkanApplication,UnitTextOverlay,UnitScreenExit;
+uses UnitExampleVulkanApplication,UnitTextOverlay,UnitScreenMainMenu;
 
-const FontSize=2.0;
+const FontSize=4.0;
 
-constructor TScreenMainMenu.Create;
+constructor TScreenExit.Create;
 begin
  inherited Create;
  fReady:=false;
 end;
 
-destructor TScreenMainMenu.Destroy;
+destructor TScreenExit.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TScreenMainMenu.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TScreenExit.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
  if fReady then begin
   case pKeyCode of
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
-    VulkanApplication.NextScreen:=TScreenExit.Create;
+    VulkanApplication.NextScreen:=TScreenMainMenu.Create;
    end;
    KEYCODE_UP:begin
     if fSelectedIndex<=0 then begin
-     fSelectedIndex:=RegisteredExamplesList.Count;
+     fSelectedIndex:=1;
     end else begin
      dec(fSelectedIndex);
     end;
    end;
    KEYCODE_DOWN:begin
-    if fSelectedIndex>=RegisteredExamplesList.Count then begin
+    if fSelectedIndex>=1 then begin
      fSelectedIndex:=0;
     end else begin
      inc(fSelectedIndex);
     end;
    end;
    KEYCODE_RETURN:begin
-    if fSelectedIndex=RegisteredExamplesList.Count then begin
-     VulkanApplication.NextScreen:=TScreenExit.Create;
+    if fSelectedIndex=0 then begin
+     VulkanApplication.Terminate;
     end else begin
-     VulkanApplication.NextScreen:=TVulkanScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
+     VulkanApplication.NextScreen:=TScreenMainMenu.Create;
     end;
    end;
   end;
  end;
 end;
 
-function TScreenMainMenu.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TScreenExit.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenMainMenu.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TScreenExit.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenMainMenu.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+function TScreenExit.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
 var Index:TVkInt32;
     cy:single;
 begin
@@ -115,13 +115,13 @@ begin
  if fReady then begin
   fSelectedIndex:=-1;
   cy:=fStartY;
-  for Index:=0 to RegisteredExamplesList.Count do begin
+  for Index:=0 to 1 do begin
    if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
-    if fSelectedIndex=RegisteredExamplesList.Count then begin
-     VulkanApplication.NextScreen:=TScreenExit.Create;
+    if fSelectedIndex=0 then begin
+     VulkanApplication.Terminate;
     end else begin
-     VulkanApplication.NextScreen:=TVulkanScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
+     VulkanApplication.NextScreen:=TScreenMainMenu.Create;
     end;
    end;
    cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
@@ -129,12 +129,12 @@ begin
  end;
 end;
 
-function TScreenMainMenu.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+function TScreenExit.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenMainMenu.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+function TScreenExit.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
 var Index:TVkInt32;
     cy:single;
 begin
@@ -142,7 +142,7 @@ begin
  if fReady then begin
   fSelectedIndex:=-1;
   cy:=fStartY;
-  for Index:=0 to RegisteredExamplesList.Count do begin
+  for Index:=0 to 1 do begin
    if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
@@ -151,7 +151,7 @@ begin
  end;
 end;
 
-function TScreenMainMenu.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+function TScreenExit.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
 var Index:TVkInt32;
     cy:single;
 begin
@@ -159,7 +159,7 @@ begin
  if fReady then begin
   fSelectedIndex:=-1;
   cy:=fStartY;
-  for Index:=0 to RegisteredExamplesList.Count do begin
+  for Index:=0 to 1 do begin
    if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
@@ -168,38 +168,31 @@ begin
  end;
 end;
 
-function TScreenMainMenu.Scrolled(const pAmount:TVkInt32):boolean;
+function TScreenExit.Scrolled(const pAmount:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-procedure TScreenMainMenu.Update(const pDeltaTime:double);
+procedure TScreenExit.Update(const pDeltaTime:double);
 const BoolToInt:array[boolean] of TVkInt32=(0,1);
+      Options:array[0..1] of string=('Yes','No');
 var Index:TVkInt32;
     cy:single;
     s:string;
     IsSelected:boolean;
 begin
  inherited Update(pDeltaTime);
- ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Main menu');
- fStartY:=(VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8)*(RegisteredExamplesList.Count+1))-8))*0.5;
+ ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Are you sure to exit?');
+ fStartY:=(VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8)*2)-8))*0.5;
  cy:=fStartY;
- for Index:=0 to RegisteredExamplesList.Count-1 do begin
+ for Index:=0 to 1 do begin
   IsSelected:=fSelectedIndex=Index;
-  s:=' '+RegisteredExamplesList[Index]+' ';
+  s:=' '+Options[Index]+' ';
   if IsSelected then begin
    s:='>'+s+'<';
   end;
   ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,cy,FontSize,toaCenter,s,1.0-BoolToInt[IsSelected],1.0-BoolToInt[IsSelected],1.0,(BoolToInt[IsSelected]*0.95)+0.05,1.0,1.0,1.0,1.0);
   cy:=cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize)+8;
- end;
- begin
-  IsSelected:=fSelectedIndex=RegisteredExamplesList.Count;
-  s:=' Exit ';
-  if IsSelected then begin
-   s:='>'+s+'<';
-  end;
-  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,cy,FontSize,toaCenter,s,1.0-BoolToInt[IsSelected],1.0-BoolToInt[IsSelected],1.0,(BoolToInt[IsSelected]*0.95)+0.05,1.0,1.0,1.0,1.0);
  end;
  fReady:=true;
 end;
