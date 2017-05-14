@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-13-12-00-0000                       *
+ *                        Version 2017-05-14-04-47-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1421,8 +1421,8 @@ type EVulkanException=class(Exception);
        procedure CmdEndRenderPass;
        procedure CmdExecuteCommands(commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer);
        procedure CmdExecute(const pCommandBuffer:TVulkanCommandBuffer);
-       procedure MetaCmdPresentToDrawImageBarrier(const pImage:TVulkanImage);
-       procedure MetaCmdDrawToPresentImageBarrier(const pImage:TVulkanImage);
+       procedure MetaCmdPresentToDrawImageBarrier(const pImage:TVulkanImage;const pDoTransitionToColorAttachmentOptimalLayout:boolean=true);
+       procedure MetaCmdDrawToPresentImageBarrier(const pImage:TVulkanImage;const pDoTransitionToPresentSrcLayout:boolean=true);
        procedure Execute(const pQueue:TVulkanQueue;const pWaitDstStageFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
       published
        property Device:TVulkanDevice read fDevice;
@@ -9917,7 +9917,7 @@ begin
  CmdExecuteCommands(1,@pCommandBuffer.fCommandBufferHandle);
 end;
 
-procedure TVulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(const pImage:TVulkanImage);
+procedure TVulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(const pImage:TVulkanImage;const pDoTransitionToColorAttachmentOptimalLayout:boolean=true);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -9925,8 +9925,13 @@ begin
  ImageMemoryBarrier.pNext:=nil;
  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
- ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
- ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+ if pDoTransitionToColorAttachmentOptimalLayout then begin
+  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+ end else begin
+  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+ end;
  if (fDevice.fPresentQueueFamilyIndex<>fDevice.fGraphicsQueueFamilyIndex) or not
     (assigned(fDevice.fPresentQueue) and assigned(fDevice.fGraphicsQueue)) then begin
   ImageMemoryBarrier.srcQueueFamilyIndex:=fDevice.fPresentQueueFamilyIndex;
@@ -9949,7 +9954,7 @@ begin
                     1,@ImageMemoryBarrier);
 end;
 
-procedure TVulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(const pImage:TVulkanImage);
+procedure TVulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(const pImage:TVulkanImage;const pDoTransitionToPresentSrcLayout:boolean=true);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -9957,8 +9962,13 @@ begin
  ImageMemoryBarrier.pNext:=nil;
  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
- ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
- ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+ if pDoTransitionToPresentSrcLayout then begin
+  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+ end else begin
+  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+ end;
  if (fDevice.fPresentQueueFamilyIndex<>fDevice.fGraphicsQueueFamilyIndex) or not
     (assigned(fDevice.fPresentQueue) and assigned(fDevice.fGraphicsQueue)) then begin
   ImageMemoryBarrier.srcQueueFamilyIndex:=fDevice.fGraphicsQueueFamilyIndex;
