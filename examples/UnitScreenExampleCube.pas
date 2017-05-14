@@ -19,8 +19,17 @@ uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanSDL2,PasVulkanApplication,UnitRe
 type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
      TScreenExampleCubeUniformBuffer=record
       ModelViewProjectionMatrix:TMatrix4x4;
-      ModelViewNormalMatrix:TMatrix4x4; // actually mat3, but it would have then a mat3x4 alignment, according to https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout  
+      ModelViewNormalMatrix:TMatrix4x4; // actually TMatrix3x3, but it would have then a TMatrix3x4 alignment, according to https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout
      end;
+
+     PScreenExampleCubeState=^TScreenExampleCubeState;
+     TScreenExampleCubeState=record
+      Time:double;
+      AnglePhases:array[0..1] of single;
+     end;
+
+     PScreenExampleCubeStates=^TScreenExampleCubeStates;
+     TScreenExampleCubeStates=array[0..MaxSwapChainImages-1] of TScreenExampleCubeState;
 
      TScreenExampleCube=class(TVulkanScreen)
       private
@@ -46,8 +55,8 @@ type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
        fReady:boolean;
        fSelectedIndex:TVkInt32;
        fStartY:single;
-       fTime:double;
-       fTimes:array[0..MaxSwapChainImages-1] of double;
+       fState:TScreenExampleCubeState;
+       fStates:TScreenExampleCubeStates;
       public
 
        constructor Create; override;
@@ -176,7 +185,8 @@ constructor TScreenExampleCube.Create;
 begin
  inherited Create;
  fSelectedIndex:=-1;
- fTime:=0;
+ FillChar(fState,SizeOf(TScreenExampleCubeState),#0);
+ FillChar(fStates,SizeOf(TScreenExampleCubeStates),#0);
  fReady:=false;
 end;
 
@@ -694,14 +704,18 @@ end;
 procedure TScreenExampleCube.Update(const pDeltaTime:double);
 const BoolToInt:array[boolean] of TVkInt32=(0,1);
       Options:array[0..0] of string=('Back');
+      f0=1.0/(2.0*pi);
+      f1=0.5/(2.0*pi);
 var Index:TVkInt32;
     cy:single;
     s:string;
     IsSelected:boolean;
 begin
  inherited Update(pDeltaTime);
- fTime:=fTime+pDeltaTime;
- fTimes[VulkanApplication.UpdateFrameCounter and 1]:=fTime;
+ fState.Time:=fState.Time+pDeltaTime;
+ fState.AnglePhases[0]:=frac(fState.AnglePhases[0]+(pDeltaTime*f0));
+ fState.AnglePhases[1]:=frac(fState.AnglePhases[1]+(pDeltaTime*f1));
+ fStates[VulkanApplication.UpdateFrameCounter and 1]:=fState;
  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Cube');
  fStartY:=VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*1.25)-(4*FontSize));
  cy:=fStartY;
@@ -718,16 +732,20 @@ begin
 end;
 
 procedure TScreenExampleCube.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
+const TwoPI=2.0*pi;
 var p:pointer;
     ModelMatrix:TMatrix4x4;
     ViewMatrix:TMatrix4x4;
     ProjectionMatrix:TMatrix4x4;
+    State:PScreenExampleCubeState;
 begin
  inherited Draw(pSwapChainImageIndex,pWaitSemaphore,nil);
  if assigned(fVulkanGraphicsPipeline) then begin
 
-  ModelMatrix:=Matrix4x4TermMul(Matrix4x4Rotate(fTimes[VulkanApplication.DrawFrameCounter and 1]*1.0,Vector3(0.0,0.0,1.0)),
-                                Matrix4x4Rotate(fTimes[VulkanApplication.DrawFrameCounter and 1]*0.5,Vector3(0.0,1.0,0.0)));
+  State:=@fStates[VulkanApplication.DrawFrameCounter and 1];
+
+  ModelMatrix:=Matrix4x4TermMul(Matrix4x4Rotate(State^.AnglePhases[0]*TwoPI,Vector3(0.0,0.0,1.0)),
+                                Matrix4x4Rotate(State^.AnglePhases[1]*TwoPI,Vector3(0.0,1.0,0.0)));
   ViewMatrix:=Matrix4x4Translate(0.0,0.0,-6.0);
   ProjectionMatrix:=Matrix4x4Perspective(45.0,VulkanApplication.Width/VulkanApplication.Height,1.0,128.0);
 

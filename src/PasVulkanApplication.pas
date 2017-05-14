@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-14-14-53-0000                       *
+ *                        Version 2017-05-14-16-02-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -4649,6 +4649,8 @@ begin
 
  inherited Create;
 
+ VulkanDisableFloatingPointExceptions;
+
  fTitle:='SDL2 Vulkan Application';
  fVersion:=$0100;
 
@@ -6192,6 +6194,7 @@ end;
 
 procedure TVulkanApplication.Run;
 begin
+ VulkanDisableFloatingPointExceptions;
 
 {$if defined(Android)}
 
