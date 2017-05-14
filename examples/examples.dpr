@@ -23,6 +23,7 @@ uses
   UnitRegisteredExamplesList in 'UnitRegisteredExamplesList.pas',
   UnitExampleVulkanApplication in 'UnitExampleVulkanApplication.pas',
   UnitTextOverlay in 'UnitTextOverlay.pas',
+  UnitScreenBlank in 'UnitScreenBlank.pas',
   UnitScreenMainMenu in 'UnitScreenMainMenu.pas',
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas',
   UnitSDFFont in 'UnitSDFFont.pas';
