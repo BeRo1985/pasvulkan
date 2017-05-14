@@ -213,7 +213,21 @@ begin
   Stream.Free;
  end;
 
- Stream:=VulkanApplication.Assets.GetAssetStream('textures/box_albedo.png');
+ fBoxAlbedoTexture:=TVulkanTexture.CreateDefault(VulkanApplication.VulkanDevice,
+                                                 VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                 VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                 VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                                 VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                                 vtdtCheckerboard,
+                                                 512,
+                                                 512,
+                                                 1,
+                                                 1,
+                                                 1,
+                                                 true,
+                                                 true);
+                                                 
+{ Stream:=VulkanApplication.Assets.GetAssetStream('textures/box_albedo.png');
  try
   fBoxAlbedoTexture:=TVulkanTexture.CreateFromPNG(VulkanApplication.VulkanDevice,
                                                   VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
@@ -224,7 +238,7 @@ begin
                                                   false);
  finally
   Stream.Free;
- end;
+ end;}
  fBoxAlbedoTexture.WrapModeU:=vtwmClampToEdge;
  fBoxAlbedoTexture.WrapModeV:=vtwmClampToEdge;
  fBoxAlbedoTexture.WrapModeW:=vtwmClampToEdge;
