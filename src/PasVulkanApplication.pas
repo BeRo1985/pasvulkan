@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-13-18-54-0000                       *
+ *                        Version 2017-05-14-04-48-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1005,11 +1005,19 @@ type EVulkanApplication=class(Exception);
 
        fVulkanFrameBuffers:TVulkanSwapChainSimpleDirectRenderTargetFrameBuffers;
 
-       fVulkanBlankCommandPool:TVulkanCommandPool;
+       fVulkanCommandPool:TVulkanCommandPool;
 
        fVulkanBlankCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
 
        fVulkanBlankCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+
+       fVulkanPresentToDrawImageBarrierCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
+
+       fVulkanPresentToDrawImageBarrierCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+
+       fVulkanDrawToPresentImageBarrierCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
+
+       fVulkanDrawToPresentImageBarrierCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
 
        procedure InitializeGraphics;
        procedure DeinitializeGraphics;
@@ -1039,8 +1047,8 @@ type EVulkanApplication=class(Exception);
        procedure CreateVulkanFrameBuffers;
        procedure DestroyVulkanFrameBuffers;
 
-       procedure CreateVulkanBlankCommandBuffers;
-       procedure DestroyVulkanBlankCommandBuffers;
+       procedure CreateVulkanCommandBuffers;
+       procedure DestroyVulkanCommandBuffers;
 
        function AcquireVulkanBackBuffer:boolean;
        function PresentVulkanBackBuffer:boolean;
@@ -5322,30 +5330,64 @@ begin
  fVulkanFrameBuffers:=nil;
 end;
 
-procedure TVulkanApplication.CreateVulkanBlankCommandBuffers;
+procedure TVulkanApplication.CreateVulkanCommandBuffers;
 var Index:TVkInt32;
 begin
- DestroyVulkanBlankCommandBuffers;
+ DestroyVulkanCommandBuffers;
 
- fVulkanBlankCommandPool:=TVulkanCommandPool.Create(fVulkanDevice,
-                                                    fVulkanDevice.GraphicsQueueFamilyIndex,
-                                                    TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ fVulkanCommandPool:=TVulkanCommandPool.Create(fVulkanDevice,
+                                               fVulkanDevice.GraphicsQueueFamilyIndex,
+                                               TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
  for Index:=0 to CountSwapChainImages-1 do begin
-  fVulkanBlankCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanBlankCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+  fVulkanBlankCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   fVulkanBlankCommandBufferSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
+
+  if (fVulkanDevice.PresentQueueFamilyIndex<>fVulkanDevice.GraphicsQueueFamilyIndex) or
+     ((assigned(fVulkanDevice.PresentQueue) and assigned(fVulkanDevice.GraphicsQueue)) and
+      (fVulkanDevice.PresentQueue<>fVulkanDevice.GraphicsQueue)) then begin
+
+   // If present and graphics queue families are different, then image barriers are required
+
+   fVulkanPresentToDrawImageBarrierCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   fVulkanPresentToDrawImageBarrierCommandBufferSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanPresentToDrawImageBarrierCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+   fVulkanPresentToDrawImageBarrierCommandBuffers[Index].MetaCmdPresentToDrawImageBarrier(fVulkanFrameBufferColorAttachments[Index].Image,false);
+   fVulkanPresentToDrawImageBarrierCommandBuffers[Index].EndRecording;
+
+   fVulkanDrawToPresentImageBarrierCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   fVulkanDrawToPresentImageBarrierCommandBufferSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanDrawToPresentImageBarrierCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+   fVulkanDrawToPresentImageBarrierCommandBuffers[Index].MetaCmdDrawToPresentImageBarrier(fVulkanFrameBufferColorAttachments[Index].Image,false);
+   fVulkanDrawToPresentImageBarrierCommandBuffers[Index].EndRecording;
+
+  end else begin
+
+   fVulkanPresentToDrawImageBarrierCommandBuffers[Index]:=nil;
+   fVulkanPresentToDrawImageBarrierCommandBufferSemaphores[Index]:=nil;
+
+   fVulkanDrawToPresentImageBarrierCommandBuffers[Index]:=nil;
+   fVulkanDrawToPresentImageBarrierCommandBufferSemaphores[Index]:=nil;
+
+  end;
+
  end;
 
 end;
 
-procedure TVulkanApplication.DestroyVulkanBlankCommandBuffers;
+procedure TVulkanApplication.DestroyVulkanCommandBuffers;
 var Index:TVkInt32;
 begin
  for Index:=0 to CountSwapChainImages-1 do begin
   FreeAndNil(fVulkanBlankCommandBuffers[Index]);
   FreeAndNil(fVulkanBlankCommandBufferSemaphores[Index]);
+  FreeAndNil(fVulkanPresentToDrawImageBarrierCommandBuffers[Index]);
+  FreeAndNil(fVulkanPresentToDrawImageBarrierCommandBufferSemaphores[Index]);
+  FreeAndNil(fVulkanDrawToPresentImageBarrierCommandBuffers[Index]);
+  FreeAndNil(fVulkanDrawToPresentImageBarrierCommandBufferSemaphores[Index]);
  end;
- FreeAndNil(fVulkanBlankCommandPool);
+ FreeAndNil(fVulkanCommandPool);
 end;
 
 procedure TVulkanApplication.SetScreen(const pScreen:TVulkanScreen);
@@ -5470,7 +5512,7 @@ begin
    VulkanWaitIdle;
    BeforeDestroySwapChain;
    fVulkanSwapChain:=nil;
-   DestroyVulkanBlankCommandBuffers;
+   DestroyVulkanCommandBuffers;
    DestroyVulkanFrameBuffers;
    DestroyVulkanRenderPass;
    DestroyVulkanSwapChain;
@@ -5481,7 +5523,7 @@ begin
    CreateVulkanSwapChain;
    CreateVulkanRenderPass;
    CreateVulkanFrameBuffers;
-   CreateVulkanBlankCommandBuffers;
+   CreateVulkanCommandBuffers;
    VulkanWaitIdle;
    AfterCreateSwapChain;
   finally
@@ -5514,7 +5556,22 @@ begin
 
   fVulkanWaitSemaphore:=fVulkanPresentCompleteSemaphores[fCurrentImageIndex];
 
-  fVulkanWaitFence:=fVulkanWaitFences[fCurrentSwapChainImageIndex];
+  if assigned(fVulkanPresentToDrawImageBarrierCommandBuffers[fCurrentSwapChainImageIndex]) then begin
+   // If present and graphics queue families are different, then a image barrier is required
+   fVulkanPresentToDrawImageBarrierCommandBuffers[fCurrentSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
+                                                                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                       fVulkanWaitSemaphore,
+                                                                                       fVulkanPresentToDrawImageBarrierCommandBufferSemaphores[fCurrentSwapChainImageIndex],
+                                                                                       nil,
+                                                                                       false);
+   fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierCommandBufferSemaphores[fCurrentSwapChainImageIndex];
+  end;
+
+  if assigned(fVulkanDrawToPresentImageBarrierCommandBuffers[fCurrentSwapChainImageIndex]) then begin
+   fVulkanWaitFence:=nil;
+  end else begin
+   fVulkanWaitFence:=fVulkanWaitFences[fCurrentSwapChainImageIndex];
+  end;
 
   result:=true;
 
@@ -5525,6 +5582,17 @@ function TVulkanApplication.PresentVulkanBackBuffer:boolean;
 begin
  result:=false;
 
+ if assigned(fVulkanDrawToPresentImageBarrierCommandBuffers[fCurrentSwapChainImageIndex]) then begin
+  // If present and graphics queue families are different, then a image barrier is required
+  fVulkanDrawToPresentImageBarrierCommandBuffers[fCurrentSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
+                                                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                      fVulkanWaitSemaphore,
+                                                                                      fVulkanDrawToPresentImageBarrierCommandBufferSemaphores[fCurrentSwapChainImageIndex],
+                                                                                      fVulkanWaitFences[fCurrentSwapChainImageIndex],
+                                                                                      false);
+  fVulkanWaitSemaphore:=fVulkanDrawToPresentImageBarrierCommandBufferSemaphores[fCurrentSwapChainImageIndex];
+  fVulkanWaitFence:=fVulkanWaitFences[fCurrentSwapChainImageIndex];
+ end;
  fVulkanWaitFencesReady[fCurrentSwapChainImageIndex]:=true;
 
 //fVulkanDevice.GraphicsQueue.WaitIdle; // A GPU/CPU graphics queue synchronization point only for debug cases here, when something got run wrong
@@ -5613,7 +5681,7 @@ begin
    CreateVulkanSwapChain;
    CreateVulkanRenderPass;
    CreateVulkanFrameBuffers;
-   CreateVulkanBlankCommandBuffers;
+   CreateVulkanCommandBuffers;
    VulkanWaitIdle;
    AfterCreateSwapChain;
   except
@@ -5628,7 +5696,7 @@ begin
  if fGraphicsReady then begin
   VulkanWaitIdle;
   BeforeDestroySwapChain;
-  DestroyVulkanBlankCommandBuffers;
+  DestroyVulkanCommandBuffers;
   DestroyVulkanFrameBuffers;
   DestroyVulkanRenderPass;
   DestroyVulkanSwapChain;

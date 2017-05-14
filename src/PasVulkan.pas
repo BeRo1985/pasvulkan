@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-14-04-47-0000                       *
+ *                        Version 2017-05-14-04-41-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -9932,8 +9932,9 @@ begin
   ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
  end;
- if (fDevice.fPresentQueueFamilyIndex<>fDevice.fGraphicsQueueFamilyIndex) or not
-    (assigned(fDevice.fPresentQueue) and assigned(fDevice.fGraphicsQueue)) then begin
+ if (fDevice.fPresentQueueFamilyIndex<>fDevice.fGraphicsQueueFamilyIndex) or
+    ((assigned(fDevice.fPresentQueue) and assigned(fDevice.fGraphicsQueue)) and
+     (fDevice.fPresentQueue<>fDevice.fGraphicsQueue)) then begin
   ImageMemoryBarrier.srcQueueFamilyIndex:=fDevice.fPresentQueueFamilyIndex;
   ImageMemoryBarrier.dstQueueFamilyIndex:=fDevice.fGraphicsQueueFamilyIndex;
  end else begin
@@ -9969,8 +9970,9 @@ begin
   ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
  end;
- if (fDevice.fPresentQueueFamilyIndex<>fDevice.fGraphicsQueueFamilyIndex) or not
-    (assigned(fDevice.fPresentQueue) and assigned(fDevice.fGraphicsQueue)) then begin
+ if (fDevice.fPresentQueueFamilyIndex<>fDevice.fGraphicsQueueFamilyIndex) or
+    ((assigned(fDevice.fPresentQueue) and assigned(fDevice.fGraphicsQueue)) and
+     (fDevice.fPresentQueue<>fDevice.fGraphicsQueue)) then begin
   ImageMemoryBarrier.srcQueueFamilyIndex:=fDevice.fGraphicsQueueFamilyIndex;
   ImageMemoryBarrier.dstQueueFamilyIndex:=fDevice.fPresentQueueFamilyIndex;
  end else begin
