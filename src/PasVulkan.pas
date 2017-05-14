@@ -15574,9 +15574,9 @@ begin
          ImageBlit.srcOffsets[0].x:=0;
          ImageBlit.srcOffsets[0].y:=0;
          ImageBlit.srcOffsets[0].z:=0;
-         ImageBlit.srcOffsets[1].x:=Max(0,fWidth shr PreviousMipMapLevelIndex);
-         ImageBlit.srcOffsets[1].y:=Max(0,fHeight shr PreviousMipMapLevelIndex);
-         ImageBlit.srcOffsets[1].z:=Max(0,fDepth shr PreviousMipMapLevelIndex);
+         ImageBlit.srcOffsets[1].x:=Max(1,fWidth shr PreviousMipMapLevelIndex);
+         ImageBlit.srcOffsets[1].y:=Max(1,fHeight shr PreviousMipMapLevelIndex);
+         ImageBlit.srcOffsets[1].z:=Max(1,fDepth shr PreviousMipMapLevelIndex);
          ImageBlit.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
          ImageBlit.dstSubresource.mipLevel:=MipMapLevelIndex;
          ImageBlit.dstSubresource.baseArrayLayer:=0;
@@ -15584,9 +15584,9 @@ begin
          ImageBlit.dstOffsets[0].x:=0;
          ImageBlit.dstOffsets[0].y:=0;
          ImageBlit.dstOffsets[0].z:=0;
-         ImageBlit.dstOffsets[1].x:=Max(0,fWidth shr MipMapLevelIndex);
-         ImageBlit.dstOffsets[1].y:=Max(0,fHeight shr MipMapLevelIndex);
-         ImageBlit.dstOffsets[1].z:=Max(0,fDepth shr MipMapLevelIndex);
+         ImageBlit.dstOffsets[1].x:=Max(1,fWidth shr MipMapLevelIndex);
+         ImageBlit.dstOffsets[1].y:=Max(1,fHeight shr MipMapLevelIndex);
+         ImageBlit.dstOffsets[1].z:=Max(1,fDepth shr MipMapLevelIndex);
          pGraphicsCommandBuffer.CmdBlitImage(fImage.fImageHandle,
                                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                              fImage.fImageHandle,
