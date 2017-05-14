@@ -188,6 +188,7 @@ begin
   VulkanApplication.CatchMouse:=false;
   VulkanApplication.HideSystemBars:=true;
   VulkanApplication.AndroidSeparateMouseAndTouch:=false;
+  VulkanApplication.VSync:=true;
   VulkanApplication.Run;
  finally
   FreeAndNil(VulkanApplication);

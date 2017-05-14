@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-14-10-08-0000                       *
+ *                        Version 2017-05-14-15-42-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -11170,13 +11170,20 @@ constructor TVulkanSwapChain.Create(const pDevice:TVulkanDevice;
                                     const pPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
                                     const pClipped:boolean=true;
                                     const pDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff));
-var Index:TVkInt32;
+type TPresentModes=VK_PRESENT_MODE_IMMEDIATE_KHR..VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+const PresentModeTryOrder:array[TPresentModes,0..3] of TVkPresentModeKHR=
+       ((VK_PRESENT_MODE_IMMEDIATE_KHR,VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_FIFO_KHR),
+        (VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_IMMEDIATE_KHR,VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_FIFO_KHR),
+        (VK_PRESENT_MODE_FIFO_KHR,VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_IMMEDIATE_KHR),
+        (VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_FIFO_KHR,VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_IMMEDIATE_KHR));
+var Index,TryIterationIndex:TVkInt32;
     SurfaceCapabilities:TVkSurfaceCapabilitiesKHR;
-    SurfacePresetModes:TVkPresentModeKHRArray;
+    SurfacePresentModes:TVkPresentModeKHRArray;
     SurfaceFormat:TVkSurfaceFormatKHR;
     SwapChainImages:array of TVkImage;
     FormatProperties:TVkFormatProperties;
     SwapChainCreateInfo:TVkSwapchainCreateInfoKHR;
+    Found:boolean;
 begin
  inherited Create;
 
@@ -11282,18 +11289,66 @@ begin
 
   SwapChainCreateInfo.compositeAlpha:=pCompositeAlpha;
 
-  SurfacePresetModes:=nil;
+  SurfacePresentModes:=nil;
   try
-   SurfacePresetModes:=fDevice.fPhysicalDevice.GetSurfacePresentModes(fSurface);
-   SwapChainCreateInfo.presentMode:=VK_PRESENT_MODE_FIFO_KHR;
-   for Index:=0 to length(SurfacePresetModes)-1 do begin
-    if SurfacePresetModes[Index]=pPresentMode then begin
-     SwapChainCreateInfo.presentMode:=pPresentMode;
-     break;
+   SurfacePresentModes:=fDevice.fPhysicalDevice.GetSurfacePresentModes(fSurface);
+   case pPresentMode of
+    VK_PRESENT_MODE_IMMEDIATE_KHR..VK_PRESENT_MODE_FIFO_RELAXED_KHR:begin
+     SwapChainCreateInfo.presentMode:=VK_PRESENT_MODE_FIFO_KHR;
+     Found:=false;
+     for Index:=0 to length(SurfacePresentModes)-1 do begin
+      if SurfacePresentModes[Index]=pPresentMode then begin
+       SwapChainCreateInfo.presentMode:=pPresentMode;
+       Found:=true;
+       break;
+      end;
+     end;
+     if not Found then begin
+      for TryIterationIndex:=0 to 3 do begin
+       Found:=false;
+       for Index:=0 to length(SurfacePresentModes)-1 do begin
+        if SurfacePresentModes[Index]=PresentModeTryOrder[pPresentMode,TryIterationIndex] then begin
+         SwapChainCreateInfo.presentMode:=PresentModeTryOrder[pPresentMode,TryIterationIndex];
+         Found:=true;
+         break;
+        end;
+       end;
+       if Found then begin
+        break;
+       end;
+      end;
+     end;
+    end;
+    else begin
+     SwapChainCreateInfo.presentMode:=VK_PRESENT_MODE_FIFO_KHR;
+     Found:=false;
+     for Index:=0 to length(SurfacePresentModes)-1 do begin
+      if SurfacePresentModes[Index]=pPresentMode then begin
+       SwapChainCreateInfo.presentMode:=pPresentMode;
+       Found:=true;
+       break;
+      end;
+     end;
+     if not Found then begin
+      for Index:=0 to length(SurfacePresentModes)-1 do begin
+       if SurfacePresentModes[Index]=VK_PRESENT_MODE_FIFO_KHR then begin
+        SwapChainCreateInfo.presentMode:=VK_PRESENT_MODE_FIFO_KHR;
+        Found:=true;
+        break;
+       end;
+      end;
+      if not Found then begin
+       if length(SurfacePresentModes)>0 then begin
+        SwapChainCreateInfo.presentMode:=SurfacePresentModes[0];
+       end else begin
+        raise EVulkanException.Create('Vulkan initialization error (no suitable present mode found, buggy graphics driver?)');
+       end;
+      end;
+     end;
     end;
    end;
-  finally                       
-   SetLength(SurfacePresetModes,0);
+  finally
+   SetLength(SurfacePresentModes,0);
   end;
 
   if pClipped then begin
