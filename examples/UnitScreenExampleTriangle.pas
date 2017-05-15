@@ -483,7 +483,7 @@ begin
    KEYCODE_END:begin
     fSelectedIndex:=0
    end;
-   KEYCODE_RETURN:begin
+   KEYCODE_RETURN,KEYCODE_SPACE:begin
     if fSelectedIndex=0 then begin
      VulkanApplication.NextScreen:=TScreenMainMenu.Create;
     end;

@@ -111,7 +111,7 @@ begin
    KEYCODE_END:begin
     fSelectedIndex:=RegisteredExamplesList.Count;
    end;
-   KEYCODE_RETURN:begin
+   KEYCODE_RETURN,KEYCODE_SPACE:begin
     if fSelectedIndex=RegisteredExamplesList.Count then begin
      VulkanApplication.NextScreen:=TScreenExit.Create;
     end else if fSelectedIndex>=0 then begin

@@ -111,7 +111,7 @@ begin
    KEYCODE_END:begin
     fSelectedIndex:=1;
    end;
-   KEYCODE_RETURN:begin
+   KEYCODE_RETURN,KEYCODE_SPACE:begin
     if fSelectedIndex=0 then begin
      VulkanApplication.Terminate;
     end else begin
