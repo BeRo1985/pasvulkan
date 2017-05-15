@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-15-07-13-0000                       *
+ *                        Version 2017-05-15-07-27-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -936,6 +936,8 @@ type EVulkanApplication=class(Exception);
        fVulkanSurface:TVulkanSurface;
 
        fGraphicsPipelinesReady:boolean;
+
+       fSkipNextDrawFrame:boolean;
 
 //      fVulkanPresentationSurface:TVulkanPresentationSurface;
 
@@ -4668,6 +4670,8 @@ begin
 
  fGraphicsReady:=false;
 
+ fSkipNextDrawFrame:=false;
+
  fVulkanDebugging:=false;
 
  fVulkanDebuggingEnabled:=false;
@@ -5433,6 +5437,10 @@ begin
      AfterCreateSwapChain;
     end;
    end;
+   if CanBeParallelProcessed then begin
+    // At parallel processing, skip the next first screen frame, due to double buffering at the parallel processing approach
+    fSkipNextDrawFrame:=true;
+   end;
   end;
  end;
 end;
@@ -6094,7 +6102,9 @@ begin
 
  if fGraphicsReady then begin
 
-  if AcquireVulkanBackBuffer then begin
+  if fSkipNextDrawFrame then begin
+
+   fSkipNextDrawFrame:=false;
 
    fNowTime:=fHighResolutionTimer.GetTime;
    if fHasLastTime then begin
@@ -6108,40 +6118,65 @@ begin
 
    UpdateFrameTimesHistory;
 
-   try
+   fUpdateFrameCounter:=fFrameCounter;
+   fDrawFrameCounter:=fFrameCounter;
+   UpdateJobFunction(nil,0);
+   inc(fFrameCounter);
 
-    if CanBeParallelProcessed then begin
+  end else begin
 
-     fUpdateFrameCounter:=fFrameCounter;
+   if AcquireVulkanBackBuffer then begin
 
-     fDrawFrameCounter:=fFrameCounter-1;
-
-     Jobs[0]:=fPasMPInstance.Acquire(UpdateJobFunction);
-     Jobs[1]:=fPasMPInstance.Acquire(DrawJobFunction);
-     fPasMPInstance.Invoke(Jobs);
-
+    fNowTime:=fHighResolutionTimer.GetTime;
+    if fHasLastTime then begin
+     fDeltaTime:=fNowTime-fLastTime;
     end else begin
+     fDeltaTime:=0;
+    end;
+    fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
+    fLastTime:=fNowTime;
+    fHasLastTime:=true;
 
-     fUpdateFrameCounter:=fFrameCounter;
-     
-     fDrawFrameCounter:=fFrameCounter;
+    UpdateFrameTimesHistory;
 
-     UpdateJobFunction(nil,0);
+    try
 
-     DrawJobFunction(nil,0);
+     if CanBeParallelProcessed then begin
 
+      fUpdateFrameCounter:=fFrameCounter;
+
+      fDrawFrameCounter:=fFrameCounter-1;
+
+      Jobs[0]:=fPasMPInstance.Acquire(UpdateJobFunction);
+      Jobs[1]:=fPasMPInstance.Acquire(DrawJobFunction);
+      fPasMPInstance.Invoke(Jobs);
+
+     end else begin
+
+      fUpdateFrameCounter:=fFrameCounter;
+
+      fDrawFrameCounter:=fFrameCounter;
+
+      UpdateJobFunction(nil,0);
+
+      DrawJobFunction(nil,0);
+
+     end;
+
+    finally
+     PresentVulkanBackBuffer;
     end;
 
-   finally
-    PresentVulkanBackBuffer;
-   end;
+    inc(fFrameCounter);
 
-   inc(fFrameCounter);
+   end;
 
   end;
 
  end else begin
+
   fDeltaTime:=0;
+
  end;
 
 end;
@@ -6278,6 +6313,8 @@ begin
  fFrameTimesHistoryWriteIndex:=0;
 
  fFramesPerSecond:=0.0;
+
+ fSkipNextDrawFrame:=false;
 
  try
 
