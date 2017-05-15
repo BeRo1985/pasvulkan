@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-14-16-02-0000                       *
+ *                        Version 2017-05-15-07-13-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1074,8 +1074,6 @@ type EVulkanApplication=class(Exception);
 
        procedure Terminate;
 
-       function HandleEvent(const pEvent:TSDL_Event):boolean; virtual;
-
        procedure ProcessMessages;
 
        procedure Run;
@@ -1087,18 +1085,40 @@ type EVulkanApplication=class(Exception);
        procedure Load; virtual;
 
        procedure Unload; virtual;
+       
+       procedure Resume; virtual;
+
+       procedure Pause; virtual;
+
+       procedure Resize(const pWidth,pHeight:TSDLInt32); virtual;
 
        procedure AfterCreateSwapChain; virtual;
 
        procedure BeforeDestroySwapChain; virtual;
 
+       function HandleEvent(const pEvent:TSDL_Event):boolean; virtual;
+
+       function KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean; virtual;
+
+       function KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean; virtual;
+
+       function KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean; virtual;
+
+       function TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; virtual;
+
+       function TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; virtual;
+
+       function TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean; virtual;
+
+       function MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean; virtual;
+
+       function Scrolled(const pAmount:TVkInt32):boolean; virtual;
+
+       function CanBeParallelProcessed:boolean; virtual;
+
        procedure Update(const pDeltaTime:double); virtual;
 
        procedure Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil); virtual;
-
-       procedure Resume; virtual;
-
-       procedure Pause; virtual;
 
        class procedure Main; virtual;
 
@@ -3781,11 +3801,7 @@ begin
         fKeyDown[KeyCode and $ffff]:=true;
         inc(fKeyDownCount);
         fJustKeyDown[KeyCode and $ffff]:=true;
-        OK:=false;
-        if assigned(VulkanApplication.fScreen) and not OK then begin
-         OK:=VulkanApplication.fScreen.KeyDown(KeyCode,KeyModifier);
-        end;
-        if assigned(fProcessor) and not OK then begin
+        if (not VulkanApplication.KeyDown(KeyCode,KeyModifier)) and assigned(fProcessor) then begin
          fProcessor.KeyDown(KeyCode,KeyModifier);
         end;
        end;
@@ -3795,20 +3811,12 @@ begin
          dec(fKeyDownCount);
         end;
         fJustKeyDown[KeyCode and $ffff]:=false;
-        OK:=false;
-        if assigned(VulkanApplication.fScreen) and not OK then begin
-         OK:=VulkanApplication.fScreen.KeyUp(KeyCode,KeyModifier);
-        end;
-        if assigned(fProcessor) and not OK then begin
+        if (not VulkanApplication.KeyUp(KeyCode,KeyModifier)) and assigned(fProcessor) then begin
          fProcessor.KeyUp(KeyCode,KeyModifier);
         end;
        end;
        SDL_KEYTYPED:begin
-        OK:=false;
-        if assigned(VulkanApplication.fScreen) and not OK then begin
-         OK:=VulkanApplication.fScreen.KeyTyped(KeyCode,KeyModifier);
-        end;
-        if assigned(fProcessor) and not OK then begin
+        if (not VulkanApplication.KeyTyped(KeyCode,KeyModifier)) and assigned(fProcessor) then begin
          fProcessor.KeyTyped(KeyCode,KeyModifier);
         end;
        end;
@@ -3819,13 +3827,10 @@ begin
       fMouseY:=Event^.motion.y;
       fMouseDeltaX:=Event^.motion.xrel;
       fMouseDeltaY:=Event^.motion.yrel;
-      OK:=false;
-      if assigned(VulkanApplication.fScreen) and not OK then begin
-       if fMouseDown<>0 then begin
-        VulkanApplication.fScreen.TouchDragged(Event^.motion.x,Event^.motion.y,1.0,0);
-       end else begin
-        VulkanApplication.fScreen.MouseMoved(Event^.motion.x,Event^.motion.y);
-       end;
+      if fMouseDown<>0 then begin
+       OK:=VulkanApplication.TouchDragged(Event^.motion.x,Event^.motion.y,1.0,0);
+      end else begin
+       OK:=VulkanApplication.MouseMoved(Event^.motion.x,Event^.motion.y);
       end;
       if assigned(fProcessor) and not OK then begin
        if fMouseDown<>0 then begin
@@ -3846,11 +3851,7 @@ begin
         fMouseDown:=fMouseDown or 1;
         fMouseJustDown:=fMouseJustDown or 1;
         fJustTouched:=true;
-        OK:=false;
-        if assigned(VulkanApplication.fScreen) and not OK then begin
-         VulkanApplication.fScreen.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT);
-        end;
-        if assigned(fProcessor) and not OK then begin
+        if (not VulkanApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT)) and assigned(fProcessor) then begin
          fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT);
         end;
        end;
@@ -3858,11 +3859,7 @@ begin
         fMouseDown:=fMouseDown or 2;
         fMouseJustDown:=fMouseJustDown or 2;
         fJustTouched:=true;
-        OK:=false;
-        if assigned(VulkanApplication.fScreen) and not OK then begin
-         VulkanApplication.fScreen.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT);
-        end;
-        if assigned(fProcessor) and not OK then begin
+        if (not VulkanApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT)) and assigned(fProcessor) then begin
          fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT);
         end;
        end;
@@ -3870,11 +3867,7 @@ begin
         fMouseDown:=fMouseDown or 4;
         fMouseJustDown:=fMouseJustDown or 4;
         fJustTouched:=true;
-        OK:=false;
-        if assigned(VulkanApplication.fScreen) and not OK then begin
-         VulkanApplication.fScreen.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE);
-        end;
-        if assigned(fProcessor) and not OK then begin
+        if (not VulkanApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE)) and assigned(fProcessor) then begin
          fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE);
         end;
        end;
@@ -3890,44 +3883,28 @@ begin
        SDL_BUTTON_LEFT:begin
         fMouseDown:=fMouseDown and not 1;
         fMouseJustDown:=fMouseJustDown and not 1;
-        OK:=false;
-        if assigned(VulkanApplication.fScreen) and not OK then begin
-         VulkanApplication.fScreen.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT);
-        end;
-        if assigned(fProcessor) and not OK then begin
+        if (not VulkanApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT)) and assigned(fProcessor) then begin
          fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT);
         end;
        end;
        SDL_BUTTON_RIGHT:begin
         fMouseDown:=fMouseDown and not 2;
         fMouseJustDown:=fMouseJustDown and not 2;
-        OK:=false;
-        if assigned(VulkanApplication.fScreen) and not OK then begin
-         VulkanApplication.fScreen.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT);
-        end;
-        if assigned(fProcessor) and not OK then begin
+        if (not VulkanApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT)) and assigned(fProcessor) then begin
          fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT);
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
         fMouseDown:=fMouseDown and not 4;
         fMouseJustDown:=fMouseJustDown and not 4;
-        OK:=false;
-        if assigned(VulkanApplication.fScreen) and not OK then begin
-         VulkanApplication.fScreen.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE);
-        end;
-        if assigned(fProcessor) and not OK then begin
+        if (not VulkanApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE)) and assigned(fProcessor) then begin
          fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE);
         end;
        end;
       end;
      end;
      SDL_MOUSEWHEEL:begin
-      OK:=false;
-      if assigned(VulkanApplication.fScreen) and not OK then begin
-       VulkanApplication.fScreen.Scrolled(Event^.wheel.x+Event^.wheel.y);
-      end;
-      if assigned(fProcessor) and not OK then begin
+      if (not VulkanApplication.Scrolled(Event^.wheel.x+Event^.wheel.y)) and assigned(fProcessor) then begin
        fProcessor.Scrolled(Event^.wheel.x+Event^.wheel.y);
       end;
      end;
@@ -3939,11 +3916,7 @@ begin
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
       fPointerDeltaX[PointerID]:=Event^.tfinger.dx*VulkanApplication.fWidth;
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy*VulkanApplication.fHeight;
-      OK:=false;
-      if assigned(VulkanApplication.fScreen) and not OK then begin
-       VulkanApplication.fScreen.TouchDragged(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1);
-      end;
-      if assigned(fProcessor) and not OK then begin
+      if (not VulkanApplication.TouchDragged(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1)) and assigned(fProcessor) then begin
        fProcessor.TouchDragged(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1);
       end;
      end;
@@ -3959,11 +3932,7 @@ begin
       fPointerDown[PointerID]:=true;
       fPointerJustDown[PointerID]:=true;
       fJustTouched:=true;
-      OK:=false;
-      if assigned(VulkanApplication.fScreen) and not OK then begin
-       VulkanApplication.fScreen.TouchDown(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0);
-      end;
-      if assigned(fProcessor) and not OK then begin
+      if (not VulkanApplication.TouchDown(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
        fProcessor.TouchDown(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0);
       end;
      end;
@@ -3980,11 +3949,7 @@ begin
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy;
       fPointerDown[PointerID]:=false;
       fPointerJustDown[PointerID]:=false;
-      OK:=false;
-      if assigned(VulkanApplication.fScreen) and not OK then begin
-       VulkanApplication.fScreen.TouchUp(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0);
-      end;
-      if assigned(fProcessor) and not OK then begin
+      if (not VulkanApplication.TouchUp(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
        fProcessor.TouchUp(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0);
       end;
      end;
@@ -5760,17 +5725,6 @@ begin
  end;
 end;
 
-function TVulkanApplication.HandleEvent(const pEvent:TSDL_Event):boolean;
-begin
- if assigned(fOnEvent) and fOnEvent(self,pEvent) then begin
-  result:=true;
- end else if assigned(fScreen) and fScreen.HandleEvent(pEvent) then begin
-  result:=true;
- end else begin
-  result:=false;
- end;
-end;
-
 procedure TVulkanApplication.UpdateFrameTimesHistory;
 var Index,Count:TVkInt32;
     SumOfFrameTimes:double;
@@ -6156,7 +6110,7 @@ begin
 
    try
 
-    if assigned(fScreen) and fScreen.CanBeParallelProcessed then begin
+    if CanBeParallelProcessed then begin
 
      fUpdateFrameCounter:=fFrameCounter;
 
@@ -6408,6 +6362,27 @@ procedure TVulkanApplication.Unload;
 begin
 end;
 
+procedure TVulkanApplication.Resume;
+begin
+ if assigned(fScreen) then begin
+  fScreen.Resume;
+ end;
+end;
+
+procedure TVulkanApplication.Pause;
+begin
+ if assigned(fScreen) then begin
+  fScreen.Pause;
+ end;
+end;
+
+procedure TVulkanApplication.Resize(const pWidth,pHeight:TSDLInt32);
+begin
+ if assigned(fScreen) then begin
+  fScreen.Resize(pWidth,pHeight);
+ end;
+end;
+
 procedure TVulkanApplication.AfterCreateSwapChain;
 begin
  if assigned(fScreen) then begin
@@ -6419,6 +6394,98 @@ procedure TVulkanApplication.BeforeDestroySwapChain;
 begin
  if assigned(fScreen) then begin
   fScreen.BeforeDestroySwapChain;
+ end;
+end;
+
+function TVulkanApplication.HandleEvent(const pEvent:TSDL_Event):boolean;
+begin
+ if assigned(fOnEvent) and fOnEvent(self,pEvent) then begin
+  result:=true;
+ end else if assigned(fScreen) and fScreen.HandleEvent(pEvent) then begin
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TVulkanApplication.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ if assigned(fScreen) then begin
+  result:=fScreen.KeyDown(pKeyCode,pKeyModifier);
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TVulkanApplication.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ if assigned(fScreen) then begin
+  result:=fScreen.KeyUp(pKeyCode,pKeyModifier);
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TVulkanApplication.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+begin
+ if assigned(fScreen) then begin
+  result:=fScreen.KeyTyped(pKeyCode,pKeyModifier);
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TVulkanApplication.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+begin
+ if assigned(fScreen) then begin
+  result:=fScreen.TouchDown(pScreenX,pScreenY,pPressure,pPointerID,pButton);
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TVulkanApplication.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+begin
+ if assigned(fScreen) then begin
+  result:=fScreen.TouchUp(pScreenX,pScreenY,pPressure,pPointerID,pButton);
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TVulkanApplication.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+begin
+ if assigned(fScreen) then begin
+  result:=fScreen.TouchDragged(pScreenX,pScreenY,pPressure,pPointerID);
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TVulkanApplication.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+begin
+ if assigned(fScreen) then begin
+  result:=fScreen.MouseMoved(pScreenX,pScreenY);
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TVulkanApplication.Scrolled(const pAmount:TVkInt32):boolean;
+begin
+ if assigned(fScreen) then begin
+  result:=fScreen.Scrolled(pAmount);
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TVulkanApplication.CanBeParallelProcessed:boolean;
+begin
+ if assigned(fScreen) then begin
+  result:=fScreen.CanBeParallelProcessed;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -6461,20 +6528,6 @@ begin
 
   pWaitSemaphore:=fVulkanBlankCommandBufferSemaphores[pSwapChainImageIndex];
 
- end;
-end;
-
-procedure TVulkanApplication.Resume;
-begin
- if assigned(fScreen) then begin
-  fScreen.Resume;
- end;
-end;
-
-procedure TVulkanApplication.Pause;
-begin
- if assigned(fScreen) then begin
-  fScreen.Pause;
  end;
 end;
 
