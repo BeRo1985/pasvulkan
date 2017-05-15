@@ -18989,7 +18989,7 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
   var i,v0,v1,v2,v3,v4,v5,v6,v7,v8:TVkInt32;
       WorkBlock:PIDCTInputBlock;
       OutputBlock:PIDCTOutputBlock;
-  begin
+  begin         
    for i:=0 to 7 do begin
     WorkBlock:=@pInputBlock^[i shl 3];
     v0:=WorkBlock^[0];
@@ -19032,7 +19032,7 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
      v3:=v0+v2;
      dec(v0,v2);
      v2:=SARLongint(((v4+v5)*181)+128,8);
-     v4:=SARLongint(((v4-v5)+181)+128,8);
+     v4:=SARLongint(((v4-v5)*181)+128,8);
      WorkBlock^[0]:=SARLongint(v7+v1,8);
      WorkBlock^[1]:=SARLongint(v3+v2,8);
      WorkBlock^[2]:=SARLongint(v0+v4,8);
@@ -19046,7 +19046,7 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
    for i:=0 to 7 do begin
     WorkBlock:=@pInputBlock^[i];
     v0:=WorkBlock^[0 shl 3];
-    v1:=WorkBlock^[4 shl 3] shl 11;
+    v1:=WorkBlock^[4 shl 3] shl 8;
     v2:=WorkBlock^[6 shl 3];
     v3:=WorkBlock^[2 shl 3];
     v4:=WorkBlock^[1 shl 3];
@@ -19054,7 +19054,7 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
     v6:=WorkBlock^[5 shl 3];
     v7:=WorkBlock^[3 shl 3];
     if (v1=0) and (v2=0) and (v3=0) and (v4=0) and (v5=0) and (v6=0) and (v7=0) then begin
-     v0:=ClipTable[((v0 shl 6)+128) and $3ff];
+     v0:=ClipTable[(SARLongint(v0+32,6)+128) and $3ff];
      OutputBlock:=@pOutputBlock^[i];
      OutputBlock^[pOutputStride*0]:=v0;
      OutputBlock^[pOutputStride*1]:=v0;
@@ -19074,7 +19074,7 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
      v7:=SARLongint(v8-((W3+W5)*v7),3);
      v8:=v0+v1;
      dec(v0,v1);
-     v1:=((v6+v2)*w6)+4;
+     v1:=((v3+v2)*w6)+4;
      v2:=SARLongint(v1-((W2+W6)*v2),3);
      v3:=SARLongint(v1+((W2-W6)*v3),3);
      v1:=v4+v6;
