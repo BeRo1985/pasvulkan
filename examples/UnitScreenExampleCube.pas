@@ -235,7 +235,7 @@ begin
                                                  1,
                                                  1,
                                                  true,
-                                                 true);
+                                                 true);{}
 
 {Stream:=VulkanApplication.Assets.GetAssetStream('textures/box_albedo.png');
  try
@@ -249,7 +249,20 @@ begin
  finally
   Stream.Free;
  end;}
- 
+
+{Stream:=VulkanApplication.Assets.GetAssetStream('textures/box_albedo.jpg');
+ try
+  fBoxAlbedoTexture:=TVulkanTexture.CreateFromJPEG(VulkanApplication.VulkanDevice,
+                                                   VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                   VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                   VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                                   VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                                   Stream,
+                                                   true);
+ finally
+  Stream.Free;
+ end;{}
+
  fBoxAlbedoTexture.WrapModeU:=vtwmClampToEdge;
  fBoxAlbedoTexture.WrapModeV:=vtwmClampToEdge;
  fBoxAlbedoTexture.WrapModeW:=vtwmClampToEdge;
@@ -616,7 +629,7 @@ begin
     fSelectedIndex:=0;
    end;
    KEYCODE_END:begin
-    fSelectedIndex:=0
+    fSelectedIndex:=0;
    end;
    KEYCODE_RETURN,KEYCODE_SPACE:begin
     if fSelectedIndex=0 then begin
