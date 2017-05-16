@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-16-15-12-0000                       *
+ *                        Version 2017-05-16-18-23-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -20132,6 +20132,11 @@ constructor TVulkanTexture.CreateFromBMP(const pDevice:TVulkanDevice;
                                          const pMipMaps:boolean);
 const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
  function LoadBMPImage(DataPointer:pointer;DataSize:TVkUInt32;var ImageData:pointer;var ImageWidth,ImageHeight:TVkInt32):boolean;
+ const BI_RGB=0;
+       BI_RLE8=1;
+       BI_RLE4=2;
+       BI_BITFIELDS=3;
+       BI_ALPHABITFIELDS=6;
  type PByteArray=^TByteArray;
       TByteArray=array[0..65535] of TVkUInt8;
       PBMPHeaderMagic=^TBMPHeaderMagic;
@@ -20165,13 +20170,19 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
        Unused:TVkUInt8;
       end;
       TBMPPalette=array of TBMPPaletteEntry;
- var RawDataSize,LineSize,x,y,c,MaskSize,RedShiftLeft,RedShiftRight,GreenShiftLeft,GreenShiftRight,BlueShiftLeft,BlueShiftRight:TVkInt32;
+      TDynamicByteArray=array of TVkUInt8;
+ var RawDataSize,LineSize,x,y,c,MaskSize,
+     RedShiftLeft,RedShiftRight,
+     GreenShiftLeft,GreenShiftRight,
+     BlueShiftLeft,BlueShiftRight,
+     AlphaShiftLeft,AlphaShiftRight:TVkInt32;
      BMPHeader:TBMPHeader;
      BMPInfo:TBMPInfo;
      BMPPalette:TBMPPalette;
-     RedMask,BlueMask,GreenMask:TVKUInt32;
+     RedMask,BlueMask,GreenMask,AlphaMask:TVKUInt32;
      RawData,ip,op:PByteArray;
      VFlip:boolean;
+     NewData:TDynamicByteArray;
   function Swap16IfBigEndian(const Value:TVkUInt16):TVkUInt16;
   begin
 {$ifdef big_endian}
@@ -20191,6 +20202,141 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
 {$else}
    result:=Value;
 {$endif}
+  end;
+  procedure DecompressRLE8(const Data:pointer;const Size,Width,Height,Pitch:TVkInt32);
+  var Line,Count:TVkInt32;
+      p,d,DestEnd:PVkUInt8;
+      Value:TVkUInt8;
+  begin
+   p:=Data;
+   SetLength(NewData,(Width+Pitch)*Height);
+   d:=@NewData[0];
+   DestEnd:=@NewData[(Width+Pitch)*Height];
+   Line:=0;
+	 while (TVkPtrInt(TVkPtrUInt(Data)-TVkPtrUInt(p))<Size) and (TVkPtrUInt(d)<TVkPtrUInt(DestEnd)) do begin
+    if p^=0 then begin
+     inc(p);
+     case p^ of
+			0:begin
+       // End of line
+       inc(p);
+       inc(Line);
+       d:=@NewData[(Width+Pitch)*Line];
+			end;
+			1:begin
+       // End of bitmap
+       exit;
+      end;
+			2:begin
+       // Delta
+       inc(p);
+       inc(d,p^);
+       inc(p);
+       inc(d,p^*(Width+Pitch));
+       inc(p);
+      end;
+			else begin
+			 // Absolute mode
+			 Count:=p^;
+       inc(p);
+       Move(p^,d^,Count);
+       inc(p,Count+((2-(Count and 1)) and 1));
+       inc(d,Count);
+      end;
+		 end;
+    end else begin
+   	 Count:=p^;
+     inc(p);
+     Value:=p^;
+     inc(p);
+     FillChar(p^,Count,Value);
+     inc(d,Count);
+    end;
+   end;
+  end;
+  procedure DecompressRLE4(const Data:pointer;const Size,Width,Height,Pitch:TVkInt32);
+  var LineWidth,Line,Shift,Count,x,y,ReadAdditional,ReadShift,i,Mask:TVkInt32;
+      p,d,DestEnd:PVkUInt8;
+      Value,OtherValue:TVkUInt8;
+  begin
+   LineWidth:=((Width+1) shr 1)+Pitch;
+   p:=Data;
+   SetLength(NewData,LineWidth*Height);
+   d:=@NewData[0];
+   DestEnd:=@NewData[LineWidth*Height];
+   Line:=0;
+   Shift:=4;
+	 while (TVkPtrInt(TVkPtrUInt(Data)-TVkPtrUInt(p))<Size) and (TVkPtrUInt(d)<TVkPtrUInt(DestEnd)) do begin
+    if p^=0 then begin
+     inc(p);
+     case p^ of
+			0:begin
+       // End of line
+       inc(p);
+       inc(Line);
+       d:=@NewData[LineWidth*Line];
+       Shift:=4;
+			end;
+			1:begin
+       // End of bitmap
+       exit;
+      end;
+			2:begin
+       // Delta
+       inc(p);
+       x:=p^;
+       inc(p);
+       y:=p^;
+       inc(p);
+       inc(d,(x shr 1)+(y*LineWidth));
+       Shift:=(x and 1) shl 2;
+      end;
+			else begin
+			 // Absolute mode
+			 Count:=p^;
+       inc(p);
+       ReadAdditional:=(2-(Count and 1)) and 1;
+       ReadShift:=4;
+			 for i:=1 to Count do begin
+        Value:=(p^ shr ReadShift) and $0f;
+        dec(ReadShift,4);
+        if ReadShift<0 then begin
+         inc(p);
+         ReadShift:=4;
+        end;
+        Mask:=$0f shl Shift;
+        d^:=(d^ and not Mask) or ((Value shl Shift) and Mask);
+        dec(Shift,4);
+        if Shift<0 then begin
+         Shift:=4;
+         inc(d);
+        end;
+       end;
+       inc(p,ReadAdditional);
+      end;
+		 end;
+    end else begin
+   	 Count:=p^;
+     inc(p);
+     Value:=p^;
+     inc(p);
+     OtherValue:=Value shr 4;
+     Value:=Value and $0f;
+     for i:=1 to Count do begin
+      Mask:=$0f shl Shift;
+      if Shift=0 then begin
+       d^:=(d^ and not Mask) or ((Value shl Shift) and Mask);
+      end else begin
+       d^:=(d^ and not Mask) or ((OtherValue shl Shift) and Mask);
+      end;
+      dec(Shift,4);
+      if Shift<0 then begin
+       Shift:=4;
+       inc(d);
+      end;
+     end;
+    end;
+   end;
   end;
  begin
   result:=false;
@@ -20232,31 +20378,70 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
      exit;
     end;
 
-    if BMPInfo.Compression=3{BI_BITFIELDS} then begin
-     if not (BMPInfo.Bits in [16,32]) then begin
-      exit;
+    case BMPInfo.Compression of
+     BI_BITFIELDS:begin
+      if not (BMPInfo.Bits in [16,32]) then begin
+       exit;
+      end;
+      MaskSize:=SizeOf(TVkUInt32)*3;
+      RedMask:=PVkUInt32(pointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*0)]))^;
+      BlueMask:=PVkUInt32(pointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*1)]))^;
+      GreenMask:=PVkUInt32(pointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*2)]))^;
+      AlphaMask:=$ff000000;
+      RedShiftRight:=CTZDWord(RedMask);
+      GreenShiftRight:=CTZDWord(GreenMask);
+      BlueShiftRight:=CTZDWord(BlueMask);
+      AlphaShiftRight:=24;
+      RedShiftLeft:=VulkanIntLog2(RedMask shr RedShiftRight);
+      GreenShiftLeft:=VulkanIntLog2(GreenMask shr GreenShiftRight);
+      BlueShiftLeft:=VulkanIntLog2(BlueMask shr BlueShiftRight);
+      AlphaShiftLeft:=0;
      end;
-     MaskSize:=SizeOf(TVkUInt32)*3;
-     RedMask:=PVkUInt32(pointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*0)]))^;
-     BlueMask:=PVkUInt32(pointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*1)]))^;
-     GreenMask:=PVkUInt32(pointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*2)]))^;
-     RedShiftRight:=CTZDWord(RedMask);
-     GreenShiftRight:=CTZDWord(GreenMask);
-     BlueShiftRight:=CTZDWord(BlueMask);
-     RedShiftLeft:=VulkanIntLog2(RedMask shr RedShiftRight);
-     GreenShiftLeft:=VulkanIntLog2(GreenMask shr GreenShiftRight);
-     BlueShiftLeft:=VulkanIntLog2(BlueMask shr BlueShiftRight);
-    end else begin
-     MaskSize:=0;
-     RedMask:=$00ff0000;
-     BlueMask:=$0000ff00;
-     GreenMask:=$00000ff;
-     RedShiftRight:=16;
-     GreenShiftRight:=8;
-     BlueShiftRight:=0;
-     RedShiftLeft:=0;
-     GreenShiftLeft:=0;
-     BlueShiftLeft:=0;
+     BI_ALPHABITFIELDS:begin
+      if not (BMPInfo.Bits in [16,32]) then begin
+       exit;
+      end;
+      MaskSize:=SizeOf(TVkUInt32)*4;
+      RedMask:=PVkUInt32(pointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*0)]))^;
+      BlueMask:=PVkUInt32(pointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*1)]))^;
+      GreenMask:=PVkUInt32(pointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*2)]))^;
+      AlphaMask:=PVkUInt32(pointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*3)]))^;
+      RedShiftRight:=CTZDWord(RedMask);
+      GreenShiftRight:=CTZDWord(GreenMask);
+      BlueShiftRight:=CTZDWord(BlueMask);
+      AlphaShiftRight:=CTZDWord(AlphaMask);
+      RedShiftLeft:=VulkanIntLog2(RedMask shr RedShiftRight);
+      GreenShiftLeft:=VulkanIntLog2(GreenMask shr GreenShiftRight);
+      BlueShiftLeft:=VulkanIntLog2(BlueMask shr BlueShiftRight);
+      AlphaShiftLeft:=VulkanIntLog2(AlphaMask shr AlphaShiftRight);
+     end;
+     else begin
+      MaskSize:=0;
+      RedMask:=$00ff0000;
+      BlueMask:=$0000ff00;
+      GreenMask:=$00000ff;
+      AlphaMask:=$ff000000;
+      RedShiftRight:=16;
+      GreenShiftRight:=8;
+      BlueShiftRight:=0;
+      AlphaShiftRight:=24;
+      RedShiftLeft:=0;
+      GreenShiftLeft:=0;
+      BlueShiftLeft:=0;
+      AlphaShiftLeft:=0;
+      case BMPInfo.Compression of
+       BI_RLE8:begin
+        if BMPInfo.Bits<>8 then begin
+         exit;
+        end;
+       end;
+       BI_RLE4:begin
+        if not (BMPInfo.Bits in [1,4]) then begin
+         exit;
+        end;
+       end;
+      end;
+     end;
     end;
 
     if BMPInfo.Bits<=8 then begin
@@ -20275,7 +20460,7 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
 
     try
      case BMPInfo.Compression of
-      0{BI_RGB}:begin
+      BI_RGB:begin
        LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TVKUInt32(31)) shr 3;
        RawDataSize:=LineSize*BMPInfo.Height;
        if TVkInt64(BMPHeader.DataOffset+TVkInt64(RawDataSize))>TVkInt64(BMPHeader.FileSize) then begin
@@ -20415,15 +20600,105 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
         end;
        end;
       end;
-      1{BI_RLE8}:begin
-       // Not supported (yet)
-       exit;
+      BI_RLE8:begin
+       ImageWidth:=BMPInfo.Width;
+       ImageHeight:=BMPInfo.Height;
+       GetMem(ImageData,ImageWidth*ImageHeight*4);
+       NewData:=nil;
+       try
+        LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TVKUInt32(31)) shr 3;
+        DecompressRLE8(@PByteArray(DataPointer)^[BMPHeader.DataOffset],BMPHeader.FileSize-BMPHeader.DataOffset,ImageWidth,ImageHeight,LineSize-ImageWidth);
+        RawData:=@NewData[0];
+        for y:=ImageHeight-1 downto 0 do begin
+         ip:=@PByteArray(RawData)^[y*LineSize];
+         if VFlip then begin
+          op:=@PByteArray(ImageData)^[y*ImageWidth*4];
+         end else begin
+          op:=@PByteArray(ImageData)^[(ImageHeight-(y+1))*ImageWidth*4];
+         end;
+         for x:=0 to ImageWidth-1 do begin
+          c:=ip^[x];
+          op^[0]:=BMPPalette[c].Red;
+          op^[1]:=BMPPalette[c].Green;
+          op^[2]:=BMPPalette[c].Blue;
+          op^[3]:=$ff;
+          op:=@op[4];
+         end;
+        end;
+       finally
+        NewData:=nil;
+       end;
       end;
-      2{BI_RLE4}:begin
-       // Not supported (yet)
-       exit;
+      BI_RLE4:begin
+       ImageWidth:=BMPInfo.Width;
+       ImageHeight:=BMPInfo.Height;
+       GetMem(ImageData,ImageWidth*ImageHeight*4);
+       NewData:=nil;
+       try
+        LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TVKUInt32(31)) shr 3;
+        DecompressRLE4(@PByteArray(DataPointer)^[BMPHeader.DataOffset],BMPHeader.FileSize-BMPHeader.DataOffset,ImageWidth,ImageHeight,LineSize-ImageWidth);
+        RawData:=@NewData[0];
+        case BMPInfo.Bits of
+         1:begin
+          for y:=ImageHeight-1 downto 0 do begin
+           ip:=@PByteArray(RawData)^[y*LineSize];
+           if VFlip then begin
+            op:=@PByteArray(ImageData)^[y*ImageWidth*4];
+           end else begin
+            op:=@PByteArray(ImageData)^[(ImageHeight-(y+1))*ImageWidth*4];
+           end;
+           for x:=0 to ImageWidth-1 do begin
+            c:=ip^[x shr 3] and (1 shl (x and 7));
+            op^[0]:=BMPPalette[c].Red;
+            op^[1]:=BMPPalette[c].Green;
+            op^[2]:=BMPPalette[c].Blue;
+            op^[3]:=$ff;
+            op:=@op[4];
+           end;
+          end;
+         end;
+         2:begin
+          for y:=ImageHeight-1 downto 0 do begin
+           ip:=@PByteArray(RawData)^[y*LineSize];
+           if VFlip then begin
+            op:=@PByteArray(ImageData)^[y*ImageWidth*4];
+           end else begin
+            op:=@PByteArray(ImageData)^[(ImageHeight-(y+1))*ImageWidth*4];
+           end;
+           for x:=0 to ImageWidth-1 do begin
+            c:=ip^[x shr 2] and (1 shl (x and 3));
+            op^[0]:=BMPPalette[c].Red;
+            op^[1]:=BMPPalette[c].Green;
+            op^[2]:=BMPPalette[c].Blue;
+            op^[3]:=$ff;
+            op:=@op[4];
+           end;
+          end;
+         end;
+         4:begin
+          for y:=ImageHeight-1 downto 0 do begin
+           ip:=@PByteArray(RawData)^[y*LineSize];
+           if VFlip then begin
+            op:=@PByteArray(ImageData)^[y*ImageWidth*4];
+           end else begin
+            op:=@PByteArray(ImageData)^[(ImageHeight-(y+1))*ImageWidth*4];
+           end;
+           for x:=0 to ImageWidth-1 do begin
+            c:=ip^[x shr 1] and (1 shl ((x and 1) shl 2));
+            op^[0]:=BMPPalette[c].Red;
+            op^[1]:=BMPPalette[c].Green;
+            op^[2]:=BMPPalette[c].Blue;
+            op^[3]:=$ff;
+            op:=@op[4];
+           end;
+          end;
+         end;
+        end;
+       finally
+        NewData:=nil;
+       end;
       end;
-      3{BI_BITFIELDS}:begin
+      BI_BITFIELDS:begin
        LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TVKUInt32(31)) shr 3;
        RawDataSize:=LineSize*BMPInfo.Height;
        if TVkInt64(BMPHeader.DataOffset+TVkInt64(RawDataSize))>TVkInt64(BMPHeader.FileSize) then begin
@@ -20466,6 +20741,58 @@ const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
            op^[0]:=((c and RedMask) shr RedShiftRight) shl RedShiftLeft;
            op^[1]:=((c and GreenMask) shr GreenShiftRight) shl GreenShiftLeft;
            op^[2]:=((c and BlueMask) shr BlueShiftRight) shl BlueShiftLeft;
+           op^[3]:=$ff;
+           ip:=@ip[4];
+           op:=@op[4];
+          end;
+         end;
+        end;
+       end;
+      end;
+      BI_ALPHABITFIELDS:begin
+       LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TVKUInt32(31)) shr 3;
+       RawDataSize:=LineSize*BMPInfo.Height;
+       if TVkInt64(BMPHeader.DataOffset+TVkInt64(RawDataSize))>TVkInt64(BMPHeader.FileSize) then begin
+        exit;
+       end;
+       ImageWidth:=BMPInfo.Width;
+       ImageHeight:=BMPInfo.Height;
+       GetMem(ImageData,ImageWidth*ImageHeight*4);
+       RawData:=@PByteArray(DataPointer)^[BMPHeader.DataOffset];
+       case BMPInfo.Bits of
+        16:begin
+         for y:=ImageHeight-1 downto 0 do begin
+          ip:=@PByteArray(RawData)^[y*LineSize];
+          if VFlip then begin
+           op:=@PByteArray(ImageData)^[y*ImageWidth*4];
+          end else begin
+           op:=@PByteArray(ImageData)^[(ImageHeight-(y+1))*ImageWidth*4];
+          end;
+          for x:=0 to ImageWidth-1 do begin
+           c:=ip[0] or (TVkUInt16(TVkUInt8(ip^[1])) shl 8);
+           op^[0]:=((c and RedMask) shr RedShiftRight) shl RedShiftLeft;
+           op^[1]:=((c and GreenMask) shr GreenShiftRight) shl GreenShiftLeft;
+           op^[2]:=((c and BlueMask) shr BlueShiftRight) shl BlueShiftLeft;
+           op^[3]:=((c and AlphaMask) shr AlphaShiftRight) shl AlphaShiftLeft;
+           ip:=@ip[2];
+           op:=@op[4];
+          end;
+         end;
+        end;
+        32:begin
+         for y:=ImageHeight-1 downto 0 do begin
+          ip:=@PByteArray(RawData)^[y*LineSize];
+          if VFlip then begin
+           op:=@PByteArray(ImageData)^[y*ImageWidth*4];
+          end else begin
+           op:=@PByteArray(ImageData)^[(ImageHeight-(y+1))*ImageWidth*4];
+          end;
+          for x:=0 to ImageWidth-1 do begin
+           c:=ip[0] or (TVkUInt16(TVkUInt8(ip^[1])) shl 8) or (TVkUInt16(TVkUInt8(ip^[2])) shl 16) or (TVkUInt16(TVkUInt8(ip^[3])) shl 24);
+           op^[0]:=((c and RedMask) shr RedShiftRight) shl RedShiftLeft;
+           op^[1]:=((c and GreenMask) shr GreenShiftRight) shl GreenShiftLeft;
+           op^[2]:=((c and BlueMask) shr BlueShiftRight) shl BlueShiftLeft;
+           op^[3]:=((c and AlphaMask) shr AlphaShiftRight) shl AlphaShiftLeft;
            ip:=@ip[4];
            op:=@op[4];
           end;
