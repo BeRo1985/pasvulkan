@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-15-21-24-0000                       *
+ *                        Version 2017-05-16-10-50-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -17522,6 +17522,8 @@ begin
  end;
 end;
 
+type ELoadPNGImage=class(Exception);
+
 constructor TVulkanTexture.CreateFromPNG(const pDevice:TVulkanDevice;
                                          const pGraphicsCommandBuffer:TVulkanCommandBuffer;
                                          const pGraphicsFence:TVulkanFence;
@@ -17530,10 +17532,20 @@ constructor TVulkanTexture.CreateFromPNG(const pDevice:TVulkanDevice;
                                          const pStream:TStream;
                                          const pMipMaps:boolean);
 const MipMapLevels:array[boolean] of TVkInt32=(1,-1);
-{$undef PNGHighDepth}
-type PPNGPixel=^TPNGPixel;
-     TPNGPixel=packed record
-      r,g,b,a:{$ifdef PNGHighDepth}TVkUInt16{$else}TVkUInt8{$endif};
+type PPNGPixelFormat=^TPNGPixelFormat;
+     TPNGPixelFormat=
+      (
+       ppfUnknown,
+       ppfR8G8B8A8,
+       ppfR16G16B16A16
+      );
+     PPNGPixelUI8=^TPNGPixelUI8;
+     TPNGPixelUI8=packed record
+      r,g,b,a:TVkUInt8;
+     end;
+     PPNGPixelUI16=^TPNGPixelUI16;
+     TPNGPixelUI16=packed record
+      r,g,b,a:TVkUInt16;
      end;
 //const PNGHeader:TPNGHeader=($89,$50,$4e,$47,$0d,$0a,$1a,$0a);
  function CRC32(data:pointer;length:TVkUInt32):TVkUInt32;
@@ -18015,82 +18027,78 @@ type PPNGPixel=^TPNGPixel;
    result:=false;
   end;
  end;
- type PPNGPixelEx=^TPNGPixelEx;
-      TPNGPixelEx=packed record
-       r,g,b,a:TVkUInt16;
-      end;
-      TPNGColorFunc=function(x:TVkInt64):TPNGPixelEx;
- function ColorGray1(x:TVkInt64):TPNGPixelEx;
+ type TPNGColorFunc=function(x:TVkUInt64):TPNGPixelUI16;
+ function ColorGray1(x:TVkUInt64):TPNGPixelUI16;
  begin
   result.r:=(0-(x and 1)) and $ffff;
   result.g:=(0-(x and 1)) and $ffff;
   result.b:=(0-(x and 1)) and $ffff;
   result.a:=$ffff;
  end;
- function ColorGray2(x:TVkInt64):TPNGPixelEx;
+ function ColorGray2(x:TVkUInt64):TPNGPixelUI16;
  begin
   result.r:=(x and 3) or ((x and 3) shl 2) or ((x and 3) shl 4) or ((x and 3) shl 6) or ((x and 3) shl 8) or ((x and 3) shl 10) or ((x and 3) shl 12) or ((x and 3) shl 14);
   result.g:=(x and 3) or ((x and 3) shl 2) or ((x and 3) shl 4) or ((x and 3) shl 6) or ((x and 3) shl 8) or ((x and 3) shl 10) or ((x and 3) shl 12) or ((x and 3) shl 14);
   result.b:=(x and 3) or ((x and 3) shl 2) or ((x and 3) shl 4) or ((x and 3) shl 6) or ((x and 3) shl 8) or ((x and 3) shl 10) or ((x and 3) shl 12) or ((x and 3) shl 14);
   result.a:=$ffff;
  end;
- function ColorGray4(x:TVkInt64):TPNGPixelEx;
+ function ColorGray4(x:TVkUInt64):TPNGPixelUI16;
  begin
   result.r:=(x and $f) or ((x and $f) shl 4) or ((x and $f) shl 8) or ((x and $f) shl 12);
   result.g:=(x and $f) or ((x and $f) shl 4) or ((x and $f) shl 8) or ((x and $f) shl 12);
   result.b:=(x and $f) or ((x and $f) shl 4) or ((x and $f) shl 8) or ((x and $f) shl 12);
   result.a:=$ffff;
  end;
- function ColorGray8(x:TVkInt64):TPNGPixelEx;
+ function ColorGray8(x:TVkUInt64):TPNGPixelUI16;
  begin
   result.r:=(x and $ff) or ((x and $ff) shl 8);
   result.g:=(x and $ff) or ((x and $ff) shl 8);
   result.b:=(x and $ff) or ((x and $ff) shl 8);
   result.a:=$ffff;
  end;
- function ColorGray16(x:TVkInt64):TPNGPixelEx;
+ function ColorGray16(x:TVkUInt64):TPNGPixelUI16;
  begin
   result.r:=x and $ffff;
   result.g:=x and $ffff;
   result.b:=x and $ffff;
   result.a:=$ffff;
  end;
- function ColorGrayAlpha8(x:TVkInt64):TPNGPixelEx;
+ function ColorGrayAlpha8(x:TVkUInt64):TPNGPixelUI16;
  begin
   result.r:=(x and $00ff) or ((x and $00ff) shl 8);
   result.g:=(x and $00ff) or ((x and $00ff) shl 8);
   result.b:=(x and $00ff) or ((x and $00ff) shl 8);
   result.a:=(x and $ff00) or ((x and $ff00) shr 8);
  end;
- function ColorGrayAlpha16(x:TVkInt64):TPNGPixelEx;
+ function ColorGrayAlpha16(x:TVkUInt64):TPNGPixelUI16;
  begin
   result.r:=(x shr 16) and $ffff;
   result.g:=(x shr 16) and $ffff;
   result.b:=(x shr 16) and $ffff;
   result.a:=x and $ffff;
  end;
- function ColorColor8(x:TVkInt64):TPNGPixelEx;
+ function ColorColor8(x:TVkUInt64):TPNGPixelUI16;
  begin
   result.r:=(x and $ff) or ((x and $ff) shl 8);
   result.g:=((x shr 8) and $ff) or (((x shr 8) and $ff) shl 8);
   result.b:=((x shr 16) and $ff) or (((x shr 16) and $ff) shl 8);
   result.a:=$ffff;
  end;
- function ColorColor16(x:TVkInt64):TPNGPixelEx;
+ function ColorColor16(x:TVkUInt64):TPNGPixelUI16;
  begin
   result.r:=x and $ffff;
   result.g:=(x shr 16) and $ffff;
   result.b:=(x shr 32) and $ffff;
   result.a:=$ffff;
  end;
- function ColorColorAlpha8(x:TVkInt64):TPNGPixelEx;
+ function ColorColorAlpha8(x:TVkUInt64):TPNGPixelUI16;
  begin
   result.r:=(x and $ff) or ((x and $ff) shl 8);
   result.g:=((x shr 8) and $ff) or (((x shr 8) and $ff) shl 8);
   result.b:=((x shr 16) and $ff) or (((x shr 16) and $ff) shl 8);
   result.a:=((x shr 24) and $ff) or (((x shr 24) and $ff) shl 8);
  end;
- function ColorColorAlpha16(x:TVkInt64):TPNGPixelEx;
+ function ColorColorAlpha16(x:TVkUInt64):TPNGPixelUI16;
  begin
   result.r:=x and $ffff;
   result.g:=(x shr 16) and $ffff;
@@ -18112,11 +18120,11 @@ type PPNGPixel=^TPNGPixel;
    result:=c;
   end;
  end;
- function LoadPNGImage(DataPointer:pointer;DataSize:TVkUInt32;var ImageData:pointer;var ImageWidth,ImageHeight:TVkInt32;HeaderOnly:boolean):boolean;
+ function LoadPNGImage(DataPointer:pointer;DataSize:TVkUInt32;var ImageData:pointer;var ImageWidth,ImageHeight:TVkInt32;HeaderOnly:boolean;var PixelFormat:TPNGPixelFormat):boolean;
  type TBitsUsed=array[0..7] of TVkUInt32;
       PByteArray=^TByteArray;
       TByteArray=array[0..65535] of TVkUInt8;
-      TColorData=TVkInt64;
+      TColorData=TVkUInt64;
  const StartPoints:array[0..7,0..1] of TVkUInt16=((0,0),(0,0),(4,0),(0,4),(2,0),(0,2),(1,0),(0,1));
        Delta:array[0..7,0..1] of TVkUInt16=((1,1),(8,8),(8,8),(4,8),(4,4),(2,4),(2,2),(1,2));
        BitsUsed1Depth:TBitsUsed=($80,$40,$20,$10,$08,$04,$02,$01);
@@ -18128,7 +18136,7 @@ type PPNGPixel=^TPNGPixel;
      CountBitsUsed,BitShift,UsingBitGroup,DataIndex:TVkUInt32;
      DataBytes:TColorData;
      DataBytes32:TVkUInt32;
-     BitDepth,StartX,StartY,DeltaX,DeltaY,{ImageBytesPerPixel,}WidthHeight:TVkInt32;
+     BitDepth,StartX,StartY,DeltaX,DeltaY,OutputBitsPerPixel,WidthHeight:TVkInt32;
      BitsUsed:TBitsUsed;
      SwitchLine,CurrentLine,PreviousLine:PByteArray;
      CountScanlines,ScanLineLength:array[0..7] of TVkUInt32;
@@ -18141,6 +18149,10 @@ type PPNGPixel=^TPNGPixel;
      idata,DecompressPtr:pointer;
      idatasize,idatacapacity,idataexpandedsize,LineFilter:TVkUInt32;
      idataexpanded:pointer;
+  procedure RaiseError;
+  begin
+   raise ELoadPNGImage.Create('Invalid or corrupt PNG stream');
+  end;
   function GetU8(var p:pointer):TVkUInt8;
   begin
    result:=TVkUInt8(p^);
@@ -18157,21 +18169,46 @@ type PPNGPixel=^TPNGPixel;
    result:=result or GetU16(p);
   end;
   function CalcColor:TColorData;
-  var r:TVkUInt16;
-      b:TVkUInt8;
+  var i:TVkInt32;
+      p:pointer;
+      w:PVkUInt16;
+      v:TVkUInt16;
+      t:TVkUInt64;
   begin
    if UsingBitGroup=0 then begin
+{$ifdef big_endian}
     DataBytes:=0;
-    if BitDepth=16 then begin
-     r:=1;
-     while r<ByteWidth do begin
-      b:=CurrentLine^[DataIndex+r];
-      CurrentLine^[DataIndex+r]:=CurrentLine^[DataIndex+TVkUInt32(r-1)];
-      CurrentLine^[DataIndex+TVkUInt32(r-1)]:=b;
-      inc(r,2);
+    Move(CurrentLine^[DataIndex],DataBytes,ByteWidth);
+{$else}
+    p:=@CurrentLine^[DataIndex];
+    case ByteWidth of
+     1:begin
+      DataBytes:=TVKUInt8(p^);
+     end;
+     2:begin
+      DataBytes:=TVKUInt16(p^);
+     end;
+     4:begin
+      DataBytes:=TVKUInt32(p^);
+     end;
+     8:begin
+      DataBytes:=TVKUInt64(p^);
+     end;
+     else begin
+      DataBytes:=0;
+      Move(p^,DataBytes,ByteWidth);
      end;
     end;
-    Move(CurrentLine^[DataIndex],DataBytes,ByteWidth);
+{$endif}
+    if BitDepth=16 then begin
+     p:=@DataBytes;
+     w:=p;
+     for i:=1 to ByteWidth div SizeOf(TVkUInt16) do begin
+      v:=w^;
+      w^:=((v and $ff) shl 8) or ((v and $ff00) shr 8);
+      inc(w);
+     end;
+    end;
 {$ifdef big_endian}
     DataBytes:=Swap64(DataBytes);
 {$endif}
@@ -18190,8 +18227,9 @@ type PPNGPixel=^TPNGPixel;
   procedure HandleScanLine(const y,CurrentPass:TVkInt32;const ScanLine:PByteArray);
   var x,l:TVkInt32;
       c:TColorData;
-      pe:TPNGPixelEx;
-      p:PPNGPixel;
+      pe:TPNGPixelUI16;
+      pui8:PPNGPixelUI8;
+      pui16:PPNGPixelUI16;
   begin
    UsingBitGroup:=0;
    DataIndex:=0;
@@ -18200,18 +18238,25 @@ type PPNGPixel=^TPNGPixel;
     for x:=0 to ScanlineLength[CurrentPass]-1 do begin
      c:=CalcColor;
      if c<l then begin
-      p:=PPNGPixel(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixel)]));
-{$ifdef PNGHighDepth}
-      p^.r:=Palette[c,0] or (Palette[c,0] shl 8);
-      p^.g:=Palette[c,1] or (Palette[c,1] shl 8);
-      p^.b:=Palette[c,2] or (Palette[c,2] shl 8);
-      p^.a:=Palette[c,3] or (Palette[c,3] shl 8);
-{$else}
-      p^.r:=Palette[c,0];
-      p^.g:=Palette[c,1];
-      p^.b:=Palette[c,2];
-      p^.a:=Palette[c,3];
-{$endif}
+      case PixelFormat of
+       ppfR8G8B8A8:begin
+        pui8:=PPNGPixelUI8(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI8)]));
+        pui8^.r:=Palette[c,0];
+        pui8^.g:=Palette[c,1];
+        pui8^.b:=Palette[c,2];
+        pui8^.a:=Palette[c,3];
+       end;
+       ppfR16G16B16A16:begin
+        pui16:=PPNGPixelUI16(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI16)]));
+        pui16^.r:=Palette[c,0] or (Palette[c,0] shl 8);
+        pui16^.g:=Palette[c,1] or (Palette[c,1] shl 8);
+        pui16^.b:=Palette[c,2] or (Palette[c,2] shl 8);
+        pui16^.a:=Palette[c,3] or (Palette[c,3] shl 8);
+       end;
+       else begin
+        RaiseError;
+       end;
+      end;
      end;
     end;
    end else begin
@@ -18227,22 +18272,28 @@ type PPNGPixel=^TPNGPixel;
       pe.g:=((DataBytes32 shr 8) and $ff) or (((DataBytes32 shr 8) and $ff) shl 8);
       pe.b:=((DataBytes32 shr 16) and $ff) or (((DataBytes32 shr 16) and $ff) shl 8);
       pe.a:=((DataBytes32 shr 24) and $ff) or (((DataBytes32 shr 24) and $ff) shl 8);
-      p:=PPNGPixel(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixel)]));
       if (((l=1) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[0]) and (pe.b=TransparentColor[0])))) or
          (((l=3) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[1]) and (pe.b=TransparentColor[2])))) then begin
        pe.a:=0;
       end;
-{$ifdef PNGHighDepth}
-      p^.r:=pe.r;
-      p^.g:=pe.g;
-      p^.b:=pe.b;
-      p^.a:=pe.a;
-{$else}
-      p^.r:=pe.r shr 8;
-      p^.g:=pe.g shr 8;
-      p^.b:=pe.b shr 8;
-      p^.a:=pe.a shr 8;
-{$endif}
+      case PixelFormat of
+       ppfR8G8B8A8:begin
+        pui8^.r:=pe.r shr 8;
+        pui8^.g:=pe.g shr 8;
+        pui8^.b:=pe.b shr 8;
+        pui8^.a:=pe.a shr 8;
+       end;
+       ppfR16G16B16A16:begin
+        pui16:=PPNGPixelUI16(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI16)]));
+        pui16^.r:=pe.r;
+        pui16^.g:=pe.g;
+        pui16^.b:=pe.b;
+        pui16^.a:=pe.a;
+       end;
+       else begin
+        RaiseError;
+       end;
+      end;
      end;
     end else if addr(ConvertColor)=@ColorColor8 then begin
      l:=length(TransparentColor);
@@ -18256,82 +18307,202 @@ type PPNGPixel=^TPNGPixel;
       pe.g:=((DataBytes32 shr 8) and $ff) or (((DataBytes32 shr 8) and $ff) shl 8);
       pe.b:=((DataBytes32 shr 16) and $ff) or (((DataBytes32 shr 16) and $ff) shl 8);
       pe.a:=$ffff;
-      p:=PPNGPixel(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixel)]));
       if (((l=1) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[0]) and (pe.b=TransparentColor[0])))) or
          (((l=3) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[1]) and (pe.b=TransparentColor[2])))) then begin
        pe.a:=0;
       end;
-{$ifdef PNGHighDepth}
-      p^.r:=pe.r;
-      p^.g:=pe.g;
-      p^.b:=pe.b;
-      p^.a:=pe.a;
-{$else}
-      p^.r:=pe.r shr 8;
-      p^.g:=pe.g shr 8;
-      p^.b:=pe.b shr 8;
-      p^.a:=pe.a shr 8;
-{$endif}
+      case PixelFormat of
+       ppfR8G8B8A8:begin
+        pui8^.r:=pe.r shr 8;
+        pui8^.g:=pe.g shr 8;
+        pui8^.b:=pe.b shr 8;
+        pui8^.a:=pe.a shr 8;
+       end;
+       ppfR16G16B16A16:begin
+        pui16:=PPNGPixelUI16(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI16)]));
+        pui16^.r:=pe.r;
+        pui16^.g:=pe.g;
+        pui16^.b:=pe.b;
+        pui16^.a:=pe.a;
+       end;
+       else begin
+        RaiseError;
+       end;
+      end;
+     end;
+    end else if addr(ConvertColor)=@ColorColorAlpha16 then begin
+     l:=length(TransparentColor);
+     for x:=0 to ScanlineLength[CurrentPass]-1 do begin
+      pe.r:=(TVkUInt8(pointer(@CurrentLine^[DataIndex+0])^) shl 8) or
+            (TVkUInt8(pointer(@CurrentLine^[DataIndex+1])^) shl 0);
+      pe.g:=(TVkUInt8(pointer(@CurrentLine^[DataIndex+2])^) shl 8) or
+            (TVkUInt8(pointer(@CurrentLine^[DataIndex+3])^) shl 0);
+      pe.b:=(TVkUInt8(pointer(@CurrentLine^[DataIndex+4])^) shl 8) or
+            (TVkUInt8(pointer(@CurrentLine^[DataIndex+5])^) shl 0);
+      pe.a:=(TVkUInt8(pointer(@CurrentLine^[DataIndex+6])^) shl 8) or
+            (TVkUInt8(pointer(@CurrentLine^[DataIndex+7])^) shl 0);
+      inc(DataIndex,8);
+      if (((l=1) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[0]) and (pe.b=TransparentColor[0])))) or
+         (((l=3) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[1]) and (pe.b=TransparentColor[2])))) then begin
+       pe.a:=0;
+      end;
+      case PixelFormat of
+       ppfR8G8B8A8:begin
+        pui8^.r:=pe.r shr 8;
+        pui8^.g:=pe.g shr 8;
+        pui8^.b:=pe.b shr 8;
+        pui8^.a:=pe.a shr 8;
+       end;
+       ppfR16G16B16A16:begin
+        pui16:=PPNGPixelUI16(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI16)]));
+        pui16^.r:=pe.r;
+        pui16^.g:=pe.g;
+        pui16^.b:=pe.b;
+        pui16^.a:=pe.a;
+       end;
+       else begin
+        RaiseError;
+       end;
+      end;
+     end;
+    end else if addr(ConvertColor)=@ColorColor16 then begin
+     l:=length(TransparentColor);
+     for x:=0 to ScanlineLength[CurrentPass]-1 do begin
+      pe.r:=(TVkUInt8(pointer(@CurrentLine^[DataIndex+0])^) shl 8) or
+            (TVkUInt8(pointer(@CurrentLine^[DataIndex+1])^) shl 0);
+      pe.g:=(TVkUInt8(pointer(@CurrentLine^[DataIndex+2])^) shl 8) or
+            (TVkUInt8(pointer(@CurrentLine^[DataIndex+3])^) shl 0);
+      pe.b:=(TVkUInt8(pointer(@CurrentLine^[DataIndex+4])^) shl 8) or
+            (TVkUInt8(pointer(@CurrentLine^[DataIndex+5])^) shl 0);
+      pe.a:=$ffff;
+      inc(DataIndex,6);
+      if (((l=1) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[0]) and (pe.b=TransparentColor[0])))) or
+         (((l=3) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[1]) and (pe.b=TransparentColor[2])))) then begin
+       pe.a:=0;
+      end;
+      case PixelFormat of
+       ppfR8G8B8A8:begin
+        pui8^.r:=pe.r shr 8;
+        pui8^.g:=pe.g shr 8;
+        pui8^.b:=pe.b shr 8;
+        pui8^.a:=pe.a shr 8;
+       end;
+       ppfR16G16B16A16:begin
+        pui16:=PPNGPixelUI16(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI16)]));
+        pui16^.r:=pe.r;
+        pui16^.g:=pe.g;
+        pui16^.b:=pe.b;
+        pui16^.a:=pe.a;
+       end;
+       else begin
+        RaiseError;
+       end;
+      end;
      end;
     end else if assigned(ConvertColor) then begin
      l:=length(TransparentColor);
      for x:=0 to ScanlineLength[CurrentPass]-1 do begin
       pe:=ConvertColor(CalcColor);
-      p:=PPNGPixel(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixel)]));
       if (((l=1) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[0]) and (pe.b=TransparentColor[0])))) or
          (((l=3) and ((pe.r=TransparentColor[0]) and (pe.r=TransparentColor[1]) and (pe.b=TransparentColor[2])))) then begin
        pe.a:=0;
       end;
- {$ifdef PNGHighDepth}
-      p^.r:=pe.r;
-      p^.g:=pe.g;
-      p^.b:=pe.b;
-      p^.a:=pe.a;
- {$else}
-      p^.r:=pe.r shr 8;
-      p^.g:=pe.g shr 8;
-      p^.b:=pe.b shr 8;
-      p^.a:=pe.a shr 8;
- {$endif}
+      case PixelFormat of
+       ppfR8G8B8A8:begin
+        pui8^.r:=pe.r shr 8;
+        pui8^.g:=pe.g shr 8;
+        pui8^.b:=pe.b shr 8;
+        pui8^.a:=pe.a shr 8;
+       end;
+       ppfR16G16B16A16:begin
+        pui16:=PPNGPixelUI16(pointer(@pansichar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI16)]));
+        pui16^.r:=pe.r;
+        pui16^.g:=pe.g;
+        pui16^.b:=pe.b;
+        pui16^.a:=pe.a;
+       end;
+       else begin
+        RaiseError;
+       end;
+      end;
      end;
     end;
    end;
   end;
   procedure CgBISwapBGR2RGBandUnpremultiply;
-  const UnpremultiplyFactor={$ifdef PNGHighDepth}65535{$else}255{$endif};
-        FullAlpha={$ifdef PNGHighDepth}65535{$else}255{$endif};
   var i,b,a:TVkInt32;
-      p:PPNGPixel;
+      pui8:PPNGPixelUI8;
+      pui16:PPNGPixelUI16;
   begin
-   a:=FullAlpha;
-   p:=PPNGPixel(pointer(@pansichar(ImageData)[0]));
-   for i:=0 to WidthHeight-1 do begin
-    a:=a and p^.a;
-    inc(p);
-   end;
-   if ((ColorType and 4)<>0) or (a<>FullAlpha) or HasTransparent then begin
-    p:=PPNGPixel(pointer(@pansichar(ImageData)[0]));
-    for i:=0 to WidthHeight-1 do begin
-     a:=p^.a;
-     if a<>0 then begin
-      b:=p^.b;
-      p^.b:=(p^.r*UnpremultiplyFactor) div a;
-      p^.r:=(b*UnpremultiplyFactor) div a;
-      p^.g:=(p^.g*UnpremultiplyFactor) div a;
-     end else begin
-      b:=p^.b;
-      p^.b:=p^.r;
-      p^.r:=b;
+   case PixelFormat of
+    ppfR8G8B8A8:begin
+     a:=255;
+     pui8:=PPNGPixelUI8(pointer(@pansichar(ImageData)[0]));
+     for i:=0 to WidthHeight-1 do begin
+      a:=a and pui8^.a;
+      inc(pui8);
      end;
-     inc(p);
+     if ((ColorType and 4)<>0) or (a<>255) or HasTransparent then begin
+      pui8:=PPNGPixelUI8(pointer(@pansichar(ImageData)[0]));
+      for i:=0 to WidthHeight-1 do begin
+       a:=pui8^.a;
+       if a<>0 then begin
+        b:=pui8^.b;
+        pui8^.b:=(pui8^.r*255) div a;
+        pui8^.r:=(b*255) div a;
+        pui8^.g:=(pui8^.g*255) div a;
+       end else begin
+        b:=pui8^.b;
+        pui8^.b:=pui8^.r;
+        pui8^.r:=b;
+       end;
+       inc(pui8);
+      end;
+     end else begin
+      pui8:=PPNGPixelUI8(pointer(@pansichar(ImageData)[0]));
+      for i:=0 to WidthHeight-1 do begin
+       b:=pui8^.b;
+       pui8^.b:=pui8^.r;
+       pui8^.r:=b;
+       inc(pui8);
+      end;
+     end;
     end;
-   end else begin
-    p:=PPNGPixel(pointer(@pansichar(ImageData)[0]));
-    for i:=0 to WidthHeight-1 do begin
-     b:=p^.b;
-     p^.b:=p^.r;
-     p^.r:=b;
-     inc(p);
+    ppfR16G16B16A16:begin
+     a:=65535;
+     pui16:=PPNGPixelUI16(pointer(@pansichar(ImageData)[0]));
+     for i:=0 to WidthHeight-1 do begin
+      a:=a and pui16^.a;
+      inc(pui16);
+     end;
+     if ((ColorType and 4)<>0) or (a<>65535) or HasTransparent then begin
+      pui16:=PPNGPixelUI16(pointer(@pansichar(ImageData)[0]));
+      for i:=0 to WidthHeight-1 do begin
+       a:=pui16^.a;
+       if a<>0 then begin
+        b:=pui16^.b;
+        pui16^.b:=(pui16^.r*65535) div a;
+        pui16^.r:=(b*65535) div a;
+        pui16^.g:=(pui16^.g*65535) div a;
+       end else begin
+        b:=pui16^.b;
+        pui16^.b:=pui16^.r;
+        pui16^.r:=b;
+       end;
+       inc(pui16);
+      end;
+     end else begin
+      pui16:=PPNGPixelUI16(pointer(@pansichar(ImageData)[0]));
+      for i:=0 to WidthHeight-1 do begin
+       b:=pui16^.b;
+       pui16^.b:=pui16^.r;
+       pui16^.r:=b;
+       inc(pui16);
+      end;
+     end;
+    end;
+    else begin
+     RaiseError;
     end;
    end;
   end;
@@ -18564,10 +18735,20 @@ type PPNGPixel=^TPNGPixel;
         ImageWidth:=Width;
         ImageHeight:=Height;
         WidthHeight:=Width*Height;
+        case BitDepth of
+         16:begin
+          OutputBitsPerPixel:=64;
+          PixelFormat:=ppfR16G16B16A16;
+         end;
+         else begin
+          OutputBitsPerPixel:=32;
+          PixelFormat:=ppfR8G8B8A8;
+         end;
+        end;
  //     ImageBytesPerPixel:=((TVkInt32(ImgBytes)*TVkInt32(BitDepth))+7) shr 3;
  //     ImageLineWidth:=((ImageWidth*BitsPerPixel)+7) shr 3;
  //     ImageSize:=(((ImageWidth*ImageHeight)*BitsPerPixel)+7) shr 3;
-        GetMem(ImageData,(ImageWidth*ImageHeight)*sizeof(TPNGPixel));
+        GetMem(ImageData,(((ImageWidth*ImageHeight)*OutputBitsPerPixel)+7) shr 3);
         try
          CountBitsUsed:=0;
          case Interlace of
@@ -18797,7 +18978,9 @@ type PPNGPixel=^TPNGPixel;
   end;
  end;
 var Data,ImageData:pointer;
-    DataSize,ImageWidth,ImageHeight:TVkInt32;
+    DataSize,ImageWidth,ImageHeight,VulkanBytesPerPixel:TVkInt32;
+    PNGPixelFormat:TPNGPixelFormat;
+    VulkanPixelFormat:TVkFormat;
 begin
  DataSize:=pStream.Size;
  GetMem(Data,DataSize);
@@ -18809,13 +18992,29 @@ begin
   ImageWidth:=0;
   ImageHeight:=0;
   try
-   if LoadPNGImage(Data,DataSize,ImageData,ImageWidth,ImageHeight,false) then begin
+   PNGPixelFormat:=ppfUnknown;
+   if LoadPNGImage(Data,DataSize,ImageData,ImageWidth,ImageHeight,false,PNGPixelFormat) then begin
+    case PNGPixelFormat of
+     ppfR8G8B8A8:begin
+      VulkanPixelFormat:=VK_FORMAT_R8G8B8A8_UNORM;
+      VulkanBytesPerPixel:=4;
+     end;
+     ppfR16G16B16A16:begin
+      VulkanPixelFormat:=VK_FORMAT_R16G16B16A16_UNORM;
+      VulkanBytesPerPixel:=8;
+     end;
+     else begin
+      VulkanPixelFormat:=VK_FORMAT_R8G8B8A8_UNORM;
+      VulkanBytesPerPixel:=4;
+      raise EVulkanTextureException.Create('Invalid PNG stream');
+     end;
+    end;
     CreateFromMemory(pDevice,
                      pGraphicsCommandBuffer,
                      pGraphicsFence,
                      pTransferCommandBuffer,
                      pTransferFence,
-                     VK_FORMAT_R8G8B8A8_UNORM,
+                     VulkanPixelFormat,
                      VK_SAMPLE_COUNT_1_BIT,
                      Max(1,ImageWidth),
                      Max(1,ImageHeight),
@@ -18825,7 +19024,7 @@ begin
                      MipMapLevels[pMipMaps],
                      [vtufTransferDst,vtufSampled],
                      ImageData,
-                     ImageWidth*ImageHeight*SizeOf(TVkUInt8)*4,
+                     ImageWidth*ImageHeight*VulkanBytesPerPixel,
                      false,
                      false,
                      1,
