@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-16-10-50-0000                       *
+ *                        Version 2017-05-16-13-14-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2788,6 +2788,13 @@ type EVulkanException=class(Exception);
                                   const pTransferFence:TVulkanFence;
                                   const pStream:TStream;
                                   const pMipMaps:boolean);
+       constructor CreateFromImage(const pDevice:TVulkanDevice;
+                                   const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                   const pGraphicsFence:TVulkanFence;
+                                   const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                   const pTransferFence:TVulkanFence;
+                                   const pStream:TStream;
+                                   const pMipMaps:boolean);
        constructor CreateDefault(const pDevice:TVulkanDevice;
                                  const pGraphicsCommandBuffer:TVulkanCommandBuffer;
                                  const pGraphicsFence:TVulkanFence;
@@ -20116,6 +20123,83 @@ begin
  end;
 end;
 
+constructor TVulkanTexture.CreateFromImage(const pDevice:TVulkanDevice;
+                                           const pGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                           const pGraphicsFence:TVulkanFence;
+                                           const pTransferCommandBuffer:TVulkanCommandBuffer;
+                                           const pTransferFence:TVulkanFence;
+                                           const pStream:TStream;
+                                           const pMipMaps:boolean);
+const DDS_MAGIC=$20534444;
+      DDSD_CAPS=$00000001;
+      DDSD_PIXELFORMAT=$00001000;
+type PFirstBytes=^TFirstBytes;
+     TFirstBytes=array[0..63] of TVkUInt8;
+     PDDSHeader=^TDDSHeader;
+     TDDSHeader=packed record
+      dwMagic:TVkUInt32;
+      dwSize:TVkUInt32;
+      dwFlags:TVkUInt32;
+      dwHeight:TVkUInt32;
+      dwWidth:TVkUInt32;
+      dwPitchOrLinearSize:TVkUInt32;
+      dwDepth:TVkUInt32;
+      dwMipMapCount:TVkUInt32;
+     end;
+var FirstBytes:TFirstBytes;
+begin
+ pStream.Seek(0,soBeginning);
+ FillChar(FirstBytes,SizeOf(FirstBytes),#0);
+ pStream.ReadBuffer(FirstBytes,Min(SizeOf(FirstBytes),pStream.Size));
+ pStream.Seek(0,soBeginning);
+ if (FirstBytes[0]=$ab) and (FirstBytes[1]=$4b) and (FirstBytes[2]=$54) and (FirstBytes[3]=$58) and (FirstBytes[4]=$20) and (FirstBytes[5]=$31) and (FirstBytes[6]=$31) and (FirstBytes[7]=$bb) and (FirstBytes[8]=$0d) and (FirstBytes[9]=$0a) and (FirstBytes[10]=$1a) and (FirstBytes[11]=$0a) then begin
+  CreateFromKTX(pDevice,
+                pGraphicsCommandBuffer,
+                pGraphicsFence,
+                pTransferCommandBuffer,
+                pTransferFence,
+                pStream);
+ end else if (FirstBytes[0]=$89) and (FirstBytes[1]=$50) and (FirstBytes[2]=$4e) and (FirstBytes[3]=$47) and (FirstBytes[4]=$0d) and (FirstBytes[5]=$0a) and (FirstBytes[6]=$1a) and (FirstBytes[7]=$0a) then begin
+  CreateFromPNG(pDevice,
+                pGraphicsCommandBuffer,
+                pGraphicsFence,
+                pTransferCommandBuffer,
+                pTransferFence,
+                pStream,
+                pMipMaps);
+ end else if ((PDDSHeader(pointer(@FirstBytes))^.dwMagic=DDS_MAGIC) and (PDDSHeader(pointer(@FirstBytes))^.dwSize=124) and not (((PDDSHeader(pointer(@FirstBytes))^.dwFlags and DDSD_PIXELFORMAT)=0) or ((PDDSHeader(pointer(@FirstBytes))^.dwFlags and DDSD_CAPS)=0))) then begin
+  CreateFromDDS(pDevice,
+                pGraphicsCommandBuffer,
+                pGraphicsFence,
+                pTransferCommandBuffer,
+                pTransferFence,
+                pStream);
+ end else if (FirstBytes[0]=byte(AnsiChar('#'))) and (FirstBytes[1]=byte(AnsiChar('?'))) then begin
+  CreateFromHDR(pDevice,
+                pGraphicsCommandBuffer,
+                pGraphicsFence,
+                pTransferCommandBuffer,
+                pTransferFence,
+                pStream,
+                pMipMaps);
+ end else if ((FirstBytes[0] xor $ff) or (FirstBytes[1] xor $d8))=0 then begin
+  CreateFromJPEG(pDevice,
+                 pGraphicsCommandBuffer,
+                 pGraphicsFence,
+                 pTransferCommandBuffer,
+                 pTransferFence,
+                 pStream,
+                 pMipMaps);
+ end else begin
+  CreateFromTGA(pDevice,
+                pGraphicsCommandBuffer,
+                pGraphicsFence,
+                pTransferCommandBuffer,
+                pTransferFence,
+                pStream,
+                pMipMaps);
+ end;
+end;
 
 constructor TVulkanTexture.CreateDefault(const pDevice:TVulkanDevice;
                                          const pGraphicsCommandBuffer:TVulkanCommandBuffer;
