@@ -126,10 +126,10 @@ class procedure TExampleVulkanApplication.Main;
 begin
  VulkanApplication:=TExampleVulkanApplication.Create;
  try
-{$ifndef Release}
-  VulkanApplication.VulkanDebugging:=true;
-  VulkanApplication.VulkanValidation:=true;
-{$endif}
+  if VulkanApplication.Debugging then begin
+   VulkanApplication.VulkanDebugging:=true;
+   VulkanApplication.VulkanValidation:=true;
+  end;
   VulkanApplication.Title:='SDL Vulkan Examples Application';
   VulkanApplication.PathName:='SDLVulkanExamplesApplication';
   VulkanApplication.StartScreen:=TScreenMainMenu;

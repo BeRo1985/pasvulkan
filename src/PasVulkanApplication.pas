@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-15-07-27-0000                       *
+ *                        Version 2017-05-16-16-05-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -876,6 +876,8 @@ type EVulkanApplication=class(Exception);
        fAndroidSeparateMouseAndTouch:boolean;
        fBlocking:boolean;
 
+       fDebugging:boolean;
+
        fActive:boolean;
 
        fTerminated:boolean;
@@ -939,7 +941,7 @@ type EVulkanApplication=class(Exception);
 
        fSkipNextDrawFrame:boolean;
 
-//      fVulkanPresentationSurface:TVulkanPresentationSurface;
+//     fVulkanPresentationSurface:TVulkanPresentationSurface;
 
        fOnEvent:TVulkanApplicationOnEvent;
 
@@ -1162,6 +1164,8 @@ type EVulkanApplication=class(Exception);
 
        property Blocking:boolean read fBlocking write fBlocking;
 
+       property Debugging:boolean read fDebugging;
+       
        property Active:boolean read fActive;
 
        property Terminated:boolean read fTerminated;
@@ -1256,6 +1260,10 @@ implementation
 const BoolToInt:array[boolean] of TVkInt32=(0,1);
 
       BoolToLongBool:array[boolean] of longbool=(false,true);
+
+{$if defined(fpc) and defined(Windows)}
+function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
+{$ifend}
 
 {$if defined(Unix)}
 procedure signal_handler(pSignal:cint); cdecl;
@@ -4617,6 +4625,14 @@ begin
  inherited Create;
 
  VulkanDisableFloatingPointExceptions;
+
+{$if defined(Release)}
+ fDebugging:=false;
+{$elseif defined(Windows)}
+ fDebugging:={$ifdef fpc}IsDebuggerPresent{$else}DebugHook<>0{$endif};
+{$else}
+ fDebugging:=true;
+{$ifend}
 
  fTitle:='SDL2 Vulkan Application';
  fVersion:=$0100;

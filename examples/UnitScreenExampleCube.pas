@@ -248,7 +248,7 @@ begin
                                                   true);
  finally
   Stream.Free;
- end;}
+ end;{}
 
 {Stream:=VulkanApplication.Assets.GetAssetStream('textures/box_albedo.jpg');
  try
