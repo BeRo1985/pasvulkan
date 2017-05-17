@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-17-05-40-0000                       *
+ *                        Version 2017-05-17-17-45-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -5320,6 +5320,7 @@ begin
  end;
 
  fVulkanDepthFrameBufferAttachment:=TVulkanFrameBufferAttachment.Create(fVulkanDevice,
+                                                                        fVulkanDevice.GraphicsQueue,
                                                                         VulkanGraphicsCommandBuffers[0,0],
                                                                         VulkanGraphicsCommandBufferFences[0,0],
                                                                         fVulkanSwapChain.Width,

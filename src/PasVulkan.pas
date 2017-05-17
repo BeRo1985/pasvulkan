@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-17-17-41-0000                       *
+ *                        Version 2017-05-17-17-45-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1669,6 +1669,7 @@ type EVulkanException=class(Exception);
        fDoDestroy:boolean;
       public
        constructor Create(const pDevice:TVulkanDevice;
+                          const pGraphicsQueue:TVulkanQueue;
                           const pGraphicsCommandBuffer:TVulkanCommandBuffer;
                           const pGraphicsCommandBufferFence:TVulkanFence;
                           const pWidth:TVkUInt32;
@@ -1830,8 +1831,10 @@ type EVulkanException=class(Exception);
       public
        constructor Create(const pDevice:TVulkanDevice;
                           const pSwapChain:TVulkanSwapChain;
+                          const pPresentQueue:TVulkanQueue;
                           const pPresentCommandBuffer:TVulkanCommandBuffer;
                           const pPresentCommandBufferFence:TVulkanFence;
+                          const pGraphicsQueue:TVulkanQueue;
                           const pGraphicsCommandBuffer:TVulkanCommandBuffer;
                           const pGraphicsCommandBufferFence:TVulkanFence;
                           const pDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
@@ -13976,6 +13979,7 @@ begin
 end;
 
 constructor TVulkanFrameBufferAttachment.Create(const pDevice:TVulkanDevice;
+                                                const pGraphicsQueue:TVulkanQueue;
                                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
                                                 const pGraphicsCommandBufferFence:TVulkanFence;
                                                 const pWidth:TVkUInt32;
@@ -14054,7 +14058,7 @@ begin
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     nil,
                     pGraphicsCommandBuffer,
-                    fDevice.fGraphicsQueue,
+                    pGraphicsQueue,
                     pGraphicsCommandBufferFence,
                     true);
   end else begin
@@ -14063,7 +14067,7 @@ begin
                     ImageLayout,
                     nil,
                     pGraphicsCommandBuffer,
-                    fDevice.fGraphicsQueue,
+                    pGraphicsQueue,
                     pGraphicsCommandBufferFence,
                     true);
   end;
@@ -14669,8 +14673,10 @@ end;
 
 constructor TVulkanSwapChainSimpleDirectRenderTarget.Create(const pDevice:TVulkanDevice;
                                                             const pSwapChain:TVulkanSwapChain;
+                                                            const pPresentQueue:TVulkanQueue;
                                                             const pPresentCommandBuffer:TVulkanCommandBuffer;
                                                             const pPresentCommandBufferFence:TVulkanFence;
+                                                            const pGraphicsQueue:TVulkanQueue;
                                                             const pGraphicsCommandBuffer:TVulkanCommandBuffer;
                                                             const pGraphicsCommandBufferFence:TVulkanFence;
                                                             const pDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
@@ -14826,7 +14832,7 @@ begin
                                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                                    nil,
                                    pPresentCommandBuffer,
-                                   fDevice.fPresentQueue,
+                                   pPresentQueue,
                                    pPresentCommandBufferFence,
                                    true);
 
@@ -14865,6 +14871,7 @@ begin
   end;
 
   fDepthFrameBufferAttachment:=TVulkanFrameBufferAttachment.Create(fDevice,
+                                                                   pGraphicsQueue,
                                                                    pGraphicsCommandBuffer,
                                                                    pGraphicsCommandBufferFence,
                                                                    fSwapChain.Width,
