@@ -456,7 +456,8 @@ begin
                                       nil,
                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                      );
-  fVertexBuffer.UploadData(pCommandBuffer,
+  fVertexBuffer.UploadData(pQueue,
+                           pCommandBuffer,
                            pFence,
                            fVertices[0],
                            0,
@@ -470,7 +471,8 @@ begin
                                       nil,
                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                      );
-  fIndexBuffer.UploadData(pCommandBuffer,
+  fIndexBuffer.UploadData(pQueue,
+                          pCommandBuffer,
                           pFence,
                           fIndices[0],
                           0,

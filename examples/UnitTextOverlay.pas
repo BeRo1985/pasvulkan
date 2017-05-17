@@ -178,8 +178,10 @@ begin
   fVulkanRenderPass:=nil;
 
   fFontTexture:=TVulkanTexture.CreateFromMemory(VulkanApplication.VulkanDevice,
+                                                VulkanApplication.VulkanDevice.GraphicsQueue,
                                                 VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
                                                 VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                VulkanApplication.VulkanDevice.TransferQueue,
                                                 VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                                 VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                                 VK_FORMAT_R8_UNORM,
@@ -212,7 +214,8 @@ begin
                                                      nil,
                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)}
                                                     );
-   fVulkanVertexBuffers[Index].UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+   fVulkanVertexBuffers[Index].UploadData(VulkanApplication.VulkanDevice.TransferQueue,
+                                          VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                           VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                           fBufferCharsBuffers[0],
                                           0,
@@ -227,7 +230,8 @@ begin
                                            nil,
                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                           );
-  fVulkanIndexBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+  fVulkanIndexBuffer.UploadData(VulkanApplication.VulkanDevice.TransferQueue,
+                                VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                 VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                 fIndices,
                                 0,
@@ -241,7 +245,8 @@ begin
                                              nil,
                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
                                             );
-  fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+  fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanDevice.TransferQueue,
+                                  VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                   VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                   fUniformBuffer,
                                   0,
@@ -465,7 +470,8 @@ begin
 
  if assigned(fVulkanUniformBuffer) then begin
   fUniformBuffer.uThreshold:=(SDFFontSpreadScale/sqrt(sqr(fFontCharWidth)+sqr(fFontCharHeight)))*1.0;
-  fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanTransferCommandBuffers[0,0],
+  fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanDevice.TransferQueue,
+                                  VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                   VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                   fUniformBuffer,
                                   0,
