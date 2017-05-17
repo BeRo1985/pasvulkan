@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-17-17-57-0000                       *
+ *                        Version 2017-05-17-19-50-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -312,6 +312,8 @@ type EVulkanException=class(Exception);
 
      EVulkanSurfaceException=class(EVulkanException);
 
+     EVulkanPipelineCacheException=class(EVulkanException);
+
      EVulkanResultException=class(EVulkanException)
       private
        fResultCode:TVkResult;
@@ -321,6 +323,9 @@ type EVulkanException=class(Exception);
       published
        property ResultCode:TVkResult read fResultCode;
      end;
+
+     PVulkanUUID=^TVulkanUUID;
+     TVulkanUUID=array[0..VK_UUID_SIZE-1] of TVkUInt8;
 
      TVulkanFormatSizeFlag=
       (
@@ -15995,8 +16000,19 @@ begin
 end;
 
 constructor TVulkanPipelineCache.CreateFromMemory(const pDevice:TVulkanDevice;const pInitialData:pointer;const pInitialDataSize:TVkSize);
+type PByteArray=^TByteArray;
+     TByteArray=array[0..65535] of TVkUInt8;
+var Index:TVkInt32;
 begin
- Create(pDevice,pInitialData,pInitialDataSize);
+ if not assigned(pInitialData) then begin
+  raise EInOutError.Create('pInitialData is null');
+ end else if pInitialDataSize<VK_UUID_SIZE then begin
+  raise EInOutError.Create('Data too small');
+ end else if not CompareMem(@PVulkanUUID(pInitialData)[0],@fDevice.fPhysicalDevice.fProperties.pipelineCacheUUID,SizeOf(TVulkanUUID)) then begin
+  raise EVulkanPipelineCacheException.Create('Pipeline cache dump is not compatible with the current physical device');
+ end else begin
+  Create(pDevice,@PByteArray(pInitialData)^[SizeOf(TVulkanUUID)],pInitialDataSize-SizeOf(TVulkanUUID));
+ end;
 end;
 
 constructor TVulkanPipelineCache.CreateFromStream(const pDevice:TVulkanDevice;const pStream:TStream);
@@ -16051,6 +16067,9 @@ begin
   GetMem(Data,DataSize);
   try
    HandleResultCode(fDevice.fDeviceVulkan.GetPipelineCacheData(fDevice.fDeviceHandle,fPipelineCacheHandle,@DataSize,Data));
+   if pStream.Write(fDevice.fPhysicalDevice.fProperties.pipelineCacheUUID,SizeOf(TVulkanUUID))<>SizeOf(TVulkanUUID) then begin
+    raise EInOutError.Create('Stream write error');
+   end;
    if pStream.Write(Data^,DataSize)<>TVkPtrInt(DataSize) then begin
     raise EInOutError.Create('Stream write error');
    end;
