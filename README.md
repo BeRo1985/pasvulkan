@@ -19,7 +19,7 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
 - OOP-based Vulkan Framework (PasVulkan.pas)
     - Object oriented Vulkan API abstraction
     - Best-fit red-black-tree based memory manager for the Vulkan memory management, for to manage the sub-allocations in the allocated buffers and for to keep the total count of simultaneous live allocations as much low as possible and less than TVkPhysicalDeviceLimits.maxMemoryAllocationCount.
-    - Texture loaders with own loader implementations, so it is independent of external third-party image loaders, even independent of the VCL and FCL.  
+    - Texture loaders with own loader implementations, so it is independent of external third-party image loaders, even independent of the VCL, LCL and FCL.  
         -  BMP (untested, but it should work)
         -  DDS
         -  HDR
