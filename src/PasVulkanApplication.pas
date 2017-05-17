@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-17-05-34-0000                       *
+ *                        Version 2017-05-17-05-40-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -4795,8 +4795,25 @@ end;
 {$ifend}
 
 function TVulkanApplication.VulkanOnDebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:TVulkaNCharString;const pMessage:TVulkanCharString):TVkBool32;
+var Prefix:TVulkanCharString;
 begin
- VulkanDebugLn('[Debug] '+pLayerPrefix+': '+pMessage);
+ Prefix:='';
+ if (Flags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_ERROR_BIT_EXT))<>0 then begin
+  Prefix:=Prefix+'ERROR: ';
+ end;
+ if (Flags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_WARNING_BIT_EXT))<>0 then begin
+  Prefix:=Prefix+'WARNING: ';
+ end;
+ if (Flags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT))<>0 then begin
+  Prefix:=Prefix+'PERFORMANCE: ';
+ end;
+ if (Flags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_INFORMATION_BIT_EXT))<>0 then begin
+  Prefix:=Prefix+'INFORMATION: ';
+ end;
+ if (Flags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_DEBUG_BIT_EXT))<>0 then begin
+  Prefix:=Prefix+'DEBUG: ';
+ end;
+ VulkanDebugLn('[Debug] '+Prefix+'['+pLayerPrefix+'] Code '+TVulkanCharString(IntToStr(messageCode))+' : '+pMessage);
  result:=VK_FALSE;
 end;
 
