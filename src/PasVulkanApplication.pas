@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-16-16-05-0000                       *
+ *                        Version 2017-05-17-05-34-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -4957,9 +4957,30 @@ begin
     fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     fVulkanDebuggingEnabled:=true;
     if fVulkanValidation then begin
+{$if defined(Android)}
+     if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_threading')>=0 then begin
+      fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_GOOGLE_threading');
+     end;
+     if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_parameter_validation')>=0 then begin
+      fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_parameter_validation');
+     end;
+     if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_object_tracker')>=0 then begin
+      fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_object_tracker');
+     end;
+     if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_core_validation')>=0 then begin
+      fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_core_validation');
+     end;
+     if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_swapchain')>=0 then begin
+      fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_swapchain');
+     end;
+     if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_unique_objects')>=0 then begin
+      fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_GOOGLE_unique_objects');
+     end;
+{$else}
      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_standard_validation');
      end;
+{$ifend}
     end;
    end else begin
     fVulkanDebuggingEnabled:=false;
