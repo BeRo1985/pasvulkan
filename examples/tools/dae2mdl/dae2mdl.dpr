@@ -64,11 +64,10 @@ type PVertex=^TVertex;
 
      PVertexBuffer=^TVertexBuffer;
      TVertexBuffer=record
+      MaterialIndex:longint;
       Triangles:TTriangles;
       CountTriangles:longint;
-      Vertices:TVertexBufferVertices;
-      CountVertices:longint;
-      Indices:TVertexBufferIndices;
+      StartIndex:longint;
       CountIndices:longint;
      end;
 
@@ -997,7 +996,12 @@ begin
  end;
 end;
 
-procedure BuildVertexBuffers;
+var VBOVertices:array of TVertex;
+    IBOIndices:array of longword;
+    CountVBOVertices:longint=0;
+    CountIBOIndices:longint=0;
+            
+procedure BuildVertexAndIndexBuffers;
 const HashBits=16;
       HashSize=1 shl HashBits;
       HashMask=HashSize-1;
@@ -1023,6 +1027,7 @@ var MaterialIndex,ObjectIndex,MeshIndex,TriangleIndex,TrianglesToDo,BufferPartIn
     HashItems:THashItems;
     HashTable:THashTable;
     Hash:longword;
+    NeedNewBuffer:boolean;
  function HashVector2(const v:TVector2):longword;
  begin
   result:=(round(v.x)*73856093) xor (round(v.y)*19349663);
@@ -1061,6 +1066,7 @@ begin
   VertexBuffers:=nil;
   CountVertexBuffers:=0;
   for MaterialIndex:=0 to length(Materials)-1 do begin
+   NeedNewBuffer:=true;
    Material:=@Materials[MaterialIndex];
    for ObjectIndex:=0 to length(ModelObjects)-1 do begin
     AObject:=@ModelObjects[ObjectIndex];
@@ -1074,27 +1080,22 @@ begin
         TrianglesToDo:=CountTriangles-TriangleIndex;
         if TrianglesToDo>0 then begin
          VertexBufferIndex:=CountVertexBuffers-1;
-         if (VertexBufferIndex<0) {or
-            (VertexBuffers[VertexBufferIndex].CountTriangles>=21845){} then begin
+         if (VertexBufferIndex<0) or NeedNewBuffer then begin
           VertexBufferIndex:=CountVertexBuffers;
           inc(CountVertexBuffers);
           if CountVertexBuffers>length(VertexBuffers) then begin
            SetLength(VertexBuffers,CountVertexBuffers*2);
           end;
           VertexBuffer:=@VertexBuffers[VertexBufferIndex];
+          VertexBuffer^.MaterialIndex:=MaterialIndex;
           VertexBuffer^.Triangles:=nil;
           VertexBuffer^.CountTriangles:=0;
-          VertexBuffer^.Vertices:=nil;
-          VertexBuffer^.CountVertices:=0;
-          VertexBuffer^.Indices:=nil;
+          VertexBuffer^.StartIndex:=0;
           VertexBuffer^.CountIndices:=0;
          end else begin
           VertexBuffer:=@VertexBuffers[VertexBufferIndex];
          end;
-        {TrianglesCount:=21845-VertexBuffer^.CountTriangles;
-         if TrianglesToDo>TrianglesCount then begin
-          TrianglesToDo:=TrianglesCount;
-         end;{}
+         NeedNewBuffer:=false;
          BufferPartIndex:=Material^.CountBufferParts-1;
          if (BufferPartIndex>=0) and
             ((Material^.BufferParts[BufferPartIndex].Index=VertexBufferIndex) and
@@ -1127,8 +1128,14 @@ begin
     end;
    end;
   end;
+  VBOVertices:=nil;
+  IBOIndices:=nil;
+  CountVBOVertices:=0;
+  CountIBOIndices:=0;
   SetLength(VertexBuffers,CountVertexBuffers);
   for VertexBufferIndex:=0 to CountVertexBuffers-1 do begin
+   VertexBuffer^.StartIndex:=CountIBOIndices;
+   VertexBuffer^.CountIndices:=0; 
    CountHashItems:=0;
    FillChar(HashTable,SizeOf(THashTable),AnsiChar(#$ff));
    VertexBuffer:=@VertexBuffers[VertexBufferIndex];
@@ -1138,7 +1145,7 @@ begin
      HashItemIndex:=HashTable[Hash and HashMask];
      while HashItemIndex>=0 do begin
       HashItem:=@HashItems[HashItemIndex];
-      if (HashItem^.Hash=Hash) and CompareVertex(VertexBuffer^.Vertices[HashItem^.VertexIndex],VertexBuffer^.Triangles[TriangleIndex].Vertices[VertexIndex]) then begin
+      if (HashItem^.Hash=Hash) and CompareVertex(VBOVertices[HashItem^.VertexIndex],VertexBuffer^.Triangles[TriangleIndex].Vertices[VertexIndex]) then begin
        break;
       end else begin
        HashItemIndex:=HashItem^.Next;
@@ -1153,19 +1160,20 @@ begin
       HashTable[Hash and HashMask]:=CountHashItems;
       HashItem^.Hash:=Hash;
       inc(CountHashItems);
-      if length(VertexBuffer^.Vertices)<(VertexBuffer^.CountVertices+1) then begin
-       SetLength(VertexBuffer^.Vertices,(VertexBuffer^.CountVertices+1)*2);
+      if length(VBOVertices)<(CountVBOVertices+1) then begin
+       SetLength(VBOVertices,(CountVBOVertices+1)*2);
       end;
-      VertexBuffer^.Vertices[VertexBuffer^.CountVertices]:=VertexBuffer^.Triangles[TriangleIndex].Vertices[VertexIndex];
-      HashItem^.VertexIndex:=VertexBuffer^.CountVertices;
-      inc(VertexBuffer^.CountVertices);
+      VBOVertices[CountVBOVertices]:=VertexBuffer^.Triangles[TriangleIndex].Vertices[VertexIndex];
+      HashItem^.VertexIndex:=CountVBOVertices;
+      inc(CountVBOVertices);
      end;
-     if length(VertexBuffer^.Indices)<(VertexBuffer^.CountIndices+1) then begin
-      SetLength(VertexBuffer^.Indices,(VertexBuffer^.CountIndices+1)*2);
+     if length(IBOIndices)<(CountIBOIndices+1) then begin
+      SetLength(IBOIndices,(CountIBOIndices+1)*2);
      end;
-     VertexBuffer^.Indices[VertexBuffer^.CountIndices]:=HashItem^.VertexIndex;
-     inc(VertexBuffer^.CountIndices);
+     IBOIndices[CountIBOIndices]:=HashItem^.VertexIndex;
+     inc(CountIBOIndices);
      VertexBuffer^.Triangles[TriangleIndex].Indices[VertexIndex]:=HashItem^.VertexIndex;
+     inc(VertexBuffer^.CountIndices);
     end;
    end;
   end;
@@ -1370,7 +1378,7 @@ var Chunks:TChunks;
     Mesh:PMesh;
 //  Triangle:PTriangle;
 //  Vertex:PVertex;
-    ChunkOffset:int64;
+    ChunkOffset,OldOffset,NewOffset:int64;
 {   Matrix3x3:TMatrix3x3;
     Quaternion:TQuaternion;}
  function StartChunk(const ChunkSignature:TSignature):int64;
@@ -1532,32 +1540,49 @@ begin
     begin
      ChunkOffset:=StartChunk('VBOS');
 
+     OldOffset:=ms.Position;
+     i32:=CountVBOVertices;
+     ms.Write(i32,SizeOf(longint));
+
+     for VertexIndex:=0 to CountVBOVertices-1 do begin
+      WriteVertex(VBOVertices[VertexIndex]);
+     end;
+
+     EndChunk(ChunkOffset);
+    end;
+    begin
+     ChunkOffset:=StartChunk('IBOS');
+
+     OldOffset:=ms.Position;
+     i32:=CountIBOIndices;
+     ms.Write(i32,SizeOf(longint));
+
+     ms.Write(IBOIndices[0],CountIBOIndices*SizeOf(longword));
+
+     EndChunk(ChunkOffset);
+    end;
+    begin
+     ChunkOffset:=StartChunk('PART');
+
      i32:=length(VertexBuffers);
      ms.Write(i32,SizeOf(longint));
 
      for VertexBufferIndex:=0 to length(VertexBuffers)-1 do begin
       VertexBuffer:=@VertexBuffers[VertexBufferIndex];
 
-      i32:=VertexBuffer^.CountVertices;
+      i32:=VertexBuffer^.MaterialIndex;
       ms.Write(i32,SizeOf(longint));
 
-      i32:=VertexBuffer^.CountTriangles;
+      i32:=VertexBuffer^.StartIndex;
       ms.Write(i32,SizeOf(longint));
 
-      for VertexIndex:=0 to VertexBuffer.CountVertices-1 do begin
-       WriteVertex(VertexBuffer^.Vertices[VertexIndex]);
-      end;
+      i32:=VertexBuffer^.CountIndices;
+      ms.Write(i32,SizeOf(longint));
+
+{     i32:=VertexBuffer^.CountTriangles;
+      ms.Write(i32,SizeOf(longint));
 
       for TriangleIndex:=0 to VertexBuffer.CountTriangles-1 do begin
-       for VertexIndex:=0 to 2 do begin
-        WriteInteger(VertexBuffer^.Triangles[TriangleIndex].Indices[VertexIndex]);
-       end;
-      end;
-
-      for TriangleIndex:=0 to VertexBuffer.CountTriangles-1 do begin
-
-       i32:=VertexBuffer^.Triangles[TriangleIndex].MaterialIndex;
-       ms.Write(i32,SizeOf(longint));
 
        i32:=VertexBuffer^.Triangles[TriangleIndex].ObjectIndex;
        ms.Write(i32,SizeOf(longint));
@@ -1565,7 +1590,7 @@ begin
        i32:=VertexBuffer^.Triangles[TriangleIndex].MeshIndex;
        ms.Write(i32,SizeOf(longint));
 
-      end;
+      end;}
 
      end;
 
@@ -1644,6 +1669,10 @@ end;
 begin
  Materials:=nil;
  ModelObjects:=nil;
+ VBOVertices:=nil;
+ IBOIndices:=nil;
+ CountVBOVertices:=0;
+ CountIBOIndices:=0;
  try
   if ParamCount>=2 then begin
    InputFileName:=ParamStr(1);
@@ -1656,12 +1685,12 @@ begin
    writeln('Model AABB: (',DoubleToStr(AABB.Min.x),',',DoubleToStr(AABB.Min.y),',',DoubleToStr(AABB.Min.z),'),(',DoubleToStr(AABB.Max.x),',',DoubleToStr(AABB.Max.y),',',DoubleToStr(AABB.Max.z),')');
    writeln('Model AABB size: (',DoubleToStr(AABB.Max.x-AABB.Min.x),',',DoubleToStr(AABB.Max.y-AABB.Min.y),',',DoubleToStr(AABB.Max.z-AABB.Min.z),')');
 
-   write('Optimizing model for vertex cache... ');
+{  write('Optimizing model for vertex cache... ');
    OptimizeModelForVertexCache;
-   writeln('done!');
+   writeln('done!');}
 
-   write('Building vertex buffers... ');
-   BuildVertexBuffers;
+   write('Building vertex and index buffers... ');
+   BuildVertexAndIndexBuffers;
    writeln('done!');
 
    write('Writing .MDL file... ');
@@ -1670,7 +1699,9 @@ begin
 
   end;
  finally
-  SetLength(Materials,0);
-  SetLength(ModelObjects,0);
+  Materials:=nil;
+  ModelObjects:=nil;
+  VBOVertices:=nil;
+  IBOIndices:=nil;
  end;
 end.

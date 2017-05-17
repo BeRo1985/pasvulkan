@@ -100,7 +100,7 @@ Conditionals=
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=
+RunParams=sponza.dae sponza.mdl
 HostApplication=
 Launcher=
 UseLauncher=0
