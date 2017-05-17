@@ -220,7 +220,7 @@ begin
                                           fBufferCharsBuffers[0],
                                           0,
                                           SizeOf(TTextOverlayBufferChars),
-                                          false);
+                                          vbutsbmNo);
   end;
   
   fVulkanIndexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
@@ -236,7 +236,7 @@ begin
                                 fIndices,
                                 0,
                                 SizeOf(TTextOverlayIndices),
-                                true);
+                                vbutsbmYes);
 
   fVulkanUniformBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
                                              SizeOf(TTextOverlayUniformBuffer),
@@ -251,7 +251,7 @@ begin
                                   fUniformBuffer,
                                   0,
                                   SizeOf(TTextOverlayUniformBuffer),
-                                  false);
+                                  vbutsbmNo);
 
   fVulkanDescriptorPool:=TVulkanDescriptorPool.Create(VulkanApplication.VulkanDevice,
                                                       TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -476,7 +476,7 @@ begin
                                   fUniformBuffer,
                                   0,
                                   SizeOf(TTextOverlayUniformBuffer),
-                                  false);
+                                  vbutsbmNo);
 
  end;
 

@@ -462,7 +462,7 @@ begin
                            fVertices[0],
                            0,
                            fCountVertices*SizeOf(TModelVertex),
-                           true);
+                           vbutsbmYes);
 
   fIndexBuffer:=TVulkanBuffer.Create(pDevice,
                                       fCountIndices*SizeOf(TModelIndex),
@@ -477,7 +477,7 @@ begin
                           fIndices[0],
                           0,
                           fCountIndices*SizeOf(TModelIndex),
-                          true);
+                          vbutsbmYes);
 
   fUploaded:=true;
 

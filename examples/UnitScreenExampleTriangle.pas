@@ -165,7 +165,7 @@ begin
                                 TriangleVertices,
                                 0,
                                 SizeOf(TriangleVertices),
-                                true);
+                                vbutsbmYes);
 
  fVulkanIndexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
                                           SizeOf(TriangleIndices),
@@ -180,7 +180,7 @@ begin
                                TriangleIndices,
                                0,
                                SizeOf(TriangleIndices),
-                               true);
+                               vbutsbmYes);
 
  fVulkanUniformBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
                                             SizeOf(UniformBuffer),
@@ -196,7 +196,7 @@ begin
                                  UniformBuffer,
                                  0,
                                  SizeOf(UniformBuffer),
-                                 true);
+                                 vbutsbmYes);
 
  fVulkanDescriptorPool:=TVulkanDescriptorPool.Create(VulkanApplication.VulkanDevice,
                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),

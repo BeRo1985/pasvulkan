@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-17-17-45-0000                       *
+ *                        Version 2017-05-17-17-57-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1212,6 +1212,13 @@ type EVulkanException=class(Exception);
 
      TVulkanCommandBuffer=class;
 
+     TVulkanBufferUseTemporaryStagingBufferMode=
+      (
+       vbutsbmAutomatic,
+       vbutsbmYes,
+       vbutsbmNo
+      );
+
      TVulkanBuffer=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
@@ -1240,7 +1247,10 @@ type EVulkanException=class(Exception);
                             const pData;
                             const pDataOffset:TVkDeviceSize;
                             const pDataSize:TVkDeviceSize;
-                            const pUseTemporaryStagingBuffer:boolean=true);
+                            const pUseTemporaryStagingBufferMode:TVulkanBufferUseTemporaryStagingBufferMode=vbutsbmAutomatic);
+       procedure UpdateData(const pData;
+                            const pDataOffset:TVkDeviceSize;
+                            const pDataSize:TVkDeviceSize);
        property DescriptorBufferInfo:TVkDescriptorBufferInfo read fDescriptorBufferInfo;
       published
        property Device:TVulkanDevice read fDevice;
@@ -12367,12 +12377,15 @@ procedure TVulkanBuffer.UploadData(const pTransferQueue:TVulkanQueue;
                                    const pData;
                                    const pDataOffset:TVkDeviceSize;
                                    const pDataSize:TVkDeviceSize;
-                                   const pUseTemporaryStagingBuffer:boolean=true);
+                                   const pUseTemporaryStagingBufferMode:TVulkanBufferUseTemporaryStagingBufferMode=vbutsbmAutomatic);
 var StagingBuffer:TVulkanBuffer;
     p:pointer;
     VkBufferCopy:TVkBufferCopy;
 begin
- if pUseTemporaryStagingBuffer then begin
+ if (pUseTemporaryStagingBufferMode=vbutsbmYes) or
+    ((pUseTemporaryStagingBufferMode=vbutsbmAutomatic) and
+      (((fMemoryProperties and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0) or
+       ((fMemoryProperties and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))<>0))) then begin
   StagingBuffer:=TVulkanBuffer.Create(fDevice,
                                       pDataSize,
                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
@@ -12409,6 +12422,33 @@ begin
 
  end else begin
 
+  if (fMemoryProperties and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+   p:=Memory.MapMemory(pDataOffset,pDataSize);
+   try
+    if assigned(p) then begin
+     Move(pData,p^,pDataSize);
+     if (fMemoryProperties and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
+      Memory.FlushMappedMemory;
+     end;
+    end else begin
+     raise EVulkanException.Create('Vulkan buffer memory block map failed');
+    end;
+   finally
+    Memory.UnmapMemory;
+   end;
+  end else begin
+   raise EVulkanException.Create('Vulkan buffer memory block map failed');
+  end;
+
+ end;
+end;
+
+procedure TVulkanBuffer.UpdateData(const pData;
+                                   const pDataOffset:TVkDeviceSize;
+                                   const pDataSize:TVkDeviceSize);
+var p:pointer;
+begin
+ if (fMemoryProperties and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
   p:=Memory.MapMemory(pDataOffset,pDataSize);
   try
    if assigned(p) then begin
@@ -12422,7 +12462,8 @@ begin
   finally
    Memory.UnmapMemory;
   end;
-
+ end else begin
+  raise EVulkanException.Create('Vulkan buffer memory block map failed');
  end;
 end;
 
@@ -18640,7 +18681,7 @@ begin
                             pData^,
                             0,
                             pDataSize,
-                            false);
+                            vbutsbmNo);
 
    BufferImageCopyArray:=nil;
    try

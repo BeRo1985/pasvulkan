@@ -294,7 +294,7 @@ begin
                                 CubeVertices,
                                 0,
                                 SizeOf(CubeVertices),
-                                true);
+                                vbutsbmYes);
 
  fVulkanIndexBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
                                           SizeOf(CubeIndices),
@@ -309,7 +309,7 @@ begin
                                CubeIndices,
                                0,
                                SizeOf(CubeIndices),
-                               true);
+                               vbutsbmYes);
 
  fVulkanUniformBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
                                             SizeOf(TScreenExampleCubeUniformBuffer),
@@ -324,7 +324,7 @@ begin
                                  fUniformBuffer,
                                  0,
                                  SizeOf(TScreenExampleCubeUniformBuffer),
-                                 true);
+                                 vbutsbmYes);
 
  fVulkanDescriptorPool:=TVulkanDescriptorPool.Create(VulkanApplication.VulkanDevice,
                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
