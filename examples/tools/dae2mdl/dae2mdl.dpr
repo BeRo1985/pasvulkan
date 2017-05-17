@@ -1549,18 +1549,11 @@ begin
       Material:=@Materials[MaterialIndex];
       WriteString(Material^.Name);
       WriteString(Material^.Texture);
-      i32:=Material^.CountBufferParts;
-      ms.Write(i32,SizeOf(longint));
-      for BufferPartIndex:=0 to Material^.CountBufferParts-1 do begin
-       i32:=Material^.BufferParts[BufferPartIndex].Index;
-       ms.Write(i32,SizeOf(longint));
-
-       i32:=Material^.BufferParts[BufferPartIndex].Offset;
-       ms.Write(i32,SizeOf(longint));
-
-       i32:=Material^.BufferParts[BufferPartIndex].Count;
-       ms.Write(i32,SizeOf(longint));
-      end;
+      WriteVector3(Material^.Ambient);
+      WriteVector3(Material^.Diffuse);
+      WriteVector3(Material^.Emission);
+      WriteVector3(Material^.Specular);
+      WriteFloat(Material^.Shininess);
      end;
      EndChunk(ChunkOffset);
     end;
