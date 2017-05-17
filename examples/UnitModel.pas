@@ -5,7 +5,7 @@ unit UnitModel;
 
 interface
 
-uses SysUtils,Classes,Vulkan,Kraft,UnitMath3D;
+uses SysUtils,Classes,Vulkan,Kraft,UnitMath3D,PasVulkan;
 
 type PModelQTangent=^TModelQTangent;
      TModelQTangent=packed record
@@ -81,12 +81,17 @@ type PModelQTangent=^TModelQTangent;
        fCountObjects:TVkInt32;
        fKraftMesh:TKraftMesh;
        fKraftConvexHull:TKraftConvexHull;
+       fVertexBuffer:TVulkanBuffer;
+       fIndexBuffer:TVulkanBuffer;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
        procedure Clear;
        procedure LoadFromStream(const pStream:TStream;const pDoFree:boolean=false);
-       procedure Upload;
+       procedure Upload(const pDevice:TVulkanDevice;
+                        const pQueue:TVulkanQueue;
+                        const pCommandBuffer:TVulkanCommandBuffer;
+                        const pFence:TVulkanFence);
        procedure Unload;
        property Uploaded:boolean read fUploaded;
        property Sphere:TSphere read fSphere;
@@ -103,6 +108,8 @@ type PModelQTangent=^TModelQTangent;
        property CountObjects:TVkInt32 read fCountObjects;
        property KraftMesh:TKraftMesh read fKraftMesh write fKraftMesh;
        property KraftConvexHull:TKraftConvexHull read fKraftConvexHull write fKraftConvexHull;
+       property VertexBuffer:TVulkanBuffer read fVertexBuffer;
+       property IndexBuffer:TVulkanBuffer read fIndexBuffer;
      end;
 
 implementation
@@ -150,6 +157,8 @@ begin
  fUploaded:=false;
  fKraftMesh:=nil;
  fKraftConvexHull:=nil;
+ fVertexBuffer:=nil;
+ fIndexBuffer:=nil;
  Clear;
 end;
 
@@ -433,17 +442,55 @@ begin
  end;
 end;
 
-procedure TModel.Upload;
+procedure TModel.Upload(const pDevice:TVulkanDevice;
+                        const pQueue:TVulkanQueue;
+                        const pCommandBuffer:TVulkanCommandBuffer;
+                        const pFence:TVulkanFence);
 begin
  if not fUploaded then begin
+
+  fVertexBuffer:=TVulkanBuffer.Create(pDevice,
+                                      fCountVertices*SizeOf(TModelVertex),
+                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                      nil,
+                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                     );
+  fVertexBuffer.UploadData(pCommandBuffer,
+                           pFence,
+                           fVertices[0],
+                           0,
+                           fCountVertices*SizeOf(TModelVertex),
+                           true);
+
+  fIndexBuffer:=TVulkanBuffer.Create(pDevice,
+                                      fCountIndices*SizeOf(TModelIndex),
+                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                      nil,
+                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                     );
+  fIndexBuffer.UploadData(pCommandBuffer,
+                          pFence,
+                          fIndices[0],
+                          0,
+                          fCountIndices*SizeOf(TModelIndex),
+                          true);
+
   fUploaded:=true;
+
  end;
 end;
 
 procedure TModel.Unload;
 begin
  if fUploaded then begin
+
   fUploaded:=false;
+
+  FreeAndNil(fVertexBuffer);
+  FreeAndNil(fIndexBuffer);
+
  end;
 end;
 
