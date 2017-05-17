@@ -109,7 +109,7 @@ implementation
 
 uses UnitBufferedStream,UnitChunkStream;
 
-function Matrix3x3FromQTangent(pQTangent:TQuaternion):TMAtrix3x3;
+function Matrix3x3FromQTangent(pQTangent:TQuaternion):TMatrix3x3;
 var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:single;
 begin
  QuaternionNormalize(pQTangent);
