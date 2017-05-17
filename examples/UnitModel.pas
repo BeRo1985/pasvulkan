@@ -5,7 +5,7 @@ unit UnitModel;
 
 interface
 
-uses SysUtils,Classes,UnitMath3D,Vulkan;
+uses SysUtils,Classes,UnitMath3D,Vulkan,Kraft;
 
 type PModelQTangent=^TModelQTangent;
      TModelQTangent=packed record
@@ -79,6 +79,7 @@ type PModelQTangent=^TModelQTangent;
        fCountParts:TVkInt32;
        fObjects:TModelObjects;
        fCountObjects:TVkInt32;
+       fKraftConvexHull:TKraftConvexHull;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -87,6 +88,19 @@ type PModelQTangent=^TModelQTangent;
        procedure Upload;
        procedure Unload;
        property Uploaded:boolean read fUploaded;
+       property Sphere:TSphere read fSphere;
+       property AABB:TAABB read fAABB;
+       property Materials:TModelMaterials read fMaterials;
+       property CountMaterials:TVkInt32 read fCountMaterials;
+       property Vertices:TModelVertices read fVertices;
+       property CountVertices:TVkInt32 read fCountVertices;
+       property Indices:TModelIndices read fIndices;
+       property CountIndices:TVkInt32 read fCountIndices;
+       property Parts:TModelParts read fParts;
+       property CountParts:TVkInt32 read fCountParts;
+       property Objects:TModelObjects read fObjects;
+       property CountObjects:TVkInt32 read fCountObjects;
+       property KraftConvexHull:TKraftConvexHull read fKraftConvexHull write fKraftConvexHull;
      end;
 
 implementation
@@ -97,6 +111,8 @@ constructor TModel.Create;
 begin
  inherited Create;
  fUploaded:=false;
+ fKraftConvexHull:=nil;
+ Clear;
 end;
 
 destructor TModel.Destroy;
@@ -281,6 +297,9 @@ var Signature:TChunkSignature;
   ChunkStream:=GetChunkStream(ChunkSignature,true);
   try
    if assigned(ChunkStream) and (ChunkStream.Size<>0) then begin
+    if assigned(fKraftConvexHull) then begin
+     fKraftConvexHull.LoadFromStream(ChunkStream);
+    end;
    end else begin
     raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
    end;
