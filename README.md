@@ -59,7 +59,7 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
             - Wayland
         - But no MoltenVK yet (since SDL 2.x has no support for it yet, so far I know) 
             
-## License
+## License (zlib)
 
     Copyright (C) 2016-2017, Benjamin Rosseaux (benjamin@rosseaux.de)          
                                                                              
