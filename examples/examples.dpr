@@ -14,6 +14,9 @@ uses
   SysUtils,
   Classes,
   PasMP in '..\externals\pasmp\src\PasMP.pas',
+  PasDblStrUtils in '..\externals\pasdblstrutils\src\PasDblStrUtils.pas',
+  PUCU in '..\externals\pucu\src\PUCU.pas',
+  Kraft in '..\externals\kraft\src\kraft.pas',
   Vulkan in '..\src\Vulkan.pas',
   PasVulkan in '..\src\PasVulkan.pas',
   PasVulkanAndroid in '..\src\PasVulkanAndroid.pas',
@@ -29,7 +32,10 @@ uses
   UnitScreenExit in 'UnitScreenExit.pas',
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas',
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
-  UnitSDFFont in 'UnitSDFFont.pas';
+  UnitSDFFont in 'UnitSDFFont.pas',
+  UnitStaticDAELoader in 'UnitStaticDAELoader.pas',
+  UnitStringHashMap in 'UnitStringHashMap.pas',
+  UnitXML in 'UnitXML.pas';
 
 {$if defined(fpc) and defined(android)}
 function DumpExceptionCallStack(e:Exception):string;
