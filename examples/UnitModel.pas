@@ -5,7 +5,7 @@ unit UnitModel;
 
 interface
 
-uses SysUtils,Classes,UnitMath3D,Vulkan,Kraft;
+uses SysUtils,Classes,Vulkan,Kraft,UnitMath3D;
 
 type PModelQTangent=^TModelQTangent;
      TModelQTangent=packed record
@@ -79,6 +79,7 @@ type PModelQTangent=^TModelQTangent;
        fCountParts:TVkInt32;
        fObjects:TModelObjects;
        fCountObjects:TVkInt32;
+       fKraftMesh:TKraftMesh;
        fKraftConvexHull:TKraftConvexHull;
       public
        constructor Create; reintroduce;
@@ -100,6 +101,7 @@ type PModelQTangent=^TModelQTangent;
        property CountParts:TVkInt32 read fCountParts;
        property Objects:TModelObjects read fObjects;
        property CountObjects:TVkInt32 read fCountObjects;
+       property KraftMesh:TKraftMesh read fKraftMesh write fKraftMesh;
        property KraftConvexHull:TKraftConvexHull read fKraftConvexHull write fKraftConvexHull;
      end;
 
@@ -107,10 +109,46 @@ implementation
 
 uses UnitBufferedStream,UnitChunkStream;
 
+function Matrix3x3FromQTangent(pQTangent:TQuaternion):TMAtrix3x3;
+var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:single;
+begin
+ QuaternionNormalize(pQTangent);
+ qx2:=pQTangent.x+pQTangent.x;
+ qy2:=pQTangent.y+pQTangent.y;
+ qz2:=pQTangent.z+pQTangent.z;
+ qxqx2:=pQTangent.x*qx2;
+ qxqy2:=pQTangent.x*qy2;
+ qxqz2:=pQTangent.x*qz2;
+ qxqw2:=pQTangent.w*qx2;
+ qyqy2:=pQTangent.y*qy2;
+ qyqz2:=pQTangent.y*qz2;
+ qyqw2:=pQTangent.w*qy2;
+ qzqz2:=pQTangent.z*qz2;
+ qzqw2:=pQTangent.w*qz2;
+ result[0,0]:=1.0-(qyqy2+qzqz2);
+ result[0,1]:=qxqy2+qzqw2;
+ result[0,2]:=qxqz2-qyqw2;
+ result[1,0]:=qxqy2-qzqw2;
+ result[1,1]:=1.0-(qxqx2+qzqz2);
+ result[1,2]:=qyqz2+qxqw2;
+ result[2,0]:=(result[0,1]*result[1,2])-(result[0,2]*result[1,1]);
+ result[2,1]:=(result[0,2]*result[1,0])-(result[0,0]*result[1,2]);
+ result[2,2]:=(result[0,0]*result[1,1])-(result[0,1]*result[1,0]);
+{result[2,0]:=qxqz2+qyqw2;
+ result[2,1]:=qyqz2-qxqw2;
+ result[2,2]:=1.0-(qxqx2+qyqy2);}
+ if pQTangent.w<0.0 then begin
+  result[2,0]:=-result[2,0];
+  result[2,1]:=-result[2,1];
+  result[2,2]:=-result[2,2];
+ end;
+end;
+
 constructor TModel.Create;
 begin
  inherited Create;
  fUploaded:=false;
+ fKraftMesh:=nil;
  fKraftConvexHull:=nil;
  Clear;
 end;
@@ -205,6 +243,9 @@ var Signature:TChunkSignature;
  procedure ReadVBOS;
  const ChunkSignature:TChunkSignature=('V','B','O','S');
  var ChunkStream:TChunkStream;
+     VertexIndex:TVkInt32;
+     q:TQuaternion;
+     m:TMatrix3x3;
  begin
   ChunkStream:=GetChunkStream(ChunkSignature,true);
   try
@@ -213,6 +254,17 @@ var Signature:TChunkSignature;
     SetLength(fVertices,fCountVertices);
     if fCountVertices>0 then begin
      ChunkStream.ReadWithCheck(fVertices[0],fCountVertices*SizeOf(TModelVertex));
+     if assigned(fKraftMesh) then begin
+      for VertexIndex:=0 to fCountVertices-1 do begin
+       fKraftMesh.AddVertex(Kraft.Vector3(fVertices[VertexIndex].Position.x,fVertices[VertexIndex].Position.y,fVertices[VertexIndex].Position.z));
+       q.x:=(Vertices[VertexIndex].QTangent.x-32767)/32768.0;
+       q.y:=(Vertices[VertexIndex].QTangent.y-32767)/32768.0;
+       q.z:=(Vertices[VertexIndex].QTangent.z-32767)/32768.0;
+       q.w:=(Vertices[VertexIndex].QTangent.w-32767)/32768.0;
+       m:=Matrix3x3FromQTangent(q);
+       fKraftMesh.AddNormal(Kraft.Vector3(m[2,0],m[2,1],m[2,2]));
+      end;
+     end;
     end;
    end else begin
     raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
@@ -224,6 +276,7 @@ var Signature:TChunkSignature;
  procedure ReadIBOS;
  const ChunkSignature:TChunkSignature=('I','B','O','S');
  var ChunkStream:TChunkStream;
+     Index:TVkInt32;
  begin
   ChunkStream:=GetChunkStream(ChunkSignature,true);
   try
@@ -232,6 +285,15 @@ var Signature:TChunkSignature;
     SetLength(fIndices,fCountIndices);
     if fCountIndices>0 then begin
      ChunkStream.ReadWithCheck(fIndices[0],fCountIndices*SizeOf(TModelIndex));
+     if assigned(fKraftMesh) then begin
+      Index:=0;
+      while (Index+2)<fCountIndices-1 do begin
+       fKraftMesh.AddTriangle(fIndices[Index],fIndices[Index+1],fIndices[Index+2],
+                              fIndices[Index],fIndices[Index+1],fIndices[Index+2]);
+       inc(Index,3);
+      end;
+      fKraftMesh.Finish;
+     end;
     end;
    end else begin
     raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
