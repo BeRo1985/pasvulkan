@@ -22,6 +22,8 @@ uses
   PasVulkanStaticLinking in '..\src\PasVulkanStaticLinking.pas',
   PasVulkanApplication in '..\src\PasVulkanApplication.pas',
   UnitMath3D in 'UnitMath3D.pas',
+  UnitBufferedStream in 'UnitBufferedStream.pas',
+  UnitChunkStream in 'UnitChunkStream.pas',
   UnitRegisteredExamplesList in 'UnitRegisteredExamplesList.pas',
   UnitExampleVulkanApplication in 'UnitExampleVulkanApplication.pas',
   UnitTextOverlay in 'UnitTextOverlay.pas',

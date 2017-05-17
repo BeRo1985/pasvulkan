@@ -344,7 +344,7 @@ begin
  result.x:=(w-32767)/32768.0;
  ReadWithCheck(w,SizeOf(word));
  result.y:=(w-32767)/32768.0;
- ReadWitCheck(w,SizeOf(word));
+ ReadWithCheck(w,SizeOf(word));
  result.z:=(w-32767)/32768.0;
  ReadWithCheck(w,SizeOf(word));
  result.w:=(w-32767)/32768.0;
