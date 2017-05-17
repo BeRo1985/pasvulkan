@@ -39,6 +39,7 @@ type PVertex=^TVertex;
       Bitangent:TVector3;
       TexCoord:TVector2;
       Color:TVector4;
+      Material:longint;
      end;
 
      PVertices=^TVertices;
@@ -435,6 +436,7 @@ begin
             Vertex^.Color.g:=DAEVertex^.Color.g;
             Vertex^.Color.b:=DAEVertex^.Color.b;
             Vertex^.Color.a:=1.0;
+            Vertex^.Material:=Triangle^.MaterialIndex;
            end;
            Triangle^.Normal:=Vector3Norm(Vector3Cross(Vector3Sub(Triangle^.Vertices[1].Position,Triangle.Vertices[0].Position),Vector3Sub(Triangle^.Vertices[2].Position,Triangle^.Vertices[0].Position)));
            if Vector3Dot(Triangle^.Normal,UnitMath3D.Vector3((Triangle^.Vertices[0].Normal.x+Triangle^.Vertices[1].Normal.x+Triangle^.Vertices[2].Normal.x)/3,
@@ -978,6 +980,9 @@ begin
         if OptimizeForVertexCache(InIndices,TrianglesToDo,TrianglesToDo*3,OutIndices,OutTriangles) then begin
          for TempTriangleIndex:=0 to TrianglesToDo-1 do begin
           Mesh^.Triangles[TriangleIndex+TempTriangleIndex]:=OldTriangles[TriangleIndex+OutTriangles[TempTriangleIndex]];
+          Mesh^.Triangles[TriangleIndex+TempTriangleIndex].Vertices[0].Material:=Mesh^.MaterialIndex;
+          Mesh^.Triangles[TriangleIndex+TempTriangleIndex].Vertices[1].Material:=Mesh^.MaterialIndex;
+          Mesh^.Triangles[TriangleIndex+TempTriangleIndex].Vertices[2].Material:=Mesh^.MaterialIndex;
          end;
         end;
         inc(TriangleIndex,TrianglesToDo);
@@ -1508,11 +1513,7 @@ var Chunks:TChunks;
   WriteVector3(Vertex.Position);   // 12 bytes
   WriteQuaternion(q);              // 8 bytes
   WriteVector2(Vertex.TexCoord);   // 8 bytes
-  c[0]:=Min(Max(round(Vertex.Color.r*255),0),255);
-  c[1]:=Min(Max(round(Vertex.Color.g*255),0),255);
-  c[2]:=Min(Max(round(Vertex.Color.b*255),0),255);
-  c[3]:=Min(Max(round(Vertex.Color.a*255),0),255);
-  ms.Write(c[0],SizeOf(byte)*4);   // 4 bytes
+  WriteInteger(Vertex.Material);   // 4 bytes
  end;                              // 32 bytes in sum
 begin
  Chunks:=nil;
@@ -1599,27 +1600,8 @@ begin
       i32:=VertexBuffer^.CountIndices;
       ms.Write(i32,SizeOf(longint));
 
-{     i32:=VertexBuffer^.CountTriangles;
-      ms.Write(i32,SizeOf(longint));
-
-      for TriangleIndex:=0 to VertexBuffer.CountTriangles-1 do begin
-
-       i32:=VertexBuffer^.Triangles[TriangleIndex].ObjectIndex;
-       ms.Write(i32,SizeOf(longint));
-
-       i32:=VertexBuffer^.Triangles[TriangleIndex].MeshIndex;
-       ms.Write(i32,SizeOf(longint));
-
-      end;}
-
      end;
 
-     EndChunk(ChunkOffset);
-    end;
-    begin
-     ChunkOffset:=StartChunk('COHU');
-     ConvexHullStream.Seek(0,soBeginning);
-     ms.CopyFrom(ConvexHullStream,ConvexHullStream.Size);
      EndChunk(ChunkOffset);
     end;
     begin
@@ -1639,25 +1621,13 @@ begin
 
       WriteVector3(AObject^.AABB.Max);
 
-      i32:=length(AObject^.Meshs);
-      ms.Write(i32,SizeOf(longint));
-
-      for MeshIndex:=0 to length(AObject^.Meshs)-1 do begin
-       Mesh:=@AObject^.Meshs[MeshIndex];
-
-       i32:=Mesh^.MaterialIndex;
-       ms.Write(i32,SizeOf(longint));
-
-       WriteVector3(Mesh^.Sphere.Center);
-
-       ms.Write(Mesh^.Sphere.Radius,SizeOf(single));
-
-       WriteVector3(Mesh^.AABB.Min);
-
-       WriteVector3(Mesh^.AABB.Max);
-
-      end;
      end;
+     EndChunk(ChunkOffset);
+    end;
+    begin
+     ChunkOffset:=StartChunk('COHU');
+     ConvexHullStream.Seek(0,soBeginning);
+     ms.CopyFrom(ConvexHullStream,ConvexHullStream.Size);
      EndChunk(ChunkOffset);
     end;
     begin

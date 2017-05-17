@@ -27,6 +27,7 @@ uses
   UnitRegisteredExamplesList in 'UnitRegisteredExamplesList.pas',
   UnitExampleVulkanApplication in 'UnitExampleVulkanApplication.pas',
   UnitTextOverlay in 'UnitTextOverlay.pas',
+  UnitModel in 'UnitModel.pas',
   UnitScreenBlank in 'UnitScreenBlank.pas',
   UnitScreenMainMenu in 'UnitScreenMainMenu.pas',
   UnitScreenExit in 'UnitScreenExit.pas',
