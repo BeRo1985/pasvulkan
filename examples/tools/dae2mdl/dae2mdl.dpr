@@ -21,6 +21,7 @@ uses
   PasMP in '..\..\..\externals\pasmp\src\PasMP.pas',
   PasDblStrUtils in '..\..\..\externals\pasdblstrutils\src\PasDblStrUtils.pas',
   PUCU in '..\..\..\externals\pucu\src\PUCU.pas',
+  kraft in '..\..\..\externals\kraft\src\kraft.pas',
   UnitMath3D in '..\..\UnitMath3D.pas',
   UnitXML in 'UnitXML.pas',
   UnitStringHashMap in 'UnitStringHashMap.pas',
@@ -436,9 +437,9 @@ begin
             Vertex^.Color.a:=1.0;
            end;
            Triangle^.Normal:=Vector3Norm(Vector3Cross(Vector3Sub(Triangle^.Vertices[1].Position,Triangle.Vertices[0].Position),Vector3Sub(Triangle^.Vertices[2].Position,Triangle^.Vertices[0].Position)));
-           if Vector3Dot(Triangle^.Normal,Vector3((Triangle^.Vertices[0].Normal.x+Triangle^.Vertices[1].Normal.x+Triangle^.Vertices[2].Normal.x)/3,
-                                                  (Triangle^.Vertices[0].Normal.y+Triangle^.Vertices[1].Normal.y+Triangle^.Vertices[2].Normal.y)/3,
-                                                  (Triangle^.Vertices[0].Normal.z+Triangle^.Vertices[1].Normal.z+Triangle^.Vertices[2].Normal.z)/3))<0.0 then begin
+           if Vector3Dot(Triangle^.Normal,UnitMath3D.Vector3((Triangle^.Vertices[0].Normal.x+Triangle^.Vertices[1].Normal.x+Triangle^.Vertices[2].Normal.x)/3,
+                                                             (Triangle^.Vertices[0].Normal.y+Triangle^.Vertices[1].Normal.y+Triangle^.Vertices[2].Normal.y)/3,
+                                                             (Triangle^.Vertices[0].Normal.z+Triangle^.Vertices[1].Normal.z+Triangle^.Vertices[2].Normal.z)/3))<0.0 then begin
             Triangle^.Normal:=Vector3Neg(Triangle^.Normal);
            end;
            inc(TriangleIndex);
@@ -1182,6 +1183,32 @@ begin
  end;
 end;
 
+var ConvexHullStream:TMemoryStream;
+
+procedure BuildConvexHull;
+var i:longint;
+    KraftInstance:TKraft;
+    ConvexHull:TKraftConvexHull;
+begin
+ KraftInstance:=TKraft.Create;
+ try
+  ConvexHull:=TKraftConvexHull.Create(KraftInstance);
+  try
+   for i:=0 to CountVBOVertices-1 do begin
+    ConvexHull.AddVertex(PKraftVector3(pointer(@VBOVertices[i].Position))^);
+   end;
+   ConvexHull.Build(16);
+   ConvexHull.Finish;
+   ConvexHull.SaveToStream(ConvexHullStream);
+   ConvexHullStream.Seek(0,soBeginning);
+  finally
+   ConvexHull.Free;
+  end;
+ finally
+  KraftInstance.Free;
+ end;
+end;
+
 procedure RobustOrthoNormalize(var Tangent,Bitangent,Normal:TVector3;const Tolerance:single=1e-3);
 var Bisector,Axis:TVector3;
 begin
@@ -1597,6 +1624,12 @@ begin
      EndChunk(ChunkOffset);
     end;
     begin
+     ChunkOffset:=StartChunk('COHU');
+     ConvexHullStream.Seek(0,soBeginning);
+     ms.CopyFrom(ConvexHullStream,ConvexHullStream.Size);
+     EndChunk(ChunkOffset);
+    end;
+    begin
      ChunkOffset:=StartChunk('OBJS');
      i32:=length(ModelObjects);
      ms.Write(i32,SizeOf(longint));
@@ -1673,6 +1706,7 @@ begin
  IBOIndices:=nil;
  CountVBOVertices:=0;
  CountIBOIndices:=0;
+ ConvexHullStream:=TMemoryStream.Create;
  try
   if ParamCount>=2 then begin
    InputFileName:=ParamStr(1);
@@ -1693,12 +1727,17 @@ begin
    BuildVertexAndIndexBuffers;
    writeln('done!');
 
+   write('Building collision convex hull... ');
+   BuildConvexHull;
+   writeln('done!');
+
    write('Writing .MDL file... ');
    SaveMDL;
    writeln('done!');
 
   end;
  finally
+  ConvexHullStream.Free;
   Materials:=nil;
   ModelObjects:=nil;
   VBOVertices:=nil;
