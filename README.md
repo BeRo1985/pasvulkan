@@ -27,6 +27,7 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
         -  JPG / JPEG (only baseline, only Huffman-coded and only YCrCb at the moment now) 
         -  PNG (all types, including 16-bit channel PNGs)
         -  TGA
+    - Optional automatic GPU-based texture mipmap generation (with help of vkCmdBlitImage)
     - and more useful utils and stuff for Vulkan-programming
     - Supported platforms:
         - Windows (x86-32, x86-64)
