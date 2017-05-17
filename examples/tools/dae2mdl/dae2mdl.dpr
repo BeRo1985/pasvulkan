@@ -1685,9 +1685,9 @@ begin
    writeln('Model AABB: (',DoubleToStr(AABB.Min.x),',',DoubleToStr(AABB.Min.y),',',DoubleToStr(AABB.Min.z),'),(',DoubleToStr(AABB.Max.x),',',DoubleToStr(AABB.Max.y),',',DoubleToStr(AABB.Max.z),')');
    writeln('Model AABB size: (',DoubleToStr(AABB.Max.x-AABB.Min.x),',',DoubleToStr(AABB.Max.y-AABB.Min.y),',',DoubleToStr(AABB.Max.z-AABB.Min.z),')');
 
-{  write('Optimizing model for vertex cache... ');
+   write('Optimizing model for vertex cache... ');
    OptimizeModelForVertexCache;
-   writeln('done!');}
+   writeln('done!');
 
    write('Building vertex and index buffers... ');
    BuildVertexAndIndexBuffers;
