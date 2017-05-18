@@ -22,7 +22,6 @@ type TScreenBlank=class(TVulkanScreen)
        fTriangleFragmentShaderModule:TVulkanShaderModule;
        fVulkanPipelineShaderStageTriangleVertex:TVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageTriangleFragment:TVulkanPipelineShaderStage;
-       fVulkanPipelineCache:TVulkanPipelineCache;
        fVulkanRenderPass:TVulkanRenderPass;
        fVulkanCommandPool:TVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
@@ -99,8 +98,6 @@ begin
 
  fVulkanPipelineShaderStageTriangleFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fTriangleFragmentShaderModule,'main');
 
- fVulkanPipelineCache:=TVulkanPipelineCache.Create(VulkanApplication.VulkanDevice);
-
  fVulkanRenderPass:=nil;
 
 end;
@@ -109,7 +106,6 @@ procedure TScreenBlank.Hide;
 var Index:TVkInt32;
 begin
  FreeAndNil(fVulkanRenderPass);
- FreeAndNil(fVulkanPipelineCache);
  FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
  FreeAndNil(fVulkanPipelineShaderStageTriangleFragment);
  FreeAndNil(fTriangleFragmentShaderModule);

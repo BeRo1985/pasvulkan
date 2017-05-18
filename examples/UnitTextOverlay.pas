@@ -68,7 +68,6 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fTextOverlayFragmentShaderModule:TVulkanShaderModule;
        fVulkanPipelineShaderStageTriangleVertex:TVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageTriangleFragment:TVulkanPipelineShaderStage;
-       fVulkanPipelineCache:TVulkanPipelineCache;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
        fVulkanRenderPass:TVulkanRenderPass;
        fVulkanVertexBuffers:array[0..MaxSwapChainImages-1] of TVulkanBuffer;
@@ -170,8 +169,6 @@ begin
   fVulkanPipelineShaderStageTriangleVertex:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fTextOverlayVertexShaderModule,'main');
 
   fVulkanPipelineShaderStageTriangleFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fTextOverlayFragmentShaderModule,'main');
-
-  fVulkanPipelineCache:=TVulkanPipelineCache.Create(VulkanApplication.VulkanDevice);
 
   fVulkanGraphicsPipeline:=nil;
 
@@ -322,7 +319,6 @@ begin
   for Index:=0 to MaxSwapChainImages-1 do begin
    FreeAndNil(fVulkanVertexBuffers[Index]);
   end;
-  FreeAndNil(fVulkanPipelineCache);
   FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
   FreeAndNil(fVulkanPipelineShaderStageTriangleFragment);
   FreeAndNil(fTextOverlayFragmentShaderModule);
@@ -392,7 +388,7 @@ begin
  fVulkanRenderPass.Initialize;
 
  fVulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(VulkanApplication.VulkanDevice,
-                                                         fVulkanPipelineCache,
+                                                         VulkanApplication.VulkanPipelineCache,
                                                          0,
                                                          [],
                                                          fVulkanPipelineLayout,

@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-17-17-45-0000                       *
+ *                        Version 2017-05-18-17-33-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -909,6 +909,10 @@ type EVulkanApplication=class(Exception);
 
        fVulkanDevice:TVulkanDevice;
 
+       fVulkanPipelineCache:TVulkanPipelineCache;
+
+       fVulkanPipelineCacheFileName:string;
+       
        fCountCPUThreads:TVkInt32;
 
        fAvailableCPUCores:TPasMPAvailableCPUCores;
@@ -1184,6 +1188,10 @@ type EVulkanApplication=class(Exception);
        property VulkanInstance:TVulkanInstance read fVulkanInstance;
 
        property VulkanDevice:TVulkanDevice read fVulkanDevice;
+
+       property VulkanPipelineCache:TVulkanPipelineCache read fVulkanPipelineCache;
+
+       property VulkanPipelineCacheFileName:string read fVulkanPipelineCacheFileName write fVulkanPipelineCacheFileName; 
 
        property VulkanPresentCommandPools:TVulkanApplicationCommandPools read fVulkanPresentCommandPools;
        property VulkanPresentCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanPresentCommandBuffers;
@@ -4698,6 +4706,8 @@ begin
 
  fVulkanDevice:=nil;
 
+ fVulkanPipelineCache:=nil;
+
  fCountCPUThreads:=Max(1,TPasMP.GetCountOfHardwareThreads(fAvailableCPUCores));
 {$if defined(fpc) and defined(android)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('Detected CPU thread count: '+IntToStr(fCountCPUThreads))));
@@ -4848,6 +4858,18 @@ begin
   fVulkanDevice.AddQueues;
   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   fVulkanDevice.Initialize;
+
+  if (length(fVulkanPipelineCacheFileName)>0) and FileExists(fVulkanPipelineCacheFileName) then begin
+   try
+    fVulkanPipelineCache:=TVulkanPipelineCache.CreateFromFile(fVulkanDevice,fVulkanPipelineCacheFileName);
+   except
+    on e:EVulkanPipelineCacheException do begin
+     fVulkanPipelineCache:=TVulkanPipelineCache.Create(fVulkanDevice);
+    end;
+   end;
+  end else begin
+   fVulkanPipelineCache:=TVulkanPipelineCache.Create(fVulkanDevice);
+  end;
 
   fVulkanCountCommandQueues:=length(fVulkanDevice.PhysicalDevice.QueueFamilyProperties);
   SetLength(fVulkanCommandPools,fVulkanCountCommandQueues,fCountCPUThreads+1,MaxSwapChainImages);
@@ -5015,6 +5037,13 @@ procedure TVulkanApplication.DestroyVulkanInstance;
 var Index,SubIndex,SubSubIndex:TVkInt32;
 begin
 
+ if length(fVulkanPipelineCacheFileName)>0 then begin
+  try
+   fVulkanPipelineCache.SaveToFile(fVulkanPipelineCacheFileName);
+  except
+  end;
+ end;
+
  fVulkanPresentCommandPools:=nil;
  fVulkanPresentCommandBuffers:=nil;
  fVulkanPresentCommandBufferFences:=nil;
@@ -5046,6 +5075,7 @@ begin
  fVulkanCommandBufferFences:=nil;
 
  //FreeAndNil(VulkanPresentationSurface);
+ FreeAndNil(fVulkanPipelineCache);
  FreeAndNil(fVulkanDevice);
  FreeAndNil(fVulkanInstance);
 //VulkanPresentationSurface:=nil;
@@ -6260,6 +6290,8 @@ begin
 {$ifend}
 
 {$ifend}
+
+ fVulkanPipelineCacheFileName:=IncludeTrailingPathDelimiter(fLocalDataPath)+'vulkan_pipeline_cache.bin';
 
  ReadConfig;
 

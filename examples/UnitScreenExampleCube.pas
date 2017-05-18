@@ -37,7 +37,6 @@ type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
        fCubeFragmentShaderModule:TVulkanShaderModule;
        fVulkanPipelineShaderStageCubeVertex:TVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageCubeFragment:TVulkanPipelineShaderStage;
-       fVulkanPipelineCache:TVulkanPipelineCache;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
        fVulkanRenderPass:TVulkanRenderPass;
        fVulkanVertexBuffer:TVulkanBuffer;
@@ -275,8 +274,6 @@ begin
 
  fVulkanPipelineShaderStageCubeFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCubeFragmentShaderModule,'main');
 
- fVulkanPipelineCache:=TVulkanPipelineCache.Create(VulkanApplication.VulkanDevice);
-
  fVulkanGraphicsPipeline:=nil;
 
  fVulkanRenderPass:=nil;
@@ -386,7 +383,6 @@ begin
  FreeAndNil(fVulkanVertexBuffer);
  FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fVulkanGraphicsPipeline);
- FreeAndNil(fVulkanPipelineCache);
  FreeAndNil(fVulkanPipelineShaderStageCubeVertex);
  FreeAndNil(fVulkanPipelineShaderStageCubeFragment);
  FreeAndNil(fCubeFragmentShaderModule);
@@ -477,7 +473,7 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
  fVulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(VulkanApplication.VulkanDevice,
-                                                         fVulkanPipelineCache,
+                                                         VulkanApplication.VulkanPipelineCache,
                                                          0,
                                                          [],
                                                          fVulkanPipelineLayout,

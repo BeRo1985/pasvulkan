@@ -22,7 +22,6 @@ type TScreenExampleTriangle=class(TVulkanScreen)
        fTriangleFragmentShaderModule:TVulkanShaderModule;
        fVulkanPipelineShaderStageTriangleVertex:TVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageTriangleFragment:TVulkanPipelineShaderStage;
-       fVulkanPipelineCache:TVulkanPipelineCache;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
        fVulkanRenderPass:TVulkanRenderPass;
        fVulkanVertexBuffer:TVulkanBuffer;
@@ -146,8 +145,6 @@ begin
 
  fVulkanPipelineShaderStageTriangleFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fTriangleFragmentShaderModule,'main');
 
- fVulkanPipelineCache:=TVulkanPipelineCache.Create(VulkanApplication.VulkanDevice);
-
  fVulkanGraphicsPipeline:=nil;
 
  fVulkanRenderPass:=nil;
@@ -243,7 +240,6 @@ begin
  FreeAndNil(fVulkanVertexBuffer);
  FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fVulkanGraphicsPipeline);
- FreeAndNil(fVulkanPipelineCache);
  FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
  FreeAndNil(fVulkanPipelineShaderStageTriangleFragment);
  FreeAndNil(fTriangleFragmentShaderModule);
@@ -333,7 +329,7 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
  fVulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(VulkanApplication.VulkanDevice,
-                                                         fVulkanPipelineCache,
+                                                         VulkanApplication.VulkanPipelineCache,
                                                          0,
                                                          [],
                                                          fVulkanPipelineLayout,

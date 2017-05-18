@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-18-06-12-0000                       *
+ *                        Version 2017-05-18-17-33-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -16045,7 +16045,7 @@ begin
   raise EInOutError.Create('pInitialData is null');
  end else if pInitialDataSize<VK_UUID_SIZE then begin
   raise EInOutError.Create('Data too small');
- end else if not CompareMem(@PVulkanUUID(pInitialData)[0],@fDevice.fPhysicalDevice.fProperties.pipelineCacheUUID,SizeOf(TVulkanUUID)) then begin
+ end else if not CompareMem(@PVulkanUUID(pInitialData)^[0],@pDevice.fPhysicalDevice.fProperties.pipelineCacheUUID,SizeOf(TVulkanUUID)) then begin
   raise EVulkanPipelineCacheException.Create('Pipeline cache dump is not compatible with the current physical device');
  end else begin
   Create(pDevice,@PByteArray(pInitialData)^[SizeOf(TVulkanUUID)],pInitialDataSize-SizeOf(TVulkanUUID));
@@ -16067,7 +16067,7 @@ begin
    if pStream.Read(Data^,pStream.Size)<>pStream.Size then begin
     raise EInOutError.Create('Stream read error');
    end;
-   Create(pDevice,Data,DataSize);
+   CreateFromMemory(pDevice,Data,DataSize);
   finally
    FreeMem(Data);
   end;
@@ -16080,7 +16080,7 @@ begin
  fPipelineCacheHandle:=VK_NULL_HANDLE;
  FileStream:=TFileStream.Create(pFileName,fmOpenRead or fmShareDenyWrite);
  try
-  Create(pDevice,FileStream);
+  CreateFromStream(pDevice,FileStream);
  finally
   FileStream.Free;
  end;
