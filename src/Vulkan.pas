@@ -134,6 +134,10 @@ type PPVkInt8=^PVkInt8;
      PPVkVoid=^PVkVoid;
      PVkVoid=Pointer;
 
+     PPVkHalfFloat=^PVkHalfFloat;
+     PVkHalfFloat=^TVkHalfFloat;
+     TVkHalfFloat=TVkUInt16;
+
      PPVkFloat=^PVkFloat;
      PVkFloat=^TVkFloat;
      TVkFloat=Single;

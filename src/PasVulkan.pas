@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-18-17-33-0000                       *
+ *                        Version 2017-05-19-00-26-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2894,6 +2894,15 @@ type EVulkanException=class(Exception);
        property MaxAnisotropy:double read fMaxAnisotropy write fMaxAnisotropy;
      end;
 
+var VulkanFloatToHalfFloatBaseTable:array[0..511] of TVkUInt16;
+    VulkanFloatToHalfFloatShiftTable:array[0..511] of TVkUInt8;
+
+    VulkanHalfFloatToFloatMantissaTable:array[0..2047] of TVkUInt32;
+    VulkanHalfFloatToFloatExponentTable:array[0..63] of TVkUInt32;
+    VulkanHalfFloatToFloatOffsetTable:array[0..63] of TVkUInt32;
+
+    VulkanHalfFloatLookUpTablesInitialized:boolean=false;
+
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
        (
         VK_IMAGE_TILING_LINEAR,  // VK_IMAGE_VIEW_TYPE_1D
@@ -2904,6 +2913,9 @@ const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling
         VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_2D_ARRAY
         VK_IMAGE_TILING_LINEAR   // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
        );
+
+function VulkanConvertFloatToHalfFloat(const pValue:TVkFloat):TVkHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+function VulkanConvertHalfFloatToFloat(const pValue:TVkHalfFloat):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
 
 function VulkanGetFormatFromOpenGLFormat(const pFormat,pType:TVkUInt32):TVkFormat;
 function VulkanGetFormatFromOpenGLType(const pType,pNumComponents:TVkUInt32;const pNormalized:boolean):TVkFormat;
@@ -3262,6 +3274,109 @@ const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
       GL_DEPTH24_STENCIL8=$88f0; // same as GL_DEPTH24_STENCIL8_EXT and GL_DEPTH24_STENCIL8_OES
       GL_DEPTH32F_STENCIL8=$8cad; // same as GL_DEPTH32F_STENCIL8_ARB
       GL_DEPTH32F_STENCIL8_NV=$8dac; // Note that this different from GL_DEPTH32F_STENCIL8.
+
+procedure GenerateHalfFloatLookUpTables;
+var i,e:TVkInt32;
+    Mantissa,Exponent:TVkUInt32;
+begin
+ if not VulkanHalfFloatLookUpTablesInitialized then begin
+  VulkanHalfFloatLookUpTablesInitialized:=true;
+  for i:=0 to 255 do begin
+   e:=i-127;
+   case e of
+    -127..-25:begin
+     // Very small numbers maps to zero
+     VulkanFloatToHalfFloatBaseTable[i or $000]:=$0000;
+     VulkanFloatToHalfFloatBaseTable[i or $100]:=$8000;
+     VulkanFloatToHalfFloatShiftTable[i or $000]:=24;
+     VulkanFloatToHalfFloatShiftTable[i or $100]:=24;
+    end;
+    -24..-15:begin
+     // Small numbers maps to denormals
+     VulkanFloatToHalfFloatBaseTable[i or $000]:=($0400 shr ((-e)-14)) or $0000;
+     VulkanFloatToHalfFloatBaseTable[i or $100]:=($0400 shr ((-e)-14)) or $8000;
+     VulkanFloatToHalfFloatShiftTable[i or $000]:=(-e)-1;
+     VulkanFloatToHalfFloatShiftTable[i or $100]:=(-e)-1;
+    end;
+    -14..15:begin
+     // Normal numbers just loses precision
+     VulkanFloatToHalfFloatBaseTable[i or $000]:=((e+15) shl 10) or $0000;
+     VulkanFloatToHalfFloatBaseTable[i or $100]:=((e+15) shl 10) or $8000;
+     VulkanFloatToHalfFloatShiftTable[i or $000]:=13;
+     VulkanFloatToHalfFloatShiftTable[i or $100]:=13;
+    end;
+    16..127:begin
+     // Large numbers maps to infinity
+     VulkanFloatToHalfFloatBaseTable[i or $000]:=$7c00;
+     VulkanFloatToHalfFloatBaseTable[i or $100]:=$fc00;
+     VulkanFloatToHalfFloatShiftTable[i or $000]:=24;
+     VulkanFloatToHalfFloatShiftTable[i or $100]:=24;
+    end;
+    else begin
+     // Infinity and NaN's stay infinity and NaN's
+     VulkanFloatToHalfFloatBaseTable[i or $000]:=$7c00;
+     VulkanFloatToHalfFloatBaseTable[i or $100]:=$fc00;
+     VulkanFloatToHalfFloatShiftTable[i or $000]:=13;
+     VulkanFloatToHalfFloatShiftTable[i or $100]:=13;
+    end;
+   end;
+  end;
+  begin
+   begin
+    VulkanHalfFloatToFloatMantissaTable[0]:=0;
+    for i:=1 to 1023 do begin
+     Mantissa:=i shl 13;
+     Exponent:=0;
+     while (Mantissa and $00800000)=0 do begin // While not normalized
+      dec(Exponent,$00800000);                 // Decrement exponent by 1 shl 23
+      Mantissa:=Mantissa shl 1;                // Shift mantissa
+     end;
+     Mantissa:=Mantissa and not $00800000;     // Clear leading 1 bit
+     inc(Exponent,$38800000);                  // Adjust bias by (127-14) shl 23
+     VulkanHalfFloatToFloatMantissaTable[i]:=Mantissa or Exponent;
+    end;
+    for i:=1024 to 2047 do begin
+     VulkanHalfFloatToFloatMantissaTable[i]:=$38000000+((i-1024) shl 13);
+    end;
+   end;
+   begin
+    VulkanHalfFloatToFloatExponentTable[0]:=0;
+    for i:=1 to 30 do begin
+     VulkanHalfFloatToFloatExponentTable[i]:=i shl 23;
+    end;
+    VulkanHalfFloatToFloatExponentTable[31]:=$47800000;
+    VulkanHalfFloatToFloatExponentTable[32]:=0;
+    for i:=33 to 62 do begin
+     VulkanHalfFloatToFloatExponentTable[i]:=((i-32) shl 23) or $80000000;
+    end;
+    VulkanHalfFloatToFloatExponentTable[63]:=$c7800000;
+   end;
+   begin
+    VulkanHalfFloatToFloatOffsetTable[0]:=0;
+    for i:=1 to 31 do begin
+     VulkanHalfFloatToFloatOffsetTable[i]:=1024;
+    end;
+    VulkanHalfFloatToFloatOffsetTable[32]:=0;
+    for i:=33 to 63 do begin
+     VulkanHalfFloatToFloatOffsetTable[i]:=1024;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function VulkanConvertFloatToHalfFloat(const pValue:TVkFloat):TVkHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+var CastedValue:TVkUInt32 absolute pValue;
+begin
+ result:=VulkanFloatToHalfFloatBaseTable[CastedValue shr 23]+TVkUInt16((CastedValue and $007fffff) shr VulkanFloatToHalfFloatShiftTable[CastedValue shr 23]);
+end;
+
+function VulkanConvertHalfFloatToFloat(const pValue:TVkHalfFloat):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
+var f:TVkUInt32;
+begin
+ f:=VulkanHalfFloatToFloatMantissaTable[VulkanHalfFloatToFloatOffsetTable[pValue shr 10]+(pValue and $3ff)]+VulkanHalfFloatToFloatExponentTable[pValue shr 10];
+ result:=TVkFloat(pointer(@f)^);
+end;
 
 function VulkanGetFormatFromOpenGLFormat(const pFormat,pType:TVkUInt32):TVkFormat;
 begin
@@ -21385,8 +21500,9 @@ begin
  end;
 end;
 
-{initialization
-finalization}
+initialization
+ GenerateHalfFloatLookUpTables;
+//finalization
 end.
 
 

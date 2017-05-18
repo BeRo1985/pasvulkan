@@ -4562,6 +4562,10 @@ begin
    OutputPAS.Add('     PPVkVoid=^PVkVoid;');
    OutputPAS.Add('     PVkVoid=Pointer;');
    OutputPAS.Add('');
+   OutputPAS.Add('     PPVkHalfFloat=^PVkHalfFloat;');
+   OutputPAS.Add('     PVkHalfFloat=^TVkHalfFloat;');
+   OutputPAS.Add('     TVkHalfFloat=TVkUInt16;');
+   OutputPAS.Add('');
    OutputPAS.Add('     PPVkFloat=^PVkFloat;');
    OutputPAS.Add('     PVkFloat=^TVkFloat;');
    OutputPAS.Add('     TVkFloat=Single;');
