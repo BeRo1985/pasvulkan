@@ -94,3 +94,8 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
  10. Make sure the code compiles on 32-bit and 64-bit platforms (x86-32, x86-64, ARM, ARM64, etc.).
  11. Make sure the code runs on all platforms with Vulkan support           
           
+# Showcase videos
+
+[![PasVulkan on Android 7.0 on a NVIDIA Shield K1 Tablet](https://img.youtube.com/vi/HzK4BriAztM/0.jpg)](https://www.youtube.com/watch?v=HzK4BriAztM)
+
+
