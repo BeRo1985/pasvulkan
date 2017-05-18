@@ -6238,7 +6238,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:pointer;
      pe.r:=TVkUInt8(pointer(@CurrentLine^[DataIndex+0])^) or (TVkUInt16(TVkUInt8(pointer(@CurrentLine^[DataIndex+0])^)) shl 8);
      pe.g:=TVkUInt8(pointer(@CurrentLine^[DataIndex+1])^) or (TVkUInt16(TVkUInt8(pointer(@CurrentLine^[DataIndex+1])^)) shl 8);
      pe.b:=TVkUInt8(pointer(@CurrentLine^[DataIndex+2])^) or (TVkUInt16(TVkUInt8(pointer(@CurrentLine^[DataIndex+2])^)) shl 8);
-     pe.b:=TVkUInt8(pointer(@CurrentLine^[DataIndex+3])^) or (TVkUInt16(TVkUInt8(pointer(@CurrentLine^[DataIndex+3])^)) shl 8);
+     pe.a:=TVkUInt8(pointer(@CurrentLine^[DataIndex+3])^) or (TVkUInt16(TVkUInt8(pointer(@CurrentLine^[DataIndex+3])^)) shl 8);
      inc(DataIndex,4);
     end;
     pctColorAlpha16:begin
@@ -6606,7 +6606,7 @@ begin
          result:=false;
          break;
         end;
- //     BitsPerPixel:=TVkInt32(ImgBytes)*BitDepth;
+//      BitsPerPixel:=TVkInt32(ImgBytes)*BitDepth;
         ImageWidth:=Width;
         ImageHeight:=Height;
         WidthHeight:=Width*Height;
@@ -6620,9 +6620,9 @@ begin
           PixelFormat:=ppfR8G8B8A8;
          end;
         end;
- //     ImageBytesPerPixel:=((TVkInt32(ImgBytes)*TVkInt32(BitDepth))+7) shr 3;
- //     ImageLineWidth:=((ImageWidth*BitsPerPixel)+7) shr 3;
- //     ImageSize:=(((ImageWidth*ImageHeight)*BitsPerPixel)+7) shr 3;
+//      ImageBytesPerPixel:=((TVkInt32(ImgBytes)*TVkInt32(BitDepth))+7) shr 3;
+//      ImageLineWidth:=((ImageWidth*BitsPerPixel)+7) shr 3;
+//      ImageSize:=(((ImageWidth*ImageHeight)*BitsPerPixel)+7) shr 3;
         GetMem(ImageData,(((ImageWidth*ImageHeight)*OutputBitsPerPixel)+7) shr 3);
         try
          CountBitsUsed:=0;
