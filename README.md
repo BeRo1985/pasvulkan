@@ -53,7 +53,7 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
     - Re-abstraction of the SDL2 abstraction, for the possible future case, when this Vulkan-optimized Application framework will be not SDL 2.0 based for possible further following target platforms, the Nintendo Switch as example, or when this Vulkan-optimized Application framework will be no more SDL 2.0 based for some already supported target platforms.  
     - Supported platforms:
         - Windows (x86-32, x86-64)
-        - Android (x86-32, x86-64, ARM) (with SDL2 with some own patches, so that SDL2 is even under Android Vulkan-friendly, [the patch for it can be found here](https://github.com/BeRo1985/pasvulkan/blob/master/libs/sdl20androidarm32/sdl2_vulkan.patch))
+        - Android (x86-32, x86-64, ARM) (with SDL2 with some own patches, so that SDL2 is even under Android Vulkan-friendly, [the patch for it can be found here](https://github.com/BeRo1985/pasvulkan/blob/master/libs/sdl20androidarm32/sdl2_vulkan.patch), where you can ignore the PasVulkan-specialized changes of the SDLActivity.java and keep only the changes in the *.c and *.h files of this SDL2 Vulkan patch)
         - Linux (x86-32, x86-64, ARM)
             - X11
             - Mir
