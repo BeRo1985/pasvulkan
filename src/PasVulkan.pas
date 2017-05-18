@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-05-17-20-11-0000                       *
+ *                        Version 2017-05-18-06-04-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -11677,12 +11677,12 @@ begin
   if ((pMemoryTypeBits and (TVkUInt32(1) shl Index))<>0) and
      ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags) and
      ((pMemoryAvoidPropertyFlags=0) or
-      ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and pMemoryAvoidPropertyFlags)<>pMemoryAvoidPropertyFlags)) then begin
+      ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and pMemoryAvoidPropertyFlags)=0)) then begin
    HeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
    CurrentSize:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size;
    if ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and pMemoryHeapFlags)=pMemoryHeapFlags) and
       ((pMemoryAvoidHeapFlags=0) or
-       ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and pMemoryAvoidHeapFlags)<>pMemoryAvoidHeapFlags)) and
+       ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and pMemoryAvoidHeapFlags)=0)) and
       (pSize<=CurrentSize) and (CurrentSize>BestSize) then begin
     BestSize:=CurrentSize;
     fMemoryTypeIndex:=Index;
@@ -12238,7 +12238,7 @@ begin
     if ((pMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
        ((MemoryChunk.fMemoryPropertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags) and
        ((pMemoryAvoidPropertyFlags=0) or
-        ((MemoryChunk.fMemoryPropertyFlags and pMemoryAvoidPropertyFlags)<>pMemoryAvoidPropertyFlags)) and
+        ((MemoryChunk.fMemoryPropertyFlags and pMemoryAvoidPropertyFlags)=0)) and
        ((MemoryChunk.fSize-MemoryChunk.fUsed)>=pSize) then begin
      if MemoryChunk.AllocateMemory(Offset,pSize) then begin
       result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pSize);
