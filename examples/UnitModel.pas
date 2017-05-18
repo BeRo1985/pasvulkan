@@ -9,7 +9,7 @@ uses SysUtils,Classes,Math,Vulkan,Kraft,UnitMath3D,PasVulkan;
 
 type PModelQTangent=^TModelQTangent;
      TModelQTangent=packed record
-      x,y,z,w:TVkUInt16;
+      x,y,z,w:TVkHalfFloat;
      end;
 
      PModelVertex=^TModelVertex;
@@ -564,10 +564,10 @@ var Signature:TChunkSignature;
      if assigned(fKraftMesh) then begin
       for VertexIndex:=0 to fCountVertices-1 do begin
        fKraftMesh.AddVertex(Kraft.Vector3(fVertices[VertexIndex].Position.x,fVertices[VertexIndex].Position.y,fVertices[VertexIndex].Position.z));
-       q.x:=(Vertices[VertexIndex].QTangent.x-32767)/32768.0;
-       q.y:=(Vertices[VertexIndex].QTangent.y-32767)/32768.0;
-       q.z:=(Vertices[VertexIndex].QTangent.z-32767)/32768.0;
-       q.w:=(Vertices[VertexIndex].QTangent.w-32767)/32768.0;
+       q.x:=VulkanConvertHalfFloatToFloat(Vertices[VertexIndex].QTangent.x);
+       q.y:=VulkanConvertHalfFloatToFloat(Vertices[VertexIndex].QTangent.y);
+       q.z:=VulkanConvertHalfFloatToFloat(Vertices[VertexIndex].QTangent.z);
+       q.w:=VulkanConvertHalfFloatToFloat(Vertices[VertexIndex].QTangent.w);
        m:=Matrix3x3FromQTangent(q);
        fKraftMesh.AddNormal(Kraft.Vector3(m[2,0],m[2,1],m[2,2]));
       end;
