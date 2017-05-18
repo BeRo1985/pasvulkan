@@ -9,7 +9,7 @@ uses SysUtils,Classes,Math,Vulkan,Kraft,UnitMath3D,PasVulkan;
 
 type PModelQTangent=^TModelQTangent;
      TModelQTangent=packed record
-      x,y,z,w:TVkInt16;
+      x,y,z,w:TVkUInt16;
      end;
 
      PModelVertex=^TModelVertex;
@@ -431,10 +431,10 @@ begin
   m[2,1]:=CubeVertex^.Normal.y;
   m[2,2]:=CubeVertex^.Normal.z;
   q:=Matrix3x3ToQTangent(m);
-  ModelVertex^.QTangent.x:=Min(Max(round(q.x*32767),-32767),32767);
-  ModelVertex^.QTangent.y:=Min(Max(round(q.y*32767),-32767),32767);
-  ModelVertex^.QTangent.z:=Min(Max(round(q.z*32767),-32767),32767);
-  ModelVertex^.QTangent.w:=Min(Max(round(q.w*32767),-32767),32767);
+  ModelVertex^.QTangent.x:=VulkanConvertFloatToHalfFloat(q.x);
+  ModelVertex^.QTangent.y:=VulkanConvertFloatToHalfFloat(q.y);
+  ModelVertex^.QTangent.z:=VulkanConvertFloatToHalfFloat(q.z);
+  ModelVertex^.QTangent.w:=VulkanConvertFloatToHalfFloat(q.w);
   ModelVertex^.TexCoord:=CubeVertex^.TexCoord;
   ModelVertex^.Material:=0;
  end;

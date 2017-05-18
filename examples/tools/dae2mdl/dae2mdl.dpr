@@ -22,6 +22,8 @@ uses
   PasDblStrUtils in '..\..\..\externals\pasdblstrutils\src\PasDblStrUtils.pas',
   PUCU in '..\..\..\externals\pucu\src\PUCU.pas',
   kraft in '..\..\..\externals\kraft\src\kraft.pas',
+  Vulkan in '..\..\..\src\Vulkan.pas',
+  PasVulkan in '..\..\..\src\PasVulkan.pas',
   UnitMath3D in '..\..\UnitMath3D.pas',
   UnitXML in 'UnitXML.pas',
   UnitStringHashMap in 'UnitStringHashMap.pas',
@@ -1468,16 +1470,16 @@ var Chunks:TChunks;
   ms.Write(v.w,SizeOf(single));
  end;
  procedure WriteQuaternion(const v:TQuaternion);
- var w:smallint;
+ var w:word;
  begin
-  w:=Min(Max(round(v.x*32767),-32767),32767);
-  ms.Write(w,SizeOf(smallint));
-  w:=Min(Max(round(v.y*32767),-32767),32767);
-  ms.Write(w,SizeOf(smallint));
-  w:=Min(Max(round(v.z*32767),-32767),32767);
-  ms.Write(w,SizeOf(smallint));
-  w:=Min(Max(round(v.w*32767),-32767),32767);
-  ms.Write(w,SizeOf(smallint));
+  w:=VulkanConvertFloatToHalfFloat(v.x);
+  ms.Write(w,SizeOf(word));
+  w:=VulkanConvertFloatToHalfFloat(v.y);
+  ms.Write(w,SizeOf(word));
+  w:=VulkanConvertFloatToHalfFloat(v.z);
+  ms.Write(w,SizeOf(word));
+  w:=VulkanConvertFloatToHalfFloat(v.w);
+  ms.Write(w,SizeOf(word));
  end;
  procedure WritePlane(const p:TPlane);
  begin
