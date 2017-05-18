@@ -33,6 +33,7 @@ uses
   UnitScreenExit in 'UnitScreenExit.pas',
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas',
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
+  UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
   UnitSDFFont in 'UnitSDFFont.pas';
 
 {$if defined(fpc) and defined(android)}

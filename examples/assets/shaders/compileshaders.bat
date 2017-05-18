@@ -12,5 +12,9 @@ cd cube
 call compileshaders.bat
 cd ..
 
+cd dragon
+call compileshaders.bat
+cd ..
+
 echo.
 pause
