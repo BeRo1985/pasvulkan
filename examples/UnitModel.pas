@@ -5,7 +5,7 @@ unit UnitModel;
 
 interface
 
-uses SysUtils,Classes,Vulkan,Kraft,UnitMath3D,PasVulkan;
+uses SysUtils,Classes,Math,Vulkan,Kraft,UnitMath3D,PasVulkan;
 
 type PModelQTangent=^TModelQTangent;
      TModelQTangent=packed record
@@ -85,6 +85,7 @@ type PModelQTangent=^TModelQTangent;
        fIndexBuffer:TVulkanBuffer;
       public
        constructor Create; reintroduce;
+       constructor CreateCube(const pSizeX,pSizeY,pSizeZ:single);
        destructor Destroy; override;
        procedure Clear;
        procedure LoadFromStream(const pStream:TStream;const pDoFree:boolean=false);
@@ -115,6 +116,158 @@ type PModelQTangent=^TModelQTangent;
 implementation
 
 uses UnitBufferedStream,UnitChunkStream;
+
+procedure RobustOrthoNormalize(var Tangent,Bitangent,Normal:TVector3;const Tolerance:single=1e-3);
+var Bisector,Axis:TVector3;
+begin
+ begin
+  if Vector3Length(Normal)<Tolerance then begin
+   // Degenerate case, compute new normal
+   Normal:=Vector3Cross(Tangent,Bitangent);
+   if Vector3Length(Normal)<Tolerance then begin
+    Tangent:=Vector3XAxis;
+    Bitangent:=Vector3YAxis;
+    Normal:=Vector3ZAxis;
+    exit;
+   end;
+  end;
+  Normal:=Vector3Norm(Normal);
+ end;
+ begin
+  // Project tangent and bitangent onto the normal orthogonal plane
+  Tangent:=Vector3Sub(Tangent,Vector3ScalarMul(Normal,Vector3Dot(Tangent,Normal)));
+  Bitangent:=Vector3Sub(Bitangent,Vector3ScalarMul(Normal,Vector3Dot(Bitangent,Normal)));
+ end;
+ begin
+  // Check for several degenerate cases
+  if Vector3Length(Tangent)<Tolerance then begin
+   if Vector3Length(Bitangent)<Tolerance then begin
+    Tangent:=Vector3Norm(Normal);
+    if (Tangent.x<=Tangent.y) and (Tangent.x<=Tangent.z) then begin
+     Tangent:=Vector3XAxis;
+    end else if (Tangent.y<=Tangent.x) and (Tangent.y<=Tangent.z) then begin
+     Tangent:=Vector3YAxis;
+    end else begin
+     Tangent:=Vector3ZAxis;
+    end;
+    Tangent:=Vector3Sub(Tangent,Vector3ScalarMul(Normal,Vector3Dot(Tangent,Normal)));
+    Bitangent:=Vector3Norm(Vector3Cross(Normal,Tangent));
+   end else begin
+    Tangent:=Vector3Norm(Vector3Cross(Bitangent,Normal));
+   end;
+  end else begin
+   Tangent:=Vector3Norm(Tangent);
+   if Vector3Length(Bitangent)<Tolerance then begin
+    Bitangent:=Vector3Norm(Vector3Cross(Normal,Tangent));
+   end else begin
+    Bitangent:=Vector3Norm(Bitangent);
+    Bisector:=Vector3Add(Tangent,Bitangent);
+    if Vector3Length(Bisector)<Tolerance then begin
+     Bisector:=Tangent;
+    end else begin
+     Bisector:=Vector3Norm(Bisector);
+    end;
+    Axis:=Vector3Norm(Vector3Cross(Bisector,Normal));
+    if Vector3Dot(Axis,Tangent)>0.0 then begin
+     Tangent:=Vector3Norm(Vector3Add(Bisector,Axis));
+     Bitangent:=Vector3Norm(Vector3Sub(Bisector,Axis));
+    end else begin
+     Tangent:=Vector3Norm(Vector3Sub(Bisector,Axis));
+     Bitangent:=Vector3Norm(Vector3Add(Bisector,Axis));
+    end;
+   end;
+  end;
+ end;
+ Bitangent:=Vector3Norm(Vector3Cross(Normal,Tangent));
+ Tangent:=Vector3Norm(Vector3Cross(Bitangent,Normal));
+ Normal:=Vector3Norm(Vector3Cross(Tangent,Bitangent));
+end;
+
+function Matrix3x3ToQTangent(RawComponents:TMatrix3x3):TQuaternion;
+const Threshold=1.0/32767.0;
+var Scale,t,s,Renormalization:single;
+begin
+ RobustOrthoNormalize(PVector3(@RawComponents[0,0])^,
+                      PVector3(@RawComponents[1,0])^,
+                      PVector3(@RawComponents[2,0])^);
+ if ((((((RawComponents[0,0]*RawComponents[1,1]*RawComponents[2,2])+
+         (RawComponents[0,1]*RawComponents[1,2]*RawComponents[2,0])
+        )+
+        (RawComponents[0,2]*RawComponents[1,0]*RawComponents[2,1])
+       )-
+       (RawComponents[0,2]*RawComponents[1,1]*RawComponents[2,0])
+      )-
+      (RawComponents[0,1]*RawComponents[1,0]*RawComponents[2,2])
+     )-
+     (RawComponents[0,0]*RawComponents[1,2]*RawComponents[2,1])
+    )<0.0 then begin
+  // Reflection matrix, so flip y axis in case the tangent frame encodes a reflection
+  Scale:=-1.0;
+  RawComponents[2,0]:=-RawComponents[2,0];
+  RawComponents[2,1]:=-RawComponents[2,1];
+  RawComponents[2,2]:=-RawComponents[2,2];
+ end else begin
+  // Rotation matrix, so nothing is doing to do
+  Scale:=1.0;
+ end;
+ begin
+  // Convert to quaternion
+  t:=RawComponents[0,0]+(RawComponents[1,1]+RawComponents[2,2]);
+  if t>2.9999999 then begin
+   result.x:=0.0;
+   result.y:=0.0;
+   result.z:=0.0;
+   result.w:=1.0;
+  end else if t>0.0000001 then begin
+   s:=sqrt(1.0+t)*2.0;
+   result.x:=(RawComponents[1,2]-RawComponents[2,1])/s;
+   result.y:=(RawComponents[2,0]-RawComponents[0,2])/s;
+   result.z:=(RawComponents[0,1]-RawComponents[1,0])/s;
+   result.w:=s*0.25;
+  end else if (RawComponents[0,0]>RawComponents[1,1]) and (RawComponents[0,0]>RawComponents[2,2]) then begin
+   s:=sqrt(1.0+(RawComponents[0,0]-(RawComponents[1,1]+RawComponents[2,2])))*2.0;
+   result.x:=s*0.25;
+   result.y:=(RawComponents[1,0]+RawComponents[0,1])/s;
+   result.z:=(RawComponents[2,0]+RawComponents[0,2])/s;
+   result.w:=(RawComponents[1,2]-RawComponents[2,1])/s;
+  end else if RawComponents[1,1]>RawComponents[2,2] then begin
+   s:=sqrt(1.0+(RawComponents[1,1]-(RawComponents[0,0]+RawComponents[2,2])))*2.0;
+   result.x:=(RawComponents[1,0]+RawComponents[0,1])/s;
+   result.y:=s*0.25;
+   result.z:=(RawComponents[2,1]+RawComponents[1,2])/s;
+   result.w:=(RawComponents[2,0]-RawComponents[0,2])/s;
+  end else begin
+   s:=sqrt(1.0+(RawComponents[2,2]-(RawComponents[0,0]+RawComponents[1,1])))*2.0;
+   result.x:=(RawComponents[2,0]+RawComponents[0,2])/s;
+   result.y:=(RawComponents[2,1]+RawComponents[1,2])/s;
+   result.z:=s*0.25;
+   result.w:=(RawComponents[0,1]-RawComponents[1,0])/s;
+  end;
+  QuaternionNormalize(result);
+ end;
+ begin
+  // Make sure, that we don't end up with 0 as w component
+  if abs(result.w)<=Threshold then begin
+   Renormalization:=sqrt(1.0-sqr(Threshold));
+   result.x:=result.x*Renormalization;
+   result.y:=result.y*Renormalization;
+   result.z:=result.z*Renormalization;
+   if result.w>0.0 then begin
+    result.w:=Threshold;
+   end else begin
+    result.w:=-Threshold;
+   end;
+  end;
+ end;
+ if ((Scale<0.0) and (result.w>=0.0)) or ((Scale>=0.0) and (result.w<0.0)) then begin
+  // Encode reflection into quaternion's w element by making sign of w negative,
+  // if y axis needs to be flipped, otherwise it stays positive
+  result.x:=-result.x;
+  result.y:=-result.y;
+  result.z:=-result.z;
+  result.w:=-result.w;
+ end;
+end;
 
 function Matrix3x3FromQTangent(pQTangent:TQuaternion):TMatrix3x3;
 var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:single;
@@ -160,6 +313,151 @@ begin
  fVertexBuffer:=nil;
  fIndexBuffer:=nil;
  Clear;
+end;
+
+constructor TModel.CreateCube(const pSizeX,pSizeY,pSizeZ:single);
+type PCubeVertex=^TCubeVertex;
+     TCubeVertex=record
+      Position:TVector3;
+      Tangent:TVector3;
+      Bitangent:TVector3;
+      Normal:TVector3;
+      TexCoord:TVector2;
+     end;
+const CubeVertices:array[0..23] of TCubeVertex=
+       (// Left
+        (Position:(x:-1;y:-1;z:-1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:0;v:0)),
+        (Position:(x:-1;y: 1;z:-1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:0;v:1)),
+        (Position:(x:-1;y: 1;z: 1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:1;v:1)),
+        (Position:(x:-1;y:-1;z: 1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:1;v:0)),
+
+        // Right
+        (Position:(x: 1;y:-1;z: 1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:0;v:0)),
+        (Position:(x: 1;y: 1;z: 1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:0;v:1)),
+        (Position:(x: 1;y: 1;z:-1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:1;v:1)),
+        (Position:(x: 1;y:-1;z:-1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:1;v:0)),
+
+        // Bottom
+        (Position:(x:-1;y:-1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:0;v:0)),
+        (Position:(x:-1;y:-1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:0;v:1)),
+        (Position:(x: 1;y:-1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:1;v:1)),
+        (Position:(x: 1;y:-1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:1;v:0)),
+
+        // Top
+        (Position:(x:-1;y: 1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:0;v:0)),
+        (Position:(x: 1;y: 1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:0;v:1)),
+        (Position:(x: 1;y: 1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:1;v:1)),
+        (Position:(x:-1;y: 1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:1;v:0)),
+
+        // Back
+        (Position:(x: 1;y:-1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:0;v:0)),
+        (Position:(x: 1;y: 1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:0;v:1)),
+        (Position:(x:-1;y: 1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:1;v:1)),
+        (Position:(x:-1;y:-1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:1;v:0)),
+
+        // Front
+        (Position:(x:-1;y:-1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:0;v:0)),
+        (Position:(x:-1;y: 1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:0;v:1)),
+        (Position:(x: 1;y: 1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:1;v:1)),
+        (Position:(x: 1;y:-1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:1;v:0))
+
+       );
+      CubeIndices:array[0..35] of TVkInt32=
+       ( 0, 1, 2,
+         0, 2, 3,
+
+         // Right
+         4, 5, 6,
+         4, 6, 7,
+
+         // Bottom
+         8, 9, 10,
+         8, 10, 11,
+
+         // Top
+         12, 13, 14,
+         12, 14, 15,
+
+         // Back
+         16, 17, 18,
+         16, 18, 19,
+
+         // Front
+         20, 21, 22,
+         20, 22, 23);
+var Index:TVkInt32;
+    Material:PModelMaterial;
+    ModelVertex:PModelVertex;
+    CubeVertex:PCubeVertex;
+    m:TMatrix3x3;
+    q:TQuaternion;
+    Part:PModelPart;
+    AObject:PModelObject;
+begin
+ Create;
+
+ fCountMaterials:=1;
+ fCountVertices:=length(CubeVertices);
+ fCountIndices:=length(CubeIndices);
+ fCountParts:=1;
+ fCountObjects:=1;
+
+ SetLength(fMaterials,fCountMaterials);
+ SetLength(fVertices,fCountVertices);
+ SetLength(fIndices,fCountIndices);
+ SetLength(fParts,fCountParts);
+ SetLength(fObjects,fCountObjects);
+
+ Material:=@fMaterials[0];
+ Material^.Name:='cube';
+ Material^.Texture:='cube';
+ Material^.Ambient:=UnitMath3D.Vector3(0.1,0.1,0.1);
+ Material^.Diffuse:=UnitMath3D.Vector3(0.8,0.8,0.8);
+ Material^.Emission:=UnitMath3D.Vector3(0.0,0.0,0.0);
+ Material^.Specular:=UnitMath3D.Vector3(0.1,0.1,0.1);
+ Material^.Shininess:=1.0;
+
+ for Index:=0 to fCountVertices-1 do begin
+  ModelVertex:=@fVertices[Index];
+  CubeVertex:=@CubeVertices[Index];
+  ModelVertex^.Position:=Vector3Mul(CubeVertex^.Position,UnitMath3D.Vector3(pSizeX*0.5,pSizeY*0.5,pSizeZ*0.5));
+  m[0,0]:=CubeVertex^.Tangent.x;
+  m[0,1]:=CubeVertex^.Tangent.y;
+  m[0,2]:=CubeVertex^.Tangent.z;
+  m[1,0]:=CubeVertex^.Bitangent.x;
+  m[1,1]:=CubeVertex^.Bitangent.y;
+  m[1,2]:=CubeVertex^.Bitangent.z;
+  m[2,0]:=CubeVertex^.Normal.x;
+  m[2,1]:=CubeVertex^.Normal.y;
+  m[2,2]:=CubeVertex^.Normal.z;
+  q:=Matrix3x3ToQTangent(m);
+  ModelVertex^.QTangent.x:=Min(Max(round(q.x*32767)+32768,0),65535);
+  ModelVertex^.QTangent.y:=Min(Max(round(q.y*32767)+32768,0),65535);
+  ModelVertex^.QTangent.z:=Min(Max(round(q.z*32767)+32768,0),65535);
+  ModelVertex^.QTangent.w:=Min(Max(round(q.w*32767)+32768,0),65535);
+  ModelVertex^.TexCoord:=CubeVertex^.TexCoord;
+  ModelVertex^.Material:=0;
+ end;
+
+ for Index:=0 to fCountIndices-1 do begin
+  fIndices[Index]:=CubeIndices[Index];
+ end;
+
+ Part:=@fParts[0];
+ Part^.Material:=0;
+ Part^.StartIndex:=0;
+ Part^.CountIndices:=fCountIndices;
+
+ AObject:=@fObjects[0];
+ AObject^.Name:='cube';
+ AObject^.AABB.Min.x:=-(pSizeX*0.5);
+ AObject^.AABB.Min.y:=-(pSizeY*0.5);
+ AObject^.AABB.Min.z:=-(pSizeZ*0.5);
+ AObject^.AABB.Max.x:=pSizeX*0.5;
+ AObject^.AABB.Max.y:=pSizeY*0.5;
+ AObject^.AABB.Max.z:=pSizeZ*0.5;
+ AObject^.Sphere:=SphereFromAABB(AObject^.AABB);
+
 end;
 
 destructor TModel.Destroy;
@@ -465,12 +763,12 @@ begin
                            vbutsbmYes);
 
   fIndexBuffer:=TVulkanBuffer.Create(pDevice,
-                                      fCountIndices*SizeOf(TModelIndex),
-                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                      nil,
-                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                                     );
+                                     fCountIndices*SizeOf(TModelIndex),
+                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                     nil,
+                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                    );
   fIndexBuffer.UploadData(pQueue,
                           pCommandBuffer,
                           pFence,

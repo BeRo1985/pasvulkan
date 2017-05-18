@@ -1280,7 +1280,7 @@ begin
  Normal:=Vector3Norm(Vector3Cross(Tangent,Bitangent));
 end;
 
-function Matrix3x3ToToQTangent(RawComponents:TMatrix3x3):TQuaternion;
+function Matrix3x3ToQTangent(RawComponents:TMatrix3x3):TQuaternion;
 const Threshold=1.0/32767.0;
 var Scale,t,s,Renormalization:single;
 begin
@@ -1509,7 +1509,7 @@ var Chunks:TChunks;
   m[2,0]:=Vertex.Normal.x;
   m[2,1]:=Vertex.Normal.y;
   m[2,2]:=Vertex.Normal.z;
-  q:=Matrix3x3ToToQTangent(m);
+  q:=Matrix3x3ToQTangent(m);
   WriteVector3(Vertex.Position);   // 12 bytes
   WriteQuaternion(q);              // 8 bytes
   WriteVector2(Vertex.TexCoord);   // 8 bytes
