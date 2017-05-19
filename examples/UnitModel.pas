@@ -66,6 +66,13 @@ type PModelQTangent=^TModelQTangent;
 
      EModelLoad=class(Exception);
 
+     TModelBuffers=array of TVulkanBuffer;
+
+     PModelBufferSize=^TModelBufferSize;
+     TModelBufferSize=TVkUInt32;
+
+     TModelBufferSizes=array of TModelBufferSize;
+
      TModel=class
       private
        fVulkanDevice:TVulkanDevice;
@@ -84,8 +91,10 @@ type PModelQTangent=^TModelQTangent;
        fCountObjects:TVkInt32;
        fKraftMesh:TKraftMesh;
        fKraftConvexHull:TKraftConvexHull;
-       fVertexBuffer:TVulkanBuffer;
-       fIndexBuffer:TVulkanBuffer;
+       fVertexBuffers:TModelBuffers;
+       fIndexBuffers:TModelBuffers;
+       fBufferSizes:TModelBufferSizes;
+       fCountBuffers:TVkInt32;
       public
        constructor Create(const pVulkanDevice:TVulkanDevice); reintroduce;
        destructor Destroy; override;
@@ -112,8 +121,6 @@ type PModelQTangent=^TModelQTangent;
        property CountObjects:TVkInt32 read fCountObjects;
        property KraftMesh:TKraftMesh read fKraftMesh write fKraftMesh;
        property KraftConvexHull:TKraftConvexHull read fKraftConvexHull write fKraftConvexHull;
-       property VertexBuffer:TVulkanBuffer read fVertexBuffer;
-       property IndexBuffer:TVulkanBuffer read fIndexBuffer;
      end;
 
 implementation
@@ -314,8 +321,10 @@ begin
  fUploaded:=false;
  fKraftMesh:=nil;
  fKraftConvexHull:=nil;
- fVertexBuffer:=nil;
- fIndexBuffer:=nil;
+ fVertexBuffers:=nil;
+ fIndexBuffers:=nil;
+ fBufferSizes:=nil;
+ fCountBuffers:=0;
  Clear;
 end;
 
@@ -746,38 +755,67 @@ end;
 procedure TModel.Upload(const pQueue:TVulkanQueue;
                         const pCommandBuffer:TVulkanCommandBuffer;
                         const pFence:TVulkanFence);
+var MaxIndexedIndex:TVkUInt32;
+    MaxCount:TVkUInt64;
 begin
  if not fUploaded then begin
 
-  fVertexBuffer:=TVulkanBuffer.Create(fVulkanDevice,
-                                      fCountVertices*SizeOf(TModelVertex),
-                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                      nil,
-                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                                     );
-  fVertexBuffer.UploadData(pQueue,
-                           pCommandBuffer,
-                           pFence,
-                           fVertices[0],
-                           0,
-                           fCountVertices*SizeOf(TModelVertex),
-                           vbutsbmYes);
+  if fVulkanDevice.PhysicalDevice.Features.fullDrawIndexUint32<>0 then begin
+   MaxIndexedIndex:=high(TVkUInt32)-1;
+  end else begin
+   MaxIndexedIndex:=fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndexedIndexValue;
+  end;
+  MaxCount:=MaxIndexedIndex+1;
 
-  fIndexBuffer:=TVulkanBuffer.Create(fVulkanDevice,
-                                     fCountIndices*SizeOf(TModelIndex),
-                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                     nil,
-                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                                    );
-  fIndexBuffer.UploadData(pQueue,
-                          pCommandBuffer,
-                          pFence,
-                          fIndices[0],
-                          0,
-                          fCountIndices*SizeOf(TModelIndex),
-                          vbutsbmYes);
+  if fCountIndices<MaxCount then begin
+
+   // Good, the model fits into one whole single vertex buffer
+
+   fCountBuffers:=1;
+
+   SetLength(fVertexBuffers,fCountBuffers);
+   SetLength(fIndexBuffers,fCountBuffers);
+   SetLength(fBufferSizes,fCountBuffers);
+
+   fBufferSizes[0]:=fCountIndices;
+
+   fVertexBuffers[0]:=TVulkanBuffer.Create(fVulkanDevice,
+                                           fCountVertices*SizeOf(TModelVertex),
+                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                           nil,
+                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                          );
+   fVertexBuffers[0].UploadData(pQueue,
+                                pCommandBuffer,
+                                pFence,
+                                fVertices[0],
+                                0,
+                                fCountVertices*SizeOf(TModelVertex),
+                                vbutsbmYes);
+
+   fIndexBuffers[0]:=TVulkanBuffer.Create(fVulkanDevice,
+                                          fCountIndices*SizeOf(TModelIndex),
+                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                          nil,
+                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                         );
+   fIndexBuffers[0].UploadData(pQueue,
+                               pCommandBuffer,
+                               pFence,
+                               fIndices[0],
+                               0,
+                               fCountIndices*SizeOf(TModelIndex),
+                               vbutsbmYes);
+
+  end else begin
+
+   // We do to need split the model into multipe vertex buffers
+
+   Assert(false,'TODO');
+
+  end;
 
   fUploaded:=true;
 
@@ -785,23 +823,34 @@ begin
 end;
 
 procedure TModel.Unload;
+var Index:TVkInt32;
 begin
  if fUploaded then begin
 
   fUploaded:=false;
 
-  FreeAndNil(fVertexBuffer);
-  FreeAndNil(fIndexBuffer);
+  for Index:=0 to fCountBuffers-1 do begin
+   FreeAndNil(fVertexBuffers[Index]);
+   FreeAndNil(fIndexBuffers[Index]);
+  end;
+
+  fVertexBuffers:=nil;
+  fIndexBuffers:=nil;
+  fBufferSizes:=nil;
+  fCountBuffers:=0;
 
  end;
 end;
 
 procedure TModel.Draw(const pCommandBuffer:TVulkanCommandBuffer;const pInstanceCount:TVkUInt32=1;const pFirstInstance:TVkUInt32=0);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
+var Index:TVkInt32;
 begin
- pCommandBuffer.CmdBindVertexBuffers(VULKAN_MODEL_VERTEX_BUFFER_BIND_ID,1,@fVertexBuffer.Handle,@Offsets);
- pCommandBuffer.CmdBindIndexBuffer(fIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
- pCommandBuffer.CmdDrawIndexed(fCountIndices,pInstanceCount,0,0,pFirstInstance);
+ for Index:=0 to fCountBuffers-1 do begin
+  pCommandBuffer.CmdBindVertexBuffers(VULKAN_MODEL_VERTEX_BUFFER_BIND_ID,1,@fVertexBuffers[Index].Handle,@Offsets);
+  pCommandBuffer.CmdBindIndexBuffer(fIndexBuffers[Index].Handle,0,VK_INDEX_TYPE_UINT32);
+  pCommandBuffer.CmdDrawIndexed(fBufferSizes[Index],pInstanceCount,0,0,pFirstInstance);
+ end;
 end;
 
 end.
