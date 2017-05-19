@@ -755,8 +755,13 @@ end;
 procedure TModel.Upload(const pQueue:TVulkanQueue;
                         const pCommandBuffer:TVulkanCommandBuffer;
                         const pFence:TVulkanFence);
-var MaxIndexedIndex:TVkUInt32;
-    MaxCount:TVkUInt64;
+type TRemapIndices=array of TVkInt64;
+var BufferIndex,IndexIndex,CountTemporaryVertices:TVkInt32;
+    MaxIndexedIndex:TVkUInt32;
+    MaxCount,CurrentIndex,RemainingCount,ToDoCount,VertexIndex:TVkInt64;
+    TemporaryVertices:TModelVertices;
+    TemporaryIndices:TModelIndices;
+    TemporaryRemapIndices:TRemapIndices;
 begin
  if not fUploaded then begin
 
@@ -765,11 +770,17 @@ begin
   end else begin
    MaxIndexedIndex:=fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndexedIndexValue;
   end;
-  MaxCount:=MaxIndexedIndex+1;
 
-  if fCountIndices<MaxCount then begin
+  // Make sure that MaxCount is divisible by three (one triangle = three vertices)
+  MaxCount:=Max(0,(MaxIndexedIndex+1)-((MaxIndexedIndex+1) mod 3));
 
-   // Good, the model fits into one whole single vertex buffer
+  if fCountIndices=0 then begin
+
+   fCountBuffers:=0;
+
+  end else if fCountIndices<=MaxCount then begin
+
+   // Good, the whole model fits into single vertex and index buffers
 
    fCountBuffers:=1;
 
@@ -811,9 +822,118 @@ begin
 
   end else begin
 
-   // We do to need split the model into multipe vertex buffers
+   // In this case, we do to need split the model into multipe vertex and index buffers
 
-   Assert(false,'TODO');
+   // Avoid signed 2^31 overflow issues
+   if MaxCount>=High(TVkInt32) then begin
+    MaxCount:=(High(TVkInt32)-1)-((High(TVkInt32)-1) mod 3);
+   end;
+
+   TemporaryVertices:=nil;
+   TemporaryIndices:=nil;
+   TemporaryRemapIndices:=nil;
+   try
+
+    SetLength(TemporaryRemapIndices,fCountIndices);
+
+    fCountBuffers:=(fCountIndices+(MaxCount-1)) div MaxCount;
+
+    SetLength(fVertexBuffers,fCountBuffers);
+    SetLength(fIndexBuffers,fCountBuffers);
+    SetLength(fBufferSizes,fCountBuffers);
+
+    CurrentIndex:=0;
+    RemainingCount:=fCountIndices;
+
+    while (BufferIndex<fCountBuffers) and (RemainingCount>0) do begin
+
+     if RemainingCount>MaxCount then begin
+      ToDoCount:=MaxCount;
+     end else begin
+      ToDoCount:=RemainingCount;
+     end;
+
+     fBufferSizes[BufferIndex]:=ToDoCount;
+
+     FillChar(TemporaryRemapIndices,length(TemporaryRemapIndices)*SizeOf(TVkInt64),#$ff);
+
+     if length(TemporaryIndices)<ToDoCount then begin
+      SetLength(TemporaryIndices,ToDoCount*2);
+     end;
+
+     CountTemporaryVertices:=0;
+
+     for IndexIndex:=0 to ToDoCount-1 do begin
+
+      VertexIndex:=TemporaryRemapIndices[fIndices[CurrentIndex+IndexIndex]];
+
+      if VertexIndex<0 then begin
+
+       VertexIndex:=CountTemporaryVertices;
+       inc(CountTemporaryVertices);
+
+       TemporaryRemapIndices[fIndices[CurrentIndex+IndexIndex]]:=VertexIndex;
+
+       if length(TemporaryVertices)<CountTemporaryVertices then begin
+        SetLength(TemporaryVertices,CountTemporaryVertices*2);
+       end;
+
+       TemporaryVertices[VertexIndex]:=fVertices[fIndices[CurrentIndex+IndexIndex]];
+
+      end;
+
+      TemporaryIndices[IndexIndex]:=VertexIndex;
+
+     end;
+
+     fVertexBuffers[BufferIndex]:=TVulkanBuffer.Create(fVulkanDevice,
+                                                       CountTemporaryVertices*SizeOf(TModelVertex),
+                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                       nil,
+                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                                      );
+     fVertexBuffers[BufferIndex].UploadData(pQueue,
+                                            pCommandBuffer,
+                                            pFence,
+                                            TemporaryVertices[0],
+                                            0,
+                                            CountTemporaryVertices*SizeOf(TModelVertex),
+                                            vbutsbmYes);
+
+     fIndexBuffers[BufferIndex]:=TVulkanBuffer.Create(fVulkanDevice,
+                                                      fBufferSizes[BufferIndex]*SizeOf(TModelIndex),
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                      nil,
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                                     );
+     fIndexBuffers[BufferIndex].UploadData(pQueue,
+                                           pCommandBuffer,
+                                           pFence,
+                                           TemporaryIndices[0],
+                                           0,
+                                           fBufferSizes[BufferIndex]*SizeOf(TModelIndex),
+                                           vbutsbmYes);
+
+
+     inc(CurrentIndex,ToDoCount);
+     dec(RemainingCount,ToDoCount);
+
+     inc(BufferIndex);
+    end;
+
+    fCountBuffers:=BufferIndex;
+
+    SetLength(fVertexBuffers,fCountBuffers);
+    SetLength(fIndexBuffers,fCountBuffers);
+    SetLength(fBufferSizes,fCountBuffers);
+
+   finally
+    TemporaryVertices:=nil;
+    TemporaryIndices:=nil;
+    TemporaryRemapIndices:=nil;
+   end;
 
   end;
 
