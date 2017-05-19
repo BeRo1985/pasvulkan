@@ -374,7 +374,7 @@ begin
 
  fVulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TModelVertex),VK_VERTEX_INPUT_RATE_VERTEX);
  fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PModelVertex(nil)^.Position)));
- fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@PModelVertex(nil)^.QTangent)));
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@PModelVertex(nil)^.QTangent)));
  fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PModelVertex(nil)^.TexCoord)));
  fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@PModelVertex(nil)^.Material)));
 

@@ -1470,16 +1470,16 @@ var Chunks:TChunks;
   ms.Write(v.w,SizeOf(single));
  end;
  procedure WriteQuaternion(const v:TQuaternion);
- var w:word;
+ var w:smallint;
  begin
-  w:=VulkanConvertFloatToHalfFloat(v.x);
-  ms.Write(w,SizeOf(word));
-  w:=VulkanConvertFloatToHalfFloat(v.y);
-  ms.Write(w,SizeOf(word));
-  w:=VulkanConvertFloatToHalfFloat(v.z);
-  ms.Write(w,SizeOf(word));
-  w:=VulkanConvertFloatToHalfFloat(v.w);
-  ms.Write(w,SizeOf(word));
+  w:=Min(Max(round(Min(Max(v.x,-1.0),1.0)*32767),-32767),32767);
+  ms.Write(w,SizeOf(smallint));
+  w:=Min(Max(round(Min(Max(v.y,-1.0),1.0)*32767),-32767),32767);
+  ms.Write(w,SizeOf(smallint));
+  w:=Min(Max(round(Min(Max(v.z,-1.0),1.0)*32767),-32767),32767);
+  ms.Write(w,SizeOf(smallint));
+  w:=Min(Max(round(Min(Max(v.w,-1.0),1.0)*32767),-32767),32767);
+  ms.Write(w,SizeOf(smallint));
  end;
  procedure WritePlane(const p:TPlane);
  begin
