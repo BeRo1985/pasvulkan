@@ -179,13 +179,12 @@ begin
 
  fVulkanRenderPass:=nil;
 
- fVulkanModel:=TModel.Create;
+ fVulkanModel:=TModel.Create(VulkanApplication.VulkanDevice);
 
  Stream:=VulkanApplication.Assets.GetAssetStream('models/dragon.mdl');
  try
   fVulkanModel.LoadFromStream(Stream);
-  fVulkanModel.Upload(VulkanApplication.VulkanDevice,
-                      VulkanApplication.VulkanDevice.TransferQueue,
+  fVulkanModel.Upload(VulkanApplication.VulkanDevice.TransferQueue,
                       VulkanApplication.VulkanTransferCommandBuffers[0,0],
                       VulkanApplication.VulkanTransferCommandBufferFences[0,0]);
  finally
@@ -449,12 +448,8 @@ begin
 
   VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSet.Handle,0,nil);
   VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
-  VulkanCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanModel.VertexBuffer.Handle,@Offsets);
-  VulkanCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanModel.VertexBuffer.Handle,@Offsets);
-  VulkanCommandBuffer.CmdBindVertexBuffers(2,1,@fVulkanModel.VertexBuffer.Handle,@Offsets);
-  VulkanCommandBuffer.CmdBindVertexBuffers(3,1,@fVulkanModel.VertexBuffer.Handle,@Offsets);
-  VulkanCommandBuffer.CmdBindIndexBuffer(fVulkanModel.IndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-  VulkanCommandBuffer.CmdDrawIndexed(fVulkanModel.CountIndices,1,0,0,1);
+
+  fVulkanModel.Draw(VulkanCommandBuffer);
 
   fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 

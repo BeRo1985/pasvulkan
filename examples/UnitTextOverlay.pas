@@ -606,10 +606,8 @@ begin
    VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSet.Handle,0,nil);
    VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
    VulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
-   VulkanCommandBuffer.CmdBindVertexBuffers(1,1,@VulkanVertexBuffer.Handle,@Offsets);
-   VulkanCommandBuffer.CmdBindVertexBuffers(2,1,@VulkanVertexBuffer.Handle,@Offsets);
    VulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-   VulkanCommandBuffer.CmdDrawIndexed(fCountBufferCharsBuffers[BufferIndex]*6,1,0,0,1);
+   VulkanCommandBuffer.CmdDrawIndexed(fCountBufferCharsBuffers[BufferIndex]*6,1,0,0,0);
 
    fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 

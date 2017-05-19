@@ -7,6 +7,8 @@ interface
 
 uses SysUtils,Classes,Math,Vulkan,Kraft,UnitMath3D,PasVulkan;
 
+const VULKAN_MODEL_VERTEX_BUFFER_BIND_ID=0;
+
 type PModelQTangent=^TModelQTangent;
      TModelQTangent=packed record
       x,y,z,w:TVkInt16;
@@ -66,6 +68,7 @@ type PModelQTangent=^TModelQTangent;
 
      TModel=class
       private
+       fVulkanDevice:TVulkanDevice;
        fUploaded:boolean;
        fSphere:TSphere;
        fAABB:TAABB;
@@ -84,16 +87,16 @@ type PModelQTangent=^TModelQTangent;
        fVertexBuffer:TVulkanBuffer;
        fIndexBuffer:TVulkanBuffer;
       public
-       constructor Create; reintroduce;
-       constructor CreateCube(const pSizeX,pSizeY,pSizeZ:single);
+       constructor Create(const pVulkanDevice:TVulkanDevice); reintroduce;
        destructor Destroy; override;
        procedure Clear;
+       procedure MakeCube(const pSizeX,pSizeY,pSizeZ:single);
        procedure LoadFromStream(const pStream:TStream;const pDoFree:boolean=false);
-       procedure Upload(const pDevice:TVulkanDevice;
-                        const pQueue:TVulkanQueue;
+       procedure Upload(const pQueue:TVulkanQueue;
                         const pCommandBuffer:TVulkanCommandBuffer;
                         const pFence:TVulkanFence);
        procedure Unload;
+       procedure Draw(const pCommandBuffer:TVulkanCommandBuffer;const pInstanceCount:TVkUInt32=1;const pFirstInstance:TVkUInt32=0);
        property Uploaded:boolean read fUploaded;
        property Sphere:TSphere read fSphere;
        property AABB:TAABB read fAABB;
@@ -304,9 +307,10 @@ begin
  end;
 end;
 
-constructor TModel.Create;
+constructor TModel.Create(const pVulkanDevice:TVulkanDevice);
 begin
  inherited Create;
+ fVulkanDevice:=pVulkanDevice;
  fUploaded:=false;
  fKraftMesh:=nil;
  fKraftConvexHull:=nil;
@@ -315,7 +319,28 @@ begin
  Clear;
 end;
 
-constructor TModel.CreateCube(const pSizeX,pSizeY,pSizeZ:single);
+destructor TModel.Destroy;
+begin
+ Unload;
+ Clear;
+ inherited Destroy;
+end;
+
+procedure TModel.Clear;
+begin
+ fMaterials:=nil;
+ fCountMaterials:=0;
+ fVertices:=nil;
+ fCountVertices:=0;
+ fIndices:=nil;
+ fCountIndices:=0;
+ fParts:=nil;
+ fCountParts:=0;
+ fObjects:=nil;
+ fCountObjects:=0;
+end;
+
+procedure TModel.MakeCube(const pSizeX,pSizeY,pSizeZ:single);
 type PCubeVertex=^TCubeVertex;
      TCubeVertex=record
       Position:TVector3;
@@ -394,7 +419,6 @@ var Index:TVkInt32;
     Part:PModelPart;
     AObject:PModelObject;
 begin
- Create;
 
  fCountMaterials:=1;
  fCountVertices:=length(CubeVertices);
@@ -458,27 +482,6 @@ begin
  AObject^.AABB.Max.z:=pSizeZ*0.5;
  AObject^.Sphere:=SphereFromAABB(AObject^.AABB);
 
-end;
-
-destructor TModel.Destroy;
-begin
- Unload;
- Clear;
- inherited Destroy;
-end;
-
-procedure TModel.Clear;
-begin
- fMaterials:=nil;
- fCountMaterials:=0;
- fVertices:=nil;
- fCountVertices:=0;
- fIndices:=nil;
- fCountIndices:=0;
- fParts:=nil;
- fCountParts:=0;
- fObjects:=nil;
- fCountObjects:=0;
 end;
 
 procedure TModel.LoadFromStream(const pStream:TStream;const pDoFree:boolean=false);
@@ -740,14 +743,13 @@ begin
  end;
 end;
 
-procedure TModel.Upload(const pDevice:TVulkanDevice;
-                        const pQueue:TVulkanQueue;
+procedure TModel.Upload(const pQueue:TVulkanQueue;
                         const pCommandBuffer:TVulkanCommandBuffer;
                         const pFence:TVulkanFence);
 begin
  if not fUploaded then begin
 
-  fVertexBuffer:=TVulkanBuffer.Create(pDevice,
+  fVertexBuffer:=TVulkanBuffer.Create(fVulkanDevice,
                                       fCountVertices*SizeOf(TModelVertex),
                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -762,7 +764,7 @@ begin
                            fCountVertices*SizeOf(TModelVertex),
                            vbutsbmYes);
 
-  fIndexBuffer:=TVulkanBuffer.Create(pDevice,
+  fIndexBuffer:=TVulkanBuffer.Create(fVulkanDevice,
                                      fCountIndices*SizeOf(TModelIndex),
                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -792,6 +794,14 @@ begin
   FreeAndNil(fIndexBuffer);
 
  end;
+end;
+
+procedure TModel.Draw(const pCommandBuffer:TVulkanCommandBuffer;const pInstanceCount:TVkUInt32=1;const pFirstInstance:TVkUInt32=0);
+const Offsets:array[0..0] of TVkDeviceSize=(0);
+begin
+ pCommandBuffer.CmdBindVertexBuffers(VULKAN_MODEL_VERTEX_BUFFER_BIND_ID,1,@fVertexBuffer.Handle,@Offsets);
+ pCommandBuffer.CmdBindIndexBuffer(fIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+ pCommandBuffer.CmdDrawIndexed(fCountIndices,pInstanceCount,0,0,pFirstInstance);
 end;
 
 end.
