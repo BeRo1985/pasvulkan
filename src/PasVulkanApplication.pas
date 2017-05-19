@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-18-17-33-0000                       *
+ *                        Version 2017-05-19-14-52-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -484,13 +484,31 @@ const MaxSwapChainImages=3;
       GAME_CONTROLLER_BUTTON_DPAD_RIGHT=14;
       GAME_CONTROLLER_BUTTON_MAX=15;
 
-type EVulkanApplication=class(Exception);
+type EVulkanApplication=class(Exception)
+      private
+       fTag:string;
+       fLogLevel:TVkInt32;
+      public
+       constructor Create(const pTag,pMessage:string;const pLogLevel:TVkInt32=LOG_NONE); reintroduce; virtual;
+       destructor Destroy; override;
+      published
+       property Tag:string read fTag write fTag;
+       property LogLevel:TVkInt32 read fLogLevel write fLogLevel;
+     end;
+
+     EVulkanApplicationClass=class of EVulkanApplication;
+
+     TVulkanApplicationRunnable=procedure of object;
+
+     TVulkanApplicationRunnableList=array of TVulkanApplicationRunnable;
 
      TVulkanApplication=class;
 
      TVulkanApplicationRawByteString={$if declared(RawByteString)}RawByteString{$else}AnsiString{$ifend};
 
      TVulkanApplicationUnicodeString={$if declared(UnicodeString)}UnicodeString{$else}WideString{$ifend};
+
+     TVulkanApplicationUTF8String={$if declared(UnicodeString)}UTF8String{$else}AnsiString{$ifend};
 
      TVulkanApplicationOnEvent=function(const fVulkanApplication:TVulkanApplication;const pEvent:TSDL_Event):boolean of object;
 
@@ -741,7 +759,17 @@ type EVulkanApplication=class(Exception);
        function GetJoystick(const pIndex:TVkInt32=-1):TVulkanApplicationJoystick;
      end;
 
-     TVulkanScreen=class
+     TVulkanApplicationLifecycleListener=class
+      public
+       constructor Create; reintroduce; virtual;
+       destructor Destroy; override;
+       function Resume:boolean; virtual;
+       function Pause:boolean; virtual;
+       function LowMemory:boolean; virtual;
+       function Terminate:boolean; virtual;
+     end;
+
+     TVulkanApplicationScreen=class
       public
 
        constructor Create; virtual;
@@ -755,6 +783,8 @@ type EVulkanApplication=class(Exception);
        procedure Resume; virtual;
 
        procedure Pause; virtual;
+
+       procedure LowMemory; virtual;
 
        procedure Resize(const pWidth,pHeight:TSDLInt32); virtual;
 
@@ -788,7 +818,7 @@ type EVulkanApplication=class(Exception);
 
      end;
 
-     TVulkanScreenClass=class of TVulkanScreen;
+     TVulkanApplicationScreenClass=class of TVulkanApplicationScreen;
 
      TVulkanApplicationAssets=class
       private
@@ -817,6 +847,17 @@ type EVulkanApplication=class(Exception);
        function IsLocalStorageAvailable:boolean;
        function IsRoamingStorageAvailable:boolean;
        function IsExternalStorageAvailable:boolean;
+     end;
+
+     TVulkanApplicationClipboard=class
+      private
+       fVulkanApplication:TVulkanApplication;
+      public
+       constructor Create(const pVulkanApplication:TVulkanApplication);
+       destructor Destroy; override;
+       function HasText:boolean;
+       function GetText:TVulkanApplicationUTF8String;
+       procedure SetText(const pTextString:TVulkanApplicationUTF8String);
      end;
 
      TVulkanApplicationCommandPools=array of array of TVulkanCommandPool;
@@ -855,6 +896,15 @@ type EVulkanApplication=class(Exception);
        fFiles:TVulkanApplicationFiles;
 
        fInput:TVulkanApplicationInput;
+
+       fClipboard:TVulkanApplicationClipboard;
+
+       fRunnableList:TVulkanApplicationRunnableList;
+       fRunnableListCount:TVkInt32;
+       fRunnableListCriticalSection:TPasMPCriticalSection;
+
+       fLifecycleListenerList:TList;
+       fLifecycleListenerListCriticalSection:TPasMPCriticalSection;
 
        fCurrentWidth:TSDLInt32;
        fCurrentHeight:TSDLInt32;
@@ -951,13 +1001,13 @@ type EVulkanApplication=class(Exception);
 
        fOnStep:TVulkanApplicationOnStep;
 
-       fScreen:TVulkanScreen;
+       fScreen:TVulkanApplicationScreen;
 
-       fStartScreen:TVulkanScreenClass;
+       fStartScreen:TVulkanApplicationScreenClass;
 
-       fNextScreen:TVulkanScreen;
+       fNextScreen:TVulkanApplicationScreen;
 
-       fNextScreenClass:TVulkanScreenClass;
+       fNextScreenClass:TVulkanApplicationScreenClass;
 
        fHasNewNextScreen:boolean;
 
@@ -1061,9 +1111,9 @@ type EVulkanApplication=class(Exception);
        function AcquireVulkanBackBuffer:boolean;
        function PresentVulkanBackBuffer:boolean;
 
-       procedure SetScreen(const pScreen:TVulkanScreen);
-       procedure SetNextScreen(const pNextScreen:TVulkanScreen);
-       procedure SetNextScreenClass(const pNextScreenClass:TVulkanScreenClass);
+       procedure SetScreen(const pScreen:TVulkanApplicationScreen);
+       procedure SetNextScreen(const pNextScreen:TVulkanApplicationScreen);
+       procedure SetNextScreenClass(const pNextScreenClass:TVulkanApplicationScreenClass);
 
        procedure UpdateFrameTimesHistory;
 
@@ -1078,9 +1128,16 @@ type EVulkanApplication=class(Exception);
        procedure ReadConfig; virtual;
        procedure SaveConfig; virtual;
 
+       procedure PostRunnable(const pRunnable:TVulkanApplicationRunnable);
+
+       procedure AddLifecycleListener(const pLifecycleListener:TVulkanApplicationLifecycleListener);
+       procedure RemoveLifecycleListener(const pLifecycleListener:TVulkanApplicationLifecycleListener);
+
        procedure Initialize;
 
        procedure Terminate;
+
+       procedure ProcessRunnables;
 
        procedure ProcessMessages;
 
@@ -1093,10 +1150,12 @@ type EVulkanApplication=class(Exception);
        procedure Load; virtual;
 
        procedure Unload; virtual;
-       
+
        procedure Resume; virtual;
 
        procedure Pause; virtual;
+
+       procedure LowMemory; virtual;
 
        procedure Resize(const pWidth,pHeight:TSDLInt32); virtual;
 
@@ -1143,6 +1202,8 @@ type EVulkanApplication=class(Exception);
        property Files:TVulkanApplicationFiles read fFiles;
 
        property Input:TVulkanApplicationInput read fInput;
+
+       property Clipboard:TVulkanApplicationClipboard read fClipboard;
 
        property Title:string read fTitle write fTitle;
        property Version:TVkUInt32 read fVersion write fVersion;
@@ -1215,13 +1276,13 @@ type EVulkanApplication=class(Exception);
 
        property VulkanRenderPass:TVulkanRenderPass read fVulkanRenderPass;
 
-       property StartScreen:TVulkanScreenClass read fStartScreen write fStartScreen;
+       property StartScreen:TVulkanApplicationScreenClass read fStartScreen write fStartScreen;
 
-       property Screen:TVulkanScreen read fScreen write SetScreen;
+       property Screen:TVulkanApplicationScreen read fScreen write SetScreen;
 
-       property NextScreen:TVulkanScreen read fNextScreen write SetNextScreen;
+       property NextScreen:TVulkanApplicationScreen read fNextScreen write SetNextScreen;
 
-       property NextScreenClass:TVulkanScreenClass read fNextScreenClass write SetNextScreenClass;
+       property NextScreenClass:TVulkanApplicationScreenClass read fNextScreenClass write SetNextScreenClass;
 
        property DeltaTime:double read fFloatDeltaTime;
 
@@ -1629,6 +1690,19 @@ begin
  result:=IncludeTrailingPathDelimiter(result);
 end;
 {$endif}
+
+constructor EVulkanApplication.Create(const pTag,pMessage:string;const pLogLevel:TVkInt32=LOG_NONE);
+begin
+ inherited Create(pMessage);
+ fTag:=pTag;
+ fLogLevel:=pLogLevel;
+end;
+
+destructor EVulkanApplication.Destroy;
+begin
+ fTag:='';
+ inherited Destroy;
+end;
 
 constructor TVulkanApplicationHighResolutionTimer.Create;
 begin
@@ -4371,99 +4445,133 @@ begin
  end;
 end;
 
-constructor TVulkanScreen.Create;
+constructor TVulkanApplicationLifecycleListener.Create;
 begin
  inherited Create;
 end;
 
-destructor TVulkanScreen.Destroy;
+destructor TVulkanApplicationLifecycleListener.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TVulkanScreen.Show;
-begin
-end;
-
-procedure TVulkanScreen.Hide;
-begin
-end;
-
-procedure TVulkanScreen.Resume;
-begin
-end;
-
-procedure TVulkanScreen.Pause;
-begin
-end;
-
-procedure TVulkanScreen.Resize(const pWidth,pHeight:TSDLInt32);
-begin
-end;
-
-procedure TVulkanScreen.AfterCreateSwapChain;
-begin
-end;
-
-procedure TVulkanScreen.BeforeDestroySwapChain;
-begin
-end;
-
-function TVulkanScreen.HandleEvent(const pEvent:TSDL_Event):boolean;
+function TVulkanApplicationLifecycleListener.Resume:boolean;
 begin
  result:=false;
 end;
 
-function TVulkanScreen.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationLifecycleListener.Pause:boolean;
 begin
  result:=false;
 end;
 
-function TVulkanScreen.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationLifecycleListener.LowMemory:boolean;
 begin
  result:=false;
 end;
 
-function TVulkanScreen.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationLifecycleListener.Terminate:boolean;
 begin
  result:=false;
 end;
 
-function TVulkanScreen.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+constructor TVulkanApplicationScreen.Create;
+begin
+ inherited Create;
+end;
+
+destructor TVulkanApplicationScreen.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TVulkanApplicationScreen.Show;
+begin
+end;
+
+procedure TVulkanApplicationScreen.Hide;
+begin
+end;
+
+procedure TVulkanApplicationScreen.Resume;
+begin
+end;
+
+procedure TVulkanApplicationScreen.Pause;
+begin
+end;
+
+procedure TVulkanApplicationScreen.LowMemory;
+begin
+end;
+
+procedure TVulkanApplicationScreen.Resize(const pWidth,pHeight:TSDLInt32);
+begin
+end;
+
+procedure TVulkanApplicationScreen.AfterCreateSwapChain;
+begin
+end;
+
+procedure TVulkanApplicationScreen.BeforeDestroySwapChain;
+begin
+end;
+
+function TVulkanApplicationScreen.HandleEvent(const pEvent:TSDL_Event):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanScreen.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+function TVulkanApplicationScreen.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanScreen.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+function TVulkanApplicationScreen.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanScreen.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+function TVulkanApplicationScreen.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanScreen.Scrolled(const pAmount:TVkInt32):boolean;
+function TVulkanApplicationScreen.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanScreen.CanBeParallelProcessed:boolean;
+function TVulkanApplicationScreen.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-procedure TVulkanScreen.Update(const pDeltaTime:double);
+function TVulkanApplicationScreen.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TVulkanApplicationScreen.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TVulkanApplicationScreen.Scrolled(const pAmount:TVkInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TVulkanApplicationScreen.CanBeParallelProcessed:boolean;
+begin
+ result:=false;
+end;
+
+procedure TVulkanApplicationScreen.Update(const pDeltaTime:double);
 begin
 end;
 
-procedure TVulkanScreen.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
+procedure TVulkanApplicationScreen.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
 begin
 end;
 
@@ -4623,6 +4731,46 @@ begin
  result:=length(fVulkanApplication.fExternalStoragePath)>0;
 end;
 
+constructor TVulkanApplicationClipboard.Create(const pVulkanApplication:TVulkanApplication);
+begin
+ inherited Create;
+ fVulkanApplication:=pVulkanApplication;
+end;
+
+destructor TVulkanApplicationClipboard.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TVulkanApplicationClipboard.HasText:boolean;
+begin
+ result:=SDL_HasClipboardText<>SDL_FALSE;
+end;
+
+function TVulkanApplicationClipboard.GetText:TVulkanApplicationUTF8String;
+var p:PAnsiChar;
+    l:TVkInt32;
+begin
+ result:='';
+ p:=SDL_GetClipboardText;
+ if assigned(p) then begin
+  try
+   l:=StrLen(p);
+   if l>0 then begin
+    SetLength(result,l);
+    Move(p^,result[1],l);
+   end;
+  finally
+   SDL_free(p);
+  end;
+ end;
+end;
+
+procedure TVulkanApplicationClipboard.SetText(const pTextString:TVulkanApplicationUTF8String);
+begin
+ SDL_SetClipboardText(PAnsiChar(pTextString));
+end;
+
 constructor TVulkanApplication.Create;
 begin
 
@@ -4662,6 +4810,15 @@ begin
  fFiles:=TVulkanApplicationFiles.Create(self);
 
  fInput:=TVulkanApplicationInput.Create(self);
+
+ fClipboard:=TVulkanApplicationClipboard.Create(self);
+
+ fRunnableList:=nil;
+ fRunnableListCount:=0;
+ fRunnableListCriticalSection:=TPasMPCriticalSection.Create;
+
+ fLifecycleListenerList:=TList.Create;
+ fLifecycleListenerListCriticalSection:=TPasMPCriticalSection.Create;
 
  fLastPressedKeyEvent.type_:=0;
  fKeyRepeatTimeAccumulator:=0;
@@ -4775,12 +4932,28 @@ end;
 
 destructor TVulkanApplication.Destroy;
 begin
+
+ FreeAndNil(fLifecycleListenerList);
+ FreeAndNil(fLifecycleListenerListCriticalSection);
+
+ fRunnableList:=nil;
+ fRunnableListCount:=0;
+ FreeAndNil(fRunnableListCriticalSection);
+
+ FreeAndNil(fClipboard);
+ 
  FreeAndNil(fInput);
+
  FreeAndNil(fFiles);
+
  FreeAndNil(fAssets);
+
  FreeAndNil(fHighResolutionTimer);
+
  FreeAndNil(fPasMPInstance);
+
  VulkanApplication:=nil;
+ 
  inherited Destroy;
 end;
 
@@ -5491,7 +5664,7 @@ begin
  FreeAndNil(fVulkanCommandPool);
 end;
 
-procedure TVulkanApplication.SetScreen(const pScreen:TVulkanScreen);
+procedure TVulkanApplication.SetScreen(const pScreen:TVulkanApplicationScreen);
 begin
  if fScreen<>pScreen then begin
   if assigned(fScreen) then begin
@@ -5749,7 +5922,7 @@ begin
 
 end;
 
-procedure TVulkanApplication.SetNextScreen(const pNextScreen:TVulkanScreen);
+procedure TVulkanApplication.SetNextScreen(const pNextScreen:TVulkanApplicationScreen);
 begin
  if (fScreen<>pNextScreen) and (fNextScreen<>pNextScreen) then begin
   if assigned(fNextScreen) then begin
@@ -5760,7 +5933,7 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.SetNextScreenClass(const pNextScreenClass:TVulkanScreenClass);
+procedure TVulkanApplication.SetNextScreenClass(const pNextScreenClass:TVulkanApplicationScreenClass);
 begin
  if (not (fScreen is pNextScreenClass)) and (fNextScreenClass<>pNextScreenClass) then begin
   fNextScreenClass:=pNextScreenClass;
@@ -5774,6 +5947,48 @@ end;
 
 procedure TVulkanApplication.SaveConfig;
 begin
+end;
+
+procedure TVulkanApplication.PostRunnable(const pRunnable:TVulkanApplicationRunnable);
+var Index:TVkInt32;
+begin
+ fRunnableListCriticalSection.Acquire;
+ try
+  Index:=fRunnableListCount;
+  inc(fRunnableListCount);
+  if Index>=length(fRunnableList) then begin
+   SetLength(fRunnableList,(Index+1)*2);
+  end;
+  fRunnableList[Index]:=pRunnable;
+ finally
+  fRunnableListCriticalSection.Release;
+ end;
+end;
+
+procedure TVulkanApplication.AddLifecycleListener(const pLifecycleListener:TVulkanApplicationLifecycleListener);
+begin
+ fLifecycleListenerListCriticalSection.Acquire;
+ try
+  if fLifecycleListenerList.IndexOf(pLifecycleListener)<0 then begin
+   fLifecycleListenerList.Add(pLifecycleListener);
+  end;
+ finally
+  fLifecycleListenerListCriticalSection.Release;
+ end;
+end;
+
+procedure TVulkanApplication.RemoveLifecycleListener(const pLifecycleListener:TVulkanApplicationLifecycleListener);
+var Index:TVkInt32;
+begin
+ fLifecycleListenerListCriticalSection.Acquire;
+ try
+  Index:=fLifecycleListenerList.IndexOf(pLifecycleListener);
+  if Index>=0 then begin
+   fLifecycleListenerList.Delete(Index);
+  end;
+ finally
+  fLifecycleListenerListCriticalSection.Release;
+ end;
 end;
 
 procedure TVulkanApplication.Initialize;
@@ -5872,6 +6087,42 @@ begin
  Draw(fCurrentSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
 end;
 
+procedure TVulkanApplication.ProcessRunnables;
+var Index,Count:TVkInt32;
+begin
+ fRunnableListCriticalSection.Acquire;
+ try
+  Count:=fRunnableListCount;
+  if Count>0 then begin
+   Index:=0;
+   while Index<Count do begin
+    if assigned(fRunnableList[Index]) then begin
+     fRunnableListCriticalSection.Release;
+     try
+      fRunnableList[Index]();
+     finally
+      fRunnableListCriticalSection.Acquire;
+     end;
+    end;
+    inc(Index);
+   end;
+   if Count<fRunnableListCount then begin
+    Count:=fRunnableListCount-Count;
+    Index:=0;
+    while Index<Count do begin
+     fRunnableList[Index]:=fRunnableList[fRunnableListCount+Index];
+     inc(Index);
+    end;
+    fRunnableListCount:=Count;
+   end else begin
+    fRunnableListCount:=0;
+   end;
+  end;
+ finally
+  fRunnableListCriticalSection.Release;
+ end;
+end;
+
 procedure TVulkanApplication.ProcessMessages;
 var Index,Counter:TVkInt32;
     Joystick:TVulkanApplicationJoystick;
@@ -5880,6 +6131,8 @@ var Index,Counter:TVkInt32;
     OK,Found,DoUpdateMainJoystick:boolean;
     Jobs:array[0..1] of PPasMPJob;
 begin
+
+ ProcessRunnables;
 
  DoUpdateMainJoystick:=false;
 
@@ -5961,6 +6214,9 @@ begin
      DeinitializeGraphics;
      Terminate;
     end;
+    SDL_APP_LOWMEMORY:begin
+     LowMemory;
+    end;                       
     SDL_APP_WILLENTERBACKGROUND:begin
 {$if defined(fpc) and defined(android)}
      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
@@ -6267,6 +6523,7 @@ begin
 end;
 
 procedure TVulkanApplication.Run;
+var Index:TVKInt32;
 begin
  VulkanDisableFloatingPointExceptions;
 
@@ -6309,7 +6566,7 @@ begin
  fCurrentHideSystemBars:=ord(fHideSystemBars);
 
  if SDL_Init(SDL_INIT_VIDEO or SDL_INIT_EVENTS or SDL_INIT_TIMER)<0 then begin
-  raise EVulkanApplication.Create('Unable to initialize SDL: '+SDL_GetError);
+  raise EVulkanApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
  end;
 
 {$ifdef Unix}
@@ -6324,7 +6581,7 @@ begin
   fScreenHeight:=-1;
  end;
 
- fVideoFlags:=0;
+ fVideoFlags:=SDL_WINDOW_ALLOW_HIGHDPI;
  if fFullscreen then begin
 {$ifndef Android}
   if (fWidth=fScreenWidth) and (fHeight=fScreenHeight) then begin
@@ -6341,22 +6598,6 @@ begin
  if fResizable then begin
   fVideoFlags:=fVideoFlags or SDL_WINDOW_RESIZABLE;
  end;
-{$endif}
-{$ifdef Android}
- fVideoFlags:=fVideoFlags or SDL_WINDOW_ALLOW_HIGHDPI;
-
- SDL_GL_SetAttribute(SDL_GL_RED_SIZE,8);
- SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);
- SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,8);
- SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE,8);
- SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE,0);
- SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,24);
-
- SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION,3);
- SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION,2);
- SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,SDL_GL_CONTEXT_PROFILE_ES);
- SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,0);
-
 {$endif}
 
 {$if defined(fpc) and defined(android)}
@@ -6380,7 +6621,7 @@ begin
                                   fHeight,
                                   SDL_WINDOW_SHOWN or fVideoFlags);
  if not assigned(fSurfaceWindow) then begin
-  raise EVulkanApplication.Create('Unable to initialize SDL: '+SDL_GetError);
+  raise EVulkanApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
  end;
 
  fCurrentWidth:=fWidth;
@@ -6388,11 +6629,13 @@ begin
 
  fCurrentVSync:=ord(fVSync);
 
- SDL_EventState(SDL_MOUSEMOTION,SDL_ENABLE);
+{SDL_EventState(SDL_MOUSEMOTION,SDL_ENABLE);
  SDL_EventState(SDL_MOUSEBUTTONDOWN,SDL_ENABLE);
+ SDL_EventState(SDL_MOUSEBUTTONUP,SDL_ENABLE);
  SDL_EventState(SDL_KEYDOWN,SDL_ENABLE);
+ SDL_EventState(SDL_KEYUP,SDL_ENABLE);
  SDL_EventState(SDL_QUITEV,SDL_ENABLE);
- SDL_EventState(SDL_WINDOWEVENT,SDL_ENABLE);
+ SDL_EventState(SDL_WINDOWEVENT,SDL_ENABLE);}
 
  FillChar(fFrameTimesHistoryDeltaTimes,SizeOf(fFrameTimesHistoryDeltaTimes),#0);
  FillChar(fFrameTimesHistoryTimePoints,SizeOf(fFrameTimesHistoryTimePoints),#$ff);
@@ -6417,6 +6660,17 @@ begin
      Load;
      try
 
+      fLifecycleListenerListCriticalSection.Acquire;
+      try
+       for Index:=0 to fLifecycleListenerList.Count-1 do begin
+        if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
+         break;
+        end;
+       end;
+      finally
+       fLifecycleListenerListCriticalSection.Release;
+      end;
+
       if assigned(fStartScreen) then begin
        SetScreen(fStartScreen.Create);
       end;
@@ -6433,6 +6687,22 @@ begin
        FreeAndNil(fNextScreen);
        FreeAndNil(fScreen);
 
+      end;
+
+      fLifecycleListenerListCriticalSection.Acquire;
+      try
+       for Index:=0 to fLifecycleListenerList.Count-1 do begin
+        if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
+         break;
+        end;
+       end;
+       for Index:=0 to fLifecycleListenerList.Count-1 do begin
+        if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).Terminate then begin
+         break;
+        end;
+       end;
+      finally
+       fLifecycleListenerListCriticalSection.Release;
       end;
 
      finally
@@ -6487,17 +6757,66 @@ begin
 end;
 
 procedure TVulkanApplication.Resume;
+var Index:TVkInt32;
 begin
+
+ fLifecycleListenerListCriticalSection.Acquire;
+ try
+  for Index:=0 to fLifecycleListenerList.Count-1 do begin
+   if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
+    break;
+   end;
+  end;
+ finally
+  fLifecycleListenerListCriticalSection.Release;
+ end;
+
  if assigned(fScreen) then begin
   fScreen.Resume;
  end;
+
 end;
 
 procedure TVulkanApplication.Pause;
+var Index:TVkInt32;
 begin
+
  if assigned(fScreen) then begin
   fScreen.Pause;
  end;
+
+ fLifecycleListenerListCriticalSection.Acquire;
+ try
+  for Index:=0 to fLifecycleListenerList.Count-1 do begin
+   if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
+    break;
+   end;
+  end;
+ finally
+  fLifecycleListenerListCriticalSection.Release;
+ end;
+
+end;
+
+procedure TVulkanApplication.LowMemory;
+var Index:TVkInt32;
+begin
+
+ fLifecycleListenerListCriticalSection.Acquire;
+ try
+  for Index:=0 to fLifecycleListenerList.Count-1 do begin
+   if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).LowMemory then begin
+    break;
+   end;
+  end;
+ finally
+  fLifecycleListenerListCriticalSection.Release;
+ end;
+
+ if assigned(fScreen) then begin
+  fScreen.LowMemory;
+ end;
+
 end;
 
 procedure TVulkanApplication.Resize(const pWidth,pHeight:TSDLInt32);

@@ -115,7 +115,7 @@ begin
     if fSelectedIndex=RegisteredExamplesList.Count then begin
      VulkanApplication.NextScreen:=TScreenExit.Create;
     end else if fSelectedIndex>=0 then begin
-     VulkanApplication.NextScreen:=TVulkanScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
+     VulkanApplication.NextScreen:=TVulkanApplicationScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
     end;
    end;
   end;
@@ -146,7 +146,7 @@ begin
     if fSelectedIndex=RegisteredExamplesList.Count then begin
      VulkanApplication.NextScreen:=TScreenExit.Create;
     end else if fSelectedIndex>=0 then begin
-     VulkanApplication.NextScreen:=TVulkanScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
+     VulkanApplication.NextScreen:=TVulkanApplicationScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
     end;
    end;
    cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);

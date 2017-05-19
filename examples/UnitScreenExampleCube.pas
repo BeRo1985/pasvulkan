@@ -31,7 +31,7 @@ type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
      PScreenExampleCubeStates=^TScreenExampleCubeStates;
      TScreenExampleCubeStates=array[0..MaxSwapChainImages-1] of TScreenExampleCubeState;
 
-     TScreenExampleCube=class(TVulkanScreen)
+     TScreenExampleCube=class(TVulkanApplicationScreen)
       private
        fCubeVertexShaderModule:TVulkanShaderModule;
        fCubeFragmentShaderModule:TVulkanShaderModule;

@@ -16,7 +16,7 @@ interface
 
 uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanSDL2,PasVulkanApplication;
 
-type TScreenBlank=class(TVulkanScreen)
+type TScreenBlank=class(TVulkanApplicationScreen)
       private
        fTriangleVertexShaderModule:TVulkanShaderModule;
        fTriangleFragmentShaderModule:TVulkanShaderModule;

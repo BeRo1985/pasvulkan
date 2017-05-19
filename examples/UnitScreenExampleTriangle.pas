@@ -16,7 +16,7 @@ interface
 
 uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanSDL2,PasVulkanApplication,UnitRegisteredExamplesList;
 
-type TScreenExampleTriangle=class(TVulkanScreen)
+type TScreenExampleTriangle=class(TVulkanApplicationScreen)
       private
        fTriangleVertexShaderModule:TVulkanShaderModule;
        fTriangleFragmentShaderModule:TVulkanShaderModule;

@@ -32,7 +32,7 @@ type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
      PScreenExampleDragonStates=^TScreenExampleDragonStates;
      TScreenExampleDragonStates=array[0..MaxSwapChainImages-1] of TScreenExampleDragonState;
 
-     TScreenExampleDragon=class(TVulkanScreen)
+     TScreenExampleDragon=class(TVulkanApplicationScreen)
       private
        fDragonVertexShaderModule:TVulkanShaderModule;
        fDragonFragmentShaderModule:TVulkanShaderModule;
