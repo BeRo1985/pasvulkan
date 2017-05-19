@@ -40,7 +40,7 @@ type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
        fVulkanPipelineShaderStageDragonFragment:TVulkanPipelineShaderStage;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
        fVulkanRenderPass:TVulkanRenderPass;
-       fVulkanModel:TModel;
+       fVulkanModel:TVulkanModel;
        fVulkanUniformBuffer:TVulkanBuffer;
        fVulkanDescriptorPool:TVulkanDescriptorPool;
        fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
@@ -179,7 +179,7 @@ begin
 
  fVulkanRenderPass:=nil;
 
- fVulkanModel:=TModel.Create(VulkanApplication.VulkanDevice);
+ fVulkanModel:=TVulkanModel.Create(VulkanApplication.VulkanDevice);
 
  Stream:=VulkanApplication.Assets.GetAssetStream('models/dragon.mdl');
  try
@@ -371,11 +371,11 @@ begin
  fVulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  fVulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
- fVulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TModelVertex),VK_VERTEX_INPUT_RATE_VERTEX);
- fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PModelVertex(nil)^.Position)));
- fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@PModelVertex(nil)^.QTangent)));
- fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PModelVertex(nil)^.TexCoord)));
- fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@PModelVertex(nil)^.Material)));
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVulkanModelVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PVulkanModelVertex(nil)^.Position)));
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@PVulkanModelVertex(nil)^.QTangent)));
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PVulkanModelVertex(nil)^.TexCoord)));
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@PVulkanModelVertex(nil)^.Material)));
 
  fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,VulkanApplication.VulkanSwapChain.Width,VulkanApplication.VulkanSwapChain.Height,0.0,1.0);
  fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,VulkanApplication.VulkanSwapChain.Width,VulkanApplication.VulkanSwapChain.Height);

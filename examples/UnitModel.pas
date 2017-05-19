@@ -9,16 +9,32 @@ uses SysUtils,Classes,Math,Vulkan,Kraft,UnitMath3D,PasVulkan;
 
 const VULKAN_MODEL_VERTEX_BUFFER_BIND_ID=0;
 
-type PModelQTangent=^TModelQTangent;
-     TModelQTangent=packed record
+type PVulkanModelVector2=^TVulkanModelVector2;
+     TVulkanModelVector2=packed record
+      case TVkInt32 of
+       0:(
+        x,y:TVkFloat;
+       );
+       1:(
+        u,v:TVkFloat;
+       );
+     end;
+
+     PVulkanModelVector3=^TVulkanModelVector3;
+     TVulkanModelVector3=packed record
+      x,y,z:TVkFloat;
+     end;
+
+     PVulkanModelQTangent=^TVulkanModelQTangent;
+     TVulkanModelQTangent=packed record
       x,y,z,w:TVkInt16;
      end;
 
-     PModelVertex=^TModelVertex;
-     TModelVertex=packed record
-      Position:TVector3;
-      QTangent:TModelQTangent;
-      TexCoord:TVector2;
+     PVulkanModelVertex=^TVulkanModelVertex;
+     TVulkanModelVertex=packed record
+      Position:TVulkanModelVector3;
+      QTangent:TVulkanModelQTangent;
+      TexCoord:TVulkanModelVector2;
       Material:TVkInt32;
 {     // In future maybe also:
       BlendIndices:array[0..7] of TVkUInt16;
@@ -26,15 +42,15 @@ type PModelQTangent=^TModelQTangent;
 }
      end;
 
-     TModelVertices=array of TModelVertex;
+     TVulkanModelVertices=array of TVulkanModelVertex;
 
-     PModelIndex=^TModelIndex;
-     TModelIndex=TVkUInt32;
+     PVulkanModelIndex=^TVulkanModelIndex;
+     TVulkanModelIndex=TVkUInt32;
 
-     TModelIndices=array of TModelIndex;
+     TVulkanModelIndices=array of TVulkanModelIndex;
 
-     PModelMaterial=^TModelMaterial;
-     TModelMaterial=record
+     PVulkanModelMaterial=^TVulkanModelMaterial;
+     TVulkanModelMaterial=record
       Name:ansistring;
       Texture:ansistring;
       Ambient:TVector3;
@@ -44,56 +60,56 @@ type PModelQTangent=^TModelQTangent;
       Shininess:single;
      end;
 
-     TModelMaterials=array of TModelMaterial;
+     TVulkanModelMaterials=array of TVulkanModelMaterial;
 
-     PModelPart=^TModelPart;
-     TModelPart=record
+     PVulkanModelPart=^TVulkanModelPart;
+     TVulkanModelPart=record
       Material:TVkInt32;
       StartIndex:TVkInt32;
       CountIndices:TVkInt32;
      end;
 
-     TModelParts=array of TModelPart;
+     TVulkanModelParts=array of TVulkanModelPart;
 
-     PModelObject=^TModelObject;
-     TModelObject=record
+     PVulkanModelObject=^TVulkanModelObject;
+     TVulkanModelObject=record
       Name:ansistring;
       Sphere:TSphere;
       AABB:TAABB;
      end;
 
-     TModelObjects=array of TModelObject;
+     TVulkanModelObjects=array of TVulkanModelObject;
 
      EModelLoad=class(Exception);
 
-     TModelBuffers=array of TVulkanBuffer;
+     TVulkanModelBuffers=array of TVulkanBuffer;
 
-     PModelBufferSize=^TModelBufferSize;
-     TModelBufferSize=TVkUInt32;
+     PVulkanModelBufferSize=^TVulkanModelBufferSize;
+     TVulkanModelBufferSize=TVkUInt32;
 
-     TModelBufferSizes=array of TModelBufferSize;
+     TVulkanModelBufferSizes=array of TVulkanModelBufferSize;
 
-     TModel=class
+     TVulkanModel=class
       private
        fVulkanDevice:TVulkanDevice;
        fUploaded:boolean;
        fSphere:TSphere;
        fAABB:TAABB;
-       fMaterials:TModelMaterials;
+       fMaterials:TVulkanModelMaterials;
        fCountMaterials:TVkInt32;
-       fVertices:TModelVertices;
+       fVertices:TVulkanModelVertices;
        fCountVertices:TVkInt32;
-       fIndices:TModelIndices;
+       fIndices:TVulkanModelIndices;
        fCountIndices:TVkInt32;
-       fParts:TModelParts;
+       fParts:TVulkanModelParts;
        fCountParts:TVkInt32;
-       fObjects:TModelObjects;
+       fObjects:TVulkanModelObjects;
        fCountObjects:TVkInt32;
        fKraftMesh:TKraftMesh;
        fKraftConvexHull:TKraftConvexHull;
-       fVertexBuffers:TModelBuffers;
-       fIndexBuffers:TModelBuffers;
-       fBufferSizes:TModelBufferSizes;
+       fVertexBuffers:TVulkanModelBuffers;
+       fIndexBuffers:TVulkanModelBuffers;
+       fBufferSizes:TVulkanModelBufferSizes;
        fCountBuffers:TVkInt32;
       public
        constructor Create(const pVulkanDevice:TVulkanDevice); reintroduce;
@@ -109,15 +125,15 @@ type PModelQTangent=^TModelQTangent;
        property Uploaded:boolean read fUploaded;
        property Sphere:TSphere read fSphere;
        property AABB:TAABB read fAABB;
-       property Materials:TModelMaterials read fMaterials;
+       property Materials:TVulkanModelMaterials read fMaterials;
        property CountMaterials:TVkInt32 read fCountMaterials;
-       property Vertices:TModelVertices read fVertices;
+       property Vertices:TVulkanModelVertices read fVertices;
        property CountVertices:TVkInt32 read fCountVertices;
-       property Indices:TModelIndices read fIndices;
+       property Indices:TVulkanModelIndices read fIndices;
        property CountIndices:TVkInt32 read fCountIndices;
-       property Parts:TModelParts read fParts;
+       property Parts:TVulkanModelParts read fParts;
        property CountParts:TVkInt32 read fCountParts;
-       property Objects:TModelObjects read fObjects;
+       property Objects:TVulkanModelObjects read fObjects;
        property CountObjects:TVkInt32 read fCountObjects;
        property KraftMesh:TKraftMesh read fKraftMesh write fKraftMesh;
        property KraftConvexHull:TKraftConvexHull read fKraftConvexHull write fKraftConvexHull;
@@ -314,7 +330,7 @@ begin
  end;
 end;
 
-constructor TModel.Create(const pVulkanDevice:TVulkanDevice);
+constructor TVulkanModel.Create(const pVulkanDevice:TVulkanDevice);
 begin
  inherited Create;
  fVulkanDevice:=pVulkanDevice;
@@ -328,14 +344,14 @@ begin
  Clear;
 end;
 
-destructor TModel.Destroy;
+destructor TVulkanModel.Destroy;
 begin
  Unload;
  Clear;
  inherited Destroy;
 end;
 
-procedure TModel.Clear;
+procedure TVulkanModel.Clear;
 begin
  fMaterials:=nil;
  fCountMaterials:=0;
@@ -349,14 +365,14 @@ begin
  fCountObjects:=0;
 end;
 
-procedure TModel.MakeCube(const pSizeX,pSizeY,pSizeZ:single);
+procedure TVulkanModel.MakeCube(const pSizeX,pSizeY,pSizeZ:single);
 type PCubeVertex=^TCubeVertex;
      TCubeVertex=record
-      Position:TVector3;
-      Tangent:TVector3;
-      Bitangent:TVector3;
-      Normal:TVector3;
-      TexCoord:TVector2;
+      Position:TVulkanModelVector3;
+      Tangent:TVulkanModelVector3;
+      Bitangent:TVulkanModelVector3;
+      Normal:TVulkanModelVector3;
+      TexCoord:TVulkanModelVector2;
      end;
 const CubeVertices:array[0..23] of TCubeVertex=
        (// Left
@@ -420,13 +436,13 @@ const CubeVertices:array[0..23] of TCubeVertex=
          20, 21, 22,
          20, 22, 23);
 var Index:TVkInt32;
-    Material:PModelMaterial;
-    ModelVertex:PModelVertex;
+    Material:PVulkanModelMaterial;
+    ModelVertex:PVulkanModelVertex;
     CubeVertex:PCubeVertex;
     m:TMatrix3x3;
     q:TQuaternion;
-    Part:PModelPart;
-    AObject:PModelObject;
+    Part:PVulkanModelPart;
+    AObject:PVulkanModelObject;
 begin
 
  fCountMaterials:=1;
@@ -453,7 +469,9 @@ begin
  for Index:=0 to fCountVertices-1 do begin
   ModelVertex:=@fVertices[Index];
   CubeVertex:=@CubeVertices[Index];
-  ModelVertex^.Position:=Vector3Mul(CubeVertex^.Position,UnitMath3D.Vector3(pSizeX*0.5,pSizeY*0.5,pSizeZ*0.5));
+  ModelVertex^.Position.x:=CubeVertex^.Position.x*pSizeX*0.5;
+  ModelVertex^.Position.y:=CubeVertex^.Position.y*pSizeY*0.5;
+  ModelVertex^.Position.z:=CubeVertex^.Position.z*pSizeZ*0.5;
   m[0,0]:=CubeVertex^.Tangent.x;
   m[0,1]:=CubeVertex^.Tangent.y;
   m[0,2]:=CubeVertex^.Tangent.z;
@@ -493,7 +511,7 @@ begin
 
 end;
 
-procedure TModel.LoadFromStream(const pStream:TStream;const pDoFree:boolean=false);
+procedure TVulkanModel.LoadFromStream(const pStream:TStream;const pDoFree:boolean=false);
 const ModelSignature:TChunkSignature=('m','d','l',#0);
       ModelVersion:TVkUInt32=0;
 var Signature:TChunkSignature;
@@ -535,7 +553,7 @@ var Signature:TChunkSignature;
  const ChunkSignature:TChunkSignature=('M','A','T','E');
  var ChunkStream:TChunkStream;
      Index:TVkInt32;
-     Material:PModelMaterial;
+     Material:PVulkanModelMaterial;
  begin
   ChunkStream:=GetChunkStream(ChunkSignature,true);
   try
@@ -572,7 +590,7 @@ var Signature:TChunkSignature;
     fCountVertices:=ChunkStream.ReadInteger;
     SetLength(fVertices,fCountVertices);
     if fCountVertices>0 then begin
-     ChunkStream.ReadWithCheck(fVertices[0],fCountVertices*SizeOf(TModelVertex));
+     ChunkStream.ReadWithCheck(fVertices[0],fCountVertices*SizeOf(TVulkanModelVertex));
      if assigned(fKraftMesh) then begin
       for VertexIndex:=0 to fCountVertices-1 do begin
        fKraftMesh.AddVertex(Kraft.Vector3(fVertices[VertexIndex].Position.x,fVertices[VertexIndex].Position.y,fVertices[VertexIndex].Position.z));
@@ -603,7 +621,7 @@ var Signature:TChunkSignature;
     fCountIndices:=ChunkStream.ReadInteger;
     SetLength(fIndices,fCountIndices);
     if fCountIndices>0 then begin
-     ChunkStream.ReadWithCheck(fIndices[0],fCountIndices*SizeOf(TModelIndex));
+     ChunkStream.ReadWithCheck(fIndices[0],fCountIndices*SizeOf(TVulkanModelIndex));
      if assigned(fKraftMesh) then begin
       Index:=0;
       while (Index+2)<fCountIndices-1 do begin
@@ -625,7 +643,7 @@ var Signature:TChunkSignature;
  const ChunkSignature:TChunkSignature=('P','A','R','T');
  var ChunkStream:TChunkStream;
      Index:TVkInt32;
-     Part:PModelPart;
+     Part:PVulkanModelPart;
  begin
   ChunkStream:=GetChunkStream(ChunkSignature,true);
   try
@@ -649,7 +667,7 @@ var Signature:TChunkSignature;
  const ChunkSignature:TChunkSignature=('O','B','J','S');
  var ChunkStream:TChunkStream;
      ObjectIndex:TVkInt32;
-     AObject:PModelObject;
+     AObject:PVulkanModelObject;
  begin
   ChunkStream:=GetChunkStream(ChunkSignature,true);
   try
@@ -752,15 +770,15 @@ begin
  end;
 end;
 
-procedure TModel.Upload(const pQueue:TVulkanQueue;
+procedure TVulkanModel.Upload(const pQueue:TVulkanQueue;
                         const pCommandBuffer:TVulkanCommandBuffer;
                         const pFence:TVulkanFence);
 type TRemapIndices=array of TVkInt64;
 var BufferIndex,IndexIndex,CountTemporaryVertices:TVkInt32;
     MaxIndexedIndex:TVkUInt32;
     MaxCount,CurrentIndex,RemainingCount,ToDoCount,VertexIndex:TVkInt64;
-    TemporaryVertices:TModelVertices;
-    TemporaryIndices:TModelIndices;
+    TemporaryVertices:TVulkanModelVertices;
+    TemporaryIndices:TVulkanModelIndices;
     TemporaryRemapIndices:TRemapIndices;
 begin
  if not fUploaded then begin
@@ -791,7 +809,7 @@ begin
    fBufferSizes[0]:=fCountIndices;
 
    fVertexBuffers[0]:=TVulkanBuffer.Create(fVulkanDevice,
-                                           fCountVertices*SizeOf(TModelVertex),
+                                           fCountVertices*SizeOf(TVulkanModelVertex),
                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                            nil,
@@ -802,11 +820,11 @@ begin
                                 pFence,
                                 fVertices[0],
                                 0,
-                                fCountVertices*SizeOf(TModelVertex),
+                                fCountVertices*SizeOf(TVulkanModelVertex),
                                 vbutsbmYes);
 
    fIndexBuffers[0]:=TVulkanBuffer.Create(fVulkanDevice,
-                                          fCountIndices*SizeOf(TModelIndex),
+                                          fCountIndices*SizeOf(TVulkanModelIndex),
                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                           nil,
@@ -817,7 +835,7 @@ begin
                                pFence,
                                fIndices[0],
                                0,
-                               fCountIndices*SizeOf(TModelIndex),
+                               fCountIndices*SizeOf(TVulkanModelIndex),
                                vbutsbmYes);
 
   end else begin
@@ -887,7 +905,7 @@ begin
      end;
 
      fVertexBuffers[BufferIndex]:=TVulkanBuffer.Create(fVulkanDevice,
-                                                       CountTemporaryVertices*SizeOf(TModelVertex),
+                                                       CountTemporaryVertices*SizeOf(TVulkanModelVertex),
                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                        nil,
@@ -898,11 +916,11 @@ begin
                                             pFence,
                                             TemporaryVertices[0],
                                             0,
-                                            CountTemporaryVertices*SizeOf(TModelVertex),
+                                            CountTemporaryVertices*SizeOf(TVulkanModelVertex),
                                             vbutsbmYes);
 
      fIndexBuffers[BufferIndex]:=TVulkanBuffer.Create(fVulkanDevice,
-                                                      fBufferSizes[BufferIndex]*SizeOf(TModelIndex),
+                                                      fBufferSizes[BufferIndex]*SizeOf(TVulkanModelIndex),
                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                       nil,
@@ -913,7 +931,7 @@ begin
                                            pFence,
                                            TemporaryIndices[0],
                                            0,
-                                           fBufferSizes[BufferIndex]*SizeOf(TModelIndex),
+                                           fBufferSizes[BufferIndex]*SizeOf(TVulkanModelIndex),
                                            vbutsbmYes);
 
 
@@ -942,7 +960,7 @@ begin
  end;
 end;
 
-procedure TModel.Unload;
+procedure TVulkanModel.Unload;
 var Index:TVkInt32;
 begin
  if fUploaded then begin
@@ -962,7 +980,7 @@ begin
  end;
 end;
 
-procedure TModel.Draw(const pCommandBuffer:TVulkanCommandBuffer;const pInstanceCount:TVkUInt32=1;const pFirstInstance:TVkUInt32=0);
+procedure TVulkanModel.Draw(const pCommandBuffer:TVulkanCommandBuffer;const pInstanceCount:TVkUInt32=1;const pFirstInstance:TVkUInt32=0);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var Index:TVkInt32;
 begin
