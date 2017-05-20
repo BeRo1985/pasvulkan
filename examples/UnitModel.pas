@@ -117,6 +117,9 @@ type PVulkanModelVector2=^TVulkanModelVector2;
        1:(
         u,v:TVkFloat;
        );
+       2:(
+        r,g:TVkFloat;
+       );
      end;
 
      PVulkanModelVector3=^TVulkanModelVector3;
@@ -126,7 +129,24 @@ type PVulkanModelVector2=^TVulkanModelVector2;
         x,y,z:TVkFloat;
        );
        1:(
+        u,v,w:TVkFloat;
+       );
+       2:(
         r,g,b:TVkFloat;
+       );
+     end;
+
+     PVulkanModelVector4=^TVulkanModelVector4;
+     TVulkanModelVector4=packed record
+      case TVkInt32 of
+       0:(
+        x,y,z,w:TVkFloat;
+       );
+       1:(
+        u,v,w_,q:TVkFloat;
+       );
+       2:(
+        r,g,b,a:TVkFloat;
        );
      end;
 
@@ -141,7 +161,20 @@ type PVulkanModelVector2=^TVulkanModelVector2;
      end;
 
      PVulkanModelMatrix3x3=^TVulkanModelMatrix3x3;
-     TVulkanModelMatrix3x3=array[0..2,0..2] of TVkFloat;
+     TVulkanModelMatrix3x3=packed record
+      case TVkInt32 of
+       0:(
+        RawComponents:array[0..2,0..2] of TVkFloat;
+       );
+       1:(
+        Vectors:array[0..2] of TVulkanModelVector3;
+       );
+       2:(
+        Tangent:TVulkanModelVector3;
+        Bitangent:TVulkanModelVector3;
+        Normal:TVulkanModelVector3;
+       );
+      end;
 
      PVulkanModelVertex=^TVulkanModelVertex;
      TVulkanModelVertex=packed record
@@ -405,36 +438,36 @@ begin
  Normal:=VulkanModelVector3Normalize(VulkanModelVector3Cross(Tangent,Bitangent));
 end;
 
-function VulkanModelMatrix3x3ToQTangent(RawComponents:TVulkanModelMatrix3x3):TVulkanModelQuaternion;
+function VulkanModelMatrix3x3ToQTangent(pMatrix:TVulkanModelMatrix3x3):TVulkanModelQuaternion;
 const Threshold=1.0/32767.0;
 var Scale,t,s,Renormalization:TVkFloat;
 begin
- VulkanModelRobustOrthoNormalize(PVulkanModelVector3(@RawComponents[0,0])^,
-                                 PVulkanModelVector3(@RawComponents[1,0])^,
-                                 PVulkanModelVector3(@RawComponents[2,0])^);
- if ((((((RawComponents[0,0]*RawComponents[1,1]*RawComponents[2,2])+
-         (RawComponents[0,1]*RawComponents[1,2]*RawComponents[2,0])
+ VulkanModelRobustOrthoNormalize(pMatrix.Tangent,
+                                 pMatrix.Bitangent,
+                                 pMatrix.Normal);
+ if ((((((pMatrix.RawComponents[0,0]*pMatrix.RawComponents[1,1]*pMatrix.RawComponents[2,2])+
+         (pMatrix.RawComponents[0,1]*pMatrix.RawComponents[1,2]*pMatrix.RawComponents[2,0])
         )+
-        (RawComponents[0,2]*RawComponents[1,0]*RawComponents[2,1])
+        (pMatrix.RawComponents[0,2]*pMatrix.RawComponents[1,0]*pMatrix.RawComponents[2,1])
        )-
-       (RawComponents[0,2]*RawComponents[1,1]*RawComponents[2,0])
+       (pMatrix.RawComponents[0,2]*pMatrix.RawComponents[1,1]*pMatrix.RawComponents[2,0])
       )-
-      (RawComponents[0,1]*RawComponents[1,0]*RawComponents[2,2])
+      (pMatrix.RawComponents[0,1]*pMatrix.RawComponents[1,0]*pMatrix.RawComponents[2,2])
      )-
-     (RawComponents[0,0]*RawComponents[1,2]*RawComponents[2,1])
+     (pMatrix.RawComponents[0,0]*pMatrix.RawComponents[1,2]*pMatrix.RawComponents[2,1])
     )<0.0 then begin
   // Reflection matrix, so flip y axis in case the tangent frame encodes a reflection
   Scale:=-1.0;
-  RawComponents[2,0]:=-RawComponents[2,0];
-  RawComponents[2,1]:=-RawComponents[2,1];
-  RawComponents[2,2]:=-RawComponents[2,2];
+  pMatrix.RawComponents[2,0]:=-pMatrix.RawComponents[2,0];
+  pMatrix.RawComponents[2,1]:=-pMatrix.RawComponents[2,1];
+  pMatrix.RawComponents[2,2]:=-pMatrix.RawComponents[2,2];
  end else begin
   // Rotation matrix, so nothing is doing to do
   Scale:=1.0;
  end;
  begin
   // Convert to quaternion
-  t:=RawComponents[0,0]+(RawComponents[1,1]+RawComponents[2,2]);
+  t:=pMatrix.RawComponents[0,0]+(pMatrix.RawComponents[1,1]+pMatrix.RawComponents[2,2]);
   if t>2.9999999 then begin
    result.x:=0.0;
    result.y:=0.0;
@@ -442,28 +475,28 @@ begin
    result.w:=1.0;
   end else if t>0.0000001 then begin
    s:=sqrt(1.0+t)*2.0;
-   result.x:=(RawComponents[1,2]-RawComponents[2,1])/s;
-   result.y:=(RawComponents[2,0]-RawComponents[0,2])/s;
-   result.z:=(RawComponents[0,1]-RawComponents[1,0])/s;
+   result.x:=(pMatrix.RawComponents[1,2]-pMatrix.RawComponents[2,1])/s;
+   result.y:=(pMatrix.RawComponents[2,0]-pMatrix.RawComponents[0,2])/s;
+   result.z:=(pMatrix.RawComponents[0,1]-pMatrix.RawComponents[1,0])/s;
    result.w:=s*0.25;
-  end else if (RawComponents[0,0]>RawComponents[1,1]) and (RawComponents[0,0]>RawComponents[2,2]) then begin
-   s:=sqrt(1.0+(RawComponents[0,0]-(RawComponents[1,1]+RawComponents[2,2])))*2.0;
+  end else if (pMatrix.RawComponents[0,0]>pMatrix.RawComponents[1,1]) and (pMatrix.RawComponents[0,0]>pMatrix.RawComponents[2,2]) then begin
+   s:=sqrt(1.0+(pMatrix.RawComponents[0,0]-(pMatrix.RawComponents[1,1]+pMatrix.RawComponents[2,2])))*2.0;
    result.x:=s*0.25;
-   result.y:=(RawComponents[1,0]+RawComponents[0,1])/s;
-   result.z:=(RawComponents[2,0]+RawComponents[0,2])/s;
-   result.w:=(RawComponents[1,2]-RawComponents[2,1])/s;
-  end else if RawComponents[1,1]>RawComponents[2,2] then begin
-   s:=sqrt(1.0+(RawComponents[1,1]-(RawComponents[0,0]+RawComponents[2,2])))*2.0;
-   result.x:=(RawComponents[1,0]+RawComponents[0,1])/s;
+   result.y:=(pMatrix.RawComponents[1,0]+pMatrix.RawComponents[0,1])/s;
+   result.z:=(pMatrix.RawComponents[2,0]+pMatrix.RawComponents[0,2])/s;
+   result.w:=(pMatrix.RawComponents[1,2]-pMatrix.RawComponents[2,1])/s;
+  end else if pMatrix.RawComponents[1,1]>pMatrix.RawComponents[2,2] then begin
+   s:=sqrt(1.0+(pMatrix.RawComponents[1,1]-(pMatrix.RawComponents[0,0]+pMatrix.RawComponents[2,2])))*2.0;
+   result.x:=(pMatrix.RawComponents[1,0]+pMatrix.RawComponents[0,1])/s;
    result.y:=s*0.25;
-   result.z:=(RawComponents[2,1]+RawComponents[1,2])/s;
-   result.w:=(RawComponents[2,0]-RawComponents[0,2])/s;
+   result.z:=(pMatrix.RawComponents[2,1]+pMatrix.RawComponents[1,2])/s;
+   result.w:=(pMatrix.RawComponents[2,0]-pMatrix.RawComponents[0,2])/s;
   end else begin
-   s:=sqrt(1.0+(RawComponents[2,2]-(RawComponents[0,0]+RawComponents[1,1])))*2.0;
-   result.x:=(RawComponents[2,0]+RawComponents[0,2])/s;
-   result.y:=(RawComponents[2,1]+RawComponents[1,2])/s;
+   s:=sqrt(1.0+(pMatrix.RawComponents[2,2]-(pMatrix.RawComponents[0,0]+pMatrix.RawComponents[1,1])))*2.0;
+   result.x:=(pMatrix.RawComponents[2,0]+pMatrix.RawComponents[0,2])/s;
+   result.y:=(pMatrix.RawComponents[2,1]+pMatrix.RawComponents[1,2])/s;
    result.z:=s*0.25;
-   result.w:=(RawComponents[0,1]-RawComponents[1,0])/s;
+   result.w:=(pMatrix.RawComponents[0,1]-pMatrix.RawComponents[1,0])/s;
   end;
   s:=sqr(result.x)+sqr(result.y)+sqr(result.z)+sqr(result.w);
   if s>0.0 then begin
@@ -531,22 +564,22 @@ begin
  qyqw2:=pQTangent.w*qy2;
  qzqz2:=pQTangent.z*qz2;
  qzqw2:=pQTangent.w*qz2;
- result[0,0]:=1.0-(qyqy2+qzqz2);
- result[0,1]:=qxqy2+qzqw2;
- result[0,2]:=qxqz2-qyqw2;
- result[1,0]:=qxqy2-qzqw2;
- result[1,1]:=1.0-(qxqx2+qzqz2);
- result[1,2]:=qyqz2+qxqw2;
- result[2,0]:=(result[0,1]*result[1,2])-(result[0,2]*result[1,1]);
- result[2,1]:=(result[0,2]*result[1,0])-(result[0,0]*result[1,2]);
- result[2,2]:=(result[0,0]*result[1,1])-(result[0,1]*result[1,0]);
-{result[2,0]:=qxqz2+qyqw2;
- result[2,1]:=qyqz2-qxqw2;
- result[2,2]:=1.0-(qxqx2+qyqy2);}
+ result.RawComponents[0,0]:=1.0-(qyqy2+qzqz2);
+ result.RawComponents[0,1]:=qxqy2+qzqw2;
+ result.RawComponents[0,2]:=qxqz2-qyqw2;
+ result.RawComponents[1,0]:=qxqy2-qzqw2;
+ result.RawComponents[1,1]:=1.0-(qxqx2+qzqz2);
+ result.RawComponents[1,2]:=qyqz2+qxqw2;
+ result.RawComponents[2,0]:=(result.RawComponents[0,1]*result.RawComponents[1,2])-(result.RawComponents[0,2]*result.RawComponents[1,1]);
+ result.RawComponents[2,1]:=(result.RawComponents[0,2]*result.RawComponents[1,0])-(result.RawComponents[0,0]*result.RawComponents[1,2]);
+ result.RawComponents[2,2]:=(result.RawComponents[0,0]*result.RawComponents[1,1])-(result.RawComponents[0,1]*result.RawComponents[1,0]);
+{result.RawComponents[2,0]:=qxqz2+qyqw2;
+ result.RawComponents[2,1]:=qyqz2-qxqw2;
+ result.RawComponents[2,2]:=1.0-(qxqx2+qyqy2);}
  if pQTangent.w<0.0 then begin
-  result[2,0]:=-result[2,0];
-  result[2,1]:=-result[2,1];
-  result[2,2]:=-result[2,2];
+  result.RawComponents[2,0]:=-result.RawComponents[2,0];
+  result.RawComponents[2,1]:=-result.RawComponents[2,1];
+  result.RawComponents[2,2]:=-result.RawComponents[2,2];
  end;
 end;
 
@@ -700,15 +733,9 @@ begin
   ModelVertex^.Position.x:=CubeVertex^.Position.x*pSizeX*0.5;
   ModelVertex^.Position.y:=CubeVertex^.Position.y*pSizeY*0.5;
   ModelVertex^.Position.z:=CubeVertex^.Position.z*pSizeZ*0.5;
-  m[0,0]:=CubeVertex^.Tangent.x;
-  m[0,1]:=CubeVertex^.Tangent.y;
-  m[0,2]:=CubeVertex^.Tangent.z;
-  m[1,0]:=CubeVertex^.Bitangent.x;
-  m[1,1]:=CubeVertex^.Bitangent.y;
-  m[1,2]:=CubeVertex^.Bitangent.z;
-  m[2,0]:=CubeVertex^.Normal.x;
-  m[2,1]:=CubeVertex^.Normal.y;
-  m[2,2]:=CubeVertex^.Normal.z;
+  m.Tangent:=CubeVertex^.Tangent;
+  m.Bitangent:=CubeVertex^.Bitangent;
+  m.Normal:=CubeVertex^.Normal;
   q:=VulkanModelMatrix3x3ToQTangent(m);
   ModelVertex^.QTangent.x:=Min(Max(round(Min(Max(q.x,-1.0),1.0)*32767),-32767),32767);
   ModelVertex^.QTangent.y:=Min(Max(round(Min(Max(q.y,-1.0),1.0)*32767),-32767),32767);
@@ -842,7 +869,7 @@ var Signature:TChunkSignature;
        q.z:=Vertices[VertexIndex].QTangent.z/32767.0;
        q.w:=Vertices[VertexIndex].QTangent.w/32767.0;
        m:=VulkanModelMatrix3x3FromQTangent(q);
-       fKraftMesh.AddNormal(Kraft.Vector3(m[2,0],m[2,1],m[2,2]));
+       fKraftMesh.AddNormal(Kraft.Vector3(m.Normal.x,m.Normal.y,m.Normal.z));
       end;
      end;
     end;
