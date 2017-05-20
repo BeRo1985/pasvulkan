@@ -104,7 +104,7 @@ unit UnitChunkStream; // Copyright (C) 2006-2017, Benjamin Rosseaux - License: z
 
 interface
 
-uses SysUtils,Classes,UnitMath3D;
+uses SysUtils,Classes;
 
 type PChunkSignature=^TChunkSignature;
      TChunkSignature=array[0..3] of ansichar;
@@ -140,16 +140,9 @@ type PChunkSignature=^TChunkSignature;
        function ReadWithCheck(var Buffer;Count:longint):longint;
        function ReadString:ansistring;
        function ReadByte:byte;
-       function ReadInteger:longint;
-       function ReadLongword:longword;
+       function ReadInt32:longint;
+       function ReadUInt32:longword;
        function ReadFloat:single;
-       function ReadVector2:TVector2;
-       function ReadVector3:TVector3;
-       function ReadVector4:TVector4;
-       function ReadQuaternion:TQuaternion;
-       function ReadPlane:TPlane;
-//     function ReadVertex:TVertex;
-       function ReadMatrix4x4:TMatrix4x4;
      end;
 
 implementation
@@ -301,12 +294,12 @@ begin
  ReadWithCheck(result,SizeOf(byte));
 end;
 
-function TChunkStream.ReadInteger:longint;
+function TChunkStream.ReadInt32:longint;
 begin
  ReadWithCheck(result,SizeOf(longint));
 end;
 
-function TChunkStream.ReadLongword:longword;
+function TChunkStream.ReadUInt32:longword;
 begin
  ReadWithCheck(result,SizeOf(longword));
 end;
@@ -314,79 +307,6 @@ end;
 function TChunkStream.ReadFloat:single;
 begin
  ReadWithCheck(result,SizeOf(single));
-end;
-
-function TChunkStream.ReadVector2:TVector2;
-begin
- ReadWithCheck(result.x,SizeOf(single));
- ReadWithCheck(result.y,SizeOf(single));
-end;
-
-function TChunkStream.ReadVector3:TVector3;
-begin
- ReadWithCheck(result.x,SizeOf(single));
- ReadWithCheck(result.y,SizeOf(single));
- ReadWithCheck(result.z,SizeOf(single));
-end;
-
-function TChunkStream.ReadVector4:TVector4;
-begin
- ReadWithCheck(result.x,SizeOf(single));
- ReadWithCheck(result.y,SizeOf(single));
- ReadWithCheck(result.z,SizeOf(single));
- ReadWithCheck(result.w,SizeOf(single));
-end;
-
-function TChunkStream.ReadQuaternion:TQuaternion;
-var w:word;
-begin
- ReadWithCheck(w,SizeOf(word));
- result.x:=(w-32767)/32768.0;
- ReadWithCheck(w,SizeOf(word));
- result.y:=(w-32767)/32768.0;
- ReadWithCheck(w,SizeOf(word));
- result.z:=(w-32767)/32768.0;
- ReadWithCheck(w,SizeOf(word));
- result.w:=(w-32767)/32768.0;
-end;
-
-function TChunkStream.ReadPlane:TPlane;
-begin
- ReadWithCheck(result.a,SizeOf(single));
- ReadWithCheck(result.b,SizeOf(single));
- ReadWithCheck(result.c,SizeOf(single));
- ReadWithCheck(result.d,SizeOf(single));
-end;
-
-{function TChunkStream.ReadVertex:TVertex;
-begin
- result.Position:=ReadVector3;
- result.Normal:=ReadVector3;
- result.Tangent:=ReadVector4;
- result.TexCoord:=ReadVector2;
- ReadWithCheck(result.Color,SizeOf(TVector4w));
- ReadWithCheck(result.BlendIndices,SizeOf(TVector4b));
- ReadWithCheck(result.BlendWeights,SizeOf(TVector4b));
-end;}
-
-function TChunkStream.ReadMatrix4x4:TMatrix4x4;
-begin
- ReadWithCheck(result[0,0],SizeOf(single));
- ReadWithCheck(result[0,1],SizeOf(single));
- ReadWithCheck(result[0,2],SizeOf(single));
- ReadWithCheck(result[0,3],SizeOf(single));
- ReadWithCheck(result[1,0],SizeOf(single));
- ReadWithCheck(result[1,1],SizeOf(single));
- ReadWithCheck(result[1,2],SizeOf(single));
- ReadWithCheck(result[1,3],SizeOf(single));
- ReadWithCheck(result[2,0],SizeOf(single));
- ReadWithCheck(result[2,1],SizeOf(single));
- ReadWithCheck(result[2,2],SizeOf(single));
- ReadWithCheck(result[2,3],SizeOf(single));
- ReadWithCheck(result[3,0],SizeOf(single));
- ReadWithCheck(result[3,1],SizeOf(single));
- ReadWithCheck(result[3,2],SizeOf(single));
- ReadWithCheck(result[3,3],SizeOf(single));
 end;
 
 end.

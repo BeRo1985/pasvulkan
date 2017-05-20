@@ -1,11 +1,110 @@
 unit UnitModel;
 {$ifdef fpc}
  {$mode delphi}
+ {$ifdef cpui386}
+  {$define cpu386}
+ {$endif}
+ {$ifdef cpu386}
+  {$asmmode intel}
+ {$endif}
+ {$ifdef cpuamd64}
+  {$asmmode intel}
+ {$endif}
+ {$ifdef fpc_little_endian}
+  {$define little_endian}
+ {$else}
+  {$ifdef fpc_big_endian}
+   {$define big_endian}
+  {$endif}
+ {$endif}
+ {$ifdef fpc_has_internal_sar}
+  {$define HasSAR}
+ {$endif}
+ {-$pic off}
+ {$define CAN_INLINE}
+ {$ifdef FPC_HAS_TYPE_EXTENDED}
+  {$define HAS_TYPE_EXTENDED}
+ {$else}
+  {$undef HAS_TYPE_EXTENDED}
+ {$endif}
+ {$ifdef FPC_HAS_TYPE_DOUBLE}
+  {$define HAS_TYPE_DOUBLE}
+ {$else}
+  {$undef HAS_TYPE_DOUBLE}
+ {$endif}
+ {$ifdef FPC_HAS_TYPE_SINGLE}
+  {$define HAS_TYPE_SINGLE}
+ {$else}
+  {$undef HAS_TYPE_SINGLE}
+ {$endif}
+{$else}
+ {$realcompatibility off}
+ {$localsymbols on}
+ {$define little_endian}
+ {$ifndef cpu64}
+  {$define cpu32}
+ {$endif}
+ {$define delphi} 
+ {$undef HasSAR}
+ {$define UseDIV}
+ {$define HAS_TYPE_EXTENDED}
+ {$define HAS_TYPE_DOUBLE}
+ {$define HAS_TYPE_SINGLE}
+{$endif}
+{$ifdef cpu386}
+ {$define cpux86}
+{$endif}
+{$ifdef cpuamd64}
+ {$define cpux86}
+{$endif}
+{$ifdef win32}
+ {$define windows}
+{$endif}
+{$ifdef win64}
+ {$define windows}
+{$endif}
+{$ifdef wince}
+ {$define windows}
+{$endif}
+{$ifdef windows}
+ {$define win}
+{$endif}
+{$ifdef sdl20}
+ {$define sdl}
+{$endif}
+{$rangechecks off}
+{$extendedsyntax on}
+{$writeableconst on}
+{$hints off}
+{$booleval off}
+{$typedaddress off}
+{$stackframes off}
+{$varstringchecks on}
+{$typeinfo on}
+{$overflowchecks off}
+{$longstrings on}
+{$openstrings on}
+{$ifndef HAS_TYPE_DOUBLE}
+ {$error No double floating point precision}
+{$endif}
+{$ifdef fpc}
+ {$define CAN_INLINE}
+{$else}
+ {$undef CAN_INLINE}
+ {$ifdef ver180}
+  {$define CAN_INLINE}
+ {$else}
+  {$ifdef conditionalexpressions}
+   {$if compilerversion>=18}
+    {$define CAN_INLINE}
+   {$ifend}
+  {$endif}
+ {$endif}
 {$endif}
 
 interface
 
-uses SysUtils,Classes,Math,Vulkan,Kraft,UnitMath3D,PasVulkan;
+uses SysUtils,Classes,Math,Vulkan,Kraft,PasVulkan;
 
 const VULKAN_MODEL_VERTEX_BUFFER_BIND_ID=0;
 
@@ -22,13 +121,27 @@ type PVulkanModelVector2=^TVulkanModelVector2;
 
      PVulkanModelVector3=^TVulkanModelVector3;
      TVulkanModelVector3=packed record
-      x,y,z:TVkFloat;
+      case TVkInt32 of
+       0:(
+        x,y,z:TVkFloat;
+       );
+       1:(
+        r,g,b:TVkFloat;
+       );
+     end;
+
+     PVulkanModelQuaternion=^TVulkanModelQuaternion;
+     TVulkanModelQuaternion=packed record
+      x,y,z,w:TVkFloat;
      end;
 
      PVulkanModelQTangent=^TVulkanModelQTangent;
      TVulkanModelQTangent=packed record
       x,y,z,w:TVkInt16;
      end;
+
+     PVulkanModelMatrix3x3=^TVulkanModelMatrix3x3;
+     TVulkanModelMatrix3x3=array[0..2,0..2] of TVkFloat;
 
      PVulkanModelVertex=^TVulkanModelVertex;
      TVulkanModelVertex=packed record
@@ -53,11 +166,11 @@ type PVulkanModelVector2=^TVulkanModelVector2;
      TVulkanModelMaterial=record
       Name:ansistring;
       Texture:ansistring;
-      Ambient:TVector3;
-      Diffuse:TVector3;
-      Emission:TVector3;
-      Specular:TVector3;
-      Shininess:single;
+      Ambient:TVulkanModelVector3;
+      Diffuse:TVulkanModelVector3;
+      Emission:TVulkanModelVector3;
+      Specular:TVulkanModelVector3;
+      Shininess:TVkFloat;
      end;
 
      TVulkanModelMaterials=array of TVulkanModelMaterial;
@@ -71,11 +184,23 @@ type PVulkanModelVector2=^TVulkanModelVector2;
 
      TVulkanModelParts=array of TVulkanModelPart;
 
+     PVulkanModelSphere=^TVulkanModelSphere;
+     TVulkanModelSphere=record
+      Center:TVulkanModelVector3;
+      Radius:TVkFloat;
+     end;
+
+     PVulkanModelAABB=^TVulkanModelAABB;
+     TVulkanModelAABB=record
+      Min:TVulkanModelVector3;
+      Max:TVulkanModelVector3;
+     end;
+
      PVulkanModelObject=^TVulkanModelObject;
      TVulkanModelObject=record
       Name:ansistring;
-      Sphere:TSphere;
-      AABB:TAABB;
+      Sphere:TVulkanModelSphere;
+      AABB:TVulkanModelAABB;
      end;
 
      TVulkanModelObjects=array of TVulkanModelObject;
@@ -93,8 +218,8 @@ type PVulkanModelVector2=^TVulkanModelVector2;
       private
        fVulkanDevice:TVulkanDevice;
        fUploaded:boolean;
-       fSphere:TSphere;
-       fAABB:TAABB;
+       fSphere:TVulkanModelSphere;
+       fAABB:TVulkanModelAABB;
        fMaterials:TVulkanModelMaterials;
        fCountMaterials:TVkInt32;
        fVertices:TVulkanModelVertices;
@@ -115,7 +240,7 @@ type PVulkanModelVector2=^TVulkanModelVector2;
        constructor Create(const pVulkanDevice:TVulkanDevice); reintroduce;
        destructor Destroy; override;
        procedure Clear;
-       procedure MakeCube(const pSizeX,pSizeY,pSizeZ:single);
+       procedure MakeCube(const pSizeX,pSizeY,pSizeZ:TVkFloat);
        procedure LoadFromStream(const pStream:TStream;const pDoFree:boolean=false);
        procedure Upload(const pQueue:TVulkanQueue;
                         const pCommandBuffer:TVulkanCommandBuffer;
@@ -123,8 +248,8 @@ type PVulkanModelVector2=^TVulkanModelVector2;
        procedure Unload;
        procedure Draw(const pCommandBuffer:TVulkanCommandBuffer;const pInstanceCount:TVkUInt32=1;const pFirstInstance:TVkUInt32=0);
        property Uploaded:boolean read fUploaded;
-       property Sphere:TSphere read fSphere;
-       property AABB:TAABB read fAABB;
+       property Sphere:TVulkanModelSphere read fSphere;
+       property AABB:TVulkanModelAABB read fAABB;
        property Materials:TVulkanModelMaterials read fMaterials;
        property CountMaterials:TVkInt32 read fCountMaterials;
        property Vertices:TVulkanModelVertices read fVertices;
@@ -143,79 +268,150 @@ implementation
 
 uses UnitBufferedStream,UnitChunkStream;
 
-procedure RobustOrthoNormalize(var Tangent,Bitangent,Normal:TVector3;const Tolerance:single=1e-3);
-var Bisector,Axis:TVector3;
+function VulkanModelVector3Length(const v:TVulkanModelVector3):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result:=sqr(v.x)+sqr(v.y)+sqr(v.z);
+ if result>0.0 then begin
+  result:=sqrt(result);
+ end else begin
+  result:=0.0;
+ end;
+end;
+
+function VulkanModelVector3Normalize(const v:TVulkanModelVector3):TVulkanModelVector3; {$ifdef CAN_INLINE}inline;{$endif}
+var f:TVkFloat;
+begin
+ f:=sqr(v.x)+sqr(v.y)+sqr(v.z);
+ if f>0.0 then begin
+  f:=sqrt(f);
+  result.x:=v.x/f;
+  result.y:=v.y/f;
+  result.z:=v.z/f;
+ end else begin
+  result.x:=0.0;
+  result.y:=0.0;
+  result.z:=0.0;
+ end;
+end;
+
+function VulkanModelVector3Cross(const v0,v1:TVulkanModelVector3):TVulkanModelVector3; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result.x:=(v0.y*v1.z)-(v0.z*v1.y);
+ result.y:=(v0.z*v1.x)-(v0.x*v1.z);
+ result.z:=(v0.x*v1.y)-(v0.y*v1.x);
+end;
+
+function VulkanModelVector3Add(const v0,v1:TVulkanModelVector3):TVulkanModelVector3; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result.x:=v0.x+v1.x;
+ result.y:=v0.y+v1.y;
+ result.z:=v0.z+v1.z;
+end;
+
+function VulkanModelVector3Sub(const v0,v1:TVulkanModelVector3):TVulkanModelVector3; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result.x:=v0.x-v1.x;
+ result.y:=v0.y-v1.y;
+ result.z:=v0.z-v1.z;
+end;
+
+function VulkanModelVector3Dot(const v0,v1:TVulkanModelVector3):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result:=(v0.x*v1.x)+(v0.y*v1.y)+(v0.z*v1.z);
+end;
+
+function VulkanModelVector3ScalarMul(const v:TVulkanModelVector3;const f:TVkFloat):TVulkanModelVector3; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result.x:=v.x*f;
+ result.y:=v.y*f;
+ result.z:=v.z*f;
+end;
+
+procedure VulkanModelRobustOrthoNormalize(var Tangent,Bitangent,Normal:TVulkanModelVector3;const Tolerance:TVkFloat=1e-3);
+var Bisector,Axis:TVulkanModelVector3;
 begin
  begin
-  if Vector3Length(Normal)<Tolerance then begin
+  if VulkanModelVector3Length(Normal)<Tolerance then begin
    // Degenerate case, compute new normal
-   Normal:=Vector3Cross(Tangent,Bitangent);
-   if Vector3Length(Normal)<Tolerance then begin
-    Tangent:=Vector3XAxis;
-    Bitangent:=Vector3YAxis;
-    Normal:=Vector3ZAxis;
+   Normal:=VulkanModelVector3Cross(Tangent,Bitangent);
+   if VulkanModelVector3Length(Normal)<Tolerance then begin
+    Tangent.x:=1.0;
+    Tangent.y:=0.0;
+    Tangent.z:=0.0;
+    Bitangent.x:=0.0;
+    Bitangent.y:=1.0;
+    Bitangent.z:=0.0;
+    Normal.x:=0.0;
+    Normal.y:=0.0;
+    Normal.z:=1.0;
     exit;
    end;
   end;
-  Normal:=Vector3Norm(Normal);
+  Normal:=VulkanModelVector3Normalize(Normal);
  end;
  begin
   // Project tangent and bitangent onto the normal orthogonal plane
-  Tangent:=Vector3Sub(Tangent,Vector3ScalarMul(Normal,Vector3Dot(Tangent,Normal)));
-  Bitangent:=Vector3Sub(Bitangent,Vector3ScalarMul(Normal,Vector3Dot(Bitangent,Normal)));
+  Tangent:=VulkanModelVector3Sub(Tangent,VulkanModelVector3ScalarMul(Normal,VulkanModelVector3Dot(Tangent,Normal)));
+  Bitangent:=VulkanModelVector3Sub(Bitangent,VulkanModelVector3ScalarMul(Normal,VulkanModelVector3Dot(Bitangent,Normal)));
  end;
  begin
   // Check for several degenerate cases
-  if Vector3Length(Tangent)<Tolerance then begin
-   if Vector3Length(Bitangent)<Tolerance then begin
-    Tangent:=Vector3Norm(Normal);
+  if VulkanModelVector3Length(Tangent)<Tolerance then begin
+   if VulkanModelVector3Length(Bitangent)<Tolerance then begin
+    Tangent:=VulkanModelVector3Normalize(Normal);
     if (Tangent.x<=Tangent.y) and (Tangent.x<=Tangent.z) then begin
-     Tangent:=Vector3XAxis;
+     Tangent.x:=1.0;
+     Tangent.y:=0.0;
+     Tangent.z:=0.0;
     end else if (Tangent.y<=Tangent.x) and (Tangent.y<=Tangent.z) then begin
-     Tangent:=Vector3YAxis;
+     Tangent.x:=0.0;
+     Tangent.y:=1.0;
+     Tangent.z:=0.0;
     end else begin
-     Tangent:=Vector3ZAxis;
+     Tangent.x:=0.0;
+     Tangent.y:=0.0;
+     Tangent.z:=1.0;
     end;
-    Tangent:=Vector3Sub(Tangent,Vector3ScalarMul(Normal,Vector3Dot(Tangent,Normal)));
-    Bitangent:=Vector3Norm(Vector3Cross(Normal,Tangent));
+    Tangent:=VulkanModelVector3Sub(Tangent,VulkanModelVector3ScalarMul(Normal,VulkanModelVector3Dot(Tangent,Normal)));
+    Bitangent:=VulkanModelVector3Normalize(VulkanModelVector3Cross(Normal,Tangent));
    end else begin
-    Tangent:=Vector3Norm(Vector3Cross(Bitangent,Normal));
+    Tangent:=VulkanModelVector3Normalize(VulkanModelVector3Cross(Bitangent,Normal));
    end;
   end else begin
-   Tangent:=Vector3Norm(Tangent);
-   if Vector3Length(Bitangent)<Tolerance then begin
-    Bitangent:=Vector3Norm(Vector3Cross(Normal,Tangent));
+   Tangent:=VulkanModelVector3Normalize(Tangent);
+   if VulkanModelVector3Length(Bitangent)<Tolerance then begin
+    Bitangent:=VulkanModelVector3Normalize(VulkanModelVector3Cross(Normal,Tangent));
    end else begin
-    Bitangent:=Vector3Norm(Bitangent);
-    Bisector:=Vector3Add(Tangent,Bitangent);
-    if Vector3Length(Bisector)<Tolerance then begin
+    Bitangent:=VulkanModelVector3Normalize(Bitangent);
+    Bisector:=VulkanModelVector3Add(Tangent,Bitangent);
+    if VulkanModelVector3Length(Bisector)<Tolerance then begin
      Bisector:=Tangent;
     end else begin
-     Bisector:=Vector3Norm(Bisector);
+     Bisector:=VulkanModelVector3Normalize(Bisector);
     end;
-    Axis:=Vector3Norm(Vector3Cross(Bisector,Normal));
-    if Vector3Dot(Axis,Tangent)>0.0 then begin
-     Tangent:=Vector3Norm(Vector3Add(Bisector,Axis));
-     Bitangent:=Vector3Norm(Vector3Sub(Bisector,Axis));
+    Axis:=VulkanModelVector3Normalize(VulkanModelVector3Cross(Bisector,Normal));
+    if VulkanModelVector3Dot(Axis,Tangent)>0.0 then begin
+     Tangent:=VulkanModelVector3Normalize(VulkanModelVector3Add(Bisector,Axis));
+     Bitangent:=VulkanModelVector3Normalize(VulkanModelVector3Sub(Bisector,Axis));
     end else begin
-     Tangent:=Vector3Norm(Vector3Sub(Bisector,Axis));
-     Bitangent:=Vector3Norm(Vector3Add(Bisector,Axis));
+     Tangent:=VulkanModelVector3Normalize(VulkanModelVector3Sub(Bisector,Axis));
+     Bitangent:=VulkanModelVector3Normalize(VulkanModelVector3Add(Bisector,Axis));
     end;
    end;
   end;
  end;
- Bitangent:=Vector3Norm(Vector3Cross(Normal,Tangent));
- Tangent:=Vector3Norm(Vector3Cross(Bitangent,Normal));
- Normal:=Vector3Norm(Vector3Cross(Tangent,Bitangent));
+ Bitangent:=VulkanModelVector3Normalize(VulkanModelVector3Cross(Normal,Tangent));
+ Tangent:=VulkanModelVector3Normalize(VulkanModelVector3Cross(Bitangent,Normal));
+ Normal:=VulkanModelVector3Normalize(VulkanModelVector3Cross(Tangent,Bitangent));
 end;
 
-function Matrix3x3ToQTangent(RawComponents:TMatrix3x3):TQuaternion;
+function VulkanModelMatrix3x3ToQTangent(RawComponents:TVulkanModelMatrix3x3):TVulkanModelQuaternion;
 const Threshold=1.0/32767.0;
-var Scale,t,s,Renormalization:single;
+var Scale,t,s,Renormalization:TVkFloat;
 begin
- RobustOrthoNormalize(PVector3(@RawComponents[0,0])^,
-                      PVector3(@RawComponents[1,0])^,
-                      PVector3(@RawComponents[2,0])^);
+ VulkanModelRobustOrthoNormalize(PVulkanModelVector3(@RawComponents[0,0])^,
+                                 PVulkanModelVector3(@RawComponents[1,0])^,
+                                 PVulkanModelVector3(@RawComponents[2,0])^);
  if ((((((RawComponents[0,0]*RawComponents[1,1]*RawComponents[2,2])+
          (RawComponents[0,1]*RawComponents[1,2]*RawComponents[2,0])
         )+
@@ -269,7 +465,19 @@ begin
    result.z:=s*0.25;
    result.w:=(RawComponents[0,1]-RawComponents[1,0])/s;
   end;
-  QuaternionNormalize(result);
+  s:=sqr(result.x)+sqr(result.y)+sqr(result.z)+sqr(result.w);
+  if s>0.0 then begin
+   s:=sqrt(s);
+   result.x:=result.x/s;
+   result.y:=result.y/s;
+   result.z:=result.z/s;
+   result.w:=result.w/s;
+  end else begin
+   result.x:=0.0;
+   result.y:=0.0;
+   result.z:=0.0;
+   result.w:=1.0;
+  end;
  end;
  begin
   // Make sure, that we don't end up with 0 as w component
@@ -295,10 +503,22 @@ begin
  end;
 end;
 
-function Matrix3x3FromQTangent(pQTangent:TQuaternion):TMatrix3x3;
-var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:single;
+function VulkanModelMatrix3x3FromQTangent(pQTangent:TVulkanModelQuaternion):TVulkanModelMatrix3x3;
+var f,qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TVkFloat;
 begin
- QuaternionNormalize(pQTangent);
+ f:=sqr(pQTangent.x)+sqr(pQTangent.y)+sqr(pQTangent.z)+sqr(pQTangent.w);
+ if f>0.0 then begin
+  f:=sqrt(f);
+  pQTangent.x:=pQTangent.x/f;
+  pQTangent.y:=pQTangent.y/f;
+  pQTangent.z:=pQTangent.z/f;
+  pQTangent.w:=pQTangent.w/f;
+ end else begin
+  pQTangent.x:=0.0;
+  pQTangent.y:=0.0;
+  pQTangent.z:=0.0;
+  pQTangent.w:=1.0;
+ end;
  qx2:=pQTangent.x+pQTangent.x;
  qy2:=pQTangent.y+pQTangent.y;
  qz2:=pQTangent.z+pQTangent.z;
@@ -365,7 +585,7 @@ begin
  fCountObjects:=0;
 end;
 
-procedure TVulkanModel.MakeCube(const pSizeX,pSizeY,pSizeZ:single);
+procedure TVulkanModel.MakeCube(const pSizeX,pSizeY,pSizeZ:TVkFloat);
 type PCubeVertex=^TCubeVertex;
      TCubeVertex=record
       Position:TVulkanModelVector3;
@@ -439,8 +659,8 @@ var Index:TVkInt32;
     Material:PVulkanModelMaterial;
     ModelVertex:PVulkanModelVertex;
     CubeVertex:PCubeVertex;
-    m:TMatrix3x3;
-    q:TQuaternion;
+    m:TVulkanModelMatrix3x3;
+    q:TVulkanModelQuaternion;
     Part:PVulkanModelPart;
     AObject:PVulkanModelObject;
 begin
@@ -460,10 +680,18 @@ begin
  Material:=@fMaterials[0];
  Material^.Name:='cube';
  Material^.Texture:='cube';
- Material^.Ambient:=UnitMath3D.Vector3(0.1,0.1,0.1);
- Material^.Diffuse:=UnitMath3D.Vector3(0.8,0.8,0.8);
- Material^.Emission:=UnitMath3D.Vector3(0.0,0.0,0.0);
- Material^.Specular:=UnitMath3D.Vector3(0.1,0.1,0.1);
+ Material^.Ambient.r:=0.1;
+ Material^.Ambient.g:=0.1;
+ Material^.Ambient.b:=0.1;
+ Material^.Diffuse.r:=0.8;
+ Material^.Diffuse.g:=0.8;
+ Material^.Diffuse.b:=0.8;
+ Material^.Emission.r:=0.0;
+ Material^.Emission.g:=0.0;
+ Material^.Emission.b:=0.0;
+ Material^.Specular.r:=0.1;
+ Material^.Specular.g:=0.1;
+ Material^.Specular.b:=0.1;
  Material^.Shininess:=1.0;
 
  for Index:=0 to fCountVertices-1 do begin
@@ -481,7 +709,7 @@ begin
   m[2,0]:=CubeVertex^.Normal.x;
   m[2,1]:=CubeVertex^.Normal.y;
   m[2,2]:=CubeVertex^.Normal.z;
-  q:=Matrix3x3ToQTangent(m);
+  q:=VulkanModelMatrix3x3ToQTangent(m);
   ModelVertex^.QTangent.x:=Min(Max(round(Min(Max(q.x,-1.0),1.0)*32767),-32767),32767);
   ModelVertex^.QTangent.y:=Min(Max(round(Min(Max(q.y,-1.0),1.0)*32767),-32767),32767);
   ModelVertex^.QTangent.z:=Min(Max(round(Min(Max(q.z,-1.0),1.0)*32767),-32767),32767);
@@ -507,7 +735,8 @@ begin
  AObject^.AABB.Max.x:=pSizeX*0.5;
  AObject^.AABB.Max.y:=pSizeY*0.5;
  AObject^.AABB.Max.z:=pSizeZ*0.5;
- AObject^.Sphere:=SphereFromAABB(AObject^.AABB);
+ AObject^.Sphere.Center:=VulkanModelVector3ScalarMul(VulkanModelVector3Sub(AObject^.AABB.Max,AObject^.AABB.Min),0.5);
+ AObject^.Sphere.Radius:=VulkanModelVector3Length(VulkanModelVector3Sub(AObject^.AABB.Max,AObject^.AABB.Min))/sqrt(3.0);
 
 end;
 
@@ -538,10 +767,16 @@ var Signature:TChunkSignature;
   ChunkStream:=GetChunkStream(ChunkSignature,false);
   try
    if assigned(ChunkStream) and (ChunkStream.Size<>0) then begin
-    fSphere.Center:=ChunkStream.ReadVector3;
+    fSphere.Center.x:=ChunkStream.ReadFloat;
+    fSphere.Center.y:=ChunkStream.ReadFloat;
+    fSphere.Center.z:=ChunkStream.ReadFloat;
     fSphere.Radius:=ChunkStream.ReadFloat;
-    fAABB.Min:=ChunkStream.ReadVector3;
-    fAABB.Max:=ChunkStream.ReadVector3;
+    fAABB.Min.x:=ChunkStream.ReadFloat;
+    fAABB.Min.y:=ChunkStream.ReadFloat;
+    fAABB.Min.z:=ChunkStream.ReadFloat;
+    fAABB.Max.x:=ChunkStream.ReadFloat;
+    fAABB.Max.y:=ChunkStream.ReadFloat;
+    fAABB.Max.z:=ChunkStream.ReadFloat;
    end else begin
     raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
    end;
@@ -558,16 +793,24 @@ var Signature:TChunkSignature;
   ChunkStream:=GetChunkStream(ChunkSignature,true);
   try
    if assigned(ChunkStream) and (ChunkStream.Size<>0) then begin
-    fCountMaterials:=ChunkStream.ReadInteger;
+    fCountMaterials:=ChunkStream.ReadInt32;
     SetLength(fMaterials,fCountMaterials);
     for Index:=0 to fCountMaterials-1 do begin
      Material:=@fMaterials[Index];
      Material^.Name:=ChunkStream.ReadString;
      Material^.Texture:=ChunkStream.ReadString;
-     Material^.Ambient:=ChunkStream.ReadVector3;
-     Material^.Diffuse:=ChunkStream.ReadVector3;
-     Material^.Emission:=ChunkStream.ReadVector3;
-     Material^.Specular:=ChunkStream.ReadVector3;
+     Material^.Ambient.r:=ChunkStream.ReadFloat;
+     Material^.Ambient.g:=ChunkStream.ReadFloat;
+     Material^.Ambient.b:=ChunkStream.ReadFloat;
+     Material^.Diffuse.r:=ChunkStream.ReadFloat;
+     Material^.Diffuse.g:=ChunkStream.ReadFloat;
+     Material^.Diffuse.b:=ChunkStream.ReadFloat;
+     Material^.Emission.r:=ChunkStream.ReadFloat;
+     Material^.Emission.g:=ChunkStream.ReadFloat;
+     Material^.Emission.b:=ChunkStream.ReadFloat;
+     Material^.Specular.r:=ChunkStream.ReadFloat;
+     Material^.Specular.g:=ChunkStream.ReadFloat;
+     Material^.Specular.b:=ChunkStream.ReadFloat;
      Material^.Shininess:=ChunkStream.ReadFloat;
     end;
    end else begin
@@ -581,13 +824,13 @@ var Signature:TChunkSignature;
  const ChunkSignature:TChunkSignature=('V','B','O','S');
  var ChunkStream:TChunkStream;
      VertexIndex:TVkInt32;
-     q:TQuaternion;
-     m:TMatrix3x3;
+     q:TVulkanModelQuaternion;
+     m:TVulkanModelMatrix3x3;
  begin
   ChunkStream:=GetChunkStream(ChunkSignature,true);
   try
    if assigned(ChunkStream) and (ChunkStream.Size<>0) then begin
-    fCountVertices:=ChunkStream.ReadInteger;
+    fCountVertices:=ChunkStream.ReadInt32;
     SetLength(fVertices,fCountVertices);
     if fCountVertices>0 then begin
      ChunkStream.ReadWithCheck(fVertices[0],fCountVertices*SizeOf(TVulkanModelVertex));
@@ -598,7 +841,7 @@ var Signature:TChunkSignature;
        q.y:=Vertices[VertexIndex].QTangent.y/32767.0;
        q.z:=Vertices[VertexIndex].QTangent.z/32767.0;
        q.w:=Vertices[VertexIndex].QTangent.w/32767.0;
-       m:=Matrix3x3FromQTangent(q);
+       m:=VulkanModelMatrix3x3FromQTangent(q);
        fKraftMesh.AddNormal(Kraft.Vector3(m[2,0],m[2,1],m[2,2]));
       end;
      end;
@@ -618,7 +861,7 @@ var Signature:TChunkSignature;
   ChunkStream:=GetChunkStream(ChunkSignature,true);
   try
    if assigned(ChunkStream) and (ChunkStream.Size<>0) then begin
-    fCountIndices:=ChunkStream.ReadInteger;
+    fCountIndices:=ChunkStream.ReadInt32;
     SetLength(fIndices,fCountIndices);
     if fCountIndices>0 then begin
      ChunkStream.ReadWithCheck(fIndices[0],fCountIndices*SizeOf(TVulkanModelIndex));
@@ -648,13 +891,13 @@ var Signature:TChunkSignature;
   ChunkStream:=GetChunkStream(ChunkSignature,true);
   try
    if assigned(ChunkStream) and (ChunkStream.Size<>0) then begin
-    fCountParts:=ChunkStream.ReadInteger;
+    fCountParts:=ChunkStream.ReadInt32;
     SetLength(fParts,fCountParts);
     for Index:=0 to fCountParts-1 do begin
      Part:=@fParts[Index];
-     Part^.Material:=ChunkStream.ReadInteger;
-     Part^.StartIndex:=ChunkStream.ReadInteger;
-     Part^.CountIndices:=ChunkStream.ReadInteger;
+     Part^.Material:=ChunkStream.ReadInt32;
+     Part^.StartIndex:=ChunkStream.ReadInt32;
+     Part^.CountIndices:=ChunkStream.ReadInt32;
     end;
    end else begin
     raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
@@ -672,15 +915,21 @@ var Signature:TChunkSignature;
   ChunkStream:=GetChunkStream(ChunkSignature,true);
   try
    if assigned(ChunkStream) and (ChunkStream.Size<>0) then begin
-    fCountObjects:=ChunkStream.ReadInteger;
+    fCountObjects:=ChunkStream.ReadInt32;
     SetLength(fObjects,fCountObjects);
     for ObjectIndex:=0 to fCountObjects-1 do begin
      AObject:=@fObjects[ObjectIndex];
      AObject^.Name:=ChunkStream.ReadString;
-     AObject^.Sphere.Center:=ChunkStream.ReadVector3;
+     AObject^.Sphere.Center.x:=ChunkStream.ReadFloat;
+     AObject^.Sphere.Center.y:=ChunkStream.ReadFloat;
+     AObject^.Sphere.Center.z:=ChunkStream.ReadFloat;
      AObject^.Sphere.Radius:=ChunkStream.ReadFloat;
-     AObject^.AABB.Min:=ChunkStream.ReadVector3;
-     AObject^.AABB.Max:=ChunkStream.ReadVector3;
+     AObject^.AABB.Min.x:=ChunkStream.ReadFloat;
+     AObject^.AABB.Min.y:=ChunkStream.ReadFloat;
+     AObject^.AABB.Min.z:=ChunkStream.ReadFloat;
+     AObject^.AABB.Max.x:=ChunkStream.ReadFloat;
+     AObject^.AABB.Max.y:=ChunkStream.ReadFloat;
+     AObject^.AABB.Max.z:=ChunkStream.ReadFloat;
     end;
    end else begin
     raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
@@ -798,7 +1047,7 @@ begin
 
   end else if fCountIndices<=MaxCount then begin
 
-   // Good, the whole model fits into single vertex and index buffers
+   // Good, the whole model fits into TVkFloat vertex and index buffers
 
    fCountBuffers:=1;
 
