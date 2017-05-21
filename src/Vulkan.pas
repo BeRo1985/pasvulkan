@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=49;
+      VK_HEADER_VERSION=50;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -296,7 +296,7 @@ const VK_NULL_HANDLE=0;
       VK_ANDROID_NATIVE_BUFFER_SPEC_VERSION=4;
       VK_ANDROID_NATIVE_BUFFER_NUMBER=11;
       VK_ANDROID_NATIVE_BUFFER_NAME='VK_ANDROID_native_buffer';
-      VK_EXT_DEBUG_REPORT_SPEC_VERSION=6;
+      VK_EXT_DEBUG_REPORT_SPEC_VERSION=8;
       VK_EXT_DEBUG_REPORT_EXTENSION_NAME='VK_EXT_debug_report';
       VK_NV_GLSL_SHADER_SPEC_VERSION=1;
       VK_NV_GLSL_SHADER_EXTENSION_NAME='VK_NV_glsl_shader';
@@ -356,8 +356,8 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_40_EXTENSION_NAME='VK_AMD_extension_40';
       VK_AMD_EXTENSION_41_SPEC_VERSION=0;
       VK_AMD_EXTENSION_41_EXTENSION_NAME='VK_AMD_extension_41';
-      VK_AMD_EXTENSION_42_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_42_EXTENSION_NAME='VK_AMD_extension_42';
+      VK_AMD_TEXTURE_GATHER_BIAS_LOD_SPEC_VERSION=1;
+      VK_AMD_TEXTURE_GATHER_BIAS_LOD_EXTENSION_NAME='VK_AMD_texture_gather_bias_lod';
       VK_AMD_EXTENSION_43_SPEC_VERSION=0;
       VK_AMD_EXTENSION_43_EXTENSION_NAME='VK_AMD_extension_43';
       VK_AMD_EXTENSION_44_SPEC_VERSION=0;
@@ -1738,6 +1738,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV=1000026000,
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV=1000026001,
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV=1000026002,
+       VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD=1000041000,
        VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO_KHX=1000053000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHX=1000053001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHX=1000053002,
@@ -2370,20 +2371,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT=25,
        VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT=26,
        VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT=27,
+       VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT_EXT=28,
        VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT=28,
        VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_KHR_EXT=29,
        VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT=30,
        VK_DEBUG_REPORT_OBJECT_TYPE_OBJECT_TABLE_NVX_EXT=31,
        VK_DEBUG_REPORT_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX_EXT=32,
        VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR_EXT=1000085000
-      );
-
-     PPVkDebugReportErrorEXT=^PVkDebugReportErrorEXT;
-     PVkDebugReportErrorEXT=^TVkDebugReportErrorEXT;
-     TVkDebugReportErrorEXT=
-      (
-       VK_DEBUG_REPORT_ERROR_NONE_EXT=0,
-       VK_DEBUG_REPORT_ERROR_CALLBACK_REF_EXT=1
       );
 
      PPVkRasterizationOrderAMD=^PVkRasterizationOrderAMD;
@@ -2417,7 +2411,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkValidationCheckEXT=^TVkValidationCheckEXT;
      TVkValidationCheckEXT=
       (
-       VK_VALIDATION_CHECK_ALL_EXT=0
+       VK_VALIDATION_CHECK_ALL_EXT=0,
+       VK_VALIDATION_CHECK_SHADERS_EXT=1
       );
 
      PPVkIndirectCommandsLayoutUsageFlagBitsNVX=^PVkIndirectCommandsLayoutUsageFlagBitsNVX;
@@ -7399,6 +7394,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        sharedPresentSupportedUsageFlags:TVkImageUsageFlags; //< Supported image usage flags if swapchain created using a shared present mode
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pSharedPresentSupportedUsageFlags:TVkImageUsageFlags); //< Supported image usage flags if swapchain created using a shared present mode
+{$endif}
+     end;
+
+     PPVkTextureLODGatherFormatPropertiesAMD=^PVkTextureLODGatherFormatPropertiesAMD;
+     PVkTextureLODGatherFormatPropertiesAMD=^TVkTextureLODGatherFormatPropertiesAMD;
+     TVkTextureLODGatherFormatPropertiesAMD=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD
+       pNext:PVkVoid; //< Pointer to next structure
+       supportsTextureGatherLODBiasAMD:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSupportsTextureGatherLODBiasAMD:TVkBool32);
 {$endif}
      end;
 
@@ -14362,6 +14371,13 @@ begin
  sType:=VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR;
  pNext:=nil;
  sharedPresentSupportedUsageFlags:=pSharedPresentSupportedUsageFlags;
+end;
+
+constructor TVkTextureLODGatherFormatPropertiesAMD.Create(const pSupportsTextureGatherLODBiasAMD:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD;
+ pNext:=nil;
+ supportsTextureGatherLODBiasAMD:=pSupportsTextureGatherLODBiasAMD;
 end;
 {$endif}
 
