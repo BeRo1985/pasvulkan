@@ -14,7 +14,7 @@ unit UnitScreenExit;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanSDL2,PasVulkanApplication,UnitScreenBlank;
+uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanApplication,UnitScreenBlank;
 
 type TScreenExit=class(TScreenBlank)
       private

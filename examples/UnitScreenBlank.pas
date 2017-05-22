@@ -14,7 +14,7 @@ unit UnitScreenBlank;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanSDL2,PasVulkanApplication;
+uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanApplication;
 
 type TScreenBlank=class(TVulkanApplicationScreen)
       private
@@ -40,13 +40,11 @@ type TScreenBlank=class(TVulkanApplicationScreen)
 
        procedure Pause; override;
 
-       procedure Resize(const pWidth,pHeight:TSDLInt32); override;
+       procedure Resize(const pWidth,pHeight:TVkInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
-
-       function HandleEvent(const pEvent:TSDL_Event):boolean; override;
 
        procedure Update(const pDeltaTime:double); override;
 
@@ -128,7 +126,7 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenBlank.Resize(const pWidth,pHeight:TSDLInt32);
+procedure TScreenBlank.Resize(const pWidth,pHeight:TVkInt32);
 begin
  inherited Resize(pWidth,pHeight);
 end;
@@ -225,11 +223,6 @@ procedure TScreenBlank.BeforeDestroySwapChain;
 begin
  FreeAndNil(fVulkanRenderPass);
  inherited BeforeDestroySwapChain;
-end;
-
-function TScreenBlank.HandleEvent(const pEvent:TSDL_Event):boolean;
-begin
- result:=inherited HandleEvent(pEvent);
 end;
 
 procedure TScreenBlank.Update(const pDeltaTime:double);

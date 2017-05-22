@@ -14,7 +14,7 @@ unit UnitScreenExampleDragon;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanSDL2,PasVulkanApplication,UnitRegisteredExamplesList,UnitMath3D,UnitModel;
+uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanApplication,UnitRegisteredExamplesList,UnitMath3D,UnitModel;
 
 type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
      TScreenExampleDragonUniformBuffer=record
@@ -70,13 +70,11 @@ type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
 
        procedure Pause; override;
 
-       procedure Resize(const pWidth,pHeight:TSDLInt32); override;
+       procedure Resize(const pWidth,pHeight:TVkInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
-
-       function HandleEvent(const pEvent:TSDL_Event):boolean; override;
 
        function KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
 
@@ -289,7 +287,7 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenExampleDragon.Resize(const pWidth,pHeight:TSDLInt32);
+procedure TScreenExampleDragon.Resize(const pWidth,pHeight:TVkInt32);
 begin
  inherited Resize(pWidth,pHeight);
 end;
@@ -464,11 +462,6 @@ begin
  FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fVulkanGraphicsPipeline);
  inherited BeforeDestroySwapChain;
-end;
-
-function TScreenExampleDragon.HandleEvent(const pEvent:TSDL_Event):boolean;
-begin
- result:=inherited HandleEvent(pEvent);
 end;
 
 function TScreenExampleDragon.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;

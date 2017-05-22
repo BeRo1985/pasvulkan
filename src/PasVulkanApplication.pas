@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-19-14-52-0000                       *
+ *                        Version 2017-05-22-16-59-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -786,7 +786,7 @@ type EVulkanApplication=class(Exception)
 
        procedure LowMemory; virtual;
 
-       procedure Resize(const pWidth,pHeight:TSDLInt32); virtual;
+       procedure Resize(const pWidth,pHeight:TVkInt32); virtual;
 
        procedure AfterCreateSwapChain; virtual;
 
@@ -906,17 +906,17 @@ type EVulkanApplication=class(Exception)
        fLifecycleListenerList:TList;
        fLifecycleListenerListCriticalSection:TPasMPCriticalSection;
 
-       fCurrentWidth:TSDLInt32;
-       fCurrentHeight:TSDLInt32;
-       fCurrentFullscreen:TSDLInt32;
-       fCurrentVSync:TSDLInt32;
-       fCurrentVisibleMouseCursor:TSDLInt32;
-       fCurrentCatchMouse:TSDLInt32;
-       fCurrentHideSystemBars:TSDLInt32;
-       fCurrentBlocking:TSDLInt32;
+       fCurrentWidth:TVkInt32;
+       fCurrentHeight:TVkInt32;
+       fCurrentFullscreen:TVkInt32;
+       fCurrentVSync:TVkInt32;
+       fCurrentVisibleMouseCursor:TVkInt32;
+       fCurrentCatchMouse:TVkInt32;
+       fCurrentHideSystemBars:TVkInt32;
+       fCurrentBlocking:TVkInt32;
 
-       fWidth:TSDLInt32;
-       fHeight:TSDLInt32;
+       fWidth:TVkInt32;
+       fHeight:TVkInt32;
        fFullscreen:boolean;
        fVSync:boolean;
        fResizable:boolean;
@@ -942,8 +942,8 @@ type EVulkanApplication=class(Exception)
        fKeyRepeatInterval:TVulkanApplicationHighResolutionTime;
        fKeyRepeatInitialInterval:TVulkanApplicationHighResolutionTime;
 
-       fScreenWidth:TSDLInt32;
-       fScreenHeight:TSDLInt32;
+       fScreenWidth:TVkInt32;
+       fScreenHeight:TVkInt32;
 
        fVideoFlags:TSDLUInt32;
 
@@ -1157,7 +1157,7 @@ type EVulkanApplication=class(Exception)
 
        procedure LowMemory; virtual;
 
-       procedure Resize(const pWidth,pHeight:TSDLInt32); virtual;
+       procedure Resize(const pWidth,pHeight:TVkInt32); virtual;
 
        procedure AfterCreateSwapChain; virtual;
 
@@ -1210,8 +1210,8 @@ type EVulkanApplication=class(Exception)
 
        property PathName:string read fPathName write fPathName;
 
-       property Width:TSDLInt32 read fWidth write fWidth;
-       property Height:TSDLInt32 read fHeight write fHeight;
+       property Width:TVkInt32 read fWidth write fWidth;
+       property Height:TVkInt32 read fHeight write fHeight;
 
        property Fullscreen:boolean read fFullscreen write fFullscreen;
 
@@ -4505,7 +4505,7 @@ procedure TVulkanApplicationScreen.LowMemory;
 begin
 end;
 
-procedure TVulkanApplicationScreen.Resize(const pWidth,pHeight:TSDLInt32);
+procedure TVulkanApplicationScreen.Resize(const pWidth,pHeight:TVkInt32);
 begin
 end;
 
@@ -6819,7 +6819,7 @@ begin
 
 end;
 
-procedure TVulkanApplication.Resize(const pWidth,pHeight:TSDLInt32);
+procedure TVulkanApplication.Resize(const pWidth,pHeight:TVkInt32);
 begin
  if assigned(fScreen) then begin
   fScreen.Resize(pWidth,pHeight);

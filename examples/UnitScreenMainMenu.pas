@@ -14,7 +14,7 @@ unit UnitScreenMainMenu;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanSDL2,PasVulkanApplication,UnitRegisteredExamplesList,UnitScreenBlank;
+uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanApplication,UnitRegisteredExamplesList,UnitScreenBlank;
 
 type TScreenMainMenu=class(TScreenBlank)
       private

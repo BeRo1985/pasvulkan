@@ -14,7 +14,7 @@ unit UnitScreenExampleTriangle;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanSDL2,PasVulkanApplication,UnitRegisteredExamplesList;
+uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanApplication,UnitRegisteredExamplesList;
 
 type TScreenExampleTriangle=class(TVulkanApplicationScreen)
       private
@@ -51,13 +51,11 @@ type TScreenExampleTriangle=class(TVulkanApplicationScreen)
 
        procedure Pause; override;
 
-       procedure Resize(const pWidth,pHeight:TSDLInt32); override;
+       procedure Resize(const pWidth,pHeight:TVkInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
-
-       function HandleEvent(const pEvent:TSDL_Event):boolean; override;
 
        function KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
 
@@ -262,7 +260,7 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenExampleTriangle.Resize(const pWidth,pHeight:TSDLInt32);
+procedure TScreenExampleTriangle.Resize(const pWidth,pHeight:TVkInt32);
 begin
  inherited Resize(pWidth,pHeight);
 end;
@@ -436,11 +434,6 @@ begin
  FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fVulkanGraphicsPipeline);
  inherited BeforeDestroySwapChain;
-end;
-
-function TScreenExampleTriangle.HandleEvent(const pEvent:TSDL_Event):boolean;
-begin
- result:=inherited HandleEvent(pEvent);
 end;
 
 function TScreenExampleTriangle.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
