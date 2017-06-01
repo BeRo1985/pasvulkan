@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-01-05-47-0000                       *
+ *                        Version 2017-06-01-05-54-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -11902,17 +11902,13 @@ end;
 destructor TVulkanDeviceMemoryChunk.Destroy;
 begin
 
- if vdmcfPersistentMapped in fMemoryChunkFlags then begin
+ if (vdmcfPersistentMapped in fMemoryChunkFlags) and
+    assigned(fMemory) and
+    ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0) then begin
   fLock.Acquire;
   try
-   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
-    if assigned(fMemory) then begin
-     fMemoryManager.fDevice.Commands.UnmapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle);
-     fMemory:=nil;
-    end else begin
-     raise EVulkanException.Create('Non-mapped memory can''t unmapped');
-    end;
-   end;
+   fMemoryManager.fDevice.Commands.UnmapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle);
+   fMemory:=nil;
   finally
    fLock.Release;
   end;
