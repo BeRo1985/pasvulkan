@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-05-22-16-59-0000                       *
+ *                        Version 2017-06-01-05-05-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1052,6 +1052,10 @@ type EVulkanApplication=class(Exception)
        fVulkanWaitFencesReady:array[0..MaxSwapChainImages-1] of boolean;
 
        fVulkanPresentCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+
+       fVulkanPresentCompleteFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
+
+       fVulkanPresentCompleteFencesReady:array[0..MaxSwapChainImages-1] of boolean;
 
        fVulkanDepthImageFormat:TVkFormat;
 
@@ -5006,6 +5010,11 @@ begin
  if assigned(fVulkanDevice) then begin
   fVulkanDevice.WaitIdle;
   for Index:=0 to fCountSwapChainImages-1 do begin
+   if fVulkanPresentCompleteFencesReady[Index] then begin
+    fVulkanPresentCompleteFences[Index].WaitFor;
+    fVulkanPresentCompleteFences[Index].Reset;
+    fVulkanPresentCompleteFencesReady[Index]:=false;
+   end;
    if fVulkanWaitFencesReady[Index] and assigned(fVulkanWaitFences[Index]) then begin
     fVulkanWaitFences[Index].WaitFor;
     fVulkanWaitFences[Index].Reset;
@@ -5376,6 +5385,8 @@ begin
   fVulkanWaitFences[Index]:=TVulkanFence.Create(fVulkanDevice);
   fVulkanWaitFencesReady[Index]:=false;
   fVulkanPresentCompleteSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
+  fVulkanPresentCompleteFences[Index]:=TVulkanFence.Create(fVulkanDevice);
+  fVulkanPresentCompleteFencesReady[Index]:=false;
  end;
 
 end;
@@ -5385,8 +5396,10 @@ var Index:TVkInt32;
 begin
  for Index:=0 to fCountSwapChainImages-1 do begin
   fVulkanWaitFencesReady[Index]:=false;
+  fVulkanPresentCompleteFencesReady[Index]:=false;
   FreeAndNil(fVulkanWaitFences[Index]);
   FreeAndNil(fVulkanPresentCompleteSemaphores[Index]);
+  FreeAndNil(fVulkanPresentCompleteFences[Index]);
  end;
  FreeAndNil(fVulkanSwapChain);
 end;
@@ -5711,7 +5724,20 @@ begin
 
  if fVulkanRecreationKind=vavrkNone then begin
 
+  if fVulkanPresentCompleteFencesReady[fCurrentSwapChainImageIndex] then begin
+   if fVulkanPresentCompleteFences[fCurrentSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
+    if fBlocking then begin
+     fVulkanPresentCompleteFences[fCurrentSwapChainImageIndex].WaitFor;
+    end else begin
+     exit;
+    end;
+   end;
+   fVulkanPresentCompleteFences[fCurrentSwapChainImageIndex].Reset;
+   fVulkanPresentCompleteFencesReady[fCurrentSwapChainImageIndex]:=false;
+  end;
+
   if not fBlocking then begin
+
    if fVulkanWaitFencesReady[fCurrentSwapChainImageIndex] then begin
     if fVulkanWaitFences[fCurrentSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
      exit;
@@ -5719,6 +5745,7 @@ begin
     fVulkanWaitFences[fCurrentSwapChainImageIndex].Reset;
     fVulkanWaitFencesReady[fCurrentSwapChainImageIndex]:=false;
    end;
+
   end;
 
   if (fVulkanSwapChain.Width<>Width) or
@@ -5737,9 +5764,10 @@ begin
      TimeOut:=0;
     end;
     case fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fCurrentImageIndex],
-                                           nil,
+                                           fVulkanPresentCompleteFences[fCurrentImageIndex],
                                            TimeOut) of
      VK_SUCCESS:begin
+      fVulkanPresentCompleteFencesReady[fCurrentImageIndex]:=true;
       fCurrentSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
      end;
      VK_SUBOPTIMAL_KHR:begin
@@ -5781,6 +5809,11 @@ begin
  if fVulkanRecreationKind in [vavrkSwapChain,vavrkSurface] then begin
 
   for ImageIndex:=0 to fCountSwapChainImages-1 do begin
+   if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
+    fVulkanPresentCompleteFences[ImageIndex].WaitFor;
+    fVulkanPresentCompleteFences[ImageIndex].Reset;
+    fVulkanPresentCompleteFencesReady[ImageIndex]:=false;
+   end;
    if fVulkanWaitFencesReady[ImageIndex] then begin
     fVulkanWaitFences[ImageIndex].WaitFor;
     fVulkanWaitFences[ImageIndex].Reset;
