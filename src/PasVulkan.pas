@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-01-05-05-0000                       *
+ *                        Version 2017-06-01-05-47-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1024,6 +1024,15 @@ type EVulkanException=class(Exception);
        property OwnsResource:boolean read fOwnsResource write fOwnsResource;
      end;
 
+     PVulkanDeviceMemoryChunkFlag=^TVulkanDeviceMemoryChunkFlag;
+     TVulkanDeviceMemoryChunkFlag=
+      (
+       vdmcfPersistentMapped
+      );
+
+     PVulkanDeviceMemoryChunkFlags=^TVulkanDeviceMemoryChunkFlags;
+     TVulkanDeviceMemoryChunkFlags=set of TVulkanDeviceMemoryChunkFlag;
+
      TVulkanDeviceMemoryChunkBlock=class;
 
      PVulkanDeviceMemoryChunkBlockRedBlackTreeKey=^TVulkanDeviceMemoryChunkBlockRedBlackTreeKey;
@@ -1119,6 +1128,7 @@ type EVulkanException=class(Exception);
        fPreviousMemoryChunk:TVulkanDeviceMemoryChunk;
        fNextMemoryChunk:TVulkanDeviceMemoryChunk;
        fLock:TCriticalSection;
+       fMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
        fAlignment:TVkDeviceSize;
        fMemoryChunkList:PVulkanDeviceMemoryManagerChunkList;
        fSize:TVkDeviceSize;
@@ -1136,6 +1146,7 @@ type EVulkanException=class(Exception);
        fMemory:PVkVoid;
       public
        constructor Create(const pMemoryManager:TVulkanDeviceMemoryManager;
+                          const pMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
                           const pSize:TVkDeviceSize;
                           const pAlignment:TVkDeviceSize;
                           const pMemoryTypeBits:TVkUInt32;
@@ -1151,7 +1162,9 @@ type EVulkanException=class(Exception);
        function MapMemory(const pOffset:TVkDeviceSize=0;const pSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
        procedure UnmapMemory;
        procedure FlushMappedMemory;
+       procedure FlushMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
        procedure InvalidateMappedMemory;
+       procedure InvalidateMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
        property Memory:PVkVoid read fMemory;
       published
        property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
@@ -1191,7 +1204,9 @@ type EVulkanException=class(Exception);
        function MapMemory(const pOffset:TVkDeviceSize=0;const pSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
        procedure UnmapMemory;
        procedure FlushMappedMemory;
+       procedure FlushMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
        procedure InvalidateMappedMemory;
+       procedure InvalidateMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
        function Fill(const pData:PVkVoid;const pSize:TVkDeviceSize):TVkDeviceSize;
       published
        property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
@@ -3367,7 +3382,7 @@ begin
     VulkanHalfFloatToFloatExponentTable[31]:=$47800000;
     VulkanHalfFloatToFloatExponentTable[32]:=0;
     for i:=33 to 62 do begin
-     VulkanHalfFloatToFloatExponentTable[i]:=((i-32) shl 23) or $80000000;
+     VulkanHalfFloatToFloatExponentTable[i]:=TVkUInt32(TVkUInt32(i-32) shl 23) or $80000000;
     end;
     VulkanHalfFloatToFloatExponentTable[63]:=$c7800000;
    end;
@@ -11768,6 +11783,7 @@ begin
 end;
 
 constructor TVulkanDeviceMemoryChunk.Create(const pMemoryManager:TVulkanDeviceMemoryManager;
+                                            const pMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
                                             const pSize:TVkDeviceSize;
                                             const pAlignment:TVkDeviceSize;
                                             const pMemoryTypeBits:TVkUInt32;
@@ -11785,6 +11801,8 @@ begin
  inherited Create;
 
  fMemoryManager:=pMemoryManager;
+                    
+ fMemoryChunkFlags:=pMemoryChunkFlags;
 
  fSize:=pSize;
 
@@ -11860,10 +11878,45 @@ begin
  fMemoryChunkList^.First:=self;
  fPreviousMemoryChunk:=nil;
 
+ if vdmcfPersistentMapped in fMemoryChunkFlags then begin
+  fLock.Acquire;
+  try
+   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+    if assigned(fMemory) then begin
+     raise EVulkanException.Create('Memory is already mapped');
+    end else begin
+     fMappedOffset:=0;
+     fMappedSize:=pSize;
+     HandleResultCode(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,0,pSize,0,@fMemory));
+    end;
+   end else begin
+    raise EVulkanException.Create('Memory can''t mapped');
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+
 end;
 
 destructor TVulkanDeviceMemoryChunk.Destroy;
 begin
+
+ if vdmcfPersistentMapped in fMemoryChunkFlags then begin
+  fLock.Acquire;
+  try
+   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+    if assigned(fMemory) then begin
+     fMemoryManager.fDevice.Commands.UnmapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle);
+     fMemory:=nil;
+    end else begin
+     raise EVulkanException.Create('Non-mapped memory can''t unmapped');
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
 
  if assigned(fOffsetRedBlackTree) then begin
   while assigned(fOffsetRedBlackTree.fRoot) do begin
@@ -12115,7 +12168,7 @@ begin
    end;
 
   end;
-  
+
  finally
   fLock.Release;
  end;
@@ -12124,39 +12177,59 @@ end;
 function TVulkanDeviceMemoryChunk.MapMemory(const pOffset:TVkDeviceSize=0;const pSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
 begin
  result:=nil;
- fLock.Acquire;
- try
+ if vdmcfPersistentMapped in fMemoryChunkFlags then begin
   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
    if assigned(fMemory) then begin
-    raise EVulkanException.Create('Memory is already mapped');
+    result:=TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+TVkPtrUInt(pOffset)));
    end else begin
-    fMappedOffset:=pOffset;
-    fMappedSize:=pSize;
-    HandleResultCode(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,pOffset,pSize,0,@result));
-    fMemory:=result;
+    raise EVulkanException.Create('Persistent mapped memory is not mapped?');
    end;
   end else begin
    raise EVulkanException.Create('Memory can''t mapped');
   end;
- finally
-  fLock.Release;
+ end else begin
+  fLock.Acquire;
+  try
+   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+    if assigned(fMemory) then begin
+     raise EVulkanException.Create('Memory is already mapped');
+    end else begin
+     fMappedOffset:=pOffset;
+     fMappedSize:=pSize;
+     HandleResultCode(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,pOffset,pSize,0,@result));
+     fMemory:=result;
+    end;
+   end else begin
+    raise EVulkanException.Create('Memory can''t mapped');
+   end;
+  finally
+   fLock.Release;
+  end;
  end;
 end;
 
 procedure TVulkanDeviceMemoryChunk.UnmapMemory;
 begin
- fLock.Acquire;
- try
-  if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
-   if assigned(fMemory) then begin
-    fMemoryManager.fDevice.Commands.UnmapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle);
-    fMemory:=nil;
-   end else begin
-    raise EVulkanException.Create('Non-mapped memory can''t unmapped');
-   end;
+ if vdmcfPersistentMapped in fMemoryChunkFlags then begin
+  if assigned(fMemory) then begin
+   // Do nothing in this case
+  end else begin 
+   raise EVulkanException.Create('Persistent mapped memory is not mapped?');
   end;
- finally
-  fLock.Release;
+ end else begin
+  fLock.Acquire;
+  try
+   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+    if assigned(fMemory) then begin
+     fMemoryManager.fDevice.Commands.UnmapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle);
+     fMemory:=nil;
+    end else begin
+     raise EVulkanException.Create('Non-mapped memory can''t unmapped');
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
  end;
 end;
 
@@ -12181,6 +12254,34 @@ begin
  end;
 end;
 
+procedure TVulkanDeviceMemoryChunk.FlushMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
+var MappedMemoryRange:TVkMappedMemoryRange;
+    Offset,Size:TVkDeviceSize;
+begin
+ fLock.Acquire;
+ try
+  if assigned(fMemory) then begin
+   Offset:=fMappedOffset+TVkDeviceSize(TVkPtrUInt(pBase)-TVkPtrUInt(fMemory));
+   if pSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
+    Size:=TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset)));
+   end else begin
+    Size:=Min(TVkInt64(Max(TVkInt64(pSize),0)),TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset))));
+   end;
+   FillChar(MappedMemoryRange,SizeOf(TVkMappedMemoryRange),#0);
+   MappedMemoryRange.sType:=VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+   MappedMemoryRange.pNext:=nil;
+   MappedMemoryRange.memory:=fMemoryHandle;
+   MappedMemoryRange.offset:=Offset;
+   MappedMemoryRange.size:=Size;
+   HandleResultCode(vkFlushMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
+  end else begin
+   raise EVulkanException.Create('Non-mapped memory can''t be flushed');
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
 procedure TVulkanDeviceMemoryChunk.InvalidateMappedMemory;
 var MappedMemoryRange:TVkMappedMemoryRange;
 begin
@@ -12193,6 +12294,34 @@ begin
    MappedMemoryRange.memory:=fMemoryHandle;
    MappedMemoryRange.offset:=fMappedOffset;
    MappedMemoryRange.size:=fMappedSize;
+   HandleResultCode(vkInvalidateMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
+  end else begin
+   raise EVulkanException.Create('Non-mapped memory can''t be invalidated');
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
+procedure TVulkanDeviceMemoryChunk.InvalidateMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
+var MappedMemoryRange:TVkMappedMemoryRange;
+    Offset,Size:TVkDeviceSize;
+begin
+ fLock.Acquire;
+ try
+  if assigned(fMemory) then begin
+   Offset:=fMappedOffset+TVkDeviceSize(TVkPtrUInt(pBase)-TVkPtrUInt(fMemory));
+   if pSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
+    Size:=TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset)));
+   end else begin
+    Size:=Min(TVkInt64(Max(TVkInt64(pSize),0)),TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset))));
+   end;
+   FillChar(MappedMemoryRange,SizeOf(TVkMappedMemoryRange),#0);
+   MappedMemoryRange.sType:=VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+   MappedMemoryRange.pNext:=nil;
+   MappedMemoryRange.memory:=fMemoryHandle;
+   MappedMemoryRange.offset:=Offset;
+   MappedMemoryRange.size:=Size;
    HandleResultCode(vkInvalidateMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
   end else begin
    raise EVulkanException.Create('Non-mapped memory can''t be invalidated');
@@ -12267,9 +12396,19 @@ begin
  fMemoryChunk.FlushMappedMemory;
 end;
 
+procedure TVulkanDeviceMemoryBlock.FlushMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
+begin
+ fMemoryChunk.FlushMappedMemoryRange(pBase,pSize);
+end;
+
 procedure TVulkanDeviceMemoryBlock.InvalidateMappedMemory;
 begin
  fMemoryChunk.InvalidateMappedMemory;
+end;
+
+procedure TVulkanDeviceMemoryBlock.InvalidateMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
+begin
+ fMemoryChunk.InvalidateMappedMemoryRange(pBase,pSize);
 end;
 
 function TVulkanDeviceMemoryBlock.Fill(const pData:PVkVoid;const pSize:TVkDeviceSize):TVkDeviceSize;
@@ -12333,12 +12472,18 @@ function TVulkanDeviceMemoryManager.AllocateMemoryBlock(const pMemoryBlockFlags:
 var MemoryChunkList:PVulkanDeviceMemoryManagerChunkList;
     MemoryChunk:TVulkanDeviceMemoryChunk;
     Offset,Alignment:TVkDeviceSize;
+    MemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
 begin
 
  result:=nil;
 
  if pMemoryBlockSize=0 then begin
   raise EVulkanMemoryAllocationException.Create('Can''t allocate zero-sized memory block');
+ end;
+
+ MemoryChunkFlags:=[];
+ if vdmbfPersistentMapped in pMemoryBlockFlags then begin
+  Include(MemoryChunkFlags,vdmcfPersistentMapped);
  end;
 
  if vdmbfOwnSingleMemoryChunk in pMemoryBlockFlags then begin
@@ -12350,7 +12495,16 @@ begin
   fLock.Acquire;
   try
    // Allocate a block inside a new chunk
-   MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,pMemoryBlockSize,Alignment,pMemoryTypeBits,pMemoryPropertyFlags,pMemoryAvoidPropertyFlags,pMemoryHeapFlags,pMemoryAvoidHeapFlags,MemoryChunkList);
+   MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,
+                                                MemoryChunkFlags,
+                                                pMemoryBlockSize,
+                                                Alignment,
+                                                pMemoryTypeBits,
+                                                pMemoryPropertyFlags,
+                                                pMemoryAvoidPropertyFlags,
+                                                pMemoryHeapFlags,
+                                                pMemoryAvoidHeapFlags,
+                                                MemoryChunkList);
    if MemoryChunk.AllocateMemory(Offset,pMemoryBlockSize) then begin
     result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pMemoryBlockSize);
    end;
@@ -12380,7 +12534,8 @@ begin
        ((MemoryChunk.fMemoryPropertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags) and
        ((pMemoryAvoidPropertyFlags=0) or
         ((MemoryChunk.fMemoryPropertyFlags and pMemoryAvoidPropertyFlags)=0)) and
-       ((MemoryChunk.fSize-MemoryChunk.fUsed)>=pMemoryBlockSize) then begin
+       ((MemoryChunk.fSize-MemoryChunk.fUsed)>=pMemoryBlockSize) and
+       ((MemoryChunk.fMemoryChunkFlags*[vdmcfPersistentMapped])=(MemoryChunkFlags*[vdmcfPersistentMapped])) then begin
      if MemoryChunk.AllocateMemory(Offset,pMemoryBlockSize) then begin
       result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pMemoryBlockSize);
       break;
@@ -12391,7 +12546,16 @@ begin
 
    if not assigned(result) then begin
     // Otherwise allocate a block inside a new chunk
-    MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,VulkanDeviceSizeRoundUpToPowerOfTwo(Max(1 shl 24,pMemoryBlockSize shl 1)),Alignment,pMemoryTypeBits,pMemoryPropertyFlags,pMemoryAvoidPropertyFlags,pMemoryHeapFlags,pMemoryAvoidHeapFlags,MemoryChunkList);
+    MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,
+                                                 MemoryChunkFlags,
+                                                 VulkanDeviceSizeRoundUpToPowerOfTwo(Max(1 shl 24,pMemoryBlockSize shl 1)),
+                                                 Alignment,
+                                                 pMemoryTypeBits,
+                                                 pMemoryPropertyFlags,
+                                                 pMemoryAvoidPropertyFlags,
+                                                 pMemoryHeapFlags,
+                                                 pMemoryAvoidHeapFlags,
+                                                 MemoryChunkList);
     if MemoryChunk.AllocateMemory(Offset,pMemoryBlockSize) then begin
      result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pMemoryBlockSize);
     end;
@@ -12406,7 +12570,7 @@ begin
  if not assigned(result) then begin
   raise EVulkanMemoryAllocationException.Create('Couldn''t allocate memory block');
  end;
- 
+
 end;
 
 function TVulkanDeviceMemoryManager.FreeMemoryBlock(const pMemoryBlock:TVulkanDeviceMemoryBlock):boolean;
@@ -12613,7 +12777,7 @@ begin
     if assigned(p) then begin
      Move(pData,p^,pDataSize);
      if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
-      Memory.FlushMappedMemory;
+      Memory.FlushMappedMemoryRange(p,pDataSize);
      end;
     end else begin
      raise EVulkanException.Create('Vulkan buffer memory block map failed');
@@ -12640,7 +12804,7 @@ begin
    if assigned(p) then begin
     Move(pData,p^,pDataSize);
     if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
-     Memory.FlushMappedMemory;
+     Memory.FlushMappedMemoryRange(p,pDataSize);
     end;
    end else begin
     raise EVulkanException.Create('Vulkan buffer memory block map failed');

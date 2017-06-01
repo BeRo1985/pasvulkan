@@ -209,7 +209,11 @@ begin
                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                      nil,
-                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)}
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)},
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [vbfPersistentMapped]
                                                     );
    fVulkanVertexBuffers[Index].UploadData(VulkanApplication.VulkanDevice.TransferQueue,
                                           VulkanApplication.VulkanTransferCommandBuffers[0,0],
@@ -580,7 +584,7 @@ begin
   if assigned(p) then begin
    try
     Move(fBufferCharsBuffers[BufferIndex],p^,Size);
-    VulkanVertexBuffer.Memory.FlushMappedMemory;
+    VulkanVertexBuffer.Memory.FlushMappedMemoryRange(p,Size);
    finally
     VulkanVertexBuffer.Memory.UnmapMemory;
    end;

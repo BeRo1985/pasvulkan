@@ -1136,6 +1136,7 @@ begin
     SetLength(fIndexBuffers,fCountBuffers);
     SetLength(fBufferSizes,fCountBuffers);
 
+    BufferIndex:=0;
     CurrentIndex:=0;
     RemainingCount:=fCountIndices;
 
