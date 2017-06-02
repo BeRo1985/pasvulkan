@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-02-12-40-0000                       *
+ *                        Version 2017-06-02-17-48-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -12032,7 +12032,8 @@ begin
 
     PayloadEndOffset:=PayloadBeginOffset+pSize;
 
-    if PayloadBeginOffset<PayloadEndOffset then begin
+    if (PayloadBeginOffset<PayloadEndOffset) and
+       (PayloadEndOffset<=MemoryChunkBlockEndOffset) then begin
 
      MemoryChunkBlock.Update(PayloadBeginOffset,PayloadEndOffset-PayloadBeginOffset,true);
 
