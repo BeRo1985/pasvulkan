@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-02-17-48-0000                       *
+ *                        Version 2017-06-21-01-12-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -320,7 +320,7 @@ type EVulkanException=class(Exception);
       private
        fResultCode:TVkResult;
       public
-       constructor Create(const pResultCode:TVkResult);
+       constructor Create(const aResultCode:TVkResult);
        destructor Destroy; override;
       published
        property ResultCode:TVkResult read fResultCode;
@@ -422,7 +422,7 @@ type EVulkanException=class(Exception);
        procedure ExchangeItem(var Source,Destination); virtual;
        function CompareItem(const Source,Destination):longint; virtual;
       public
-       constructor Create(const pItemSize:TVkSizeInt);
+       constructor Create(const aItemSize:TVkSizeInt);
        destructor Destroy; override;
        procedure Clear; virtual;
        procedure FillWith(const SourceData;const SourceCount:TVkSizeInt); virtual;
@@ -681,7 +681,7 @@ type EVulkanException=class(Exception);
 
      TVulkanPhysicalDeviceList=class;
 
-     TVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:TVulkaNCharString;const pMessage:TVulkanCharString):TVkBool32 of object;
+     TVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32 of object;
 
      TVulkanInstance=class(TVulkanObject)
       private    
@@ -722,15 +722,15 @@ type EVulkanException=class(Exception);
        procedure SetAPIVersion(const NewAPIVersion:TVkUInt32);
        procedure EnumeratePhysicalDevices;
       protected
-       function DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:TVulkaNCharString;const pMessage:TVulkanCharString):TVkBool32; virtual;
+       function DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32; virtual;
       public
-       constructor Create(const pApplicationName:TVulkanCharString='Vulkan application';
-                          const pApplicationVersion:TVkUInt32=1;
-                          const pEngineName:TVulkanCharString='Vulkan engine';
-                          const pEngineVersion:TVkUInt32=1;
+       constructor Create(const aApplicationName:TVulkanCharString='Vulkan application';
+                          const aApplicationVersion:TVkUInt32=1;
+                          const aEngineName:TVulkanCharString='Vulkan engine';
+                          const aEngineVersion:TVkUInt32=1;
                           const pAPIVersion:TVkUInt32=VK_API_VERSION_1_0;
-                          const pValidation:boolean=false;
-                          const pAllocationManager:TVulkanAllocationManager=nil);
+                          const aValidation:boolean=false;
+                          const aAllocationManager:TVulkanAllocationManager=nil);
        destructor Destroy; override;
        procedure Initialize;
        procedure InstallDebugReportCallback;
@@ -770,32 +770,32 @@ type EVulkanException=class(Exception);
        fAvailableLayerNames:TStringList;
        fAvailableExtensionNames:TStringList;
       public
-       constructor Create(const pInstance:TVulkanInstance;const pPhysicalDevice:TVkPhysicalDevice);
+       constructor Create(const aInstance:TVulkanInstance;const aPhysicalDevice:TVkPhysicalDevice);
        destructor Destroy; override;
-       function HasQueueSupportForSparseBindings(const pQueueFamilyIndex:TVkUInt32):boolean;
-       function GetFormatProperties(const pFormat:TVkFormat):TVkFormatProperties;
-       function GetImageFormatProperties(const pFormat:TVkFormat;
-                                         const pType:TVkImageType;
-                                         const pTiling:TVkImageTiling;
-                                         const pUsageFlags:TVkImageUsageFlags;
-                                         const pCreateFlags:TVkImageCreateFlags):TVkImageFormatProperties;
-       function GetSparseImageFormatProperties(const pFormat:TVkFormat;
-                                               const pType:TVkImageType;
-                                               const pSamples:TVkSampleCountFlagBits;
-                                               const pUsageFlags:TVkImageUsageFlags;
-                                               const pTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
-       function GetSurfaceSupport(const pQueueFamilyIndex:TVkUInt32;const pSurface:TVulkanSurface):boolean;
-       function GetSurfaceCapabilities(const pSurface:TVulkanSurface):TVkSurfaceCapabilitiesKHR;
-       function GetSurfaceFormats(const pSurface:TVulkanSurface):TVkSurfaceFormatKHRArray;
-       function GetSurfacePresentModes(const pSurface:TVulkanSurface):TVkPresentModeKHRArray;
+       function HasQueueSupportForSparseBindings(const aQueueFamilyIndex:TVkUInt32):boolean;
+       function GetFormatProperties(const aFormat:TVkFormat):TVkFormatProperties;
+       function GetImageFormatProperties(const aFormat:TVkFormat;
+                                         const aType:TVkImageType;
+                                         const aTiling:TVkImageTiling;
+                                         const aUsageFlags:TVkImageUsageFlags;
+                                         const aCreateFlags:TVkImageCreateFlags):TVkImageFormatProperties;
+       function GetSparseImageFormatProperties(const aFormat:TVkFormat;
+                                               const aType:TVkImageType;
+                                               const aSamples:TVkSampleCountFlagBits;
+                                               const aUsageFlags:TVkImageUsageFlags;
+                                               const aTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
+       function GetSurfaceSupport(const aQueueFamilyIndex:TVkUInt32;const aSurface:TVulkanSurface):boolean;
+       function GetSurfaceCapabilities(const aSurface:TVulkanSurface):TVkSurfaceCapabilitiesKHR;
+       function GetSurfaceFormats(const aSurface:TVulkanSurface):TVkSurfaceFormatKHRArray;
+       function GetSurfacePresentModes(const aSurface:TVulkanSurface):TVkPresentModeKHRArray;
        function GetDisplayProperties:TVkDisplayPropertiesKHRArray;
        function GetDisplayPlaneProperties:TVkDisplayPlanePropertiesKHRArray;
-       function GetDisplayPlaneSupportedDisplays(const pPlaneIndex:TVkUInt32):TVkDisplayKHRArray;
-       function GetDisplayModeProperties(const pDisplay:TVkDisplayKHR):TVkDisplayModePropertiesKHRArray;
-       function GetMemoryType(const pTypeBits:TVkUInt32;const pProperties:TVkFlags):TVkUInt32;
-       function GetBestSupportedDepthFormat(const pWithStencil:boolean):TVkFormat;
-       function GetQueueNodeIndex(const pSurface:TVulkanSurface;const pQueueFlagBits:TVkQueueFlagBits):TVkInt32;
-       function GetSurfaceFormat(const pSurface:TVulkanSurface):TVkSurfaceFormatKHR;
+       function GetDisplayPlaneSupportedDisplays(const aPlaneIndex:TVkUInt32):TVkDisplayKHRArray;
+       function GetDisplayModeProperties(const aDisplay:TVkDisplayKHR):TVkDisplayModePropertiesKHRArray;
+       function GetMemoryType(const aTypeBits:TVkUInt32;const aProperties:TVkFlags):TVkUInt32;
+       function GetBestSupportedDepthFormat(const aWithStencil:boolean):TVkFormat;
+       function GetQueueNodeIndex(const aSurface:TVulkanSurface;const aQueueFlagBits:TVkQueueFlagBits):TVkInt32;
+       function GetSurfaceFormat(const aSurface:TVulkanSurface):TVkSurfaceFormatKHR;
        property Properties:TVkPhysicalDeviceProperties read fProperties;
        property MemoryProperties:TVkPhysicalDeviceMemoryProperties read fMemoryProperties;
        property Features:TVkPhysicalDeviceFeatures read fFeatures;
@@ -836,7 +836,7 @@ type EVulkanException=class(Exception);
       case TVulkanSurfacePlatform of
        vspUnknown:(
         sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_*_SURFACE_CREATE_INFO_KHR
-        pNext:PVkVoid; //< Pointer to next structure
+        aNext:PVkVoid; //< Pointer to next structure
         flags:TVkFlags; //< Reserved
        );
 {$if defined(Android) and defined(Unix)}
@@ -888,30 +888,30 @@ type EVulkanException=class(Exception);
        fSurfaceHandle:TVkSurfaceKHR;
       protected
       public
-       constructor Create(const pInstance:TVulkanInstance;const pSurfaceCreateInfo:TVulkanSurfaceCreateInfo);
+       constructor Create(const aInstance:TVulkanInstance;const aSurfaceCreateInfo:TVulkanSurfaceCreateInfo);
 {$if defined(Android)}
-       constructor CreateAndroid(const pInstance:TVulkanInstance;const pWindow:PVkAndroidANativeWindow);
+       constructor CreateAndroid(const aInstance:TVulkanInstance;const aWindow:PVkAndroidANativeWindow);
 {$ifend}
 {$if defined(Mir) and defined(Unix)}
-       constructor CreateMir(const pInstance:TVulkanInstance;const pConnection:PVkMirConnection;const pSurface:PVkMirSurface);
+       constructor CreateMir(const aInstance:TVulkanInstance;const aConnection:PVkMirConnection;const aSurface:PVkMirSurface);
 {$ifend}
 {$if defined(Wayland) and defined(Unix)}
-       constructor CreateWayland(const pInstance:TVulkanInstance;const pDisplay:PVkWaylandDisplay;const pSurface:PVkWaylandSurface);
+       constructor CreateWayland(const aInstance:TVulkanInstance;const aDisplay:PVkWaylandDisplay;const aSurface:PVkWaylandSurface);
 {$ifend}
 {$if defined(Windows)}
-       constructor CreateWin32(const pInstance:TVulkanInstance;const pInstanceHandle,pWindowHandle:THandle);
+       constructor CreateWin32(const aInstance:TVulkanInstance;const aInstanceHandle,aWindowHandle:THandle);
 {$ifend}
 {$if defined(XCB) and defined(Unix)}
-       constructor CreateXCB(const pInstance:TVulkanInstance;const pConnection:PVkXCBConnection;const pWindow:TVkXCBWindow);
+       constructor CreateXCB(const aInstance:TVulkanInstance;const aConnection:PVkXCBConnection;const aWindow:TVkXCBWindow);
 {$ifend}
 {$if defined(XLIB) and defined(Unix)}
-       constructor CreateXLIB(const pInstance:TVulkanInstance;const pDisplay:PVkXLIBDisplay;const pWindow:TVkXLIBWindow);
+       constructor CreateXLIB(const aInstance:TVulkanInstance;const aDisplay:PVkXLIBDisplay;const aWindow:TVkXLIBWindow);
 {$ifend}
 {$if defined(MoltenVK_IOS) and defined(Darwin)}
-       constructor CreateMoltenVK_IOS(const pInstance:TVulkanInstance;const pView:PVkVoid);
+       constructor CreateMoltenVK_IOS(const aInstance:TVulkanInstance;const aView:PVkVoid);
 {$ifend}
 {$if defined(MoltenVK_MacOS) and defined(Darwin)}
-       constructor CreateMoltenVK_MacOS(const pInstance:TVulkanInstance;const pView:PVkVoid);
+       constructor CreateMoltenVK_MacOS(const aInstance:TVulkanInstance;const aView:PVkVoid);
 {$ifend}
        destructor Destroy; override;
       published
@@ -959,18 +959,18 @@ type EVulkanException=class(Exception);
        fMemoryManager:TVulkanDeviceMemoryManager;
       protected
       public
-       constructor Create(const pInstance:TVulkanInstance;
-                          const pPhysicalDevice:TVulkanPhysicalDevice=nil;
-                          const pSurface:TVulkanSurface=nil;
-                          const pAllocationManager:TVulkanAllocationManager=nil);
+       constructor Create(const aInstance:TVulkanInstance;
+                          const aPhysicalDevice:TVulkanPhysicalDevice=nil;
+                          const aSurface:TVulkanSurface=nil;
+                          const aAllocationManager:TVulkanAllocationManager=nil);
        destructor Destroy; override;
-       procedure AddQueue(const pQueueFamilyIndex:TVkUInt32;const pQueuePriorities:array of TVkFloat;const pSurface:TVulkanSurface=nil);
-       procedure AddQueues(const pPresent:boolean=true;
-                           const pGraphics:boolean=true;
-                           const pCompute:boolean=true;
-                           const pTransfer:boolean=true;
-                           const pSparseBinding:boolean=false;
-                           const pSurface:TVulkanSurface=nil);
+       procedure AddQueue(const aQueueFamilyIndex:TVkUInt32;const aQueuePriorities:array of TVkFloat;const aSurface:TVulkanSurface=nil);
+       procedure AddQueues(const aPresent:boolean=true;
+                           const aGraphics:boolean=true;
+                           const aCompute:boolean=true;
+                           const aTransfer:boolean=true;
+                           const aSparseBinding:boolean=false;
+                           const aSurface:TVulkanSurface=nil);
        procedure Initialize;
        procedure WaitIdle;
        property EnabledFeatures:PVkPhysicalDeviceFeatures read fPointerToEnabledFeatures;
@@ -998,7 +998,7 @@ type EVulkanException=class(Exception);
        fQueueFamilyIndex:TVkUInt32;
        fQueuePriorities:TVkFloatArray;
       public
-       constructor Create(const pQueueFamilyIndex:TVkUInt32;const pQueuePriorities:array of TVkFloat);
+       constructor Create(const aQueueFamilyIndex:TVkUInt32;const aQueuePriorities:array of TVkFloat);
        destructor Destroy; override;
       published
        property QueueFamilyIndex:TVkUInt32 read fQueueFamilyIndex;
@@ -1053,12 +1053,12 @@ type EVulkanException=class(Exception);
        fParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        fColor:boolean;
       public
-       constructor Create(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey=0;
-                          const pValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue=nil;
-                          const pLeft:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
-                          const pRight:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
-                          const pParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
-                          const pColor:boolean=false);
+       constructor Create(const aKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey=0;
+                          const aValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue=nil;
+                          const aLeft:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                          const aRight:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                          const aParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                          const aColor:boolean=false);
        destructor Destroy; override;
        procedure Clear;
        function Minimum:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
@@ -1084,11 +1084,11 @@ type EVulkanException=class(Exception);
        constructor Create;
        destructor Destroy; override;
        procedure Clear;
-       function Find(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
-       function Insert(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey;
-                       const pValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
-       procedure Remove(const pNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode);
-       procedure Delete(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey);
+       function Find(const aKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       function Insert(const aKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey;
+                       const aValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       procedure Remove(const aNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode);
+       procedure Delete(const aKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey);
       published
        function LeftMost:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        function RightMost:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
@@ -1106,14 +1106,14 @@ type EVulkanException=class(Exception);
        fOffsetRedBlackTreeNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        fSizeRedBlackTreeNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
       public
-       constructor Create(const pMemoryChunk:TVulkanDeviceMemoryChunk;
-                          const pOffset:TVkDeviceSize;
-                          const pSize:TVkDeviceSize;
-                          const pUsed:boolean);
+       constructor Create(const aMemoryChunk:TVulkanDeviceMemoryChunk;
+                          const aOffset:TVkDeviceSize;
+                          const aSize:TVkDeviceSize;
+                          const aUsed:boolean);
        destructor Destroy; override;
-       procedure Update(const pOffset:TVkDeviceSize;
-                        const pSize:TVkDeviceSize;
-                        const pUsed:boolean);
+       procedure Update(const aOffset:TVkDeviceSize;
+                        const aSize:TVkDeviceSize;
+                        const aUsed:boolean);
       published
        property MemoryChunk:TVulkanDeviceMemoryChunk read fMemoryChunk;
        property Offset:TVkDeviceSize read fOffset;
@@ -1146,25 +1146,25 @@ type EVulkanException=class(Exception);
        fMemoryHandle:TVkDeviceMemory;
        fMemory:PVkVoid;
       public
-       constructor Create(const pMemoryManager:TVulkanDeviceMemoryManager;
-                          const pMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
-                          const pSize:TVkDeviceSize;
-                          const pMemoryTypeBits:TVkUInt32;
-                          const pMemoryPropertyFlags:TVkMemoryPropertyFlags;
-                          const pMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
-                          const pMemoryHeapFlags:TVkMemoryHeapFlags;
-                          const pMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
-                          const pMemoryChunkList:PVulkanDeviceMemoryManagerChunkList);
+       constructor Create(const aMemoryManager:TVulkanDeviceMemoryManager;
+                          const aMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
+                          const aSize:TVkDeviceSize;
+                          const aMemoryTypeBits:TVkUInt32;
+                          const aMemoryPropertyFlags:TVkMemoryPropertyFlags;
+                          const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+                          const aMemoryHeapFlags:TVkMemoryHeapFlags;
+                          const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+                          const aMemoryChunkList:PVulkanDeviceMemoryManagerChunkList);
        destructor Destroy; override;
-       function AllocateMemory(out pOffset:TVkDeviceSize;const pSize,pAlignment:TVkDeviceSize):boolean;
-       function ReallocateMemory(var pOffset:TVkDeviceSize;const pSize,pAlignment:TVkDeviceSize):boolean;
-       function FreeMemory(const pOffset:TVkDeviceSize):boolean;
-       function MapMemory(const pOffset:TVkDeviceSize=0;const pSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
+       function AllocateMemory(out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize):boolean;
+       function ReallocateMemory(var aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize):boolean;
+       function FreeMemory(const aOffset:TVkDeviceSize):boolean;
+       function MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
        procedure UnmapMemory;
        procedure FlushMappedMemory;
-       procedure FlushMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
+       procedure FlushMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
        procedure InvalidateMappedMemory;
-       procedure InvalidateMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
+       procedure InvalidateMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
        property Memory:PVkVoid read fMemory;
       published
        property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
@@ -1196,18 +1196,18 @@ type EVulkanException=class(Exception);
        fPreviousMemoryBlock:TVulkanDeviceMemoryBlock;
        fNextMemoryBlock:TVulkanDeviceMemoryBlock;
       public
-       constructor Create(const pMemoryManager:TVulkanDeviceMemoryManager;
-                          const pMemoryChunk:TVulkanDeviceMemoryChunk;
-                          const pOffset:TVkDeviceSize;
-                          const pSize:TVkDeviceSize);
+       constructor Create(const aMemoryManager:TVulkanDeviceMemoryManager;
+                          const aMemoryChunk:TVulkanDeviceMemoryChunk;
+                          const aOffset:TVkDeviceSize;
+                          const aSize:TVkDeviceSize);
        destructor Destroy; override;
-       function MapMemory(const pOffset:TVkDeviceSize=0;const pSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
+       function MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
        procedure UnmapMemory;
        procedure FlushMappedMemory;
-       procedure FlushMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
+       procedure FlushMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
        procedure InvalidateMappedMemory;
-       procedure InvalidateMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
-       function Fill(const pData:PVkVoid;const pSize:TVkDeviceSize):TVkDeviceSize;
+       procedure InvalidateMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
+       function Fill(const aData:PVkVoid;const aSize:TVkDeviceSize):TVkDeviceSize;
       published
        property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
        property MemoryChunk:TVulkanDeviceMemoryChunk read fMemoryChunk;
@@ -1230,17 +1230,17 @@ type EVulkanException=class(Exception);
        fFirstMemoryBlock:TVulkanDeviceMemoryBlock;
        fLastMemoryBlock:TVulkanDeviceMemoryBlock;
       public
-       constructor Create(const pDevice:TVulkanDevice);
+       constructor Create(const aDevice:TVulkanDevice);
        destructor Destroy; override;
-       function AllocateMemoryBlock(const pMemoryBlockFlags:TVulkanDeviceMemoryBlockFlags;
-                                    const pMemoryBlockSize:TVkDeviceSize;
-                                    const pMemoryBlockAlignment:TVkDeviceSize;
-                                    const pMemoryTypeBits:TVkUInt32;
-                                    const pMemoryPropertyFlags:TVkMemoryPropertyFlags;
-                                    const pMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
-                                    const pMemoryHeapFlags:TVkMemoryHeapFlags;
-                                    const pMemoryAvoidHeapFlags:TVkMemoryHeapFlags):TVulkanDeviceMemoryBlock;
-       function FreeMemoryBlock(const pMemoryBlock:TVulkanDeviceMemoryBlock):boolean;
+       function AllocateMemoryBlock(const aMemoryBlockFlags:TVulkanDeviceMemoryBlockFlags;
+                                    const aMemoryBlockSize:TVkDeviceSize;
+                                    const aMemoryBlockAlignment:TVkDeviceSize;
+                                    const aMemoryTypeBits:TVkUInt32;
+                                    const aMemoryPropertyFlags:TVkMemoryPropertyFlags;
+                                    const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+                                    const aMemoryHeapFlags:TVkMemoryHeapFlags;
+                                    const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags):TVulkanDeviceMemoryBlock;
+       function FreeMemoryBlock(const aMemoryBlock:TVulkanDeviceMemoryBlock):boolean;
      end;
 
      TVulkanQueueFamilyIndices=array of TVkUInt32;
@@ -1281,27 +1281,27 @@ type EVulkanException=class(Exception);
        fDescriptorBufferInfo:TVkDescriptorBufferInfo;
        procedure Bind;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pSize:TVkDeviceSize;
-                          const pUsage:TVkBufferUsageFlags;
-                          const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-                          const pQueueFamilyIndices:TVkUInt32List=nil;
-                          const pMemoryPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-                          const pMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
-                          const pMemoryHeapFlags:TVkMemoryHeapFlags=0;
-                          const pMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
-                          const pBufferFlags:TVulkanBufferFlags=[]);
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aSize:TVkDeviceSize;
+                          const aUsage:TVkBufferUsageFlags;
+                          const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                          const aQueueFamilyIndices:TVkUInt32List=nil;
+                          const aMemoryPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                          const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                          const aMemoryHeapFlags:TVkMemoryHeapFlags=0;
+                          const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                          const aBufferFlags:TVulkanBufferFlags=[]);
        destructor Destroy; override;
-       procedure UploadData(const pTransferQueue:TVulkanQueue;
-                            const pTransferCommandBuffer:TVulkanCommandBuffer;
-                            const pTransferFence:TVulkanFence;
-                            const pData;
-                            const pDataOffset:TVkDeviceSize;
-                            const pDataSize:TVkDeviceSize;
-                            const pUseTemporaryStagingBufferMode:TVulkanBufferUseTemporaryStagingBufferMode=vbutsbmAutomatic);
-       procedure UpdateData(const pData;
-                            const pDataOffset:TVkDeviceSize;
-                            const pDataSize:TVkDeviceSize);
+       procedure UploadData(const aTransferQueue:TVulkanQueue;
+                            const aTransferCommandBuffer:TVulkanCommandBuffer;
+                            const aTransferFence:TVulkanFence;
+                            const aData;
+                            const aDataOffset:TVkDeviceSize;
+                            const aDataSize:TVkDeviceSize;
+                            const aUseTemporaryStagingBufferMode:TVulkanBufferUseTemporaryStagingBufferMode=vbutsbmAutomatic);
+       procedure UpdateData(const aData;
+                            const aDataOffset:TVkDeviceSize;
+                            const aDataSize:TVkDeviceSize);
        property DescriptorBufferInfo:TVkDescriptorBufferInfo read fDescriptorBufferInfo;
       published
        property Device:TVulkanDevice read fDevice;
@@ -1316,14 +1316,14 @@ type EVulkanException=class(Exception);
        fBufferViewHandle:TVkBufferView;
        fBuffer:TVulkanBuffer;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pBuffer:TVulkanBuffer;
-                          const pFormat:TVkFormat;
-                          const pOffset:TVkDeviceSize=0;
-                          const pRange:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)); reintroduce; overload;
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pBufferView:TVkBufferView;
-                          const pBuffer:TVulkanBuffer=nil); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aBuffer:TVulkanBuffer;
+                          const aFormat:TVkFormat;
+                          const aOffset:TVkDeviceSize=0;
+                          const aRange:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aBufferView:TVkBufferView;
+                          const aBuffer:TVulkanBuffer=nil); reintroduce; overload;
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
@@ -1336,8 +1336,8 @@ type EVulkanException=class(Exception);
        fDevice:TVulkanDevice;
        fEventHandle:TVkEvent;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pFlags:TVkEventCreateFlags=TVkEventCreateFlags(0));
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aFlags:TVkEventCreateFlags=TVkEventCreateFlags(0));
        destructor Destroy; override;
        function GetStatus:TVkResult;
        function SetEvent:TVkResult;
@@ -1352,14 +1352,14 @@ type EVulkanException=class(Exception);
        fDevice:TVulkanDevice;
        fFenceHandle:TVkFence;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pFlags:TVkFenceCreateFlags=TVkFenceCreateFlags(0));
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aFlags:TVkFenceCreateFlags=TVkFenceCreateFlags(0));
        destructor Destroy; override;
        function GetStatus:TVkResult;
        function Reset:TVkResult; overload;
-       class function Reset(const pFences:array of TVulkanFence):TVkResult; overload;
-       function WaitFor(const pTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult; overload;
-       class function WaitFor(const pFences:array of TVulkanFence;const pWaitAll:boolean=true;const pTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult; overload;
+       class function Reset(const aFences:array of TVulkanFence):TVkResult; overload;
+       function WaitFor(const aTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult; overload;
+       class function WaitFor(const aFences:array of TVulkanFence;const aWaitAll:boolean=true;const aTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult; overload;
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkFence read fFenceHandle;
@@ -1370,8 +1370,8 @@ type EVulkanException=class(Exception);
        fDevice:TVulkanDevice;
        fSemaphoreHandle:TVkSemaphore;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pFlags:TVkSemaphoreCreateFlags=TVkSemaphoreCreateFlags(0));
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aFlags:TVkSemaphoreCreateFlags=TVkSemaphoreCreateFlags(0));
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
@@ -1385,12 +1385,12 @@ type EVulkanException=class(Exception);
        fQueueFamilyIndex:TVkUInt32;
        fHasSupportForSparseBindings:boolean;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pQueue:TVkQueue;
-                          const pQueueFamilyIndex:TVKUInt32);
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aQueue:TVkQueue;
+                          const aQueueFamilyIndex:TVKUInt32);
        destructor Destroy; override;
-       procedure Submit(const pSubmitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;const pFence:TVulkanFence=nil);
-       procedure BindSparse(const pBindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;const pFence:TVulkanFence=nil);
+       procedure Submit(const aSubmitCount:TVkUInt32;const aSubmits:PVkSubmitInfo;const aFence:TVulkanFence=nil);
+       procedure BindSparse(const aBindInfoCount:TVkUInt32;const aBindInfo:PVkBindSparseInfo;const aFence:TVulkanFence=nil);
        procedure WaitIdle;
       published
        property Device:TVulkanDevice read fDevice;
@@ -1406,9 +1406,9 @@ type EVulkanException=class(Exception);
        fFlags:TVkCommandPoolCreateFlags;
        fCommandPoolHandle:TVkCommandPool;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pQueueFamilyIndex:TVkUInt32;
-                          const pFlags:TVkCommandPoolCreateFlags=TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aQueueFamilyIndex:TVkUInt32;
+                          const aFlags:TVkCommandPoolCreateFlags=TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
@@ -1426,23 +1426,23 @@ type EVulkanException=class(Exception);
        fCommandBufferHandle:TVkCommandBuffer;
 //     fFence:TVulkanFence;
       public
-       constructor Create(const pCommandPool:TVulkanCommandPool;
-                          const pLevel:TVkCommandBufferLevel;
-                          const pCommandBufferHandle:TVkCommandBuffer); reintroduce; overload;
-       constructor Create(const pCommandPool:TVulkanCommandPool;
-                          const pLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY); reintroduce; overload;
+       constructor Create(const aCommandPool:TVulkanCommandPool;
+                          const aLevel:TVkCommandBufferLevel;
+                          const aCommandBufferHandle:TVkCommandBuffer); reintroduce; overload;
+       constructor Create(const aCommandPool:TVulkanCommandPool;
+                          const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY); reintroduce; overload;
        destructor Destroy; override;
-       class function Allocate(const pCommandPool:TVulkanCommandPool;
-                               const pLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                               const pCommandBufferCount:TVkUInt32=1):TVulkanObjectList;
-       procedure BeginRecording(const pFlags:TVkCommandBufferUsageFlags=0;const pInheritanceInfo:PVkCommandBufferInheritanceInfo=nil);
+       class function Allocate(const aCommandPool:TVulkanCommandPool;
+                               const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+                               const aCommandBufferCount:TVkUInt32=1):TVulkanObjectList;
+       procedure BeginRecording(const aFlags:TVkCommandBufferUsageFlags=0;const aInheritanceInfo:PVkCommandBufferInheritanceInfo=nil);
        procedure BeginRecordingPrimary;
-       procedure BeginRecordingSecondary(const pRenderPass:TVkRenderPass;const pSubPass:TVkUInt32;const pFrameBuffer:TVkFramebuffer;const pOcclusionQueryEnable:boolean;const pQueryFlags:TVkQueryControlFlags;const pPipelineStatistics:TVkQueryPipelineStatisticFlags;const pFlags:TVkCommandBufferUsageFlags=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
+       procedure BeginRecordingSecondary(const aRenderPass:TVkRenderPass;const aSubPass:TVkUInt32;const aFrameBuffer:TVkFramebuffer;const aOcclusionQueryEnable:boolean;const aQueryFlags:TVkQueryControlFlags;const aPipelineStatistics:TVkQueryPipelineStatisticFlags;const aFlags:TVkCommandBufferUsageFlags=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
        procedure EndRecording;
-       procedure Reset(const pFlags:TVkCommandBufferResetFlags=TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+       procedure Reset(const aFlags:TVkCommandBufferResetFlags=TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
        procedure CmdBindPipeline(pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline);
-       procedure CmdSetViewport(firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewports:PVkViewport);
-       procedure CmdSetScissor(firstScissor:TVkUInt32;scissorCount:TVkUInt32;const pScissors:PVkRect2D);
+       procedure CmdSetViewport(firstViewport:TVkUInt32;viewportCount:TVkUInt32;const aViewports:PVkViewport);
+       procedure CmdSetScissor(firstScissor:TVkUInt32;scissorCount:TVkUInt32;const aScissors:PVkRect2D);
        procedure CmdSetLineWidth(lineWidth:TVkFloat);
        procedure CmdSetDepthBias(depthBiasConstantFactor:TVkFloat;depthBiasClamp:TVkFloat;depthBiasSlopeFactor:TVkFloat);
        procedure CmdSetBlendConstants(const blendConstants:TVkFloat);
@@ -1450,44 +1450,44 @@ type EVulkanException=class(Exception);
        procedure CmdSetStencilCompareMask(faceMask:TVkStencilFaceFlags;compareMask:TVkUInt32);
        procedure CmdSetStencilWriteMask(faceMask:TVkStencilFaceFlags;writeMask:TVkUInt32);
        procedure CmdSetStencilReference(faceMask:TVkStencilFaceFlags;reference:TVkUInt32);
-       procedure CmdBindDescriptorSets(pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const pDynamicOffsets:PVkUInt32);
+       procedure CmdBindDescriptorSets(pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const aDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const aDynamicOffsets:PVkUInt32);
        procedure CmdBindIndexBuffer(buffer:TVkBuffer;offset:TVkDeviceSize;indexType:TVkIndexType);
-       procedure CmdBindVertexBuffers(firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize);
+       procedure CmdBindVertexBuffers(firstBinding:TVkUInt32;bindingCount:TVkUInt32;const aBuffers:PVkBuffer;const aOffsets:PVkDeviceSize);
        procedure CmdDraw(vertexCount:TVkUInt32;instanceCount:TVkUInt32;firstVertex:TVkUInt32;firstInstance:TVkUInt32);
        procedure CmdDrawIndexed(indexCount:TVkUInt32;instanceCount:TVkUInt32;firstIndex:TVkUInt32;vertexOffset:TVkInt32;firstInstance:TVkUInt32);
        procedure CmdDrawIndirect(buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32);
        procedure CmdDrawIndexedIndirect(buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32);
        procedure CmdDispatch(x:TVkUInt32;y:TVkUInt32;z:TVkUInt32);
        procedure CmdDispatchIndirect(buffer:TVkBuffer;offset:TVkDeviceSize);
-       procedure CmdCopyBuffer(srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferCopy);
-       procedure CmdCopyImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageCopy);
-       procedure CmdBlitImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageBlit;filter:TVkFilter);
-       procedure CmdCopyBufferToImage(srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy);
-       procedure CmdCopyImageToBuffer(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy);
-       procedure CmdUpdateBuffer(dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkVoid);
+       procedure CmdCopyBuffer(srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const aRegions:PVkBufferCopy);
+       procedure CmdCopyImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageCopy);
+       procedure CmdBlitImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageBlit;filter:TVkFilter);
+       procedure CmdCopyBufferToImage(srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkBufferImageCopy);
+       procedure CmdCopyImageToBuffer(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const aRegions:PVkBufferImageCopy);
+       procedure CmdUpdateBuffer(dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const aData:PVkVoid);
        procedure CmdFillBuffer(dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TVkUInt32);
-       procedure CmdClearColorImage(image:TVkImage;imageLayout:TVkImageLayout;const pColor:PVkClearColorValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange);
-       procedure CmdClearDepthStencilImage(image:TVkImage;imageLayout:TVkImageLayout;const pDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange);
-       procedure CmdClearAttachments(attachmentCount:TVkUInt32;const pAttachments:PVkClearAttachment;rectCount:TVkUInt32;const pRects:PVkClearRect);
-       procedure CmdResolveImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageResolve);
+       procedure CmdClearColorImage(image:TVkImage;imageLayout:TVkImageLayout;const aColor:PVkClearColorValue;rangeCount:TVkUInt32;const aRanges:PVkImageSubresourceRange);
+       procedure CmdClearDepthStencilImage(image:TVkImage;imageLayout:TVkImageLayout;const aDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const aRanges:PVkImageSubresourceRange);
+       procedure CmdClearAttachments(attachmentCount:TVkUInt32;const aAttachments:PVkClearAttachment;rectCount:TVkUInt32;const aRects:PVkClearRect);
+       procedure CmdResolveImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageResolve);
        procedure CmdSetEvent(event:TVkEvent;stageMask:TVkPipelineStageFlags);
        procedure CmdResetEvent(event:TVkEvent;stageMask:TVkPipelineStageFlags);
-       procedure CmdWaitEvents(eventCount:TVkUInt32;const pEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier);
-       procedure CmdPipelineBarrier(srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier);
+       procedure CmdWaitEvents(eventCount:TVkUInt32;const aEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
+       procedure CmdPipelineBarrier(srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
        procedure CmdBeginQuery(queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags);
        procedure CmdEndQuery(queryPool:TVkQueryPool;query:TVkUInt32);
        procedure CmdResetQueryPool(queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32);
        procedure CmdWriteTimestamp(pipelineStage:TVkPipelineStageFlagBits;queryPool:TVkQueryPool;query:TVkUInt32);
        procedure CmdCopyQueryPoolResults(queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags);
-       procedure CmdPushConstants(layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:PVkVoid);
-       procedure CmdBeginRenderPass(const pRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents);
+       procedure CmdPushConstants(layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const aValues:PVkVoid);
+       procedure CmdBeginRenderPass(const aRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents);
        procedure CmdNextSubpass(contents:TVkSubpassContents);
        procedure CmdEndRenderPass;
-       procedure CmdExecuteCommands(commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer);
-       procedure CmdExecute(const pCommandBuffer:TVulkanCommandBuffer);
-       procedure MetaCmdPresentToDrawImageBarrier(const pImage:TVulkanImage;const pDoTransitionToColorAttachmentOptimalLayout:boolean=true);
-       procedure MetaCmdDrawToPresentImageBarrier(const pImage:TVulkanImage;const pDoTransitionToPresentSrcLayout:boolean=true);
-       procedure Execute(const pQueue:TVulkanQueue;const pWaitDstStageFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
+       procedure CmdExecuteCommands(commandBufferCount:TVkUInt32;const aCommandBuffers:PVkCommandBuffer);
+       procedure CmdExecute(const aCommandBuffer:TVulkanCommandBuffer);
+       procedure MetaCmdPresentToDrawImageBarrier(const aImage:TVulkanImage;const aDoTransitionToColorAttachmentOptimalLayout:boolean=true);
+       procedure MetaCmdDrawToPresentImageBarrier(const aImage:TVulkanImage;const aDoTransitionToPresentSrcLayout:boolean=true);
+       procedure Execute(const aQueue:TVulkanQueue;const aWaitDstStageFlags:TVkPipelineStageFlags;const aWaitSemaphore:TVulkanSemaphore=nil;const aSignalSemaphore:TVulkanSemaphore=nil;const aFence:TVulkanFence=nil;const aDoWaitAndResetFence:boolean=true);
       published
        property Device:TVulkanDevice read fDevice;
        property CommandPool:TVulkanCommandPool read fCommandPool;
@@ -1513,11 +1513,11 @@ type EVulkanException=class(Exception);
        fSubmitInfoSignalSemaphores:TVulkanCommandBufferSubmitQueueSubmitInfoSubmitInfoSignalSemaphores;
        fCountSubmitInfos:TVkInt32;
       public
-       constructor Create(const pQueue:TVulkanQueue); reintroduce;
+       constructor Create(const aQueue:TVulkanQueue); reintroduce;
        destructor Destroy; override;
        procedure Reset;
-       procedure QueueSubmit(const pCommandBuffer:TVulkanCommandBuffer;const pWaitDstStageFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
-       procedure SubmitQueued(const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
+       procedure QueueSubmit(const aCommandBuffer:TVulkanCommandBuffer;const aWaitDstStageFlags:TVkPipelineStageFlags;const aWaitSemaphore:TVulkanSemaphore=nil;const aSignalSemaphore:TVulkanSemaphore=nil);
+       procedure SubmitQueued(const aFence:TVulkanFence=nil;const aDoWaitAndResetFence:boolean=true);
      end;
 
      TVulkanRenderPassAttachmentDescriptions=array of TVkAttachmentDescription;
@@ -1533,9 +1533,9 @@ type EVulkanException=class(Exception);
       ResolveAttachments:array of TVkInt32;
       DepthStencilAttachment:TVkInt32;
       PreserveAttachments:array of TVkUInt32;
-      pInputAttachments:TVulkanRenderPassAttachmentReferences;
-      pColorAttachments:TVulkanRenderPassAttachmentReferences;
-      pResolveAttachments:TVulkanRenderPassAttachmentReferences;
+      aInputAttachments:TVulkanRenderPassAttachmentReferences;
+      aColorAttachments:TVulkanRenderPassAttachmentReferences;
+      aResolveAttachments:TVulkanRenderPassAttachmentReferences;
      end;
 
      TVulkanRenderPassSubpassDescriptions=array of TVulkanRenderPassSubpassDescription;
@@ -1558,39 +1558,39 @@ type EVulkanException=class(Exception);
        fClearValues:TVkClearValueArray;
        function GetClearValue(const Index:TVkUInt32):PVkClearValue;
       public
-       constructor Create(const pDevice:TVulkanDevice);
+       constructor Create(const aDevice:TVulkanDevice);
        destructor Destroy; override;
-       function AddAttachmentDescription(const pFlags:TVkAttachmentDescriptionFlags;
-                                         const pFormat:TVkFormat;
-                                         const pSamples:TVkSampleCountFlagBits;
-                                         const pLoadOp:TVkAttachmentLoadOp;
-                                         const pStoreOp:TVkAttachmentStoreOp;
-                                         const pStencilLoadOp:TVkAttachmentLoadOp;
-                                         const pStencilStoreOp:TVkAttachmentStoreOp;
-                                         const pInitialLayout:TVkImageLayout;
-                                         const pFinalLayout:TVkImageLayout):TVkUInt32;
-       function AddAttachmentReference(const pAttachment:TVkUInt32;
-                                       const pLayout:TVkImageLayout):TVkUInt32;
-       function AddSubpassDescription(const pFlags:TVkSubpassDescriptionFlags;
-                                      const pPipelineBindPoint:TVkPipelineBindPoint;
-                                      const pInputAttachments:array of TVkInt32;
-                                      const pColorAttachments:array of TVkInt32;
-                                      const pResolveAttachments:array of TVkInt32;
-                                      const pDepthStencilAttachment:TVkInt32;
-                                      const pPreserveAttachments:array of TVkUInt32):TVkUInt32;
-       function AddSubpassDependency(const pSrcSubpass:TVkUInt32;
-                                     const pDstSubpass:TVkUInt32;
-                                     const pSrcStageMask:TVkPipelineStageFlags;
-                                     const pDstStageMask:TVkPipelineStageFlags;
-                                     const pSrcAccessMask:TVkAccessFlags;
-                                     const pDstAccessMask:TVkAccessFlags;
-                                     const pDependencyFlags:TVkDependencyFlags):TVkUInt32;
+       function AddAttachmentDescription(const aFlags:TVkAttachmentDescriptionFlags;
+                                         const aFormat:TVkFormat;
+                                         const aSamples:TVkSampleCountFlagBits;
+                                         const aLoadOp:TVkAttachmentLoadOp;
+                                         const aStoreOp:TVkAttachmentStoreOp;
+                                         const aStencilLoadOp:TVkAttachmentLoadOp;
+                                         const aStencilStoreOp:TVkAttachmentStoreOp;
+                                         const aInitialLayout:TVkImageLayout;
+                                         const aFinalLayout:TVkImageLayout):TVkUInt32;
+       function AddAttachmentReference(const aAttachment:TVkUInt32;
+                                       const aLayout:TVkImageLayout):TVkUInt32;
+       function AddSubpassDescription(const aFlags:TVkSubpassDescriptionFlags;
+                                      const aPipelineBindPoint:TVkPipelineBindPoint;
+                                      const aInputAttachments:array of TVkInt32;
+                                      const aColorAttachments:array of TVkInt32;
+                                      const aResolveAttachments:array of TVkInt32;
+                                      const aDepthStencilAttachment:TVkInt32;
+                                      const aPreserveAttachments:array of TVkUInt32):TVkUInt32;
+       function AddSubpassDependency(const aSrcSubpass:TVkUInt32;
+                                     const aDstSubpass:TVkUInt32;
+                                     const aSrcStageMask:TVkPipelineStageFlags;
+                                     const aDstStageMask:TVkPipelineStageFlags;
+                                     const aSrcAccessMask:TVkAccessFlags;
+                                     const aDstAccessMask:TVkAccessFlags;
+                                     const aDependencyFlags:TVkDependencyFlags):TVkUInt32;
        procedure Initialize;
-       procedure BeginRenderPass(const pCommandBuffer:TVulkanCommandBuffer;
-                                 const pFrameBuffer:TVulkanFrameBuffer;
-                                 const pSubpassContents:TVkSubpassContents;
-                                 const pOffsetX,pOffsetY,pWidth,pHeight:TVkUInt32);
-       procedure EndRenderPass(const pCommandBuffer:TVulkanCommandBuffer);
+       procedure BeginRenderPass(const aCommandBuffer:TVulkanCommandBuffer;
+                                 const aFrameBuffer:TVulkanFrameBuffer;
+                                 const aSubpassContents:TVkSubpassContents;
+                                 const aOffsetX,aOffsetY,aWidth,aHeight:TVkUInt32);
+       procedure EndRenderPass(const aCommandBuffer:TVulkanCommandBuffer);
        property ClearValues[const Index:TVkUInt32]:PVkClearValue read GetClearValue;
       published
        property Device:TVulkanDevice read fDevice;
@@ -1603,25 +1603,25 @@ type EVulkanException=class(Exception);
        fSamplerHandle:TVkSampler;
        fDoDestroy:boolean;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pSampler:TVkSampler;
-                          const pDoDestroy:boolean=true); reintroduce; overload;
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pMagFilter:TVkFilter;
-                          const pMinFilter:TVkFilter;
-                          const pMipmapMode:TVkSamplerMipmapMode;
-                          const pAddressModeU:TVkSamplerAddressMode;
-                          const pAddressModeV:TVkSamplerAddressMode;
-                          const pAddressModeW:TVkSamplerAddressMode;
-                          const pMipLodBias:TVkFloat;
-                          const pAnisotropyEnable:boolean;
-                          const pMaxAnisotropy:TVkFloat;
-                          const pCompareEnable:boolean;
-                          const pCompareOp:TVkCompareOp;
-                          const pMinLod:TVkFloat;
-                          const pMaxLod:TVkFloat;
-                          const pBorderColor:TVkBorderColor;
-                          const pUnnormalizedCoordinates:boolean); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aSampler:TVkSampler;
+                          const aDoDestroy:boolean=true); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aMagFilter:TVkFilter;
+                          const aMinFilter:TVkFilter;
+                          const aMipmapMode:TVkSamplerMipmapMode;
+                          const aAddressModeU:TVkSamplerAddressMode;
+                          const aAddressModeV:TVkSamplerAddressMode;
+                          const aAddressModeW:TVkSamplerAddressMode;
+                          const aMipLodBias:TVkFloat;
+                          const aAnisotropyEnable:boolean;
+                          const aMaxAnisotropy:TVkFloat;
+                          const aCompareEnable:boolean;
+                          const aCompareOp:TVkCompareOp;
+                          const aMinLod:TVkFloat;
+                          const aMaxLod:TVkFloat;
+                          const aBorderColor:TVkBorderColor;
+                          const aUnnormalizedCoordinates:boolean); reintroduce; overload;
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
@@ -1637,52 +1637,52 @@ type EVulkanException=class(Exception);
        fImageView:TVulkanImageView;
        fDoDestroy:boolean;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pImage:TVkImage;
-                          const pImageView:TVulkanImageView=nil;
-                          const pDoDestroy:boolean=true); reintroduce; overload;
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pFlags:TVkImageCreateFlags;
-                          const pImageType:TVkImageType;
-                          const pFormat:TVkFormat;
-                          const pExtentWidth:TVkUInt32;
-                          const pExtentHeight:TVkUInt32;
-                          const pExtentDepth:TVkUInt32;
-                          const pMipLevels:TVkUInt32;
-                          const pArrayLayers:TVkUInt32;
-                          const pSamples:TVkSampleCountFlagBits;
-                          const pTiling:TVkImageTiling;
-                          const pUsage:TVkImageUsageFlags;
-                          const pSharingMode:TVkSharingMode;
-                          const pQueueFamilyIndexCount:TVkUInt32;
-                          const pQueueFamilyIndices:PVkUInt32;
-                          const pInitialLayout:TVkImageLayout); reintroduce; overload;
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pFlags:TVkImageCreateFlags;
-                          const pImageType:TVkImageType;
-                          const pFormat:TVkFormat;
-                          const pExtentWidth:TVkUInt32;
-                          const pExtentHeight:TVkUInt32;
-                          const pExtentDepth:TVkUInt32;
-                          const pMipLevels:TVkUInt32;
-                          const pArrayLayers:TVkUInt32;
-                          const pSamples:TVkSampleCountFlagBits;
-                          const pTiling:TVkImageTiling;
-                          const pUsage:TVkImageUsageFlags;
-                          const pSharingMode:TVkSharingMode;
-                          const pQueueFamilyIndices:array of TVkUInt32;
-                          const pInitialLayout:TVkImageLayout); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aImage:TVkImage;
+                          const aImageView:TVulkanImageView=nil;
+                          const aDoDestroy:boolean=true); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aFlags:TVkImageCreateFlags;
+                          const aImageType:TVkImageType;
+                          const aFormat:TVkFormat;
+                          const aExtentWidth:TVkUInt32;
+                          const aExtentHeight:TVkUInt32;
+                          const aExtentDepth:TVkUInt32;
+                          const aMipLevels:TVkUInt32;
+                          const aArrayLayers:TVkUInt32;
+                          const aSamples:TVkSampleCountFlagBits;
+                          const aTiling:TVkImageTiling;
+                          const aUsage:TVkImageUsageFlags;
+                          const aSharingMode:TVkSharingMode;
+                          const aQueueFamilyIndexCount:TVkUInt32;
+                          const aQueueFamilyIndices:PVkUInt32;
+                          const aInitialLayout:TVkImageLayout); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aFlags:TVkImageCreateFlags;
+                          const aImageType:TVkImageType;
+                          const aFormat:TVkFormat;
+                          const aExtentWidth:TVkUInt32;
+                          const aExtentHeight:TVkUInt32;
+                          const aExtentDepth:TVkUInt32;
+                          const aMipLevels:TVkUInt32;
+                          const aArrayLayers:TVkUInt32;
+                          const aSamples:TVkSampleCountFlagBits;
+                          const aTiling:TVkImageTiling;
+                          const aUsage:TVkImageUsageFlags;
+                          const aSharingMode:TVkSharingMode;
+                          const aQueueFamilyIndices:array of TVkUInt32;
+                          const aInitialLayout:TVkImageLayout); reintroduce; overload;
        destructor Destroy; override;
-       procedure SetLayout(const pAspectMask:TVkImageAspectFlags;
-                           const pOldImageLayout:TVkImageLayout;
-                           const pNewImageLayout:TVkImageLayout;
-                           const pRange:PVkImageSubresourceRange;
-                           const pCommandBuffer:TVulkanCommandBuffer;
-                           const pQueue:TVulkanQueue=nil;
-                           const pFence:TVulkanFence=nil;
-                           const pBeginAndExecuteCommandBuffer:boolean=false;
-                           const pSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                           const pDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
+       procedure SetLayout(const aAspectMask:TVkImageAspectFlags;
+                           const aOldImageLayout:TVkImageLayout;
+                           const aNewImageLayout:TVkImageLayout;
+                           const aRange:PVkImageSubresourceRange;
+                           const aCommandBuffer:TVulkanCommandBuffer;
+                           const aQueue:TVulkanQueue=nil;
+                           const aFence:TVulkanFence=nil;
+                           const aBeginAndExecuteCommandBuffer:boolean=false;
+                           const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                           const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkImage read fImageHandle;
@@ -1695,22 +1695,22 @@ type EVulkanException=class(Exception);
        fImageViewHandle:TVkImageView;
        fImage:TVulkanImage;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pImageView:TVkImageView;
-                          const pImage:TVulkanImage=nil); reintroduce; overload;
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pImage:TVulkanImage;
-                          const pImageViewType:TVkImageViewType;
-                          const pFormat:TvkFormat;
-                          const pComponentRed:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                          const pComponentGreen:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                          const pComponentBlue:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                          const pComponentAlpha:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                          const pImageAspectFlags:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-                          const pBaseMipLevel:TVkUInt32=0;
-                          const pCountMipMapLevels:TVkUInt32=1;
-                          const pBaseArrayLayer:TVkUInt32=1;
-                          const pCountArrayLayers:TVkUInt32=0); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aImageView:TVkImageView;
+                          const aImage:TVulkanImage=nil); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aImage:TVulkanImage;
+                          const aImageViewType:TVkImageViewType;
+                          const aFormat:TvkFormat;
+                          const aComponentRed:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                          const aComponentGreen:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                          const aComponentBlue:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                          const aComponentAlpha:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                          const aImageAspectFlags:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+                          const aBaseMipLevel:TVkUInt32=0;
+                          const aCountMipMapLevels:TVkUInt32=1;
+                          const aBaseArrayLayer:TVkUInt32=1;
+                          const aCountArrayLayers:TVkUInt32=0); reintroduce; overload;
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
@@ -1729,21 +1729,21 @@ type EVulkanException=class(Exception);
        fMemoryBlock:TVulkanDeviceMemoryBlock;
        fDoDestroy:boolean;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pGraphicsQueue:TVulkanQueue;
-                          const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                          const pGraphicsCommandBufferFence:TVulkanFence;
-                          const pWidth:TVkUInt32;
-                          const pHeight:TVkUInt32;
-                          const pFormat:TVkFormat;
-                          const pUsage:TVkBufferUsageFlags); reintroduce; overload;
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pImage:TVulkanImage;
-                          const pImageView:TVulkanImageView;
-                          const pWidth:TVkUInt32;
-                          const pHeight:TVkUInt32;
-                          const pFormat:TVkFormat;
-                          const pDoDestroy:boolean=true); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aGraphicsQueue:TVulkanQueue;
+                          const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                          const aGraphicsCommandBufferFence:TVulkanFence;
+                          const aWidth:TVkUInt32;
+                          const aHeight:TVkUInt32;
+                          const aFormat:TVkFormat;
+                          const aUsage:TVkBufferUsageFlags); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aImage:TVulkanImage;
+                          const aImageView:TVulkanImageView;
+                          const aWidth:TVkUInt32;
+                          const aHeight:TVkUInt32;
+                          const aFormat:TVkFormat;
+                          const aDoDestroy:boolean=true); reintroduce; overload;
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
@@ -1772,33 +1772,33 @@ type EVulkanException=class(Exception);
        fLayers:TVkUInt32;
        fDoDestroy:boolean;
        fDoDestroyAttachments:boolean;
-       function GetFrameBufferAttachment(const pIndex:TVkInt32):TVulkanFrameBufferAttachment;
+       function GetFrameBufferAttachment(const aIndex:TVkInt32):TVulkanFrameBufferAttachment;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pRenderPass:TVulkanRenderPass;
-                          const pWidth:TVkUInt32;
-                          const pHeight:TVkUInt32;
-                          const pLayers:TVkUInt32); reintroduce; overload;
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pRenderPass:TVulkanRenderPass;
-                          const pWidth:TVkUInt32;
-                          const pHeight:TVkUInt32;
-                          const pLayers:TVkUInt32;
-                          const pFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
-                          const pDoDestroyAttachments:boolean=true); reintroduce; overload;
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pRenderPass:TVulkanRenderPass;
-                          const pWidth:TVkUInt32;
-                          const pHeight:TVkUInt32;
-                          const pLayers:TVkUInt32;
-                          const pFrameBufferHandle:TVkFrameBuffer;
-                          const pFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
-                          const pDoDestroy:boolean=true;
-                          const pDoDestroyAttachments:boolean=true); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aRenderPass:TVulkanRenderPass;
+                          const aWidth:TVkUInt32;
+                          const aHeight:TVkUInt32;
+                          const aLayers:TVkUInt32); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aRenderPass:TVulkanRenderPass;
+                          const aWidth:TVkUInt32;
+                          const aHeight:TVkUInt32;
+                          const aLayers:TVkUInt32;
+                          const aFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
+                          const aDoDestroyAttachments:boolean=true); reintroduce; overload;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aRenderPass:TVulkanRenderPass;
+                          const aWidth:TVkUInt32;
+                          const aHeight:TVkUInt32;
+                          const aLayers:TVkUInt32;
+                          const aFrameBufferHandle:TVkFrameBuffer;
+                          const aFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
+                          const aDoDestroy:boolean=true;
+                          const aDoDestroyAttachments:boolean=true); reintroduce; overload;
        destructor Destroy; override;
-       function AddAttachment(const pFrameBufferAttachment:TVulkanFrameBufferAttachment):TVkInt32;
+       function AddAttachment(const aFrameBufferAttachment:TVulkanFrameBufferAttachment):TVkInt32;
        procedure Initialize;
-       property Attachments[const pIndex:TVkInt32]:TVulkanFrameBufferAttachment read GetFrameBufferAttachment; default;
+       property Attachments[const aIndex:TVkInt32]:TVulkanFrameBufferAttachment read GetFrameBufferAttachment; default;
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkFrameBuffer read fFrameBufferHandle;
@@ -1826,29 +1826,29 @@ type EVulkanException=class(Exception);
        fCountImages:TVkUInt32;
        fWidth:TVkInt32;
        fHeight:TVkInt32;
-       function GetImage(const pImageIndex:TVkInt32):TVulkanImage;
+       function GetImage(const aImageIndex:TVkInt32):TVulkanImage;
        function GetCurrentImage:TVulkanImage;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pSurface:TVulkanSurface;
-                          const pOldSwapChain:TVulkanSwapChain=nil;
-                          const pDesiredImageWidth:TVkUInt32=0;
-                          const pDesiredImageHeight:TVkUInt32=0;
-                          const pDesiredImageCount:TVkUInt32=2;
-                          const pImageArrayLayers:TVkUInt32=1;
-                          const pImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
-                          const pImageColorSpace:TVkColorSpaceKHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-                          const pImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-                          const pImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-                          const pQueueFamilyIndices:TVkUInt32List=nil;
-                          const pCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-                          const pPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
-                          const pClipped:boolean=true;
-                          const pDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff));
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aSurface:TVulkanSurface;
+                          const aOldSwapChain:TVulkanSwapChain=nil;
+                          const aDesiredImageWidth:TVkUInt32=0;
+                          const aDesiredImageHeight:TVkUInt32=0;
+                          const aDesiredImageCount:TVkUInt32=2;
+                          const aImageArrayLayers:TVkUInt32=1;
+                          const aImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
+                          const aImageColorSpace:TVkColorSpaceKHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+                          const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+                          const aImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                          const aQueueFamilyIndices:TVkUInt32List=nil;
+                          const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+                          const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
+                          const aClipped:boolean=true;
+                          const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff));
        destructor Destroy; override;
-       function QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVulkanSemaphore=nil):TVkResult;
-       function AcquireNextImage(const pSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkResult;
-       property Images[const pImageIndex:TVkInt32]:TVulkanImage read GetImage; default;
+       function QueuePresent(const aQueue:TVulkanQueue;const aSemaphore:TVulkanSemaphore=nil):TVkResult;
+       function AcquireNextImage(const aSemaphore:TVulkanSemaphore=nil;const aFence:TVulkanFence=nil;const aTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkResult;
+       property Images[const aImageIndex:TVkInt32]:TVulkanImage read GetImage; default;
       published
        property Device:TVulkanDevice read fDevice;
        property Surface:TVulkanSurface read fSurface;
@@ -1888,21 +1888,21 @@ type EVulkanException=class(Exception);
       protected
        function GetRenderPass:TVulkanRenderPass; override;
        function GetFrameBuffer:TVulkanFrameBuffer; override;
-       function GetFrameBufferAtIndex(const pIndex:TVkInt32):TVulkanFrameBuffer;
+       function GetFrameBufferAtIndex(const aIndex:TVkInt32):TVulkanFrameBuffer;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pSwapChain:TVulkanSwapChain;
-                          const pPresentQueue:TVulkanQueue;
-                          const pPresentCommandBuffer:TVulkanCommandBuffer;
-                          const pPresentCommandBufferFence:TVulkanFence;
-                          const pGraphicsQueue:TVulkanQueue;
-                          const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                          const pGraphicsCommandBufferFence:TVulkanFence;
-                          const pDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
-                          const pDepthImageFormatWithStencil:boolean=false;
-                          const pClear:boolean=true);
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aSwapChain:TVulkanSwapChain;
+                          const aPresentQueue:TVulkanQueue;
+                          const aPresentCommandBuffer:TVulkanCommandBuffer;
+                          const aPresentCommandBufferFence:TVulkanFence;
+                          const aGraphicsQueue:TVulkanQueue;
+                          const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                          const aGraphicsCommandBufferFence:TVulkanFence;
+                          const aDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
+                          const aDepthImageFormatWithStencil:boolean=false;
+                          const aClear:boolean=true);
        destructor Destroy; override;
-       property FrameBuffers[const pIndex:TVkInt32]:TVulkanFrameBuffer read GetFrameBufferAtIndex;
+       property FrameBuffers[const aIndex:TVkInt32]:TVulkanFrameBuffer read GetFrameBufferAtIndex;
       published
        property Device:TVulkanDevice read fDevice;
        property SwapChain:TVulkanSwapChain read fSwapChain;
@@ -1959,9 +1959,9 @@ type EVulkanException=class(Exception);
        fDataSize:TVkSize;
        procedure Load;
       public
-       constructor Create(const pDevice:TVulkanDevice;const pData;const pDataSize:TVkSize); overload;
-       constructor Create(const pDevice:TVulkanDevice;const pStream:TStream); overload;
-       constructor Create(const pDevice:TVulkanDevice;const pFileName:string); overload;
+       constructor Create(const aDevice:TVulkanDevice;const aData;const aDataSize:TVkSize); overload;
+       constructor Create(const aDevice:TVulkanDevice;const aStream:TStream); overload;
+       constructor Create(const aDevice:TVulkanDevice;const aFileName:string); overload;
        destructor Destroy; override;
        function GetVariables:TVulkanShaderModuleVariables;
       published
@@ -1980,11 +1980,11 @@ type EVulkanException=class(Exception);
        fFlags:TVkDescriptorPoolCreateFlags;
        fMaxSets:TVkUInt32;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pFlags:TVkDescriptorPoolCreateFlags;
-                          const pMaxSets:TVkUInt32);
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aFlags:TVkDescriptorPoolCreateFlags;
+                          const aMaxSets:TVkUInt32);
        destructor Destroy; override;
-       function AddDescriptorPoolSize(const pType:TVkDescriptorType;const pDescriptorCount:TVkUInt32):TVkInt32;
+       function AddDescriptorPoolSize(const aType:TVkDescriptorType;const aDescriptorCount:TVkUInt32):TVkInt32;
        procedure Initialize;
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkDescriptorPool read fDescriptorPoolHandle;
@@ -1996,21 +1996,21 @@ type EVulkanException=class(Exception);
        fImmutableSamplers:TVkSamplerArray;
        fCountImmutableSamplers:TVkInt32;
        function GetBinding:TVkUInt32;
-       procedure SetBinding(const pBinding:TVkUInt32);
+       procedure SetBinding(const aBinding:TVkUInt32);
        function GetDescriptorType:TVkDescriptorType;
-       procedure SetDescriptorType(const pDescriptorType:TVkDescriptorType);
+       procedure SetDescriptorType(const aDescriptorType:TVkDescriptorType);
        function GetDescriptorCount:TVkUInt32;
-       procedure SetDescriptorCount(const pDescriptorCount:TVkUInt32);
+       procedure SetDescriptorCount(const aDescriptorCount:TVkUInt32);
        function GetStageFlags:TVkShaderStageFlags;
-       procedure SetStageFlags(const pStageFlags:TVkShaderStageFlags);
+       procedure SetStageFlags(const aStageFlags:TVkShaderStageFlags);
       public
-       constructor Create(const pBinding:TVkUInt32;
-                          const pDescriptorType:TVkDescriptorType;
-                          const pDescriptorCount:TVkUInt32;
-                          const pStageFlags:TVkShaderStageFlags);
+       constructor Create(const aBinding:TVkUInt32;
+                          const aDescriptorType:TVkDescriptorType;
+                          const aDescriptorCount:TVkUInt32;
+                          const aStageFlags:TVkShaderStageFlags);
        destructor Destroy; override;
-       procedure AddImmutableSampler(const pImmutableSampler:TVulkanSampler);
-       procedure AddImmutableSamplers(const pImmutableSamplers:array of TVulkanSampler);
+       procedure AddImmutableSampler(const aImmutableSampler:TVulkanSampler);
+       procedure AddImmutableSamplers(const aImmutableSamplers:array of TVulkanSampler);
        procedure Initialize;
       published
        property Binding:TVkUInt32 read GetBinding write SetBinding;
@@ -2026,13 +2026,13 @@ type EVulkanException=class(Exception);
        fDescriptorSetLayoutBindingList:TVulkanObjectList;
        fDescriptorSetLayoutBindingArray:TVkDescriptorSetLayoutBindingArray;
       public
-       constructor Create(const pDevice:TVulkanDevice);
+       constructor Create(const aDevice:TVulkanDevice);
        destructor Destroy; override;
-       procedure AddBinding(const pBinding:TVkUInt32;
-                            const pDescriptorType:TVkDescriptorType;
-                            const pDescriptorCount:TVkUInt32;
-                            const pStageFlags:TVkShaderStageFlags;
-                            const pImmutableSamplers:array of TVulkanSampler);
+       procedure AddBinding(const aBinding:TVkUInt32;
+                            const aDescriptorType:TVkDescriptorType;
+                            const aDescriptorCount:TVkUInt32;
+                            const aStageFlags:TVkShaderStageFlags;
+                            const aImmutableSamplers:array of TVulkanSampler);
        procedure Initialize;
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkDescriptorSetLayout read fDescriptorSetLayoutHandle;
@@ -2060,26 +2060,26 @@ type EVulkanException=class(Exception);
        fWriteDescriptorSetQueueMetaData:TVulkanDescriptorSetWriteDescriptorSetMetaDataArray;
        fWriteDescriptorSetQueueSize:TVkInt32;
       public
-       constructor Create(const pDescriptorPool:TVulkanDescriptorPool;
-                          const pDescriptorSetLayout:TVulkanDescriptorSetLayout);
+       constructor Create(const aDescriptorPool:TVulkanDescriptorPool;
+                          const aDescriptorSetLayout:TVulkanDescriptorSetLayout);
        destructor Destroy; override;
-       class function Allocate(const pDescriptorPool:TVulkanDescriptorPool;
-                               const pDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVulkanObjectList;
-       procedure CopyFromDescriptorSet(const pSourceDescriptorSet:TVulkanDescriptorSet;
-                                       const pSourceBinding:TVkUInt32;
-                                       const pSourceArrayElement:TVkUInt32;
-                                       const pDestinationBinding:TVkUInt32;
-                                       const pDestinationArrayElement:TVkUInt32;
-                                       const pDescriptorCount:TVkUInt32;
-                                       const pDoInstant:boolean=false);
-       procedure WriteToDescriptorSet(const pDestinationBinding:TVkUInt32;
-                                      const pDestinationArrayElement:TVkUInt32;
-                                      const pDescriptorCount:TVkUInt32;
-                                      const pDescriptorType:TVkDescriptorType;
-                                      const pImageInfo:array of TVkDescriptorImageInfo;
-                                      const pBufferInfo:array of TVkDescriptorBufferInfo;
-                                      const pTexelBufferView:array of TVkBufferView;
-                                      const pDoInstant:boolean=false);
+       class function Allocate(const aDescriptorPool:TVulkanDescriptorPool;
+                               const aDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVulkanObjectList;
+       procedure CopyFromDescriptorSet(const aSourceDescriptorSet:TVulkanDescriptorSet;
+                                       const aSourceBinding:TVkUInt32;
+                                       const aSourceArrayElement:TVkUInt32;
+                                       const aDestinationBinding:TVkUInt32;
+                                       const aDestinationArrayElement:TVkUInt32;
+                                       const aDescriptorCount:TVkUInt32;
+                                       const aDoInstant:boolean=false);
+       procedure WriteToDescriptorSet(const aDestinationBinding:TVkUInt32;
+                                      const aDestinationArrayElement:TVkUInt32;
+                                      const aDescriptorCount:TVkUInt32;
+                                      const aDescriptorType:TVkDescriptorType;
+                                      const aImageInfo:array of TVkDescriptorImageInfo;
+                                      const aBufferInfo:array of TVkDescriptorBufferInfo;
+                                      const aTexelBufferView:array of TVkBufferView;
+                                      const aDoInstant:boolean=false);
        procedure Flush;
       published
        property Device:TVulkanDevice read fDevice;
@@ -2097,15 +2097,15 @@ type EVulkanException=class(Exception);
        fPushConstantRanges:TVkPushConstantRangeArray;
        fCountPushConstantRanges:TVkInt32;
       public
-       constructor Create(const pDevice:TVulkanDevice);
+       constructor Create(const aDevice:TVulkanDevice);
        destructor Destroy; override;
-       function AddDescriptorSetLayout(const pDescriptorSetLayout:TVkDescriptorSetLayout):TVkInt32; overload;
-       function AddDescriptorSetLayout(const pDescriptorSetLayout:TVulkanDescriptorSetLayout):TVkInt32; overload;
-       function AddDescriptorSetLayouts(const pDescriptorSetLayouts:array of TVkDescriptorSetLayout):TVkInt32; overload;
-       function AddDescriptorSetLayouts(const pDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVkInt32; overload;
-       function AddPushConstantRange(const pPushConstantRange:TVkPushConstantRange):TVkInt32; overload;
-       function AddPushConstantRange(const pStageFlags:TVkShaderStageFlags;const pOffset,pSize:TVkUInt32):TVkInt32; overload;
-       function AddPushConstantRanges(const pPushConstantRanges:array of TVkPushConstantRange):TVkInt32;
+       function AddDescriptorSetLayout(const aDescriptorSetLayout:TVkDescriptorSetLayout):TVkInt32; overload;
+       function AddDescriptorSetLayout(const aDescriptorSetLayout:TVulkanDescriptorSetLayout):TVkInt32; overload;
+       function AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVkDescriptorSetLayout):TVkInt32; overload;
+       function AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVkInt32; overload;
+       function AddPushConstantRange(const aPushConstantRange:TVkPushConstantRange):TVkInt32; overload;
+       function AddPushConstantRange(const aStageFlags:TVkShaderStageFlags;const aOffset,aSize:TVkUInt32):TVkInt32; overload;
+       function AddPushConstantRanges(const aPushConstantRanges:array of TVkPushConstantRange):TVkInt32;
        procedure Initialize;
       published
        property Device:TVulkanDevice read fDevice;
@@ -2124,16 +2124,16 @@ type EVulkanException=class(Exception);
        fInitialized:boolean;
        procedure AllocateSpecializationInfo;
       public
-       constructor Create(const pStage:TVkShaderStageFlagBits;
-                          const pModule:TVulkanShaderModule;
-                          const pName:TVkCharString);
+       constructor Create(const aStage:TVkShaderStageFlagBits;
+                          const aModule:TVulkanShaderModule;
+                          const aName:TVkCharString);
        destructor Destroy; override;
-       procedure AddSpecializationDataFromMemory(const pData:TVkPointer;const pDataSize:TVkSize;const pDoCopyAndDoFree:boolean=true);
-       procedure AddSpecializationDataFromStream(const pStream:TStream);
-       procedure AddSpecializationDataFromFile(const pFileName:string);
-       function AddSpecializationMapEntry(const pSpecializationMapEntry:TVkSpecializationMapEntry):TVkInt32; overload;
-       function AddSpecializationMapEntry(const pConstantID,pOffset:TVkUInt32;const pSize:TVkSize):TVkInt32; overload;
-       function AddSpecializationMapEntries(const pSpecializationMapEntries:array of TVkSpecializationMapEntry):TVkInt32;
+       procedure AddSpecializationDataFromMemory(const aData:TVkPointer;const aDataSize:TVkSize;const aDoCopyAndDoFree:boolean=true);
+       procedure AddSpecializationDataFromStream(const aStream:TStream);
+       procedure AddSpecializationDataFromFile(const aFileName:string);
+       function AddSpecializationMapEntry(const aSpecializationMapEntry:TVkSpecializationMapEntry):TVkInt32; overload;
+       function AddSpecializationMapEntry(const aConstantID,aOffset:TVkUInt32;const aSize:TVkSize):TVkInt32; overload;
+       function AddSpecializationMapEntries(const aSpecializationMapEntries:array of TVkSpecializationMapEntry):TVkInt32;
        procedure Initialize;
        property PipelineShaderStageCreateInfo:PVkPipelineShaderStageCreateInfo read fPointerToPipelineShaderStageCreateInfo;
       published
@@ -2144,15 +2144,15 @@ type EVulkanException=class(Exception);
        fDevice:TVulkanDevice;
        fPipelineCacheHandle:TVkPipelineCache;
       public
-       constructor Create(const pDevice:TVulkanDevice;const pInitialData:pointer=nil;const pInitialDataSize:TVkSize=0);
-       constructor CreateFromMemory(const pDevice:TVulkanDevice;const pInitialData:pointer;const pInitialDataSize:TVkSize);
-       constructor CreateFromStream(const pDevice:TVulkanDevice;const pStream:TStream);
-       constructor CreateFromFile(const pDevice:TVulkanDevice;const pFileName:string);
+       constructor Create(const aDevice:TVulkanDevice;const aInitialData:pointer=nil;const aInitialDataSize:TVkSize=0);
+       constructor CreateFromMemory(const aDevice:TVulkanDevice;const aInitialData:pointer;const aInitialDataSize:TVkSize);
+       constructor CreateFromStream(const aDevice:TVulkanDevice;const aStream:TStream);
+       constructor CreateFromFile(const aDevice:TVulkanDevice;const aFileName:string);
        destructor Destroy; override;
-       procedure SaveToStream(const pStream:TStream);
-       procedure SaveToFile(const pFileName:string);
-       procedure Merge(const pSourcePipelineCache:TVulkanPipelineCache); overload;
-       procedure Merge(const pSourcePipelineCaches:array of TVulkanPipelineCache); overload;
+       procedure SaveToStream(const aStream:TStream);
+       procedure SaveToFile(const aFileName:string);
+       procedure Merge(const aSourcePipelineCache:TVulkanPipelineCache); overload;
+       procedure Merge(const aSourcePipelineCaches:array of TVulkanPipelineCache); overload;
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkPipelineCache read fPipelineCacheHandle;
@@ -2163,7 +2163,7 @@ type EVulkanException=class(Exception);
        fDevice:TVulkanDevice;
        fPipelineHandle:TVkPipeline;
       public
-       constructor Create(const pDevice:TVulkanDevice);
+       constructor Create(const aDevice:TVulkanDevice);
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
@@ -2172,13 +2172,13 @@ type EVulkanException=class(Exception);
 
      TVulkanComputePipeline=class(TVulkanPipeline)
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pCache:TVulkanPipelineCache;
-                          const pFlags:TVkPipelineCreateFlags;
-                          const pStage:TVulkanPipelineShaderStage;
-                          const pLayout:TVulkanPipelineLayout;
-                          const pBasePipelineHandle:TVulkanPipeline;
-                          const pBasePipelineIndex:TVkInt32); reintroduce;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aCache:TVulkanPipelineCache;
+                          const aFlags:TVkPipelineCreateFlags;
+                          const aStage:TVulkanPipelineShaderStage;
+                          const aLayout:TVulkanPipelineLayout;
+                          const aBasePipelineHandle:TVulkanPipeline;
+                          const aBasePipelineIndex:TVkInt32); reintroduce;
      end;
 
      TVulkanPipelineState=class(TVulkanObject)
@@ -2195,24 +2195,24 @@ type EVulkanException=class(Exception);
        fCountVertexInputBindingDescriptions:TVkInt32;
        fVertexInputAttributeDescriptions:TVkVertexInputAttributeDescriptionArray;
        fCountVertexInputAttributeDescriptions:TVkInt32;
-       function GetVertexInputBindingDescription(const pIndex:TVkInt32):PVkVertexInputBindingDescription;
-       function GetVertexInputAttributeDescription(const pIndex:TVkInt32):PVkVertexInputAttributeDescription;
-       procedure SetCountVertexInputBindingDescriptions(const pNewCount:TVkInt32);
-       procedure SetCountVertexInputAttributeDescriptions(const pNewCount:TVkInt32);
+       function GetVertexInputBindingDescription(const aIndex:TVkInt32):PVkVertexInputBindingDescription;
+       function GetVertexInputAttributeDescription(const aIndex:TVkInt32):PVkVertexInputAttributeDescription;
+       procedure SetCountVertexInputBindingDescriptions(const aNewCount:TVkInt32);
+       procedure SetCountVertexInputAttributeDescriptions(const aNewCount:TVkInt32);
        procedure Initialize;
       public
        constructor Create;
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanPipelineVertexInputState);
-       function AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
-       function AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32; overload;
-       function AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
-       function AddVertexInputAttributeDescription(const pVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32; overload;
-       function AddVertexInputAttributeDescription(const pLocation,pBinding:TVkUInt32;const pFormat:TVkFormat;const pOffset:TVkUInt32):TVkInt32; overload;
-       function AddVertexInputAttributeDescriptions(const pVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+       procedure Assign(const aFrom:TVulkanPipelineVertexInputState);
+       function AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
+       function AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32; overload;
+       function AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+       function AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32; overload;
+       function AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32; overload;
+       function AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
        property VertexInputStateCreateInfo:PVkPipelineVertexInputStateCreateInfo read fPointerToVertexInputStateCreateInfo;
-       property VertexInputBindingDescriptions[const pIndex:TVkInt32]:PVkVertexInputBindingDescription read GetVertexInputBindingDescription;
-       property VertexInputAttributeDescriptions[const pIndex:TVkInt32]:PVkVertexInputAttributeDescription read GetVertexInputAttributeDescription;
+       property VertexInputBindingDescriptions[const aIndex:TVkInt32]:PVkVertexInputBindingDescription read GetVertexInputBindingDescription;
+       property VertexInputAttributeDescriptions[const aIndex:TVkInt32]:PVkVertexInputAttributeDescription read GetVertexInputAttributeDescription;
       published
        property CountVertexInputBindingDescriptions:TVkInt32 read fCountVertexInputBindingDescriptions write SetCountVertexInputBindingDescriptions;
        property CountVertexInputAttributeDescriptions:TVkInt32 read fCountVertexInputAttributeDescriptions write SetCountVertexInputAttributeDescriptions;
@@ -2223,14 +2223,14 @@ type EVulkanException=class(Exception);
        fInputAssemblyStateCreateInfo:TVkPipelineInputAssemblyStateCreateInfo;
        fPointerToInputAssemblyStateCreateInfo:PVkPipelineInputAssemblyStateCreateInfo;
        function GetTopology:TVkPrimitiveTopology;
-       procedure SetTopology(const pNewValue:TVkPrimitiveTopology);
+       procedure SetTopology(const aNewValue:TVkPrimitiveTopology);
        function GetPrimitiveRestartEnable:boolean;
-       procedure SetPrimitiveRestartEnable(const pNewValue:boolean);
+       procedure SetPrimitiveRestartEnable(const aNewValue:boolean);
       public
        constructor Create;
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanPipelineInputAssemblyState);
-       procedure SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
+       procedure Assign(const aFrom:TVulkanPipelineInputAssemblyState);
+       procedure SetInputAssemblyState(const aTopology:TVkPrimitiveTopology;const aPrimitiveRestartEnable:boolean);
        property InputAssemblyStateCreateInfo:PVkPipelineInputAssemblyStateCreateInfo read fPointerToInputAssemblyStateCreateInfo;
       published
        property Topology:TVkPrimitiveTopology read GetTopology write SetTopology;
@@ -2242,12 +2242,12 @@ type EVulkanException=class(Exception);
        fTessellationStateCreateInfo:TVkPipelineTessellationStateCreateInfo;
        fPointerToTessellationStateCreateInfo:PVkPipelineTessellationStateCreateInfo;
        function GetPatchControlPoints:TVkUInt32;
-       procedure SetPatchControlPoints(const pNewValue:TVkUInt32);
+       procedure SetPatchControlPoints(const aNewValue:TVkUInt32);
       public
        constructor Create;
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanPipelineTessellationState);
-       procedure SetTessellationState(const pPatchControlPoints:TVkUInt32);
+       procedure Assign(const aFrom:TVulkanPipelineTessellationState);
+       procedure SetTessellationState(const aPatchControlPoints:TVkUInt32);
        property TessellationStateCreateInfo:PVkPipelineTessellationStateCreateInfo read fPointerToTessellationStateCreateInfo;
       published
        property PatchControlPoints:TVkUInt32 read GetPatchControlPoints write SetPatchControlPoints;
@@ -2261,24 +2261,24 @@ type EVulkanException=class(Exception);
        fCountViewPorts:TVkInt32;
        fScissors:TVkRect2DArray;
        fCountScissors:TVkInt32;
-       function GetViewPort(const pIndex:TVkInt32):PVkViewport;
-       function GetScissor(const pIndex:TVkInt32):PVkRect2D;
-       procedure SetCountViewPorts(const pNewCount:TVkInt32);
-       procedure SetCountScissors(const pNewCount:TVkInt32);
+       function GetViewPort(const aIndex:TVkInt32):PVkViewport;
+       function GetScissor(const aIndex:TVkInt32):PVkRect2D;
+       procedure SetCountViewPorts(const aNewCount:TVkInt32);
+       procedure SetCountScissors(const aNewCount:TVkInt32);
        procedure Initialize;
       public
        constructor Create;
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanPipelineViewPortState);
-       function AddViewPort(const pViewPort:TVkViewport):TVkInt32; overload;
-       function AddViewPort(const pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth:TVkFloat):TVkInt32; overload;
-       function AddViewPorts(const pViewPorts:array of TVkViewport):TVkInt32; overload;
-       function AddScissor(const pScissor:TVkRect2D):TVkInt32; overload;
-       function AddScissor(const pX,pY:TVkInt32;const pWidth,pHeight:TVkUInt32):TVkInt32; overload;
-       function AddScissors(const pScissors:array of TVkRect2D):TVkInt32; overload;
+       procedure Assign(const aFrom:TVulkanPipelineViewPortState);
+       function AddViewPort(const aViewPort:TVkViewport):TVkInt32; overload;
+       function AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32; overload;
+       function AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32; overload;
+       function AddScissor(const aScissor:TVkRect2D):TVkInt32; overload;
+       function AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32; overload;
+       function AddScissors(const aScissors:array of TVkRect2D):TVkInt32; overload;
        property ViewportStateCreateInfo:PVkPipelineViewportStateCreateInfo read fPointerToViewportStateCreateInfo;
-       property ViewPorts[const pIndex:TVkInt32]:PVkViewport read GetViewPort;
-       property Scissors[const pIndex:TVkInt32]:PVkRect2D read GetScissor;
+       property ViewPorts[const aIndex:TVkInt32]:PVkViewport read GetViewPort;
+       property Scissors[const aIndex:TVkInt32]:PVkRect2D read GetScissor;
       published
        property CountViewPorts:TVkInt32 read fCountViewPorts write SetCountViewPorts;
        property CountScissors:TVkInt32 read fCountScissors write SetCountScissors;
@@ -2289,39 +2289,39 @@ type EVulkanException=class(Exception);
        fRasterizationStateCreateInfo:TVkPipelineRasterizationStateCreateInfo;
        fPointerToRasterizationStateCreateInfo:PVkPipelineRasterizationStateCreateInfo;
        function GetDepthClampEnable:boolean;
-       procedure SetDepthClampEnable(const pNewValue:boolean);
+       procedure SetDepthClampEnable(const aNewValue:boolean);
        function GetRasterizerDiscardEnable:boolean;
-       procedure SetRasterizerDiscardEnable(const pNewValue:boolean);
+       procedure SetRasterizerDiscardEnable(const aNewValue:boolean);
        function GetPolygonMode:TVkPolygonMode;
-       procedure SetPolygonMode(const pNewValue:TVkPolygonMode);
+       procedure SetPolygonMode(const aNewValue:TVkPolygonMode);
        function GetCullMode:TVkCullModeFlags;
-       procedure SetCullMode(const pNewValue:TVkCullModeFlags);
+       procedure SetCullMode(const aNewValue:TVkCullModeFlags);
        function GetFrontFace:TVkFrontFace;
-       procedure SetFrontFace(const pNewValue:TVkFrontFace);
+       procedure SetFrontFace(const aNewValue:TVkFrontFace);
        function GetDepthBiasEnable:boolean;
-       procedure SetDepthBiasEnable(const pNewValue:boolean);
+       procedure SetDepthBiasEnable(const aNewValue:boolean);
        function GetDepthBiasConstantFactor:TVkFloat;
-       procedure SetDepthBiasConstantFactor(const pNewValue:TVkFloat);
+       procedure SetDepthBiasConstantFactor(const aNewValue:TVkFloat);
        function GetDepthBiasClamp:TVkFloat;
-       procedure SetDepthBiasClamp(const pNewValue:TVkFloat);
+       procedure SetDepthBiasClamp(const aNewValue:TVkFloat);
        function GetDepthBiasSlopeFactor:TVkFloat;
-       procedure SetDepthBiasSlopeFactor(const pNewValue:TVkFloat);
+       procedure SetDepthBiasSlopeFactor(const aNewValue:TVkFloat);
        function GetLineWidth:TVkFloat;
-       procedure SetLineWidth(const pNewValue:TVkFloat);
+       procedure SetLineWidth(const aNewValue:TVkFloat);
       public
        constructor Create;
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanPipelineRasterizationState);
-       procedure SetRasterizationState(const pDepthClampEnable:boolean;
-                                       const pRasterizerDiscardEnable:boolean;
-                                       const pPolygonMode:TVkPolygonMode;
-                                       const pCullMode:TVkCullModeFlags;
-                                       const pFrontFace:TVkFrontFace;
-                                       const pDepthBiasEnable:boolean;
-                                       const pDepthBiasConstantFactor:TVkFloat;
-                                       const pDepthBiasClamp:TVkFloat;
-                                       const pDepthBiasSlopeFactor:TVkFloat;
-                                       const pLineWidth:TVkFloat);
+       procedure Assign(const aFrom:TVulkanPipelineRasterizationState);
+       procedure SetRasterizationState(const aDepthClampEnable:boolean;
+                                       const aRasterizerDiscardEnable:boolean;
+                                       const aPolygonMode:TVkPolygonMode;
+                                       const aCullMode:TVkCullModeFlags;
+                                       const aFrontFace:TVkFrontFace;
+                                       const aDepthBiasEnable:boolean;
+                                       const aDepthBiasConstantFactor:TVkFloat;
+                                       const aDepthBiasClamp:TVkFloat;
+                                       const aDepthBiasSlopeFactor:TVkFloat;
+                                       const aLineWidth:TVkFloat);
        property RasterizationStateCreateInfo:PVkPipelineRasterizationStateCreateInfo read fPointerToRasterizationStateCreateInfo;
       published
        property DepthClampEnable:boolean read GetDepthClampEnable write SetDepthClampEnable;
@@ -2343,33 +2343,33 @@ type EVulkanException=class(Exception);
        fSampleMasks:TVkSampleMaskArray;
        fCountSampleMasks:TVkInt32;
        function GetRasterizationSamples:TVkSampleCountFlagBits;
-       procedure SetRasterizationSamples(const pNewValue:TVkSampleCountFlagBits);
+       procedure SetRasterizationSamples(const aNewValue:TVkSampleCountFlagBits);
        function GetSampleShadingEnable:boolean;
-       procedure SetSampleShadingEnable(const pNewValue:boolean);
-       function GetSampleMask(const pIndex:TVkInt32):TVkSampleMask;
-       procedure SetSampleMask(const pIndex:TVkInt32;const pNewValue:TVkSampleMask);
-       procedure SetCountSampleMasks(const pNewCount:TVkInt32);
+       procedure SetSampleShadingEnable(const aNewValue:boolean);
+       function GetSampleMask(const aIndex:TVkInt32):TVkSampleMask;
+       procedure SetSampleMask(const aIndex:TVkInt32;const aNewValue:TVkSampleMask);
+       procedure SetCountSampleMasks(const aNewCount:TVkInt32);
        function GetMinSampleShading:TVkFloat;
-       procedure SetMinSampleShading(const pNewValue:TVkFloat);
+       procedure SetMinSampleShading(const aNewValue:TVkFloat);
        function GetAlphaToCoverageEnable:boolean;
-       procedure SetAlphaToCoverageEnable(const pNewValue:boolean);
+       procedure SetAlphaToCoverageEnable(const aNewValue:boolean);
        function GetAlphaToOneEnable:boolean;
-       procedure SetAlphaToOneEnable(const pNewValue:boolean);
+       procedure SetAlphaToOneEnable(const aNewValue:boolean);
        procedure Initialize;
       public
        constructor Create;
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanPipelineMultisampleState);
-       function AddSampleMask(const pSampleMask:TVkSampleMask):TVkInt32;
-       function AddSampleMasks(const pSampleMasks:array of TVkSampleMask):TVkInt32;
-       procedure SetMultisampleState(const pRasterizationSamples:TVkSampleCountFlagBits;
-                                     const pSampleShadingEnable:boolean;
-                                     const pMinSampleShading:TVkFloat;
-                                     const pSampleMask:array of TVkSampleMask;
-                                     const pAlphaToCoverageEnable:boolean;
-                                     const pAlphaToOneEnable:boolean);
+       procedure Assign(const aFrom:TVulkanPipelineMultisampleState);
+       function AddSampleMask(const aSampleMask:TVkSampleMask):TVkInt32;
+       function AddSampleMasks(const aSampleMasks:array of TVkSampleMask):TVkInt32;
+       procedure SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
+                                     const aSampleShadingEnable:boolean;
+                                     const aMinSampleShading:TVkFloat;
+                                     const aSampleMask:array of TVkSampleMask;
+                                     const aAlphaToCoverageEnable:boolean;
+                                     const aAlphaToOneEnable:boolean);
        property MultisampleStateCreateInfo:PVkPipelineMultisampleStateCreateInfo read fPointerToMultisampleStateCreateInfo;
-       property SampleMasks[const pIndex:TVkInt32]:TVkSampleMask read GetSampleMask write SetSampleMask;
+       property SampleMasks[const aIndex:TVkInt32]:TVkSampleMask read GetSampleMask write SetSampleMask;
       published                                                                            
        property RasterizationSamples:TVkSampleCountFlagBits read GetRasterizationSamples write SetRasterizationSamples;
        property SampleShadingEnable:boolean read GetSampleShadingEnable write SetSampleShadingEnable;
@@ -2383,23 +2383,23 @@ type EVulkanException=class(Exception);
       private
        fStencilOpState:PVkStencilOpState;
        function GetFailOp:TVkStencilOp;
-       procedure SetFailOp(const pNewValue:TVkStencilOp);
+       procedure SetFailOp(const aNewValue:TVkStencilOp);
        function GetPassOp:TVkStencilOp;
-       procedure SetPassOp(const pNewValue:TVkStencilOp);
+       procedure SetPassOp(const aNewValue:TVkStencilOp);
        function GetDepthFailOp:TVkStencilOp;
-       procedure SetDepthFailOp(const pNewValue:TVkStencilOp);
+       procedure SetDepthFailOp(const aNewValue:TVkStencilOp);
        function GetCompareOp:TVkCompareOp;
-       procedure SetCompareOp(const pNewValue:TVkCompareOp);
+       procedure SetCompareOp(const aNewValue:TVkCompareOp);
        function GetCompareMask:TVkUInt32;
-       procedure SetCompareMask(const pNewValue:TVkUInt32);
+       procedure SetCompareMask(const aNewValue:TVkUInt32);
        function GetWriteMask:TVkUInt32;
-       procedure SetWriteMask(const pNewValue:TVkUInt32);
+       procedure SetWriteMask(const aNewValue:TVkUInt32);
        function GetReference:TVkUInt32;
-       procedure SetReference(const pNewValue:TVkUInt32);
+       procedure SetReference(const aNewValue:TVkUInt32);
       public
-       constructor Create(const pStencilOpState:PVkStencilOpState);
+       constructor Create(const aStencilOpState:PVkStencilOpState);
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanStencilOpState);
+       procedure Assign(const aFrom:TVulkanStencilOpState);
        property StencilOpState:PVkStencilOpState read fStencilOpState;
       published
        property FailOp:TVkStencilOp read GetFailOp write SetFailOp;
@@ -2418,32 +2418,32 @@ type EVulkanException=class(Exception);
        fFrontStencilOpState:TVulkanStencilOpState;
        fBackStencilOpState:TVulkanStencilOpState;
        function GetDepthTestEnable:boolean;
-       procedure SetDepthTestEnable(const pNewValue:boolean);
+       procedure SetDepthTestEnable(const aNewValue:boolean);
        function GetDepthWriteEnable:boolean;
-       procedure SetDepthWriteEnable(const pNewValue:boolean);
+       procedure SetDepthWriteEnable(const aNewValue:boolean);
        function GetDepthCompareOp:TVkCompareOp;
-       procedure SetDepthCompareOp(const pNewValue:TVkCompareOp);
+       procedure SetDepthCompareOp(const aNewValue:TVkCompareOp);
        function GetDepthBoundsTestEnable:boolean;
-       procedure SetDepthBoundsTestEnable(const pNewValue:boolean);
+       procedure SetDepthBoundsTestEnable(const aNewValue:boolean);
        function GetStencilTestEnable:boolean;
-       procedure SetStencilTestEnable(const pNewValue:boolean);
+       procedure SetStencilTestEnable(const aNewValue:boolean);
        function GetMinDepthBounds:TVkFloat;
-       procedure SetMinDepthBounds(const pNewValue:TVkFloat);
+       procedure SetMinDepthBounds(const aNewValue:TVkFloat);
        function GetMaxDepthBounds:TVkFloat;
-       procedure SetMaxDepthBounds(const pNewValue:TVkFloat);
+       procedure SetMaxDepthBounds(const aNewValue:TVkFloat);
       public
        constructor Create;
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanPipelineDepthStencilState);
-       procedure SetDepthStencilState(const pDepthTestEnable:boolean;
-                                      const pDepthWriteEnable:boolean;
-                                      const pDepthCompareOp:TVkCompareOp;
-                                      const pDepthBoundsTestEnable:boolean;
-                                      const pStencilTestEnable:boolean;
-                                      const pFront:TVkStencilOpState;
-                                      const pBack:TVkStencilOpState;
-                                      const pMinDepthBounds:TVkFloat;
-                                      const pMaxDepthBounds:TVkFloat);
+       procedure Assign(const aFrom:TVulkanPipelineDepthStencilState);
+       procedure SetDepthStencilState(const aDepthTestEnable:boolean;
+                                      const aDepthWriteEnable:boolean;
+                                      const aDepthCompareOp:TVkCompareOp;
+                                      const aDepthBoundsTestEnable:boolean;
+                                      const aStencilTestEnable:boolean;
+                                      const aFront:TVkStencilOpState;
+                                      const aBack:TVkStencilOpState;
+                                      const aMinDepthBounds:TVkFloat;
+                                      const aMaxDepthBounds:TVkFloat);
        property DepthStencilStateCreateInfo:PVkPipelineDepthStencilStateCreateInfo read fPointerToDepthStencilStateCreateInfo;
       published
        property DepthTestEnable:boolean read GetDepthTestEnable write SetDepthTestEnable;
@@ -2464,34 +2464,34 @@ type EVulkanException=class(Exception);
        fColorBlendAttachmentStates:TVkPipelineColorBlendAttachmentStateArray;
        fCountColorBlendAttachmentStates:TVkInt32;
        function GetLogicOpEnable:boolean;
-       procedure SetLogicOpEnable(const pNewValue:boolean);
+       procedure SetLogicOpEnable(const aNewValue:boolean);
        function GetLogicOp:TVkLogicOp;
-       procedure SetLogicOp(const pNewValue:TVkLogicOp);
-       procedure SetCountColorBlendAttachmentStates(const pNewCount:TVkInt32);
-       function GetColorBlendAttachmentState(const pIndex:TVkInt32):PVkPipelineColorBlendAttachmentState;
-       function GetBlendConstant(const pIndex:TVkInt32):TVkFloat;
-       procedure SetBlendConstant(const pIndex:TVkInt32;const pNewValue:TVkFloat);
+       procedure SetLogicOp(const aNewValue:TVkLogicOp);
+       procedure SetCountColorBlendAttachmentStates(const aNewCount:TVkInt32);
+       function GetColorBlendAttachmentState(const aIndex:TVkInt32):PVkPipelineColorBlendAttachmentState;
+       function GetBlendConstant(const aIndex:TVkInt32):TVkFloat;
+       procedure SetBlendConstant(const aIndex:TVkInt32;const aNewValue:TVkFloat);
       public
        constructor Create;
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanPipelineColorBlendState);
-       procedure SetColorBlendState(const pLogicOpEnable:boolean;
-                                    const pLogicOp:TVkLogicOp;
-                                    const pBlendConstants:array of TVkFloat);
-       function AddColorBlendAttachmentState(const pColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32; overload;
-       function AddColorBlendAttachmentState(const pBlendEnable:boolean;
-                                             const pSrcColorBlendFactor:TVkBlendFactor;
-                                             const pDstColorBlendFactor:TVkBlendFactor;
-                                             const pColorBlendOp:TVkBlendOp;
-                                             const pSrcAlphaBlendFactor:TVkBlendFactor;
-                                             const pDstAlphaBlendFactor:TVkBlendFactor;
-                                             const pAlphaBlendOp:TVkBlendOp;
-                                             const pColorWriteMask:TVkColorComponentFlags):TVkInt32; overload;
-       function AddColorBlendAttachmentStates(const pColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+       procedure Assign(const aFrom:TVulkanPipelineColorBlendState);
+       procedure SetColorBlendState(const aLogicOpEnable:boolean;
+                                    const aLogicOp:TVkLogicOp;
+                                    const aBlendConstants:array of TVkFloat);
+       function AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32; overload;
+       function AddColorBlendAttachmentState(const aBlendEnable:boolean;
+                                             const aSrcColorBlendFactor:TVkBlendFactor;
+                                             const aDstColorBlendFactor:TVkBlendFactor;
+                                             const aColorBlendOp:TVkBlendOp;
+                                             const aSrcAlphaBlendFactor:TVkBlendFactor;
+                                             const aDstAlphaBlendFactor:TVkBlendFactor;
+                                             const aAlphaBlendOp:TVkBlendOp;
+                                             const aColorWriteMask:TVkColorComponentFlags):TVkInt32; overload;
+       function AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
        procedure Initialize;
        property ColorBlendStateCreateInfo:PVkPipelineColorBlendStateCreateInfo read fPointerToColorBlendStateCreateInfo;
-       property ColorBlendAttachmentStates[const pIndex:TVkInt32]:PVkPipelineColorBlendAttachmentState read GetColorBlendAttachmentState;
-       property BlendConstants[const pIndex:TVkInt32]:TVkFloat read GetBlendConstant write SetBlendConstant;
+       property ColorBlendAttachmentStates[const aIndex:TVkInt32]:PVkPipelineColorBlendAttachmentState read GetColorBlendAttachmentState;
+       property BlendConstants[const aIndex:TVkInt32]:TVkFloat read GetBlendConstant write SetBlendConstant;
       published
        property LogicOpEnable:boolean read GetLogicOpEnable write SetLogicOpEnable;
        property LogicOp:TVkLogicOp read GetLogicOp write SetLogicOp;
@@ -2504,17 +2504,17 @@ type EVulkanException=class(Exception);
        fPointerToDynamicStateCreateInfo:PVkPipelineDynamicStateCreateInfo;
        fDynamicStates:TVkDynamicStateArray;
        fCountDynamicStates:TVkInt32;
-       function GetDynamicState(const pIndex:TVkInt32):PVkDynamicState;
-       procedure SetCountDynamicStates(const pNewCount:TVkInt32);
+       function GetDynamicState(const aIndex:TVkInt32):PVkDynamicState;
+       procedure SetCountDynamicStates(const aNewCount:TVkInt32);
        procedure Initialize;
       public
        constructor Create;
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanPipelineDynamicState);
-       function AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
-       function AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32; 
+       procedure Assign(const aFrom:TVulkanPipelineDynamicState);
+       function AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
+       function AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32; 
        property DynamicStateStateCreateInfo:PVkPipelineDynamicStateCreateInfo read fPointerToDynamicStateCreateInfo;
-       property DynamicStates[const pIndex:TVkInt32]:PVkDynamicState read GetDynamicState;
+       property DynamicStates[const aIndex:TVkInt32]:PVkDynamicState read GetDynamicState;
       published
        property CountDynamicStates:TVkInt32 read fCountDynamicStates write SetCountDynamicStates;
      end;
@@ -2535,73 +2535,73 @@ type EVulkanException=class(Exception);
        fDynamicState:TVulkanPipelineDynamicState;
        fPipelineCache:TVkPipelineCache;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pCache:TVulkanPipelineCache;
-                          const pFlags:TVkPipelineCreateFlags;
-                          const pStages:array of TVulkanPipelineShaderStage;
-                          const pLayout:TVulkanPipelineLayout;
-                          const pRenderPass:TVulkanRenderPass;
-                          const pSubPass:TVkUInt32;
-                          const pBasePipelineHandle:TVulkanPipeline;
-                          const pBasePipelineIndex:TVkInt32); reintroduce;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aCache:TVulkanPipelineCache;
+                          const aFlags:TVkPipelineCreateFlags;
+                          const aStages:array of TVulkanPipelineShaderStage;
+                          const aLayout:TVulkanPipelineLayout;
+                          const aRenderPass:TVulkanRenderPass;
+                          const aSubPass:TVkUInt32;
+                          const aBasePipelineHandle:TVulkanPipeline;
+                          const aBasePipelineIndex:TVkInt32); reintroduce;
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanGraphicsPipelineConstructor);
-       function AddStage(const pStage:TVulkanPipelineShaderStage):TVkInt32;
-       function AddStages(const pStages:array of TVulkanPipelineShaderStage):TVkInt32;
-       function AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
-       function AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32; overload;
-       function AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
-       function AddVertexInputAttributeDescription(const pVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32; overload;
-       function AddVertexInputAttributeDescription(const pLocation,pBinding:TVkUInt32;const pFormat:TVkFormat;const pOffset:TVkUInt32):TVkInt32; overload;
-       function AddVertexInputAttributeDescriptions(const pVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
-       procedure SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
-       procedure SetTessellationState(const pPatchControlPoints:TVkUInt32);
-       function AddViewPort(const pViewPort:TVkViewport):TVkInt32; overload;
-       function AddViewPort(const pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth:TVkFloat):TVkInt32; overload;
-       function AddViewPorts(const pViewPorts:array of TVkViewport):TVkInt32; overload;
-       function AddScissor(const pScissor:TVkRect2D):TVkInt32; overload;
-       function AddScissor(const pX,pY:TVkInt32;const pWidth,pHeight:TVkUInt32):TVkInt32; overload;
-       function AddScissors(const pScissors:array of TVkRect2D):TVkInt32; overload;
-       procedure SetRasterizationState(const pDepthClampEnable:boolean;
-                                       const pRasterizerDiscardEnable:boolean;
-                                       const pPolygonMode:TVkPolygonMode;
-                                       const pCullMode:TVkCullModeFlags;
-                                       const pFrontFace:TVkFrontFace;
-                                       const pDepthBiasEnable:boolean;
-                                       const pDepthBiasConstantFactor:TVkFloat;
-                                       const pDepthBiasClamp:TVkFloat;
-                                       const pDepthBiasSlopeFactor:TVkFloat;
-                                       const pLineWidth:TVkFloat);
-       procedure SetMultisampleState(const pRasterizationSamples:TVkSampleCountFlagBits;
-                                     const pSampleShadingEnable:boolean;
-                                     const pMinSampleShading:TVkFloat;
-                                     const pSampleMask:array of TVkSampleMask;
-                                     const pAlphaToCoverageEnable:boolean;
-                                     const pAlphaToOneEnable:boolean);
-       procedure SetDepthStencilState(const pDepthTestEnable:boolean;
-                                      const pDepthWriteEnable:boolean;
-                                      const pDepthCompareOp:TVkCompareOp;
-                                      const pDepthBoundsTestEnable:boolean;
-                                      const pStencilTestEnable:boolean;
-                                      const pFront:TVkStencilOpState;
-                                      const pBack:TVkStencilOpState;
-                                      const pMinDepthBounds:TVkFloat;
-                                      const pMaxDepthBounds:TVkFloat);
-       procedure SetColorBlendState(const pLogicOpEnable:boolean;
-                                    const pLogicOp:TVkLogicOp;
-                                    const pBlendConstants:array of TVkFloat);
-       function AddColorBlendAttachmentState(const pColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32; overload;
-       function AddColorBlendAttachmentState(const pBlendEnable:boolean;
-                                             const pSrcColorBlendFactor:TVkBlendFactor;
-                                             const pDstColorBlendFactor:TVkBlendFactor;
-                                             const pColorBlendOp:TVkBlendOp;
-                                             const pSrcAlphaBlendFactor:TVkBlendFactor;
-                                             const pDstAlphaBlendFactor:TVkBlendFactor;
-                                             const pAlphaBlendOp:TVkBlendOp;
-                                             const pColorWriteMask:TVkColorComponentFlags):TVkInt32; overload;
-       function AddColorBlendAttachmentStates(const pColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
-       function AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
-       function AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
+       procedure Assign(const aFrom:TVulkanGraphicsPipelineConstructor);
+       function AddStage(const aStage:TVulkanPipelineShaderStage):TVkInt32;
+       function AddStages(const aStages:array of TVulkanPipelineShaderStage):TVkInt32;
+       function AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
+       function AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32; overload;
+       function AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+       function AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32; overload;
+       function AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32; overload;
+       function AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+       procedure SetInputAssemblyState(const aTopology:TVkPrimitiveTopology;const aPrimitiveRestartEnable:boolean);
+       procedure SetTessellationState(const aPatchControlPoints:TVkUInt32);
+       function AddViewPort(const aViewPort:TVkViewport):TVkInt32; overload;
+       function AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32; overload;
+       function AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32; overload;
+       function AddScissor(const aScissor:TVkRect2D):TVkInt32; overload;
+       function AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32; overload;
+       function AddScissors(const aScissors:array of TVkRect2D):TVkInt32; overload;
+       procedure SetRasterizationState(const aDepthClampEnable:boolean;
+                                       const aRasterizerDiscardEnable:boolean;
+                                       const aPolygonMode:TVkPolygonMode;
+                                       const aCullMode:TVkCullModeFlags;
+                                       const aFrontFace:TVkFrontFace;
+                                       const aDepthBiasEnable:boolean;
+                                       const aDepthBiasConstantFactor:TVkFloat;
+                                       const aDepthBiasClamp:TVkFloat;
+                                       const aDepthBiasSlopeFactor:TVkFloat;
+                                       const aLineWidth:TVkFloat);
+       procedure SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
+                                     const aSampleShadingEnable:boolean;
+                                     const aMinSampleShading:TVkFloat;
+                                     const aSampleMask:array of TVkSampleMask;
+                                     const aAlphaToCoverageEnable:boolean;
+                                     const aAlphaToOneEnable:boolean);
+       procedure SetDepthStencilState(const aDepthTestEnable:boolean;
+                                      const aDepthWriteEnable:boolean;
+                                      const aDepthCompareOp:TVkCompareOp;
+                                      const aDepthBoundsTestEnable:boolean;
+                                      const aStencilTestEnable:boolean;
+                                      const aFront:TVkStencilOpState;
+                                      const aBack:TVkStencilOpState;
+                                      const aMinDepthBounds:TVkFloat;
+                                      const aMaxDepthBounds:TVkFloat);
+       procedure SetColorBlendState(const aLogicOpEnable:boolean;
+                                    const aLogicOp:TVkLogicOp;
+                                    const aBlendConstants:array of TVkFloat);
+       function AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32; overload;
+       function AddColorBlendAttachmentState(const aBlendEnable:boolean;
+                                             const aSrcColorBlendFactor:TVkBlendFactor;
+                                             const aDstColorBlendFactor:TVkBlendFactor;
+                                             const aColorBlendOp:TVkBlendOp;
+                                             const aSrcAlphaBlendFactor:TVkBlendFactor;
+                                             const aDstAlphaBlendFactor:TVkBlendFactor;
+                                             const aAlphaBlendOp:TVkBlendOp;
+                                             const aColorWriteMask:TVkColorComponentFlags):TVkInt32; overload;
+       function AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+       function AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
+       function AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32;
        procedure Initialize;
        property Stages:TVkPipelineShaderStageCreateInfoArray read fStages;
       published
@@ -2631,73 +2631,73 @@ type EVulkanException=class(Exception);
        function GetColorBlendState:TVulkanPipelineColorBlendState;
        function GetDynamicState:TVulkanPipelineDynamicState;
       public
-       constructor Create(const pDevice:TVulkanDevice;
-                          const pCache:TVulkanPipelineCache;
-                          const pFlags:TVkPipelineCreateFlags;
-                          const pStages:array of TVulkanPipelineShaderStage;
-                          const pLayout:TVulkanPipelineLayout;
-                          const pRenderPass:TVulkanRenderPass;
-                          const pSubPass:TVkUInt32;
-                          const pBasePipelineHandle:TVulkanPipeline;
-                          const pBasePipelineIndex:TVkInt32); reintroduce;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aCache:TVulkanPipelineCache;
+                          const aFlags:TVkPipelineCreateFlags;
+                          const aStages:array of TVulkanPipelineShaderStage;
+                          const aLayout:TVulkanPipelineLayout;
+                          const aRenderPass:TVulkanRenderPass;
+                          const aSubPass:TVkUInt32;
+                          const aBasePipelineHandle:TVulkanPipeline;
+                          const aBasePipelineIndex:TVkInt32); reintroduce;
        destructor Destroy; override;
-       procedure Assign(const pFrom:TVulkanGraphicsPipeline);
-       function AddStage(const pStage:TVulkanPipelineShaderStage):TVkInt32;
-       function AddStages(const pStages:array of TVulkanPipelineShaderStage):TVkInt32;
-       function AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
-       function AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32; overload;
-       function AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
-       function AddVertexInputAttributeDescription(const pVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32; overload;
-       function AddVertexInputAttributeDescription(const pLocation,pBinding:TVkUInt32;const pFormat:TVkFormat;const pOffset:TVkUInt32):TVkInt32; overload;
-       function AddVertexInputAttributeDescriptions(const pVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
-       procedure SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
-       procedure SetTessellationState(const pPatchControlPoints:TVkUInt32);
-       function AddViewPort(const pViewPort:TVkViewport):TVkInt32; overload;
-       function AddViewPort(const pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth:TVkFloat):TVkInt32; overload;
-       function AddViewPorts(const pViewPorts:array of TVkViewport):TVkInt32; overload;
-       function AddScissor(const pScissor:TVkRect2D):TVkInt32; overload;
-       function AddScissor(const pX,pY:TVkInt32;const pWidth,pHeight:TVkUInt32):TVkInt32; overload;
-       function AddScissors(const pScissors:array of TVkRect2D):TVkInt32; overload;
-       procedure SetRasterizationState(const pDepthClampEnable:boolean;
-                                       const pRasterizerDiscardEnable:boolean;
-                                       const pPolygonMode:TVkPolygonMode;
-                                       const pCullMode:TVkCullModeFlags;
-                                       const pFrontFace:TVkFrontFace;
-                                       const pDepthBiasEnable:boolean;
-                                       const pDepthBiasConstantFactor:TVkFloat;
-                                       const pDepthBiasClamp:TVkFloat;
-                                       const pDepthBiasSlopeFactor:TVkFloat;
-                                       const pLineWidth:TVkFloat);
-       procedure SetMultisampleState(const pRasterizationSamples:TVkSampleCountFlagBits;
-                                     const pSampleShadingEnable:boolean;
-                                     const pMinSampleShading:TVkFloat;
-                                     const pSampleMask:array of TVkSampleMask;
-                                     const pAlphaToCoverageEnable:boolean;
-                                     const pAlphaToOneEnable:boolean);
-       procedure SetDepthStencilState(const pDepthTestEnable:boolean;
-                                      const pDepthWriteEnable:boolean;
-                                      const pDepthCompareOp:TVkCompareOp;
-                                      const pDepthBoundsTestEnable:boolean;
-                                      const pStencilTestEnable:boolean;
-                                      const pFront:TVkStencilOpState;
-                                      const pBack:TVkStencilOpState;
-                                      const pMinDepthBounds:TVkFloat;
-                                      const pMaxDepthBounds:TVkFloat);
-       procedure SetColorBlendState(const pLogicOpEnable:boolean;
-                                    const pLogicOp:TVkLogicOp;
-                                    const pBlendConstants:array of TVkFloat);
-       function AddColorBlendAttachmentState(const pColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32; overload;
-       function AddColorBlendAttachmentState(const pBlendEnable:boolean;
-                                             const pSrcColorBlendFactor:TVkBlendFactor;
-                                             const pDstColorBlendFactor:TVkBlendFactor;
-                                             const pColorBlendOp:TVkBlendOp;
-                                             const pSrcAlphaBlendFactor:TVkBlendFactor;
-                                             const pDstAlphaBlendFactor:TVkBlendFactor;
-                                             const pAlphaBlendOp:TVkBlendOp;
-                                             const pColorWriteMask:TVkColorComponentFlags):TVkInt32; overload;
-       function AddColorBlendAttachmentStates(const pColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
-       function AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
-       function AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
+       procedure Assign(const aFrom:TVulkanGraphicsPipeline);
+       function AddStage(const aStage:TVulkanPipelineShaderStage):TVkInt32;
+       function AddStages(const aStages:array of TVulkanPipelineShaderStage):TVkInt32;
+       function AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
+       function AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32; overload;
+       function AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+       function AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32; overload;
+       function AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32; overload;
+       function AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+       procedure SetInputAssemblyState(const aTopology:TVkPrimitiveTopology;const aPrimitiveRestartEnable:boolean);
+       procedure SetTessellationState(const aPatchControlPoints:TVkUInt32);
+       function AddViewPort(const aViewPort:TVkViewport):TVkInt32; overload;
+       function AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32; overload;
+       function AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32; overload;
+       function AddScissor(const aScissor:TVkRect2D):TVkInt32; overload;
+       function AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32; overload;
+       function AddScissors(const aScissors:array of TVkRect2D):TVkInt32; overload;
+       procedure SetRasterizationState(const aDepthClampEnable:boolean;
+                                       const aRasterizerDiscardEnable:boolean;
+                                       const aPolygonMode:TVkPolygonMode;
+                                       const aCullMode:TVkCullModeFlags;
+                                       const aFrontFace:TVkFrontFace;
+                                       const aDepthBiasEnable:boolean;
+                                       const aDepthBiasConstantFactor:TVkFloat;
+                                       const aDepthBiasClamp:TVkFloat;
+                                       const aDepthBiasSlopeFactor:TVkFloat;
+                                       const aLineWidth:TVkFloat);
+       procedure SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
+                                     const aSampleShadingEnable:boolean;
+                                     const aMinSampleShading:TVkFloat;
+                                     const aSampleMask:array of TVkSampleMask;
+                                     const aAlphaToCoverageEnable:boolean;
+                                     const aAlphaToOneEnable:boolean);
+       procedure SetDepthStencilState(const aDepthTestEnable:boolean;
+                                      const aDepthWriteEnable:boolean;
+                                      const aDepthCompareOp:TVkCompareOp;
+                                      const aDepthBoundsTestEnable:boolean;
+                                      const aStencilTestEnable:boolean;
+                                      const aFront:TVkStencilOpState;
+                                      const aBack:TVkStencilOpState;
+                                      const aMinDepthBounds:TVkFloat;
+                                      const aMaxDepthBounds:TVkFloat);
+       procedure SetColorBlendState(const aLogicOpEnable:boolean;
+                                    const aLogicOp:TVkLogicOp;
+                                    const aBlendConstants:array of TVkFloat);
+       function AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32; overload;
+       function AddColorBlendAttachmentState(const aBlendEnable:boolean;
+                                             const aSrcColorBlendFactor:TVkBlendFactor;
+                                             const aDstColorBlendFactor:TVkBlendFactor;
+                                             const aColorBlendOp:TVkBlendOp;
+                                             const aSrcAlphaBlendFactor:TVkBlendFactor;
+                                             const aDstAlphaBlendFactor:TVkBlendFactor;
+                                             const aAlphaBlendOp:TVkBlendOp;
+                                             const aColorWriteMask:TVkColorComponentFlags):TVkInt32; overload;
+       function AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+       function AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
+       function AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32;
        procedure Initialize;
        procedure FreeMemory;
       published
@@ -2774,134 +2774,134 @@ type EVulkanException=class(Exception);
        fMaxAnisotropy:double;
       public
        constructor Create; reintroduce;
-       constructor CreateFromMemory(const pDevice:TVulkanDevice;
-                                    const pGraphicsQueue:TVulkanQueue;
-                                    const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                    const pGraphicsFence:TVulkanFence;
-                                    const pTransferQueue:TVulkanQueue;
-                                    const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                    const pTransferFence:TVulkanFence;
-                                    const pFormat:TVkFormat;
-                                    const pSampleCount:TVkSampleCountFlagBits;
-                                    const pWidth:TVkInt32;
-                                    const pHeight:TVkInt32;
-                                    const pDepth:TVkInt32;
-                                    const pCountArrayElements:TVkInt32;
-                                    const pCountFaces:TVkInt32;
-                                    const pCountMipMaps:TVkInt32;
-                                    const pUsageFlags:TVulkanTextureUsageFlags;
-                                    const pData:TVkPointer;
-                                    const pDataSize:TVkSizeInt;
-                                    const pMipMapSizeStored:boolean;
-                                    const pSwapEndianness:boolean;
-                                    const pSwapEndiannessTexels:TVkInt32;
-                                    const pFromDDS:boolean=false);
-       constructor CreateFromStream(const pDevice:TVulkanDevice;
-                                    const pGraphicsQueue:TVulkanQueue;
-                                    const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                    const pGraphicsFence:TVulkanFence;
-                                    const pTransferQueue:TVulkanQueue;
-                                    const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                    const pTransferFence:TVulkanFence;
-                                    const pFormat:TVkFormat;
-                                    const pSampleCount:TVkSampleCountFlagBits;
-                                    const pWidth:TVkInt32;
-                                    const pHeight:TVkInt32;
-                                    const pDepth:TVkInt32;
-                                    const pCountArrayElements:TVkInt32;
-                                    const pCountFaces:TVkInt32;
-                                    const pCountMipMaps:TVkInt32;
-                                    const pUsageFlags:TVulkanTextureUsageFlags;
-                                    const pStream:TStream;
-                                    const pMipMapSizeStored:boolean;
-                                    const pSwapEndianness:boolean;
-                                    const pSwapEndiannessTexels:TVkInt32;
-                                    const pFromDDS:boolean=false);
-       constructor CreateFromKTX(const pDevice:TVulkanDevice;
-                                 const pGraphicsQueue:TVulkanQueue;
-                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                 const pGraphicsFence:TVulkanFence;
-                                 const pTransferQueue:TVulkanQueue;
-                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                 const pTransferFence:TVulkanFence;
-                                 const pStream:TStream);
-       constructor CreateFromDDS(const pDevice:TVulkanDevice;
-                                 const pGraphicsQueue:TVulkanQueue;
-                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                 const pGraphicsFence:TVulkanFence;
-                                 const pTransferQueue:TVulkanQueue;
-                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                 const pTransferFence:TVulkanFence;
-                                 const pStream:TStream);
-       constructor CreateFromHDR(const pDevice:TVulkanDevice;
-                                 const pGraphicsQueue:TVulkanQueue;
-                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                 const pGraphicsFence:TVulkanFence;
-                                 const pTransferQueue:TVulkanQueue;
-                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                 const pTransferFence:TVulkanFence;
-                                 const pStream:TStream;
-                                 const pMipMaps:boolean);
-       constructor CreateFromTGA(const pDevice:TVulkanDevice;
-                                 const pGraphicsQueue:TVulkanQueue;
-                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                 const pGraphicsFence:TVulkanFence;
-                                 const pTransferQueue:TVulkanQueue;
-                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                 const pTransferFence:TVulkanFence;
-                                 const pStream:TStream;
-                                 const pMipMaps:boolean);
-       constructor CreateFromPNG(const pDevice:TVulkanDevice;
-                                 const pGraphicsQueue:TVulkanQueue;
-                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                 const pGraphicsFence:TVulkanFence;
-                                 const pTransferQueue:TVulkanQueue;
-                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                 const pTransferFence:TVulkanFence;
-                                 const pStream:TStream;
-                                 const pMipMaps:boolean);
-       constructor CreateFromJPEG(const pDevice:TVulkanDevice;
-                                  const pGraphicsQueue:TVulkanQueue;
-                                  const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                  const pGraphicsFence:TVulkanFence;
-                                  const pTransferQueue:TVulkanQueue;
-                                  const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                  const pTransferFence:TVulkanFence;
-                                  const pStream:TStream;
-                                  const pMipMaps:boolean);
-       constructor CreateFromBMP(const pDevice:TVulkanDevice;
-                                 const pGraphicsQueue:TVulkanQueue;
-                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                 const pGraphicsFence:TVulkanFence;
-                                 const pTransferQueue:TVulkanQueue;
-                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                 const pTransferFence:TVulkanFence;
-                                 const pStream:TStream;
-                                 const pMipMaps:boolean);
-       constructor CreateFromImage(const pDevice:TVulkanDevice;
-                                   const pGraphicsQueue:TVulkanQueue;
-                                   const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                   const pGraphicsFence:TVulkanFence;
-                                   const pTransferQueue:TVulkanQueue;
-                                   const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                   const pTransferFence:TVulkanFence;
-                                   const pStream:TStream;
-                                   const pMipMaps:boolean);
-       constructor CreateDefault(const pDevice:TVulkanDevice;
-                                 const pGraphicsQueue:TVulkanQueue;
-                                 const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                 const pGraphicsFence:TVulkanFence;
-                                 const pTransferQueue:TVulkanQueue;
-                                 const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                 const pTransferFence:TVulkanFence;
-                                 const pDefaultType:TVulkanTextureDefaultType;
-                                 const pWidth:TVkInt32;
-                                 const pHeight:TVkInt32;
-                                 const pDepth:TVkInt32;
-                                 const pCountArrayElements:TVkInt32;
-                                 const pCountFaces:TVkInt32;
-                                 const pMipmaps:boolean;
-                                 const pBorder:boolean);
+       constructor CreateFromMemory(const aDevice:TVulkanDevice;
+                                    const aGraphicsQueue:TVulkanQueue;
+                                    const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                    const aGraphicsFence:TVulkanFence;
+                                    const aTransferQueue:TVulkanQueue;
+                                    const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                    const aTransferFence:TVulkanFence;
+                                    const aFormat:TVkFormat;
+                                    const aSampleCount:TVkSampleCountFlagBits;
+                                    const aWidth:TVkInt32;
+                                    const aHeight:TVkInt32;
+                                    const aDepth:TVkInt32;
+                                    const aCountArrayElements:TVkInt32;
+                                    const aCountFaces:TVkInt32;
+                                    const aCountMipMaps:TVkInt32;
+                                    const aUsageFlags:TVulkanTextureUsageFlags;
+                                    const aData:TVkPointer;
+                                    const aDataSize:TVkSizeInt;
+                                    const aMipMapSizeStored:boolean;
+                                    const aSwapEndianness:boolean;
+                                    const aSwapEndiannessTexels:TVkInt32;
+                                    const aFromDDS:boolean=false);
+       constructor CreateFromStream(const aDevice:TVulkanDevice;
+                                    const aGraphicsQueue:TVulkanQueue;
+                                    const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                    const aGraphicsFence:TVulkanFence;
+                                    const aTransferQueue:TVulkanQueue;
+                                    const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                    const aTransferFence:TVulkanFence;
+                                    const aFormat:TVkFormat;
+                                    const aSampleCount:TVkSampleCountFlagBits;
+                                    const aWidth:TVkInt32;
+                                    const aHeight:TVkInt32;
+                                    const aDepth:TVkInt32;
+                                    const aCountArrayElements:TVkInt32;
+                                    const aCountFaces:TVkInt32;
+                                    const aCountMipMaps:TVkInt32;
+                                    const aUsageFlags:TVulkanTextureUsageFlags;
+                                    const aStream:TStream;
+                                    const aMipMapSizeStored:boolean;
+                                    const aSwapEndianness:boolean;
+                                    const aSwapEndiannessTexels:TVkInt32;
+                                    const aFromDDS:boolean=false);
+       constructor CreateFromKTX(const aDevice:TVulkanDevice;
+                                 const aGraphicsQueue:TVulkanQueue;
+                                 const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const aGraphicsFence:TVulkanFence;
+                                 const aTransferQueue:TVulkanQueue;
+                                 const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const aTransferFence:TVulkanFence;
+                                 const aStream:TStream);
+       constructor CreateFromDDS(const aDevice:TVulkanDevice;
+                                 const aGraphicsQueue:TVulkanQueue;
+                                 const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const aGraphicsFence:TVulkanFence;
+                                 const aTransferQueue:TVulkanQueue;
+                                 const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const aTransferFence:TVulkanFence;
+                                 const aStream:TStream);
+       constructor CreateFromHDR(const aDevice:TVulkanDevice;
+                                 const aGraphicsQueue:TVulkanQueue;
+                                 const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const aGraphicsFence:TVulkanFence;
+                                 const aTransferQueue:TVulkanQueue;
+                                 const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const aTransferFence:TVulkanFence;
+                                 const aStream:TStream;
+                                 const aMipMaps:boolean);
+       constructor CreateFromTGA(const aDevice:TVulkanDevice;
+                                 const aGraphicsQueue:TVulkanQueue;
+                                 const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const aGraphicsFence:TVulkanFence;
+                                 const aTransferQueue:TVulkanQueue;
+                                 const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const aTransferFence:TVulkanFence;
+                                 const aStream:TStream;
+                                 const aMipMaps:boolean);
+       constructor CreateFromPNG(const aDevice:TVulkanDevice;
+                                 const aGraphicsQueue:TVulkanQueue;
+                                 const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const aGraphicsFence:TVulkanFence;
+                                 const aTransferQueue:TVulkanQueue;
+                                 const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const aTransferFence:TVulkanFence;
+                                 const aStream:TStream;
+                                 const aMipMaps:boolean);
+       constructor CreateFromJPEG(const aDevice:TVulkanDevice;
+                                  const aGraphicsQueue:TVulkanQueue;
+                                  const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                  const aGraphicsFence:TVulkanFence;
+                                  const aTransferQueue:TVulkanQueue;
+                                  const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                  const aTransferFence:TVulkanFence;
+                                  const aStream:TStream;
+                                  const aMipMaps:boolean);
+       constructor CreateFromBMP(const aDevice:TVulkanDevice;
+                                 const aGraphicsQueue:TVulkanQueue;
+                                 const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const aGraphicsFence:TVulkanFence;
+                                 const aTransferQueue:TVulkanQueue;
+                                 const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const aTransferFence:TVulkanFence;
+                                 const aStream:TStream;
+                                 const aMipMaps:boolean);
+       constructor CreateFromImage(const aDevice:TVulkanDevice;
+                                   const aGraphicsQueue:TVulkanQueue;
+                                   const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                   const aGraphicsFence:TVulkanFence;
+                                   const aTransferQueue:TVulkanQueue;
+                                   const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                   const aTransferFence:TVulkanFence;
+                                   const aStream:TStream;
+                                   const aMipMaps:boolean);
+       constructor CreateDefault(const aDevice:TVulkanDevice;
+                                 const aGraphicsQueue:TVulkanQueue;
+                                 const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                 const aGraphicsFence:TVulkanFence;
+                                 const aTransferQueue:TVulkanQueue;
+                                 const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                 const aTransferFence:TVulkanFence;
+                                 const aDefaultType:TVulkanTextureDefaultType;
+                                 const aWidth:TVkInt32;
+                                 const aHeight:TVkInt32;
+                                 const aDepth:TVkInt32;
+                                 const aCountArrayElements:TVkInt32;
+                                 const aCountFaces:TVkInt32;
+                                 const aMipmaps:boolean;
+                                 const aBorder:boolean);
        destructor Destroy; override;
        procedure UpdateSampler;
        property DescriptorImageInfo:TVkDescriptorImageInfo read fDescriptorImageInfo;
@@ -2949,14 +2949,14 @@ const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling
         VK_IMAGE_TILING_LINEAR   // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
        );
 
-function VulkanConvertFloatToHalfFloat(const pValue:TVkFloat):TVkHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
-function VulkanConvertHalfFloatToFloat(const pValue:TVkHalfFloat):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
+function VulkanConvertFloatToHalfFloat(const aValue:TVkFloat):TVkHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+function VulkanConvertHalfFloatToFloat(const aValue:TVkHalfFloat):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
 
-function VulkanGetFormatFromOpenGLFormat(const pFormat,pType:TVkUInt32):TVkFormat;
-function VulkanGetFormatFromOpenGLType(const pType,pNumComponents:TVkUInt32;const pNormalized:boolean):TVkFormat;
-function VulkanGetFormatFromOpenGLInternalFormat(const pInternalFormat:TVkUInt32):TVkFormat;
+function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TVkUInt32):TVkFormat;
+function VulkanGetFormatFromOpenGLType(const aType,aNumComponents:TVkUInt32;const aNormalized:boolean):TVkFormat;
+function VulkanGetFormatFromOpenGLInternalFormat(const aInternalFormat:TVkUInt32):TVkFormat;
 
-function VulkanGetFormatSize(const pFormat:TVkFormat):TVulkanFormatSize;
+function VulkanGetFormatSize(const aFormat:TVkFormat):TVulkanFormatSize;
 
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
 
@@ -2964,17 +2964,17 @@ function VulkanErrorToString(const ErrorCode:TVkResult):TVulkanCharString;
 
 function StringListToVulkanCharStringArray(const StringList:TStringList):TVulkanCharStringArray;
 
-procedure VulkanSetImageLayout(const pImage:TVkImage;
-                               const pAspectMask:TVkImageAspectFlags;
-                               const pOldImageLayout:TVkImageLayout;
-                               const pNewImageLayout:TVkImageLayout;
-                               const pRange:PVkImageSubresourceRange;
-                               const pCommandBuffer:TVulkanCommandBuffer;
-                               const pQueue:TVulkanQueue=nil;
-                               const pFence:TVulkanFence=nil;
-                               const pBeginAndExecuteCommandBuffer:boolean=false;
-                               const pSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                               const pDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
+procedure VulkanSetImageLayout(const aImage:TVkImage;
+                               const aAspectMask:TVkImageAspectFlags;
+                               const aOldImageLayout:TVkImageLayout;
+                               const aNewImageLayout:TVkImageLayout;
+                               const aRange:PVkImageSubresourceRange;
+                               const aCommandBuffer:TVulkanCommandBuffer;
+                               const aQueue:TVulkanQueue=nil;
+                               const aFence:TVulkanFence=nil;
+                               const aBeginAndExecuteCommandBuffer:boolean=false;
+                               const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                               const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
 
 procedure VulkanDisableFloatingPointExceptions;
 
@@ -3400,24 +3400,24 @@ begin
  end;
 end;
 
-function VulkanConvertFloatToHalfFloat(const pValue:TVkFloat):TVkHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
-var CastedValue:TVkUInt32 absolute pValue;
+function VulkanConvertFloatToHalfFloat(const aValue:TVkFloat):TVkHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+var CastedValue:TVkUInt32 absolute aValue;
 begin
  result:=VulkanFloatToHalfFloatBaseTable[CastedValue shr 23]+TVkUInt16((CastedValue and $007fffff) shr VulkanFloatToHalfFloatShiftTable[CastedValue shr 23]);
 end;
 
-function VulkanConvertHalfFloatToFloat(const pValue:TVkHalfFloat):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
+function VulkanConvertHalfFloatToFloat(const aValue:TVkHalfFloat):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
 var f:TVkUInt32;
 begin
- f:=VulkanHalfFloatToFloatMantissaTable[VulkanHalfFloatToFloatOffsetTable[pValue shr 10]+(pValue and $3ff)]+VulkanHalfFloatToFloatExponentTable[pValue shr 10];
+ f:=VulkanHalfFloatToFloatMantissaTable[VulkanHalfFloatToFloatOffsetTable[aValue shr 10]+(aValue and $3ff)]+VulkanHalfFloatToFloatExponentTable[aValue shr 10];
  result:=TVkFloat(pointer(@f)^);
 end;
 
-function VulkanGetFormatFromOpenGLFormat(const pFormat,pType:TVkUInt32):TVkFormat;
+function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TVkUInt32):TVkFormat;
 begin
- case pType of
+ case aType of
   GL_UNSIGNED_BYTE:begin
-   case pFormat of
+   case aFormat of
     GL_RED:begin
      result:=VK_FORMAT_R8_UNORM;
     end;
@@ -3469,7 +3469,7 @@ begin
    end;
   end;
   GL_BYTE:begin
-   case pFormat of
+   case aFormat of
     GL_RED:begin
      result:=VK_FORMAT_R8_SNORM;
     end;
@@ -3521,7 +3521,7 @@ begin
    end;
   end;
   GL_UNSIGNED_SHORT:begin
-   case pFormat of
+   case aFormat of
     GL_RED:begin
      result:=VK_FORMAT_R16_UNORM;
     end;
@@ -3573,7 +3573,7 @@ begin
    end;
   end;
   GL_SHORT:begin
-   case pFormat of
+   case aFormat of
     GL_RED:begin
      result:=VK_FORMAT_R16_SNORM;
     end;
@@ -3625,7 +3625,7 @@ begin
    end;
   end;
   GL_HALF_FLOAT,GL_HALF_FLOAT_OES:begin
-   case pFormat of
+   case aFormat of
     GL_RED:begin
      result:=VK_FORMAT_R16_SFLOAT;
     end;
@@ -3677,7 +3677,7 @@ begin
    end;
   end;
   GL_UNSIGNED_INT:begin
-   case pFormat of
+   case aFormat of
     GL_RED:begin
      result:=VK_FORMAT_R32_UINT;
     end;
@@ -3729,7 +3729,7 @@ begin
    end;
   end;
   GL_INT:begin
-   case pFormat of
+   case aFormat of
     GL_RED:begin
      result:=VK_FORMAT_R32_SINT;
     end;
@@ -3781,7 +3781,7 @@ begin
    end;
   end;
   GL_FLOAT:begin
-   case pFormat of
+   case aFormat of
     GL_RED:begin
      result:=VK_FORMAT_R32_SFLOAT;
     end;
@@ -3833,7 +3833,7 @@ begin
    end;
   end;
   GL_UNSIGNED_INT64:begin
-   case pFormat of
+   case aFormat of
     GL_RED:begin
      result:=VK_FORMAT_R64_UINT;
     end;
@@ -3885,7 +3885,7 @@ begin
    end;
   end;
   GL_INT64:begin
-   case pFormat of
+   case aFormat of
     GL_RED:begin
      result:=VK_FORMAT_R64_SINT;
     end;
@@ -3937,7 +3937,7 @@ begin
    end;
   end;
   GL_DOUBLE:begin
-   case pFormat of
+   case aFormat of
     GL_RED:begin
      result:=VK_FORMAT_R64_SFLOAT;
     end;
@@ -3995,7 +3995,7 @@ begin
    result:=VK_FORMAT_UNDEFINED;
   end;
   GL_UNSIGNED_SHORT_5_6_5:begin
-   case pFormat of
+   case aFormat of
     GL_RGB,GL_RGB_INTEGER:begin
      result:=VK_FORMAT_R5G6B5_UNORM_PACK16;
     end;
@@ -4005,7 +4005,7 @@ begin
    end;
   end;
   GL_UNSIGNED_SHORT_5_6_5_REV:begin
-   case pFormat of
+   case aFormat of
     GL_BGR,GL_BGR_INTEGER:begin
      result:=VK_FORMAT_B5G6R5_UNORM_PACK16;
     end;
@@ -4015,7 +4015,7 @@ begin
    end;
   end;
   GL_UNSIGNED_SHORT_4_4_4_4:begin
-   case pFormat of
+   case aFormat of
     GL_RGB,GL_BGRA,GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
      result:=VK_FORMAT_R4G4B4A4_UNORM_PACK16;
     end;
@@ -4025,7 +4025,7 @@ begin
    end;
   end;
   GL_UNSIGNED_SHORT_4_4_4_4_REV:begin
-   case pFormat of
+   case aFormat of
     GL_RGB,GL_BGRA,GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
      result:=VK_FORMAT_B4G4R4A4_UNORM_PACK16;
     end;
@@ -4035,7 +4035,7 @@ begin
    end;
   end;
   GL_UNSIGNED_SHORT_5_5_5_1:begin
-   case pFormat of
+   case aFormat of
     GL_RGB,GL_BGRA,GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
      result:=VK_FORMAT_R5G5B5A1_UNORM_PACK16;
     end;
@@ -4045,7 +4045,7 @@ begin
    end;
   end;
   GL_UNSIGNED_SHORT_1_5_5_5_REV:begin
-   case pFormat of
+   case aFormat of
     GL_RGB,GL_BGRA,GL_RGB_INTEGER,GL_BGRA_INTEGER:begin
      result:=VK_FORMAT_A1R5G5B5_UNORM_PACK16;
     end;
@@ -4055,7 +4055,7 @@ begin
    end;
   end;
   GL_UNSIGNED_INT_8_8_8_8:begin
-   case pFormat of
+   case aFormat of
     GL_RGB,GL_BGRA:begin
      result:=VK_FORMAT_R8G8B8A8_UNORM;
     end;
@@ -4068,7 +4068,7 @@ begin
    end;
   end;
   GL_UNSIGNED_INT_8_8_8_8_REV:begin
-   case pFormat of
+   case aFormat of
     GL_RGB,GL_BGRA:begin
      result:=VK_FORMAT_A8B8G8R8_UNORM_PACK32;
     end;
@@ -4081,7 +4081,7 @@ begin
    end;
   end;
   GL_UNSIGNED_INT_10_10_10_2:begin
-   case pFormat of
+   case aFormat of
     GL_RGB,GL_BGRA:begin
      result:=VK_FORMAT_A2R10G10B10_UNORM_PACK32;
     end;
@@ -4094,7 +4094,7 @@ begin
    end;
   end;
   GL_UNSIGNED_INT_2_10_10_10_REV:begin
-   case pFormat of
+   case aFormat of
     GL_RGB,GL_BGRA:begin
      result:=VK_FORMAT_A2B10G10R10_UINT_PACK32;
     end;
@@ -4107,7 +4107,7 @@ begin
    end;
   end;
   GL_UNSIGNED_INT_10F_11F_11F_REV:begin
-   case pFormat of
+   case aFormat of
     GL_RGB,GL_BGR:begin
      result:=VK_FORMAT_B10G11R11_UFLOAT_PACK32;
     end;
@@ -4117,7 +4117,7 @@ begin
    end;
   end;
   GL_UNSIGNED_INT_5_9_9_9_REV:begin
-   case pFormat of
+   case aFormat of
     GL_RGB,GL_BGR:begin
      result:=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
     end;
@@ -4127,7 +4127,7 @@ begin
    end;
   end;
   GL_UNSIGNED_INT_24_8:begin
-   case pFormat of
+   case aFormat of
     GL_DEPTH_STENCIL:begin
      result:=VK_FORMAT_D24_UNORM_S8_UINT;
     end;
@@ -4137,7 +4137,7 @@ begin
    end;
   end;
   GL_FLOAT_32_UNSIGNED_INT_24_8_REV:begin
-   case pFormat of
+   case aFormat of
     GL_DEPTH_STENCIL:begin
      result:=VK_FORMAT_D32_SFLOAT_S8_UINT;
     end;
@@ -4152,34 +4152,34 @@ begin
  end;
 end;
 
-function VulkanGetFormatFromOpenGLType(const pType,pNumComponents:TVkUInt32;const pNormalized:boolean):TVkFormat;
+function VulkanGetFormatFromOpenGLType(const aType,aNumComponents:TVkUInt32;const aNormalized:boolean):TVkFormat;
 begin
- case pType of
+ case aType of
   GL_UNSIGNED_BYTE:begin
-   case pNumComponents of
+   case aNumComponents of
     1:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R8_UNORM;
      end else begin
       result:=VK_FORMAT_R8_UINT;
      end;
     end;
     2:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R8G8_UNORM;
      end else begin
       result:=VK_FORMAT_R8G8_UINT;
      end;
     end;
     3:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R8G8B8_UNORM;
      end else begin
       result:=VK_FORMAT_R8G8B8_UINT;
      end;
     end;
     4:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R8G8B8A8_UNORM;
      end else begin
       result:=VK_FORMAT_R8G8B8A8_UINT;
@@ -4191,30 +4191,30 @@ begin
    end;
   end;
   GL_BYTE:begin
-   case pNumComponents of
+   case aNumComponents of
     1:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R8_SNORM;
      end else begin
       result:=VK_FORMAT_R8_SINT;
      end;
     end;
     2:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R8G8_SNORM;
      end else begin
       result:=VK_FORMAT_R8G8_SINT;
      end;
     end;
     3:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R8G8B8_SNORM;
      end else begin
       result:=VK_FORMAT_R8G8B8_SINT;
      end;
     end;
     4:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R8G8B8A8_SNORM;
      end else begin
       result:=VK_FORMAT_R8G8B8A8_SINT;
@@ -4226,30 +4226,30 @@ begin
    end;
   end;
   GL_UNSIGNED_SHORT:begin
-   case pNumComponents of
+   case aNumComponents of
     1:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R16_UNORM;
      end else begin
       result:=VK_FORMAT_R16_UINT;
      end;
     end;
     2:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R16G16_UNORM;
      end else begin
       result:=VK_FORMAT_R16G16_UINT;
      end;
     end;
     3:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R16G16B16_UNORM;
      end else begin
       result:=VK_FORMAT_R16G16B16_UINT;
      end;
     end;
     4:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R16G16B16A16_UNORM;
      end else begin
       result:=VK_FORMAT_R16G16B16A16_UINT;
@@ -4261,30 +4261,30 @@ begin
    end;
   end;
   GL_SHORT:begin
-   case pNumComponents of
+   case aNumComponents of
     1:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R16_SNORM;
      end else begin
       result:=VK_FORMAT_R16_SINT;
      end;
     end;
     2:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R16G16_SNORM;
      end else begin
       result:=VK_FORMAT_R16G16_SINT;
      end;
     end;
     3:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R16G16B16_SNORM;
      end else begin
       result:=VK_FORMAT_R16G16B16_SINT;
      end;
     end;
     4:begin
-     if pNormalized then begin
+     if aNormalized then begin
       result:=VK_FORMAT_R16G16B16A16_SNORM;
      end else begin
       result:=VK_FORMAT_R16G16B16A16_SINT;
@@ -4296,7 +4296,7 @@ begin
    end;
   end;
   GL_HALF_FLOAT,GL_HALF_FLOAT_OES:begin
-   case pNumComponents of
+   case aNumComponents of
     1:begin
      result:=VK_FORMAT_R16_SFLOAT;
     end;
@@ -4315,7 +4315,7 @@ begin
    end;
   end;
   GL_UNSIGNED_INT:begin
-   case pNumComponents of
+   case aNumComponents of
     1:begin
      result:=VK_FORMAT_R32_UINT;
     end;
@@ -4334,7 +4334,7 @@ begin
    end;
   end;
   GL_INT:begin
-   case pNumComponents of
+   case aNumComponents of
     1:begin
      result:=VK_FORMAT_R32_SINT;
     end;
@@ -4353,7 +4353,7 @@ begin
    end;
   end;
   GL_FLOAT:begin
-   case pNumComponents of
+   case aNumComponents of
     1:begin
      result:=VK_FORMAT_R32_SFLOAT;
     end;
@@ -4372,7 +4372,7 @@ begin
    end;
   end;
   GL_UNSIGNED_INT64:begin
-   case pNumComponents of
+   case aNumComponents of
     1:begin
      result:=VK_FORMAT_R64_UINT;
     end;
@@ -4391,7 +4391,7 @@ begin
    end;
   end;
   GL_INT64:begin
-   case pNumComponents of
+   case aNumComponents of
     1:begin
      result:=VK_FORMAT_R64_SINT;
     end;
@@ -4410,7 +4410,7 @@ begin
    end;
   end;
   GL_DOUBLE:begin
-   case pNumComponents of
+   case aNumComponents of
     1:begin
      result:=VK_FORMAT_R64_SFLOAT;
     end;
@@ -4453,28 +4453,28 @@ begin
    result:=VK_FORMAT_A1R5G5B5_UNORM_PACK16;
   end;
   GL_UNSIGNED_INT_8_8_8_8:begin
-   if pNormalized then begin
+   if aNormalized then begin
     result:=VK_FORMAT_R8G8B8A8_UNORM;
    end else begin
     result:=VK_FORMAT_R8G8B8A8_UINT;
    end;
   end;
   GL_UNSIGNED_INT_8_8_8_8_REV:begin
-   if pNormalized then begin
+   if aNormalized then begin
     result:=VK_FORMAT_A8B8G8R8_UNORM_PACK32;
    end else begin
     result:=VK_FORMAT_A8B8G8R8_UINT_PACK32;
    end;
   end;
   GL_UNSIGNED_INT_10_10_10_2:begin
-   if pNormalized then begin
+   if aNormalized then begin
     result:=VK_FORMAT_A2R10G10B10_UNORM_PACK32;
    end else begin
     result:=VK_FORMAT_A2R10G10B10_UINT_PACK32;
    end;
   end;
   GL_UNSIGNED_INT_2_10_10_10_REV:begin
-   if pNormalized then begin
+   if aNormalized then begin
     result:=VK_FORMAT_A2B10G10R10_UNORM_PACK32;
    end else begin
     result:=VK_FORMAT_A2B10G10R10_UINT_PACK32;
@@ -4498,9 +4498,9 @@ begin
  end;
 end;
 
-function VulkanGetFormatFromOpenGLInternalFormat(const pInternalFormat:TVkUInt32):TVkFormat;
+function VulkanGetFormatFromOpenGLInternalFormat(const aInternalFormat:TVkUInt32):TVkFormat;
 begin
- case pInternalFormat of
+ case aInternalFormat of
   GL_R8:begin
    result:=VK_FORMAT_R8_UNORM; // 1-component, 8-bit unsigned normalized
   end;
@@ -5053,9 +5053,9 @@ begin
  end;
 end;
 
-function VulkanGetFormatSize(const pFormat:TVkFormat):TVulkanFormatSize;
+function VulkanGetFormatSize(const aFormat:TVkFormat):TVulkanFormatSize;
 begin
- case pFormat of
+ case aFormat of
   VK_FORMAT_R4G4_UNORM_PACK8:begin
    result.Flags:=[vfsfPacked];
    result.PaletteSizeInBits:=0;
@@ -5530,7 +5530,7 @@ begin
 end;
 {$endif}
 
-function VulkanIntLog2(pValue:TVkUInt32):TVkUInt32; {$ifdef cpu386}assembler; {$ifdef fpc}nostackframe;{$else}register;{$endif}
+function VulkanIntLog2(aValue:TVkUInt32):TVkUInt32; {$ifdef cpu386}assembler; {$ifdef fpc}nostackframe;{$else}register;{$endif}
 asm
  test eax,eax
  jz @Done
@@ -5550,7 +5550,7 @@ asm
 end;
 {$else}
 begin
- result:=pValue or (pValue shr 1);
+ result:=aValue or (aValue shr 1);
  result:=result or (result shr 2);
  result:=result or (result shr 4);
  result:=result or (result shr 8);
@@ -7146,7 +7146,7 @@ var Context:PContext;
  begin
   raise ELoadJPEGImage.Create('Invalid or corrupt JPEG data stream');
  end;
- procedure ProcessIDCT(const pInputBlock:PIDCTInputBlock;const pOutputBlock:PIDCTOutputBlock;const pOutputStride:TVkInt32);
+ procedure ProcessIDCT(const aInputBlock:PIDCTInputBlock;const aOutputBlock:PIDCTOutputBlock;const aOutputStride:TVkInt32);
  const W1=2841;
        W2=2676;
        W3=2408;
@@ -7158,7 +7158,7 @@ var Context:PContext;
      OutputBlock:PIDCTOutputBlock;
  begin
   for i:=0 to 7 do begin
-   WorkBlock:=@pInputBlock^[i shl 3];
+   WorkBlock:=@aInputBlock^[i shl 3];
    v0:=WorkBlock^[0];
    v1:=WorkBlock^[4] shl 11;
    v2:=WorkBlock^[6];
@@ -7211,7 +7211,7 @@ var Context:PContext;
    end;
   end;
   for i:=0 to 7 do begin
-   WorkBlock:=@pInputBlock^[i];
+   WorkBlock:=@aInputBlock^[i];
    v0:=WorkBlock^[0 shl 3];
    v1:=WorkBlock^[4 shl 3] shl 8;
    v2:=WorkBlock^[6 shl 3];
@@ -7222,15 +7222,15 @@ var Context:PContext;
    v7:=WorkBlock^[3 shl 3];
    if (v1=0) and (v2=0) and (v3=0) and (v4=0) and (v5=0) and (v6=0) and (v7=0) then begin
     v0:=ClipTable[(SARLongint(v0+32,6)+128) and $3ff];
-    OutputBlock:=@pOutputBlock^[i];
-    OutputBlock^[pOutputStride*0]:=v0;
-    OutputBlock^[pOutputStride*1]:=v0;
-    OutputBlock^[pOutputStride*2]:=v0;
-    OutputBlock^[pOutputStride*3]:=v0;
-    OutputBlock^[pOutputStride*4]:=v0;
-    OutputBlock^[pOutputStride*5]:=v0;
-    OutputBlock^[pOutputStride*6]:=v0;
-    OutputBlock^[pOutputStride*7]:=v0;
+    OutputBlock:=@aOutputBlock^[i];
+    OutputBlock^[aOutputStride*0]:=v0;
+    OutputBlock^[aOutputStride*1]:=v0;
+    OutputBlock^[aOutputStride*2]:=v0;
+    OutputBlock^[aOutputStride*3]:=v0;
+    OutputBlock^[aOutputStride*4]:=v0;
+    OutputBlock^[aOutputStride*5]:=v0;
+    OutputBlock^[aOutputStride*6]:=v0;
+    OutputBlock^[aOutputStride*7]:=v0;
    end else begin
     v0:=(v0 shl 8)+8192;
     v8:=((v4+v5)*W7)+4;
@@ -7254,15 +7254,15 @@ var Context:PContext;
     dec(v0,v2);
     v2:=SARLongint(((v4+v5)*181)+128,8);
     v4:=SARLongint(((v4-v5)*181)+128,8);
-    OutputBlock:=@pOutputBlock^[i];
-    OutputBlock^[pOutputStride*0]:=ClipTable[(SARLongint(v7+v1,14)+128) and $3ff];
-    OutputBlock^[pOutputStride*1]:=ClipTable[(SARLongint(v3+v2,14)+128) and $3ff];
-    OutputBlock^[pOutputStride*2]:=ClipTable[(SARLongint(v0+v4,14)+128) and $3ff];
-    OutputBlock^[pOutputStride*3]:=ClipTable[(SARLongint(v8+v6,14)+128) and $3ff];
-    OutputBlock^[pOutputStride*4]:=ClipTable[(SARLongint(v8-v6,14)+128) and $3ff];
-    OutputBlock^[pOutputStride*5]:=ClipTable[(SARLongint(v0-v4,14)+128) and $3ff];
-    OutputBlock^[pOutputStride*6]:=ClipTable[(SARLongint(v3-v2,14)+128) and $3ff];
-    OutputBlock^[pOutputStride*7]:=ClipTable[(SARLongint(v7-v1,14)+128) and $3ff];
+    OutputBlock:=@aOutputBlock^[i];
+    OutputBlock^[aOutputStride*0]:=ClipTable[(SARLongint(v7+v1,14)+128) and $3ff];
+    OutputBlock^[aOutputStride*1]:=ClipTable[(SARLongint(v3+v2,14)+128) and $3ff];
+    OutputBlock^[aOutputStride*2]:=ClipTable[(SARLongint(v0+v4,14)+128) and $3ff];
+    OutputBlock^[aOutputStride*3]:=ClipTable[(SARLongint(v8+v6,14)+128) and $3ff];
+    OutputBlock^[aOutputStride*4]:=ClipTable[(SARLongint(v8-v6,14)+128) and $3ff];
+    OutputBlock^[aOutputStride*5]:=ClipTable[(SARLongint(v0-v4,14)+128) and $3ff];
+    OutputBlock^[aOutputStride*6]:=ClipTable[(SARLongint(v3-v2,14)+128) and $3ff];
+    OutputBlock^[aOutputStride*7]:=ClipTable[(SARLongint(v7-v1,14)+128) and $3ff];
    end;
   end;
  end;
@@ -7507,7 +7507,7 @@ var Index,SubIndex,Len,MaxSSX,MaxSSY,Value,Remain,Spread,CodeLen,DHTCurrentCount
     Component:PComponent;
     DHTCounts:array[0..15] of TVkUInt8;
     Huffman:PHuffmanCode;
-    pY,pCb,pCr,oRGBX:PVkUInt8;
+    pY,aCb,aCr,oRGBX:PVkUInt8;
 begin
  result:=false;
  ImageData:=nil;
@@ -7795,14 +7795,14 @@ begin
            case Context^.CountComponents of
             3:begin
              pY:=@Context^.Components[0].Pixels[0];
-             pCb:=@Context^.Components[1].Pixels[0];
-             pCr:=@Context^.Components[2].Pixels[0];
+             aCb:=@Context^.Components[1].Pixels[0];
+             aCr:=@Context^.Components[2].Pixels[0];
              oRGBX:=ImageData;
              for y:=0 to Context^.Height-1 do begin
               for x:=0 to Context^.Width-1 do begin
                vY:=PByteArray(pY)^[x] shl 8;
-               vCb:=PByteArray(pCb)^[x]-128;
-               vCr:=PByteArray(pCr)^[x]-128;
+               vCb:=PByteArray(aCb)^[x]-128;
+               vCr:=PByteArray(aCr)^[x]-128;
                PByteArray(oRGBX)^[0]:=ClipTable[SARLongint((vY+(vCr*359))+128,8) and $3ff];
                PByteArray(oRGBX)^[1]:=ClipTable[SARLongint(((vY-(vCb*88))-(vCr*183))+128,8) and $3ff];
                PByteArray(oRGBX)^[2]:=ClipTable[SARLongint((vY+(vCb*454))+128,8) and $3ff];
@@ -7810,8 +7810,8 @@ begin
                inc(oRGBX,4);
               end;
               inc(pY,Context^.Components[0].Stride);
-              inc(pCb,Context^.Components[1].Stride);
-              inc(pCr,Context^.Components[2].Stride);
+              inc(aCb,Context^.Components[1].Stride);
+              inc(aCr,Context^.Components[2].Stride);
              end;
             end;
             else begin
@@ -8847,45 +8847,45 @@ begin
  end;
 end;
 
-procedure VulkanSetImageLayout(const pImage:TVkImage;
-                               const pAspectMask:TVkImageAspectFlags;
-                               const pOldImageLayout:TVkImageLayout;
-                               const pNewImageLayout:TVkImageLayout;
-                               const pRange:PVkImageSubresourceRange;
-                               const pCommandBuffer:TVulkanCommandBuffer;
-                               const pQueue:TVulkanQueue=nil;
-                               const pFence:TVulkanFence=nil;
-                               const pBeginAndExecuteCommandBuffer:boolean=false;
-                               const pSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                               const pDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
+procedure VulkanSetImageLayout(const aImage:TVkImage;
+                               const aAspectMask:TVkImageAspectFlags;
+                               const aOldImageLayout:TVkImageLayout;
+                               const aNewImageLayout:TVkImageLayout;
+                               const aRange:PVkImageSubresourceRange;
+                               const aCommandBuffer:TVulkanCommandBuffer;
+                               const aQueue:TVulkanQueue=nil;
+                               const aFence:TVulkanFence=nil;
+                               const aBeginAndExecuteCommandBuffer:boolean=false;
+                               const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                               const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
     SrcStages,DestStages:TVkPipelineStageFlags;
 begin
 
- if pBeginAndExecuteCommandBuffer then begin
-  pCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-  pCommandBuffer.BeginRecording;
+ if aBeginAndExecuteCommandBuffer then begin
+  aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  aCommandBuffer.BeginRecording;
  end;
 
  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
- ImageMemoryBarrier.oldLayout:=pOldImageLayout;
- ImageMemoryBarrier.newLayout:=pNewImageLayout;
- ImageMemoryBarrier.srcQueueFamilyIndex:=pSrcQueueFamilyIndex;
- ImageMemoryBarrier.dstQueueFamilyIndex:=pDstQueueFamilyIndex;
- ImageMemoryBarrier.image:=pImage;
+ ImageMemoryBarrier.oldLayout:=aOldImageLayout;
+ ImageMemoryBarrier.newLayout:=aNewImageLayout;
+ ImageMemoryBarrier.srcQueueFamilyIndex:=aSrcQueueFamilyIndex;
+ ImageMemoryBarrier.dstQueueFamilyIndex:=aDstQueueFamilyIndex;
+ ImageMemoryBarrier.image:=aImage;
 
- if assigned(pRange) then begin
-  ImageMemoryBarrier.subresourceRange:=pRange^;
+ if assigned(aRange) then begin
+  ImageMemoryBarrier.subresourceRange:=aRange^;
  end else begin
-  ImageMemoryBarrier.subresourceRange.aspectMask:=pAspectMask;
+  ImageMemoryBarrier.subresourceRange.aspectMask:=aAspectMask;
   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
   ImageMemoryBarrier.subresourceRange.levelCount:=1;
   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
   ImageMemoryBarrier.subresourceRange.layerCount:=1;
  end;
 
- case pOldImageLayout of
+ case aOldImageLayout of
   VK_IMAGE_LAYOUT_UNDEFINED:begin
    ImageMemoryBarrier.srcAccessMask:=0; //TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
   end;
@@ -8915,16 +8915,16 @@ begin
   end;
  end;
 
- case pNewImageLayout of
+ case aNewImageLayout of
   VK_IMAGE_LAYOUT_UNDEFINED:begin
   end;
   VK_IMAGE_LAYOUT_GENERAL:begin
-   if pOldImageLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then begin
+   if aOldImageLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then begin
     ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
    end;
   end;
   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
-   if pOldImageLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR then begin
+   if aOldImageLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR then begin
     ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
    end;
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
@@ -8935,7 +8935,7 @@ begin
   VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:begin
   end;
   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
-   if pOldImageLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then begin
+   if aOldImageLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then begin
     ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
    end;
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
@@ -8950,17 +8950,17 @@ begin
   VK_IMAGE_LAYOUT_PREINITIALIZED:begin
   end;
   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:begin
-   if pOldImageLayout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then begin
+   if aOldImageLayout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then begin
     ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
    end;
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
   end;
  end;
 
- if pOldImageLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR then begin
+ if aOldImageLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR then begin
   SrcStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
   DestStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
- end else if pNewImageLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR then begin
+ end else if aNewImageLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR then begin
   SrcStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
   DestStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
  end else begin
@@ -8968,11 +8968,11 @@ begin
   DestStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
  end;
 
- pCommandBuffer.CmdPipelineBarrier(SrcStages,DestStages,0,0,nil,0,nil,1,@ImageMemoryBarrier);
+ aCommandBuffer.CmdPipelineBarrier(SrcStages,DestStages,0,0,nil,0,nil,1,@ImageMemoryBarrier);
 
- if pBeginAndExecuteCommandBuffer then begin
-  pCommandBuffer.EndRecording;
-  pCommandBuffer.Execute(pQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),nil,nil,pFence,true);
+ if aBeginAndExecuteCommandBuffer then begin
+  aCommandBuffer.EndRecording;
+  aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),nil,nil,aFence,true);
  end;
 
 end;
@@ -8984,9 +8984,9 @@ begin
 {$ifend}
 end;
 
-constructor EVulkanResultException.Create(const pResultCode:TVkResult);
+constructor EVulkanResultException.Create(const aResultCode:TVkResult);
 begin
- fResultCode:=pResultCode;
+ fResultCode:=aResultCode;
  inherited Create(String(VulkanErrorToString(fResultCode)));
 end;
 
@@ -8995,10 +8995,10 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanBaseList.Create(const pItemSize:TVkSizeInt);
+constructor TVulkanBaseList.Create(const aItemSize:TVkSizeInt);
 begin
  inherited Create;
- fItemSize:=pItemSize;
+ fItemSize:=aItemSize;
  fCount:=0;
  fAllocated:=0;
  fMemory:=nil;
@@ -10048,13 +10048,13 @@ procedure TVulkanAllocationManager.InternalFreeCallback(const Size:TVkSize;const
 begin
 end;
 
-constructor TVulkanInstance.Create(const pApplicationName:TVulkanCharString='Vulkan application';
-                                      const pApplicationVersion:TVkUInt32=1;
-                                      const pEngineName:TVulkanCharString='Vulkan engine';
-                                      const pEngineVersion:TVkUInt32=1;
+constructor TVulkanInstance.Create(const aApplicationName:TVulkanCharString='Vulkan application';
+                                      const aApplicationVersion:TVkUInt32=1;
+                                      const aEngineName:TVulkanCharString='Vulkan engine';
+                                      const aEngineVersion:TVkUInt32=1;
                                       const pAPIVersion:TVkUInt32=VK_API_VERSION_1_0;
-                                      const pValidation:boolean=false;
-                                      const pAllocationManager:TVulkanAllocationManager=nil);
+                                      const aValidation:boolean=false;
+                                      const aAllocationManager:TVulkanAllocationManager=nil);
 var Index,SubIndex:TVkInt32;
     Count,SubCount:TVkUInt32;
     LayerName:PVkChar;
@@ -10075,8 +10075,8 @@ begin
 
  fVulkan:=vk;
 
- fApplicationName:=pApplicationName;
- fEngineName:=pEngineName;
+ fApplicationName:=aApplicationName;
+ fEngineName:=aEngineName;
 
  fEnabledLayerNameStrings:=nil;
  fEnabledExtensionNameStrings:=nil;
@@ -10099,17 +10099,17 @@ begin
  fApplicationInfo.sType:=VK_STRUCTURE_TYPE_APPLICATION_INFO;
  fApplicationInfo.pNext:=nil;
  fApplicationInfo.pApplicationName:=PVkChar(fApplicationName);
- fApplicationInfo.applicationVersion:=pApplicationVersion;
+ fApplicationInfo.applicationVersion:=aApplicationVersion;
  fApplicationInfo.pEngineName:=PVkChar(fEngineName);
- fApplicationInfo.engineVersion:=pEngineVersion;
+ fApplicationInfo.engineVersion:=aEngineVersion;
  fApplicationInfo.apiVersion:=pAPIVersion;
 
- fValidation:=pValidation;
+ fValidation:=aValidation;
 
- fAllocationManager:=pAllocationManager;
+ fAllocationManager:=aAllocationManager;
 
- if assigned(pAllocationManager) then begin
-  fAllocationCallbacks:=@pAllocationManager.fAllocationCallbacks;
+ if assigned(aAllocationManager) then begin
+  fAllocationCallbacks:=@aAllocationManager.fAllocationCallbacks;
  end else begin
   fAllocationCallbacks:=nil;
  end;
@@ -10368,15 +10368,15 @@ begin
  end;
 end;
 
-function TVulkanInstanceDebugReportCallbackFunction(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar;pUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+function TVulkanInstanceDebugReportCallbackFunction(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const aLayerPrefix:PVkChar;const aMessage:PVkChar;aUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 begin
- result:=TVulkanInstance(pUserData).DebugReportCallback(flags,objectType,object_,location,messageCode,pLayerPrefix,pMessage);
+ result:=TVulkanInstance(aUserData).DebugReportCallback(flags,objectType,object_,location,messageCode,aLayerPrefix,aMessage);
 end;
 
-function TVulkanInstance.DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:TVulkaNCharString;const pMessage:TVulkanCharString):TVkBool32;
+function TVulkanInstance.DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32;
 begin
  if assigned(fOnInstanceDebugReportCallback) then begin
-  result:=fOnInstanceDebugReportCallback(flags,objectType,object_,location,messageCode,pLayerPrefix,pMessage);
+  result:=fOnInstanceDebugReportCallback(flags,objectType,object_,location,messageCode,aLayerPrefix,aMessage);
  end else begin
   result:=VK_FALSE;
  end;
@@ -10394,7 +10394,7 @@ begin
  end;
 end;
 
-constructor TVulkanPhysicalDevice.Create(const pInstance:TVulkanInstance;const pPhysicalDevice:TVkPhysicalDevice);
+constructor TVulkanPhysicalDevice.Create(const aInstance:TVulkanInstance;const aPhysicalDevice:TVkPhysicalDevice);
 var Index,SubIndex:TVkInt32;
     Count,SubCount:TVkUInt32;
     LayerName:PVkChar;
@@ -10405,9 +10405,9 @@ var Index,SubIndex:TVkInt32;
 begin
  inherited Create;
 
- fInstance:=pInstance;
+ fInstance:=aInstance;
 
- fPhysicalDeviceHandle:=pPhysicalDevice;
+ fPhysicalDeviceHandle:=aPhysicalDevice;
 
  fInstance.Commands.GetPhysicalDeviceProperties(fPhysicalDeviceHandle,@fProperties);
 
@@ -10499,71 +10499,71 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanPhysicalDevice.HasQueueSupportForSparseBindings(const pQueueFamilyIndex:TVkUInt32):boolean;
+function TVulkanPhysicalDevice.HasQueueSupportForSparseBindings(const aQueueFamilyIndex:TVkUInt32):boolean;
 var QueueFamilyProperties:PVkQueueFamilyProperties;
 begin
  result:=false;
- if pQueueFamilyIndex<TVkUInt32(length(fQueueFamilyProperties)) then begin
-  QueueFamilyProperties:=@fQueueFamilyProperties[pQueueFamilyIndex];
+ if aQueueFamilyIndex<TVkUInt32(length(fQueueFamilyProperties)) then begin
+  QueueFamilyProperties:=@fQueueFamilyProperties[aQueueFamilyIndex];
   if (QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0 then begin
    result:=true;
   end;
  end;
 end;
 
-function TVulkanPhysicalDevice.GetFormatProperties(const pFormat:TVkFormat):TVkFormatProperties;
+function TVulkanPhysicalDevice.GetFormatProperties(const aFormat:TVkFormat):TVkFormatProperties;
 begin
- fInstance.Commands.GetPhysicalDeviceFormatProperties(fPhysicalDeviceHandle,pFormat,@result);
+ fInstance.Commands.GetPhysicalDeviceFormatProperties(fPhysicalDeviceHandle,aFormat,@result);
 end;
 
-function TVulkanPhysicalDevice.GetImageFormatProperties(const pFormat:TVkFormat;
-                                                        const pType:TVkImageType;
-                                                        const pTiling:TVkImageTiling;
-                                                        const pUsageFlags:TVkImageUsageFlags;
-                                                        const pCreateFlags:TVkImageCreateFlags):TVkImageFormatProperties;
+function TVulkanPhysicalDevice.GetImageFormatProperties(const aFormat:TVkFormat;
+                                                        const aType:TVkImageType;
+                                                        const aTiling:TVkImageTiling;
+                                                        const aUsageFlags:TVkImageUsageFlags;
+                                                        const aCreateFlags:TVkImageCreateFlags):TVkImageFormatProperties;
 begin
- fInstance.Commands.GetPhysicalDeviceImageFormatProperties(fPhysicalDeviceHandle,pFormat,pType,pTiling,pUsageFlags,pCreateFlags,@result);
+ fInstance.Commands.GetPhysicalDeviceImageFormatProperties(fPhysicalDeviceHandle,aFormat,aType,aTiling,aUsageFlags,aCreateFlags,@result);
 end;
 
-function TVulkanPhysicalDevice.GetSparseImageFormatProperties(const pFormat:TVkFormat;
-                                                              const pType:TVkImageType;
-                                                              const pSamples:TVkSampleCountFlagBits;
-                                                              const pUsageFlags:TVkImageUsageFlags;
-                                                              const pTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
+function TVulkanPhysicalDevice.GetSparseImageFormatProperties(const aFormat:TVkFormat;
+                                                              const aType:TVkImageType;
+                                                              const aSamples:TVkSampleCountFlagBits;
+                                                              const aUsageFlags:TVkImageUsageFlags;
+                                                              const aTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
 var Count:TVkUInt32;
 begin
  result:=nil;
  Count:=0;
- fInstance.Commands.GetPhysicalDeviceSparseImageFormatProperties(fPhysicalDeviceHandle,pFormat,pType,pSamples,pUsageFlags,pTiling,@Count,nil);
+ fInstance.Commands.GetPhysicalDeviceSparseImageFormatProperties(fPhysicalDeviceHandle,aFormat,aType,aSamples,aUsageFlags,aTiling,@Count,nil);
  if Count>0 then begin
   SetLength(result,Count);
-  fInstance.Commands.GetPhysicalDeviceSparseImageFormatProperties(fPhysicalDeviceHandle,pFormat,pType,pSamples,pUsageFlags,pTiling,@Count,@result[0]);
+  fInstance.Commands.GetPhysicalDeviceSparseImageFormatProperties(fPhysicalDeviceHandle,aFormat,aType,aSamples,aUsageFlags,aTiling,@Count,@result[0]);
  end;
 end;
 
-function TVulkanPhysicalDevice.GetSurfaceSupport(const pQueueFamilyIndex:TVkUInt32;const pSurface:TVulkanSurface):boolean;
+function TVulkanPhysicalDevice.GetSurfaceSupport(const aQueueFamilyIndex:TVkUInt32;const aSurface:TVulkanSurface):boolean;
 var Supported:TVkBool32;
 begin
  Supported:=0;
- fInstance.Commands.GetPhysicalDeviceSurfaceSupportKHR(fPhysicalDeviceHandle,pQueueFamilyIndex,pSurface.fSurfaceHandle,@Supported);
+ fInstance.Commands.GetPhysicalDeviceSurfaceSupportKHR(fPhysicalDeviceHandle,aQueueFamilyIndex,aSurface.fSurfaceHandle,@Supported);
  result:=Supported<>0;
 end;
 
-function TVulkanPhysicalDevice.GetSurfaceCapabilities(const pSurface:TVulkanSurface):TVkSurfaceCapabilitiesKHR;
+function TVulkanPhysicalDevice.GetSurfaceCapabilities(const aSurface:TVulkanSurface):TVkSurfaceCapabilitiesKHR;
 begin
- fInstance.Commands.GetPhysicalDeviceSurfaceCapabilitiesKHR(fPhysicalDeviceHandle,pSurface.fSurfaceHandle,@result);
+ fInstance.Commands.GetPhysicalDeviceSurfaceCapabilitiesKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@result);
 end;
 
-function TVulkanPhysicalDevice.GetSurfaceFormats(const pSurface:TVulkanSurface):TVkSurfaceFormatKHRArray;
+function TVulkanPhysicalDevice.GetSurfaceFormats(const aSurface:TVulkanSurface):TVkSurfaceFormatKHRArray;
 var Count:TVKUInt32;
 begin
  result:=nil;
  Count:=0;
- if fInstance.Commands.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,pSurface.fSurfaceHandle,@Count,nil)=VK_SUCCESS then begin
+ if fInstance.Commands.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@Count,nil)=VK_SUCCESS then begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstance.Commands.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,pSurface.fSurfaceHandle,@Count,@result[0]));
+    HandleResultCode(fInstance.Commands.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -10572,16 +10572,16 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetSurfacePresentModes(const pSurface:TVulkanSurface):TVkPresentModeKHRArray;
+function TVulkanPhysicalDevice.GetSurfacePresentModes(const aSurface:TVulkanSurface):TVkPresentModeKHRArray;
 var Count:TVKUInt32;
 begin
  result:=nil;
  Count:=0;
- if fInstance.Commands.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDeviceHandle,pSurface.fSurfaceHandle,@Count,nil)=VK_SUCCESS then begin
+ if fInstance.Commands.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@Count,nil)=VK_SUCCESS then begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstance.Commands.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDeviceHandle,pSurface.fSurfaceHandle,@Count,@result[0]));
+    HandleResultCode(fInstance.Commands.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -10626,16 +10626,16 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetDisplayPlaneSupportedDisplays(const pPlaneIndex:TVkUInt32):TVkDisplayKHRArray;
+function TVulkanPhysicalDevice.GetDisplayPlaneSupportedDisplays(const aPlaneIndex:TVkUInt32):TVkDisplayKHRArray;
 var Count:TVKUInt32;
 begin
  result:=nil;
  Count:=0;
- if fInstance.Commands.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDeviceHandle,pPlaneIndex,@Count,nil)=VK_SUCCESS then begin
+ if fInstance.Commands.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDeviceHandle,aPlaneIndex,@Count,nil)=VK_SUCCESS then begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstance.Commands.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDeviceHandle,pPlaneIndex,@Count,@result[0]));
+    HandleResultCode(fInstance.Commands.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDeviceHandle,aPlaneIndex,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -10644,16 +10644,16 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetDisplayModeProperties(const pDisplay:TVkDisplayKHR):TVkDisplayModePropertiesKHRArray;
+function TVulkanPhysicalDevice.GetDisplayModeProperties(const aDisplay:TVkDisplayKHR):TVkDisplayModePropertiesKHRArray;
 var Count:TVKUInt32;
 begin
  result:=nil;
  Count:=0;
- if fInstance.Commands.GetDisplayModePropertiesKHR(fPhysicalDeviceHandle,pDisplay,@Count,nil)=VK_SUCCESS then begin
+ if fInstance.Commands.GetDisplayModePropertiesKHR(fPhysicalDeviceHandle,aDisplay,@Count,nil)=VK_SUCCESS then begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstance.Commands.GetDisplayModePropertiesKHR(fPhysicalDeviceHandle,pDisplay,@Count,@result[0]));
+    HandleResultCode(fInstance.Commands.GetDisplayModePropertiesKHR(fPhysicalDeviceHandle,aDisplay,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -10662,15 +10662,15 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetMemoryType(const pTypeBits:TVkUInt32;const pProperties:TVkFlags):TVkUInt32;
+function TVulkanPhysicalDevice.GetMemoryType(const aTypeBits:TVkUInt32;const aProperties:TVkFlags):TVkUInt32;
 var i:TVkUInt32;
     DeviceMemoryProperties:TVkPhysicalDeviceMemoryProperties;
 begin
  result:=TVkUInt32(TVkInt32(-1));
  vkGetPhysicalDeviceMemoryProperties(fPhysicalDeviceHandle,@DeviceMemoryProperties);
  for i:=0 to 31 do begin
-  if (pTypeBits and (TVkUInt32(1) shl i))<>0 then begin
-   if (DeviceMemoryProperties.MemoryTypes[i].PropertyFlags and pProperties)=pProperties then begin
+  if (aTypeBits and (TVkUInt32(1) shl i))<>0 then begin
+   if (DeviceMemoryProperties.MemoryTypes[i].PropertyFlags and aProperties)=aProperties then begin
     result:=i;
     exit;
    end;
@@ -10678,7 +10678,7 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetBestSupportedDepthFormat(const pWithStencil:boolean):TVkFormat;
+function TVulkanPhysicalDevice.GetBestSupportedDepthFormat(const aWithStencil:boolean):TVkFormat;
 const Formats:array[0..4] of TVkFormat=(VK_FORMAT_D32_SFLOAT_S8_UINT,
                                         VK_FORMAT_D32_SFLOAT,
                                         VK_FORMAT_D24_UNORM_S8_UINT,
@@ -10692,7 +10692,7 @@ var i:TVkInt32;
     FormatProperties:TVkFormatProperties;
 begin
  result:=VK_FORMAT_UNDEFINED;
- if pWithStencil then begin
+ if aWithStencil then begin
   for i:=low(WithStencilFormats) to high(WithStencilFormats) do begin
    Format:=WithStencilFormats[i];
    fInstance.fVulkan.GetPhysicalDeviceFormatProperties(fPhysicalDeviceHandle,Format,@FormatProperties);
@@ -10713,7 +10713,7 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetQueueNodeIndex(const pSurface:TVulkanSurface;const pQueueFlagBits:TVkQueueFlagBits):TVkInt32;
+function TVulkanPhysicalDevice.GetQueueNodeIndex(const aSurface:TVulkanSurface;const aQueueFlagBits:TVkQueueFlagBits):TVkInt32;
 var Index:TVkInt32;
     QueueCount:TVkUInt32;
     QueueProperties:array of TVkQueueFamilyProperties;
@@ -10726,8 +10726,8 @@ begin
  try
   fInstance.fVulkan.GetPhysicalDeviceQueueFamilyProperties(fPhysicalDeviceHandle,@QueueCount,@QueueProperties[0]);
   for Index:=0 to QueueCount-1 do begin
-   fInstance.fVulkan.GetPhysicalDeviceSurfaceSupportKHR(fPhysicalDeviceHandle,Index,pSurface.fSurfaceHandle,@SupportsPresent);
-   if ((QueueProperties[Index].QueueFlags and TVkQueueFlags(pQueueFlagBits))<>0) and (SupportsPresent=VK_TRUE) then begin
+   fInstance.fVulkan.GetPhysicalDeviceSurfaceSupportKHR(fPhysicalDeviceHandle,Index,aSurface.fSurfaceHandle,@SupportsPresent);
+   if ((QueueProperties[Index].QueueFlags and TVkQueueFlags(aQueueFlagBits))<>0) and (SupportsPresent=VK_TRUE) then begin
     result:=Index;
     break;
    end;
@@ -10737,7 +10737,7 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetSurfaceFormat(const pSurface:TVulkanSurface):TVkSurfaceFormatKHR;
+function TVulkanPhysicalDevice.GetSurfaceFormat(const aSurface:TVulkanSurface):TVkSurfaceFormatKHR;
 var FormatCount:TVkUInt32;
     SurfaceFormats:TVkSurfaceFormatKHRArray;
 begin
@@ -10745,11 +10745,11 @@ begin
  try
 
   FormatCount:=0;
-  HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,pSurface.fSurfaceHandle,@FormatCount,nil));
+  HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@FormatCount,nil));
 
   if FormatCount>0 then begin
    SetLength(SurfaceFormats,FormatCount);
-   HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,pSurface.fSurfaceHandle,@FormatCount,@SurfaceFormats[0]));
+   HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@FormatCount,@SurfaceFormats[0]));
   end;
 
   if (FormatCount=0) or ((FormatCount=1) and (SurfaceFormats[0].Format=VK_FORMAT_UNDEFINED)) then begin
@@ -10775,31 +10775,31 @@ begin
  inherited Items[Index]:=Item;
 end;
 
-(*constructor TVulkanSurface.Create(const pInstance:TVulkanInstance;
+(*constructor TVulkanSurface.Create(const aInstance:TVulkanInstance;
 {$if defined(Android)}
-                                  const pWindow:PANativeWindow
+                                  const aWindow:PANativeWindow
 {$elseif defined(Mir)}
-                                  const pConnection:PMirConnection;const pMirSurface:PMirSurface
+                                  const aConnection:PMirConnection;const aMirSurface:PMirSurface
 {$elseif defined(Wayland)}
-                                  const pDisplay:Pwl_display;const pSurface:Pwl_surface
+                                  const aDisplay:Pwl_display;const aSurface:Pwl_surface
 {$elseif defined(Windows)}
-                                  const pInstanceHandle,pWindowHandle:THandle
+                                  const aInstanceHandle,aWindowHandle:THandle
 {$elseif defined(XLIB)}
-                                  const pDisplay:PDisplay;const pWindow:TWindow
+                                  const aDisplay:PDisplay;const aWindow:TWindow
 {$elseif defined(XCB)}
-                                  const pConnection:Pxcb_connection;pWindow:Pxcb_window
+                                  const aConnection:Pxcb_connection;aWindow:Pxcb_window
 {$ifend}
                                  );*)
 
-constructor TVulkanSurface.Create(const pInstance:TVulkanInstance;const pSurfaceCreateInfo:TVulkanSurfaceCreateInfo);
+constructor TVulkanSurface.Create(const aInstance:TVulkanInstance;const aSurfaceCreateInfo:TVulkanSurfaceCreateInfo);
 begin
  inherited Create;
 
- fInstance:=pInstance;
+ fInstance:=aInstance;
 
  fSurfaceHandle:=VK_NULL_HANDLE;
 
- fSurfaceCreateInfo:=pSurfaceCreateInfo;
+ fSurfaceCreateInfo:=aSurfaceCreateInfo;
 
  case fSurfaceCreateInfo.sType of
 {$if defined(Android)}
@@ -10850,95 +10850,95 @@ begin
 end;
 
 {$if defined(Android)}
-constructor TVulkanSurface.CreateAndroid(const pInstance:TVulkanInstance;const pWindow:PVkAndroidANativeWindow);
+constructor TVulkanSurface.CreateAndroid(const aInstance:TVulkanInstance;const aWindow:PVkAndroidANativeWindow);
 var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
 begin
  FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
  SurfaceCreateInfo.Android.sType:=VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
- SurfaceCreateInfo.Android.window:=pWindow;
- Create(pInstance,SurfaceCreateInfo);
+ SurfaceCreateInfo.Android.window:=aWindow;
+ Create(aInstance,SurfaceCreateInfo);
 end;
 {$ifend}
 
 {$if defined(Mir) and defined(Unix)}
-constructor TVulkanSurface.CreateMir(const pInstance:TVulkanInstance;const pConnection:PVkMirConnection;const pSurface:PVkMirSurface);
+constructor TVulkanSurface.CreateMir(const aInstance:TVulkanInstance;const aConnection:PVkMirConnection;const aSurface:PVkMirSurface);
 var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
 begin
  FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
  SurfaceCreateInfo.Mir.sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
- SurfaceCreateInfo.Mir.connection:=pConnection;
- SurfaceCreateInfo.Mir.mirSurface:=pSurface;
- Create(pInstance,SurfaceCreateInfo);
+ SurfaceCreateInfo.Mir.connection:=aConnection;
+ SurfaceCreateInfo.Mir.mirSurface:=aSurface;
+ Create(aInstance,SurfaceCreateInfo);
 end;
 {$ifend}
 
 {$if defined(Wayland) and defined(Unix)}
-constructor TVulkanSurface.CreateWayland(const pInstance:TVulkanInstance;const pDisplay:PVkWaylandDisplay;const pSurface:PVkWaylandSurface);
+constructor TVulkanSurface.CreateWayland(const aInstance:TVulkanInstance;const aDisplay:PVkWaylandDisplay;const aSurface:PVkWaylandSurface);
 var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
 begin
  FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
  SurfaceCreateInfo.Wayland.sType:=VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
- SurfaceCreateInfo.Wayland.display:=pDisplay;
- SurfaceCreateInfo.Wayland.surface:=pSurface;
- Create(pInstance,SurfaceCreateInfo);
+ SurfaceCreateInfo.Wayland.display:=aDisplay;
+ SurfaceCreateInfo.Wayland.surface:=aSurface;
+ Create(aInstance,SurfaceCreateInfo);
 end;
 {$ifend}
 
 {$if defined(Windows)}
-constructor TVulkanSurface.CreateWin32(const pInstance:TVulkanInstance;const pInstanceHandle,pWindowHandle:THandle);
+constructor TVulkanSurface.CreateWin32(const aInstance:TVulkanInstance;const aInstanceHandle,aWindowHandle:THandle);
 var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
 begin
  FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
  SurfaceCreateInfo.Win32.sType:=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
- SurfaceCreateInfo.Win32.hinstance_:=pInstanceHandle;
- SurfaceCreateInfo.Win32.hwnd_:=pWindowHandle;
- Create(pInstance,SurfaceCreateInfo);
+ SurfaceCreateInfo.Win32.hinstance_:=aInstanceHandle;
+ SurfaceCreateInfo.Win32.hwnd_:=aWindowHandle;
+ Create(aInstance,SurfaceCreateInfo);
 end;
 {$ifend}
 
 {$if defined(XCB) and defined(Unix)}
-constructor TVulkanSurface.CreateXCB(const pInstance:TVulkanInstance;const pConnection:PVkXCBConnection;const pWindow:TVkXCBWindow);
+constructor TVulkanSurface.CreateXCB(const aInstance:TVulkanInstance;const aConnection:PVkXCBConnection;const aWindow:TVkXCBWindow);
 var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
 begin
  FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
  SurfaceCreateInfo.XCB.sType:=VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
- SurfaceCreateInfo.XCB.connection:=pConnection;
- SurfaceCreateInfo.XCB.window:=pWindow;
- Create(pInstance,SurfaceCreateInfo);
+ SurfaceCreateInfo.XCB.connection:=aConnection;
+ SurfaceCreateInfo.XCB.window:=aWindow;
+ Create(aInstance,SurfaceCreateInfo);
 end;
 {$ifend}
 
 {$if defined(XLIB) and defined(Unix)}
-constructor TVulkanSurface.CreateXLIB(const pInstance:TVulkanInstance;const pDisplay:PVkXLIBDisplay;const pWindow:TVkXLIBWindow);
+constructor TVulkanSurface.CreateXLIB(const aInstance:TVulkanInstance;const aDisplay:PVkXLIBDisplay;const aWindow:TVkXLIBWindow);
 var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
 begin
  FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
  SurfaceCreateInfo.XLIB.sType:=VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
- SurfaceCreateInfo.XLIB.dpy:=pDisplay;
- SurfaceCreateInfo.XLIB.window:=pWindow;
- Create(pInstance,SurfaceCreateInfo);
+ SurfaceCreateInfo.XLIB.dpy:=aDisplay;
+ SurfaceCreateInfo.XLIB.window:=aWindow;
+ Create(aInstance,SurfaceCreateInfo);
 end;
 {$ifend}
 
 {$if defined(MoltenVK_IOS) and defined(Darwin)}
-constructor TVulkanSurface.CreateMoltenVK_IOS(const pInstance:TVulkanInstance;const pView:PVkVoid);
+constructor TVulkanSurface.CreateMoltenVK_IOS(const aInstance:TVulkanInstance;const aView:PVkVoid);
 var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
 begin
  FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
  SurfaceCreateInfo.MoltenVK_IOS.sType:=VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK;
- SurfaceCreateInfo.MoltenVK_IOS.pView:=pView;
- Create(pInstance,SurfaceCreateInfo);
+ SurfaceCreateInfo.MoltenVK_IOS.aView:=aView;
+ Create(aInstance,SurfaceCreateInfo);
 end;
 {$ifend}
 
 {$if defined(MoltenVK_MacOS) and defined(Darwin)}
-constructor TVulkanSurface.CreateMoltenVK_MacOS(const pInstance:TVulkanInstance;const pView:PVkVoid);
+constructor TVulkanSurface.CreateMoltenVK_MacOS(const aInstance:TVulkanInstance;const aView:PVkVoid);
 var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
 begin
  FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
  SurfaceCreateInfo.MoltenVK_MacOS.sType:=VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK;
- SurfaceCreateInfo.MoltenVK_MacOS.pView:=pView;
- Create(pInstance,SurfaceCreateInfo);
+ SurfaceCreateInfo.MoltenVK_MacOS.aView:=aView;
+ Create(aInstance,SurfaceCreateInfo);
 end;
 {$ifend}
 
@@ -10951,10 +10951,10 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanDevice.Create(const pInstance:TVulkanInstance;
-                                 const pPhysicalDevice:TVulkanPhysicalDevice=nil;
-                                 const pSurface:TVulkanSurface=nil;
-                                 const pAllocationManager:TVulkanAllocationManager=nil);
+constructor TVulkanDevice.Create(const aInstance:TVulkanInstance;
+                                 const aPhysicalDevice:TVulkanPhysicalDevice=nil;
+                                 const aSurface:TVulkanSurface=nil;
+                                 const aAllocationManager:TVulkanAllocationManager=nil);
 var Index,SubIndex:TVkInt32;
     BestPhysicalDevice,CurrentPhysicalDevice:TVulkanPhysicalDevice;
     BestScore,CurrentScore,Temp:int64;
@@ -10962,7 +10962,7 @@ var Index,SubIndex:TVkInt32;
 begin
  inherited Create;
 
- fInstance:=pInstance;
+ fInstance:=aInstance;
 
  fDeviceQueueCreateInfoList:=TVulkanDeviceQueueCreateInfoList.Create;
 
@@ -10974,8 +10974,8 @@ begin
  fRawEnabledLayerNameStrings:=nil;
  fRawEnabledExtensionNameStrings:=nil;
 
- if assigned(pAllocationManager) then begin
-  fAllocationManager:=pAllocationManager;
+ if assigned(aAllocationManager) then begin
+  fAllocationManager:=aAllocationManager;
  end else begin
   fAllocationManager:=fInstance.fAllocationManager;
  end;
@@ -10986,7 +10986,7 @@ begin
   fAllocationCallbacks:=nil;
  end;
 
- fSurface:=pSurface;
+ fSurface:=aSurface;
 
  fDeviceHandle:=VK_NULL_HANDLE;
 
@@ -11004,8 +11004,8 @@ begin
  fComputeQueue:=nil;
  fTransferQueue:=nil;
 
- if assigned(pPhysicalDevice) then begin
-  fPhysicalDevice:=pPhysicalDevice;
+ if assigned(aPhysicalDevice) then begin
+  fPhysicalDevice:=aPhysicalDevice;
  end else begin
   BestPhysicalDevice:=nil;
   BestScore:=-$7fffffffffffffff;
@@ -11031,7 +11031,7 @@ begin
    end;
    OK:=false;
    for SubIndex:=0 to length(CurrentPhysicalDevice.fQueueFamilyProperties)-1 do begin
-    if assigned(pSurface) and not CurrentPhysicalDevice.GetSurfaceSupport(SubIndex,pSurface) then begin
+    if assigned(aSurface) and not CurrentPhysicalDevice.GetSurfaceSupport(SubIndex,aSurface) then begin
      continue;
     end;
     OK:=true;
@@ -11103,35 +11103,35 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanDevice.AddQueue(const pQueueFamilyIndex:TVkUInt32;const pQueuePriorities:array of TVkFloat;const pSurface:TVulkanSurface=nil);
+procedure TVulkanDevice.AddQueue(const aQueueFamilyIndex:TVkUInt32;const aQueuePriorities:array of TVkFloat;const aSurface:TVulkanSurface=nil);
 var QueueFamilyProperties:PVkQueueFamilyProperties;
 begin
- if pQueueFamilyIndex<TVkUInt32(length(fPhysicalDevice.fQueueFamilyProperties)) then begin
-  QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[pQueueFamilyIndex];
-  if (fPresentQueueFamilyIndex<0) and ((assigned(pSurface) and fPhysicalDevice.GetSurfaceSupport(pQueueFamilyIndex,pSurface)) or not assigned(pSurface)) then begin
-   fPresentQueueFamilyIndex:=pQueueFamilyIndex;
+ if aQueueFamilyIndex<TVkUInt32(length(fPhysicalDevice.fQueueFamilyProperties)) then begin
+  QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[aQueueFamilyIndex];
+  if (fPresentQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(aQueueFamilyIndex,aSurface)) or not assigned(aSurface)) then begin
+   fPresentQueueFamilyIndex:=aQueueFamilyIndex;
   end;
   if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
-   fGraphicsQueueFamilyIndex:=pQueueFamilyIndex;
+   fGraphicsQueueFamilyIndex:=aQueueFamilyIndex;
   end;
   if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
-   fComputeQueueFamilyIndex:=pQueueFamilyIndex;
+   fComputeQueueFamilyIndex:=aQueueFamilyIndex;
   end;
   if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
-   fTransferQueueFamilyIndex:=pQueueFamilyIndex;
+   fTransferQueueFamilyIndex:=aQueueFamilyIndex;
   end;
-  fDeviceQueueCreateInfoList.Add(TVulkanDeviceQueueCreateInfo.Create(pQueueFamilyIndex,pQueuePriorities));
+  fDeviceQueueCreateInfoList.Add(TVulkanDeviceQueueCreateInfo.Create(aQueueFamilyIndex,aQueuePriorities));
  end else begin
   raise EVulkanException.Create('Queue family index out of bounds');
  end;
 end;
 
-procedure TVulkanDevice.AddQueues(const pPresent:boolean=true;
-                                  const pGraphics:boolean=true;
-                                  const pCompute:boolean=true;
-                                  const pTransfer:boolean=true;
-                                  const pSparseBinding:boolean=false;
-                                  const pSurface:TVulkanSurface=nil);
+procedure TVulkanDevice.AddQueues(const aPresent:boolean=true;
+                                  const aGraphics:boolean=true;
+                                  const aCompute:boolean=true;
+                                  const aTransfer:boolean=true;
+                                  const aSparseBinding:boolean=false;
+                                  const aSurface:TVulkanSurface=nil);
 var Index:TVkInt32;
     DoAdd:boolean;
     QueueFamilyProperties:PVkQueueFamilyProperties;
@@ -11139,56 +11139,56 @@ begin
  for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
   DoAdd:=false;
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
-  if (fPresentQueueFamilyIndex<0) and ((assigned(pSurface) and fPhysicalDevice.GetSurfaceSupport(Index,pSurface)) or not assigned(pSurface)) then begin
+  if (fPresentQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or not assigned(aSurface)) then begin
    fPresentQueueFamilyIndex:=Index;
-   if pPresent then begin
+   if aPresent then begin
     DoAdd:=true;
    end;
   end;
   if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
    fGraphicsQueueFamilyIndex:=Index;
-   if pGraphics then begin
+   if aGraphics then begin
     DoAdd:=true;
    end;
   end;
   if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
    fComputeQueueFamilyIndex:=Index;
-   if pCompute then begin
+   if aCompute then begin
     DoAdd:=true;
    end;
   end;
   if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
    fTransferQueueFamilyIndex:=Index;
-   if pTransfer then begin
+   if aTransfer then begin
     DoAdd:=true;
    end;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and pSparseBinding then begin
+  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and aSparseBinding then begin
    raise EVulkanException.Create('Only unsatisfactory device queue families available');
   end;
   if DoAdd then begin
    fDeviceQueueCreateInfoList.Add(TVulkanDeviceQueueCreateInfo.Create(Index,[1.0]));
   end;
  end;
- if ((fTransferQueueFamilyIndex<0) and pTransfer) and
-    (((fGraphicsQueueFamilyIndex>=0) and pGraphics) or
-     ((fComputeQueueFamilyIndex>=0) and pCompute)) then begin
+ if ((fTransferQueueFamilyIndex<0) and aTransfer) and
+    (((fGraphicsQueueFamilyIndex>=0) and aGraphics) or
+     ((fComputeQueueFamilyIndex>=0) and aCompute)) then begin
   // https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueueFamilyProperties.html
   // Quote: "All commands that are allowed on a queue that supports transfer operations are
   //         also allowed on a queue that supports either graphics or compute operations thus
   //         if the capabilities of a queue family include VK_QUEUE_GRAPHICS_BIT or
   //         VK_QUEUE_COMPUTE_BIT then reporting the VK_QUEUE_TRANSFER_BIT capability separately
   //         for that queue family is optional."
-  if (fGraphicsQueueFamilyIndex>=0) and pGraphics then begin
+  if (fGraphicsQueueFamilyIndex>=0) and aGraphics then begin
    fTransferQueueFamilyIndex:=fGraphicsQueueFamilyIndex;
-  end else if (fComputeQueueFamilyIndex>=0) and pCompute then begin
+  end else if (fComputeQueueFamilyIndex>=0) and aCompute then begin
    fTransferQueueFamilyIndex:=fComputeQueueFamilyIndex;
   end;
  end;
- if ((fPresentQueueFamilyIndex<0) and pPresent) or
-    ((fGraphicsQueueFamilyIndex<0) and pGraphics) or
-    ((fComputeQueueFamilyIndex<0) and pCompute) or
-    ((fTransferQueueFamilyIndex<0) and pTransfer) then begin
+ if ((fPresentQueueFamilyIndex<0) and aPresent) or
+    ((fGraphicsQueueFamilyIndex<0) and aGraphics) or
+    ((fComputeQueueFamilyIndex<0) and aCompute) or
+    ((fTransferQueueFamilyIndex<0) and aTransfer) then begin
   raise EVulkanException.Create('Only unsatisfactory device queue families available');
  end;
 end;
@@ -11315,13 +11315,13 @@ begin
  fDeviceVulkan.DeviceWaitIdle(fDeviceHandle);
 end;
 
-constructor TVulkanDeviceQueueCreateInfo.Create(const pQueueFamilyIndex:TVkUInt32;const pQueuePriorities:array of TVkFloat);
+constructor TVulkanDeviceQueueCreateInfo.Create(const aQueueFamilyIndex:TVkUInt32;const aQueuePriorities:array of TVkFloat);
 begin
  inherited Create;
- fQueueFamilyIndex:=pQueueFamilyIndex;
- SetLength(fQueuePriorities,length(pQueuePriorities));
- if length(pQueuePriorities)>0 then begin
-  Move(pQueuePriorities[0],fQueuePriorities[0],length(pQueuePriorities)*SizeOf(TVkFloat));
+ fQueueFamilyIndex:=aQueueFamilyIndex;
+ SetLength(fQueuePriorities,length(aQueuePriorities));
+ if length(aQueuePriorities)>0 then begin
+  Move(aQueuePriorities[0],fQueuePriorities[0],length(aQueuePriorities)*SizeOf(TVkFloat));
  end;
 end;
 
@@ -11359,20 +11359,20 @@ begin
  fOwnsResource:=false;
 end;
 
-constructor TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Create(const pKey:TVkUInt64=0;
-                                                                 const pValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue=nil;
-                                                                 const pLeft:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
-                                                                 const pRight:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
-                                                                 const pParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
-                                                                 const pColor:boolean=false);
+constructor TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Create(const aKey:TVkUInt64=0;
+                                                                 const aValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue=nil;
+                                                                 const aLeft:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                                                                 const aRight:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                                                                 const aParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                                                                 const aColor:boolean=false);
 begin
  inherited Create;
- fKey:=pKey;
- fValue:=pValue;
- fLeft:=pLeft;
- fRight:=pRight;
- fParent:=pParent;
- fColor:=pColor;
+ fKey:=aKey;
+ fValue:=aValue;
+ fLeft:=aLeft;
+ fRight:=aRight;
+ fParent:=aParent;
+ fColor:=aColor;
 end;
 
 destructor TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Destroy;
@@ -11500,13 +11500,13 @@ begin
  x.fParent:=y;
 end;
 
-function TVulkanDeviceMemoryChunkBlockRedBlackTree.Find(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+function TVulkanDeviceMemoryChunkBlockRedBlackTree.Find(const aKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
 begin
  result:=fRoot;
  while assigned(result) do begin
-  if pKey<result.fKey then begin
+  if aKey<result.fKey then begin
    result:=result.fLeft;
-  end else if pKey>result.fKey then begin
+  end else if aKey>result.fKey then begin
    result:=result.fRight;
   end else begin
    exit;
@@ -11515,23 +11515,23 @@ begin
  result:=nil;
 end;
 
-function TVulkanDeviceMemoryChunkBlockRedBlackTree.Insert(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey;
-                                                          const pValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+function TVulkanDeviceMemoryChunkBlockRedBlackTree.Insert(const aKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey;
+                                                          const aValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue):TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
 var x,y,xParentParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
 begin
  x:=fRoot;
  y:=nil;
  while assigned(x) do begin
   y:=x;
-  if pKey<x.fKey then begin
+  if aKey<x.fKey then begin
    x:=x.fLeft;
   end else begin
    x:=x.fRight;
   end;
  end;
- result:=TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Create(pKey,pValue,nil,nil,y,true);
+ result:=TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Create(aKey,aValue,nil,nil,y,true);
  if assigned(y) then begin
-  if pKey<y.fKey then begin
+  if aKey<y.fKey then begin
    y.Left:=result;
   end else begin
    y.Right:=result;
@@ -11579,11 +11579,11 @@ begin
  fRoot.fColor:=false;
 end;
 
-procedure TVulkanDeviceMemoryChunkBlockRedBlackTree.Remove(const pNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode);
+procedure TVulkanDeviceMemoryChunkBlockRedBlackTree.Remove(const aNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode);
 var w,x,y,z,xParent:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     TemporaryColor:boolean;
 begin
- z:=pNode;
+ z:=aNode;
  y:=z;
  x:=nil;
  xParent:=nil;
@@ -11710,10 +11710,10 @@ begin
  end;
 end;
 
-procedure TVulkanDeviceMemoryChunkBlockRedBlackTree.Delete(const pKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey);
+procedure TVulkanDeviceMemoryChunkBlockRedBlackTree.Delete(const aKey:TVulkanDeviceMemoryChunkBlockRedBlackTreeKey);
 var Node:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
 begin
- Node:=Find(pKey);
+ Node:=Find(aKey);
  if assigned(Node) then begin
   Remove(Node);
  end;
@@ -11735,19 +11735,19 @@ begin
  end;
 end;
 
-constructor TVulkanDeviceMemoryChunkBlock.Create(const pMemoryChunk:TVulkanDeviceMemoryChunk;
-                                                 const pOffset:TVkDeviceSize;
-                                                 const pSize:TVkDeviceSize;
-                                                 const pUsed:boolean);
+constructor TVulkanDeviceMemoryChunkBlock.Create(const aMemoryChunk:TVulkanDeviceMemoryChunk;
+                                                 const aOffset:TVkDeviceSize;
+                                                 const aSize:TVkDeviceSize;
+                                                 const aUsed:boolean);
 begin
  inherited Create;
- fMemoryChunk:=pMemoryChunk;
- fOffset:=pOffset;
- fSize:=pSize;
- fUsed:=pUsed;
- fOffsetRedBlackTreeNode:=fMemoryChunk.fOffsetRedBlackTree.Insert(pOffset,self);
+ fMemoryChunk:=aMemoryChunk;
+ fOffset:=aOffset;
+ fSize:=aSize;
+ fUsed:=aUsed;
+ fOffsetRedBlackTreeNode:=fMemoryChunk.fOffsetRedBlackTree.Insert(aOffset,self);
  if not fUsed then begin
-  fSizeRedBlackTreeNode:=fMemoryChunk.fSizeRedBlackTree.Insert(pSize,self);
+  fSizeRedBlackTreeNode:=fMemoryChunk.fSizeRedBlackTree.Insert(aSize,self);
  end;
 end;
 
@@ -11760,37 +11760,37 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanDeviceMemoryChunkBlock.Update(const pOffset:TVkDeviceSize;
-                                               const pSize:TVkDeviceSize;
-                                               const pUsed:boolean);
+procedure TVulkanDeviceMemoryChunkBlock.Update(const aOffset:TVkDeviceSize;
+                                               const aSize:TVkDeviceSize;
+                                               const aUsed:boolean);
 begin
- if fOffset<>pOffset then begin
+ if fOffset<>aOffset then begin
   fMemoryChunk.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
-  fOffsetRedBlackTreeNode:=fMemoryChunk.fOffsetRedBlackTree.Insert(pOffset,self);
+  fOffsetRedBlackTreeNode:=fMemoryChunk.fOffsetRedBlackTree.Insert(aOffset,self);
  end;
- if (fUsed<>pUsed) or (fSize<>pSize) then begin
+ if (fUsed<>aUsed) or (fSize<>aSize) then begin
   if not fUsed then begin
    fMemoryChunk.fSizeRedBlackTree.Remove(fSizeRedBlackTreeNode);
   end;
-  if not pUsed then begin
-   fSizeRedBlackTreeNode:=fMemoryChunk.fSizeRedBlackTree.Insert(pSize,self);
+  if not aUsed then begin
+   fSizeRedBlackTreeNode:=fMemoryChunk.fSizeRedBlackTree.Insert(aSize,self);
   end;
  end;
- fOffset:=pOffset;
- fSize:=pSize;
- fUsed:=pUsed;
+ fOffset:=aOffset;
+ fSize:=aSize;
+ fUsed:=aUsed;
  inherited Destroy;
 end;
 
-constructor TVulkanDeviceMemoryChunk.Create(const pMemoryManager:TVulkanDeviceMemoryManager;
-                                            const pMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
-                                            const pSize:TVkDeviceSize;
-                                            const pMemoryTypeBits:TVkUInt32;
-                                            const pMemoryPropertyFlags:TVkMemoryPropertyFlags;
-                                            const pMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
-                                            const pMemoryHeapFlags:TVkMemoryHeapFlags;
-                                            const pMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
-                                            const pMemoryChunkList:PVulkanDeviceMemoryManagerChunkList);
+constructor TVulkanDeviceMemoryChunk.Create(const aMemoryManager:TVulkanDeviceMemoryManager;
+                                            const aMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
+                                            const aSize:TVkDeviceSize;
+                                            const aMemoryTypeBits:TVkUInt32;
+                                            const aMemoryPropertyFlags:TVkMemoryPropertyFlags;
+                                            const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+                                            const aMemoryHeapFlags:TVkMemoryHeapFlags;
+                                            const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+                                            const aMemoryChunkList:PVulkanDeviceMemoryManagerChunkList);
 var Index,HeapIndex:TVkInt32;
     MemoryAllocateInfo:TVkMemoryAllocateInfo;
     PhysicalDevice:TVulkanPhysicalDevice;
@@ -11799,13 +11799,13 @@ var Index,HeapIndex:TVkInt32;
 begin
  inherited Create;
 
- fMemoryManager:=pMemoryManager;
+ fMemoryManager:=aMemoryManager;
                     
- fMemoryChunkFlags:=pMemoryChunkFlags;
+ fMemoryChunkFlags:=aMemoryChunkFlags;
 
- fSize:=pSize;
+ fSize:=aSize;
 
- fMemoryChunkList:=pMemoryChunkList;
+ fMemoryChunkList:=aMemoryChunkList;
 
  fUsed:=0;
 
@@ -11813,9 +11813,9 @@ begin
 
  fMappedSize:=fSize;
                                         
- fMemoryPropertyFlags:=pMemoryPropertyFlags;
+ fMemoryPropertyFlags:=aMemoryPropertyFlags;
 
- fMemoryAvoidPropertyFlags:=pMemoryAvoidPropertyFlags;
+ fMemoryAvoidPropertyFlags:=aMemoryAvoidPropertyFlags;
 
  fMemoryHandle:=VK_NULL_HANDLE;
 
@@ -11828,16 +11828,16 @@ begin
  BestSize:=0;
  Found:=false;
  for Index:=0 to length(PhysicalDevice.fMemoryProperties.memoryTypes)-1 do begin
-  if ((pMemoryTypeBits and (TVkUInt32(1) shl Index))<>0) and
-     ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags) and
-     ((pMemoryAvoidPropertyFlags=0) or
-      ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and pMemoryAvoidPropertyFlags)=0)) then begin
+  if ((aMemoryTypeBits and (TVkUInt32(1) shl Index))<>0) and
+     ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryPropertyFlags)=aMemoryPropertyFlags) and
+     ((aMemoryAvoidPropertyFlags=0) or
+      ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryAvoidPropertyFlags)=0)) then begin
    HeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
    CurrentSize:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size;
-   if ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and pMemoryHeapFlags)=pMemoryHeapFlags) and
-      ((pMemoryAvoidHeapFlags=0) or
-       ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and pMemoryAvoidHeapFlags)=0)) and
-      (pSize<=CurrentSize) and (CurrentSize>BestSize) then begin
+   if ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryHeapFlags)=aMemoryHeapFlags) and
+      ((aMemoryAvoidHeapFlags=0) or
+       ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryAvoidHeapFlags)=0)) and
+      (aSize<=CurrentSize) and (CurrentSize>BestSize) then begin
     BestSize:=CurrentSize;
     fMemoryTypeIndex:=Index;
     fMemoryTypeBits:=TVkUInt32(1) shl Index;
@@ -11861,7 +11861,7 @@ begin
  fOffsetRedBlackTree:=TVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
  fSizeRedBlackTree:=TVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
 
- TVulkanDeviceMemoryChunkBlock.Create(self,0,pSize,false);
+ TVulkanDeviceMemoryChunkBlock.Create(self,0,aSize,false);
 
  fLock:=TCriticalSection.Create;
 
@@ -11883,8 +11883,8 @@ begin
      raise EVulkanException.Create('Memory is already mapped');
     end else begin
      fMappedOffset:=0;
-     fMappedSize:=pSize;
-     HandleResultCode(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,0,pSize,0,@fMemory));
+     fMappedSize:=aSize;
+     HandleResultCode(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,0,aSize,0,@fMemory));
     end;
    end else begin
     raise EVulkanException.Create('Memory can''t mapped');
@@ -11946,16 +11946,16 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanDeviceMemoryChunk.AllocateMemory(out pOffset:TVkDeviceSize;const pSize,pAlignment:TVkDeviceSize):boolean;
+function TVulkanDeviceMemoryChunk.AllocateMemory(out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize):boolean;
 var Node,OtherNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock:TVulkanDeviceMemoryChunkBlock;
     Alignment,MemoryChunkBlockBeginOffset,MemoryChunkBlockEndOffset,PayloadBeginOffset,PayloadEndOffset:TVkDeviceSize;
 begin
  result:=false;
 
- if pSize>0 then begin
+ if aSize>0 then begin
 
-  Alignment:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(pAlignment));
+  Alignment:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(aAlignment));
 
   fLock.Acquire;
   try
@@ -11963,16 +11963,16 @@ begin
    // Best-fit search
    Node:=fSizeRedBlackTree.fRoot;
    while assigned(Node) do begin
-    if pSize<Node.fKey then begin
+    if aSize<Node.fKey then begin
      if assigned(Node.fLeft) then begin
       // If free block is too big, then go to left
       Node:=Node.fLeft;
       continue;
      end else begin
       // If free block is too big and there is no left children node, then try to find suitable smaller but not too small free blocks
-      while assigned(Node) and (Node.fKey>pSize) do begin
+      while assigned(Node) and (Node.fKey>aSize) do begin
        OtherNode:=Node.Predecessor;
-       if assigned(OtherNode) and (OtherNode.fKey>=pSize) then begin
+       if assigned(OtherNode) and (OtherNode.fKey>=aSize) then begin
         Node:=OtherNode;
        end else begin
         break;
@@ -11980,14 +11980,14 @@ begin
       end;
       break;
      end;
-    end else if pSize>Node.fKey then begin
+    end else if aSize>Node.fKey then begin
      if assigned(Node.fRight) then begin
       // If free block is too small, go to right
       Node:=Node.fRight;
       continue;
      end else begin
       // If free block is too small and there is no right children node, then try to find suitable bigger but not too small free blocks
-      while assigned(Node) and (Node.fKey<pSize) do begin
+      while assigned(Node) and (Node.fKey<aSize) do begin
        OtherNode:=Node.Successor;
        if assigned(OtherNode) then begin
         Node:=OtherNode;
@@ -12005,10 +12005,10 @@ begin
 
    // Check block for if it fits to the desired alignment, otherwise search for a better suitable block
    if Alignment>1 then begin
-    while assigned(Node) and (Node.fKey>=pSize) do begin
+    while assigned(Node) and (Node.fKey>=aSize) do begin
      MemoryChunkBlock:=Node.fValue;
      if ((MemoryChunkBlock.Offset and (Alignment-1))<>0) and
-        ((MemoryChunkBlock.Offset+(Alignment-(MemoryChunkBlock.Offset and (Alignment-1)))+pSize)>=(MemoryChunkBlock.Offset+MemoryChunkBlock.Size)) then begin
+        ((MemoryChunkBlock.Offset+(Alignment-(MemoryChunkBlock.Offset and (Alignment-1)))+aSize)>=(MemoryChunkBlock.Offset+MemoryChunkBlock.Size)) then begin
       // If free block is alignment-technical too small, then try to find with-alignment-technical suitable bigger blocks
       Node:=Node.Successor;
      end else begin
@@ -12017,7 +12017,7 @@ begin
     end;
    end;
 
-   if assigned(Node) and (Node.fKey>=pSize) then begin
+   if assigned(Node) and (Node.fKey>=aSize) then begin
 
     MemoryChunkBlock:=Node.fValue;
 
@@ -12030,7 +12030,7 @@ begin
      inc(PayloadBeginOffset,Alignment-(PayloadBeginOffset and (Alignment-1)));
     end;
 
-    PayloadEndOffset:=PayloadBeginOffset+pSize;
+    PayloadEndOffset:=PayloadBeginOffset+aSize;
 
     if (PayloadBeginOffset<PayloadEndOffset) and
        (PayloadEndOffset<=MemoryChunkBlockEndOffset) then begin
@@ -12045,7 +12045,7 @@ begin
       TVulkanDeviceMemoryChunkBlock.Create(self,PayloadEndOffset,MemoryChunkBlockEndOffset-PayloadEndOffset,false);
      end;
 
-     pOffset:=PayloadBeginOffset;
+     aOffset:=PayloadBeginOffset;
 
      inc(fUsed,PayloadEndOffset-PayloadBeginOffset);
 
@@ -12063,7 +12063,7 @@ begin
 
 end;
 
-function TVulkanDeviceMemoryChunk.ReallocateMemory(var pOffset:TVkDeviceSize;const pSize,pAlignment:TVkDeviceSize):boolean;
+function TVulkanDeviceMemoryChunk.ReallocateMemory(var aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize):boolean;
 var Node,OtherNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock,OtherMemoryChunkBlock:TVulkanDeviceMemoryChunkBlock;
     TempOffset,TempSize:TVkDeviceSize;
@@ -12073,55 +12073,55 @@ begin
  fLock.Acquire;
  try
 
-  Node:=fOffsetRedBlackTree.Find(pOffset);
+  Node:=fOffsetRedBlackTree.Find(aOffset);
   if assigned(Node) then begin
    MemoryChunkBlock:=Node.fValue;
    if MemoryChunkBlock.fUsed then begin
     dec(fUsed,MemoryChunkBlock.Size);
-    if pSize=0 then begin
-     result:=FreeMemory(pOffset);
-    end else if MemoryChunkBlock.fSize=pSize then begin
+    if aSize=0 then begin
+     result:=FreeMemory(aOffset);
+    end else if MemoryChunkBlock.fSize=aSize then begin
      result:=true;
     end else begin
-     if MemoryChunkBlock.fSize<pSize then begin
+     if MemoryChunkBlock.fSize<aSize then begin
       OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
       if assigned(OtherNode) and
          (MemoryChunkBlock.fOffsetRedBlackTreeNode<>OtherNode) then begin
        OtherMemoryChunkBlock:=OtherNode.fValue;
        if not OtherMemoryChunkBlock.fUsed then begin
-        if (MemoryChunkBlock.fOffset+pSize)<(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
-         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,pSize,true);
-         OtherMemoryChunkBlock.Update(MemoryChunkBlock.fOffset+pSize,(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-(MemoryChunkBlock.fOffset+pSize),false);
+        if (MemoryChunkBlock.fOffset+aSize)<(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
+         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,true);
+         OtherMemoryChunkBlock.Update(MemoryChunkBlock.fOffset+aSize,(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-(MemoryChunkBlock.fOffset+aSize),false);
          result:=true;
-        end else if (MemoryChunkBlock.fOffset+pSize)=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
-         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,pSize,true);
+        end else if (MemoryChunkBlock.fOffset+aSize)=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
+         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,true);
          OtherMemoryChunkBlock.Free;
          result:=true;
         end;
        end;
       end;
-     end else if MemoryChunkBlock.fSize>pSize then begin
+     end else if MemoryChunkBlock.fSize>aSize then begin
       OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
       if assigned(OtherNode) and
          (MemoryChunkBlock.fOffsetRedBlackTreeNode<>OtherNode) and
          not OtherNode.fValue.fUsed then begin
        OtherMemoryChunkBlock:=OtherNode.fValue;
-       TempOffset:=MemoryChunkBlock.fOffset+pSize;
+       TempOffset:=MemoryChunkBlock.fOffset+aSize;
        TempSize:=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-TempOffset;
-       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,pSize,true);
+       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,true);
        OtherMemoryChunkBlock.Update(TempOffset,TempSize,false);
        result:=true;
       end else begin
-       TempOffset:=MemoryChunkBlock.fOffset+pSize;
+       TempOffset:=MemoryChunkBlock.fOffset+aSize;
        TempSize:=(MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)-TempOffset;
-       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,pSize,true);
+       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,true);
        TVulkanDeviceMemoryChunkBlock.Create(self,TempOffset,TempSize,false);
        result:=true;
       end;
      end;
     end;
     if result then begin
-     inc(fUsed,pSize);
+     inc(fUsed,aSize);
     end;
    end;
   end;
@@ -12132,7 +12132,7 @@ begin
 
 end;
 
-function TVulkanDeviceMemoryChunk.FreeMemory(const pOffset:TVkDeviceSize):boolean;
+function TVulkanDeviceMemoryChunk.FreeMemory(const aOffset:TVkDeviceSize):boolean;
 var Node,OtherNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock,OtherMemoryChunkBlock:TVulkanDeviceMemoryChunkBlock;
     TempOffset,TempSize:TVkDeviceSize;
@@ -12142,7 +12142,7 @@ begin
  fLock.Acquire;
  try
 
-  Node:=fOffsetRedBlackTree.Find(pOffset);
+  Node:=fOffsetRedBlackTree.Find(aOffset);
   if assigned(Node) then begin
 
    MemoryChunkBlock:=Node.fValue;
@@ -12196,13 +12196,13 @@ begin
  end;
 end;
 
-function TVulkanDeviceMemoryChunk.MapMemory(const pOffset:TVkDeviceSize=0;const pSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
+function TVulkanDeviceMemoryChunk.MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
 begin
  result:=nil;
  if vdmcfPersistentMapped in fMemoryChunkFlags then begin
   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
    if assigned(fMemory) then begin
-    result:=TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+TVkPtrUInt(pOffset)));
+    result:=TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+TVkPtrUInt(aOffset)));
    end else begin
     raise EVulkanException.Create('Persistent mapped memory is not mapped?');
    end;
@@ -12216,9 +12216,9 @@ begin
     if assigned(fMemory) then begin
      raise EVulkanException.Create('Memory is already mapped');
     end else begin
-     fMappedOffset:=pOffset;
-     fMappedSize:=pSize;
-     HandleResultCode(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,pOffset,pSize,0,@result));
+     fMappedOffset:=aOffset;
+     fMappedSize:=aSize;
+     HandleResultCode(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,aOffset,aSize,0,@result));
      fMemory:=result;
     end;
    end else begin
@@ -12276,18 +12276,18 @@ begin
  end;
 end;
 
-procedure TVulkanDeviceMemoryChunk.FlushMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
+procedure TVulkanDeviceMemoryChunk.FlushMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
 var MappedMemoryRange:TVkMappedMemoryRange;
     Offset,Size:TVkDeviceSize;
 begin
  fLock.Acquire;
  try
   if assigned(fMemory) then begin
-   Offset:=fMappedOffset+TVkDeviceSize(TVkPtrUInt(pBase)-TVkPtrUInt(fMemory));
-   if pSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
+   Offset:=fMappedOffset+TVkDeviceSize(TVkPtrUInt(aBase)-TVkPtrUInt(fMemory));
+   if aSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
     Size:=TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset)));
    end else begin
-    Size:=Min(TVkInt64(Max(TVkInt64(pSize),0)),TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset))));
+    Size:=Min(TVkInt64(Max(TVkInt64(aSize),0)),TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset))));
    end;
    FillChar(MappedMemoryRange,SizeOf(TVkMappedMemoryRange),#0);
    MappedMemoryRange.sType:=VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -12325,18 +12325,18 @@ begin
  end;
 end;
 
-procedure TVulkanDeviceMemoryChunk.InvalidateMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
+procedure TVulkanDeviceMemoryChunk.InvalidateMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
 var MappedMemoryRange:TVkMappedMemoryRange;
     Offset,Size:TVkDeviceSize;
 begin
  fLock.Acquire;
  try
   if assigned(fMemory) then begin
-   Offset:=fMappedOffset+TVkDeviceSize(TVkPtrUInt(pBase)-TVkPtrUInt(fMemory));
-   if pSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
+   Offset:=fMappedOffset+TVkDeviceSize(TVkPtrUInt(aBase)-TVkPtrUInt(fMemory));
+   if aSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
     Size:=TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset)));
    end else begin
-    Size:=Min(TVkInt64(Max(TVkInt64(pSize),0)),TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset))));
+    Size:=Min(TVkInt64(Max(TVkInt64(aSize),0)),TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset))));
    end;
    FillChar(MappedMemoryRange,SizeOf(TVkMappedMemoryRange),#0);
    MappedMemoryRange.sType:=VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -12353,21 +12353,21 @@ begin
  end;
 end;
 
-constructor TVulkanDeviceMemoryBlock.Create(const pMemoryManager:TVulkanDeviceMemoryManager;
-                                            const pMemoryChunk:TVulkanDeviceMemoryChunk;
-                                            const pOffset:TVkDeviceSize;
-                                            const pSize:TVkDeviceSize);
+constructor TVulkanDeviceMemoryBlock.Create(const aMemoryManager:TVulkanDeviceMemoryManager;
+                                            const aMemoryChunk:TVulkanDeviceMemoryChunk;
+                                            const aOffset:TVkDeviceSize;
+                                            const aSize:TVkDeviceSize);
 begin
 
  inherited Create;
 
- fMemoryManager:=pMemoryManager;
+ fMemoryManager:=aMemoryManager;
 
- fMemoryChunk:=pMemoryChunk;
+ fMemoryChunk:=aMemoryChunk;
 
- fOffset:=pOffset;
+ fOffset:=aOffset;
 
- fSize:=pSize;
+ fSize:=aSize;
 
  if assigned(fMemoryManager.fLastMemoryBlock) then begin
   fMemoryManager.fLastMemoryBlock.fNextMemoryBlock:=self;
@@ -12396,14 +12396,14 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanDeviceMemoryBlock.MapMemory(const pOffset:TVkDeviceSize=0;const pSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
+function TVulkanDeviceMemoryBlock.MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
 var Offset,Size:TVkDeviceSize;
 begin
- Offset:=fOffset+pOffset;
- if pSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
+ Offset:=fOffset+aOffset;
+ if aSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
   Size:=TVkInt64(Max(0,TVkInt64((fOffset+fSize)-Offset)));
  end else begin
-  Size:=Min(TVkInt64(Max(TVkInt64(pSize),0)),TVkInt64(Max(0,TVkInt64((fOffset+fSize)-Offset))));
+  Size:=Min(TVkInt64(Max(TVkInt64(aSize),0)),TVkInt64(Max(0,TVkInt64((fOffset+fSize)-Offset))));
  end;
  result:=fMemoryChunk.MapMemory(Offset,Size);
 end;
@@ -12418,9 +12418,9 @@ begin
  fMemoryChunk.FlushMappedMemory;
 end;
 
-procedure TVulkanDeviceMemoryBlock.FlushMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
+procedure TVulkanDeviceMemoryBlock.FlushMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
 begin
- fMemoryChunk.FlushMappedMemoryRange(pBase,pSize);
+ fMemoryChunk.FlushMappedMemoryRange(aBase,aSize);
 end;
 
 procedure TVulkanDeviceMemoryBlock.InvalidateMappedMemory;
@@ -12428,34 +12428,34 @@ begin
  fMemoryChunk.InvalidateMappedMemory;
 end;
 
-procedure TVulkanDeviceMemoryBlock.InvalidateMappedMemoryRange(const pBase:TVkPointer;const pSize:TVkDeviceSize);
+procedure TVulkanDeviceMemoryBlock.InvalidateMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
 begin
- fMemoryChunk.InvalidateMappedMemoryRange(pBase,pSize);
+ fMemoryChunk.InvalidateMappedMemoryRange(aBase,aSize);
 end;
 
-function TVulkanDeviceMemoryBlock.Fill(const pData:PVkVoid;const pSize:TVkDeviceSize):TVkDeviceSize;
+function TVulkanDeviceMemoryBlock.Fill(const aData:PVkVoid;const aSize:TVkDeviceSize):TVkDeviceSize;
 var Memory:PVkVoid;
 begin
- if pSize<=0 then begin
+ if aSize<=0 then begin
   result:=0;
- end else if pSize>fSize then begin
+ end else if aSize>fSize then begin
   result:=fSize;
  end else begin
-  result:=pSize;
+  result:=aSize;
  end;
  Memory:=MapMemory;
  try
-  Move(pData^,Memory^,result);
+  Move(aData^,Memory^,result);
  finally
   UnmapMemory;
  end;
 end;
 
-constructor TVulkanDeviceMemoryManager.Create(const pDevice:TVulkanDevice);
+constructor TVulkanDeviceMemoryManager.Create(const aDevice:TVulkanDevice);
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fLock:=TCriticalSection.Create;
 
@@ -12479,14 +12479,14 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanDeviceMemoryManager.AllocateMemoryBlock(const pMemoryBlockFlags:TVulkanDeviceMemoryBlockFlags;
-                                                        const pMemoryBlockSize:TVkDeviceSize;
-                                                        const pMemoryBlockAlignment:TVkDeviceSize;
-                                                        const pMemoryTypeBits:TVkUInt32;
-                                                        const pMemoryPropertyFlags:TVkMemoryPropertyFlags;
-                                                        const pMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
-                                                        const pMemoryHeapFlags:TVkMemoryHeapFlags;
-                                                        const pMemoryAvoidHeapFlags:TVkMemoryHeapFlags):TVulkanDeviceMemoryBlock;
+function TVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlags:TVulkanDeviceMemoryBlockFlags;
+                                                        const aMemoryBlockSize:TVkDeviceSize;
+                                                        const aMemoryBlockAlignment:TVkDeviceSize;
+                                                        const aMemoryTypeBits:TVkUInt32;
+                                                        const aMemoryPropertyFlags:TVkMemoryPropertyFlags;
+                                                        const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+                                                        const aMemoryHeapFlags:TVkMemoryHeapFlags;
+                                                        const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags):TVulkanDeviceMemoryBlock;
 var MemoryChunk:TVulkanDeviceMemoryChunk;
     Offset,Alignment:TVkDeviceSize;
     MemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
@@ -12494,16 +12494,16 @@ begin
 
  result:=nil;
 
- if pMemoryBlockSize=0 then begin
+ if aMemoryBlockSize=0 then begin
   raise EVulkanMemoryAllocationException.Create('Can''t allocate zero-sized memory block');
  end;
 
  MemoryChunkFlags:=[];
- if vdmbfPersistentMapped in pMemoryBlockFlags then begin
+ if vdmbfPersistentMapped in aMemoryBlockFlags then begin
   Include(MemoryChunkFlags,vdmcfPersistentMapped);
  end;
 
- if vdmbfOwnSingleMemoryChunk in pMemoryBlockFlags then begin
+ if vdmbfOwnSingleMemoryChunk in aMemoryBlockFlags then begin
 
   // New allocated device memory blocks are always perfectly aligned already, so set Alignment here to 1 
   Alignment:=1;
@@ -12513,15 +12513,15 @@ begin
    // Allocate a block inside a new chunk
    MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,
                                                 MemoryChunkFlags,
-                                                pMemoryBlockSize,
-                                                pMemoryTypeBits,
-                                                pMemoryPropertyFlags,
-                                                pMemoryAvoidPropertyFlags,
-                                                pMemoryHeapFlags,
-                                                pMemoryAvoidHeapFlags,
+                                                aMemoryBlockSize,
+                                                aMemoryTypeBits,
+                                                aMemoryPropertyFlags,
+                                                aMemoryAvoidPropertyFlags,
+                                                aMemoryHeapFlags,
+                                                aMemoryAvoidHeapFlags,
                                                 @fMemoryChunkList);
-   if MemoryChunk.AllocateMemory(Offset,pMemoryBlockSize,Alignment) then begin
-    result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pMemoryBlockSize);
+   if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment) then begin
+    result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,aMemoryBlockSize);
    end;
   finally
    fLock.Release;
@@ -12529,7 +12529,7 @@ begin
 
  end else begin
 
-  Alignment:=pMemoryBlockAlignment-1;
+  Alignment:=aMemoryBlockAlignment-1;
   Alignment:=Alignment or (Alignment shr 1);
   Alignment:=Alignment or (Alignment shr 2);
   Alignment:=Alignment or (Alignment shr 4);
@@ -12543,14 +12543,14 @@ begin
    // Try first to allocate a block inside already existent chunks
    MemoryChunk:=fMemoryChunkList.First;
    while assigned(MemoryChunk) do begin
-    if ((pMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
-       ((MemoryChunk.fMemoryPropertyFlags and pMemoryPropertyFlags)=pMemoryPropertyFlags) and
-       ((pMemoryAvoidPropertyFlags=0) or
-        ((MemoryChunk.fMemoryPropertyFlags and pMemoryAvoidPropertyFlags)=0)) and
-       ((MemoryChunk.fSize-MemoryChunk.fUsed)>=pMemoryBlockSize) and
+    if ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
+       ((MemoryChunk.fMemoryPropertyFlags and aMemoryPropertyFlags)=aMemoryPropertyFlags) and
+       ((aMemoryAvoidPropertyFlags=0) or
+        ((MemoryChunk.fMemoryPropertyFlags and aMemoryAvoidPropertyFlags)=0)) and
+       ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
        ((MemoryChunk.fMemoryChunkFlags*[vdmcfPersistentMapped])=(MemoryChunkFlags*[vdmcfPersistentMapped])) then begin
-     if MemoryChunk.AllocateMemory(Offset,pMemoryBlockSize,Alignment) then begin
-      result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pMemoryBlockSize);
+     if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment) then begin
+      result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,aMemoryBlockSize);
       break;
      end;
     end;
@@ -12561,15 +12561,15 @@ begin
     // Otherwise allocate a block inside a new chunk
     MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,
                                                  MemoryChunkFlags,
-                                                 VulkanDeviceSizeRoundUpToPowerOfTwo(Max(VulkanMinimumMemoryChunkSize,pMemoryBlockSize shl 1)),
-                                                 pMemoryTypeBits,
-                                                 pMemoryPropertyFlags,
-                                                 pMemoryAvoidPropertyFlags,
-                                                 pMemoryHeapFlags,
-                                                 pMemoryAvoidHeapFlags,
+                                                 VulkanDeviceSizeRoundUpToPowerOfTwo(Max(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
+                                                 aMemoryTypeBits,
+                                                 aMemoryPropertyFlags,
+                                                 aMemoryAvoidPropertyFlags,
+                                                 aMemoryHeapFlags,
+                                                 aMemoryAvoidHeapFlags,
                                                  @fMemoryChunkList);
-    if MemoryChunk.AllocateMemory(Offset,pMemoryBlockSize,Alignment) then begin
-     result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,pMemoryBlockSize);
+    if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment) then begin
+     result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,aMemoryBlockSize);
     end;
    end;
 
@@ -12585,17 +12585,17 @@ begin
 
 end;
 
-function TVulkanDeviceMemoryManager.FreeMemoryBlock(const pMemoryBlock:TVulkanDeviceMemoryBlock):boolean;
+function TVulkanDeviceMemoryManager.FreeMemoryBlock(const aMemoryBlock:TVulkanDeviceMemoryBlock):boolean;
 var MemoryChunk:TVulkanDeviceMemoryChunk;
 begin
- result:=assigned(pMemoryBlock);
+ result:=assigned(aMemoryBlock);
  if result then begin
   fLock.Acquire;
   try
-   MemoryChunk:=pMemoryBlock.fMemoryChunk;
-   result:=MemoryChunk.FreeMemory(pMemoryBlock.fOffset);
+   MemoryChunk:=aMemoryBlock.fMemoryChunk;
+   result:=MemoryChunk.FreeMemory(aMemoryBlock.fOffset);
    if result then begin
-    pMemoryBlock.Free;
+    aMemoryBlock.Free;
     if assigned(MemoryChunk.fOffsetRedBlackTree.fRoot) and
        (MemoryChunk.fOffsetRedBlackTree.fRoot.fValue.fOffset=0) and
        (MemoryChunk.fOffsetRedBlackTree.fRoot.fValue.fSize=MemoryChunk.fSize) and
@@ -12609,42 +12609,42 @@ begin
  end;
 end;
 
-constructor TVulkanBuffer.Create(const pDevice:TVulkanDevice;
-                                 const pSize:TVkDeviceSize;
-                                 const pUsage:TVkBufferUsageFlags;
-                                 const pSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-                                 const pQueueFamilyIndices:TVkUInt32List=nil;
-                                 const pMemoryPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-                                 const pMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
-                                 const pMemoryHeapFlags:TVkMemoryHeapFlags=0;
-                                 const pMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
-                                 const pBufferFlags:TVulkanBufferFlags=[]);
+constructor TVulkanBuffer.Create(const aDevice:TVulkanDevice;
+                                 const aSize:TVkDeviceSize;
+                                 const aUsage:TVkBufferUsageFlags;
+                                 const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                 const aQueueFamilyIndices:TVkUInt32List=nil;
+                                 const aMemoryPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                 const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                 const aMemoryHeapFlags:TVkMemoryHeapFlags=0;
+                                 const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                 const aBufferFlags:TVulkanBufferFlags=[]);
 var Index:TVkInt32;
     BufferCreateInfo:TVkBufferCreateInfo;
     MemoryBlockFlags:TVulkanDeviceMemoryBlockFlags;
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fSize:=pSize;
+ fSize:=aSize;
 
- fMemoryPropertyFlags:=pMemoryPropertyFlags;
+ fMemoryPropertyFlags:=aMemoryPropertyFlags;
 
- fMemoryAvoidPropertyFlags:=pMemoryAvoidPropertyFlags;
+ fMemoryAvoidPropertyFlags:=aMemoryAvoidPropertyFlags;
 
- fBufferFlags:=pBufferFlags;
+ fBufferFlags:=aBufferFlags;
 
  fBufferHandle:=VK_NULL_HANDLE;
 
  fMemoryBlock:=nil;
 
  fQueueFamilyIndices:=nil;
- if assigned(pQueueFamilyIndices) then begin
-  fCountQueueFamilyIndices:=pQueueFamilyIndices.Count;
+ if assigned(aQueueFamilyIndices) then begin
+  fCountQueueFamilyIndices:=aQueueFamilyIndices.Count;
   SetLength(fQueueFamilyIndices,fCountQueueFamilyIndices);
   for Index:=0 to fCountQueueFamilyIndices-1 do begin
-   fQueueFamilyIndices[Index]:=pQueueFamilyIndices.Items[Index];
+   fQueueFamilyIndices[Index]:=aQueueFamilyIndices.Items[Index];
   end;
  end else begin
   fCountQueueFamilyIndices:=0;
@@ -12653,8 +12653,8 @@ begin
  FillChar(BufferCreateInfo,SizeOf(TVkBufferCreateInfo),#0);
  BufferCreateInfo.sType:=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
  BufferCreateInfo.size:=fSize;
- BufferCreateInfo.usage:=pUsage;
- BufferCreateInfo.sharingMode:=pSharingMode;
+ BufferCreateInfo.usage:=aUsage;
+ BufferCreateInfo.sharingMode:=aSharingMode;
  if fCountQueueFamilyIndices>0 then begin
   BufferCreateInfo.pQueueFamilyIndices:=@fQueueFamilyIndices[0];
   BufferCreateInfo.queueFamilyIndexCount:=fCountQueueFamilyIndices;
@@ -12680,8 +12680,8 @@ begin
                                                            fMemoryRequirements.memoryTypeBits,
                                                            fMemoryPropertyFlags,
                                                            fMemoryAvoidPropertyFlags,
-                                                           pMemoryHeapFlags,
-                                                           pMemoryAvoidHeapFlags);
+                                                           aMemoryHeapFlags,
+                                                           aMemoryAvoidHeapFlags);
 
   Bind;
                                                            
@@ -12728,24 +12728,24 @@ begin
  HandleResultCode(fDevice.Commands.BindBufferMemory(fDevice.fDeviceHandle,fBufferHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
 end;
 
-procedure TVulkanBuffer.UploadData(const pTransferQueue:TVulkanQueue;
-                                   const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                   const pTransferFence:TVulkanFence;
-                                   const pData;
-                                   const pDataOffset:TVkDeviceSize;
-                                   const pDataSize:TVkDeviceSize;
-                                   const pUseTemporaryStagingBufferMode:TVulkanBufferUseTemporaryStagingBufferMode=vbutsbmAutomatic);
+procedure TVulkanBuffer.UploadData(const aTransferQueue:TVulkanQueue;
+                                   const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                   const aTransferFence:TVulkanFence;
+                                   const aData;
+                                   const aDataOffset:TVkDeviceSize;
+                                   const aDataSize:TVkDeviceSize;
+                                   const aUseTemporaryStagingBufferMode:TVulkanBufferUseTemporaryStagingBufferMode=vbutsbmAutomatic);
 var StagingBuffer:TVulkanBuffer;
     p:pointer;
     VkBufferCopy:TVkBufferCopy;
 begin
 
- if (pUseTemporaryStagingBufferMode=vbutsbmYes) or
-    ((pUseTemporaryStagingBufferMode=vbutsbmAutomatic) and
+ if (aUseTemporaryStagingBufferMode=vbutsbmYes) or
+    ((aUseTemporaryStagingBufferMode=vbutsbmAutomatic) and
      ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0)) then begin
 
   StagingBuffer:=TVulkanBuffer.Create(fDevice,
-                                      pDataSize,
+                                      aDataSize,
                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
                                       VK_SHARING_MODE_EXCLUSIVE,
                                       nil,
@@ -12759,7 +12759,7 @@ begin
    p:=StagingBuffer.Memory.MapMemory;
    try
     if assigned(p) then begin
-     Move(pData,p^,pDataSize);
+     Move(aData,p^,aDataSize);
     end else begin
      raise EVulkanException.Create('Vulkan buffer memory block map failed');
     end;
@@ -12768,14 +12768,14 @@ begin
    end;
 
    VkBufferCopy.srcOffset:=0;
-   VkBufferCopy.dstOffset:=pDataOffset;
-   VkBufferCopy.size:=pDataSize;
+   VkBufferCopy.dstOffset:=aDataOffset;
+   VkBufferCopy.size:=aDataSize;
 
-   pTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-   pTransferCommandBuffer.BeginRecording;
-   pTransferCommandBuffer.CmdCopyBuffer(StagingBuffer.Handle,Handle,1,@VkBufferCopy);
-   pTransferCommandBuffer.EndRecording;
-   pTransferCommandBuffer.Execute(fDevice.TransferQueue,0,nil,nil,pTransferFence,true);
+   aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aTransferCommandBuffer.BeginRecording;
+   aTransferCommandBuffer.CmdCopyBuffer(StagingBuffer.Handle,Handle,1,@VkBufferCopy);
+   aTransferCommandBuffer.EndRecording;
+   aTransferCommandBuffer.Execute(fDevice.TransferQueue,0,nil,nil,aTransferFence,true);
 
   finally
    StagingBuffer.Free;
@@ -12784,12 +12784,12 @@ begin
  end else begin
 
   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
-   p:=Memory.MapMemory(pDataOffset,pDataSize);
+   p:=Memory.MapMemory(aDataOffset,aDataSize);
    try
     if assigned(p) then begin
-     Move(pData,p^,pDataSize);
+     Move(aData,p^,aDataSize);
      if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
-      Memory.FlushMappedMemoryRange(p,pDataSize);
+      Memory.FlushMappedMemoryRange(p,aDataSize);
      end;
     end else begin
      raise EVulkanException.Create('Vulkan buffer memory block map failed');
@@ -12805,18 +12805,18 @@ begin
 
 end;
 
-procedure TVulkanBuffer.UpdateData(const pData;
-                                   const pDataOffset:TVkDeviceSize;
-                                   const pDataSize:TVkDeviceSize);
+procedure TVulkanBuffer.UpdateData(const aData;
+                                   const aDataOffset:TVkDeviceSize;
+                                   const aDataSize:TVkDeviceSize);
 var p:pointer;
 begin
  if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
-  p:=Memory.MapMemory(pDataOffset,pDataSize);
+  p:=Memory.MapMemory(aDataOffset,aDataSize);
   try
    if assigned(p) then begin
-    Move(pData,p^,pDataSize);
+    Move(aData,p^,aDataSize);
     if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
-     Memory.FlushMappedMemoryRange(p,pDataSize);
+     Memory.FlushMappedMemoryRange(p,aDataSize);
     end;
    end else begin
     raise EVulkanException.Create('Vulkan buffer memory block map failed');
@@ -12829,19 +12829,19 @@ begin
  end;
 end;
 
-constructor TVulkanBufferView.Create(const pDevice:TVulkanDevice;
-                                     const pBuffer:TVulkanBuffer;
-                                     const pFormat:TVkFormat;
-                                     const pOffset:TVkDeviceSize=0;
-                                     const pRange:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE));
+constructor TVulkanBufferView.Create(const aDevice:TVulkanDevice;
+                                     const aBuffer:TVulkanBuffer;
+                                     const aFormat:TVkFormat;
+                                     const aOffset:TVkDeviceSize=0;
+                                     const aRange:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE));
 var BufferViewCreateInfo:TVkBufferViewCreateInfo;
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fBuffer:=pBuffer;
+ fBuffer:=aBuffer;
 
  fBufferViewHandle:=VK_NULL_HANDLE;
 
@@ -12850,26 +12850,26 @@ begin
  BufferViewCreateInfo.pNext:=nil;
  BufferViewCreateInfo.flags:=0;
  BufferViewCreateInfo.buffer:=fBuffer.fBufferHandle;
- BufferViewCreateInfo.format:=pFormat;
- BufferViewCreateInfo.offset:=pOffset;
- BufferViewCreateInfo.range:=pRange;
+ BufferViewCreateInfo.format:=aFormat;
+ BufferViewCreateInfo.offset:=aOffset;
+ BufferViewCreateInfo.range:=aRange;
 
  HandleResultCode(fDevice.fDeviceVulkan.CreateBufferView(fDevice.fDeviceHandle,@BufferViewCreateInfo,fDevice.fAllocationCallbacks,@fBufferViewHandle));
 
 end;
 
-constructor TVulkanBufferView.Create(const pDevice:TVulkanDevice;
-                                     const pBufferView:TVkBufferView;
-                                     const pBuffer:TVulkanBuffer=nil);
+constructor TVulkanBufferView.Create(const aDevice:TVulkanDevice;
+                                     const aBufferView:TVkBufferView;
+                                     const aBuffer:TVulkanBuffer=nil);
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fBufferViewHandle:=pBufferView;
+ fBufferViewHandle:=aBufferView;
 
- fBuffer:=pBuffer;
+ fBuffer:=aBuffer;
 
 end;
 
@@ -12883,20 +12883,20 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanEvent.Create(const pDevice:TVulkanDevice;
-                                const pFlags:TVkEventCreateFlags=TVkEventCreateFlags(0));
+constructor TVulkanEvent.Create(const aDevice:TVulkanDevice;
+                                const aFlags:TVkEventCreateFlags=TVkEventCreateFlags(0));
 var EventCreateInfo:TVkEventCreateInfo;
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fEventHandle:=VK_NULL_HANDLE;
 
  FillChar(EventCreateInfo,SizeOf(TVkEventCreateInfo),#0);
  EventCreateInfo.sType:=VK_STRUCTURE_TYPE_EVENT_CREATE_INFO;
  EventCreateInfo.pNext:=nil;
- EventCreateInfo.flags:=pFlags;
+ EventCreateInfo.flags:=aFlags;
 
  HandleResultCode(fDevice.fDeviceVulkan.CreateEvent(fDevice.fDeviceHandle,@EventCreateInfo,fDevice.fAllocationCallbacks,@fEventHandle));
 
@@ -12932,20 +12932,20 @@ begin
  end;
 end;
 
-constructor TVulkanFence.Create(const pDevice:TVulkanDevice;
-                                const pFlags:TVkFenceCreateFlags=TVkFenceCreateFlags(0));
+constructor TVulkanFence.Create(const aDevice:TVulkanDevice;
+                                const aFlags:TVkFenceCreateFlags=TVkFenceCreateFlags(0));
 var FenceCreateInfo:TVkFenceCreateInfo;
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fFenceHandle:=VK_NULL_HANDLE;
 
  FillChar(FenceCreateInfo,SizeOf(TVkFenceCreateInfo),#0);
  FenceCreateInfo.sType:=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
  FenceCreateInfo.pNext:=nil;
- FenceCreateInfo.flags:=pFlags;
+ FenceCreateInfo.flags:=aFlags;
 
  HandleResultCode(fDevice.fDeviceVulkan.CreateFence(fDevice.fDeviceHandle,@FenceCreateInfo,fDevice.fAllocationCallbacks,@fFenceHandle));
 
@@ -12973,19 +12973,19 @@ begin
  end;
 end;
 
-class function TVulkanFence.Reset(const pFences:array of TVulkanFence):TVkResult;
+class function TVulkanFence.Reset(const aFences:array of TVulkanFence):TVkResult;
 var Index:TVkInt32;
     Handles:array of TVkFence;
 begin
  Handles:=nil;
  result:=VK_SUCCESS;
- if length(pFences)>0 then begin
+ if length(aFences)>0 then begin
   try
-   SetLength(Handles,length(pFences));
-   for Index:=0 to length(pFences)-1 do begin
-    Handles[Index]:=pFences[Index].fFenceHandle;
+   SetLength(Handles,length(aFences));
+   for Index:=0 to length(aFences)-1 do begin
+    Handles[Index]:=aFences[Index].fFenceHandle;
    end;
-   result:=pFences[0].fDevice.fDeviceVulkan.ResetFences(pFences[0].fDevice.fDeviceHandle,length(pFences),@Handles[0]);
+   result:=aFences[0].fDevice.fDeviceVulkan.ResetFences(aFences[0].fDevice.fDeviceHandle,length(aFences),@Handles[0]);
   finally
    SetLength(Handles,0);
   end;
@@ -12995,30 +12995,30 @@ begin
  end;
 end;
 
-function TVulkanFence.WaitFor(const pTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult;
+function TVulkanFence.WaitFor(const aTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult;
 begin
- result:=fDevice.fDeviceVulkan.WaitForFences(fDevice.fDeviceHandle,1,@fFenceHandle,VK_TRUE,pTimeOut);
+ result:=fDevice.fDeviceVulkan.WaitForFences(fDevice.fDeviceHandle,1,@fFenceHandle,VK_TRUE,aTimeOut);
  if result<VK_SUCCESS then begin
   HandleResultCode(result);
  end;
 end;
 
-class function TVulkanFence.WaitFor(const pFences:array of TVulkanFence;const pWaitAll:boolean=true;const pTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult;
+class function TVulkanFence.WaitFor(const aFences:array of TVulkanFence;const aWaitAll:boolean=true;const aTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult;
 var Index:TVkInt32;
     Handles:array of TVkFence;
 begin
  Handles:=nil;
  result:=VK_SUCCESS;
- if length(pFences)>0 then begin
+ if length(aFences)>0 then begin
   try
-   SetLength(Handles,length(pFences));
-   for Index:=0 to length(pFences)-1 do begin
-    Handles[Index]:=pFences[Index].fFenceHandle;
+   SetLength(Handles,length(aFences));
+   for Index:=0 to length(aFences)-1 do begin
+    Handles[Index]:=aFences[Index].fFenceHandle;
    end;
-   if pWaitAll then begin
-    result:=pFences[0].fDevice.fDeviceVulkan.WaitForFences(pFences[0].fDevice.fDeviceHandle,length(pFences),@Handles[0],VK_TRUE,pTimeOut);
+   if aWaitAll then begin
+    result:=aFences[0].fDevice.fDeviceVulkan.WaitForFences(aFences[0].fDevice.fDeviceHandle,length(aFences),@Handles[0],VK_TRUE,aTimeOut);
    end else begin
-    result:=pFences[0].fDevice.fDeviceVulkan.WaitForFences(pFences[0].fDevice.fDeviceHandle,length(pFences),@Handles[0],VK_FALSE,pTimeOut);
+    result:=aFences[0].fDevice.fDeviceVulkan.WaitForFences(aFences[0].fDevice.fDeviceHandle,length(aFences),@Handles[0],VK_FALSE,aTimeOut);
    end;
   finally
    SetLength(Handles,0);
@@ -13029,20 +13029,20 @@ begin
  end;
 end;
 
-constructor TVulkanSemaphore.Create(const pDevice:TVulkanDevice;
-                                    const pFlags:TVkSemaphoreCreateFlags=TVkSemaphoreCreateFlags(0));
+constructor TVulkanSemaphore.Create(const aDevice:TVulkanDevice;
+                                    const aFlags:TVkSemaphoreCreateFlags=TVkSemaphoreCreateFlags(0));
 var SemaphoreCreateInfo:TVkSemaphoreCreateInfo;
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fSemaphoreHandle:=VK_NULL_HANDLE;
 
  FillChar(SemaphoreCreateInfo,SizeOf(TVkSemaphoreCreateInfo),#0);
  SemaphoreCreateInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
  SemaphoreCreateInfo.pNext:=nil;
- SemaphoreCreateInfo.flags:=pFlags;
+ SemaphoreCreateInfo.flags:=aFlags;
 
  HandleResultCode(fDevice.fDeviceVulkan.CreateSemaphore(fDevice.fDeviceHandle,@SemaphoreCreateInfo,fDevice.fAllocationCallbacks,@fSemaphoreHandle));
 
@@ -13057,19 +13057,19 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanQueue.Create(const pDevice:TVulkanDevice;
-                                const pQueue:TVkQueue;
-                                const pQueueFamilyIndex:TVKUInt32);
+constructor TVulkanQueue.Create(const aDevice:TVulkanDevice;
+                                const aQueue:TVkQueue;
+                                const aQueueFamilyIndex:TVKUInt32);
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fQueueHandle:=pQueue;
+ fQueueHandle:=aQueue;
 
- fQueueFamilyIndex:=pQueueFamilyIndex;
+ fQueueFamilyIndex:=aQueueFamilyIndex;
 
- fHasSupportForSparseBindings:=fDevice.fPhysicalDevice.HasQueueSupportForSparseBindings(pQueueFamilyIndex);
+ fHasSupportForSparseBindings:=fDevice.fPhysicalDevice.HasQueueSupportForSparseBindings(aQueueFamilyIndex);
 
 end;
 
@@ -13078,21 +13078,21 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanQueue.Submit(const pSubmitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;const pFence:TVulkanFence=nil);
+procedure TVulkanQueue.Submit(const aSubmitCount:TVkUInt32;const aSubmits:PVkSubmitInfo;const aFence:TVulkanFence=nil);
 begin
- if assigned(pFence) then begin
-  HandleResultCode(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,pSubmitCount,pSubmits,pFence.fFenceHandle));
+ if assigned(aFence) then begin
+  HandleResultCode(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,aFence.fFenceHandle));
  end else begin
-  HandleResultCode(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,pSubmitCount,pSubmits,VK_NULL_HANDLE));
+  HandleResultCode(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,VK_NULL_HANDLE));
  end;
 end;
 
-procedure TVulkanQueue.BindSparse(const pBindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;const pFence:TVulkanFence=nil);
+procedure TVulkanQueue.BindSparse(const aBindInfoCount:TVkUInt32;const aBindInfo:PVkBindSparseInfo;const aFence:TVulkanFence=nil);
 begin
- if assigned(pFence) then begin
-  HandleResultCode(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,pBindInfoCount,pBindInfo,pFence.fFenceHandle));
+ if assigned(aFence) then begin
+  HandleResultCode(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,aFence.fFenceHandle));
  end else begin
-  HandleResultCode(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,pBindInfoCount,pBindInfo,VK_NULL_HANDLE));
+  HandleResultCode(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,VK_NULL_HANDLE));
  end;
 end;
 
@@ -13101,18 +13101,18 @@ begin
  HandleResultCode(fDevice.fDeviceVulkan.QueueWaitIdle(fQueueHandle));
 end;
 
-constructor TVulkanCommandPool.Create(const pDevice:TVulkanDevice;
-                                      const pQueueFamilyIndex:TVkUInt32;
-                                      const pFlags:TVkCommandPoolCreateFlags=TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+constructor TVulkanCommandPool.Create(const aDevice:TVulkanDevice;
+                                      const aQueueFamilyIndex:TVkUInt32;
+                                      const aFlags:TVkCommandPoolCreateFlags=TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 var CommandPoolCreateInfo:TVkCommandPoolCreateInfo;
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fQueueFamilyIndex:=pQueueFamilyIndex;
+ fQueueFamilyIndex:=aQueueFamilyIndex;
 
- fFlags:=pFlags;
+ fFlags:=aFlags;
 
  fCommandPoolHandle:=VK_NULL_HANDLE;
 
@@ -13133,18 +13133,18 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanCommandBuffer.Create(const pCommandPool:TVulkanCommandPool;
-                                        const pLevel:TVkCommandBufferLevel;
-                                        const pCommandBufferHandle:TVkCommandBuffer);
+constructor TVulkanCommandBuffer.Create(const aCommandPool:TVulkanCommandPool;
+                                        const aLevel:TVkCommandBufferLevel;
+                                        const aCommandBufferHandle:TVkCommandBuffer);
 begin
 
- fDevice:=pCommandPool.fDevice;
+ fDevice:=aCommandPool.fDevice;
 
- fCommandPool:=pCommandPool;
+ fCommandPool:=aCommandPool;
 
- fLevel:=pLevel;
+ fLevel:=aLevel;
 
- fCommandBufferHandle:=pCommandBufferHandle;
+ fCommandBufferHandle:=aCommandBufferHandle;
 
 {if fLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
   fFence:=TVulkanFence.Create(fDevice);
@@ -13154,17 +13154,17 @@ begin
 
 end;
 
-constructor TVulkanCommandBuffer.Create(const pCommandPool:TVulkanCommandPool;
-                                        const pLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+constructor TVulkanCommandBuffer.Create(const aCommandPool:TVulkanCommandPool;
+                                        const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 var CommandBufferAllocateInfo:TVkCommandBufferAllocateInfo;
 begin
  inherited Create;
 
- fDevice:=pCommandPool.fDevice;
+ fDevice:=aCommandPool.fDevice;
 
- fCommandPool:=pCommandPool;
+ fCommandPool:=aCommandPool;
 
- fLevel:=pLevel;
+ fLevel:=aLevel;
 
  fCommandBufferHandle:=VK_NULL_HANDLE;
 
@@ -13177,7 +13177,7 @@ begin
  FillChar(CommandBufferAllocateInfo,SizeOf(TVkCommandBufferAllocateInfo),#0);
  CommandBufferAllocateInfo.sType:=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
  CommandBufferAllocateInfo.commandPool:=fCommandPool.fCommandPoolHandle;
- CommandBufferAllocateInfo.level:=pLevel;
+ CommandBufferAllocateInfo.level:=aLevel;
  CommandBufferAllocateInfo.commandBufferCount:=1;
 
  HandleResultCode(fDevice.fDeviceVulkan.AllocateCommandBuffers(fDevice.fDeviceHandle,@CommandBufferAllocateInfo,@fCommandBufferHandle));
@@ -13194,9 +13194,9 @@ begin
  inherited Destroy;
 end;
 
-class function TVulkanCommandBuffer.Allocate(const pCommandPool:TVulkanCommandPool;
-                                             const pLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                                             const pCommandBufferCount:TVkUInt32=1):TVulkanObjectList;
+class function TVulkanCommandBuffer.Allocate(const aCommandPool:TVulkanCommandPool;
+                                             const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+                                             const aCommandBufferCount:TVkUInt32=1):TVulkanObjectList;
 var Index:TVkInt32;
     CommandBufferHandles:array of TVkCommandBuffer;
     CommandBufferAllocateInfo:TVkCommandBufferAllocateInfo;
@@ -13204,19 +13204,19 @@ begin
  result:=nil;
  CommandBufferHandles:=nil;
  try
-  SetLength(CommandBufferHandles,pCommandBufferCount);
+  SetLength(CommandBufferHandles,aCommandBufferCount);
 
   FillChar(CommandBufferAllocateInfo,SizeOf(TVkCommandBufferAllocateInfo),#0);
   CommandBufferAllocateInfo.sType:=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  CommandBufferAllocateInfo.commandPool:=pCommandPool.fCommandPoolHandle;
-  CommandBufferAllocateInfo.level:=pLevel;
-  CommandBufferAllocateInfo.commandBufferCount:=pCommandBufferCount;
+  CommandBufferAllocateInfo.commandPool:=aCommandPool.fCommandPoolHandle;
+  CommandBufferAllocateInfo.level:=aLevel;
+  CommandBufferAllocateInfo.commandBufferCount:=aCommandBufferCount;
 
-  HandleResultCode(pCommandPool.fDevice.fDeviceVulkan.AllocateCommandBuffers(pCommandPool.fDevice.fDeviceHandle,@CommandBufferAllocateInfo,@CommandBufferHandles[0]));
+  HandleResultCode(aCommandPool.fDevice.fDeviceVulkan.AllocateCommandBuffers(aCommandPool.fDevice.fDeviceHandle,@CommandBufferAllocateInfo,@CommandBufferHandles[0]));
 
   result:=TVulkanObjectList.Create;
-  for Index:=0 to pCommandBufferCount-1 do begin
-   result.Add(TVulkanCommandBuffer.Create(pCommandPool,pLevel,CommandBufferHandles[Index]));
+  for Index:=0 to aCommandBufferCount-1 do begin
+   result.Add(TVulkanCommandBuffer.Create(aCommandPool,aLevel,CommandBufferHandles[Index]));
   end;
 
  finally
@@ -13224,14 +13224,14 @@ begin
  end;
 end;
 
-procedure TVulkanCommandBuffer.BeginRecording(const pFlags:TVkCommandBufferUsageFlags=0;const pInheritanceInfo:PVkCommandBufferInheritanceInfo=nil);
+procedure TVulkanCommandBuffer.BeginRecording(const aFlags:TVkCommandBufferUsageFlags=0;const aInheritanceInfo:PVkCommandBufferInheritanceInfo=nil);
 var CommandBufferBeginInfo:TVkCommandBufferBeginInfo;
 begin
  FillChar(CommandBufferBeginInfo,SizeOf(TVkCommandBufferBeginInfo),#0);
  CommandBufferBeginInfo.sType:=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
  CommandBufferBeginInfo.pNext:=nil;
- CommandBufferBeginInfo.flags:=pFlags;
- CommandBufferBeginInfo.pInheritanceInfo:=pInheritanceInfo;
+ CommandBufferBeginInfo.flags:=aFlags;
+ CommandBufferBeginInfo.pInheritanceInfo:=aInheritanceInfo;
  HandleResultCode(fDevice.fDeviceVulkan.BeginCommandBuffer(fCommandBufferHandle,@CommandBufferBeginInfo));
 end;
 
@@ -13250,7 +13250,7 @@ begin
  end;
 end;
 
-procedure TVulkanCommandBuffer.BeginRecordingSecondary(const pRenderPass:TVkRenderPass;const pSubPass:TVkUInt32;const pFrameBuffer:TVkFramebuffer;const pOcclusionQueryEnable:boolean;const pQueryFlags:TVkQueryControlFlags;const pPipelineStatistics:TVkQueryPipelineStatisticFlags;const pFlags:TVkCommandBufferUsageFlags=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
+procedure TVulkanCommandBuffer.BeginRecordingSecondary(const aRenderPass:TVkRenderPass;const aSubPass:TVkUInt32;const aFrameBuffer:TVkFramebuffer;const aOcclusionQueryEnable:boolean;const aQueryFlags:TVkQueryControlFlags;const aPipelineStatistics:TVkQueryPipelineStatisticFlags;const aFlags:TVkCommandBufferUsageFlags=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
 var CommandBufferBeginInfo:TVkCommandBufferBeginInfo;
     InheritanceInfo:TVkCommandBufferInheritanceInfo;
 begin
@@ -13258,20 +13258,20 @@ begin
   FillChar(InheritanceInfo,SizeOf(TVkCommandBufferInheritanceInfo),#0);
   InheritanceInfo.sType:=VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
   InheritanceInfo.pNext:=nil;
-  InheritanceInfo.renderPass:=pRenderPass;
-  InheritanceInfo.subpass:=pSubPass;
-  InheritanceInfo.framebuffer:=pFrameBuffer;
-  if pOcclusionQueryEnable then begin
+  InheritanceInfo.renderPass:=aRenderPass;
+  InheritanceInfo.subpass:=aSubPass;
+  InheritanceInfo.framebuffer:=aFrameBuffer;
+  if aOcclusionQueryEnable then begin
    InheritanceInfo.occlusionQueryEnable:=VK_TRUE;
   end else begin
    InheritanceInfo.occlusionQueryEnable:=VK_FALSE;
   end;
-  InheritanceInfo.queryFlags:=pQueryFlags;
-  InheritanceInfo.pipelineStatistics:=pPipelineStatistics;
+  InheritanceInfo.queryFlags:=aQueryFlags;
+  InheritanceInfo.pipelineStatistics:=aPipelineStatistics;
   FillChar(CommandBufferBeginInfo,SizeOf(TVkCommandBufferBeginInfo),#0);
   CommandBufferBeginInfo.sType:=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   CommandBufferBeginInfo.pNext:=nil;
-  CommandBufferBeginInfo.flags:=pFlags;
+  CommandBufferBeginInfo.flags:=aFlags;
   CommandBufferBeginInfo.pInheritanceInfo:=@InheritanceInfo;
   HandleResultCode(fDevice.fDeviceVulkan.BeginCommandBuffer(fCommandBufferHandle,@CommandBufferBeginInfo));
  end else begin
@@ -13284,9 +13284,9 @@ begin
  HandleResultCode(fDevice.fDeviceVulkan.EndCommandBuffer(fCommandBufferHandle));
 end;
 
-procedure TVulkanCommandBuffer.Reset(const pFlags:TVkCommandBufferResetFlags=TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+procedure TVulkanCommandBuffer.Reset(const aFlags:TVkCommandBufferResetFlags=TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 begin
- HandleResultCode(fDevice.fDeviceVulkan.ResetCommandBuffer(fCommandBufferHandle,pFlags));
+ HandleResultCode(fDevice.fDeviceVulkan.ResetCommandBuffer(fCommandBufferHandle,aFlags));
 end;
 
 procedure TVulkanCommandBuffer.CmdBindPipeline(pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline);
@@ -13294,14 +13294,14 @@ begin
  fDevice.fDeviceVulkan.CmdBindPipeline(fCommandBufferHandle,pipelineBindPoint,pipeline);
 end;
 
-procedure TVulkanCommandBuffer.CmdSetViewport(firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewports:PVkViewport);
+procedure TVulkanCommandBuffer.CmdSetViewport(firstViewport:TVkUInt32;viewportCount:TVkUInt32;const aViewports:PVkViewport);
 begin
- fDevice.fDeviceVulkan.CmdSetViewport(fCommandBufferHandle,firstViewport,viewportCount,pViewports);
+ fDevice.fDeviceVulkan.CmdSetViewport(fCommandBufferHandle,firstViewport,viewportCount,aViewports);
 end;
 
-procedure TVulkanCommandBuffer.CmdSetScissor(firstScissor:TVkUInt32;scissorCount:TVkUInt32;const pScissors:PVkRect2D);
+procedure TVulkanCommandBuffer.CmdSetScissor(firstScissor:TVkUInt32;scissorCount:TVkUInt32;const aScissors:PVkRect2D);
 begin
- fDevice.fDeviceVulkan.CmdSetScissor(fCommandBufferHandle,firstScissor,scissorCount,pScissors);
+ fDevice.fDeviceVulkan.CmdSetScissor(fCommandBufferHandle,firstScissor,scissorCount,aScissors);
 end;
 
 procedure TVulkanCommandBuffer.CmdSetLineWidth(lineWidth:TVkFloat);
@@ -13339,9 +13339,9 @@ begin
  fDevice.fDeviceVulkan.CmdSetStencilReference(fCommandBufferHandle,faceMask,reference);
 end;
 
-procedure TVulkanCommandBuffer.CmdBindDescriptorSets(pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const pDynamicOffsets:PVkUInt32);
+procedure TVulkanCommandBuffer.CmdBindDescriptorSets(pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const aDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const aDynamicOffsets:PVkUInt32);
 begin
- fDevice.fDeviceVulkan.CmdBindDescriptorSets(fCommandBufferHandle,pipelineBindPoint,layout,firstSet,descriptorSetCount,pDescriptorSets,dynamicOffsetCount,pDynamicOffsets);
+ fDevice.fDeviceVulkan.CmdBindDescriptorSets(fCommandBufferHandle,pipelineBindPoint,layout,firstSet,descriptorSetCount,aDescriptorSets,dynamicOffsetCount,aDynamicOffsets);
 end;
 
 procedure TVulkanCommandBuffer.CmdBindIndexBuffer(buffer:TVkBuffer;offset:TVkDeviceSize;indexType:TVkIndexType);
@@ -13349,9 +13349,9 @@ begin
  fDevice.fDeviceVulkan.CmdBindIndexBuffer(fCommandBufferHandle,buffer,offset,indexType);
 end;
 
-procedure TVulkanCommandBuffer.CmdBindVertexBuffers(firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize);
+procedure TVulkanCommandBuffer.CmdBindVertexBuffers(firstBinding:TVkUInt32;bindingCount:TVkUInt32;const aBuffers:PVkBuffer;const aOffsets:PVkDeviceSize);
 begin
- fDevice.fDeviceVulkan.CmdBindVertexBuffers(fCommandBufferHandle,firstBinding,bindingCount,pBuffers,pOffsets);
+ fDevice.fDeviceVulkan.CmdBindVertexBuffers(fCommandBufferHandle,firstBinding,bindingCount,aBuffers,aOffsets);
 end;
 
 procedure TVulkanCommandBuffer.CmdDraw(vertexCount:TVkUInt32;instanceCount:TVkUInt32;firstVertex:TVkUInt32;firstInstance:TVkUInt32);
@@ -13384,34 +13384,34 @@ begin
  fDevice.fDeviceVulkan.CmdDispatchIndirect(fCommandBufferHandle,buffer,offset);
 end;
 
-procedure TVulkanCommandBuffer.CmdCopyBuffer(srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferCopy);
+procedure TVulkanCommandBuffer.CmdCopyBuffer(srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const aRegions:PVkBufferCopy);
 begin
- fDevice.fDeviceVulkan.CmdCopyBuffer(fCommandBufferHandle,srcBuffer,dstBuffer,regionCount,pRegions);
+ fDevice.fDeviceVulkan.CmdCopyBuffer(fCommandBufferHandle,srcBuffer,dstBuffer,regionCount,aRegions);
 end;
 
-procedure TVulkanCommandBuffer.CmdCopyImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageCopy);
+procedure TVulkanCommandBuffer.CmdCopyImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageCopy);
 begin
- fDevice.fDeviceVulkan.CmdCopyImage(fCommandBufferHandle,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,pRegions);
+ fDevice.fDeviceVulkan.CmdCopyImage(fCommandBufferHandle,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,aRegions);
 end;
 
-procedure TVulkanCommandBuffer.CmdBlitImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageBlit;filter:TVkFilter);
+procedure TVulkanCommandBuffer.CmdBlitImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageBlit;filter:TVkFilter);
 begin
- fDevice.fDeviceVulkan.CmdBlitImage(fCommandBufferHandle,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,pRegions,filter);
+ fDevice.fDeviceVulkan.CmdBlitImage(fCommandBufferHandle,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,aRegions,filter);
 end;
 
-procedure TVulkanCommandBuffer.CmdCopyBufferToImage(srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy);
+procedure TVulkanCommandBuffer.CmdCopyBufferToImage(srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkBufferImageCopy);
 begin
- fDevice.fDeviceVulkan.CmdCopyBufferToImage(fCommandBufferHandle,srcBuffer,dstImage,dstImageLayout,regionCount,pRegions);
+ fDevice.fDeviceVulkan.CmdCopyBufferToImage(fCommandBufferHandle,srcBuffer,dstImage,dstImageLayout,regionCount,aRegions);
 end;
 
-procedure TVulkanCommandBuffer.CmdCopyImageToBuffer(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy);
+procedure TVulkanCommandBuffer.CmdCopyImageToBuffer(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const aRegions:PVkBufferImageCopy);
 begin
- fDevice.fDeviceVulkan.CmdCopyImageToBuffer(fCommandBufferHandle,srcImage,srcImageLayout,dstBuffer,regionCount,pRegions);
+ fDevice.fDeviceVulkan.CmdCopyImageToBuffer(fCommandBufferHandle,srcImage,srcImageLayout,dstBuffer,regionCount,aRegions);
 end;                                                                                             
 
-procedure TVulkanCommandBuffer.CmdUpdateBuffer(dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkVoid);
+procedure TVulkanCommandBuffer.CmdUpdateBuffer(dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const aData:PVkVoid);
 begin
- fDevice.fDeviceVulkan.CmdUpdateBuffer(fCommandBufferHandle,dstBuffer,dstOffset,dataSize,pData);
+ fDevice.fDeviceVulkan.CmdUpdateBuffer(fCommandBufferHandle,dstBuffer,dstOffset,dataSize,aData);
 end;
 
 procedure TVulkanCommandBuffer.CmdFillBuffer(dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TVkUInt32);
@@ -13419,24 +13419,24 @@ begin
  fDevice.fDeviceVulkan.CmdFillBuffer(fCommandBufferHandle,dstBuffer,dstOffset,size,data);
 end;
 
-procedure TVulkanCommandBuffer.CmdClearColorImage(image:TVkImage;imageLayout:TVkImageLayout;const pColor:PVkClearColorValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange);
+procedure TVulkanCommandBuffer.CmdClearColorImage(image:TVkImage;imageLayout:TVkImageLayout;const aColor:PVkClearColorValue;rangeCount:TVkUInt32;const aRanges:PVkImageSubresourceRange);
 begin
- fDevice.fDeviceVulkan.CmdClearColorImage(fCommandBufferHandle,image,imageLayout,pColor,rangeCount,pRanges);
+ fDevice.fDeviceVulkan.CmdClearColorImage(fCommandBufferHandle,image,imageLayout,aColor,rangeCount,aRanges);
 end;
 
-procedure TVulkanCommandBuffer.CmdClearDepthStencilImage(image:TVkImage;imageLayout:TVkImageLayout;const pDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange);
+procedure TVulkanCommandBuffer.CmdClearDepthStencilImage(image:TVkImage;imageLayout:TVkImageLayout;const aDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const aRanges:PVkImageSubresourceRange);
 begin
- fDevice.fDeviceVulkan.CmdClearDepthStencilImage(fCommandBufferHandle,image,imageLayout,pDepthStencil,rangeCount,pRanges);
+ fDevice.fDeviceVulkan.CmdClearDepthStencilImage(fCommandBufferHandle,image,imageLayout,aDepthStencil,rangeCount,aRanges);
 end;
 
-procedure TVulkanCommandBuffer.CmdClearAttachments(attachmentCount:TVkUInt32;const pAttachments:PVkClearAttachment;rectCount:TVkUInt32;const pRects:PVkClearRect);
+procedure TVulkanCommandBuffer.CmdClearAttachments(attachmentCount:TVkUInt32;const aAttachments:PVkClearAttachment;rectCount:TVkUInt32;const aRects:PVkClearRect);
 begin
- fDevice.fDeviceVulkan.CmdClearAttachments(fCommandBufferHandle,attachmentCount,pAttachments,rectCount,pRects);
+ fDevice.fDeviceVulkan.CmdClearAttachments(fCommandBufferHandle,attachmentCount,aAttachments,rectCount,aRects);
 end;
 
-procedure TVulkanCommandBuffer.CmdResolveImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageResolve);
+procedure TVulkanCommandBuffer.CmdResolveImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageResolve);
 begin
- fDevice.fDeviceVulkan.CmdResolveImage(fCommandBufferHandle,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,pRegions);
+ fDevice.fDeviceVulkan.CmdResolveImage(fCommandBufferHandle,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,aRegions);
 end;
 
 procedure TVulkanCommandBuffer.CmdSetEvent(event:TVkEvent;stageMask:TVkPipelineStageFlags);
@@ -13449,14 +13449,14 @@ begin
  fDevice.fDeviceVulkan.CmdResetEvent(fCommandBufferHandle,event,stageMask);
 end;
 
-procedure TVulkanCommandBuffer.CmdWaitEvents(eventCount:TVkUInt32;const pEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier);
+procedure TVulkanCommandBuffer.CmdWaitEvents(eventCount:TVkUInt32;const aEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
 begin
- fDevice.fDeviceVulkan.CmdWaitEvents(fCommandBufferHandle,eventCount,pEvents,srcStageMask,dstStageMask,memoryBarrierCount,pMemoryBarriers,bufferMemoryBarrierCount,pBufferMemoryBarriers,imageMemoryBarrierCount,pImageMemoryBarriers);
+ fDevice.fDeviceVulkan.CmdWaitEvents(fCommandBufferHandle,eventCount,aEvents,srcStageMask,dstStageMask,memoryBarrierCount,aMemoryBarriers,bufferMemoryBarrierCount,aBufferMemoryBarriers,imageMemoryBarrierCount,aImageMemoryBarriers);
 end;
 
-procedure TVulkanCommandBuffer.CmdPipelineBarrier(srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier);
+procedure TVulkanCommandBuffer.CmdPipelineBarrier(srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
 begin
- fDevice.fDeviceVulkan.CmdPipelineBarrier(fCommandBufferHandle,srcStageMask,dstStageMask,dependencyFlags,memoryBarrierCount,pMemoryBarriers,bufferMemoryBarrierCount,pBufferMemoryBarriers,imageMemoryBarrierCount,pImageMemoryBarriers);
+ fDevice.fDeviceVulkan.CmdPipelineBarrier(fCommandBufferHandle,srcStageMask,dstStageMask,dependencyFlags,memoryBarrierCount,aMemoryBarriers,bufferMemoryBarrierCount,aBufferMemoryBarriers,imageMemoryBarrierCount,aImageMemoryBarriers);
 end;
 
 procedure TVulkanCommandBuffer.CmdBeginQuery(queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags);
@@ -13484,14 +13484,14 @@ begin
  fDevice.fDeviceVulkan.CmdCopyQueryPoolResults(fCommandBufferHandle,queryPool,firstQuery,queryCount,dstBuffer,dstOffset,stride,flags);
 end;
 
-procedure TVulkanCommandBuffer.CmdPushConstants(layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:PVkVoid);
+procedure TVulkanCommandBuffer.CmdPushConstants(layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const aValues:PVkVoid);
 begin
- fDevice.fDeviceVulkan.CmdPushConstants(fCommandBufferHandle,layout,stageFlags,offset,size,pValues);
+ fDevice.fDeviceVulkan.CmdPushConstants(fCommandBufferHandle,layout,stageFlags,offset,size,aValues);
 end;
 
-procedure TVulkanCommandBuffer.CmdBeginRenderPass(const pRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents);
+procedure TVulkanCommandBuffer.CmdBeginRenderPass(const aRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents);
 begin
- fDevice.fDeviceVulkan.CmdBeginRenderPass(fCommandBufferHandle,pRenderPassBegin,contents);
+ fDevice.fDeviceVulkan.CmdBeginRenderPass(fCommandBufferHandle,aRenderPassBegin,contents);
 end;
 
 procedure TVulkanCommandBuffer.CmdNextSubpass(contents:TVkSubpassContents);
@@ -13504,17 +13504,17 @@ begin
  fDevice.fDeviceVulkan.CmdEndRenderPass(fCommandBufferHandle);
 end;
 
-procedure TVulkanCommandBuffer.CmdExecuteCommands(commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer);
+procedure TVulkanCommandBuffer.CmdExecuteCommands(commandBufferCount:TVkUInt32;const aCommandBuffers:PVkCommandBuffer);
 begin
- fDevice.fDeviceVulkan.CmdExecuteCommands(fCommandBufferHandle,commandBufferCount,pCommandBuffers);
+ fDevice.fDeviceVulkan.CmdExecuteCommands(fCommandBufferHandle,commandBufferCount,aCommandBuffers);
 end;
 
-procedure TVulkanCommandBuffer.CmdExecute(const pCommandBuffer:TVulkanCommandBuffer);
+procedure TVulkanCommandBuffer.CmdExecute(const aCommandBuffer:TVulkanCommandBuffer);
 begin
- CmdExecuteCommands(1,@pCommandBuffer.fCommandBufferHandle);
+ CmdExecuteCommands(1,@aCommandBuffer.fCommandBufferHandle);
 end;
 
-procedure TVulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(const pImage:TVulkanImage;const pDoTransitionToColorAttachmentOptimalLayout:boolean=true);
+procedure TVulkanCommandBuffer.MetaCmdPresentToDrawImageBarrier(const aImage:TVulkanImage;const aDoTransitionToColorAttachmentOptimalLayout:boolean=true);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -13522,7 +13522,7 @@ begin
  ImageMemoryBarrier.pNext:=nil;
  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
- if pDoTransitionToColorAttachmentOptimalLayout then begin
+ if aDoTransitionToColorAttachmentOptimalLayout then begin
   ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
  end else begin
@@ -13538,7 +13538,7 @@ begin
   ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
  end;
- ImageMemoryBarrier.image:=pImage.fImageHandle;
+ ImageMemoryBarrier.image:=aImage.fImageHandle;
  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
  ImageMemoryBarrier.subresourceRange.levelCount:=1;
@@ -13552,7 +13552,7 @@ begin
                     1,@ImageMemoryBarrier);
 end;
 
-procedure TVulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(const pImage:TVulkanImage;const pDoTransitionToPresentSrcLayout:boolean=true);
+procedure TVulkanCommandBuffer.MetaCmdDrawToPresentImageBarrier(const aImage:TVulkanImage;const aDoTransitionToPresentSrcLayout:boolean=true);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -13560,7 +13560,7 @@ begin
  ImageMemoryBarrier.pNext:=nil;
  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
- if pDoTransitionToPresentSrcLayout then begin
+ if aDoTransitionToPresentSrcLayout then begin
   ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
  end else begin
@@ -13576,7 +13576,7 @@ begin
   ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
  end;
- ImageMemoryBarrier.image:=pImage.fImageHandle;
+ ImageMemoryBarrier.image:=aImage.fImageHandle;
  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
  ImageMemoryBarrier.subresourceRange.levelCount:=1;
@@ -13590,7 +13590,7 @@ begin
                     1,@ImageMemoryBarrier);
 end;
 
-procedure TVulkanCommandBuffer.Execute(const pQueue:TVulkanQueue;const pWaitDstStageFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
+procedure TVulkanCommandBuffer.Execute(const aQueue:TVulkanQueue;const aWaitDstStageFlags:TVkPipelineStageFlags;const aWaitSemaphore:TVulkanSemaphore=nil;const aSignalSemaphore:TVulkanSemaphore=nil;const aFence:TVulkanFence=nil;const aDoWaitAndResetFence:boolean=true);
 var SubmitInfo:TVkSubmitInfo;
 begin
  if fLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
@@ -13598,10 +13598,10 @@ begin
   FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
   SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
   SubmitInfo.pNext:=nil;
-  if assigned(pWaitSemaphore) then begin
+  if assigned(aWaitSemaphore) then begin
    SubmitInfo.waitSemaphoreCount:=1;
-   SubmitInfo.pWaitSemaphores:=@pWaitSemaphore.fSemaphoreHandle;
-   SubmitInfo.pWaitDstStageMask:=@pWaitDstStageFlags;
+   SubmitInfo.pWaitSemaphores:=@aWaitSemaphore.fSemaphoreHandle;
+   SubmitInfo.pWaitDstStageMask:=@aWaitDstStageFlags;
   end else begin
    SubmitInfo.waitSemaphoreCount:=0;
    SubmitInfo.pWaitSemaphores:=nil;
@@ -13609,26 +13609,26 @@ begin
   end;
   SubmitInfo.commandBufferCount:=1;
   SubmitInfo.pCommandBuffers:=@fCommandBufferHandle;
-  if assigned(pSignalSemaphore) then begin
+  if assigned(aSignalSemaphore) then begin
    SubmitInfo.signalSemaphoreCount:=1;
-   SubmitInfo.pSignalSemaphores:=@pSignalSemaphore.fSemaphoreHandle;
+   SubmitInfo.pSignalSemaphores:=@aSignalSemaphore.fSemaphoreHandle;
   end else begin
    SubmitInfo.signalSemaphoreCount:=0;
    SubmitInfo.pSignalSemaphores:=nil;
   end;
 
-  if assigned(pFence) then begin
+  if assigned(aFence) then begin
 
-   pQueue.Submit(1,@SubmitInfo,pFence);
+   aQueue.Submit(1,@SubmitInfo,aFence);
 
-   if pDoWaitAndResetFence then begin
-    pFence.WaitFor;
-    pFence.Reset;
+   if aDoWaitAndResetFence then begin
+    aFence.WaitFor;
+    aFence.Reset;
    end;
 
   end else begin
 
-   pQueue.Submit(1,@SubmitInfo,nil);
+   aQueue.Submit(1,@SubmitInfo,nil);
 
   end;
 
@@ -13637,11 +13637,11 @@ begin
  end;
 end;
 
-constructor TVulkanCommandBufferSubmitQueue.Create(const pQueue:TVulkanQueue);
+constructor TVulkanCommandBufferSubmitQueue.Create(const aQueue:TVulkanQueue);
 begin
  inherited Create;
- fDevice:=pQueue.fDevice;
- fQueue:=pQueue;
+ fDevice:=aQueue.fDevice;
+ fQueue:=aQueue;
  fSubmitInfos:=nil;
  fSubmitInfoWaitSemaphores:=nil;
  fSubmitInfoWaitDstStageFlags:=nil;
@@ -13664,11 +13664,11 @@ begin
  fCountSubmitInfos:=0;
 end;
                                                  
-procedure TVulkanCommandBufferSubmitQueue.QueueSubmit(const pCommandBuffer:TVulkanCommandBuffer;const pWaitDstStageFlags:TVkPipelineStageFlags;const pWaitSemaphore:TVulkanSemaphore=nil;const pSignalSemaphore:TVulkanSemaphore=nil);
+procedure TVulkanCommandBufferSubmitQueue.QueueSubmit(const aCommandBuffer:TVulkanCommandBuffer;const aWaitDstStageFlags:TVkPipelineStageFlags;const aWaitSemaphore:TVulkanSemaphore=nil;const aSignalSemaphore:TVulkanSemaphore=nil);
 var Index:TVkInt32;
     SubmitInfo:PVkSubmitInfo;
 begin
- if pCommandBuffer.fLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
+ if aCommandBuffer.fLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
 
   Index:=fCountSubmitInfos;
   inc(fCountSubmitInfos);
@@ -13683,10 +13683,10 @@ begin
   FillChar(SubmitInfo^,SizeOf(TVkSubmitInfo),#0);
   SubmitInfo^.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
   SubmitInfo^.pNext:=nil;
-  if assigned(pWaitSemaphore) then begin
+  if assigned(aWaitSemaphore) then begin
    SubmitInfo^.waitSemaphoreCount:=1;
-   fSubmitInfoWaitSemaphores[Index]:=pWaitSemaphore.fSemaphoreHandle;
-   fSubmitInfoWaitDstStageFlags[Index]:=pWaitDstStageFlags;
+   fSubmitInfoWaitSemaphores[Index]:=aWaitSemaphore.fSemaphoreHandle;
+   fSubmitInfoWaitDstStageFlags[Index]:=aWaitDstStageFlags;
   end else begin
    SubmitInfo^.waitSemaphoreCount:=0;
    fSubmitInfoWaitSemaphores[Index]:=VK_NULL_HANDLE;
@@ -13695,10 +13695,10 @@ begin
   SubmitInfo^.pWaitSemaphores:=nil;
   SubmitInfo^.pWaitDstStageMask:=nil;
   SubmitInfo^.commandBufferCount:=1;
-  SubmitInfo^.pCommandBuffers:=@pCommandBuffer.fCommandBufferHandle;
-  if assigned(pSignalSemaphore) then begin
+  SubmitInfo^.pCommandBuffers:=@aCommandBuffer.fCommandBufferHandle;
+  if assigned(aSignalSemaphore) then begin
    SubmitInfo^.signalSemaphoreCount:=1;
-   fSubmitInfoSignalSemaphores[Index]:=pSignalSemaphore.fSemaphoreHandle;
+   fSubmitInfoSignalSemaphores[Index]:=aSignalSemaphore.fSemaphoreHandle;
   end else begin
    SubmitInfo^.signalSemaphoreCount:=0;
    fSubmitInfoSignalSemaphores[Index]:=VK_NULL_HANDLE;
@@ -13710,7 +13710,7 @@ begin
  end;
 end;
 
-procedure TVulkanCommandBufferSubmitQueue.SubmitQueued(const pFence:TVulkanFence=nil;const pDoWaitAndResetFence:boolean=true);
+procedure TVulkanCommandBufferSubmitQueue.SubmitQueued(const aFence:TVulkanFence=nil;const aDoWaitAndResetFence:boolean=true);
 var Index:TVkInt32;
     SubmitInfo:PVkSubmitInfo;
 begin
@@ -13733,13 +13733,13 @@ begin
    end;
   end;
 
-  if assigned(pFence) then begin
+  if assigned(aFence) then begin
 
-   fQueue.Submit(fCountSubmitInfos,@fSubmitInfos[0],pFence);
+   fQueue.Submit(fCountSubmitInfos,@fSubmitInfos[0],aFence);
 
-   if pDoWaitAndResetFence then begin
-    pFence.WaitFor;
-    pFence.Reset;
+   if aDoWaitAndResetFence then begin
+    aFence.WaitFor;
+    aFence.Reset;
    end;
 
   end else begin
@@ -13750,19 +13750,19 @@ begin
 
  end else begin
 
-  if pDoWaitAndResetFence then begin
-   pFence.Reset;
+  if aDoWaitAndResetFence then begin
+   aFence.Reset;
   end;
 
  end;
 
 end;
 
-constructor TVulkanRenderPass.Create(const pDevice:TVulkanDevice);
+constructor TVulkanRenderPass.Create(const aDevice:TVulkanDevice);
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fRenderPassHandle:=VK_NULL_HANDLE;
 
@@ -13803,15 +13803,15 @@ begin
  result:=@fClearValues[Index];
 end;
 
-function TVulkanRenderPass.AddAttachmentDescription(const pFlags:TVkAttachmentDescriptionFlags;
-                                                    const pFormat:TVkFormat;
-                                                    const pSamples:TVkSampleCountFlagBits;
-                                                    const pLoadOp:TVkAttachmentLoadOp;
-                                                    const pStoreOp:TVkAttachmentStoreOp;
-                                                    const pStencilLoadOp:TVkAttachmentLoadOp;
-                                                    const pStencilStoreOp:TVkAttachmentStoreOp;
-                                                    const pInitialLayout:TVkImageLayout;
-                                                    const pFinalLayout:TVkImageLayout):TVkUInt32;
+function TVulkanRenderPass.AddAttachmentDescription(const aFlags:TVkAttachmentDescriptionFlags;
+                                                    const aFormat:TVkFormat;
+                                                    const aSamples:TVkSampleCountFlagBits;
+                                                    const aLoadOp:TVkAttachmentLoadOp;
+                                                    const aStoreOp:TVkAttachmentStoreOp;
+                                                    const aStencilLoadOp:TVkAttachmentLoadOp;
+                                                    const aStencilStoreOp:TVkAttachmentStoreOp;
+                                                    const aInitialLayout:TVkImageLayout;
+                                                    const aFinalLayout:TVkImageLayout):TVkUInt32;
 var AttachmentDescription:PVkAttachmentDescription;
 begin
  result:=fCountAttachmentDescriptions;
@@ -13820,19 +13820,19 @@ begin
   SetLength(fAttachmentDescriptions,fCountAttachmentDescriptions*2);
  end;
  AttachmentDescription:=@fAttachmentDescriptions[result];
- AttachmentDescription^.flags:=pFlags;
- AttachmentDescription^.format:=pFormat;
- AttachmentDescription^.samples:=pSamples;
- AttachmentDescription^.loadOp:=pLoadOp;
- AttachmentDescription^.storeOp:=pStoreOp;
- AttachmentDescription^.stencilLoadOp:=pStencilLoadOp;
- AttachmentDescription^.stencilStoreOp:=pStencilStoreOp;
- AttachmentDescription^.initialLayout:=pInitialLayout;
- AttachmentDescription^.finalLayout:=pFinalLayout;
+ AttachmentDescription^.flags:=aFlags;
+ AttachmentDescription^.format:=aFormat;
+ AttachmentDescription^.samples:=aSamples;
+ AttachmentDescription^.loadOp:=aLoadOp;
+ AttachmentDescription^.storeOp:=aStoreOp;
+ AttachmentDescription^.stencilLoadOp:=aStencilLoadOp;
+ AttachmentDescription^.stencilStoreOp:=aStencilStoreOp;
+ AttachmentDescription^.initialLayout:=aInitialLayout;
+ AttachmentDescription^.finalLayout:=aFinalLayout;
 end;
 
-function TVulkanRenderPass.AddAttachmentReference(const pAttachment:TVkUInt32;
-                                                  const pLayout:TVkImageLayout):TVkUInt32;
+function TVulkanRenderPass.AddAttachmentReference(const aAttachment:TVkUInt32;
+                                                  const aLayout:TVkImageLayout):TVkUInt32;
 var AttachmentReference:PVkAttachmentReference;
 begin
  result:=fCountAttachmentReferences;
@@ -13841,17 +13841,17 @@ begin
   SetLength(fAttachmentReferences,fCountAttachmentReferences*2);
  end;
  AttachmentReference:=@fAttachmentReferences[result];
- AttachmentReference^.attachment:=pAttachment;
- AttachmentReference^.layout:=pLayout;
+ AttachmentReference^.attachment:=aAttachment;
+ AttachmentReference^.layout:=aLayout;
 end;
 
-function TVulkanRenderPass.AddSubpassDescription(const pFlags:TVkSubpassDescriptionFlags;
-                                                 const pPipelineBindPoint:TVkPipelineBindPoint;
-                                                 const pInputAttachments:array of TVkInt32;
-                                                 const pColorAttachments:array of TVkInt32;
-                                                 const pResolveAttachments:array of TVkInt32;
-                                                 const pDepthStencilAttachment:TVkInt32;
-                                                 const pPreserveAttachments:array of TVkUInt32):TVkUInt32;
+function TVulkanRenderPass.AddSubpassDescription(const aFlags:TVkSubpassDescriptionFlags;
+                                                 const aPipelineBindPoint:TVkPipelineBindPoint;
+                                                 const aInputAttachments:array of TVkInt32;
+                                                 const aColorAttachments:array of TVkInt32;
+                                                 const aResolveAttachments:array of TVkInt32;
+                                                 const aDepthStencilAttachment:TVkInt32;
+                                                 const aPreserveAttachments:array of TVkUInt32):TVkUInt32;
 var RenderPassSubpassDescription:PVulkanRenderPassSubpassDescription;
 begin
  result:=fCountSubpassDescriptions;
@@ -13860,42 +13860,42 @@ begin
   SetLength(fRenderPassSubpassDescriptions,fCountSubpassDescriptions*2);
  end;
  RenderPassSubpassDescription:=@fRenderPassSubpassDescriptions[result];
- RenderPassSubpassDescription^.Flags:=pFlags;
- RenderPassSubpassDescription^.PipelineBindPoint:=pPipelineBindPoint;
+ RenderPassSubpassDescription^.Flags:=aFlags;
+ RenderPassSubpassDescription^.PipelineBindPoint:=aPipelineBindPoint;
  begin
-  SetLength(RenderPassSubpassDescription^.InputAttachments,length(pInputAttachments));
-  if length(pInputAttachments)>0 then begin
-   Move(pInputAttachments[0],RenderPassSubpassDescription^.InputAttachments[0],length(pInputAttachments)*SizeOf(TVkInt32));
+  SetLength(RenderPassSubpassDescription^.InputAttachments,length(aInputAttachments));
+  if length(aInputAttachments)>0 then begin
+   Move(aInputAttachments[0],RenderPassSubpassDescription^.InputAttachments[0],length(aInputAttachments)*SizeOf(TVkInt32));
   end;
  end;
  begin
-  SetLength(RenderPassSubpassDescription^.ColorAttachments,length(pColorAttachments));
-  if length(pColorAttachments)>0 then begin
-   Move(pColorAttachments[0],RenderPassSubpassDescription^.ColorAttachments[0],length(pColorAttachments)*SizeOf(TVkInt32));
+  SetLength(RenderPassSubpassDescription^.ColorAttachments,length(aColorAttachments));
+  if length(aColorAttachments)>0 then begin
+   Move(aColorAttachments[0],RenderPassSubpassDescription^.ColorAttachments[0],length(aColorAttachments)*SizeOf(TVkInt32));
   end;
  end;
  begin
-  SetLength(RenderPassSubpassDescription^.ResolveAttachments,length(pResolveAttachments));
-  if length(pResolveAttachments)>0 then begin
-   Move(pResolveAttachments[0],RenderPassSubpassDescription^.ResolveAttachments[0],length(pResolveAttachments)*SizeOf(TVkInt32));
+  SetLength(RenderPassSubpassDescription^.ResolveAttachments,length(aResolveAttachments));
+  if length(aResolveAttachments)>0 then begin
+   Move(aResolveAttachments[0],RenderPassSubpassDescription^.ResolveAttachments[0],length(aResolveAttachments)*SizeOf(TVkInt32));
   end;
  end;
- RenderPassSubpassDescription^.DepthStencilAttachment:=pDepthStencilAttachment;
+ RenderPassSubpassDescription^.DepthStencilAttachment:=aDepthStencilAttachment;
  begin
-  SetLength(RenderPassSubpassDescription^.PreserveAttachments,length(pPreserveAttachments));
-  if length(pPreserveAttachments)>0 then begin
-   Move(pPreserveAttachments[0],RenderPassSubpassDescription^.PreserveAttachments[0],length(pPreserveAttachments)*SizeOf(TVkUInt32));
+  SetLength(RenderPassSubpassDescription^.PreserveAttachments,length(aPreserveAttachments));
+  if length(aPreserveAttachments)>0 then begin
+   Move(aPreserveAttachments[0],RenderPassSubpassDescription^.PreserveAttachments[0],length(aPreserveAttachments)*SizeOf(TVkUInt32));
   end;
  end;
 end;
 
-function TVulkanRenderPass.AddSubpassDependency(const pSrcSubpass:TVkUInt32;
-                                                const pDstSubpass:TVkUInt32;
-                                                const pSrcStageMask:TVkPipelineStageFlags;
-                                                const pDstStageMask:TVkPipelineStageFlags;
-                                                const pSrcAccessMask:TVkAccessFlags;
-                                                const pDstAccessMask:TVkAccessFlags;
-                                                const pDependencyFlags:TVkDependencyFlags):TVkUInt32;
+function TVulkanRenderPass.AddSubpassDependency(const aSrcSubpass:TVkUInt32;
+                                                const aDstSubpass:TVkUInt32;
+                                                const aSrcStageMask:TVkPipelineStageFlags;
+                                                const aDstStageMask:TVkPipelineStageFlags;
+                                                const aSrcAccessMask:TVkAccessFlags;
+                                                const aDstAccessMask:TVkAccessFlags;
+                                                const aDependencyFlags:TVkDependencyFlags):TVkUInt32;
 var SubpassDependency:PVkSubpassDependency;
 begin
  result:=fCountSubpassDependencies;
@@ -13904,13 +13904,13 @@ begin
   SetLength(fSubpassDependencies,fCountSubpassDependencies*2);
  end;
  SubpassDependency:=@fSubpassDependencies[result];
- SubpassDependency^.srcSubpass:=pSrcSubpass;
- SubpassDependency^.dstSubpass:=pDstSubpass;
- SubpassDependency^.srcStageMask:=pSrcStageMask;
- SubpassDependency^.dstStageMask:=pDstStageMask;
- SubpassDependency^.srcAccessMask:=pSrcAccessMask;
- SubpassDependency^.dstAccessMask:=pDstAccessMask;
- SubpassDependency^.DependencyFlags:=pDependencyFlags;
+ SubpassDependency^.srcSubpass:=aSrcSubpass;
+ SubpassDependency^.dstSubpass:=aDstSubpass;
+ SubpassDependency^.srcStageMask:=aSrcStageMask;
+ SubpassDependency^.dstStageMask:=aDstStageMask;
+ SubpassDependency^.srcAccessMask:=aSrcAccessMask;
+ SubpassDependency^.dstAccessMask:=aDstAccessMask;
+ SubpassDependency^.DependencyFlags:=aDependencyFlags;
 end;
 
 procedure TVulkanRenderPass.Initialize;
@@ -13975,31 +13975,31 @@ begin
    begin
     SubpassDescription^.inputAttachmentCount:=length(RenderPassSubpassDescription^.InputAttachments);
     if SubpassDescription^.inputAttachmentCount>0 then begin
-     SetLength(RenderPassSubpassDescription^.pInputAttachments,SubpassDescription^.inputAttachmentCount);
+     SetLength(RenderPassSubpassDescription^.aInputAttachments,SubpassDescription^.inputAttachmentCount);
      for SubIndex:=0 to length(RenderPassSubpassDescription^.InputAttachments)-1 do begin
-      RenderPassSubpassDescription^.pInputAttachments[SubIndex]:=fAttachmentReferences[RenderPassSubpassDescription^.InputAttachments[SubIndex]];
+      RenderPassSubpassDescription^.aInputAttachments[SubIndex]:=fAttachmentReferences[RenderPassSubpassDescription^.InputAttachments[SubIndex]];
      end;
-     SubpassDescription^.pInputAttachments:=@RenderPassSubpassDescription^.pInputAttachments[0];
+     SubpassDescription^.pInputAttachments:=@RenderPassSubpassDescription^.aInputAttachments[0];
     end;
    end;
    begin
     SubpassDescription^.ColorAttachmentCount:=length(RenderPassSubpassDescription^.ColorAttachments);
     if SubpassDescription^.ColorAttachmentCount>0 then begin
-     SetLength(RenderPassSubpassDescription^.pColorAttachments,SubpassDescription^.ColorAttachmentCount);
+     SetLength(RenderPassSubpassDescription^.aColorAttachments,SubpassDescription^.ColorAttachmentCount);
      for SubIndex:=0 to length(RenderPassSubpassDescription^.ColorAttachments)-1 do begin
-      RenderPassSubpassDescription^.pColorAttachments[SubIndex]:=fAttachmentReferences[RenderPassSubpassDescription^.ColorAttachments[SubIndex]];
+      RenderPassSubpassDescription^.aColorAttachments[SubIndex]:=fAttachmentReferences[RenderPassSubpassDescription^.ColorAttachments[SubIndex]];
      end;
-     SubpassDescription^.pColorAttachments:=@RenderPassSubpassDescription^.pColorAttachments[0];
+     SubpassDescription^.pColorAttachments:=@RenderPassSubpassDescription^.aColorAttachments[0];
     end;
    end;
    begin
     if (SubpassDescription^.ColorAttachmentCount>0) and
        (SubpassDescription^.ColorAttachmentCount=TVkUInt32(length(RenderPassSubpassDescription^.ResolveAttachments))) then begin
-     SetLength(RenderPassSubpassDescription^.pResolveAttachments,SubpassDescription^.ColorAttachmentCount);
+     SetLength(RenderPassSubpassDescription^.aResolveAttachments,SubpassDescription^.ColorAttachmentCount);
      for SubIndex:=0 to length(RenderPassSubpassDescription^.ResolveAttachments)-1 do begin
-      RenderPassSubpassDescription^.pResolveAttachments[SubIndex]:=fAttachmentReferences[RenderPassSubpassDescription^.ResolveAttachments[SubIndex]];
+      RenderPassSubpassDescription^.aResolveAttachments[SubIndex]:=fAttachmentReferences[RenderPassSubpassDescription^.ResolveAttachments[SubIndex]];
      end;
-     SubpassDescription^.pResolveAttachments:=@RenderPassSubpassDescription^.pResolveAttachments[0];
+     SubpassDescription^.pResolveAttachments:=@RenderPassSubpassDescription^.aResolveAttachments[0];
     end;
    end;
    if RenderPassSubpassDescription^.DepthStencilAttachment>=0 then begin
@@ -14025,69 +14025,69 @@ begin
 
 end;
 
-procedure TVulkanRenderPass.BeginRenderPass(const pCommandBuffer:TVulkanCommandBuffer;
-                                            const pFrameBuffer:TVulkanFrameBuffer;
-                                            const pSubpassContents:TVkSubpassContents;
-                                            const pOffsetX,pOffsetY,pWidth,pHeight:TVkUInt32);
+procedure TVulkanRenderPass.BeginRenderPass(const aCommandBuffer:TVulkanCommandBuffer;
+                                            const aFrameBuffer:TVulkanFrameBuffer;
+                                            const aSubpassContents:TVkSubpassContents;
+                                            const aOffsetX,aOffsetY,aWidth,aHeight:TVkUInt32);
 var RenderPassBeginInfo:TVkRenderPassBeginInfo;
 begin
  FillChar(RenderPassBeginInfo,SizeOf(TVkRenderPassBeginInfo),#0);
  RenderPassBeginInfo.sType:=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
  RenderPassBeginInfo.renderPass:=fRenderPassHandle;
- RenderPassBeginInfo.framebuffer:=pFrameBuffer.fFrameBufferHandle;
- RenderPassBeginInfo.renderArea.offset.x:=pOffsetX;
- RenderPassBeginInfo.renderArea.offset.y:=pOffsetY;
- RenderPassBeginInfo.renderArea.extent.width:=pWidth;
- RenderPassBeginInfo.renderArea.extent.height:=pHeight;
+ RenderPassBeginInfo.framebuffer:=aFrameBuffer.fFrameBufferHandle;
+ RenderPassBeginInfo.renderArea.offset.x:=aOffsetX;
+ RenderPassBeginInfo.renderArea.offset.y:=aOffsetY;
+ RenderPassBeginInfo.renderArea.extent.width:=aWidth;
+ RenderPassBeginInfo.renderArea.extent.height:=aHeight;
  RenderPassBeginInfo.clearValueCount:=length(fClearValues);
  if RenderPassBeginInfo.clearValueCount>0 then begin
   RenderPassBeginInfo.pClearValues:=@fClearValues[0];
  end;
- pCommandBuffer.CmdBeginRenderPass(@RenderPassBeginInfo,pSubpassContents);
+ aCommandBuffer.CmdBeginRenderPass(@RenderPassBeginInfo,aSubpassContents);
 end;
 
-procedure TVulkanRenderPass.EndRenderPass(const pCommandBuffer:TVulkanCommandBuffer);
+procedure TVulkanRenderPass.EndRenderPass(const aCommandBuffer:TVulkanCommandBuffer);
 begin
- pCommandBuffer.CmdEndRenderPass;
+ aCommandBuffer.CmdEndRenderPass;
 end;
 
-constructor TVulkanSampler.Create(const pDevice:TVulkanDevice;
-                                  const pSampler:TVkSampler;
-                                  const pDoDestroy:boolean=true);
+constructor TVulkanSampler.Create(const aDevice:TVulkanDevice;
+                                  const aSampler:TVkSampler;
+                                  const aDoDestroy:boolean=true);
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fSamplerHandle:=pSampler;
+ fSamplerHandle:=aSampler;
 
- fDoDestroy:=pDoDestroy;
+ fDoDestroy:=aDoDestroy;
 
 end;
 
-constructor TVulkanSampler.Create(const pDevice:TVulkanDevice;
-                                  const pMagFilter:TVkFilter;
-                                  const pMinFilter:TVkFilter;
-                                  const pMipmapMode:TVkSamplerMipmapMode;
-                                  const pAddressModeU:TVkSamplerAddressMode;
-                                  const pAddressModeV:TVkSamplerAddressMode;
-                                  const pAddressModeW:TVkSamplerAddressMode;
-                                  const pMipLodBias:TVkFloat;
-                                  const pAnisotropyEnable:boolean;
-                                  const pMaxAnisotropy:TVkFloat;
-                                  const pCompareEnable:boolean;
-                                  const pCompareOp:TVkCompareOp;
-                                  const pMinLod:TVkFloat;
-                                  const pMaxLod:TVkFloat;
-                                  const pBorderColor:TVkBorderColor;
-                                  const pUnnormalizedCoordinates:boolean);
+constructor TVulkanSampler.Create(const aDevice:TVulkanDevice;
+                                  const aMagFilter:TVkFilter;
+                                  const aMinFilter:TVkFilter;
+                                  const aMipmapMode:TVkSamplerMipmapMode;
+                                  const aAddressModeU:TVkSamplerAddressMode;
+                                  const aAddressModeV:TVkSamplerAddressMode;
+                                  const aAddressModeW:TVkSamplerAddressMode;
+                                  const aMipLodBias:TVkFloat;
+                                  const aAnisotropyEnable:boolean;
+                                  const aMaxAnisotropy:TVkFloat;
+                                  const aCompareEnable:boolean;
+                                  const aCompareOp:TVkCompareOp;
+                                  const aMinLod:TVkFloat;
+                                  const aMaxLod:TVkFloat;
+                                  const aBorderColor:TVkBorderColor;
+                                  const aUnnormalizedCoordinates:boolean);
 var SamplerCreateInfo:TVkSamplerCreateInfo;
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fSamplerHandle:=VK_NULL_HANDLE;
 
@@ -14097,29 +14097,29 @@ begin
  SamplerCreateInfo.sType:=VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
  SamplerCreateInfo.pNext:=nil;
  SamplerCreateInfo.flags:=0;
- SamplerCreateInfo.magFilter:=pMagFilter;
- SamplerCreateInfo.minFilter:=pMinFilter;
- SamplerCreateInfo.mipmapMode:=pMipmapMode;
- SamplerCreateInfo.addressModeU:=pAddressModeU;
- SamplerCreateInfo.addressModeV:=pAddressModeV;
- SamplerCreateInfo.addressModeW:=pAddressModeW;
- SamplerCreateInfo.mipLodBias:=pMipLodBias;
- if pAnisotropyEnable then begin
+ SamplerCreateInfo.magFilter:=aMagFilter;
+ SamplerCreateInfo.minFilter:=aMinFilter;
+ SamplerCreateInfo.mipmapMode:=aMipmapMode;
+ SamplerCreateInfo.addressModeU:=aAddressModeU;
+ SamplerCreateInfo.addressModeV:=aAddressModeV;
+ SamplerCreateInfo.addressModeW:=aAddressModeW;
+ SamplerCreateInfo.mipLodBias:=aMipLodBias;
+ if aAnisotropyEnable then begin
   SamplerCreateInfo.anisotropyEnable:=VK_TRUE;
  end else begin
   SamplerCreateInfo.anisotropyEnable:=VK_FALSE;
  end;
- SamplerCreateInfo.maxAnisotropy:=pMaxAnisotropy;
- if pCompareEnable then begin
+ SamplerCreateInfo.maxAnisotropy:=aMaxAnisotropy;
+ if aCompareEnable then begin
   SamplerCreateInfo.compareEnable:=VK_TRUE;
  end else begin
   SamplerCreateInfo.compareEnable:=VK_FALSE;
  end;
- SamplerCreateInfo.compareOp:=pCompareOp;
- SamplerCreateInfo.minLod:=pMinLod;
- SamplerCreateInfo.maxLod:=pMaxLod;
- SamplerCreateInfo.borderColor:=pBorderColor;
- if pUnnormalizedCoordinates then begin
+ SamplerCreateInfo.compareOp:=aCompareOp;
+ SamplerCreateInfo.minLod:=aMinLod;
+ SamplerCreateInfo.maxLod:=aMaxLod;
+ SamplerCreateInfo.borderColor:=aBorderColor;
+ if aUnnormalizedCoordinates then begin
   SamplerCreateInfo.unnormalizedCoordinates:=VK_TRUE;
  end else begin
   SamplerCreateInfo.unnormalizedCoordinates:=VK_FALSE;
@@ -14140,46 +14140,46 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanImage.Create(const pDevice:TVulkanDevice;
-                                const pImage:TVkImage;
-                                const pImageView:TVulkanImageView=nil;
-                                const pDoDestroy:boolean=true);
+constructor TVulkanImage.Create(const aDevice:TVulkanDevice;
+                                const aImage:TVkImage;
+                                const aImageView:TVulkanImageView=nil;
+                                const aDoDestroy:boolean=true);
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fImageHandle:=pImage;
+ fImageHandle:=aImage;
 
- fImageView:=pImageView;
+ fImageView:=aImageView;
 
- fDoDestroy:=pDoDestroy;
+ fDoDestroy:=aDoDestroy;
 
 end;
 
-constructor TVulkanImage.Create(const pDevice:TVulkanDevice;
-                                const pFlags:TVkImageCreateFlags;
-                                const pImageType:TVkImageType;
-                                const pFormat:TVkFormat;
-                                const pExtentWidth:TVkUInt32;
-                                const pExtentHeight:TVkUInt32;
-                                const pExtentDepth:TVkUInt32;
-                                const pMipLevels:TVkUInt32;
-                                const pArrayLayers:TVkUInt32;
-                                const pSamples:TVkSampleCountFlagBits;
-                                const pTiling:TVkImageTiling;
-                                const pUsage:TVkImageUsageFlags;
-                                const pSharingMode:TVkSharingMode;
-                                const pQueueFamilyIndexCount:TVkUInt32;
-                                const pQueueFamilyIndices:PVkUInt32;
-                                const pInitialLayout:TVkImageLayout);
+constructor TVulkanImage.Create(const aDevice:TVulkanDevice;
+                                const aFlags:TVkImageCreateFlags;
+                                const aImageType:TVkImageType;
+                                const aFormat:TVkFormat;
+                                const aExtentWidth:TVkUInt32;
+                                const aExtentHeight:TVkUInt32;
+                                const aExtentDepth:TVkUInt32;
+                                const aMipLevels:TVkUInt32;
+                                const aArrayLayers:TVkUInt32;
+                                const aSamples:TVkSampleCountFlagBits;
+                                const aTiling:TVkImageTiling;
+                                const aUsage:TVkImageUsageFlags;
+                                const aSharingMode:TVkSharingMode;
+                                const aQueueFamilyIndexCount:TVkUInt32;
+                                const aQueueFamilyIndices:PVkUInt32;
+                                const aInitialLayout:TVkImageLayout);
 var ImageCreateInfo:TVkImageCreateInfo;
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fImageHandle:=VK_NULL_HANDLE;
 
@@ -14190,47 +14190,47 @@ begin
  FillChar(ImageCreateInfo,SizeOf(TVkImageCreateInfo),#0);
  ImageCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
  ImageCreateInfo.pNext:=nil;
- ImageCreateInfo.flags:=pFlags;
- ImageCreateInfo.imageType:=pImageType;
- ImageCreateInfo.format:=pFormat;
- ImageCreateInfo.extent.width:=pExtentWidth;
- ImageCreateInfo.extent.height:=pExtentHeight;
- ImageCreateInfo.extent.depth:=pExtentDepth;
- ImageCreateInfo.mipLevels:=pMipLevels;
- ImageCreateInfo.arrayLayers:=pArrayLayers;
- ImageCreateInfo.samples:=pSamples;
- ImageCreateInfo.tiling:=pTiling;
- ImageCreateInfo.usage:=pUsage;
- ImageCreateInfo.sharingMode:=pSharingMode;
- ImageCreateInfo.queueFamilyIndexCount:=pQueueFamilyIndexCount;
- ImageCreateInfo.pQueueFamilyIndices:=pQueueFamilyIndices;
- ImageCreateInfo.initialLayout:=pInitialLayout;
+ ImageCreateInfo.flags:=aFlags;
+ ImageCreateInfo.imageType:=aImageType;
+ ImageCreateInfo.format:=aFormat;
+ ImageCreateInfo.extent.width:=aExtentWidth;
+ ImageCreateInfo.extent.height:=aExtentHeight;
+ ImageCreateInfo.extent.depth:=aExtentDepth;
+ ImageCreateInfo.mipLevels:=aMipLevels;
+ ImageCreateInfo.arrayLayers:=aArrayLayers;
+ ImageCreateInfo.samples:=aSamples;
+ ImageCreateInfo.tiling:=aTiling;
+ ImageCreateInfo.usage:=aUsage;
+ ImageCreateInfo.sharingMode:=aSharingMode;
+ ImageCreateInfo.queueFamilyIndexCount:=aQueueFamilyIndexCount;
+ ImageCreateInfo.pQueueFamilyIndices:=aQueueFamilyIndices;
+ ImageCreateInfo.initialLayout:=aInitialLayout;
 
  HandleResultCode(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@ImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
 
 end;
 
-constructor TVulkanImage.Create(const pDevice:TVulkanDevice;
-                                const pFlags:TVkImageCreateFlags;
-                                const pImageType:TVkImageType;
-                                const pFormat:TVkFormat;
-                                const pExtentWidth:TVkUInt32;
-                                const pExtentHeight:TVkUInt32;
-                                const pExtentDepth:TVkUInt32;
-                                const pMipLevels:TVkUInt32;
-                                const pArrayLayers:TVkUInt32;
-                                const pSamples:TVkSampleCountFlagBits;
-                                const pTiling:TVkImageTiling;
-                                const pUsage:TVkImageUsageFlags;
-                                const pSharingMode:TVkSharingMode;
-                                const pQueueFamilyIndices:array of TVkUInt32;
-                                const pInitialLayout:TVkImageLayout);
+constructor TVulkanImage.Create(const aDevice:TVulkanDevice;
+                                const aFlags:TVkImageCreateFlags;
+                                const aImageType:TVkImageType;
+                                const aFormat:TVkFormat;
+                                const aExtentWidth:TVkUInt32;
+                                const aExtentHeight:TVkUInt32;
+                                const aExtentDepth:TVkUInt32;
+                                const aMipLevels:TVkUInt32;
+                                const aArrayLayers:TVkUInt32;
+                                const aSamples:TVkSampleCountFlagBits;
+                                const aTiling:TVkImageTiling;
+                                const aUsage:TVkImageUsageFlags;
+                                const aSharingMode:TVkSharingMode;
+                                const aQueueFamilyIndices:array of TVkUInt32;
+                                const aInitialLayout:TVkImageLayout);
 var ImageCreateInfo:TVkImageCreateInfo;
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fImageHandle:=VK_NULL_HANDLE;
 
@@ -14241,25 +14241,25 @@ begin
  FillChar(ImageCreateInfo,SizeOf(TVkImageCreateInfo),#0);
  ImageCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
  ImageCreateInfo.pNext:=nil;
- ImageCreateInfo.flags:=pFlags;
- ImageCreateInfo.imageType:=pImageType;
- ImageCreateInfo.format:=pFormat;
- ImageCreateInfo.extent.width:=pExtentWidth;
- ImageCreateInfo.extent.height:=pExtentHeight;
- ImageCreateInfo.extent.depth:=pExtentDepth;
- ImageCreateInfo.mipLevels:=pMipLevels;
- ImageCreateInfo.arrayLayers:=pArrayLayers;
- ImageCreateInfo.samples:=pSamples;
- ImageCreateInfo.tiling:=pTiling;
- ImageCreateInfo.usage:=pUsage;
- ImageCreateInfo.sharingMode:=pSharingMode;
- ImageCreateInfo.queueFamilyIndexCount:=length(pQueueFamilyIndices);
+ ImageCreateInfo.flags:=aFlags;
+ ImageCreateInfo.imageType:=aImageType;
+ ImageCreateInfo.format:=aFormat;
+ ImageCreateInfo.extent.width:=aExtentWidth;
+ ImageCreateInfo.extent.height:=aExtentHeight;
+ ImageCreateInfo.extent.depth:=aExtentDepth;
+ ImageCreateInfo.mipLevels:=aMipLevels;
+ ImageCreateInfo.arrayLayers:=aArrayLayers;
+ ImageCreateInfo.samples:=aSamples;
+ ImageCreateInfo.tiling:=aTiling;
+ ImageCreateInfo.usage:=aUsage;
+ ImageCreateInfo.sharingMode:=aSharingMode;
+ ImageCreateInfo.queueFamilyIndexCount:=length(aQueueFamilyIndices);
  if ImageCreateInfo.queueFamilyIndexCount>0 then begin
-  ImageCreateInfo.pQueueFamilyIndices:=@pQueueFamilyIndices[0];
+  ImageCreateInfo.pQueueFamilyIndices:=@aQueueFamilyIndices[0];
  end else begin
   ImageCreateInfo.pQueueFamilyIndices:=nil;
  end;
- ImageCreateInfo.initialLayout:=pInitialLayout;
+ ImageCreateInfo.initialLayout:=aInitialLayout;
 
  HandleResultCode(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@ImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
 
@@ -14282,66 +14282,66 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanImage.SetLayout(const pAspectMask:TVkImageAspectFlags;
-                                 const pOldImageLayout:TVkImageLayout;
-                                 const pNewImageLayout:TVkImageLayout;
-                                 const pRange:PVkImageSubresourceRange;
-                                 const pCommandBuffer:TVulkanCommandBuffer;
-                                 const pQueue:TVulkanQueue=nil;
-                                 const pFence:TVulkanFence=nil;
-                                 const pBeginAndExecuteCommandBuffer:boolean=false;
-                                 const pSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                                 const pDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
+procedure TVulkanImage.SetLayout(const aAspectMask:TVkImageAspectFlags;
+                                 const aOldImageLayout:TVkImageLayout;
+                                 const aNewImageLayout:TVkImageLayout;
+                                 const aRange:PVkImageSubresourceRange;
+                                 const aCommandBuffer:TVulkanCommandBuffer;
+                                 const aQueue:TVulkanQueue=nil;
+                                 const aFence:TVulkanFence=nil;
+                                 const aBeginAndExecuteCommandBuffer:boolean=false;
+                                 const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                                 const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
 begin
  VulkanSetImageLayout(fImageHandle,
-                      pAspectMask,
-                      pOldImageLayout,
-                      pNewImageLayout,
-                      pRange,
-                      pCommandBuffer,
-                      pQueue,
-                      pFence,
-                      pBeginAndExecuteCommandBuffer,
-                      pSrcQueueFamilyIndex,
-                      pDstQueueFamilyIndex);
+                      aAspectMask,
+                      aOldImageLayout,
+                      aNewImageLayout,
+                      aRange,
+                      aCommandBuffer,
+                      aQueue,
+                      aFence,
+                      aBeginAndExecuteCommandBuffer,
+                      aSrcQueueFamilyIndex,
+                      aDstQueueFamilyIndex);
 end;
 
-constructor TVulkanImageView.Create(const pDevice:TVulkanDevice;
-                                    const pImageView:TVkImageView;
-                                    const pImage:TVulkanImage=nil);
+constructor TVulkanImageView.Create(const aDevice:TVulkanDevice;
+                                    const aImageView:TVkImageView;
+                                    const aImage:TVulkanImage=nil);
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fImageViewHandle:=pImageView;
+ fImageViewHandle:=aImageView;
 
- fImage:=pImage;
+ fImage:=aImage;
 
 end;
 
-constructor TVulkanImageView.Create(const pDevice:TVulkanDevice;
-                                    const pImage:TVulkanImage;
-                                    const pImageViewType:TVkImageViewType;
-                                    const pFormat:TvkFormat;
-                                    const pComponentRed:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                    const pComponentGreen:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                    const pComponentBlue:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                    const pComponentAlpha:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                    const pImageAspectFlags:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-                                    const pBaseMipLevel:TVkUInt32=0;
-                                    const pCountMipMapLevels:TVkUInt32=1;
-                                    const pBaseArrayLayer:TVkUInt32=1;
-                                    const pCountArrayLayers:TVkUInt32=0);
+constructor TVulkanImageView.Create(const aDevice:TVulkanDevice;
+                                    const aImage:TVulkanImage;
+                                    const aImageViewType:TVkImageViewType;
+                                    const aFormat:TvkFormat;
+                                    const aComponentRed:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                    const aComponentGreen:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                    const aComponentBlue:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                    const aComponentAlpha:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                    const aImageAspectFlags:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+                                    const aBaseMipLevel:TVkUInt32=0;
+                                    const aCountMipMapLevels:TVkUInt32=1;
+                                    const aBaseArrayLayer:TVkUInt32=1;
+                                    const aCountArrayLayers:TVkUInt32=0);
 var ImageViewCreateInfo:TVkImageViewCreateInfo;
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fImage:=pImage;
+ fImage:=aImage;
 
  fImageViewHandle:=VK_NULL_HANDLE;
 
@@ -14349,18 +14349,18 @@ begin
  ImageViewCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
  ImageViewCreateInfo.pNext:=nil;
  ImageViewCreateInfo.flags:=0;
- ImageViewCreateInfo.image:=pImage.fImageHandle;
- ImageViewCreateInfo.viewType:=pImageViewType;
- ImageViewCreateInfo.format:=pFormat;
- ImageViewCreateInfo.components.r:=pComponentRed;
- ImageViewCreateInfo.components.g:=pComponentGreen;
- ImageViewCreateInfo.components.b:=pComponentBlue;
- ImageViewCreateInfo.components.a:=pComponentAlpha;
- ImageViewCreateInfo.subresourceRange.aspectMask:=pImageAspectFlags;
- ImageViewCreateInfo.subresourceRange.baseMipLevel:=pBaseMipLevel;
- ImageViewCreateInfo.subresourceRange.levelCount:=pCountMipMapLevels;
- ImageViewCreateInfo.subresourceRange.baseArrayLayer:=pBaseArrayLayer;
- ImageViewCreateInfo.subresourceRange.layerCount:=pCountArrayLayers;
+ ImageViewCreateInfo.image:=aImage.fImageHandle;
+ ImageViewCreateInfo.viewType:=aImageViewType;
+ ImageViewCreateInfo.format:=aFormat;
+ ImageViewCreateInfo.components.r:=aComponentRed;
+ ImageViewCreateInfo.components.g:=aComponentGreen;
+ ImageViewCreateInfo.components.b:=aComponentBlue;
+ ImageViewCreateInfo.components.a:=aComponentAlpha;
+ ImageViewCreateInfo.subresourceRange.aspectMask:=aImageAspectFlags;
+ ImageViewCreateInfo.subresourceRange.baseMipLevel:=aBaseMipLevel;
+ ImageViewCreateInfo.subresourceRange.levelCount:=aCountMipMapLevels;
+ ImageViewCreateInfo.subresourceRange.baseArrayLayer:=aBaseArrayLayer;
+ ImageViewCreateInfo.subresourceRange.layerCount:=aCountArrayLayers;
 
  HandleResultCode(fDevice.fDeviceVulkan.CreateImageView(fDevice.fDeviceHandle,@ImageViewCreateInfo,fDevice.fAllocationCallbacks,@fImageViewHandle));
 
@@ -14381,27 +14381,27 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanFrameBufferAttachment.Create(const pDevice:TVulkanDevice;
-                                                const pGraphicsQueue:TVulkanQueue;
-                                                const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                                const pGraphicsCommandBufferFence:TVulkanFence;
-                                                const pWidth:TVkUInt32;
-                                                const pHeight:TVkUInt32;
-                                                const pFormat:TVkFormat;
-                                                const pUsage:TVkBufferUsageFlags);
+constructor TVulkanFrameBufferAttachment.Create(const aDevice:TVulkanDevice;
+                                                const aGraphicsQueue:TVulkanQueue;
+                                                const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                                const aGraphicsCommandBufferFence:TVulkanFence;
+                                                const aWidth:TVkUInt32;
+                                                const aHeight:TVkUInt32;
+                                                const aFormat:TVkFormat;
+                                                const aUsage:TVkBufferUsageFlags);
 var MemoryRequirements:TVkMemoryRequirements;
     AspectMask:TVkImageAspectFlags;
     ImageLayout:TVkImageLayout;
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fWidth:=pWidth;
+ fWidth:=aWidth;
 
- fHeight:=pHeight;
+ fHeight:=aHeight;
 
- fFormat:=pFormat;
+ fFormat:=aFormat;
 
  fImage:=nil;
 
@@ -14411,10 +14411,10 @@ begin
 
  fDoDestroy:=true;
 
- if (pUsage and TVkBufferUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
+ if (aUsage and TVkBufferUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
   AspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
   ImageLayout:=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
- end else if (pUsage and TVkBufferUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))<>0 then begin
+ end else if (aUsage and TVkBufferUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))<>0 then begin
   if fFormat in [VK_FORMAT_D32_SFLOAT_S8_UINT,VK_FORMAT_D24_UNORM_S8_UINT,VK_FORMAT_D16_UNORM_S8_UINT] then begin
    AspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT) or TVkImageAspectFlags(VK_IMAGE_ASPECT_STENCIL_BIT);
   end else begin
@@ -14431,14 +14431,14 @@ begin
                               0,
                               VK_IMAGE_TYPE_2D,
                               fFormat,
-                              pWidth,
-                              pHeight,
+                              aWidth,
+                              aHeight,
                               1,
                               1,
                               1,
                               VK_SAMPLE_COUNT_1_BIT,
                               VK_IMAGE_TILING_OPTIMAL,
-                              pUsage {or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT)},
+                              aUsage {or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT)},
                               VK_SHARING_MODE_EXCLUSIVE,
                               [],
                               VK_IMAGE_LAYOUT_UNDEFINED);
@@ -14459,23 +14459,23 @@ begin
 
   HandleResultCode(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,fImage.fImageHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
 
-  if (pUsage and TVkBufferUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
+  if (aUsage and TVkBufferUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
    fImage.SetLayout(AspectMask,
                     VK_IMAGE_LAYOUT_UNDEFINED,
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     nil,
-                    pGraphicsCommandBuffer,
-                    pGraphicsQueue,
-                    pGraphicsCommandBufferFence,
+                    aGraphicsCommandBuffer,
+                    aGraphicsQueue,
+                    aGraphicsCommandBufferFence,
                     true);
   end else begin
    fImage.SetLayout(AspectMask,
                     VK_IMAGE_LAYOUT_UNDEFINED,
                     ImageLayout,
                     nil,
-                    pGraphicsCommandBuffer,
-                    pGraphicsQueue,
-                    pGraphicsCommandBufferFence,
+                    aGraphicsCommandBuffer,
+                    aGraphicsQueue,
+                    aGraphicsCommandBufferFence,
                     true);
   end;
           
@@ -14511,32 +14511,32 @@ begin
  end;
 end;
 
-constructor TVulkanFrameBufferAttachment.Create(const pDevice:TVulkanDevice;
-                                                const pImage:TVulkanImage;
-                                                const pImageView:TVulkanImageView;
-                                                const pWidth:TVkUInt32;
-                                                const pHeight:TVkUInt32;
-                                                const pFormat:TVkFormat;
-                                                const pDoDestroy:boolean=true);
+constructor TVulkanFrameBufferAttachment.Create(const aDevice:TVulkanDevice;
+                                                const aImage:TVulkanImage;
+                                                const aImageView:TVulkanImageView;
+                                                const aWidth:TVkUInt32;
+                                                const aHeight:TVkUInt32;
+                                                const aFormat:TVkFormat;
+                                                const aDoDestroy:boolean=true);
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fWidth:=pWidth;
+ fWidth:=aWidth;
 
- fHeight:=pHeight;
+ fHeight:=aHeight;
 
- fFormat:=pFormat;
+ fFormat:=aFormat;
 
- fImage:=pImage;
+ fImage:=aImage;
 
- fImageView:=pImageView;
+ fImageView:=aImageView;
 
  fMemoryBlock:=nil;
 
- fDoDestroy:=pDoDestroy;
+ fDoDestroy:=aDoDestroy;
 
 end;
 
@@ -14568,16 +14568,16 @@ begin
 
 end;
 
-constructor TVulkanFrameBuffer.Create(const pDevice:TVulkanDevice;
-                                      const pRenderPass:TVulkanRenderPass;
-                                      const pWidth:TVkUInt32;
-                                      const pHeight:TVkUInt32;
-                                      const pLayers:TVkUInt32);
+constructor TVulkanFrameBuffer.Create(const aDevice:TVulkanDevice;
+                                      const aRenderPass:TVulkanRenderPass;
+                                      const aWidth:TVkUInt32;
+                                      const aHeight:TVkUInt32;
+                                      const aLayers:TVkUInt32);
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fFrameBufferHandle:=VK_NULL_HANDLE;
 
@@ -14587,30 +14587,30 @@ begin
 
  fCountFrameBufferAttachments:=0;
 
- fRenderPass:=pRenderPass;
+ fRenderPass:=aRenderPass;
 
- fWidth:=pWidth;
+ fWidth:=aWidth;
 
- fHeight:=pHeight;
+ fHeight:=aHeight;
 
- fLayers:=pLayers;
+ fLayers:=aLayers;
 
  fDoDestroy:=true;
 
 end;
 
-constructor TVulkanFrameBuffer.Create(const pDevice:TVulkanDevice;
-                                      const pRenderPass:TVulkanRenderPass;
-                                      const pWidth:TVkUInt32;
-                                      const pHeight:TVkUInt32;
-                                      const pLayers:TVkUInt32;
-                                      const pFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
-                                      const pDoDestroyAttachments:boolean=true);
+constructor TVulkanFrameBuffer.Create(const aDevice:TVulkanDevice;
+                                      const aRenderPass:TVulkanRenderPass;
+                                      const aWidth:TVkUInt32;
+                                      const aHeight:TVkUInt32;
+                                      const aLayers:TVkUInt32;
+                                      const aFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
+                                      const aDoDestroyAttachments:boolean=true);
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fFrameBufferHandle:=VK_NULL_HANDLE;
 
@@ -14618,70 +14618,70 @@ begin
 
  fFrameBufferAttachmentImageViews:=nil;
 
- fCountFrameBufferAttachments:=length(pFrameBufferAttachments);
+ fCountFrameBufferAttachments:=length(aFrameBufferAttachments);
 
  SetLength(fFrameBufferAttachments,fCountFrameBufferAttachments);
 
  if fCountFrameBufferAttachments>0 then begin
-  Move(pFrameBufferAttachments[0],fFrameBufferAttachments[0],fCountFrameBufferAttachments*SizeOf(TVulkanFrameBufferAttachment));
+  Move(aFrameBufferAttachments[0],fFrameBufferAttachments[0],fCountFrameBufferAttachments*SizeOf(TVulkanFrameBufferAttachment));
  end;
 
- fRenderPass:=pRenderPass;
+ fRenderPass:=aRenderPass;
 
- fWidth:=pWidth;
+ fWidth:=aWidth;
 
- fHeight:=pHeight;
+ fHeight:=aHeight;
 
- fLayers:=pLayers;
+ fLayers:=aLayers;
 
  fDoDestroy:=true;
 
- fDoDestroyAttachments:=pDoDestroyAttachments;
+ fDoDestroyAttachments:=aDoDestroyAttachments;
 
  Initialize;
 
 end;                                      
 
-constructor TVulkanFrameBuffer.Create(const pDevice:TVulkanDevice;
-                                      const pRenderPass:TVulkanRenderPass;
-                                      const pWidth:TVkUInt32;
-                                      const pHeight:TVkUInt32;
-                                      const pLayers:TVkUInt32;
-                                      const pFrameBufferHandle:TVkFrameBuffer;
-                                      const pFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
-                                      const pDoDestroy:boolean=true;
-                                      const pDoDestroyAttachments:boolean=true);
+constructor TVulkanFrameBuffer.Create(const aDevice:TVulkanDevice;
+                                      const aRenderPass:TVulkanRenderPass;
+                                      const aWidth:TVkUInt32;
+                                      const aHeight:TVkUInt32;
+                                      const aLayers:TVkUInt32;
+                                      const aFrameBufferHandle:TVkFrameBuffer;
+                                      const aFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
+                                      const aDoDestroy:boolean=true;
+                                      const aDoDestroyAttachments:boolean=true);
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fFrameBufferHandle:=pFrameBufferHandle;
+ fFrameBufferHandle:=aFrameBufferHandle;
 
  fFrameBufferAttachments:=nil;
 
  fFrameBufferAttachmentImageViews:=nil;
 
- fCountFrameBufferAttachments:=length(pFrameBufferAttachments);
+ fCountFrameBufferAttachments:=length(aFrameBufferAttachments);
 
  SetLength(fFrameBufferAttachments,fCountFrameBufferAttachments);
 
  if fCountFrameBufferAttachments>0 then begin
-  Move(pFrameBufferAttachments[0],fFrameBufferAttachments[0],fCountFrameBufferAttachments*SizeOf(TVulkanFrameBufferAttachment));
+  Move(aFrameBufferAttachments[0],fFrameBufferAttachments[0],fCountFrameBufferAttachments*SizeOf(TVulkanFrameBufferAttachment));
  end;
 
- fRenderPass:=pRenderPass;
+ fRenderPass:=aRenderPass;
 
- fWidth:=pWidth;
+ fWidth:=aWidth;
 
- fHeight:=pHeight;
+ fHeight:=aHeight;
 
- fLayers:=pLayers;
+ fLayers:=aLayers;
 
- fDoDestroy:=pDoDestroy;
+ fDoDestroy:=aDoDestroy;
 
- fDoDestroyAttachments:=pDoDestroyAttachments;
+ fDoDestroyAttachments:=aDoDestroyAttachments;
 
 end;
 
@@ -14711,19 +14711,19 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanFrameBuffer.GetFrameBufferAttachment(const pIndex:TVkInt32):TVulkanFrameBufferAttachment;
+function TVulkanFrameBuffer.GetFrameBufferAttachment(const aIndex:TVkInt32):TVulkanFrameBufferAttachment;
 begin
- result:=fFrameBufferAttachments[pIndex];
+ result:=fFrameBufferAttachments[aIndex];
 end;
 
-function TVulkanFrameBuffer.AddAttachment(const pFrameBufferAttachment:TVulkanFrameBufferAttachment):TVkInt32;
+function TVulkanFrameBuffer.AddAttachment(const aFrameBufferAttachment:TVulkanFrameBufferAttachment):TVkInt32;
 begin
  result:=fCountFrameBufferAttachments;
  inc(fCountFrameBufferAttachments);
  if fCountFrameBufferAttachments>length(fFrameBufferAttachments) then begin
   SetLength(fFrameBufferAttachments,fCountFrameBufferAttachments*2);
  end;
- fFrameBufferAttachments[result]:=pFrameBufferAttachment;
+ fFrameBufferAttachments[result]:=aFrameBufferAttachment;
 end;
 
 procedure TVulkanFrameBuffer.Initialize;
@@ -14756,22 +14756,22 @@ begin
  end;
 end;
 
-constructor TVulkanSwapChain.Create(const pDevice:TVulkanDevice;
-                                    const pSurface:TVulkanSurface;
-                                    const pOldSwapChain:TVulkanSwapChain=nil;
-                                    const pDesiredImageWidth:TVkUInt32=0;
-                                    const pDesiredImageHeight:TVkUInt32=0;
-                                    const pDesiredImageCount:TVkUInt32=2;
-                                    const pImageArrayLayers:TVkUInt32=1;
-                                    const pImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
-                                    const pImageColorSpace:TVkColorSpaceKHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-                                    const pImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-                                    const pImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-                                    const pQueueFamilyIndices:TVkUInt32List=nil;
-                                    const pCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-                                    const pPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
-                                    const pClipped:boolean=true;
-                                    const pDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff));
+constructor TVulkanSwapChain.Create(const aDevice:TVulkanDevice;
+                                    const aSurface:TVulkanSurface;
+                                    const aOldSwapChain:TVulkanSwapChain=nil;
+                                    const aDesiredImageWidth:TVkUInt32=0;
+                                    const aDesiredImageHeight:TVkUInt32=0;
+                                    const aDesiredImageCount:TVkUInt32=2;
+                                    const aImageArrayLayers:TVkUInt32=1;
+                                    const aImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
+                                    const aImageColorSpace:TVkColorSpaceKHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+                                    const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+                                    const aImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                    const aQueueFamilyIndices:TVkUInt32List=nil;
+                                    const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+                                    const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
+                                    const aClipped:boolean=true;
+                                    const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff));
 type TPresentModes=VK_PRESENT_MODE_IMMEDIATE_KHR..VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 const PresentModeTryOrder:array[TPresentModes,0..3] of TVkPresentModeKHR=
        ((VK_PRESENT_MODE_IMMEDIATE_KHR,VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_FIFO_KHR),
@@ -14789,9 +14789,9 @@ var Index,TryIterationIndex:TVkInt32;
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fSurface:=pSurface;
+ fSurface:=aSurface;
 
  fSwapChainHandle:=VK_NULL_HANDLE;
 
@@ -14799,7 +14799,7 @@ begin
 
  fImages:=nil;
 
- fPresentMode:=pPresentMode;
+ fPresentMode:=aPresentMode;
 
  fCurrentImageIndex:=0;
 
@@ -14816,11 +14816,11 @@ begin
    raise EVulkanSurfaceException.Create('Surface not supported by device');
   end;
 
-  if assigned(pQueueFamilyIndices) then begin
-   fCountQueueFamilyIndices:=pQueueFamilyIndices.Count;
+  if assigned(aQueueFamilyIndices) then begin
+   fCountQueueFamilyIndices:=aQueueFamilyIndices.Count;
    SetLength(fQueueFamilyIndices,fCountQueueFamilyIndices);
    for Index:=0 to fCountQueueFamilyIndices-1 do begin
-    fQueueFamilyIndices[Index]:=pQueueFamilyIndices.Items[Index];
+    fQueueFamilyIndices[Index]:=aQueueFamilyIndices.Items[Index];
    end;
   end else begin
    fCountQueueFamilyIndices:=0;
@@ -14833,22 +14833,22 @@ begin
 
   SwapChainCreateInfo.surface:=fSurface.fSurfaceHandle;
 
-  if SurfaceCapabilities.minImageCount>pDesiredImageCount then begin
+  if SurfaceCapabilities.minImageCount>aDesiredImageCount then begin
    SwapChainCreateInfo.minImageCount:=SurfaceCapabilities.minImageCount;
   end else if (SurfaceCapabilities.maxImageCount<>0) and
-              (SurfaceCapabilities.maxImageCount<pDesiredImageCount) then begin
+              (SurfaceCapabilities.maxImageCount<aDesiredImageCount) then begin
    SwapChainCreateInfo.minImageCount:=SurfaceCapabilities.maxImageCount;
   end else begin
-   SwapChainCreateInfo.minImageCount:=pDesiredImageCount;
+   SwapChainCreateInfo.minImageCount:=aDesiredImageCount;
   end;
 
-  if pImageFormat=VK_FORMAT_UNDEFINED then begin
+  if aImageFormat=VK_FORMAT_UNDEFINED then begin
    SurfaceFormat:=fDevice.fPhysicalDevice.GetSurfaceFormat(fSurface);
    SwapChainCreateInfo.imageFormat:=SurfaceFormat.format;
    SwapChainCreateInfo.imageColorSpace:=SurfaceFormat.colorSpace;
   end else begin
-   SwapChainCreateInfo.imageFormat:=pImageFormat;
-   SwapChainCreateInfo.imageColorSpace:=pImageColorSpace;
+   SwapChainCreateInfo.imageFormat:=aImageFormat;
+   SwapChainCreateInfo.imageColorSpace:=aImageColorSpace;
   end;
 
   fImageFormat:=SwapChainCreateInfo.imageFormat;
@@ -14859,10 +14859,10 @@ begin
    raise EVulkanException.Create('No suitable color image format!');
   end;
 
-  if ((pDesiredImageWidth<>0) and (pDesiredImageHeight<>0)) or
+  if ((aDesiredImageWidth<>0) and (aDesiredImageHeight<>0)) or
      ((TVkInt32(SurfaceCapabilities.CurrentExtent.Width)<0) or (TVkInt32(SurfaceCapabilities.CurrentExtent.Height)<0)) then begin
-   SwapChainCreateInfo.imageExtent.width:=Min(Max(pDesiredImageWidth,SurfaceCapabilities.minImageExtent.width),SurfaceCapabilities.maxImageExtent.width);
-   SwapChainCreateInfo.imageExtent.height:=Min(Max(pDesiredImageHeight,SurfaceCapabilities.minImageExtent.height),SurfaceCapabilities.maxImageExtent.height);
+   SwapChainCreateInfo.imageExtent.width:=Min(Max(aDesiredImageWidth,SurfaceCapabilities.minImageExtent.width),SurfaceCapabilities.maxImageExtent.width);
+   SwapChainCreateInfo.imageExtent.height:=Min(Max(aDesiredImageHeight,SurfaceCapabilities.minImageExtent.height),SurfaceCapabilities.maxImageExtent.height);
   end else begin
    SwapChainCreateInfo.imageExtent:=SurfaceCapabilities.CurrentExtent;
   end;
@@ -14871,36 +14871,36 @@ begin
 
   fHeight:=SwapChainCreateInfo.imageExtent.height;
 
-  SwapChainCreateInfo.imageArrayLayers:=pImageArrayLayers;
-  SwapChainCreateInfo.imageUsage:=pImageUsage;
-  SwapChainCreateInfo.imageSharingMode:=pImageSharingMode;
+  SwapChainCreateInfo.imageArrayLayers:=aImageArrayLayers;
+  SwapChainCreateInfo.imageUsage:=aImageUsage;
+  SwapChainCreateInfo.imageSharingMode:=aImageSharingMode;
 
   if fCountQueueFamilyIndices>0 then begin
    SwapChainCreateInfo.pQueueFamilyIndices:=@fQueueFamilyIndices[0];
    SwapChainCreateInfo.queueFamilyIndexCount:=fCountQueueFamilyIndices;
   end;
 
-  if (pDesiredTransform<>TVkSurfaceTransformFlagsKHR($ffffffff)) and
-     ((SurfaceCapabilities.SupportedTransforms and pDesiredTransform)<>0) then begin
-   SwapChainCreateInfo.preTransform:=TVkSurfaceTransformFlagBitsKHR(pDesiredTransform);
+  if (aDesiredTransform<>TVkSurfaceTransformFlagsKHR($ffffffff)) and
+     ((SurfaceCapabilities.SupportedTransforms and aDesiredTransform)<>0) then begin
+   SwapChainCreateInfo.preTransform:=TVkSurfaceTransformFlagBitsKHR(aDesiredTransform);
   end else if (SurfaceCapabilities.SupportedTransforms and TVkSurfaceTransformFlagsKHR(VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR))<>0 then begin
    SwapChainCreateInfo.preTransform:=TVkSurfaceTransformFlagBitsKHR(VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR);
   end else begin
    SwapChainCreateInfo.preTransform:=TVkSurfaceTransformFlagBitsKHR(SurfaceCapabilities.currentTransform);
   end;
 
-  SwapChainCreateInfo.compositeAlpha:=pCompositeAlpha;
+  SwapChainCreateInfo.compositeAlpha:=aCompositeAlpha;
 
   SurfacePresentModes:=nil;
   try
    SurfacePresentModes:=fDevice.fPhysicalDevice.GetSurfacePresentModes(fSurface);
-   case pPresentMode of
+   case aPresentMode of
     VK_PRESENT_MODE_IMMEDIATE_KHR..VK_PRESENT_MODE_FIFO_RELAXED_KHR:begin
      SwapChainCreateInfo.presentMode:=VK_PRESENT_MODE_FIFO_KHR;
      Found:=false;
      for Index:=0 to length(SurfacePresentModes)-1 do begin
-      if SurfacePresentModes[Index]=pPresentMode then begin
-       SwapChainCreateInfo.presentMode:=pPresentMode;
+      if SurfacePresentModes[Index]=aPresentMode then begin
+       SwapChainCreateInfo.presentMode:=aPresentMode;
        Found:=true;
        break;
       end;
@@ -14909,8 +14909,8 @@ begin
       for TryIterationIndex:=0 to 3 do begin
        Found:=false;
        for Index:=0 to length(SurfacePresentModes)-1 do begin
-        if SurfacePresentModes[Index]=PresentModeTryOrder[pPresentMode,TryIterationIndex] then begin
-         SwapChainCreateInfo.presentMode:=PresentModeTryOrder[pPresentMode,TryIterationIndex];
+        if SurfacePresentModes[Index]=PresentModeTryOrder[aPresentMode,TryIterationIndex] then begin
+         SwapChainCreateInfo.presentMode:=PresentModeTryOrder[aPresentMode,TryIterationIndex];
          Found:=true;
          break;
         end;
@@ -14925,8 +14925,8 @@ begin
      SwapChainCreateInfo.presentMode:=VK_PRESENT_MODE_FIFO_KHR;
      Found:=false;
      for Index:=0 to length(SurfacePresentModes)-1 do begin
-      if SurfacePresentModes[Index]=pPresentMode then begin
-       SwapChainCreateInfo.presentMode:=pPresentMode;
+      if SurfacePresentModes[Index]=aPresentMode then begin
+       SwapChainCreateInfo.presentMode:=aPresentMode;
        Found:=true;
        break;
       end;
@@ -14953,14 +14953,14 @@ begin
    SetLength(SurfacePresentModes,0);
   end;
 
-  if pClipped then begin
+  if aClipped then begin
    SwapChainCreateInfo.clipped:=VK_TRUE;
   end else begin
    SwapChainCreateInfo.clipped:=VK_FALSE;
   end;
 
-  if assigned(pOldSwapChain) then begin
-   SwapChainCreateInfo.oldSwapchain:=pOldSwapChain.fSwapChainHandle;
+  if assigned(aOldSwapChain) then begin
+   SwapChainCreateInfo.oldSwapchain:=aOldSwapChain.fSwapChainHandle;
   end else begin
    SwapChainCreateInfo.oldSwapchain:=VK_NULL_HANDLE;
   end;
@@ -15030,7 +15030,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanSwapChain.QueuePresent(const pQueue:TVulkanQueue;const pSemaphore:TVulkanSemaphore=nil):TVkResult;
+function TVulkanSwapChain.QueuePresent(const aQueue:TVulkanQueue;const aSemaphore:TVulkanSemaphore=nil):TVkResult;
 var PresentInfo:TVkPresentInfoKHR;
 begin
  FillChar(PresentInfo,SizeOf(TVkPresentInfoKHR),#0);
@@ -15038,39 +15038,39 @@ begin
  PresentInfo.swapchainCount:=1;
  PresentInfo.pSwapchains:=@fSwapChainHandle;
  PresentInfo.pImageIndices:=@fCurrentImageIndex;
- if assigned(pSemaphore) then begin
+ if assigned(aSemaphore) then begin
   PresentInfo.waitSemaphoreCount:=1;
-  PresentInfo.pWaitSemaphores:=@pSemaphore.fSemaphoreHandle;
+  PresentInfo.pWaitSemaphores:=@aSemaphore.fSemaphoreHandle;
  end;
- result:=fDevice.fInstance.fInstanceVulkan.QueuePresentKHR(pQueue.fQueueHandle,@PresentInfo);
+ result:=fDevice.fInstance.fInstanceVulkan.QueuePresentKHR(aQueue.fQueueHandle,@PresentInfo);
  if result<VK_SUCCESS then begin
   HandleResultCode(result);
  end;
 end;
 
-function TVulkanSwapChain.AcquireNextImage(const pSemaphore:TVulkanSemaphore=nil;const pFence:TVulkanFence=nil;const pTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkResult;
+function TVulkanSwapChain.AcquireNextImage(const aSemaphore:TVulkanSemaphore=nil;const aFence:TVulkanFence=nil;const aTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkResult;
 var SemaphoreHandle:TVkFence;
     FenceHandle:TVkFence;
 begin
- if assigned(pSemaphore) then begin
-  SemaphoreHandle:=pSemaphore.fSemaphoreHandle;
+ if assigned(aSemaphore) then begin
+  SemaphoreHandle:=aSemaphore.fSemaphoreHandle;
  end else begin
   SemaphoreHandle:=VK_NULL_HANDLE;
  end;
- if assigned(pFence) then begin
-  FenceHandle:=pFence.fFenceHandle;
+ if assigned(aFence) then begin
+  FenceHandle:=aFence.fFenceHandle;
  end else begin
   FenceHandle:=VK_NULL_HANDLE;
  end;
- result:=fDevice.fDeviceVulkan.AcquireNextImageKHR(fDevice.fDeviceHandle,fSwapChainHandle,pTimeOut,SemaphoreHandle,FenceHandle,@fCurrentImageIndex);
+ result:=fDevice.fDeviceVulkan.AcquireNextImageKHR(fDevice.fDeviceHandle,fSwapChainHandle,aTimeOut,SemaphoreHandle,FenceHandle,@fCurrentImageIndex);
  if result<VK_SUCCESS then begin
   HandleResultCode(result);
  end;
 end;
 
-function TVulkanSwapChain.GetImage(const pImageIndex:TVkInt32):TVulkanImage;
+function TVulkanSwapChain.GetImage(const aImageIndex:TVkInt32):TVulkanImage;
 begin
- result:=fImages[pImageIndex];
+ result:=fImages[aImageIndex];
 end;
 
 function TVulkanSwapChain.GetCurrentImage:TVulkanImage;
@@ -15078,17 +15078,17 @@ begin
  result:=fImages[fCurrentImageIndex];
 end;
 
-constructor TVulkanSwapChainSimpleDirectRenderTarget.Create(const pDevice:TVulkanDevice;
-                                                            const pSwapChain:TVulkanSwapChain;
-                                                            const pPresentQueue:TVulkanQueue;
-                                                            const pPresentCommandBuffer:TVulkanCommandBuffer;
-                                                            const pPresentCommandBufferFence:TVulkanFence;
-                                                            const pGraphicsQueue:TVulkanQueue;
-                                                            const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                                            const pGraphicsCommandBufferFence:TVulkanFence;
-                                                            const pDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
-                                                            const pDepthImageFormatWithStencil:boolean=false;
-                                                            const pClear:boolean=true);
+constructor TVulkanSwapChainSimpleDirectRenderTarget.Create(const aDevice:TVulkanDevice;
+                                                            const aSwapChain:TVulkanSwapChain;
+                                                            const aPresentQueue:TVulkanQueue;
+                                                            const aPresentCommandBuffer:TVulkanCommandBuffer;
+                                                            const aPresentCommandBufferFence:TVulkanFence;
+                                                            const aGraphicsQueue:TVulkanQueue;
+                                                            const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                                            const aGraphicsCommandBufferFence:TVulkanFence;
+                                                            const aDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
+                                                            const aDepthImageFormatWithStencil:boolean=false;
+                                                            const aClear:boolean=true);
 var Index:TVkInt32;
     FormatProperties:TVkFormatProperties;
     ColorAttachmentImage:TVulkanImage;
@@ -15097,9 +15097,9 @@ begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
- fSwapChain:=pSwapChain;
+ fSwapChain:=aSwapChain;
 
  fFrameBufferColorAttachments:=nil;
 
@@ -15112,9 +15112,9 @@ begin
  try
 
   if fDepthImageFormat=VK_FORMAT_UNDEFINED then begin
-   fDepthImageFormat:=fDevice.fPhysicalDevice.GetBestSupportedDepthFormat(pDepthImageFormatWithStencil);
+   fDepthImageFormat:=fDevice.fPhysicalDevice.GetBestSupportedDepthFormat(aDepthImageFormatWithStencil);
   end else begin
-   fDepthImageFormat:=pDepthImageFormat;
+   fDepthImageFormat:=aDepthImageFormat;
   end;
 
   fDevice.fInstance.fVulkan.GetPhysicalDeviceFormatProperties(fDevice.fPhysicalDevice.fPhysicalDeviceHandle,fDepthImageFormat,@FormatProperties);
@@ -15126,7 +15126,7 @@ begin
 
    fRenderPass:=TVulkanRenderPass.Create(fDevice);
 
-   if pClear then begin
+   if aClear then begin
 
     fRenderPass.AddSubpassDescription(0,
                                       VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -15210,7 +15210,7 @@ begin
 
    fRenderPass.Initialize;
 
-   if pClear then begin
+   if aClear then begin
     fRenderPass.ClearValues[0].color.float32[0]:=0.0;
     fRenderPass.ClearValues[0].color.float32[1]:=0.0;
     fRenderPass.ClearValues[0].color.float32[2]:=0.0;
@@ -15238,9 +15238,9 @@ begin
                                    VK_IMAGE_LAYOUT_UNDEFINED,
                                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                                    nil,
-                                   pPresentCommandBuffer,
-                                   pPresentQueue,
-                                   pPresentCommandBufferFence,
+                                   aPresentCommandBuffer,
+                                   aPresentQueue,
+                                   aPresentCommandBufferFence,
                                    true);
 
     ColorAttachmentImageView:=TVulkanImageView.Create(Device,
@@ -15278,9 +15278,9 @@ begin
   end;
 
   fDepthFrameBufferAttachment:=TVulkanFrameBufferAttachment.Create(fDevice,
-                                                                   pGraphicsQueue,
-                                                                   pGraphicsCommandBuffer,
-                                                                   pGraphicsCommandBufferFence,
+                                                                   aGraphicsQueue,
+                                                                   aGraphicsCommandBuffer,
+                                                                   aGraphicsCommandBufferFence,
                                                                    fSwapChain.Width,
                                                                    fSwapChain.Height,
                                                                    fDepthImageFormat,
@@ -15356,17 +15356,17 @@ begin
  result:=fFrameBuffers[fSwapChain.CurrentImageIndex];
 end;
 
-function TVulkanSwapChainSimpleDirectRenderTarget.GetFrameBufferAtIndex(const pIndex:TVkInt32):TVulkanFrameBuffer;
+function TVulkanSwapChainSimpleDirectRenderTarget.GetFrameBufferAtIndex(const aIndex:TVkInt32):TVulkanFrameBuffer;
 begin
- result:=fFrameBuffers[pIndex];
+ result:=fFrameBuffers[aIndex];
 end;
 
-constructor TVulkanShaderModule.Create(const pDevice:TVulkanDevice;const pData;const pDataSize:TVkSize);
+constructor TVulkanShaderModule.Create(const aDevice:TVulkanDevice;const aData;const aDataSize:TVkSize);
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fShaderModuleHandle:=VK_NULL_HANDLE;
 
@@ -15374,7 +15374,7 @@ begin
 
  fDataAligned:=nil;
 
- fDataSize:=pDataSize;
+ fDataSize:=aDataSize;
  if (fDataSize and 3)<>0 then begin
   inc(fDataSize,4-(fDataSize and 3));
  end;
@@ -15389,12 +15389,12 @@ begin
 
 end;
 
-constructor TVulkanShaderModule.Create(const pDevice:TVulkanDevice;const pStream:TStream);
+constructor TVulkanShaderModule.Create(const aDevice:TVulkanDevice;const aStream:TStream);
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fShaderModuleHandle:=VK_NULL_HANDLE;
 
@@ -15402,7 +15402,7 @@ begin
 
  fDataAligned:=nil;
 
- fDataSize:=pStream.Size;
+ fDataSize:=aStream.Size;
  if (fDataSize and 3)<>0 then begin
   inc(fDataSize,4-(fDataSize and 3));
  end;
@@ -15413,11 +15413,11 @@ begin
   inc(TVkPtrUInt(fDataAligned),4-(TVkPtrUInt(fDataAligned) and 3));
  end;
 
- if pStream.Seek(0,soBeginning)<>0 then begin
+ if aStream.Seek(0,soBeginning)<>0 then begin
   raise EInOutError.Create('Stream seek error');
  end;
 
- if pStream.Read(fData^,pStream.Size)<>pStream.Size then begin
+ if aStream.Read(fData^,aStream.Size)<>aStream.Size then begin
   raise EInOutError.Create('Stream read error');
  end;
 
@@ -15425,12 +15425,12 @@ begin
 
 end;
 
-constructor TVulkanShaderModule.Create(const pDevice:TVulkanDevice;const pFileName:string);
+constructor TVulkanShaderModule.Create(const aDevice:TVulkanDevice;const aFileName:string);
 var FileStream:TFileStream;
 begin
- FileStream:=TFileStream.Create(pFileName,fmOpenRead or fmShareDenyWrite);
+ FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
  try
-  Create(pDevice,FileStream);
+  Create(aDevice,FileStream);
  finally
   FileStream.Free;
  end;
@@ -15604,18 +15604,18 @@ begin
  end;
 end;
 
-constructor TVulkanDescriptorPool.Create(const pDevice:TVulkanDevice;
-                                         const pFlags:TVkDescriptorPoolCreateFlags;
-                                         const pMaxSets:TVkUInt32);
+constructor TVulkanDescriptorPool.Create(const aDevice:TVulkanDevice;
+                                         const aFlags:TVkDescriptorPoolCreateFlags;
+                                         const aMaxSets:TVkUInt32);
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fDescriptorPoolHandle:=VK_NULL_HANDLE;
 
- fFlags:=pFlags;
- fMaxSets:=pMaxSets;
+ fFlags:=aFlags;
+ fMaxSets:=aMaxSets;
 
  fDescriptorPoolSizes:=nil;
  fCountDescriptorPoolSizes:=0;
@@ -15632,7 +15632,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanDescriptorPool.AddDescriptorPoolSize(const pType:TVkDescriptorType;const pDescriptorCount:TVkUInt32):TVkInt32;
+function TVulkanDescriptorPool.AddDescriptorPoolSize(const aType:TVkDescriptorType;const aDescriptorCount:TVkUInt32):TVkInt32;
 var DescriptorPoolSize:PVkDescriptorPoolSize;
 begin
  result:=fCountDescriptorPoolSizes;
@@ -15641,8 +15641,8 @@ begin
   SetLength(fDescriptorPoolSizes,fCountDescriptorPoolSizes*2);
  end;
  DescriptorPoolSize:=@fDescriptorPoolSizes[result];
- DescriptorPoolSize.type_:=pType;
- DescriptorPoolSize.descriptorCount:=pDescriptorCount;
+ DescriptorPoolSize.type_:=aType;
+ DescriptorPoolSize.descriptorCount:=aDescriptorCount;
 end;
 
 procedure TVulkanDescriptorPool.Initialize;
@@ -15662,18 +15662,18 @@ begin
  end;
 end;
 
-constructor TVulkanDescriptorSetLayoutBinding.Create(const pBinding:TVkUInt32;
-                                                     const pDescriptorType:TVkDescriptorType;
-                                                     const pDescriptorCount:TVkUInt32;
-                                                     const pStageFlags:TVkShaderStageFlags);
+constructor TVulkanDescriptorSetLayoutBinding.Create(const aBinding:TVkUInt32;
+                                                     const aDescriptorType:TVkDescriptorType;
+                                                     const aDescriptorCount:TVkUInt32;
+                                                     const aStageFlags:TVkShaderStageFlags);
 begin
  inherited Create;
 
  FillChar(fDescriptorSetLayoutBinding,SizeOf(TVkDescriptorSetLayoutBinding),#0);
- fDescriptorSetLayoutBinding.binding:=pBinding;
- fDescriptorSetLayoutBinding.descriptorType:=pDescriptorType;
- fDescriptorSetLayoutBinding.descriptorCount:=pDescriptorCount;
- fDescriptorSetLayoutBinding.stageFlags:=pStageFlags;
+ fDescriptorSetLayoutBinding.binding:=aBinding;
+ fDescriptorSetLayoutBinding.descriptorType:=aDescriptorType;
+ fDescriptorSetLayoutBinding.descriptorCount:=aDescriptorCount;
+ fDescriptorSetLayoutBinding.stageFlags:=aStageFlags;
 
  fImmutableSamplers:=nil;
  fCountImmutableSamplers:=0;
@@ -15691,9 +15691,9 @@ begin
  result:=fDescriptorSetLayoutBinding.binding;
 end;
 
-procedure TVulkanDescriptorSetLayoutBinding.SetBinding(const pBinding:TVkUInt32);
+procedure TVulkanDescriptorSetLayoutBinding.SetBinding(const aBinding:TVkUInt32);
 begin
- fDescriptorSetLayoutBinding.binding:=pBinding;
+ fDescriptorSetLayoutBinding.binding:=aBinding;
 end;
 
 function TVulkanDescriptorSetLayoutBinding.GetDescriptorType:TVkDescriptorType;
@@ -15701,9 +15701,9 @@ begin
  result:=fDescriptorSetLayoutBinding.descriptorType;
 end;
 
-procedure TVulkanDescriptorSetLayoutBinding.SetDescriptorType(const pDescriptorType:TVkDescriptorType);
+procedure TVulkanDescriptorSetLayoutBinding.SetDescriptorType(const aDescriptorType:TVkDescriptorType);
 begin
- fDescriptorSetLayoutBinding.descriptorType:=pDescriptorType;
+ fDescriptorSetLayoutBinding.descriptorType:=aDescriptorType;
 end;
 
 function TVulkanDescriptorSetLayoutBinding.GetDescriptorCount:TVkUInt32;
@@ -15711,9 +15711,9 @@ begin
  result:=fDescriptorSetLayoutBinding.DescriptorCount;
 end;
 
-procedure TVulkanDescriptorSetLayoutBinding.SetDescriptorCount(const pDescriptorCount:TVkUInt32);
+procedure TVulkanDescriptorSetLayoutBinding.SetDescriptorCount(const aDescriptorCount:TVkUInt32);
 begin
- fDescriptorSetLayoutBinding.descriptorCount:=pDescriptorCount;
+ fDescriptorSetLayoutBinding.descriptorCount:=aDescriptorCount;
 end;
 
 function TVulkanDescriptorSetLayoutBinding.GetStageFlags:TVkShaderStageFlags;
@@ -15721,12 +15721,12 @@ begin
  result:=fDescriptorSetLayoutBinding.stageFlags;
 end;
 
-procedure TVulkanDescriptorSetLayoutBinding.SetStageFlags(const pStageFlags:TVkShaderStageFlags);
+procedure TVulkanDescriptorSetLayoutBinding.SetStageFlags(const aStageFlags:TVkShaderStageFlags);
 begin
- fDescriptorSetLayoutBinding.stageFlags:=pStageFlags;
+ fDescriptorSetLayoutBinding.stageFlags:=aStageFlags;
 end;
 
-procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSampler(const pImmutableSampler:TVulkanSampler);
+procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSampler(const aImmutableSampler:TVulkanSampler);
 var Index:TVkInt32;
 begin
  Index:=fCountImmutableSamplers;
@@ -15734,14 +15734,14 @@ begin
  if fCountImmutableSamplers>length(fImmutableSamplers) then begin
   SetLength(fImmutableSamplers,fCountImmutableSamplers*2);
  end;
- fImmutableSamplers[Index]:=pImmutableSampler.fSamplerHandle;
+ fImmutableSamplers[Index]:=aImmutableSampler.fSamplerHandle;
 end;
 
-procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSamplers(const pImmutableSamplers:array of TVulkanSampler);
+procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSamplers(const aImmutableSamplers:array of TVulkanSampler);
 var Index:TVkInt32;
 begin
- for Index:=0 to length(pImmutableSamplers)-1 do begin
-  AddImmutableSampler(pImmutableSamplers[Index]);
+ for Index:=0 to length(aImmutableSamplers)-1 do begin
+  AddImmutableSampler(aImmutableSamplers[Index]);
  end;
 end;
 
@@ -15751,11 +15751,11 @@ begin
  fDescriptorSetLayoutBinding.pImmutableSamplers:=@fImmutableSamplers[0];
 end;
 
-constructor TVulkanDescriptorSetLayout.Create(const pDevice:TVulkanDevice);
+constructor TVulkanDescriptorSetLayout.Create(const aDevice:TVulkanDevice);
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fDescriptorSetLayoutHandle:=VK_NULL_HANDLE;
 
@@ -15777,16 +15777,16 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanDescriptorSetLayout.AddBinding(const pBinding:TVkUInt32;
-                                                const pDescriptorType:TVkDescriptorType;
-                                                const pDescriptorCount:TVkUInt32;
-                                                const pStageFlags:TVkShaderStageFlags;
-                                                const pImmutableSamplers:array of TVulkanSampler);
+procedure TVulkanDescriptorSetLayout.AddBinding(const aBinding:TVkUInt32;
+                                                const aDescriptorType:TVkDescriptorType;
+                                                const aDescriptorCount:TVkUInt32;
+                                                const aStageFlags:TVkShaderStageFlags;
+                                                const aImmutableSamplers:array of TVulkanSampler);
 var DescriptorSetLayoutBinding:TVulkanDescriptorSetLayoutBinding;
 begin
- DescriptorSetLayoutBinding:=TVulkanDescriptorSetLayoutBinding.Create(pBinding,pDescriptorType,pDescriptorCount,pStageFlags);
+ DescriptorSetLayoutBinding:=TVulkanDescriptorSetLayoutBinding.Create(aBinding,aDescriptorType,aDescriptorCount,aStageFlags);
  fDescriptorSetLayoutBindingList.Add(DescriptorSetLayoutBinding);
- DescriptorSetLayoutBinding.AddImmutableSamplers(pImmutableSamplers);
+ DescriptorSetLayoutBinding.AddImmutableSamplers(aImmutableSamplers);
  DescriptorSetLayoutBinding.Initialize;
 end;
 
@@ -15809,16 +15809,16 @@ begin
  end;
 end;
 
-constructor TVulkanDescriptorSet.Create(const pDescriptorPool:TVulkanDescriptorPool;
-                                        const pDescriptorSetLayout:TVulkanDescriptorSetLayout);
+constructor TVulkanDescriptorSet.Create(const aDescriptorPool:TVulkanDescriptorPool;
+                                        const aDescriptorSetLayout:TVulkanDescriptorSetLayout);
 begin
  inherited Create;
 
- fDevice:=pDescriptorPool.fDevice;
+ fDevice:=aDescriptorPool.fDevice;
 
- fDescriptorPool:=pDescriptorPool;
+ fDescriptorPool:=aDescriptorPool;
 
- fDescriptorSetLayout:=pDescriptorSetLayout;
+ fDescriptorSetLayout:=aDescriptorSetLayout;
 
  fDescriptorSetHandle:=VK_NULL_HANDLE;
 
@@ -15851,15 +15851,15 @@ begin
  inherited Destroy;
 end;
 
-class function TVulkanDescriptorSet.Allocate(const pDescriptorPool:TVulkanDescriptorPool;
-                                             const pDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVulkanObjectList;
+class function TVulkanDescriptorSet.Allocate(const aDescriptorPool:TVulkanDescriptorPool;
+                                             const aDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVulkanObjectList;
 
 var Index:TVkInt32;
 begin
  result:=TVulkanObjectList.Create;
  try
-  for Index:=0 to length(pDescriptorSetLayouts)-1 do begin
-   result.Add(TVulkanDescriptorSet.Create(pDescriptorPool,pDescriptorSetLayouts[Index]));
+  for Index:=0 to length(aDescriptorSetLayouts)-1 do begin
+   result.Add(TVulkanDescriptorSet.Create(aDescriptorPool,aDescriptorSetLayouts[Index]));
   end;
  except
   FreeAndNil(result);
@@ -15867,30 +15867,30 @@ begin
  end;
 end;
 
-procedure TVulkanDescriptorSet.CopyFromDescriptorSet(const pSourceDescriptorSet:TVulkanDescriptorSet;
-                                                     const pSourceBinding:TVkUInt32;
-                                                     const pSourceArrayElement:TVkUInt32;
-                                                     const pDestinationBinding:TVkUInt32;
-                                                     const pDestinationArrayElement:TVkUInt32;
-                                                     const pDescriptorCount:TVkUInt32;
-                                                     const pDoInstant:boolean=false);
+procedure TVulkanDescriptorSet.CopyFromDescriptorSet(const aSourceDescriptorSet:TVulkanDescriptorSet;
+                                                     const aSourceBinding:TVkUInt32;
+                                                     const aSourceArrayElement:TVkUInt32;
+                                                     const aDestinationBinding:TVkUInt32;
+                                                     const aDestinationArrayElement:TVkUInt32;
+                                                     const aDescriptorCount:TVkUInt32;
+                                                     const aDoInstant:boolean=false);
  procedure InstantCopyFromDescriptorSet;
  var CopyDescriptorSet:TVkCopyDescriptorSet;
  begin
   FillChar(CopyDescriptorSet,SizeOf(TVkCopyDescriptorSet),#0);
   CopyDescriptorSet.sType:=VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
-  CopyDescriptorSet.srcSet:=pSourceDescriptorSet.Handle;
-  CopyDescriptorSet.srcBinding:=pSourceBinding;
-  CopyDescriptorSet.srcArrayElement:=pSourceArrayElement;
-  CopyDescriptorSet.dstBinding:=pDestinationBinding;
-  CopyDescriptorSet.dstArrayElement:=pDestinationArrayElement;
-  CopyDescriptorSet.descriptorCount:=pDescriptorCount;
+  CopyDescriptorSet.srcSet:=aSourceDescriptorSet.Handle;
+  CopyDescriptorSet.srcBinding:=aSourceBinding;
+  CopyDescriptorSet.srcArrayElement:=aSourceArrayElement;
+  CopyDescriptorSet.dstBinding:=aDestinationBinding;
+  CopyDescriptorSet.dstArrayElement:=aDestinationArrayElement;
+  CopyDescriptorSet.descriptorCount:=aDescriptorCount;
   fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,0,nil,1,@CopyDescriptorSet);
  end;
 var Index:TVkInt32;
     CopyDescriptorSet:PVkCopyDescriptorSet;
 begin
- if pDoInstant then begin
+ if aDoInstant then begin
   InstantCopyFromDescriptorSet; 
  end else begin
   Index:=fCopyDescriptorSetQueueSize;
@@ -15901,45 +15901,45 @@ begin
   CopyDescriptorSet:=@fCopyDescriptorSetQueue[Index];
   FillChar(CopyDescriptorSet^,SizeOf(TVkCopyDescriptorSet),#0);
   CopyDescriptorSet^.sType:=VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
-  CopyDescriptorSet^.srcSet:=pSourceDescriptorSet.Handle;
-  CopyDescriptorSet^.srcBinding:=pSourceBinding;
-  CopyDescriptorSet^.srcArrayElement:=pSourceArrayElement;
-  CopyDescriptorSet^.dstBinding:=pDestinationBinding;
-  CopyDescriptorSet^.dstArrayElement:=pDestinationArrayElement;
-  CopyDescriptorSet^.descriptorCount:=pDescriptorCount;
+  CopyDescriptorSet^.srcSet:=aSourceDescriptorSet.Handle;
+  CopyDescriptorSet^.srcBinding:=aSourceBinding;
+  CopyDescriptorSet^.srcArrayElement:=aSourceArrayElement;
+  CopyDescriptorSet^.dstBinding:=aDestinationBinding;
+  CopyDescriptorSet^.dstArrayElement:=aDestinationArrayElement;
+  CopyDescriptorSet^.descriptorCount:=aDescriptorCount;
  end;
 end;
 
-procedure TVulkanDescriptorSet.WriteToDescriptorSet(const pDestinationBinding:TVkUInt32;
-                                                    const pDestinationArrayElement:TVkUInt32;
-                                                    const pDescriptorCount:TVkUInt32;
-                                                    const pDescriptorType:TVkDescriptorType;
-                                                    const pImageInfo:array of TVkDescriptorImageInfo;
-                                                    const pBufferInfo:array of TVkDescriptorBufferInfo;
-                                                    const pTexelBufferView:array of TVkBufferView;
-                                                    const pDoInstant:boolean=false);
+procedure TVulkanDescriptorSet.WriteToDescriptorSet(const aDestinationBinding:TVkUInt32;
+                                                    const aDestinationArrayElement:TVkUInt32;
+                                                    const aDescriptorCount:TVkUInt32;
+                                                    const aDescriptorType:TVkDescriptorType;
+                                                    const aImageInfo:array of TVkDescriptorImageInfo;
+                                                    const aBufferInfo:array of TVkDescriptorBufferInfo;
+                                                    const aTexelBufferView:array of TVkBufferView;
+                                                    const aDoInstant:boolean=false);
  procedure InstantWriteToDescriptorSet;
  var WriteDescriptorSet:TVkWriteDescriptorSet;
  begin
   FillChar(WriteDescriptorSet,SizeOf(TVkWriteDescriptorSet),#0);
   WriteDescriptorSet.sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
   WriteDescriptorSet.dstSet:=fDescriptorSetHandle;
-  WriteDescriptorSet.dstBinding:=pDestinationBinding;
-  WriteDescriptorSet.dstArrayElement:=pDestinationArrayElement;
-  WriteDescriptorSet.descriptorType:=pDescriptorType;
-  WriteDescriptorSet.descriptorCount:=pDescriptorCount;
-  if length(pImageInfo)>0 then begin
-   WriteDescriptorSet.pImageInfo:=@pImageInfo[0];
+  WriteDescriptorSet.dstBinding:=aDestinationBinding;
+  WriteDescriptorSet.dstArrayElement:=aDestinationArrayElement;
+  WriteDescriptorSet.descriptorType:=aDescriptorType;
+  WriteDescriptorSet.descriptorCount:=aDescriptorCount;
+  if length(aImageInfo)>0 then begin
+   WriteDescriptorSet.pImageInfo:=@aImageInfo[0];
   end else begin
    WriteDescriptorSet.pImageInfo:=nil;
   end;
-  if length(pBufferInfo)>0 then begin
-   WriteDescriptorSet.pBufferInfo:=@pBufferInfo[0];
+  if length(aBufferInfo)>0 then begin
+   WriteDescriptorSet.pBufferInfo:=@aBufferInfo[0];
   end else begin
    WriteDescriptorSet.pBufferInfo:=nil;
   end;
-  if length(pTexelBufferView)>0 then begin
-   WriteDescriptorSet.pTexelBufferView:=@pTexelBufferView[0];
+  if length(aTexelBufferView)>0 then begin
+   WriteDescriptorSet.pTexelBufferView:=@aTexelBufferView[0];
   end else begin
    WriteDescriptorSet.pTexelBufferView:=nil;
   end;
@@ -15949,7 +15949,7 @@ var Index:TVkInt32;
     WriteDescriptorSet:PVkWriteDescriptorSet;
     WriteDescriptorSetMetaData:PVulkanDescriptorSetWriteDescriptorSetMetaData;
 begin
- if pDoInstant then begin
+ if aDoInstant then begin
   InstantWriteToDescriptorSet;
  end else begin
   Index:=fWriteDescriptorSetQueueSize;
@@ -15965,27 +15965,27 @@ begin
   FillChar(WriteDescriptorSet^,SizeOf(TVkWriteDescriptorSet),#0);
   WriteDescriptorSet^.sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
   WriteDescriptorSet^.dstSet:=fDescriptorSetHandle;
-  WriteDescriptorSet^.dstBinding:=pDestinationBinding;
-  WriteDescriptorSet^.dstArrayElement:=pDestinationArrayElement;
-  WriteDescriptorSet^.descriptorType:=pDescriptorType;
-  WriteDescriptorSet^.descriptorCount:=pDescriptorCount;
+  WriteDescriptorSet^.dstBinding:=aDestinationBinding;
+  WriteDescriptorSet^.dstArrayElement:=aDestinationArrayElement;
+  WriteDescriptorSet^.descriptorType:=aDescriptorType;
+  WriteDescriptorSet^.descriptorCount:=aDescriptorCount;
   WriteDescriptorSet^.pImageInfo:=nil;
   WriteDescriptorSet^.pBufferInfo:=nil;
   WriteDescriptorSet^.pTexelBufferView:=nil;
   WriteDescriptorSetMetaData^.ImageInfo:=nil;
   WriteDescriptorSetMetaData^.BufferInfo:=nil;
   WriteDescriptorSetMetaData^.TexelBufferView:=nil;
-  if length(pImageInfo)>0 then begin
-   SetLength(WriteDescriptorSetMetaData^.ImageInfo,length(pImageInfo));
-   Move(pImageInfo[0],WriteDescriptorSetMetaData^.ImageInfo[0],length(pImageInfo)*SizeOf(TVkDescriptorImageInfo));
+  if length(aImageInfo)>0 then begin
+   SetLength(WriteDescriptorSetMetaData^.ImageInfo,length(aImageInfo));
+   Move(aImageInfo[0],WriteDescriptorSetMetaData^.ImageInfo[0],length(aImageInfo)*SizeOf(TVkDescriptorImageInfo));
   end;
-  if length(pBufferInfo)>0 then begin
-   SetLength(WriteDescriptorSetMetaData^.BufferInfo,length(pBufferInfo));
-   Move(pBufferInfo[0],WriteDescriptorSetMetaData^.BufferInfo[0],length(pBufferInfo)*SizeOf(TVkDescriptorBufferInfo));
+  if length(aBufferInfo)>0 then begin
+   SetLength(WriteDescriptorSetMetaData^.BufferInfo,length(aBufferInfo));
+   Move(aBufferInfo[0],WriteDescriptorSetMetaData^.BufferInfo[0],length(aBufferInfo)*SizeOf(TVkDescriptorBufferInfo));
   end;
-  if length(pTexelBufferView)>0 then begin
-   SetLength(WriteDescriptorSetMetaData^.TexelBufferView,length(pTexelBufferView));
-   Move(pTexelBufferView[0],WriteDescriptorSetMetaData^.TexelBufferView[0],length(pTexelBufferView)*SizeOf(TVkBufferView));
+  if length(aTexelBufferView)>0 then begin
+   SetLength(WriteDescriptorSetMetaData^.TexelBufferView,length(aTexelBufferView));
+   Move(aTexelBufferView[0],WriteDescriptorSetMetaData^.TexelBufferView[0],length(aTexelBufferView)*SizeOf(TVkBufferView));
   end;
  end;
 end;
@@ -16027,12 +16027,12 @@ begin
  fWriteDescriptorSetQueueSize:=0;
 end;
 
-constructor TVulkanPipelineLayout.Create(const pDevice:TVulkanDevice);
+constructor TVulkanPipelineLayout.Create(const aDevice:TVulkanDevice);
 begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fPipelineLayoutHandle:=VK_NULL_HANDLE;
 
@@ -16055,68 +16055,68 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanPipelineLayout.AddDescriptorSetLayout(const pDescriptorSetLayout:TVkDescriptorSetLayout):TVkInt32;
+function TVulkanPipelineLayout.AddDescriptorSetLayout(const aDescriptorSetLayout:TVkDescriptorSetLayout):TVkInt32;
 begin
  result:=fCountDescriptorSetLayouts;
  inc(fCountDescriptorSetLayouts);
  if fCountDescriptorSetLayouts>length(fDescriptorSetLayouts) then begin
   SetLength(fDescriptorSetLayouts,fCountDescriptorSetLayouts*2);
  end;
- fDescriptorSetLayouts[result]:=pDescriptorSetLayout;
+ fDescriptorSetLayouts[result]:=aDescriptorSetLayout;
 end;
 
-function TVulkanPipelineLayout.AddDescriptorSetLayout(const pDescriptorSetLayout:TVulkanDescriptorSetLayout):TVkInt32;
+function TVulkanPipelineLayout.AddDescriptorSetLayout(const aDescriptorSetLayout:TVulkanDescriptorSetLayout):TVkInt32;
 begin
  result:=fCountDescriptorSetLayouts;
  inc(fCountDescriptorSetLayouts);
  if fCountDescriptorSetLayouts>length(fDescriptorSetLayouts) then begin
   SetLength(fDescriptorSetLayouts,fCountDescriptorSetLayouts*2);
  end;
- fDescriptorSetLayouts[result]:=pDescriptorSetLayout.fDescriptorSetLayoutHandle;
+ fDescriptorSetLayouts[result]:=aDescriptorSetLayout.fDescriptorSetLayoutHandle;
 end;
 
-function TVulkanPipelineLayout.AddDescriptorSetLayouts(const pDescriptorSetLayouts:array of TVkDescriptorSetLayout):TVkInt32;
+function TVulkanPipelineLayout.AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVkDescriptorSetLayout):TVkInt32;
 begin
- if length(pDescriptorSetLayouts)>0 then begin
+ if length(aDescriptorSetLayouts)>0 then begin
   result:=fCountDescriptorSetLayouts;
-  inc(fCountDescriptorSetLayouts,length(pDescriptorSetLayouts));
+  inc(fCountDescriptorSetLayouts,length(aDescriptorSetLayouts));
   if fCountDescriptorSetLayouts>length(fDescriptorSetLayouts) then begin
    SetLength(fDescriptorSetLayouts,fCountDescriptorSetLayouts*2);
   end;
-  Move(pDescriptorSetLayouts[0],fDescriptorSetLayouts[result],length(pDescriptorSetLayouts)*SizeOf(TVkDescriptorSetLayout));
+  Move(aDescriptorSetLayouts[0],fDescriptorSetLayouts[result],length(aDescriptorSetLayouts)*SizeOf(TVkDescriptorSetLayout));
  end else begin
   result:=-1;
  end;
 end;
 
-function TVulkanPipelineLayout.AddDescriptorSetLayouts(const pDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVkInt32;
+function TVulkanPipelineLayout.AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVkInt32;
 var Index:TVkInt32;
 begin
- if length(pDescriptorSetLayouts)>0 then begin
+ if length(aDescriptorSetLayouts)>0 then begin
   result:=fCountDescriptorSetLayouts;
-  inc(fCountDescriptorSetLayouts,length(pDescriptorSetLayouts));
+  inc(fCountDescriptorSetLayouts,length(aDescriptorSetLayouts));
   if fCountDescriptorSetLayouts>length(fDescriptorSetLayouts) then begin
    SetLength(fDescriptorSetLayouts,fCountDescriptorSetLayouts*2);
   end;
-  for Index:=0 to length(pDescriptorSetLayouts)-1 do begin
-   fDescriptorSetLayouts[result+Index]:=pDescriptorSetLayouts[Index].fDescriptorSetLayoutHandle;
+  for Index:=0 to length(aDescriptorSetLayouts)-1 do begin
+   fDescriptorSetLayouts[result+Index]:=aDescriptorSetLayouts[Index].fDescriptorSetLayoutHandle;
   end;
  end else begin
   result:=-1;
  end;
 end;
 
-function TVulkanPipelineLayout.AddPushConstantRange(const pPushConstantRange:TVkPushConstantRange):TVkInt32;
+function TVulkanPipelineLayout.AddPushConstantRange(const aPushConstantRange:TVkPushConstantRange):TVkInt32;
 begin
  result:=fCountPushConstantRanges;
  inc(fCountPushConstantRanges);
  if fCountPushConstantRanges>length(fPushConstantRanges) then begin
   SetLength(fPushConstantRanges,fCountPushConstantRanges*2);
  end;
- fPushConstantRanges[result]:=pPushConstantRange;
+ fPushConstantRanges[result]:=aPushConstantRange;
 end;
 
-function TVulkanPipelineLayout.AddPushConstantRange(const pStageFlags:TVkShaderStageFlags;const pOffset,pSize:TVkUInt32):TVkInt32;
+function TVulkanPipelineLayout.AddPushConstantRange(const aStageFlags:TVkShaderStageFlags;const aOffset,aSize:TVkUInt32):TVkInt32;
 var PushConstantRange:PVkPushConstantRange;
 begin
  result:=fCountPushConstantRanges;
@@ -16125,20 +16125,20 @@ begin
   SetLength(fPushConstantRanges,fCountPushConstantRanges*2);
  end;
  PushConstantRange:=@fPushConstantRanges[result];
- PushConstantRange^.stageFlags:=pStageFlags;
- PushConstantRange^.offset:=pOffset;
- PushConstantRange^.size:=pSize;
+ PushConstantRange^.stageFlags:=aStageFlags;
+ PushConstantRange^.offset:=aOffset;
+ PushConstantRange^.size:=aSize;
 end;
 
-function TVulkanPipelineLayout.AddPushConstantRanges(const pPushConstantRanges:array of TVkPushConstantRange):TVkInt32;
+function TVulkanPipelineLayout.AddPushConstantRanges(const aPushConstantRanges:array of TVkPushConstantRange):TVkInt32;
 begin
- if length(pPushConstantRanges)>0 then begin
+ if length(aPushConstantRanges)>0 then begin
   result:=fCountPushConstantRanges;
-  inc(fCountPushConstantRanges,length(pPushConstantRanges));
+  inc(fCountPushConstantRanges,length(aPushConstantRanges));
   if fCountPushConstantRanges>length(fPushConstantRanges) then begin
    SetLength(fPushConstantRanges,fCountPushConstantRanges*2);
   end;
-  Move(pPushConstantRanges[0],fPushConstantRanges[result],length(pPushConstantRanges)*SizeOf(TVkPushConstantRange));
+  Move(aPushConstantRanges[0],fPushConstantRanges[result],length(aPushConstantRanges)*SizeOf(TVkPushConstantRange));
  end else begin
   result:=-1;
  end;
@@ -16181,21 +16181,21 @@ begin
 
 end;
 
-constructor TVulkanPipelineShaderStage.Create(const pStage:TVkShaderStageFlagBits;
-                                              const pModule:TVulkanShaderModule;
-                                              const pName:TVkCharString);
+constructor TVulkanPipelineShaderStage.Create(const aStage:TVkShaderStageFlagBits;
+                                              const aModule:TVulkanShaderModule;
+                                              const aName:TVkCharString);
 begin
 
  inherited Create;
 
- fName:=pName;
+ fName:=aName;
 
  FillChar(fPipelineShaderStageCreateInfo,SizeOf(TVkPipelineShaderStageCreateInfo),#0);
  fPipelineShaderStageCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
  fPipelineShaderStageCreateInfo.pNext:=nil;
  fPipelineShaderStageCreateInfo.flags:=0;
- fPipelineShaderStageCreateInfo.stage:=pStage;
- fPipelineShaderStageCreateInfo.module:=pModule.fShaderModuleHandle;
+ fPipelineShaderStageCreateInfo.stage:=aStage;
+ fPipelineShaderStageCreateInfo.module:=aModule.fShaderModuleHandle;
  fPipelineShaderStageCreateInfo.pName:=PVkChar(fName);
  fPipelineShaderStageCreateInfo.pSpecializationInfo:=nil;
 
@@ -16237,51 +16237,51 @@ begin
  end;
 end;
 
-procedure TVulkanPipelineShaderStage.AddSpecializationDataFromMemory(const pData:TVkPointer;const pDataSize:TVkSize;const pDoCopyAndDoFree:boolean=true);
+procedure TVulkanPipelineShaderStage.AddSpecializationDataFromMemory(const aData:TVkPointer;const aDataSize:TVkSize;const aDoCopyAndDoFree:boolean=true);
 begin
  if assigned(fSpecializationInfo) and assigned(fSpecializationInfo.pData) and fDoCopyAndDoFree then begin
   FreeMem(fSpecializationInfo.pData);
   fSpecializationInfo.pData:=nil;
   fSpecializationInfo.dataSize:=0;
  end;
- if assigned(pData) and (pDataSize>0) then begin
+ if assigned(aData) and (aDataSize>0) then begin
   AllocateSpecializationInfo;
-  fDoCopyAndDoFree:=pDoCopyAndDoFree;
+  fDoCopyAndDoFree:=aDoCopyAndDoFree;
   if fDoCopyAndDoFree then begin
-   GetMem(fSpecializationInfo.pData,pDataSize);
-   Move(pData^,fSpecializationInfo.pData^,pDataSize);
+   GetMem(fSpecializationInfo.pData,aDataSize);
+   Move(aData^,fSpecializationInfo.pData^,aDataSize);
   end else begin
-   fSpecializationInfo.pData:=pData;
+   fSpecializationInfo.pData:=aData;
   end;
-  fSpecializationInfo.dataSize:=pDataSize;
+  fSpecializationInfo.dataSize:=aDataSize;
  end;
 end;
 
-procedure TVulkanPipelineShaderStage.AddSpecializationDataFromStream(const pStream:TStream);
+procedure TVulkanPipelineShaderStage.AddSpecializationDataFromStream(const aStream:TStream);
 begin
  if assigned(fSpecializationInfo) and assigned(fSpecializationInfo.pData) and fDoCopyAndDoFree then begin
   FreeMem(fSpecializationInfo.pData);
   fSpecializationInfo.pData:=nil;
   fSpecializationInfo.dataSize:=0;
  end;
- if assigned(pStream) and (pStream.Size>0) then begin
+ if assigned(aStream) and (aStream.Size>0) then begin
   AllocateSpecializationInfo;
   fDoCopyAndDoFree:=true;
-  GetMem(fSpecializationInfo.pData,pStream.Size);
-  if pStream.Seek(0,soBeginning)<>0 then begin
+  GetMem(fSpecializationInfo.pData,aStream.Size);
+  if aStream.Seek(0,soBeginning)<>0 then begin
    raise EInOutError.Create('Stream seek error');
   end;
-  if pStream.Read(fSpecializationInfo.pData^,pStream.Size)<>pStream.Size then begin
+  if aStream.Read(fSpecializationInfo.pData^,aStream.Size)<>aStream.Size then begin
    raise EInOutError.Create('Stream read error');
   end;
-  fSpecializationInfo.dataSize:=pStream.Size;
+  fSpecializationInfo.dataSize:=aStream.Size;
  end;
 end;
 
-procedure TVulkanPipelineShaderStage.AddSpecializationDataFromFile(const pFileName:string);
+procedure TVulkanPipelineShaderStage.AddSpecializationDataFromFile(const aFileName:string);
 var FileStream:TFileStream;
 begin
- FileStream:=TFileStream.Create(pFileName,fmOpenRead or fmShareDenyWrite);
+ FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
  try
   AddSpecializationDataFromStream(FileStream);
  finally
@@ -16289,17 +16289,17 @@ begin
  end;
 end;
 
-function TVulkanPipelineShaderStage.AddSpecializationMapEntry(const pSpecializationMapEntry:TVkSpecializationMapEntry):TVkInt32;
+function TVulkanPipelineShaderStage.AddSpecializationMapEntry(const aSpecializationMapEntry:TVkSpecializationMapEntry):TVkInt32;
 begin
  result:=fCountSpecializationMapEntries;
  inc(fCountSpecializationMapEntries);
  if length(fSpecializationMapEntries)<fCountSpecializationMapEntries then begin
   SetLength(fSpecializationMapEntries,fCountSpecializationMapEntries*2);
  end;
- fSpecializationMapEntries[result]:=pSpecializationMapEntry;
+ fSpecializationMapEntries[result]:=aSpecializationMapEntry;
 end;
 
-function TVulkanPipelineShaderStage.AddSpecializationMapEntry(const pConstantID,pOffset:TVkUInt32;const pSize:TVkSize):TVkInt32;
+function TVulkanPipelineShaderStage.AddSpecializationMapEntry(const aConstantID,aOffset:TVkUInt32;const aSize:TVkSize):TVkInt32;
 var SpecializationMapEntry:PVkSpecializationMapEntry;
 begin
  result:=fCountSpecializationMapEntries;
@@ -16308,20 +16308,20 @@ begin
   SetLength(fSpecializationMapEntries,fCountSpecializationMapEntries*2);
  end;
  SpecializationMapEntry:=@fSpecializationMapEntries[result];
- SpecializationMapEntry^.constantID:=pConstantID;
- SpecializationMapEntry^.offset:=pOffset;
- SpecializationMapEntry^.size:=pSize;
+ SpecializationMapEntry^.constantID:=aConstantID;
+ SpecializationMapEntry^.offset:=aOffset;
+ SpecializationMapEntry^.size:=aSize;
 end;
 
-function TVulkanPipelineShaderStage.AddSpecializationMapEntries(const pSpecializationMapEntries:array of TVkSpecializationMapEntry):TVkInt32;
+function TVulkanPipelineShaderStage.AddSpecializationMapEntries(const aSpecializationMapEntries:array of TVkSpecializationMapEntry):TVkInt32;
 begin
- if length(pSpecializationMapEntries)>0 then begin
+ if length(aSpecializationMapEntries)>0 then begin
   result:=fCountSpecializationMapEntries;
-  inc(fCountSpecializationMapEntries,length(pSpecializationMapEntries));
+  inc(fCountSpecializationMapEntries,length(aSpecializationMapEntries));
   if length(fSpecializationMapEntries)<fCountSpecializationMapEntries then begin
    SetLength(fSpecializationMapEntries,fCountSpecializationMapEntries*2);
   end;
-  Move(pSpecializationMapEntries[0],fSpecializationMapEntries[result],length(pSpecializationMapEntries)*SizeOf(TVkSpecializationMapEntry));
+  Move(aSpecializationMapEntries[0],fSpecializationMapEntries[result],length(aSpecializationMapEntries)*SizeOf(TVkSpecializationMapEntry));
  end else begin
   result:=-1;
  end;
@@ -16340,12 +16340,12 @@ begin
  end;
 end;
 
-constructor TVulkanPipelineCache.Create(const pDevice:TVulkanDevice;const pInitialData:pointer=nil;const pInitialDataSize:TVkSize=0);
+constructor TVulkanPipelineCache.Create(const aDevice:TVulkanDevice;const aInitialData:pointer=nil;const aInitialDataSize:TVkSize=0);
 var PipelineCacheCreateInfo:TVkPipelineCacheCreateInfo;
 begin
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fPipelineCacheHandle:=VK_NULL_HANDLE;
 
@@ -16353,58 +16353,58 @@ begin
  PipelineCacheCreateInfo.sType:=VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
  PipelineCacheCreateInfo.pNext:=nil;
  PipelineCacheCreateInfo.flags:=0;
- PipelineCacheCreateInfo.pInitialData:=pInitialData;
- PipelineCacheCreateInfo.initialDataSize:=pInitialDataSize;
+ PipelineCacheCreateInfo.pInitialData:=aInitialData;
+ PipelineCacheCreateInfo.initialDataSize:=aInitialDataSize;
 
  HandleResultCode(fDevice.fDeviceVulkan.CreatePipelineCache(fDevice.fDeviceHandle,@PipelineCacheCreateInfo,fDevice.fAllocationCallbacks,@fPipelineCacheHandle));
 
 end;
 
-constructor TVulkanPipelineCache.CreateFromMemory(const pDevice:TVulkanDevice;const pInitialData:pointer;const pInitialDataSize:TVkSize);
+constructor TVulkanPipelineCache.CreateFromMemory(const aDevice:TVulkanDevice;const aInitialData:pointer;const aInitialDataSize:TVkSize);
 type PByteArray=^TByteArray;
      TByteArray=array[0..65535] of TVkUInt8;
 var Index:TVkInt32;
 begin
- if not assigned(pInitialData) then begin
-  raise EInOutError.Create('pInitialData is null');
- end else if pInitialDataSize<VK_UUID_SIZE then begin
+ if not assigned(aInitialData) then begin
+  raise EInOutError.Create('aInitialData is null');
+ end else if aInitialDataSize<VK_UUID_SIZE then begin
   raise EInOutError.Create('Data too small');
- end else if not CompareMem(@PVulkanUUID(pInitialData)^[0],@pDevice.fPhysicalDevice.fProperties.pipelineCacheUUID,SizeOf(TVulkanUUID)) then begin
+ end else if not CompareMem(@PVulkanUUID(aInitialData)^[0],@aDevice.fPhysicalDevice.fProperties.pipelineCacheUUID,SizeOf(TVulkanUUID)) then begin
   raise EVulkanPipelineCacheException.Create('Pipeline cache dump is not compatible with the current physical device');
  end else begin
-  Create(pDevice,@PByteArray(pInitialData)^[SizeOf(TVulkanUUID)],pInitialDataSize-SizeOf(TVulkanUUID));
+  Create(aDevice,@PByteArray(aInitialData)^[SizeOf(TVulkanUUID)],aInitialDataSize-SizeOf(TVulkanUUID));
  end;
 end;
 
-constructor TVulkanPipelineCache.CreateFromStream(const pDevice:TVulkanDevice;const pStream:TStream);
+constructor TVulkanPipelineCache.CreateFromStream(const aDevice:TVulkanDevice;const aStream:TStream);
 var Data:pointer;
     DataSize:TVkSize;
 begin
  fPipelineCacheHandle:=VK_NULL_HANDLE;
- if assigned(pStream) and (pStream.Size>0) then begin
-  DataSize:=pStream.Size;
+ if assigned(aStream) and (aStream.Size>0) then begin
+  DataSize:=aStream.Size;
   GetMem(Data,DataSize);
   try
-   if pStream.Seek(0,soBeginning)<>0 then begin
+   if aStream.Seek(0,soBeginning)<>0 then begin
     raise EInOutError.Create('Stream seek error');
    end;
-   if pStream.Read(Data^,pStream.Size)<>pStream.Size then begin
+   if aStream.Read(Data^,aStream.Size)<>aStream.Size then begin
     raise EInOutError.Create('Stream read error');
    end;
-   CreateFromMemory(pDevice,Data,DataSize);
+   CreateFromMemory(aDevice,Data,DataSize);
   finally
    FreeMem(Data);
   end;
  end;
 end;
 
-constructor TVulkanPipelineCache.CreateFromFile(const pDevice:TVulkanDevice;const pFileName:string);
+constructor TVulkanPipelineCache.CreateFromFile(const aDevice:TVulkanDevice;const aFileName:string);
 var FileStream:TFileStream;
 begin
  fPipelineCacheHandle:=VK_NULL_HANDLE;
- FileStream:=TFileStream.Create(pFileName,fmOpenRead or fmShareDenyWrite);
+ FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
  try
-  CreateFromStream(pDevice,FileStream);
+  CreateFromStream(aDevice,FileStream);
  finally
   FileStream.Free;
  end;
@@ -16419,7 +16419,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanPipelineCache.SaveToStream(const pStream:TStream);
+procedure TVulkanPipelineCache.SaveToStream(const aStream:TStream);
 var Data:pointer;
     DataSize:TVKSize;
 begin
@@ -16428,10 +16428,10 @@ begin
   GetMem(Data,DataSize);
   try
    HandleResultCode(fDevice.fDeviceVulkan.GetPipelineCacheData(fDevice.fDeviceHandle,fPipelineCacheHandle,@DataSize,Data));
-   if pStream.Write(fDevice.fPhysicalDevice.fProperties.pipelineCacheUUID,SizeOf(TVulkanUUID))<>SizeOf(TVulkanUUID) then begin
+   if aStream.Write(fDevice.fPhysicalDevice.fProperties.pipelineCacheUUID,SizeOf(TVulkanUUID))<>SizeOf(TVulkanUUID) then begin
     raise EInOutError.Create('Stream write error');
    end;
-   if pStream.Write(Data^,DataSize)<>TVkPtrInt(DataSize) then begin
+   if aStream.Write(Data^,DataSize)<>TVkPtrInt(DataSize) then begin
     raise EInOutError.Create('Stream write error');
    end;
   finally
@@ -16440,10 +16440,10 @@ begin
  end;
 end;
 
-procedure TVulkanPipelineCache.SaveToFile(const pFileName:string);
+procedure TVulkanPipelineCache.SaveToFile(const aFileName:string);
 var FileStream:TFileStream;
 begin
- FileStream:=TFileStream.Create(pFileName,fmCreate);
+ FileStream:=TFileStream.Create(aFileName,fmCreate);
  try
   SaveToStream(FileStream);
  finally
@@ -16451,21 +16451,21 @@ begin
  end;
 end;
 
-procedure TVulkanPipelineCache.Merge(const pSourcePipelineCache:TVulkanPipelineCache);
+procedure TVulkanPipelineCache.Merge(const aSourcePipelineCache:TVulkanPipelineCache);
 begin
- HandleResultCode(fDevice.fDeviceVulkan.MergePipelineCaches(fDevice.fDeviceHandle,fPipelineCacheHandle,1,@pSourcePipelineCache.fPipelineCacheHandle));
+ HandleResultCode(fDevice.fDeviceVulkan.MergePipelineCaches(fDevice.fDeviceHandle,fPipelineCacheHandle,1,@aSourcePipelineCache.fPipelineCacheHandle));
 end;
 
-procedure TVulkanPipelineCache.Merge(const pSourcePipelineCaches:array of TVulkanPipelineCache);
+procedure TVulkanPipelineCache.Merge(const aSourcePipelineCaches:array of TVulkanPipelineCache);
 var Index:TVkInt32;
     SourcePipelineCaches:TVkPipelineCacheArray;
 begin
- if length(pSourcePipelineCaches)>0 then begin
+ if length(aSourcePipelineCaches)>0 then begin
   SourcePipelineCaches:=nil;
   try
-   SetLength(SourcePipelineCaches,length(pSourcePipelineCaches));
-   for Index:=0 to length(pSourcePipelineCaches)-1 do begin
-    SourcePipelineCaches[Index]:=pSourcePipelineCaches[Index].fPipelineCacheHandle;
+   SetLength(SourcePipelineCaches,length(aSourcePipelineCaches));
+   for Index:=0 to length(aSourcePipelineCaches)-1 do begin
+    SourcePipelineCaches[Index]:=aSourcePipelineCaches[Index].fPipelineCacheHandle;
    end;
    HandleResultCode(fDevice.fDeviceVulkan.MergePipelineCaches(fDevice.fDeviceHandle,fPipelineCacheHandle,length(SourcePipelineCaches),@SourcePipelineCaches[0]));
   finally
@@ -16474,10 +16474,10 @@ begin
  end;
 end;
 
-constructor TVulkanPipeline.Create(const pDevice:TVulkanDevice);
+constructor TVulkanPipeline.Create(const aDevice:TVulkanDevice);
 begin
  inherited Create;
- fDevice:=pDevice;
+ fDevice:=aDevice;
  fPipelineHandle:=VK_NULL_HANDLE;
 end;
 
@@ -16490,40 +16490,40 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanComputePipeline.Create(const pDevice:TVulkanDevice;
-                                          const pCache:TVulkanPipelineCache;
-                                          const pFlags:TVkPipelineCreateFlags;
-                                          const pStage:TVulkanPipelineShaderStage;
-                                          const pLayout:TVulkanPipelineLayout;
-                                          const pBasePipelineHandle:TVulkanPipeline;
-                                          const pBasePipelineIndex:TVkInt32);
+constructor TVulkanComputePipeline.Create(const aDevice:TVulkanDevice;
+                                          const aCache:TVulkanPipelineCache;
+                                          const aFlags:TVkPipelineCreateFlags;
+                                          const aStage:TVulkanPipelineShaderStage;
+                                          const aLayout:TVulkanPipelineLayout;
+                                          const aBasePipelineHandle:TVulkanPipeline;
+                                          const aBasePipelineIndex:TVkInt32);
 var PipelineCache:TVkPipelineCache;
     ComputePipelineCreateInfo:TVkComputePipelineCreateInfo;
 begin
- inherited Create(pDevice);
+ inherited Create(aDevice);
 
  FillChar(ComputePipelineCreateInfo,SizeOf(TVkComputePipelineCreateInfo),#0);
  ComputePipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
  ComputePipelineCreateInfo.pNext:=nil;
- ComputePipelineCreateInfo.flags:=pFlags;
- if assigned(pStage) then begin
-  pStage.Initialize;
-  ComputePipelineCreateInfo.stage:=pStage.fPipelineShaderStageCreateInfo;
+ ComputePipelineCreateInfo.flags:=aFlags;
+ if assigned(aStage) then begin
+  aStage.Initialize;
+  ComputePipelineCreateInfo.stage:=aStage.fPipelineShaderStageCreateInfo;
  end;
- if assigned(pLayout) then begin
-  ComputePipelineCreateInfo.layout:=pLayout.fPipelineLayoutHandle;
+ if assigned(aLayout) then begin
+  ComputePipelineCreateInfo.layout:=aLayout.fPipelineLayoutHandle;
  end else begin
   ComputePipelineCreateInfo.layout:=VK_NULL_HANDLE;
  end;
- if assigned(pBasePipelineHandle) then begin
-  ComputePipelineCreateInfo.basePipelineHandle:=pBasePipelineHandle.fPipelineHandle;
+ if assigned(aBasePipelineHandle) then begin
+  ComputePipelineCreateInfo.basePipelineHandle:=aBasePipelineHandle.fPipelineHandle;
  end else begin
   ComputePipelineCreateInfo.basePipelineHandle:=VK_NULL_HANDLE;
  end;
- ComputePipelineCreateInfo.basePipelineIndex:=pBasePipelineIndex;
+ ComputePipelineCreateInfo.basePipelineIndex:=aBasePipelineIndex;
 
- if assigned(pCache) then begin
-  PipelineCache:=pCache.fPipelineCacheHandle;
+ if assigned(aCache) then begin
+  PipelineCache:=aCache.fPipelineCacheHandle;
  end else begin
   PipelineCache:=VK_NULL_HANDLE;
  end;
@@ -16572,51 +16572,51 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanPipelineVertexInputState.GetVertexInputBindingDescription(const pIndex:TVkInt32):PVkVertexInputBindingDescription;
+function TVulkanPipelineVertexInputState.GetVertexInputBindingDescription(const aIndex:TVkInt32):PVkVertexInputBindingDescription;
 begin
- result:=@fVertexInputBindingDescriptions[pIndex];
+ result:=@fVertexInputBindingDescriptions[aIndex];
 end;
 
-function TVulkanPipelineVertexInputState.GetVertexInputAttributeDescription(const pIndex:TVkInt32):PVkVertexInputAttributeDescription;
+function TVulkanPipelineVertexInputState.GetVertexInputAttributeDescription(const aIndex:TVkInt32):PVkVertexInputAttributeDescription;
 begin
- result:=@fVertexInputAttributeDescriptions[pIndex];
+ result:=@fVertexInputAttributeDescriptions[aIndex];
 end;
 
-procedure TVulkanPipelineVertexInputState.SetCountVertexInputBindingDescriptions(const pNewCount:TVkInt32);
+procedure TVulkanPipelineVertexInputState.SetCountVertexInputBindingDescriptions(const aNewCount:TVkInt32);
 begin
- fCountVertexInputBindingDescriptions:=pNewCount;
+ fCountVertexInputBindingDescriptions:=aNewCount;
  if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
   SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
  end;
 end;
 
-procedure TVulkanPipelineVertexInputState.SetCountVertexInputAttributeDescriptions(const pNewCount:TVkInt32);
+procedure TVulkanPipelineVertexInputState.SetCountVertexInputAttributeDescriptions(const aNewCount:TVkInt32);
 begin
- fCountVertexInputAttributeDescriptions:=pNewCount;
+ fCountVertexInputAttributeDescriptions:=aNewCount;
  if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
   SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
  end;
 end;
 
-procedure TVulkanPipelineVertexInputState.Assign(const pFrom:TVulkanPipelineVertexInputState);
+procedure TVulkanPipelineVertexInputState.Assign(const aFrom:TVulkanPipelineVertexInputState);
 begin
- fVertexInputBindingDescriptions:=copy(pFrom.fVertexInputBindingDescriptions);
- fCountVertexInputBindingDescriptions:=pFrom.fCountVertexInputBindingDescriptions;
- fVertexInputAttributeDescriptions:=copy(pFrom.fVertexInputAttributeDescriptions);
- fCountVertexInputAttributeDescriptions:=pFrom.fCountVertexInputAttributeDescriptions;
+ fVertexInputBindingDescriptions:=copy(aFrom.fVertexInputBindingDescriptions);
+ fCountVertexInputBindingDescriptions:=aFrom.fCountVertexInputBindingDescriptions;
+ fVertexInputAttributeDescriptions:=copy(aFrom.fVertexInputAttributeDescriptions);
+ fCountVertexInputAttributeDescriptions:=aFrom.fCountVertexInputAttributeDescriptions;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
 begin
  result:=fCountVertexInputBindingDescriptions;
  inc(fCountVertexInputBindingDescriptions);
  if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
   SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
  end;
- fVertexInputBindingDescriptions[result]:=pVertexInputBindingDescription;
+ fVertexInputBindingDescriptions[result]:=aVertexInputBindingDescription;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32;
 var VertexInputBindingDescription:PVkVertexInputBindingDescription;
 begin
  result:=fCountVertexInputBindingDescriptions;
@@ -16625,36 +16625,36 @@ begin
   SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
  end;
  VertexInputBindingDescription:=@fVertexInputBindingDescriptions[result];
- VertexInputBindingDescription^.binding:=pBinding;
- VertexInputBindingDescription^.stride:=pStride;
- VertexInputBindingDescription^.inputRate:=pInputRate;
+ VertexInputBindingDescription^.binding:=aBinding;
+ VertexInputBindingDescription^.stride:=aStride;
+ VertexInputBindingDescription^.inputRate:=aInputRate;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
 begin
- if length(pVertexInputBindingDescriptions)>0 then begin
+ if length(aVertexInputBindingDescriptions)>0 then begin
   result:=fCountVertexInputBindingDescriptions;
-  inc(fCountVertexInputBindingDescriptions,length(pVertexInputBindingDescriptions));
+  inc(fCountVertexInputBindingDescriptions,length(aVertexInputBindingDescriptions));
   if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
    SetLength(fVertexInputBindingDescriptions,fCountVertexInputBindingDescriptions*2);
   end;
-  Move(pVertexInputBindingDescriptions[0],fVertexInputBindingDescriptions[result],length(pVertexInputBindingDescriptions)*SizeOf(TVkVertexInputBindingDescription));
+  Move(aVertexInputBindingDescriptions[0],fVertexInputBindingDescriptions[result],length(aVertexInputBindingDescriptions)*SizeOf(TVkVertexInputBindingDescription));
  end else begin
   result:=-1;
  end;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescription(const pVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
 begin
  result:=fCountVertexInputAttributeDescriptions;
  inc(fCountVertexInputAttributeDescriptions);
  if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
   SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
  end;
- fVertexInputAttributeDescriptions[result]:=pVertexInputAttributeDescription;
+ fVertexInputAttributeDescriptions[result]:=aVertexInputAttributeDescription;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescription(const pLocation,pBinding:TVkUInt32;const pFormat:TVkFormat;const pOffset:TVkUInt32):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32;
 var VertexInputAttributeDescription:PVkVertexInputAttributeDescription;
 begin
  result:=fCountVertexInputAttributeDescriptions;
@@ -16663,21 +16663,21 @@ begin
   SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
  end;
  VertexInputAttributeDescription:=@fVertexInputAttributeDescriptions[result];
- VertexInputAttributeDescription^.location:=pLocation;
- VertexInputAttributeDescription^.binding:=pBinding;
- VertexInputAttributeDescription^.format:=pFormat;
- VertexInputAttributeDescription^.offset:=pOffset;
+ VertexInputAttributeDescription^.location:=aLocation;
+ VertexInputAttributeDescription^.binding:=aBinding;
+ VertexInputAttributeDescription^.format:=aFormat;
+ VertexInputAttributeDescription^.offset:=aOffset;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescriptions(const pVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
 begin
- if length(pVertexInputAttributeDescriptions)>0 then begin
+ if length(aVertexInputAttributeDescriptions)>0 then begin
   result:=fCountVertexInputAttributeDescriptions;
-  inc(fCountVertexInputAttributeDescriptions,length(pVertexInputAttributeDescriptions));
+  inc(fCountVertexInputAttributeDescriptions,length(aVertexInputAttributeDescriptions));
   if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
    SetLength(fVertexInputAttributeDescriptions,fCountVertexInputAttributeDescriptions*2);
   end;
-  Move(pVertexInputAttributeDescriptions[0],fVertexInputAttributeDescriptions[result],length(pVertexInputAttributeDescriptions)*SizeOf(TVkVertexInputAttributeDescription));
+  Move(aVertexInputAttributeDescriptions[0],fVertexInputAttributeDescriptions[result],length(aVertexInputAttributeDescriptions)*SizeOf(TVkVertexInputAttributeDescription));
  end else begin
   result:=-1;
  end;
@@ -16719,15 +16719,15 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanPipelineInputAssemblyState.Assign(const pFrom:TVulkanPipelineInputAssemblyState);
+procedure TVulkanPipelineInputAssemblyState.Assign(const aFrom:TVulkanPipelineInputAssemblyState);
 begin
- fInputAssemblyStateCreateInfo:=pFrom.fInputAssemblyStateCreateInfo;
+ fInputAssemblyStateCreateInfo:=aFrom.fInputAssemblyStateCreateInfo;
 end;
 
-procedure TVulkanPipelineInputAssemblyState.SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
+procedure TVulkanPipelineInputAssemblyState.SetInputAssemblyState(const aTopology:TVkPrimitiveTopology;const aPrimitiveRestartEnable:boolean);
 begin
- fInputAssemblyStateCreateInfo.topology:=pTopology;
- fInputAssemblyStateCreateInfo.primitiveRestartEnable:=BooleanToVkBool[pPrimitiveRestartEnable];
+ fInputAssemblyStateCreateInfo.topology:=aTopology;
+ fInputAssemblyStateCreateInfo.primitiveRestartEnable:=BooleanToVkBool[aPrimitiveRestartEnable];
 end;
 
 function TVulkanPipelineInputAssemblyState.GetTopology:TVkPrimitiveTopology;
@@ -16735,9 +16735,9 @@ begin
  result:=fInputAssemblyStateCreateInfo.topology;
 end;
 
-procedure TVulkanPipelineInputAssemblyState.SetTopology(const pNewValue:TVkPrimitiveTopology);
+procedure TVulkanPipelineInputAssemblyState.SetTopology(const aNewValue:TVkPrimitiveTopology);
 begin
- fInputAssemblyStateCreateInfo.topology:=pNewValue;
+ fInputAssemblyStateCreateInfo.topology:=aNewValue;
 end;
 
 function TVulkanPipelineInputAssemblyState.GetPrimitiveRestartEnable:boolean;
@@ -16745,9 +16745,9 @@ begin
  result:=fInputAssemblyStateCreateInfo.primitiveRestartEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineInputAssemblyState.SetPrimitiveRestartEnable(const pNewValue:boolean);
+procedure TVulkanPipelineInputAssemblyState.SetPrimitiveRestartEnable(const aNewValue:boolean);
 begin
- fInputAssemblyStateCreateInfo.primitiveRestartEnable:=BooleanToVkBool[pNewValue];
+ fInputAssemblyStateCreateInfo.primitiveRestartEnable:=BooleanToVkBool[aNewValue];
 end;
 
 constructor TVulkanPipelineTessellationState.Create;
@@ -16769,9 +16769,9 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanPipelineTessellationState.Assign(const pFrom:TVulkanPipelineTessellationState);
+procedure TVulkanPipelineTessellationState.Assign(const aFrom:TVulkanPipelineTessellationState);
 begin
- fTessellationStateCreateInfo:=pFrom.fTessellationStateCreateInfo;
+ fTessellationStateCreateInfo:=aFrom.fTessellationStateCreateInfo;
 end;
 
 function TVulkanPipelineTessellationState.GetPatchControlPoints:TVkUInt32;
@@ -16779,14 +16779,14 @@ begin
  result:=fTessellationStateCreateInfo.patchControlPoints;
 end;
 
-procedure TVulkanPipelineTessellationState.SetPatchControlPoints(const pNewValue:TVkUInt32);
+procedure TVulkanPipelineTessellationState.SetPatchControlPoints(const aNewValue:TVkUInt32);
 begin
- fTessellationStateCreateInfo.patchControlPoints:=pNewValue;
+ fTessellationStateCreateInfo.patchControlPoints:=aNewValue;
 end;
 
-procedure TVulkanPipelineTessellationState.SetTessellationState(const pPatchControlPoints:TVkUInt32);
+procedure TVulkanPipelineTessellationState.SetTessellationState(const aPatchControlPoints:TVkUInt32);
 begin
- fTessellationStateCreateInfo.patchControlPoints:=pPatchControlPoints;
+ fTessellationStateCreateInfo.patchControlPoints:=aPatchControlPoints;
 end;
 
 constructor TVulkanPipelineViewPortState.Create;
@@ -16820,51 +16820,51 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanPipelineViewPortState.Assign(const pFrom:TVulkanPipelineViewPortState);
+procedure TVulkanPipelineViewPortState.Assign(const aFrom:TVulkanPipelineViewPortState);
 begin
- fViewPorts:=copy(pFrom.fViewPorts);
- fCountViewPorts:=pFrom.fCountViewPorts;
- fScissors:=copy(pFrom.fScissors);
- fCountScissors:=pFrom.fCountScissors;
+ fViewPorts:=copy(aFrom.fViewPorts);
+ fCountViewPorts:=aFrom.fCountViewPorts;
+ fScissors:=copy(aFrom.fScissors);
+ fCountScissors:=aFrom.fCountScissors;
 end;
 
-function TVulkanPipelineViewPortState.GetViewPort(const pIndex:TVkInt32):PVkViewport;
+function TVulkanPipelineViewPortState.GetViewPort(const aIndex:TVkInt32):PVkViewport;
 begin
- result:=@fViewPorts[pIndex];
+ result:=@fViewPorts[aIndex];
 end;
 
-function TVulkanPipelineViewPortState.GetScissor(const pIndex:TVkInt32):PVkRect2D;
+function TVulkanPipelineViewPortState.GetScissor(const aIndex:TVkInt32):PVkRect2D;
 begin
- result:=@fScissors[pIndex];
+ result:=@fScissors[aIndex];
 end;
 
-procedure TVulkanPipelineViewPortState.SetCountViewPorts(const pNewCount:TVkInt32);
+procedure TVulkanPipelineViewPortState.SetCountViewPorts(const aNewCount:TVkInt32);
 begin
- fCountViewPorts:=pNewCount;
+ fCountViewPorts:=aNewCount;
  if length(fViewPorts)<fCountViewPorts then begin
   SetLength(fViewPorts,fCountViewPorts*2);
  end;
 end;
 
-procedure TVulkanPipelineViewPortState.SetCountScissors(const pNewCount:TVkInt32);
+procedure TVulkanPipelineViewPortState.SetCountScissors(const aNewCount:TVkInt32);
 begin
- fCountScissors:=pNewCount;
+ fCountScissors:=aNewCount;
  if length(fScissors)<fCountScissors then begin
   SetLength(fScissors,fCountScissors*2);
  end;
 end;
 
-function TVulkanPipelineViewPortState.AddViewPort(const pViewPort:TVkViewport):TVkInt32;
+function TVulkanPipelineViewPortState.AddViewPort(const aViewPort:TVkViewport):TVkInt32;
 begin
  result:=fCountViewPorts;
  inc(fCountViewPorts);
  if length(fViewPorts)<fCountViewPorts then begin
   SetLength(fViewPorts,fCountViewPorts*2);
  end;
- fViewPorts[result]:=pViewPort;
+ fViewPorts[result]:=aViewPort;
 end;
 
-function TVulkanPipelineViewPortState.AddViewPort(const pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth:TVkFloat):TVkInt32;
+function TVulkanPipelineViewPortState.AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32;
 var Viewport:PVkViewport;
 begin
  result:=fCountViewPorts;
@@ -16875,37 +16875,37 @@ begin
  Viewport:=@fViewPorts[result];
  Viewport^.x:=pX;
  Viewport^.y:=pY;
- Viewport^.width:=pWidth;
- Viewport^.height:=pHeight;
- Viewport^.minDepth:=pMinDepth;
- Viewport^.maxDepth:=pMaxDepth;
+ Viewport^.width:=aWidth;
+ Viewport^.height:=aHeight;
+ Viewport^.minDepth:=aMinDepth;
+ Viewport^.maxDepth:=aMaxDepth;
 end;
 
-function TVulkanPipelineViewPortState.AddViewPorts(const pViewPorts:array of TVkViewport):TVkInt32;
+function TVulkanPipelineViewPortState.AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32;
 begin
- if length(pViewPorts)>0 then begin
+ if length(aViewPorts)>0 then begin
   result:=fCountViewPorts;
-  inc(fCountViewPorts,length(pViewPorts));
+  inc(fCountViewPorts,length(aViewPorts));
   if length(fViewPorts)<fCountViewPorts then begin
    SetLength(fViewPorts,fCountViewPorts*2);
   end;
-  Move(pViewPorts[0],fViewPorts[result],length(pViewPorts)*SizeOf(TVkViewport));
+  Move(aViewPorts[0],fViewPorts[result],length(aViewPorts)*SizeOf(TVkViewport));
  end else begin
   result:=-1;
  end;
 end;
 
-function TVulkanPipelineViewPortState.AddScissor(const pScissor:TVkRect2D):TVkInt32;
+function TVulkanPipelineViewPortState.AddScissor(const aScissor:TVkRect2D):TVkInt32;
 begin
  result:=fCountScissors;
  inc(fCountScissors);
  if length(fScissors)<fCountScissors then begin
   SetLength(fScissors,fCountScissors*2);
  end;
- fScissors[result]:=pScissor;
+ fScissors[result]:=aScissor;
 end;
 
-function TVulkanPipelineViewPortState.AddScissor(const pX,pY:TVkInt32;const pWidth,pHeight:TVkUInt32):TVkInt32;
+function TVulkanPipelineViewPortState.AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32;
 var Scissor:PVkRect2D;
 begin
  result:=fCountScissors;
@@ -16916,19 +16916,19 @@ begin
  Scissor:=@fScissors[result];
  Scissor^.offset.x:=pX;
  Scissor^.offset.y:=pY;
- Scissor^.extent.width:=pWidth;
- Scissor^.extent.height:=pHeight;
+ Scissor^.extent.width:=aWidth;
+ Scissor^.extent.height:=aHeight;
 end;
 
-function TVulkanPipelineViewPortState.AddScissors(const pScissors:array of TVkRect2D):TVkInt32;
+function TVulkanPipelineViewPortState.AddScissors(const aScissors:array of TVkRect2D):TVkInt32;
 begin
- if length(pScissors)>0 then begin
+ if length(aScissors)>0 then begin
   result:=fCountScissors;
-  inc(fCountScissors,length(pScissors));
+  inc(fCountScissors,length(aScissors));
   if length(fScissors)<fCountScissors then begin
    SetLength(fScissors,fCountScissors*2);
   end;
-  Move(pScissors[0],fScissors[result],length(pScissors)*SizeOf(TVkRect2D));
+  Move(aScissors[0],fScissors[result],length(aScissors)*SizeOf(TVkRect2D));
  end else begin
   result:=-1;
  end;
@@ -16979,9 +16979,9 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanPipelineRasterizationState.Assign(const pFrom:TVulkanPipelineRasterizationState);
+procedure TVulkanPipelineRasterizationState.Assign(const aFrom:TVulkanPipelineRasterizationState);
 begin
- fRasterizationStateCreateInfo:=pFrom.fRasterizationStateCreateInfo;
+ fRasterizationStateCreateInfo:=aFrom.fRasterizationStateCreateInfo;
 end;
 
 function TVulkanPipelineRasterizationState.GetDepthClampEnable:boolean;
@@ -16989,9 +16989,9 @@ begin
  result:=fRasterizationStateCreateInfo.depthClampEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetDepthClampEnable(const pNewValue:boolean);
+procedure TVulkanPipelineRasterizationState.SetDepthClampEnable(const aNewValue:boolean);
 begin
- fRasterizationStateCreateInfo.depthClampEnable:=BooleanToVkBool[pNewValue];
+ fRasterizationStateCreateInfo.depthClampEnable:=BooleanToVkBool[aNewValue];
 end;
 
 function TVulkanPipelineRasterizationState.GetRasterizerDiscardEnable:boolean;
@@ -16999,9 +16999,9 @@ begin
  result:=fRasterizationStateCreateInfo.rasterizerDiscardEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetRasterizerDiscardEnable(const pNewValue:boolean);
+procedure TVulkanPipelineRasterizationState.SetRasterizerDiscardEnable(const aNewValue:boolean);
 begin
- fRasterizationStateCreateInfo.rasterizerDiscardEnable:=BooleanToVkBool[pNewValue];
+ fRasterizationStateCreateInfo.rasterizerDiscardEnable:=BooleanToVkBool[aNewValue];
 end;
 
 function TVulkanPipelineRasterizationState.GetPolygonMode:TVkPolygonMode;
@@ -17009,9 +17009,9 @@ begin
  result:=fRasterizationStateCreateInfo.polygonMode;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetPolygonMode(const pNewValue:TVkPolygonMode);
+procedure TVulkanPipelineRasterizationState.SetPolygonMode(const aNewValue:TVkPolygonMode);
 begin
- fRasterizationStateCreateInfo.polygonMode:=pNewValue;
+ fRasterizationStateCreateInfo.polygonMode:=aNewValue;
 end;
 
 function TVulkanPipelineRasterizationState.GetCullMode:TVkCullModeFlags;
@@ -17019,9 +17019,9 @@ begin
  result:=fRasterizationStateCreateInfo.cullMode;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetCullMode(const pNewValue:TVkCullModeFlags);
+procedure TVulkanPipelineRasterizationState.SetCullMode(const aNewValue:TVkCullModeFlags);
 begin
- fRasterizationStateCreateInfo.cullMode:=pNewValue;
+ fRasterizationStateCreateInfo.cullMode:=aNewValue;
 end;
 
 function TVulkanPipelineRasterizationState.GetFrontFace:TVkFrontFace;
@@ -17029,9 +17029,9 @@ begin
  result:=fRasterizationStateCreateInfo.frontFace;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetFrontFace(const pNewValue:TVkFrontFace);
+procedure TVulkanPipelineRasterizationState.SetFrontFace(const aNewValue:TVkFrontFace);
 begin
- fRasterizationStateCreateInfo.frontFace:=pNewValue;
+ fRasterizationStateCreateInfo.frontFace:=aNewValue;
 end;
 
 function TVulkanPipelineRasterizationState.GetDepthBiasEnable:boolean;
@@ -17039,9 +17039,9 @@ begin
  result:=fRasterizationStateCreateInfo.depthBiasEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetDepthBiasEnable(const pNewValue:boolean);
+procedure TVulkanPipelineRasterizationState.SetDepthBiasEnable(const aNewValue:boolean);
 begin
- fRasterizationStateCreateInfo.depthBiasEnable:=BooleanToVkBool[pNewValue];
+ fRasterizationStateCreateInfo.depthBiasEnable:=BooleanToVkBool[aNewValue];
 end;
 
 function TVulkanPipelineRasterizationState.GetDepthBiasConstantFactor:TVkFloat;
@@ -17049,9 +17049,9 @@ begin
  result:=fRasterizationStateCreateInfo.depthBiasConstantFactor;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetDepthBiasConstantFactor(const pNewValue:TVkFloat);
+procedure TVulkanPipelineRasterizationState.SetDepthBiasConstantFactor(const aNewValue:TVkFloat);
 begin
- fRasterizationStateCreateInfo.depthBiasConstantFactor:=pNewValue;
+ fRasterizationStateCreateInfo.depthBiasConstantFactor:=aNewValue;
 end;
 
 function TVulkanPipelineRasterizationState.GetDepthBiasClamp:TVkFloat;
@@ -17059,9 +17059,9 @@ begin
  result:=fRasterizationStateCreateInfo.depthBiasClamp;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetDepthBiasClamp(const pNewValue:TVkFloat);
+procedure TVulkanPipelineRasterizationState.SetDepthBiasClamp(const aNewValue:TVkFloat);
 begin
- fRasterizationStateCreateInfo.depthBiasClamp:=pNewValue;
+ fRasterizationStateCreateInfo.depthBiasClamp:=aNewValue;
 end;
 
 function TVulkanPipelineRasterizationState.GetDepthBiasSlopeFactor:TVkFloat;
@@ -17069,9 +17069,9 @@ begin
  result:=fRasterizationStateCreateInfo.depthBiasSlopeFactor;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetDepthBiasSlopeFactor(const pNewValue:TVkFloat);
+procedure TVulkanPipelineRasterizationState.SetDepthBiasSlopeFactor(const aNewValue:TVkFloat);
 begin
- fRasterizationStateCreateInfo.depthBiasSlopeFactor:=pNewValue;
+ fRasterizationStateCreateInfo.depthBiasSlopeFactor:=aNewValue;
 end;
 
 function TVulkanPipelineRasterizationState.GetLineWidth:TVkFloat;
@@ -17079,32 +17079,32 @@ begin
  result:=fRasterizationStateCreateInfo.lineWidth;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetLineWidth(const pNewValue:TVkFloat);
+procedure TVulkanPipelineRasterizationState.SetLineWidth(const aNewValue:TVkFloat);
 begin
- fRasterizationStateCreateInfo.lineWidth:=pNewValue;
+ fRasterizationStateCreateInfo.lineWidth:=aNewValue;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetRasterizationState(const pDepthClampEnable:boolean;
-                                                                  const pRasterizerDiscardEnable:boolean;
-                                                                  const pPolygonMode:TVkPolygonMode;
-                                                                  const pCullMode:TVkCullModeFlags;
-                                                                  const pFrontFace:TVkFrontFace;
-                                                                  const pDepthBiasEnable:boolean;
-                                                                  const pDepthBiasConstantFactor:TVkFloat;
-                                                                  const pDepthBiasClamp:TVkFloat;
-                                                                  const pDepthBiasSlopeFactor:TVkFloat;
-                                                                  const pLineWidth:TVkFloat);
+procedure TVulkanPipelineRasterizationState.SetRasterizationState(const aDepthClampEnable:boolean;
+                                                                  const aRasterizerDiscardEnable:boolean;
+                                                                  const aPolygonMode:TVkPolygonMode;
+                                                                  const aCullMode:TVkCullModeFlags;
+                                                                  const aFrontFace:TVkFrontFace;
+                                                                  const aDepthBiasEnable:boolean;
+                                                                  const aDepthBiasConstantFactor:TVkFloat;
+                                                                  const aDepthBiasClamp:TVkFloat;
+                                                                  const aDepthBiasSlopeFactor:TVkFloat;
+                                                                  const aLineWidth:TVkFloat);
 begin
- fRasterizationStateCreateInfo.depthClampEnable:=BooleanToVkBool[pDepthClampEnable];
- fRasterizationStateCreateInfo.rasterizerDiscardEnable:=BooleanToVkBool[pRasterizerDiscardEnable];
- fRasterizationStateCreateInfo.polygonMode:=pPolygonMode;
- fRasterizationStateCreateInfo.cullMode:=pCullMode;
- fRasterizationStateCreateInfo.frontFace:=pFrontFace;
- fRasterizationStateCreateInfo.depthBiasEnable:=BooleanToVkBool[pDepthBiasEnable];
- fRasterizationStateCreateInfo.depthBiasConstantFactor:=pDepthBiasConstantFactor;
- fRasterizationStateCreateInfo.depthBiasClamp:=pDepthBiasClamp;
- fRasterizationStateCreateInfo.depthBiasSlopeFactor:=pDepthBiasSlopeFactor;
- fRasterizationStateCreateInfo.lineWidth:=pLineWidth;
+ fRasterizationStateCreateInfo.depthClampEnable:=BooleanToVkBool[aDepthClampEnable];
+ fRasterizationStateCreateInfo.rasterizerDiscardEnable:=BooleanToVkBool[aRasterizerDiscardEnable];
+ fRasterizationStateCreateInfo.polygonMode:=aPolygonMode;
+ fRasterizationStateCreateInfo.cullMode:=aCullMode;
+ fRasterizationStateCreateInfo.frontFace:=aFrontFace;
+ fRasterizationStateCreateInfo.depthBiasEnable:=BooleanToVkBool[aDepthBiasEnable];
+ fRasterizationStateCreateInfo.depthBiasConstantFactor:=aDepthBiasConstantFactor;
+ fRasterizationStateCreateInfo.depthBiasClamp:=aDepthBiasClamp;
+ fRasterizationStateCreateInfo.depthBiasSlopeFactor:=aDepthBiasSlopeFactor;
+ fRasterizationStateCreateInfo.lineWidth:=aLineWidth;
 end;
 
 constructor TVulkanPipelineMultisampleState.Create;
@@ -17136,33 +17136,33 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanPipelineMultisampleState.Assign(const pFrom:TVulkanPipelineMultisampleState);
+procedure TVulkanPipelineMultisampleState.Assign(const aFrom:TVulkanPipelineMultisampleState);
 begin
- fMultisampleStateCreateInfo:=pFrom.fMultisampleStateCreateInfo;
+ fMultisampleStateCreateInfo:=aFrom.fMultisampleStateCreateInfo;
  fMultisampleStateCreateInfo.pSampleMask:=nil;
- fSampleMasks:=copy(pFrom.fSampleMasks);
- fCountSampleMasks:=pFrom.fCountSampleMasks;
+ fSampleMasks:=copy(aFrom.fSampleMasks);
+ fCountSampleMasks:=aFrom.fCountSampleMasks;
 end;
 
-function TVulkanPipelineMultisampleState.AddSampleMask(const pSampleMask:TVkSampleMask):TVkInt32;
+function TVulkanPipelineMultisampleState.AddSampleMask(const aSampleMask:TVkSampleMask):TVkInt32;
 begin
  result:=fCountSampleMasks;
  inc(fCountSampleMasks);
  if length(fSampleMasks)<fCountSampleMasks then begin
   SetLength(fSampleMasks,fCountSampleMasks*2);
  end;
- fSampleMasks[result]:=pSampleMask;
+ fSampleMasks[result]:=aSampleMask;
 end;
 
-function TVulkanPipelineMultisampleState.AddSampleMasks(const pSampleMasks:array of TVkSampleMask):TVkInt32;
+function TVulkanPipelineMultisampleState.AddSampleMasks(const aSampleMasks:array of TVkSampleMask):TVkInt32;
 begin
- if length(pSampleMasks)>0 then begin
+ if length(aSampleMasks)>0 then begin
   result:=fCountSampleMasks;
-  inc(fCountSampleMasks,length(pSampleMasks));
+  inc(fCountSampleMasks,length(aSampleMasks));
   if length(fSampleMasks)<fCountSampleMasks then begin
    SetLength(fSampleMasks,fCountSampleMasks*2);
   end;
-  Move(pSampleMasks[0],fSampleMasks[result],length(pSampleMasks)*SizeOf(TVkSampleMask));
+  Move(aSampleMasks[0],fSampleMasks[result],length(aSampleMasks)*SizeOf(TVkSampleMask));
  end else begin
   result:=-1;
  end;
@@ -17173,9 +17173,9 @@ begin
  result:=fMultisampleStateCreateInfo.rasterizationSamples;
 end;
 
-procedure TVulkanPipelineMultisampleState.SetRasterizationSamples(const pNewValue:TVkSampleCountFlagBits);
+procedure TVulkanPipelineMultisampleState.SetRasterizationSamples(const aNewValue:TVkSampleCountFlagBits);
 begin
- fMultisampleStateCreateInfo.rasterizationSamples:=pNewValue;
+ fMultisampleStateCreateInfo.rasterizationSamples:=aNewValue;
 end;
 
 function TVulkanPipelineMultisampleState.GetSampleShadingEnable:boolean;
@@ -17183,24 +17183,24 @@ begin
  result:=fMultisampleStateCreateInfo.sampleShadingEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineMultisampleState.SetSampleShadingEnable(const pNewValue:boolean);
+procedure TVulkanPipelineMultisampleState.SetSampleShadingEnable(const aNewValue:boolean);
 begin
- fMultisampleStateCreateInfo.sampleShadingEnable:=BooleanToVkBool[pNewValue];
+ fMultisampleStateCreateInfo.sampleShadingEnable:=BooleanToVkBool[aNewValue];
 end;
 
-function TVulkanPipelineMultisampleState.GetSampleMask(const pIndex:TVkInt32):TVkSampleMask;
+function TVulkanPipelineMultisampleState.GetSampleMask(const aIndex:TVkInt32):TVkSampleMask;
 begin
- result:=fSampleMasks[pIndex];
+ result:=fSampleMasks[aIndex];
 end;
 
-procedure TVulkanPipelineMultisampleState.SetSampleMask(const pIndex:TVkInt32;const pNewValue:TVkSampleMask);
+procedure TVulkanPipelineMultisampleState.SetSampleMask(const aIndex:TVkInt32;const aNewValue:TVkSampleMask);
 begin
- fSampleMasks[pIndex]:=pNewValue;                                                          
+ fSampleMasks[aIndex]:=aNewValue;                                                          
 end;
 
-procedure TVulkanPipelineMultisampleState.SetCountSampleMasks(const pNewCount:TVkInt32);
+procedure TVulkanPipelineMultisampleState.SetCountSampleMasks(const aNewCount:TVkInt32);
 begin
- fCountSampleMasks:=pNewCount;
+ fCountSampleMasks:=aNewCount;
  if length(fSampleMasks)<fCountSampleMasks then begin
   SetLength(fSampleMasks,fCountSampleMasks*2);
  end;
@@ -17211,9 +17211,9 @@ begin
  result:=fMultisampleStateCreateInfo.minSampleShading;
 end;
 
-procedure TVulkanPipelineMultisampleState.SetMinSampleShading(const pNewValue:TVkFloat);
+procedure TVulkanPipelineMultisampleState.SetMinSampleShading(const aNewValue:TVkFloat);
 begin
- fMultisampleStateCreateInfo.minSampleShading:=pNewValue;
+ fMultisampleStateCreateInfo.minSampleShading:=aNewValue;
 end;
 
 function TVulkanPipelineMultisampleState.GetAlphaToCoverageEnable:boolean;
@@ -17221,9 +17221,9 @@ begin
  result:=fMultisampleStateCreateInfo.alphaToCoverageEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineMultisampleState.SetAlphaToCoverageEnable(const pNewValue:boolean);
+procedure TVulkanPipelineMultisampleState.SetAlphaToCoverageEnable(const aNewValue:boolean);
 begin
- fMultisampleStateCreateInfo.alphaToCoverageEnable:=BooleanToVkBool[pNewValue];
+ fMultisampleStateCreateInfo.alphaToCoverageEnable:=BooleanToVkBool[aNewValue];
 end;
 
 function TVulkanPipelineMultisampleState.GetAlphaToOneEnable:boolean;
@@ -17231,28 +17231,28 @@ begin
  result:=fMultisampleStateCreateInfo.alphaToOneEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineMultisampleState.SetAlphaToOneEnable(const pNewValue:boolean);
+procedure TVulkanPipelineMultisampleState.SetAlphaToOneEnable(const aNewValue:boolean);
 begin
- fMultisampleStateCreateInfo.alphaToOneEnable:=BooleanToVkBool[pNewValue];
+ fMultisampleStateCreateInfo.alphaToOneEnable:=BooleanToVkBool[aNewValue];
 end;
 
-procedure TVulkanPipelineMultisampleState.SetMultisampleState(const pRasterizationSamples:TVkSampleCountFlagBits;
-                                                              const pSampleShadingEnable:boolean;
-                                                              const pMinSampleShading:TVkFloat;
-                                                              const pSampleMask:array of TVkSampleMask;
-                                                              const pAlphaToCoverageEnable:boolean;
-                                                              const pAlphaToOneEnable:boolean);
+procedure TVulkanPipelineMultisampleState.SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
+                                                              const aSampleShadingEnable:boolean;
+                                                              const aMinSampleShading:TVkFloat;
+                                                              const aSampleMask:array of TVkSampleMask;
+                                                              const aAlphaToCoverageEnable:boolean;
+                                                              const aAlphaToOneEnable:boolean);
 begin
- fMultisampleStateCreateInfo.rasterizationSamples:=pRasterizationSamples;
- fMultisampleStateCreateInfo.sampleShadingEnable:=BooleanToVkBool[pSampleShadingEnable];
- fMultisampleStateCreateInfo.minSampleShading:=pMinSampleShading;
- fCountSampleMasks:=length(pSampleMask);
+ fMultisampleStateCreateInfo.rasterizationSamples:=aRasterizationSamples;
+ fMultisampleStateCreateInfo.sampleShadingEnable:=BooleanToVkBool[aSampleShadingEnable];
+ fMultisampleStateCreateInfo.minSampleShading:=aMinSampleShading;
+ fCountSampleMasks:=length(aSampleMask);
  SetLength(fSampleMasks,fCountSampleMasks);
- if length(pSampleMask)>0 then begin
-  Move(pSampleMask[0],fSampleMasks[0],length(pSampleMask)*SizeOf(TVkSampleMask));
+ if length(aSampleMask)>0 then begin
+  Move(aSampleMask[0],fSampleMasks[0],length(aSampleMask)*SizeOf(TVkSampleMask));
  end;
- fMultisampleStateCreateInfo.alphaToCoverageEnable:=BooleanToVkBool[pAlphaToCoverageEnable];
- fMultisampleStateCreateInfo.alphaToOneEnable:=BooleanToVkBool[pAlphaToOneEnable];
+ fMultisampleStateCreateInfo.alphaToCoverageEnable:=BooleanToVkBool[aAlphaToCoverageEnable];
+ fMultisampleStateCreateInfo.alphaToOneEnable:=BooleanToVkBool[aAlphaToOneEnable];
 end;
 
 procedure TVulkanPipelineMultisampleState.Initialize;
@@ -17265,10 +17265,10 @@ begin
  end;
 end;
 
-constructor TVulkanStencilOpState.Create(const pStencilOpState:PVkStencilOpState);
+constructor TVulkanStencilOpState.Create(const aStencilOpState:PVkStencilOpState);
 begin
  inherited Create;
- fStencilOpState:=pStencilOpState;
+ fStencilOpState:=aStencilOpState;
 end;
 
 destructor TVulkanStencilOpState.Destroy;
@@ -17276,9 +17276,9 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanStencilOpState.Assign(const pFrom:TVulkanStencilOpState);
+procedure TVulkanStencilOpState.Assign(const aFrom:TVulkanStencilOpState);
 begin
- fStencilOpState^:=pFrom.fStencilOpState^;
+ fStencilOpState^:=aFrom.fStencilOpState^;
 end;
 
 function TVulkanStencilOpState.GetFailOp:TVkStencilOp;
@@ -17286,9 +17286,9 @@ begin
  result:=fStencilOpState^.failOp;
 end;
 
-procedure TVulkanStencilOpState.SetFailOp(const pNewValue:TVkStencilOp);
+procedure TVulkanStencilOpState.SetFailOp(const aNewValue:TVkStencilOp);
 begin
- fStencilOpState^.failOp:=pNewValue;
+ fStencilOpState^.failOp:=aNewValue;
 end;
 
 function TVulkanStencilOpState.GetPassOp:TVkStencilOp;
@@ -17296,9 +17296,9 @@ begin
  result:=fStencilOpState^.passOp;
 end;
 
-procedure TVulkanStencilOpState.SetPassOp(const pNewValue:TVkStencilOp);
+procedure TVulkanStencilOpState.SetPassOp(const aNewValue:TVkStencilOp);
 begin
- fStencilOpState^.passOp:=pNewValue;
+ fStencilOpState^.passOp:=aNewValue;
 end;
 
 function TVulkanStencilOpState.GetDepthFailOp:TVkStencilOp;
@@ -17306,9 +17306,9 @@ begin
  result:=fStencilOpState^.depthFailOp;
 end;
 
-procedure TVulkanStencilOpState.SetDepthFailOp(const pNewValue:TVkStencilOp);
+procedure TVulkanStencilOpState.SetDepthFailOp(const aNewValue:TVkStencilOp);
 begin
- fStencilOpState^.depthFailOp:=pNewValue;
+ fStencilOpState^.depthFailOp:=aNewValue;
 end;
 
 function TVulkanStencilOpState.GetCompareOp:TVkCompareOp;
@@ -17316,9 +17316,9 @@ begin
  result:=fStencilOpState^.compareOp;
 end;
 
-procedure TVulkanStencilOpState.SetCompareOp(const pNewValue:TVkCompareOp);
+procedure TVulkanStencilOpState.SetCompareOp(const aNewValue:TVkCompareOp);
 begin
- fStencilOpState^.compareOp:=pNewValue;
+ fStencilOpState^.compareOp:=aNewValue;
 end;
 
 function TVulkanStencilOpState.GetCompareMask:TVkUInt32;
@@ -17326,9 +17326,9 @@ begin
  result:=fStencilOpState^.compareMask;
 end;
 
-procedure TVulkanStencilOpState.SetCompareMask(const pNewValue:TVkUInt32);
+procedure TVulkanStencilOpState.SetCompareMask(const aNewValue:TVkUInt32);
 begin
- fStencilOpState^.compareMask:=pNewValue;
+ fStencilOpState^.compareMask:=aNewValue;
 end;
 
 function TVulkanStencilOpState.GetWriteMask:TVkUInt32;
@@ -17336,9 +17336,9 @@ begin
  result:=fStencilOpState^.writeMask;
 end;
 
-procedure TVulkanStencilOpState.SetWriteMask(const pNewValue:TVkUInt32);
+procedure TVulkanStencilOpState.SetWriteMask(const aNewValue:TVkUInt32);
 begin
- fStencilOpState^.writeMask:=pNewValue;
+ fStencilOpState^.writeMask:=aNewValue;
 end;
 
 function TVulkanStencilOpState.GetReference:TVkUInt32;
@@ -17346,9 +17346,9 @@ begin
  result:=fStencilOpState^.reference;
 end;
 
-procedure TVulkanStencilOpState.SetReference(const pNewValue:TVkUInt32);
+procedure TVulkanStencilOpState.SetReference(const aNewValue:TVkUInt32);
 begin
- fStencilOpState^.reference:=pNewValue;
+ fStencilOpState^.reference:=aNewValue;
 end;
 
 constructor TVulkanPipelineDepthStencilState.Create;
@@ -17395,9 +17395,9 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanPipelineDepthStencilState.Assign(const pFrom:TVulkanPipelineDepthStencilState);
+procedure TVulkanPipelineDepthStencilState.Assign(const aFrom:TVulkanPipelineDepthStencilState);
 begin
- fDepthStencilStateCreateInfo:=pFrom.fDepthStencilStateCreateInfo;
+ fDepthStencilStateCreateInfo:=aFrom.fDepthStencilStateCreateInfo;
 end;
 
 function TVulkanPipelineDepthStencilState.GetDepthTestEnable:boolean;
@@ -17405,9 +17405,9 @@ begin
  result:=fDepthStencilStateCreateInfo.depthTestEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineDepthStencilState.SetDepthTestEnable(const pNewValue:boolean);
+procedure TVulkanPipelineDepthStencilState.SetDepthTestEnable(const aNewValue:boolean);
 begin
- fDepthStencilStateCreateInfo.depthTestEnable:=BooleanToVkBool[pNewValue];
+ fDepthStencilStateCreateInfo.depthTestEnable:=BooleanToVkBool[aNewValue];
 end;
 
 function TVulkanPipelineDepthStencilState.GetDepthWriteEnable:boolean;
@@ -17415,9 +17415,9 @@ begin
  result:=fDepthStencilStateCreateInfo.depthWriteEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineDepthStencilState.SetDepthWriteEnable(const pNewValue:boolean);
+procedure TVulkanPipelineDepthStencilState.SetDepthWriteEnable(const aNewValue:boolean);
 begin
- fDepthStencilStateCreateInfo.depthWriteEnable:=BooleanToVkBool[pNewValue];
+ fDepthStencilStateCreateInfo.depthWriteEnable:=BooleanToVkBool[aNewValue];
 end;
 
 function TVulkanPipelineDepthStencilState.GetDepthCompareOp:TVkCompareOp;
@@ -17425,9 +17425,9 @@ begin
  result:=fDepthStencilStateCreateInfo.depthCompareOp;
 end;
 
-procedure TVulkanPipelineDepthStencilState.SetDepthCompareOp(const pNewValue:TVkCompareOp);
+procedure TVulkanPipelineDepthStencilState.SetDepthCompareOp(const aNewValue:TVkCompareOp);
 begin
- fDepthStencilStateCreateInfo.depthCompareOp:=pNewValue;
+ fDepthStencilStateCreateInfo.depthCompareOp:=aNewValue;
 end;
 
 function TVulkanPipelineDepthStencilState.GetDepthBoundsTestEnable:boolean;
@@ -17435,9 +17435,9 @@ begin
  result:=fDepthStencilStateCreateInfo.depthBoundsTestEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineDepthStencilState.SetDepthBoundsTestEnable(const pNewValue:boolean);
+procedure TVulkanPipelineDepthStencilState.SetDepthBoundsTestEnable(const aNewValue:boolean);
 begin
- fDepthStencilStateCreateInfo.depthBoundsTestEnable:=BooleanToVkBool[pNewValue];
+ fDepthStencilStateCreateInfo.depthBoundsTestEnable:=BooleanToVkBool[aNewValue];
 end;
 
 function TVulkanPipelineDepthStencilState.GetStencilTestEnable:boolean;
@@ -17445,9 +17445,9 @@ begin
  result:=fDepthStencilStateCreateInfo.stencilTestEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineDepthStencilState.SetStencilTestEnable(const pNewValue:boolean);
+procedure TVulkanPipelineDepthStencilState.SetStencilTestEnable(const aNewValue:boolean);
 begin
- fDepthStencilStateCreateInfo.stencilTestEnable:=BooleanToVkBool[pNewValue];
+ fDepthStencilStateCreateInfo.stencilTestEnable:=BooleanToVkBool[aNewValue];
 end;
 
 function TVulkanPipelineDepthStencilState.GetMinDepthBounds:TVkFloat;
@@ -17455,9 +17455,9 @@ begin
  result:=fDepthStencilStateCreateInfo.minDepthBounds;
 end;
 
-procedure TVulkanPipelineDepthStencilState.SetMinDepthBounds(const pNewValue:TVkFloat);
+procedure TVulkanPipelineDepthStencilState.SetMinDepthBounds(const aNewValue:TVkFloat);
 begin
- fDepthStencilStateCreateInfo.minDepthBounds:=pNewValue;
+ fDepthStencilStateCreateInfo.minDepthBounds:=aNewValue;
 end;
 
 function TVulkanPipelineDepthStencilState.GetMaxDepthBounds:TVkFloat;
@@ -17465,30 +17465,30 @@ begin
  result:=fDepthStencilStateCreateInfo.maxDepthBounds;
 end;
 
-procedure TVulkanPipelineDepthStencilState.SetMaxDepthBounds(const pNewValue:TVkFloat);
+procedure TVulkanPipelineDepthStencilState.SetMaxDepthBounds(const aNewValue:TVkFloat);
 begin
- fDepthStencilStateCreateInfo.maxDepthBounds:=pNewValue;
+ fDepthStencilStateCreateInfo.maxDepthBounds:=aNewValue;
 end;
 
-procedure TVulkanPipelineDepthStencilState.SetDepthStencilState(const pDepthTestEnable:boolean;
-                                                                const pDepthWriteEnable:boolean;
-                                                                const pDepthCompareOp:TVkCompareOp;
-                                                                const pDepthBoundsTestEnable:boolean;
-                                                                const pStencilTestEnable:boolean;
-                                                                const pFront:TVkStencilOpState;
-                                                                const pBack:TVkStencilOpState;
-                                                                const pMinDepthBounds:TVkFloat;
-                                                                const pMaxDepthBounds:TVkFloat);
+procedure TVulkanPipelineDepthStencilState.SetDepthStencilState(const aDepthTestEnable:boolean;
+                                                                const aDepthWriteEnable:boolean;
+                                                                const aDepthCompareOp:TVkCompareOp;
+                                                                const aDepthBoundsTestEnable:boolean;
+                                                                const aStencilTestEnable:boolean;
+                                                                const aFront:TVkStencilOpState;
+                                                                const aBack:TVkStencilOpState;
+                                                                const aMinDepthBounds:TVkFloat;
+                                                                const aMaxDepthBounds:TVkFloat);
 begin
- fDepthStencilStateCreateInfo.depthTestEnable:=BooleanToVkBool[pDepthTestEnable];
- fDepthStencilStateCreateInfo.depthWriteEnable:=BooleanToVkBool[pDepthWriteEnable];
- fDepthStencilStateCreateInfo.depthCompareOp:=pDepthCompareOp;
- fDepthStencilStateCreateInfo.depthBoundsTestEnable:=BooleanToVkBool[pDepthBoundsTestEnable];
- fDepthStencilStateCreateInfo.stencilTestEnable:=BooleanToVkBool[pStencilTestEnable];
- fDepthStencilStateCreateInfo.front:=pFront;
- fDepthStencilStateCreateInfo.back:=pBack;
- fDepthStencilStateCreateInfo.minDepthBounds:=pMinDepthBounds;
- fDepthStencilStateCreateInfo.maxDepthBounds:=pMaxDepthBounds;
+ fDepthStencilStateCreateInfo.depthTestEnable:=BooleanToVkBool[aDepthTestEnable];
+ fDepthStencilStateCreateInfo.depthWriteEnable:=BooleanToVkBool[aDepthWriteEnable];
+ fDepthStencilStateCreateInfo.depthCompareOp:=aDepthCompareOp;
+ fDepthStencilStateCreateInfo.depthBoundsTestEnable:=BooleanToVkBool[aDepthBoundsTestEnable];
+ fDepthStencilStateCreateInfo.stencilTestEnable:=BooleanToVkBool[aStencilTestEnable];
+ fDepthStencilStateCreateInfo.front:=aFront;
+ fDepthStencilStateCreateInfo.back:=aBack;
+ fDepthStencilStateCreateInfo.minDepthBounds:=aMinDepthBounds;
+ fDepthStencilStateCreateInfo.maxDepthBounds:=aMaxDepthBounds;
 end;
 
 constructor TVulkanPipelineColorBlendState.Create;
@@ -17520,9 +17520,9 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanPipelineColorBlendState.Assign(const pFrom:TVulkanPipelineColorBlendState);
+procedure TVulkanPipelineColorBlendState.Assign(const aFrom:TVulkanPipelineColorBlendState);
 begin
- fColorBlendStateCreateInfo:=pFrom.fColorBlendStateCreateInfo;
+ fColorBlendStateCreateInfo:=aFrom.fColorBlendStateCreateInfo;
  fColorBlendStateCreateInfo.attachmentCount:=0;
  fColorBlendStateCreateInfo.pAttachments:=nil;
 end;
@@ -17532,9 +17532,9 @@ begin
  result:=fColorBlendStateCreateInfo.logicOpEnable<>VK_FALSE;
 end;
 
-procedure TVulkanPipelineColorBlendState.SetLogicOpEnable(const pNewValue:boolean);
+procedure TVulkanPipelineColorBlendState.SetLogicOpEnable(const aNewValue:boolean);
 begin
- fColorBlendStateCreateInfo.logicOpEnable:=BooleanToVkBool[pNewValue];
+ fColorBlendStateCreateInfo.logicOpEnable:=BooleanToVkBool[aNewValue];
 end;
 
 function TVulkanPipelineColorBlendState.GetLogicOp:TVkLogicOp;
@@ -17542,68 +17542,68 @@ begin
  result:=fColorBlendStateCreateInfo.logicOp;
 end;
 
-procedure TVulkanPipelineColorBlendState.SetLogicOp(const pNewValue:TVkLogicOp);
+procedure TVulkanPipelineColorBlendState.SetLogicOp(const aNewValue:TVkLogicOp);
 begin
- fColorBlendStateCreateInfo.logicOp:=pNewValue;
+ fColorBlendStateCreateInfo.logicOp:=aNewValue;
 end;
 
-procedure TVulkanPipelineColorBlendState.SetCountColorBlendAttachmentStates(const pNewCount:TVkInt32);
+procedure TVulkanPipelineColorBlendState.SetCountColorBlendAttachmentStates(const aNewCount:TVkInt32);
 begin
- fCountColorBlendAttachmentStates:=pNewCount;
+ fCountColorBlendAttachmentStates:=aNewCount;
  if length(fColorBlendAttachmentStates)<fCountColorBlendAttachmentStates then begin
   SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates*2);
  end;
 end;
 
-function TVulkanPipelineColorBlendState.GetColorBlendAttachmentState(const pIndex:TVkInt32):PVkPipelineColorBlendAttachmentState;
+function TVulkanPipelineColorBlendState.GetColorBlendAttachmentState(const aIndex:TVkInt32):PVkPipelineColorBlendAttachmentState;
 begin
- result:=@fColorBlendAttachmentStates[pIndex];
+ result:=@fColorBlendAttachmentStates[aIndex];
 end;
 
-function TVulkanPipelineColorBlendState.GetBlendConstant(const pIndex:TVkInt32):TVkFloat;
+function TVulkanPipelineColorBlendState.GetBlendConstant(const aIndex:TVkInt32):TVkFloat;
 begin
- result:=fColorBlendStateCreateInfo.blendConstants[pIndex];
+ result:=fColorBlendStateCreateInfo.blendConstants[aIndex];
 end;
 
-procedure TVulkanPipelineColorBlendState.SetBlendConstant(const pIndex:TVkInt32;const pNewValue:TVkFloat);
+procedure TVulkanPipelineColorBlendState.SetBlendConstant(const aIndex:TVkInt32;const aNewValue:TVkFloat);
 begin
- fColorBlendStateCreateInfo.blendConstants[pIndex]:=pNewValue;
+ fColorBlendStateCreateInfo.blendConstants[aIndex]:=aNewValue;
 end;
 
-procedure TVulkanPipelineColorBlendState.SetColorBlendState(const pLogicOpEnable:boolean;
-                                                            const pLogicOp:TVkLogicOp;
-                                                            const pBlendConstants:array of TVkFloat);
+procedure TVulkanPipelineColorBlendState.SetColorBlendState(const aLogicOpEnable:boolean;
+                                                            const aLogicOp:TVkLogicOp;
+                                                            const aBlendConstants:array of TVkFloat);
 var ArrayItemCount:TVkInt32;
 begin
- fColorBlendStateCreateInfo.logicOpEnable:=BooleanToVkBool[pLogicOpEnable];
- fColorBlendStateCreateInfo.logicOp:=pLogicOp;
- ArrayItemCount:=length(pBlendConstants);
+ fColorBlendStateCreateInfo.logicOpEnable:=BooleanToVkBool[aLogicOpEnable];
+ fColorBlendStateCreateInfo.logicOp:=aLogicOp;
+ ArrayItemCount:=length(aBlendConstants);
  if ArrayItemCount>length(fColorBlendStateCreateInfo.blendConstants) then begin
   ArrayItemCount:=length(fColorBlendStateCreateInfo.blendConstants);
  end;
  if ArrayItemCount>0 then begin
-  Move(pBlendConstants[0],fColorBlendStateCreateInfo.blendConstants[0],ArrayItemCount*SizeOf(TVkFloat));
+  Move(aBlendConstants[0],fColorBlendStateCreateInfo.blendConstants[0],ArrayItemCount*SizeOf(TVkFloat));
  end;
 end;
 
-function TVulkanPipelineColorBlendState.AddColorBlendAttachmentState(const pColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanPipelineColorBlendState.AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32;
 begin
  result:=fCountColorBlendAttachmentStates;
  inc(fCountColorBlendAttachmentStates);
  if length(fColorBlendAttachmentStates)<fCountColorBlendAttachmentStates then begin
   SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates*2);
  end;
- fColorBlendAttachmentStates[result]:=pColorBlendAttachmentState;
+ fColorBlendAttachmentStates[result]:=aColorBlendAttachmentState;
 end;
 
-function TVulkanPipelineColorBlendState.AddColorBlendAttachmentState(const pBlendEnable:boolean;
-                                                                     const pSrcColorBlendFactor:TVkBlendFactor;
-                                                                     const pDstColorBlendFactor:TVkBlendFactor;
-                                                                     const pColorBlendOp:TVkBlendOp;
-                                                                     const pSrcAlphaBlendFactor:TVkBlendFactor;
-                                                                     const pDstAlphaBlendFactor:TVkBlendFactor;
-                                                                     const pAlphaBlendOp:TVkBlendOp;
-                                                                     const pColorWriteMask:TVkColorComponentFlags):TVkInt32;
+function TVulkanPipelineColorBlendState.AddColorBlendAttachmentState(const aBlendEnable:boolean;
+                                                                     const aSrcColorBlendFactor:TVkBlendFactor;
+                                                                     const aDstColorBlendFactor:TVkBlendFactor;
+                                                                     const aColorBlendOp:TVkBlendOp;
+                                                                     const aSrcAlphaBlendFactor:TVkBlendFactor;
+                                                                     const aDstAlphaBlendFactor:TVkBlendFactor;
+                                                                     const aAlphaBlendOp:TVkBlendOp;
+                                                                     const aColorWriteMask:TVkColorComponentFlags):TVkInt32;
 var ColorBlendAttachmentState:PVkPipelineColorBlendAttachmentState;
 begin
  result:=fCountColorBlendAttachmentStates;
@@ -17612,29 +17612,29 @@ begin
   SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates*2);
  end;
  ColorBlendAttachmentState:=@fColorBlendAttachmentStates[result];
- if pBlendEnable then begin
+ if aBlendEnable then begin
   ColorBlendAttachmentState^.blendEnable:=VK_TRUE;
  end else begin
   ColorBlendAttachmentState^.blendEnable:=VK_FALSE;
  end;
- ColorBlendAttachmentState^.srcColorBlendFactor:=pSrcColorBlendFactor;
- ColorBlendAttachmentState^.dstColorBlendFactor:=pDstColorBlendFactor;
- ColorBlendAttachmentState^.colorBlendOp:=pColorBlendOp;
- ColorBlendAttachmentState^.srcAlphaBlendFactor:=pSrcAlphaBlendFactor;
- ColorBlendAttachmentState^.dstAlphaBlendFactor:=pDstAlphaBlendFactor;
- ColorBlendAttachmentState^.alphaBlendOp:=pAlphaBlendOp;
- ColorBlendAttachmentState^.colorWriteMask:=pColorWriteMask;
+ ColorBlendAttachmentState^.srcColorBlendFactor:=aSrcColorBlendFactor;
+ ColorBlendAttachmentState^.dstColorBlendFactor:=aDstColorBlendFactor;
+ ColorBlendAttachmentState^.colorBlendOp:=aColorBlendOp;
+ ColorBlendAttachmentState^.srcAlphaBlendFactor:=aSrcAlphaBlendFactor;
+ ColorBlendAttachmentState^.dstAlphaBlendFactor:=aDstAlphaBlendFactor;
+ ColorBlendAttachmentState^.alphaBlendOp:=aAlphaBlendOp;
+ ColorBlendAttachmentState^.colorWriteMask:=aColorWriteMask;
 end;
 
-function TVulkanPipelineColorBlendState.AddColorBlendAttachmentStates(const pColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanPipelineColorBlendState.AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
 begin
- if length(pColorBlendAttachmentStates)>0 then begin
+ if length(aColorBlendAttachmentStates)>0 then begin
   result:=fCountColorBlendAttachmentStates;
-  inc(fCountColorBlendAttachmentStates,length(pColorBlendAttachmentStates));
+  inc(fCountColorBlendAttachmentStates,length(aColorBlendAttachmentStates));
   if length(fColorBlendAttachmentStates)<fCountColorBlendAttachmentStates then begin
    SetLength(fColorBlendAttachmentStates,fCountColorBlendAttachmentStates*2);
   end;
-  Move(pColorBlendAttachmentStates[0],fColorBlendAttachmentStates[result],length(pColorBlendAttachmentStates)*SizeOf(TVkRect2D));
+  Move(aColorBlendAttachmentStates[0],fColorBlendAttachmentStates[result],length(aColorBlendAttachmentStates)*SizeOf(TVkRect2D));
  end else begin
   result:=-1;
  end;
@@ -17674,44 +17674,44 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanPipelineDynamicState.Assign(const pFrom:TVulkanPipelineDynamicState);
+procedure TVulkanPipelineDynamicState.Assign(const aFrom:TVulkanPipelineDynamicState);
 begin
- fDynamicStates:=copy(pFrom.fDynamicStates);
- fCountDynamicStates:=pFrom.fCountDynamicStates;
+ fDynamicStates:=copy(aFrom.fDynamicStates);
+ fCountDynamicStates:=aFrom.fCountDynamicStates;
 end;
 
-function TVulkanPipelineDynamicState.GetDynamicState(const pIndex:TVkInt32):PVkDynamicState;
+function TVulkanPipelineDynamicState.GetDynamicState(const aIndex:TVkInt32):PVkDynamicState;
 begin
- result:=@fDynamicStates[pIndex];
+ result:=@fDynamicStates[aIndex];
 end;
 
-procedure TVulkanPipelineDynamicState.SetCountDynamicStates(const pNewCount:TVkInt32);
+procedure TVulkanPipelineDynamicState.SetCountDynamicStates(const aNewCount:TVkInt32);
 begin
- fCountDynamicStates:=pNewCount;
+ fCountDynamicStates:=aNewCount;
  if length(fDynamicStates)<fCountDynamicStates then begin
   SetLength(fDynamicStates,fCountDynamicStates*2);
  end;
 end;
 
-function TVulkanPipelineDynamicState.AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
+function TVulkanPipelineDynamicState.AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
 begin
  result:=fCountDynamicStates;
  inc(fCountDynamicStates);
  if length(fDynamicStates)<fCountDynamicStates then begin
   SetLength(fDynamicStates,fCountDynamicStates*2);
  end;
- fDynamicStates[result]:=pDynamicState;
+ fDynamicStates[result]:=aDynamicState;
 end;
 
-function TVulkanPipelineDynamicState.AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
+function TVulkanPipelineDynamicState.AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32;
 begin
- if length(pDynamicStates)>0 then begin
+ if length(aDynamicStates)>0 then begin
   result:=fCountDynamicStates;
-  inc(fCountDynamicStates,length(pDynamicStates));
+  inc(fCountDynamicStates,length(aDynamicStates));
   if length(fDynamicStates)<fCountDynamicStates then begin
    SetLength(fDynamicStates,fCountDynamicStates*2);
   end;
-  Move(pDynamicStates[0],fDynamicStates[result],length(pDynamicStates)*SizeOf(TVkDynamicState));
+  Move(aDynamicStates[0],fDynamicStates[result],length(aDynamicStates)*SizeOf(TVkDynamicState));
  end else begin
   result:=-1;
  end;
@@ -17726,21 +17726,21 @@ begin
  end;
 end;
 
-constructor TVulkanGraphicsPipelineConstructor.Create(const pDevice:TVulkanDevice;
-                                                      const pCache:TVulkanPipelineCache;
-                                                      const pFlags:TVkPipelineCreateFlags;
-                                                      const pStages:array of TVulkanPipelineShaderStage;
-                                                      const pLayout:TVulkanPipelineLayout;
-                                                      const pRenderPass:TVulkanRenderPass;
-                                                      const pSubPass:TVkUInt32;
-                                                      const pBasePipelineHandle:TVulkanPipeline;
-                                                      const pBasePipelineIndex:TVkInt32);
+constructor TVulkanGraphicsPipelineConstructor.Create(const aDevice:TVulkanDevice;
+                                                      const aCache:TVulkanPipelineCache;
+                                                      const aFlags:TVkPipelineCreateFlags;
+                                                      const aStages:array of TVulkanPipelineShaderStage;
+                                                      const aLayout:TVulkanPipelineLayout;
+                                                      const aRenderPass:TVulkanRenderPass;
+                                                      const aSubPass:TVkUInt32;
+                                                      const aBasePipelineHandle:TVulkanPipeline;
+                                                      const aBasePipelineIndex:TVkInt32);
 var Index:TVkInt32;
 begin
  fStages:=nil;
  fCountStages:=0;
 
- inherited Create(pDevice);
+ inherited Create(aDevice);
 
  fVertexInputState:=TVulkanPipelineVertexInputState.Create;
 
@@ -17763,14 +17763,14 @@ begin
  FillChar(fGraphicsPipelineCreateInfo,SizeOf(TVkGraphicsPipelineCreateInfo),#0);
  fGraphicsPipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
  fGraphicsPipelineCreateInfo.pNext:=nil;
- fGraphicsPipelineCreateInfo.flags:=pFlags;
- fGraphicsPipelineCreateInfo.stageCount:=length(pStages);
+ fGraphicsPipelineCreateInfo.flags:=aFlags;
+ fGraphicsPipelineCreateInfo.stageCount:=length(aStages);
  fCountStages:=fGraphicsPipelineCreateInfo.stageCount;
  if fCountStages>0 then begin
   SetLength(fStages,fCountStages);
   for Index:=0 to fCountStages-1 do begin
-   pStages[Index].Initialize;
-   fStages[Index]:=pStages[Index].fPipelineShaderStageCreateInfo;
+   aStages[Index].Initialize;
+   fStages[Index]:=aStages[Index].fPipelineShaderStageCreateInfo;
   end;
   fGraphicsPipelineCreateInfo.pStages:=@fStages[0];
  end else begin
@@ -17785,26 +17785,26 @@ begin
  fGraphicsPipelineCreateInfo.pDepthStencilState:=@fDepthStencilState.fDepthStencilStateCreateInfo;
  fGraphicsPipelineCreateInfo.pColorBlendState:=@fColorBlendState.fColorBlendStateCreateInfo;
  fGraphicsPipelineCreateInfo.pDynamicState:=nil;
- if assigned(pLayout) then begin
-  fGraphicsPipelineCreateInfo.layout:=pLayout.fPipelineLayoutHandle;
+ if assigned(aLayout) then begin
+  fGraphicsPipelineCreateInfo.layout:=aLayout.fPipelineLayoutHandle;
  end else begin
   fGraphicsPipelineCreateInfo.layout:=VK_NULL_HANDLE;
  end;
- if assigned(pRenderPass) then begin
-  fGraphicsPipelineCreateInfo.renderPass:=pRenderPass.fRenderPassHandle;
+ if assigned(aRenderPass) then begin
+  fGraphicsPipelineCreateInfo.renderPass:=aRenderPass.fRenderPassHandle;
  end else begin
   fGraphicsPipelineCreateInfo.renderPass:=VK_NULL_HANDLE;
  end;
- fGraphicsPipelineCreateInfo.subpass:=pSubPass;
- if assigned(pBasePipelineHandle) then begin
-  fGraphicsPipelineCreateInfo.basePipelineHandle:=pBasePipelineHandle.fPipelineHandle;
+ fGraphicsPipelineCreateInfo.subpass:=aSubPass;
+ if assigned(aBasePipelineHandle) then begin
+  fGraphicsPipelineCreateInfo.basePipelineHandle:=aBasePipelineHandle.fPipelineHandle;
  end else begin
   fGraphicsPipelineCreateInfo.basePipelineHandle:=VK_NULL_HANDLE;
  end;
- fGraphicsPipelineCreateInfo.basePipelineIndex:=pBasePipelineIndex;
+ fGraphicsPipelineCreateInfo.basePipelineIndex:=aBasePipelineIndex;
 
- if assigned(pCache) then begin
-  fPipelineCache:=pCache.fPipelineCacheHandle;
+ if assigned(aCache) then begin
+  fPipelineCache:=aCache.fPipelineCacheHandle;
  end else begin
   fPipelineCache:=VK_NULL_HANDLE;
  end;
@@ -17826,243 +17826,243 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanGraphicsPipelineConstructor.Assign(const pFrom:TVulkanGraphicsPipelineConstructor);
+procedure TVulkanGraphicsPipelineConstructor.Assign(const aFrom:TVulkanGraphicsPipelineConstructor);
 begin
- fStages:=copy(pFrom.fStages);
- fCountStages:=pFrom.fCountStages;
- fVertexInputState.Assign(pFrom.fVertexInputState);
- fInputAssemblyState.Assign(pFrom.fInputAssemblyState);
- fTessellationState.Assign(pFrom.fTessellationState);
- fViewPortState.Assign(pFrom.fViewPortState);
- fRasterizationState.Assign(pFrom.fRasterizationState);
- fMultisampleState.Assign(pFrom.fMultisampleState);
- fDepthStencilState.Assign(pFrom.fDepthStencilState);
- fColorBlendState.Assign(pFrom.fColorBlendState);
- fDynamicState.Assign(pFrom.fDynamicState);
+ fStages:=copy(aFrom.fStages);
+ fCountStages:=aFrom.fCountStages;
+ fVertexInputState.Assign(aFrom.fVertexInputState);
+ fInputAssemblyState.Assign(aFrom.fInputAssemblyState);
+ fTessellationState.Assign(aFrom.fTessellationState);
+ fViewPortState.Assign(aFrom.fViewPortState);
+ fRasterizationState.Assign(aFrom.fRasterizationState);
+ fMultisampleState.Assign(aFrom.fMultisampleState);
+ fDepthStencilState.Assign(aFrom.fDepthStencilState);
+ fColorBlendState.Assign(aFrom.fColorBlendState);
+ fDynamicState.Assign(aFrom.fDynamicState);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddStage(const pStage:TVulkanPipelineShaderStage):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddStage(const aStage:TVulkanPipelineShaderStage):TVkInt32;
 begin
  result:=fCountStages;
  inc(fCountStages);
  if length(fStages)<fCountStages then begin
   SetLength(fStages,fCountStages*2);
  end;
- pStage.Initialize;
- fStages[result]:=pStage.fPipelineShaderStageCreateInfo;
+ aStage.Initialize;
+ fStages[result]:=aStage.fPipelineShaderStageCreateInfo;
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddStages(const pStages:array of TVulkanPipelineShaderStage):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddStages(const aStages:array of TVulkanPipelineShaderStage):TVkInt32;
 var Index:TVkInt32;
 begin
- if length(pStages)>0 then begin
-  result:=AddStage(pStages[0]);
-  for Index:=1 to length(pStages)-1 do begin
-   AddStage(pStages[Index]);
+ if length(aStages)>0 then begin
+  result:=AddStage(aStages[0]);
+  for Index:=1 to length(aStages)-1 do begin
+   AddStage(aStages[Index]);
   end;
  end else begin
   result:=-1;
  end;
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
 begin
  Assert(assigned(fVertexInputState));
- result:=fVertexInputState.AddVertexInputBindingDescription(pVertexInputBindingDescription);
+ result:=fVertexInputState.AddVertexInputBindingDescription(aVertexInputBindingDescription);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32;
 begin
  Assert(assigned(fVertexInputState));
- result:=fVertexInputState.AddVertexInputBindingDescription(pBinding,pStride,pInputRate);
+ result:=fVertexInputState.AddVertexInputBindingDescription(aBinding,aStride,aInputRate);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
 begin
  Assert(assigned(fVertexInputState));
- result:=fVertexInputState.AddVertexInputBindingDescriptions(pVertexInputBindingDescriptions);
+ result:=fVertexInputState.AddVertexInputBindingDescriptions(aVertexInputBindingDescriptions);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescription(const pVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
 begin
  Assert(assigned(fVertexInputState));
- result:=fVertexInputState.AddVertexInputAttributeDescription(pVertexInputAttributeDescription);
+ result:=fVertexInputState.AddVertexInputAttributeDescription(aVertexInputAttributeDescription);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescription(const pLocation,pBinding:TVkUInt32;const pFormat:TVkFormat;const pOffset:TVkUInt32):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32;
 begin
  Assert(assigned(fVertexInputState));
- result:=fVertexInputState.AddVertexInputAttributeDescription(pLocation,pBinding,pFormat,pOffset);
+ result:=fVertexInputState.AddVertexInputAttributeDescription(aLocation,aBinding,aFormat,aOffset);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescriptions(const pVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
 begin
  Assert(assigned(fVertexInputState));
- result:=fVertexInputState.AddVertexInputAttributeDescriptions(pVertexInputAttributeDescriptions);
+ result:=fVertexInputState.AddVertexInputAttributeDescriptions(aVertexInputAttributeDescriptions);
 end;
 
-procedure TVulkanGraphicsPipelineConstructor.SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
+procedure TVulkanGraphicsPipelineConstructor.SetInputAssemblyState(const aTopology:TVkPrimitiveTopology;const aPrimitiveRestartEnable:boolean);
 begin
  Assert(assigned(fInputAssemblyState));
- fInputAssemblyState.SetInputAssemblyState(pTopology,pPrimitiveRestartEnable);
+ fInputAssemblyState.SetInputAssemblyState(aTopology,aPrimitiveRestartEnable);
 end;
 
-procedure TVulkanGraphicsPipelineConstructor.SetTessellationState(const pPatchControlPoints:TVkUInt32);
+procedure TVulkanGraphicsPipelineConstructor.SetTessellationState(const aPatchControlPoints:TVkUInt32);
 begin
  Assert(assigned(fTessellationState));
- fTessellationState.SetTessellationState(pPatchControlPoints);
+ fTessellationState.SetTessellationState(aPatchControlPoints);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddViewPort(const pViewPort:TVkViewport):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddViewPort(const aViewPort:TVkViewport):TVkInt32;
 begin
  Assert(assigned(fViewPortState));
- result:=fViewPortState.AddViewPort(pViewPort);
+ result:=fViewPortState.AddViewPort(aViewPort);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddViewPort(const pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth:TVkFloat):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32;
 begin
  Assert(assigned(fViewPortState));
- result:=fViewPortState.AddViewPort(pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth);
+ result:=fViewPortState.AddViewPort(pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddViewPorts(const pViewPorts:array of TVkViewport):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32;
 begin
  Assert(assigned(fViewPortState));
- result:=fViewPortState.AddViewPorts(pViewPorts);
+ result:=fViewPortState.AddViewPorts(aViewPorts);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddScissor(const pScissor:TVkRect2D):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddScissor(const aScissor:TVkRect2D):TVkInt32;
 begin
  Assert(assigned(fViewPortState));
- result:=fViewPortState.AddScissor(pScissor);
+ result:=fViewPortState.AddScissor(aScissor);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddScissor(const pX,pY:TVkInt32;const pWidth,pHeight:TVkUInt32):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32;
 begin
  Assert(assigned(fViewPortState));
- result:=fViewPortState.AddScissor(pX,pY,pWidth,pHeight);
+ result:=fViewPortState.AddScissor(pX,pY,aWidth,aHeight);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddScissors(const pScissors:array of TVkRect2D):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddScissors(const aScissors:array of TVkRect2D):TVkInt32;
 begin
  Assert(assigned(fViewPortState));
- result:=fViewPortState.AddScissors(pScissors);
+ result:=fViewPortState.AddScissors(aScissors);
 end;
 
-procedure TVulkanGraphicsPipelineConstructor.SetRasterizationState(const pDepthClampEnable:boolean;
-                                                                   const pRasterizerDiscardEnable:boolean;
-                                                                   const pPolygonMode:TVkPolygonMode;
-                                                                   const pCullMode:TVkCullModeFlags;
-                                                                   const pFrontFace:TVkFrontFace;
-                                                                   const pDepthBiasEnable:boolean;
-                                                                   const pDepthBiasConstantFactor:TVkFloat;
-                                                                   const pDepthBiasClamp:TVkFloat;
-                                                                   const pDepthBiasSlopeFactor:TVkFloat;
-                                                                   const pLineWidth:TVkFloat);
+procedure TVulkanGraphicsPipelineConstructor.SetRasterizationState(const aDepthClampEnable:boolean;
+                                                                   const aRasterizerDiscardEnable:boolean;
+                                                                   const aPolygonMode:TVkPolygonMode;
+                                                                   const aCullMode:TVkCullModeFlags;
+                                                                   const aFrontFace:TVkFrontFace;
+                                                                   const aDepthBiasEnable:boolean;
+                                                                   const aDepthBiasConstantFactor:TVkFloat;
+                                                                   const aDepthBiasClamp:TVkFloat;
+                                                                   const aDepthBiasSlopeFactor:TVkFloat;
+                                                                   const aLineWidth:TVkFloat);
 begin
  Assert(assigned(fRasterizationState));
- fRasterizationState.SetRasterizationState(pDepthClampEnable,
-                                           pRasterizerDiscardEnable,
-                                           pPolygonMode,
-                                           pCullMode,
-                                           pFrontFace,
-                                           pDepthBiasEnable,
-                                           pDepthBiasConstantFactor,
-                                           pDepthBiasClamp,
-                                           pDepthBiasSlopeFactor,
-                                           pLineWidth);
+ fRasterizationState.SetRasterizationState(aDepthClampEnable,
+                                           aRasterizerDiscardEnable,
+                                           aPolygonMode,
+                                           aCullMode,
+                                           aFrontFace,
+                                           aDepthBiasEnable,
+                                           aDepthBiasConstantFactor,
+                                           aDepthBiasClamp,
+                                           aDepthBiasSlopeFactor,
+                                           aLineWidth);
 end;
 
-procedure TVulkanGraphicsPipelineConstructor.SetMultisampleState(const pRasterizationSamples:TVkSampleCountFlagBits;
-                                                                 const pSampleShadingEnable:boolean;
-                                                                 const pMinSampleShading:TVkFloat;
-                                                                 const pSampleMask:array of TVkSampleMask;
-                                                                 const pAlphaToCoverageEnable:boolean;
-                                                                 const pAlphaToOneEnable:boolean);
+procedure TVulkanGraphicsPipelineConstructor.SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
+                                                                 const aSampleShadingEnable:boolean;
+                                                                 const aMinSampleShading:TVkFloat;
+                                                                 const aSampleMask:array of TVkSampleMask;
+                                                                 const aAlphaToCoverageEnable:boolean;
+                                                                 const aAlphaToOneEnable:boolean);
 begin
  Assert(assigned(fMultisampleState));
- fMultisampleState.SetMultisampleState(pRasterizationSamples,
-                                       pSampleShadingEnable,
-                                       pMinSampleShading,
-                                       pSampleMask,
-                                       pAlphaToCoverageEnable,
-                                       pAlphaToOneEnable);
+ fMultisampleState.SetMultisampleState(aRasterizationSamples,
+                                       aSampleShadingEnable,
+                                       aMinSampleShading,
+                                       aSampleMask,
+                                       aAlphaToCoverageEnable,
+                                       aAlphaToOneEnable);
 end;
 
-procedure TVulkanGraphicsPipelineConstructor.SetDepthStencilState(const pDepthTestEnable:boolean;
-                                                                  const pDepthWriteEnable:boolean;
-                                                                  const pDepthCompareOp:TVkCompareOp;
-                                                                  const pDepthBoundsTestEnable:boolean;
-                                                                  const pStencilTestEnable:boolean;
-                                                                  const pFront:TVkStencilOpState;
-                                                                  const pBack:TVkStencilOpState;
-                                                                  const pMinDepthBounds:TVkFloat;
-                                                                  const pMaxDepthBounds:TVkFloat);
+procedure TVulkanGraphicsPipelineConstructor.SetDepthStencilState(const aDepthTestEnable:boolean;
+                                                                  const aDepthWriteEnable:boolean;
+                                                                  const aDepthCompareOp:TVkCompareOp;
+                                                                  const aDepthBoundsTestEnable:boolean;
+                                                                  const aStencilTestEnable:boolean;
+                                                                  const aFront:TVkStencilOpState;
+                                                                  const aBack:TVkStencilOpState;
+                                                                  const aMinDepthBounds:TVkFloat;
+                                                                  const aMaxDepthBounds:TVkFloat);
 begin
  Assert(assigned(fDepthStencilState));
- fDepthStencilState.SetDepthStencilState(pDepthTestEnable,
-                                         pDepthWriteEnable,
-                                         pDepthCompareOp,
-                                         pDepthBoundsTestEnable,
-                                         pStencilTestEnable,
-                                         pFront,
-                                         pBack,
-                                         pMinDepthBounds,
-                                         pMaxDepthBounds);
+ fDepthStencilState.SetDepthStencilState(aDepthTestEnable,
+                                         aDepthWriteEnable,
+                                         aDepthCompareOp,
+                                         aDepthBoundsTestEnable,
+                                         aStencilTestEnable,
+                                         aFront,
+                                         aBack,
+                                         aMinDepthBounds,
+                                         aMaxDepthBounds);
 end;
 
-procedure TVulkanGraphicsPipelineConstructor.SetColorBlendState(const pLogicOpEnable:boolean;
-                                                                const pLogicOp:TVkLogicOp;
-                                                                const pBlendConstants:array of TVkFloat);
+procedure TVulkanGraphicsPipelineConstructor.SetColorBlendState(const aLogicOpEnable:boolean;
+                                                                const aLogicOp:TVkLogicOp;
+                                                                const aBlendConstants:array of TVkFloat);
 begin
  Assert(assigned(fColorBlendState));
- fColorBlendState.SetColorBlendState(pLogicOpEnable,
-                                     pLogicOp,
-                                     pBlendConstants);
+ fColorBlendState.SetColorBlendState(aLogicOpEnable,
+                                     aLogicOp,
+                                     aBlendConstants);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const pColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32;
 begin
  Assert(assigned(fColorBlendState));
- result:=fColorBlendState.AddColorBlendAttachmentState(pColorBlendAttachmentState);
+ result:=fColorBlendState.AddColorBlendAttachmentState(aColorBlendAttachmentState);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const pBlendEnable:boolean;
-                                                                         const pSrcColorBlendFactor:TVkBlendFactor;
-                                                                         const pDstColorBlendFactor:TVkBlendFactor;
-                                                                         const pColorBlendOp:TVkBlendOp;
-                                                                         const pSrcAlphaBlendFactor:TVkBlendFactor;
-                                                                         const pDstAlphaBlendFactor:TVkBlendFactor;
-                                                                         const pAlphaBlendOp:TVkBlendOp;
-                                                                         const pColorWriteMask:TVkColorComponentFlags):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const aBlendEnable:boolean;
+                                                                         const aSrcColorBlendFactor:TVkBlendFactor;
+                                                                         const aDstColorBlendFactor:TVkBlendFactor;
+                                                                         const aColorBlendOp:TVkBlendOp;
+                                                                         const aSrcAlphaBlendFactor:TVkBlendFactor;
+                                                                         const aDstAlphaBlendFactor:TVkBlendFactor;
+                                                                         const aAlphaBlendOp:TVkBlendOp;
+                                                                         const aColorWriteMask:TVkColorComponentFlags):TVkInt32;
 begin
  Assert(assigned(fColorBlendState));
- result:=fColorBlendState.AddColorBlendAttachmentState(pBlendEnable,
-                                                       pSrcColorBlendFactor,
-                                                       pDstColorBlendFactor,
-                                                       pColorBlendOp,
-                                                       pSrcAlphaBlendFactor,
-                                                       pDstAlphaBlendFactor,
-                                                       pAlphaBlendOp,
-                                                       pColorWriteMask);
+ result:=fColorBlendState.AddColorBlendAttachmentState(aBlendEnable,
+                                                       aSrcColorBlendFactor,
+                                                       aDstColorBlendFactor,
+                                                       aColorBlendOp,
+                                                       aSrcAlphaBlendFactor,
+                                                       aDstAlphaBlendFactor,
+                                                       aAlphaBlendOp,
+                                                       aColorWriteMask);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentStates(const pColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
 begin
  Assert(assigned(fColorBlendState));
- result:=fColorBlendState.AddColorBlendAttachmentStates(pColorBlendAttachmentStates);
+ result:=fColorBlendState.AddColorBlendAttachmentStates(aColorBlendAttachmentStates);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
 begin
  Assert(assigned(fDynamicState));
- result:=fDynamicState.AddDynamicState(pDynamicState);
+ result:=fDynamicState.AddDynamicState(aDynamicState);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32;
 begin
  Assert(assigned(fDynamicState));
- result:=fDynamicState.AddDynamicStates(pDynamicStates);
+ result:=fDynamicState.AddDynamicStates(aDynamicStates);
 end;
 
 procedure TVulkanGraphicsPipelineConstructor.Initialize;
@@ -18101,26 +18101,26 @@ begin
 
 end;
 
-constructor TVulkanGraphicsPipeline.Create(const pDevice:TVulkanDevice;
-                                           const pCache:TVulkanPipelineCache;
-                                           const pFlags:TVkPipelineCreateFlags;
-                                           const pStages:array of TVulkanPipelineShaderStage;
-                                           const pLayout:TVulkanPipelineLayout;
-                                           const pRenderPass:TVulkanRenderPass;
-                                           const pSubPass:TVkUInt32;
-                                           const pBasePipelineHandle:TVulkanPipeline;
-                                           const pBasePipelineIndex:TVkInt32);
+constructor TVulkanGraphicsPipeline.Create(const aDevice:TVulkanDevice;
+                                           const aCache:TVulkanPipelineCache;
+                                           const aFlags:TVkPipelineCreateFlags;
+                                           const aStages:array of TVulkanPipelineShaderStage;
+                                           const aLayout:TVulkanPipelineLayout;
+                                           const aRenderPass:TVulkanRenderPass;
+                                           const aSubPass:TVkUInt32;
+                                           const aBasePipelineHandle:TVulkanPipeline;
+                                           const aBasePipelineIndex:TVkInt32);
 begin
- inherited Create(pDevice);
+ inherited Create(aDevice);
  fGraphicsPipelineConstructor:=TVulkanGraphicsPipelineConstructor.Create(fDevice,
-                                                                         pCache,
-                                                                         pFlags,
-                                                                         pStages,
-                                                                         pLayout,
-                                                                         pRenderPass,
-                                                                         pSubPass,
-                                                                         pBasePipelineHandle,
-                                                                         pBasePipelineIndex);
+                                                                         aCache,
+                                                                         aFlags,
+                                                                         aStages,
+                                                                         aLayout,
+                                                                         aRenderPass,
+                                                                         aSubPass,
+                                                                         aBasePipelineHandle,
+                                                                         aBasePipelineIndex);
 end;
 
 destructor TVulkanGraphicsPipeline.Destroy;
@@ -18129,9 +18129,9 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanGraphicsPipeline.Assign(const pFrom:TVulkanGraphicsPipeline);
+procedure TVulkanGraphicsPipeline.Assign(const aFrom:TVulkanGraphicsPipeline);
 begin
- fGraphicsPipelineConstructor.Assign(pFrom.fGraphicsPipelineConstructor);
+ fGraphicsPipelineConstructor.Assign(aFrom.fGraphicsPipelineConstructor);
 end;
 
 function TVulkanGraphicsPipeline.GetCountStages:TVkInt32;
@@ -18194,216 +18194,216 @@ begin
  result:=fGraphicsPipelineConstructor.fDynamicState;
 end;
 
-function TVulkanGraphicsPipeline.AddStage(const pStage:TVulkanPipelineShaderStage):TVkInt32;
+function TVulkanGraphicsPipeline.AddStage(const aStage:TVulkanPipelineShaderStage):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddStage(pStage);
+ result:=fGraphicsPipelineConstructor.AddStage(aStage);
 end;
 
-function TVulkanGraphicsPipeline.AddStages(const pStages:array of TVulkanPipelineShaderStage):TVkInt32;
+function TVulkanGraphicsPipeline.AddStages(const aStages:array of TVulkanPipelineShaderStage):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddStages(pStages);
+ result:=fGraphicsPipelineConstructor.AddStages(aStages);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const pVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddVertexInputBindingDescription(pVertexInputBindingDescription);
+ result:=fGraphicsPipelineConstructor.AddVertexInputBindingDescription(aVertexInputBindingDescription);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const pBinding,pStride:TVkUInt32;const pInputRate:TVkVertexInputRate):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddVertexInputBindingDescription(pBinding,pStride,pInputRate);
+ result:=fGraphicsPipelineConstructor.AddVertexInputBindingDescription(aBinding,aStride,aInputRate);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputBindingDescriptions(const pVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddVertexInputBindingDescriptions(pVertexInputBindingDescriptions);
+ result:=fGraphicsPipelineConstructor.AddVertexInputBindingDescriptions(aVertexInputBindingDescriptions);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputAttributeDescription(const pVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddVertexInputAttributeDescription(pVertexInputAttributeDescription);
+ result:=fGraphicsPipelineConstructor.AddVertexInputAttributeDescription(aVertexInputAttributeDescription);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputAttributeDescription(const pLocation,pBinding:TVkUInt32;const pFormat:TVkFormat;const pOffset:TVkUInt32):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddVertexInputAttributeDescription(pLocation,pBinding,pFormat,pOffset);
+ result:=fGraphicsPipelineConstructor.AddVertexInputAttributeDescription(aLocation,aBinding,aFormat,aOffset);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputAttributeDescriptions(const pVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddVertexInputAttributeDescriptions(pVertexInputAttributeDescriptions);
+ result:=fGraphicsPipelineConstructor.AddVertexInputAttributeDescriptions(aVertexInputAttributeDescriptions);
 end;
 
-procedure TVulkanGraphicsPipeline.SetInputAssemblyState(const pTopology:TVkPrimitiveTopology;const pPrimitiveRestartEnable:boolean);
+procedure TVulkanGraphicsPipeline.SetInputAssemblyState(const aTopology:TVkPrimitiveTopology;const aPrimitiveRestartEnable:boolean);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- fGraphicsPipelineConstructor.SetInputAssemblyState(pTopology,pPrimitiveRestartEnable);
+ fGraphicsPipelineConstructor.SetInputAssemblyState(aTopology,aPrimitiveRestartEnable);
 end;
 
-procedure TVulkanGraphicsPipeline.SetTessellationState(const pPatchControlPoints:TVkUInt32);
+procedure TVulkanGraphicsPipeline.SetTessellationState(const aPatchControlPoints:TVkUInt32);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- fGraphicsPipelineConstructor.SetTessellationState(pPatchControlPoints);
+ fGraphicsPipelineConstructor.SetTessellationState(aPatchControlPoints);
 end;
 
-function TVulkanGraphicsPipeline.AddViewPort(const pViewPort:TVkViewport):TVkInt32;
+function TVulkanGraphicsPipeline.AddViewPort(const aViewPort:TVkViewport):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddViewPort(pViewPort);
+ result:=fGraphicsPipelineConstructor.AddViewPort(aViewPort);
 end;
 
-function TVulkanGraphicsPipeline.AddViewPort(const pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth:TVkFloat):TVkInt32;
+function TVulkanGraphicsPipeline.AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddViewPort(pX,pY,pWidth,pHeight,pMinDepth,pMaxDepth);
+ result:=fGraphicsPipelineConstructor.AddViewPort(pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth);
 end;
 
-function TVulkanGraphicsPipeline.AddViewPorts(const pViewPorts:array of TVkViewport):TVkInt32;
+function TVulkanGraphicsPipeline.AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddViewPorts(pViewPorts);
+ result:=fGraphicsPipelineConstructor.AddViewPorts(aViewPorts);
 end;
 
-function TVulkanGraphicsPipeline.AddScissor(const pScissor:TVkRect2D):TVkInt32;
+function TVulkanGraphicsPipeline.AddScissor(const aScissor:TVkRect2D):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddScissor(pScissor);
+ result:=fGraphicsPipelineConstructor.AddScissor(aScissor);
 end;
 
-function TVulkanGraphicsPipeline.AddScissor(const pX,pY:TVkInt32;const pWidth,pHeight:TVkUInt32):TVkInt32;
+function TVulkanGraphicsPipeline.AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddScissor(pX,pY,pWidth,pHeight);
+ result:=fGraphicsPipelineConstructor.AddScissor(pX,pY,aWidth,aHeight);
 end;
 
-function TVulkanGraphicsPipeline.AddScissors(const pScissors:array of TVkRect2D):TVkInt32;
+function TVulkanGraphicsPipeline.AddScissors(const aScissors:array of TVkRect2D):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddScissors(pScissors);
+ result:=fGraphicsPipelineConstructor.AddScissors(aScissors);
 end;
 
-procedure TVulkanGraphicsPipeline.SetRasterizationState(const pDepthClampEnable:boolean;
-                                                        const pRasterizerDiscardEnable:boolean;
-                                                        const pPolygonMode:TVkPolygonMode;
-                                                        const pCullMode:TVkCullModeFlags;
-                                                        const pFrontFace:TVkFrontFace;
-                                                        const pDepthBiasEnable:boolean;
-                                                        const pDepthBiasConstantFactor:TVkFloat;
-                                                        const pDepthBiasClamp:TVkFloat;
-                                                        const pDepthBiasSlopeFactor:TVkFloat;
-                                                        const pLineWidth:TVkFloat);
+procedure TVulkanGraphicsPipeline.SetRasterizationState(const aDepthClampEnable:boolean;
+                                                        const aRasterizerDiscardEnable:boolean;
+                                                        const aPolygonMode:TVkPolygonMode;
+                                                        const aCullMode:TVkCullModeFlags;
+                                                        const aFrontFace:TVkFrontFace;
+                                                        const aDepthBiasEnable:boolean;
+                                                        const aDepthBiasConstantFactor:TVkFloat;
+                                                        const aDepthBiasClamp:TVkFloat;
+                                                        const aDepthBiasSlopeFactor:TVkFloat;
+                                                        const aLineWidth:TVkFloat);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- fGraphicsPipelineConstructor.SetRasterizationState(pDepthClampEnable,
-                                                    pRasterizerDiscardEnable,
-                                                    pPolygonMode,
-                                                    pCullMode,
-                                                    pFrontFace,
-                                                    pDepthBiasEnable,
-                                                    pDepthBiasConstantFactor,
-                                                    pDepthBiasClamp,
-                                                    pDepthBiasSlopeFactor,
-                                                    pLineWidth);
+ fGraphicsPipelineConstructor.SetRasterizationState(aDepthClampEnable,
+                                                    aRasterizerDiscardEnable,
+                                                    aPolygonMode,
+                                                    aCullMode,
+                                                    aFrontFace,
+                                                    aDepthBiasEnable,
+                                                    aDepthBiasConstantFactor,
+                                                    aDepthBiasClamp,
+                                                    aDepthBiasSlopeFactor,
+                                                    aLineWidth);
 end;
 
-procedure TVulkanGraphicsPipeline.SetMultisampleState(const pRasterizationSamples:TVkSampleCountFlagBits;
-                                                      const pSampleShadingEnable:boolean;
-                                                      const pMinSampleShading:TVkFloat;
-                                                      const pSampleMask:array of TVkSampleMask;
-                                                      const pAlphaToCoverageEnable:boolean;
-                                                      const pAlphaToOneEnable:boolean);
+procedure TVulkanGraphicsPipeline.SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
+                                                      const aSampleShadingEnable:boolean;
+                                                      const aMinSampleShading:TVkFloat;
+                                                      const aSampleMask:array of TVkSampleMask;
+                                                      const aAlphaToCoverageEnable:boolean;
+                                                      const aAlphaToOneEnable:boolean);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- fGraphicsPipelineConstructor.SetMultisampleState(pRasterizationSamples,
-                                                  pSampleShadingEnable,
-                                                  pMinSampleShading,
-                                                  pSampleMask,
-                                                  pAlphaToCoverageEnable,
-                                                  pAlphaToOneEnable);
+ fGraphicsPipelineConstructor.SetMultisampleState(aRasterizationSamples,
+                                                  aSampleShadingEnable,
+                                                  aMinSampleShading,
+                                                  aSampleMask,
+                                                  aAlphaToCoverageEnable,
+                                                  aAlphaToOneEnable);
 end;
 
-procedure TVulkanGraphicsPipeline.SetDepthStencilState(const pDepthTestEnable:boolean;
-                                                       const pDepthWriteEnable:boolean;
-                                                       const pDepthCompareOp:TVkCompareOp;
-                                                       const pDepthBoundsTestEnable:boolean;
-                                                       const pStencilTestEnable:boolean;
-                                                       const pFront:TVkStencilOpState;
-                                                       const pBack:TVkStencilOpState;
-                                                       const pMinDepthBounds:TVkFloat;
-                                                       const pMaxDepthBounds:TVkFloat);
+procedure TVulkanGraphicsPipeline.SetDepthStencilState(const aDepthTestEnable:boolean;
+                                                       const aDepthWriteEnable:boolean;
+                                                       const aDepthCompareOp:TVkCompareOp;
+                                                       const aDepthBoundsTestEnable:boolean;
+                                                       const aStencilTestEnable:boolean;
+                                                       const aFront:TVkStencilOpState;
+                                                       const aBack:TVkStencilOpState;
+                                                       const aMinDepthBounds:TVkFloat;
+                                                       const aMaxDepthBounds:TVkFloat);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- fGraphicsPipelineConstructor.SetDepthStencilState(pDepthTestEnable,
-                                                   pDepthWriteEnable,
-                                                   pDepthCompareOp,
-                                                   pDepthBoundsTestEnable,
-                                                   pStencilTestEnable,
-                                                   pFront,
-                                                   pBack,
-                                                   pMinDepthBounds,
-                                                   pMaxDepthBounds);
+ fGraphicsPipelineConstructor.SetDepthStencilState(aDepthTestEnable,
+                                                   aDepthWriteEnable,
+                                                   aDepthCompareOp,
+                                                   aDepthBoundsTestEnable,
+                                                   aStencilTestEnable,
+                                                   aFront,
+                                                   aBack,
+                                                   aMinDepthBounds,
+                                                   aMaxDepthBounds);
 end;
 
-procedure TVulkanGraphicsPipeline.SetColorBlendState(const pLogicOpEnable:boolean;
-                                                     const pLogicOp:TVkLogicOp;
-                                                     const pBlendConstants:array of TVkFloat);
+procedure TVulkanGraphicsPipeline.SetColorBlendState(const aLogicOpEnable:boolean;
+                                                     const aLogicOp:TVkLogicOp;
+                                                     const aBlendConstants:array of TVkFloat);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- fGraphicsPipelineConstructor.SetColorBlendState(pLogicOpEnable,
-                                                 pLogicOp,
-                                                 pBlendConstants);
+ fGraphicsPipelineConstructor.SetColorBlendState(aLogicOpEnable,
+                                                 aLogicOp,
+                                                 aBlendConstants);
 end;
 
-function TVulkanGraphicsPipeline.AddColorBlendAttachmentState(const pColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanGraphicsPipeline.AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddColorBlendAttachmentState(pColorBlendAttachmentState);
+ result:=fGraphicsPipelineConstructor.AddColorBlendAttachmentState(aColorBlendAttachmentState);
 end;
 
-function TVulkanGraphicsPipeline.AddColorBlendAttachmentState(const pBlendEnable:boolean;
-                                                              const pSrcColorBlendFactor:TVkBlendFactor;
-                                                              const pDstColorBlendFactor:TVkBlendFactor;
-                                                              const pColorBlendOp:TVkBlendOp;
-                                                              const pSrcAlphaBlendFactor:TVkBlendFactor;
-                                                              const pDstAlphaBlendFactor:TVkBlendFactor;
-                                                              const pAlphaBlendOp:TVkBlendOp;
-                                                              const pColorWriteMask:TVkColorComponentFlags):TVkInt32;
+function TVulkanGraphicsPipeline.AddColorBlendAttachmentState(const aBlendEnable:boolean;
+                                                              const aSrcColorBlendFactor:TVkBlendFactor;
+                                                              const aDstColorBlendFactor:TVkBlendFactor;
+                                                              const aColorBlendOp:TVkBlendOp;
+                                                              const aSrcAlphaBlendFactor:TVkBlendFactor;
+                                                              const aDstAlphaBlendFactor:TVkBlendFactor;
+                                                              const aAlphaBlendOp:TVkBlendOp;
+                                                              const aColorWriteMask:TVkColorComponentFlags):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddColorBlendAttachmentState(pBlendEnable,
-                                                                   pSrcColorBlendFactor,
-                                                                   pDstColorBlendFactor,
-                                                                   pColorBlendOp,
-                                                                   pSrcAlphaBlendFactor,
-                                                                   pDstAlphaBlendFactor,
-                                                                   pAlphaBlendOp,
-                                                                   pColorWriteMask);
+ result:=fGraphicsPipelineConstructor.AddColorBlendAttachmentState(aBlendEnable,
+                                                                   aSrcColorBlendFactor,
+                                                                   aDstColorBlendFactor,
+                                                                   aColorBlendOp,
+                                                                   aSrcAlphaBlendFactor,
+                                                                   aDstAlphaBlendFactor,
+                                                                   aAlphaBlendOp,
+                                                                   aColorWriteMask);
 end;
 
-function TVulkanGraphicsPipeline.AddColorBlendAttachmentStates(const pColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanGraphicsPipeline.AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddColorBlendAttachmentStates(pColorBlendAttachmentStates);
+ result:=fGraphicsPipelineConstructor.AddColorBlendAttachmentStates(aColorBlendAttachmentStates);
 end;
 
-function TVulkanGraphicsPipeline.AddDynamicState(const pDynamicState:TVkDynamicState):TVkInt32;
+function TVulkanGraphicsPipeline.AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddDynamicState(pDynamicState);
+ result:=fGraphicsPipelineConstructor.AddDynamicState(aDynamicState);
 end;
 
-function TVulkanGraphicsPipeline.AddDynamicStates(const pDynamicStates:array of TVkDynamicState):TVkInt32;
+function TVulkanGraphicsPipeline.AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
- result:=fGraphicsPipelineConstructor.AddDynamicStates(pDynamicStates);
+ result:=fGraphicsPipelineConstructor.AddDynamicStates(aDynamicStates);
 end;
 
 procedure TVulkanGraphicsPipeline.Initialize;
@@ -18426,28 +18426,28 @@ begin
  raise EVulkanTextureException.Create('Invalid constructor');
 end;
 
-constructor TVulkanTexture.CreateFromMemory(const pDevice:TVulkanDevice;
-                                            const pGraphicsQueue:TVulkanQueue;
-                                            const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                            const pGraphicsFence:TVulkanFence;
-                                            const pTransferQueue:TVulkanQueue;
-                                            const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                            const pTransferFence:TVulkanFence;
-                                            const pFormat:TVkFormat;
-                                            const pSampleCount:TVkSampleCountFlagBits;
-                                            const pWidth:TVkInt32;
-                                            const pHeight:TVkInt32;
-                                            const pDepth:TVkInt32;
-                                            const pCountArrayElements:TVkInt32;
-                                            const pCountFaces:TVkInt32;
-                                            const pCountMipMaps:TVkInt32;
-                                            const pUsageFlags:TVulkanTextureUsageFlags;
-                                            const pData:TVkPointer;
-                                            const pDataSize:TVkSizeInt;
-                                            const pMipMapSizeStored:boolean;
-                                            const pSwapEndianness:boolean;
-                                            const pSwapEndiannessTexels:TVkInt32;
-                                            const pFromDDS:boolean=false);
+constructor TVulkanTexture.CreateFromMemory(const aDevice:TVulkanDevice;
+                                            const aGraphicsQueue:TVulkanQueue;
+                                            const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                            const aGraphicsFence:TVulkanFence;
+                                            const aTransferQueue:TVulkanQueue;
+                                            const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                            const aTransferFence:TVulkanFence;
+                                            const aFormat:TVkFormat;
+                                            const aSampleCount:TVkSampleCountFlagBits;
+                                            const aWidth:TVkInt32;
+                                            const aHeight:TVkInt32;
+                                            const aDepth:TVkInt32;
+                                            const aCountArrayElements:TVkInt32;
+                                            const aCountFaces:TVkInt32;
+                                            const aCountMipMaps:TVkInt32;
+                                            const aUsageFlags:TVulkanTextureUsageFlags;
+                                            const aData:TVkPointer;
+                                            const aDataSize:TVkSizeInt;
+                                            const aMipMapSizeStored:boolean;
+                                            const aSwapEndianness:boolean;
+                                            const aSwapEndiannessTexels:TVkInt32;
+                                            const aFromDDS:boolean=false);
 type PUInt8Array=^TUInt8Array;
      TUInt8Array=array[0..65535] of TVkUInt8;
  function Swap16(x:TVkUInt16):TVkUInt16;
@@ -18811,7 +18811,7 @@ begin
 
  inherited Create;
 
- fDevice:=pDevice;
+ fDevice:=aDevice;
 
  fFormat:=VK_FORMAT_UNDEFINED;
 
@@ -18849,58 +18849,58 @@ begin
 
  fMaxAnisotropy:=1.0;
 
- if (pDepth<1) or (pCountArrayElements<1) or (pCountFaces<1) then begin
+ if (aDepth<1) or (aCountArrayElements<1) or (aCountFaces<1) then begin
   raise EVulkanTextureException.Create('Invalid parameters');
  end;
- if (pWidth<1) or (pWidth>32768) or (pHeight<1) or (pHeight>32768) or (pDepth<1) or (pDepth>32768) then begin
-  raise EVulkanTextureException.Create('Invalid texture size ('+IntToStr(pWidth)+'x'+IntToStr(pHeight)+'x'+IntToStr(pDepth)+')');
+ if (aWidth<1) or (aWidth>32768) or (aHeight<1) or (aHeight>32768) or (aDepth<1) or (aDepth>32768) then begin
+  raise EVulkanTextureException.Create('Invalid texture size ('+IntToStr(aWidth)+'x'+IntToStr(aHeight)+'x'+IntToStr(aDepth)+')');
  end;
- if not (pCountFaces in [1,6]) then begin
+ if not (aCountFaces in [1,6]) then begin
   raise EVulkanTextureException.Create('Cube maps must have 6 faces');
  end;
- if (pCountFaces<>1) and (pWidth<>pHeight) then begin
-  raise EVulkanTextureException.Create('Cube maps must be square ('+IntToStr(pWidth)+'x'+IntToStr(pHeight)+')');
+ if (aCountFaces<>1) and (aWidth<>aHeight) then begin
+  raise EVulkanTextureException.Create('Cube maps must be square ('+IntToStr(aWidth)+'x'+IntToStr(aHeight)+')');
  end;
-{if (pDepth>1) or (pCountArrayElements>1) then begin
+{if (aDepth>1) or (aCountArrayElements>1) then begin
   raise EVulkanTextureException.Create('3D array textures not supported yet');
  end;}
 
- MaxDimension:=Max(Max(pWidth,pHeight),pDepth);
+ MaxDimension:=Max(Max(aWidth,aHeight),aDepth);
  MaxMipMapLevels:=VulkanIntLog2(MaxDimension)+1;
- if pCountMipMaps>MaxMipMapLevels then begin
-  raise EVulkanTextureException.Create('Too many mip levels ('+IntToStr(pCountMipMaps)+' > '+IntToStr(MaxMipMapLevels)+')');
+ if aCountMipMaps>MaxMipMapLevels then begin
+  raise EVulkanTextureException.Create('Too many mip levels ('+IntToStr(aCountMipMaps)+' > '+IntToStr(MaxMipMapLevels)+')');
  end;
 
- FormatProperties:=fDevice.fPhysicalDevice.GetFormatProperties(pFormat);
+ FormatProperties:=fDevice.fPhysicalDevice.GetFormatProperties(aFormat);
 
- if (vtufSampled in pUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))=0) then begin
-  raise EVulkanTextureException.Create('Texture format '+IntToStr(TVkInt32(pFormat))+' can''t be sampled');
+ if (vtufSampled in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))=0) then begin
+  raise EVulkanTextureException.Create('Texture format '+IntToStr(TVkInt32(aFormat))+' can''t be sampled');
  end;
 
- if (vtufColorAttachment in pUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))=0) then begin
-  raise EVulkanTextureException.Create('Texture format '+IntToStr(TVkInt32(pFormat))+' can''t be rendered to');
+ if (vtufColorAttachment in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))=0) then begin
+  raise EVulkanTextureException.Create('Texture format '+IntToStr(TVkInt32(aFormat))+' can''t be rendered to');
  end;
 
- if (vtufStorage in pUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))=0) then begin
-  raise EVulkanTextureException.Create('Texture format '+IntToStr(TVkInt32(pFormat))+' can''t be used for storage');
+ if (vtufStorage in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))=0) then begin
+  raise EVulkanTextureException.Create('Texture format '+IntToStr(TVkInt32(aFormat))+' can''t be used for storage');
  end;
 
- if pCountMipMaps>=1 then begin
-  CountStorageLevels:=pCountMipMaps;
+ if aCountMipMaps>=1 then begin
+  CountStorageLevels:=aCountMipMaps;
  end else begin
   CountStorageLevels:=MaxMipMapLevels;
  end;
 
- CountArrayLayers:=pCountFaces*pCountArrayElements;
+ CountArrayLayers:=aCountFaces*aCountArrayElements;
 
- fWidth:=pWidth;
- fHeight:=pHeight;
- fDepth:=pDepth;
+ fWidth:=aWidth;
+ fHeight:=aHeight;
+ fDepth:=aDepth;
  fCountArrayLayers:=CountArrayLayers;
  fCountMipMaps:=CountStorageLevels;
- fSampleCount:=pSampleCount;
+ fSampleCount:=aSampleCount;
  fUsage:=vtufUndefined;
- fUsageFlags:=pUsageFlags;
+ fUsageFlags:=aUsageFlags;
  fWrapModeU:=vtwmRepeat;
  fWrapModeV:=vtwmRepeat;
  fWrapModeW:=vtwmRepeat;
@@ -18911,15 +18911,15 @@ begin
  end;
  fBorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
  fMaxAnisotropy:=1.0;
- fFormat:=pFormat;
+ fFormat:=aFormat;
 
  Compressed:=false;
 
  Usage:=0;
- if (vtufTransferDst in fUsageFlags) or assigned(pData) then begin
+ if (vtufTransferDst in fUsageFlags) or assigned(aData) then begin
   Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT);
  end;
- if (vtufTransferSrc in fUsageFlags) or (assigned(pData) and (pCountMipMaps<0)) then begin
+ if (vtufTransferSrc in fUsageFlags) or (assigned(aData) and (aCountMipMaps<0)) then begin
   Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
  end;
  if vtufSampled in fUsageFlags then begin
@@ -18933,11 +18933,11 @@ begin
  end;
 
  ImageCreateFlags:=0;
- if pCountFaces=6 then begin
+ if aCountFaces=6 then begin
   ImageCreateFlags:=ImageCreateFlags or TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
  end;
 
- if pDepth>1 then begin
+ if aDepth>1 then begin
   ImageType:=VK_IMAGE_TYPE_3D;
  end else begin
   ImageType:=VK_IMAGE_TYPE_2D;
@@ -18977,20 +18977,20 @@ begin
 
  HandleResultCode(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,fImage.fImageHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
 
- if assigned(pData) then begin
+ if assigned(aData) then begin
 
   if fSampleCount<>VK_SAMPLE_COUNT_1_BIT then begin
    raise EVulkanTextureException.Create('Sample count must be 1 bit');
   end;
 
-  if pCountMipMaps>1 then begin
-   CountDataLevels:=pCountMipMaps;
+  if aCountMipMaps>1 then begin
+   CountDataLevels:=aCountMipMaps;
   end else begin
    CountDataLevels:=1;
   end;
 
   StagingBuffer:=TVulkanBuffer.Create(fDevice,
-                                      pDataSize,
+                                      aDataSize,
                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
                                       VK_SHARING_MODE_EXCLUSIVE,
                                       nil,
@@ -19001,7 +19001,7 @@ begin
                                       [vbfOwnSingleMemoryChunk]);
   try
 
-   if (not pFromDDS) and (pSwapEndianness and (pSwapEndiannessTexels in [2,4,8])) then begin
+   if (not aFromDDS) and (aSwapEndianness and (aSwapEndiannessTexels in [2,4,8])) then begin
     DataOffset:=0;
     for MipMapLevelIndex:=0 to CountDataLevels-1 do begin
      MipMapWidth:=Max(1,fWidth shr MipMapLevelIndex);
@@ -19009,11 +19009,11 @@ begin
      MipMapDepth:=Max(1,fDepth shr MipMapLevelIndex);
      TotalMipMapSize:=0;
      StoredMipMapSize:=0;
-     if pMipMapSizeStored then begin
-      Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(pDataSize));
-      StoredMipMapSize:=TVkUInt32(pointer(@TUInt8Array(pointer(pData)^)[DataOffset])^);
+     if aMipMapSizeStored then begin
+      Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(aDataSize));
+      StoredMipMapSize:=TVkUInt32(pointer(@TUInt8Array(pointer(aData)^)[DataOffset])^);
       inc(DataOffset,SizeOf(TVkUInt32));
-      if pSwapEndianness then begin
+      if aSwapEndianness then begin
        StoredMipMapSize:=Swap32(StoredMipMapSize);
       end;
       if StoredMipMapSize<>0 then begin
@@ -19023,24 +19023,24 @@ begin
       for DepthIndex:=0 to MipMapDepth-1 do begin
        MipMapSize:=0;
        GetMipMapSize;
-       Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
-       case pSwapEndiannessTexels of
+       Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(aDataSize));
+       case aSwapEndiannessTexels of
         2:begin
-         v16:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(pData))+TVkPtrUInt(DataOffset)));
+         v16:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(aData))+TVkPtrUInt(DataOffset)));
          for Index:=1 to MipMapSize shr 1 do begin
           v16^:=Swap16(v16^);
           inc(v16);
          end;
         end;
         4:begin
-         v32:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(pData))+TVkPtrUInt(DataOffset)));
+         v32:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(aData))+TVkPtrUInt(DataOffset)));
          for Index:=1 to MipMapSize shr 2 do begin
           v32^:=Swap32(v32^);
           inc(v32);
          end;
         end;
         8:begin
-         v64:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(pData))+TVkPtrUInt(DataOffset)));
+         v64:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(aData))+TVkPtrUInt(DataOffset)));
          for Index:=1 to MipMapSize shr 3 do begin
           v64^:=Swap64(v64^);
           inc(v64);
@@ -19049,36 +19049,36 @@ begin
        end;
        inc(TotalMipMapSize,MipMapSize);
        inc(DataOffset,MipMapSize);
-       if pMipMapSizeStored and ((fDepth<=1) and (pCountArrayElements<=1)) then begin
+       if aMipMapSizeStored and ((fDepth<=1) and (aCountArrayElements<=1)) then begin
         Assert(TotalMipMapSize=StoredMipMapSize);
         inc(DataOffset,3-((MipMapSize+3) and 3));
        end;
       end;
      end;
-     if pMipMapSizeStored and ((fDepth>1) or (pCountArrayElements>1)) then begin
+     if aMipMapSizeStored and ((fDepth>1) or (aCountArrayElements>1)) then begin
       Assert(TotalMipMapSize=StoredMipMapSize);
       inc(DataOffset,3-((TotalMipMapSize+3) and 3));
      end;
     end;
    end;
 
-   StagingBuffer.UploadData(pTransferQueue,
-                            pTransferCommandBuffer,
-                            pTransferFence,
-                            pData^,
+   StagingBuffer.UploadData(aTransferQueue,
+                            aTransferCommandBuffer,
+                            aTransferFence,
+                            aData^,
                             0,
-                            pDataSize,
+                            aDataSize,
                             vbutsbmNo);
 
    BufferImageCopyArray:=nil;
    try
 
-    if (pGraphicsQueue=pTransferQueue) and
-       (pGraphicsCommandBuffer=pTransferCommandBuffer) and
-       (pGraphicsFence=pTransferFence) then begin
+    if (aGraphicsQueue=aTransferQueue) and
+       (aGraphicsCommandBuffer=aTransferCommandBuffer) and
+       (aGraphicsFence=aTransferFence) then begin
 
-     pGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-     pGraphicsCommandBuffer.BeginRecording;
+     aGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+     aGraphicsCommandBuffer.BeginRecording;
      try
 
       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -19095,7 +19095,7 @@ begin
       ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
       ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-      pGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+      aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                 0,
                                                 0,
@@ -19113,8 +19113,8 @@ begin
       BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
       BufferMemoryBarrier.buffer:=StagingBuffer.fBufferHandle;
       BufferMemoryBarrier.offset:=StagingBuffer.Memory.fOffset;
-      BufferMemoryBarrier.size:=pDataSize;
-      pGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+      BufferMemoryBarrier.size:=aDataSize;
+      aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                 0,
                                                 0,
@@ -19127,7 +19127,7 @@ begin
       SetLength(BufferImageCopyArray,CountDataLevels*fCountArrayLayers*fDepth);
       BufferImageCopyArraySize:=0;
       DataOffset:=0;
-      if pFromDDS then begin
+      if aFromDDS then begin
        for LayerIndex:=0 to fCountArrayLayers-1 do begin
         for MipMapLevelIndex:=0 to CountDataLevels-1 do begin
          MipMapWidth:=Max(1,fWidth shr MipMapLevelIndex);
@@ -19152,7 +19152,7 @@ begin
           BufferImageCopy^.imageExtent.depth:=1;
           MipMapSize:=0;
           GetMipMapSize;
-          Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
+          Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(aDataSize));
           inc(DataOffset,MipMapSize);
          end;
         end;
@@ -19164,11 +19164,11 @@ begin
         MipMapDepth:=Max(1,fDepth shr MipMapLevelIndex);
         TotalMipMapSize:=0;
         StoredMipMapSize:=0;
-        if pMipMapSizeStored then begin
-         Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(pDataSize));
-         StoredMipMapSize:=TVkUInt32(pointer(@TUInt8Array(pointer(pData)^)[DataOffset])^);
+        if aMipMapSizeStored then begin
+         Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(aDataSize));
+         StoredMipMapSize:=TVkUInt32(pointer(@TUInt8Array(pointer(aData)^)[DataOffset])^);
          inc(DataOffset,SizeOf(TVkUInt32));
-         if pSwapEndianness then begin
+         if aSwapEndianness then begin
           StoredMipMapSize:=Swap32(StoredMipMapSize);
          end;
          if StoredMipMapSize<>0 then begin
@@ -19194,16 +19194,16 @@ begin
           BufferImageCopy^.imageExtent.depth:=1;
           MipMapSize:=0;
           GetMipMapSize;
-          Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(pDataSize));
+          Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(aDataSize));
           inc(TotalMipMapSize,MipMapSize);
           inc(DataOffset,MipMapSize);
-          if pMipMapSizeStored and ((fDepth<=1) and (pCountArrayElements<=1)) then begin
+          if aMipMapSizeStored and ((fDepth<=1) and (aCountArrayElements<=1)) then begin
            Assert(TotalMipMapSize=StoredMipMapSize);
            inc(DataOffset,3-((MipMapSize+3) and 3));
           end;
          end;
         end;
-        if pMipMapSizeStored and ((fDepth>1) or (pCountArrayElements>1)) then begin
+        if aMipMapSizeStored and ((fDepth>1) or (aCountArrayElements>1)) then begin
          Assert(TotalMipMapSize=StoredMipMapSize);
          inc(DataOffset,3-((TotalMipMapSize+3) and 3));
         end;
@@ -19211,11 +19211,11 @@ begin
       end;
       SetLength(BufferImageCopyArray,BufferImageCopyArraySize);
 
-      Assert(TVkSizeInt(DataOffset)=TVkSizeInt(pDataSize));
+      Assert(TVkSizeInt(DataOffset)=TVkSizeInt(aDataSize));
 
-      pGraphicsCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
+      aGraphicsCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
 
-      if pCountMipMaps<1 then begin
+      if aCountMipMaps<1 then begin
 
        if Compressed then begin
         raise EVulkanTextureException.Create('Mip map levels can''t generated for compressed textures automatically');
@@ -19239,7 +19239,7 @@ begin
         ImageMemoryBarrier.subresourceRange.levelCount:=1;
         ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
         ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-        pGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+        aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                   0,
                                                   0,
@@ -19271,7 +19271,7 @@ begin
          ImageBlit.dstOffsets[1].x:=Max(1,fWidth shr MipMapLevelIndex);
          ImageBlit.dstOffsets[1].y:=Max(1,fHeight shr MipMapLevelIndex);
          ImageBlit.dstOffsets[1].z:=Max(1,fDepth shr MipMapLevelIndex);
-         pGraphicsCommandBuffer.CmdBlitImage(fImage.fImageHandle,
+         aGraphicsCommandBuffer.CmdBlitImage(fImage.fImageHandle,
                                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                              fImage.fImageHandle,
                                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -19286,13 +19286,13 @@ begin
 
       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
       ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-      if pCountMipMaps>=1 then begin
+      if aCountMipMaps>=1 then begin
        ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
       end else begin
        ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
       end;
       ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
-      if pCountMipMaps>=1 then begin
+      if aCountMipMaps>=1 then begin
        ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
       end else begin
        ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -19306,7 +19306,7 @@ begin
       ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
       ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-      pGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+      aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                 0,
                                                 0,
@@ -19317,8 +19317,8 @@ begin
                                                 @ImageMemoryBarrier);
 
      finally
-      pGraphicsCommandBuffer.EndRecording;
-      pGraphicsCommandBuffer.Execute(pGraphicsQueue,0,nil,nil,pGraphicsFence,true);
+      aGraphicsCommandBuffer.EndRecording;
+      aGraphicsCommandBuffer.Execute(aGraphicsQueue,0,nil,nil,aGraphicsFence,true);
      end;
 
     end else begin
@@ -19351,9 +19351,9 @@ begin
   ImageMemoryBarrier.subresourceRange.levelCount:=fCountMipMaps;
   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
   ImageMemoryBarrier.subresourceRange.layerCount:=fCountArrayLayers;
-  pGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-  pGraphicsCommandBuffer.BeginRecording;
-  pGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+  aGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  aGraphicsCommandBuffer.BeginRecording;
+  aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                             0,
                                             0,
@@ -19362,8 +19362,8 @@ begin
                                             nil,
                                             1,
                                             @ImageMemoryBarrier);
-  pGraphicsCommandBuffer.EndRecording;
-  pGraphicsCommandBuffer.Execute(pGraphicsQueue,0,nil,nil,pGraphicsFence,true);
+  aGraphicsCommandBuffer.EndRecording;
+  aGraphicsCommandBuffer.Execute(aGraphicsQueue,0,nil,nil,aGraphicsFence,true);
 
  end;
 
@@ -19373,14 +19373,14 @@ begin
  if fDepth>1 then begin
   ImageViewType:=VK_IMAGE_VIEW_TYPE_3D;
  end else begin
-  if pCountFaces>1 then begin
-   if pCountArrayElements>1 then begin
+  if aCountFaces>1 then begin
+   if aCountArrayElements>1 then begin
     ImageViewType:=VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
    end else begin
     ImageViewType:=VK_IMAGE_VIEW_TYPE_CUBE;
    end;
   end else begin
-   if pCountArrayElements>1 then begin
+   if aCountArrayElements>1 then begin
     ImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
    end else begin
     ImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
@@ -19417,71 +19417,71 @@ begin
 
 end;
 
-constructor TVulkanTexture.CreateFromStream(const pDevice:TVulkanDevice;
-                                            const pGraphicsQueue:TVulkanQueue;
-                                            const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                            const pGraphicsFence:TVulkanFence;
-                                            const pTransferQueue:TVulkanQueue;
-                                            const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                            const pTransferFence:TVulkanFence;
-                                            const pFormat:TVkFormat;
-                                            const pSampleCount:TVkSampleCountFlagBits;
-                                            const pWidth:TVkInt32;
-                                            const pHeight:TVkInt32;
-                                            const pDepth:TVkInt32;
-                                            const pCountArrayElements:TVkInt32;
-                                            const pCountFaces:TVkInt32;
-                                            const pCountMipMaps:TVkInt32;
-                                            const pUsageFlags:TVulkanTextureUsageFlags;
-                                            const pStream:TStream;
-                                            const pMipMapSizeStored:boolean;
-                                            const pSwapEndianness:boolean;
-                                            const pSwapEndiannessTexels:TVkInt32;
-                                            const pFromDDS:boolean=false);
+constructor TVulkanTexture.CreateFromStream(const aDevice:TVulkanDevice;
+                                            const aGraphicsQueue:TVulkanQueue;
+                                            const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                            const aGraphicsFence:TVulkanFence;
+                                            const aTransferQueue:TVulkanQueue;
+                                            const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                            const aTransferFence:TVulkanFence;
+                                            const aFormat:TVkFormat;
+                                            const aSampleCount:TVkSampleCountFlagBits;
+                                            const aWidth:TVkInt32;
+                                            const aHeight:TVkInt32;
+                                            const aDepth:TVkInt32;
+                                            const aCountArrayElements:TVkInt32;
+                                            const aCountFaces:TVkInt32;
+                                            const aCountMipMaps:TVkInt32;
+                                            const aUsageFlags:TVulkanTextureUsageFlags;
+                                            const aStream:TStream;
+                                            const aMipMapSizeStored:boolean;
+                                            const aSwapEndianness:boolean;
+                                            const aSwapEndiannessTexels:TVkInt32;
+                                            const aFromDDS:boolean=false);
 var Data:TVkPointer;
     DataSize:TVkUInt32;
 begin
- DataSize:=pStream.Size;
+ DataSize:=aStream.Size;
  GetMem(Data,DataSize);
  try
-  if TVkInt64(pStream.Read(Data^,DataSize))<>TVkInt64(DataSize) then begin
+  if TVkInt64(aStream.Read(Data^,DataSize))<>TVkInt64(DataSize) then begin
    raise EVulkanTextureException.Create('Stream read error');
   end;
-  CreateFromMemory(pDevice,
-                   pGraphicsQueue,
-                   pGraphicsCommandBuffer,
-                   pGraphicsFence,
-                   pTransferQueue,
-                   pTransferCommandBuffer,
-                   pTransferFence,
-                   pFormat,
-                   pSampleCount,
-                   pWidth,
-                   pHeight,
-                   pDepth,
-                   pCountArrayElements,
-                   pCountFaces,
-                   pCountMipMaps,
-                   pUsageFlags,
+  CreateFromMemory(aDevice,
+                   aGraphicsQueue,
+                   aGraphicsCommandBuffer,
+                   aGraphicsFence,
+                   aTransferQueue,
+                   aTransferCommandBuffer,
+                   aTransferFence,
+                   aFormat,
+                   aSampleCount,
+                   aWidth,
+                   aHeight,
+                   aDepth,
+                   aCountArrayElements,
+                   aCountFaces,
+                   aCountMipMaps,
+                   aUsageFlags,
                    Data,
                    DataSize,
-                   pMipMapSizeStored,
-                   pSwapEndianness,
-                   pSwapEndiannessTexels,
-                   pFromDDS);
+                   aMipMapSizeStored,
+                   aSwapEndianness,
+                   aSwapEndiannessTexels,
+                   aFromDDS);
  finally
   FreeMem(Data);
  end;
 end;
 
-constructor TVulkanTexture.CreateFromKTX(const pDevice:TVulkanDevice;
-                                         const pGraphicsQueue:TVulkanQueue;
-                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                         const pGraphicsFence:TVulkanFence;
-                                         const pTransferQueue:TVulkanQueue;
-                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                         const pTransferFence:TVulkanFence;
-                                         const pStream:TStream);
+constructor TVulkanTexture.CreateFromKTX(const aDevice:TVulkanDevice;
+                                         const aGraphicsQueue:TVulkanQueue;
+                                         const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const aGraphicsFence:TVulkanFence;
+                                         const aTransferQueue:TVulkanQueue;
+                                         const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const aTransferFence:TVulkanFence;
+                                         const aStream:TStream);
 type PKTXIdentifier=^TKTXIdentifier;
      TKTXIdentifier=array[0..11] of TVkUInt8;
      PKTXHeader=^TKTXHeader;
@@ -19519,7 +19519,7 @@ var KTXHeader:TKTXHeader;
     NewPosition:TVkInt64;
 begin
 
- if pStream.Read(KTXHeader,SizeOf(TKTXHeader))<>SizeOf(TKTXHeader) then begin
+ if aStream.Read(KTXHeader,SizeOf(TKTXHeader))<>SizeOf(TKTXHeader) then begin
   raise EVulkanTextureException.Create('Stream read error');
  end;
 
@@ -19586,26 +19586,26 @@ begin
  NumberOfMipMapLevels:=KTXHeader.NumberOfMipMapLevels;
 
  if KTXHeader.BytesOfKeyValueData>0 then begin
-  NewPosition:=pStream.Position+KTXHeader.BytesOfKeyValueData;
-  if pStream.Seek(NewPosition,soBeginning)<>NewPosition then begin
+  NewPosition:=aStream.Position+KTXHeader.BytesOfKeyValueData;
+  if aStream.Seek(NewPosition,soBeginning)<>NewPosition then begin
    raise EVulkanTextureException.Create('Stream seek error');
   end;
  end;
 
- DataSize:=pStream.Size-pStream.Position;
+ DataSize:=aStream.Size-aStream.Position;
 
  GetMem(Data,DataSize);
  try
-  if pStream.Read(Data^,DataSize)<>DataSize then begin
+  if aStream.Read(Data^,DataSize)<>DataSize then begin
    raise EVulkanTextureException.Create('Stream read error');
   end;
-  CreateFromMemory(pDevice,
-                   pGraphicsQueue,
-                   pGraphicsCommandBuffer,
-                   pGraphicsFence,
-                   pTransferQueue,
-                   pTransferCommandBuffer,
-                   pTransferFence,
+  CreateFromMemory(aDevice,
+                   aGraphicsQueue,
+                   aGraphicsCommandBuffer,
+                   aGraphicsFence,
+                   aTransferQueue,
+                   aTransferCommandBuffer,
+                   aTransferFence,
                    VulkanGetFormatFromOpenGLInternalFormat(KTXHeader.GLInternalFormat),
                    VK_SAMPLE_COUNT_1_BIT,
                    Max(1,KTXHeader.PixelWidth),
@@ -19627,14 +19627,14 @@ begin
 
 end;
 
-constructor TVulkanTexture.CreateFromDDS(const pDevice:TVulkanDevice;
-                                         const pGraphicsQueue:TVulkanQueue;
-                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                         const pGraphicsFence:TVulkanFence;
-                                         const pTransferQueue:TVulkanQueue;
-                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                         const pTransferFence:TVulkanFence;
-                                         const pStream:TStream);
+constructor TVulkanTexture.CreateFromDDS(const aDevice:TVulkanDevice;
+                                         const aGraphicsQueue:TVulkanQueue;
+                                         const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const aGraphicsFence:TVulkanFence;
+                                         const aTransferQueue:TVulkanQueue;
+                                         const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const aTransferFence:TVulkanFence;
+                                         const aStream:TStream);
 const DDS_MAGIC=$20534444;
       DDSD_CAPS=$00000001;
       DDSD_HEIGHT=$00000002;
@@ -19840,7 +19840,7 @@ var Header:TDDSHeader;
     DataSize:TVkSizeInt;
     Data:TVkPointer;
 begin
- if pStream.Read(Header,SizeOf(TDDSHeader))<>SizeOf(TDDSHeader) then begin
+ if aStream.Read(Header,SizeOf(TDDSHeader))<>SizeOf(TDDSHeader) then begin
   raise EVulkanTextureException.Create('Invalid DDS stream');
  end;
  if ((Header.dwMagic<>DDS_MAGIC) or (Header.dwSize<>124) or ((Header.dwFlags and DDSD_PIXELFORMAT)=0) or ((Header.dwFlags and DDSD_CAPS)=0)) then begin
@@ -19916,7 +19916,7 @@ begin
      ImageFormat:=VK_FORMAT_BC5_SNORM_BLOCK;
     end;
     D3DFMT_DX10:begin
-     if pStream.Read(HeaderDX10,SizeOf(TDDSHeaderDX10))<>SizeOf(TDDSHeaderDX10) then begin
+     if aStream.Read(HeaderDX10,SizeOf(TDDSHeaderDX10))<>SizeOf(TDDSHeaderDX10) then begin
       raise EVulkanTextureException.Create('Invalid DDS stream');
      end;
      case HeaderDX10.dxgiFormat of
@@ -20396,19 +20396,19 @@ begin
  if (ImageDepth>1) and not IsVolume then begin
   raise EVulkanTextureException.Create('Invalid DDS stream');
  end;
- DataSize:=pStream.Size-pStream.Position;
+ DataSize:=aStream.Size-aStream.Position;
  GetMem(Data,DataSize);
  try
-  if pStream.Read(Data^,DataSize)<>DataSize then begin
+  if aStream.Read(Data^,DataSize)<>DataSize then begin
    raise EVulkanTextureException.Create('Stream read error');
   end;
-  CreateFromMemory(pDevice,
-                   pGraphicsQueue,
-                   pGraphicsCommandBuffer,
-                   pGraphicsFence,
-                   pTransferQueue,
-                   pTransferCommandBuffer,
-                   pTransferFence,
+  CreateFromMemory(aDevice,
+                   aGraphicsQueue,
+                   aGraphicsCommandBuffer,
+                   aGraphicsFence,
+                   aTransferQueue,
+                   aTransferCommandBuffer,
+                   aTransferFence,
                    ImageFormat,
                    VK_SAMPLE_COUNT_1_BIT,
                    Max(1,ImageWidth),
@@ -20429,15 +20429,15 @@ begin
  end;     
 end;
 
-constructor TVulkanTexture.CreateFromHDR(const pDevice:TVulkanDevice;
-                                         const pGraphicsQueue:TVulkanQueue;
-                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                         const pGraphicsFence:TVulkanFence;
-                                         const pTransferQueue:TVulkanQueue;
-                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                         const pTransferFence:TVulkanFence;
-                                         const pStream:TStream;
-                                         const pMipMaps:boolean);
+constructor TVulkanTexture.CreateFromHDR(const aDevice:TVulkanDevice;
+                                         const aGraphicsQueue:TVulkanQueue;
+                                         const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const aGraphicsFence:TVulkanFence;
+                                         const aTransferQueue:TVulkanQueue;
+                                         const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const aTransferFence:TVulkanFence;
+                                         const aStream:TStream;
+                                         const aMipMaps:boolean);
 const RGBE_DATA_RED=0;
       RGBE_DATA_GREEN=1;
       RGBE_DATA_BLUE=2;
@@ -20475,10 +20475,10 @@ const RGBE_DATA_RED=0;
   result:=false;
   scanlinebuffer:=nil;
   ImageData:=nil;
-  if pStream.Size>16 then begin
+  if aStream.Size>16 then begin
    buf[0]:=#0;
    buf[1]:=#0;
-   pStream.Read(buf,2*SizeOf(AnsiChar));
+   aStream.Read(buf,2*SizeOf(AnsiChar));
    if (buf[0]<>'#') or (buf[1]<>'?') then begin
     exit;
    end;
@@ -20487,7 +20487,7 @@ const RGBE_DATA_RED=0;
    exposure:=1.0;
    begin
     i:=0;
-    while pStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
+    while aStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
      if c in [#1..#9,#11..#12,#14..#32] then begin
       break;
      end else if i<255 then begin
@@ -20496,7 +20496,7 @@ const RGBE_DATA_RED=0;
      end;
     end;
     programtype[0]:=ansichar(TVkUInt8(i));
-    while pStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
+    while aStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
      if c in [#0,#10,#13] then begin
       break;
      end;
@@ -20505,10 +20505,10 @@ const RGBE_DATA_RED=0;
    if length(programtype)>0 then begin
    end;
    OK:=false;
-   while pStream.Position<pStream.Size do begin
+   while aStream.Position<aStream.Size do begin
     line:='';
     i:=0;
-    while pStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
+    while aStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
      if c in [#0,#10,#13] then begin
       break;
      end else if i<255 then begin
@@ -20543,10 +20543,10 @@ const RGBE_DATA_RED=0;
     exit;
    end;
    OK:=false;
-   while pStream.Position<pStream.Size do begin
+   while aStream.Position<aStream.Size do begin
     line:='';
     i:=0;
-    while pStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
+    while aStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
      if c in [#0,#10,#13] then begin
       break;
      end else if i<255 then begin
@@ -20590,7 +20590,7 @@ const RGBE_DATA_RED=0;
     p:=ImageData;
     if (ImageWidth<8) or (ImageWidth>$7fff) then begin
      NonRLE:
-     while (CountPixels>0) and (pStream.Read(rgbe,SizeOf(TVkUInt8)*4)=(SizeOf(TVkUInt8)*4)) do begin
+     while (CountPixels>0) and (aStream.Read(rgbe,SizeOf(TVkUInt8)*4)=(SizeOf(TVkUInt8)*4)) do begin
       dec(CountPixels);
       rgbe2float(rgbe[0],rgbe[1],rgbe[2],rgbe[3],r,g,b,a);
       p^:=r;
@@ -20606,9 +20606,9 @@ const RGBE_DATA_RED=0;
      y:=ImageHeight;
      while (CountPixels>0) and (y>0) do begin
       dec(y);
-      if pStream.Read(rgbe,SizeOf(TVkUInt8)*4)=(SizeOf(TVkUInt8)*4) then begin
+      if aStream.Read(rgbe,SizeOf(TVkUInt8)*4)=(SizeOf(TVkUInt8)*4) then begin
        if (rgbe[0]<>2) or (rgbe[1]<>2) or ((rgbe[2] and $80)<>0) then begin
-        pStream.Seek(-(SizeOf(TVkUInt8)*4),soCurrent);
+        aStream.Seek(-(SizeOf(TVkUInt8)*4),soCurrent);
         goto NonRLE;
        end else begin
         if longint((longint(rgbe[2]) shl 8) or longint(rgbe[3]))<>ImageWidth then begin
@@ -20620,13 +20620,13 @@ const RGBE_DATA_RED=0;
         for i:=0 to 3 do begin
          x:=0;
          while x<ImageWidth do begin
-          if pStream.Read(Len,SizeOf(TVkUInt8))=SizeOf(TVkUInt8) then begin
+          if aStream.Read(Len,SizeOf(TVkUInt8))=SizeOf(TVkUInt8) then begin
            if Len>128 then begin
             k:=Len-128;
             if (x+k)>ImageWidth then begin
              goto DoFail;
             end;
-            if pStream.Read(Val,SizeOf(TVkUInt8))=SizeOf(TVkUInt8) then begin
+            if aStream.Read(Val,SizeOf(TVkUInt8))=SizeOf(TVkUInt8) then begin
              for j:=1 to k do begin
               scanlinebuffer[x,i]:=Val;
               inc(x);
@@ -20640,7 +20640,7 @@ const RGBE_DATA_RED=0;
              goto DoFail;
             end;
             for j:=1 to k do begin
-             if pStream.Read(scanlinebuffer[x,i],SizeOf(TVkUInt8))<>SizeOf(TVkUInt8) then begin
+             if aStream.Read(scanlinebuffer[x,i],SizeOf(TVkUInt8))<>SizeOf(TVkUInt8) then begin
               goto DoFail;
              end;
              inc(x);
@@ -20701,13 +20701,13 @@ begin
  ImageHeight:=0;
  try
   if LoadHDRImage(ImageData,ImageWidth,ImageHeight) then begin
-   CreateFromMemory(pDevice,
-                    pGraphicsQueue,
-                    pGraphicsCommandBuffer,
-                    pGraphicsFence,
-                    pTransferQueue,
-                    pTransferCommandBuffer,
-                    pTransferFence,
+   CreateFromMemory(aDevice,
+                    aGraphicsQueue,
+                    aGraphicsCommandBuffer,
+                    aGraphicsFence,
+                    aTransferQueue,
+                    aTransferCommandBuffer,
+                    aTransferFence,
                     VK_FORMAT_R32G32B32A32_SFLOAT,
                     VK_SAMPLE_COUNT_1_BIT,
                     Max(1,ImageWidth),
@@ -20715,7 +20715,7 @@ begin
                     1,
                     1,
                     1,
-                    MipMapLevels[pMipMaps],
+                    MipMapLevels[aMipMaps],
                     [vtufTransferDst,vtufSampled],
                     ImageData,
                     ImageWidth*ImageHeight*SizeOf(TVkFloat)*4,
@@ -20733,15 +20733,15 @@ begin
  end;
 end;
 
-constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
-                                         const pGraphicsQueue:TVulkanQueue;
-                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                         const pGraphicsFence:TVulkanFence;
-                                         const pTransferQueue:TVulkanQueue;
-                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                         const pTransferFence:TVulkanFence;
-                                         const pStream:TStream;
-                                         const pMipMaps:boolean);
+constructor TVulkanTexture.CreateFromTGA(const aDevice:TVulkanDevice;
+                                         const aGraphicsQueue:TVulkanQueue;
+                                         const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const aGraphicsFence:TVulkanFence;
+                                         const aTransferQueue:TVulkanQueue;
+                                         const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const aTransferFence:TVulkanFence;
+                                         const aStream:TStream;
+                                         const aMipMaps:boolean);
  function LoadTGAImage(var ImageData:pointer;var ImageWidth,ImageHeight:TVkInt32):boolean;
  type pbyte=^TVkUInt8;
       PLongword=^TVkUInt32;
@@ -20850,8 +20850,8 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
   end;
  begin
   result:=false;
-  if pStream.Size>0 then begin
-   if pStream.Read(TGAHeader,SizeOf(TGAHeader))<>SizeOf(TGAHeader) then begin
+  if aStream.Size>0 then begin
+   if aStream.Read(TGAHeader,SizeOf(TGAHeader))<>SizeOf(TGAHeader) then begin
     result:=false;
     exit;
    end;
@@ -20859,12 +20859,12 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
     result:=false;
     exit;
    end;
-   pStream.Seek(TGAHeader.ImageID,soCurrent);
+   aStream.Seek(TGAHeader.ImageID,soCurrent);
    Palette:=nil;
    HasPalette:=TGAHeader.ColorMapType=1;
    if HasPalette then begin
     SetLength(Palette,TGAHeader.CMapSpec.Length*TGAHeader.CMapSpec.EntrySize div 8);
-    if pStream.Read(Palette[0],length(Palette))<>length(Palette) then begin
+    if aStream.Read(Palette[0],length(Palette))<>length(Palette) then begin
      exit;
     end;
    end;
@@ -20884,21 +20884,21 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
       case TGAHeader.ImageType of
        1:begin
         for i:=0 to (Width*Height)-1 do begin
-         pStream.Read(B8,SizeOf(TVkUInt8));
+         aStream.Read(B8,SizeOf(TVkUInt8));
          Pixel^:=PaletteEncode(B8);
          inc(Pixel);
         end;
        end;
        2:begin
         for i:=0 to (Width*Height)-1 do begin
-         pStream.Read(B8,SizeOf(TVkUInt8));
+         aStream.Read(B8,SizeOf(TVkUInt8));
          Pixel^:=B8;
          inc(Pixel);
         end;
        end;
        3:begin
         for i:=0 to (Width*Height)-1 do begin
-         pStream.Read(B8,SizeOf(TVkUInt8));
+         aStream.Read(B8,SizeOf(TVkUInt8));
          Pixel^:=(B8 shl 24) or (B8 shl 16) or (B8 shl 8) or B8;
          inc(Pixel);
         end;
@@ -20908,7 +20908,7 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
     end else if TGAHeader.BPP=16 then begin
      if (Width*Height)>0 then begin
       for i:=0 to (Width*Height)-1 do begin
-       pStream.Read(w,SizeOf(TVkUInt16));
+       aStream.Read(w,SizeOf(TVkUInt16));
        Pixel^:=(((w and $8000) shl 16) or ((w and $7C00) shl 9) or ((w and $3E0) shl 6) or ((w and $1F) shl 3)) or $0F0F0F0F;
        inc(Pixel);
       end;
@@ -20916,7 +20916,7 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
     end else if TGAHeader.BPP=24 then begin
      if (Width*Height)>0 then begin
       for i:=0 to (Width*Height)-1 do begin
-       pStream.Read(BGR,SizeOf(TBGR));
+       aStream.Read(BGR,SizeOf(TBGR));
        if TGAHeader.ImageType=3 then begin
         Pixel^:=(((BGR.r+BGR.g+BGR.b) div 3)  shl 24) or (BGR.b shl 16) or (BGR.g shl 8) or BGR.r;
        end else begin
@@ -20928,7 +20928,7 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
     end else if TGAHeader.BPP=32 then begin
      if (Width*Height)>0 then begin
       for i:=0 to (Width*Height)-1 do begin
-       pStream.Read(BGRA,SizeOf(TBGRA));
+       aStream.Read(BGRA,SizeOf(TBGRA));
        Pixel^:=(BGRA.a shl 24) or (BGRA.b shl 16) or (BGRA.g shl 8) or BGRA.r;
        inc(Pixel);
       end;
@@ -20943,10 +20943,10 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
     j:=Width*Height;
     if TGAHeader.BPP=8 then begin
      while PixelCounter<j do begin
-      pStream.Read(B1,SizeOf(TVkUInt8));
+      aStream.Read(B1,SizeOf(TVkUInt8));
       b:=(B1 and $7f)+1;
       if (B1 and $80)<>0 then begin
-       pStream.Read(B8,SizeOf(TVkUInt8));
+       aStream.Read(B8,SizeOf(TVkUInt8));
        case TGAHeader.ImageType of
         9:begin
          l:=PaletteEncode(B8);
@@ -20974,7 +20974,7 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
       end else begin
        i:=0;
        while i<b do begin
-        pStream.Read(B8,SizeOf(TVkUInt8));
+        aStream.Read(B8,SizeOf(TVkUInt8));
         case TGAHeader.ImageType of
          9:begin
           l:=PaletteEncode(B8);
@@ -21001,10 +21001,10 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
      end;
     end else if TGAHeader.BPP=16 then begin
      while PixelCounter<j do begin
-      pStream.Read(B1,SizeOf(TVkUInt8));
+      aStream.Read(B1,SizeOf(TVkUInt8));
       b:=(B1 and $7f)+1;
       if (B1 and $80)<>0 then begin
-       pStream.Read(w,SizeOf(TVkUInt16));
+       aStream.Read(w,SizeOf(TVkUInt16));
        l:=(((w and $8000) shl 16) or ((w and $7C00) shl 9) or ((w and $3E0) shl 6) or ((w and $1F) shl 3)) or $0F0F0F0F;
        i:=0;
        while i<b do begin
@@ -21016,7 +21016,7 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
       end else begin
        i:=0;
        while i<b do begin
-        pStream.Read(w,SizeOf(TVkUInt16));
+        aStream.Read(w,SizeOf(TVkUInt16));
         Pixel^:=(((w and $8000) shl 16) or ((w and $7C00) shl 9) or ((w and $3E0) shl 6) or ((w and $1F) shl 3)) or $0F0F0F0F;
         inc(Pixel);
         inc(PixelCounter);
@@ -21026,10 +21026,10 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
      end;
     end else if TGAHeader.BPP=24 then begin
      while PixelCounter<j do begin
-      pStream.Read(B1,SizeOf(TVkUInt8));
+      aStream.Read(B1,SizeOf(TVkUInt8));
       b:=(B1 and $7f)+1;
       if (B1 and $80)<>0 then begin
-       pStream.Read(BGR,SizeOf(TBGR));
+       aStream.Read(BGR,SizeOf(TBGR));
        l:=(255 shl 24) or (BGR.b shl 16) or (BGR.g shl 8) or BGR.r;;
        i:=0;
        while i<b do begin
@@ -21041,7 +21041,7 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
       end else begin
        i:=0;
        while i<b do begin
-        pStream.Read(BGR,SizeOf(TBGR));
+        aStream.Read(BGR,SizeOf(TBGR));
         Pixel^:=(255 shl 24) or (BGR.b shl 16) or (BGR.g shl 8) or BGR.r;;
         inc(Pixel);
         inc(PixelCounter);
@@ -21051,10 +21051,10 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
      end;
     end else if TGAHeader.BPP=32 then begin
      while PixelCounter<j do begin
-      pStream.Read(B1,SizeOf(TVkUInt8));
+      aStream.Read(B1,SizeOf(TVkUInt8));
       b:=(B1 and $7f)+1;
       if (B1 and $80)<>0 then begin
-       pStream.Read(BGRA,SizeOf(TBGRA));
+       aStream.Read(BGRA,SizeOf(TBGRA));
        l:=(BGRA.a shl 24) or (BGRA.b shl 16) or (BGRA.g shl 8) or BGRA.r;
        i:=0;
        while i<b do begin
@@ -21066,7 +21066,7 @@ constructor TVulkanTexture.CreateFromTGA(const pDevice:TVulkanDevice;
       end else begin
        i:=0;
        while i<b do begin
-        pStream.Read(BGRA,SizeOf(TBGRA));
+        aStream.Read(BGRA,SizeOf(TBGRA));
         Pixel^:=(BGRA.a shl 24) or (BGRA.b shl 16) or (BGRA.g shl 8) or BGRA.r;
         inc(Pixel);
         inc(PixelCounter);
@@ -21092,13 +21092,13 @@ begin
  ImageHeight:=0;
  try
   if LoadTGAImage(ImageData,ImageWidth,ImageHeight) then begin
-   CreateFromMemory(pDevice,
-                    pGraphicsQueue,
-                    pGraphicsCommandBuffer,
-                    pGraphicsFence,
-                    pTransferQueue,
-                    pTransferCommandBuffer,
-                    pTransferFence,
+   CreateFromMemory(aDevice,
+                    aGraphicsQueue,
+                    aGraphicsCommandBuffer,
+                    aGraphicsFence,
+                    aTransferQueue,
+                    aTransferCommandBuffer,
+                    aTransferFence,
                     VK_FORMAT_R8G8B8A8_UNORM,
                     VK_SAMPLE_COUNT_1_BIT,
                     Max(1,ImageWidth),
@@ -21106,7 +21106,7 @@ begin
                     1,
                     1,
                     1,
-                    MipMapLevels[pMipMaps],
+                    MipMapLevels[aMipMaps],
                     [vtufTransferDst,vtufSampled],
                     ImageData,
                     ImageWidth*ImageHeight*SizeOf(TVkUInt8)*4,
@@ -21124,24 +21124,24 @@ begin
  end;
 end;
 
-constructor TVulkanTexture.CreateFromPNG(const pDevice:TVulkanDevice;
-                                         const pGraphicsQueue:TVulkanQueue;
-                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                         const pGraphicsFence:TVulkanFence;
-                                         const pTransferQueue:TVulkanQueue;
-                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                         const pTransferFence:TVulkanFence;
-                                         const pStream:TStream;
-                                         const pMipMaps:boolean);
+constructor TVulkanTexture.CreateFromPNG(const aDevice:TVulkanDevice;
+                                         const aGraphicsQueue:TVulkanQueue;
+                                         const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const aGraphicsFence:TVulkanFence;
+                                         const aTransferQueue:TVulkanQueue;
+                                         const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const aTransferFence:TVulkanFence;
+                                         const aStream:TStream;
+                                         const aMipMaps:boolean);
 var Data,ImageData:pointer;
     DataSize,ImageWidth,ImageHeight,VulkanBytesPerPixel:TVkInt32;
     PNGPixelFormat:TPNGPixelFormat;
     VulkanPixelFormat:TVkFormat;
 begin
- DataSize:=pStream.Size;
+ DataSize:=aStream.Size;
  GetMem(Data,DataSize);
  try
-  if pStream.Read(Data^,DataSize)<>DataSize then begin
+  if aStream.Read(Data^,DataSize)<>DataSize then begin
    raise EVulkanTextureException.Create('Invalid PNG stream');
   end;
   ImageData:=nil;
@@ -21165,13 +21165,13 @@ begin
       raise EVulkanTextureException.Create('Invalid PNG stream');
      end;
     end;
-    CreateFromMemory(pDevice,
-                     pGraphicsQueue,
-                     pGraphicsCommandBuffer,
-                     pGraphicsFence,
-                     pTransferQueue,
-                     pTransferCommandBuffer,
-                     pTransferFence,
+    CreateFromMemory(aDevice,
+                     aGraphicsQueue,
+                     aGraphicsCommandBuffer,
+                     aGraphicsFence,
+                     aTransferQueue,
+                     aTransferCommandBuffer,
+                     aTransferFence,
                      VulkanPixelFormat,
                      VK_SAMPLE_COUNT_1_BIT,
                      Max(1,ImageWidth),
@@ -21179,7 +21179,7 @@ begin
                      1,
                      1,
                      1,
-                     MipMapLevels[pMipMaps],
+                     MipMapLevels[aMipMaps],
                      [vtufTransferDst,vtufSampled],
                      ImageData,
                      ImageWidth*ImageHeight*VulkanBytesPerPixel,
@@ -21200,22 +21200,22 @@ begin
  end;
 end;
 
-constructor TVulkanTexture.CreateFromJPEG(const pDevice:TVulkanDevice;
-                                          const pGraphicsQueue:TVulkanQueue;
-                                          const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                          const pGraphicsFence:TVulkanFence;
-                                          const pTransferQueue:TVulkanQueue;
-                                          const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                          const pTransferFence:TVulkanFence;
-                                          const pStream:TStream;
-                                          const pMipMaps:boolean);
+constructor TVulkanTexture.CreateFromJPEG(const aDevice:TVulkanDevice;
+                                          const aGraphicsQueue:TVulkanQueue;
+                                          const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                          const aGraphicsFence:TVulkanFence;
+                                          const aTransferQueue:TVulkanQueue;
+                                          const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                          const aTransferFence:TVulkanFence;
+                                          const aStream:TStream;
+                                          const aMipMaps:boolean);
 var Data,ImageData:pointer;
     DataSize,ImageWidth,ImageHeight:TVkInt32;
 begin
- DataSize:=pStream.Size;
+ DataSize:=aStream.Size;
  GetMem(Data,DataSize);
  try
-  if pStream.Read(Data^,DataSize)<>DataSize then begin
+  if aStream.Read(Data^,DataSize)<>DataSize then begin
    raise EVulkanTextureException.Create('Invalid JPEG stream');
   end;
   ImageData:=nil;
@@ -21223,13 +21223,13 @@ begin
   ImageHeight:=0;
   try
    if LoadJPEGImage(Data,DataSize,ImageData,ImageWidth,ImageHeight,false) then begin
-    CreateFromMemory(pDevice,
-                     pGraphicsQueue,
-                     pGraphicsCommandBuffer,
-                     pGraphicsFence,
-                     pTransferQueue,
-                     pTransferCommandBuffer,
-                     pTransferFence,
+    CreateFromMemory(aDevice,
+                     aGraphicsQueue,
+                     aGraphicsCommandBuffer,
+                     aGraphicsFence,
+                     aTransferQueue,
+                     aTransferCommandBuffer,
+                     aTransferFence,
                      VK_FORMAT_R8G8B8A8_UNORM,
                      VK_SAMPLE_COUNT_1_BIT,
                      Max(1,ImageWidth),
@@ -21237,7 +21237,7 @@ begin
                      1,
                      1,
                      1,
-                     MipMapLevels[pMipMaps],
+                     MipMapLevels[aMipMaps],
                      [vtufTransferDst,vtufSampled],
                      ImageData,
                      ImageWidth*ImageHeight*SizeOf(TVkUInt8)*4,
@@ -21258,22 +21258,22 @@ begin
  end;
 end;
 
-constructor TVulkanTexture.CreateFromBMP(const pDevice:TVulkanDevice;
-                                         const pGraphicsQueue:TVulkanQueue;
-                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                         const pGraphicsFence:TVulkanFence;
-                                         const pTransferQueue:TVulkanQueue;
-                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                         const pTransferFence:TVulkanFence;
-                                         const pStream:TStream;
-                                         const pMipMaps:boolean);
+constructor TVulkanTexture.CreateFromBMP(const aDevice:TVulkanDevice;
+                                         const aGraphicsQueue:TVulkanQueue;
+                                         const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const aGraphicsFence:TVulkanFence;
+                                         const aTransferQueue:TVulkanQueue;
+                                         const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const aTransferFence:TVulkanFence;
+                                         const aStream:TStream;
+                                         const aMipMaps:boolean);
 var Data,ImageData:pointer;
     DataSize,ImageWidth,ImageHeight:TVkInt32;
 begin
- DataSize:=pStream.Size;
+ DataSize:=aStream.Size;
  GetMem(Data,DataSize);
  try
-  if pStream.Read(Data^,DataSize)<>DataSize then begin
+  if aStream.Read(Data^,DataSize)<>DataSize then begin
    raise EVulkanTextureException.Create('Invalid JPEG stream');
   end;
   ImageData:=nil;
@@ -21281,13 +21281,13 @@ begin
   ImageHeight:=0;
   try
    if LoadBMPImage(Data,DataSize,ImageData,ImageWidth,ImageHeight,false) then begin
-    CreateFromMemory(pDevice,
-                     pGraphicsQueue,
-                     pGraphicsCommandBuffer,
-                     pGraphicsFence,
-                     pTransferQueue,
-                     pTransferCommandBuffer,
-                     pTransferFence,
+    CreateFromMemory(aDevice,
+                     aGraphicsQueue,
+                     aGraphicsCommandBuffer,
+                     aGraphicsFence,
+                     aTransferQueue,
+                     aTransferCommandBuffer,
+                     aTransferFence,
                      VK_FORMAT_R8G8B8A8_UNORM,
                      VK_SAMPLE_COUNT_1_BIT,
                      Max(1,ImageWidth),
@@ -21295,7 +21295,7 @@ begin
                      1,
                      1,
                      1,
-                     MipMapLevels[pMipMaps],
+                     MipMapLevels[aMipMaps],
                      [vtufTransferDst,vtufSampled],
                      ImageData,
                      ImageWidth*ImageHeight*SizeOf(TVkUInt8)*4,
@@ -21316,15 +21316,15 @@ begin
  end;
 end;
 
-constructor TVulkanTexture.CreateFromImage(const pDevice:TVulkanDevice;
-                                           const pGraphicsQueue:TVulkanQueue;
-                                           const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                           const pGraphicsFence:TVulkanFence;
-                                           const pTransferQueue:TVulkanQueue;
-                                           const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                           const pTransferFence:TVulkanFence;
-                                           const pStream:TStream;
-                                           const pMipMaps:boolean);
+constructor TVulkanTexture.CreateFromImage(const aDevice:TVulkanDevice;
+                                           const aGraphicsQueue:TVulkanQueue;
+                                           const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                           const aGraphicsFence:TVulkanFence;
+                                           const aTransferQueue:TVulkanQueue;
+                                           const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                           const aTransferFence:TVulkanFence;
+                                           const aStream:TStream;
+                                           const aMipMaps:boolean);
 const DDS_MAGIC=$20534444;
       DDSD_CAPS=$00000001;
       DDSD_PIXELFORMAT=$00001000;
@@ -21343,96 +21343,96 @@ type PFirstBytes=^TFirstBytes;
      end;
 var FirstBytes:TFirstBytes;
 begin
- pStream.Seek(0,soBeginning);
+ aStream.Seek(0,soBeginning);
  FillChar(FirstBytes,SizeOf(FirstBytes),#0);
- pStream.ReadBuffer(FirstBytes,Min(SizeOf(FirstBytes),pStream.Size));
- pStream.Seek(0,soBeginning);
+ aStream.ReadBuffer(FirstBytes,Min(SizeOf(FirstBytes),aStream.Size));
+ aStream.Seek(0,soBeginning);
  if (FirstBytes[0]=$ab) and (FirstBytes[1]=$4b) and (FirstBytes[2]=$54) and (FirstBytes[3]=$58) and (FirstBytes[4]=$20) and (FirstBytes[5]=$31) and (FirstBytes[6]=$31) and (FirstBytes[7]=$bb) and (FirstBytes[8]=$0d) and (FirstBytes[9]=$0a) and (FirstBytes[10]=$1a) and (FirstBytes[11]=$0a) then begin
-  CreateFromKTX(pDevice,
-                pGraphicsQueue,
-                pGraphicsCommandBuffer,
-                pGraphicsFence,
-                pTransferQueue,
-                pTransferCommandBuffer,
-                pTransferFence,
-                pStream);
+  CreateFromKTX(aDevice,
+                aGraphicsQueue,
+                aGraphicsCommandBuffer,
+                aGraphicsFence,
+                aTransferQueue,
+                aTransferCommandBuffer,
+                aTransferFence,
+                aStream);
  end else if (FirstBytes[0]=$89) and (FirstBytes[1]=$50) and (FirstBytes[2]=$4e) and (FirstBytes[3]=$47) and (FirstBytes[4]=$0d) and (FirstBytes[5]=$0a) and (FirstBytes[6]=$1a) and (FirstBytes[7]=$0a) then begin
-  CreateFromPNG(pDevice,
-                pGraphicsQueue,
-                pGraphicsCommandBuffer,
-                pGraphicsFence,
-                pTransferQueue,
-                pTransferCommandBuffer,
-                pTransferFence,
-                pStream,
-                pMipMaps);
+  CreateFromPNG(aDevice,
+                aGraphicsQueue,
+                aGraphicsCommandBuffer,
+                aGraphicsFence,
+                aTransferQueue,
+                aTransferCommandBuffer,
+                aTransferFence,
+                aStream,
+                aMipMaps);
  end else if ((PDDSHeader(pointer(@FirstBytes))^.dwMagic=DDS_MAGIC) and (PDDSHeader(pointer(@FirstBytes))^.dwSize=124) and not (((PDDSHeader(pointer(@FirstBytes))^.dwFlags and DDSD_PIXELFORMAT)=0) or ((PDDSHeader(pointer(@FirstBytes))^.dwFlags and DDSD_CAPS)=0))) then begin
-  CreateFromDDS(pDevice,
-                pGraphicsQueue,
-                pGraphicsCommandBuffer,
-                pGraphicsFence,
-                pTransferQueue,
-                pTransferCommandBuffer,
-                pTransferFence,
-                pStream);
+  CreateFromDDS(aDevice,
+                aGraphicsQueue,
+                aGraphicsCommandBuffer,
+                aGraphicsFence,
+                aTransferQueue,
+                aTransferCommandBuffer,
+                aTransferFence,
+                aStream);
  end else if (FirstBytes[0]=byte(AnsiChar('B'))) and (FirstBytes[1]=byte(AnsiChar('M'))) then begin
-  CreateFromBMP(pDevice,
-                pGraphicsQueue,
-                pGraphicsCommandBuffer,
-                pGraphicsFence,
-                pTransferQueue,
-                pTransferCommandBuffer,
-                pTransferFence,
-                pStream,
-                pMipMaps);
+  CreateFromBMP(aDevice,
+                aGraphicsQueue,
+                aGraphicsCommandBuffer,
+                aGraphicsFence,
+                aTransferQueue,
+                aTransferCommandBuffer,
+                aTransferFence,
+                aStream,
+                aMipMaps);
  end else if (FirstBytes[0]=byte(AnsiChar('#'))) and (FirstBytes[1]=byte(AnsiChar('?'))) then begin
-  CreateFromHDR(pDevice,
-                pGraphicsQueue,
-                pGraphicsCommandBuffer,
-                pGraphicsFence,
-                pTransferQueue,
-                pTransferCommandBuffer,
-                pTransferFence,
-                pStream,
-                pMipMaps);
+  CreateFromHDR(aDevice,
+                aGraphicsQueue,
+                aGraphicsCommandBuffer,
+                aGraphicsFence,
+                aTransferQueue,
+                aTransferCommandBuffer,
+                aTransferFence,
+                aStream,
+                aMipMaps);
  end else if ((FirstBytes[0] xor $ff) or (FirstBytes[1] xor $d8))=0 then begin
-  CreateFromJPEG(pDevice,
-                 pGraphicsQueue,
-                 pGraphicsCommandBuffer,
-                 pGraphicsFence,
-                 pTransferQueue,
-                 pTransferCommandBuffer,
-                 pTransferFence,
-                 pStream,
-                 pMipMaps);
+  CreateFromJPEG(aDevice,
+                 aGraphicsQueue,
+                 aGraphicsCommandBuffer,
+                 aGraphicsFence,
+                 aTransferQueue,
+                 aTransferCommandBuffer,
+                 aTransferFence,
+                 aStream,
+                 aMipMaps);
  end else begin
-  CreateFromTGA(pDevice,
-                pGraphicsQueue,
-                pGraphicsCommandBuffer,
-                pGraphicsFence,
-                pTransferQueue,
-                pTransferCommandBuffer,
-                pTransferFence,
-                pStream,
-                pMipMaps);
+  CreateFromTGA(aDevice,
+                aGraphicsQueue,
+                aGraphicsCommandBuffer,
+                aGraphicsFence,
+                aTransferQueue,
+                aTransferCommandBuffer,
+                aTransferFence,
+                aStream,
+                aMipMaps);
  end;
 end;
 
-constructor TVulkanTexture.CreateDefault(const pDevice:TVulkanDevice;
-                                         const pGraphicsQueue:TVulkanQueue;
-                                         const pGraphicsCommandBuffer:TVulkanCommandBuffer;
-                                         const pGraphicsFence:TVulkanFence;
-                                         const pTransferQueue:TVulkanQueue;
-                                         const pTransferCommandBuffer:TVulkanCommandBuffer;
-                                         const pTransferFence:TVulkanFence;
-                                         const pDefaultType:TVulkanTextureDefaultType;
-                                         const pWidth:TVkInt32;
-                                         const pHeight:TVkInt32;
-                                         const pDepth:TVkInt32;
-                                         const pCountArrayElements:TVkInt32;
-                                         const pCountFaces:TVkInt32;
-                                         const pMipmaps:boolean;
-                                         const pBorder:boolean);
+constructor TVulkanTexture.CreateDefault(const aDevice:TVulkanDevice;
+                                         const aGraphicsQueue:TVulkanQueue;
+                                         const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                         const aGraphicsFence:TVulkanFence;
+                                         const aTransferQueue:TVulkanQueue;
+                                         const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                         const aTransferFence:TVulkanFence;
+                                         const aDefaultType:TVulkanTextureDefaultType;
+                                         const aWidth:TVkInt32;
+                                         const aHeight:TVkInt32;
+                                         const aDepth:TVkInt32;
+                                         const aCountArrayElements:TVkInt32;
+                                         const aCountFaces:TVkInt32;
+                                         const aMipmaps:boolean;
+                                         const aBorder:boolean);
 const TexelSize=4;
       BlockShift=5;
       BlockSize=1 shl BlockShift;
@@ -21447,20 +21447,20 @@ var LayerSize,DataSize,LayerIndex,x,y,Offset,lx,ly,rx,ry,cx,cy,m,Index,dx,dy,ds,
     Data:TVkUInt8Array;
 begin
 
- LayerSize:=pWidth*pHeight*TexelSize;
- DataSize:=LayerSize*pDepth*pCountArrayElements*pCountFaces;
+ LayerSize:=aWidth*aHeight*TexelSize;
+ DataSize:=LayerSize*aDepth*aCountArrayElements*aCountFaces;
 
  Data:=nil;
  try
 
   SetLength(Data,DataSize);
 
-  case pDefaultType of
+  case aDefaultType of
    vtdtCheckerboard:begin
-    for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
-     for y:=0 to pHeight-1 do begin
-      for x:=0 to pWidth-1 do begin
-       Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+x)*TexelSize);
+    for LayerIndex:=0 to (aDepth*aCountArrayElements*aCountFaces)-1 do begin
+     for y:=0 to aHeight-1 do begin
+      for x:=0 to aWidth-1 do begin
+       Offset:=(LayerIndex*LayerSize)+(((y*aWidth)+x)*TexelSize);
        if (((x shr BlockShift) xor (y shr BlockShift)) and 1)<>0 then begin
         if (LayerIndex and 1)<>0 then begin
          Data[Offset+0]:=160;
@@ -21492,10 +21492,10 @@ begin
     end;
    end;
    vtdtPyramids:begin
-    for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
-     for y:=0 to pHeight-1 do begin
-      for x:=0 to pWidth-1 do begin
-       Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+x)*TexelSize);
+    for LayerIndex:=0 to (aDepth*aCountArrayElements*aCountFaces)-1 do begin
+     for y:=0 to aHeight-1 do begin
+      for x:=0 to aWidth-1 do begin
+       Offset:=(LayerIndex*LayerSize)+(((y*aWidth)+x)*TexelSize);
        lx:=x and BlockSize;
        ly:=y and BlockSize;
        rx:=BlockSize-lx;
@@ -21536,10 +21536,10 @@ begin
     end;
    end;
    else {vtdtCircles:}begin
-    for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
-     for y:=0 to pHeight-1 do begin
-      for x:=0 to pWidth-1 do begin
-       Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+x)*TexelSize);
+    for LayerIndex:=0 to (aDepth*aCountArrayElements*aCountFaces)-1 do begin
+     for y:=0 to aHeight-1 do begin
+      for x:=0 to aWidth-1 do begin
+       Offset:=(LayerIndex*LayerSize)+(((y*aWidth)+x)*TexelSize);
        Index:=((((y shr (BlockShift-1)) and 2) xor ((y shr BlockShift) and 2))) or
               (((((y shr BlockShift) and 1) xor ((y shr (BlockShift+1)) and 1))));
        dx:=((x and not BlockMask)+(BlockSize shr 1))-x;
@@ -21556,27 +21556,27 @@ begin
    end;
   end;
 
-  if pBorder then begin
-   for LayerIndex:=0 to (pDepth*pCountArrayElements*pCountFaces)-1 do begin
-    for y:=0 to pHeight-1 do begin
-     Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+0)*TexelSize);
+  if aBorder then begin
+   for LayerIndex:=0 to (aDepth*aCountArrayElements*aCountFaces)-1 do begin
+    for y:=0 to aHeight-1 do begin
+     Offset:=(LayerIndex*LayerSize)+(((y*aWidth)+0)*TexelSize);
      Data[Offset+0]:=0;
      Data[Offset+1]:=0;
      Data[Offset+2]:=0;
      Data[Offset+3]:=255;
-     Offset:=(LayerIndex*LayerSize)+(((y*pWidth)+(pWidth-1))*TexelSize);
+     Offset:=(LayerIndex*LayerSize)+(((y*aWidth)+(aWidth-1))*TexelSize);
      Data[Offset+0]:=0;
      Data[Offset+1]:=0;
      Data[Offset+2]:=0;
      Data[Offset+3]:=255;
     end;
-    for x:=0 to pWidth-1 do begin
-     Offset:=(LayerIndex*LayerSize)+(((0*pWidth)+x)*TexelSize);
+    for x:=0 to aWidth-1 do begin
+     Offset:=(LayerIndex*LayerSize)+(((0*aWidth)+x)*TexelSize);
      Data[Offset+0]:=0;
      Data[Offset+1]:=0;
      Data[Offset+2]:=0;
      Data[Offset+3]:=255;
-     Offset:=(LayerIndex*LayerSize)+((((pHeight-1)*pWidth)+x)*TexelSize);
+     Offset:=(LayerIndex*LayerSize)+((((aHeight-1)*aWidth)+x)*TexelSize);
      Data[Offset+0]:=0;
      Data[Offset+1]:=0;
      Data[Offset+2]:=0;
@@ -21585,26 +21585,26 @@ begin
    end;
   end;
 
-  if pMipMaps then begin
+  if aMipMaps then begin
    CountMipMaps:=-1;
   end else begin
    CountMipMaps:=1;
   end;
 
-  CreateFromMemory(pDevice,
-                   pGraphicsQueue,
-                   pGraphicsCommandBuffer,
-                   pGraphicsFence,
-                   pTransferQueue,
-                   pTransferCommandBuffer,
-                   pTransferFence,
+  CreateFromMemory(aDevice,
+                   aGraphicsQueue,
+                   aGraphicsCommandBuffer,
+                   aGraphicsFence,
+                   aTransferQueue,
+                   aTransferCommandBuffer,
+                   aTransferFence,
                    VK_FORMAT_R8G8B8A8_UNORM,
                    VK_SAMPLE_COUNT_1_BIT,
-                   pWidth,
-                   pHeight,
-                   pDepth,
-                   pCountArrayElements,
-                   pCountFaces,
+                   aWidth,
+                   aHeight,
+                   aDepth,
+                   aCountArrayElements,
+                   aCountFaces,
                    CountMipMaps,
                    [vtufTransferDst,vtufSampled],
                    @Data[0],
