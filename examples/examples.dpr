@@ -21,6 +21,7 @@ uses
   PasVulkanSDL2 in '..\src\PasVulkanSDL2.pas',
   PasVulkanStaticLinking in '..\src\PasVulkanStaticLinking.pas',
   PasVulkanApplication in '..\src\PasVulkanApplication.pas',
+  PasVulkanGUI in '..\src\PasVulkanGUI.pas',
   UnitMath3D in 'UnitMath3D.pas',
   UnitBufferedStream in 'UnitBufferedStream.pas',
   UnitChunkStream in 'UnitChunkStream.pas',

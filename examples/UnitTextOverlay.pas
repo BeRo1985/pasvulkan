@@ -94,10 +94,10 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        procedure AfterCreateSwapChain;
        procedure BeforeDestroySwapChain;
        procedure Reset;
-       procedure AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:TVulkanApplicationRawByteString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
-       procedure PreUpdate(const pDeltaTime:double);
-       procedure PostUpdate(const pDeltaTime:double);
-       procedure Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
+       procedure AddText(const pX,pY,aSize:single;const aAlignment:TTextOverlayAlignment;const aText:TVulkanApplicationRawByteString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
+       procedure PreUpdate(const aDeltaTime:double);
+       procedure PostUpdate(const aDeltaTime:double);
+       procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
       published
        property FontCharWidth:single read fFontCharWidth;
        property FontCharHeight:single read fFontCharHeight;
@@ -493,33 +493,33 @@ begin
  fCountBufferChars:=0;
 end;
 
-procedure TTextOverlay.AddText(const pX,pY,pSize:single;const pAlignment:TTextOverlayAlignment;const pText:TVulkanApplicationRawByteString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
+procedure TTextOverlay.AddText(const pX,pY,aSize:single;const aAlignment:TTextOverlayAlignment;const aText:TVulkanApplicationRawByteString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
 var Index,EdgeIndex:TVkInt32;
     BufferChar:PTextOverlayBufferChar;
     CurrentChar:byte;
     cX:single;
 begin
  if (pBA>0.0) or (pFA>0.0) then begin
-  case pAlignment of
+  case aAlignment of
    toaLeft:begin
     cX:=pX;
    end;
    toaCenter:begin
-    cX:=pX-((length(pText)*fFontCharWidth*pSize)*0.5);
+    cX:=pX-((length(aText)*fFontCharWidth*aSize)*0.5);
    end;
    else {toaRight:}begin
-    cX:=pX-(length(pText)*fFontCharWidth*pSize);
+    cX:=pX-(length(aText)*fFontCharWidth*aSize);
    end;
   end;
-  for Index:=1 to length(pText) do begin
-   CurrentChar:=Byte(AnsiChar(pText[Index]));
+  for Index:=1 to length(aText) do begin
+   CurrentChar:=Byte(AnsiChar(aText[Index]));
    if (CurrentChar<>32) or (pBA>0.0) then begin
     if fCountBufferChars<TextOverlayBufferCharSize then begin
      BufferChar:=@fBufferChars^[fCountBufferChars];
      inc(fCountBufferChars);
      for EdgeIndex:=0 to 3 do begin
-      BufferChar^.Vertices[EdgeIndex].x:=(((cX+((EdgeIndex and 1)*fFontCharWidth*pSize))*fInvWidth)*2.0)-1.0;
-      BufferChar^.Vertices[EdgeIndex].y:=(((pY+((EdgeIndex shr 1)*fFontCharHeight*pSize))*fInvHeight)*2.0)-1.0;
+      BufferChar^.Vertices[EdgeIndex].x:=(((cX+((EdgeIndex and 1)*fFontCharWidth*aSize))*fInvWidth)*2.0)-1.0;
+      BufferChar^.Vertices[EdgeIndex].y:=(((pY+((EdgeIndex shr 1)*fFontCharHeight*aSize))*fInvHeight)*2.0)-1.0;
       BufferChar^.Vertices[EdgeIndex].u:=EdgeIndex and 1;
       BufferChar^.Vertices[EdgeIndex].v:=EdgeIndex shr 1;
       BufferChar^.Vertices[EdgeIndex].w:=CurrentChar;
@@ -534,12 +534,12 @@ begin
      end;
     end;
    end;
-   cX:=cX+(fFontCharWidth*pSize);
+   cX:=cX+(fFontCharWidth*aSize);
   end;
  end;
 end;
 
-procedure TTextOverlay.PreUpdate(const pDeltaTime:double);
+procedure TTextOverlay.PreUpdate(const aDeltaTime:double);
 var FPS,ms:string;
 begin
  fUpdateBufferIndex:=VulkanApplication.UpdateFrameCounter and 1;
@@ -555,12 +555,12 @@ begin
  end;
 end;
 
-procedure TTextOverlay.PostUpdate(const pDeltaTime:double);
+procedure TTextOverlay.PostUpdate(const aDeltaTime:double);
 begin
  fCountBufferCharsBuffers[fUpdateBufferIndex]:=fCountBufferChars;
 end;
 
-procedure TTextOverlay.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
+procedure TTextOverlay.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var BufferIndex,Size:TVkInt32;
     VulkanVertexBuffer:TVulkanBuffer;
@@ -577,7 +577,7 @@ begin
 
  begin
 
-  VulkanVertexBuffer:=fVulkanVertexBuffers[pSwapChainImageIndex];
+  VulkanVertexBuffer:=fVulkanVertexBuffers[aSwapChainImageIndex];
 
   Size:=SizeOf(TTextOverlayBufferChar)*fCountBufferCharsBuffers[BufferIndex];
   p:=VulkanVertexBuffer.Memory.MapMemory(0,Size);
@@ -592,7 +592,7 @@ begin
 
   if assigned(fVulkanGraphicsPipeline) then begin
 
-   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[pSwapChainImageIndex];
+   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[aSwapChainImageIndex];
    VulkanSwapChain:=VulkanApplication.VulkanSwapChain;
 
    VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
@@ -600,7 +600,7 @@ begin
    VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
    fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                     VulkanApplication.VulkanFrameBuffers[pSwapChainImageIndex],
+                                     VulkanApplication.VulkanFrameBuffers[aSwapChainImageIndex],
                                      VK_SUBPASS_CONTENTS_INLINE,
                                      0,
                                      0,
@@ -619,12 +619,12 @@ begin
 
    VulkanCommandBuffer.Execute(VulkanApplication.VulkanDevice.GraphicsQueue,
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                               pWaitSemaphore,
-                               fVulkanRenderSemaphores[pSwapChainImageIndex],
-                               pWaitFence,
+                               aWaitSemaphore,
+                               fVulkanRenderSemaphores[aSwapChainImageIndex],
+                               aWaitFence,
                                false);
 
-   pWaitSemaphore:=fVulkanRenderSemaphores[pSwapChainImageIndex];
+   aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
 
   end;
  end;

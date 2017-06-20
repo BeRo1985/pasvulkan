@@ -34,8 +34,8 @@ type TExampleVulkanApplication=class(TVulkanApplication)
        procedure BeforeDestroySwapChain; override;
        procedure Resume; override;
        procedure Pause; override;
-       procedure Update(const pDeltaTime:double); override;
-       procedure Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil); override;
+       procedure Update(const aDeltaTime:double); override;
+       procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
        class procedure Main; override;
       published
        property TextOverlay:TTextOverlay read fTextOverlay;
@@ -109,17 +109,17 @@ begin
  inherited Pause;
 end;
 
-procedure TExampleVulkanApplication.Update(const pDeltaTime:double);
+procedure TExampleVulkanApplication.Update(const aDeltaTime:double);
 begin
- fTextOverlay.PreUpdate(pDeltaTime);
- inherited Update(pDeltaTime);
- fTextOverlay.PostUpdate(pDeltaTime);
+ fTextOverlay.PreUpdate(aDeltaTime);
+ inherited Update(aDeltaTime);
+ fTextOverlay.PostUpdate(aDeltaTime);
 end;
 
-procedure TExampleVulkanApplication.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
+procedure TExampleVulkanApplication.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 begin
- inherited Draw(pSwapChainImageIndex,pWaitSemaphore,nil);
- fTextOverlay.Draw(pSwapChainImageIndex,pWaitSemaphore,pWaitFence);
+ inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
+ fTextOverlay.Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
 end;
 
 class procedure TExampleVulkanApplication.Main;

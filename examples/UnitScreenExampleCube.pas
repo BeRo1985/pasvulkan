@@ -70,31 +70,31 @@ type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
 
        procedure Pause; override;
 
-       procedure Resize(const pWidth,pHeight:TVkInt32); override;
+       procedure Resize(const aWidth,aHeight:TVkInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
 
-       function KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
 
-       function KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
 
-       function KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
 
-       function TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+       function TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
 
-       function TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+       function TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
 
-       function TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean; override;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean; override;
 
-       function MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean; override;
+       function MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean; override;
 
-       function Scrolled(const pAmount:TVkInt32):boolean; override;
+       function Scrolled(const aAmount:TVkInt32):boolean; override;
 
-       procedure Update(const pDeltaTime:double); override;
+       procedure Update(const aDeltaTime:double); override;
 
-       procedure Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
 
      end;
 
@@ -408,9 +408,9 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenExampleCube.Resize(const pWidth,pHeight:TVkInt32);
+procedure TScreenExampleCube.Resize(const aWidth,aHeight:TVkInt32);
 begin
- inherited Resize(pWidth,pHeight);
+ inherited Resize(aWidth,aHeight);
 end;
 
 procedure TScreenExampleCube.AfterCreateSwapChain;
@@ -587,11 +587,11 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-function TScreenExampleCube.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TScreenExampleCube.KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
  if fReady then begin
-  case pKeyCode of
+  case aKeyCode of
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
     VulkanApplication.NextScreen:=TScreenMainMenu.Create;
    end;
@@ -634,17 +634,17 @@ begin
  end;
 end;
 
-function TScreenExampleCube.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TScreenExampleCube.KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleCube.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TScreenExampleCube.KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleCube.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+function TScreenExampleCube.TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
 var Index:TVkInt32;
     cy:single;
 begin
@@ -653,7 +653,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
     if fSelectedIndex=0 then begin
      VulkanApplication.NextScreen:=TScreenMainMenu.Create;
@@ -664,12 +664,12 @@ begin
  end;
 end;
 
-function TScreenExampleCube.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+function TScreenExampleCube.TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleCube.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+function TScreenExampleCube.TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean;
 var Index:TVkInt32;
     cy:single;
 begin
@@ -678,7 +678,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
    cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
@@ -686,7 +686,7 @@ begin
  end;
 end;
 
-function TScreenExampleCube.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+function TScreenExampleCube.MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean;
 var Index:TVkInt32;
     cy:single;
 begin
@@ -695,7 +695,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
    cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
@@ -703,12 +703,12 @@ begin
  end;
 end;
 
-function TScreenExampleCube.Scrolled(const pAmount:TVkInt32):boolean;
+function TScreenExampleCube.Scrolled(const aAmount:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-procedure TScreenExampleCube.Update(const pDeltaTime:double);
+procedure TScreenExampleCube.Update(const aDeltaTime:double);
 const BoolToInt:array[boolean] of TVkInt32=(0,1);
       Options:array[0..0] of string=('Back');
       f0=1.0/(2.0*pi);
@@ -718,10 +718,10 @@ var Index:TVkInt32;
     s:string;
     IsSelected:boolean;
 begin
- inherited Update(pDeltaTime);
- fState.Time:=fState.Time+pDeltaTime;
- fState.AnglePhases[0]:=frac(fState.AnglePhases[0]+(pDeltaTime*f0));
- fState.AnglePhases[1]:=frac(fState.AnglePhases[1]+(pDeltaTime*f1));
+ inherited Update(aDeltaTime);
+ fState.Time:=fState.Time+aDeltaTime;
+ fState.AnglePhases[0]:=frac(fState.AnglePhases[0]+(aDeltaTime*f0));
+ fState.AnglePhases[1]:=frac(fState.AnglePhases[1]+(aDeltaTime*f1));
  fStates[VulkanApplication.UpdateFrameCounter and 1]:=fState;
  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Cube');
  fStartY:=VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*1.25)-(4*FontSize));
@@ -738,7 +738,7 @@ begin
  fReady:=true;
 end;
 
-procedure TScreenExampleCube.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
+procedure TScreenExampleCube.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 const TwoPI=2.0*pi;
 var p:pointer;
     ModelMatrix:TMatrix4x4;
@@ -746,7 +746,7 @@ var p:pointer;
     ProjectionMatrix:TMatrix4x4;
     State:PScreenExampleCubeState;
 begin
- inherited Draw(pSwapChainImageIndex,pWaitSemaphore,nil);
+ inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVulkanGraphicsPipeline) then begin
 
   State:=@fStates[VulkanApplication.DrawFrameCounter and 1];
@@ -768,14 +768,14 @@ begin
    end;
   end;
 
-  fVulkanRenderCommandBuffers[pSwapChainImageIndex].Execute(VulkanApplication.VulkanDevice.GraphicsQueue,
+  fVulkanRenderCommandBuffers[aSwapChainImageIndex].Execute(VulkanApplication.VulkanDevice.GraphicsQueue,
                                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                            pWaitSemaphore,
-                                                            fVulkanRenderSemaphores[pSwapChainImageIndex],
-                                                            pWaitFence,
+                                                            aWaitSemaphore,
+                                                            fVulkanRenderSemaphores[aSwapChainImageIndex],
+                                                            aWaitFence,
                                                             false);
 
-  pWaitSemaphore:=fVulkanRenderSemaphores[pSwapChainImageIndex];
+  aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
 
  end;
 end;

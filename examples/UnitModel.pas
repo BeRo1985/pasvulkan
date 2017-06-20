@@ -270,16 +270,16 @@ type PVulkanModelVector2=^TVulkanModelVector2;
        fBufferSizes:TVulkanModelBufferSizes;
        fCountBuffers:TVkInt32;
       public
-       constructor Create(const pVulkanDevice:TVulkanDevice); reintroduce;
+       constructor Create(const aVulkanDevice:TVulkanDevice); reintroduce;
        destructor Destroy; override;
        procedure Clear;
-       procedure MakeCube(const pSizeX,pSizeY,pSizeZ:TVkFloat);
-       procedure LoadFromStream(const pStream:TStream;const pDoFree:boolean=false);
-       procedure Upload(const pQueue:TVulkanQueue;
-                        const pCommandBuffer:TVulkanCommandBuffer;
-                        const pFence:TVulkanFence);
+       procedure MakeCube(const aSizeX,aSizeY,aSizeZ:TVkFloat);
+       procedure LoadFromStream(const aStream:TStream;const aDoFree:boolean=false);
+       procedure Upload(const aQueue:TVulkanQueue;
+                        const aCommandBuffer:TVulkanCommandBuffer;
+                        const aFence:TVulkanFence);
        procedure Unload;
-       procedure Draw(const pCommandBuffer:TVulkanCommandBuffer;const pInstanceCount:TVkUInt32=1;const pFirstInstance:TVkUInt32=0);
+       procedure Draw(const aCommandBuffer:TVulkanCommandBuffer;const aInstanceCount:TVkUInt32=1;const aFirstInstance:TVkUInt32=0);
        property Uploaded:boolean read fUploaded;
        property Sphere:TVulkanModelSphere read fSphere;
        property AABB:TVulkanModelAABB read fAABB;
@@ -438,36 +438,36 @@ begin
  Normal:=VulkanModelVector3Normalize(VulkanModelVector3Cross(Tangent,Bitangent));
 end;
 
-function VulkanModelMatrix3x3ToQTangent(pMatrix:TVulkanModelMatrix3x3):TVulkanModelQuaternion;
+function VulkanModelMatrix3x3ToQTangent(aMatrix:TVulkanModelMatrix3x3):TVulkanModelQuaternion;
 const Threshold=1.0/32767.0;
 var Scale,t,s,Renormalization:TVkFloat;
 begin
- VulkanModelRobustOrthoNormalize(pMatrix.Tangent,
-                                 pMatrix.Bitangent,
-                                 pMatrix.Normal);
- if ((((((pMatrix.RawComponents[0,0]*pMatrix.RawComponents[1,1]*pMatrix.RawComponents[2,2])+
-         (pMatrix.RawComponents[0,1]*pMatrix.RawComponents[1,2]*pMatrix.RawComponents[2,0])
+ VulkanModelRobustOrthoNormalize(aMatrix.Tangent,
+                                 aMatrix.Bitangent,
+                                 aMatrix.Normal);
+ if ((((((aMatrix.RawComponents[0,0]*aMatrix.RawComponents[1,1]*aMatrix.RawComponents[2,2])+
+         (aMatrix.RawComponents[0,1]*aMatrix.RawComponents[1,2]*aMatrix.RawComponents[2,0])
         )+
-        (pMatrix.RawComponents[0,2]*pMatrix.RawComponents[1,0]*pMatrix.RawComponents[2,1])
+        (aMatrix.RawComponents[0,2]*aMatrix.RawComponents[1,0]*aMatrix.RawComponents[2,1])
        )-
-       (pMatrix.RawComponents[0,2]*pMatrix.RawComponents[1,1]*pMatrix.RawComponents[2,0])
+       (aMatrix.RawComponents[0,2]*aMatrix.RawComponents[1,1]*aMatrix.RawComponents[2,0])
       )-
-      (pMatrix.RawComponents[0,1]*pMatrix.RawComponents[1,0]*pMatrix.RawComponents[2,2])
+      (aMatrix.RawComponents[0,1]*aMatrix.RawComponents[1,0]*aMatrix.RawComponents[2,2])
      )-
-     (pMatrix.RawComponents[0,0]*pMatrix.RawComponents[1,2]*pMatrix.RawComponents[2,1])
+     (aMatrix.RawComponents[0,0]*aMatrix.RawComponents[1,2]*aMatrix.RawComponents[2,1])
     )<0.0 then begin
   // Reflection matrix, so flip y axis in case the tangent frame encodes a reflection
   Scale:=-1.0;
-  pMatrix.RawComponents[2,0]:=-pMatrix.RawComponents[2,0];
-  pMatrix.RawComponents[2,1]:=-pMatrix.RawComponents[2,1];
-  pMatrix.RawComponents[2,2]:=-pMatrix.RawComponents[2,2];
+  aMatrix.RawComponents[2,0]:=-aMatrix.RawComponents[2,0];
+  aMatrix.RawComponents[2,1]:=-aMatrix.RawComponents[2,1];
+  aMatrix.RawComponents[2,2]:=-aMatrix.RawComponents[2,2];
  end else begin
   // Rotation matrix, so nothing is doing to do
   Scale:=1.0;
  end;
  begin
   // Convert to quaternion
-  t:=pMatrix.RawComponents[0,0]+(pMatrix.RawComponents[1,1]+pMatrix.RawComponents[2,2]);
+  t:=aMatrix.RawComponents[0,0]+(aMatrix.RawComponents[1,1]+aMatrix.RawComponents[2,2]);
   if t>2.9999999 then begin
    result.x:=0.0;
    result.y:=0.0;
@@ -475,28 +475,28 @@ begin
    result.w:=1.0;
   end else if t>0.0000001 then begin
    s:=sqrt(1.0+t)*2.0;
-   result.x:=(pMatrix.RawComponents[1,2]-pMatrix.RawComponents[2,1])/s;
-   result.y:=(pMatrix.RawComponents[2,0]-pMatrix.RawComponents[0,2])/s;
-   result.z:=(pMatrix.RawComponents[0,1]-pMatrix.RawComponents[1,0])/s;
+   result.x:=(aMatrix.RawComponents[1,2]-aMatrix.RawComponents[2,1])/s;
+   result.y:=(aMatrix.RawComponents[2,0]-aMatrix.RawComponents[0,2])/s;
+   result.z:=(aMatrix.RawComponents[0,1]-aMatrix.RawComponents[1,0])/s;
    result.w:=s*0.25;
-  end else if (pMatrix.RawComponents[0,0]>pMatrix.RawComponents[1,1]) and (pMatrix.RawComponents[0,0]>pMatrix.RawComponents[2,2]) then begin
-   s:=sqrt(1.0+(pMatrix.RawComponents[0,0]-(pMatrix.RawComponents[1,1]+pMatrix.RawComponents[2,2])))*2.0;
+  end else if (aMatrix.RawComponents[0,0]>aMatrix.RawComponents[1,1]) and (aMatrix.RawComponents[0,0]>aMatrix.RawComponents[2,2]) then begin
+   s:=sqrt(1.0+(aMatrix.RawComponents[0,0]-(aMatrix.RawComponents[1,1]+aMatrix.RawComponents[2,2])))*2.0;
    result.x:=s*0.25;
-   result.y:=(pMatrix.RawComponents[1,0]+pMatrix.RawComponents[0,1])/s;
-   result.z:=(pMatrix.RawComponents[2,0]+pMatrix.RawComponents[0,2])/s;
-   result.w:=(pMatrix.RawComponents[1,2]-pMatrix.RawComponents[2,1])/s;
-  end else if pMatrix.RawComponents[1,1]>pMatrix.RawComponents[2,2] then begin
-   s:=sqrt(1.0+(pMatrix.RawComponents[1,1]-(pMatrix.RawComponents[0,0]+pMatrix.RawComponents[2,2])))*2.0;
-   result.x:=(pMatrix.RawComponents[1,0]+pMatrix.RawComponents[0,1])/s;
+   result.y:=(aMatrix.RawComponents[1,0]+aMatrix.RawComponents[0,1])/s;
+   result.z:=(aMatrix.RawComponents[2,0]+aMatrix.RawComponents[0,2])/s;
+   result.w:=(aMatrix.RawComponents[1,2]-aMatrix.RawComponents[2,1])/s;
+  end else if aMatrix.RawComponents[1,1]>aMatrix.RawComponents[2,2] then begin
+   s:=sqrt(1.0+(aMatrix.RawComponents[1,1]-(aMatrix.RawComponents[0,0]+aMatrix.RawComponents[2,2])))*2.0;
+   result.x:=(aMatrix.RawComponents[1,0]+aMatrix.RawComponents[0,1])/s;
    result.y:=s*0.25;
-   result.z:=(pMatrix.RawComponents[2,1]+pMatrix.RawComponents[1,2])/s;
-   result.w:=(pMatrix.RawComponents[2,0]-pMatrix.RawComponents[0,2])/s;
+   result.z:=(aMatrix.RawComponents[2,1]+aMatrix.RawComponents[1,2])/s;
+   result.w:=(aMatrix.RawComponents[2,0]-aMatrix.RawComponents[0,2])/s;
   end else begin
-   s:=sqrt(1.0+(pMatrix.RawComponents[2,2]-(pMatrix.RawComponents[0,0]+pMatrix.RawComponents[1,1])))*2.0;
-   result.x:=(pMatrix.RawComponents[2,0]+pMatrix.RawComponents[0,2])/s;
-   result.y:=(pMatrix.RawComponents[2,1]+pMatrix.RawComponents[1,2])/s;
+   s:=sqrt(1.0+(aMatrix.RawComponents[2,2]-(aMatrix.RawComponents[0,0]+aMatrix.RawComponents[1,1])))*2.0;
+   result.x:=(aMatrix.RawComponents[2,0]+aMatrix.RawComponents[0,2])/s;
+   result.y:=(aMatrix.RawComponents[2,1]+aMatrix.RawComponents[1,2])/s;
    result.z:=s*0.25;
-   result.w:=(pMatrix.RawComponents[0,1]-pMatrix.RawComponents[1,0])/s;
+   result.w:=(aMatrix.RawComponents[0,1]-aMatrix.RawComponents[1,0])/s;
   end;
   s:=sqr(result.x)+sqr(result.y)+sqr(result.z)+sqr(result.w);
   if s>0.0 then begin
@@ -583,10 +583,10 @@ begin
  end;
 end;
 
-constructor TVulkanModel.Create(const pVulkanDevice:TVulkanDevice);
+constructor TVulkanModel.Create(const aVulkanDevice:TVulkanDevice);
 begin
  inherited Create;
- fVulkanDevice:=pVulkanDevice;
+ fVulkanDevice:=aVulkanDevice;
  fUploaded:=false;
  fKraftMesh:=nil;
  fKraftConvexHull:=nil;
@@ -618,7 +618,7 @@ begin
  fCountObjects:=0;
 end;
 
-procedure TVulkanModel.MakeCube(const pSizeX,pSizeY,pSizeZ:TVkFloat);
+procedure TVulkanModel.MakeCube(const aSizeX,aSizeY,aSizeZ:TVkFloat);
 type PCubeVertex=^TCubeVertex;
      TCubeVertex=record
       Position:TVulkanModelVector3;
@@ -730,9 +730,9 @@ begin
  for Index:=0 to fCountVertices-1 do begin
   ModelVertex:=@fVertices[Index];
   CubeVertex:=@CubeVertices[Index];
-  ModelVertex^.Position.x:=CubeVertex^.Position.x*pSizeX*0.5;
-  ModelVertex^.Position.y:=CubeVertex^.Position.y*pSizeY*0.5;
-  ModelVertex^.Position.z:=CubeVertex^.Position.z*pSizeZ*0.5;
+  ModelVertex^.Position.x:=CubeVertex^.Position.x*aSizeX*0.5;
+  ModelVertex^.Position.y:=CubeVertex^.Position.y*aSizeY*0.5;
+  ModelVertex^.Position.z:=CubeVertex^.Position.z*aSizeZ*0.5;
   m.Tangent:=CubeVertex^.Tangent;
   m.Bitangent:=CubeVertex^.Bitangent;
   m.Normal:=CubeVertex^.Normal;
@@ -756,18 +756,18 @@ begin
 
  AObject:=@fObjects[0];
  AObject^.Name:='cube';
- AObject^.AABB.Min.x:=-(pSizeX*0.5);
- AObject^.AABB.Min.y:=-(pSizeY*0.5);
- AObject^.AABB.Min.z:=-(pSizeZ*0.5);
- AObject^.AABB.Max.x:=pSizeX*0.5;
- AObject^.AABB.Max.y:=pSizeY*0.5;
- AObject^.AABB.Max.z:=pSizeZ*0.5;
+ AObject^.AABB.Min.x:=-(aSizeX*0.5);
+ AObject^.AABB.Min.y:=-(aSizeY*0.5);
+ AObject^.AABB.Min.z:=-(aSizeZ*0.5);
+ AObject^.AABB.Max.x:=aSizeX*0.5;
+ AObject^.AABB.Max.y:=aSizeY*0.5;
+ AObject^.AABB.Max.z:=aSizeZ*0.5;
  AObject^.Sphere.Center:=VulkanModelVector3ScalarMul(VulkanModelVector3Sub(AObject^.AABB.Max,AObject^.AABB.Min),0.5);
  AObject^.Sphere.Radius:=VulkanModelVector3Length(VulkanModelVector3Sub(AObject^.AABB.Max,AObject^.AABB.Min))/sqrt(3.0);
 
 end;
 
-procedure TVulkanModel.LoadFromStream(const pStream:TStream;const pDoFree:boolean=false);
+procedure TVulkanModel.LoadFromStream(const aStream:TStream;const aDoFree:boolean=false);
 const ModelSignature:TChunkSignature=('m','d','l',#0);
       ModelVersion:TVkUInt32=0;
 var Signature:TChunkSignature;
@@ -782,7 +782,7 @@ var Signature:TChunkSignature;
   for Index:=0 to CountChunks-1 do begin
    Chunk:=@Chunks[Index];
    if Chunk^.Signature=ChunkSignature then begin
-    result:=TChunkStream.Create(pStream,Chunk^.Offset,Chunk^.Size,WithMemoryCopy);
+    result:=TChunkStream.Create(aStream,Chunk^.Offset,Chunk^.Size,WithMemoryCopy);
     exit;
    end;
   end;
@@ -983,17 +983,17 @@ var Signature:TChunkSignature;
   end;
  end;
 begin
- if assigned(pStream) then begin
+ if assigned(aStream) then begin
   try
    Chunks:=nil;
    try
     begin
-     if pStream.Seek(0,soBeginning)<>0 then begin
+     if aStream.Seek(0,soBeginning)<>0 then begin
       raise EModelLoad.Create('Stream seek error');
      end;
     end;
     begin
-     if pStream.Read(Signature,SizeOf(TChunkSignature))<>SizeOf(TChunkSignature) then begin
+     if aStream.Read(Signature,SizeOf(TChunkSignature))<>SizeOf(TChunkSignature) then begin
       raise EModelLoad.Create('Stream read error');
      end;
      if Signature<>ModelSignature then begin
@@ -1001,7 +1001,7 @@ begin
      end;
     end;
     begin
-     if pStream.Read(Version,SizeOf(TVkUInt32))<>SizeOf(TVkUInt32) then begin
+     if aStream.Read(Version,SizeOf(TVkUInt32))<>SizeOf(TVkUInt32) then begin
       raise EModelLoad.Create('Stream read error');
      end;
      if Version<>ModelVersion then begin
@@ -1009,20 +1009,20 @@ begin
      end;
     end;
     begin
-     if pStream.Read(CountChunks,SizeOf(TVkInt32))<>SizeOf(TVkInt32) then begin
+     if aStream.Read(CountChunks,SizeOf(TVkInt32))<>SizeOf(TVkInt32) then begin
       raise EModelLoad.Create('Stream read error');
      end;
-     if pStream.Read(ChunkOffset,SizeOf(TVkInt32))<>SizeOf(TVkInt32) then begin
+     if aStream.Read(ChunkOffset,SizeOf(TVkInt32))<>SizeOf(TVkInt32) then begin
       raise EModelLoad.Create('Stream read error');
      end;
-     if pStream.Seek(ChunkOffset,soBeginning)<>ChunkOffset then begin
+     if aStream.Seek(ChunkOffset,soBeginning)<>ChunkOffset then begin
       raise EModelLoad.Create('Stream seek error');
      end;
      if CountChunks=0 then begin
       raise EModelLoad.Create('Model file without chunks');
      end;
      SetLength(Chunks,CountChunks);
-     if pStream.Read(Chunks[0],CountChunks*SizeOf(TChunk))<>(CountChunks*SizeOf(TChunk)) then begin
+     if aStream.Read(Chunks[0],CountChunks*SizeOf(TChunk))<>(CountChunks*SizeOf(TChunk)) then begin
       raise EModelLoad.Create('Stream read error');
      end;
     end;
@@ -1039,16 +1039,16 @@ begin
     SetLength(Chunks,0);
    end;
   finally
-   if pDoFree then begin
-    pStream.Free;
+   if aDoFree then begin
+    aStream.Free;
    end;
   end;
  end;
 end;
 
-procedure TVulkanModel.Upload(const pQueue:TVulkanQueue;
-                        const pCommandBuffer:TVulkanCommandBuffer;
-                        const pFence:TVulkanFence);
+procedure TVulkanModel.Upload(const aQueue:TVulkanQueue;
+                        const aCommandBuffer:TVulkanCommandBuffer;
+                        const aFence:TVulkanFence);
 type TRemapIndices=array of TVkInt64;
 var BufferIndex,IndexIndex,CountTemporaryVertices:TVkInt32;
     MaxIndexedIndex:TVkUInt32;
@@ -1091,9 +1091,9 @@ begin
                                            nil,
                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                           );
-   fVertexBuffers[0].UploadData(pQueue,
-                                pCommandBuffer,
-                                pFence,
+   fVertexBuffers[0].UploadData(aQueue,
+                                aCommandBuffer,
+                                aFence,
                                 fVertices[0],
                                 0,
                                 fCountVertices*SizeOf(TVulkanModelVertex),
@@ -1106,9 +1106,9 @@ begin
                                           nil,
                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                          );
-   fIndexBuffers[0].UploadData(pQueue,
-                               pCommandBuffer,
-                               pFence,
+   fIndexBuffers[0].UploadData(aQueue,
+                               aCommandBuffer,
+                               aFence,
                                fIndices[0],
                                0,
                                fCountIndices*SizeOf(TVulkanModelIndex),
@@ -1188,9 +1188,9 @@ begin
                                                        nil,
                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                                       );
-     fVertexBuffers[BufferIndex].UploadData(pQueue,
-                                            pCommandBuffer,
-                                            pFence,
+     fVertexBuffers[BufferIndex].UploadData(aQueue,
+                                            aCommandBuffer,
+                                            aFence,
                                             TemporaryVertices[0],
                                             0,
                                             CountTemporaryVertices*SizeOf(TVulkanModelVertex),
@@ -1203,9 +1203,9 @@ begin
                                                       nil,
                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                                      );
-     fIndexBuffers[BufferIndex].UploadData(pQueue,
-                                           pCommandBuffer,
-                                           pFence,
+     fIndexBuffers[BufferIndex].UploadData(aQueue,
+                                           aCommandBuffer,
+                                           aFence,
                                            TemporaryIndices[0],
                                            0,
                                            fBufferSizes[BufferIndex]*SizeOf(TVulkanModelIndex),
@@ -1257,14 +1257,14 @@ begin
  end;
 end;
 
-procedure TVulkanModel.Draw(const pCommandBuffer:TVulkanCommandBuffer;const pInstanceCount:TVkUInt32=1;const pFirstInstance:TVkUInt32=0);
+procedure TVulkanModel.Draw(const aCommandBuffer:TVulkanCommandBuffer;const aInstanceCount:TVkUInt32=1;const aFirstInstance:TVkUInt32=0);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var Index:TVkInt32;
 begin
  for Index:=0 to fCountBuffers-1 do begin
-  pCommandBuffer.CmdBindVertexBuffers(VULKAN_MODEL_VERTEX_BUFFER_BIND_ID,1,@fVertexBuffers[Index].Handle,@Offsets);
-  pCommandBuffer.CmdBindIndexBuffer(fIndexBuffers[Index].Handle,0,VK_INDEX_TYPE_UINT32);
-  pCommandBuffer.CmdDrawIndexed(fBufferSizes[Index],pInstanceCount,0,0,pFirstInstance);
+  aCommandBuffer.CmdBindVertexBuffers(VULKAN_MODEL_VERTEX_BUFFER_BIND_ID,1,@fVertexBuffers[Index].Handle,@Offsets);
+  aCommandBuffer.CmdBindIndexBuffer(fIndexBuffers[Index].Handle,0,VK_INDEX_TYPE_UINT32);
+  aCommandBuffer.CmdDrawIndexed(fBufferSizes[Index],aInstanceCount,0,0,aFirstInstance);
  end;
 end;
 

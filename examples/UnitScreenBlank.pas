@@ -40,15 +40,15 @@ type TScreenBlank=class(TVulkanApplicationScreen)
 
        procedure Pause; override;
 
-       procedure Resize(const pWidth,pHeight:TVkInt32); override;
+       procedure Resize(const aWidth,aHeight:TVkInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
 
-       procedure Update(const pDeltaTime:double); override;
+       procedure Update(const aDeltaTime:double); override;
 
-       procedure Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
 
      end;
 
@@ -126,9 +126,9 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenBlank.Resize(const pWidth,pHeight:TVkInt32);
+procedure TScreenBlank.Resize(const aWidth,aHeight:TVkInt32);
 begin
- inherited Resize(pWidth,pHeight);
+ inherited Resize(aWidth,aHeight);
 end;
 
 procedure TScreenBlank.AfterCreateSwapChain;
@@ -225,24 +225,24 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TScreenBlank.Update(const pDeltaTime:double);
+procedure TScreenBlank.Update(const aDeltaTime:double);
 begin
- inherited Update(pDeltaTime);
+ inherited Update(aDeltaTime);
 end;
 
-procedure TScreenBlank.Draw(const pSwapChainImageIndex:TVkInt32;var pWaitSemaphore:TVulkanSemaphore;const pWaitFence:TVulkanFence=nil);
+procedure TScreenBlank.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 begin
- inherited Draw(pSwapChainImageIndex,pWaitSemaphore,nil);
+ inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVulkanRenderPass) then begin
 
-  fVulkanRenderCommandBuffers[pSwapChainImageIndex].Execute(VulkanApplication.VulkanDevice.GraphicsQueue,
+  fVulkanRenderCommandBuffers[aSwapChainImageIndex].Execute(VulkanApplication.VulkanDevice.GraphicsQueue,
                                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                            pWaitSemaphore,
-                                                            fVulkanRenderSemaphores[pSwapChainImageIndex],
-                                                            pWaitFence,
+                                                            aWaitSemaphore,
+                                                            fVulkanRenderSemaphores[aSwapChainImageIndex],
+                                                            aWaitFence,
                                                             false);
 
-  pWaitSemaphore:=fVulkanRenderSemaphores[pSwapChainImageIndex];
+  aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
 
  end;
 end;

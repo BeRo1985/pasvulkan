@@ -18,13 +18,13 @@ uses SysUtils,Classes;
 
 var RegisteredExamplesList:TStringList=nil;
 
-procedure RegisterExample(const pTitle:string;const pClass:TClass);
+procedure RegisterExample(const aTitle:string;const aClass:TClass);
 
 implementation
 
-procedure RegisterExample(const pTitle:string;const pClass:TClass);
+procedure RegisterExample(const aTitle:string;const aClass:TClass);
 begin
- RegisteredExamplesList.AddObject(pTitle,pointer(pClass));
+ RegisteredExamplesList.AddObject(aTitle,pointer(aClass));
 end;                                                 
 
 initialization

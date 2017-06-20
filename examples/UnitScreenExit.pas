@@ -27,23 +27,23 @@ type TScreenExit=class(TScreenBlank)
 
        destructor Destroy; override;
 
-       function KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
 
-       function KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
 
-       function KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
 
-       function TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+       function TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
 
-       function TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean; override;
+       function TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
 
-       function TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean; override;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean; override;
 
-       function MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean; override;
+       function MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean; override;
 
-       function Scrolled(const pAmount:TVkInt32):boolean; override;
+       function Scrolled(const aAmount:TVkInt32):boolean; override;
 
-       procedure Update(const pDeltaTime:double); override;
+       procedure Update(const aDeltaTime:double); override;
 
      end;
 
@@ -65,11 +65,11 @@ begin
  inherited Destroy;
 end;
 
-function TScreenExit.KeyDown(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TScreenExit.KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
  if fReady then begin
-  case pKeyCode of
+  case aKeyCode of
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
     VulkanApplication.NextScreen:=TScreenMainMenu.Create;
    end;
@@ -122,17 +122,17 @@ begin
  end;
 end;
 
-function TScreenExit.KeyUp(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TScreenExit.KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExit.KeyTyped(const pKeyCode,pKeyModifier:TVkInt32):boolean;
+function TScreenExit.KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExit.TouchDown(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+function TScreenExit.TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
 var Index:TVkInt32;
     cy:single;
 begin
@@ -141,7 +141,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 1 do begin
-   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
     if fSelectedIndex=0 then begin
      VulkanApplication.Terminate;
@@ -154,12 +154,12 @@ begin
  end;
 end;
 
-function TScreenExit.TouchUp(const pScreenX,pScreenY,pPressure:single;const pPointerID,pButton:TVkInt32):boolean;
+function TScreenExit.TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExit.TouchDragged(const pScreenX,pScreenY,pPressure:single;const pPointerID:TVkInt32):boolean;
+function TScreenExit.TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean;
 var Index:TVkInt32;
     cy:single;
 begin
@@ -168,7 +168,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 1 do begin
-   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
    cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
@@ -176,7 +176,7 @@ begin
  end;
 end;
 
-function TScreenExit.MouseMoved(const pScreenX,pScreenY:TVkInt32):boolean;
+function TScreenExit.MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean;
 var Index:TVkInt32;
     cy:single;
 begin
@@ -185,7 +185,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 1 do begin
-   if (pScreenY>=cy) and (pScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
    cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
@@ -193,12 +193,12 @@ begin
  end;
 end;
 
-function TScreenExit.Scrolled(const pAmount:TVkInt32):boolean;
+function TScreenExit.Scrolled(const aAmount:TVkInt32):boolean;
 begin
  result:=false;
 end;
 
-procedure TScreenExit.Update(const pDeltaTime:double);
+procedure TScreenExit.Update(const aDeltaTime:double);
 const BoolToInt:array[boolean] of TVkInt32=(0,1);
       Options:array[0..1] of string=('Yes','No');
 var Index:TVkInt32;
@@ -206,7 +206,7 @@ var Index:TVkInt32;
     s:string;
     IsSelected:boolean;
 begin
- inherited Update(pDeltaTime);
+ inherited Update(aDeltaTime);
  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Are you sure to exit?');
  fStartY:=(VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*2)-(4*FontSize)))*0.5;
  cy:=fStartY;
