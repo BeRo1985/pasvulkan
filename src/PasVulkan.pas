@@ -3297,9 +3297,17 @@ type EVulkanException=class(Exception);
       Color:TVulkanSpriteColor;
      end;
 
+     TVulkanSpriteBatchBuffers=array of TVulkanBuffer;
+
      TVulkanSpriteBatch=class
       private
-       fIsSetUp:boolean;
+       fDevice:TVulkanDevice;
+       fGraphicsQueue:TVulkanQueue;
+       fGraphicsCommandBuffer:TVulkanCommandBuffer;
+       fGraphicsFence:TVulkanFence;
+       fTransferQueue:TVulkanQueue;
+       fTransferCommandBuffer:TVulkanCommandBuffer;
+       fTransferFence:TVulkanFence;
        fBlending:boolean;
        fAdditiveBlending:boolean;
        fLastTexture:TVulkanSpriteTexture;
@@ -3308,23 +3316,31 @@ type EVulkanException=class(Exception);
        fVertexBufferUsed:TVkSizeInt;
        fIndexBufferUsed:TVkSizeInt;
        fClientVertex:array of TVulkanSpriteBatchVertex;
-       fClientIndex:array of TVkUInt32;
        fVertexBufferCount:TVkSizeInt;
        fVertexBufferSize:TVkSizeInt;
        fIndexBufferCount:TVkSizeInt;
        fIndexBufferSize:TVkSizeInt;
+       fVulkanVertexBuffers:TVulkanSpriteBatchBuffers;
+       fCountVulkanVertexBuffers:TVkInt32;
+       fCurrentVulkanVertexBufferIndex:TVkInt32;
+       fVulkanIndexBuffer:TVulkanBuffer;
        fWidth:TVkInt32;
        fHeight:TVkInt32;
        function RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:single):TVulkanSpritePoint;
        procedure SetTexture(const Texture:TVulkanSpriteTexture);
       public
-       constructor Create(const AWidth:TVkInt32=1280;const AHeight:TVkInt32=720); reintroduce;
+       constructor Create(const aDevice:TVulkanDevice;
+                          const aGraphicsQueue:TVulkanQueue;
+                          const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                          const aGraphicsFence:TVulkanFence;
+                          const aTransferQueue:TVulkanQueue;
+                          const aTransferCommandBuffer:TVulkanCommandBuffer;
+                          const aTransferFence:TVulkanFence;
+                          const aWidth:TVkInt32=1280;
+                          const aHeight:TVkInt32=720); reintroduce;
        destructor Destroy; override;
-       procedure Upload;
-       procedure Unload;
-       function Uploaded:boolean;
-       procedure Setup;
        procedure SetBlending(Active,Additive:boolean);
+       procedure Reset;
        procedure Start;
        procedure Stop;
        procedure Flush;
@@ -3341,6 +3357,7 @@ type EVulkanException=class(Exception);
        procedure Draw(const Sprite:TVulkanSprite;const x,y:single); overload;
        procedure Draw(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single); overload;
        procedure DrawText(const Font:TVulkanSpriteFont;const Text:TVulkanRawByteString;x,y:single;const Color:TVulkanSpriteColor);
+       property Device:TVulkanDevice read fDevice;
        property Width:TVkInt32 read fWidth write fWidth;
        property Height:TVkInt32 read fHeight write fHeight;
      end;
@@ -3371,6 +3388,7 @@ type EVulkanException=class(Exception);
 
      TVulkanSpriteAtlas=class
       private
+       fDevice:TVulkanDevice;
        fTextureList:PVulkanSpriteAtlasTexture;
        fList:TList;
        fHashMap:TVulkanStringHashMap;
@@ -3385,10 +3403,9 @@ type EVulkanException=class(Exception);
                           var aImageData:TVkPointer;
                           var aImageWidth,aImageHeight:TVkInt32):boolean;
       public
-       constructor Create; reintroduce;
+       constructor Create(const aDevice:TVulkanDevice); reintroduce;
        destructor Destroy; override;
-       procedure Upload(const aDevice:TVulkanDevice;
-                        const aGraphicsQueue:TVulkanQueue;
+       procedure Upload(const aGraphicsQueue:TVulkanQueue;
                         const aGraphicsCommandBuffer:TVulkanCommandBuffer;
                         const aGraphicsFence:TVulkanFence;
                         const aTransferQueue:TVulkanQueue;
@@ -3401,6 +3418,7 @@ type EVulkanException=class(Exception);
        function LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32;DoFree:boolean=false):TVulkanSprite; virtual;
        function LoadSprite(const Name:TVulkanRawByteString;Stream:TStream;DoFree:boolean=true):TVulkanSprite; virtual;
        function LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;DoFree:boolean=true;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64):TVulkanSprites; virtual;
+       property Device:TVulkanDevice read fDevice;
        property Count:TVkInt32 read GetCount;
        property Items[Index:TVkInt32]:TVulkanSprite read GetItem write SetItem;
        property Sprites[const Name:TVulkanRawByteString]:TVulkanSprite read GetSprite; default;
@@ -25925,89 +25943,101 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanSpriteBatch.Create(const AWidth:TVkInt32=1280;const AHeight:TVkInt32=720);
+constructor TVulkanSpriteBatch.Create(const aDevice:TVulkanDevice;
+                                      const aGraphicsQueue:TVulkanQueue;
+                                      const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                      const aGraphicsFence:TVulkanFence;
+                                      const aTransferQueue:TVulkanQueue;
+                                      const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                      const aTransferFence:TVulkanFence;
+                                      const aWidth:TVkInt32=1280;
+                                      const aHeight:TVkInt32=720);
+var Index:TVkInt32;
+    Indices:array of TVkUInt32;
 begin
  inherited Create;
+
+ fDevice:=aDevice;
+
+ fGraphicsQueue:=aGraphicsQueue;
+ fGraphicsCommandBuffer:=aGraphicsCommandBuffer;
+ fGraphicsFence:=aGraphicsFence;
+
+ fTransferQueue:=aTransferQueue;
+ fTransferCommandBuffer:=aTransferCommandBuffer;
+ fTransferFence:=aTransferFence;
+
  fLastTexture:=nil;
+
  fVertexBufferUsed:=0;
  fIndexBufferUsed:=0;
- fIsSetUp:=false;
+
  fBlending:=false;
  fAdditiveBlending:=false;
+
  fClientVertex:=nil;
- fClientIndex:=nil;
+
  fVertexBufferCount:=32768;
  fVertexBufferSize:=SizeOf(TVulkanSpriteBatchVertex)*(4*fVertexBufferCount);
+
  fIndexBufferCount:=(fVertexBufferCount*6) div 4;
  fIndexBufferSize:=SizeOf(TVkUInt32)*fIndexBufferCount;
+
  SetLength(fClientVertex,fVertexBufferCount);
- SetLength(fClientIndex,fIndexBufferCount);
- fWidth:=AWidth;
- fHeight:=AHeight;
-end;
 
-destructor TVulkanSpriteBatch.Destroy;
-begin
- SetLength(fClientVertex,0);
- SetLength(fClientIndex,0);
- inherited Destroy;
-end;
-
-procedure TVulkanSpriteBatch.Upload;
-var Index:TVkInt32;
-    Source:PVulkanRawByteChar;
-    LogString:TVulkanRawByteString;
-    Vertex:TVulkanSpriteBatchVertex;
-    Binary:TVkPointer;
-    s:TVulkanRawByteString;
-    fs:TFileStream;
-    Version:TVkUInt32;
-begin
- if not fIsSetUp then begin
-
-  fLastTexture:=nil;
-
-  fVertexBufferUsed:=0;
-  fIndexBufferUsed:=0;
-
+ Indices:=nil;
+ try
+  SetLength(Indices,fIndexBufferCount);
   Index:=0;
   while Index<fVertexBufferCount do begin
-   fClientIndex[fIndexBufferUsed]:=Index+0;
-   inc(fIndexBufferUsed);
-   fClientIndex[fIndexBufferUsed]:=Index+1;
-   inc(fIndexBufferUsed);
-   fClientIndex[fIndexBufferUsed]:=Index+2;
-   inc(fIndexBufferUsed);
-   fClientIndex[fIndexBufferUsed]:=Index+0;
-   inc(fIndexBufferUsed);
-   fClientIndex[fIndexBufferUsed]:=Index+2;
-   inc(fIndexBufferUsed);
-   fClientIndex[fIndexBufferUsed]:=Index+3;
-   inc(fIndexBufferUsed);
+   Indices[fIndexBufferUsed+0]:=Index+0;
+   Indices[fIndexBufferUsed+1]:=Index+1;
+   Indices[fIndexBufferUsed+2]:=Index+2;
+   Indices[fIndexBufferUsed+3]:=Index+0;
+   Indices[fIndexBufferUsed+4]:=Index+2;
+   Indices[fIndexBufferUsed+5]:=Index+3;
+   inc(fIndexBufferUsed,6);
    inc(Index,4);
   end;
 
-  fIsSetUp:=true;
+  fVulkanIndexBuffer:=TVulkanBuffer.Create(fDevice,
+                                           fIndexBufferUsed*SizeOf(TVkUInt32),
+                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                           nil,
+                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                          );
+  fVulkanIndexBuffer.UploadData(fTransferQueue,
+                                fTransferCommandBuffer,
+                                fTransferFence,
+                                Indices[0],
+                                0,
+                                fIndexBufferUsed*SizeOf(TVkUInt32),
+                                vbutsbmYes);
+                                
+ finally
+  Indices:=nil;
  end;
+
+ fVulkanVertexBuffers:=nil;
+ fCountVulkanVertexBuffers:=0;
+ fCurrentVulkanVertexBufferIndex:=0;
+
+ fWidth:=AWidth;
+ fHeight:=AHeight;
+
 end;
 
-procedure TVulkanSpriteBatch.Unload;
+destructor TVulkanSpriteBatch.Destroy;
+var Index:TVkInt32;
 begin
- if fIsSetUp then begin
-
-  fIsSetUp:=false;
-
+ for Index:=0 to fCountVulkanVertexBuffers-1 do begin
+  FreeAndNil(fVulkanVertexBuffers[Index]);
  end;
-end;
-
-function TVulkanSpriteBatch.Uploaded:boolean;
-begin
- result:=fIsSetUp;
-end;
-
-procedure TVulkanSpriteBatch.Setup;
-begin
- Upload;
+ FreeAndNil(fVulkanIndexBuffer);
+ fVulkanVertexBuffers:=nil;
+ fClientVertex:=nil;
+ inherited Destroy;
 end;
 
 function TVulkanSpriteBatch.RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:single):TVulkanSpritePoint;
@@ -26028,6 +26058,11 @@ begin
  end;
 end;
 
+procedure TVulkanSpriteBatch.Reset;
+begin
+ fCurrentVulkanVertexBufferIndex:=0;
+end;
+
 procedure TVulkanSpriteBatch.Start;
 var Vertex:TVulkanSpriteBatchVertex;
 begin
@@ -26046,8 +26081,48 @@ begin
 end;
 
 procedure TVulkanSpriteBatch.Flush;
+var CurrentVulkanVertexBufferIndex,OldCount,NewCount:TVkInt32;
+    VulkanVertexBuffer:TVulkanBuffer;
 begin
  if fVertexBufferUsed>0 then begin
+
+  CurrentVulkanVertexBufferIndex:=fCurrentVulkanVertexBufferIndex;
+  inc(fCurrentVulkanVertexBufferIndex);
+
+  OldCount:=fCountVulkanVertexBuffers;
+  if OldCount<=CurrentVulkanVertexBufferIndex then begin
+   NewCount:=(CurrentVulkanVertexBufferIndex+1)*2;
+   SetLength(fVulkanVertexBuffers,NewCount);
+   FillChar(fVulkanVertexBuffers[OldCount],(NewCount-OldCount)*SizeOf(TVulkanBuffer),#0);
+   fCountVulkanVertexBuffers:=NewCount;
+  end;
+
+  VulkanVertexBuffer:=fVulkanVertexBuffers[CurrentVulkanVertexBufferIndex];
+  if not assigned(VulkanVertexBuffer) then begin
+   VulkanVertexBuffer:=TVulkanBuffer.Create(fDevice,
+                                            fVertexBufferSize,
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                            nil,
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)},
+                                            0,
+                                            0,
+                                            0,
+                                            [vbfPersistentMapped]
+                                           );
+   fVulkanVertexBuffers[CurrentVulkanVertexBufferIndex]:=VulkanVertexBuffer;
+  end;
+
+  if assigned(VulkanVertexBuffer) then begin
+   VulkanVertexBuffer.UploadData(fTransferQueue,
+                                 fTransferCommandBuffer,
+                                 fTransferFence,
+                                 fClientVertex[0],
+                                 0,
+                                 fVertexBufferUsed*SizeOf(TVulkanSpriteBatchVertex),
+                                 vbutsbmNo);              
+  end;
+
   if fBlending then begin
   end else begin
   end;
@@ -26625,8 +26700,9 @@ begin
  end;
 end;
 
-constructor TVulkanSpriteAtlas.Create;
+constructor TVulkanSpriteAtlas.Create(const aDevice:TVulkanDevice);
 begin
+ fDevice:=aDevice;
  fTextureList:=nil;
  fList:=TList.Create;
  fHashMap:=TVulkanStringHashMap.Create;
@@ -26664,8 +26740,7 @@ begin
  fHashMap.Clear;
 end;
 
-procedure TVulkanSpriteAtlas.Upload(const aDevice:TVulkanDevice;
-                                    const aGraphicsQueue:TVulkanQueue;
+procedure TVulkanSpriteAtlas.Upload(const aGraphicsQueue:TVulkanQueue;
                                     const aGraphicsCommandBuffer:TVulkanCommandBuffer;
                                     const aGraphicsFence:TVulkanFence;
                                     const aTransferQueue:TVulkanQueue;
@@ -26677,7 +26752,7 @@ begin
   Texture:=fTextureList;
   while assigned(Texture) do begin
    if not Texture^.Texture.Uploaded then begin
-    Texture^.Texture.Upload(aDevice,
+    Texture^.Texture.Upload(fDevice,
                             aGraphicsQueue,
                             aGraphicsCommandBuffer,
                             aGraphicsFence,
