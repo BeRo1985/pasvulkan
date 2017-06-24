@@ -10158,8 +10158,7 @@ begin
 end;
 
 function LoadTGAImage(DataPointer:TVkPointer;DataSize:TVkUInt32;var ImageData:TVkPointer;var ImageWidth,ImageHeight:TVkInt32;const HeaderOnly:boolean):boolean;
-type pbyte=^TVkUInt8;
-     PLongwords=^TLongwords;
+type PLongwords=^TLongwords;
      TLongwords=array[0..65536] of TVkUInt32;
      TTGAHeader=packed record
       ImageID:TVkUInt8;
@@ -26158,7 +26157,7 @@ begin
 end;
 
 procedure TVulkanTrueTypeFontPolygonRasterizer.RenderSpanCoverage(y,x,Len,Coverage:TVkInt32);
-var p:PByte;
+var p:PVkUInt8;
     Alpha:TVkUInt32;
     i:TVkInt32;
 begin
