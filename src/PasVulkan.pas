@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-24-20-01-0000                       *
+ *                        Version 2017-06-24-20-18-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -3185,7 +3185,13 @@ type EVulkanException=class(Exception);
 
      TVulkanTrueTypeFontGlyphIndexSubHeaderKeys=array[0..255] of TVkUInt16;
 
-     TVulkanTrueTypeFontPolygonCommandType=(ttfpctMOVETO,ttfpctLINETO,ttfpctCURVETO,ttfpctCLOSE);
+     TVulkanTrueTypeFontPolygonCommandType=
+      (
+       VkTTF_PolygonCommandType_MOVETO,
+       VkTTF_PolygonCommandType_LINETO,
+       VkTTF_PolygonCommandType_CURVETO,
+       VkTTF_PolygonCommandType_CLOSE
+      );
 
      TVulkanTrueTypeFontPolygonCommandPoint=packed record
       x:TVkInt32;
@@ -29691,7 +29697,7 @@ begin
    if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
     SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
    end;
-   PolygonBuffer.Commands[CommandIndex].CommandType:=ttfpctMOVETO;
+   PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_MOVETO;
    PolygonBuffer.Commands[CommandIndex].Points[0].x:=fx;
    PolygonBuffer.Commands[CommandIndex].Points[0].y:=fy;
    for j:=StartPointIndex+1 to GlyphBuffer.EndPointIndices[i] do begin
@@ -29705,7 +29711,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=ttfpctLINETO;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_LINETO;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=x;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=y;
      end else begin
@@ -29720,7 +29726,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=ttfpctCURVETO;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_CURVETO;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
       PolygonBuffer.Commands[CommandIndex].Points[1].x:=x;
@@ -29733,7 +29739,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=ttfpctCURVETO;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_CURVETO;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
       PolygonBuffer.Commands[CommandIndex].Points[1].x:=MiddleX;
@@ -29750,7 +29756,7 @@ begin
      if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
       SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
      end;
-     PolygonBuffer.Commands[CommandIndex].CommandType:=ttfpctLINETO;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_LINETO;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=fx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=fy;
     end else begin
@@ -29759,7 +29765,7 @@ begin
      if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
       SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
      end;
-     PolygonBuffer.Commands[CommandIndex].CommandType:=ttfpctCURVETO;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_CURVETO;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
      PolygonBuffer.Commands[CommandIndex].Points[1].x:=fx;
@@ -29769,7 +29775,7 @@ begin
     if not OnCurve then begin
      CommandIndex:=length(PolygonBuffer.Commands);
      SetLength(PolygonBuffer.Commands,CommandIndex+1);
-     PolygonBuffer.Commands[CommandIndex].CommandType:=ttfpctCURVETO;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_CURVETO;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
      PolygonBuffer.Commands[CommandIndex].Points[1].x:=lx;
@@ -29784,7 +29790,7 @@ begin
  if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
   SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
  end;
- PolygonBuffer.Commands[CommandIndex].CommandType:=ttfpctCLOSE;
+ PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_CLOSE;
  PolygonBuffer.CountCommands:=CommandCount;
 end;
 
@@ -30027,15 +30033,15 @@ begin
  fPolygonBuffer.CountCommands:=0;
  for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
   case PolygonBuffer.Commands[CommandIndex].CommandType of
-   ttfpctMOVETO,ttfpctLINETO:begin
+   VkTTF_PolygonCommandType_MOVETO,VkTTF_PolygonCommandType_LINETO:begin
     PointAt(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y);
    end;
-   ttfpctCURVETO:begin
+   VkTTF_PolygonCommandType_CURVETO:begin
     QuadraticCurveTo(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y,
                      PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y,
                      Tolerance,MaxLevel);
    end;
-   ttfpctCLOSE:begin
+   VkTTF_PolygonCommandType_CLOSE:begin
    end;
   end;
  end;
@@ -30048,18 +30054,18 @@ begin
   fPolygonBuffer.CountCommands:=0;
   for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
    case PolygonBuffer.Commands[CommandIndex].CommandType of
-    ttfpctMOVETO:begin
+    VkTTF_PolygonCommandType_MOVETO:begin
      Rasterizer.MoveTo(x+PolygonBuffer.Commands[CommandIndex].Points[0].x,y+PolygonBuffer.Commands[CommandIndex].Points[0].y);
     end;
-    ttfpctLINETO:begin
+    VkTTF_PolygonCommandType_LINETO:begin
      Rasterizer.LineTo(x+PolygonBuffer.Commands[CommandIndex].Points[0].x,y+PolygonBuffer.Commands[CommandIndex].Points[0].y);
     end;
-    ttfpctCURVETO:begin
+    VkTTF_PolygonCommandType_CURVETO:begin
      Rasterizer.QuadraticCurveTo(x+PolygonBuffer.Commands[CommandIndex].Points[0].x,y+PolygonBuffer.Commands[CommandIndex].Points[0].y,
                                  x+PolygonBuffer.Commands[CommandIndex].Points[1].x,y+PolygonBuffer.Commands[CommandIndex].Points[1].y,
                                  Tolerance,MaxLevel);
     end;
-    ttfpctCLOSE:begin
+    VkTTF_PolygonCommandType_CLOSE:begin
      Rasterizer.Close;
     end;
    end;
