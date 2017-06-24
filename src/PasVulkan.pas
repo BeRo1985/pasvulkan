@@ -26753,12 +26753,12 @@ var XML:TVulkanXML;
     ImageWidth,ImageHeight:TVkInt32;
 begin
  result:=false;
- if assigned(aStream) then begin
+ if assigned(aTextureStream) and assigned(aStream) then begin
   Texture:=nil;
   MemoryStream:=TMemoryStream.Create;
   try
    aStream.Seek(0,soBeginning);
-   MemoryStream.CopyFrom(aStream,aStream.Size);
+   MemoryStream.CopyFrom(aTextureStream,aTextureStream.Size);
    MemoryStream.Seek(0,soBeginning);
    ImageData:=nil;
    try
