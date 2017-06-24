@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-24-22-33-0000                       *
+ *                        Version 2017-06-25-00-10-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -3238,7 +3238,13 @@ type EVulkanException=class(Exception);
       public
        constructor Create(const aPixels:PVulkanSpriteTexturePixels;const aWidth,aHeight:TVkInt32); reintroduce;
        destructor Destroy; override;
-       procedure Upload;
+       procedure Upload(const aDevice:TVulkanDevice;
+                        const aGraphicsQueue:TVulkanQueue;
+                        const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                        const aGraphicsFence:TVulkanFence;
+                        const aTransferQueue:TVulkanQueue;
+                        const aTransferCommandBuffer:TVulkanCommandBuffer;
+                        const aTransferFence:TVulkanFence);
        procedure Unload;
       published
        property Texture:TVulkanTexture read fTexture;
@@ -3381,8 +3387,13 @@ type EVulkanException=class(Exception);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure Reupload; virtual;
-       procedure Upload; virtual;
+       procedure Upload(const aDevice:TVulkanDevice;
+                        const aGraphicsQueue:TVulkanQueue;
+                        const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                        const aGraphicsFence:TVulkanFence;
+                        const aTransferQueue:TVulkanQueue;
+                        const aTransferCommandBuffer:TVulkanCommandBuffer;
+                        const aTransferFence:TVulkanFence); virtual;
        procedure Unload; virtual;
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
@@ -25837,12 +25848,41 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanSpriteTexture.Upload;
+procedure TVulkanSpriteTexture.Upload(const aDevice:TVulkanDevice;
+                                      const aGraphicsQueue:TVulkanQueue;
+                                      const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                      const aGraphicsFence:TVulkanFence;
+                                      const aTransferQueue:TVulkanQueue;
+                                      const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                      const aTransferFence:TVulkanFence);
 begin
 
  if not fUploaded then begin
 
-  FreeAndNil(fTexture);
+  FreeAndNil(fTexture);          
+
+  fTexture:=TVulkanTexture.CreateFromMemory(aDevice,
+                                            aGraphicsQueue,
+                                            aGraphicsCommandBuffer,
+                                            aGraphicsFence,
+                                            aTransferQueue,
+                                            aTransferCommandBuffer,
+                                            aTransferFence,
+                                            VK_FORMAT_R8G8B8A8_UNORM,
+                                            VK_SAMPLE_COUNT_1_BIT,
+                                            Max(1,fWidth),
+                                            Max(1,fHeight),
+                                            1,
+                                            1,
+                                            1,
+                                            -1,
+                                            [vtufTransferDst,vtufSampled],
+                                            fPixels,
+                                            fWidth*fHeight*SizeOf(TVkUInt8)*4,
+                                            false,
+                                            false,
+                                            1,
+                                            true);
 
   fUploaded:=true;
 
@@ -26624,20 +26664,26 @@ begin
  fHashMap.Clear;
 end;
 
-procedure TVulkanSpriteAtlas.Reupload;
-begin
- Unload;
- Upload;
-end;
-
-procedure TVulkanSpriteAtlas.Upload;
+procedure TVulkanSpriteAtlas.Upload(const aDevice:TVulkanDevice;
+                                    const aGraphicsQueue:TVulkanQueue;
+                                    const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                    const aGraphicsFence:TVulkanFence;
+                                    const aTransferQueue:TVulkanQueue;
+                                    const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                    const aTransferFence:TVulkanFence);
 var Texture:PVulkanSpriteAtlasTexture;
 begin
  if not fIsUploaded then begin
   Texture:=fTextureList;
   while assigned(Texture) do begin
    if not Texture^.Texture.Uploaded then begin
-    Texture^.Texture.Upload;  
+    Texture^.Texture.Upload(aDevice,
+                            aGraphicsQueue,
+                            aGraphicsCommandBuffer,
+                            aGraphicsFence,
+                            aTransferQueue,
+                            aTransferCommandBuffer,
+                            aTransferFence);
     Texture^.Dirty:=false;
    end;
    Texture:=Texture^.Next;
