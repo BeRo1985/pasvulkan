@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-24-22-06-0000                       *
+ *                        Version 2017-06-24-22-33-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -292,6 +292,8 @@ const VulkanMinimumMemoryChunkSize=1 shl 24; // 16 MB minimum memory chunk size
 
       VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
       VULKAN_SPRITEATLASTEXTURE_HEIGHT=2048;
+
+      VulkanXMLMaxListSize=2147483647 div SizeOf(TVkPointer);
 
 type EVulkanException=class(Exception);
 
@@ -645,11 +647,11 @@ type EVulkanException=class(Exception);
 
      TVulkanDataStream=class(TStream)
       private
-       fData:pointer;
+       fData:TVkPointer;
        fSize:TVkInt64;
        fPosition:TVkInt64;
       public
-       constructor Create(const AData:pointer;const ASize:TVkInt64);
+       constructor Create(const AData:TVkPointer;const ASize:TVkInt64);
        destructor Destroy; override;
        function Read(var Buffer;Count:TVkInt32):TVkInt32; override;
        function Write(const Buffer;Count:TVkInt32):TVkInt32; override;
@@ -692,6 +694,216 @@ type EVulkanException=class(Exception);
        function Get(const Key:TVulkanRawByteString;CreateIfNotExist:boolean=false):PVulkanStringHashMapEntity;
        function Delete(const Key:TVulkanRawByteString):boolean;
        property Values[const Key:TVulkanRawByteString]:TVulkanStringHashMapData read GetValue write SetValue; default;
+     end;
+
+     TVulkanXMLClass=class
+      public
+       Previous,Next:TVulkanXMLClass;
+       Core:TVkPointer;
+       constructor Create; overload; virtual;
+       destructor Destroy; override;
+     end;
+
+     PVulkanXMLClasses=^TVulkanXMLClasses;
+     TVulkanXMLClasses=array[0..VulkanXMLMaxListSize-1] of TVulkanXMLClass;
+
+     TVulkanXMLClassList=class(TVulkanXMLClass)
+      private
+       InternalList:PVulkanXMLClasses;
+       InternalCount,InternalCapacity:TVkInt32;
+       function GetItem(Index:TVkInt32):TVulkanXMLClass;
+       procedure SetItem(Index:TVkInt32;Value:TVulkanXMLClass);
+       function GetItemPointer(Index:TVkInt32):TVulkanXMLClass;
+      public
+       ClearWithContentDestroying:boolean;
+       CapacityMinimium:TVkInt32;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Clear;
+       procedure ClearNoFree;
+       procedure ClearWithFree;
+       function Add(Item:TVulkanXMLClass):TVkInt32;
+       function Append(Item:TVulkanXMLClass):TVkInt32;
+       function AddList(List:TVulkanXMLClassList):TVkInt32;
+       function AppendList(List:TVulkanXMLClassList):TVkInt32;
+       function NewClass:TVulkanXMLClass;
+       procedure Insert(Index:TVkInt32;Item:TVulkanXMLClass);
+       procedure Delete(Index:TVkInt32);
+       procedure DeleteClass(Index:TVkInt32);
+       function Remove(Item:TVulkanXMLClass):TVkInt32;
+       function RemoveClass(Item:TVulkanXMLClass):TVkInt32;
+       function Find(Item:TVulkanXMLClass):TVkInt32;
+       function IndexOf(Item:TVulkanXMLClass):TVkInt32;
+       procedure Exchange(Index1,Index2:TVkInt32);
+       procedure SetCapacity(NewCapacity:TVkInt32);
+       procedure SetOptimalCapacity(TargetCapacity:TVkInt32);
+       procedure SetCount(NewCount:TVkInt32);
+       function Push(Item:TVulkanXMLClass):TVkInt32;
+       function Pop(var Item:TVulkanXMLClass):boolean; overload;
+       function Pop:TVulkanXMLClass; overload;
+       function Last:TVulkanXMLClass;
+       property Count:TVkInt32 read InternalCount; 
+       property Capacity:TVkInt32 read InternalCapacity write SetCapacity;
+       property Item[Index:TVkInt32]:TVulkanXMLClass read GetItem write SetItem; default;
+       property Items[Index:TVkInt32]:TVulkanXMLClass read GetItem write SetItem;
+       property PItems[Index:TVkInt32]:TVulkanXMLClass read GetItemPointer;
+     end;
+
+     TVulkanXMLClassLinkedList=class(TVulkanXMLClass)
+      public
+       ClearWithContentDestroying:boolean;
+       First,Last:TVulkanXMLClass;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Clear;
+       procedure ClearNoFree;
+       procedure ClearWithFree;
+       procedure Add(Item:TVulkanXMLClass);
+       procedure Append(Item:TVulkanXMLClass);
+       procedure AddLinkedList(List:TVulkanXMLClassLinkedList);
+       procedure AppendLinkedList(List:TVulkanXMLClassLinkedList);
+       procedure Remove(Item:TVulkanXMLClass);
+       procedure RemoveClass(Item:TVulkanXMLClass);
+       procedure Push(Item:TVulkanXMLClass);
+       function Pop(var Item:TVulkanXMLClass):boolean; overload;
+       function Pop:TVulkanXMLClass; overload;
+       function Count:TVkInt32;
+     end;
+
+     TVulkanXMLString={$ifdef VulkanXMLUnicode}{$if declared(UnicodeString)}UnicodeString{$else}WideString{$ifend}{$else}TVulkanRawByteString{$endif};
+     TVulkanXMLChar={$ifdef VulkanXMLUnicode}WideChar{$else}TVulkanRawByteChar{$endif};
+
+     TVulkanXMLParameter=class(TVulkanXMLClass)
+      public
+       Name:TVulkanRawByteString;
+       Value:TVulkanXMLString;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Assign(From:TVulkanXMLParameter); virtual;
+     end;
+
+     TVulkanXMLItemList=class;
+
+     TVulkanXMLTag=class;
+
+     TVulkanXMLItem=class(TVulkanXMLClass)
+      public
+       Items:TVulkanXMLItemList;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Clear; virtual;
+       procedure Add(Item:TVulkanXMLItem);
+       procedure Assign(From:TVulkanXMLItem); virtual;
+       function FindTag(const TagName:TVulkanRawByteString):TVulkanXMLTag;
+     end;
+
+     TVulkanXMLItemList=class(TVulkanXMLClassList)
+      private
+       function GetItem(Index:TVkInt32):TVulkanXMLItem;
+       procedure SetItem(Index:TVkInt32;Value:TVulkanXMLItem);
+      public
+       constructor Create; override;
+       destructor Destroy; override;
+       function NewClass:TVulkanXMLItem;
+       function FindTag(const TagName:TVulkanRawByteString):TVulkanXMLTag;
+       property Item[Index:TVkInt32]:TVulkanXMLItem read GetItem write SetItem; default;
+       property Items[Index:TVkInt32]:TVulkanXMLItem read GetItem write SetItem;
+     end;
+
+     TVulkanXMLText=class(TVulkanXMLItem)
+      public
+       Text:TVulkanXMLString;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Assign(From:TVulkanXMLItem); override;
+       procedure SetText(AText:TVulkanRawByteString);
+     end;
+
+     TVulkanXMLCommentTag=class(TVulkanXMLItem)
+      public
+       Text:TVulkanRawByteString;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Assign(From:TVulkanXMLItem); override;
+       procedure SetText(AText:TVulkanRawByteString);
+     end;
+
+     TVulkanXMLTag=class(TVulkanXMLItem)
+      public
+       Name:TVulkanRawByteString;
+       Parameter:array of TVulkanXMLParameter;
+       IsAloneTag:boolean;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Clear; override;
+       procedure Assign(From:TVulkanXMLItem); override;
+       function FindParameter(ParameterName:TVulkanRawByteString):TVulkanXMLParameter;
+       function GetParameter(ParameterName:TVulkanRawByteString;default:TVulkanRawByteString=''):TVulkanRawByteString;
+       function AddParameter(AParameter:TVulkanXMLParameter):boolean; overload;
+       function AddParameter(Name:TVulkanRawByteString;Value:TVulkanXMLString):boolean; overload;
+       function RemoveParameter(AParameter:TVulkanXMLParameter):boolean; overload;
+       function RemoveParameter(ParameterName:TVulkanRawByteString):boolean; overload;
+     end;
+
+     TVulkanXMLProcessTag=class(TVulkanXMLTag)
+      public
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Assign(From:TVulkanXMLItem); override;
+     end;
+
+     TVulkanXMLScriptTag=class(TVulkanXMLItem)
+      public
+       Text:TVulkanRawByteString;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Assign(From:TVulkanXMLItem); override;
+       procedure SetText(AText:TVulkanRawByteString);
+     end;
+
+     TVulkanXMLCDataTag=class(TVulkanXMLItem)
+      public
+       Text:TVulkanRawByteString;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Assign(From:TVulkanXMLItem); override;
+       procedure SetText(AText:TVulkanRawByteString);
+     end;
+
+     TVulkanXMLDOCTYPETag=class(TVulkanXMLItem)
+      public
+       Text:TVulkanRawByteString;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Assign(From:TVulkanXMLItem); override;
+       procedure SetText(AText:TVulkanRawByteString);
+     end;
+
+     TVulkanXMLExtraTag=class(TVulkanXMLItem)
+      public
+       Text:TVulkanRawByteString;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Assign(From:TVulkanXMLItem); override;
+       procedure SetText(AText:TVulkanRawByteString);
+     end;
+
+     TVulkanXML=class(TVulkanXMLClass)
+      private
+       function ReadXMLText:TVulkanRawByteString;
+       procedure WriteXMLText(Text:TVulkanRawByteString);
+      public
+       Root:TVulkanXMLItem;
+       AutomaticAloneTagDetection:boolean;
+       FormatIndent:boolean;
+       FormatIndentText:boolean;
+       constructor Create; override;
+       destructor Destroy; override;
+       procedure Assign(From:TVulkanXML);
+       function Parse(Stream:TStream):boolean;
+       function Read(Stream:TStream):boolean;
+       function Write(Stream:TStream;IdentSize:TVkInt32=2):boolean;
+       property Text:TVulkanRawByteString read ReadXMLText write WriteXMLText;
      end;
 
      TVulkanAllocationManager=class(TVulkanObject)
@@ -3043,7 +3255,7 @@ type EVulkanException=class(Exception);
      end;
 
      PVulkanSpriteFontChars=^TVulkanSpriteFontChars;
-     TVulkanSpriteFontChars=array[AnsiChar] of TVulkanSpriteFontChar;
+     TVulkanSpriteFontChars=array[TVulkanRawByteChar] of TVulkanSpriteFontChar;
 
      TVulkanSpriteFont=class
       public
@@ -3174,7 +3386,7 @@ type EVulkanException=class(Exception);
        procedure Unload; virtual;
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
-       procedure LoadXML(Texture:TVulkanSpriteTexture;Stream:TStream;DoFree:boolean=true); virtual;
+       function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean; virtual;
        function LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32;DoFree:boolean=false):TVulkanSprite; virtual;
        function LoadSprite(const Name:TVulkanRawByteString;Stream:TStream;DoFree:boolean=true):TVulkanSprite; virtual;
        function LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;DoFree:boolean=true;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64):TVulkanSprites; virtual;
@@ -3780,7 +3992,55 @@ function VulkanSpriteRect(const Left,Top,Right,Bottom:single):TVulkanSpriteRect;
 
 implementation
 
-const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
+const suDONOTKNOW=-1;
+      suNOUTF8=0;
+      suPOSSIBLEUTF8=1;
+      suISUTF8=2;
+
+      ucACCEPT=0;
+      ucERROR=16;
+
+      VulkanUTF8DFACharClasses:array[TVulkanRawByteChar] of TVkUInt8=
+       (
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+        3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+        3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+        4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+        5,5,5,5,5,5,5,5,6,6,6,6,7,7,8,8
+       );
+
+     VulkanUTF8DFATransitions:array[TVkUInt8] of TVkUInt8=
+      (
+       0,16,16,32,48,64,80,96,16,16,16,16,16,16,16,16,
+       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,0,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,32,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,48,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,64,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,80,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16
+      );
+
+      BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
 
       MipMapLevels:array[boolean] of TVkInt32=(1,-1);
 
@@ -6282,7 +6542,7 @@ begin
     p:=0;
    end;
    if len>0 then begin
-    p:=p or (byte(b^) shl 16);
+    p:=p or (TVkUInt8(b^) shl 16);
    end;
    p:=p*TVkUInt64(m);
    k:=k xor TVkUInt32(p and $ffffffff);
@@ -6973,7 +7233,7 @@ begin
    dec(len,2);
   end;
   if len>0 then begin
-   i:=byte(b^);
+   i:=TVkUInt8(b^);
    h:=(h xor i) xor $2e63823a;
    inc(h,(h shl 15) or (h shr (32-15)));
    dec(h,(h shl 9) or (h shr (32-9)));
@@ -7032,7 +7292,7 @@ begin
     p:=0;
    end;
    if len>0 then begin
-    p:=p or (byte(b^) shl 16);
+    p:=p or (TVkUInt8(b^) shl 16);
    end;
    p:=p*{$ifdef fpc}qword{$else}int64{$endif}(m);
    k:=k xor TVkUInt32(p and $ffffffff);
@@ -7144,10 +7404,10 @@ var Tag,BitCount,DestSize:TVkUInt32;
  var i,Sum:TVkInt32;
  begin
   for i:=0 to Delta-1 do begin
-   Bits[i]:=ansichar(#0);
+   Bits[i]:=TVulkanRawByteChar(#0);
   end;
   for i:=0 to (30-Delta)-1 do begin
-   Bits[i+Delta]:=ansichar(TVkUInt8(i div Delta));
+   Bits[i+Delta]:=TVulkanRawByteChar(TVkUInt8(i div Delta));
   end;
   Sum:=First;
   for i:=0 to 29 do begin
@@ -7205,7 +7465,7 @@ var Tag,BitCount,DestSize:TVkUInt32;
     inc(Sum,t.Table[i]);
    end;
    for i:=0 to Num-1 do begin
-    if lengths[i]<>ansichar(#0) then begin
+    if lengths[i]<>TVulkanRawByteChar(#0) then begin
      t.Translation[Offsets^[TVkUInt8(lengths[i])]]:=i;
      inc(Offsets^[TVkUInt8(lengths[i])]);
     end;
@@ -7264,8 +7524,8 @@ var Tag,BitCount,DestSize:TVkUInt32;
   New(CodeTree);
   New(Lengths);
   try
-   FillChar(CodeTree^,sizeof(TTree),ansichar(#0));
-   FillChar(Lengths^,sizeof(TLengths),ansichar(#0));
+   FillChar(CodeTree^,sizeof(TTree),TVulkanRawByteChar(#0));
+   FillChar(Lengths^,sizeof(TLengths),TVulkanRawByteChar(#0));
    hlit:=ReadBits(5,257);
    hdist:=ReadBits(5,1);
    hclen:=ReadBits(4,4);
@@ -7332,7 +7592,7 @@ var Tag,BitCount,DestSize:TVkUInt32;
    end;
    if Symbol<256 then begin
     IncSize(1);
-    Dest^:=ansichar(TVkUInt8(Symbol));
+    Dest^:=TVulkanRawByteChar(TVkUInt8(Symbol));
     inc(Dest);
     inc(DestLen);
    end else begin
@@ -7456,14 +7716,14 @@ begin
   New(FixedDistanceTree);
   try
    begin
-    FillChar(LengthBits^,sizeof(TBits),ansichar(#0));
-    FillChar(DistanceBits^,sizeof(TBits),ansichar(#0));
-    FillChar(LengthBase^,sizeof(TBase),ansichar(#0));
-    FillChar(DistanceBase^,sizeof(TBase),ansichar(#0));
-    FillChar(SymbolLengthTree^,sizeof(TTree),ansichar(#0));
-    FillChar(DistanceTree^,sizeof(TTree),ansichar(#0));
-    FillChar(FixedSymbolLengthTree^,sizeof(TTree),ansichar(#0));
-    FillChar(FixedDistanceTree^,sizeof(TTree),ansichar(#0));
+    FillChar(LengthBits^,sizeof(TBits),TVulkanRawByteChar(#0));
+    FillChar(DistanceBits^,sizeof(TBits),TVulkanRawByteChar(#0));
+    FillChar(LengthBase^,sizeof(TBase),TVulkanRawByteChar(#0));
+    FillChar(DistanceBase^,sizeof(TBase),TVulkanRawByteChar(#0));
+    FillChar(SymbolLengthTree^,sizeof(TTree),TVulkanRawByteChar(#0));
+    FillChar(DistanceTree^,sizeof(TTree),TVulkanRawByteChar(#0));
+    FillChar(FixedSymbolLengthTree^,sizeof(TTree),TVulkanRawByteChar(#0));
+    FillChar(FixedDistanceTree^,sizeof(TTree),TVulkanRawByteChar(#0));
    end;
    begin
     BuildFixedTrees(FixedSymbolLengthTree^,FixedDistanceTree^);
@@ -8340,7 +8600,7 @@ begin
             ReallocMem(CurrentLine,l);
            end;
            ml:=l;
-           FillChar(CurrentLine^,l,ansichar(#0));
+           FillChar(CurrentLine^,l,TVulkanRawByteChar(#0));
            for ry:=0 to CountScanlines[i]-1 do begin
             SwitchLine:=CurrentLine;
             CurrentLine:=PreviousLine;
@@ -9338,20 +9598,20 @@ begin
 
        NextDataPosition:=DataPosition+TVkUInt32(Len);
 
-       if (AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+0]))='E') and
-          (AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+1]))='x') and
-          (AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+2]))='i') and
-          (AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+3]))='f') and
-          (AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+4]))=#0) and
-          (AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+5]))=#0) and
-          (AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+6]))=AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+7]))) and
-          (((AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+6]))='I') and
-            (AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+8]))='*') and
-            (AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+9]))=#0)) or
-           ((AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+6]))='M') and
-            (AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+8]))=#0) and
-            (AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+9]))='*'))) then begin
-        Context^.EXIFLE:=AnsiChar(byte(PByteArray(DataPointer)^[DataPosition+6]))='I';
+       if (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+0]))='E') and
+          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+1]))='x') and
+          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+2]))='i') and
+          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+3]))='f') and
+          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+4]))=#0) and
+          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+5]))=#0) and
+          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+6]))=TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+7]))) and
+          (((TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+6]))='I') and
+            (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+8]))='*') and
+            (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+9]))=#0)) or
+           ((TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+6]))='M') and
+            (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+8]))=#0) and
+            (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+9]))='*'))) then begin
+        Context^.EXIFLE:=TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+6]))='I';
         if Len>=14 then begin
          if Context^.EXIFLE then begin
           Value:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+10]) shl 0) or
@@ -10756,6 +11016,236 @@ begin
  result.Bottom:=Bottom;
 end;
 
+function VulkanUTF32CharToUTF8(CharValue:TVulkanUTF32Char):TVulkanRawByteString;
+var Data:array[0..5] of TVulkanRawByteChar;
+    ResultLen:TVkInt32;
+begin
+ if CharValue=0 then begin
+  result:=#0;
+ end else begin
+  if CharValue<=$7f then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8(CharValue));
+   ResultLen:=1;
+  end else if CharValue<=$7ff then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8($c0 or ((CharValue shr 6) and $1f)));
+   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
+   ResultLen:=2;
+  end else if CharValue<=$ffff then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8($e0 or ((CharValue shr 12) and $0f)));
+   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
+   ResultLen:=3;
+  end else if CharValue<=$1fffff then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8($f0 or ((CharValue shr 18) and $07)));
+   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[3]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
+   ResultLen:=4;
+  end else if CharValue<=$3ffffff then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8($f8 or ((CharValue shr 24) and $03)));
+   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 18) and $3f)));
+   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[3]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[4]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
+   ResultLen:=5;
+  end else if CharValue<=$7fffffff then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8($fc or ((CharValue shr 30) and $01)));
+   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 24) and $3f)));
+   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 18) and $3f)));
+   Data[3]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[4]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[5]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
+   ResultLen:=6;
+  end else begin
+   Data[0]:=#$ef; // $fffd
+   Data[1]:=#$bf;
+   Data[2]:=#$bd;
+   ResultLen:=3;
+  end;
+  SetLength(result,ResultLen);
+  Move(Data[0],result[1],ResultLen);
+ end;
+end;
+
+function VulkanUTF32CharToUTF8At(CharValue:TVulkanUTF32Char;var s:TVulkanRawByteString;const Index:TVkInt32):TVkInt32;
+var Data:array[0..5] of TVulkanRawByteChar;
+    ResultLen:TVkInt32;
+begin
+ if CharValue=0 then begin
+  result:=0;
+ end else begin
+  if CharValue<=$7f then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8(CharValue));
+   ResultLen:=1;
+  end else if CharValue<=$7ff then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8($c0 or ((CharValue shr 6) and $1f)));
+   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
+   ResultLen:=2;
+  end else if CharValue<=$ffff then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8($e0 or ((CharValue shr 12) and $0f)));
+   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
+   ResultLen:=3;
+  end else if CharValue<=$1fffff then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8($f0 or ((CharValue shr 18) and $07)));
+   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[3]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
+   ResultLen:=4;
+  end else if CharValue<=$3ffffff then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8($f8 or ((CharValue shr 24) and $03)));
+   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 18) and $3f)));
+   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[3]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[4]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
+   ResultLen:=5;
+  end else if CharValue<=$7fffffff then begin
+   Data[0]:=TVulkanRawByteChar(PVkUInt8($fc or ((CharValue shr 30) and $01)));
+   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 24) and $3f)));
+   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 18) and $3f)));
+   Data[3]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[4]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[5]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
+   ResultLen:=6;
+  end else begin
+   Data[0]:=#$ef; // $fffd
+   Data[1]:=#$bf;
+   Data[2]:=#$bd;
+   ResultLen:=3;
+  end;
+  if (Index+ResultLen)>length(s) then begin
+   SetLength(s,Index+ResultLen);
+  end;
+  Move(Data[0],s[Index],ResultLen);
+  result:=ResultLen;
+ end;
+end;
+
+function VulkanUTF8Validate(const s:TVulkanRawByteString):boolean;
+var CodeUnit:TVkInt32;
+    State:TVkUInt32;
+begin
+ State:=ucACCEPT;
+ for CodeUnit:=1 to length(s) do begin
+  State:=VulkanUTF8DFATransitions[State+VulkanUTF8DFACharClasses[s[CodeUnit]]];
+  if State=ucERROR then begin
+   result:=false;
+   exit;
+  end;
+ end;
+ result:=State=ucACCEPT;
+end;
+
+function VulkanUTF8Correct(const Str:TVulkanRawByteString):TVulkanRawByteString;
+var CodeUnit,Len,ResultLen:TVkInt32;
+    StartCodeUnit,Value,CharClass,State,CharValue:TVkUInt32;
+    Data:PVulkanRawByteChar;
+begin
+ if (length(Str)=0) or VulkanUTF8Validate(Str) then begin
+  result:=Str;
+ end else begin
+  result:='';
+  CodeUnit:=1;
+  Len:=length(Str);
+  SetLength(result,Len*6);
+  Data:=@result[1];
+  ResultLen:=0;
+  while CodeUnit<=Len do begin
+   StartCodeUnit:=CodeUnit;
+   State:=ucACCEPT;
+   CharValue:=0;
+   while CodeUnit<=Len do begin
+    Value:=TVkUInt8(TVulkanRawByteChar(Str[CodeUnit]));
+    inc(CodeUnit);
+    CharClass:=VulkanUTF8DFACharClasses[TVulkanRawByteChar(Value)];
+    if State=ucACCEPT then begin
+     CharValue:=Value and ($ff shr CharClass);
+    end else begin
+     CharValue:=(CharValue shl 6) or (Value and $3f);
+    end;
+    State:=VulkanUTF8DFATransitions[State+CharClass];
+    if State<=ucERROR then begin
+     break;
+    end;
+   end;
+   if State<>ucACCEPT then begin
+    CharValue:=TVkUInt8(TVulkanRawByteChar(Str[StartCodeUnit]));
+    CodeUnit:=StartCodeUnit+1;
+   end;
+   if CharValue<=$7f then begin
+    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8(CharValue));
+    inc(ResultLen);
+   end else if CharValue<=$7ff then begin
+    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($c0 or ((CharValue shr 6) and $1f)));
+    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+    inc(ResultLen,2);
+   end else if CharValue<=$ffff then begin
+    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($e0 or ((CharValue shr 12) and $0f)));
+    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+    inc(ResultLen,3);
+   end else if CharValue<=$1fffff then begin
+    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($f0 or ((CharValue shr 18) and $07)));
+    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
+    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+3]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+    inc(ResultLen,4);
+   end else if CharValue<=$3ffffff then begin
+    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($f8 or ((CharValue shr 24) and $03)));
+    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 18) and $3f)));
+    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
+    Data[ResultLen+3]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+4]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+    inc(ResultLen,5);
+   end else if CharValue<=$7fffffff then begin
+    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($fc or ((CharValue shr 30) and $01)));
+    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 24) and $3f)));
+    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 18) and $3f)));
+    Data[ResultLen+3]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
+    Data[ResultLen+4]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+5]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+    inc(ResultLen,6);
+   end else begin
+    Data[ResultLen]:=#$ef; // $fffd
+    Data[ResultLen+1]:=#$bf;
+    Data[ResultLen+2]:=#$bd;
+    inc(ResultLen,3);
+   end;
+  end;
+  SetLength(result,ResultLen);
+ end;
+end;
+
+function VulkanUTF8CodeUnitGetCharAndIncFallback(const s:TVulkanRawByteString;var CodeUnit:TVkInt32):TVkUInt32;
+var Len:TVkInt32;
+    StartCodeUnit,Value,CharClass,State:TVkUInt32;
+begin
+ result:=0;
+ Len:=length(s);
+ if (CodeUnit>0) and (CodeUnit<=Len) then begin
+  StartCodeUnit:=CodeUnit;
+  State:=ucACCEPT;
+  while CodeUnit<=Len do begin
+   Value:=TVkUInt8(TVulkanRawByteChar(s[CodeUnit]));
+   inc(CodeUnit);
+   CharClass:=VulkanUTF8DFACharClasses[TVulkanRawByteChar(Value)];
+   if State=ucACCEPT then begin
+    result:=Value and ($ff shr CharClass);
+   end else begin
+    result:=(result shl 6) or (Value and $3f);
+   end;
+   State:=VulkanUTF8DFATransitions[State+CharClass];
+   if State<=ucERROR then begin
+    break;
+   end;
+  end;
+  if State<>ucACCEPT then begin
+   result:=TVkUInt8(TVulkanRawByteChar(s[StartCodeUnit]));
+   CodeUnit:=StartCodeUnit+1;
+  end;
+ end;
+end;
+
 constructor EVulkanResultException.Create(const aResultCode:TVkResult);
 begin
  fResultCode:=aResultCode;
@@ -11754,7 +12244,7 @@ begin
  inherited Remove(Item);
 end;
 
-constructor TVulkanDataStream.Create(const AData:pointer;const ASize:TVkInt64);
+constructor TVulkanDataStream.Create(const AData:TVkPointer;const ASize:TVkInt64);
 begin
  inherited Create;
  fData:=AData;
@@ -12057,6 +12547,1888 @@ end;
 procedure VulkanInternalFreeCallback(UserData:PVkVoid;Size:TVkSize;Type_:TVkInternalAllocationType;Scope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 begin
  TVulkanAllocationManager(UserData).InternalFreeCallback(Size,Type_,Scope);
+end;
+
+constructor TVulkanXMLClass.Create;
+begin
+ inherited Create;
+ Previous:=nil;
+ Next:=nil;
+ Core:=nil;
+end;
+
+destructor TVulkanXMLClass.Destroy;
+begin
+ inherited Destroy;
+end;
+
+constructor TVulkanXMLClassList.Create;
+begin
+ inherited Create;
+ ClearWithContentDestroying:=false;
+ InternalCount:=0;
+ InternalCapacity:=0;
+ InternalList:=nil;
+ CapacityMinimium:=0;
+ Clear;
+end;
+
+destructor TVulkanXMLClassList.Destroy;
+begin
+ Clear;
+ if assigned(InternalList) and (InternalCapacity<>0) then begin
+  FreeMem(InternalList);
+ end;
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLClassList.Clear;
+begin
+ if ClearWithContentDestroying then begin
+  ClearWithFree;
+ end else begin
+  ClearNoFree;
+ end;
+end;
+
+procedure TVulkanXMLClassList.ClearNoFree;
+begin
+ SetCount(0);
+end;
+
+procedure TVulkanXMLClassList.ClearWithFree;
+var Counter:TVkUInt16;
+begin
+ for Counter:=0 to InternalCount-1 do begin
+  if assigned(InternalList^[Counter]) then begin
+   try
+    InternalList^[Counter].Destroy;
+   except
+   end;
+  end;
+ end;
+ SetCount(0);
+end;
+
+procedure TVulkanXMLClassList.SetCapacity(NewCapacity:TVkInt32);
+begin
+ if (InternalCapacity<>NewCapacity) and
+    ((NewCapacity>=0) and (NewCapacity<VulkanXMLMaxListSize)) then begin
+  ReallocMem(InternalList,NewCapacity*SizeOf(TVulkanXMLClass));
+  if InternalCapacity<NewCapacity then begin
+   FillChar(InternalList^[InternalCapacity],(NewCapacity-InternalCapacity)*SizeOf(TVulkanXMLClass),#0);
+  end;
+  InternalCapacity:=NewCapacity;
+ end;
+end;
+
+procedure TVulkanXMLClassList.SetOptimalCapacity(TargetCapacity:TVkInt32);
+var CapacityMask:TVkInt32;
+begin
+ if (TargetCapacity>=0) and (TargetCapacity<VulkanXMLMaxListSize) then begin
+  if TargetCapacity<256 then begin
+   CapacityMask:=15;
+  end else if TargetCapacity<1024 then begin
+   CapacityMask:=255;
+  end else if TargetCapacity<4096 then begin
+   CapacityMask:=1023;
+  end else if TargetCapacity<16384 then begin
+   CapacityMask:=4095;
+  end else if TargetCapacity<65536 then begin
+   CapacityMask:=16383;
+  end else begin
+   CapacityMask:=65535;
+  end;
+  SetCapacity((TargetCapacity+CapacityMask+CapacityMinimium) and not CapacityMask);
+ end;
+end;
+
+procedure TVulkanXMLClassList.SetCount(NewCount:TVkInt32);
+begin
+ if (NewCount>=0) and (NewCount<VulkanXMLMaxListSize) then begin
+  SetOptimalCapacity(NewCount);
+  if InternalCount<NewCount then begin
+   FillChar(InternalList^[InternalCount],(NewCount-InternalCount)*SizeOf(TVulkanXMLClass),#0);
+  end;
+  InternalCount:=NewCount;
+ end;
+end;
+
+function TVulkanXMLClassList.Add(Item:TVulkanXMLClass):TVkInt32;
+begin
+ result:=InternalCount;
+ SetCount(result+1);
+ InternalList^[result]:=Item;
+end;
+
+function TVulkanXMLClassList.Append(Item:TVulkanXMLClass):TVkInt32;
+begin
+ result:=Add(Item);
+end;
+
+function TVulkanXMLClassList.AddList(List:TVulkanXMLClassList):TVkInt32;
+var Counter,Index:TVkInt32;
+begin
+ result:=-1;
+ for Counter:=0 to List.Count-1 do begin
+  Index:=Add(List[Counter]);
+  if Counter=0 then begin
+   result:=Index;
+  end;
+ end;
+end;
+
+function TVulkanXMLClassList.AppendList(List:TVulkanXMLClassList):TVkInt32;
+begin
+ result:=AddList(List);
+end;
+
+function TVulkanXMLClassList.NewClass:TVulkanXMLClass;
+var Item:TVulkanXMLClass;
+begin
+ Item:=TVulkanXMLClass.Create;
+ Add(Item);
+ result:=Item;
+end;
+
+procedure TVulkanXMLClassList.Insert(Index:TVkInt32;Item:TVulkanXMLClass);
+var Counter:TVkInt32;
+begin
+ if (Index>=0) and (Index<InternalCount) then begin
+  SetCount(InternalCount+1);
+  for Counter:=InternalCount-1 downto Index do begin
+   InternalList^[Counter+1]:=InternalList^[Counter];
+  end;
+  InternalList^[Index]:=Item;
+ end else if Index=InternalCount then begin
+  Add(Item);
+ end else if Index>InternalCount then begin
+  SetCount(Index);
+  Add(Item);
+ end;
+end;
+
+procedure TVulkanXMLClassList.Delete(Index:TVkInt32);
+var i,j:TVkInt32;
+begin
+ if (Index>=0) and (Index<InternalCount) then begin
+  j:=InternalCount-1;
+  i:=Index;
+  Move(InternalList^[i+1],InternalList^[i],(j-i)*SizeOf(TVulkanXMLClass));
+  SetCount(j);
+ end;
+end;
+
+procedure TVulkanXMLClassList.DeleteClass(Index:TVkInt32);
+var i,j:TVkInt32;
+begin
+ if (Index>=0) and (Index<InternalCount) then begin
+  j:=InternalCount-1;
+  i:=Index;
+  if assigned(InternalList^[i]) then begin
+   InternalList^[i].Free;
+   InternalList^[i]:=nil;
+  end;
+  Move(InternalList^[i+1],InternalList^[i],(j-i)*SizeOf(TVulkanXMLClass));
+  SetCount(j);
+ end;
+end;
+
+function TVulkanXMLClassList.Remove(Item:TVulkanXMLClass):TVkInt32;
+var i,j,k:TVkInt32;
+begin
+ result:=-1;
+ k:=InternalCount;
+ j:=-1;
+ for i:=0 to k-1 do begin
+  if InternalList^[i]=Item then begin
+   j:=i;
+   break;
+  end;
+ end;
+ if j>=0 then begin
+  dec(k);
+  Move(InternalList^[j+1],InternalList^[j],(k-j)*SizeOf(TVulkanXMLClass));
+  SetCount(k);
+  result:=j;
+ end;
+end;
+
+function TVulkanXMLClassList.RemoveClass(Item:TVulkanXMLClass):TVkInt32;
+var i,j,k:TVkInt32;
+begin
+ result:=-1;
+ k:=InternalCount;
+ j:=-1;
+ for i:=0 to k-1 do begin
+  if InternalList^[i]=Item then begin
+   j:=i;
+   break;
+  end;
+ end;
+ if j>=0 then begin
+  dec(k);
+  Move(InternalList^[j+1],InternalList^[j],(k-j)*SizeOf(TVulkanXMLClass));
+  SetCount(k);
+  Item.Free;
+  result:=j;
+ end;
+end;
+
+function TVulkanXMLClassList.Find(Item:TVulkanXMLClass):TVkInt32;
+var i:TVkInt32;
+begin
+ result:=-1;
+ for i:=0 to InternalCount-1 do begin
+  if InternalList^[i]=Item then begin
+   result:=i;
+   exit;
+  end;
+ end;
+end;
+
+function TVulkanXMLClassList.IndexOf(Item:TVulkanXMLClass):TVkInt32;
+var i:TVkInt32;
+begin
+ result:=-1;
+ for i:=0 to InternalCount-1 do begin
+  if InternalList^[i]=Item then begin
+   result:=i;
+   exit;
+  end;
+ end;
+end;
+
+procedure TVulkanXMLClassList.Exchange(Index1,Index2:TVkInt32);
+var TempPointer:TVulkanXMLClass;
+begin
+ if (Index1>=0) and (Index1<InternalCount) and (Index2>=0) and (Index2<InternalCount) then begin
+  TempPointer:=InternalList^[Index1];
+  InternalList^[Index1]:=InternalList^[Index2];
+  InternalList^[Index2]:=TempPointer;
+ end;
+end;
+
+function TVulkanXMLClassList.Push(Item:TVulkanXMLClass):TVkInt32;
+begin
+ result:=Add(Item);
+end;
+
+function TVulkanXMLClassList.Pop(var Item:TVulkanXMLClass):boolean;
+begin
+ result:=InternalCount>0;
+ if result then begin
+  Item:=InternalList^[InternalCount-1];
+  Delete(InternalCount-1);
+ end;
+end;
+
+function TVulkanXMLClassList.Pop:TVulkanXMLClass;
+begin
+ if InternalCount>0 then begin
+  result:=InternalList^[InternalCount-1];
+  Delete(InternalCount-1);
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TVulkanXMLClassList.Last:TVulkanXMLClass;
+begin
+ if InternalCount>0 then begin
+  result:=InternalList^[InternalCount-1];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TVulkanXMLClassList.GetItem(Index:TVkInt32):TVulkanXMLClass;
+begin
+ if (Index>=0) and (Index<InternalCount) then begin
+  result:=InternalList^[Index];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TVulkanXMLClassList.SetItem(Index:TVkInt32;Value:TVulkanXMLClass);
+begin
+ if (Index>=0) and (Index<InternalCount) then begin
+  InternalList^[Index]:=Value;
+ end;
+end;
+
+function TVulkanXMLClassList.GetItemPointer(Index:TVkInt32):TVulkanXMLClass;
+begin
+ if (Index>=0) and (Index<InternalCount) then begin
+  result:=@InternalList^[Index];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+constructor TVulkanXMLClassLinkedList.Create;
+begin
+ inherited Create;
+ ClearWithContentDestroying:=false;
+ ClearNoFree;
+end;
+
+destructor TVulkanXMLClassLinkedList.Destroy;
+begin
+ Clear;
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLClassLinkedList.Clear;
+begin
+ if ClearWithContentDestroying then begin
+  ClearWithFree;
+ end else begin
+  ClearNoFree;
+ end;
+end;
+
+procedure TVulkanXMLClassLinkedList.ClearNoFree;
+var Current,Next:TVulkanXMLClass;
+begin
+ Current:=First;
+ while assigned(Current) do begin
+  Next:=Current.Next;
+  Remove(Current);
+  Current:=Next;
+ end;
+ First:=nil;
+ Last:=nil;
+end;
+
+procedure TVulkanXMLClassLinkedList.ClearWithFree;
+var Current,Next:TVulkanXMLClass;
+begin
+ Current:=First;
+ while assigned(Current) do begin
+  Next:=Current.Next;
+  RemoveClass(Current);
+  Current:=Next;
+ end;
+ First:=nil;
+ Last:=nil;
+end;
+
+procedure TVulkanXMLClassLinkedList.Add(Item:TVulkanXMLClass);
+begin
+ Item.Next:=nil;
+ if assigned(Last) then begin
+  Last.Next:=Item;
+  Item.Previous:=Last;
+ end else begin
+  Item.Previous:=nil;
+  First:=Item;
+ end;
+ Last:=Item;
+end;
+
+procedure TVulkanXMLClassLinkedList.Append(Item:TVulkanXMLClass);
+begin
+ Add(Item);
+end;
+
+procedure TVulkanXMLClassLinkedList.AddLinkedList(List:TVulkanXMLClassLinkedList);
+begin
+ Last.Next:=List.First;
+ if assigned(List.First) then begin
+  List.First.Previous:=Last;
+ end;
+ Last:=List.Last;
+ List.First:=nil;
+ List.Last:=nil;
+end;
+
+procedure TVulkanXMLClassLinkedList.AppendLinkedList(List:TVulkanXMLClassLinkedList);
+begin
+ AddLinkedList(List);
+end;
+
+procedure TVulkanXMLClassLinkedList.Remove(Item:TVulkanXMLClass);
+begin
+ if assigned(Item) then begin
+  if assigned(Item.Next) then begin
+   Item.Next.Previous:=Item.Previous;
+  end else if Last=Item then begin
+   Last:=Item.Previous;
+  end;
+  if assigned(Item.Previous) then begin
+   Item.Previous.Next:=Item.Next;
+  end else if First=Item then begin
+   First:=Item.Next;
+  end;
+  Item.Previous:=nil;
+  Item.Next:=nil;
+ end;
+end;
+
+procedure TVulkanXMLClassLinkedList.RemoveClass(Item:TVulkanXMLClass);
+begin
+ if assigned(Item) then begin
+  Remove(Item);
+  Item.Destroy;
+ end;
+end;
+
+procedure TVulkanXMLClassLinkedList.Push(Item:TVulkanXMLClass);
+begin
+ Add(Item);
+end;
+
+function TVulkanXMLClassLinkedList.Pop(var Item:TVulkanXMLClass):boolean;
+begin
+ result:=assigned(Last);
+ if result then begin
+  Item:=Last;
+  Remove(Last);
+ end;
+end;
+
+function TVulkanXMLClassLinkedList.Pop:TVulkanXMLClass;
+begin
+ result:=Last;
+ if assigned(Last) then begin
+  Remove(Last);
+ end;
+end;
+
+function TVulkanXMLClassLinkedList.Count:TVkInt32;
+var Current:TVulkanXMLClass;
+begin
+ result:=0;
+ Current:=First;
+ while assigned(Current) do begin
+  inc(result);
+  Current:=Current.Next;
+ end;
+end;
+
+constructor TVulkanXMLItem.Create;
+begin
+ inherited Create;
+ Items:=TVulkanXMLItemList.Create;
+end;
+
+destructor TVulkanXMLItem.Destroy;
+begin
+ Items.Destroy;
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLItem.Clear;
+begin
+ Items.Clear;
+end;
+
+procedure TVulkanXMLItem.Add(Item:TVulkanXMLItem);
+begin
+ Items.Add(Item);
+end;
+
+procedure TVulkanXMLItem.Assign(From:TVulkanXMLItem);
+var i:TVkInt32;
+    NewItem:TVulkanXMLItem;
+begin
+ Items.ClearWithFree;
+ NewItem:=nil;
+ for i:=0 to Items.Count-1 do begin
+  if Items[i] is TVulkanXMLTag then begin
+   NewItem:=TVulkanXMLTag.Create;
+  end else if Items[i] is TVulkanXMLCommentTag then begin
+   NewItem:=TVulkanXMLCommentTag.Create;
+  end else if Items[i] is TVulkanXMLScriptTag then begin
+   NewItem:=TVulkanXMLScriptTag.Create;
+  end else if Items[i] is TVulkanXMLProcessTag then begin
+   NewItem:=TVulkanXMLProcessTag.Create;
+  end else if Items[i] is TVulkanXMLCDATATag then begin
+   NewItem:=TVulkanXMLCDATATag.Create;
+  end else if Items[i] is TVulkanXMLDOCTYPETag then begin
+   NewItem:=TVulkanXMLDOCTYPETag.Create;
+  end else if Items[i] is TVulkanXMLExtraTag then begin
+   NewItem:=TVulkanXMLExtraTag.Create;
+  end else if Items[i] is TVulkanXMLText then begin
+   NewItem:=TVulkanXMLText.Create;
+  end else if Items[i] is TVulkanXMLItem then begin
+   NewItem:=Items[i].Create;
+  end else begin
+   continue;
+  end;
+  NewItem.Assign(Items[i]);
+  Items.Add(NewItem);
+ end;
+end;
+
+function TVulkanXMLItem.FindTag(const TagName:TVulkanRawByteString):TVulkanXMLTag;
+begin
+ result:=Items.FindTag(TagName);
+end;
+
+constructor TVulkanXMLItemList.Create;
+begin
+ inherited Create;
+ ClearWithContentDestroying:=true;
+//CapacityMask:=$f;
+ CapacityMinimium:=0;
+end;
+
+destructor TVulkanXMLItemList.Destroy;
+begin
+ ClearWithFree;
+ inherited Destroy;
+end;
+
+function TVulkanXMLItemList.NewClass:TVulkanXMLItem;
+begin
+ result:=TVulkanXMLItem.Create;
+ Add(result);
+end;
+
+function TVulkanXMLItemList.GetItem(Index:TVkInt32):TVulkanXMLItem;
+begin
+ result:=TVulkanXMLItem(inherited Items[Index]);
+end;
+
+procedure TVulkanXMLItemList.SetItem(Index:TVkInt32;Value:TVulkanXMLItem);
+begin
+ inherited Items[Index]:=Value;
+end;
+
+function TVulkanXMLItemList.FindTag(const TagName:TVulkanRawByteString):TVulkanXMLTag;
+var i:TVkInt32;
+    Item:TVulkanXMLItem;
+begin
+ result:=nil;
+ for i:=0 to Count-1 do begin
+  Item:=TVulkanXMLItem(inherited Items[i]);
+  if (assigned(Item) and (Item is TVulkanXMLTag)) and (TVulkanXMLTag(Item).Name=TagName) then begin
+   result:=TVulkanXMLTag(Item);
+   break;
+  end;
+ end;
+end;
+
+constructor TVulkanXMLParameter.Create;
+begin
+ inherited Create;
+ Name:='';
+ Value:='';
+end;
+
+destructor TVulkanXMLParameter.Destroy;
+begin
+ Name:='';
+ Value:='';
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLParameter.Assign(From:TVulkanXMLParameter);
+begin
+ Name:=From.Name;
+ Value:=From.Value;
+end;
+
+constructor TVulkanXMLText.Create;
+begin
+ inherited Create;
+ Text:='';
+end;
+
+destructor TVulkanXMLText.Destroy;
+begin
+ Text:='';
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLText.Assign(From:TVulkanXMLItem);
+begin
+ inherited Assign(From);
+ if From is TVulkanXMLText then begin
+  Text:=TVulkanXMLText(From).Text;
+ end;
+end;
+
+procedure TVulkanXMLText.SetText(AText:TVulkanRawByteString);
+begin
+ Text:=AText;
+end;
+
+constructor TVulkanXMLCommentTag.Create;
+begin
+ inherited Create;
+ Text:='';
+end;
+
+destructor TVulkanXMLCommentTag.Destroy;
+begin
+ Text:='';
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLCommentTag.Assign(From:TVulkanXMLItem);
+begin
+ inherited Assign(From);
+ if From is TVulkanXMLCommentTag then begin
+  Text:=TVulkanXMLCommentTag(From).Text;
+ end;
+end;
+
+procedure TVulkanXMLCommentTag.SetText(AText:TVulkanRawByteString);
+begin
+ Text:=AText;
+end;
+
+constructor TVulkanXMLTag.Create;
+begin
+ inherited Create;
+ Name:='';
+ Parameter:=nil;
+end;
+
+destructor TVulkanXMLTag.Destroy;
+begin
+ Clear;
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLTag.Clear;
+var Counter:TVkInt32;
+begin
+ inherited Clear;
+ for Counter:=0 to length(Parameter)-1 do begin
+  Parameter[Counter].Free;
+ end;
+ SetLength(Parameter,0);
+ Name:='';
+end;
+
+procedure TVulkanXMLTag.Assign(From:TVulkanXMLItem);
+var Counter:TVkInt32;
+begin
+ inherited Assign(From);
+ if From is TVulkanXMLTag then begin
+  for Counter:=0 to length(Parameter)-1 do begin
+   Parameter[Counter].Free;
+  end;
+  SetLength(Parameter,0);
+  Name:=TVulkanXMLTag(From).Name;
+  for Counter:=0 to length(TVulkanXMLTag(From).Parameter)-1 do begin
+   AddParameter(TVulkanXMLTag(From).Parameter[Counter].Name,TVulkanXMLTag(From).Parameter[Counter].Value);
+  end;
+ end;
+end;
+
+function TVulkanXMLTag.FindParameter(ParameterName:TVulkanRawByteString):TVulkanXMLParameter;
+var i:TVkInt32;
+begin
+ for i:=0 to length(Parameter)-1 do begin
+  if Parameter[i].Name=ParameterName then begin
+   result:=Parameter[i];
+   exit;
+  end;
+ end;
+ result:=nil;
+end;
+
+function TVulkanXMLTag.GetParameter(ParameterName:TVulkanRawByteString;default:TVulkanRawByteString=''):TVulkanRawByteString;
+var i:TVkInt32;
+begin
+ for i:=0 to length(Parameter)-1 do begin
+  if Parameter[i].Name=ParameterName then begin
+   result:=Parameter[i].Value;
+   exit;
+  end;
+ end;
+ result:=default;
+end;
+
+function TVulkanXMLTag.AddParameter(AParameter:TVulkanXMLParameter):boolean;
+var Index:TVkInt32;
+begin
+ try
+  Index:=length(Parameter);
+  SetLength(Parameter,Index+1);
+  Parameter[Index]:=AParameter;
+  result:=true;
+ except
+  result:=false;
+ end;
+end;
+
+function TVulkanXMLTag.AddParameter(Name:TVulkanRawByteString;Value:TVulkanXMLString):boolean;
+var AParameter:TVulkanXMLParameter;
+begin
+ AParameter:=TVulkanXMLParameter.Create;
+ AParameter.Name:=Name;
+ AParameter.Value:=Value;
+ result:=AddParameter(AParameter);
+end;
+
+function TVulkanXMLTag.RemoveParameter(AParameter:TVulkanXMLParameter):boolean;
+var Found,Counter:TVkInt32;
+begin
+ result:=false;
+ try
+  Found:=-1;
+  for Counter:=0 to length(Parameter)-1 do begin
+   if Parameter[Counter]=AParameter then begin
+    Found:=Counter;
+    break;
+   end;
+  end;
+  if Found>=0 then begin
+   for Counter:=Found to length(Parameter)-2 do begin
+    Parameter[Counter]:=Parameter[Counter+1];
+   end;
+   SetLength(Parameter,length(Parameter)-1);
+   AParameter.Destroy;
+   result:=true;
+  end;
+ except
+ end;
+end;
+
+function TVulkanXMLTag.RemoveParameter(ParameterName:TVulkanRawByteString):boolean;
+begin
+ result:=RemoveParameter(FindParameter(ParameterName));
+end;
+
+constructor TVulkanXMLProcessTag.Create;
+begin
+ inherited Create;
+end;
+
+destructor TVulkanXMLProcessTag.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLProcessTag.Assign(From:TVulkanXMLItem);
+begin
+ inherited Assign(From);
+end;
+
+constructor TVulkanXMLScriptTag.Create;
+begin
+ inherited Create;
+ Text:='';
+end;
+
+destructor TVulkanXMLScriptTag.Destroy;
+begin
+ Text:='';
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLScriptTag.Assign(From:TVulkanXMLItem);
+begin
+ inherited Assign(From);
+ if From is TVulkanXMLScriptTag then begin
+  Text:=TVulkanXMLScriptTag(From).Text;
+ end;
+end;
+
+procedure TVulkanXMLScriptTag.SetText(AText:TVulkanRawByteString);
+begin
+ Text:=AText;
+end;
+
+constructor TVulkanXMLCDataTag.Create;
+begin
+ inherited Create;
+ Text:='';
+end;
+
+destructor TVulkanXMLCDataTag.Destroy;
+begin
+ Text:='';
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLCDataTag.Assign(From:TVulkanXMLItem);
+begin
+ inherited Assign(From);
+ if From is TVulkanXMLCDataTag then begin
+  Text:=TVulkanXMLCDataTag(From).Text;
+ end;
+end;
+
+procedure TVulkanXMLCDataTag.SetText(AText:TVulkanRawByteString);
+begin
+ Text:=AText;
+end;
+
+constructor TVulkanXMLDOCTYPETag.Create;
+begin
+ inherited Create;
+ Text:='';
+end;
+
+destructor TVulkanXMLDOCTYPETag.Destroy;
+begin
+ Text:='';
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLDOCTYPETag.Assign(From:TVulkanXMLItem);
+begin
+ inherited Assign(From);
+ if From is TVulkanXMLDOCTYPETag then begin
+  Text:=TVulkanXMLDOCTYPETag(From).Text;
+ end;
+end;
+
+procedure TVulkanXMLDOCTYPETag.SetText(AText:TVulkanRawByteString);
+begin
+ Text:=AText;
+end;
+
+constructor TVulkanXMLExtraTag.Create;
+begin
+ inherited Create;
+ Text:='';
+end;
+
+destructor TVulkanXMLExtraTag.Destroy;
+begin
+ Text:='';
+ inherited Destroy;
+end;
+
+procedure TVulkanXMLExtraTag.Assign(From:TVulkanXMLItem);
+begin
+ inherited Assign(From);
+ if From is TVulkanXMLExtraTag then begin
+  Text:=TVulkanXMLExtraTag(From).Text;
+ end;
+end;
+
+procedure TVulkanXMLExtraTag.SetText(AText:TVulkanRawByteString);
+begin
+ Text:=AText;
+end;
+
+const EntityChars:array[1..102,1..2] of TVulkanXMLString=(('&quot;',#34),('&amp;',#38),('&apos;',''''),
+                                                    ('&lt;',#60),('&gt;',#62),('&euro;',#128),('&nbsp;',#160),('&iexcl;',#161),
+                                                    ('&cent;',#162),('&pound;',#163),('&curren;',#164),('&yen;',#165),
+                                                    ('&brvbar;',#166),('&sect;',#167),('&uml;',#168),('&copy;',#169),
+                                                    ('&ordf;',#170),('&laquo;',#171),('&not;',#172),('&shy;',#173),
+                                                    ('&reg;',#174),('&macr;',#175),('&deg;',#176),('&plusmn;',#177),
+                                                    ('&sup2;',#178),('&sup3;',#179),('&acute;',#180),('&micro;',#181),
+                                                    ('&para;',#182),('&middot;',#183),('&cedil;',#184),('&sup1;',#185),
+                                                    ('&ordm;',#186),('&raquo;',#187),('&frac14;',#188),('&frac12;',#189),
+                                                    ('&frac34;',#190),('&iquest;',#191),('&Agrave;',#192),('&Aacute;',#193),
+                                                    ('&Acirc;',#194),('&Atilde;',#195),('&Auml;',#196),('&Aring;',#197),
+                                                    ('&AElig;',#198),('&Ccedil;',#199),('&Egrave;',#200),('&Eacute;',#201),
+                                                    ('&Ecirc;',#202),('&Euml;',#203),('&Igrave;',#204),('&Iacute;',#205),
+                                                    ('&Icirc;',#206),('&Iuml;',#207),('&ETH;',#208),('&Ntilde;',#209),
+                                                    ('&Ograve;',#210),('&Oacute;',#211),('&Ocirc;',#212),('&Otilde;',#213),
+                                                    ('&Ouml;',#214),('&times;',#215),('&Oslash;',#216),('&Ugrave;',#217),
+                                                    ('&Uacute;',#218),('&Ucirc;',#219),('&Uuml;',#220),('&Yacute;',#221),
+                                                    ('&THORN;',#222),('&szlig;',#223),('&agrave;',#224),('&aacute;',#225),
+                                                    ('&acirc;',#226),('&atilde;',#227),('&auml;',#228),('&aring;',#229),
+                                                    ('&aelig;',#230),('&ccedil;',#231),('&egrave;',#232),('&eacute;',#233),
+                                                    ('&ecirc;',#234),('&euml;',#235),('&igrave;',#236),('&iacute;',#237),
+                                                    ('&icirc;',#238),('&iuml;',#239),('&eth;',#240),('&ntilde;',#241),
+                                                    ('&ograve;',#242),('&oacute;',#243),('&ocirc;',#244),('&otilde;',#245),
+                                                    ('&ouml;',#246),('&divide;',#247),('&oslash;',#248),('&ugrave;',#249),
+                                                    ('&uacute;',#250),('&ucirc;',#251),('&uuml;',#252),('&yacute;',#253),
+                                                    ('&thorn;',#254),('&yuml;',#255));
+
+type TEntitiesCharLookUpItem=record
+      IsEntity:boolean;
+      Entity:TVulkanRawByteString;
+     end;
+
+     TEntitiesCharLookUpTable=array[0..{$ifdef VulkanXMLUnicode}65535{$else}255{$endif}] of TEntitiesCharLookUpItem;
+
+var EntitiesCharLookUp:TEntitiesCharLookUpTable;
+    EntityStringHashMap:TVulkanStringHashMap;
+
+const EntityInitialized:boolean=false;
+
+procedure InitializeEntites;
+var EntityCounter:TVkInt32;
+begin
+ if not EntityInitialized then begin
+  EntityInitialized:=true;
+  EntityStringHashMap:=TVulkanStringHashMap.Create;
+  FillChar(EntitiesCharLookUp,SizeOf(TEntitiesCharLookUpTable),#0);
+  for EntityCounter:=low(EntityChars) to high(EntityChars) do begin
+   EntityStringHashMap.Add(EntityChars[EntityCounter,1],pointer(TVkPtrInt(EntityCounter)));
+   with EntitiesCharLookUp[ord(EntityChars[EntityCounter,2][1])] do begin
+    IsEntity:=true;
+    Entity:=EntityChars[EntityCounter,1];
+   end;
+  end;
+ end;
+end;
+
+procedure FinalizeEntites;
+begin
+ FreeAndNil(EntityStringHashMap);
+ EntityInitialized:=false;
+end;
+
+function ConvertToEntities(AString:TVulkanXMLString;IdentLevel:TVkInt32=0):TVulkanRawByteString;
+var Counter,IdentCounter:TVkInt32;
+    c:TVulkanXMLChar;
+begin
+ result:='';
+ for Counter:=1 to length(AString) do begin
+  c:=AString[Counter];
+  if c=#13 then begin
+   if ((Counter+1)<=length(AString)) and (AString[Counter+1]=#10) then begin
+    continue;
+   end;
+   c:=#10;
+  end;
+  if EntitiesCharLookUp[ord(c)].IsEntity then begin
+   result:=result+EntitiesCharLookUp[ord(c)].Entity;
+  end else if (c=#9) or (c=#10) or (c=#13) or ((c>=#32) and (c<=#127)) then begin
+   result:=result+c;
+   if c=#10 then begin
+    for IdentCounter:=1 to IdentLevel do begin
+     result:=result+' ';
+    end;
+   end;
+  end else begin
+{$ifdef VulkanXMLUnicode}
+   if c<#255 then begin
+    result:=result+'&#'+INTTOSTR(ord(c))+';';
+   end else begin
+    result:=result+'&#x'+IntToHex(ord(c),4)+';';
+   end;
+{$else}
+   result:=result+'&#'+INTTOSTR(TVkUInt8(c))+';';
+{$endif}
+  end;
+ end;
+end;
+
+constructor TVulkanXML.Create;
+begin
+ inherited Create;
+ InitializeEntites;
+ Root:=TVulkanXMLItem.Create;
+ AutomaticAloneTagDetection:=true;
+ FormatIndent:=true;
+ FormatIndentText:=false;
+end;
+
+destructor TVulkanXML.Destroy;
+begin
+ Root.Free;
+ inherited Destroy;
+end;
+
+procedure TVulkanXML.Assign(From:TVulkanXML);
+begin
+ Root.Assign(From.Root);
+ AutomaticAloneTagDetection:=From.AutomaticAloneTagDetection;
+ FormatIndent:=From.FormatIndent;
+ FormatIndentText:=From.FormatIndentText;
+end;
+
+function TVulkanXML.Parse(Stream:TStream):boolean;
+const NameCanBeginWithCharSet:set of TVulkanRawByteChar=['A'..'Z','a'..'z','_'];
+      NameCanContainCharSet:set of TVulkanRawByteChar=['A'..'Z','a'..'z','0'..'9','.',':','_','-'];
+      BlankCharSet:set of TVulkanRawByteChar=[#0..#$20];//[#$9,#$A,#$D,#$20];
+type TEncoding=(etASCII,etUTF8,etUTF16);
+var Errors:boolean;
+    CurrentChar:TVulkanRawByteChar;
+    StreamEOF:boolean;
+    Encoding:TEncoding;
+
+ function IsEOF:boolean;
+ begin
+  result:=StreamEOF or (Stream.Position>Stream.Size);
+ end;
+
+ function IsEOFOrErrors:boolean;
+ begin
+  result:=IsEOF or Errors;
+ end;
+
+ function NextChar:TVulkanRawByteChar;
+ begin
+  if Stream.Read(CurrentChar,SizeOf(TVulkanRawByteChar))<>SizeOf(TVulkanRawByteChar) then begin
+   StreamEOF:=true;
+   CurrentChar:=#0;
+  end;
+  result:=CurrentChar;
+//system.Write(result);
+ end;
+
+ procedure SkipBlank;
+ begin
+  while (CurrentChar in BlankCharSet) and not IsEOFOrErrors do begin
+   NextChar;
+  end;
+ end;
+
+ function GetName:TVulkanRawByteString;
+ var i:TVkInt32;
+ begin
+  result:='';
+  i:=0;
+  if (CurrentChar in NameCanBeginWithCharSet) and not IsEOFOrErrors then begin
+   while (CurrentChar in NameCanContainCharSet) and not IsEOFOrErrors do begin
+    inc(i);
+    if (i+1)>length(result) then begin
+     SetLength(result,VulkanRoundUpToPowerOfTwo(i+1));
+    end;
+    result[i]:=CurrentChar;
+    NextChar;
+   end;
+  end;
+  SetLength(result,i);
+ end;
+
+ function ExpectToken(const S:TVulkanRawByteString):boolean; overload;
+ var i:TVkInt32;
+ begin
+  result:=true;
+  for i:=1 to length(S) do begin
+   if S[i]<>CurrentChar then begin
+    result:=false;
+    break;
+   end;
+   NextChar;
+  end;
+ end;
+
+ function ExpectToken(const c:TVulkanRawByteChar):boolean; overload;
+ begin
+  result:=false;
+  if c=CurrentChar then begin
+   result:=true;
+   NextChar;
+  end;
+ end;
+
+ function GetUntil(var Content:TVulkanRawByteString;const TerminateToken:TVulkanRawByteString):boolean;
+ var i,j,OldPosition:TVkInt32;
+     OldEOF:boolean;
+     OldChar:TVulkanRawByteChar;
+ begin
+  result:=false;
+  j:=0;
+  Content:='';
+  while not IsEOFOrErrors do begin
+   if (length(TerminateToken)>0) and (TerminateToken[1]=CurrentChar) and (((Stream.Size-Stream.Position)+1)>=length(TerminateToken)) then begin
+    OldPosition:=Stream.Position;
+    OldEOF:=StreamEOF;
+    OldChar:=CurrentChar;
+    for i:=1 to length(TerminateToken) do begin
+     if TerminateToken[i]=CurrentChar then begin
+      if i=length(TerminateToken) then begin
+       NextChar;
+       SetLength(Content,j);
+       result:=true;
+       exit;
+      end;
+     end else begin
+      break;
+     end;
+     NextChar;
+    end;
+    Stream.Seek(OldPosition,soFromBeginning);
+    StreamEOF:=OldEOF;
+    CurrentChar:=OldChar;
+   end;
+   inc(j);
+   if (j+1)>length(Content) then begin
+    SetLength(Content,VulkanRoundUpToPowerOfTwo(j+1));
+   end;
+   Content[j]:=CurrentChar;
+   NextChar;
+  end;
+  SetLength(Content,j);
+ end;
+
+ function GetDecimalValue:TVkInt32;
+ var Negitive:boolean;
+ begin
+  Negitive:=CurrentChar='-';
+  if Negitive then begin
+   NextChar;
+  end else if CurrentChar='+' then begin
+   NextChar;
+  end;
+  result:=0;
+  while (CurrentChar in ['0'..'9']) and not IsEOFOrErrors do begin
+   result:=(result*10)+(ord(CurrentChar)-ord('0'));
+   NextChar;
+  end;
+  if Negitive then begin
+   result:=-result;
+  end;
+ end;
+
+ function GetHeximalValue:TVkInt32;
+ var Negitive:boolean;
+     Value:TVkInt32;
+ begin
+  Negitive:=CurrentChar='-';
+  if Negitive then begin
+   NextChar;
+  end else if CurrentChar='+' then begin
+   NextChar;
+  end;
+  result:=0;
+  Value:=0;
+  while not IsEOFOrErrors do begin
+   case CurrentChar of
+    '0'..'9':begin
+     Value:=TVkUInt8(CurrentChar)-ord('0');
+    end;
+    'A'..'F':begin
+     Value:=TVkUInt8(CurrentChar)-ord('A')+$a;
+    end;
+    'a'..'f':begin
+     Value:=TVkUInt8(CurrentChar)-ord('a')+$a;
+    end;
+    else begin
+     break;
+    end;
+   end;
+   result:=(result*16)+Value;
+   NextChar;
+  end;
+  if Negitive then begin
+   result:=-result;
+  end;
+ end;
+
+ function GetEntity:TVulkanXMLString;
+ var Value:TVkInt32;
+     Entity:TVulkanRawByteString;
+     c:TVulkanXMLChar;
+     StringHashMapEntity:PVulkanStringHashMapEntity;
+ begin
+  result:='';
+  if CurrentChar='&' then begin
+   NextChar;
+   if not IsEOF then begin
+    if CurrentChar='#' then begin
+     NextChar;
+     if IsEOF then begin
+      Errors:=true;
+     end else begin
+      if CurrentChar='x' then begin
+       NextChar;
+       Value:=GetHeximalValue;
+      end else begin
+       Value:=GetDecimalValue;
+      end;
+      if CurrentChar=';' then begin
+       NextChar;
+{$ifdef VulkanXMLUnicode}
+       c:=widechar(word(Value));
+{$else}
+       c:=TVulkanRawByteChar(TVkUInt8(Value));
+{$endif}
+       result:=c;
+      end else begin
+       Errors:=true;
+      end;
+     end;
+    end else begin
+     Entity:='&';
+     while (CurrentChar in ['a'..'z','A'..'Z','0'..'9','_']) and not IsEOFOrErrors do begin
+      Entity:=Entity+CurrentChar;
+      NextChar;
+     end;
+     if CurrentChar=';' then begin
+      Entity:=Entity+CurrentChar;
+      NextChar;
+      StringHashMapEntity:=EntityStringHashMap.Get(Entity,false);
+      if assigned(StringHashMapEntity) then begin
+       result:=EntityChars[TVkPtrInt(TVkPtrUInt(pointer(StringHashMapEntity^.Value))),2];
+      end else begin
+       result:=Entity;
+      end;
+     end else begin
+      Errors:=true;
+     end;
+    end;
+   end;
+  end;
+ end;
+
+ function ParseTagParameterValue(TerminateChar:TVulkanRawByteChar):TVulkanXMLString;
+ var i,wc,c:TVkInt32;
+ begin
+  result:='';
+  SkipBlank;
+  i:=0;
+  while (CurrentChar<>TerminateChar) and not IsEOFOrErrors do begin
+   if (Encoding=etUTF8) and (ord(CurrentChar)>=$80) then begin
+    wc:=ord(CurrentChar) and $3f;
+    if (wc and $20)<>0 then begin
+     NextChar;
+     c:=ord(CurrentChar);
+     if (c and $c0)<>$80 then begin
+      break;
+     end;
+     wc:=(wc shl 6) or (c and $3f);
+    end;
+    NextChar;
+    c:=ord(CurrentChar);
+    if (c and $c0)<>$80 then begin
+     break;
+    end;
+    wc:=(wc shl 6) or (c and $3f);
+    NextChar;
+    inc(i);
+    if (i+1)>length(result) then begin
+     SetLength(result,VulkanRoundUpToPowerOfTwo(i+1));
+    end;
+{$ifdef VulkanXMLUnicode}
+    result[i]:=widechar(wc);
+{$else}
+    result[i]:=TVulkanRawByteChar(wc);
+{$endif}
+   end else if CurrentChar='&' then begin
+    SetLength(result,i);
+    result:=result+GetEntity;
+    i:=length(result);
+   end else begin
+    inc(i);
+    if (i+1)>length(result) then begin
+     SetLength(result,VulkanRoundUpToPowerOfTwo(i+1));
+    end;
+{$ifdef VulkanXMLUnicode}
+    result[i]:=widechar(word(TVkUInt8(CurrentChar)+0));
+{$else}
+    result[i]:=CurrentChar;
+{$endif}
+    NextChar;
+   end;
+  end;
+  SetLength(result,i);
+  NextChar;
+ end;
+
+ procedure ParseTagParameter(XMLTag:TVulkanXMLTag);
+ var ParameterName,ParameterValue:TVulkanRawByteString;
+     TerminateChar:TVulkanRawByteChar;
+ begin
+  SkipBlank;
+  while (CurrentChar in NameCanBeginWithCharSet) and not IsEOFOrErrors do begin
+   ParameterName:=GetName;
+   SkipBlank;
+   if CurrentChar='=' then begin
+    NextChar;
+    if IsEOFOrErrors then begin
+     Errors:=true;
+     break;
+    end;
+   end else begin
+    Errors:=true;
+    break;
+   end;
+   SkipBlank;
+   if CurrentChar in ['''','"'] then begin
+    TerminateChar:=CurrentChar;
+    NextChar;
+    if IsEOFOrErrors then begin
+     Errors:=true;
+     break;
+    end;
+    ParameterValue:=ParseTagParameterValue(TerminateChar);
+    if Errors then begin
+     break;
+    end else begin
+     XMLTag.AddParameter(ParameterName,ParameterValue);
+     SkipBlank;
+    end;
+   end else begin
+    Errors:=true;
+    break;
+   end;
+  end;
+ end;
+
+ procedure Process(ParentItem:TVulkanXMLItem;Closed:boolean);
+ var FinishLevel:boolean;
+
+  procedure ParseText;
+  var Text:TVulkanXMLString;
+      XMLText:TVulkanXMLText;
+      i,wc,c:TVkInt32;
+{$ifndef VulkanXMLUnicode}
+      w:TVulkanRawByteString;
+{$endif}
+  begin
+   SkipBlank;
+   if CurrentChar='<' then begin
+    exit;
+   end;
+   i:=0;
+   Text:='';
+   SetLength(Text,16);
+   while (CurrentChar<>'<') and not IsEOFOrErrors do begin
+    if (Encoding=etUTF8) and (ord(CurrentChar)>=$80) then begin
+     wc:=ord(CurrentChar) and $3f;
+     if (wc and $20)<>0 then begin
+      NextChar;
+      c:=ord(CurrentChar);
+      if (c and $c0)<>$80 then begin
+       break;
+      end;
+      wc:=(wc shl 6) or (c and $3f);
+     end;
+     NextChar;
+     c:=ord(CurrentChar);
+     if (c and $c0)<>$80 then begin
+      break;
+     end;
+     wc:=(wc shl 6) or (c and $3f);
+     NextChar;
+{$ifdef VulkanXMLUnicode}
+     if wc<=$d7ff then begin
+      inc(i);
+      if (i+1)>length(Text) then begin
+       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+      end;
+      Text[i]:=widechar(word(wc));
+     end else if wc<=$dfff then begin
+      inc(i);
+      if (i+1)>length(Text) then begin
+       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+      end;
+      Text[i]:=#$fffd;
+     end else if wc<=$fffd then begin
+      inc(i);
+      if (i+1)>length(Text) then begin
+       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+      end;
+      Text[i]:=widechar(word(wc));
+     end else if wc<=$ffff then begin
+      inc(i);
+      if (i+1)>length(Text) then begin
+       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+      end;
+      Text[i]:=#$fffd;
+     end else if wc<=$10ffff then begin
+      dec(wc,$10000);
+      inc(i);
+      if (i+1)>length(Text) then begin
+       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+      end;
+      Text[i]:=widechar(word((wc shr 10) or $d800));
+      inc(i);
+      if (i+1)>length(Text) then begin
+       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+      end;
+      Text[i]:=widechar(word((wc and $3ff) or $dc00));
+     end else begin
+      inc(i);
+      if (i+1)>length(Text) then begin
+       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+      end;
+      Text[i]:=#$fffd;
+     end;
+{$else}
+     if wc<$80 then begin
+      inc(i);
+      if (i+1)>length(Text) then begin
+       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+      end;
+      Text[i]:=TVulkanRawByteChar(TVkUInt8(wc));
+     end else begin
+      w:=VulkanUTF32CharToUTF8(wc);
+      if length(w)>0 then begin
+       inc(i);
+       if (i+length(w)+1)>length(Text) then begin
+        SetLength(Text,VulkanRoundUpToPowerOfTwo(i+length(w)+1));
+       end;
+       Move(w[1],Text[i],length(w));
+       inc(i,length(w)-1);
+      end;
+     end;
+{$endif}
+    end else if CurrentChar='&' then begin
+     SetLength(Text,i);
+     Text:=Text+GetEntity;
+     i:=length(Text);
+    end else if CurrentChar in BlankCharSet then begin
+{$ifdef VulkanXMLUnicode}
+     inc(i);
+     if (i+1)>length(Text) then begin
+      SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+     end;
+     Text[i]:=widechar(word(TVkUInt8(CurrentChar)+0));
+{$else}
+     wc:=ord(CurrentChar);
+     if wc<$80 then begin
+      inc(i);
+      if (i+1)>length(Text) then begin
+       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+      end;
+      Text[i]:=TVulkanRawByteChar(TVkUInt8(wc));
+     end else begin
+      w:=VulkanUTF32CharToUTF8(wc);
+      if length(w)>0 then begin
+       inc(i);
+       if (i+length(w)+1)>length(Text) then begin
+        SetLength(Text,VulkanRoundUpToPowerOfTwo(i+length(w)+1));
+       end;
+       Move(w[1],Text[i],length(w));
+       inc(i,length(w)-1);
+      end;
+     end;
+{$endif}
+     SkipBlank;
+    end else begin
+{$ifdef VulkanXMLUnicode}
+     inc(i);
+     if (i+1)>length(Text) then begin
+      SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+     end;
+     Text[i]:=widechar(word(TVkUInt8(CurrentChar)+0));
+{$else}
+     wc:=ord(CurrentChar);
+     if wc<$80 then begin
+      inc(i);
+      if (i+1)>length(Text) then begin
+       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
+      end;
+      Text[i]:=TVulkanRawByteChar(TVkUInt8(wc));
+     end else begin
+      w:=VulkanUTF32CharToUTF8(wc);
+      if length(w)>0 then begin
+       inc(i);
+       if (i+length(w)+1)>length(Text) then begin
+        SetLength(Text,VulkanRoundUpToPowerOfTwo(i+length(w)+1));
+       end;
+       Move(w[1],Text[i],length(w));
+       inc(i,length(w)-1);
+      end;
+     end;
+{$endif}
+     NextChar;
+    end;
+   end;
+   SetLength(Text,i);
+   if length(Text)<>0 then begin
+    XMLText:=TVulkanXMLText.Create;
+    XMLText.Text:=Text;
+    ParentItem.Add(XMLText);
+   end;
+  end;
+
+  procedure ParseProcessTag;
+  var TagName,EncodingName:TVulkanRawByteString;
+      XMLProcessTag:TVulkanXMLProcessTag;
+  begin
+   if not ExpectToken('?') then begin
+    Errors:=true;
+    exit;
+   end;
+   TagName:=GetName;
+   if IsEOF or Errors then begin
+    Errors:=true;
+    exit;
+   end;
+   XMLProcessTag:=TVulkanXMLProcessTag.Create;
+   XMLProcessTag.Name:=TagName;
+   ParentItem.Add(XMLProcessTag);
+   ParseTagParameter(XMLProcessTag);
+   if not ExpectToken('?>') then begin
+    Errors:=true;
+    exit;
+   end;
+   if XMLProcessTag.Name='xml' then begin
+    EncodingName:=UPPERCASE(XMLProcessTag.GetParameter('encoding','ascii'));
+    if EncodingName='UTF-8' then begin
+     Encoding:=etUTF8;
+    end else if EncodingName='UTF-16' then begin
+     Encoding:=etUTF16;
+    end else begin
+     Encoding:=etASCII;
+    end;
+   end;
+  end;
+
+  procedure ParseScriptTag;
+  var XMLScriptTag:TVulkanXMLScriptTag;
+  begin
+   if not ExpectToken('%') then begin
+    Errors:=true;
+    exit;
+   end;
+   if IsEOFOrErrors then begin
+    Errors:=true;
+    exit;
+   end;
+   XMLScriptTag:=TVulkanXMLScriptTag.Create;
+   ParentItem.Add(XMLScriptTag);
+   if not GetUntil(XMLScriptTag.Text,'%>') then begin
+    Errors:=true;
+   end;
+  end;
+
+  procedure ParseCommentTag;
+  var XMLCommentTag:TVulkanXMLCommentTag;
+  begin
+   if not ExpectToken('--') then begin
+    Errors:=true;
+    exit;
+   end;
+   if IsEOFOrErrors then begin
+    Errors:=true;
+    exit;
+   end;
+   XMLCommentTag:=TVulkanXMLCommentTag.Create;
+   ParentItem.Add(XMLCommentTag);
+   if not GetUntil(XMLCommentTag.Text,'-->') then begin
+    Errors:=true;
+   end;
+  end;
+
+  procedure ParseCDATATag;
+  var XMLCDataTag:TVulkanXMLCDataTag;
+  begin
+   if not ExpectToken('[CDATA[') then begin
+    Errors:=true;
+    exit;
+   end;
+   if IsEOFOrErrors then begin
+    Errors:=true;
+    exit;
+   end;
+   XMLCDataTag:=TVulkanXMLCDataTag.Create;
+   ParentItem.Add(XMLCDataTag);
+   if not GetUntil(XMLCDataTag.Text,']]>') then begin
+    Errors:=true;
+   end;
+  end;
+
+  procedure ParseDOCTYPEOrExtraTag;
+  var Content:TVulkanRawByteString;
+      XMLDOCTYPETag:TVulkanXMLDOCTYPETag;
+      XMLExtraTag:TVulkanXMLExtraTag;
+  begin
+   Content:='';
+   if not GetUntil(Content,'>') then begin
+    Errors:=true;
+    exit;
+   end;
+   if POS('DOCTYPE',Content)=1 then begin
+    XMLDOCTYPETag:=TVulkanXMLDOCTYPETag.Create;
+    ParentItem.Add(XMLDOCTYPETag);
+    XMLDOCTYPETag.Text:=TRIMLEFT(COPY(Content,8,length(Content)-7));
+   end else begin
+    XMLExtraTag:=TVulkanXMLExtraTag.Create;
+    ParentItem.Add(XMLExtraTag);
+    XMLExtraTag.Text:=Content;
+   end;
+  end;
+
+  procedure ParseTag;
+  var TagName:TVulkanRawByteString;
+      XMLTag:TVulkanXMLTag;
+      IsAloneTag:boolean;
+  begin
+   if CurrentChar='/' then begin
+    NextChar;
+    if IsEOFOrErrors then begin
+     Errors:=true;
+     exit;
+    end;
+    TagName:='/'+GetName;
+   end else begin
+    TagName:=GetName;
+   end;
+   if IsEOFOrErrors then begin
+    Errors:=true;
+    exit;
+   end;
+
+   XMLTag:=TVulkanXMLTag.Create;
+   XMLTag.Name:=TagName;
+   ParseTagParameter(XMLTag);
+
+   IsAloneTag:=CurrentChar='/';
+   if IsAloneTag then begin
+    NextChar;
+    if IsEOFOrErrors then begin
+     Errors:=true;
+     exit;
+    end;
+   end;
+
+   if CurrentChar<>'>' then begin
+    Errors:=true;
+    exit;
+   end;
+   NextChar;
+
+   if (ParentItem<>Root) and (ParentItem is TVulkanXMLTag) and (XMLTag.Name='/'+TVulkanXMLTag(ParentItem).Name) then begin
+    XMLTag.Destroy;
+    FinishLevel:=true;
+    Closed:=true;
+   end else begin
+    ParentItem.Add(XMLTag);
+    if not IsAloneTag then begin
+     Process(XMLTag,false);
+    end;
+   end;
+// IsAloneTag:=false;
+  end;
+
+ begin
+  FinishLevel:=false;
+  while not (IsEOFOrErrors or FinishLevel) do begin
+   ParseText;
+   if CurrentChar='<' then begin
+    NextChar;
+    if not IsEOFOrErrors then begin
+     if CurrentChar='/' then begin
+      ParseTag;
+     end else if CurrentChar='?' then begin
+      ParseProcessTag;
+     end else if CurrentChar='%' then begin
+      ParseScriptTag;
+     end else if CurrentChar='!' then begin
+      NextChar;
+      if not IsEOFOrErrors then begin
+       if CurrentChar='-' then begin
+        ParseCommentTag;
+       end else if CurrentChar='[' then begin
+        ParseCDATATag;
+       end else begin
+        ParseDOCTYPEOrExtraTag;
+       end;
+      end;
+     end else begin
+      ParseTag;
+     end;
+    end;
+   end;
+  end;
+  if not Closed then begin
+   Errors:=true;
+  end;
+ end;
+begin
+ Encoding:=etASCII;
+ Errors:=false;
+ CurrentChar:=#0;
+ Root.Clear;
+ StreamEOF:=false;
+ Stream.Seek(0,soFromBeginning);
+ NextChar;
+ Process(Root,true);
+ if Errors then begin
+  Root.Clear;
+ end;
+ result:=not Errors;
+end;
+
+function TVulkanXML.Read(Stream:TStream):boolean;
+begin
+ result:=Parse(Stream);
+end;
+
+function TVulkanXML.Write(Stream:TStream;IdentSize:TVkInt32=2):boolean;
+var IdentLevel:TVkInt32;
+    Errors:boolean;
+ procedure Process(Item:TVulkanXMLItem;DoIndent:boolean);
+ var Line:TVulkanRawByteString;
+     Counter:TVkInt32;
+     TagWithSingleLineText,ItemsText:boolean;
+  procedure WriteLineEx(Line:TVulkanRawByteString);
+  begin
+   if length(Line)>0 then begin
+    if Stream.Write(Line[1],length(Line))<>length(Line) then begin
+     Errors:=true;
+    end;
+   end;
+  end;
+  procedure WriteLine(Line:TVulkanRawByteString);
+  begin
+   if FormatIndent and DoIndent then begin
+    Line:=Line+#10;
+   end;
+   if length(Line)>0 then begin
+    if Stream.Write(Line[1],length(Line))<>length(Line) then begin
+     Errors:=true;
+    end;
+   end;
+  end;
+ begin
+  if not Errors then begin
+   if assigned(Item) then begin
+    inc(IdentLevel,IdentSize);
+    Line:='';
+    if FormatIndent and DoIndent then begin
+     for Counter:=1 to IdentLevel do begin
+      Line:=Line+' ';
+     end;
+    end;
+    if Item is TVulkanXMLText then begin
+     if FormatIndentText then begin
+      Line:=Line+ConvertToEntities(TVulkanXMLText(Item).Text,IdentLevel);
+     end else begin
+      Line:=ConvertToEntities(TVulkanXMLText(Item).Text);
+     end;
+     WriteLine(Line);
+     for Counter:=0 to Item.Items.Count-1 do begin
+      Process(Item.Items[Counter],DoIndent);
+     end;
+    end else if Item is TVulkanXMLCommentTag then begin
+     Line:=Line+'<!--'+TVulkanXMLCommentTag(Item).Text+'-->';
+     WriteLine(Line);
+     for Counter:=0 to Item.Items.Count-1 do begin
+      Process(Item.Items[Counter],DoIndent);
+     end;
+    end else if Item is TVulkanXMLProcessTag then begin
+     Line:=Line+'<?'+TVulkanXMLProcessTag(Item).Name;
+     for Counter:=0 to length(TVulkanXMLProcessTag(Item).Parameter)-1 do begin
+      if assigned(TVulkanXMLProcessTag(Item).Parameter[Counter]) then begin
+       Line:=Line+' '+TVulkanXMLProcessTag(Item).Parameter[Counter].Name+'="'+ConvertToEntities(TVulkanXMLProcessTag(Item).Parameter[Counter].Value)+'"';
+      end;
+     end;
+     Line:=Line+'?>';
+     WriteLine(Line);
+     for Counter:=0 to Item.Items.Count-1 do begin
+      Process(Item.Items[Counter],DoIndent);
+     end;
+    end else if Item is TVulkanXMLScriptTag then begin
+     Line:=Line+'<%'+TVulkanXMLScriptTag(Item).Text+'%>';
+     WriteLine(Line);
+     for Counter:=0 to Item.Items.Count-1 do begin
+      Process(Item.Items[Counter],DoIndent);
+     end;
+    end else if Item is TVulkanXMLCDataTag then begin
+     Line:=Line+'<![CDATA['+TVulkanXMLCDataTag(Item).Text+']]>';
+     WriteLine(Line);
+     for Counter:=0 to Item.Items.Count-1 do begin
+      Process(Item.Items[Counter],DoIndent);
+     end;
+    end else if Item is TVulkanXMLDOCTYPETag then begin
+     Line:=Line+'<!DOCTYPE '+TVulkanXMLDOCTYPETag(Item).Text+'>';
+     WriteLine(Line);
+     for Counter:=0 to Item.Items.Count-1 do begin
+      Process(Item.Items[Counter],DoIndent);
+     end;
+    end else if Item is TVulkanXMLExtraTag then begin
+     Line:=Line+'<!'+TVulkanXMLExtraTag(Item).Text+'>';
+     WriteLine(Line);
+     for Counter:=0 to Item.Items.Count-1 do begin
+      Process(Item.Items[Counter],DoIndent);
+     end;
+    end else if Item is TVulkanXMLTag then begin
+     if AutomaticAloneTagDetection then begin
+      TVulkanXMLTag(Item).IsAloneTag:=TVulkanXMLTag(Item).Items.Count=0;
+     end;
+     Line:=Line+'<'+TVulkanXMLTag(Item).Name;
+     for Counter:=0 to length(TVulkanXMLTag(Item).Parameter)-1 do begin
+      if assigned(TVulkanXMLTag(Item).Parameter[Counter]) then begin
+       Line:=Line+' '+TVulkanXMLTag(Item).Parameter[Counter].Name+'="'+ConvertToEntities(TVulkanXMLTag(Item).Parameter[Counter].Value)+'"';
+      end;
+     end;
+     if TVulkanXMLTag(Item).IsAloneTag then begin
+      Line:=Line+' />';
+      WriteLine(Line);
+     end else begin
+      TagWithSingleLineText:=false;
+      if Item.Items.Count=1 then begin
+       if assigned(Item.Items[0]) then begin
+        if Item.Items[0] is TVulkanXMLText then begin
+         if ((POS(#13,TVulkanXMLText(Item.Items[0]).Text)=0) and
+             (POS(#10,TVulkanXMLText(Item.Items[0]).Text)=0)) or not FormatIndentText then begin
+          TagWithSingleLineText:=true;
+         end;
+        end;
+       end;
+      end;
+      ItemsText:=false;
+      for Counter:=0 to Item.Items.Count-1 do begin
+       if assigned(Item.Items[Counter]) then begin
+        if Item.Items[Counter] is TVulkanXMLText then begin
+         ItemsText:=true;
+        end;
+       end;
+      end;
+      if TagWithSingleLineText then begin
+       Line:=Line+'>'+ConvertToEntities(TVulkanXMLText(Item.Items[0]).Text)+'</'+TVulkanXMLTag(Item).Name+'>';
+       WriteLine(Line);
+      end else if Item.Items.Count<>0 then begin
+       Line:=Line+'>';
+       if assigned(Item.Items[0]) and (Item.Items[0] is TVulkanXMLText) and not FormatIndentText then begin
+        WriteLineEx(Line);
+       end else begin
+        WriteLine(Line);
+       end;
+       for Counter:=0 to Item.Items.Count-1 do begin
+        Process(Item.Items[Counter],DoIndent and ((not ItemsText) or (FormatIndent and FormatIndentText)));
+       end;
+       Line:='';
+       if DoIndent and ((not ItemsText) or (FormatIndent and FormatIndentText)) then begin
+        for Counter:=1 to IdentLevel do begin
+         Line:=Line+' ';
+        end;
+       end;
+       Line:=Line+'</'+TVulkanXMLTag(Item).Name+'>';
+       WriteLine(Line);
+      end else begin
+       Line:=Line+'></'+TVulkanXMLTag(Item).Name+'>';
+       WriteLine(Line);
+      end;
+     end;
+    end else begin
+     for Counter:=0 to Item.Items.Count-1 do begin
+      Process(Item.Items[Counter],DoIndent);
+     end;
+    end;
+    dec(IdentLevel,IdentSize);
+   end;
+  end;
+ end;
+begin
+ IdentLevel:=-(2*IdentSize);
+ if Stream is TMemoryStream then begin
+  TMemoryStream(Stream).Clear;
+ end;
+ Errors:=false;
+ Process(Root,FormatIndent);
+ result:=not Errors;
+end;
+
+function TVulkanXML.ReadXMLText:TVulkanRawByteString;
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ Write(Stream);
+ if Stream.Size>0 then begin
+  SetLength(result,Stream.Size);
+  Stream.Seek(0,soFromBeginning);
+  Stream.Read(result[1],Stream.Size);
+ end else begin
+  result:='';
+ end;
+ Stream.Destroy;
+end;
+
+procedure TVulkanXML.WriteXMLText(Text:TVulkanRawByteString);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ if length(Text)>0 then begin
+  Stream.Write(Text[1],length(Text));
+  Stream.Seek(0,soFromBeginning);
+ end;
+ Parse(Stream);
+ Stream.Destroy;
 end;
 
 constructor TVulkanAllocationManager.Create;
@@ -22517,9 +24889,9 @@ const RGBE_DATA_RED=0;
      programtype,line:shortstring;
      gamma,exposure,r,g,b,a:TVkFloat;
      scanlinebuffer:array of array[0..3] of TVkUInt8;
-     c:ansichar;
+     c:TVulkanRawByteChar;
      OK:longbool;
-     buf:array[0..3] of ansichar;
+     buf:array[0..3] of TVulkanRawByteChar;
      rgbe:array[0..3] of TVkUInt8;
      Len,Val:TVkUInt8;
      p:PVkFloat;
@@ -22547,7 +24919,7 @@ const RGBE_DATA_RED=0;
       programtype[i]:=c;
      end;
     end;
-    programtype[0]:=ansichar(TVkUInt8(i));
+    programtype[0]:=TVulkanRawByteChar(TVkUInt8(i));
     while aStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
      if c in [#0,#10,#13] then begin
       break;
@@ -22568,7 +24940,7 @@ const RGBE_DATA_RED=0;
       line[i]:=c;
      end;
     end;
-    line[0]:=ansichar(TVkUInt8(i));
+    line[0]:=TVulkanRawByteChar(TVkUInt8(i));
     line:=trim(line);
     if line='FORMAT=32-bit_rle_rgbe' then begin
      OK:=true;
@@ -22606,7 +24978,7 @@ const RGBE_DATA_RED=0;
       line[i]:=c;
      end;
     end;
-    line[0]:=ansichar(TVkUInt8(i));
+    line[0]:=TVulkanRawByteChar(TVkUInt8(i));
     line:=trim(line);
     if (pos('-Y',line)=1) and (pos('+X',line)>2) then begin
      Delete(line,1,2);
@@ -22615,7 +24987,7 @@ const RGBE_DATA_RED=0;
      i:=0;
      while ((i+1)<=length(line)) and (line[i+1] in ['0'..'9']) do begin
       inc(i);
-      ImageWidth:=(ImageWidth*10)+(TVkUInt8(ansichar(line[i]))-TVkUInt8(ansichar('0')));
+      ImageWidth:=(ImageWidth*10)+(TVkUInt8(TVulkanRawByteChar(line[i]))-TVkUInt8(TVulkanRawByteChar('0')));
      end;
      Delete(line,1,i);
      line:=trim(line);
@@ -22626,7 +24998,7 @@ const RGBE_DATA_RED=0;
       i:=0;
       while ((i+1)<=length(line)) and (line[i+1] in ['0'..'9']) do begin
        inc(i);
-       ImageHeight:=(ImageHeight*10)+(TVkUInt8(ansichar(line[i]))-TVkUInt8(ansichar('0')));
+       ImageHeight:=(ImageHeight*10)+(TVkUInt8(TVulkanRawByteChar(line[i]))-TVkUInt8(TVulkanRawByteChar('0')));
       end;
       OK:=true;
      end;
@@ -23094,7 +25466,7 @@ begin
                 aTransferCommandBuffer,
                 aTransferFence,
                 aStream);
- end else if (FirstBytes[0]=byte(AnsiChar('B'))) and (FirstBytes[1]=byte(AnsiChar('M'))) then begin
+ end else if (FirstBytes[0]=TVkUInt8(AnsiChar('B'))) and (FirstBytes[1]=TVkUInt8(AnsiChar('M'))) then begin
   CreateFromBMP(aDevice,
                 aGraphicsQueue,
                 aGraphicsCommandBuffer,
@@ -23104,7 +25476,7 @@ begin
                 aTransferFence,
                 aStream,
                 aMipMaps);
- end else if (FirstBytes[0]=byte(AnsiChar('#'))) and (FirstBytes[1]=byte(AnsiChar('?'))) then begin
+ end else if (FirstBytes[0]=TVkUInt8(AnsiChar('#'))) and (FirstBytes[1]=TVkUInt8(AnsiChar('?'))) then begin
   CreateFromHDR(aDevice,
                 aGraphicsQueue,
                 aGraphicsCommandBuffer,
@@ -24358,7 +26730,7 @@ begin
     end;
    end;
   end;
- end else if (aDataSize>2) and (PFirstBytes(aDataPointer)^[0]=byte(AnsiChar('B'))) and (PFirstBytes(aDataPointer)^[1]=byte(AnsiChar('M'))) then begin
+ end else if (aDataSize>2) and (PFirstBytes(aDataPointer)^[0]=TVkUInt8(AnsiChar('B'))) and (PFirstBytes(aDataPointer)^[1]=TVkUInt8(AnsiChar('M'))) then begin
   result:=LoadBMPImage(aDataPointer,aDataSize,aImageData,aImageWidth,aImageHeight,false);
  end else if (aDataSize>2) and (((PFirstBytes(aDataPointer)^[0] xor $ff) or (PFirstBytes(aDataPointer)^[1] xor $d8))=0) then begin
   result:=LoadJPEGImage(aDataPointer,aDataSize,aImageData,aImageWidth,aImageHeight,false);
@@ -24367,36 +26739,74 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteAtlas.LoadXML(Texture:TVulkanSpriteTexture;Stream:TStream;DoFree:boolean=true);
-begin
-end;
-{var XML:TXML;
+function TVulkanSpriteAtlas.LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean;
+var XML:TVulkanXML;
     MemoryStream:TMemoryStream;
     i,j:TVkInt32;
-    XMLItem,XMLChildrenItem:TXMLItem;
-    XMLTag,XMLChildrenTag:TXMLTag;
+    XMLItem,XMLChildrenItem:TVulkanXMLItem;
+    XMLTag,XMLChildrenTag:TVulkanXMLTag;
     SpriteName:TVulkanRawByteString;
     Sprite:TVulkanSprite;
+    SpriteAtlasTexture:PVulkanSpriteAtlasTexture;
+    Texture:TVulkanSpriteTexture;
+    ImageData:TVkPointer;
+    ImageWidth,ImageHeight:TVkInt32;
 begin
- if assigned(Stream) then begin
+ result:=false;
+ if assigned(aStream) then begin
+  Texture:=nil;
+  MemoryStream:=TMemoryStream.Create;
   try
+   aStream.Seek(0,soBeginning);
+   MemoryStream.CopyFrom(aStream,aStream.Size);
+   MemoryStream.Seek(0,soBeginning);
+   ImageData:=nil;
+   try
+    if LoadImage(MemoryStream.Memory,MemoryStream.Size,ImageData,ImageWidth,ImageHeight) then begin
+     GetMem(SpriteAtlasTexture,SizeOf(TVulkanSpriteAtlasTexture));
+     FillChar(SpriteAtlasTexture^,SizeOf(TVulkanSpriteAtlasTexture),AnsiChar(#0));
+     SpriteAtlasTexture^.Width:=ImageWidth;
+     SpriteAtlasTexture^.Height:=ImageHeight;
+     SpriteAtlasTexture^.Data:=ImageData;
+     SpriteAtlasTexture^.Next:=fTextureList;
+     fTextureList:=SpriteAtlasTexture;
+     SpriteAtlasTexture^.Dirty:=true;
+     SpriteAtlasTexture^.RootNode:=NewTextureRectNode;
+     SpriteAtlasTexture^.RootNode^.x:=0;
+     SpriteAtlasTexture^.RootNode^.y:=0;
+     SpriteAtlasTexture^.RootNode^.Width:=SpriteAtlasTexture^.Width;
+     SpriteAtlasTexture^.RootNode^.Height:=SpriteAtlasTexture^.Height;
+     SpriteAtlasTexture^.RootNode^.FreeArea:=0;
+     SpriteAtlasTexture^.Texture:=TVulkanSpriteTexture.Create(SpriteAtlasTexture^.Data,SpriteAtlasTexture^.Width,SpriteAtlasTexture^.Height);
+     Texture:=SpriteAtlasTexture^.Texture;
+     ImageData:=nil;
+    end;
+   finally
+    if assigned(ImageData) then begin
+     FreeMem(ImageData);
+    end;
+   end;
+  finally
+   MemoryStream.Free;
+  end;
+  if assigned(Texture) then begin
    MemoryStream:=TMemoryStream.Create;
    try
-    Stream.Seek(0,soBeginning);
-    MemoryStream.CopyFrom(Stream,Stream.Size);
+    aStream.Seek(0,soBeginning);
+    MemoryStream.CopyFrom(aStream,aStream.Size);
     MemoryStream.Seek(0,soBeginning);
-    XML:=TXML.Create;
+    XML:=TVulkanXML.Create;
     try
      if XML.Parse(MemoryStream) then begin
       for i:=0 to XML.Root.Items.Count-1 do begin
        XMLItem:=XML.Root.Items[i];
-       if assigned(XMLItem) and (XMLItem is TXMLTag) then begin
-        XMLTag:=TXMLTag(XMLItem);
+       if assigned(XMLItem) and (XMLItem is TVulkanXMLTag) then begin
+        XMLTag:=TVulkanXMLTag(XMLItem);
         if XMLTag.Name='TextureAtlas' then begin
          for j:=0 to XMLTag.Items.Count-1 do begin
           XMLChildrenItem:=XMLTag.Items[j];
-          if assigned(XMLChildrenItem) and (XMLChildrenItem is TXMLTag) then begin
-           XMLChildrenTag:=TXMLTag(XMLChildrenItem);
+          if assigned(XMLChildrenItem) and (XMLChildrenItem is TVulkanXMLTag) then begin
+           XMLChildrenTag:=TVulkanXMLTag(XMLChildrenItem);
            if XMLChildrenTag.Name='sprite' then begin
             SpriteName:=XMLChildrenTag.GetParameter('n','');
             if length(SpriteName)>0 then begin
@@ -24427,13 +26837,10 @@ begin
    finally
     MemoryStream.Free;
    end;
-  finally
-   if DoFree then begin
-    Stream.Free;
-   end;
+   result:=true;
   end;
  end;
-end;}
+end;
 
 function TVulkanSpriteAtlas.LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32;DoFree:boolean=false):TVulkanSprite;
 type PVkUInt32=^TVkUInt32;
@@ -24905,54 +27312,6 @@ end;
 
 /////////////////////////////////////////// TrueTypeFont ///////////////////////////////////////////////
 
-const suDONOTKNOW=-1;
-      suNOUTF8=0;
-      suPOSSIBLEUTF8=1;
-      suISUTF8=2;
-
-      ucACCEPT=0;
-      ucERROR=16;
-
-      VulkanUTF8DFACharClasses:array[TVulkanRawByteChar] of byte=
-       (
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-        3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
-        3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
-        4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
-        5,5,5,5,5,5,5,5,6,6,6,6,7,7,8,8
-       );
-
-     VulkanUTF8DFATransitions:array[byte] of byte=
-      (
-       0,16,16,32,48,64,80,96,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,0,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,32,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,48,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,64,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,80,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16
-      );
-
 const PixelBits=8;
       PixelFactor=1 shl PixelBits;
       HalfPixel=PixelFactor shr 1;
@@ -25322,185 +27681,6 @@ begin
  result:=PVulkanTrueTypeFontKerningPair(a)^.Left-PVulkanTrueTypeFontKerningPair(b)^.Left;
  if result=0 then begin
   result:=PVulkanTrueTypeFontKerningPair(a)^.Right-PVulkanTrueTypeFontKerningPair(b)^.Right;
- end;
-end;
-
-function VulkanUTF32CharToUTF8At(CharValue:TVulkanUTF32Char;var s:TVulkanRawByteString;const Index:TVkInt32):TVkInt32;
-var Data:array[0..5] of TVulkanRawByteChar;
-    ResultLen:TVkInt32;
-begin
- if CharValue=0 then begin
-  result:=0;
- end else begin
-  if CharValue<=$7f then begin
-   Data[0]:=TVulkanRawByteChar(PVkUInt8(CharValue));
-   ResultLen:=1;
-  end else if CharValue<=$7ff then begin
-   Data[0]:=TVulkanRawByteChar(PVkUInt8($c0 or ((CharValue shr 6) and $1f)));
-   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
-   ResultLen:=2;
-  end else if CharValue<=$ffff then begin
-   Data[0]:=TVulkanRawByteChar(PVkUInt8($e0 or ((CharValue shr 12) and $0f)));
-   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
-   ResultLen:=3;
-  end else if CharValue<=$1fffff then begin
-   Data[0]:=TVulkanRawByteChar(PVkUInt8($f0 or ((CharValue shr 18) and $07)));
-   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[3]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
-   ResultLen:=4;
-  end else if CharValue<=$3ffffff then begin
-   Data[0]:=TVulkanRawByteChar(PVkUInt8($f8 or ((CharValue shr 24) and $03)));
-   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 18) and $3f)));
-   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[3]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[4]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
-   ResultLen:=5;
-  end else if CharValue<=$7fffffff then begin
-   Data[0]:=TVulkanRawByteChar(PVkUInt8($fc or ((CharValue shr 30) and $01)));
-   Data[1]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 24) and $3f)));
-   Data[2]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 18) and $3f)));
-   Data[3]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[4]:=TVulkanRawByteChar(PVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[5]:=TVulkanRawByteChar(PVkUInt8($80 or (CharValue and $3f)));
-   ResultLen:=6;
-  end else begin
-   Data[0]:=#$ef; // $fffd
-   Data[1]:=#$bf;
-   Data[2]:=#$bd;
-   ResultLen:=3;
-  end;
-  if (Index+ResultLen)>length(s) then begin
-   SetLength(s,Index+ResultLen);
-  end;
-  Move(Data[0],s[Index],ResultLen);
-  result:=ResultLen;
- end;
-end;
-
-function VulkanUTF8Validate(const s:TVulkanRawByteString):boolean;
-var CodeUnit:TVkInt32;
-    State:TVkUInt32;
-begin
- State:=ucACCEPT;
- for CodeUnit:=1 to length(s) do begin
-  State:=VulkanUTF8DFATransitions[State+VulkanUTF8DFACharClasses[s[CodeUnit]]];
-  if State=ucERROR then begin
-   result:=false;
-   exit;
-  end;
- end;
- result:=State=ucACCEPT;
-end;
-
-function VulkanUTF8Correct(const Str:TVulkanRawByteString):TVulkanRawByteString;
-var CodeUnit,Len,ResultLen:TVkInt32;
-    StartCodeUnit,Value,CharClass,State,CharValue:TVkUInt32;
-    Data:PVulkanRawByteChar;
-begin
- if (length(Str)=0) or VulkanUTF8Validate(Str) then begin
-  result:=Str;
- end else begin
-  result:='';
-  CodeUnit:=1;
-  Len:=length(Str);
-  SetLength(result,Len*6);
-  Data:=@result[1];
-  ResultLen:=0;
-  while CodeUnit<=Len do begin
-   StartCodeUnit:=CodeUnit;
-   State:=ucACCEPT;
-   CharValue:=0;
-   while CodeUnit<=Len do begin
-    Value:=TVkUInt8(TVulkanRawByteChar(Str[CodeUnit]));
-    inc(CodeUnit);
-    CharClass:=VulkanUTF8DFACharClasses[TVulkanRawByteChar(Value)];
-    if State=ucACCEPT then begin
-     CharValue:=Value and ($ff shr CharClass);
-    end else begin
-     CharValue:=(CharValue shl 6) or (Value and $3f);
-    end;
-    State:=VulkanUTF8DFATransitions[State+CharClass];
-    if State<=ucERROR then begin
-     break;
-    end;
-   end;
-   if State<>ucACCEPT then begin
-    CharValue:=TVkUInt8(TVulkanRawByteChar(Str[StartCodeUnit]));
-    CodeUnit:=StartCodeUnit+1;
-   end;
-   if CharValue<=$7f then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8(CharValue));
-    inc(ResultLen);
-   end else if CharValue<=$7ff then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($c0 or ((CharValue shr 6) and $1f)));
-    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,2);
-   end else if CharValue<=$ffff then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($e0 or ((CharValue shr 12) and $0f)));
-    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,3);
-   end else if CharValue<=$1fffff then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($f0 or ((CharValue shr 18) and $07)));
-    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+3]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,4);
-   end else if CharValue<=$3ffffff then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($f8 or ((CharValue shr 24) and $03)));
-    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 18) and $3f)));
-    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-    Data[ResultLen+3]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+4]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,5);
-   end else if CharValue<=$7fffffff then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($fc or ((CharValue shr 30) and $01)));
-    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 24) and $3f)));
-    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 18) and $3f)));
-    Data[ResultLen+3]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-    Data[ResultLen+4]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+5]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,6);
-   end else begin
-    Data[ResultLen]:=#$ef; // $fffd
-    Data[ResultLen+1]:=#$bf;
-    Data[ResultLen+2]:=#$bd;
-    inc(ResultLen,3);
-   end;
-  end;
-  SetLength(result,ResultLen);
- end;
-end;
-
-function VulkanUTF8CodeUnitGetCharAndIncFallback(const s:TVulkanRawByteString;var CodeUnit:TVkInt32):TVkUInt32;
-var Len:TVkInt32;
-    StartCodeUnit,Value,CharClass,State:TVkUInt32;
-begin
- result:=0;
- Len:=length(s);
- if (CodeUnit>0) and (CodeUnit<=Len) then begin
-  StartCodeUnit:=CodeUnit;
-  State:=ucACCEPT;
-  while CodeUnit<=Len do begin
-   Value:=TVkUInt8(TVulkanRawByteChar(s[CodeUnit]));
-   inc(CodeUnit);
-   CharClass:=VulkanUTF8DFACharClasses[TVulkanRawByteChar(Value)];
-   if State=ucACCEPT then begin
-    result:=Value and ($ff shr CharClass);
-   end else begin
-    result:=(result shl 6) or (Value and $3f);
-   end;
-   State:=VulkanUTF8DFATransitions[State+CharClass];
-   if State<=ucERROR then begin
-    break;
-   end;
-  end;
-  if State<>ucACCEPT then begin
-   result:=TVkUInt8(TVulkanRawByteChar(s[StartCodeUnit]));
-   CodeUnit:=StartCodeUnit+1;
-  end;
  end;
 end;
 
