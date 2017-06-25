@@ -27178,8 +27178,20 @@ const Offsets:array[0..0] of TVkDeviceSize=(0);
 var Index,OldState,NewState,DescriptorSetIndex:TVkInt32;
     QueueItem:PVulkanSpriteBatchQueueItem;
     VulkanVertexBuffer:TVulkanBuffer;
+    Viewport:TVkViewport;
+    Scissor:TVkRect2D;
 begin
  if fCountQueueItems>0 then begin
+  Viewport.x:=0.0;
+  Viewport.y:=0.0;
+  Viewport.width:=fWidth;
+  Viewport.height:=fheight;
+  Viewport.minDepth:=0.0;
+  Viewport.maxDepth:=1.0;
+  Scissor.offset.x:=0;
+  Scissor.offset.y:=0;
+  Scissor.extent.width:=fWidth;
+  Scissor.extent.height:=fHeight;
   OldState:=-1;
   DescriptorSetIndex:=-1;
   aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
@@ -27194,6 +27206,8 @@ begin
    if OldState<>NewState then begin
     OldState:=NewState;
     aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[NewState].Handle);
+    aVulkanCommandBuffer.CmdSetViewport(0,1,@Viewport);
+    aVulkanCommandBuffer.CmdSetScissor(0,1,@Scissor);
    end;
    aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
    aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
