@@ -3420,7 +3420,7 @@ type EVulkanException=class(Exception);
        procedure Draw(const Sprite:TVulkanSprite;const x,y:single); overload;
        procedure Draw(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single); overload;
        procedure DrawText(const Font:TVulkanSpriteFont;const Text:TVulkanRawByteString;x,y:single;const Color:TVulkanSpriteColor);
-       procedure ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer);
+       procedure ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aFrameBuffer:TVulkanFrameBuffer);
        property Device:TVulkanDevice read fDevice;
        property Width:TVkInt32 read fWidth write fWidth;
        property Height:TVkInt32 read fHeight write fHeight;
@@ -27173,46 +27173,102 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteBatch.ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer);
+procedure TVulkanSpriteBatch.ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aFrameBuffer:TVulkanFrameBuffer);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var Index,OldState,NewState,DescriptorSetIndex:TVkInt32;
     QueueItem:PVulkanSpriteBatchQueueItem;
     VulkanVertexBuffer:TVulkanBuffer;
     Viewport:TVkViewport;
-    Scissor:TVkRect2D;
+    Scissor,OldScissor:TVkRect2D;
 begin
  if fCountQueueItems>0 then begin
+
   Viewport.x:=0.0;
   Viewport.y:=0.0;
   Viewport.width:=fWidth;
   Viewport.height:=fheight;
   Viewport.minDepth:=0.0;
   Viewport.maxDepth:=1.0;
+
   Scissor.offset.x:=0;
   Scissor.offset.y:=0;
   Scissor.extent.width:=fWidth;
   Scissor.extent.height:=fHeight;
+
+  OldScissor.offset.x:=-$7fffffff;
+  OldScissor.offset.y:=-$7fffffff;
+  OldScissor.extent.width:=$7fffffff;
+  OldScissor.extent.height:=$7fffffff;
+
   OldState:=-1;
+
   DescriptorSetIndex:=-1;
-  aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-  for Index:=0 to fCountQueueItems-1 do begin
-   QueueItem:=@fQueueItems[Index];
-   VulkanVertexBuffer:=fVulkanVertexBuffers[QueueItem^.BufferIndex];
-   NewState:=(ord(QueueItem^.Blending) and 1) or ((ord(QueueItem^.AdditiveBlending) and 1) shl 1);
-   if DescriptorSetIndex<>QueueItem^.DescriptorSetIndex then begin
-    DescriptorSetIndex:=QueueItem^.DescriptorSetIndex;
-    aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorSetIndex].Handle,0,nil);
+
+  fVulkanRenderPass.BeginRenderPass(aVulkanCommandBuffer,
+                                    aFrameBuffer,
+                                    VK_SUBPASS_CONTENTS_INLINE,
+                                    0,
+                                    0,
+                                    fWidth,
+                                    fHeight);
+
+  try
+
+   aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+
+   for Index:=0 to fCountQueueItems-1 do begin
+
+    QueueItem:=@fQueueItems[Index];
+
+    VulkanVertexBuffer:=fVulkanVertexBuffers[QueueItem^.BufferIndex];
+
+    if DescriptorSetIndex<>QueueItem^.DescriptorSetIndex then begin
+
+     DescriptorSetIndex:=QueueItem^.DescriptorSetIndex;
+
+     aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorSetIndex].Handle,0,nil);
+
+    end;
+
+    NewState:=(ord(QueueItem^.Blending) and 1) or ((ord(QueueItem^.AdditiveBlending) and 1) shl 1);
+    if OldState<>NewState then begin
+
+     OldState:=NewState;
+
+     aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[NewState].Handle);
+     aVulkanCommandBuffer.CmdSetViewport(0,1,@Viewport);
+
+     OldScissor.offset.x:=-$7fffffff;
+     OldScissor.offset.y:=-$7fffffff;
+     OldScissor.extent.width:=$7fffffff;
+     OldScissor.extent.height:=$7fffffff;
+
+    end;
+
+    if (OldScissor.offset.x<>Scissor.offset.x) or
+       (OldScissor.offset.y<>Scissor.offset.y) or
+       (OldScissor.extent.width<>Scissor.extent.width) or
+       (OldScissor.extent.height<>Scissor.extent.height) then begin
+
+     OldScissor:=Scissor;
+
+     aVulkanCommandBuffer.CmdSetScissor(0,1,@Scissor);
+
+    end;
+
+    aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+    aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
+
    end;
-   if OldState<>NewState then begin
-    OldState:=NewState;
-    aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[NewState].Handle);
-    aVulkanCommandBuffer.CmdSetViewport(0,1,@Viewport);
-    aVulkanCommandBuffer.CmdSetScissor(0,1,@Scissor);
-   end;
-   aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
-   aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
+
+  finally
+
+   fVulkanRenderPass.EndRenderPass(aVulkanCommandBuffer);
+
   end;
+
   fCountQueueItems:=0;
+
  end;
 end;
 
