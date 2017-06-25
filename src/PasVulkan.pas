@@ -26339,11 +26339,10 @@ begin
   VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
-  VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVkFloat)*(2+3+4+4),VK_VERTEX_INPUT_RATE_VERTEX);
-  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,SizeOf(TVkFloat)*0);
-  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TVkFloat)*2);
-  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32A32_SFLOAT,SizeOf(TVkFloat)*(2+3));
-  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32G32B32A32_SFLOAT,SizeOf(TVkFloat)*(2+3+4));
+  VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVulkanSpriteBatchVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.Position)));
+  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.TextureCoord)));
+  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32A32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.Color)));
 
   VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
   VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
@@ -26374,6 +26373,7 @@ begin
   VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
   case Index of
    1:begin
+    // Normal alpha-blending
     VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
                                                                         VK_BLEND_FACTOR_SRC_ALPHA,
                                                                         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
@@ -26387,11 +26387,12 @@ begin
                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
    end;
    2:begin
+    // Source-Alpha-channel-controlled additive blending
     VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
-                                                                        VK_BLEND_FACTOR_ONE,
+                                                                        VK_BLEND_FACTOR_SRC_ALPHA,
                                                                         VK_BLEND_FACTOR_ONE,
                                                                         VK_BLEND_OP_ADD,
-                                                                        VK_BLEND_FACTOR_ONE,
+                                                                        VK_BLEND_FACTOR_SRC_ALPHA,
                                                                         VK_BLEND_FACTOR_ONE,
                                                                         VK_BLEND_OP_ADD,
                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
