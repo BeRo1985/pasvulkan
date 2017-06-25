@@ -696,6 +696,41 @@ type EVulkanException=class(Exception);
        property Values[const Key:TVulkanRawByteString]:TVulkanStringHashMapData read GetValue write SetValue; default;
      end;
 
+     TVulkanPointerHashMapData=TVkPointer;
+
+     PVulkanPointerHashMapEntity=^TVulkanPointerHashMapEntity;
+     TVulkanPointerHashMapEntity=record
+      Key:TVkPointer;
+      Value:TVulkanPointerHashMapData;
+     end;
+
+     TVulkanPointerHashMapEntities=array of TVulkanPointerHashMapEntity;
+
+     TVulkanPointerHashMapEntityIndices=array of TVkInt32;
+
+     TVulkanPointerHashMap=class
+      private
+       function FindCell(const Key:TVkPointer):TVkUInt32;
+       procedure Resize;
+      protected
+       function GetValue(const Key:TVkPointer):TVulkanPointerHashMapData;
+       procedure SetValue(const Key:TVkPointer;const Value:TVulkanPointerHashMapData);
+      public
+       RealSize:TVkInt32;
+       LogSize:TVkInt32;
+       Size:TVkInt32;
+       Entities:TVulkanPointerHashMapEntities;
+       EntityToCellIndex:TVulkanPointerHashMapEntityIndices;
+       CellToEntityIndex:TVulkanPointerHashMapEntityIndices;
+       constructor Create;
+       destructor Destroy; override;
+       procedure Clear;
+       function Add(const Key:TVkPointer;Value:TVulkanPointerHashMapData):PVulkanPointerHashMapEntity;
+       function Get(const Key:TVkPointer;CreateIfNotExist:boolean=false):PVulkanPointerHashMapEntity;
+       function Delete(const Key:TVkPointer):boolean;
+       property Values[const Key:TVkPointer]:TVulkanPointerHashMapData read GetValue write SetValue; default;
+     end;
+
      TVulkanXMLClass=class
       public
        Previous,Next:TVulkanXMLClass;
@@ -3299,6 +3334,22 @@ type EVulkanException=class(Exception);
 
      TVulkanSpriteBatchBuffers=array of TVulkanBuffer;
 
+     PVulkanSpriteBatchQueueItem=^TVulkanSpriteBatchQueueItem;
+     TVulkanSpriteBatchQueueItem=record
+      BufferIndex:TVkInt32;
+      DescriptorSetIndex:TVkInt32;
+      CountVertices:TVkInt32;
+      CountIndices:TVkInt32;
+      Blending:boolean;
+      AdditiveBlending:boolean;
+     end;
+
+     TVulkanSpriteBatchQueueItems=array of TVulkanSpriteBatchQueueItem;
+
+     TVulkanSpriteBatchDescriptorSets=array of TVulkanDescriptorSet;
+
+     TVulkanSpriteBatchGraphicsPipelines=array[0..2] of TVulkanGraphicsPipeline;
+
      TVulkanSpriteBatch=class
       private
        fDevice:TVulkanDevice;
@@ -3308,6 +3359,7 @@ type EVulkanException=class(Exception);
        fTransferQueue:TVulkanQueue;
        fTransferCommandBuffer:TVulkanCommandBuffer;
        fTransferFence:TVulkanFence;
+       fPipelineCache:TVulkanPipelineCache;
        fBlending:boolean;
        fAdditiveBlending:boolean;
        fLastTexture:TVulkanSpriteTexture;
@@ -3324,6 +3376,16 @@ type EVulkanException=class(Exception);
        fCountVulkanVertexBuffers:TVkInt32;
        fCurrentVulkanVertexBufferIndex:TVkInt32;
        fVulkanIndexBuffer:TVulkanBuffer;
+       fQueueItems:TVulkanSpriteBatchQueueItems;
+       fCountQueueItems:TVkInt32;
+       fVulkanDescriptorPool:TVulkanDescriptorPool;
+       fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
+       fVulkanDescriptorSets:TVulkanSpriteBatchDescriptorSets;
+       fCountVulkanDescriptorSets:TVkInt32;
+       fVulkanTextureDescriptorSetHashMap:TVulkanPointerHashMap;
+       fVulkanRenderPass:TVulkanRenderPass;
+       fVulkanPipelineLayout:TVulkanPipelineLayout;
+       fVulkanGraphicsPipelines:TVulkanSpriteBatchGraphicsPipelines;
        fWidth:TVkInt32;
        fHeight:TVkInt32;
        function RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:single):TVulkanSpritePoint;
@@ -3336,6 +3398,7 @@ type EVulkanException=class(Exception);
                           const aTransferQueue:TVulkanQueue;
                           const aTransferCommandBuffer:TVulkanCommandBuffer;
                           const aTransferFence:TVulkanFence;
+                          const aPipelineCache:TVulkanPipelineCache;
                           const aWidth:TVkInt32=1280;
                           const aHeight:TVkInt32=720); reintroduce;
        destructor Destroy; override;
@@ -3357,6 +3420,7 @@ type EVulkanException=class(Exception);
        procedure Draw(const Sprite:TVulkanSprite;const x,y:single); overload;
        procedure Draw(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single); overload;
        procedure DrawText(const Font:TVulkanSpriteFont;const Text:TVulkanRawByteString;x,y:single;const Color:TVulkanSpriteColor);
+       procedure ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer);
        property Device:TVulkanDevice read fDevice;
        property Width:TVkInt32 read fWidth write fWidth;
        property Height:TVkInt32 read fHeight write fHeight;
@@ -7283,7 +7347,7 @@ const m=TVkUInt32($57559429);
       n=TVkUInt32($5052acdb);
 var b:PVulkanRawByteChar;
     h,k,len:TVkUInt32;
-    p:{$ifdef fpc}qword{$else}int64{$endif};
+    p:TVkUInt64;
 begin
  len:=length(Str);
  h:=len;
@@ -7292,13 +7356,13 @@ begin
   b:=PVulkanRawByteChar(Str);
   while len>7 do begin
    begin
-    p:=TVkUInt32(TVkPointer(b)^)*{$ifdef fpc}qword{$else}int64{$endif}(n);
+    p:=TVkUInt32(TVkPointer(b)^)*TVkUInt64(n);
     h:=h xor TVkUInt32(p and $ffffffff);
     k:=k xor TVkUInt32(p shr 32);
     inc(b,4);
    end;
    begin
-    p:=TVkUInt32(TVkPointer(b)^)*{$ifdef fpc}qword{$else}int64{$endif}(m);
+    p:=TVkUInt32(TVkPointer(b)^)*TVkUInt64(m);
     k:=k xor TVkUInt32(p and $ffffffff);
     h:=h xor TVkUInt32(p shr 32);
     inc(b,4);
@@ -7306,7 +7370,7 @@ begin
    dec(len,8);
   end;
   if len>3 then begin
-   p:=TVkUInt32(TVkPointer(b)^)*{$ifdef fpc}qword{$else}int64{$endif}(n);
+   p:=TVkUInt32(TVkPointer(b)^)*TVkUInt64(n);
    h:=h xor TVkUInt32(p and $ffffffff);
    k:=k xor TVkUInt32(p shr 32);
    inc(b,4);
@@ -7323,13 +7387,13 @@ begin
    if len>0 then begin
     p:=p or (TVkUInt8(b^) shl 16);
    end;
-   p:=p*{$ifdef fpc}qword{$else}int64{$endif}(m);
+   p:=p*TVkUInt64(m);
    k:=k xor TVkUInt32(p and $ffffffff);
    h:=h xor TVkUInt32(p shr 32);
   end;
  end;
  begin
-  p:=(h xor (k+n))*{$ifdef fpc}qword{$else}int64{$endif}(n);
+  p:=(h xor (k+n))*TVkUInt64(n);
   h:=h xor TVkUInt32(p and $ffffffff);
   k:=k xor TVkUInt32(p shr 32);
  end;
@@ -7337,6 +7401,29 @@ begin
  if result=0 then begin
   result:=$ffffffff;
  end;
+end;
+{$endif}
+
+function HashPointer(p:TVkPointer):TVkUInt32; {$ifdef caninline}inline;{$endif}
+{$ifdef cpu64}
+var r:TVkPtrUInt;
+begin
+ r:=TVkPtrUInt(p);
+ r:=(not r)+(r shl 18); // r:=((r shl 18)-r-)1;
+ r:=r xor (r shr 31);
+ r:=r*21; // r:=(r+(r shl 2))+(r shl 4);
+ r:=r xor (r shr 11);
+ r:=r+(r shl 6);
+ result:=TVkUInt32(TVkPtrUInt(r xor (r shr 22)));
+end;
+{$else}
+begin
+ result:=TVkPtrUInt(p);
+ result:=(not result)+(result shl 15);
+ result:=result xor (result shr 15);
+ inc(result,result shl 2);
+ result:=(result xor (result shr 4))*2057;
+ result:=result xor (result shr 16);
 end;
 {$endif}
 
@@ -12549,6 +12636,184 @@ begin
 end;
 
 procedure TVulkanStringHashMap.SetValue(const Key:TVulkanRawByteString;const Value:TVulkanStringHashMapData);
+begin
+ Add(Key,Value);
+end;
+
+constructor TVulkanPointerHashMap.Create;
+begin
+ inherited Create;
+ RealSize:=0;
+ LogSize:=0;
+ Size:=0;
+ Entities:=nil;
+ EntityToCellIndex:=nil;
+ CellToEntityIndex:=nil;
+ Resize;
+end;
+
+destructor TVulkanPointerHashMap.Destroy;
+var Counter:TVkInt32;
+begin
+ Clear;
+ SetLength(Entities,0);
+ SetLength(EntityToCellIndex,0);
+ SetLength(CellToEntityIndex,0);
+ inherited Destroy;
+end;
+
+procedure TVulkanPointerHashMap.Clear;
+var Counter:TVkInt32;
+begin
+ RealSize:=0;
+ LogSize:=0;
+ Size:=0;
+ SetLength(Entities,0);
+ SetLength(EntityToCellIndex,0);
+ SetLength(CellToEntityIndex,0);
+ Resize;
+end;
+
+function TVulkanPointerHashMap.FindCell(const Key:TVkPointer):TVkUInt32;
+var HashCode,Mask,Step:TVkUInt32;
+    Entity:TVkInt32;
+begin
+ HashCode:=HashPointer(Key);
+ Mask:=(2 shl LogSize)-1;
+ Step:=((HashCode shl 1)+1) and Mask;
+ if LogSize<>0 then begin
+  result:=HashCode shr (32-LogSize);
+ end else begin
+  result:=0;
+ end;
+ repeat
+  Entity:=CellToEntityIndex[result];
+  if (Entity=ENT_EMPTY) or ((Entity<>ENT_DELETED) and (Entities[Entity].Key=Key)) then begin
+   exit;
+  end;
+  result:=(result+Step) and Mask;
+ until false;
+end;
+
+procedure TVulkanPointerHashMap.Resize;
+var NewLogSize,NewSize,Cell,Entity,Counter:TVkInt32;
+    OldEntities:TVulkanPointerHashMapEntities;
+    OldCellToEntityIndex:TVulkanPointerHashMapEntityIndices;
+    OldEntityToCellIndex:TVulkanPointerHashMapEntityIndices;
+begin
+ NewLogSize:=0;
+ NewSize:=RealSize;
+ while NewSize<>0 do begin
+  NewSize:=NewSize shr 1;
+  inc(NewLogSize);
+ end;
+ if NewLogSize<1 then begin
+  NewLogSize:=1;
+ end;
+ Size:=0;
+ RealSize:=0;
+ LogSize:=NewLogSize;
+ OldEntities:=Entities;
+ OldCellToEntityIndex:=CellToEntityIndex;
+ OldEntityToCellIndex:=EntityToCellIndex;
+ Entities:=nil;
+ CellToEntityIndex:=nil;
+ EntityToCellIndex:=nil;
+ SetLength(Entities,2 shl LogSize);
+ SetLength(CellToEntityIndex,2 shl LogSize);
+ SetLength(EntityToCellIndex,2 shl LogSize);
+ for Counter:=0 to length(CellToEntityIndex)-1 do begin
+  CellToEntityIndex[Counter]:=ENT_EMPTY;
+ end;
+ for Counter:=0 to length(EntityToCellIndex)-1 do begin
+  EntityToCellIndex[Counter]:=CELL_EMPTY;
+ end;
+ for Counter:=0 to length(OldEntityToCellIndex)-1 do begin
+  Cell:=OldEntityToCellIndex[Counter];
+  if Cell>=0 then begin
+   Entity:=OldCellToEntityIndex[Cell];
+   if Entity>=0 then begin
+    Add(OldEntities[Counter].Key,OldEntities[Counter].Value);
+   end;
+  end;
+ end;
+ SetLength(OldEntities,0);
+ SetLength(OldCellToEntityIndex,0);
+ SetLength(OldEntityToCellIndex,0);
+end;
+
+function TVulkanPointerHashMap.Add(const Key:TVkPointer;Value:TVulkanPointerHashMapData):PVulkanPointerHashMapEntity;
+var Entity:TVkInt32;
+    Cell:TVkUInt32;
+begin
+ result:=nil;
+ while RealSize>=(1 shl LogSize) do begin
+  Resize;
+ end;
+ Cell:=FindCell(Key);
+ Entity:=CellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=@Entities[Entity];
+  result^.Key:=Key;
+  result^.Value:=Value;
+  exit;
+ end;
+ Entity:=Size;
+ inc(Size);
+ if Entity<(2 shl LogSize) then begin
+  CellToEntityIndex[Cell]:=Entity;
+  EntityToCellIndex[Entity]:=Cell;
+  inc(RealSize);
+  result:=@Entities[Entity];
+  result^.Key:=Key;
+  result^.Value:=Value;
+ end;
+end;
+
+function TVulkanPointerHashMap.Get(const Key:TVkPointer;CreateIfNotExist:boolean=false):PVulkanPointerHashMapEntity;
+var Entity:TVkInt32;
+    Cell:TVkUInt32;
+begin
+ result:=nil;
+ Cell:=FindCell(Key);
+ Entity:=CellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=@Entities[Entity];
+ end else if CreateIfNotExist then begin
+  result:=Add(Key,nil);
+ end;
+end;
+
+function TVulkanPointerHashMap.Delete(const Key:TVkPointer):boolean;
+var Entity:TVkInt32;
+    Cell:TVkUInt32;
+begin
+ result:=false;
+ Cell:=FindCell(Key);
+ Entity:=CellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  Entities[Entity].Key:=nil;
+  Entities[Entity].Value:=nil;
+  EntityToCellIndex[Entity]:=CELL_DELETED;
+  CellToEntityIndex[Cell]:=ENT_DELETED;
+  result:=true;
+ end;
+end;
+
+function TVulkanPointerHashMap.GetValue(const Key:TVkPointer):TVulkanPointerHashMapData;
+var Entity:TVkInt32;
+    Cell:TVkUInt32;
+begin
+ Cell:=FindCell(Key);
+ Entity:=CellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=Entities[Entity].Value;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TVulkanPointerHashMap.SetValue(const Key:TVkPointer;const Value:TVulkanPointerHashMapData);
 begin
  Add(Key,Value);
 end;
@@ -25950,10 +26215,12 @@ constructor TVulkanSpriteBatch.Create(const aDevice:TVulkanDevice;
                                       const aTransferQueue:TVulkanQueue;
                                       const aTransferCommandBuffer:TVulkanCommandBuffer;
                                       const aTransferFence:TVulkanFence;
+                                      const aPipelineCache:TVulkanPipelineCache;
                                       const aWidth:TVkInt32=1280;
                                       const aHeight:TVkInt32=720);
 var Index:TVkInt32;
     Indices:array of TVkUInt32;
+    VulkanGraphicsPipeline:TVulkanGraphicsPipeline;
 begin
  inherited Create;
 
@@ -25966,6 +26233,8 @@ begin
  fTransferQueue:=aTransferQueue;
  fTransferCommandBuffer:=aTransferCommandBuffer;
  fTransferFence:=aTransferFence;
+
+ fPipelineCache:=aPipelineCache;
 
  fLastTexture:=nil;
 
@@ -26014,7 +26283,7 @@ begin
                                 0,
                                 fIndexBufferUsed*SizeOf(TVkUInt32),
                                 vbutsbmYes);
-                                
+
  finally
   Indices:=nil;
  end;
@@ -26022,6 +26291,142 @@ begin
  fVulkanVertexBuffers:=nil;
  fCountVulkanVertexBuffers:=0;
  fCurrentVulkanVertexBufferIndex:=0;
+
+ fQueueItems:=nil;
+ fCountQueueItems:=0;
+
+ fVulkanDescriptorPool:=TVulkanDescriptorPool.Create(fDevice,
+                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                     2);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
+ fVulkanDescriptorPool.Initialize;
+
+ fVulkanDescriptorSetLayout:=TVulkanDescriptorSetLayout.Create(fDevice);
+ fVulkanDescriptorSetLayout.AddBinding(0,
+                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.Initialize;
+
+ fVulkanDescriptorSets:=nil;
+ fCountVulkanDescriptorSets:=0;
+
+ fVulkanTextureDescriptorSetHashMap:=TVulkanPointerHashMap.Create;
+
+ fVulkanPipelineLayout:=TVulkanPipelineLayout.Create(fDevice);
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
+
+ fVulkanRenderPass:=nil;
+
+ for Index:=Low(fVulkanGraphicsPipelines) to High(fVulkanGraphicsPipelines) do begin
+  VulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(fDevice,
+                                                         fPipelineCache,
+                                                         0,
+                                                         [],
+                                                         fVulkanPipelineLayout,
+                                                         fVulkanRenderPass,
+                                                         0,
+                                                         nil,
+                                                         0);
+  fVulkanGraphicsPipelines[Index]:=VulkanGraphicsPipeline;
+
+  // TODO
+{ VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleVertex);
+  VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleFragment);}
+
+  VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+  VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVkFloat)*(2+3+4+4),VK_VERTEX_INPUT_RATE_VERTEX);
+  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,SizeOf(TVkFloat)*0);
+  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TVkFloat)*2);
+  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32A32_SFLOAT,SizeOf(TVkFloat)*(2+3));
+  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32G32B32A32_SFLOAT,SizeOf(TVkFloat)*(2+3+4));
+
+  VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
+  VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
+
+  VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
+  VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+  VulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+  VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+  VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
+  VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+  VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+  VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+  VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+  VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+
+  VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+  VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+  VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+  VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+  VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+  VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+  VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
+  VulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+  VulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+  VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+  VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+  VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+  case Index of
+   1:begin
+    VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                                        VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                        VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                        VK_BLEND_OP_ADD,
+                                                                        VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                        VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                        VK_BLEND_OP_ADD,
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+   end;
+   2:begin
+    VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                                        VK_BLEND_FACTOR_ONE,
+                                                                        VK_BLEND_FACTOR_ONE,
+                                                                        VK_BLEND_OP_ADD,
+                                                                        VK_BLEND_FACTOR_ONE,
+                                                                        VK_BLEND_FACTOR_ONE,
+                                                                        VK_BLEND_OP_ADD,
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+   end;
+   else begin
+    VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                         VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                         VK_BLEND_OP_ADD,
+                                                                         VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                         VK_BLEND_OP_ADD,
+                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+   end;
+  end;
+  VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=false;
+  VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
+  VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
+  VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+  VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
+
+  VulkanGraphicsPipeline.DynamicState.AddDynamicStates([VK_DYNAMIC_STATE_VIEWPORT,
+                                                        VK_DYNAMIC_STATE_SCISSOR]);
+
+  VulkanGraphicsPipeline.Initialize;
+
+  VulkanGraphicsPipeline.FreeMemory;
+
+ end;
 
  fWidth:=AWidth;
  fHeight:=AHeight;
@@ -26031,12 +26436,43 @@ end;
 destructor TVulkanSpriteBatch.Destroy;
 var Index:TVkInt32;
 begin
+
  for Index:=0 to fCountVulkanVertexBuffers-1 do begin
   FreeAndNil(fVulkanVertexBuffers[Index]);
  end;
+
  FreeAndNil(fVulkanIndexBuffer);
+
+ for Index:=Low(fVulkanGraphicsPipelines) to High(fVulkanGraphicsPipelines) do begin
+  FreeAndNil(fVulkanGraphicsPipelines[Index]);
+ end;
+
+ FreeAndNil(fVulkanPipelineLayout);
+
+ FreeAndNil(fVulkanRenderPass);
+
+ for Index:=0 to fCountVulkanVertexBuffers-1 do begin
+  FreeAndNil(fVulkanVertexBuffers[Index]);
+ end;
+
+ for Index:=0 to fCountVulkanDescriptorSets-1 do begin
+  FreeAndNil(fVulkanDescriptorSets[Index]);
+ end;
+
+ fVulkanDescriptorSets:=nil;
+
+ FreeAndNil(fVulkanDescriptorSetLayout);
+
+ FreeAndNil(fVulkanDescriptorPool);
+
+ FreeAndNil(fVulkanTextureDescriptorSetHashMap);
+
  fVulkanVertexBuffers:=nil;
+
  fClientVertex:=nil;
+
+ fQueueItems:=nil;
+
  inherited Destroy;
 end;
 
@@ -26064,8 +26500,8 @@ begin
 end;
 
 procedure TVulkanSpriteBatch.Start;
-var Vertex:TVulkanSpriteBatchVertex;
 begin
+
  fLastTexture:=nil;
 
  fVertexBufferUsed:=0;
@@ -26081,8 +26517,11 @@ begin
 end;
 
 procedure TVulkanSpriteBatch.Flush;
-var CurrentVulkanVertexBufferIndex,OldCount,NewCount:TVkInt32;
+var CurrentVulkanVertexBufferIndex,OldCount,NewCount,QueueItemIndex,DescriptorSetIndex:TVkInt32;
     VulkanVertexBuffer:TVulkanBuffer;
+    QueueItem:PVulkanSpriteBatchQueueItem;
+    PointerHashMapEntity:PVulkanPointerHashMapEntity;
+    VulkanDescriptorSet:TVulkanDescriptorSet;
 begin
  if fVertexBufferUsed>0 then begin
 
@@ -26123,9 +26562,43 @@ begin
                                  vbutsbmNo);              
   end;
 
-  if fBlending then begin
+  PointerHashMapEntity:=fVulkanTextureDescriptorSetHashMap.Get(fLastTexture,false);
+  if assigned(PointerHashMapEntity) then begin
+   DescriptorSetIndex:=TVkPtrUInt(PointerHashMapEntity^.Value);
   end else begin
+   DescriptorSetIndex:=fCountVulkanDescriptorSets;
+   inc(fCountVulkanDescriptorSets);
+   if length(fVulkanDescriptorSets)<fCountVulkanDescriptorSets then begin
+    SetLength(fVulkanDescriptorSets,fCountVulkanDescriptorSets*2);
+   end;
+   VulkanDescriptorSet:=TVulkanDescriptorSet.Create(fVulkanDescriptorPool,
+                                                    fVulkanDescriptorSetLayout);
+   VulkanDescriptorSet.WriteToDescriptorSet(0,
+                                            0,
+                                            1,
+                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                            [fLastTexture.fTexture.DescriptorImageInfo],
+                                            [],
+                                            [],
+                                            false
+                                           );
+   VulkanDescriptorSet.Flush;
+   fVulkanDescriptorSets[DescriptorSetIndex]:=VulkanDescriptorSet;
+   fVulkanTextureDescriptorSetHashMap.Add(fLastTexture,TVkPointer(TVkPtrUInt(VulkanDescriptorSet)));
   end;
+
+  QueueItemIndex:=fCountQueueItems;
+  inc(fCountQueueItems);
+  if length(fQueueItems)<fCountQueueItems then begin
+   SetLength(fQueueItems,fCountQueueItems*2);
+  end;                          
+  QueueItem:=@fQueueItems[QueueItemIndex];
+  QueueItem^.BufferIndex:=CurrentVulkanVertexBufferIndex;
+  QueueItem^.DescriptorSetIndex:=DescriptorSetIndex;
+  QueueItem^.CountVertices:=fVertexBufferUsed;
+  QueueItem^.CountIndices:=fIndexBufferUsed;
+  QueueItem^.Blending:=fBlending;
+  QueueItem^.AdditiveBlending:=fAdditiveBlending;
 
   fVertexBufferUsed:=0;
   fIndexBufferUsed:=0;
@@ -26697,6 +27170,35 @@ begin
    dec(Node^.FreeArea,Area);
    result:=Node;
   end;
+ end;
+end;
+
+procedure TVulkanSpriteBatch.ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer);
+const Offsets:array[0..0] of TVkDeviceSize=(0);
+var Index,OldState,NewState,DescriptorSetIndex:TVkInt32;
+    QueueItem:PVulkanSpriteBatchQueueItem;
+    VulkanVertexBuffer:TVulkanBuffer;
+begin
+ if fCountQueueItems>0 then begin
+  OldState:=-1;
+  DescriptorSetIndex:=-1;
+  aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+  for Index:=0 to fCountQueueItems-1 do begin
+   QueueItem:=@fQueueItems[Index];
+   VulkanVertexBuffer:=fVulkanVertexBuffers[QueueItem^.BufferIndex];
+   NewState:=(ord(QueueItem^.Blending) and 1) or ((ord(QueueItem^.AdditiveBlending) and 1) shl 1);
+   if DescriptorSetIndex<>QueueItem^.DescriptorSetIndex then begin
+    DescriptorSetIndex:=QueueItem^.DescriptorSetIndex;
+    aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorSetIndex].Handle,0,nil);
+   end;
+   if OldState<>NewState then begin
+    OldState:=NewState;
+    aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[NewState].Handle);
+   end;
+   aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+   aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
+  end;
+  fCountQueueItems:=0;
  end;
 end;
 
