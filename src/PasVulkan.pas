@@ -1326,6 +1326,16 @@ type EVulkanException=class(Exception);
        property OwnsResource:boolean read fOwnsResource write fOwnsResource;
      end;
 
+     PVulkanDeviceMemoryAllocationType=^TVulkanDeviceMemoryAllocationType;
+     TVulkanDeviceMemoryAllocationType=
+      (
+       vdmatFree,
+       vdmatUnknown,
+       vdmatBuffer,
+       vdmatImageLinear,
+       vdmatImageOptimal
+      );
+
      PVulkanDeviceMemoryChunkFlag=^TVulkanDeviceMemoryChunkFlag;
      TVulkanDeviceMemoryChunkFlag=
       (
