@@ -26645,7 +26645,7 @@ begin
                                            );
    VulkanDescriptorSet.Flush;
    fVulkanDescriptorSets[DescriptorSetIndex]:=VulkanDescriptorSet;
-   fVulkanTextureDescriptorSetHashMap.Add(fLastTexture,TVkPointer(TVkPtrUInt(VulkanDescriptorSet)));
+   fVulkanTextureDescriptorSetHashMap.Add(fLastTexture,TVkPointer(TVkPtrUInt(DescriptorSetIndex)));
   end;
 
   QueueItemIndex:=fCurrentFillSpriteBatchBuffer^.fCountQueueItems;

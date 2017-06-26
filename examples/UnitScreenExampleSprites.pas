@@ -24,6 +24,7 @@ type TScreenExampleSprites=class(TVulkanApplicationScreen)
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
        fVulkanSpriteAtlas:TVulkanSpriteAtlas;
        fVulkanSpriteBatch:TVulkanSpriteBatch;
+       fVulkanSpriteTest:TVulkanSprite;
        fReady:boolean;
        fSelectedIndex:TVkInt32;
        fStartY:single;
@@ -124,7 +125,7 @@ begin
  GetMem(RawSprite,160*90*4);
  try
   FillChar(RawSprite^,160*90*4,#$ff);
-  fVulkanSpriteAtlas.LoadRawSprite('test',RawSprite,160,90);
+  fVulkanSpriteTest:=fVulkanSpriteAtlas.LoadRawSprite('test',RawSprite,160,90);
  finally
   FreeMem(RawSprite);
  end;
@@ -404,6 +405,7 @@ begin
  inherited Update(aDeltaTime);
 
  fVulkanSpriteBatch.Start(VulkanApplication.UpdateFrameCounter and 1);
+ fVulkanSpriteBatch.Draw(fVulkanSpriteTest,60.0,60.0);
  fVulkanSpriteBatch.Stop;
 
  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Sprites');
