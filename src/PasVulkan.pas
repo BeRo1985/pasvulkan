@@ -3360,6 +3360,10 @@ type EVulkanException=class(Exception);
        fTransferCommandBuffer:TVulkanCommandBuffer;
        fTransferFence:TVulkanFence;
        fPipelineCache:TVulkanPipelineCache;
+       fSpriteBatchVertexShaderModule:TVulkanShaderModule;
+       fSpriteBatchFragmentShaderModule:TVulkanShaderModule;
+       fVulkanPipelineShaderStageTriangleVertex:TVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageTriangleFragment:TVulkanPipelineShaderStage;
        fBlending:boolean;
        fAdditiveBlending:boolean;
        fLastTexture:TVulkanSpriteTexture;
@@ -4462,6 +4466,8 @@ const suDONOTKNOW=-1;
       GL_DEPTH24_STENCIL8=$88f0; // same as GL_DEPTH24_STENCIL8_EXT and GL_DEPTH24_STENCIL8_OES
       GL_DEPTH32F_STENCIL8=$8cad; // same as GL_DEPTH32F_STENCIL8_ARB
       GL_DEPTH32F_STENCIL8_NV=$8dac; // Note that this different from GL_DEPTH32F_STENCIL8.
+
+{$i PasVulkanAssets.inc}
 
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TVkUInt32;
@@ -26221,6 +26227,7 @@ constructor TVulkanSpriteBatch.Create(const aDevice:TVulkanDevice;
 var Index:TVkInt32;
     Indices:array of TVkUInt32;
     VulkanGraphicsPipeline:TVulkanGraphicsPipeline;
+    Stream:TStream;
 begin
  inherited Create;
 
@@ -26332,9 +26339,26 @@ begin
                                                          0);
   fVulkanGraphicsPipelines[Index]:=VulkanGraphicsPipeline;
 
-  // TODO
-{ VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleVertex);
-  VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleFragment);}
+  Stream:=TVulkanDataStream.Create(@SpriteBatchVertexSPIRVData,SpriteBatchVertexSPIRVDataSize);
+  try
+   fSpriteBatchVertexShaderModule:=TVulkanShaderModule.Create(fDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  Stream:=TVulkanDataStream.Create(@SpriteBatchFragmentSPIRVData,SpriteBatchFragmentSPIRVDataSize);
+  try
+   fSpriteBatchFragmentShaderModule:=TVulkanShaderModule.Create(fDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  fVulkanPipelineShaderStageTriangleVertex:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fSpriteBatchVertexShaderModule,'main');
+
+  fVulkanPipelineShaderStageTriangleFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fSpriteBatchFragmentShaderModule,'main');
+
+  VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleVertex);
+  VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleFragment);
 
   VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
@@ -26467,6 +26491,14 @@ begin
  FreeAndNil(fVulkanDescriptorPool);
 
  FreeAndNil(fVulkanTextureDescriptorSetHashMap);
+
+ FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
+
+ FreeAndNil(fVulkanPipelineShaderStageTriangleFragment);
+
+ FreeAndNil(fSpriteBatchVertexShaderModule);
+
+ FreeAndNil(fSpriteBatchFragmentShaderModule);
 
  fVulkanVertexBuffers:=nil;
 
