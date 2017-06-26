@@ -104,9 +104,8 @@ end;
 
 procedure TScreenExampleSprites.Show;
 var Stream:TStream;
-    Index:TVkInt32;
+    Index,x,y:TVkInt32;
     RawSprite:pointer;
-
 begin
  inherited Show;
 
@@ -122,10 +121,19 @@ begin
 
  fVulkanSpriteAtlas:=TVulkanSpriteAtlas.Create(VulkanApplication.VulkanDevice);
 
- GetMem(RawSprite,160*90*4);
+ GetMem(RawSprite,256*256*4);
  try
-  FillChar(RawSprite^,160*90*4,#$ff);
-  fVulkanSpriteTest:=fVulkanSpriteAtlas.LoadRawSprite('test',RawSprite,160,90);
+  FillChar(RawSprite^,256*256*4,#$ff);
+  Index:=0;
+  for y:=0 to 255 do begin
+   for x:=0 to 255 do begin
+    TVKUInt8(PVulkanRawByteChar(RawSprite)[Index+0]):=x;
+    TVKUInt8(PVulkanRawByteChar(RawSprite)[Index+1]):=y;
+    TVKUInt8(PVulkanRawByteChar(RawSprite)[Index+2]):=(x*y) shr 8;
+    inc(Index,4);
+   end;
+  end;
+  fVulkanSpriteTest:=fVulkanSpriteAtlas.LoadRawSprite('test',RawSprite,256,256);
  finally
   FreeMem(RawSprite);
  end;
