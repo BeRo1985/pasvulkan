@@ -29,13 +29,15 @@ uses
   UnitExampleVulkanApplication in 'UnitExampleVulkanApplication.pas',
   UnitTextOverlay in 'UnitTextOverlay.pas',
   UnitModel in 'UnitModel.pas',
+  UnitSDFFont in 'UnitSDFFont.pas',
   UnitScreenBlank in 'UnitScreenBlank.pas',
   UnitScreenMainMenu in 'UnitScreenMainMenu.pas',
   UnitScreenExit in 'UnitScreenExit.pas',
+  UnitScreenExampleEmpty in 'UnitScreenExampleEmpty.pas',
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas',
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
   UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
-  UnitSDFFont in 'UnitSDFFont.pas';
+  UnitScreenExampleSprites in 'UnitScreenExampleSprites.pas';
 
 {$if defined(fpc) and defined(android)}
 function DumpExceptionCallStack(e:Exception):string;

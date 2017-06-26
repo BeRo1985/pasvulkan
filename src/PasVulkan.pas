@@ -3403,6 +3403,7 @@ type EVulkanException=class(Exception);
                           const aTransferCommandBuffer:TVulkanCommandBuffer;
                           const aTransferFence:TVulkanFence;
                           const aPipelineCache:TVulkanPipelineCache;
+                          const aRenderPass:TVulkanRenderPass;
                           const aWidth:TVkInt32=1280;
                           const aHeight:TVkInt32=720); reintroduce;
        destructor Destroy; override;
@@ -26222,6 +26223,7 @@ constructor TVulkanSpriteBatch.Create(const aDevice:TVulkanDevice;
                                       const aTransferCommandBuffer:TVulkanCommandBuffer;
                                       const aTransferFence:TVulkanFence;
                                       const aPipelineCache:TVulkanPipelineCache;
+                                      const aRenderPass:TVulkanRenderPass;
                                       const aWidth:TVkInt32=1280;
                                       const aHeight:TVkInt32=720);
 var Index:TVkInt32;
@@ -26324,10 +26326,30 @@ begin
 
  fVulkanPipelineLayout:=TVulkanPipelineLayout.Create(fDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.Initialize;
 
- fVulkanRenderPass:=nil;
+ fVulkanRenderPass:=aRenderPass;
+
+ Stream:=TVulkanDataStream.Create(@SpriteBatchVertexSPIRVData,SpriteBatchVertexSPIRVDataSize);
+ try
+  fSpriteBatchVertexShaderModule:=TVulkanShaderModule.Create(fDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=TVulkanDataStream.Create(@SpriteBatchFragmentSPIRVData,SpriteBatchFragmentSPIRVDataSize);
+ try
+  fSpriteBatchFragmentShaderModule:=TVulkanShaderModule.Create(fDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ fVulkanPipelineShaderStageTriangleVertex:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fSpriteBatchVertexShaderModule,'main');
+
+ fVulkanPipelineShaderStageTriangleFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fSpriteBatchFragmentShaderModule,'main');
 
  for Index:=Low(fVulkanGraphicsPipelines) to High(fVulkanGraphicsPipelines) do begin
+
   VulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(fDevice,
                                                          fPipelineCache,
                                                          0,
@@ -26338,24 +26360,6 @@ begin
                                                          nil,
                                                          0);
   fVulkanGraphicsPipelines[Index]:=VulkanGraphicsPipeline;
-
-  Stream:=TVulkanDataStream.Create(@SpriteBatchVertexSPIRVData,SpriteBatchVertexSPIRVDataSize);
-  try
-   fSpriteBatchVertexShaderModule:=TVulkanShaderModule.Create(fDevice,Stream);
-  finally
-   Stream.Free;
-  end;
-
-  Stream:=TVulkanDataStream.Create(@SpriteBatchFragmentSPIRVData,SpriteBatchFragmentSPIRVDataSize);
-  try
-   fSpriteBatchFragmentShaderModule:=TVulkanShaderModule.Create(fDevice,Stream);
-  finally
-   Stream.Free;
-  end;
-
-  fVulkanPipelineShaderStageTriangleVertex:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fSpriteBatchVertexShaderModule,'main');
-
-  fVulkanPipelineShaderStageTriangleFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fSpriteBatchFragmentShaderModule,'main');
 
   VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleVertex);
   VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleFragment);
@@ -26462,23 +26466,13 @@ destructor TVulkanSpriteBatch.Destroy;
 var Index:TVkInt32;
 begin
 
- for Index:=0 to fCountVulkanVertexBuffers-1 do begin
-  FreeAndNil(fVulkanVertexBuffers[Index]);
- end;
-
- FreeAndNil(fVulkanIndexBuffer);
-
  for Index:=Low(fVulkanGraphicsPipelines) to High(fVulkanGraphicsPipelines) do begin
   FreeAndNil(fVulkanGraphicsPipelines[Index]);
  end;
 
  FreeAndNil(fVulkanPipelineLayout);
 
- FreeAndNil(fVulkanRenderPass);
-
- for Index:=0 to fCountVulkanVertexBuffers-1 do begin
-  FreeAndNil(fVulkanVertexBuffers[Index]);
- end;
+//FreeAndNil(fVulkanRenderPass);
 
  for Index:=0 to fCountVulkanDescriptorSets-1 do begin
   FreeAndNil(fVulkanDescriptorSets[Index]);
@@ -26499,6 +26493,12 @@ begin
  FreeAndNil(fSpriteBatchVertexShaderModule);
 
  FreeAndNil(fSpriteBatchFragmentShaderModule);
+
+ for Index:=0 to fCountVulkanVertexBuffers-1 do begin
+  FreeAndNil(fVulkanVertexBuffers[Index]);
+ end;
+
+ FreeAndNil(fVulkanIndexBuffer);
 
  fVulkanVertexBuffers:=nil;
 
