@@ -26184,6 +26184,7 @@ begin
                                             false,
                                             1,
                                             true);
+  fTexture.UpdateSampler;                                          
 
   fUploaded:=true;
 
