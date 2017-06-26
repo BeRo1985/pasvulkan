@@ -26160,8 +26160,9 @@ begin
 
  if not fUploaded then begin
 
-  FreeAndNil(fTexture);          
+  FreeAndNil(fTexture);
 
+{$if true}
   fTexture:=TVulkanTexture.CreateFromMemory(aDevice,
                                             aGraphicsQueue,
                                             aGraphicsCommandBuffer,
@@ -26184,7 +26185,28 @@ begin
                                             false,
                                             1,
                                             true);
-  fTexture.UpdateSampler;                                          
+{$else}
+ fTexture:=TVulkanTexture.CreateDefault(aDevice,
+                                         aGraphicsQueue,
+                                         aGraphicsCommandBuffer,
+                                         aGraphicsFence,
+                                         aTransferQueue,
+                                         aTransferCommandBuffer,
+                                         aTransferFence,
+                                         vtdtCheckerboard,
+                                         Max(1,fWidth),
+                                         Max(1,fHeight),
+                                         1,
+                                         1,
+                                         1,
+                                         true,
+                                         false);
+{$ifend}
+  fTexture.WrapModeU:=vtwmClampToBorder;
+  fTexture.WrapModeV:=vtwmClampToBorder;
+  fTexture.WrapModeW:=vtwmClampToBorder;
+  fTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+  fTexture.UpdateSampler;
 
   fUploaded:=true;
 
@@ -26402,7 +26424,7 @@ begin
   VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
   VulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
   VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
-  VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
+  VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
   VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
   VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
   VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
@@ -27267,8 +27289,6 @@ begin
 
   DescriptorSetIndex:=-1;
 
-  aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-
   for Index:=0 to CurrentDrawSpriteBatchBuffer^.fCountQueueItems-1 do begin
 
    QueueItem:=@CurrentDrawSpriteBatchBuffer^.fQueueItems[Index];
@@ -27280,6 +27300,8 @@ begin
     DescriptorSetIndex:=QueueItem^.DescriptorSetIndex;
 
     aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorSetIndex].Handle,0,nil);
+
+    OldState:=-1;
 
    end;
 
@@ -27310,6 +27332,7 @@ begin
    end;
 
    aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+   aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
    aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
 
   end;
