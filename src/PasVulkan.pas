@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-26-10-31-0000                       *
+ *                        Version 2017-06-26-19-20-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -16710,12 +16710,12 @@ begin
 end;
 
 function TVulkanDeviceMemoryChunk.AllocateMemory(out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize;const aAllocationType:TVulkanDeviceMemoryAllocationType):boolean;
-var Node,OtherNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+var Node,OtherNode,LastNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock:TVulkanDeviceMemoryChunkBlock;
     Alignment,Offset,MemoryChunkBlockBeginOffset,MemoryChunkBlockEndOffset,PayloadBeginOffset,PayloadEndOffset,
-    BufferImageGranularity:TVkDeviceSize;
+    BufferImageGranularity,BufferImageGranularityInvertedMask:TVkDeviceSize;
     Direction:TVkInt32;
-    MustCheckBufferImageGranularity:boolean;
+    TryAgain:boolean;
 begin
  result:=false;
 
@@ -16724,6 +16724,8 @@ begin
   Alignment:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(aAlignment));
 
   BufferImageGranularity:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
+
+  BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
 
   fLock.Acquire;
   try
@@ -16771,33 +16773,11 @@ begin
     end;
    end;
 
-   MustCheckBufferImageGranularity:=true;
+   LastNode:=nil;
 
    repeat
 
-    // Check block for BufferImageGranularity satisfaction
-    if MustCheckBufferImageGranularity then begin
-     MustCheckBufferImageGranularity:=false;
-     if assigned(Node) and (BufferImageGranularity>1) then begin
-      for Direction:=0 to 1 do begin
-       if Direction=0 then begin
-        OtherNode:=Node.fValue.fOffsetRedBlackTreeNode.Predecessor;
-       end else begin
-        OtherNode:=Node.fValue.fOffsetRedBlackTreeNode.Successor;
-       end;
-       if assigned(OtherNode) and
-          assigned(OtherNode.fValue) and
-          ((OtherNode.fValue.fAllocationType<>vdmatFree) and
-           (((OtherNode.fValue.fAllocationType in [vdmatUnknown,vdmatBuffer])<>(aAllocationType in [vdmatUnknown,vdmatBuffer])) or
-            ((OtherNode.fValue.fAllocationType in [vdmatImageLinear,vdmatImageOptimal])<>(aAllocationType in [vdmatImageLinear,vdmatImageOptimal])))) then begin
-        if Alignment<BufferImageGranularity then begin
-         Alignment:=BufferImageGranularity;
-        end;
-        break;
-       end;
-      end;
-     end;
-    end;
+    TryAgain:=false;
 
     // Check block for if it fits to the desired alignment, otherwise search for a better suitable block
     if Alignment>1 then begin
@@ -16806,15 +16786,68 @@ begin
       if ((MemoryChunkBlock.Offset and (Alignment-1))<>0) and
          ((MemoryChunkBlock.Offset+(Alignment-(MemoryChunkBlock.Offset and (Alignment-1)))+aSize)>=(MemoryChunkBlock.Offset+MemoryChunkBlock.Size)) then begin
        // If free block is alignment-technical too small, then try to find with-alignment-technical suitable bigger blocks
+       LastNode:=nil;
        Node:=Node.Successor;
-       MustCheckBufferImageGranularity:=true;
       end else begin
        break;
       end;
      end;
     end;
 
-   until not MustCheckBufferImageGranularity;
+    // Check block for BufferImageGranularity satisfaction
+    if (BufferImageGranularity>1) and
+      assigned(Node) and
+      assigned(Node.fValue) then begin
+
+     MemoryChunkBlock:=Node.fValue;
+
+     MemoryChunkBlockBeginOffset:=MemoryChunkBlock.Offset;
+
+     PayloadBeginOffset:=MemoryChunkBlockBeginOffset;
+     if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
+      inc(PayloadBeginOffset,Alignment-(PayloadBeginOffset and (Alignment-1)));
+     end;
+
+     PayloadEndOffset:=PayloadBeginOffset+aSize;
+
+     OtherNode:=Node.fValue.fOffsetRedBlackTreeNode.Predecessor;
+     if assigned(OtherNode) and
+        assigned(OtherNode.fValue) and
+        ((OtherNode.fValue.fAllocationType<>vdmatFree) and
+         (((OtherNode.fValue.fAllocationType in [vdmatUnknown,vdmatBuffer])<>(aAllocationType in [vdmatUnknown,vdmatBuffer])) or
+          ((OtherNode.fValue.fAllocationType in [vdmatImageLinear,vdmatImageOptimal])<>(aAllocationType in [vdmatImageLinear,vdmatImageOptimal])))) then begin
+      if (PayloadBeginOffset and BufferImageGranularityInvertedMask)=((OtherNode.fValue.fOffset+(OtherNode.fValue.fSize-1)) and BufferImageGranularityInvertedMask) then begin
+       if LastNode=Node then begin
+        LastNode:=nil;
+        Node:=Node.Successor;
+       end else begin
+        LastNode:=Node;
+        if Alignment<BufferImageGranularity then begin
+         Alignment:=BufferImageGranularity;
+        end;
+       end;
+       TryAgain:=true;
+      end;
+     end;
+
+     if not TryAgain then begin
+      OtherNode:=Node.fValue.fOffsetRedBlackTreeNode.Successor;
+      if assigned(OtherNode) and
+         assigned(OtherNode.fValue) and
+         ((OtherNode.fValue.fAllocationType<>vdmatFree) and
+          (((OtherNode.fValue.fAllocationType in [vdmatUnknown,vdmatBuffer])<>(aAllocationType in [vdmatUnknown,vdmatBuffer])) or
+           ((OtherNode.fValue.fAllocationType in [vdmatImageLinear,vdmatImageOptimal])<>(aAllocationType in [vdmatImageLinear,vdmatImageOptimal])))) then begin
+       if ((PayloadEndOffset-1) and BufferImageGranularityInvertedMask)=(OtherNode.fValue.fOffset and BufferImageGranularityInvertedMask) then begin
+        LastNode:=nil;
+        Node:=Node.Successor;
+        TryAgain:=true;
+       end;
+      end;
+     end;
+
+    end;
+
+   until not TryAgain;
 
    if assigned(Node) and (Node.fKey>=aSize) then begin
 
