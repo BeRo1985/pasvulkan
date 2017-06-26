@@ -392,12 +392,18 @@ var Index:TVkInt32;
     cy:single;
     s:string;
     IsSelected:boolean;
+    SrcRect:TVulkanSpriteRect;
+    DstRect:TVulkanSpriteRect;
 begin
  inherited Update(aDeltaTime);
 
  fVulkanSpriteBatch.Start(VulkanApplication.UpdateFrameCounter and 1);
- fVulkanSpriteBatch.Draw(fVulkanSpriteTest,((VulkanApplication.Width-256)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0),((VulkanApplication.Height-256)*0.5)+(cos(fTime*pi*3.0*0.1)*128.0));
- fVulkanSpriteBatch.Draw(fVulkanSpriteTest,((VulkanApplication.Width-256)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0),((VulkanApplication.Height-256)*0.5)+(cos(fTime*pi*3.0*0.1)*128.0));
+ SrcRect:=VulkanSpriteRect(0,0,255,255);
+ DstRect.Left:=((VulkanApplication.Width-fVulkanSpriteTest.Width)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0);
+ DstRect.Top:=((VulkanApplication.Height-fVulkanSpriteTest.Height)*0.5)+(sin(fTime*pi*3.0*0.1)*128.0);
+ DstRect.Right:=DstRect.Left+fVulkanSpriteTest.Width;
+ DstRect.Bottom:=DstRect.Top+fVulkanSpriteTest.Height;
+ fVulkanSpriteBatch.Draw(fVulkanSpriteTest,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
  fVulkanSpriteBatch.Stop;
 
  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Sprites');

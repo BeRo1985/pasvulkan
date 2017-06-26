@@ -4097,7 +4097,9 @@ procedure VulkanSetImageLayout(const aImage:TVkImage;
 
 procedure VulkanDisableFloatingPointExceptions;
 
+function VulkanSpritePoint(const x,y:single):TVulkanSpritePoint;
 function VulkanSpriteRect(const Left,Top,Right,Bottom:single):TVulkanSpriteRect;
+function VulkanSpriteColor(const r,g,b,a:single):TVulkanSpriteColor;
 
 implementation
 
@@ -11142,12 +11144,26 @@ begin
 {$ifend}
 end;
 
+function VulkanSpritePoint(const x,y:single):TVulkanSpritePoint;
+begin
+ result.x:=x;
+ result.y:=y;
+end;
+
 function VulkanSpriteRect(const Left,Top,Right,Bottom:single):TVulkanSpriteRect;
 begin
  result.Left:=Left;
  result.Top:=Top;
  result.Right:=Right;
  result.Bottom:=Bottom;
+end;
+
+function VulkanSpriteColor(const r,g,b,a:single):TVulkanSpriteColor;
+begin
+ result.r:=r;
+ result.g:=g;
+ result.b:=b;
+ result.a:=a;
 end;
 
 function VulkanUTF32CharToUTF8(CharValue:TVulkanUTF32Char):TVulkanRawByteString;
