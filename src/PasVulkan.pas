@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-26-10-25-0000                       *
+ *                        Version 2017-06-26-10-31-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -16790,7 +16790,9 @@ begin
           ((OtherNode.fValue.fAllocationType<>vdmatFree) and
            (((OtherNode.fValue.fAllocationType in [vdmatUnknown,vdmatBuffer])<>(aAllocationType in [vdmatUnknown,vdmatBuffer])) or
             ((OtherNode.fValue.fAllocationType in [vdmatImageLinear,vdmatImageOptimal])<>(aAllocationType in [vdmatImageLinear,vdmatImageOptimal])))) then begin
-        Alignment:=Max(Alignment,BufferImageGranularity);
+        if Alignment<BufferImageGranularity then begin
+         Alignment:=BufferImageGranularity;
+        end;
         break;
        end;
       end;
