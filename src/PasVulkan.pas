@@ -16703,13 +16703,18 @@ end;
 function TVulkanDeviceMemoryChunk.AllocateMemory(out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize):boolean;
 var Node,OtherNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock:TVulkanDeviceMemoryChunkBlock;
-    Alignment,MemoryChunkBlockBeginOffset,MemoryChunkBlockEndOffset,PayloadBeginOffset,PayloadEndOffset:TVkDeviceSize;
+    Alignment,MemoryChunkBlockBeginOffset,MemoryChunkBlockEndOffset,PayloadBeginOffset,PayloadEndOffset,
+    BufferImageGranularity:TVkDeviceSize;
 begin
  result:=false;
 
  if aSize>0 then begin
 
   Alignment:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(aAlignment));
+
+  if vdmcfImage in fMemoryChunkFlags then begin
+   Alignment:=Max(Alignment,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
+  end;
 
   fLock.Acquire;
   try
