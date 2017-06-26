@@ -217,7 +217,8 @@ begin
                                                VulkanApplication.VulkanTransferCommandBuffers[0,0],
                                                VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                                VulkanApplication.VulkanPipelineCache,
-                                               fVulkanRenderPass);
+                                               fVulkanRenderPass,
+                                               2);
 
  for SwapChainImageIndex:=0 to length(fVulkanRenderCommandBuffers)-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[SwapChainImageIndex]);
@@ -384,6 +385,10 @@ var Index:TVkInt32;
     IsSelected:boolean;
 begin
  inherited Update(aDeltaTime);
+
+ fVulkanSpriteBatch.Start(VulkanApplication.UpdateFrameCounter and 1);
+ fVulkanSpriteBatch.Stop;
+
  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Sprites');
  fStartY:=VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*1.25)-(4*FontSize));
  cy:=fStartY;
@@ -426,6 +431,9 @@ begin
                                      0,
                                      VulkanSwapChain.Width,
                                      VulkanSwapChain.Height);
+
+   fVulkanSpriteBatch.ExecuteDraw(VulkanCommandBuffer,
+                                  VulkanApplication.DrawFrameCounter and 1);
 
    fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 
