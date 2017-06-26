@@ -1329,7 +1329,8 @@ type EVulkanException=class(Exception);
      PVulkanDeviceMemoryChunkFlag=^TVulkanDeviceMemoryChunkFlag;
      TVulkanDeviceMemoryChunkFlag=
       (
-       vdmcfPersistentMapped
+       vdmcfPersistentMapped,
+       vdmcfImage
       );
 
      PVulkanDeviceMemoryChunkFlags=^TVulkanDeviceMemoryChunkFlags;
@@ -1481,7 +1482,8 @@ type EVulkanException=class(Exception);
      TVulkanDeviceMemoryBlockFlag=
       (
        vdmbfOwnSingleMemoryChunk,
-       vdmbfPersistentMapped
+       vdmbfPersistentMapped,
+       vdmbfImage
       );
 
      PVulkanDeviceMemoryBlockFlags=^TVulkanDeviceMemoryBlockFlags;
@@ -17254,6 +17256,9 @@ begin
  if vdmbfPersistentMapped in aMemoryBlockFlags then begin
   Include(MemoryChunkFlags,vdmcfPersistentMapped);
  end;
+ if vdmbfImage in aMemoryBlockFlags then begin
+  Include(MemoryChunkFlags,vdmcfImage);
+ end;
 
  if vdmbfOwnSingleMemoryChunk in aMemoryBlockFlags then begin
 
@@ -17300,7 +17305,7 @@ begin
        ((aMemoryAvoidPropertyFlags=0) or
         ((MemoryChunk.fMemoryPropertyFlags and aMemoryAvoidPropertyFlags)=0)) and
        ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
-       ((MemoryChunk.fMemoryChunkFlags*[vdmcfPersistentMapped])=(MemoryChunkFlags*[vdmcfPersistentMapped])) then begin
+       ((MemoryChunk.fMemoryChunkFlags*[vdmcfPersistentMapped,vdmcfImage])=(MemoryChunkFlags*[vdmcfPersistentMapped,vdmcfImage])) then begin
      if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment) then begin
       result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,aMemoryBlockSize);
       break;
@@ -19197,7 +19202,7 @@ begin
 
   fDevice.fDeviceVulkan.GetImageMemoryRequirements(fDevice.fDeviceHandle,fImage.fImageHandle,@MemoryRequirements);
 
-  fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([],
+  fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([vdmbfImage],
                                                            MemoryRequirements.size,
                                                            MemoryRequirements.alignment,
                                                            MemoryRequirements.memoryTypeBits,
@@ -23715,7 +23720,7 @@ begin
 
  fDevice.Commands.GetImageMemoryRequirements(fDevice.fDeviceHandle,fImage.fImageHandle,@MemoryRequirements);
 
- fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([],
+ fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([vdmbfImage],
                                                           MemoryRequirements.size,
                                                           MemoryRequirements.alignment,
                                                           MemoryRequirements.memoryTypeBits,
@@ -23727,7 +23732,10 @@ begin
   raise EVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
 
- HandleResultCode(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,fImage.fImageHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
+ HandleResultCode(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,
+                                                        fImage.fImageHandle,
+                                                        fMemoryBlock.fMemoryChunk.fMemoryHandle,
+                                                        fMemoryBlock.fOffset));
 
  if assigned(aData) then begin
 
