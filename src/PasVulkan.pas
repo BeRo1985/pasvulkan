@@ -1339,8 +1339,7 @@ type EVulkanException=class(Exception);
      PVulkanDeviceMemoryChunkFlag=^TVulkanDeviceMemoryChunkFlag;
      TVulkanDeviceMemoryChunkFlag=
       (
-       vdmcfPersistentMapped,
-       vdmcfImage
+       vdmcfPersistentMapped
       );
 
      PVulkanDeviceMemoryChunkFlags=^TVulkanDeviceMemoryChunkFlags;
@@ -1413,23 +1412,23 @@ type EVulkanException=class(Exception);
        fMemoryChunk:TVulkanDeviceMemoryChunk;
        fOffset:TVkDeviceSize;
        fSize:TVkDeviceSize;
-       fUsed:boolean;
+       fAllocationType:TVulkanDeviceMemoryAllocationType;
        fOffsetRedBlackTreeNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        fSizeRedBlackTreeNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
       public
        constructor Create(const aMemoryChunk:TVulkanDeviceMemoryChunk;
                           const aOffset:TVkDeviceSize;
                           const aSize:TVkDeviceSize;
-                          const aUsed:boolean);
+                          const aAllocationType:TVulkanDeviceMemoryAllocationType);
        destructor Destroy; override;
        procedure Update(const aOffset:TVkDeviceSize;
                         const aSize:TVkDeviceSize;
-                        const aUsed:boolean);
+                        const aAllocationType:TVulkanDeviceMemoryAllocationType);
       published
        property MemoryChunk:TVulkanDeviceMemoryChunk read fMemoryChunk;
        property Offset:TVkDeviceSize read fOffset;
        property Size:TVkDeviceSize read fSize;
-       property Used:boolean read fUsed;
+       property AllocationType:TVulkanDeviceMemoryAllocationType read fAllocationType;
      end;
 
      PVulkanDeviceMemoryManagerChunkList=^TVulkanDeviceMemoryManagerChunkList;
@@ -1467,7 +1466,7 @@ type EVulkanException=class(Exception);
                           const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                           const aMemoryChunkList:PVulkanDeviceMemoryManagerChunkList);
        destructor Destroy; override;
-       function AllocateMemory(out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize):boolean;
+       function AllocateMemory(out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize;const aAllocationType:TVulkanDeviceMemoryAllocationType):boolean;
        function ReallocateMemory(var aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize):boolean;
        function FreeMemory(const aOffset:TVkDeviceSize):boolean;
        function MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
@@ -1492,8 +1491,7 @@ type EVulkanException=class(Exception);
      TVulkanDeviceMemoryBlockFlag=
       (
        vdmbfOwnSingleMemoryChunk,
-       vdmbfPersistentMapped,
-       vdmbfImage
+       vdmbfPersistentMapped
       );
 
      PVulkanDeviceMemoryBlockFlags=^TVulkanDeviceMemoryBlockFlags;
@@ -1551,7 +1549,8 @@ type EVulkanException=class(Exception);
                                     const aMemoryPropertyFlags:TVkMemoryPropertyFlags;
                                     const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
                                     const aMemoryHeapFlags:TVkMemoryHeapFlags;
-                                    const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags):TVulkanDeviceMemoryBlock;
+                                    const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+                                    const aMemoryAllocationType:TVulkanDeviceMemoryAllocationType):TVulkanDeviceMemoryBlock;
        function FreeMemoryBlock(const aMemoryBlock:TVulkanDeviceMemoryBlock):boolean;
      end;
 
@@ -16502,15 +16501,15 @@ end;
 constructor TVulkanDeviceMemoryChunkBlock.Create(const aMemoryChunk:TVulkanDeviceMemoryChunk;
                                                  const aOffset:TVkDeviceSize;
                                                  const aSize:TVkDeviceSize;
-                                                 const aUsed:boolean);
+                                                 const aAllocationType:TVulkanDeviceMemoryAllocationType);
 begin
  inherited Create;
  fMemoryChunk:=aMemoryChunk;
  fOffset:=aOffset;
  fSize:=aSize;
- fUsed:=aUsed;
+ fAllocationType:=aAllocationType;
  fOffsetRedBlackTreeNode:=fMemoryChunk.fOffsetRedBlackTree.Insert(aOffset,self);
- if not fUsed then begin
+ if fAllocationType=vdmatFree then begin
   fSizeRedBlackTreeNode:=fMemoryChunk.fSizeRedBlackTree.Insert(aSize,self);
  end;
 end;
@@ -16518,7 +16517,7 @@ end;
 destructor TVulkanDeviceMemoryChunkBlock.Destroy;
 begin
  fMemoryChunk.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
- if not fUsed then begin
+ if fAllocationType=vdmatFree then begin
   fMemoryChunk.fSizeRedBlackTree.Remove(fSizeRedBlackTreeNode);
  end;
  inherited Destroy;
@@ -16526,23 +16525,23 @@ end;
 
 procedure TVulkanDeviceMemoryChunkBlock.Update(const aOffset:TVkDeviceSize;
                                                const aSize:TVkDeviceSize;
-                                               const aUsed:boolean);
+                                               const aAllocationType:TVulkanDeviceMemoryAllocationType);
 begin
  if fOffset<>aOffset then begin
   fMemoryChunk.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
   fOffsetRedBlackTreeNode:=fMemoryChunk.fOffsetRedBlackTree.Insert(aOffset,self);
  end;
- if (fUsed<>aUsed) or (fSize<>aSize) then begin
-  if not fUsed then begin
+ if ((fAllocationType=vdmatFree)<>(aAllocationType=vdmatFree)) or (fSize<>aSize) then begin
+  if fAllocationType=vdmatFree then begin
    fMemoryChunk.fSizeRedBlackTree.Remove(fSizeRedBlackTreeNode);
   end;
-  if not aUsed then begin
+  if aAllocationType=vdmatFree then begin
    fSizeRedBlackTreeNode:=fMemoryChunk.fSizeRedBlackTree.Insert(aSize,self);
   end;
  end;
  fOffset:=aOffset;
  fSize:=aSize;
- fUsed:=aUsed;
+ fAllocationType:=aAllocationType;
  inherited Destroy;
 end;
 
@@ -16625,7 +16624,7 @@ begin
  fOffsetRedBlackTree:=TVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
  fSizeRedBlackTree:=TVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
 
- TVulkanDeviceMemoryChunkBlock.Create(self,0,aSize,false);
+ TVulkanDeviceMemoryChunkBlock.Create(self,0,aSize,vdmatFree);
 
  fLock:=TCriticalSection.Create;
 
@@ -16710,11 +16709,13 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanDeviceMemoryChunk.AllocateMemory(out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize):boolean;
+function TVulkanDeviceMemoryChunk.AllocateMemory(out aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize;const aAllocationType:TVulkanDeviceMemoryAllocationType):boolean;
 var Node,OtherNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock:TVulkanDeviceMemoryChunkBlock;
-    Alignment,MemoryChunkBlockBeginOffset,MemoryChunkBlockEndOffset,PayloadBeginOffset,PayloadEndOffset,
+    Alignment,Offset,MemoryChunkBlockBeginOffset,MemoryChunkBlockEndOffset,PayloadBeginOffset,PayloadEndOffset,
     BufferImageGranularity:TVkDeviceSize;
+    Direction:TVkInt32;
+    MustCheckBufferImageGranularity:boolean;
 begin
  result:=false;
 
@@ -16722,9 +16723,7 @@ begin
 
   Alignment:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(aAlignment));
 
-  if vdmcfImage in fMemoryChunkFlags then begin
-   Alignment:=Max(Alignment,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
-  end;
+  BufferImageGranularity:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
 
   fLock.Acquire;
   try
@@ -16772,19 +16771,48 @@ begin
     end;
    end;
 
-   // Check block for if it fits to the desired alignment, otherwise search for a better suitable block
-   if Alignment>1 then begin
-    while assigned(Node) and (Node.fKey>=aSize) do begin
-     MemoryChunkBlock:=Node.fValue;
-     if ((MemoryChunkBlock.Offset and (Alignment-1))<>0) and
-        ((MemoryChunkBlock.Offset+(Alignment-(MemoryChunkBlock.Offset and (Alignment-1)))+aSize)>=(MemoryChunkBlock.Offset+MemoryChunkBlock.Size)) then begin
-      // If free block is alignment-technical too small, then try to find with-alignment-technical suitable bigger blocks
-      Node:=Node.Successor;
-     end else begin
-      break;
+   MustCheckBufferImageGranularity:=true;
+
+   repeat
+
+    // Check block for BufferImageGranularity satisfaction
+    if MustCheckBufferImageGranularity then begin
+     MustCheckBufferImageGranularity:=false;
+     if assigned(Node) and (BufferImageGranularity>1) then begin
+      for Direction:=0 to 1 do begin
+       if Direction=0 then begin
+        OtherNode:=Node.fValue.fOffsetRedBlackTreeNode.Predecessor;
+       end else begin
+        OtherNode:=Node.fValue.fOffsetRedBlackTreeNode.Successor;
+       end;
+       if assigned(OtherNode) and
+          assigned(OtherNode.fValue) and
+          ((OtherNode.fValue.fAllocationType<>vdmatFree) and
+           (((OtherNode.fValue.fAllocationType in [vdmatUnknown,vdmatBuffer])<>(aAllocationType in [vdmatUnknown,vdmatBuffer])) or
+            ((OtherNode.fValue.fAllocationType in [vdmatImageLinear,vdmatImageOptimal])<>(aAllocationType in [vdmatImageLinear,vdmatImageOptimal])))) then begin
+        Alignment:=Max(Alignment,BufferImageGranularity);
+        break;
+       end;
+      end;
      end;
     end;
-   end;
+
+    // Check block for if it fits to the desired alignment, otherwise search for a better suitable block
+    if Alignment>1 then begin
+     while assigned(Node) and (Node.fKey>=aSize) do begin
+      MemoryChunkBlock:=Node.fValue;
+      if ((MemoryChunkBlock.Offset and (Alignment-1))<>0) and
+         ((MemoryChunkBlock.Offset+(Alignment-(MemoryChunkBlock.Offset and (Alignment-1)))+aSize)>=(MemoryChunkBlock.Offset+MemoryChunkBlock.Size)) then begin
+       // If free block is alignment-technical too small, then try to find with-alignment-technical suitable bigger blocks
+       Node:=Node.Successor;
+       MustCheckBufferImageGranularity:=true;
+      end else begin
+       break;
+      end;
+     end;
+    end;
+
+   until not MustCheckBufferImageGranularity;
 
    if assigned(Node) and (Node.fKey>=aSize) then begin
 
@@ -16804,14 +16832,14 @@ begin
     if (PayloadBeginOffset<PayloadEndOffset) and
        (PayloadEndOffset<=MemoryChunkBlockEndOffset) then begin
 
-     MemoryChunkBlock.Update(PayloadBeginOffset,PayloadEndOffset-PayloadBeginOffset,true);
+     MemoryChunkBlock.Update(PayloadBeginOffset,PayloadEndOffset-PayloadBeginOffset,aAllocationType);
 
      if MemoryChunkBlockBeginOffset<PayloadBeginOffset then begin
-      TVulkanDeviceMemoryChunkBlock.Create(self,MemoryChunkBlockBeginOffset,PayloadBeginOffset-MemoryChunkBlockBeginOffset,false);
+      TVulkanDeviceMemoryChunkBlock.Create(self,MemoryChunkBlockBeginOffset,PayloadBeginOffset-MemoryChunkBlockBeginOffset,vdmatFree);
      end;
 
      if PayloadEndOffset<MemoryChunkBlockEndOffset then begin
-      TVulkanDeviceMemoryChunkBlock.Create(self,PayloadEndOffset,MemoryChunkBlockEndOffset-PayloadEndOffset,false);
+      TVulkanDeviceMemoryChunkBlock.Create(self,PayloadEndOffset,MemoryChunkBlockEndOffset-PayloadEndOffset,vdmatFree);
      end;
 
      aOffset:=PayloadBeginOffset;
@@ -16845,7 +16873,7 @@ begin
   Node:=fOffsetRedBlackTree.Find(aOffset);
   if assigned(Node) then begin
    MemoryChunkBlock:=Node.fValue;
-   if MemoryChunkBlock.fUsed then begin
+   if MemoryChunkBlock.fAllocationType<>vdmatFree then begin
     dec(fUsed,MemoryChunkBlock.Size);
     if aSize=0 then begin
      result:=FreeMemory(aOffset);
@@ -16857,13 +16885,13 @@ begin
       if assigned(OtherNode) and
          (MemoryChunkBlock.fOffsetRedBlackTreeNode<>OtherNode) then begin
        OtherMemoryChunkBlock:=OtherNode.fValue;
-       if not OtherMemoryChunkBlock.fUsed then begin
+       if OtherMemoryChunkBlock.fAllocationType=vdmatFree then begin
         if (MemoryChunkBlock.fOffset+aSize)<(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
-         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,true);
-         OtherMemoryChunkBlock.Update(MemoryChunkBlock.fOffset+aSize,(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-(MemoryChunkBlock.fOffset+aSize),false);
+         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAllocationType);
+         OtherMemoryChunkBlock.Update(MemoryChunkBlock.fOffset+aSize,(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-(MemoryChunkBlock.fOffset+aSize),vdmatFree);
          result:=true;
         end else if (MemoryChunkBlock.fOffset+aSize)=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
-         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,true);
+         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAllocationType);
          OtherMemoryChunkBlock.Free;
          result:=true;
         end;
@@ -16873,18 +16901,18 @@ begin
       OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
       if assigned(OtherNode) and
          (MemoryChunkBlock.fOffsetRedBlackTreeNode<>OtherNode) and
-         not OtherNode.fValue.fUsed then begin
+         (OtherNode.fValue.fAllocationType=vdmatFree) then begin
        OtherMemoryChunkBlock:=OtherNode.fValue;
        TempOffset:=MemoryChunkBlock.fOffset+aSize;
        TempSize:=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-TempOffset;
-       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,true);
-       OtherMemoryChunkBlock.Update(TempOffset,TempSize,false);
+       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAllocationType);
+       OtherMemoryChunkBlock.Update(TempOffset,TempSize,vdmatFree);
        result:=true;
       end else begin
        TempOffset:=MemoryChunkBlock.fOffset+aSize;
        TempSize:=(MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)-TempOffset;
-       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,true);
-       TVulkanDeviceMemoryChunkBlock.Create(self,TempOffset,TempSize,false);
+       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAllocationType);
+       TVulkanDeviceMemoryChunkBlock.Create(self,TempOffset,TempSize,vdmatFree);
        result:=true;
       end;
      end;
@@ -16915,7 +16943,7 @@ begin
   if assigned(Node) then begin
 
    MemoryChunkBlock:=Node.fValue;
-   if MemoryChunkBlock.fUsed then begin
+   if MemoryChunkBlock.fAllocationType<>vdmatFree then begin
 
     dec(fUsed,MemoryChunkBlock.fSize);
 
@@ -16924,12 +16952,12 @@ begin
 
      // Coalescing previous free block with current block
      OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Predecessor;
-     if assigned(OtherNode) and not OtherNode.fValue.fUsed then begin
+     if assigned(OtherNode) and (OtherNode.fValue.fAllocationType=vdmatFree) then begin
       OtherMemoryChunkBlock:=OtherNode.fValue;
       TempOffset:=OtherMemoryChunkBlock.fOffset;
       TempSize:=(MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)-TempOffset;
       MemoryChunkBlock.Free;
-      OtherMemoryChunkBlock.Update(TempOffset,TempSize,false);
+      OtherMemoryChunkBlock.Update(TempOffset,TempSize,vdmatFree);
       MemoryChunkBlock:=OtherMemoryChunkBlock;
       Node:=OtherNode;
       continue;
@@ -16937,18 +16965,18 @@ begin
 
      // Coalescing current block with next free block
      OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
-     if assigned(OtherNode) and not OtherNode.fValue.fUsed then begin
+     if assigned(OtherNode) and (OtherNode.fValue.fAllocationType=vdmatFree) then begin
       OtherMemoryChunkBlock:=OtherNode.fValue;
       TempOffset:=MemoryChunkBlock.fOffset;
       TempSize:=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-TempOffset;
       OtherMemoryChunkBlock.Free;
-      MemoryChunkBlock.Update(TempOffset,TempSize,false);
+      MemoryChunkBlock.Update(TempOffset,TempSize,vdmatFree);
       continue;
      end;
 
-     if MemoryChunkBlock.fUsed then begin
+     if MemoryChunkBlock.fAllocationType<>vdmatFree then begin
       // Mark block as free
-      MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,MemoryChunkBlock.fSize,false);
+      MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,MemoryChunkBlock.fSize,vdmatFree);
      end;
      break;
 
@@ -17255,7 +17283,8 @@ function TVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlags:
                                                         const aMemoryPropertyFlags:TVkMemoryPropertyFlags;
                                                         const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
                                                         const aMemoryHeapFlags:TVkMemoryHeapFlags;
-                                                        const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags):TVulkanDeviceMemoryBlock;
+                                                        const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+                                                        const aMemoryAllocationType:TVulkanDeviceMemoryAllocationType):TVulkanDeviceMemoryBlock;
 var MemoryChunk:TVulkanDeviceMemoryChunk;
     Offset,Alignment:TVkDeviceSize;
     MemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
@@ -17270,9 +17299,6 @@ begin
  MemoryChunkFlags:=[];
  if vdmbfPersistentMapped in aMemoryBlockFlags then begin
   Include(MemoryChunkFlags,vdmcfPersistentMapped);
- end;
- if vdmbfImage in aMemoryBlockFlags then begin
-  Include(MemoryChunkFlags,vdmcfImage);
  end;
 
  if vdmbfOwnSingleMemoryChunk in aMemoryBlockFlags then begin
@@ -17292,7 +17318,7 @@ begin
                                                 aMemoryHeapFlags,
                                                 aMemoryAvoidHeapFlags,
                                                 @fMemoryChunkList);
-   if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment) then begin
+   if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
     result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,aMemoryBlockSize);
    end;
   finally
@@ -17320,8 +17346,8 @@ begin
        ((aMemoryAvoidPropertyFlags=0) or
         ((MemoryChunk.fMemoryPropertyFlags and aMemoryAvoidPropertyFlags)=0)) and
        ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
-       ((MemoryChunk.fMemoryChunkFlags*[vdmcfPersistentMapped,vdmcfImage])=(MemoryChunkFlags*[vdmcfPersistentMapped,vdmcfImage])) then begin
-     if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment) then begin
+       ((MemoryChunk.fMemoryChunkFlags*[vdmcfPersistentMapped])=(MemoryChunkFlags*[vdmcfPersistentMapped])) then begin
+     if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
       result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,aMemoryBlockSize);
       break;
      end;
@@ -17340,7 +17366,7 @@ begin
                                                  aMemoryHeapFlags,
                                                  aMemoryAvoidHeapFlags,
                                                  @fMemoryChunkList);
-    if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment) then begin
+    if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
      result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,aMemoryBlockSize);
     end;
    end;
@@ -17453,7 +17479,8 @@ begin
                                                            fMemoryPropertyFlags,
                                                            fMemoryAvoidPropertyFlags,
                                                            aMemoryHeapFlags,
-                                                           aMemoryAvoidHeapFlags);
+                                                           aMemoryAvoidHeapFlags,
+                                                           vdmatBuffer);
 
   Bind;
                                                            
@@ -19217,14 +19244,15 @@ begin
 
   fDevice.fDeviceVulkan.GetImageMemoryRequirements(fDevice.fDeviceHandle,fImage.fImageHandle,@MemoryRequirements);
 
-  fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([vdmbfImage],
+  fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([],
                                                            MemoryRequirements.size,
                                                            MemoryRequirements.alignment,
                                                            MemoryRequirements.memoryTypeBits,
                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                            0,
                                                            0,
-                                                           0);
+                                                           0,
+                                                           vdmatImageOptimal);
   if not assigned(fMemoryBlock) then begin
    raise EVulkanMemoryAllocationException.Create('Memory for frame buffer attachment couldn''t be allocated!');
   end;
@@ -23735,14 +23763,15 @@ begin
 
  fDevice.Commands.GetImageMemoryRequirements(fDevice.fDeviceHandle,fImage.fImageHandle,@MemoryRequirements);
 
- fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([vdmbfImage],
+ fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([],
                                                           MemoryRequirements.size,
                                                           MemoryRequirements.alignment,
                                                           MemoryRequirements.memoryTypeBits,
                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                           0,
                                                           0,
-                                                          0);
+                                                          0,
+                                                          vdmatImageOptimal);
  if not assigned(fMemoryBlock) then begin
   raise EVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
