@@ -3927,22 +3927,26 @@ begin
       end else begin
        ValueItem^.Name:=ChildTag.GetParameter('name');
       end;
-      if ChildTag.Name='unused' then begin
-       ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('start','0'),0));
-      end else if Type_='bitmask' then begin
-       ValueItem^.ValueStr:='$'+IntToHex(longword(1) shl StrToIntDef(ChildTag.GetParameter('bitpos','0'),0),8);
-      end else if Type_='enum' then begin
-       ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('value','0'),0));
-      end else begin
-       Value:=ChildTag.GetParameter('value','0');
+      begin
+       Value:=ChildTag.GetParameter('value','');
        if Value='(~0U)' then begin
         ValueItem^.ValueStr:='TVkUInt32($ffffffff)';
        end else if Value='(~0ULL)' then begin
         ValueItem^.ValueStr:='TVkUInt64($ffffffffffffffff)';
-       end else if (pos('.',Value)>0) or ((pos('f',Value)=length(Value)) and (pos('x',Value)=0)) then begin
+       end else if (length(Value)>0) and ((pos('.',Value)>0) or ((pos('f',Value)=length(Value)) and (pos('x',Value)=0))) then begin
         ValueItem^.ValueStr:=StringReplace(Value,'f','',[]);
-       end else begin
+       end else if length(Value)>0 then begin
         ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('value','0'),0));
+       end else begin
+        if ChildTag.Name='unused' then begin
+         ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('start','0'),0));
+        end else if Type_='bitmask' then begin
+         ValueItem^.ValueStr:='$'+IntToHex(longword(1) shl StrToIntDef(ChildTag.GetParameter('bitpos','0'),0),8);
+        end else if Type_='enum' then begin
+         ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('value','0'),0));
+        end else begin
+         ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('value','0'),0));
+        end;
        end;
       end;
       ValueItem^.ValueInt64:=StrToIntDef(ValueItem^.ValueStr,0);

@@ -1349,10 +1349,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkCullModeFlagBits=^TVkCullModeFlagBits;
      TVkCullModeFlagBits=
       (
-       VK_CULL_MODE_NONE=$00000001,
+       VK_CULL_MODE_NONE=0,
        VK_CULL_MODE_FRONT_BIT=$00000001,
-       VK_CULL_MODE_FRONT_AND_BACK=$00000001,
-       VK_CULL_MODE_BACK_BIT=$00000002
+       VK_CULL_MODE_BACK_BIT=$00000002,
+       VK_CULL_MODE_FRONT_AND_BACK=3
       );
 
      PPVkFrontFace=^PVkFrontFace;
@@ -2020,13 +2020,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkShaderStageFlagBits=
       (
        VK_SHADER_STAGE_VERTEX_BIT=$00000001,
-       VK_SHADER_STAGE_ALL_GRAPHICS=$00000001,
-       VK_SHADER_STAGE_ALL=$00000001,
        VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT=$00000002,
        VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT=$00000004,
        VK_SHADER_STAGE_GEOMETRY_BIT=$00000008,
        VK_SHADER_STAGE_FRAGMENT_BIT=$00000010,
-       VK_SHADER_STAGE_COMPUTE_BIT=$00000020
+       VK_SHADER_STAGE_ALL_GRAPHICS=31,
+       VK_SHADER_STAGE_COMPUTE_BIT=$00000020,
+       VK_SHADER_STAGE_ALL=2147483647
       );
 
      PPVkImageUsageFlagBits=^PVkImageUsageFlagBits;
@@ -2246,8 +2246,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkStencilFaceFlagBits=
       (
        VK_STENCIL_FACE_FRONT_BIT=$00000001,                                      //< Front face
-       VK_STENCIL_FRONT_AND_BACK=$00000001,                                      //< Front and back faces
-       VK_STENCIL_FACE_BACK_BIT=$00000002                                        //< Back face
+       VK_STENCIL_FACE_BACK_BIT=$00000002,                                       //< Back face
+       VK_STENCIL_FRONT_AND_BACK=3                                               //< Front and back faces
       );
 
      PPVkDescriptorPoolCreateFlagBits=^PVkDescriptorPoolCreateFlagBits;
