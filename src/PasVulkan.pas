@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-26-19-20-0000                       *
+ *                        Version 2017-06-27-04-31-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -2570,8 +2570,10 @@ type EVulkanException=class(Exception);
        fPointerToViewportStateCreateInfo:PVkPipelineViewportStateCreateInfo;
        fViewPorts:TVkViewportArray;
        fCountViewPorts:TVkInt32;
+       fDynamicViewPorts:boolean;
        fScissors:TVkRect2DArray;
        fCountScissors:TVkInt32;
+       fDynamicScissors:boolean;
        function GetViewPort(const aIndex:TVkInt32):PVkViewport;
        function GetScissor(const aIndex:TVkInt32):PVkRect2D;
        procedure SetCountViewPorts(const aNewCount:TVkInt32);
@@ -2592,7 +2594,9 @@ type EVulkanException=class(Exception);
        property Scissors[const aIndex:TVkInt32]:PVkRect2D read GetScissor;
       published
        property CountViewPorts:TVkInt32 read fCountViewPorts write SetCountViewPorts;
+       property DynamicViewPorts:boolean read fDynamicViewPorts write fDynamicViewPorts;
        property CountScissors:TVkInt32 read fCountScissors write SetCountScissors;
+       property DynamicScissors:boolean read fDynamicScissors write fDynamicScissors;
      end;
 
      TVulkanPipelineRasterizationState=class(TVulkanPipelineState)
@@ -3347,21 +3351,28 @@ type EVulkanException=class(Exception);
      
      TVulkanSpriteBatchVulkanBuffers=array of TVulkanBuffer;
 
+     PVulkanSpriteBatchBlendingMode=^TVulkanSpriteBatchBlendingMode;
+     TVulkanSpriteBatchBlendingMode=
+      (
+       vsbbmNone,
+       vsbbmAlphaBlending,
+       vsbbmAdditiveBlending
+      );
+
      PVulkanSpriteBatchQueueItem=^TVulkanSpriteBatchQueueItem;
      TVulkanSpriteBatchQueueItem=record
       BufferIndex:TVkInt32;
       DescriptorSetIndex:TVkInt32;
       CountVertices:TVkInt32;
       CountIndices:TVkInt32;
-      Blending:boolean;
-      AdditiveBlending:boolean;
+      BlendingMode:TVulkanSpriteBatchBlendingMode;
      end;
 
      TVulkanSpriteBatchQueueItems=array of TVulkanSpriteBatchQueueItem;
 
      TVulkanSpriteBatchDescriptorSets=array of TVulkanDescriptorSet;
 
-     TVulkanSpriteBatchGraphicsPipelines=array[0..2] of TVulkanGraphicsPipeline;
+     TVulkanSpriteBatchGraphicsPipelines=array[TVulkanSpriteBatchBlendingMode] of TVulkanGraphicsPipeline;
 
      PVulkanSpriteBatchBuffer=^TVulkanSpriteBatchBuffer;
      TVulkanSpriteBatchBuffer=record
@@ -3401,21 +3412,25 @@ type EVulkanException=class(Exception);
        fCurrentFillSpriteBatchBuffer:PVulkanSpriteBatchBuffer;
        fWidth:TVkInt32;
        fHeight:TVkInt32;
+       fViewPort:TVkViewport;
+       fPointerToViewport:PVkViewport;
        fCurrentVulkanVertexBufferIndex:TVkInt32;
        fVertexBufferCount:TVkSizeInt;
        fVertexBufferSize:TVkSizeInt;
        fIndexBufferCount:TVkSizeInt;
        fIndexBufferSize:TVkSizeInt;
-       fBlending:boolean;
-       fAdditiveBlending:boolean;
+       fBlendingMode:TVulkanSpriteBatchBlendingMode;
        fLastTexture:TVulkanSpriteTexture;
-       fWidthInvFactor:single;
-       fHeightInvFactor:single;
+       fInverseWidth:single;
+       fInverseHeight:single;
+       fInverseTextureWidth:single;
+       fInverseTextureHeight:single;
        fVertexBufferUsed:TVkSizeInt;
        fIndexBufferUsed:TVkSizeInt;
        fTemporaryVertices:TVulkanSpriteBatchVertices;
        function RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:single):TVulkanSpritePoint;
        procedure SetTexture(const Texture:TVulkanSpriteTexture);
+       procedure SetBlendingMode(aBlendingMode:TVulkanSpriteBatchBlendingMode);
       public
        constructor Create(const aDevice:TVulkanDevice;
                           const aGraphicsQueue:TVulkanQueue;
@@ -3426,11 +3441,8 @@ type EVulkanException=class(Exception);
                           const aTransferFence:TVulkanFence;
                           const aPipelineCache:TVulkanPipelineCache;
                           const aRenderPass:TVulkanRenderPass;
-                          const aCountBuffers:TVkInt32;
-                          const aWidth:TVkInt32=1280;
-                          const aHeight:TVkInt32=720); reintroduce;
+                          const aCountBuffers:TVkInt32); reintroduce;
        destructor Destroy; override;
-       procedure SetBlending(Active,Additive:boolean);
        procedure Start(const aBufferIndex:TVkInt32);
        procedure Stop;
        procedure Flush;
@@ -3448,9 +3460,13 @@ type EVulkanException=class(Exception);
        procedure Draw(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single); overload;
        procedure DrawText(const Font:TVulkanSpriteFont;const Text:TVulkanRawByteString;x,y:single;const Color:TVulkanSpriteColor);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
+      public
+       property Viewport:PVkViewport read fPointerToViewport;
+      published
        property Device:TVulkanDevice read fDevice;
        property Width:TVkInt32 read fWidth write fWidth;
        property Height:TVkInt32 read fHeight write fHeight;
+       property BlendingMode:TVulkanSpriteBatchBlendingMode read fBlendingMode write SetBlendingMode;
      end;
 
      PVulkanSpriteAtlasTextureRectNode=^TVulkanSpriteAtlasTextureRectNode;
@@ -21642,9 +21658,11 @@ begin
 
  fViewPorts:=nil;
  fCountViewPorts:=0;
+ fDynamicViewPorts:=false;
 
  fScissors:=nil;
  fCountScissors:=0;
+ fDynamicScissors:=false;
 
 end;
 
@@ -21775,12 +21793,16 @@ begin
  SetLength(fScissors,fCountScissors);
  if (fCountViewPorts>0) or (fCountScissors>0) then begin
   fViewportStateCreateInfo.viewportCount:=fCountViewPorts;
-  if fCountViewPorts>0 then begin
+  if (fCountViewPorts>0) and not fDynamicViewPorts then begin
    fViewportStateCreateInfo.pViewports:=@fViewPorts[0];
+  end else begin
+   fViewportStateCreateInfo.pViewports:=nil;
   end;
   fViewportStateCreateInfo.scissorCount:=fCountScissors;
-  if fCountScissors>0 then begin
+  if (fCountScissors>0) and not fDynamicScissors then begin
    fViewportStateCreateInfo.pScissors:=@fScissors[0];
+  end else begin
+   fViewportStateCreateInfo.pScissors:=nil;
   end;
  end;
 end;
@@ -26361,10 +26383,9 @@ constructor TVulkanSpriteBatch.Create(const aDevice:TVulkanDevice;
                                       const aTransferFence:TVulkanFence;
                                       const aPipelineCache:TVulkanPipelineCache;
                                       const aRenderPass:TVulkanRenderPass;
-                                      const aCountBuffers:TVkInt32;
-                                      const aWidth:TVkInt32=1280;
-                                      const aHeight:TVkInt32=720);
+                                      const aCountBuffers:TVkInt32);
 var Index:TVkInt32;
+    BlendingModeIndex:TVulkanSpriteBatchBlendingMode;
     Indices:array of TVkUInt32;
     VulkanGraphicsPipeline:TVulkanGraphicsPipeline;
     VulkanSpriteBatchBuffer:PVulkanSpriteBatchBuffer;
@@ -26395,8 +26416,19 @@ begin
  fVertexBufferUsed:=0;
  fIndexBufferUsed:=0;
 
- fBlending:=false;
- fAdditiveBlending:=false;
+ fBlendingMode:=vsbbmNone;
+
+ fWidth:=1280;
+ fHeight:=720;
+
+ fViewPort.x:=0.0;
+ fViewPort.y:=0.0;
+ fViewPort.Width:=1280.0;
+ fViewPort.Height:=720.0;
+ fViewPort.minDepth:=0.0;
+ fViewPort.maxDepth:=1.0;
+
+ fPointerToViewport:=@fViewport;
 
  fTemporaryVertices:=nil;
 
@@ -26455,6 +26487,7 @@ begin
  fVulkanDescriptorPool:=TVulkanDescriptorPool.Create(fDevice,
                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                      2);
+
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
  fVulkanDescriptorPool.Initialize;
@@ -26496,7 +26529,7 @@ begin
 
  fVulkanPipelineShaderStageTriangleFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fSpriteBatchFragmentShaderModule,'main');
 
- for Index:=Low(fVulkanGraphicsPipelines) to High(fVulkanGraphicsPipelines) do begin
+ for BlendingModeIndex:=Low(TVulkanSpriteBatchBlendingMode) to High(TVulkanSpriteBatchBlendingMode) do begin
 
   VulkanGraphicsPipeline:=TVulkanGraphicsPipeline.Create(fDevice,
                                                          fPipelineCache,
@@ -26507,7 +26540,7 @@ begin
                                                          0,
                                                          nil,
                                                          0);
-  fVulkanGraphicsPipelines[Index]:=VulkanGraphicsPipeline;
+  fVulkanGraphicsPipelines[BlendingModeIndex]:=VulkanGraphicsPipeline;
 
   VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleVertex);
   VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleFragment);
@@ -26520,8 +26553,11 @@ begin
   VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.TextureCoord)));
   VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32A32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.Color)));
 
-  VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
-  VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
+  VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
+  VulkanGraphicsPipeline.ViewPortState.DynamicViewPorts:=true;
+
+  VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fWidth,fHeight);
+  VulkanGraphicsPipeline.ViewPortState.DynamicScissors:=true;
 
   VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
   VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
@@ -26547,8 +26583,8 @@ begin
   VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
   VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
   VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
-  case Index of
-   1:begin
+  case BlendingModeIndex of
+   vsbbmAlphaBlending:begin
     // Normal alpha-blending
     VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
                                                                         VK_BLEND_FACTOR_SRC_ALPHA,
@@ -26562,7 +26598,7 @@ begin
                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
    end;
-   2:begin
+   vsbbmAdditiveBlending:begin
     // Source-Alpha-channel-controlled additive blending
     VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
                                                                         VK_BLEND_FACTOR_SRC_ALPHA,
@@ -26605,20 +26641,18 @@ begin
 
  end;
 
- fWidth:=AWidth;
- fHeight:=AHeight;
-
  fCurrentFillSpriteBatchBuffer:=nil;
 
 end;
 
 destructor TVulkanSpriteBatch.Destroy;
 var Index,SubIndex:TVkInt32;
+    BlendingModeIndex:TVulkanSpriteBatchBlendingMode;
     VulkanSpriteBatchBuffer:PVulkanSpriteBatchBuffer;
 begin
 
- for Index:=Low(fVulkanGraphicsPipelines) to High(fVulkanGraphicsPipelines) do begin
-  FreeAndNil(fVulkanGraphicsPipelines[Index]);
+ for BlendingModeIndex:=Low(TVulkanSpriteBatchBlendingMode) to High(TVulkanSpriteBatchBlendingMode) do begin
+  FreeAndNil(fVulkanGraphicsPipelines[BlendingModeIndex]);
  end;
 
  FreeAndNil(fVulkanPipelineLayout);
@@ -26666,21 +26700,23 @@ var x,y:single;
 begin
  x:=PointToRotate.x-AroundPoint.x;
  y:=PointToRotate.y-AroundPoint.y;
- result.x:=(((((x*Cosinus)-(y*Sinus))+AroundPoint.x)/fWidth)-0.5)*2;
- result.y:=-((((((x*Sinus)+(y*Cosinus))+AroundPoint.y)/fHeight)-0.5)*2);
+ result.x:=(((((x*Cosinus)-(y*Sinus))+AroundPoint.x)*fInverseWidth)-0.5)*2;
+ result.y:=-((((((x*Sinus)+(y*Cosinus))+AroundPoint.y)*fInverseHeight)-0.5)*2);
 end;
 
-procedure TVulkanSpriteBatch.SetBlending(Active,Additive:boolean);
+procedure TVulkanSpriteBatch.SetBlendingMode(aBlendingMode:TVulkanSpriteBatchBlendingMode);
 begin
- if (fBlending<>Active) or (fAdditiveBlending<>Additive) then begin
+ if fBlendingMode<>aBlendingMode then begin
   Flush;
-  fBlending:=Active;
-  fAdditiveBlending:=Additive;
+  fBlendingMode:=aBlendingMode;
  end;
 end;
 
 procedure TVulkanSpriteBatch.Start(const aBufferIndex:TVkInt32);
 begin
+
+ fInverseWidth:=1.0/fWidth;
+ fInverseHeight:=1.0/fHeight;
 
  fLastTexture:=nil;
 
@@ -26688,6 +26724,8 @@ begin
  fIndexBufferUsed:=0;
 
  fCurrentVulkanVertexBufferIndex:=0;
+
+ fBlendingMode:=vsbbmNone;
 
  fCurrentFillSpriteBatchBuffer:=@fVulkanSpriteBatchBuffers[aBufferIndex];
 
@@ -26783,8 +26821,7 @@ begin
   QueueItem^.DescriptorSetIndex:=DescriptorSetIndex;
   QueueItem^.CountVertices:=fVertexBufferUsed;
   QueueItem^.CountIndices:=fIndexBufferUsed;
-  QueueItem^.Blending:=fBlending;
-  QueueItem^.AdditiveBlending:=fAdditiveBlending;
+  QueueItem^.BlendingMode:=fBlendingMode;
 
   fVertexBufferUsed:=0;
   fIndexBufferUsed:=0;
@@ -26797,8 +26834,8 @@ begin
  if fLastTexture<>Texture then begin
   Flush;
   fLastTexture:=Texture;
-  fWidthInvFactor:=1.0/Texture.Width;
-  fHeightInvFactor:=1.0/Texture.Height;
+  fInverseTextureWidth:=1.0/Texture.Width;
+  fInverseTextureHeight:=1.0/Texture.Height;
  end;
 end;
 
@@ -26806,30 +26843,30 @@ procedure TVulkanSpriteBatch.Draw(const Texture:TVulkanSpriteTexture;const Src,D
 var sX0,sY0,sX1,sY1:single;
 begin
  SetTexture(Texture);
- sX0:=Src.Left*fWidthInvFactor;
- sY0:=Src.Top*fHeightInvFactor;
- sX1:=Src.Right*fWidthInvFactor;
- sY1:=Src.Bottom*fHeightInvFactor;
- fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Left/fWidth)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Top/fHeight)-0.5)*2;
+ sX0:=Src.Left*fInverseTextureWidth;
+ sY0:=Src.Top*fInverseTextureHeight;
+ sX1:=Src.Right*fInverseTextureWidth;
+ sY1:=Src.Bottom*fInverseTextureHeight;
+ fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Left*fInverseWidth)-0.5)*2;
+ fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Top*fInverseHeight)-0.5)*2;
  fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
  fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
  fTemporaryVertices[fVertexBufferUsed].Color:=Color;
  inc(fVertexBufferUsed);
- fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Right/fWidth)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Top/fHeight)-0.5)*2;
+ fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Right*fInverseWidth)-0.5)*2;
+ fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Top*fInverseHeight)-0.5)*2;
  fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
  fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
  fTemporaryVertices[fVertexBufferUsed].Color:=Color;
  inc(fVertexBufferUsed);
- fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Right/fWidth)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Bottom/fHeight)-0.5)*2;
+ fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Right*fInverseWidth)-0.5)*2;
+ fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Bottom*fInverseHeight)-0.5)*2;
  fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
  fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
  fTemporaryVertices[fVertexBufferUsed].Color:=Color;
  inc(fVertexBufferUsed);
- fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Left/fWidth)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Bottom/fHeight)-0.5)*2;
+ fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Left*fInverseWidth)-0.5)*2;
+ fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Bottom*fInverseHeight)-0.5)*2;
  fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
  fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
  fTemporaryVertices[fVertexBufferUsed].Color:=Color;
@@ -26930,10 +26967,10 @@ begin
  Points[2].y:=Dest.Bottom;
  Points[3].x:=Dest.Left;
  Points[3].y:=Dest.Bottom;
- sX0:=Src.Left*fWidthInvFactor;
- sY0:=Src.Top*fHeightInvFactor;
- sX1:=Src.Right*fWidthInvFactor;
- sY1:=Src.Bottom*fHeightInvFactor;
+ sX0:=Src.Left*fInverseTextureWidth;
+ sY0:=Src.Top*fInverseTextureHeight;
+ sX1:=Src.Right*fInverseTextureWidth;
+ sY1:=Src.Bottom*fInverseTextureHeight;
  fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
  fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
  fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
@@ -26999,30 +27036,30 @@ begin
    TempSrc.Top:=(ty1-Sprite.TrimmedY)+Sprite.y;
    TempSrc.Right:=TempSrc.Left+(ty2-ty1);
    TempSrc.Bottom:=TempSrc.Top+(tx2-tx1);
-   sX0:=TempSrc.Left*fWidthInvFactor;
-   sY0:=TempSrc.Top*fHeightInvFactor;
-   sX1:=TempSrc.Right*fWidthInvFactor;
-   sY1:=TempSrc.Bottom*fHeightInvFactor;
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left/fWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top/fHeight)-0.5)*2;
+   sX0:=TempSrc.Left*fInverseTextureWidth;
+   sY0:=TempSrc.Top*fInverseTextureHeight;
+   sX1:=TempSrc.Right*fInverseTextureWidth;
+   sY1:=TempSrc.Bottom*fInverseTextureHeight;
+   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
    fTemporaryVertices[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right/fWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top/fHeight)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
    fTemporaryVertices[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right/fWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom/fHeight)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
    fTemporaryVertices[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left/fWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom/fHeight)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
    fTemporaryVertices[fVertexBufferUsed].Color:=Color;
@@ -27060,30 +27097,30 @@ begin
    TempSrc.Top:=(ty1-Sprite.TrimmedY)+Sprite.y;
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
-   sX0:=TempSrc.Left*fWidthInvFactor;
-   sY0:=TempSrc.Top*fHeightInvFactor;
-   sX1:=TempSrc.Right*fWidthInvFactor;
-   sY1:=TempSrc.Bottom*fHeightInvFactor;
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left/fWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top/fHeight)-0.5)*2;
+   sX0:=TempSrc.Left*fInverseTextureWidth;
+   sY0:=TempSrc.Top*fInverseTextureHeight;
+   sX1:=TempSrc.Right*fInverseTextureWidth;
+   sY1:=TempSrc.Bottom*fInverseTextureHeight;
+   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
    fTemporaryVertices[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right/fWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top/fHeight)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
    fTemporaryVertices[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right/fWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom/fHeight)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
    fTemporaryVertices[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left/fWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom/fHeight)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
+   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
    fTemporaryVertices[fVertexBufferUsed].Color:=Color;
@@ -27135,10 +27172,10 @@ begin
    Points[2].y:=TempDest.Bottom;
    Points[3].x:=TempDest.Left;
    Points[3].y:=TempDest.Bottom;
-   sX0:=TempSrc.Left*fWidthInvFactor;
-   sY0:=TempSrc.Top*fHeightInvFactor;
-   sX1:=TempSrc.Right*fWidthInvFactor;
-   sY1:=TempSrc.Bottom*fHeightInvFactor;
+   sX0:=TempSrc.Left*fInverseTextureWidth;
+   sY0:=TempSrc.Top*fInverseTextureHeight;
+   sX1:=TempSrc.Right*fInverseTextureWidth;
+   sY1:=TempSrc.Bottom*fInverseTextureHeight;
    fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
@@ -27188,10 +27225,10 @@ begin
    Points[2].y:=TempDest.Bottom;
    Points[3].x:=TempDest.Left;
    Points[3].y:=TempDest.Bottom;
-   sX0:=TempSrc.Left*fWidthInvFactor;
-   sY0:=TempSrc.Top*fHeightInvFactor;
-   sX1:=TempSrc.Right*fWidthInvFactor;
-   sY1:=TempSrc.Bottom*fHeightInvFactor;
+   sX0:=TempSrc.Left*fInverseTextureWidth;
+   sY0:=TempSrc.Top*fInverseTextureHeight;
+   sX1:=TempSrc.Right*fInverseTextureWidth;
+   sY1:=TempSrc.Bottom*fInverseTextureHeight;
    fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
    fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
@@ -27361,36 +27398,32 @@ end;
 
 procedure TVulkanSpriteBatch.ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
-var Index,OldState,NewState,DescriptorSetIndex:TVkInt32;
+var Index,DescriptorSetIndex:TVkInt32;
     QueueItem:PVulkanSpriteBatchQueueItem;
     CurrentDrawSpriteBatchBuffer:PVulkanSpriteBatchBuffer;
     VulkanVertexBuffer:TVulkanBuffer;
-    Viewport:TVkViewport;
     Scissor,OldScissor:TVkRect2D;
+    OldBlendingMode:TVulkanSpriteBatchBlendingMode;
+    ForceUpdate:boolean;
 begin
  CurrentDrawSpriteBatchBuffer:=@fVulkanSpriteBatchBuffers[aBufferIndex];
  if assigned(CurrentDrawSpriteBatchBuffer) and (CurrentDrawSpriteBatchBuffer^.fCountQueueItems>0) then begin
 
-  Viewport.x:=0.0;
-  Viewport.y:=0.0;
-  Viewport.width:=fWidth;
-  Viewport.height:=fheight;
-  Viewport.minDepth:=0.0;
-  Viewport.maxDepth:=1.0;
-
-  Scissor.offset.x:=0;
-  Scissor.offset.y:=0;
-  Scissor.extent.width:=fWidth;
-  Scissor.extent.height:=fHeight;
+  Scissor.offset.x:=trunc(floor(fViewport.x));
+  Scissor.offset.y:=trunc(floor(fViewport.y));
+  Scissor.extent.Width:=trunc(ceil(fViewport.Width));
+  Scissor.extent.Height:=trunc(ceil(fViewport.Height));
 
   OldScissor.offset.x:=-$7fffffff;
   OldScissor.offset.y:=-$7fffffff;
-  OldScissor.extent.width:=$7fffffff;
-  OldScissor.extent.height:=$7fffffff;
+  OldScissor.extent.Width:=$7fffffff;
+  OldScissor.extent.Height:=$7fffffff;
 
-  OldState:=-1;
+  OldBlendingMode:=vsbbmNone;
 
   DescriptorSetIndex:=-1;
+
+  ForceUpdate:=true;
 
   for Index:=0 to CurrentDrawSpriteBatchBuffer^.fCountQueueItems-1 do begin
 
@@ -27398,35 +27431,42 @@ begin
 
    VulkanVertexBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
 
-   if DescriptorSetIndex<>QueueItem^.DescriptorSetIndex then begin
+   if ForceUpdate then begin
+
+    aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+
+    aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
+
+   end;
+
+   if ForceUpdate or
+      (DescriptorSetIndex<>QueueItem^.DescriptorSetIndex) then begin
 
     DescriptorSetIndex:=QueueItem^.DescriptorSetIndex;
 
     aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorSetIndex].Handle,0,nil);
 
-    OldState:=-1;
-
    end;
 
-   NewState:=(ord(QueueItem^.Blending) and 1) or ((ord(QueueItem^.AdditiveBlending) and 1) shl 1);
-   if OldState<>NewState then begin
+   if ForceUpdate or
+      (OldBlendingMode<>QueueItem^.BlendingMode) then begin
 
-    OldState:=NewState;
+    OldBlendingMode:=QueueItem^.BlendingMode;
 
-    aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[NewState].Handle);
-    aVulkanCommandBuffer.CmdSetViewport(0,1,@Viewport);
+    aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.BlendingMode].Handle);
 
     OldScissor.offset.x:=-$7fffffff;
     OldScissor.offset.y:=-$7fffffff;
-    OldScissor.extent.width:=$7fffffff;
-    OldScissor.extent.height:=$7fffffff;
+    OldScissor.extent.Width:=$7fffffff;
+    OldScissor.extent.Height:=$7fffffff;
 
    end;
 
-   if (OldScissor.offset.x<>Scissor.offset.x) or
+   if ForceUpdate or
+      (OldScissor.offset.x<>Scissor.offset.x) or
       (OldScissor.offset.y<>Scissor.offset.y) or
-      (OldScissor.extent.width<>Scissor.extent.width) or
-      (OldScissor.extent.height<>Scissor.extent.height) then begin
+      (OldScissor.extent.Width<>Scissor.extent.Width) or
+      (OldScissor.extent.Height<>Scissor.extent.Height) then begin
 
     OldScissor:=Scissor;
 
@@ -27435,9 +27475,10 @@ begin
    end;
 
    aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
-   aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
    aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
 
+   ForceUpdate:=false;
+   
   end;
 
   CurrentDrawSpriteBatchBuffer^.fCountQueueItems:=0;

@@ -246,9 +246,13 @@ begin
                                                VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                                VulkanApplication.VulkanPipelineCache,
                                                fVulkanRenderPass,
-                                               2,
-                                               VulkanApplication.Width,
-                                               VulkanApplication.Height);
+                                               2);
+ fVulkanSpriteBatch.Width:=1280;
+ fVulkanSpriteBatch.Height:=720;
+ fVulkanSpriteBatch.Viewport.x:=0;
+ fVulkanSpriteBatch.Viewport.y:=0;
+ fVulkanSpriteBatch.Viewport.width:=VulkanApplication.Width;
+ fVulkanSpriteBatch.Viewport.height:=VulkanApplication.Height;
 
  for SwapChainImageIndex:=0 to length(fVulkanRenderCommandBuffers)-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[SwapChainImageIndex]);
@@ -398,12 +402,41 @@ begin
  inherited Update(aDeltaTime);
 
  fVulkanSpriteBatch.Start(VulkanApplication.UpdateFrameCounter and 1);
- SrcRect:=VulkanSpriteRect(0,0,255,255);
- DstRect.Left:=((VulkanApplication.Width-fVulkanSpriteTest.Width)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0);
- DstRect.Top:=((VulkanApplication.Height-fVulkanSpriteTest.Height)*0.5)+(sin(fTime*pi*3.0*0.1)*128.0);
+
+ fVulkanSpriteBatch.BlendingMode:=vsbbmNone;
+
+ SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
+ DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteTest.Width)*0.5)+(cos(fTime*pi*2.0*0.1)*128.0);
+ DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteTest.Height)*0.5)+(sin(fTime*pi*3.0*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteTest.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteTest.Height;
  fVulkanSpriteBatch.Draw(fVulkanSpriteTest,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
+
+ SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
+ DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteTest.Width)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0);
+ DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteTest.Height)*0.5)+(cos(fTime*pi*3.0*0.1)*128.0);
+ DstRect.Right:=DstRect.Left+fVulkanSpriteTest.Width;
+ DstRect.Bottom:=DstRect.Top+fVulkanSpriteTest.Height;
+ fVulkanSpriteBatch.Draw(fVulkanSpriteTest,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
+
+ fVulkanSpriteBatch.BlendingMode:=vsbbmAlphaBlending;
+
+ SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
+ DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteTest.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
+ DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteTest.Height)*0.5)+(cos(fTime*pi*2.3*0.1)*128.0);
+ DstRect.Right:=DstRect.Left+fVulkanSpriteTest.Width;
+ DstRect.Bottom:=DstRect.Top+fVulkanSpriteTest.Height;
+ fVulkanSpriteBatch.Draw(fVulkanSpriteTest,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,0.5));
+
+ fVulkanSpriteBatch.BlendingMode:=vsbbmAdditiveBlending;
+
+ SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
+ DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteTest.Width)*0.5)+(cos(fTime*pi*1.7*0.1)*128.0);
+ DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteTest.Height)*0.5)+(sin(fTime*pi*2.3*0.1)*128.0);
+ DstRect.Right:=DstRect.Left+fVulkanSpriteTest.Width;
+ DstRect.Bottom:=DstRect.Top+fVulkanSpriteTest.Height;
+ fVulkanSpriteBatch.Draw(fVulkanSpriteTest,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,0.5));
+
  fVulkanSpriteBatch.Stop;
 
  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Sprites');
