@@ -246,7 +246,7 @@ begin
                                                VulkanApplication.VulkanTransferCommandBufferFences[0,0],
                                                VulkanApplication.VulkanPipelineCache,
                                                fVulkanRenderPass,
-                                               2);
+                                               VulkanApplication.CountSwapChainImages);
  fVulkanSpriteBatch.Width:=1280;
  fVulkanSpriteBatch.Height:=720;
  fVulkanSpriteBatch.Viewport.x:=0;
@@ -401,7 +401,7 @@ var Index:TVkInt32;
 begin
  inherited Update(aDeltaTime);
 
- fVulkanSpriteBatch.Start(VulkanApplication.UpdateFrameCounter and 1);
+ fVulkanSpriteBatch.Start(VulkanApplication.UpdateSwapChainImageIndex);
 
  fVulkanSpriteBatch.BlendingMode:=vsbbmNone;
 
@@ -486,7 +486,7 @@ begin
                                      VulkanSwapChain.Height);
 
    fVulkanSpriteBatch.ExecuteDraw(VulkanCommandBuffer,
-                                  VulkanApplication.DrawFrameCounter and 1);
+                                  VulkanApplication.DrawSwapChainImageIndex);
 
    fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 

@@ -603,7 +603,7 @@ begin
  fState.Time:=fState.Time+aDeltaTime;
  fState.AnglePhases[0]:=frac(fState.AnglePhases[0]+(aDeltaTime*f0));
  fState.AnglePhases[1]:=frac(fState.AnglePhases[1]+(aDeltaTime*f1));
- fStates[VulkanApplication.UpdateFrameCounter and 1]:=fState;
+ fStates[VulkanApplication.UpdateSwapChainImageIndex]:=fState;
  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Dragon');
  fStartY:=VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*1.25)-(4*FontSize));
  cy:=fStartY;
@@ -630,7 +630,7 @@ begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVulkanGraphicsPipeline) then begin
 
-  State:=@fStates[VulkanApplication.DrawFrameCounter and 1];
+  State:=@fStates[VulkanApplication.DrawSwapChainImageIndex];
 
   ModelMatrix:=Matrix4x4TermMul(Matrix4x4Rotate(State^.AnglePhases[0]*TwoPI,Vector3(0.0,0.0,1.0)),
                                 Matrix4x4Rotate(State^.AnglePhases[1]*TwoPI,Vector3(0.0,1.0,0.0)));

@@ -38,7 +38,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      TTextOverlayBufferChars=array[0..TextOverlayBufferCharSize-1] of TTextOverlayBufferChar;
 
      PTextOverlayBufferCharsBuffers=^TTextOverlayBufferCharsBuffers;
-     TTextOverlayBufferCharsBuffers=array[0..1] of TTextOverlayBufferChars;
+     TTextOverlayBufferCharsBuffers=array[0..MaxSwapChainImages-1] of TTextOverlayBufferChars;
 
      PTextOverlayIndices=^TTextOverlayIndices;
      TTextOverlayIndices=array[0..(TextOverlayBufferCharSize*6)-1] of TVkInt32;
@@ -62,7 +62,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fBufferChars:PTextOverlayBufferChars;
        fBufferCharsBuffers:TTextOverlayBufferCharsBuffers;
        fCountBufferChars:TVkInt32;
-       fCountBufferCharsBuffers:array[0..1] of TVkInt32;
+       fCountBufferCharsBuffers:array[0..MaxSwapChainImages-1] of TVkInt32;
        fIndices:TTextOverlayIndices;
        fTextOverlayVertexShaderModule:TVulkanShaderModule;
        fTextOverlayFragmentShaderModule:TVulkanShaderModule;
@@ -125,8 +125,9 @@ begin
 
  fCountBufferChars:=0;
 
- fCountBufferCharsBuffers[0]:=0;
- fCountBufferCharsBuffers[1]:=0;
+ for Index:=low(fCountBufferCharsBuffers) to high(fCountBufferCharsBuffers) do begin
+  fCountBufferCharsBuffers[Index]:=0;
+ end;
 
 end;
 
@@ -542,7 +543,7 @@ end;
 procedure TTextOverlay.PreUpdate(const aDeltaTime:double);
 var FPS,ms:string;
 begin
- fUpdateBufferIndex:=VulkanApplication.UpdateFrameCounter and 1;
+ fUpdateBufferIndex:=VulkanApplication.UpdateSwapChainImageIndex;
  fBufferChars:=@fBufferCharsBuffers[fUpdateBufferIndex];
  begin
   Reset;
@@ -569,7 +570,7 @@ var BufferIndex,Size:TVkInt32;
     p:pointer;
 begin
 
- BufferIndex:=VulkanApplication.DrawFrameCounter and 1;
+ BufferIndex:=VulkanApplication.DrawSwapChainImageIndex;
  if fCountBufferCharsBuffers[BufferIndex]=0 then begin
   fCountBufferCharsBuffers[BufferIndex]:=1;
   FillChar(fBufferCharsBuffers[BufferIndex],SizeOf(TTextOverlayBufferChar),#0);
