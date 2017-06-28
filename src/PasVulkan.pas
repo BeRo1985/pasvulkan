@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-27-04-31-0000                       *
+ *                        Version 2017-06-28-05-08-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -3294,7 +3294,8 @@ type EVulkanException=class(Exception);
                         const aGraphicsFence:TVulkanFence;
                         const aTransferQueue:TVulkanQueue;
                         const aTransferCommandBuffer:TVulkanCommandBuffer;
-                        const aTransferFence:TVulkanFence);
+                        const aTransferFence:TVulkanFence;
+                        const aMipMaps:boolean);
        procedure Unload;
       published
        property Texture:TVulkanTexture read fTexture;
@@ -3500,6 +3501,7 @@ type EVulkanException=class(Exception);
        fList:TList;
        fHashMap:TVulkanStringHashMap;
        fIsUploaded:boolean;
+       fMipMaps:boolean;
        function GetCount:TVkInt32;
        function GetItem(Index:TVkInt32):TVulkanSprite;
        procedure SetItem(Index:TVkInt32;Item:TVulkanSprite);
@@ -3522,14 +3524,16 @@ type EVulkanException=class(Exception);
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
        function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean; virtual;
-       function LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32;DoFree:boolean=false):TVulkanSprite; virtual;
-       function LoadSprite(const Name:TVulkanRawByteString;Stream:TStream;DoFree:boolean=true):TVulkanSprite; virtual;
-       function LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;DoFree:boolean=true;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64):TVulkanSprites; virtual;
+       function LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32):TVulkanSprite; virtual;
+       function LoadSprite(const Name:TVulkanRawByteString;Stream:TStream):TVulkanSprite; virtual;
+       function LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64):TVulkanSprites; virtual;
        property Device:TVulkanDevice read fDevice;
        property Count:TVkInt32 read GetCount;
        property Items[Index:TVkInt32]:TVulkanSprite read GetItem write SetItem;
        property Sprites[const Name:TVulkanRawByteString]:TVulkanSprite read GetSprite; default;
-      end;
+      published
+       property MipMaps:boolean read fMipMaps write fMipMaps;
+     end;
 
      EVulkanTrueTypeFont=class(Exception);
 
@@ -4024,7 +4028,7 @@ type EVulkanException=class(Exception);
        function LoadGlyphData(GlyphIndex:TVkInt32):TVkInt32;
        procedure SetSize(NewSize:TVkInt32);
       public
-       constructor Create(const Stream:TStream;const DoFree:boolean=true;const TargetPPI:TVkInt32=96;const ForceSelector:boolean=false;const PlatformID:TVkUInt16=VkTTF_PID_Microsoft;const SpecificID:TVkUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TVkUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TVkInt32=0);
+       constructor Create(const Stream:TStream;const TargetPPI:TVkInt32=96;const ForceSelector:boolean=false;const PlatformID:TVkUInt16=VkTTF_PID_Microsoft;const SpecificID:TVkUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TVkUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TVkInt32=0);
        destructor Destroy; override;
        function NumGlyphs:TVkInt32;
        function GetGASPRange:PVulkanTrueTypeFontGASPRange;
@@ -26280,7 +26284,8 @@ procedure TVulkanSpriteTexture.Upload(const aDevice:TVulkanDevice;
                                       const aGraphicsFence:TVulkanFence;
                                       const aTransferQueue:TVulkanQueue;
                                       const aTransferCommandBuffer:TVulkanCommandBuffer;
-                                      const aTransferFence:TVulkanFence);
+                                      const aTransferFence:TVulkanFence;
+                                      const aMipMaps:boolean);
 begin
 
  if not fUploaded then begin
@@ -26302,7 +26307,7 @@ begin
                                             1,
                                             1,
                                             1,
-                                            -1,
+                                            MipMapLevels[aMipMaps],  
                                             [vtufTransferDst,vtufSampled],
                                             fPixels,
                                             fWidth*fHeight*SizeOf(TVkUInt8)*4,
@@ -26324,7 +26329,7 @@ begin
                                          1,
                                          1,
                                          1,
-                                         true,
+                                         aMipMaps,
                                          false);
 {$ifend}
   fTexture.WrapModeU:=vtwmClampToBorder;
@@ -26701,7 +26706,7 @@ begin
  x:=PointToRotate.x-AroundPoint.x;
  y:=PointToRotate.y-AroundPoint.y;
  result.x:=(((((x*Cosinus)-(y*Sinus))+AroundPoint.x)*fInverseWidth)-0.5)*2;
- result.y:=-((((((x*Sinus)+(y*Cosinus))+AroundPoint.y)*fInverseHeight)-0.5)*2);
+ result.y:=(((((x*Sinus)+(y*Cosinus))+AroundPoint.y)*fInverseHeight)-0.5)*2;
 end;
 
 procedure TVulkanSpriteBatch.SetBlendingMode(aBlendingMode:TVulkanSpriteBatchBlendingMode);
@@ -27493,6 +27498,7 @@ begin
  fList:=TList.Create;
  fHashMap:=TVulkanStringHashMap.Create;
  fIsUploaded:=false;
+ fMipMaps:=true;
  inherited Create;
 end;
 
@@ -27544,7 +27550,8 @@ begin
                             aGraphicsFence,
                             aTransferQueue,
                             aTransferCommandBuffer,
-                            aTransferFence);
+                            aTransferFence,
+                            fMipMaps);
     Texture^.Dirty:=false;
    end;
    Texture:=Texture^.Next;
@@ -27749,7 +27756,7 @@ begin
  end;
 end;
 
-function TVulkanSpriteAtlas.LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32;DoFree:boolean=false):TVulkanSprite;
+function TVulkanSpriteAtlas.LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32):TVulkanSprite;
 type PVkUInt32=^TVkUInt32;
 var x,y,x0,y0,x1,y1:TVkInt32;
     Texture:PVulkanSpriteAtlasTexture;
@@ -28013,15 +28020,11 @@ begin
 
  finally
 
-  if assigned(ImageData) and DoFree then begin
-   FreeMem(ImageData);
-  end;
-
  end;
 
 end;
 
-function TVulkanSpriteAtlas.LoadSprite(const Name:TVulkanRawByteString;Stream:TStream;DoFree:boolean=true):TVulkanSprite;
+function TVulkanSpriteAtlas.LoadSprite(const Name:TVulkanRawByteString;Stream:TStream):TVulkanSprite;
 var InputImageData,ImageData:TVkPointer;
     InputImageDataSize,ImageWidth,ImageHeight:TVkInt32;
 begin
@@ -28043,7 +28046,7 @@ begin
 
      if LoadImage(InputImageData,InputImageDataSize,ImageData,ImageWidth,ImageHeight) then begin
 
-      result:=LoadRawSprite(Name,ImageData,ImageWidth,ImageHeight,false);
+      result:=LoadRawSprite(Name,ImageData,ImageWidth,ImageHeight);
 
      end else begin
       raise Exception.Create('Can''t load image');
@@ -28067,10 +28070,6 @@ begin
 
   finally
 
-   if DoFree then begin
-    Stream.Free;
-   end;
-
   end;
 
  end else begin
@@ -28081,7 +28080,7 @@ begin
 
 end;
 
-function TVulkanSpriteAtlas.LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;DoFree:boolean=true;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64):TVulkanSprites;
+function TVulkanSpriteAtlas.LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64):TVulkanSprites;
 type PVkUInt32=^TVkUInt32;
 var InputImageData,ImageData,SpriteData:TVkPointer;
     InputImageDataSize,ImageWidth,ImageHeight,Count,x,y,sy,sw,sh:TVkInt32;
@@ -28149,7 +28148,7 @@ begin
             inc(dp,SpriteWidth);
            end;
 
-           result[Count]:=LoadRawSprite(Name+IntToStr(Count),SpriteData,SpriteWidth,SpriteHeight,false);
+           result[Count]:=LoadRawSprite(Name+IntToStr(Count),SpriteData,SpriteWidth,SpriteHeight);
 
            inc(Count);
 
@@ -28202,10 +28201,6 @@ begin
    end;
 
   finally
-
-   if DoFree then begin
-    Stream.Free;
-   end;
 
   end;
 
@@ -32306,7 +32301,7 @@ begin
 {$endif}
 end;
 
-constructor TVulkanTrueTypeFont.Create(const Stream:TStream;const DoFree:boolean=true;const TargetPPI:TVkInt32=96;const ForceSelector:boolean=false;const PlatformID:TVkUInt16=VkTTF_PID_Microsoft;const SpecificID:TVkUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TVkUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TVkInt32=0);
+constructor TVulkanTrueTypeFont.Create(const Stream:TStream;const TargetPPI:TVkInt32=96;const ForceSelector:boolean=false;const PlatformID:TVkUInt16=VkTTF_PID_Microsoft;const SpecificID:TVkUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TVkUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TVkInt32=0);
 begin
  inherited Create;
  fTargetPPI:=TargetPPI;
@@ -32442,9 +32437,6 @@ begin
    fIgnoreByteCodeInterpreter:=true;
   end;
  finally
-  if DoFree then begin
-   Stream.Free;
-  end;
  end;
  if fLastError<>VkTTF_TT_ERR_NoError then begin
   case fLastError of
