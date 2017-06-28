@@ -277,8 +277,13 @@ begin
                                                VulkanApplication.VulkanPipelineCache,
                                                fVulkanRenderPass,
                                                VulkanApplication.CountSwapChainImages);
- fVulkanSpriteBatch.Width:=1280;
- fVulkanSpriteBatch.Height:=720;
+ if VulkanApplication.Width<VulkanApplication.Height then begin
+  fVulkanSpriteBatch.Width:=(720*VulkanApplication.Width) div VulkanApplication.Height;
+  fVulkanSpriteBatch.Height:=720;
+ end else begin
+  fVulkanSpriteBatch.Width:=1280;
+  fVulkanSpriteBatch.Height:=(1280*VulkanApplication.Height) div VulkanApplication.Width;
+ end;
  fVulkanSpriteBatch.Viewport.x:=0;
  fVulkanSpriteBatch.Viewport.y:=0;
  fVulkanSpriteBatch.Viewport.width:=VulkanApplication.Width;
