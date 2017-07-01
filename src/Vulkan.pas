@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=51;
+      VK_HEADER_VERSION=53;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -534,12 +534,12 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_129_EXTENSION_NAME='VK_EXT_extension_129';
       VK_KHR_EXTENSION_130_SPEC_VERSION=0;
       VK_KHR_EXTENSION_130_EXTENSION_NAME='VK_KHR_extension_130';
-      VK_KHR_EXTENSION_131_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_131_EXTENSION_NAME='VK_KHR_extension_131';
+      VK_EXT_SAMPLER_FILTER_MINMAX_SPEC_VERSION=1;
+      VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME='VK_EXT_sampler_filter_minmax';
       VK_KHR_EXTENSION_132_SPEC_VERSION=0;
       VK_KHR_EXTENSION_132_EXTENSION_NAME='VK_KHR_extension_132';
-      VK_AMD_EXTENSION_133_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_133_EXTENSION_NAME='VK_AMD_extension_133';
+      VK_AMD_GPU_SHADER_INT16_SPEC_VERSION=1;
+      VK_AMD_GPU_SHADER_INT16_EXTENSION_NAME='VK_AMD_gpu_shader_int16';
       VK_AMD_EXTENSION_134_SPEC_VERSION=0;
       VK_AMD_EXTENSION_134_EXTENSION_NAME='VK_AMD_extension_134';
       VK_AMD_EXTENSION_135_SPEC_VERSION=0;
@@ -570,18 +570,18 @@ const VK_NULL_HANDLE=0;
       VK_KHR_extension_147_EXTENSION_NAME='VK_KHR_extension_147';
       VK_KHR_EXTENSION_148_SPEC_VERSION=0;
       VK_KHR_EXTENSION_148_EXTENSION_NAME='VK_EXT_extension_148';
-      VK_NV_EXTENSION_149_SPEC_VERSION=0;
-      VK_NV_EXTENSION_149_EXTENSION_NAME='VK_NV_extension_149';
-      VK_NV_EXTENSION_150_SPEC_VERSION=0;
-      VK_NV_EXTENSION_150_EXTENSION_NAME='VK_NV_extension_150';
+      VK_EXT_BLEND_OPERATION_ADVANCED_SPEC_VERSION=2;
+      VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME='VK_EXT_blend_operation_advanced';
+      VK_NV_FRAGMENT_COVERAGE_TO_COLOR_SPEC_VERSION=1;
+      VK_NV_FRAGMENT_COVERAGE_TO_COLOR_EXTENSION_NAME='VK_NV_fragment_coverage_to_color';
       VK_NV_EXTENSION_151_SPEC_VERSION=0;
       VK_NV_EXTENSION_151_EXTENSION_NAME='VK_NV_extension_151';
       VK_NV_EXTENSION_152_SPEC_VERSION=0;
       VK_NV_EXTENSION_152_EXTENSION_NAME='VK_NV_extension_152';
-      VK_NV_EXTENSION_153_SPEC_VERSION=0;
-      VK_NV_EXTENSION_153_EXTENSION_NAME='VK_NV_extension_153';
-      VK_NV_EXTENSION_154_SPEC_VERSION=0;
-      VK_NV_EXTENSION_154_EXTENSION_NAME='VK_NV_extension_154';
+      VK_NV_FRAMEBUFFER_MIXED_SAMPLES_SPEC_VERSION=1;
+      VK_NV_FRAMEBUFFER_MIXED_SAMPLES_EXTENSION_NAME='VK_NV_framebuffer_mixed_samples';
+      VK_NV_FILL_RECTANGLE_SPEC_VERSION=1;
+      VK_NV_FILL_RECTANGLE_EXTENSION_NAME='VK_NV_fill_rectangle';
       VK_NV_EXTENSION_155_SPEC_VERSION=0;
       VK_NV_EXTENSION_155_EXTENSION_NAME='VK_NV_extension_155';
       VK_NV_EXTENSION_156_SPEC_VERSION=0;
@@ -592,6 +592,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_158_EXTENSION_NAME='VK_KHR_extension_158';
       VK_EXT_EXTENSION_159_SPEC_VERSION=0;
       VK_EXT_EXTENSION_159_EXTENSION_NAME='VK_EXT_extension_159';
+      VK_EXT_EXTENSION_160_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_160_EXTENSION_NAME='VK_EXT_extension_160';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -991,6 +993,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineDiscardRectangleStateCreateFlagsEXT=^TVkPipelineDiscardRectangleStateCreateFlagsEXT;
      TVkPipelineDiscardRectangleStateCreateFlagsEXT=TVkFlags;
 
+     PPVkPipelineCoverageToColorStateCreateFlagsNV=^PVkPipelineCoverageToColorStateCreateFlagsNV;
+     PVkPipelineCoverageToColorStateCreateFlagsNV=^TVkPipelineCoverageToColorStateCreateFlagsNV;
+     TVkPipelineCoverageToColorStateCreateFlagsNV=TVkFlags;
+
+     PPVkPipelineCoverageModulationStateCreateFlagsNV=^PVkPipelineCoverageModulationStateCreateFlagsNV;
+     PVkPipelineCoverageModulationStateCreateFlagsNV=^TVkPipelineCoverageModulationStateCreateFlagsNV;
+     TVkPipelineCoverageModulationStateCreateFlagsNV=TVkFlags;
+
      PPVkInstance=^PVkInstance;
      PVkInstance=^TVkInstance;
      TVkInstance=TVkDispatchableHandle;
@@ -1342,7 +1352,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_POLYGON_MODE_FILL=0,
        VK_POLYGON_MODE_LINE=1,
-       VK_POLYGON_MODE_POINT=2
+       VK_POLYGON_MODE_POINT=2,
+       VK_POLYGON_MODE_FILL_RECTANGLE_NV=1000153000
       );
 
      PPVkCullModeFlagBits=^PVkCullModeFlagBits;
@@ -1396,7 +1407,53 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_BLEND_OP_SUBTRACT=1,
        VK_BLEND_OP_REVERSE_SUBTRACT=2,
        VK_BLEND_OP_MIN=3,
-       VK_BLEND_OP_MAX=4
+       VK_BLEND_OP_MAX=4,
+       VK_BLEND_OP_ZERO_EXT=1000148000,
+       VK_BLEND_OP_SRC_EXT=1000148001,
+       VK_BLEND_OP_DST_EXT=1000148002,
+       VK_BLEND_OP_SRC_OVER_EXT=1000148003,
+       VK_BLEND_OP_DST_OVER_EXT=1000148004,
+       VK_BLEND_OP_SRC_IN_EXT=1000148005,
+       VK_BLEND_OP_DST_IN_EXT=1000148006,
+       VK_BLEND_OP_SRC_OUT_EXT=1000148007,
+       VK_BLEND_OP_DST_OUT_EXT=1000148008,
+       VK_BLEND_OP_SRC_ATOP_EXT=1000148009,
+       VK_BLEND_OP_DST_ATOP_EXT=1000148010,
+       VK_BLEND_OP_XOR_EXT=1000148011,
+       VK_BLEND_OP_MULTIPLY_EXT=1000148012,
+       VK_BLEND_OP_SCREEN_EXT=1000148013,
+       VK_BLEND_OP_OVERLAY_EXT=1000148014,
+       VK_BLEND_OP_DARKEN_EXT=1000148015,
+       VK_BLEND_OP_LIGHTEN_EXT=1000148016,
+       VK_BLEND_OP_COLORDODGE_EXT=1000148017,
+       VK_BLEND_OP_COLORBURN_EXT=1000148018,
+       VK_BLEND_OP_HARDLIGHT_EXT=1000148019,
+       VK_BLEND_OP_SOFTLIGHT_EXT=1000148020,
+       VK_BLEND_OP_DIFFERENCE_EXT=1000148021,
+       VK_BLEND_OP_EXCLUSION_EXT=1000148022,
+       VK_BLEND_OP_INVERT_EXT=1000148023,
+       VK_BLEND_OP_INVERT_RGB_EXT=1000148024,
+       VK_BLEND_OP_LINEARDODGE_EXT=1000148025,
+       VK_BLEND_OP_LINEARBURN_EXT=1000148026,
+       VK_BLEND_OP_VIVIDLIGHT_EXT=1000148027,
+       VK_BLEND_OP_LINEARLIGHT_EXT=1000148028,
+       VK_BLEND_OP_PINLIGHT_EXT=1000148029,
+       VK_BLEND_OP_HARDMIX_EXT=1000148030,
+       VK_BLEND_OP_HSL_HUE_EXT=1000148031,
+       VK_BLEND_OP_HSL_SATURATION_EXT=1000148032,
+       VK_BLEND_OP_HSL_COLOR_EXT=1000148033,
+       VK_BLEND_OP_HSL_LUMINOSITY_EXT=1000148034,
+       VK_BLEND_OP_PLUS_EXT=1000148035,
+       VK_BLEND_OP_PLUS_CLAMPED_EXT=1000148036,
+       VK_BLEND_OP_PLUS_CLAMPED_ALPHA_EXT=1000148037,
+       VK_BLEND_OP_PLUS_DARKER_EXT=1000148038,
+       VK_BLEND_OP_MINUS_EXT=1000148039,
+       VK_BLEND_OP_MINUS_CLAMPED_EXT=1000148040,
+       VK_BLEND_OP_CONTRAST_EXT=1000148041,
+       VK_BLEND_OP_INVERT_OVG_EXT=1000148042,
+       VK_BLEND_OP_RED_EXT=1000148043,
+       VK_BLEND_OP_GREEN_EXT=1000148044,
+       VK_BLEND_OP_BLUE_EXT=1000148045
       );
 
      PPVkStencilOp=^PVkStencilOp;
@@ -1826,7 +1883,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR=1000119001,
        VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR=1000119002,
        VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK=1000122000,
-       VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK=1000123000
+       VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK=1000123000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT=1000130000,
+       VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT=1000130001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT=1000148000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT=1000148001,
+       VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT=1000148002,
+       VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_TO_COLOR_STATE_CREATE_INFO_NV=1000149000,
+       VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV=1000152000
       );
 
      PPVkSubpassContents=^PVkSubpassContents;
@@ -1988,7 +2052,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ACCESS_MEMORY_READ_BIT=$00008000,                                      //< Controls coherency of memory reads
        VK_ACCESS_MEMORY_WRITE_BIT=$00010000,                                     //< Controls coherency of memory writes
        VK_ACCESS_COMMAND_PROCESS_READ_BIT_NVX=$00020000,
-       VK_ACCESS_COMMAND_PROCESS_WRITE_BIT_NVX=$00040000
+       VK_ACCESS_COMMAND_PROCESS_WRITE_BIT_NVX=$00040000,
+       VK_ACCESS_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT=$00080000
       );
 
      PPVkBufferUsageFlagBits=^PVkBufferUsageFlagBits;
@@ -2103,7 +2168,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT=$00001000,              //< Format can be filtered with VK_FILTER_LINEAR when being sampled
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_IMG=$00002000,
        VK_FORMAT_FEATURE_TRANSFER_SRC_BIT_KHR=$00004000,
-       VK_FORMAT_FEATURE_TRANSFER_DST_BIT_KHR=$00008000
+       VK_FORMAT_FEATURE_TRANSFER_DST_BIT_KHR=$00008000,
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT_EXT=$00010000
       );
 
      PPVkQueryControlFlagBits=^PVkQueryControlFlagBits;
@@ -2604,6 +2670,34 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_SUBPASS_DESCRIPTION_PER_VIEW_ATTRIBUTES_BIT_NVX=$00000001,
        VK_SUBPASS_DESCRIPTION_PER_VIEW_POSITION_X_ONLY_BIT_NVX=$00000002
+      );
+
+     PPVkSamplerReductionModeEXT=^PVkSamplerReductionModeEXT;
+     PVkSamplerReductionModeEXT=^TVkSamplerReductionModeEXT;
+     TVkSamplerReductionModeEXT=
+      (
+       VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_EXT=0,
+       VK_SAMPLER_REDUCTION_MODE_MIN_EXT=1,
+       VK_SAMPLER_REDUCTION_MODE_MAX_EXT=2
+      );
+
+     PPVkBlendOverlapEXT=^PVkBlendOverlapEXT;
+     PVkBlendOverlapEXT=^TVkBlendOverlapEXT;
+     TVkBlendOverlapEXT=
+      (
+       VK_BLEND_OVERLAP_UNCORRELATED_EXT=0,
+       VK_BLEND_OVERLAP_DISJOINT_EXT=1,
+       VK_BLEND_OVERLAP_CONJOINT_EXT=2
+      );
+
+     PPVkCoverageModulationModeNV=^PVkCoverageModulationModeNV;
+     PVkCoverageModulationModeNV=^TVkCoverageModulationModeNV;
+     TVkCoverageModulationModeNV=
+      (
+       VK_COVERAGE_MODULATION_MODE_NONE_NV=0,
+       VK_COVERAGE_MODULATION_MODE_RGB_NV=1,
+       VK_COVERAGE_MODULATION_MODE_ALPHA_NV=2,
+       VK_COVERAGE_MODULATION_MODE_RGBA_NV=3
       );
 
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
@@ -7414,6 +7508,132 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        supportsTextureGatherLODBiasAMD:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pSupportsTextureGatherLODBiasAMD:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPipelineCoverageToColorStateCreateInfoNV=^PVkPipelineCoverageToColorStateCreateInfoNV;
+     PVkPipelineCoverageToColorStateCreateInfoNV=^TVkPipelineCoverageToColorStateCreateInfoNV;
+     TVkPipelineCoverageToColorStateCreateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_TO_COLOR_STATE_CREATE_INFO_NV
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkPipelineCoverageToColorStateCreateFlagsNV; //< Reserved
+       coverageToColorEnable:TVkBool32;
+       coverageToColorLocation:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFlags:TVkPipelineCoverageToColorStateCreateFlagsNV; //< Reserved
+                          const pCoverageToColorEnable:TVkBool32;
+                          const pCoverageToColorLocation:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT=^PVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT;
+     PVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT=^TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT;
+     TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       filterMinmaxSingleComponentFormats:TVkBool32;
+       filterMinmaxImageComponentMapping:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFilterMinmaxSingleComponentFormats:TVkBool32;
+                          const pFilterMinmaxImageComponentMapping:TVkBool32);
+{$endif}
+     end;
+
+     PPVkSamplerReductionModeCreateInfoEXT=^PVkSamplerReductionModeCreateInfoEXT;
+     PVkSamplerReductionModeCreateInfoEXT=^TVkSamplerReductionModeCreateInfoEXT;
+     TVkSamplerReductionModeCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       reductionMode:TVkSamplerReductionModeEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pReductionMode:TVkSamplerReductionModeEXT);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT=^PVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT;
+     PVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT=^TVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT;
+     TVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       advancedBlendCoherentOperations:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pAdvancedBlendCoherentOperations:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT=^PVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT;
+     PVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT=^TVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT;
+     TVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       advancedBlendMaxColorAttachments:TVkUInt32;
+       advancedBlendIndependentBlend:TVkBool32;
+       advancedBlendNonPremultipliedSrcColor:TVkBool32;
+       advancedBlendNonPremultipliedDstColor:TVkBool32;
+       advancedBlendCorrelatedOverlap:TVkBool32;
+       advancedBlendAllOperations:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pAdvancedBlendMaxColorAttachments:TVkUInt32;
+                          const pAdvancedBlendIndependentBlend:TVkBool32;
+                          const pAdvancedBlendNonPremultipliedSrcColor:TVkBool32;
+                          const pAdvancedBlendNonPremultipliedDstColor:TVkBool32;
+                          const pAdvancedBlendCorrelatedOverlap:TVkBool32;
+                          const pAdvancedBlendAllOperations:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPipelineColorBlendAdvancedStateCreateInfoEXT=^PVkPipelineColorBlendAdvancedStateCreateInfoEXT;
+     PVkPipelineColorBlendAdvancedStateCreateInfoEXT=^TVkPipelineColorBlendAdvancedStateCreateInfoEXT;
+     TVkPipelineColorBlendAdvancedStateCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       srcPremultiplied:TVkBool32;
+       dstPremultiplied:TVkBool32;
+       blendOverlap:TVkBlendOverlapEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSrcPremultiplied:TVkBool32;
+                          const pDstPremultiplied:TVkBool32;
+                          const pBlendOverlap:TVkBlendOverlapEXT);
+{$endif}
+     end;
+
+     PPVkPipelineCoverageModulationStateCreateInfoNV=^PVkPipelineCoverageModulationStateCreateInfoNV;
+     PVkPipelineCoverageModulationStateCreateInfoNV=^TVkPipelineCoverageModulationStateCreateInfoNV;
+     TVkPipelineCoverageModulationStateCreateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkPipelineCoverageModulationStateCreateFlagsNV; //< Reserved
+       coverageModulationMode:TVkCoverageModulationModeNV;
+       coverageModulationTableEnable:TVkBool32;
+       coverageModulationTableCount:TVkUInt32;
+       pCoverageModulationTable:PVkFloat;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFlags:TVkPipelineCoverageModulationStateCreateFlagsNV; //< Reserved
+                          const pCoverageModulationMode:TVkCoverageModulationModeNV;
+                          const pCoverageModulationTableEnable:TVkBool32;
+                          const pCoverageModulationTableCount:TVkUInt32;
+                          const pPCoverageModulationTable:PVkFloat);
 {$endif}
      end;
 
@@ -14384,6 +14604,83 @@ begin
  sType:=VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD;
  pNext:=nil;
  supportsTextureGatherLODBiasAMD:=pSupportsTextureGatherLODBiasAMD;
+end;
+
+constructor TVkPipelineCoverageToColorStateCreateInfoNV.Create(const pFlags:TVkPipelineCoverageToColorStateCreateFlagsNV;
+                                                               const pCoverageToColorEnable:TVkBool32;
+                                                               const pCoverageToColorLocation:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_TO_COLOR_STATE_CREATE_INFO_NV;
+ pNext:=nil;
+ flags:=pFlags;
+ coverageToColorEnable:=pCoverageToColorEnable;
+ coverageToColorLocation:=pCoverageToColorLocation;
+end;
+
+constructor TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT.Create(const pFilterMinmaxSingleComponentFormats:TVkBool32;
+                                                                     const pFilterMinmaxImageComponentMapping:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT;
+ pNext:=nil;
+ filterMinmaxSingleComponentFormats:=pFilterMinmaxSingleComponentFormats;
+ filterMinmaxImageComponentMapping:=pFilterMinmaxImageComponentMapping;
+end;
+
+constructor TVkSamplerReductionModeCreateInfoEXT.Create(const pReductionMode:TVkSamplerReductionModeEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT;
+ pNext:=nil;
+ reductionMode:=pReductionMode;
+end;
+
+constructor TVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT.Create(const pAdvancedBlendCoherentOperations:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT;
+ pNext:=nil;
+ advancedBlendCoherentOperations:=pAdvancedBlendCoherentOperations;
+end;
+
+constructor TVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT.Create(const pAdvancedBlendMaxColorAttachments:TVkUInt32;
+                                                                        const pAdvancedBlendIndependentBlend:TVkBool32;
+                                                                        const pAdvancedBlendNonPremultipliedSrcColor:TVkBool32;
+                                                                        const pAdvancedBlendNonPremultipliedDstColor:TVkBool32;
+                                                                        const pAdvancedBlendCorrelatedOverlap:TVkBool32;
+                                                                        const pAdvancedBlendAllOperations:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT;
+ pNext:=nil;
+ advancedBlendMaxColorAttachments:=pAdvancedBlendMaxColorAttachments;
+ advancedBlendIndependentBlend:=pAdvancedBlendIndependentBlend;
+ advancedBlendNonPremultipliedSrcColor:=pAdvancedBlendNonPremultipliedSrcColor;
+ advancedBlendNonPremultipliedDstColor:=pAdvancedBlendNonPremultipliedDstColor;
+ advancedBlendCorrelatedOverlap:=pAdvancedBlendCorrelatedOverlap;
+ advancedBlendAllOperations:=pAdvancedBlendAllOperations;
+end;
+
+constructor TVkPipelineColorBlendAdvancedStateCreateInfoEXT.Create(const pSrcPremultiplied:TVkBool32;
+                                                                   const pDstPremultiplied:TVkBool32;
+                                                                   const pBlendOverlap:TVkBlendOverlapEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT;
+ pNext:=nil;
+ srcPremultiplied:=pSrcPremultiplied;
+ dstPremultiplied:=pDstPremultiplied;
+ blendOverlap:=pBlendOverlap;
+end;
+
+constructor TVkPipelineCoverageModulationStateCreateInfoNV.Create(const pFlags:TVkPipelineCoverageModulationStateCreateFlagsNV;
+                                                                  const pCoverageModulationMode:TVkCoverageModulationModeNV;
+                                                                  const pCoverageModulationTableEnable:TVkBool32;
+                                                                  const pCoverageModulationTableCount:TVkUInt32;
+                                                                  const pPCoverageModulationTable:PVkFloat);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV;
+ pNext:=nil;
+ flags:=pFlags;
+ coverageModulationMode:=pCoverageModulationMode;
+ coverageModulationTableEnable:=pCoverageModulationTableEnable;
+ coverageModulationTableCount:=pCoverageModulationTableCount;
+ pCoverageModulationTable:=pPCoverageModulationTable;
 end;
 {$endif}
 
