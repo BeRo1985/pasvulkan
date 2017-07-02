@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-02-11-49-0000                       *
+ *                        Version 2017-07-02-17-15-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -3365,14 +3365,23 @@ type EVulkanException=class(Exception);
        vsbbmAdditiveBlending
       );
 
+     TVulkanSpriteBatchHook=procedure(const aData:TVkPointer) of object;
+
      PVulkanSpriteBatchQueueItem=^TVulkanSpriteBatchQueueItem;
      TVulkanSpriteBatchQueueItem=record
       BufferIndex:TVkInt32;
-      DescriptorSetIndex:TVkInt32;
-      CountVertices:TVkInt32;
-      CountIndices:TVkInt32;
-      BlendingMode:TVulkanSpriteBatchBlendingMode;
-      Scissor:TVkRect2D;
+      case TVkInt32 of
+       0:(
+        DescriptorSetIndex:TVkInt32;
+        CountVertices:TVkInt32;
+        CountIndices:TVkInt32;
+        BlendingMode:TVulkanSpriteBatchBlendingMode;
+        Scissor:TVkRect2D;
+       );
+       1:(
+        Hook:TVulkanSpriteBatchHook;
+        HookData:pointer;
+       );
      end;
 
      TVulkanSpriteBatchQueueItems=array of TVulkanSpriteBatchQueueItem;
@@ -3456,6 +3465,7 @@ type EVulkanException=class(Exception);
        procedure Flush;
        procedure SetScissor(const aScissor:TVkRect2D); overload;
        procedure SetScissor(const aLeft,aTop,aWidth,aHeight:TVkInt32); overload;
+       procedure Hook(const aHook:TVulkanSpriteBatchHook;const aData:TVkPointer); overload;
        procedure Draw(const Texture:TVulkanSpriteTexture;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor); overload;
        procedure Draw(const Texture:TVulkanSpriteTexture;Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor); overload;
        procedure Draw(const Texture:TVulkanSpriteTexture;const x,y:single;const Color:TVulkanSpriteColor); overload;
@@ -26895,7 +26905,7 @@ begin
   inc(fCurrentFillSpriteBatchBuffer^.fCountQueueItems);
   if length(fCurrentFillSpriteBatchBuffer^.fQueueItems)<fCurrentFillSpriteBatchBuffer^.fCountQueueItems then begin
    SetLength(fCurrentFillSpriteBatchBuffer^.fQueueItems,fCurrentFillSpriteBatchBuffer^.fCountQueueItems*2);
-  end;                          
+  end;
   QueueItem:=@fCurrentFillSpriteBatchBuffer^.fQueueItems[QueueItemIndex];
   QueueItem^.BufferIndex:=CurrentVulkanVertexBufferIndex;
   QueueItem^.DescriptorSetIndex:=DescriptorSetIndex;
@@ -26926,6 +26936,7 @@ begin
     (fScissor.offset.y<>aScissor.offset.y) or
     (fScissor.extent.Width<>aScissor.extent.Width) or
     (fScissor.extent.Height<>aScissor.extent.Height) then begin
+  Flush;
   fScissor:=aScissor;
  end;
 end;
@@ -26938,6 +26949,27 @@ begin
  NewScissor.extent.Width:=aWidth;
  NewScissor.extent.Height:=aHeight;
  SetScissor(NewScissor);
+end;
+
+procedure TVulkanSpriteBatch.Hook(const aHook:TVulkanSpriteBatchHook;const aData:TVkPointer);
+var QueueItemIndex:TVkInt32;
+    QueueItem:PVulkanSpriteBatchQueueItem;
+begin
+ if assigned(aHook) then begin
+
+  Flush;
+                            
+  QueueItemIndex:=fCurrentFillSpriteBatchBuffer^.fCountQueueItems;
+  inc(fCurrentFillSpriteBatchBuffer^.fCountQueueItems);
+  if length(fCurrentFillSpriteBatchBuffer^.fQueueItems)<fCurrentFillSpriteBatchBuffer^.fCountQueueItems then begin
+   SetLength(fCurrentFillSpriteBatchBuffer^.fQueueItems,fCurrentFillSpriteBatchBuffer^.fCountQueueItems*2);
+  end;
+  QueueItem:=@fCurrentFillSpriteBatchBuffer^.fQueueItems[QueueItemIndex];
+  QueueItem^.BufferIndex:=-1;
+  QueueItem^.Hook:=aHook;
+  QueueItem^.HookData:=aData;
+
+ end;
 end;
 
 procedure TVulkanSpriteBatch.Draw(const Texture:TVulkanSpriteTexture;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor);
@@ -27525,56 +27557,68 @@ begin
 
    QueueItem:=@CurrentDrawSpriteBatchBuffer^.fQueueItems[Index];
 
-   VulkanVertexBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
+   if QueueItem^.BufferIndex<0 then begin
 
-   if ForceUpdate then begin
+    if assigned(QueueItem^.Hook) then begin
+     QueueItem^.Hook(QueueItem^.HookData);
+    end;
 
-    aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+    ForceUpdate:=true;
 
-    aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
+   end else begin
+
+    VulkanVertexBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
+
+    if ForceUpdate then begin
+
+     aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+
+     aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
+
+    end;
+
+    if ForceUpdate or
+       (DescriptorSetIndex<>QueueItem^.DescriptorSetIndex) then begin
+
+     DescriptorSetIndex:=QueueItem^.DescriptorSetIndex;
+
+     aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorSetIndex].Handle,0,nil);
+
+    end;
+
+    if ForceUpdate or
+       (OldBlendingMode<>QueueItem^.BlendingMode) then begin
+
+     OldBlendingMode:=QueueItem^.BlendingMode;
+
+     aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.BlendingMode].Handle);
+
+     OldScissor.offset.x:=-$7fffffff;
+     OldScissor.offset.y:=-$7fffffff;
+     OldScissor.extent.Width:=$7fffffff;
+     OldScissor.extent.Height:=$7fffffff;
+
+    end;
+
+    if ForceUpdate or
+       (OldScissor.offset.x<>QueueItem^.Scissor.offset.x) or
+       (OldScissor.offset.y<>QueueItem^.Scissor.offset.y) or
+       (OldScissor.extent.Width<>QueueItem^.Scissor.extent.Width) or
+       (OldScissor.extent.Height<>QueueItem^.Scissor.extent.Height) then begin
+
+     OldScissor:=QueueItem^.Scissor;
+
+     aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
+
+    end;
+
+    aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+    aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
+
+    ForceUpdate:=false;
 
    end;
 
-   if ForceUpdate or
-      (DescriptorSetIndex<>QueueItem^.DescriptorSetIndex) then begin
-
-    DescriptorSetIndex:=QueueItem^.DescriptorSetIndex;
-
-    aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorSetIndex].Handle,0,nil);
-
-   end;
-
-   if ForceUpdate or
-      (OldBlendingMode<>QueueItem^.BlendingMode) then begin
-
-    OldBlendingMode:=QueueItem^.BlendingMode;
-
-    aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.BlendingMode].Handle);
-
-    OldScissor.offset.x:=-$7fffffff;
-    OldScissor.offset.y:=-$7fffffff;
-    OldScissor.extent.Width:=$7fffffff;
-    OldScissor.extent.Height:=$7fffffff;
-
-   end;
-
-   if ForceUpdate or
-      (OldScissor.offset.x<>QueueItem^.Scissor.offset.x) or
-      (OldScissor.offset.y<>QueueItem^.Scissor.offset.y) or
-      (OldScissor.extent.Width<>QueueItem^.Scissor.extent.Width) or
-      (OldScissor.extent.Height<>QueueItem^.Scissor.extent.Height) then begin
-
-    OldScissor:=QueueItem^.Scissor;
-
-    aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
-
-   end;
-
-   aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
-   aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
-
-   ForceUpdate:=false;
-   
   end;
 
   CurrentDrawSpriteBatchBuffer^.fCountQueueItems:=0;
