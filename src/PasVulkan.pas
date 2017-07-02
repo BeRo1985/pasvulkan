@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-06-28-05-08-0000                       *
+ *                        Version 2017-07-02-06-34-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1452,7 +1452,7 @@ type EVulkanException=class(Exception);
        fMemoryTypeBits:TVkUInt32;
        fMemoryHeapIndex:TVkUInt32;
        fMemoryPropertyFlags:TVkMemoryPropertyFlags;
-       fMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+       fMemoryHeapFlags:TVkMemoryHeapFlags;
        fMemoryHandle:TVkDeviceMemory;
        fMemory:PVkVoid;
       public
@@ -1460,9 +1460,11 @@ type EVulkanException=class(Exception);
                           const aMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
                           const aSize:TVkDeviceSize;
                           const aMemoryTypeBits:TVkUInt32;
-                          const aMemoryPropertyFlags:TVkMemoryPropertyFlags;
+                          const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+                          const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
                           const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
-                          const aMemoryHeapFlags:TVkMemoryHeapFlags;
+                          const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
+                          const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                           const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                           const aMemoryChunkList:PVulkanDeviceMemoryManagerChunkList);
        destructor Destroy; override;
@@ -1480,7 +1482,7 @@ type EVulkanException=class(Exception);
        property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
        property Size:TVkDeviceSize read fSize;
        property MemoryPropertyFlags:TVkMemoryPropertyFlags read fMemoryPropertyFlags;
-       property MemoryAvoidPropertyFlags:TVkMemoryPropertyFlags read fMemoryAvoidPropertyFlags;
+       property MemoryHeapFlags:TVkMemoryPropertyFlags read fMemoryHeapFlags;
        property MemoryTypeIndex:TVkUInt32 read fMemoryTypeIndex;
        property MemoryTypeBits:TVkUInt32 read fMemoryTypeBits;
        property MemoryHeapIndex:TVkUInt32 read fMemoryHeapIndex;
@@ -1546,9 +1548,11 @@ type EVulkanException=class(Exception);
                                     const aMemoryBlockSize:TVkDeviceSize;
                                     const aMemoryBlockAlignment:TVkDeviceSize;
                                     const aMemoryTypeBits:TVkUInt32;
-                                    const aMemoryPropertyFlags:TVkMemoryPropertyFlags;
+                                    const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+                                    const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
                                     const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
-                                    const aMemoryHeapFlags:TVkMemoryHeapFlags;
+                                    const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
+                                    const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                                     const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                     const aMemoryAllocationType:TVulkanDeviceMemoryAllocationType):TVulkanDeviceMemoryBlock;
        function FreeMemoryBlock(const aMemoryBlock:TVulkanDeviceMemoryBlock):boolean;
@@ -1582,7 +1586,6 @@ type EVulkanException=class(Exception);
        fDevice:TVulkanDevice;
        fSize:TVkDeviceSize;
        fMemoryPropertyFlags:TVkMemoryPropertyFlags;
-       fMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
        fBufferFlags:TVulkanBufferFlags;
        fBufferHandle:TVkBuffer;
        fMemoryRequirements:TVkMemoryRequirements;
@@ -1597,9 +1600,11 @@ type EVulkanException=class(Exception);
                           const aUsage:TVkBufferUsageFlags;
                           const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
                           const aQueueFamilyIndices:TVkUInt32List=nil;
-                          const aMemoryPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                          const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                          const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                           const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
-                          const aMemoryHeapFlags:TVkMemoryHeapFlags=0;
+                          const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
+                          const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                           const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
                           const aBufferFlags:TVulkanBufferFlags=[]);
        destructor Destroy; override;
@@ -16569,12 +16574,14 @@ constructor TVulkanDeviceMemoryChunk.Create(const aMemoryManager:TVulkanDeviceMe
                                             const aMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
                                             const aSize:TVkDeviceSize;
                                             const aMemoryTypeBits:TVkUInt32;
-                                            const aMemoryPropertyFlags:TVkMemoryPropertyFlags;
+                                            const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+                                            const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
                                             const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
-                                            const aMemoryHeapFlags:TVkMemoryHeapFlags;
+                                            const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
+                                            const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                                             const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                             const aMemoryChunkList:PVulkanDeviceMemoryManagerChunkList);
-var Index,HeapIndex:TVkInt32;
+var Index,HeapIndex,CurrentScore,BestScore:TVkInt32;
     MemoryAllocateInfo:TVkMemoryAllocateInfo;
     PhysicalDevice:TVulkanPhysicalDevice;
     CurrentSize,BestSize:TVkDeviceSize;
@@ -16596,10 +16603,6 @@ begin
 
  fMappedSize:=fSize;
                                         
- fMemoryPropertyFlags:=aMemoryPropertyFlags;
-
- fMemoryAvoidPropertyFlags:=aMemoryAvoidPropertyFlags;
-
  fMemoryHandle:=VK_NULL_HANDLE;
 
  fMemory:=nil;
@@ -16609,29 +16612,42 @@ begin
  fMemoryHeapIndex:=0;
  PhysicalDevice:=fMemoryManager.fDevice.fPhysicalDevice;
  BestSize:=0;
+ BestScore:=-1;
  Found:=false;
  for Index:=0 to length(PhysicalDevice.fMemoryProperties.memoryTypes)-1 do begin
   if ((aMemoryTypeBits and (TVkUInt32(1) shl Index))<>0) and
-     ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryPropertyFlags)=aMemoryPropertyFlags) and
-     ((aMemoryAvoidPropertyFlags=0) or
-      ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryAvoidPropertyFlags)=0)) then begin
+     ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryRequiredPropertyFlags)=aMemoryRequiredPropertyFlags) and
+     ((aMemoryAvoidPropertyFlags=0) or ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryAvoidPropertyFlags)=0)) then begin
    HeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
    CurrentSize:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size;
-   if ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryHeapFlags)=aMemoryHeapFlags) and
-      ((aMemoryAvoidHeapFlags=0) or
-       ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryAvoidHeapFlags)=0)) and
-      (aSize<=CurrentSize) and (CurrentSize>BestSize) then begin
-    BestSize:=CurrentSize;
-    fMemoryTypeIndex:=Index;
-    fMemoryTypeBits:=TVkUInt32(1) shl Index;
-    fMemoryHeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
-    Found:=true;
+   if ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryRequiredHeapFlags)=aMemoryRequiredHeapFlags) and
+      ((aMemoryAvoidHeapFlags=0) or ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryAvoidHeapFlags)=0)) and
+      (aSize<=CurrentSize) and (BestSize<CurrentSize) then begin
+    CurrentScore:=0;
+    if (PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryPreferredPropertyFlags)=aMemoryPreferredPropertyFlags then begin
+     CurrentScore:=CurrentScore or 2;
+    end;
+    if (PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryPreferredHeapFlags)=aMemoryPreferredHeapFlags then begin
+     CurrentScore:=CurrentScore or 1;
+    end;
+    if BestScore<CurrentScore then begin
+     BestScore:=CurrentScore;
+     BestSize:=CurrentSize;
+     fMemoryTypeIndex:=Index;
+     fMemoryTypeBits:=TVkUInt32(1) shl Index;
+     fMemoryHeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
+     Found:=true;
+    end;
    end;
   end;
  end;
  if not Found then begin
   raise EVulkanException.Create('No suitable device memory heap available');
  end;
+
+ fMemoryPropertyFlags:=PhysicalDevice.fMemoryProperties.memoryTypes[fMemoryTypeIndex].propertyFlags;
+
+ fMemoryHeapFlags:=PhysicalDevice.fMemoryProperties.memoryHeaps[fMemoryHeapIndex].flags;
 
  FillChar(MemoryAllocateInfo,SizeOf(TVkMemoryAllocateInfo),#0);
  MemoryAllocateInfo.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -17335,14 +17351,19 @@ function TVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlags:
                                                         const aMemoryBlockSize:TVkDeviceSize;
                                                         const aMemoryBlockAlignment:TVkDeviceSize;
                                                         const aMemoryTypeBits:TVkUInt32;
-                                                        const aMemoryPropertyFlags:TVkMemoryPropertyFlags;
+                                                        const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+                                                        const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
                                                         const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
-                                                        const aMemoryHeapFlags:TVkMemoryHeapFlags;
+                                                        const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
+                                                        const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                                                         const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                                         const aMemoryAllocationType:TVulkanDeviceMemoryAllocationType):TVulkanDeviceMemoryBlock;
-var MemoryChunk:TVulkanDeviceMemoryChunk;
+var TryIteration:TVkInt32;
+    MemoryChunk:TVulkanDeviceMemoryChunk;
     Offset,Alignment:TVkDeviceSize;
     MemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
+    PropertyFlags:TVkMemoryPropertyFlags;
+    HeapFlags:TVkMemoryHeapFlags;
 begin
 
  result:=nil;
@@ -17368,9 +17389,11 @@ begin
                                                 MemoryChunkFlags,
                                                 aMemoryBlockSize,
                                                 aMemoryTypeBits,
-                                                aMemoryPropertyFlags,
+                                                aMemoryRequiredPropertyFlags,
+                                                aMemoryPreferredPropertyFlags,
                                                 aMemoryAvoidPropertyFlags,
-                                                aMemoryHeapFlags,
+                                                aMemoryRequiredHeapFlags,
+                                                aMemoryPreferredHeapFlags,
                                                 aMemoryAvoidHeapFlags,
                                                 @fMemoryChunkList);
    if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
@@ -17394,20 +17417,49 @@ begin
   try
 
    // Try first to allocate a block inside already existent chunks
-   MemoryChunk:=fMemoryChunkList.First;
-   while assigned(MemoryChunk) do begin
-    if ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
-       ((MemoryChunk.fMemoryPropertyFlags and aMemoryPropertyFlags)=aMemoryPropertyFlags) and
-       ((aMemoryAvoidPropertyFlags=0) or
-        ((MemoryChunk.fMemoryPropertyFlags and aMemoryAvoidPropertyFlags)=0)) and
-       ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
-       ((MemoryChunk.fMemoryChunkFlags*[vdmcfPersistentMapped])=(MemoryChunkFlags*[vdmcfPersistentMapped])) then begin
-     if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
-      result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,aMemoryBlockSize);
-      break;
+   for TryIteration:=0 to 3 do begin
+
+    PropertyFlags:=aMemoryRequiredPropertyFlags;
+    if TryIteration in [0,1] then begin
+     if aMemoryPreferredPropertyFlags=0 then begin
+      // For avoid unnecessary multiplicate fMemoryChunkList traversals
+      continue;
+     end else begin
+      PropertyFlags:=PropertyFlags or aMemoryPreferredPropertyFlags;
      end;
     end;
-    MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+
+    HeapFlags:=aMemoryRequiredHeapFlags;
+    if TryIteration in [0,2] then begin
+     if aMemoryPreferredHeapFlags=0 then begin
+      // For avoid unnecessary multiplicate fMemoryChunkList traversals
+      continue;
+     end else begin
+      HeapFlags:=HeapFlags or aMemoryPreferredHeapFlags;
+     end;
+    end;
+
+    MemoryChunk:=fMemoryChunkList.First;
+    while assigned(MemoryChunk) do begin
+     if ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
+        ((MemoryChunk.fMemoryPropertyFlags and PropertyFlags)=PropertyFlags) and
+        ((aMemoryAvoidPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryAvoidPropertyFlags)=0)) and
+        ((MemoryChunk.fMemoryHeapFlags and HeapFlags)=HeapFlags) and
+        ((aMemoryAvoidHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and aMemoryAvoidHeapFlags)=0)) and
+        ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
+        ((MemoryChunk.fMemoryChunkFlags*[vdmcfPersistentMapped])=(MemoryChunkFlags*[vdmcfPersistentMapped])) then begin
+      if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
+       result:=TVulkanDeviceMemoryBlock.Create(self,MemoryChunk,Offset,aMemoryBlockSize);
+       break;
+      end;
+     end;
+     MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+    end;
+
+    if assigned(result) then begin
+     break;
+    end;
+
    end;
 
    if not assigned(result) then begin
@@ -17416,9 +17468,11 @@ begin
                                                  MemoryChunkFlags,
                                                  VulkanDeviceSizeRoundUpToPowerOfTwo(Max(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
                                                  aMemoryTypeBits,
-                                                 aMemoryPropertyFlags,
+                                                 aMemoryRequiredPropertyFlags,
+                                                 aMemoryPreferredPropertyFlags,
                                                  aMemoryAvoidPropertyFlags,
-                                                 aMemoryHeapFlags,
+                                                 aMemoryRequiredHeapFlags,
+                                                 aMemoryPreferredHeapFlags,
                                                  aMemoryAvoidHeapFlags,
                                                  @fMemoryChunkList);
     if MemoryChunk.AllocateMemory(Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
@@ -17467,9 +17521,11 @@ constructor TVulkanBuffer.Create(const aDevice:TVulkanDevice;
                                  const aUsage:TVkBufferUsageFlags;
                                  const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
                                  const aQueueFamilyIndices:TVkUInt32List=nil;
-                                 const aMemoryPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                 const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                 const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                                  const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
-                                 const aMemoryHeapFlags:TVkMemoryHeapFlags=0;
+                                 const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
+                                 const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                  const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
                                  const aBufferFlags:TVulkanBufferFlags=[]);
 var Index:TVkInt32;
@@ -17481,10 +17537,6 @@ begin
  fDevice:=aDevice;
 
  fSize:=aSize;
-
- fMemoryPropertyFlags:=aMemoryPropertyFlags;
-
- fMemoryAvoidPropertyFlags:=aMemoryAvoidPropertyFlags;
 
  fBufferFlags:=aBufferFlags;
 
@@ -17531,14 +17583,18 @@ begin
                                                            fMemoryRequirements.Size,
                                                            fMemoryRequirements.Alignment,
                                                            fMemoryRequirements.memoryTypeBits,
-                                                           fMemoryPropertyFlags,
-                                                           fMemoryAvoidPropertyFlags,
-                                                           aMemoryHeapFlags,
+                                                           aMemoryRequiredPropertyFlags,
+                                                           aMemoryPreferredPropertyFlags,
+                                                           aMemoryAvoidPropertyFlags,
+                                                           aMemoryRequiredHeapFlags,
+                                                           aMemoryPreferredHeapFlags,
                                                            aMemoryAvoidHeapFlags,
                                                            vdmatBuffer);
 
   Bind;
-                                                           
+
+  fMemoryPropertyFlags:=fMemoryBlock.fMemoryChunk.fMemoryPropertyFlags;
+
   fDescriptorBufferInfo.buffer:=fBufferHandle;
   fDescriptorBufferInfo.offset:=0;
   fDescriptorBufferInfo.range:=fSize;
@@ -17604,6 +17660,8 @@ begin
                                       VK_SHARING_MODE_EXCLUSIVE,
                                       nil,
                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                      0,
+                                      0,
                                       0,
                                       0,
                                       0,
@@ -19304,6 +19362,8 @@ begin
                                                            MemoryRequirements.alignment,
                                                            MemoryRequirements.memoryTypeBits,
                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                           0,
+                                                           0,
                                                            0,
                                                            0,
                                                            0,
@@ -23832,6 +23892,8 @@ begin
                                                           0,
                                                           0,
                                                           0,
+                                                          0,
+                                                          0,
                                                           vdmatImageOptimal);
  if not assigned(fMemoryBlock) then begin
   raise EVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
@@ -23860,6 +23922,8 @@ begin
                                       VK_SHARING_MODE_EXCLUSIVE,
                                       nil,
                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                      0,
+                                      0,
                                       0,
                                       0,
                                       0,
@@ -26773,6 +26837,8 @@ begin
                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                             nil,
                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)},
+                                            0,
+                                            0,
                                             0,
                                             0,
                                             0,

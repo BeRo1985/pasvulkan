@@ -214,6 +214,8 @@ begin
                                                      0,
                                                      0,
                                                      0,
+                                                     0,
+                                                     0,
                                                      [vbfPersistentMapped]
                                                     );
    fVulkanVertexBuffers[Index].UploadData(VulkanApplication.VulkanDevice.TransferQueue,

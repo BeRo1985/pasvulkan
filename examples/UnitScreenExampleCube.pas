@@ -315,6 +315,8 @@ begin
                                             0,
                                             0,
                                             0,
+                                            0,
+                                            0,
                                             [vbfPersistentMapped]
                                            );
  fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanDevice.TransferQueue,
