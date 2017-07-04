@@ -308,7 +308,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    end;
   end;
   procedure InitializePathSegment(var PathSegment:TPathSegment);
-  var p0,p1,p2,p1mp0,t,m,sp0,sp1,sp2,p01p,p02p,p12p:TDoublePrecisionPoint;
+  var p0,p1,p2,p1mp0,d,t,sp0,sp1,sp2,p01p,p02p,p12p:TDoublePrecisionPoint;
       Hypotenuse,CosTheta,SinTheta,sa,a,sb,b,h,c,g,f,gd,fd,x,y,Lambda:TVkDouble;
   begin
    case PathSegment.Type_ of
@@ -341,18 +341,22 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
      PathSegment.BoundingBox.Max.y:=Max(p0.y,p2.y);
      p1mp0.x:=p1.x-p0.x;
      p1mp0.y:=p1.y-p0.y;
-     if ((p1mp0.x-p2.x)+p1.x)=0 then begin
-      if ((p1mp0.x-p2.x)+p1.x)=0 then begin
-      end;
+     d.x:=(p1mp0.x-p2.x)+p1.x;
+     d.y:=(p1mp0.y-p2.y)+p1.y;
+     if IsZero(d.x) then begin
+      t.x:=p0.x;
+     end else begin
+      t.x:=p0.x+(Min(Max(p1mp0.x/d.x,1.0),0.0)*p1mp0.x);
      end;
-     t.x:=Min(Max(p1mp0.x/((p1mp0.x-p2.x)+p1.x),1.0),0.0)*p1mp0.x;
-     t.y:=Min(Max(p1mp0.y/((p1mp0.y-p2.y)+p1.y),1.0),0.0)*p1mp0.y;
-     m.x:=p0.x+t.x;
-     m.y:=p0.y+t.y;
-     PathSegment.BoundingBox.Min.x:=Min(PathSegment.BoundingBox.Min.x,m.x);
-     PathSegment.BoundingBox.Min.y:=Min(PathSegment.BoundingBox.Min.y,m.y);
-     PathSegment.BoundingBox.Max.x:=Max(PathSegment.BoundingBox.Max.x,m.x);
-     PathSegment.BoundingBox.Max.y:=Max(PathSegment.BoundingBox.Max.y,m.y);
+     if IsZero(d.y) then begin
+      t.y:=p0.y;
+     end else begin
+      t.y:=p0.y+(Min(Max(p1mp0.y/d.y,1.0),0.0)*p1mp0.y);
+     end;
+     PathSegment.BoundingBox.Min.x:=Min(PathSegment.BoundingBox.Min.x,t.x);
+     PathSegment.BoundingBox.Min.y:=Min(PathSegment.BoundingBox.Min.y,t.y);
+     PathSegment.BoundingBox.Max.x:=Max(PathSegment.BoundingBox.Max.x,t.x);
+     PathSegment.BoundingBox.Max.y:=Max(PathSegment.BoundingBox.Max.y,t.y);
      sp0.x:=sqr(p0.x);
      sp0.y:=sqr(p0.y);
      sp1.x:=sqr(p1.x);
@@ -370,7 +374,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
      h:=-(((p0.y-(2.0*p1.y))+p2.y)*((p0.x-(2.0*p1.x))+p2.x));
      sb:=(p0.x-(2.0*p1.x))+p2.x;
      b:=sqr(sb);
-     c:=((((((sp0.x*sp2.y)-(4.0*p01p.x*p12p.y))-(2.0*p02p.x*p02p.y))+(4.0*p02p.x*p1.y))+(4.0*sp1.x*p02p.y))-(4.0*p12p.x*p01p.y))+(sp2.x*sp0.y);
+     c:=((((((sp0.x*sp2.y)-(4.0*p01p.x*p12p.y))-(2.0*p02p.x*p02p.y))+(4.0*p02p.x*sp1.y))+(4.0*sp1.x*p02p.y))-(4.0*p12p.x*p01p.y))+(sp2.x*sp0.y);
      g:=((((((((((p0.x*p02p.y)-(2.0*p0.x*sp1.y))+(2.0*p0.x*p12p.y))-(p0.x*sp2.y))+(2.0*p1.x*p01p.y))-(4.0*p1.x*p02p.y))+(2.0*p1.x*p12p.y))-(p2.x*sp0.y))+(2.0*p2.x*p01p.y))+(p2.x*p02p.y))-(2.0*p2.x*sp1.y);
      f:=-(((((((((((sp0.x*p2.y)-(2.0*p01p.x*p1.y))-(2.0*p01p.x*p2.y))-(p02p.x*p0.y))+(4.0*p02p.x*p1.y))-(p02p.x*p2.y))+(2.0*sp1.x*p0.y))+(2.0*sp1.x*p2.y))-(2.0*p12p.x*p0.y))-(2.0*p12p.x*p1.y))+(sp2.x*p0.y));
      CosTheta:=sqrt(a/(a+b));
@@ -1004,9 +1008,9 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        ControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*sy)+oy;
        Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*sx)+ox;
        Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*sy)+oy;
-       QuadraticCurveTo(PathSegmentArray,LastPoint.x,LastPoint.y,ControlPoint.x,ControlPoint.y,Point.x,Point.y);
-//     AddQuadraticBezierCurveToSegment(PathSegmentArray,[LastPoint,ControlPoint,Point]);
-//      AddLineToSegment(PathSegmentArray,[LastPoint,Point]);
+//     QuadraticCurveTo(PathSegmentArray,LastPoint.x,LastPoint.y,ControlPoint.x,ControlPoint.y,Point.x,Point.y);
+       AddQuadraticBezierCurveToSegment(PathSegmentArray,[LastPoint,ControlPoint,Point]);
+//     AddLineToSegment(PathSegmentArray,[LastPoint,Point]);
        LastPoint:=Point;
       end;
       VkTTF_PolygonCommandType_CLOSE:begin
