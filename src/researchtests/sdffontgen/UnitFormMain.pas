@@ -6,9 +6,12 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ExtCtrls, Math;
 
+const SDFSize=256;
+  
 type
   TFormMain = class(TForm)
     ImagePreview: TImage;
+    ImageSDF: TImage;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -70,6 +73,8 @@ procedure TFormMain.FormShow(Sender: TObject);
 begin
  DoIt;
 end;
+
+var DistanceField:array[0..1023,0..1023] of TVkUInt8;
 
 procedure TFormMain.DoIt;
 var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
@@ -203,7 +208,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
   end;
   function DoublePrecisionPointDistance(const a,b:TDoublePrecisionPoint):TVkDouble;
   begin
-   result:=sqrt(sqr(a.x-b.x)+sqr(a.x-b.x));
+   result:=sqrt(sqr(a.x-b.x)+sqr(a.y-b.y));
   end;
   function DoublePrecisionPointLengthSquared(const v:TDoublePrecisionPoint):TVkDouble;
   begin
@@ -211,7 +216,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
   end;
   function DoublePrecisionPointDistanceSquared(const a,b:TDoublePrecisionPoint):TVkDouble;
   begin
-   result:=sqr(a.x-b.x)+sqr(a.x-b.x);
+   result:=sqr(a.x-b.x)+sqr(a.y-b.y);
   end;
   function DoublePrecisionPointMap(const p:TDoublePrecisionPoint;const m:TDoublePrecisionAffineMatrix):TDoublePrecisionPoint;
   begin
@@ -247,9 +252,9 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
     ToleranceC:=Tolerance;
    end;
    if b<c then begin
-    result:=(a>=(b-ToleranceB)) and (a<(c-ToleranceC));
+    result:=(a>=(b-ToleranceB)) and (a<=(c+ToleranceC));
    end else begin
-    result:=(a>=(c-ToleranceC)) and (a<(b-ToleranceB));
+    result:=(a>=(c-ToleranceC)) and (a<=(b+ToleranceB));
    end;
   end;
   function NearlyZero(const Value:TVkDouble;const Tolerance:TVkDouble=NearlyZeroValue):boolean;
@@ -278,7 +283,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
   begin
    Assert(length(Points)=3);
    result:=abs(((Points[1].y-Points[0].y)*(Points[1].x-Points[2].x))-
-               ((Points[1].y-Points[2].y)*(Points[1].x-Points[0].x)))<CloseSquaredValue;
+               ((Points[1].y-Points[2].y)*(Points[1].x-Points[0].x)))<=CloseSquaredValue;
   end;
   function PathSegmentCountPoints(const PathSegment:TPathSegment):TVkInt32;
   begin
@@ -286,7 +291,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
     pstLine:begin
      result:=2;
     end;
-    else {pstQuad:}begin
+    else {pstQuadraticBezierCurve:}begin
      result:=3;
     end;
    end;
@@ -336,6 +341,10 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
      PathSegment.BoundingBox.Max.y:=Max(p0.y,p2.y);
      p1mp0.x:=p1.x-p0.x;
      p1mp0.y:=p1.y-p0.y;
+     if ((p1mp0.x-p2.x)+p1.x)=0 then begin
+      if ((p1mp0.x-p2.x)+p1.x)=0 then begin
+      end;
+     end;
      t.x:=Min(Max(p1mp0.x/((p1mp0.x-p2.x)+p1.x),1.0),0.0)*p1mp0.x;
      t.y:=Min(Max(p1mp0.y/((p1mp0.y-p2.y)+p1.y),1.0),0.0)*p1mp0.y;
      m.x:=p0.x+t.x;
@@ -423,7 +432,9 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    PathSegment:=@PathSegmentArray.Segments[result];
    if (DoublePrecisionPointDistanceSquared(Points[0],Points[1])<CloseSquaredValue) or
       (DoublePrecisionPointDistanceSquared(Points[1],Points[2])<CloseSquaredValue) or
-      IsColinear(Points) then begin
+      IsColinear(Points) or
+      IsZero((Points[1].x+((Points[1].x-Points[0].x)-Points[2].x))) or
+      IsZero((Points[1].y+((Points[1].y-Points[0].y)-Points[2].y))) then begin
     PathSegment^.Type_:=pstLine;
     PathSegment^.Points[0]:=Points[0];
     PathSegment^.Points[1]:=Points[2];
@@ -896,7 +907,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        CurrentSquaredDistance:=DistanceToPathSegment(Point,PathSegment^,RowData,SegmentSide);
        if (PreviousSegmentSide=ssLeft) and (SegmentSide=ssRight) then begin
         DeltaWindingScore:=-1;
-       end else if (PreviousSegmentSide=ssRight) and (SegmentSide=ssRight) then begin
+       end else if (PreviousSegmentSide=ssRight) and (SegmentSide=ssLeft) then begin
         DeltaWindingScore:=1;
        end else begin
         DeltaWindingScore:=0;
@@ -913,12 +924,51 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
   end;
   function PackDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
   begin
-   result:=Min(Max(round(((Min(Max(Distance,-DistanceFieldMagnitudeValue),(DistanceFieldMagnitudeValue*127.0)/128.0)+DistanceFieldMagnitudeValue)*256.0)/(2.0*DistanceFieldMagnitudeValue)),0),255);
+   result:=Min(Max(round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0),255);
   end;
- var CommandIndex:TVkInt32;
+  procedure QuadraticCurveTo(var PathSegmentArray:TPathSegmentArray;sx,sy,cx,cy,ax,ay:TVkDouble;Tolerance:TVkDouble=1.0/256.0;MaxLevel:TVkInt32=32);
+  var lx,ly:TVkDouble;
+   procedure LineToPointAt(ax,ay:TVkDouble);
+   var p0,p1:TDoublePrecisionPoint;
+   begin
+    p0.x:=lx;
+    p0.y:=ly;
+    p1.x:=ax;
+    p1.y:=ay;
+    AddLineToSegment(PathSegmentArray,[p0,p1]);
+    lx:=ax;
+    ly:=ay;
+   end;
+   procedure Recursive(x1,y1,x2,y2,x3,y3:TVkDouble;level:TVkInt32);
+   var x12,y12,x23,y23,x123,y123,mx,my,d:TVkDouble;
+   begin
+    x12:=(x1+x2)*0.5;
+    y12:=(y1+y2)*0.5;
+    x23:=(x2+x3)*0.5;
+    y23:=(y2+y3)*0.5;
+    x123:=(x12+x23)*0.5;
+    y123:=(y12+y23)*0.5;
+    mx:=(x1+x3)*0.5;
+    my:=(y1+y3)*0.5;
+    d:=abs(mx-x123)+abs(my-y123);
+    if (level>MaxLevel) or (d<Tolerance) then begin
+     LineToPointAt(x123,y123);
+    end else begin
+     Recursive(x1,y1,x12,y12,x123,y123,level+1);
+     Recursive(x123,y123,x23,y23,x3,y3,level+1);
+    end;
+   end;
+  begin
+   lx:=sx;
+   ly:=sy;
+   Recursive(lx,ly,cx,cy,ax,ay,0);
+   LineToPointAt(ax,ay);
+  end;
+ var CommandIndex,x,y,x0,x1,y0,y1,PixelIndex,DistanceFieldSign,WindingNumber:TVkInt32;
      PathSegmentArray:TPathSegmentArray;
      DistanceFieldData:array of TDistanceFieldData;
      StartPoint,LastPoint,ControlPoint,Point:TDoublePrecisionPoint;
+     sx,sy,ox,oy:double;
  begin
   PathSegmentArray.Segments:=nil;
   PathSegmentArray.Count:=0;
@@ -931,25 +981,34 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
     StartPoint.y:=0.0;
     LastPoint.x:=0.0;
     LastPoint.y:=0.0;
+    VulkanTrueTypeFont.GetPolygonBufferBounds(PolygonBuffer,x0,y0,x1,y1);
+    sx:=(SDFSize*0.75)/(x1-x0);
+    sy:=(SDFSize*0.75)/(y1-y0);
+    ox:=(SDFSize*0.125)-(x0*sx);
+    oy:=(SDFSize*0.125)-(y0*sy);
     for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
      case PolygonBuffer.Commands[CommandIndex].CommandType of
       VkTTF_PolygonCommandType_MOVETO:begin
-       LastPoint.x:=PolygonBuffer.Commands[CommandIndex].Points[0].x/256.0;
-       LastPoint.y:=PolygonBuffer.Commands[CommandIndex].Points[0].y/256.0;
+       LastPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*sx)+ox;
+       LastPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*sy)+oy;
        StartPoint:=LastPoint;
       end;
       VkTTF_PolygonCommandType_LINETO:begin
-       Point.x:=PolygonBuffer.Commands[CommandIndex].Points[0].x/256.0;
-       Point.y:=PolygonBuffer.Commands[CommandIndex].Points[0].y/256.0;
-       AddLineToSegment(PathSegmentArray,[LastPoint,Point]);
+       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*sx)+ox;
+       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*sy)+oy;
+       if not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
+        AddLineToSegment(PathSegmentArray,[LastPoint,Point]);
+       end;
        LastPoint:=Point;
       end;
       VkTTF_PolygonCommandType_CURVETO:begin
-       ControlPoint.x:=PolygonBuffer.Commands[CommandIndex].Points[0].x/256.0;
-       ControlPoint.y:=PolygonBuffer.Commands[CommandIndex].Points[0].y/256.0;
-       Point.x:=PolygonBuffer.Commands[CommandIndex].Points[1].x/256.0;
-       Point.y:=PolygonBuffer.Commands[CommandIndex].Points[1].y/256.0;
-       AddQuadraticBezierCurveToSegment(PathSegmentArray,[LastPoint,ControlPoint,Point]);
+       ControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*sx)+ox;
+       ControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*sy)+oy;
+       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*sx)+ox;
+       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*sy)+oy;
+       QuadraticCurveTo(PathSegmentArray,LastPoint.x,LastPoint.y,ControlPoint.x,ControlPoint.y,Point.x,Point.y);
+//       AddQuadraticBezierCurveToSegment(PathSegmentArray,[LastPoint,ControlPoint,Point]);
+//       AddLineToSegment(PathSegmentArray,[LastPoint,Point]);
        LastPoint:=Point;
       end;
       VkTTF_PolygonCommandType_CLOSE:begin
@@ -960,6 +1019,27 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
      end;
     end;
     CalculateDistanceFieldData(PathSegmentArray,DistanceFieldData,Width,Height);
+    for y:=0 to Height-1 do begin
+     WindingNumber:=0;
+     for x:=0 to Width-1 do begin
+      PixelIndex:=(y*Width)+x;
+      inc(WindingNumber,DistanceFieldData[PixelIndex].DeltaWindingScore);
+      if WindingNumber<>0 then begin
+       DistanceFieldSign:=-1;
+      end else begin
+       DistanceFieldSign:=1;
+      end;
+      if (x=(Width-1)) and (WindingNumber<>0) then begin
+       for x1:=0 to Width-1 do begin
+        PixelIndex:=(y*Width)+x1;
+        DistanceFieldSign:=1;
+        DistanceField[y,x1]:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       end;
+      end else begin
+       DistanceField[y,x]:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+      end;
+     end;
+    end;
    finally
     DistanceFieldData:=nil;
    end;
@@ -967,7 +1047,8 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    PathSegmentArray.Segments:=nil;
   end;
  end;
-var sx,sy:TVkInt32;
+var sx,sy,x,y:TVkInt32;
+    p:PVKUInt8;
 begin
  Stream:=TFileStream.Create('droidsans.ttf',fmOpenRead or fmShareDenyNone);
  try
@@ -976,9 +1057,10 @@ begin
   Stream.Free;
  end;
  try
+  SetExceptionMask([exInvalidOp,exDenormalized,exOverflow,exUnderflow,exPrecision]);
   if VulkanTrueTypeFont.NumGlyphs>0 then begin
 
-   GlyphIndex:=VulkanTrueTypeFont.GetGlyphIndex(TVkUInt8(TVkChar('A')));
+   GlyphIndex:=VulkanTrueTypeFont.GetGlyphIndex(TVkUInt8(TVkChar('B')));
 
    VulkanTrueTypeFont.ResetGlyphBuffer(GlyphBuffer);
    VulkanTrueTypeFont.FillGlyphBuffer(GlyphBuffer,GlyphIndex);
@@ -1004,7 +1086,7 @@ begin
 
    sx:=0;
    sy:=0;
-   
+
    for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
     case PolygonBuffer.Commands[CommandIndex].CommandType of
      VkTTF_PolygonCommandType_MOVETO:begin
@@ -1026,7 +1108,27 @@ begin
     end;
    end;
 
-   GenerateSignedDistanceField(64,64);
+   GenerateSignedDistanceField(SDFSize,SDFSize);
+
+   ImageSDF.Width:=SDFSize;
+   ImageSDF.Height:=SDFSize;
+   ImageSDF.Picture.Bitmap.Width:=SDFSize;
+   ImageSDF.Picture.Bitmap.Height:=SDFSize;
+   ImageSDF.Picture.Bitmap.PixelFormat:=pf32Bit;
+   ImageSDF.Picture.Bitmap.HandleType:=bmDIB;
+   for y:=0 to ImageSDF.Picture.Bitmap.Height-1 do begin
+    p:=ImageSDF.Picture.Bitmap.ScanLine[y];
+    for x:=0 to ImageSDF.Picture.Bitmap.Width-1 do begin
+     p^:=DistanceField[y,x];
+     inc(p);
+     p^:=DistanceField[y,x];
+     inc(p);
+     p^:=DistanceField[y,x];
+     inc(p);
+     p^:=0;
+     inc(p);
+    end;
+   end;
 
   end;
  finally

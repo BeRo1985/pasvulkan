@@ -25,4 +25,10 @@ object FormMain: TFormMain
     Height = 636
     Align = alClient
   end
+  object ImageSDF: TImage
+    Left = 0
+    Top = 0
+    Width = 105
+    Height = 105
+  end
 end
