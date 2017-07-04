@@ -4075,7 +4075,7 @@ type EVulkanException=class(Exception);
        procedure ResetPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer);
        procedure FillPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer);
        procedure FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:UTF8String;const StartX:TVkInt32=0;const StartY:TVkInt32=0);
-       procedure GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;var x0,y0,x1,y1:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
+       procedure GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
        procedure DrawPolygonBuffer(Rasterizer:TVulkanTrueTypeFontRasterizer;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;x,y:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
        property Glyphs:TVulkanTrueTypeFontGlyphs read fGlyphs;
        property Size:TVkInt32 read fSize write SetSize;
@@ -35341,7 +35341,7 @@ begin
  result:=fUnitsPerEm;
 end;
 
-procedure TVulkanTrueTypeFont.GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;var x0,y0,x1,y1:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
+procedure TVulkanTrueTypeFont.GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
 var lastcx,lastcy:TVkInt32;
     First:boolean;
  procedure PointAt(x,y:TVkInt32);
