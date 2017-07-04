@@ -970,7 +970,8 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
      PathSegmentArray:TPathSegmentArray;
      DistanceFieldData:array of TDistanceFieldData;
      StartPoint,LastPoint,ControlPoint,Point:TDoublePrecisionPoint;
-     sx,sy,ox,oy:double;
+     sx,sy,ox,oy,tx,ty:double;
+     Fallback:boolean;
  begin
   PathSegmentArray.Segments:=nil;
   PathSegmentArray.Count:=0;
@@ -1021,6 +1022,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
      end;
     end;
     CalculateDistanceFieldData(PathSegmentArray,DistanceFieldData,Width,Height);
+    Fallback:=false;
     for y:=0 to Height-1 do begin
      WindingNumber:=0;
      for x:=0 to Width-1 do begin
@@ -1032,12 +1034,22 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        DistanceFieldSign:=1;
       end;
       if (x=(Width-1)) and (WindingNumber<>0) then begin
-       for x1:=0 to Width-1 do begin
-        PixelIndex:=(y*Width)+x1;
-        DistanceFieldSign:=1;
-        DistanceField[y,x1]:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-       end;
+       Fallback:=true;
+       break;
       end else begin
+       DistanceField[y,x]:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+      end;
+     end;
+     if Fallback then begin
+      for x:=0 to Width-1 do begin
+       PixelIndex:=(y*Width)+x;
+       tx:=((x+0.5)-ox)/sx;
+       ty:=((y+0.5)-oy)/sy;
+       if (ceil(tx)>=x0) and (floor(tx)<=x1) and (ceil(ty)>=y0) and (floor(ty)<=y1) then begin
+        DistanceFieldSign:=-1;
+       end else begin
+        DistanceFieldSign:=1;
+       end;
        DistanceField[y,x]:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
       end;
      end;
@@ -1059,7 +1071,7 @@ begin
   Stream.Free;
  end;
  try
-  SetExceptionMask([exInvalidOp,exDenormalized,exOverflow,exUnderflow,exPrecision]);
+  SetExceptionMask([exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
   if VulkanTrueTypeFont.NumGlyphs>0 then begin
 
    GlyphIndex:=VulkanTrueTypeFont.GetGlyphIndex(TVkUInt8(TVkChar('B')));
