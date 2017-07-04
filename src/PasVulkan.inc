@@ -139,6 +139,7 @@
    {$define DelphiXE2AndUp}
   {$ifend}
   {$if CompilerVersion>=24.0}
+   {$legacyifend on}
    {$if CompilerVersion=24.0}
     {$define DelphiXE3}
    {$ifend}

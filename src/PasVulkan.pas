@@ -655,10 +655,10 @@ type EVulkanException=class(Exception);
        destructor Destroy; override;
        function Read(var Buffer;Count:TVkInt32):TVkInt32; override;
        function Write(const Buffer;Count:TVkInt32):TVkInt32; override;
-       function Seek(Offset:TVkInt32;Origin:TVkUInt16):TVkInt32; override;
-       function Seek(const Offset:TVkInt64;Origin:TSeekOrigin):TVkInt64; override;
-       procedure SetSize(NewSize:TVkInt32); override;
-       procedure SetSize(const NewSize:TVkInt64); override;
+       function Seek(Offset:TVkInt32;Origin:TVkUInt16):TVkInt32; overload; override;
+       function Seek(const Offset:TVkInt64;Origin:TSeekOrigin):TVkInt64; overload; override;
+       procedure SetSize(NewSize:TVkInt32); overload; override;
+       procedure SetSize(const NewSize:TVkInt64); overload; override;
      end;
 
      TVulkanStringHashMapData=TVkPointer;
