@@ -350,7 +350,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
      m.x:=p0.x+t.x;
      m.y:=p0.y+t.y;
      PathSegment.BoundingBox.Min.x:=Min(PathSegment.BoundingBox.Min.x,m.x);
-     PathSegment.BoundingBox.Min.y:=Min(PathSegment.BoundingBox.Min.y,m.x);
+     PathSegment.BoundingBox.Min.y:=Min(PathSegment.BoundingBox.Min.y,m.y);
      PathSegment.BoundingBox.Max.x:=Max(PathSegment.BoundingBox.Max.x,m.x);
      PathSegment.BoundingBox.Max.y:=Max(PathSegment.BoundingBox.Max.y,m.y);
      sp0.x:=sqr(p0.x);
@@ -432,9 +432,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    PathSegment:=@PathSegmentArray.Segments[result];
    if (DoublePrecisionPointDistanceSquared(Points[0],Points[1])<CloseSquaredValue) or
       (DoublePrecisionPointDistanceSquared(Points[1],Points[2])<CloseSquaredValue) or
-      IsColinear(Points) or
-      IsZero((Points[1].x+((Points[1].x-Points[0].x)-Points[2].x))) or
-      IsZero((Points[1].y+((Points[1].y-Points[0].y)-Points[2].y))) then begin
+      IsColinear(Points) then begin
     PathSegment^.Type_:=pstLine;
     PathSegment^.Points[0]:=Points[0];
     PathSegment^.Points[1]:=Points[2];
@@ -732,7 +730,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
      Tolerance:=(4.0*PathSegment.SquaredTangentToleranceScaled)/(m2+1.0);
      if (RowData.ScanlineXDirection=1) and
         (SameValue(PathSegment.Points[0].y,PointLeft.y) or
-         SameValue(PathSegment.Points[1].y,PointLeft.y)) and
+         SameValue(PathSegment.Points[2].y,PointLeft.y)) and
          NearlyZero(c,Tolerance) then begin
       RowData.IntersectionType:=rditTangentLine;
       RowData.XAtIntersection[0]:=m*0.5;
@@ -789,7 +787,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
       sp1:=SignOf(p1-XFormPoint.x);
       if (result=ssNone) or (sp1=1) then begin
        result:=TSegmentSide(TVkInt32(-sp1*RowData.QuadraticXDirection));
-      end;             
+      end;
      end;
     end;
     rditTangentLine:begin
@@ -1007,8 +1005,8 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*sx)+ox;
        Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*sy)+oy;
        QuadraticCurveTo(PathSegmentArray,LastPoint.x,LastPoint.y,ControlPoint.x,ControlPoint.y,Point.x,Point.y);
-//       AddQuadraticBezierCurveToSegment(PathSegmentArray,[LastPoint,ControlPoint,Point]);
-//       AddLineToSegment(PathSegmentArray,[LastPoint,Point]);
+//     AddQuadraticBezierCurveToSegment(PathSegmentArray,[LastPoint,ControlPoint,Point]);
+//      AddLineToSegment(PathSegmentArray,[LastPoint,Point]);
        LastPoint:=Point;
       end;
       VkTTF_PolygonCommandType_CLOSE:begin
