@@ -141,15 +141,14 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       PPathSegmentColor=^TPathSegmentColor;
       TPathSegmentColor=
        (
-        pscNone=0,
-        pscBlack=1,
-        pscRed=2,
-        pscGreen=3,
-        pscYellow=4,
-        pscBlue=5,
-        pscMagenta=6,
-        pscCyan=7,
-        pscWhite=8
+        pscBlack=0,
+        pscRed=1,
+        pscGreen=2,
+        pscYellow=3,
+        pscBlue=4,
+        pscMagenta=5,
+        pscCyan=6,
+        pscWhite=7
        );
       PPathSegmentPoints=^TPathSegmentPoints;
       TPathSegmentPoints=array[0..2] of TDoublePrecisionPoint;
@@ -478,7 +477,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
    end;
    PathSegment:=@Contour.PathSegments[result];
    PathSegment^.Type_:=pstLine;
-   PathSegment^.Color:=pscNone;
+   PathSegment^.Color:=pscBlack;
    PathSegment^.Points[0]:=Points[0];
    PathSegment^.Points[1]:=Points[1];
    InitializePathSegment(PathSegment^);
@@ -497,12 +496,12 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       (DoublePrecisionPointDistanceSquared(Points[1],Points[2])<CloseSquaredValue) or
       IsColinear(Points) then begin
     PathSegment^.Type_:=pstLine;
-    PathSegment^.Color:=pscNone;
+    PathSegment^.Color:=pscBlack;
     PathSegment^.Points[0]:=Points[0];
     PathSegment^.Points[1]:=Points[2];
    end else begin
     PathSegment^.Type_:=pstQuadraticBezierCurve;
-    PathSegment^.Color:=pscNone;
+    PathSegment^.Color:=pscBlack;
     PathSegment^.Points[0]:=Points[0];
     PathSegment^.Points[1]:=Points[1];
     PathSegment^.Points[2]:=Points[2];
@@ -1121,6 +1120,50 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     InitializePathSegment(Contour.PathSegments[BasePathSegmentIndex+2]);
    end;
   end;
+  procedure SplitPathSegmentIntoThreePartsToContour(var Contour:TContour;const BasePathSegmentIndex:TVkInt32;const BasePathSegment:TPathSegment);
+  begin
+   if (BasePathSegmentIndex>=0) and (BasePathSegmentIndex<Contour.CountPathSegments) then begin
+    case BasePathSegment.Type_ of
+     pstLine:begin
+      Contour.PathSegments[BasePathSegmentIndex+0].Type_:=pstLine;
+      Contour.PathSegments[BasePathSegmentIndex+0].Color:=BasePathSegment.Color;
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[0]:=BasePathSegment.Points[0];
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+1].Type_:=pstLine;
+      Contour.PathSegments[BasePathSegmentIndex+1].Color:=BasePathSegment.Color;
+      Contour.PathSegments[BasePathSegmentIndex+1].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+0].Points[1];
+      Contour.PathSegments[BasePathSegmentIndex+1].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+2].Type_:=pstLine;
+      Contour.PathSegments[BasePathSegmentIndex+2].Color:=BasePathSegment.Color;
+      Contour.PathSegments[BasePathSegmentIndex+2].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+1].Points[1];
+      Contour.PathSegments[BasePathSegmentIndex+2].Points[1]:=BasePathSegment.Points[1];
+     end;
+     pstQuadraticBezierCurve:begin
+      Contour.PathSegments[BasePathSegmentIndex+0].Type_:=pstQuadraticBezierCurve;
+      Contour.PathSegments[BasePathSegmentIndex+0].Color:=BasePathSegment.Color;
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[0]:=BasePathSegment.Points[0];
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[2]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],1.0/3.0),1.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+1].Type_:=pstQuadraticBezierCurve;
+      Contour.PathSegments[BasePathSegmentIndex+1].Color:=BasePathSegment.Color;
+      Contour.PathSegments[BasePathSegmentIndex+1].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+0].Points[2];
+      Contour.PathSegments[BasePathSegmentIndex+1].Points[1]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],5.0/9.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],4.0/9.0),0.5);
+      Contour.PathSegments[BasePathSegmentIndex+1].Points[2]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],2.0/3.0),2.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+2].Type_:=pstQuadraticBezierCurve;
+      Contour.PathSegments[BasePathSegmentIndex+2].Color:=BasePathSegment.Color;
+      Contour.PathSegments[BasePathSegmentIndex+2].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+1].Points[2];
+      Contour.PathSegments[BasePathSegmentIndex+2].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+2].Points[2]:=BasePathSegment.Points[2];
+     end;
+     else begin
+      Assert(false);
+     end;
+    end;
+    InitializePathSegment(Contour.PathSegments[BasePathSegmentIndex+0]);
+    InitializePathSegment(Contour.PathSegments[BasePathSegmentIndex+1]);
+    InitializePathSegment(Contour.PathSegments[BasePathSegmentIndex+2]);
+   end;
+  end;
   procedure NormalizeShape(var Shape:TShape);
   var ContourIndex:TVkInt32;
       Contour:PContour;
@@ -1142,12 +1185,37 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   type PCorner=^TCorner;
        TCorner=TVkInt32;
        TCorners=array of TCorner;
-  var ContourIndex,PathSegmentIndex,CountCorners,CornerIndex:TVkInt32;
+  var ContourIndex,PathSegmentIndex,CountCorners,CornerIndex,SplineIndex,StartIndex,
+      OtherPathSegmentIndex:TVkInt32;
+      Seed:TVkUInt64;
       Contour:PContour;
+      PathSegment:PPathSegment;
       Corners:TCorners;
       CurrentDirection,PreviousDirection,a,b:TDoublePrecisionPoint;
       CrossThreshold:TVkDouble;
+      Color,InitialColor:TPathSegmentColor;
+      Colors:array[0..2] of TPathSegmentColor;
+      PathSegments:TPathSegments;
+   procedure SwitchColor(var Color:TPathSegmentColor;const BannedColor:TPathSegmentColor=pscBlack);
+   const StartColors:array[0..2] of TPathSegmentColor=(pscCyan,pscMagenta,pscYellow);
+   var CombinedColor:TPathSegmentColor;
+       Shifted:TVkUInt64;
+   begin
+    CombinedColor:=TPathSegmentColor(TVkInt32(TVkInt32(Color) and TVkInt32(BannedColor)));
+    if CombinedColor in [pscRed,pscGreen,pscBlue] then begin
+     Color:=TPathSegmentColor(TVkInt32(TVkInt32(CombinedColor) xor TVkInt32(TPathSegmentColor(pscWhite))));
+    end else if CombinedColor in [pscBlack,pscWhite] then begin
+     Color:=StartColors[Seed mod 3];
+     Seed:=Seed div 3;
+    end else begin
+     Shifted:=TVkInt32(Color) shl (1+(Seed and 1));
+     Color:=TPathSegmentColor(TVkInt32((Shifted or (Shifted shr 3)) and TVkInt32(TPathSegmentColor(pscWhite))));
+     Seed:=Seed shr 1;
+    end;
+   end;
   begin
+
+   Seed:=$7ffffffffffffff;
 
    CrossThreshold:=sin(AngleThreshold);
 
@@ -1166,7 +1234,9 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
 
        for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
 
-        CurrentDirection:=PathSegmentDirection(Contour^.PathSegments[PathSegmentIndex],0);
+        PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
+
+        CurrentDirection:=PathSegmentDirection(PathSegment^,0);
 
         a:=DoublePrecisionPointNormalize(PreviousDirection);
         b:=DoublePrecisionPointNormalize(CurrentDirection);
@@ -1181,10 +1251,91 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
 
         end;
 
-        PreviousDirection:=PathSegmentDirection(Contour^.PathSegments[PathSegmentIndex],1);
+        PreviousDirection:=PathSegmentDirection(PathSegment^,1);
 
        end;
 
+      end;
+
+      case CountCorners of
+       0:begin
+        for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
+         PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
+         PathSegment^.Color:=pscWhite;
+        end;
+       end;
+       1:begin
+        Colors[0]:=pscWhite;
+        Colors[1]:=pscWhite;
+        SwitchColor(Colors[0]);
+        Colors[2]:=Colors[0];
+        SwitchColor(Colors[2]);
+        CornerIndex:=Corners[0];
+        if Contour^.CountPathSegments>2 then begin
+         for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
+          PathSegment:=@Contour^.PathSegments[CornerIndex];
+          PathSegment^.Color:=Colors[abs((trunc(((3+((2.875*PathSegmentIndex)/(Contour^.CountPathSegments-1)))-1.4375)+0.5)-3)+1) mod 3];
+          inc(CornerIndex);
+          if CornerIndex>=Contour^.CountPathSegments then begin
+           CornerIndex:=0;
+          end;
+         end;
+        end else if Contour^.CountPathSegments=2 then begin
+         PathSegments:=copy(Contour^.PathSegments,0,Contour^.CountPathSegments);
+         try
+          SetLength(Contour^.PathSegments,6);
+          try
+           Contour^.CountPathSegments:=6;
+           SplitPathSegmentIntoThreePartsToContour(Contour^,CornerIndex*3,PathSegments[0]);
+           SplitPathSegmentIntoThreePartsToContour(Contour^,3-(CornerIndex*3),PathSegments[1]);
+           Contour^.PathSegments[0].Color:=Colors[0];
+           Contour^.PathSegments[1].Color:=Colors[0];
+           Contour^.PathSegments[2].Color:=Colors[1];
+           Contour^.PathSegments[3].Color:=Colors[1];
+           Contour^.PathSegments[4].Color:=Colors[2];
+           Contour^.PathSegments[5].Color:=Colors[2];
+          finally
+           SetLength(Contour^.PathSegments,Contour^.CountPathSegments);
+          end;
+         finally
+          PathSegments:=nil;
+         end;
+        end else if Contour^.CountPathSegments=1 then begin
+         PathSegments:=copy(Contour^.PathSegments,0,Contour^.CountPathSegments);
+         try
+          SetLength(Contour^.PathSegments,3);
+          try
+           Contour^.CountPathSegments:=3;
+           SplitPathSegmentIntoThreePartsToContour(Contour^,0,PathSegments[0]);
+           Contour^.PathSegments[0].Color:=Colors[0];
+           Contour^.PathSegments[1].Color:=Colors[1];
+           Contour^.PathSegments[2].Color:=Colors[2];
+          finally
+           SetLength(Contour^.PathSegments,Contour^.CountPathSegments);
+          end;
+         finally
+          PathSegments:=nil;
+         end;
+        end;
+       end;
+       else begin
+        SplineIndex:=0;
+        StartIndex:=Corners[0];
+        Color:=pscWhite;
+        SwitchColor(Color);
+        InitialColor:=Color;
+        for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
+         OtherPathSegmentIndex:=StartIndex+PathSegmentIndex;
+         if OtherPathSegmentIndex>=Contour^.CountPathSegments then begin
+          dec(OtherPathSegmentIndex,Contour^.CountPathSegments);
+         end;
+         if ((SplineIndex+1)<CountCorners) and (Corners[SplineIndex+1]=OtherPathSegmentIndex) then begin
+          inc(SplineIndex);
+          SwitchColor(Color,TPathSegmentColor(TVkInt32(IfThen(SplineIndex=(CountCorners-1),TVkInt32(InitialColor),TVkInt32(TPathSegmentColor(pscBlack))))));
+         end;
+         Contour^.PathSegments[OtherPathSegmentIndex].Color:=Color;
+        end;
+       end;
       end;
 
      finally
