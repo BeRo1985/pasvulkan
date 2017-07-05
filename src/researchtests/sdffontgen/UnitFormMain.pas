@@ -4,11 +4,24 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, Math;
+  Dialogs, StdCtrls, ExtCtrls, Math, Vulkan, PasVulkan;
 
 const SDFSize=256;
   
-type
+type PDistanceFieldPixel=^TDistanceFieldPixel;
+     TDistanceFieldPixel=record
+      r,g,b,a:byte;
+     end;
+
+     TDistanceFieldPixels=array of TDistanceFieldPixel;
+
+     PDistanceField=^TDistanceField;
+     TDistanceField=record
+      Width:TVkInt32;
+      Height:TVkInt32;
+      Pixels:TDistanceFieldPixels;
+     end;
+
   TFormMain = class(TForm)
     ImagePreview: TImage;
     ImageSDF: TImage;
@@ -19,6 +32,7 @@ type
     { Private declarations }
   public
     { Public declarations }
+    DistanceField:TDistanceField;
     procedure DoIt;
   end;
 
@@ -28,8 +42,6 @@ var
 implementation
 
 {$R *.dfm}
-
-uses Vulkan,PasVulkan;
 
 {$ifndef HasSAR}
 function SARLongint(Value,Shift:TVkInt32):TVkInt32;
@@ -73,8 +85,6 @@ procedure TFormMain.FormShow(Sender: TObject);
 begin
  DoIt;
 end;
-
-var DistanceField:array[0..1023,0..1023] of TVkUInt8;
 
 procedure TFormMain.DoIt;
 var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
@@ -125,9 +135,10 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
   Recursive(lastcx,lastcy,cx,cy,ax,ay,0);
   LineToPointAt(ax,ay);
  end;
- procedure GenerateSignedDistanceField(const Width,Height:TVkInt32);
- const DistanceFieldMagnitudeValue=4;
-       DistanceFieldPadValue=4;
+ procedure GenerateSignedDistanceField;
+ const DistanceFieldSpreadValue=4;
+       DistanceFieldMagnitudeValue=DistanceFieldSpreadValue;
+       DistanceFieldPadValue=DistanceFieldSpreadValue;
        Scalar1Value=1.0;
        CloseValue=Scalar1Value/16.0;
        CloseSquaredValue=CloseValue*CloseValue;
@@ -689,7 +700,8 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    c:=(b2*0.25)+(a3*OneDiv27);
    if c>=0.0 then begin
     SqrtC:=sqrt(c);
-    result:=CubeRoot((b*(-0.5))+SqrtC)+CubeRoot((b*(-0.5))-SqrtC);
+    b:=b*(-0.5);
+    result:=CubeRoot(b+SqrtC)+CubeRoot(b-SqrtC);
    end else begin
     CosPhi:=sqrt((b2*0.25)*((-27.0)/a3));
     if b>0.0 then begin
@@ -799,7 +811,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
      if RowData.ScanlineXDirection=1 then begin
       if SameValue(PathSegment.Points[0].y,Point.y) then begin
        result:=TSegmentSide(TVkInt32(SignOf(RowData.XAtIntersection[0]-XFormPoint.x)));
-      end else if SameValue(PathSegment.Points[0].y,Point.y) then begin
+      end else if SameValue(PathSegment.Points[2].y,Point.y) then begin
        result:=TSegmentSide(TVkInt32(SignOf(XFormPoint.x-RowData.XAtIntersection[0])));
       end;
      end;
@@ -886,16 +898,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
       Point.x:=pX;
       Point.y:=pY;
       SquaredDistance:=DistanceFieldData[PixelIndex].SquaredDistance;
-      if SquaredDistance<sqr(1.5) then begin
-       Dilation:=1
-      end else if SquaredDistance<sqr(2.5) then begin
-       Dilation:=2
-      end else if SquaredDistance<sqr(3.5) then begin
-       Dilation:=3
-      end else begin
-       Dilation:=DistanceFieldPadValue;
-      end;
-      Dilation:=Min(Dilation,DistanceFieldPadValue);
+      Dilation:=Min(Max(floor(sqrt(Max(1,SquaredDistance))+0.5),1),DistanceFieldPadValue);
       PathSegmentBoundingBox.Min.x:=Floor(PathSegment.BoundingBox.Min.x)-DistanceFieldPadValue;
       PathSegmentBoundingBox.Min.y:=Floor(PathSegment.BoundingBox.Min.y)-DistanceFieldPadValue;
       PathSegmentBoundingBox.Max.x:=Ceil(PathSegment.BoundingBox.Max.x)+DistanceFieldPadValue;
@@ -966,11 +969,13 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    Recursive(lx,ly,cx,cy,ax,ay,0);
    LineToPointAt(ax,ay);
   end;
- var CommandIndex,x,y,x0,x1,y0,y1,PixelIndex,DistanceFieldSign,WindingNumber:TVkInt32;
+ const RasterizerToScreenScale=1.0/256.0;
+       ScreenToRasterizerScale=256.0;
+ var CommandIndex,x,y,x0,x1,y0,y1,PixelIndex,DistanceFieldSign,WindingNumber,Width,Height:TVkInt32;
      PathSegmentArray:TPathSegmentArray;
      DistanceFieldData:array of TDistanceFieldData;
      StartPoint,LastPoint,ControlPoint,Point:TDoublePrecisionPoint;
-     sx,sy,ox,oy,tx,ty:double;
+     OffsetX,OffsetY,tx,ty:TVkDouble;
      Fallback:boolean;
  begin
   PathSegmentArray.Segments:=nil;
@@ -978,38 +983,43 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
   try
    DistanceFieldData:=nil;
    try
+
+    VulkanTrueTypeFont.GetPolygonBufferBounds(PolygonBuffer,x0,y0,x1,y1);
+
+    Width:=SARLongint((x1-x0)+255,8)+(DistanceFieldPadValue*4);
+    Height:=SARLongint((y1-y0)+255,8)+(DistanceFieldPadValue*4);
+
     SetLength(DistanceFieldData,Width*Height);
     InitializeDistances(DistanceFieldData);
+
+    OffsetX:=(DistanceFieldPadValue*2)-(x0*RasterizerToScreenScale);
+    OffsetY:=(DistanceFieldPadValue*2)-(y0*RasterizerToScreenScale);
+
     StartPoint.x:=0.0;
     StartPoint.y:=0.0;
     LastPoint.x:=0.0;
     LastPoint.y:=0.0;
-    VulkanTrueTypeFont.GetPolygonBufferBounds(PolygonBuffer,x0,y0,x1,y1);
-    sx:=(SDFSize*0.75)/(x1-x0);
-    sy:=(SDFSize*0.75)/(y1-y0);
-    ox:=(SDFSize*0.125)-(x0*sx);
-    oy:=(SDFSize*0.125)-(y0*sy);
     for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
      case PolygonBuffer.Commands[CommandIndex].CommandType of
       VkTTF_PolygonCommandType_MOVETO:begin
-       LastPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*sx)+ox;
-       LastPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*sy)+oy;
+       LastPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*RasterizerToScreenScale)+OffsetX;
+       LastPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*RasterizerToScreenScale)+OffsetY;
        StartPoint:=LastPoint;
       end;
       VkTTF_PolygonCommandType_LINETO:begin
-       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*sx)+ox;
-       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*sy)+oy;
+       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*RasterizerToScreenScale)+OffsetX;
+       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*RasterizerToScreenScale)+OffsetY;
        if not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
         AddLineToSegment(PathSegmentArray,[LastPoint,Point]);
        end;
        LastPoint:=Point;
       end;
       VkTTF_PolygonCommandType_CURVETO:begin
-       ControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*sx)+ox;
-       ControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*sy)+oy;
-       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*sx)+ox;
-       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*sy)+oy;
-//     QuadraticCurveTo(PathSegmentArray,LastPoint.x,LastPoint.y,ControlPoint.x,ControlPoint.y,Point.x,Point.y);
+       ControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*RasterizerToScreenScale)+OffsetX;
+       ControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*RasterizerToScreenScale)+OffsetY;
+       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*RasterizerToScreenScale)+OffsetX;
+       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*RasterizerToScreenScale)+OffsetY;
+//      QuadraticCurveTo(PathSegmentArray,LastPoint.x,LastPoint.y,ControlPoint.x,ControlPoint.y,Point.x,Point.y);
        AddQuadraticBezierCurveToSegment(PathSegmentArray,[LastPoint,ControlPoint,Point]);
 //     AddLineToSegment(PathSegmentArray,[LastPoint,Point]);
        LastPoint:=Point;
@@ -1021,7 +1031,13 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
       end;
      end;
     end;
+
     CalculateDistanceFieldData(PathSegmentArray,DistanceFieldData,Width,Height);
+
+    DistanceField.Width:=Width;
+    DistanceField.Height:=Height;
+    SetLength(DistanceField.Pixels,Width*Height);
+
     Fallback:=false;
     for y:=0 to Height-1 do begin
      WindingNumber:=0;
@@ -1037,31 +1053,40 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        Fallback:=true;
        break;
       end else begin
-       DistanceField[y,x]:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       DistanceField.Pixels[PixelIndex].r:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       DistanceField.Pixels[PixelIndex].g:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       DistanceField.Pixels[PixelIndex].b:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       DistanceField.Pixels[PixelIndex].a:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
       end;
      end;
      if Fallback then begin
       for x:=0 to Width-1 do begin
        PixelIndex:=(y*Width)+x;
-       tx:=((x+0.5)-ox)/sx;
-       ty:=((y+0.5)-oy)/sy;
+       tx:=((x+0.5)-OffsetX)*ScreenToRasterizerScale;
+       ty:=((y+0.5)-OffsetY)*ScreenToRasterizerScale;
        if (ceil(tx)>=x0) and (floor(tx)<=x1) and (ceil(ty)>=y0) and (floor(ty)<=y1) then begin
         DistanceFieldSign:=-1;
        end else begin
         DistanceFieldSign:=1;
        end;
-       DistanceField[y,x]:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       DistanceField.Pixels[PixelIndex].r:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       DistanceField.Pixels[PixelIndex].g:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       DistanceField.Pixels[PixelIndex].b:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       DistanceField.Pixels[PixelIndex].a:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
       end;
      end;
     end;
+
    finally
     DistanceFieldData:=nil;
    end;
+
   finally
    PathSegmentArray.Segments:=nil;
   end;
+
  end;
-var sx,sy,x,y:TVkInt32;
+var sx,sy,x,y,i:TVkInt32;
     p:PVKUInt8;
 begin
  Stream:=TFileStream.Create('droidsans.ttf',fmOpenRead or fmShareDenyNone);
@@ -1075,6 +1100,8 @@ begin
   if VulkanTrueTypeFont.NumGlyphs>0 then begin
 
    GlyphIndex:=VulkanTrueTypeFont.GetGlyphIndex(TVkUInt8(TVkChar('B')));
+
+   VulkanTrueTypeFont.Size:=-256;
 
    VulkanTrueTypeFont.ResetGlyphBuffer(GlyphBuffer);
    VulkanTrueTypeFont.FillGlyphBuffer(GlyphBuffer,GlyphIndex);
@@ -1122,25 +1149,27 @@ begin
     end;
    end;
 
-   GenerateSignedDistanceField(SDFSize,SDFSize);
+   GenerateSignedDistanceField;
 
-   ImageSDF.Width:=SDFSize;
-   ImageSDF.Height:=SDFSize;
-   ImageSDF.Picture.Bitmap.Width:=SDFSize;
-   ImageSDF.Picture.Bitmap.Height:=SDFSize;
+   ImageSDF.Width:=DistanceField.Width;
+   ImageSDF.Height:=DistanceField.Height;
+   ImageSDF.Picture.Bitmap.Width:=DistanceField.Width;
+   ImageSDF.Picture.Bitmap.Height:=DistanceField.Height;
    ImageSDF.Picture.Bitmap.PixelFormat:=pf32Bit;
    ImageSDF.Picture.Bitmap.HandleType:=bmDIB;
+   i:=0;
    for y:=0 to ImageSDF.Picture.Bitmap.Height-1 do begin
     p:=ImageSDF.Picture.Bitmap.ScanLine[y];
     for x:=0 to ImageSDF.Picture.Bitmap.Width-1 do begin
-     p^:=DistanceField[y,x];
+     p^:=DistanceField.Pixels[i].b;
      inc(p);
-     p^:=DistanceField[y,x];
+     p^:=DistanceField.Pixels[i].g;
      inc(p);
-     p^:=DistanceField[y,x];
+     p^:=DistanceField.Pixels[i].r;
      inc(p);
      p^:=0;
      inc(p);
+     inc(i);
     end;
    end;
 
