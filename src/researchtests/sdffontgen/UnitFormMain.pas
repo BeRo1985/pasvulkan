@@ -197,6 +197,17 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   begin
    result:=sqr(a.x-b.x)+sqr(a.y-b.y);
   end;
+  function DoublePrecisionPointLerp(const a,b:TDoublePrecisionPoint;const t:TVkDouble):TDoublePrecisionPoint;
+  begin
+   if t<=0.0 then begin
+    result:=a;
+   end else if t>=1.0 then begin
+    result:=b;
+   end else begin
+    result.x:=(a.x*(1.0-t))+(b.x*t);
+    result.y:=(a.y*(1.0-t))+(b.y*t);
+   end;
+  end;
   function DoublePrecisionPointMap(const p:TDoublePrecisionPoint;const m:TDoublePrecisionAffineMatrix):TDoublePrecisionPoint;
   begin
    result.x:=(p.x*m[0])+(p.y*m[1])+m[2];
@@ -915,78 +926,6 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     end;
    end;
   end;
-  procedure CalculateDistanceFieldData(const Shape:TShape;var DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
-  var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
-      Contour:PContour;
-      PathSegment:PPathSegment;
-      PathSegmentBoundingBox:TBoundingBox;
-      PreviousSegmentSide,SegmentSide:TSegmentSide;
-      RowData:TRowData;
-      PointLeft,PointRight,Point:TDoublePrecisionPoint;
-      pX,pY,SquaredDistance,CurrentSquaredDistance:TvkDouble;
-  begin
-   for ContourIndex:=0 to Shape.CountContours-1 do begin
-    Contour:=@Shape.Contours[ContourIndex];
-    for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
-     PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
-     PathSegmentBoundingBox.Min.x:=PathSegment.BoundingBox.Min.x-DistanceFieldPadValue;
-     PathSegmentBoundingBox.Min.y:=PathSegment.BoundingBox.Min.y-DistanceFieldPadValue;
-     PathSegmentBoundingBox.Max.x:=PathSegment.BoundingBox.Max.x+DistanceFieldPadValue;
-     PathSegmentBoundingBox.Max.y:=PathSegment.BoundingBox.Max.y+DistanceFieldPadValue;
-     x0:=Min(Max(Trunc(Floor(PathSegmentBoundingBox.Min.x)),0),Width-1);
-     y0:=Min(Max(Trunc(Floor(PathSegmentBoundingBox.Min.y)),0),Height-1);
-     x1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.x)),0),Width-1);
-     y1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.y)),0),Height-1);
-     for y:=y0 to y1 do begin
-      PreviousSegmentSide:=ssNone;
-      pY:=y+0.5;
-      PointLeft.x:=x0;
-      PointLeft.y:=pY;
-      PointRight.x:=x1;
-      PointRight.y:=pY;
-      if BetweenClosedOpen(pY,PathSegment.BoundingBox.Min.y,PathSegment.BoundingBox.Max.y) then begin
-       PrecomputationForRow(RowData,PathSegment^,PointLeft,PointRight);
-      end;
-      for x:=x0 to x1 do begin
-       PixelIndex:=(y*Width)+x;
-       pX:=x+0.5;
-       Point.x:=pX;
-       Point.y:=pY;
-       SquaredDistance:=DistanceFieldData[PixelIndex].SquaredDistance;
-       Dilation:=Min(Max(floor(sqrt(Max(1,SquaredDistance))+0.5),1),DistanceFieldPadValue);
-       PathSegmentBoundingBox.Min.x:=Floor(PathSegment.BoundingBox.Min.x)-DistanceFieldPadValue;
-       PathSegmentBoundingBox.Min.y:=Floor(PathSegment.BoundingBox.Min.y)-DistanceFieldPadValue;
-       PathSegmentBoundingBox.Max.x:=Ceil(PathSegment.BoundingBox.Max.x)+DistanceFieldPadValue;
-       PathSegmentBoundingBox.Max.y:=Ceil(PathSegment.BoundingBox.Max.y)+DistanceFieldPadValue;
-       if (Dilation<>DistanceFieldPadValue) and not
-          (((x>=PathSegmentBoundingBox.Min.x) and (x<=PathSegmentBoundingBox.Max.x)) and
-           ((y>=PathSegmentBoundingBox.Min.y) and (y<=PathSegmentBoundingBox.Max.y))) then begin
-        continue;
-       end else begin
-        SegmentSide:=ssNone;
-        CurrentSquaredDistance:=DistanceToPathSegment(Point,PathSegment^,RowData,SegmentSide);
-        if (PreviousSegmentSide=ssLeft) and (SegmentSide=ssRight) then begin
-         DeltaWindingScore:=-1;
-        end else if (PreviousSegmentSide=ssRight) and (SegmentSide=ssLeft) then begin
-         DeltaWindingScore:=1;
-        end else begin
-         DeltaWindingScore:=0;
-        end;
-        PreviousSegmentSide:=SegmentSide;
-        if CurrentSquaredDistance<SquaredDistance then begin
-         DistanceFieldData[PixelIndex].SquaredDistance:=CurrentSquaredDistance;
-        end;
-        inc(DistanceFieldData[PixelIndex].DeltaWindingScore,DeltaWindingScore);
-       end;
-      end;
-     end;
-    end;
-   end;
-  end;
-  function PackDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
-  begin
-   result:=Min(Max(round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0),255);
-  end;
  var OffsetX,OffsetY:TVkDouble;
      bx0,by0,bx1,by1:TVkInt32;
   procedure ConvertShape(out Shape:TShape);
@@ -1060,6 +999,143 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
    finally
     SetLength(Shape.Contours,Shape.CountContours);
    end;
+  end;
+  procedure SplitPathSegmentIntoThreePartsInsideContour(var Contour:TContour;const BasePathSegmentIndex:TVkInt32);
+  var BasePathSegment:TPathSegment;
+  begin
+   if (BasePathSegmentIndex>=0) and (BasePathSegmentIndex<Contour.CountPathSegments) then begin
+    BasePathSegment:=Contour.PathSegments[BasePathSegmentIndex];
+    if BasePathSegment.Type_ in [pstLine,pstQuadraticBezierCurve] then begin
+     inc(Contour.CountPathSegments,2);
+     if length(Contour.PathSegments)<=Contour.CountPathSegments then begin
+      SetLength(Contour.PathSegments,Contour.CountPathSegments*2);
+     end;
+     Move(Contour.PathSegments[BasePathSegmentIndex+1],Contour.PathSegments[BasePathSegmentIndex+3],(Contour.CountPathSegments-(BasePathSegmentIndex+3))*SizeOf(TPathSegment));
+     FillChar(Contour.PathSegments[BasePathSegmentIndex],SizeOf(TPathSegment)*3,#0);
+    end else begin
+     Assert(false);
+    end;
+    case BasePathSegment.Type_ of
+     pstLine:begin
+      Contour.PathSegments[BasePathSegmentIndex+0].Type_:=pstLine;
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[0]:=BasePathSegment.Points[0];
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+1].Type_:=pstLine;
+      Contour.PathSegments[BasePathSegmentIndex+1].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+0].Points[1];
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+2].Type_:=pstLine;
+      Contour.PathSegments[BasePathSegmentIndex+2].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+1].Points[1];
+      Contour.PathSegments[BasePathSegmentIndex+2].Points[1]:=BasePathSegment.Points[1];
+     end;
+     pstQuadraticBezierCurve:begin
+      Contour.PathSegments[BasePathSegmentIndex+0].Type_:=pstQuadraticBezierCurve;
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[0]:=BasePathSegment.Points[0];
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[2]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],1.0/3.0),1.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+1].Type_:=pstQuadraticBezierCurve;
+      Contour.PathSegments[BasePathSegmentIndex+1].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+0].Points[2];
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],5.0/9.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],4.0/9.0),0.5);
+      Contour.PathSegments[BasePathSegmentIndex+0].Points[2]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],2.0/3.0),2.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+2].Type_:=pstQuadraticBezierCurve;
+      Contour.PathSegments[BasePathSegmentIndex+2].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+1].Points[2];
+      Contour.PathSegments[BasePathSegmentIndex+2].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+2].Points[2]:=BasePathSegment.Points[2];
+     end;
+     else begin
+      Assert(false);
+     end;
+    end;
+    InitializePathSegment(Contour.PathSegments[BasePathSegmentIndex+0]);
+    InitializePathSegment(Contour.PathSegments[BasePathSegmentIndex+1]);
+    InitializePathSegment(Contour.PathSegments[BasePathSegmentIndex+2]);
+   end;
+  end;
+  procedure NormalizeShape(var Shape:TShape);
+  var ContourIndex:TVkInt32;
+      Contour:PContour;
+  begin
+   for ContourIndex:=0 to Shape.CountContours-1 do begin
+    Contour:=@Shape.Contours[ContourIndex];
+    if Contour^.CountPathSegments=1 then begin
+     try
+      SplitPathSegmentIntoThreePartsInsideContour(Contour^,0);
+     finally
+      SetLength(Contour^.PathSegments,Contour^.CountPathSegments);
+     end;
+    end;
+   end;
+  end;
+  procedure CalculateDistanceFieldData(const Shape:TShape;var DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
+  var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
+      Contour:PContour;
+      PathSegment:PPathSegment;
+      PathSegmentBoundingBox:TBoundingBox;
+      PreviousSegmentSide,SegmentSide:TSegmentSide;
+      RowData:TRowData;
+      PointLeft,PointRight,Point:TDoublePrecisionPoint;
+      pX,pY,SquaredDistance,CurrentSquaredDistance:TvkDouble;
+  begin
+   for ContourIndex:=0 to Shape.CountContours-1 do begin
+    Contour:=@Shape.Contours[ContourIndex];
+    for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
+     PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
+     PathSegmentBoundingBox.Min.x:=PathSegment.BoundingBox.Min.x-DistanceFieldPadValue;
+     PathSegmentBoundingBox.Min.y:=PathSegment.BoundingBox.Min.y-DistanceFieldPadValue;
+     PathSegmentBoundingBox.Max.x:=PathSegment.BoundingBox.Max.x+DistanceFieldPadValue;
+     PathSegmentBoundingBox.Max.y:=PathSegment.BoundingBox.Max.y+DistanceFieldPadValue;
+     x0:=Min(Max(Trunc(Floor(PathSegmentBoundingBox.Min.x)),0),Width-1);
+     y0:=Min(Max(Trunc(Floor(PathSegmentBoundingBox.Min.y)),0),Height-1);
+     x1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.x)),0),Width-1);
+     y1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.y)),0),Height-1);
+     for y:=y0 to y1 do begin
+      PreviousSegmentSide:=ssNone;
+      pY:=y+0.5;
+      PointLeft.x:=x0;
+      PointLeft.y:=pY;
+      PointRight.x:=x1;
+      PointRight.y:=pY;
+      if BetweenClosedOpen(pY,PathSegment.BoundingBox.Min.y,PathSegment.BoundingBox.Max.y) then begin
+       PrecomputationForRow(RowData,PathSegment^,PointLeft,PointRight);
+      end;
+      for x:=x0 to x1 do begin
+       PixelIndex:=(y*Width)+x;
+       pX:=x+0.5;
+       Point.x:=pX;
+       Point.y:=pY;
+       SquaredDistance:=DistanceFieldData[PixelIndex].SquaredDistance;
+       Dilation:=Min(Max(floor(sqrt(Max(1,SquaredDistance))+0.5),1),DistanceFieldPadValue);
+       PathSegmentBoundingBox.Min.x:=Floor(PathSegment.BoundingBox.Min.x)-DistanceFieldPadValue;
+       PathSegmentBoundingBox.Min.y:=Floor(PathSegment.BoundingBox.Min.y)-DistanceFieldPadValue;
+       PathSegmentBoundingBox.Max.x:=Ceil(PathSegment.BoundingBox.Max.x)+DistanceFieldPadValue;
+       PathSegmentBoundingBox.Max.y:=Ceil(PathSegment.BoundingBox.Max.y)+DistanceFieldPadValue;
+       if (Dilation<>DistanceFieldPadValue) and not
+          (((x>=PathSegmentBoundingBox.Min.x) and (x<=PathSegmentBoundingBox.Max.x)) and
+           ((y>=PathSegmentBoundingBox.Min.y) and (y<=PathSegmentBoundingBox.Max.y))) then begin
+        continue;
+       end else begin
+        SegmentSide:=ssNone;
+        CurrentSquaredDistance:=DistanceToPathSegment(Point,PathSegment^,RowData,SegmentSide);
+        if (PreviousSegmentSide=ssLeft) and (SegmentSide=ssRight) then begin
+         DeltaWindingScore:=-1;
+        end else if (PreviousSegmentSide=ssRight) and (SegmentSide=ssLeft) then begin
+         DeltaWindingScore:=1;
+        end else begin
+         DeltaWindingScore:=0;
+        end;
+        PreviousSegmentSide:=SegmentSide;
+        if CurrentSquaredDistance<SquaredDistance then begin
+         DistanceFieldData[PixelIndex].SquaredDistance:=CurrentSquaredDistance;
+        end;
+        inc(DistanceFieldData[PixelIndex].DeltaWindingScore,DeltaWindingScore);
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+  function PackDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
+  begin
+   result:=Min(Max(round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0),255);
   end;
   procedure GenerateDistanceFieldPicture(const DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
   var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TVkInt32;
@@ -1155,6 +1231,8 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     OffsetY:=(DistanceFieldPadValue*2)-(by0*RasterizerToScreenScale);
 
     ConvertShape(Shape);
+
+    NormalizeShape(Shape);
 
     CalculateDistanceFieldData(Shape,DistanceFieldData,Width,Height);
 
