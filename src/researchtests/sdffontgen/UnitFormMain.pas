@@ -112,8 +112,8 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
         ssRight=1,
         ssNone=2
        );
-      PDistanceFieldData=^TDistanceFieldData;
-      TDistanceFieldData=record
+      PDistanceFieldDataItem=^TDistanceFieldDataItem;
+      TDistanceFieldDataItem=record
        SquaredDistance:TVkFloat;
        DeltaWindingScore:TVkInt32;
       end;
@@ -371,7 +371,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    PathSegment.P0T:=DoublePrecisionPointMap(p0,PathSegment.XFormMatrix);
    PathSegment.P2T:=DoublePrecisionPointMap(p2,PathSegment.XFormMatrix);
   end;
-  procedure InitializeDistances(var Data:array of TDistanceFieldData);
+  procedure InitializeDistances(var Data:array of TDistanceFieldDataItem);
   var Index:TVkInt32;
   begin
    for Index:=0 to length(Data)-1 do begin
@@ -900,7 +900,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
     end;
    end;
   end;
-  procedure CalculateDistanceFieldData(const PathSegmentArray:TPathSegmentArray;var DistanceFieldData:array of TDistanceFieldData;const Width,Height:TVkInt32);
+  procedure CalculateDistanceFieldData(const PathSegmentArray:TPathSegmentArray;var DistanceFieldData:array of TDistanceFieldDataItem;const Width,Height:TVkInt32);
   var PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
       PathSegment:PPathSegment;
       PathSegmentBoundingBox:TBoundingBox;
@@ -970,10 +970,11 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
   end;
  var CommandIndex,x,y,x0,x1,y0,y1,PixelIndex,DistanceFieldSign,WindingNumber,Width,Height,Value:TVkInt32;
      PathSegmentArray:TPathSegmentArray;
-     DistanceFieldData:array of TDistanceFieldData;
+     DistanceFieldData:array of TDistanceFieldDataItem;
      StartPoint,LastPoint,ControlPoint,Point:TDoublePrecisionPoint;
      OffsetX,OffsetY,tx,ty:TVkDouble;
      Fallback:boolean;
+     DistanceFieldDataItem:PDistanceFieldDataItem;
      DistanceFieldPixel:PDistanceFieldPixel;
  begin
   PathSegmentArray.Segments:=nil;
@@ -1046,7 +1047,8 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
      PixelIndex:=y*Width;
      WindingNumber:=0;
      for x:=0 to Width-1 do begin
-      inc(WindingNumber,DistanceFieldData[PixelIndex].DeltaWindingScore);
+      DistanceFieldDataItem:=@DistanceFieldData[PixelIndex];
+      inc(WindingNumber,DistanceFieldDataItem^.DeltaWindingScore);
       if WindingNumber<>0 then begin
        DistanceFieldSign:=-1;
       end else begin
@@ -1057,19 +1059,19 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        break;
       end else begin
        DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
-       inc(PixelIndex);
        if MultiChannel then begin
-        DistanceFieldPixel^.r:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-        DistanceFieldPixel^.g:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-        DistanceFieldPixel^.b:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-        DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.r:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.g:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.b:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
        end else begin
-        Value:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
         DistanceFieldPixel^.r:=Value;
         DistanceFieldPixel^.g:=Value;
         DistanceFieldPixel^.b:=Value;
         DistanceFieldPixel^.a:=Value;
        end;
+       inc(PixelIndex);
       end;
      end;
      if Fallback then begin
@@ -1083,19 +1085,19 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
         DistanceFieldSign:=1;
        end;
        DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
-       inc(PixelIndex);
        if MultiChannel then begin
-        DistanceFieldPixel^.r:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-        DistanceFieldPixel^.g:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-        DistanceFieldPixel^.b:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-        DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.r:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.g:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.b:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
        end else begin
-        Value:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
         DistanceFieldPixel^.r:=Value;
         DistanceFieldPixel^.g:=Value;
         DistanceFieldPixel^.b:=Value;
         DistanceFieldPixel^.a:=Value;
        end;
+       inc(PixelIndex);
       end;
      end;
     end;
