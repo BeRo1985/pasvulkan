@@ -463,12 +463,12 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   begin
    for Index:=0 to length(Data)-1 do begin
     Data[Index].SquaredDistance:=sqr(DistanceFieldMagnitudeValue);
-    Data[Index].SquaredDistanceR:=INFINITY;
-    Data[Index].SquaredDistanceG:=INFINITY;
-    Data[Index].SquaredDistanceB:=INFINITY;
-    Data[Index].PseudoSquaredDistanceR:=INFINITY;
-    Data[Index].PseudoSquaredDistanceG:=INFINITY;
-    Data[Index].PseudoSquaredDistanceB:=INFINITY;
+    Data[Index].SquaredDistanceR:=sqr(DistanceFieldMagnitudeValue);
+    Data[Index].SquaredDistanceG:=sqr(DistanceFieldMagnitudeValue);
+    Data[Index].SquaredDistanceB:=sqr(DistanceFieldMagnitudeValue);
+    Data[Index].PseudoSquaredDistanceR:=sqr(DistanceFieldMagnitudeValue);
+    Data[Index].PseudoSquaredDistanceG:=sqr(DistanceFieldMagnitudeValue);
+    Data[Index].PseudoSquaredDistanceB:=sqr(DistanceFieldMagnitudeValue);
     Data[Index].DeltaWindingScore:=0;
    end;
   end;
@@ -1355,6 +1355,52 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
    end;
 
   end;
+  function GetLineNonClippedTime(const p,p0,p1:TDoublePrecisionPoint):TVkDouble;
+  var pAP,pAB:TDoublePrecisionPoint;
+  begin
+   pAP.x:=p.x-p0.x;
+   pAP.y:=p.y-p0.y;
+   pAB.x:=p1.x-p0.x;
+   pAB.y:=p1.y-p0.y;
+   result:=((pAP.x*pAB.x)+(pAP.y*pAB.y))/(sqr(pAB.x)+sqr(pAB.y));
+  end;
+  function GetQuadraticBezierCurveNonClippedTime(const p,p0,p1,p2:TDoublePrecisionPoint):TVkDouble;
+  var b0,b1,b2,d21,d10,d20,gf,pp,d0p:TDoublePrecisionPoint;
+      a,b,d,f,ap,bp,v,c:TVkDouble;
+  begin
+   // based on http://research.microsoft.com/en-us/um/people/hoppe/ravg.pdf
+   b0.x:=p0.x-p.x;
+   b0.y:=p0.y-p.y;
+   b1.x:=p1.x-p.x;
+   b1.y:=p1.y-p.y;
+   b2.x:=p2.x-p.x;
+   b2.y:=p2.y-p.y;
+   a:=((b0.x*b2.y)-(b0.y*b2.x))*2.0;
+   b:=((b1.x*b0.y)-(b1.y*b0.x))*2.0;
+   d:=((b2.x*b1.y)-(b2.y*b1.x))*2.0;
+   c:=(2.0*a)+b+d; 
+   if IsZero(c) then begin
+    result:=GetLineNonClippedTime(p,p0,p2);
+   end else begin
+    f:=(b*d)-sqr(a);
+    d21.x:=b2.x-b1.x;
+    d21.y:=b2.y-b1.y;
+    d10.x:=b1.x-b0.x;
+    d10.y:=b1.y-b0.y;
+    d20.x:=b2.x-b0.x;
+    d20.y:=b2.y-b0.y;
+    gf.x:=((d21.y*b)+(d10.y*d)+(d20.y*a))*2.0;
+    gf.y:=((d21.x*b)+(d10.x*d)+(d20.x*a))*(-2.0);
+    v:=-(f/(sqr(gf.x)+sqr(gf.y)));
+    pp.x:=gf.x*v;
+    pp.y:=gf.y*v;
+    d0p.x:=b0.x-pp.x;
+    d0p.y:=b0.y-pp.y;
+    ap:=(d0p.x*d20.y)-(d0p.y*d20.x);
+    bp:=((d10.x*d0p.y)-(d10.y*d0p.x))*2.0;
+    result:=(ap+bp)/c;
+   end;
+  end;
   procedure CalculateDistanceFieldData(const Shape:TShape;var DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
   var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
       Contour:PContour;
@@ -1362,10 +1408,9 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       PathSegmentBoundingBox:TBoundingBox;
       PreviousPathSegmentSide,PathSegmentSide:TPathSegmentSide;
       RowData:TRowData;
+      DistanceFieldDataItem:PDistanceFieldDataItem;
       PointLeft,PointRight,Point,pAP,pAB:TDoublePrecisionPoint;
-      pX,pY,CurrentSquaredDistance,SquaredDistance,SquaredDistanceR,SquaredDistanceG,SquaredDistanceB,
-      CurrentSquaredPseudoDistance,
-      Time:TvkDouble;
+      pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time:TvkDouble;
   begin
    for ContourIndex:=0 to Shape.CountContours-1 do begin
     Contour:=@Shape.Contours[ContourIndex];
@@ -1375,17 +1420,10 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
      PathSegmentBoundingBox.Min.y:=PathSegment.BoundingBox.Min.y-DistanceFieldPadValue;
      PathSegmentBoundingBox.Max.x:=PathSegment.BoundingBox.Max.x+DistanceFieldPadValue;
      PathSegmentBoundingBox.Max.y:=PathSegment.BoundingBox.Max.y+DistanceFieldPadValue;
-     if MultiChannel then begin
-      x0:=0;
-      y0:=0;
-      x1:=Width-1;
-      y1:=Height-1;
-     end else begin
-      x0:=Min(Max(Trunc(Floor(PathSegmentBoundingBox.Min.x)),0),Width-1);
-      y0:=Min(Max(Trunc(Floor(PathSegmentBoundingBox.Min.y)),0),Height-1);
-      x1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.x)),0),Width-1);
-      y1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.y)),0),Height-1);
-     end;
+     x0:=Min(Max(Trunc(Floor(PathSegmentBoundingBox.Min.x)),0),Width-1);
+     y0:=Min(Max(Trunc(Floor(PathSegmentBoundingBox.Min.y)),0),Height-1);
+     x1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.x)),0),Width-1);
+     y1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.y)),0),Height-1);
      for y:=y0 to y1 do begin
       PreviousPathSegmentSide:=pssNone;
       pY:=y+0.5;
@@ -1399,13 +1437,10 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       for x:=x0 to x1 do begin
        PixelIndex:=(y*Width)+x;
        pX:=x+0.5;
-       Point.x:=pX;                                        
+       Point.x:=pX;
        Point.y:=pY;
-       SquaredDistance:=DistanceFieldData[PixelIndex].SquaredDistance;
-       SquaredDistanceR:=DistanceFieldData[PixelIndex].SquaredDistanceR;
-       SquaredDistanceG:=DistanceFieldData[PixelIndex].SquaredDistanceG;
-       SquaredDistanceB:=DistanceFieldData[PixelIndex].SquaredDistanceB;
-       Dilation:=Min(Max(floor(sqrt(Max(1,SquaredDistance))+0.5),1),DistanceFieldPadValue);
+       DistanceFieldDataItem:=@DistanceFieldData[PixelIndex];
+       Dilation:=Min(Max(floor(sqrt(Max(1,DistanceFieldDataItem^.SquaredDistance))+0.5),1),DistanceFieldPadValue);
        PathSegmentBoundingBox.Min.x:=Floor(PathSegment.BoundingBox.Min.x)-DistanceFieldPadValue;
        PathSegmentBoundingBox.Min.y:=Floor(PathSegment.BoundingBox.Min.y)-DistanceFieldPadValue;
        PathSegmentBoundingBox.Max.x:=Ceil(PathSegment.BoundingBox.Max.x)+DistanceFieldPadValue;
@@ -1421,31 +1456,27 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
         if MultiChannel then begin
          case PathSegment^.Type_ of
           pstLine:begin
-           pAP.x:=Point.x-PathSegment^.Points[0].x;
-           pAP.y:=Point.y-PathSegment^.Points[0].y;
-           pAB.x:=PathSegment^.Points[1].x-PathSegment^.Points[0].x;
-           pAB.y:=PathSegment^.Points[1].y-PathSegment^.Points[0].y;
-           Time:=((pAP.x*pAB.x)+(pAP.y*pAB.y))/(sqr(pAB.x)+sqr(pAB.y));
+           Time:=GetLineNonClippedTime(Point,PathSegment^.Points[0],PathSegment^.Points[1]);
           end;
           pstQuadraticBezierCurve:begin
-           Time:=0.5;
+           Time:=GetQuadraticBezierCurveNonClippedTime(Point,PathSegment^.Points[0],PathSegment^.Points[1],PathSegment^.Points[2]);
           end;
           else begin
            Time:=0.5;
           end;
          end;
-         if Time<0.0 then begin
+         if Time<=0.0 then begin
           pAB:=DoublePrecisionPointNormalize(PathSegmentDirection(PathSegment^,0));
           pAP.x:=Point.x-PathSegment^.Points[0].x;
           pAP.y:=Point.y-PathSegment^.Points[0].y;
           if ((pAP.x*pAB.x)+(pAP.y*pAB.y))<0.0 then begin
            CurrentSquaredPseudoDistance:=Min(abs(CurrentSquaredPseudoDistance),abs((pAP.x*pAB.y)-(pAP.y*pAB.x)));
           end;
-         end else if Time>1.0 then begin
+         end else if Time>=1.0 then begin
           pAB:=DoublePrecisionPointNormalize(PathSegmentDirection(PathSegment^,1));
           pAP.x:=Point.x-PathSegment^.Points[1].x;
           pAP.y:=Point.y-PathSegment^.Points[1].y;
-          if ((pAP.x*pAB.x)+(pAP.y*pAB.y))>0.0 then begin
+          if ((pAP.x*pAB.x)+(pAP.y*pAB.y))>=0.0 then begin
            CurrentSquaredPseudoDistance:=Min(abs(CurrentSquaredPseudoDistance),abs((pAP.x*pAB.y)-(pAP.y*pAB.x)));
           end;
          end;
@@ -1458,27 +1489,27 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
          DeltaWindingScore:=0;
         end;
         PreviousPathSegmentSide:=PathSegmentSide;
-        if CurrentSquaredDistance<SquaredDistance then begin
-         DistanceFieldData[PixelIndex].SquaredDistance:=CurrentSquaredDistance;
+        if CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistance then begin
+         DistanceFieldDataItem^.SquaredDistance:=CurrentSquaredDistance;
         end;
         if MultiChannel then begin
          if (((TVKInt32(PathSegment^.Color) and TVkInt32(TPathSegmentColor(pscRed)))<>0)) and
-            (CurrentSquaredDistance<SquaredDistanceR) then begin
-          DistanceFieldData[PixelIndex].SquaredDistanceR:=CurrentSquaredDistance;
-          DistanceFieldData[PixelIndex].PseudoSquaredDistanceR:=CurrentSquaredPseudoDistance;
+            (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceR) then begin
+          DistanceFieldDataItem^.SquaredDistanceR:=CurrentSquaredDistance;
+          DistanceFieldDataItem^.PseudoSquaredDistanceR:=CurrentSquaredPseudoDistance;
          end;
          if (((TVKInt32(PathSegment^.Color) and TVkInt32(TPathSegmentColor(pscGreen)))<>0)) and
-            (CurrentSquaredDistance<SquaredDistanceG) then begin
-          DistanceFieldData[PixelIndex].SquaredDistanceG:=CurrentSquaredDistance;
-          DistanceFieldData[PixelIndex].PseudoSquaredDistanceG:=CurrentSquaredPseudoDistance;
+            (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceG) then begin
+          DistanceFieldDataItem^.SquaredDistanceG:=CurrentSquaredDistance;
+          DistanceFieldDataItem^.PseudoSquaredDistanceG:=CurrentSquaredPseudoDistance;
          end;
          if (((TVKInt32(PathSegment^.Color) and TVkInt32(TPathSegmentColor(pscBlue)))<>0)) and
-            (CurrentSquaredDistance<SquaredDistanceB) then begin
-          DistanceFieldData[PixelIndex].SquaredDistanceB:=CurrentSquaredDistance;
-          DistanceFieldData[PixelIndex].PseudoSquaredDistanceB:=CurrentSquaredPseudoDistance;
+            (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceB) then begin
+          DistanceFieldDataItem^.SquaredDistanceB:=CurrentSquaredDistance;
+          DistanceFieldDataItem^.PseudoSquaredDistanceB:=CurrentSquaredPseudoDistance;
          end;
         end;
-        inc(DistanceFieldData[PixelIndex].DeltaWindingScore,DeltaWindingScore);
+        inc(DistanceFieldDataItem^.DeltaWindingScore,DeltaWindingScore);
        end;
       end;
      end;
@@ -1491,7 +1522,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   end;
   function PackPseudoDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
   begin
-   result:=Min(Max(round((Distance*(128.0/16.0))+128.0),0),255);
+   result:=Min(Max(round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0),255);
   end;
   procedure GenerateDistanceFieldPicture(const DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
   var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TVkInt32;
