@@ -211,6 +211,18 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   begin
    result:=sqr(a.x-b.x)+sqr(a.y-b.y);
   end;
+  function DoublePrecisionPointNormalize(const v:TDoublePrecisionPoint):TDoublePrecisionPoint;
+  var f:TVkDouble;
+  begin
+   f:=sqr(v.x)+sqr(v.y);
+   if IsZero(f) then begin
+    result.x:=0.0;
+    result.y:=0.0;
+   end else begin
+    result.x:=v.x/f;
+    result.y:=v.y/f;
+   end;
+  end;
   function DoublePrecisionPointLerp(const a,b:TDoublePrecisionPoint;const t:TVkDouble):TDoublePrecisionPoint;
   begin
    if t<=0.0 then begin
@@ -289,14 +301,49 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
    result:=abs(((Points[1].y-Points[0].y)*(Points[1].x-Points[2].x))-
                ((Points[1].y-Points[2].y)*(Points[1].x-Points[0].x)))<=CloseSquaredValue;
   end;
+  function PathSegmentDirection(const PathSegment:TPathSegment;const Which:TVkInt32):TDoublePrecisionPoint;
+  begin
+   case PathSegment.Type_ of
+    pstLine:begin
+     result.x:=PathSegment.Points[1].x-PathSegment.Points[0].x;
+     result.y:=PathSegment.Points[1].y-PathSegment.Points[0].y;
+    end;
+    pstQuadraticBezierCurve:begin
+     case Which of
+      0:begin
+       result.x:=PathSegment.Points[1].x-PathSegment.Points[0].x;
+       result.y:=PathSegment.Points[1].y-PathSegment.Points[0].y;
+      end;
+      1:begin
+       result.x:=PathSegment.Points[2].x-PathSegment.Points[1].x;
+       result.y:=PathSegment.Points[2].y-PathSegment.Points[1].y;
+      end;
+      else begin
+       result.x:=0.0;
+       result.y:=0.0;
+       Assert(false);
+      end;
+     end;
+    end;
+    else begin
+     result.x:=0.0;
+     result.y:=0.0;
+     Assert(false);
+    end;
+   end;
+  end;
   function PathSegmentCountPoints(const PathSegment:TPathSegment):TVkInt32;
   begin
    case PathSegment.Type_ of
     pstLine:begin
      result:=2;
     end;
-    else {pstQuadraticBezierCurve:}begin
+    pstQuadraticBezierCurve:begin
      result:=3;
+    end;
+    else begin
+     result:=0;
+     Assert(false);
     end;
    end;
   end;
@@ -306,8 +353,12 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     pstLine:begin
      result:=@PathSegment.Points[1];
     end;
-    else {pstQuad:}begin
+    pstQuadraticBezierCurve:begin
      result:=@PathSegment.Points[2];
+    end;
+    else begin
+     result:=nil;
+     Assert(false);
     end;
    end;
   end;
@@ -1086,18 +1137,66 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
    end;
   end;
   procedure PathSegmentColorizeShape(var Shape:TShape);
-  var ContourIndex,PathSegmentIndex:TVkInt32;
+  const AngleThreshold=3.0;
+        EdgeThreshold=1.00000001;
+  type PCorner=^TCorner;
+       TCorner=TVkInt32;
+       TCorners=array of TCorner;
+  var ContourIndex,PathSegmentIndex,CountCorners,CornerIndex:TVkInt32;
       Contour:PContour;
+      Corners:TCorners;
+      CurrentDirection,PreviousDirection,a,b:TDoublePrecisionPoint;
+      CrossThreshold:TVkDouble;
   begin
+
+   CrossThreshold:=sin(AngleThreshold);
+
    for ContourIndex:=0 to Shape.CountContours-1 do begin
+
     Contour:=@Shape.Contours[ContourIndex];
+    try
+
+     Corners:=nil;
+     CountCorners:=0;
      try
-     for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
+
+      if Contour^.CountPathSegments>0 then begin
+
+       PreviousDirection:=PathSegmentDirection(Contour^.PathSegments[Contour^.CountPathSegments-1],1);
+
+       for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
+
+        CurrentDirection:=PathSegmentDirection(Contour^.PathSegments[PathSegmentIndex],0);
+
+        a:=DoublePrecisionPointNormalize(PreviousDirection);
+        b:=DoublePrecisionPointNormalize(CurrentDirection);
+
+        if (((a.x*b.x)+(a.y*b.y))<=0.0) or (abs((a.x*b.y)-(a.y*b.x))>CrossThreshold) then begin
+
+         if length(Corners)<(CountCorners+1) then begin
+          SetLength(Corners,(CountCorners+1)*2);
+         end;
+         Corners[CountCorners]:=PathSegmentIndex;
+         inc(CountCorners);
+
+        end;
+
+        PreviousDirection:=PathSegmentDirection(Contour^.PathSegments[PathSegmentIndex],1);
+
+       end;
+
+      end;
+
+     finally
+      Corners:=nil;
      end;
+
     finally
      SetLength(Contour^.PathSegments,Contour^.CountPathSegments);
     end;
+
    end;
+
   end;
   procedure CalculateDistanceFieldData(const Shape:TShape;var DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
   var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
