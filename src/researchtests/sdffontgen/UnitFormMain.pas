@@ -145,6 +145,8 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        NearlyZeroValue=Scalar1Value/int64(1 shl 18);
        TangentToleranceValue=Scalar1Value/int64(1 shl 11);
        ConicToleranceValue=0.25;
+       RasterizerToScreenScale=1.0/256.0;
+       ScreenToRasterizerScale=256.0;
  type PSegmentSide=^TSegmentSide;
       TSegmentSide=
        (
@@ -420,7 +422,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
     Data[Index].DeltaWindingScore:=0;
    end;
   end;
-  function AddLineToSegment(var PathSegmentArray:TPathSegmentArray;const Points:array of TDoublePrecisionPoint):TVkInt32;
+  function AddLineToPathSegmentArray(var PathSegmentArray:TPathSegmentArray;const Points:array of TDoublePrecisionPoint):TVkInt32;
   var PathSegment:PPathSegment;
   begin
    Assert(length(Points)=2);
@@ -435,7 +437,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    PathSegment^.Points[1]:=Points[1];
    InitializePathSegment(PathSegment^);
   end;
-  function AddQuadraticBezierCurveToSegment(var PathSegmentArray:TPathSegmentArray;const Points:array of TDoublePrecisionPoint):TVkInt32;
+  function AddQuadraticBezierCurveToPathSegmentArray(var PathSegmentArray:TPathSegmentArray;const Points:array of TDoublePrecisionPoint):TVkInt32;
   var PathSegment:PPathSegment;
   begin
    Assert(length(Points)=3);
@@ -459,7 +461,43 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    end;
    InitializePathSegment(PathSegment^);
   end;
-  function AddCubicBezierCurveToSegment(var PathSegmentArray:TPathSegmentArray;const Points:array of TDoublePrecisionPoint):TVkInt32;
+  function AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var PathSegmentArray:TPathSegmentArray;const Points:array of TDoublePrecisionPoint;const Tolerance:TVkDouble=RasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
+  var LastPoint:TDoublePrecisionPoint;
+   procedure LineToPointAt(const Point:TDoublePrecisionPoint);
+   begin
+    AddLineToPathSegmentArray(PathSegmentArray,[LastPoint,Point]);
+    LastPoint:=Point;
+   end;
+   procedure Recursive(x1,y1,x2,y2,x3,y3:TVkDouble;const Level:TVkInt32);
+   var x12,y12,x23,y23,x123,y123,mx,my,d:TVkDouble;
+       Point:TDoublePrecisionPoint;
+   begin
+    x12:=(x1+x2)*0.5;
+    y12:=(y1+y2)*0.5;
+    x23:=(x2+x3)*0.5;
+    y23:=(y2+y3)*0.5;
+    x123:=(x12+x23)*0.5;
+    y123:=(y12+y23)*0.5;
+    mx:=(x1+x3)*0.5;
+    my:=(y1+y3)*0.5;
+    d:=abs(mx-x123)+abs(my-y123);
+    if (Level>MaxLevel) or (d<Tolerance) then begin
+     Point.x:=x123;
+     Point.y:=y123;
+     LineToPointAt(Point);
+    end else begin
+     Recursive(x1,y1,x12,y12,x123,y123,level+1);
+     Recursive(x123,y123,x23,y23,x3,y3,level+1);
+    end;
+   end;
+  begin
+   Assert(length(Points)=3);
+   result:=PathSegmentArray.Count;
+   LastPoint:=Points[0];
+   Recursive(Points[0].x,Points[0].y,Points[1].x,Points[1].y,Points[2].x,Points[2].y,0);
+   LineToPointAt(Points[2]);
+  end;
+  function AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(var PathSegmentArray:TPathSegmentArray;const Points:array of TDoublePrecisionPoint):TVkInt32;
   type TLine=record
         a,b,c:TVkDouble;
         Exist,Vertical:boolean;
@@ -475,12 +513,12 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    end;
    procedure LineTo(const p:TDoublePrecisionPoint);
    begin
-    AddLineToSegment(PathSegmentArray,[LastPoint,p]);
+    AddLineToPathSegmentArray(PathSegmentArray,[LastPoint,p]);
     LastPoint:=p;
    end;
    procedure CurveTo(const p0,p1:TDoublePrecisionPoint);
    begin
-    AddQuadraticBezierCurveToSegment(PathSegmentArray,[LastPoint,p0,p1]);
+    AddQuadraticBezierCurveToPathSegmentArray(PathSegmentArray,[LastPoint,p0,p1]);
     LastPoint:=p1;
    end;
    function GetLine(const P0,P1:TDoublePrecisionPoint):TLine;
@@ -931,46 +969,6 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
   begin
    result:=Min(Max(round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0),255);
   end;
-  procedure QuadraticCurveTo(var PathSegmentArray:TPathSegmentArray;sx,sy,cx,cy,ax,ay:TVkDouble;Tolerance:TVkDouble=1.0/256.0;MaxLevel:TVkInt32=32);
-  var lx,ly:TVkDouble;
-   procedure LineToPointAt(ax,ay:TVkDouble);
-   var p0,p1:TDoublePrecisionPoint;
-   begin
-    p0.x:=lx;
-    p0.y:=ly;
-    p1.x:=ax;
-    p1.y:=ay;
-    AddLineToSegment(PathSegmentArray,[p0,p1]);
-    lx:=ax;
-    ly:=ay;
-   end;
-   procedure Recursive(x1,y1,x2,y2,x3,y3:TVkDouble;level:TVkInt32);
-   var x12,y12,x23,y23,x123,y123,mx,my,d:TVkDouble;
-   begin
-    x12:=(x1+x2)*0.5;
-    y12:=(y1+y2)*0.5;
-    x23:=(x2+x3)*0.5;
-    y23:=(y2+y3)*0.5;
-    x123:=(x12+x23)*0.5;
-    y123:=(y12+y23)*0.5;
-    mx:=(x1+x3)*0.5;
-    my:=(y1+y3)*0.5;
-    d:=abs(mx-x123)+abs(my-y123);
-    if (level>MaxLevel) or (d<Tolerance) then begin
-     LineToPointAt(x123,y123);
-    end else begin
-     Recursive(x1,y1,x12,y12,x123,y123,level+1);
-     Recursive(x123,y123,x23,y23,x3,y3,level+1);
-    end;
-   end;
-  begin
-   lx:=sx;
-   ly:=sy;
-   Recursive(lx,ly,cx,cy,ax,ay,0);
-   LineToPointAt(ax,ay);
-  end;
- const RasterizerToScreenScale=1.0/256.0;
-       ScreenToRasterizerScale=256.0;
  var CommandIndex,x,y,x0,x1,y0,y1,PixelIndex,DistanceFieldSign,WindingNumber,Width,Height:TVkInt32;
      PathSegmentArray:TPathSegmentArray;
      DistanceFieldData:array of TDistanceFieldData;
@@ -1010,7 +1008,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*RasterizerToScreenScale)+OffsetX;
        Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*RasterizerToScreenScale)+OffsetY;
        if not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
-        AddLineToSegment(PathSegmentArray,[LastPoint,Point]);
+        AddLineToPathSegmentArray(PathSegmentArray,[LastPoint,Point]);
        end;
        LastPoint:=Point;
       end;
@@ -1019,14 +1017,16 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        ControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*RasterizerToScreenScale)+OffsetY;
        Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*RasterizerToScreenScale)+OffsetX;
        Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*RasterizerToScreenScale)+OffsetY;
-//      QuadraticCurveTo(PathSegmentArray,LastPoint.x,LastPoint.y,ControlPoint.x,ControlPoint.y,Point.x,Point.y);
-       AddQuadraticBezierCurveToSegment(PathSegmentArray,[LastPoint,ControlPoint,Point]);
-//     AddLineToSegment(PathSegmentArray,[LastPoint,Point]);
+       if not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
+               (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
+        AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(PathSegmentArray,[LastPoint,ControlPoint,Point]);
+        //AddQuadraticBezierCurveToPathSegmentArray(PathSegmentArray,[LastPoint,ControlPoint,Point]);
+       end;
        LastPoint:=Point;
       end;
       VkTTF_PolygonCommandType_CLOSE:begin
        if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
-        AddLineToSegment(PathSegmentArray,[LastPoint,StartPoint]);
+        AddLineToPathSegmentArray(PathSegmentArray,[LastPoint,StartPoint]);
        end;
       end;
      end;
