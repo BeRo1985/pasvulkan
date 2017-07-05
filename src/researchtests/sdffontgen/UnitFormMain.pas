@@ -1357,7 +1357,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       PreviousPathSegmentSide,PathSegmentSide:TPathSegmentSide;
       RowData:TRowData;
       PointLeft,PointRight,Point:TDoublePrecisionPoint;
-      pX,pY,SquaredDistance,CurrentSquaredDistance:TvkDouble;
+      pX,pY,CurrentSquaredDistance,SquaredDistance,SquaredDistanceR,SquaredDistanceG,SquaredDistanceB:TvkDouble;
   begin
    for ContourIndex:=0 to Shape.CountContours-1 do begin
     Contour:=@Shape.Contours[ContourIndex];
@@ -1387,6 +1387,9 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
        Point.x:=pX;
        Point.y:=pY;
        SquaredDistance:=DistanceFieldData[PixelIndex].SquaredDistance;
+       SquaredDistanceR:=DistanceFieldData[PixelIndex].SquaredDistanceR;
+       SquaredDistanceG:=DistanceFieldData[PixelIndex].SquaredDistanceG;
+       SquaredDistanceB:=DistanceFieldData[PixelIndex].SquaredDistanceB;
        Dilation:=Min(Max(floor(sqrt(Max(1,SquaredDistance))+0.5),1),DistanceFieldPadValue);
        PathSegmentBoundingBox.Min.x:=Floor(PathSegment.BoundingBox.Min.x)-DistanceFieldPadValue;
        PathSegmentBoundingBox.Min.y:=Floor(PathSegment.BoundingBox.Min.y)-DistanceFieldPadValue;
@@ -1410,7 +1413,21 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
         if CurrentSquaredDistance<SquaredDistance then begin
          DistanceFieldData[PixelIndex].SquaredDistance:=CurrentSquaredDistance;
         end;
-        inc(DistanceFieldData[PixelIndex].DeltaWindingScore,DeltaWindingScore);
+        if MultiChannel then begin
+         if (((TVKInt32(PathSegment^.Color) and TVkInt32(TPathSegmentColor(pscRed)))<>0)) and
+            (CurrentSquaredDistance<SquaredDistanceR) then begin
+          DistanceFieldData[PixelIndex].SquaredDistanceR:=CurrentSquaredDistance;
+         end;
+         if (((TVKInt32(PathSegment^.Color) and TVkInt32(TPathSegmentColor(pscGreen)))<>0)) and
+            (CurrentSquaredDistance<SquaredDistanceG) then begin
+          DistanceFieldData[PixelIndex].SquaredDistanceG:=CurrentSquaredDistance;
+         end;
+         if (((TVKInt32(PathSegment^.Color) and TVkInt32(TPathSegmentColor(pscBlue)))<>0)) and
+            (CurrentSquaredDistance<SquaredDistanceB) then begin
+          DistanceFieldData[PixelIndex].SquaredDistanceB:=CurrentSquaredDistance;
+         end;
+         inc(DistanceFieldData[PixelIndex].DeltaWindingScore,DeltaWindingScore);
+        end;
        end;
       end;
      end;
@@ -1441,9 +1458,9 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
      DistanceFieldDataItem:=@DistanceFieldData[PixelIndex];
      inc(WindingNumber,DistanceFieldDataItem^.DeltaWindingScore);
      if WindingNumber<>0 then begin
-      DistanceFieldSign:=-1;
-     end else begin
       DistanceFieldSign:=1;
+     end else begin
+      DistanceFieldSign:=-1;
      end;
      if (x=(Width-1)) and (WindingNumber<>0) then begin
       Fallback:=true;
@@ -1451,9 +1468,9 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
      end else begin
       DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
       if MultiChannel then begin
-       DistanceFieldPixel^.r:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-       DistanceFieldPixel^.g:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-       DistanceFieldPixel^.b:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+       DistanceFieldPixel^.r:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistanceR)*DistanceFieldSign);
+       DistanceFieldPixel^.g:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistanceG)*DistanceFieldSign);
+       DistanceFieldPixel^.b:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistanceB)*DistanceFieldSign);
        DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
       end else begin
        Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
@@ -1471,15 +1488,15 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       tx:=((x+0.5)-OffsetX)*ScreenToRasterizerScale;
       ty:=((y+0.5)-OffsetY)*ScreenToRasterizerScale;
       if (ceil(tx)>=bx0) and (floor(tx)<=bx1) and (ceil(ty)>=by0) and (floor(ty)<=by1) then begin
-       DistanceFieldSign:=-1;
-      end else begin
        DistanceFieldSign:=1;
+      end else begin
+       DistanceFieldSign:=-1;
       end;
       DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
       if MultiChannel then begin
-       DistanceFieldPixel^.r:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-       DistanceFieldPixel^.g:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-       DistanceFieldPixel^.b:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+       DistanceFieldPixel^.r:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistanceR)*DistanceFieldSign);
+       DistanceFieldPixel^.g:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistanceG)*DistanceFieldSign);
+       DistanceFieldPixel^.b:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistanceB)*DistanceFieldSign);
        DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
       end else begin
        Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
@@ -1516,11 +1533,15 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
 
     ConvertShape(Shape);
 
-    NormalizeShape(Shape);
+    if MultiChannel then begin
 
-    PathSegmentColorizeShape(Shape);
+     NormalizeShape(Shape);
 
-    NormalizeShape(Shape);
+     PathSegmentColorizeShape(Shape);
+
+     NormalizeShape(Shape);
+
+    end;
 
     CalculateDistanceFieldData(Shape,DistanceFieldData,Width,Height);
 
@@ -1592,7 +1613,7 @@ begin
   SetExceptionMask([exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
   if VulkanTrueTypeFont.NumGlyphs>0 then begin
 
-   GlyphIndex:=VulkanTrueTypeFont.GetGlyphIndex(TVkUInt8(TVkChar('B')));
+   GlyphIndex:=VulkanTrueTypeFont.GetGlyphIndex(TVkUInt8(TVkChar('A')));
 
    VulkanTrueTypeFont.Size:=-256;
 
