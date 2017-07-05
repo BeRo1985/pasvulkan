@@ -92,50 +92,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
     Stream:TStream;
     GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;
     PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;
- procedure Scale(var x,y:TVkInt32);
- begin
-  x:=(TVkInt64(x-x0)*ImagePreview.Width) div (x1-x0);
-  y:=(TVkInt64(y-y0)*ImagePreview.Height) div (y1-y0);
- end;
- procedure MoveToPointAt(x,y:TVkInt32);
- begin
-  lastcx:=x;
-  lastcy:=y;
-  Scale(x,y);
-  ImagePreview.Canvas.MoveTo(x,y);
- end;
- procedure LineToPointAt(x,y:TVkInt32);
- begin
-  lastcx:=x;
-  lastcy:=y;
-  Scale(x,y);
-  ImagePreview.Canvas.LineTo(x,y);
- end;
- procedure QuadraticCurveTo(cx,cy,ax,ay:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
-  procedure Recursive(x1,y1,x2,y2,x3,y3,level:TVkInt32);
-  var x12,y12,x23,y23,x123,y123,mx,my,d:TVkInt32;
-  begin
-   x12:=SARLongint(x1+x2,1);
-   y12:=SARLongint(y1+y2,1);
-   x23:=SARLongint(x2+x3,1);
-   y23:=SARLongint(y2+y3,1);
-   x123:=SARLongint(x12+x23,1);
-   y123:=SARLongint(y12+y23,1);
-   mx:=SARLongint(x1+x3,1);
-   my:=SARLongint(y1+y3,1);
-   d:=abs(mx-x123)+abs(my-y123);
-   if (level>MaxLevel) or (d<Tolerance) then begin
-    LineToPointAt(x123,y123);
-   end else begin
-    Recursive(x1,y1,x12,y12,x123,y123,level+1);
-    Recursive(x123,y123,x23,y23,x3,y3,level+1);
-   end;
-  end;
- begin
-  Recursive(lastcx,lastcy,cx,cy,ax,ay,0);
-  LineToPointAt(ax,ay);
- end;
- procedure GenerateSignedDistanceField;
+ procedure GenerateSignedDistanceField(const MultiChannel:boolean);
  const DistanceFieldSpreadValue=4;
        DistanceFieldMagnitudeValue=DistanceFieldSpreadValue;
        DistanceFieldPadValue=DistanceFieldSpreadValue;
@@ -1011,12 +968,13 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
   begin
    result:=Min(Max(round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0),255);
   end;
- var CommandIndex,x,y,x0,x1,y0,y1,PixelIndex,DistanceFieldSign,WindingNumber,Width,Height:TVkInt32;
+ var CommandIndex,x,y,x0,x1,y0,y1,PixelIndex,DistanceFieldSign,WindingNumber,Width,Height,Value:TVkInt32;
      PathSegmentArray:TPathSegmentArray;
      DistanceFieldData:array of TDistanceFieldData;
      StartPoint,LastPoint,ControlPoint,Point:TDoublePrecisionPoint;
      OffsetX,OffsetY,tx,ty:TVkDouble;
      Fallback:boolean;
+     DistanceFieldPixel:PDistanceFieldPixel;
  begin
   PathSegmentArray.Segments:=nil;
   PathSegmentArray.Count:=0;
@@ -1061,8 +1019,11 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*RasterizerToScreenScale)+OffsetY;
        if not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
                (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
-        AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(PathSegmentArray,[LastPoint,ControlPoint,Point]);
-        //AddQuadraticBezierCurveToPathSegmentArray(PathSegmentArray,[LastPoint,ControlPoint,Point]);
+{       if MultiChannel then begin
+         AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(PathSegmentArray,[LastPoint,ControlPoint,Point]);
+        end else}begin
+         AddQuadraticBezierCurveToPathSegmentArray(PathSegmentArray,[LastPoint,ControlPoint,Point]);
+        end;
        end;
        LastPoint:=Point;
       end;
@@ -1082,9 +1043,9 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
 
     Fallback:=false;
     for y:=0 to Height-1 do begin
+     PixelIndex:=y*Width;
      WindingNumber:=0;
      for x:=0 to Width-1 do begin
-      PixelIndex:=(y*Width)+x;
       inc(WindingNumber,DistanceFieldData[PixelIndex].DeltaWindingScore);
       if WindingNumber<>0 then begin
        DistanceFieldSign:=-1;
@@ -1095,15 +1056,25 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        Fallback:=true;
        break;
       end else begin
-       DistanceField.Pixels[PixelIndex].r:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-       DistanceField.Pixels[PixelIndex].g:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-       DistanceField.Pixels[PixelIndex].b:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-       DistanceField.Pixels[PixelIndex].a:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
+       inc(PixelIndex);
+       if MultiChannel then begin
+        DistanceFieldPixel^.r:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.g:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.b:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       end else begin
+        Value:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.r:=Value;
+        DistanceFieldPixel^.g:=Value;
+        DistanceFieldPixel^.b:=Value;
+        DistanceFieldPixel^.a:=Value;
+       end;
       end;
      end;
      if Fallback then begin
+      PixelIndex:=y*Width;
       for x:=0 to Width-1 do begin
-       PixelIndex:=(y*Width)+x;
        tx:=((x+0.5)-OffsetX)*ScreenToRasterizerScale;
        ty:=((y+0.5)-OffsetY)*ScreenToRasterizerScale;
        if (ceil(tx)>=x0) and (floor(tx)<=x1) and (ceil(ty)>=y0) and (floor(ty)<=y1) then begin
@@ -1111,10 +1082,20 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
        end else begin
         DistanceFieldSign:=1;
        end;
-       DistanceField.Pixels[PixelIndex].r:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-       DistanceField.Pixels[PixelIndex].g:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-       DistanceField.Pixels[PixelIndex].b:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
-       DistanceField.Pixels[PixelIndex].a:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
+       inc(PixelIndex);
+       if MultiChannel then begin
+        DistanceFieldPixel^.r:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.g:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.b:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+       end else begin
+        Value:=PackDistanceFieldValue(sqrt(DistanceFieldData[PixelIndex].SquaredDistance)*DistanceFieldSign);
+        DistanceFieldPixel^.r:=Value;
+        DistanceFieldPixel^.g:=Value;
+        DistanceFieldPixel^.b:=Value;
+        DistanceFieldPixel^.a:=Value;
+       end;
       end;
      end;
     end;
@@ -1127,6 +1108,49 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    PathSegmentArray.Segments:=nil;
   end;
 
+ end;
+ procedure Scale(var x,y:TVkInt32);
+ begin
+  x:=(TVkInt64(x-x0)*ImagePreview.Width) div (x1-x0);
+  y:=(TVkInt64(y-y0)*ImagePreview.Height) div (y1-y0);
+ end;
+ procedure MoveToPointAt(x,y:TVkInt32);
+ begin
+  lastcx:=x;
+  lastcy:=y;
+  Scale(x,y);
+  ImagePreview.Canvas.MoveTo(x,y);
+ end;
+ procedure LineToPointAt(x,y:TVkInt32);
+ begin
+  lastcx:=x;
+  lastcy:=y;
+  Scale(x,y);
+  ImagePreview.Canvas.LineTo(x,y);
+ end;
+ procedure QuadraticCurveTo(cx,cy,ax,ay:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
+  procedure Recursive(x1,y1,x2,y2,x3,y3,level:TVkInt32);
+  var x12,y12,x23,y23,x123,y123,mx,my,d:TVkInt32;
+  begin
+   x12:=SARLongint(x1+x2,1);
+   y12:=SARLongint(y1+y2,1);
+   x23:=SARLongint(x2+x3,1);
+   y23:=SARLongint(y2+y3,1);
+   x123:=SARLongint(x12+x23,1);
+   y123:=SARLongint(y12+y23,1);
+   mx:=SARLongint(x1+x3,1);
+   my:=SARLongint(y1+y3,1);
+   d:=abs(mx-x123)+abs(my-y123);
+   if (level>MaxLevel) or (d<Tolerance) then begin
+    LineToPointAt(x123,y123);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,level+1);
+    Recursive(x123,y123,x23,y23,x3,y3,level+1);
+   end;
+  end;
+ begin
+  Recursive(lastcx,lastcy,cx,cy,ax,ay,0);
+  LineToPointAt(ax,ay);
  end;
 var sx,sy,x,y,i:TVkInt32;
     p:PVKUInt8;
@@ -1191,7 +1215,7 @@ begin
     end;
    end;
 
-   GenerateSignedDistanceField;
+   GenerateSignedDistanceField(true);
 
    ImageSDF.Width:=DistanceField.Width;
    ImageSDF.Height:=DistanceField.Height;
