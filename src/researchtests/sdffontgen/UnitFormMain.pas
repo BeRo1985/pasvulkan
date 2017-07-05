@@ -103,13 +103,13 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
        ConicToleranceValue=0.25;
        RasterizerToScreenScale=1.0/256.0;
        ScreenToRasterizerScale=256.0;
- type PSegmentSide=^TSegmentSide;
-      TSegmentSide=
+ type PPathSegmentSide=^TPathSegmentSide;
+      TPathSegmentSide=
        (
-        ssLeft=-1,
-        ssOn=0,
-        ssRight=1,
-        ssNone=2
+        pssLeft=-1,
+        pssOn=0,
+        pssRight=1,
+        pssNone=2
        );
       PDistanceFieldDataItem=^TDistanceFieldDataItem;
       TDistanceFieldDataItem=record
@@ -138,11 +138,25 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
        Min:TDoublePrecisionPoint;
        Max:TDoublePrecisionPoint;
       end;
+      PPathSegmentColor=^TPathSegmentColor;
+      TPathSegmentColor=
+       (
+        pscNone=0,
+        pscBlack=1,
+        pscRed=2,
+        pscGreen=3,
+        pscYellow=4,
+        pscBlue=5,
+        pscMagenta=6,
+        pscCyan=7,
+        pscWhite=8
+       );
       PPathSegmentPoints=^TPathSegmentPoints;
       TPathSegmentPoints=array[0..2] of TDoublePrecisionPoint;
       PPathSegment=^TPathSegment;
       TPathSegment=record
        Type_:TPathSegmentType;
+       Color:TPathSegmentColor;
        Points:TPathSegmentPoints;
        P0T,P2T:TDoublePrecisionPoint;
        XFormMatrix:TDoublePrecisionAffineMatrix;
@@ -413,6 +427,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
    end;
    PathSegment:=@Contour.PathSegments[result];
    PathSegment^.Type_:=pstLine;
+   PathSegment^.Color:=pscNone;
    PathSegment^.Points[0]:=Points[0];
    PathSegment^.Points[1]:=Points[1];
    InitializePathSegment(PathSegment^);
@@ -431,10 +446,12 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       (DoublePrecisionPointDistanceSquared(Points[1],Points[2])<CloseSquaredValue) or
       IsColinear(Points) then begin
     PathSegment^.Type_:=pstLine;
+    PathSegment^.Color:=pscNone;
     PathSegment^.Points[0]:=Points[0];
     PathSegment^.Points[1]:=Points[2];
    end else begin
     PathSegment^.Type_:=pstQuadraticBezierCurve;
+    PathSegment^.Color:=pscNone;
     PathSegment^.Points[0]:=Points[0];
     PathSegment^.Points[1]:=Points[1];
     PathSegment^.Points[2]:=Points[2];
@@ -737,9 +754,6 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
    Recursive(Points[0].x,Points[0].y,Points[1].x,Points[1].y,Points[2].x,Points[2].y,Points[3].x,Points[3].y,0);
    LineToPointAt(Points[3]);
   end;
-  procedure EdgeColoring;
-  begin
-  end;
   function CubeRoot(Value:TVkDouble):TVkDouble;
   begin
    if IsZero(Value) then begin
@@ -825,17 +839,17 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     end;
    end;
   end;
-  function CalculateSideOfQuadraticBezierCurve(const PathSegment:TPathSegment;const Point,XFormPoint:TDoublePrecisionPoint;const RowData:TRowData):TSegmentSide;
+  function CalculateSideOfQuadraticBezierCurve(const PathSegment:TPathSegment;const Point,XFormPoint:TDoublePrecisionPoint;const RowData:TRowData):TPathSegmentSide;
   var p0,p1:TVkDouble;
       sp0,sp1:TVkInt32;
       ip0,ip1:boolean;
   begin
    case RowData.IntersectionType of
     rditVerticalLine:begin
-     result:=TSegmentSide(TVkInt32(SignOf(XFormPoint.y-RowData.YAtIntersection)*RowData.QuadraticXDirection));
+     result:=TPathSegmentSide(TVkInt32(SignOf(XFormPoint.y-RowData.YAtIntersection)*RowData.QuadraticXDirection));
     end;
     rditTwoPointsIntersect:begin
-     result:=ssNone;
+     result:=pssNone;
      p0:=RowData.XAtIntersection[0];
      p1:=RowData.XAtIntersection[1];
      sp0:=SignOf(p0-XFormPoint.x);
@@ -860,31 +874,31 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       end;
      end;
      if ip0 and BetweenClosed(p0,PathSegment.P0T.x,PathSegment.P2T.x,PathSegment.NearlyZeroScaled,true) then begin
-      result:=TSegmentSide(TVkInt32(sp0*RowData.QuadraticXDirection));
+      result:=TPathSegmentSide(TVkInt32(sp0*RowData.QuadraticXDirection));
      end;
      if ip1 and BetweenClosed(p1,PathSegment.P0T.x,PathSegment.P2T.x,PathSegment.NearlyZeroScaled,true) then begin
       sp1:=SignOf(p1-XFormPoint.x);
-      if (result=ssNone) or (sp1=1) then begin
-       result:=TSegmentSide(TVkInt32(-sp1*RowData.QuadraticXDirection));
+      if (result=pssNone) or (sp1=1) then begin
+       result:=TPathSegmentSide(TVkInt32(-sp1*RowData.QuadraticXDirection));
       end;
      end;
     end;
     rditTangentLine:begin
-     result:=ssNone;
+     result:=pssNone;
      if RowData.ScanlineXDirection=1 then begin
       if SameValue(PathSegment.Points[0].y,Point.y) then begin
-       result:=TSegmentSide(TVkInt32(SignOf(RowData.XAtIntersection[0]-XFormPoint.x)));
+       result:=TPathSegmentSide(TVkInt32(SignOf(RowData.XAtIntersection[0]-XFormPoint.x)));
       end else if SameValue(PathSegment.Points[2].y,Point.y) then begin
-       result:=TSegmentSide(TVkInt32(SignOf(XFormPoint.x-RowData.XAtIntersection[0])));
+       result:=TPathSegmentSide(TVkInt32(SignOf(XFormPoint.x-RowData.XAtIntersection[0])));
       end;
      end;
     end;
     else begin
-     result:=ssNone;
+     result:=pssNone;
     end;
    end;
   end;
-  function DistanceToPathSegment(const Point:TDoublePrecisionPoint;const PathSegment:TPathSegment;const RowData:TRowData;out SegmentSide:TSegmentSide):TVkDouble;
+  function DistanceToPathSegment(const Point:TDoublePrecisionPoint;const PathSegment:TPathSegment;const RowData:TRowData;out PathSegmentSide:TPathSegmentSide):TVkDouble;
   var XFormPoint,x:TDoublePrecisionPoint;
       NearestPoint:TVkDouble;
   begin
@@ -899,9 +913,9 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       result:=sqr(XFormPoint.x-PathSegment.P2T.x)+sqr(XFormPoint.y);
      end;
      if BetweenClosedOpen(Point.y,PathSegment.BoundingBox.Min.y,PathSegment.BoundingBox.Max.y) then begin
-      SegmentSide:=TSegmentSide(TVkInt32(SignOf(XFormPoint.y)));
+      PathSegmentSide:=TPathSegmentSide(TVkInt32(SignOf(XFormPoint.y)));
      end else begin
-      SegmentSide:=ssNone;
+      PathSegmentSide:=pssNone;
      end;
     end;
     pstQuadraticBezierCurve:begin
@@ -915,13 +929,13 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
                   DoublePrecisionPointDistanceSquared(XFormPoint,PathSegment.P2T))*PathSegment.SquaredScalingFactor;
      end;
      if BetweenClosedOpen(Point.y,PathSegment.BoundingBox.Min.y,PathSegment.BoundingBox.Max.y) then begin
-      SegmentSide:=CalculateSideOfQuadraticBezierCurve(PathSegment,Point,XFormPoint,RowData);
+      PathSegmentSide:=CalculateSideOfQuadraticBezierCurve(PathSegment,Point,XFormPoint,RowData);
      end else begin
-      SegmentSide:=ssNone;
+      PathSegmentSide:=pssNone;
      end;
     end;
     else begin
-     SegmentSide:=ssNone;
+     PathSegmentSide:=pssNone;
      result:=0.0;
     end;
    end;
@@ -1018,25 +1032,31 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     case BasePathSegment.Type_ of
      pstLine:begin
       Contour.PathSegments[BasePathSegmentIndex+0].Type_:=pstLine;
+      Contour.PathSegments[BasePathSegmentIndex+0].Color:=BasePathSegment.Color;
       Contour.PathSegments[BasePathSegmentIndex+0].Points[0]:=BasePathSegment.Points[0];
       Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0);
       Contour.PathSegments[BasePathSegmentIndex+1].Type_:=pstLine;
+      Contour.PathSegments[BasePathSegmentIndex+1].Color:=BasePathSegment.Color;
       Contour.PathSegments[BasePathSegmentIndex+1].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+0].Points[1];
-      Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+1].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0);
       Contour.PathSegments[BasePathSegmentIndex+2].Type_:=pstLine;
+      Contour.PathSegments[BasePathSegmentIndex+2].Color:=BasePathSegment.Color;
       Contour.PathSegments[BasePathSegmentIndex+2].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+1].Points[1];
       Contour.PathSegments[BasePathSegmentIndex+2].Points[1]:=BasePathSegment.Points[1];
      end;
      pstQuadraticBezierCurve:begin
       Contour.PathSegments[BasePathSegmentIndex+0].Type_:=pstQuadraticBezierCurve;
+      Contour.PathSegments[BasePathSegmentIndex+0].Color:=BasePathSegment.Color;
       Contour.PathSegments[BasePathSegmentIndex+0].Points[0]:=BasePathSegment.Points[0];
       Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0);
       Contour.PathSegments[BasePathSegmentIndex+0].Points[2]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],1.0/3.0),1.0/3.0);
       Contour.PathSegments[BasePathSegmentIndex+1].Type_:=pstQuadraticBezierCurve;
+      Contour.PathSegments[BasePathSegmentIndex+1].Color:=BasePathSegment.Color;
       Contour.PathSegments[BasePathSegmentIndex+1].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+0].Points[2];
-      Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],5.0/9.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],4.0/9.0),0.5);
-      Contour.PathSegments[BasePathSegmentIndex+0].Points[2]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],2.0/3.0),2.0/3.0);
+      Contour.PathSegments[BasePathSegmentIndex+1].Points[1]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],5.0/9.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],4.0/9.0),0.5);
+      Contour.PathSegments[BasePathSegmentIndex+1].Points[2]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],2.0/3.0),2.0/3.0);
       Contour.PathSegments[BasePathSegmentIndex+2].Type_:=pstQuadraticBezierCurve;
+      Contour.PathSegments[BasePathSegmentIndex+2].Color:=BasePathSegment.Color;
       Contour.PathSegments[BasePathSegmentIndex+2].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+1].Points[2];
       Contour.PathSegments[BasePathSegmentIndex+2].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0);
       Contour.PathSegments[BasePathSegmentIndex+2].Points[2]:=BasePathSegment.Points[2];
@@ -1065,12 +1085,26 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     end;
    end;
   end;
+  procedure PathSegmentColorizeShape(var Shape:TShape);
+  var ContourIndex,PathSegmentIndex:TVkInt32;
+      Contour:PContour;
+  begin
+   for ContourIndex:=0 to Shape.CountContours-1 do begin
+    Contour:=@Shape.Contours[ContourIndex];
+     try
+     for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
+     end;
+    finally
+     SetLength(Contour^.PathSegments,Contour^.CountPathSegments);
+    end;
+   end;
+  end;
   procedure CalculateDistanceFieldData(const Shape:TShape;var DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
   var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
       Contour:PContour;
       PathSegment:PPathSegment;
       PathSegmentBoundingBox:TBoundingBox;
-      PreviousSegmentSide,SegmentSide:TSegmentSide;
+      PreviousPathSegmentSide,PathSegmentSide:TPathSegmentSide;
       RowData:TRowData;
       PointLeft,PointRight,Point:TDoublePrecisionPoint;
       pX,pY,SquaredDistance,CurrentSquaredDistance:TvkDouble;
@@ -1088,7 +1122,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
      x1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.x)),0),Width-1);
      y1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.y)),0),Height-1);
      for y:=y0 to y1 do begin
-      PreviousSegmentSide:=ssNone;
+      PreviousPathSegmentSide:=pssNone;
       pY:=y+0.5;
       PointLeft.x:=x0;
       PointLeft.y:=pY;
@@ -1113,16 +1147,16 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
            ((y>=PathSegmentBoundingBox.Min.y) and (y<=PathSegmentBoundingBox.Max.y))) then begin
         continue;
        end else begin
-        SegmentSide:=ssNone;
-        CurrentSquaredDistance:=DistanceToPathSegment(Point,PathSegment^,RowData,SegmentSide);
-        if (PreviousSegmentSide=ssLeft) and (SegmentSide=ssRight) then begin
+        PathSegmentSide:=pssNone;
+        CurrentSquaredDistance:=DistanceToPathSegment(Point,PathSegment^,RowData,PathSegmentSide);
+        if (PreviousPathSegmentSide=pssLeft) and (PathSegmentSide=pssRight) then begin
          DeltaWindingScore:=-1;
-        end else if (PreviousSegmentSide=ssRight) and (SegmentSide=ssLeft) then begin
+        end else if (PreviousPathSegmentSide=pssRight) and (PathSegmentSide=pssLeft) then begin
          DeltaWindingScore:=1;
         end else begin
          DeltaWindingScore:=0;
         end;
-        PreviousSegmentSide:=SegmentSide;
+        PreviousPathSegmentSide:=PathSegmentSide;
         if CurrentSquaredDistance<SquaredDistance then begin
          DistanceFieldData[PixelIndex].SquaredDistance:=CurrentSquaredDistance;
         end;
@@ -1231,6 +1265,10 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     OffsetY:=(DistanceFieldPadValue*2)-(by0*RasterizerToScreenScale);
 
     ConvertShape(Shape);
+
+    NormalizeShape(Shape);
+
+    PathSegmentColorizeShape(Shape);
 
     NormalizeShape(Shape);
 
