@@ -468,7 +468,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
     AddLineToPathSegmentArray(PathSegmentArray,[LastPoint,Point]);
     LastPoint:=Point;
    end;
-   procedure Recursive(x1,y1,x2,y2,x3,y3:TVkDouble;const Level:TVkInt32);
+   procedure Recursive(const x1,y1,x2,y2,x3,y3:TVkDouble;const Level:TVkInt32);
    var x12,y12,x23,y23,x123,y123,mx,my,d:TVkDouble;
        Point:TDoublePrecisionPoint;
    begin
@@ -600,7 +600,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
     // We're done!
     b:=true;
    end;
-   function GetCubicPt(c0,c1,c2,c3,t:TVkDouble):TVkDouble;
+   function GetCubicPoint(const c0,c1,c2,c3,t:TVkDouble):TVkDouble;
    var ts,g,b,a:TVkDouble;
    begin
     ts:=t*t;
@@ -609,7 +609,7 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
     a:=((c3-c0)-b)-g;
     result:=(a*ts*t)+(b*ts)+(g*t)+c0;
    end;
-   function GetCubicDerivative(c0,c1,c2,c3,t:TVkDouble):TVkDouble;
+   function GetCubicDerivative(const c0,c1,c2,c3,t:TVkDouble):TVkDouble;
    var g,b,a:TVkDouble;
    begin
     g:=3*(c1-c0);
@@ -623,12 +623,12 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
    begin
    
     // Calculates the position of the cubic bezier at t
-    P.x:=getCubicPt(P0.x,P1.x,P2.x,P3.x,t);
-    P.y:=getCubicPt(P0.y,P1.y,P2.y,P3.y,t);
+    P.x:=GetCubicPoint(P0.x,P1.x,P2.x,P3.x,t);
+    P.y:=GetCubicPoint(P0.y,P1.y,P2.y,P3.y,t);
 
     // Calculates the tangent values of the cubic bezier at t
-    V.x:=getCubicDerivative(P0.x,P1.x,P2.x,P3.x,t);
-	  V.y:=getCubicDerivative(P0.y,P1.y,P2.y,P3.y,t);
+    V.x:=GetCubicDerivative(P0.x,P1.x,P2.x,P3.x,t);
+	  V.y:=GetCubicDerivative(P0.y,P1.y,P2.y,P3.y,t);
 
     // Calculates the line equation for the tangent at t
     l:=GetLine2(P,V);
@@ -708,14 +708,56 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
 		 CurrentTime:=NextTime;
 
     end;
-    
+
    end;
   begin
    Assert(length(Points)=4);
    result:=PathSegmentArray.Count;
    CubicCurveToTangent(Points[0],Points[1],Points[2],Points[3]);
   end;
-  Function CubeRoot(Value:TVkDouble):TVkDouble;
+  function AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var PathSegmentArray:TPathSegmentArray;const Points:array of TDoublePrecisionPoint;const Tolerance:TVkDouble=RasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
+  var LastPoint:TDoublePrecisionPoint;
+   procedure LineToPointAt(const Point:TDoublePrecisionPoint);
+   begin
+    AddLineToPathSegmentArray(PathSegmentArray,[LastPoint,Point]);
+    LastPoint:=Point;
+   end;
+   procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TVkDouble;const Level:TVkInt32);
+   var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,mx,my,d:TVkDouble;
+       Point:TDoublePrecisionPoint;
+   begin
+    x12:=(x1+x2)*0.5;
+    y12:=(y1+y2)*0.5;
+    x23:=(x2+x3)*0.5;
+    y23:=(y2+y3)*0.5;
+    x34:=(x3+x4)*0.5;
+    y34:=(y3+y4)*0.5;
+    x123:=(x12+x23)*0.5;
+    y123:=(y12+y23)*0.5;
+    x234:=(x23+x34)*0.5;
+    y234:=(y23+y34)*0.5;
+    x1234:=(x123+x234)*0.5;
+    y1234:=(y123+y234)*0.5;
+    mx:=(x1+x4)*0.5;
+    my:=(y1+y4)*0.5;
+    d:=abs(mx-x1234)+abs(my-y1234);
+    if (Level>MaxLevel) or (d<Tolerance) then begin
+     Point.x:=x1234;
+     Point.y:=y1234;
+     LineToPointAt(Point);
+    end else begin
+     Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
+     Recursive(x1234,y1234,x234,y234,x34,y34,x4,y4,Level+1);
+    end;
+   end;
+  begin
+   Assert(length(Points)=4);
+   result:=PathSegmentArray.Count;
+   LastPoint:=Points[0];
+   Recursive(Points[0].x,Points[0].y,Points[1].x,Points[1].y,Points[2].x,Points[2].y,Points[3].x,Points[3].y,0);
+   LineToPointAt(Points[3]);
+  end;
+  function CubeRoot(Value:TVkDouble):TVkDouble;
   begin
    if IsZero(Value) then begin
     result:=0.0;
