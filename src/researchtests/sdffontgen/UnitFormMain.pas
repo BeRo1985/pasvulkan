@@ -493,26 +493,34 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   begin
    Assert(length(Points)=3);
    result:=Contour.CountPathSegments;
-   inc(Contour.CountPathSegments);
-   if length(Contour.PathSegments)<=Contour.CountPathSegments then begin
-    SetLength(Contour.PathSegments,Contour.CountPathSegments*2);
-   end;
-   PathSegment:=@Contour.PathSegments[result];
    if (DoublePrecisionPointDistanceSquared(Points[0],Points[1])<CloseSquaredValue) or
       (DoublePrecisionPointDistanceSquared(Points[1],Points[2])<CloseSquaredValue) or
       IsColinear(Points) then begin
-    PathSegment^.Type_:=pstLine;
-    PathSegment^.Color:=pscBlack;
-    PathSegment^.Points[0]:=Points[0];
-    PathSegment^.Points[1]:=Points[2];
+    if not (SameValue(Points[0].x,Points[2].x) and SameValue(Points[0].y,Points[2].y)) then begin
+     inc(Contour.CountPathSegments);
+     if length(Contour.PathSegments)<=Contour.CountPathSegments then begin
+      SetLength(Contour.PathSegments,Contour.CountPathSegments*2);
+     end;
+     PathSegment:=@Contour.PathSegments[result];
+     PathSegment^.Type_:=pstLine;
+     PathSegment^.Color:=pscBlack;
+     PathSegment^.Points[0]:=Points[0];
+     PathSegment^.Points[1]:=Points[2];
+     InitializePathSegment(PathSegment^);
+    end;
    end else begin
+    inc(Contour.CountPathSegments);
+    if length(Contour.PathSegments)<=Contour.CountPathSegments then begin
+     SetLength(Contour.PathSegments,Contour.CountPathSegments*2);
+    end;
+    PathSegment:=@Contour.PathSegments[result];
     PathSegment^.Type_:=pstQuadraticBezierCurve;
     PathSegment^.Color:=pscBlack;
     PathSegment^.Points[0]:=Points[0];
     PathSegment^.Points[1]:=Points[1];
     PathSegment^.Points[2]:=Points[2];
+    InitializePathSegment(PathSegment^);
    end;
-   InitializePathSegment(PathSegment^);
   end;
   function AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TContour;const Points:array of TDoublePrecisionPoint;const Tolerance:TVkDouble=RasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
   var LastPoint:TDoublePrecisionPoint;
@@ -998,7 +1006,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   end;
  var OffsetX,OffsetY:TVkDouble;
      bx0,by0,bx1,by1:TVkInt32;
-  procedure ConvertShape(out Shape:TShape);
+  procedure ConvertShape(out Shape:TShape;const DoSubdivideQuadraticBezierCubicIntoLines:boolean);
   var CommandIndex:TVkInt32;
       Contour:PContour;
       StartPoint,LastPoint,ControlPoint,Point:TDoublePrecisionPoint;
@@ -1042,9 +1050,9 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
         Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*RasterizerToScreenScale)+OffsetY;
         if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
                                       (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
-{        if MultiChannel then begin
+         if DoSubdivideQuadraticBezierCubicIntoLines then begin
           AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
-         end else}begin
+         end else begin
           AddQuadraticBezierCurveToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
          end;
         end;
@@ -1410,7 +1418,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       RowData:TRowData;
       DistanceFieldDataItem:PDistanceFieldDataItem;
       PointLeft,PointRight,Point,pAP,pAB:TDoublePrecisionPoint;
-      pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time:TvkDouble;
+      pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time,Value:TvkDouble;
   begin
    for ContourIndex:=0 to Shape.CountContours-1 do begin
     Contour:=@Shape.Contours[ContourIndex];
@@ -1470,14 +1478,20 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
           pAP.x:=Point.x-PathSegment^.Points[0].x;
           pAP.y:=Point.y-PathSegment^.Points[0].y;
           if ((pAP.x*pAB.x)+(pAP.y*pAB.y))<0.0 then begin
-           CurrentSquaredPseudoDistance:=Min(abs(CurrentSquaredPseudoDistance),abs((pAP.x*pAB.y)-(pAP.y*pAB.x)));
+           Value:=((pAP.x*pAB.y)-(pAP.y*pAB.x));
+           if abs(CurrentSquaredPseudoDistance)>=abs(Value) then begin
+            CurrentSquaredPseudoDistance:=Value;
+           end;
           end;
          end else if Time>=1.0 then begin
           pAB:=DoublePrecisionPointNormalize(PathSegmentDirection(PathSegment^,1));
           pAP.x:=Point.x-PathSegment^.Points[1].x;
           pAP.y:=Point.y-PathSegment^.Points[1].y;
           if ((pAP.x*pAB.x)+(pAP.y*pAB.y))>=0.0 then begin
-           CurrentSquaredPseudoDistance:=Min(abs(CurrentSquaredPseudoDistance),abs((pAP.x*pAB.y)-(pAP.y*pAB.x)));
+           Value:=((pAP.x*pAB.y)-(pAP.y*pAB.x));
+           if abs(CurrentSquaredPseudoDistance)>=abs(Value) then begin
+            CurrentSquaredPseudoDistance:=Value;
+           end;
           end;
          end;
         end;
@@ -1524,21 +1538,20 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   begin
    result:=Min(Max(round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0),255);
   end;
-  procedure GenerateDistanceFieldPicture(const DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
+  function GenerateDistanceFieldPicture(const DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32):boolean;
   var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TVkInt32;
-      Fallback:boolean;
       DistanceFieldDataItem:PDistanceFieldDataItem;
       DistanceFieldPixel:PDistanceFieldPixel;
-      tx,ty:TVkDouble;
   begin
+
+   result:=true;
 
    DistanceField.Width:=Width;
    DistanceField.Height:=Height;
    SetLength(DistanceField.Pixels,Width*Height);
 
-   Fallback:=false;
+   PixelIndex:=0;
    for y:=0 to Height-1 do begin
-    PixelIndex:=y*Width;
     WindingNumber:=0;
     for x:=0 to Width-1 do begin
      DistanceFieldDataItem:=@DistanceFieldData[PixelIndex];
@@ -1549,7 +1562,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       DistanceFieldSign:=1;
      end;
      if (x=(Width-1)) and (WindingNumber<>0) then begin
-      Fallback:=true;
+      result:=false;
       break;
      end else begin
       DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
@@ -1568,35 +1581,13 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       inc(PixelIndex);
      end;
     end;
-    if Fallback then begin
-     PixelIndex:=y*Width;
-     for x:=0 to Width-1 do begin
-      tx:=((x+0.5)-OffsetX)*ScreenToRasterizerScale;
-      ty:=((y+0.5)-OffsetY)*ScreenToRasterizerScale;
-      if (ceil(tx)>=bx0) and (floor(tx)<=bx1) and (ceil(ty)>=by0) and (floor(ty)<=by1) then begin
-       DistanceFieldSign:=-1;
-      end else begin
-       DistanceFieldSign:=1;
-      end;
-      DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
-      if MultiChannel then begin
-       DistanceFieldPixel^.r:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceR)*DistanceFieldSign);
-       DistanceFieldPixel^.g:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceG)*DistanceFieldSign);
-       DistanceFieldPixel^.b:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceB)*DistanceFieldSign);
-       DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-      end else begin
-       Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-       DistanceFieldPixel^.r:=Value;
-       DistanceFieldPixel^.g:=Value;
-       DistanceFieldPixel^.b:=Value;
-       DistanceFieldPixel^.a:=Value;
-      end;
-      inc(PixelIndex);
-     end;
+    if not result then begin
+     break;
     end;
    end;
+
   end;
- var Width,Height:TVkInt32;
+ var Width,Height,TryIteration:TVkInt32;
      Shape:TShape;
      DistanceFieldData:TDistanceFieldData;
  begin
@@ -1611,27 +1602,36 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     Width:=SARLongint((bx1-bx0)+255,8)+(DistanceFieldPadValue*4);
     Height:=SARLongint((by1-by0)+255,8)+(DistanceFieldPadValue*4);
 
-    SetLength(DistanceFieldData,Width*Height);
-    InitializeDistances(DistanceFieldData);
-
     OffsetX:=(DistanceFieldPadValue*2)-(bx0*RasterizerToScreenScale);
     OffsetY:=(DistanceFieldPadValue*2)-(by0*RasterizerToScreenScale);
 
-    ConvertShape(Shape);
+    SetLength(DistanceFieldData,Width*Height);
 
-    if MultiChannel then begin
+    for TryIteration:=0 to 1 do begin
 
-     NormalizeShape(Shape);
+     InitializeDistances(DistanceFieldData);
+     
+     ConvertShape(Shape,TryIteration=1);
 
-     PathSegmentColorizeShape(Shape);
+     if MultiChannel then begin
 
-     NormalizeShape(Shape);
+      NormalizeShape(Shape);
+
+      PathSegmentColorizeShape(Shape);
+
+      NormalizeShape(Shape);
+
+     end;
+
+     CalculateDistanceFieldData(Shape,DistanceFieldData,Width,Height);
+
+     if GenerateDistanceFieldPicture(DistanceFieldData,Width,Height) then begin
+      break;
+     end else begin
+      // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
+     end;
 
     end;
-
-    CalculateDistanceFieldData(Shape,DistanceFieldData,Width,Height);
-
-    GenerateDistanceFieldPicture(DistanceFieldData,Width,Height);
 
    finally
     DistanceFieldData:=nil;
@@ -1699,9 +1699,9 @@ begin
   SetExceptionMask([exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
   if VulkanTrueTypeFont.NumGlyphs>0 then begin
 
-   GlyphIndex:=VulkanTrueTypeFont.GetGlyphIndex(TVkUInt8(TVkChar('A')));
+   GlyphIndex:=VulkanTrueTypeFont.GetGlyphIndex(TVkUInt8(TVkChar('G')));
 
-   VulkanTrueTypeFont.Size:=-256;
+   VulkanTrueTypeFont.Size:=-512;
 
    VulkanTrueTypeFont.ResetGlyphBuffer(GlyphBuffer);
    VulkanTrueTypeFont.FillGlyphBuffer(GlyphBuffer,GlyphIndex);
@@ -1772,6 +1772,7 @@ begin
      inc(i);
     end;
    end;
+   ImageSDF.Picture.Bitmap.SaveToFile('test.bmp'); 
 
   end;
  finally
