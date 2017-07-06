@@ -62,15 +62,18 @@
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <SearchPaths>
-      <IncludeFiles Value="..\.."/>
+      <IncludeFiles Value="..\..;$(ProjOutDir)"/>
       <OtherUnitFiles Value="..\.."/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>
-        <SyntaxMode Value="delphi"/>
+        <SyntaxMode Value="Delphi"/>
       </SyntaxOptions>
     </Parsing>
+    <CodeGeneration>
+      <TargetCPU Value="x86_64"/>
+    </CodeGeneration>
     <Linking>
       <Options>
         <Win32>
