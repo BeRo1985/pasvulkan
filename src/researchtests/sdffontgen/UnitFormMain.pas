@@ -197,6 +197,26 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
        XAtIntersection:array[0..1] of TVkFloat;
       end;
   const DoublePrecisionAffineMatrixIdentity:TDoublePrecisionAffineMatrix=(1.0,0.0,0.0,0.0,1.0,0.0);
+  function Clamp(const Value,MinValue,MaxValue:TVkInt64):TVkInt64; overload;
+  begin
+   if Value<=MinValue then begin
+    result:=MinValue;
+   end else if Value>=MaxValue then begin
+    result:=MaxValue;
+   end else begin
+    result:=Value;
+   end;
+  end;
+  function Clamp(const Value,MinValue,MaxValue:TVkDouble):TVkDouble; overload;
+  begin
+   if Value<=MinValue then begin
+    result:=MinValue;
+   end else if Value>=MaxValue then begin
+    result:=MaxValue;
+   end else begin
+    result:=Value;
+   end;
+  end;
   function DoublePrecisionPointLength(const p:TDoublePrecisionPoint):TVkDouble;
   begin
    result:=sqrt(sqr(p.x)+sqr(p.y));
@@ -366,7 +386,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   end;
   procedure InitializePathSegment(var PathSegment:TPathSegment);
   var p0,p1,p2,p1mp0,d,t,sp0,sp1,sp2,p01p,p02p,p12p:TDoublePrecisionPoint;
-      Hypotenuse,CosTheta,SinTheta,sa,a,sb,b,h,c,g,f,gd,fd,x,y,Lambda:TVkDouble;
+      Hypotenuse,CosTheta,SinTheta,a,b,h,c,g,f,gd,fd,x,y,Lambda:TVkDouble;
   begin
    case PathSegment.Type_ of
     pstLine:begin
@@ -403,12 +423,12 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
      if IsZero(d.x) then begin
       t.x:=p0.x;
      end else begin
-      t.x:=p0.x+(Min(Max(p1mp0.x/d.x,1.0),0.0)*p1mp0.x);
+      t.x:=p0.x+(Clamp(p1mp0.x/d.x,0.0,1.0)*p1mp0.x);
      end;
      if IsZero(d.y) then begin
       t.y:=p0.y;
      end else begin
-      t.y:=p0.y+(Min(Max(p1mp0.y/d.y,1.0),0.0)*p1mp0.y);
+      t.y:=p0.y+(Clamp(p1mp0.y/d.y,0.0,1.0)*p1mp0.y);
      end;
      PathSegment.BoundingBox.Min.x:=Min(PathSegment.BoundingBox.Min.x,t.x);
      PathSegment.BoundingBox.Min.y:=Min(PathSegment.BoundingBox.Min.y,t.y);
@@ -426,11 +446,9 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
      p02p.y:=p0.y*p2.y;
      p12p.x:=p1.x*p2.x;
      p12p.y:=p1.y*p2.y;
-     sa:=(p0.y-(2.0*p1.y))+p2.y;
-     a:=sqr(sa);
+     a:=sqr((p0.y-(2.0*p1.y))+p2.y);
      h:=-(((p0.y-(2.0*p1.y))+p2.y)*((p0.x-(2.0*p1.x))+p2.x));
-     sb:=(p0.x-(2.0*p1.x))+p2.x;
-     b:=sqr(sb);
+     b:=sqr((p0.x-(2.0*p1.x))+p2.x);
      c:=((((((sp0.x*sp2.y)-(4.0*p01p.x*p12p.y))-(2.0*p02p.x*p02p.y))+(4.0*p02p.x*sp1.y))+(4.0*sp1.x*p02p.y))-(4.0*p12p.x*p01p.y))+(sp2.x*sp0.y);
      g:=((((((((((p0.x*p02p.y)-(2.0*p0.x*sp1.y))+(2.0*p0.x*p12p.y))-(p0.x*sp2.y))+(2.0*p1.x*p01p.y))-(4.0*p1.x*p02p.y))+(2.0*p1.x*p12p.y))-(p2.x*sp0.y))+(2.0*p2.x*p01p.y))+(p2.x*p02p.y))-(2.0*p2.x*sp1.y);
      f:=-(((((((((((sp0.x*p2.y)-(2.0*p01p.x*p1.y))-(2.0*p01p.x*p2.y))-(p02p.x*p0.y))+(4.0*p02p.x*p1.y))-(p02p.x*p2.y))+(2.0*sp1.x*p0.y))+(2.0*sp1.x*p2.y))-(2.0*p12p.x*p0.y))-(2.0*p12p.x*p1.y))+(sp2.x*p0.y));
@@ -1428,10 +1446,10 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
      PathSegmentBoundingBox.Min.y:=PathSegment.BoundingBox.Min.y-DistanceFieldPadValue;
      PathSegmentBoundingBox.Max.x:=PathSegment.BoundingBox.Max.x+DistanceFieldPadValue;
      PathSegmentBoundingBox.Max.y:=PathSegment.BoundingBox.Max.y+DistanceFieldPadValue;
-     x0:=Min(Max(Trunc(Floor(PathSegmentBoundingBox.Min.x)),0),Width-1);
-     y0:=Min(Max(Trunc(Floor(PathSegmentBoundingBox.Min.y)),0),Height-1);
-     x1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.x)),0),Width-1);
-     y1:=Min(Max(Trunc(Ceil(PathSegmentBoundingBox.Max.y)),0),Height-1);
+     x0:=Clamp(Trunc(Floor(PathSegmentBoundingBox.Min.x)),0,Width-1);
+     y0:=Clamp(Trunc(Floor(PathSegmentBoundingBox.Min.y)),0,Height-1);
+     x1:=Clamp(Trunc(Ceil(PathSegmentBoundingBox.Max.x)),0,Width-1);
+     y1:=Clamp(Trunc(Ceil(PathSegmentBoundingBox.Max.y)),0,Height-1);
      for y:=y0 to y1 do begin
       PreviousPathSegmentSide:=pssNone;
       pY:=y+0.5;
@@ -1448,7 +1466,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
        Point.x:=pX;
        Point.y:=pY;
        DistanceFieldDataItem:=@DistanceFieldData[PixelIndex];
-       Dilation:=Min(Max(floor(sqrt(Max(1,DistanceFieldDataItem^.SquaredDistance))+0.5),1),DistanceFieldPadValue);
+       Dilation:=Clamp(Floor(sqrt(Max(1,DistanceFieldDataItem^.SquaredDistance))+0.5),1,DistanceFieldPadValue);
        PathSegmentBoundingBox.Min.x:=Floor(PathSegment.BoundingBox.Min.x)-DistanceFieldPadValue;
        PathSegmentBoundingBox.Min.y:=Floor(PathSegment.BoundingBox.Min.y)-DistanceFieldPadValue;
        PathSegmentBoundingBox.Max.x:=Ceil(PathSegment.BoundingBox.Max.x)+DistanceFieldPadValue;
@@ -1461,7 +1479,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
         PathSegmentSide:=pssNone;
         CurrentSquaredDistance:=DistanceToPathSegment(Point,PathSegment^,RowData,PathSegmentSide);
         CurrentSquaredPseudoDistance:=CurrentSquaredDistance;
-        if MultiChannel then begin
+{       if MultiChannel then begin
          case PathSegment^.Type_ of
           pstLine:begin
            Time:=GetLineNonClippedTime(Point,PathSegment^.Points[0],PathSegment^.Points[1]);
@@ -1494,7 +1512,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
            end;
           end;
          end;
-        end;
+        end;}
         if (PreviousPathSegmentSide=pssLeft) and (PathSegmentSide=pssRight) then begin
          DeltaWindingScore:=-1;
         end else if (PreviousPathSegmentSide=pssRight) and (PathSegmentSide=pssLeft) then begin
@@ -1532,11 +1550,11 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   end;
   function PackDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
   begin
-   result:=Min(Max(round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0),255);
+   result:=Clamp(Round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0,255);
   end;
   function PackPseudoDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
   begin
-   result:=Min(Max(round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0),255);
+   result:=Clamp(Round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0,255);
   end;
   function GenerateDistanceFieldPicture(const DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32):boolean;
   var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TVkInt32;
@@ -1749,7 +1767,7 @@ begin
     end;
    end;
 
-   GenerateSignedDistanceField(true);
+   GenerateSignedDistanceField(false);
 
    ImageSDF.Width:=DistanceField.Width;
    ImageSDF.Height:=DistanceField.Height;
