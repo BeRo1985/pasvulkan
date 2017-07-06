@@ -1,7 +1,9 @@
 program sdffontgen;
 
+{$MODE Delphi}
+
 uses
-  Forms,
+  Forms, Interfaces,
   UnitFormMain in 'UnitFormMain.pas' {FormMain},
   PasVulkan in '..\..\PasVulkan.pas',
   Vulkan in '..\..\Vulkan.pas';

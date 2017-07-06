@@ -1,9 +1,11 @@
 unit UnitFormMain;
 
+{$MODE Delphi}
+
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  LCLIntf, LCLType, LMessages, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ExtCtrls, Math, Vulkan, PasVulkan;
 
 const SDFSize=256;
@@ -41,7 +43,7 @@ var
 
 implementation
 
-{$R *.dfm}
+{$R *.lfm}
 
 {$ifndef HasSAR}
 function SARLongint(Value,Shift:TVkInt32):TVkInt32;
@@ -377,6 +379,21 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     end;
     pstQuadraticBezierCurve:begin
      result:=@PathSegment.Points[2];
+    end;
+    else begin
+     result:=nil;
+     Assert(false);
+    end;
+   end;
+  end;
+  function PathSegmentCornerPoint(const PathSegment:TPathSegment;const WhichA,WhichB:TVkInt32):PDoublePrecisionPoint;
+  begin
+   case PathSegment.Type_ of
+    pstLine:begin
+     result:=@PathSegment.Points[WhichB and 1];
+    end;
+    pstQuadraticBezierCurve:begin
+     result:=@PathSegment.Points[(WhichA and 1)+(WhichB and 1)];
     end;
     else begin
      result:=nil;
@@ -1394,7 +1411,6 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   var b0,b1,b2,d21,d10,d20,gf,pp,d0p:TDoublePrecisionPoint;
       a,b,d,f,ap,bp,v,c:TVkDouble;
   begin
-   // based on http://research.microsoft.com/en-us/um/people/hoppe/ravg.pdf
    b0.x:=p0.x-p.x;
    b0.y:=p0.y-p.y;
    b1.x:=p1.x-p.x;
@@ -1426,6 +1442,18 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     bp:=((d10.x*d0p.y)-(d10.y*d0p.x))*2.0;
     result:=(ap+bp)/c;
    end;
+  end;
+  function GetNearestParallelPointToEndlessLine(const p,p0,p1:TDoublePrecisionPoint):TDoublePrecisionPoint;
+  var pAP,pAB:TDoublePrecisionPoint;
+      t:TVkDouble;
+  begin
+   pAP.x:=p.x-p0.x;
+   pAP.y:=p.y-p0.y;
+   pAB.x:=p1.x-p0.x;
+   pAB.y:=p1.y-p0.y;
+   t:=((pAP.x*pAB.x)+(pAP.y*pAB.y))/(sqr(pAB.x)+sqr(pAB.y));
+   result.x:=p0.x+(pAB.x*t);
+   result.y:=p0.y+(pAB.y*t);
   end;
   procedure CalculateDistanceFieldData(const Shape:TShape;var DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
   var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
@@ -1495,24 +1523,30 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
           pAB:=DoublePrecisionPointNormalize(PathSegmentDirection(PathSegment^,0));
           pAP.x:=Point.x-PathSegment^.Points[0].x;
           pAP.y:=Point.y-PathSegment^.Points[0].y;
-          if ((pAP.x*pAB.x)+(pAP.y*pAB.y))<0.0 then begin
+         if ((pAP.x*pAB.x)+(pAP.y*pAB.y))<0.0 then begin
            Value:=((pAP.x*pAB.y)-(pAP.y*pAB.x));
-           if abs(CurrentSquaredPseudoDistance)>=abs(Value) then begin
+//          Value:=DoublePrecisionPointDistanceSquared(Point,GetNearestParallelPointToEndlessLine(Point,PathSegmentCornerPoint(PathSegment^,0,0)^,PathSegmentCornerPoint(PathSegment^,0,1)^));
+           if abs(CurrentSquaredPseudoDistance)<=abs(Value) then begin
             CurrentSquaredPseudoDistance:=Value;
            end;
           end;
+//          CurrentSquaredPseudoDistance:=Min(CurrentSquaredPseudoDistance,DoublePrecisionPointDistanceSquared(Point,GetNearestParallelPointToEndlessLine(Point,PathSegmentCornerPoint(PathSegment^,0,0)^,PathSegmentCornerPoint(PathSegment^,0,1)^)));
+//          CurrentSquaredPseudoDistance:=Min(CurrentSquaredPseudoDistance,DoublePrecisionPointDistanceSquared(Point,GetNearestParallelPointToEndlessLine(Point,PathSegmentCornerPoint(PathSegment^,0,0)^,PathSegmentCornerPoint(PathSegment^,0,1)^)));
          end else if Time>=1.0 then begin
           pAB:=DoublePrecisionPointNormalize(PathSegmentDirection(PathSegment^,1));
           pAP.x:=Point.x-PathSegment^.Points[1].x;
           pAP.y:=Point.y-PathSegment^.Points[1].y;
           if ((pAP.x*pAB.x)+(pAP.y*pAB.y))>=0.0 then begin
            Value:=((pAP.x*pAB.y)-(pAP.y*pAB.x));
-           if abs(CurrentSquaredPseudoDistance)>=abs(Value) then begin
+  //        Value:=DoublePrecisionPointDistanceSquared(Point,GetNearestParallelPointToEndlessLine(Point,PathSegmentCornerPoint(PathSegment^,1,0)^,PathSegmentCornerPoint(PathSegment^,1,1)^));
+           if abs(CurrentSquaredPseudoDistance)<=abs(Value) then begin
             CurrentSquaredPseudoDistance:=Value;
            end;
           end;
+//         CurrentSquaredPseudoDistance:=Min(CurrentSquaredPseudoDistance,DoublePrecisionPointDistanceSquared(Point,GetNearestParallelPointToEndlessLine(Point,PathSegmentCornerPoint(PathSegment^,1,0)^,PathSegmentCornerPoint(PathSegment^,1,1)^)));
+//          CurrentSquaredPseudoDistance:=Min(CurrentSquaredPseudoDistance,DoublePrecisionPointDistanceSquared(Point,GetNearestParallelPointToEndlessLine(Point,PathSegmentCornerPoint(PathSegment^,1,0)^,PathSegmentCornerPoint(PathSegment^,1,1)^)));
          end;
-        end;}
+        end;   }
         if (PreviousPathSegmentSide=pssLeft) and (PathSegmentSide=pssRight) then begin
          DeltaWindingScore:=-1;
         end else if (PreviousPathSegmentSide=pssRight) and (PathSegmentSide=pssLeft) then begin
@@ -1626,7 +1660,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     SetLength(DistanceFieldData,Width*Height);
 
     for TryIteration:=0 to 1 do begin
-
+                                                                    
      InitializeDistances(DistanceFieldData);
      
      ConvertShape(Shape,TryIteration=1);
@@ -1719,7 +1753,7 @@ begin
 
    GlyphIndex:=VulkanTrueTypeFont.GetGlyphIndex(TVkUInt8(TVkChar('G')));
 
-   VulkanTrueTypeFont.Size:=-512;
+   VulkanTrueTypeFont.Size:=-64;
 
    VulkanTrueTypeFont.ResetGlyphBuffer(GlyphBuffer);
    VulkanTrueTypeFont.FillGlyphBuffer(GlyphBuffer,GlyphIndex);
@@ -1767,7 +1801,7 @@ begin
     end;
    end;
 
-   GenerateSignedDistanceField(false);
+   GenerateSignedDistanceField(true);
 
    ImageSDF.Width:=DistanceField.Width;
    ImageSDF.Height:=DistanceField.Height;
@@ -1775,11 +1809,11 @@ begin
    ImageSDF.Picture.Bitmap.Height:=DistanceField.Height;
    ImageSDF.Picture.Bitmap.PixelFormat:=pf32Bit;
    ImageSDF.Picture.Bitmap.HandleType:=bmDIB;
-   i:=0;
+ {  i:=0;
    for y:=0 to ImageSDF.Picture.Bitmap.Height-1 do begin
     p:=ImageSDF.Picture.Bitmap.ScanLine[y];
     for x:=0 to ImageSDF.Picture.Bitmap.Width-1 do begin
-     p^:=DistanceField.Pixels[i].b;
+     p^:=DistanceField.Pixels[i].a;
      inc(p);
      p^:=DistanceField.Pixels[i].g;
      inc(p);
@@ -1790,7 +1824,7 @@ begin
      inc(i);
     end;
    end;
-   ImageSDF.Picture.Bitmap.SaveToFile('test.bmp'); 
+   ImageSDF.Picture.Bitmap.SaveToFile('test.bmp');}
 
   end;
  finally
