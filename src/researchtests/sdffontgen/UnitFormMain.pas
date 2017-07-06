@@ -220,6 +220,16 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     result:=Value;
    end;
   end;
+  function DoublePrecisionPointAdd(const a,b:TDoublePrecisionPoint):TDoublePrecisionPoint;
+  begin
+   result.x:=a.x+b.x;
+   result.y:=a.y+b.y;
+  end;
+  function DoublePrecisionPointSub(const a,b:TDoublePrecisionPoint):TDoublePrecisionPoint;
+  begin
+   result.x:=a.x-b.x;
+   result.y:=a.y-b.y;
+  end;
   function DoublePrecisionPointLength(const p:TDoublePrecisionPoint):TVkDouble;
   begin
    result:=sqrt(sqr(p.x)+sqr(p.y));
@@ -239,6 +249,10 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   function DoublePrecisionPointCrossProduct(const a,b:TDoublePrecisionPoint):TVkDouble;
   begin
    result:=(a.x*b.y)-(a.y*b.x);
+  end;
+  function DoublePrecisionPointDotProduct(const a,b:TDoublePrecisionPoint):TVkDouble;
+  begin
+   result:=(a.x*b.x)+(a.y*b.y);
   end;
   function DoublePrecisionPointNormalize(const v:TDoublePrecisionPoint):TDoublePrecisionPoint;
   var f:TVkDouble;
@@ -1460,7 +1474,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
       PreviousPathSegmentSide,PathSegmentSide:TPathSegmentSide;
       RowData:TRowData;
       DistanceFieldDataItem:PDistanceFieldDataItem;
-      PointLeft,PointRight,Point,pAP,pAB:TDoublePrecisionPoint;
+      PointLeft,PointRight,Point,p0,p1,Direction,OriginPointDifference:TDoublePrecisionPoint;
       pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time,Value:TvkDouble;
   begin
    for ContourIndex:=0 to Shape.CountContours-1 do begin
@@ -1517,23 +1531,25 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
           end;
          end;
          if Time<=0.0 then begin
-          pAB:=DoublePrecisionPointNormalize(PathSegmentDirection(PathSegment^,0));
-          pAP.x:=Point.x-PathSegment^.Points[0].x;
-          pAP.y:=Point.y-PathSegment^.Points[0].y;
-          if ((pAP.x*pAB.x)+(pAP.y*pAB.y))<0.0 then begin
-           Value:=((pAP.x*pAB.y)-(pAP.y*pAB.x));
-           Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,0,0)^,PathSegmentCornerPoint(PathSegment^,0,1)^);
+          p0:=PathSegmentCornerPoint(PathSegment^,0,0)^;
+          p1:=PathSegmentCornerPoint(PathSegment^,0,1)^;
+          Direction:=DoublePrecisionPointNormalize(DoublePrecisionPointSub(p1,p0));
+          OriginPointDifference:=DoublePrecisionPointSub(Point,p0);
+          if DoublePrecisionPointDotProduct(OriginPointDifference,Direction)<0.0 then begin
+           Value:=DoublePrecisionPointCrossProduct(OriginPointDifference,Direction);
+//         Value:=GetNonClampedSignedLineDistance(Point,p0,p1);
            if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
             CurrentSquaredPseudoDistance:=abs(Value);
            end;
           end;
          end else if Time>=1.0 then begin
-          pAB:=DoublePrecisionPointNormalize(PathSegmentDirection(PathSegment^,1));
-          pAP.x:=Point.x-PathSegment^.Points[1].x;
-          pAP.y:=Point.y-PathSegment^.Points[1].y;
-          if ((pAP.x*pAB.x)+(pAP.y*pAB.y))>=0.0 then begin
-           Value:=((pAP.x*pAB.y)-(pAP.y*pAB.x));
-           Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,1,0)^,PathSegmentCornerPoint(PathSegment^,1,1)^);
+          p0:=PathSegmentCornerPoint(PathSegment^,1,0)^;
+          p1:=PathSegmentCornerPoint(PathSegment^,1,1)^;
+          Direction:=DoublePrecisionPointNormalize(DoublePrecisionPointSub(p1,p0));
+          OriginPointDifference:=DoublePrecisionPointSub(Point,p1);
+          if DoublePrecisionPointDotProduct(OriginPointDifference,Direction)>0.0 then begin
+           Value:=DoublePrecisionPointCrossProduct(OriginPointDifference,Direction);
+//         Value:=GetNonClampedSignedLineDistance(Point,p0,p1);
            if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
             CurrentSquaredPseudoDistance:=abs(Value);
            end;
