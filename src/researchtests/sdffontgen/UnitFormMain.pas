@@ -236,6 +236,10 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   begin
    result:=sqr(a.x-b.x)+sqr(a.y-b.y);
   end;
+  function DoublePrecisionPointCrossProduct(const a,b:TDoublePrecisionPoint):TVkDouble;
+  begin
+   result:=(a.x*b.y)-(a.y*b.x);
+  end;
   function DoublePrecisionPointNormalize(const v:TDoublePrecisionPoint):TDoublePrecisionPoint;
   var f:TVkDouble;
   begin
@@ -1444,26 +1448,9 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
     result:=(ap+bp)/c;
    end;
   end;
-  function GetNearestParallelPointToEndlessLine(const p,p0,p1:TDoublePrecisionPoint):TDoublePrecisionPoint;
-  var pAP,pAB:TDoublePrecisionPoint;
-      t:TVkDouble;
+  function GetNonClampedSignedLineDistance(const p,p0,p1:TDoublePrecisionPoint):TVkDouble;
   begin
-   pAP.x:=p.x-p0.x;
-   pAP.y:=p.y-p0.y;
-   pAB.x:=p1.x-p0.x;
-   pAB.y:=p1.y-p0.y;
-   t:=((pAP.x*pAB.x)+(pAP.y*pAB.y))/(sqr(pAB.x)+sqr(pAB.y));
-   result.x:=p0.x+(pAB.x*t);
-   result.y:=p0.y+(pAB.y*t);
-  end;
-  function GetLineNonClippedDistance(const p,p0,p1:TDoublePrecisionPoint):TVkDouble;
-  var PlaneNormal:TDoublePrecisionPoint;
-      PlaneDistance:TVkDouble;
-  begin
-   PlaneNormal.x:=p1.y-p0.y;
-   PlaneNormal.y:=-(p1.x-p0.x);
-   PlaneDistance:=(p0.x*PlaneNormal.x)+(p0.y*PlaneNormal.y);
-   result:=((p.x*PlaneNormal.x)+(p.y*PlaneNormal.y))-PlaneDistance;
+   result:=sqr(((p.x*(p0.y-p1.y))+(p0.x*(p1.y-p.y))+(p1.x*(p.y-p0.y)))/sqrt(sqr(p1.x-p0.x)+sqr(p1.y-p0.y)));
   end;
   procedure CalculateDistanceFieldData(const Shape:TShape;var DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
   var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
@@ -1535,8 +1522,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
           pAP.y:=Point.y-PathSegment^.Points[0].y;
           if ((pAP.x*pAB.x)+(pAP.y*pAB.y))<0.0 then begin
            Value:=((pAP.x*pAB.y)-(pAP.y*pAB.x));
-           //Value:=DoublePrecisionPointDistanceSquared(Point,GetNearestParallelPointToEndlessLine(Point,PathSegmentCornerPoint(PathSegment^,0,0)^,PathSegmentCornerPoint(PathSegment^,0,1)^));
-           Value:=GetLineNonClippedDistance(Point,PathSegmentCornerPoint(PathSegment^,0,0)^,PathSegmentCornerPoint(PathSegment^,0,1)^);
+           Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,0,0)^,PathSegmentCornerPoint(PathSegment^,0,1)^);
            if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
             CurrentSquaredPseudoDistance:=abs(Value);
            end;
@@ -1547,8 +1533,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
           pAP.y:=Point.y-PathSegment^.Points[1].y;
           if ((pAP.x*pAB.x)+(pAP.y*pAB.y))>=0.0 then begin
            Value:=((pAP.x*pAB.y)-(pAP.y*pAB.x));
-           //Value:=DoublePrecisionPointDistanceSquared(Point,GetNearestParallelPointToEndlessLine(Point,PathSegmentCornerPoint(PathSegment^,1,0)^,PathSegmentCornerPoint(PathSegment^,1,1)^));
-           Value:=GetLineNonClippedDistance(Point,PathSegmentCornerPoint(PathSegment^,1,0)^,PathSegmentCornerPoint(PathSegment^,1,1)^);
+           Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,1,0)^,PathSegmentCornerPoint(PathSegment^,1,1)^);
            if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
             CurrentSquaredPseudoDistance:=abs(Value);
            end;
