@@ -1764,9 +1764,11 @@ begin
 
    VulkanTrueTypeFont.Size:=-32;
 
+   GlyphBuffer.Points:=nil;
    VulkanTrueTypeFont.ResetGlyphBuffer(GlyphBuffer);
    VulkanTrueTypeFont.FillGlyphBuffer(GlyphBuffer,GlyphIndex);
 
+   PolygonBuffer.Commands:=nil;
    VulkanTrueTypeFont.ResetPolygonBuffer(PolygonBuffer);
    VulkanTrueTypeFont.FillPolygonBuffer(PolygonBuffer,GlyphBuffer);
 
