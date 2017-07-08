@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-02-17-15-0000                       *
+ *                        Version 2017-07-08-04-48-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -3521,6 +3521,7 @@ type EVulkanException=class(Exception);
        fHashMap:TVulkanStringHashMap;
        fIsUploaded:boolean;
        fMipMaps:boolean;
+       fAutomaticTrim:boolean;
        function GetCount:TVkInt32;
        function GetItem(Index:TVkInt32):TVulkanSprite;
        procedure SetItem(Index:TVkInt32;Item:TVulkanSprite);
@@ -3552,6 +3553,7 @@ type EVulkanException=class(Exception);
        property Sprites[const Name:TVulkanRawByteString]:TVulkanSprite read GetSprite; default;
       published
        property MipMaps:boolean read fMipMaps write fMipMaps;
+       property AutomaticTrim:boolean read fAutomaticTrim write fAutomaticTrim;
      end;
 
      EVulkanTrueTypeFont=class(Exception);
@@ -27634,6 +27636,7 @@ begin
  fHashMap:=TVulkanStringHashMap.Create;
  fIsUploaded:=false;
  fMipMaps:=true;
+ fAutomaticTrim:=true;
  inherited Create;
 end;
 
@@ -27910,13 +27913,14 @@ begin
 
   if assigned(ImageData) and (ImageWidth>0) and (ImageHeight>0) then begin
 
-   begin
+   x0:=0;
+   y0:=0;
+   x1:=ImageWidth;
+   y1:=ImageHeight;
+
+   if fAutomaticTrim then begin
+
     // Trim input
-     
-    x0:=0;
-    y0:=0;
-    x1:=ImageWidth;
-    y1:=ImageHeight;
 
     for x:=0 to ImageWidth-1 do begin
      OK:=true;

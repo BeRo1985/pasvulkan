@@ -103,9 +103,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
        CloseSquaredValue=CloseValue*CloseValue;
        NearlyZeroValue=Scalar1Value/int64(1 shl 18);
        TangentToleranceValue=Scalar1Value/int64(1 shl 11);
-       ConicToleranceValue=0.25;
        RasterizerToScreenScale=1.0/256.0;
-       ScreenToRasterizerScale=256.0;
  type PPathSegmentSide=^TPathSegmentSide;
       TPathSegmentSide=
        (
@@ -1464,7 +1462,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
   end;
   function GetNonClampedSignedLineDistance(const p,p0,p1:TDoublePrecisionPoint):TVkDouble;
   begin
-   result:=sqr(((p.x*(p0.y-p1.y))+(p0.x*(p1.y-p.y))+(p1.x*(p.y-p0.y)))/sqrt(sqr(p1.x-p0.x)+sqr(p1.y-p0.y)));
+   result:=((p.x*(p0.y-p1.y))+(p0.x*(p1.y-p.y))+(p1.x*(p.y-p0.y)))/sqrt(sqr(p1.x-p0.x)+sqr(p1.y-p0.y));
   end;
   procedure CalculateDistanceFieldData(const Shape:TShape;var DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
   var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
@@ -1489,6 +1487,10 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
      y0:=Clamp(Trunc(Floor(PathSegmentBoundingBox.Min.y)),0,Height-1);
      x1:=Clamp(Trunc(Ceil(PathSegmentBoundingBox.Max.x)),0,Width-1);
      y1:=Clamp(Trunc(Ceil(PathSegmentBoundingBox.Max.y)),0,Height-1);
+{    x0:=0;
+     y0:=0;
+     x1:=Width-1;
+     y1:=Height-1;}
      for y:=y0 to y1 do begin
       PreviousPathSegmentSide:=pssNone;
       pY:=y+0.5;
@@ -1518,7 +1520,7 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
         PathSegmentSide:=pssNone;
         CurrentSquaredDistance:=DistanceToPathSegment(Point,PathSegment^,RowData,PathSegmentSide);
         CurrentSquaredPseudoDistance:=CurrentSquaredDistance;
-        if MultiChannel then begin
+(**)    if MultiChannel then begin
          case PathSegment^.Type_ of
           pstLine:begin
            Time:=GetLineNonClippedTime(Point,PathSegment^.Points[0],PathSegment^.Points[1]);
@@ -1542,6 +1544,13 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
             CurrentSquaredPseudoDistance:=abs(Value);
            end;
           end;
+{         Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,0,0)^,PathSegmentCornerPoint(PathSegment^,0,1)^);
+          if Value<0.0 then begin
+           Value:=sqr(Value);
+           if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
+            CurrentSquaredPseudoDistance:=abs(Value);
+           end;
+          end;}
          end else if Time>=1.0 then begin
           p0:=PathSegmentCornerPoint(PathSegment^,1,0)^;
           p1:=PathSegmentCornerPoint(PathSegment^,1,1)^;
@@ -1554,8 +1563,15 @@ var VulkanTrueTypeFont:TVulkanTrueTypeFont;
             CurrentSquaredPseudoDistance:=abs(Value);
            end;
           end;
+{         Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,1,0)^,PathSegmentCornerPoint(PathSegment^,1,1)^);
+          if Value>0.0 then begin
+           Value:=sqr(Value);
+           if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
+            CurrentSquaredPseudoDistance:=abs(Value);
+           end;
+          end;}
          end;
-        end;
+        end;(**)
         if (PreviousPathSegmentSide=pssLeft) and (PathSegmentSide=pssRight) then begin
          DeltaWindingScore:=-1;
         end else if (PreviousPathSegmentSide=pssRight) and (PathSegmentSide=pssLeft) then begin
@@ -1748,7 +1764,6 @@ var GlyphIndex,CommandIndex,x0,y0,x1,y1,lastcx,lastcy,w,h:TVkInt32;
   LineToPointAt(ax,ay);
  end;
 var sx,sy,x,y,i:TVkInt32;
-    p:PVKUInt8;
     c:TFPColor;
 begin
  Stream:=TFileStream.Create('droidsans.ttf',fmOpenRead or fmShareDenyNone);
@@ -1763,7 +1778,7 @@ begin
 
    GlyphIndex:=VulkanTrueTypeFont.GetGlyphIndex(TVkUInt8(TVkChar('G')));
 
-   VulkanTrueTypeFont.Size:=-32;
+   VulkanTrueTypeFont.Size:=-128;
 
    GlyphBuffer.Points:=nil;
    VulkanTrueTypeFont.ResetGlyphBuffer(GlyphBuffer);
