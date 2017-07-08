@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-08-08-01-0000                       *
+ *                        Version 2017-07-08-30-01-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -692,6 +692,7 @@ type EVulkanException=class(Exception);
        procedure Clear;
        function Add(const Key:TVulkanRawByteString;Value:TVulkanStringHashMapData):PVulkanStringHashMapEntity;
        function Get(const Key:TVulkanRawByteString;CreateIfNotExist:boolean=false):PVulkanStringHashMapEntity;
+       function TryGet(const Key:TVulkanRawByteString;out Value:TVulkanStringHashMapData):boolean;
        function Delete(const Key:TVulkanRawByteString):boolean;
        property Values[const Key:TVulkanRawByteString]:TVulkanStringHashMapData read GetValue write SetValue; default;
      end;
@@ -727,6 +728,7 @@ type EVulkanException=class(Exception);
        procedure Clear;
        function Add(const Key:TVkPointer;Value:TVulkanPointerHashMapData):PVulkanPointerHashMapEntity;
        function Get(const Key:TVkPointer;CreateIfNotExist:boolean=false):PVulkanPointerHashMapEntity;
+       function TryGet(const Key:TVkPointer;out Value:TVulkanPointerHashMapData):boolean;
        function Delete(const Key:TVkPointer):boolean;
        property Values[const Key:TVkPointer]:TVulkanPointerHashMapData read GetValue write SetValue; default;
      end;
@@ -762,6 +764,7 @@ type EVulkanException=class(Exception);
        procedure Clear;
        function Add(const Key:TVkInt64;Value:TVulkanInt64HashMapData):PVulkanInt64HashMapEntity;
        function Get(const Key:TVkInt64;CreateIfNotExist:boolean=false):PVulkanInt64HashMapEntity;
+       function TryGet(const Key:TVkInt64;out Value:TVulkanInt64HashMapData):boolean;
        function Delete(const Key:TVkInt64):boolean;
        property Values[const Key:TVkInt64]:TVulkanInt64HashMapData read GetValue write SetValue; default;
      end;
@@ -4086,7 +4089,6 @@ type EVulkanException=class(Exception);
       public
        constructor Create(const Stream:TStream;const TargetPPI:TVkInt32=96;const ForceSelector:boolean=false;const PlatformID:TVkUInt16=VkTTF_PID_Microsoft;const SpecificID:TVkUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TVkUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TVkInt32=0);
        destructor Destroy; override;
-       function NumGlyphs:TVkInt32;
        function GetGASPRange:PVulkanTrueTypeFontGASPRange;
        function GetGlyphIndex(CharCode:TVkUInt32;CMapIndex:TVkInt32=0):TVkUInt32;
        function GetGlyphAdvanceWidth(GlyphIndex:TVkInt32):TVkInt32;
@@ -4115,6 +4117,7 @@ type EVulkanException=class(Exception);
        procedure GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
        procedure DrawPolygonBuffer(Rasterizer:TVulkanTrueTypeFontRasterizer;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;x,y:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
        property Glyphs:TVulkanTrueTypeFontGlyphs read fGlyphs;
+       property CountGlyphs:TVkInt32 read fCountGlyphs;
        property Size:TVkInt32 read fSize write SetSize;
        property LetterSpacingX:TVkInt32 read fLetterSpacingX write fLetterSpacingX;
        property LetterSpacingY:TVkInt32 read fLetterSpacingY write fLetterSpacingY;
@@ -12749,6 +12752,20 @@ begin
  end;
 end;
 
+function TVulkanStringHashMap.TryGet(const Key:TVulkanRawByteString;out Value:TVulkanStringHashMapData):boolean;
+var Entity:TVkInt32;
+    Cell:TVkUInt32;
+begin
+ Cell:=FindCell(Key);
+ Entity:=CellToEntityIndex[Cell];
+ result:=Entity>=0;
+ if result then begin
+  Value:=Entities[Entity].Value;
+ end else begin
+  Value:=nil;
+ end;
+end;
+
 function TVulkanStringHashMap.Delete(const Key:TVulkanRawByteString):boolean;
 var Entity:TVkInt32;
     Cell:TVkUInt32;
@@ -12927,6 +12944,20 @@ begin
  end;
 end;
 
+function TVulkanPointerHashMap.TryGet(const Key:TVkPointer;out Value:TVulkanPointerHashMapData):boolean;
+var Entity:TVkInt32;
+    Cell:TVkUInt32;
+begin
+ Cell:=FindCell(Key);
+ Entity:=CellToEntityIndex[Cell];
+ result:=Entity>=0;
+ if result then begin
+  Value:=Entities[Entity].Value;
+ end else begin
+  Value:=nil;
+ end;
+end;
+
 function TVulkanPointerHashMap.Delete(const Key:TVkPointer):boolean;
 var Entity:TVkInt32;
     Cell:TVkUInt32;
@@ -13102,6 +13133,20 @@ begin
   result:=@Entities[Entity];
  end else if CreateIfNotExist then begin
   result:=Add(Key,nil);
+ end;
+end;
+
+function TVulkanInt64HashMap.TryGet(const Key:TVkInt64;out Value:TVulkanInt64HashMapData):boolean;
+var Entity:TVkInt32;
+    Cell:TVkUInt32;
+begin
+ Cell:=FindCell(Key);
+ Entity:=CellToEntityIndex[Cell];
+ result:=Entity>=0;
+ if result then begin
+  Value:=Entities[Entity].Value;
+ end else begin
+  Value:=nil;
  end;
 end;
 
@@ -34663,11 +34708,6 @@ begin
    end;
   end;
  end;
-end;
-
-function TVulkanTrueTypeFont.NumGlyphs:TVkInt32;
-begin
- result:=fCountGlyphs;
 end;
 
 function TVulkanTrueTypeFont.GetGlyphAdvanceWidth(GlyphIndex:TVkInt32):TVkInt32;
