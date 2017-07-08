@@ -4202,6 +4202,7 @@ type EVulkanException=class(Exception);
 
      TVulkanFont=class(TVulkanSpriteAtlas)
       private
+       fTargetPPI:TVkInt32;
        fUnitsPerEm:TVkInt32;
        fScaleFactor:TVkFloat;
        fInverseScaleFactor:TVkFloat;
@@ -4218,12 +4219,17 @@ type EVulkanException=class(Exception);
        fCodePointToGlyphHashMap:TVulkanInt64HashMap;
        fKerningPairHashMap:TVulkanInt64HashMap;
       public
-       constructor Create(const aDevice:TVulkanDevice); reintroduce;
+       constructor Create(const aDevice:TVulkanDevice;const aTargetPPI:TVkInt32=72); reintroduce;
        constructor CreateFromTrueTypeFont(const aDevice:TVulkanDevice;const aTrueTypeFont:TVulkanTrueTypeFont;const aCodePointRanges:array of TVulkanFontCodePointRange);
        destructor Destroy; override;
        class function CodePointRange(const aFromCodePoint,aToCodePoint:TVkUInt32):TVulkanFontCodePointRange; overload;
        class function CodePointRange(const aFromCodePoint,aToCodePoint:WideChar):TVulkanFontCodePointRange; overload;
        class function CodePointRange(const aCharacterRange:TVulkanFontCharacterRange):TVulkanFontCodePointRange; overload;
+       function GetScaleFactor(const aSize:TVkFloat):TVkFloat;
+       function TextWidth(const aText:TVulkanRawByteString;const aSize:TVkFloat):TVkFloat;
+       function TextHeight(const aText:TVulkanRawByteString;const aSize:TVkFloat):TVkFloat;
+       function RowHeight(const Percent:TVkFloat):TVkFloat;
+       procedure Draw(const aSpriteBatch:TVulkanSpriteBatch;const aText:TVulkanRawByteString;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
      end;
 
 var VulkanFloatToHalfFloatBaseTable:array[0..511] of TVkUInt16;
@@ -35843,10 +35849,12 @@ begin
  end;
 end;                                              
 
-constructor TVulkanFont.Create(const aDevice:TVulkanDevice);
+constructor TVulkanFont.Create(const aDevice:TVulkanDevice;const aTargetPPI:TVkInt32=72);
 begin
 
  inherited Create(aDevice);
+
+ fTargetPPI:=aTargetPPI;
 
  fUnitsPerEm:=72;
 
@@ -37566,7 +37574,7 @@ var TrueTypeFontKerningTable:PVulkanTrueTypeFontKerningTable;
     KerningPair:PVulkanFontKerningPair;
 begin
 
- Create(aDevice);
+ Create(aDevice,aTrueTypeFont.fTargetPPI);
 
  fUnitsPerEm:=aTrueTypeFont.GetUnitsPerEm;
 
@@ -37821,7 +37829,7 @@ begin
  result.ToCodePoint:=Max(aFromCodePoint,aToCodePoint);
 end;
 
-class function TVulkanFont.CodePointRange(const aFromCodePoint,aToCodePoint:WideChar): TVulkanFontCodePointRange;
+class function TVulkanFont.CodePointRange(const aFromCodePoint,aToCodePoint:WideChar):TVulkanFontCodePointRange;
 begin
  result.FromCodePoint:=Min(TVkUInt16(WideChar(aFromCodePoint)),TVkUInt16(WideChar(aToCodePoint)));
  result.ToCodePoint:=Max(TVkUInt16(WideChar(aFromCodePoint)),TVkUInt16(WideChar(aToCodePoint)));
@@ -37843,6 +37851,161 @@ begin
    result.ToCodePoint:=TVkUInt8(AnsiChar(Index));
    break;
   end;
+ end;
+end;
+
+function TVulkanFont.GetScaleFactor(const aSize:TVkFloat):TVkFloat;
+begin
+ if aSize<0.0 then begin
+  result:=(-aSize)/fUnitsPerEm;
+ end else begin
+  result:=(aSize*fTargetPPI)/(fUnitsPerEm*72);
+ end;
+end;
+
+function TVulkanFont.TextWidth(const aText:TVulkanRawByteString;const aSize:TVkFloat):TVkFloat;
+var TextIndex,CurrentGlyph,LastGlyph:TVkInt32;
+    CurrentCodePoint:TVkUInt32;
+    Width,NewWidth:TVkFloat;
+    Int64HashMapData:TVulkanInt64HashMapData;
+    Glyph:PVulkanFontGlyph;
+begin
+ result:=0.0;
+ Width:=0.0;
+ TextIndex:=1;
+ LastGlyph:=-1;
+ while TextIndex<=length(aText) do begin
+  CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText[TextIndex],TextIndex);
+  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
+   CurrentGlyph:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
+     result:=result+fKerningPairs[TVkPtrUInt(TVkPointer(Int64HashMapData))].Horizontal;
+    end;
+    Glyph:=@fGlyphs[CurrentGlyph];
+    if LastGlyph<0 then begin
+     result:=result+Glyph^.LeftSideBearing;
+    end;
+    NewWidth:=result+(Glyph^.BoundsMaxX-Glyph^.BoundsMinX);
+    if Width<NewWidth then begin
+     Width:=NewWidth;
+    end;
+    result:=result+Glyph^.AdvanceWidth;
+   end;
+  end else begin
+   CurrentGlyph:=0;
+  end;
+  LastGlyph:=CurrentGlyph;
+ end;
+ if result=0 then begin
+  result:=fMaxX-fMinX;
+ end;
+ if result<Width then begin
+  result:=Width;
+ end;
+ result:=result*GetScaleFactor(aSize);
+end;
+
+function TVulkanFont.TextHeight(const aText:TVulkanRawByteString;const aSize:TVkFloat):TVkFloat;
+var TextIndex,CurrentGlyph,LastGlyph:TVkInt32;
+    CurrentCodePoint:TVkUInt32;
+    Height,NewHeight:TVkFloat;
+    Int64HashMapData:TVulkanInt64HashMapData;
+    Glyph:PVulkanFontGlyph;
+begin
+ result:=0.0;
+ Height:=0.0;
+ TextIndex:=1;
+ LastGlyph:=-1;
+ while TextIndex<=length(aText) do begin
+  CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText[TextIndex],TextIndex);
+  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
+   CurrentGlyph:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
+     result:=result+fKerningPairs[TVkPtrUInt(TVkPointer(Int64HashMapData))].Vertical;
+    end;
+    Glyph:=@fGlyphs[CurrentGlyph];
+    if LastGlyph<0 then begin
+     result:=result+Glyph^.TopSideBearing;
+    end;
+    NewHeight:=result+(Glyph^.BoundsMaxY-Glyph^.BoundsMinY);
+    if Height<NewHeight then begin
+     Height:=NewHeight;
+    end;
+    result:=result+Glyph^.AdvanceHeight;
+   end;
+  end else begin
+   CurrentGlyph:=0;
+  end;
+  LastGlyph:=CurrentGlyph;
+ end;
+ if result=0 then begin
+  result:=fMaxY-fMinY;
+ end;
+ if result<Height then begin
+  result:=Height;
+ end;
+ result:=result*GetScaleFactor(aSize);
+end;
+
+function TVulkanFont.RowHeight(const Percent:TVkFloat):TVkFloat;
+begin
+ result:=fUnitsPerEm*(Percent*0.01);
+end;
+
+procedure TVulkanFont.Draw(const aSpriteBatch:TVulkanSpriteBatch;const aText:TVulkanRawByteString;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
+var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TVkInt32;
+    x,y,ScaleFactor:single;
+    Int64HashMapData:TVulkanInt64HashMapData;
+    KerningPair:PVulkanFontKerningPair;
+    Glyph:PVulkanFontGlyph;
+    Src,Dest:TVulkanSpriteRect;
+    Color:TVulkanSpriteColor;
+begin
+ Color.r:=aColorRed;
+ Color.g:=aColorGreen;
+ Color.b:=aColorBlue;
+ Color.a:=aColorAlpha;
+ x:=0.0;
+ y:=0.0;
+ ScaleFactor:=GetScaleFactor(aSize);
+ TextIndex:=1;
+ LastGlyph:=-1;
+ while TextIndex<=length(aText) do begin
+  CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText[TextIndex],TextIndex);
+  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
+   CurrentGlyph:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
+     KerningPair:=@fKerningPairs[TVkPtrUInt(TVkPointer(Int64HashMapData))];
+     x:=x+KerningPair^.Horizontal;
+     y:=y+KerningPair^.Vertical;
+    end;
+    Glyph:=@fGlyphs[CurrentGlyph];
+    if LastGlyph<0 then begin
+     x:=x+Glyph^.LeftSideBearing;
+     y:=y+Glyph^.TopSideBearing;
+    end;
+    Src.Left:=0.0;
+    Src.Top:=0.0;
+    Src.Right:=Src.Left+Glyph^.Width;
+    Src.Bottom:=Src.Top+Glyph^.Height;
+    Dest.Left:=aX+(x*ScaleFactor);
+    Dest.Top:=aY+(y*ScaleFactor);
+    Dest.Right:=aX+((x+Glyph^.Width)*ScaleFactor);
+    Dest.Bottom:=aX+((y+Glyph^.Height)*ScaleFactor);
+    aSpriteBatch.Draw(Glyph^.Sprite,Src,Dest,Color);
+    x:=x+Glyph^.AdvanceWidth;
+    y:=y+Glyph^.AdvanceHeight;
+   end;
+  end else begin
+   CurrentGlyph:=0;
+  end;
+  LastGlyph:=CurrentGlyph;
  end;
 end;
 
