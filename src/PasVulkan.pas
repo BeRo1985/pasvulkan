@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-08-30-01-0000                       *
+ *                        Version 2017-07-08-08-54-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -693,6 +693,7 @@ type EVulkanException=class(Exception);
        function Add(const Key:TVulkanRawByteString;Value:TVulkanStringHashMapData):PVulkanStringHashMapEntity;
        function Get(const Key:TVulkanRawByteString;CreateIfNotExist:boolean=false):PVulkanStringHashMapEntity;
        function TryGet(const Key:TVulkanRawByteString;out Value:TVulkanStringHashMapData):boolean;
+       function ExistKey(const Key:TVulkanRawByteString):boolean;
        function Delete(const Key:TVulkanRawByteString):boolean;
        property Values[const Key:TVulkanRawByteString]:TVulkanStringHashMapData read GetValue write SetValue; default;
      end;
@@ -729,6 +730,7 @@ type EVulkanException=class(Exception);
        function Add(const Key:TVkPointer;Value:TVulkanPointerHashMapData):PVulkanPointerHashMapEntity;
        function Get(const Key:TVkPointer;CreateIfNotExist:boolean=false):PVulkanPointerHashMapEntity;
        function TryGet(const Key:TVkPointer;out Value:TVulkanPointerHashMapData):boolean;
+       function ExistKey(const Key:TVkPointer):boolean;
        function Delete(const Key:TVkPointer):boolean;
        property Values[const Key:TVkPointer]:TVulkanPointerHashMapData read GetValue write SetValue; default;
      end;
@@ -765,6 +767,7 @@ type EVulkanException=class(Exception);
        function Add(const Key:TVkInt64;Value:TVulkanInt64HashMapData):PVulkanInt64HashMapEntity;
        function Get(const Key:TVkInt64;CreateIfNotExist:boolean=false):PVulkanInt64HashMapEntity;
        function TryGet(const Key:TVkInt64;out Value:TVulkanInt64HashMapData):boolean;
+       function ExistKey(const Key:TVkInt64):boolean;
        function Delete(const Key:TVkInt64):boolean;
        property Values[const Key:TVkInt64]:TVulkanInt64HashMapData read GetValue write SetValue; default;
      end;
@@ -12766,6 +12769,11 @@ begin
  end;
 end;
 
+function TVulkanStringHashMap.ExistKey(const Key:TVulkanRawByteString):boolean;
+begin
+ result:=CellToEntityIndex[FindCell(Key)]>=0;
+end;
+
 function TVulkanStringHashMap.Delete(const Key:TVulkanRawByteString):boolean;
 var Entity:TVkInt32;
     Cell:TVkUInt32;
@@ -12958,6 +12966,11 @@ begin
  end;
 end;
 
+function TVulkanPointerHashMap.ExistKey(const Key:TVkPointer):boolean;
+begin
+ result:=CellToEntityIndex[FindCell(Key)]>=0;
+end;
+
 function TVulkanPointerHashMap.Delete(const Key:TVkPointer):boolean;
 var Entity:TVkInt32;
     Cell:TVkUInt32;
@@ -13148,6 +13161,11 @@ begin
  end else begin
   Value:=nil;
  end;
+end;
+
+function TVulkanInt64HashMap.ExistKey(const Key:TVkInt64):boolean;
+begin
+ result:=CellToEntityIndex[FindCell(Key)]>=0;
 end;
 
 function TVulkanInt64HashMap.Delete(const Key:TVkInt64):boolean;
