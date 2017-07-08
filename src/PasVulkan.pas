@@ -7619,6 +7619,9 @@ begin
  r:=r xor (r shr 11);
  r:=r+(r shl 6);
  result:=TVkUInt32(TVkPtrUInt(r xor (r shr 22)));
+ if result=0 then begin
+  result:=$ffffffff;
+ end;
 end;
 {$else}
 begin
@@ -7628,6 +7631,9 @@ begin
  inc(result,result shl 2);
  result:=(result xor (result shr 4))*2057;
  result:=result xor (result shr 16);
+ if result=0 then begin
+  result:=$ffffffff;
+ end;
 end;
 {$endif}
 
@@ -7639,6 +7645,9 @@ begin
  inc(result,result shl 2);
  result:=(result xor (result shr 4))*2057;
  result:=result xor (result shr 16);
+ if result=0 then begin
+  result:=$ffffffff;
+ end;
 end;
 
 function HashUInt64(const p:TVkUInt64):TVkUInt32; {$ifdef caninline}inline;{$endif}
@@ -7651,6 +7660,9 @@ begin
  r:=r xor (r shr 11);
  r:=r+(r shl 6);
  result:=TVkUInt32(TVkUInt64(r xor (r shr 22)));
+ if result=0 then begin
+  result:=$ffffffff;
+ end;
 end;
 
 function CombineTwoUInt32IntoOneUInt64(const a,b:TVkUInt32):TVkUInt64; {$ifdef caninline}inline;{$endif}
@@ -37597,7 +37609,7 @@ begin
 
   SetLength(CodePointBitmap,((fMaximumCodePoint-fMinimumCodePoint)+32) shr 5);
 
-  FillChar(CodePointBitmap[0],(((fMaximumCodePoint-fMinimumCodePoint)+32) shr 5) shl 3,#0);
+  FillChar(CodePointBitmap[0],length(CodePointBitmap)*SizeOf(TVkUInt32),#0);
 
   for Index:=low(aCodePointRanges) to high(aCodePointRanges) do begin
    CodePointRange:=@aCodePointRanges[Index];
@@ -37632,7 +37644,7 @@ begin
            GlyphIndex:=CountGlyphs;
            inc(CountGlyphs);
            TTFGlyphToGlyphHashMap.Add(TTFGlyphIndex,{%H-}TVkPointer(TVkPtrUInt(GlyphIndex)));
-           GlyphToTTFGlyphHashMap.Add(CountGlyphs,{%H-}TVkPointer(TVkPtrUInt(TTFGlyphIndex)));
+           GlyphToTTFGlyphHashMap.Add(GlyphIndex,{%H-}TVkPointer(TVkPtrUInt(TTFGlyphIndex)));
           end;
           fCodePointToGlyphHashMap.Add(CodePointIndex,{%H-}TVkPointer(TVkPtrUInt(GlyphIndex)));
           CodePointGlyphPairIndex:=CountCodePointGlyphPairs;
@@ -37686,7 +37698,7 @@ begin
        PolygonBuffers[GlyphIndex].Commands:=nil;
        try
         aTrueTypeFont.ResetGlyphBuffer(GlyphBuffer);
-        aTrueTypeFont.FillGlyphBuffer(GlyphBuffer,GlyphIndex);
+        aTrueTypeFont.FillGlyphBuffer(GlyphBuffer,TTFGlyphIndex);
 
         aTrueTypeFont.ResetPolygonBuffer(PolygonBuffers[GlyphIndex]);
         aTrueTypeFont.FillPolygonBuffer(PolygonBuffers[GlyphIndex],GlyphBuffer);
@@ -37695,8 +37707,8 @@ begin
 
         Glyph^.OffsetX:=(x0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
         Glyph^.OffsetY:=(y0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
-        Glyph^.Width:=ceil(((x1-x0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0));
-        Glyph^.Height:=ceil(((y1-y0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0));
+        Glyph^.Width:=Max(1,ceil(((x1-x0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0)));
+        Glyph^.Height:=Max(1,ceil(((y1-y0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0)));
 
        finally
         GlyphBuffer.Points:=nil;
@@ -37721,20 +37733,23 @@ begin
 
       for GlyphIndex:=0 to length(SortedGlyphs)-1 do begin
        Glyph:=SortedGlyphs[GlyphIndex];
-       DistanceField.OffsetX:=-Glyph^.OffsetX;
-       DistanceField.OffsetY:=-Glyph^.OffsetY;
-       DistanceField.Width:=Glyph^.Width;
-       DistanceField.Height:=Glyph^.Height;
-       DistanceField.Pixels:=nil;
-       try
-        SetLength(DistanceField.Pixels,DistanceField.Width*DistanceField.Height);
-        GenerateSignedDistanceField(DistanceField,false,PolygonBuffers[GlyphIndex]);
-        Glyph^.Sprite:=LoadRawSprite(TVulkanRawByteString(String('glyph'+IntToStr(GlyphIndex))),
-                                     @DistanceField.Pixels[0],
-                                     Glyph^.Width,
-                                     Glyph^.Height);
-       finally
+       if (Glyph^.Width>0) and (Glyph^.Height>0) then begin
+        OtherGlyphIndex:={$H-}((TVkPtrUInt(TVkPointer(Glyph))-TVkPtrUInt(TVkPointer(@fGlyphs[0])))) div SizeOf(TVulkanFontGlyph);
+        DistanceField.OffsetX:=-Glyph^.OffsetX;
+        DistanceField.OffsetY:=-Glyph^.OffsetY;
+        DistanceField.Width:=Max(1,Glyph^.Width);
+        DistanceField.Height:=Max(1,Glyph^.Height);
         DistanceField.Pixels:=nil;
+        try
+         SetLength(DistanceField.Pixels,DistanceField.Width*DistanceField.Height);
+         GenerateSignedDistanceField(DistanceField,false,PolygonBuffers[OtherGlyphIndex]);
+         Glyph^.Sprite:=LoadRawSprite(TVulkanRawByteString(String('glyph'+IntToStr(OtherGlyphIndex))),
+                                      @DistanceField.Pixels[0],
+                                      Glyph^.Width,
+                                      Glyph^.Height);
+        finally
+         DistanceField.Pixels:=nil;
+        end;
        end;
       end;
 
@@ -37875,7 +37890,7 @@ begin
  TextIndex:=1;
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
-  CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText[TextIndex],TextIndex);
+  CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
   if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
    CurrentGlyph:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
@@ -37919,7 +37934,7 @@ begin
  TextIndex:=1;
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
-  CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText[TextIndex],TextIndex);
+  CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
   if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
    CurrentGlyph:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
@@ -37958,7 +37973,7 @@ end;
 
 procedure TVulkanFont.Draw(const aSpriteBatch:TVulkanSpriteBatch;const aText:TVulkanRawByteString;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
 var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TVkInt32;
-    x,y,ScaleFactor:single;
+    x,y,ScaleFactor,RescaleFactor:TVkFloat;
     Int64HashMapData:TVulkanInt64HashMapData;
     KerningPair:PVulkanFontKerningPair;
     Glyph:PVulkanFontGlyph;
@@ -37971,11 +37986,12 @@ begin
  Color.a:=aColorAlpha;
  x:=0.0;
  y:=0.0;
- ScaleFactor:=GetScaleFactor(aSize)/fScaleFactor;
+ ScaleFactor:=GetScaleFactor(aSize);
+ RescaleFactor:=ScaleFactor/fScaleFactor;
  TextIndex:=1;
  LastGlyph:=-1;
- while TextIndex<=length(aText) do begin
-  CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText[TextIndex],TextIndex);
+ while TextIndex<=length(aText) do begin                 
+  CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
   if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
    CurrentGlyph:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
@@ -37994,10 +38010,10 @@ begin
     Src.Top:=0.0;
     Src.Right:=Src.Left+Glyph^.Width;
     Src.Bottom:=Src.Top+Glyph^.Height;
-    Dest.Left:=aX+((x+Glyph^.OffsetX)*ScaleFactor);
-    Dest.Top:=aY+((y+Glyph^.OffsetY)*ScaleFactor);
-    Dest.Right:=aX+(((x+Glyph^.OffsetX)+Glyph^.Width)*ScaleFactor);
-    Dest.Bottom:=aX+(((y+Glyph^.OffsetY)+Glyph^.Height)*ScaleFactor);
+    Dest.Left:=aX+(x*ScaleFactor)+(Glyph^.OffsetX*RescaleFactor);
+    Dest.Top:=aY+(y*ScaleFactor)+(Glyph^.OffsetY*RescaleFactor);
+    Dest.Right:=aX+(x*ScaleFactor)+((Glyph^.OffsetX+Glyph^.Width)*RescaleFactor);
+    Dest.Bottom:=aY+(y*ScaleFactor)+((Glyph^.OffsetY+Glyph^.Height)*RescaleFactor);
     aSpriteBatch.Draw(Glyph^.Sprite,Src,Dest,Color);
     x:=x+Glyph^.AdvanceWidth;
     y:=y+Glyph^.AdvanceHeight;
