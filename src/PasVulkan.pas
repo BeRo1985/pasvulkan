@@ -37579,7 +37579,7 @@ begin
  fUnitsPerEm:=aTrueTypeFont.GetUnitsPerEm;
 
  fScaleFactor:=aTrueTypeFont.GetScaleFactor;
-
+                                   
  fInverseScaleFactor:=1.0/fScaleFactor;
 
  fMinX:=aTrueTypeFont.MinX;
@@ -37693,8 +37693,8 @@ begin
 
         aTrueTypeFont.GetPolygonBufferBounds(PolygonBuffers[GlyphIndex],x0,y0,x1,y1);
 
-        Glyph^.OffsetX:=(VulkanFontDistanceFieldSpreadValue*2.0)-(x0*GlyphRasterizationScaleFactor);
-        Glyph^.OffsetY:=(VulkanFontDistanceFieldSpreadValue*2.0)-(y0*GlyphRasterizationScaleFactor);
+        Glyph^.OffsetX:=(x0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
+        Glyph^.OffsetY:=(y0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
         Glyph^.Width:=ceil(((x1-x0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0));
         Glyph^.Height:=ceil(((y1-y0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0));
 
@@ -37721,8 +37721,8 @@ begin
 
       for GlyphIndex:=0 to length(SortedGlyphs)-1 do begin
        Glyph:=SortedGlyphs[GlyphIndex];
-       DistanceField.OffsetX:=Glyph^.OffsetX;
-       DistanceField.OffsetY:=Glyph^.OffsetY;
+       DistanceField.OffsetX:=-Glyph^.OffsetX;
+       DistanceField.OffsetY:=-Glyph^.OffsetY;
        DistanceField.Width:=Glyph^.Width;
        DistanceField.Height:=Glyph^.Height;
        DistanceField.Pixels:=nil;
@@ -37971,7 +37971,7 @@ begin
  Color.a:=aColorAlpha;
  x:=0.0;
  y:=0.0;
- ScaleFactor:=GetScaleFactor(aSize);
+ ScaleFactor:=GetScaleFactor(aSize)/fScaleFactor;
  TextIndex:=1;
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
@@ -37994,10 +37994,10 @@ begin
     Src.Top:=0.0;
     Src.Right:=Src.Left+Glyph^.Width;
     Src.Bottom:=Src.Top+Glyph^.Height;
-    Dest.Left:=aX+((x-Glyph^.OffsetX)*ScaleFactor);
-    Dest.Top:=aY+((y-Glyph^.OffsetY)*ScaleFactor);
-    Dest.Right:=aX+(((x-Glyph^.OffsetX)+Glyph^.Width)*ScaleFactor);
-    Dest.Bottom:=aX+(((y-Glyph^.OffsetY)+Glyph^.Height)*ScaleFactor);
+    Dest.Left:=aX+((x+Glyph^.OffsetX)*ScaleFactor);
+    Dest.Top:=aY+((y+Glyph^.OffsetY)*ScaleFactor);
+    Dest.Right:=aX+(((x+Glyph^.OffsetX)+Glyph^.Width)*ScaleFactor);
+    Dest.Bottom:=aX+(((y+Glyph^.OffsetY)+Glyph^.Height)*ScaleFactor);
     aSpriteBatch.Draw(Glyph^.Sprite,Src,Dest,Color);
     x:=x+Glyph^.AdvanceWidth;
     y:=y+Glyph^.AdvanceHeight;
