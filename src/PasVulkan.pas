@@ -4216,6 +4216,7 @@ type EVulkanException=class(Exception);
        fCodePointGlyphPairs:TVulkanFontCodePointGlyphPairs;
        fKerningPairs:TVulkanFontKerningPairs;
        fCodePointToGlyphHashMap:TVulkanInt64HashMap;
+       fKerningPairHashMap:TVulkanInt64HashMap;
       public
        constructor Create(const aDevice:TVulkanDevice); reintroduce;
        constructor CreateFromTrueTypeFont(const aDevice:TVulkanDevice;const aTrueTypeFont:TVulkanTrueTypeFont;const aCodePointRanges:array of TVulkanFontCodePointRange);
@@ -7601,7 +7602,7 @@ begin
 end;
 {$endif}
 
-function HashPointer(p:TVkPointer):TVkUInt32; {$ifdef caninline}inline;{$endif}
+function HashPointer(const p:TVkPointer):TVkUInt32; {$ifdef caninline}inline;{$endif}
 {$ifdef cpu64}
 var r:TVkPtrUInt;
 begin
@@ -7624,7 +7625,7 @@ begin
 end;
 {$endif}
 
-function HashUInt32(p:TVkUInt32):TVkUInt32; {$ifdef caninline}inline;{$endif}
+function HashUInt32(const p:TVkUInt32):TVkUInt32; {$ifdef caninline}inline;{$endif}
 begin
  result:=TVkUInt32(p);
  result:=(not result)+(result shl 15);
@@ -7634,7 +7635,7 @@ begin
  result:=result xor (result shr 16);
 end;
 
-function HashUInt64(p:TVkUInt64):TVkUInt32; {$ifdef caninline}inline;{$endif}
+function HashUInt64(const p:TVkUInt64):TVkUInt32; {$ifdef caninline}inline;{$endif}
 var r:TVkUInt64;
 begin
  r:=TVkUInt64(p);
@@ -7644,6 +7645,11 @@ begin
  r:=r xor (r shr 11);
  r:=r+(r shl 6);
  result:=TVkUInt32(TVkUInt64(r xor (r shr 22)));
+end;
+
+function CombineTwoUInt32IntoOneUInt64(const a,b:TVkUInt32):TVkUInt64; {$ifdef caninline}inline;{$endif}
+begin
+ result:=(TVkUInt64(a) shl 32) or b;
 end;
 
 function CRC32(data:TVkPointer;length:TVkUInt32):TVkUInt32;
@@ -35866,6 +35872,8 @@ begin
 
  fCodePointToGlyphHashMap:=TVulkanInt64HashMap.Create;
 
+ fKerningPairHashMap:=TVulkanInt64HashMap.Create;
+
  fAutomaticTrim:=false;
 
 end;
@@ -37591,14 +37599,15 @@ begin
    end;
   end;
 
-  CodePointToTTFGlyphHashMap:=TVulkanInt64HashMap.Create;
+  TTFGlyphToGlyphHashMap:=TVulkanInt64HashMap.Create;
   try
-   TTFGlyphToGlyphHashMap:=TVulkanInt64HashMap.Create;
+  
+   GlyphToTTFGlyphHashMap:=TVulkanInt64HashMap.Create;
    try
-    GlyphToTTFGlyphHashMap:=TVulkanInt64HashMap.Create;
-    try
 
-     // Collect used glyphs
+    // Collect used glyphs
+    CodePointToTTFGlyphHashMap:=TVulkanInt64HashMap.Create;
+    try
      CountGlyphs:=0;
      CountCodePointGlyphPairs:=0;
      try
@@ -37634,156 +37643,154 @@ begin
       SetLength(fGlyphs,CountGlyphs);
       SetLength(fCodePointGlyphPairs,CountCodePointGlyphPairs);
      end;
+    finally
+     CodePointToTTFGlyphHashMap.Free;
+    end;
 
-     // Convert glyph data and get polygon data
-     PolygonBuffers:=nil;
-     try
+    // Convert glyph data and get polygon data
+    PolygonBuffers:=nil;
+    try
 
-      SetLength(PolygonBuffers,CountGlyphs);
+     SetLength(PolygonBuffers,CountGlyphs);
 
-      for GlyphIndex:=0 to CountGlyphs-1 do begin
+     for GlyphIndex:=0 to CountGlyphs-1 do begin
 
-       Glyph:=@fGlyphs[GlyphIndex];
+      Glyph:=@fGlyphs[GlyphIndex];
 
-       FillChar(Glyph^,SizeOf(TVulkanFontGlyph),#0);
+      FillChar(Glyph^,SizeOf(TVulkanFontGlyph),#0);
 
-       if GlyphToTTFGlyphHashMap.TryGet(GlyphIndex,Int64HashMapData) then begin
+      if GlyphToTTFGlyphHashMap.TryGet(GlyphIndex,Int64HashMapData) then begin
 
-        TTFGlyphIndex:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+       TTFGlyphIndex:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
 
-        Glyph^.AdvanceWidth:=aTrueTypeFont.GetGlyphAdvanceWidth(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-        Glyph^.AdvanceHeight:=aTrueTypeFont.GetGlyphAdvanceHeight(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-        Glyph^.LeftSideBearing:=aTrueTypeFont.GetGlyphLeftSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-        Glyph^.RightSideBearing:=aTrueTypeFont.GetGlyphRightSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-        Glyph^.TopSideBearing:=aTrueTypeFont.GetGlyphTopSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-        Glyph^.BottomSideBearing:=aTrueTypeFont.GetGlyphBottomSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-        Glyph^.BoundsMinX:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.XMin*GlyphMetaDataScaleFactor;
-        Glyph^.BoundsMinY:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.YMin*GlyphMetaDataScaleFactor;
-        Glyph^.BoundsMaxX:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.XMax*GlyphMetaDataScaleFactor;
-        Glyph^.BoundsMaxY:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.YMax*GlyphMetaDataScaleFactor;
+       Glyph^.AdvanceWidth:=aTrueTypeFont.GetGlyphAdvanceWidth(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.AdvanceHeight:=aTrueTypeFont.GetGlyphAdvanceHeight(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.LeftSideBearing:=aTrueTypeFont.GetGlyphLeftSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.RightSideBearing:=aTrueTypeFont.GetGlyphRightSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.TopSideBearing:=aTrueTypeFont.GetGlyphTopSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.BottomSideBearing:=aTrueTypeFont.GetGlyphBottomSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.BoundsMinX:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.XMin*GlyphMetaDataScaleFactor;
+       Glyph^.BoundsMinY:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.YMin*GlyphMetaDataScaleFactor;
+       Glyph^.BoundsMaxX:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.XMax*GlyphMetaDataScaleFactor;
+       Glyph^.BoundsMaxY:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.YMax*GlyphMetaDataScaleFactor;
 
+       GlyphBuffer.Points:=nil;
+       PolygonBuffers[GlyphIndex].Commands:=nil;
+       try
+        aTrueTypeFont.ResetGlyphBuffer(GlyphBuffer);
+        aTrueTypeFont.FillGlyphBuffer(GlyphBuffer,GlyphIndex);
+
+        aTrueTypeFont.ResetPolygonBuffer(PolygonBuffers[GlyphIndex]);
+        aTrueTypeFont.FillPolygonBuffer(PolygonBuffers[GlyphIndex],GlyphBuffer);
+
+        aTrueTypeFont.GetPolygonBufferBounds(PolygonBuffers[GlyphIndex],x0,y0,x1,y1);
+
+        Glyph^.OffsetX:=(x0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
+        Glyph^.OffsetY:=(y0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
+        Glyph^.Width:=ceil(((x1-x0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0));
+        Glyph^.Height:=ceil(((y1-y0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0));
+
+       finally
         GlyphBuffer.Points:=nil;
-        PolygonBuffers[GlyphIndex].Commands:=nil;
-        try
-         aTrueTypeFont.ResetGlyphBuffer(GlyphBuffer);
-         aTrueTypeFont.FillGlyphBuffer(GlyphBuffer,GlyphIndex);
-
-         aTrueTypeFont.ResetPolygonBuffer(PolygonBuffers[GlyphIndex]);
-         aTrueTypeFont.FillPolygonBuffer(PolygonBuffers[GlyphIndex],GlyphBuffer);
-
-         aTrueTypeFont.GetPolygonBufferBounds(PolygonBuffers[GlyphIndex],x0,y0,x1,y1);
-
-         Glyph^.OffsetX:=(x0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
-         Glyph^.OffsetY:=(y0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
-         Glyph^.Width:=ceil(((x1-x0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0));
-         Glyph^.Height:=ceil(((y1-y0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0));
-
-        finally
-         GlyphBuffer.Points:=nil;
-        end;
-
        end;
+
       end;
-
-      // Rasterize and insert glyph signed distance field sprites by sorted area size order
-      SortedGlyphs:=nil;
-      try
-
-       SetLength(SortedGlyphs,length(fGlyphs));
-
-       for GlyphIndex:=0 to length(fGlyphs)-1 do begin
-        SortedGlyphs[GlyphIndex]:=@fGlyphs[GlyphIndex];
-       end;
-
-       if length(SortedGlyphs)>1 then begin
-        IndirectIntroSort(@SortedGlyphs[0],0,length(SortedGlyphs)-1,CompareVulkanFontGlyphsByArea);
-       end;
-
-       for GlyphIndex:=0 to length(SortedGlyphs)-1 do begin
-        Glyph:=SortedGlyphs[GlyphIndex];
-        DistanceField.OffsetX:=Glyph^.OffsetX;
-        DistanceField.OffsetY:=Glyph^.OffsetY;
-        DistanceField.Width:=Glyph^.Width;
-        DistanceField.Height:=Glyph^.Height;
-        DistanceField.Pixels:=nil;
-        try
-         SetLength(DistanceField.Pixels,DistanceField.Width*DistanceField.Height);
-         GenerateSignedDistanceField(DistanceField,false,PolygonBuffers[GlyphIndex]);
-         Glyph^.Sprite:=LoadRawSprite(TVulkanRawByteString(String('glyph'+IntToStr(GlyphIndex))),
-                                      @DistanceField.Pixels[0],
-                                      Glyph^.Width,
-                                      Glyph^.Height);
-        finally
-         DistanceField.Pixels:=nil;
-        end;
-       end;
-
-      finally
-       SortedGlyphs:=nil;
-      end;
-
-     finally
-
-      PolygonBuffers:=nil;
      end;
 
-     // Convert kerning pair lookup data
-     KerningPairHashMap:=TVulkanInt64HashMap.Create;
+     // Rasterize and insert glyph signed distance field sprites by sorted area size order
+     SortedGlyphs:=nil;
      try
-      fKerningPairs:=nil;
-      CountKerningPairs:=0;
-      try
-       for TrueTypeFontKerningIndex:=0 to length(aTrueTypeFont.fKerningTables)-1 do begin
-        TrueTypeFontKerningTable:=@aTrueTypeFont.fKerningTables[TrueTypeFontKerningIndex];
-        for TrueTypeFontKerningPairIndex:=0 to length(TrueTypeFontKerningTable^.KerningPairs)-1 do begin
-         TrueTypeFontKerningPair:=@TrueTypeFontKerningTable^.KerningPairs[TrueTypeFontKerningPairIndex];
-         if TTFGlyphToGlyphHashMap.TryGet(TrueTypeFontKerningPair^.Left,Int64HashMapData) then begin
-          GlyphIndex:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
-          if TTFGlyphToGlyphHashMap.TryGet(TrueTypeFontKerningPair^.Right,Int64HashMapData) then begin
-           OtherGlyphIndex:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
-           KerningPairDoubleIndex:=(TVkUInt64(GlyphIndex) shl 32) or OtherGlyphIndex;
-           if not TTFGlyphToGlyphHashMap.ExistKey(KerningPairDoubleIndex) then begin
-            KerningPairIndex:=CountKerningPairs;
-            inc(CountKerningPairs);
-            if length(fKerningPairs)<CountKerningPairs then begin
-             SetLength(fKerningPairs,CountKerningPairs*2);
-            end;
-            TTFGlyphToGlyphHashMap.Add(KerningPairDoubleIndex,{%H-}TVkPointer(TVkPtrUInt(KerningPairIndex)));
-            KerningPair:=@fKerningPairs[KerningPairIndex];
-            KerningPair^.Left:=TrueTypeFontKerningPair^.Left;
-            KerningPair^.Right:=TrueTypeFontKerningPair^.Right;
-            KerningPair^.Horizontal:=aTrueTypeFont.GetKerning(KerningPair^.Left,KerningPair^.Right,true);
-            KerningPair^.Vertical:=aTrueTypeFont.GetKerning(KerningPair^.Left,KerningPair^.Right,false);
-           end;              
-          end;
-         end;
-        end;
-       end;
-      finally
-       SetLength(fKerningPairs,CountKerningPairs);
-       if length(fKerningPairs)>1 then begin
-        DirectIntroSort(@fKerningPairs[0],0,length(fKerningPairs)-1,SizeOf(TVulkanFontKerningPair),CompareVulkanFontKerningPairs);
+
+      SetLength(SortedGlyphs,length(fGlyphs));
+
+      for GlyphIndex:=0 to length(fGlyphs)-1 do begin
+       SortedGlyphs[GlyphIndex]:=@fGlyphs[GlyphIndex];
+      end;
+
+      if length(SortedGlyphs)>1 then begin
+       IndirectIntroSort(@SortedGlyphs[0],0,length(SortedGlyphs)-1,CompareVulkanFontGlyphsByArea);
+      end;
+
+      for GlyphIndex:=0 to length(SortedGlyphs)-1 do begin
+       Glyph:=SortedGlyphs[GlyphIndex];
+       DistanceField.OffsetX:=Glyph^.OffsetX;
+       DistanceField.OffsetY:=Glyph^.OffsetY;
+       DistanceField.Width:=Glyph^.Width;
+       DistanceField.Height:=Glyph^.Height;
+       DistanceField.Pixels:=nil;
+       try
+        SetLength(DistanceField.Pixels,DistanceField.Width*DistanceField.Height);
+        GenerateSignedDistanceField(DistanceField,false,PolygonBuffers[GlyphIndex]);
+        Glyph^.Sprite:=LoadRawSprite(TVulkanRawByteString(String('glyph'+IntToStr(GlyphIndex))),
+                                     @DistanceField.Pixels[0],
+                                     Glyph^.Width,
+                                     Glyph^.Height);
+       finally
+        DistanceField.Pixels:=nil;
        end;
       end;
+
      finally
-      KerningPairHashMap.Free;
-     end;
-
-     for CodePointIndex:=fMinimumCodePoint to fMaximumCodePoint do begin
-      BitmapCodePointIndex:=CodePointIndex-fMinimumCodePoint;
-      if (CodePointBitmap[BitmapCodePointIndex shr 5] and (TVkUInt32(1) shl (BitmapCodePointIndex and 31)))<>0 then begin
-
-      end;
+      SortedGlyphs:=nil;
      end;
 
     finally
-     GlyphToTTFGlyphHashMap.Free;
+     PolygonBuffers:=nil;
+    end;
+
+   finally
+    GlyphToTTFGlyphHashMap.Free;
+   end;
+
+   // Convert kerning pair lookup data
+   fKerningPairs:=nil;
+   CountKerningPairs:=0;
+   try
+    KerningPairHashMap:=TVulkanInt64HashMap.Create;
+    try
+     for TrueTypeFontKerningIndex:=0 to length(aTrueTypeFont.fKerningTables)-1 do begin
+      TrueTypeFontKerningTable:=@aTrueTypeFont.fKerningTables[TrueTypeFontKerningIndex];
+      for TrueTypeFontKerningPairIndex:=0 to length(TrueTypeFontKerningTable^.KerningPairs)-1 do begin
+       TrueTypeFontKerningPair:=@TrueTypeFontKerningTable^.KerningPairs[TrueTypeFontKerningPairIndex];
+       if TTFGlyphToGlyphHashMap.TryGet(TrueTypeFontKerningPair^.Left,Int64HashMapData) then begin
+        GlyphIndex:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+        if TTFGlyphToGlyphHashMap.TryGet(TrueTypeFontKerningPair^.Right,Int64HashMapData) then begin
+         OtherGlyphIndex:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+         KerningPairDoubleIndex:=CombineTwoUInt32IntoOneUInt64(GlyphIndex,OtherGlyphIndex);
+         if not KerningPairHashMap.ExistKey(KerningPairDoubleIndex) then begin
+          KerningPairIndex:=CountKerningPairs;
+          inc(CountKerningPairs);
+          if length(fKerningPairs)<CountKerningPairs then begin
+           SetLength(fKerningPairs,CountKerningPairs*2);
+          end;
+          KerningPairHashMap.Add(KerningPairDoubleIndex,{%H-}TVkPointer(TVkPtrUInt(KerningPairIndex)));
+          KerningPair:=@fKerningPairs[KerningPairIndex];
+          KerningPair^.Left:=TrueTypeFontKerningPair^.Left;
+          KerningPair^.Right:=TrueTypeFontKerningPair^.Right;
+          KerningPair^.Horizontal:=aTrueTypeFont.GetKerning(KerningPair^.Left,KerningPair^.Right,true);
+          KerningPair^.Vertical:=aTrueTypeFont.GetKerning(KerningPair^.Left,KerningPair^.Right,false);
+         end;
+        end;
+       end;
+      end;
+     end;
+    finally
+     KerningPairHashMap.Free;
     end;
    finally
-    TTFGlyphToGlyphHashMap.Free;
+    SetLength(fKerningPairs,CountKerningPairs);
+    if length(fKerningPairs)>1 then begin
+     DirectIntroSort(@fKerningPairs[0],0,length(fKerningPairs)-1,SizeOf(TVulkanFontKerningPair),CompareVulkanFontKerningPairs);
+    end;
+    for KerningPairIndex:=0 to length(fKerningPairs)-1 do begin
+     KerningPair:=@fKerningPairs[KerningPairIndex];
+     KerningPairDoubleIndex:=CombineTwoUInt32IntoOneUInt64(KerningPair^.Left,KerningPair^.Right);
+     fKerningPairHashMap.Add(KerningPairDoubleIndex,{%H-}TVkPointer(TVkPtrUInt(KerningPairIndex)));
+    end;
    end;
+               
   finally
-   CodePointToTTFGlyphHashMap.Free;
+   TTFGlyphToGlyphHashMap.Free;
   end;
 
  end;
@@ -37802,6 +37809,8 @@ begin
  fKerningPairs:=nil;
 
  fCodePointToGlyphHashMap.Free;
+
+ fKerningPairHashMap.Free;
 
  inherited Destroy;
 end;
