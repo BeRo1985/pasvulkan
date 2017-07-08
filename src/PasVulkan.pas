@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-08-04-48-0000                       *
+ *                        Version 2017-07-08-08-01-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -729,6 +729,41 @@ type EVulkanException=class(Exception);
        function Get(const Key:TVkPointer;CreateIfNotExist:boolean=false):PVulkanPointerHashMapEntity;
        function Delete(const Key:TVkPointer):boolean;
        property Values[const Key:TVkPointer]:TVulkanPointerHashMapData read GetValue write SetValue; default;
+     end;
+
+     TVulkanInt64HashMapData=TVkPointer;
+
+     PVulkanInt64HashMapEntity=^TVulkanInt64HashMapEntity;
+     TVulkanInt64HashMapEntity=record
+      Key:TVkInt64;
+      Value:TVulkanInt64HashMapData;
+     end;
+
+     TVulkanInt64HashMapEntities=array of TVulkanInt64HashMapEntity;
+
+     TVulkanInt64HashMapEntityIndices=array of TVkInt32;
+
+     TVulkanInt64HashMap=class
+      private
+       function FindCell(const Key:TVkInt64):TVkUInt32;
+       procedure Resize;
+      protected
+       function GetValue(const Key:TVkInt64):TVulkanInt64HashMapData;
+       procedure SetValue(const Key:TVkInt64;const Value:TVulkanInt64HashMapData);
+      public
+       RealSize:TVkInt32;
+       LogSize:TVkInt32;
+       Size:TVkInt32;
+       Entities:TVulkanInt64HashMapEntities;
+       EntityToCellIndex:TVulkanInt64HashMapEntityIndices;
+       CellToEntityIndex:TVulkanInt64HashMapEntityIndices;
+       constructor Create;
+       destructor Destroy; override;
+       procedure Clear;
+       function Add(const Key:TVkInt64;Value:TVulkanInt64HashMapData):PVulkanInt64HashMapEntity;
+       function Get(const Key:TVkInt64;CreateIfNotExist:boolean=false):PVulkanInt64HashMapEntity;
+       function Delete(const Key:TVkInt64):boolean;
+       property Values[const Key:TVkInt64]:TVulkanInt64HashMapData read GetValue write SetValue; default;
      end;
 
      TVulkanXMLClass=class
@@ -7499,6 +7534,28 @@ begin
 end;
 {$endif}
 
+function HashUInt32(p:TVkUInt32):TVkUInt32; {$ifdef caninline}inline;{$endif}
+begin
+ result:=TVkUInt32(p);
+ result:=(not result)+(result shl 15);
+ result:=result xor (result shr 15);
+ inc(result,result shl 2);
+ result:=(result xor (result shr 4))*2057;
+ result:=result xor (result shr 16);
+end;
+
+function HashUInt64(p:TVkUInt64):TVkUInt32; {$ifdef caninline}inline;{$endif}
+var r:TVkUInt64;
+begin
+ r:=TVkUInt64(p);
+ r:=(not r)+(r shl 18); // r:=((r shl 18)-r-)1;
+ r:=r xor (r shr 31);
+ r:=r*21; // r:=(r+(r shl 2))+(r shl 4);
+ r:=r xor (r shr 11);
+ r:=r+(r shl 6);
+ result:=TVkUInt32(TVkUInt64(r xor (r shr 22)));
+end;
+
 function CRC32(data:TVkPointer;length:TVkUInt32):TVkUInt32;
 const CRC32Table:array[0..15] of TVkUInt32=($00000000,$1db71064,$3b6e20c8,$26d930ac,$76dc4190,
                                            $6b6b51f4,$4db26158,$5005713c,$edb88320,$f00f9344,
@@ -12900,6 +12957,184 @@ begin
 end;
 
 procedure TVulkanPointerHashMap.SetValue(const Key:TVkPointer;const Value:TVulkanPointerHashMapData);
+begin
+ Add(Key,Value);
+end;
+
+constructor TVulkanInt64HashMap.Create;
+begin
+ inherited Create;
+ RealSize:=0;
+ LogSize:=0;
+ Size:=0;
+ Entities:=nil;
+ EntityToCellIndex:=nil;
+ CellToEntityIndex:=nil;
+ Resize;
+end;
+
+destructor TVulkanInt64HashMap.Destroy;
+var Counter:TVkInt32;
+begin
+ Clear;
+ SetLength(Entities,0);
+ SetLength(EntityToCellIndex,0);
+ SetLength(CellToEntityIndex,0);
+ inherited Destroy;
+end;
+
+procedure TVulkanInt64HashMap.Clear;
+var Counter:TVkInt32;
+begin
+ RealSize:=0;
+ LogSize:=0;
+ Size:=0;
+ SetLength(Entities,0);
+ SetLength(EntityToCellIndex,0);
+ SetLength(CellToEntityIndex,0);
+ Resize;
+end;
+
+function TVulkanInt64HashMap.FindCell(const Key:TVkInt64):TVkUInt32;
+var HashCode,Mask,Step:TVkUInt32;
+    Entity:TVkInt32;
+begin
+ HashCode:=HashUInt64(Key);
+ Mask:=(2 shl LogSize)-1;
+ Step:=((HashCode shl 1)+1) and Mask;
+ if LogSize<>0 then begin
+  result:=HashCode shr (32-LogSize);
+ end else begin
+  result:=0;
+ end;
+ repeat
+  Entity:=CellToEntityIndex[result];
+  if (Entity=ENT_EMPTY) or ((Entity<>ENT_DELETED) and (Entities[Entity].Key=Key)) then begin
+   exit;
+  end;
+  result:=(result+Step) and Mask;
+ until false;
+end;
+
+procedure TVulkanInt64HashMap.Resize;
+var NewLogSize,NewSize,Cell,Entity,Counter:TVkInt32;
+    OldEntities:TVulkanInt64HashMapEntities;
+    OldCellToEntityIndex:TVulkanInt64HashMapEntityIndices;
+    OldEntityToCellIndex:TVulkanInt64HashMapEntityIndices;
+begin
+ NewLogSize:=0;
+ NewSize:=RealSize;
+ while NewSize<>0 do begin
+  NewSize:=NewSize shr 1;
+  inc(NewLogSize);
+ end;
+ if NewLogSize<1 then begin
+  NewLogSize:=1;
+ end;
+ Size:=0;
+ RealSize:=0;
+ LogSize:=NewLogSize;
+ OldEntities:=Entities;
+ OldCellToEntityIndex:=CellToEntityIndex;
+ OldEntityToCellIndex:=EntityToCellIndex;
+ Entities:=nil;
+ CellToEntityIndex:=nil;
+ EntityToCellIndex:=nil;
+ SetLength(Entities,2 shl LogSize);
+ SetLength(CellToEntityIndex,2 shl LogSize);
+ SetLength(EntityToCellIndex,2 shl LogSize);
+ for Counter:=0 to length(CellToEntityIndex)-1 do begin
+  CellToEntityIndex[Counter]:=ENT_EMPTY;
+ end;
+ for Counter:=0 to length(EntityToCellIndex)-1 do begin
+  EntityToCellIndex[Counter]:=CELL_EMPTY;
+ end;
+ for Counter:=0 to length(OldEntityToCellIndex)-1 do begin
+  Cell:=OldEntityToCellIndex[Counter];
+  if Cell>=0 then begin
+   Entity:=OldCellToEntityIndex[Cell];
+   if Entity>=0 then begin
+    Add(OldEntities[Counter].Key,OldEntities[Counter].Value);
+   end;
+  end;
+ end;
+ SetLength(OldEntities,0);
+ SetLength(OldCellToEntityIndex,0);
+ SetLength(OldEntityToCellIndex,0);
+end;
+
+function TVulkanInt64HashMap.Add(const Key:TVkInt64;Value:TVulkanInt64HashMapData):PVulkanInt64HashMapEntity;
+var Entity:TVkInt32;
+    Cell:TVkUInt32;
+begin
+ result:=nil;
+ while RealSize>=(1 shl LogSize) do begin
+  Resize;
+ end;
+ Cell:=FindCell(Key);
+ Entity:=CellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=@Entities[Entity];
+  result^.Key:=Key;
+  result^.Value:=Value;
+  exit;
+ end;
+ Entity:=Size;
+ inc(Size);
+ if Entity<(2 shl LogSize) then begin
+  CellToEntityIndex[Cell]:=Entity;
+  EntityToCellIndex[Entity]:=Cell;
+  inc(RealSize);
+  result:=@Entities[Entity];
+  result^.Key:=Key;
+  result^.Value:=Value;
+ end;
+end;
+
+function TVulkanInt64HashMap.Get(const Key:TVkInt64;CreateIfNotExist:boolean=false):PVulkanInt64HashMapEntity;
+var Entity:TVkInt32;
+    Cell:TVkUInt32;
+begin
+ result:=nil;
+ Cell:=FindCell(Key);
+ Entity:=CellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=@Entities[Entity];
+ end else if CreateIfNotExist then begin
+  result:=Add(Key,nil);
+ end;
+end;
+
+function TVulkanInt64HashMap.Delete(const Key:TVkInt64):boolean;
+var Entity:TVkInt32;
+    Cell:TVkUInt32;
+begin
+ result:=false;
+ Cell:=FindCell(Key);
+ Entity:=CellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  Entities[Entity].Key:=0;
+  Entities[Entity].Value:=nil;
+  EntityToCellIndex[Entity]:=CELL_DELETED;
+  CellToEntityIndex[Cell]:=ENT_DELETED;
+  result:=true;
+ end;
+end;
+
+function TVulkanInt64HashMap.GetValue(const Key:TVkInt64):TVulkanInt64HashMapData;
+var Entity:TVkInt32;
+    Cell:TVkUInt32;
+begin
+ Cell:=FindCell(Key);
+ Entity:=CellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=Entities[Entity].Value;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TVulkanInt64HashMap.SetValue(const Key:TVkInt64;const Value:TVulkanInt64HashMapData);
 begin
  Add(Key,Value);
 end;
