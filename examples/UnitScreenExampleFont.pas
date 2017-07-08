@@ -126,9 +126,10 @@ begin
 
  Stream:=VulkanApplication.Assets.GetAssetStream('fonts/droidsans.ttf');
  try
-  TrueTypeFont:=TVulkanTrueTypeFont.Create(Stream);
+  TrueTypeFont:=TVulkanTrueTypeFont.Create(Stream,72);
   try
    TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
    fVulkanFont:=TVulkanFont.CreateFromTrueTypeFont(VulkanApplication.VulkanDevice,TrueTypeFont,[TVulkanFont.CodePointRange(0,255)]);
   finally
    TrueTypeFont.Free;

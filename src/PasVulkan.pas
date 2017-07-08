@@ -4204,8 +4204,8 @@ type EVulkanException=class(Exception);
       private
        fTargetPPI:TVkInt32;
        fUnitsPerEm:TVkInt32;
-       fScaleFactor:TVkFloat;
-       fInverseScaleFactor:TVkFloat;
+       fBaseScaleFactor:TVkFloat;
+       fInverseBaseScaleFactor:TVkFloat;
        fMinX:TVkFloat;
        fMinY:TVkFloat;
        fMaxX:TVkFloat;
@@ -35870,9 +35870,9 @@ begin
 
  fUnitsPerEm:=72;
 
- fScaleFactor:=1.0;
+ fBaseScaleFactor:=1.0;
 
- fInverseScaleFactor:=1.0;
+ fInverseBaseScaleFactor:=1.0;
 
  fMinX:=0.0;
  fMinY:=0.0;
@@ -37590,9 +37590,9 @@ begin
 
  fUnitsPerEm:=aTrueTypeFont.GetUnitsPerEm;
 
- fScaleFactor:=aTrueTypeFont.GetScaleFactor;
-                                   
- fInverseScaleFactor:=1.0/fScaleFactor;
+ fBaseScaleFactor:=aTrueTypeFont.GetScaleFactor;
+
+ fInverseBaseScaleFactor:=1.0/fBaseScaleFactor;
 
  fMinX:=aTrueTypeFont.MinX;
  fMinY:=aTrueTypeFont.MinY;
@@ -37987,7 +37987,7 @@ begin
  x:=0.0;
  y:=0.0;
  ScaleFactor:=GetScaleFactor(aSize);
- RescaleFactor:=ScaleFactor/fScaleFactor;
+ RescaleFactor:=ScaleFactor*fInverseBaseScaleFactor;
  TextIndex:=1;
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin                 
