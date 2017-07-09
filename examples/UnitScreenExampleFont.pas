@@ -396,8 +396,9 @@ procedure TScreenExampleFont.Update(const aDeltaTime:double);
 const BoolToInt:array[boolean] of TVkInt32=(0,1);
       Options:array[0..0] of string=('Back');
 var Index:TVkInt32;
-    cy,FontSize:TVkFloat;
-    s:TVulkanRawByteString;
+    cy,LocalFontSize:TVkFloat;
+    rbs:TVulkanRawByteString;
+    s:string;
     IsSelected:boolean;
     SrcRect:TVulkanSpriteRect;
     DstRect:TVulkanSpriteRect;
@@ -410,15 +411,15 @@ begin
 
  fVulkanSpriteBatch.BlendingMode:=vsbbmAlphaBlending;
 
- FontSize:=(-72.0)+(sin(fTime*pi*2.0)*48.0);
+ LocalFontSize:=(-72.0)+(sin(fTime*pi*2.0)*48.0);
 
- s:='This is an example text';
+ rbs:='This is an example text';
 
  fVulkanFont.Draw(fVulkanSpriteBatch,
-                  s,
-                  (fVulkanSpriteBatch.Width-fVulkanFont.TextWidth(s,FontSize))*0.5,
-                  (fVulkanSpriteBatch.Height-fVulkanFont.TextHeight(s,FontSize))*0.5,
-                  FontSize);
+                  rbs,
+                  (fVulkanSpriteBatch.Width-fVulkanFont.TextWidth(rbs,LocalFontSize))*0.5,
+                  (fVulkanSpriteBatch.Height-fVulkanFont.TextHeight(rbs,LocalFontSize))*0.5,
+                  LocalFontSize);
 
  fVulkanSpriteBatch.Stop;
 
