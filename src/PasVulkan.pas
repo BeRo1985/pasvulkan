@@ -34008,7 +34008,7 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
      PairValueCount,NewLookupType,Glyph:TVkInt32;
      GlyphsByClass1,GlyphsByClass2:TGlyphsByClass;
      Found:boolean;
-     Glyphs:PGlyphs;
+     Glyphs1,Glyphs2:PGlyphs;
  begin
 
   case LookupType of
@@ -34102,9 +34102,9 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
           Glyph:=GlyphArray[i];
           Found:=false;
           for j:=1 to Class1Count-1 do begin
-           Glyphs:=@GlyphsByClass1[j];
-           for k:=0 to Glyphs^.Count-1 do begin
-            if Glyphs^.Items[k]=Glyph then begin
+           Glyphs1:=@GlyphsByClass1[j];
+           for k:=0 to Glyphs1^.Count-1 do begin
+            if Glyphs1^.Items[k]=Glyph then begin
              Found:=true;
              break;
             end;
@@ -34114,21 +34114,34 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
            end;
           end;
           if not Found then begin
-           Glyphs:=@GlyphsByClass1[0];
-           if length(Glyphs^.Items)<(Glyphs^.Count+1) then begin
-            SetLength(Glyphs^.Items,(Glyphs^.Count+1)*2);
+           Glyphs1:=@GlyphsByClass1[0];
+           if length(Glyphs1^.Items)<(Glyphs1^.Count+1) then begin
+            SetLength(Glyphs1^.Items,(Glyphs1^.Count+1)*2);
            end;
-           Glyphs^.Items[Glyphs^.Count]:=Glyph;
-           inc(Glyphs^.Count);
+           Glyphs1^.Items[Glyphs1^.Count]:=Glyph;
+           inc(Glyphs1^.Count);
           end;
          end;
+
+         CurrentPosition:=SubTableOffset+16;
 
          for i:=0 to Class1Count-1 do begin
           for j:=0 to Class2Count-1 do begin
-
+           x:=ReadValueFromValueRecord(CurrentPosition,ValueFormat1,$0004);
+           ReadValueFromValueRecord(CurrentPosition,ValueFormat2,$0004);
+           if x<>0 then begin
+            Glyphs1:=@GlyphsByClass1[i];
+            for k:=0 to Glyphs1^.Count-1 do begin
+             FirstGlyph:=Glyphs1^.Items[k];
+             Glyphs2:=@GlyphsByClass2[j];
+             for h:=0 to Glyphs2^.Count-1 do begin
+              SecondGlyph:=Glyphs2^.Items[h];
+              AddKerningPair(FirstGlyph,SecondGlyph,x,true);
+             end;
+            end;
+           end;
           end;
          end;
-
 
         finally
          GlyphsByClass2:=nil;
