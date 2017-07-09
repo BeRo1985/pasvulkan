@@ -67,6 +67,9 @@ uses {$if defined(Windows)}
      {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}
      {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}
      SysUtils,Classes,SyncObjs,Math,
+     {$ifdef PasVulkanPasMP}
+      PasMP,
+     {$endif}
      Vulkan;
 
 const VulkanMinimumMemoryChunkSize=1 shl 24; // 16 MB minimum memory chunk size
@@ -4259,6 +4262,11 @@ var VulkanFloatToHalfFloatBaseTable:array[0..511] of TVkUInt16;
 
     VulkanHalfFloatLookUpTablesInitialized:boolean=false;
 
+{$ifdef PasVulkanPasMP}
+    VulkanPasMP:TPasMP=nil;
+    VulkanPasMPLock:TPasMPSpinLock=nil;
+{$endif}
+
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
        (
         VK_IMAGE_TILING_LINEAR,  // VK_IMAGE_VIEW_TYPE_1D
@@ -4269,6 +4277,10 @@ const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling
         VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_2D_ARRAY
         VK_IMAGE_TILING_LINEAR   // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
        );
+
+{$ifdef PasVulkanPasMP}
+function GetVulkanPasMP:TPasMP;
+{$endif}
 
 function VulkanConvertFloatToHalfFloat(const aValue:TVkFloat):TVkHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
 function VulkanConvertHalfFloatToFloat(const aValue:TVkHalfFloat):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -4687,6 +4699,25 @@ const suDONOTKNOW=-1;
 
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TVkUInt32;
+
+{$ifdef PasVulkanPasMP}
+function GetVulkanPasMP:TPasMP;
+begin
+ result:=TVkPointer(TPasMPInterlocked.Read(TVkPointer(VulkanPasMP)));
+ if not assigned(result) then begin
+  VulkanPasMPLock.Acquire;
+  try
+   result:=TVkPointer(TPasMPInterlocked.Read(TVkPointer(VulkanPasMP)));
+   if not assigned(result) then begin
+    result:=TPasMP.GetGlobalInstance;
+    TPasMPInterlocked.Write(TVkPointer(VulkanPasMP),TVkPointer(result));
+   end;
+  finally
+   VulkanPasMPLock.Release;
+  end;
+ end;
+end;
+{$endif}
 
 procedure GenerateHalfFloatLookUpTables;
 var i,e:TVkInt32;
@@ -37666,6 +37697,8 @@ var TrueTypeFontKerningTable:PVulkanTrueTypeFontKerningTable;
     TrueTypeFontKerningPair:PVulkanTrueTypeFontKerningPair;
     CodePointGlyphPair:PVulkanFontCodePointGlyphPair;
     KerningPair:PVulkanFontKerningPair;
+    GlyphDistanceField:PDistanceField;
+    GlyphDistanceFields:array of TDistanceField;
 begin
 
  Create(aDevice,aTrueTypeFont.fTargetPPI);
@@ -37703,7 +37736,7 @@ begin
 
   TTFGlyphToGlyphHashMap:=TVulkanInt64HashMap.Create;
   try
-  
+
    GlyphToTTFGlyphHashMap:=TVulkanInt64HashMap.Create;
    try
 
@@ -37799,44 +37832,59 @@ begin
       end;
      end;
 
-     // Rasterize and insert glyph signed distance field sprites by sorted area size order
-     SortedGlyphs:=nil;
+     GlyphDistanceFields:=nil;
      try
 
-      SetLength(SortedGlyphs,length(fGlyphs));
+      SetLength(GlyphDistanceFields,CountGlyphs);
 
-      for GlyphIndex:=0 to length(fGlyphs)-1 do begin
-       SortedGlyphs[GlyphIndex]:=@fGlyphs[GlyphIndex];
+      // Rasterize glyph signed distance field sprites
+      for GlyphIndex:=0 to CountGlyphs-1 do begin
+       Glyph:=@fGlyphs[GlyphIndex];
+       GlyphDistanceField:=@GlyphDistanceFields[GlyphIndex];
+       GlyphDistanceField^.OffsetX:=-Glyph^.OffsetX;
+       GlyphDistanceField^.OffsetY:=-Glyph^.OffsetY;
+       GlyphDistanceField^.Width:=Max(1,Glyph^.Width);
+       GlyphDistanceField^.Height:=Max(1,Glyph^.Height);
+       GlyphDistanceField^.Pixels:=nil;
+       SetLength(GlyphDistanceField^.Pixels,GlyphDistanceField^.Width*GlyphDistanceField^.Height);
+{$ifdef PasVulkanPasMP}
+       GenerateSignedDistanceField(GlyphDistanceField^,false,PolygonBuffers[GlyphIndex]);
+{$endif}
       end;
+{$ifdef PasVulkanPasMP}
+{$endif}
 
-      if length(SortedGlyphs)>1 then begin
-       IndirectIntroSort(@SortedGlyphs[0],0,length(SortedGlyphs)-1,CompareVulkanFontGlyphsByArea);
-      end;
+      // Insert glyph signed distance field sprites by sorted area size order
+      SortedGlyphs:=nil;
+      try
 
-      for GlyphIndex:=0 to length(SortedGlyphs)-1 do begin
-       Glyph:=SortedGlyphs[GlyphIndex];
-       if (Glyph^.Width>0) and (Glyph^.Height>0) then begin
-        OtherGlyphIndex:={$H-}((TVkPtrUInt(TVkPointer(Glyph))-TVkPtrUInt(TVkPointer(@fGlyphs[0])))) div SizeOf(TVulkanFontGlyph);
-        DistanceField.OffsetX:=-Glyph^.OffsetX;
-        DistanceField.OffsetY:=-Glyph^.OffsetY;
-        DistanceField.Width:=Max(1,Glyph^.Width);
-        DistanceField.Height:=Max(1,Glyph^.Height);
-        DistanceField.Pixels:=nil;
-        try
-         SetLength(DistanceField.Pixels,DistanceField.Width*DistanceField.Height);
-         GenerateSignedDistanceField(DistanceField,false,PolygonBuffers[OtherGlyphIndex]);
+       SetLength(SortedGlyphs,length(fGlyphs));
+
+       for GlyphIndex:=0 to length(fGlyphs)-1 do begin
+        SortedGlyphs[GlyphIndex]:=@fGlyphs[GlyphIndex];
+       end;
+
+       if length(SortedGlyphs)>1 then begin
+        IndirectIntroSort(@SortedGlyphs[0],0,length(SortedGlyphs)-1,CompareVulkanFontGlyphsByArea);
+       end;
+
+       for GlyphIndex:=0 to length(SortedGlyphs)-1 do begin
+        Glyph:=SortedGlyphs[GlyphIndex];
+        if (Glyph^.Width>0) and (Glyph^.Height>0) then begin
+         OtherGlyphIndex:={$H-}((TVkPtrUInt(TVkPointer(Glyph))-TVkPtrUInt(TVkPointer(@fGlyphs[0])))) div SizeOf(TVulkanFontGlyph);
          Glyph^.Sprite:=LoadRawSprite(TVulkanRawByteString(String('glyph'+IntToStr(OtherGlyphIndex))),
-                                      @DistanceField.Pixels[0],
+                                      @GlyphDistanceFields[OtherGlyphIndex].Pixels[0],
                                       Glyph^.Width,
                                       Glyph^.Height);
-        finally
-         DistanceField.Pixels:=nil;
         end;
        end;
+
+      finally
+       SortedGlyphs:=nil;
       end;
 
      finally
-      SortedGlyphs:=nil;
+      GlyphDistanceFields:=nil;
      end;
 
     finally
@@ -38109,7 +38157,14 @@ end;
 
 initialization
  GenerateHalfFloatLookUpTables;
-//finalization
+{$ifdef PasVulkanPasMP}
+ VulkanPasMP:=nil;
+ VulkanPasMPLock:=TPasMPSpinLock.Create;
+{$endif}
+finalization
+{$ifdef PasVulkanPasMP}
+ FreeAndNil(VulkanPasMPLock);
+{$endif}
 end.
 
 
