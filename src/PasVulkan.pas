@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-10-00-45-0000                       *
+ *                        Version 2017-07-10-01-21-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1668,6 +1668,8 @@ type EVulkanException=class(Exception);
        procedure UpdateData(const aData;
                             const aDataOffset:TVkDeviceSize;
                             const aDataSize:TVkDeviceSize);
+{      procedure UploadBarrier(const aCommandBuffer:TVulkanCommandBuffer);
+       procedure DownloadBarrier(const aCommandBuffer:TVulkanCommandBuffer);}
        property DescriptorBufferInfo:TVkDescriptorBufferInfo read fDescriptorBufferInfo;
       published
        property Device:TVulkanDevice read fDevice;
@@ -1853,6 +1855,7 @@ type EVulkanException=class(Exception);
        procedure CmdExecute(const aCommandBuffer:TVulkanCommandBuffer);
        procedure MetaCmdPresentToDrawImageBarrier(const aImage:TVulkanImage;const aDoTransitionToColorAttachmentOptimalLayout:boolean=true);
        procedure MetaCmdDrawToPresentImageBarrier(const aImage:TVulkanImage;const aDoTransitionToPresentSrcLayout:boolean=true);
+       procedure MetaCmdMemoryBarrier(const aSrcStageMask,aDstStageMask:TVkPipelineStageFlags;const aSrcAccessMask,aDstAccessMask:TVkAccessFlags);
        procedure Execute(const aQueue:TVulkanQueue;const aWaitDstStageFlags:TVkPipelineStageFlags;const aWaitSemaphore:TVulkanSemaphore=nil;const aSignalSemaphore:TVulkanSemaphore=nil;const aFence:TVulkanFence=nil;const aDoWaitAndResetFence:boolean=true);
       published
        property Device:TVulkanDevice read fDevice;
@@ -3543,6 +3546,7 @@ type EVulkanException=class(Exception);
        procedure Draw(const Sprite:TVulkanSprite;const x,y:single); overload;
        procedure Draw(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single); overload;
        procedure DrawText(const Font:TVulkanSpriteFont;const Text:TVulkanRawByteString;x,y:single;const Color:TVulkanSpriteColor);
+       procedure ExecuteBarriers(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
       public
        property Viewport:PVkViewport read fPointerToViewport;
@@ -19020,6 +19024,21 @@ begin
                     1,@ImageMemoryBarrier);
 end;
 
+procedure TVulkanCommandBuffer.MetaCmdMemoryBarrier(const aSrcStageMask,aDstStageMask:TVkPipelineStageFlags;const aSrcAccessMask,aDstAccessMask:TVkAccessFlags);
+var MemoryBarrier:TVkMemoryBarrier;
+begin
+ MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;;
+ MemoryBarrier.pNext:=nil;
+ MemoryBarrier.srcAccessMask:=aSrcAccessMask;
+ MemoryBarrier.dstAccessMask:=aDstAccessMask;
+ CmdPipelineBarrier(aSrcStageMask,
+                    aDstStageMask,
+                    0,
+                    1,@MemoryBarrier,
+                    0,nil,
+                    0,nil);
+end;
+
 procedure TVulkanCommandBuffer.Execute(const aQueue:TVulkanQueue;const aWaitDstStageFlags:TVkPipelineStageFlags;const aWaitSemaphore:TVulkanSemaphore=nil;const aSignalSemaphore:TVulkanSemaphore=nil;const aFence:TVulkanFence=nil;const aDoWaitAndResetFence:boolean=true);
 var SubmitInfo:TVkSubmitInfo;
 begin
@@ -28089,6 +28108,14 @@ begin
    result:=Node;
   end;
  end;
+end;
+
+procedure TVulkanSpriteBatch.ExecuteBarriers(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
+begin
+ aVulkanCommandBuffer.MetaCmdMemoryBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                           TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
+                                           TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT));
 end;
 
 procedure TVulkanSpriteBatch.ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);

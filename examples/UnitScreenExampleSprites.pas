@@ -512,6 +512,9 @@ begin
 
    VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
+   fVulkanSpriteBatch.ExecuteBarriers(VulkanCommandBuffer,
+                                      VulkanApplication.DrawSwapChainImageIndex);
+
    fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
                                      VulkanApplication.VulkanFrameBuffers[aSwapChainImageIndex],
                                      VK_SUBPASS_CONTENTS_INLINE,
