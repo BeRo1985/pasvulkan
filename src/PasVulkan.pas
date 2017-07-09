@@ -3888,7 +3888,8 @@ type EVulkanException=class(Exception);
       (
        VkTTF_PolygonCommandType_MOVETO,
        VkTTF_PolygonCommandType_LINETO,
-       VkTTF_PolygonCommandType_CURVETO,
+       VkTTF_PolygonCommandType_QUADRATICCURVETO,
+       VkTTF_PolygonCommandType_CUBICCURVETO,
        VkTTF_PolygonCommandType_CLOSE
       );
 
@@ -3897,7 +3898,7 @@ type EVulkanException=class(Exception);
       y:TVkInt32;
      end;
 
-     TVulkanTrueTypeFontPolygonCommandPoints=array[0..1] of TVulkanTrueTypeFontPolygonCommandPoint;
+     TVulkanTrueTypeFontPolygonCommandPoints=array[0..2] of TVulkanTrueTypeFontPolygonCommandPoint;
 
      PVulkanTrueTypeFontPolygonCommand=^TVulkanTrueTypeFontPolygonCommand;
      TVulkanTrueTypeFontPolygonCommand=record
@@ -35846,7 +35847,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_CURVETO;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_QUADRATICCURVETO;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
       PolygonBuffer.Commands[CommandIndex].Points[1].x:=x;
@@ -35859,7 +35860,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_CURVETO;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_QUADRATICCURVETO;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
       PolygonBuffer.Commands[CommandIndex].Points[1].x:=MiddleX;
@@ -35885,7 +35886,7 @@ begin
      if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
       SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
      end;
-     PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_CURVETO;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_QUADRATICCURVETO;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
      PolygonBuffer.Commands[CommandIndex].Points[1].x:=fx;
@@ -35895,7 +35896,7 @@ begin
     if not OnCurve then begin
      CommandIndex:=length(PolygonBuffer.Commands);
      SetLength(PolygonBuffer.Commands,CommandIndex+1);
-     PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_CURVETO;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_QUADRATICCURVETO;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
      PolygonBuffer.Commands[CommandIndex].Points[1].x:=lx;
@@ -36119,8 +36120,8 @@ var lastcx,lastcy:TVkInt32;
    end;
   end;
  end;
- procedure QuadraticCurveTo(cx,cy,ax,ay:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
-  procedure Recursive(x1,y1,x2,y2,x3,y3,level:TVkInt32);
+ procedure QuadraticCurveTo(const cx,cy,ax,ay:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3,Level:TVkInt32);
   var x12,y12,x23,y23,x123,y123,mx,my,d:TVkInt32;
   begin
    x12:=SARLongint(x1+x2,1);
@@ -36132,15 +36133,44 @@ var lastcx,lastcy:TVkInt32;
    mx:=SARLongint(x1+x3,1);
    my:=SARLongint(y1+y3,1);
    d:=abs(mx-x123)+abs(my-y123);
-   if (level>MaxLevel) or (d<Tolerance) then begin
+   if (Level>MaxLevel) or (d<Tolerance) then begin
     PointAt(x123,y123);
    end else begin
-    Recursive(x1,y1,x12,y12,x123,y123,level+1);
-    Recursive(x123,y123,x23,y23,x3,y3,level+1);
+    Recursive(x1,y1,x12,y12,x123,y123,Level+1);
+    Recursive(x123,y123,x23,y23,x3,y3,Level+1);
    end;
   end;
  begin
   Recursive(lastcx,lastcy,cx,cy,ax,ay,0);
+  PointAt(ax,ay);
+ end;
+ procedure CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4,Level:TVkInt32);
+  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,d:TVkInt32;
+  begin
+   x12:=SARLongint(x1+x2,1);
+   y12:=SARLongint(y1+y2,1);
+   x23:=SARLongint(x2+x3,1);
+   y23:=SARLongint(y2+y3,1);
+   x34:=SARLongint(x3+x4,1);
+   y34:=SARLongint(y3+y4,1);
+   x123:=SARLongint(x12+x23,1);
+   y123:=SARLongint(y12+y23,1);
+   x234:=SARLongint(x23+x34,1);
+   y234:=SARLongint(y23+y34,1);
+   x1234:=SARLongint(x123+x234,1);
+   y1234:=SARLongint(y123+y234,1);
+// d:=abs(SARlongint(x1+x4,1)-x1234)+abs(SARLongint(y1+y4,1)-y1234);
+   d:=abs(((x1+x3)-x2)-x2)+abs(((y1+y3)-y2)-y2)+abs(((x2+x4)-x3)-x3)+abs(((y2+y4)-y3)-y3);
+   if (Level>MaxLevel) or (d<Tolerance) then begin
+    PointAt(x1234,y1234);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
+    Recursive(x1234,y1234,x234,y234,x34,y34,x4,y4,Level+1);
+   end;
+  end;
+ begin
+  Recursive(lastcx,lastcy,c1x,c1y,c2x,c2y,ax,ay,0);
   PointAt(ax,ay);
  end;
 var CommandIndex:TVkInt32;
@@ -36156,10 +36186,16 @@ begin
    VkTTF_PolygonCommandType_MOVETO,VkTTF_PolygonCommandType_LINETO:begin
     PointAt(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y);
    end;
-   VkTTF_PolygonCommandType_CURVETO:begin
+   VkTTF_PolygonCommandType_QUADRATICCURVETO:begin
     QuadraticCurveTo(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y,
                      PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y,
                      Tolerance,MaxLevel);
+   end;
+   VkTTF_PolygonCommandType_CUBICCURVETO:begin
+    CubicCurveTo(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y,
+                 PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y,
+                 PolygonBuffer.Commands[CommandIndex].Points[2].x,PolygonBuffer.Commands[CommandIndex].Points[2].y,
+                 Tolerance,MaxLevel);
    end;
    VkTTF_PolygonCommandType_CLOSE:begin
    end;
@@ -36180,7 +36216,7 @@ begin
     VkTTF_PolygonCommandType_LINETO:begin
      Rasterizer.LineTo(x+PolygonBuffer.Commands[CommandIndex].Points[0].x,y+PolygonBuffer.Commands[CommandIndex].Points[0].y);
     end;
-    VkTTF_PolygonCommandType_CURVETO:begin
+    VkTTF_PolygonCommandType_QUADRATICCURVETO:begin
      Rasterizer.QuadraticCurveTo(x+PolygonBuffer.Commands[CommandIndex].Points[0].x,y+PolygonBuffer.Commands[CommandIndex].Points[0].y,
                                  x+PolygonBuffer.Commands[CommandIndex].Points[1].x,y+PolygonBuffer.Commands[CommandIndex].Points[1].y,
                                  Tolerance,MaxLevel);
@@ -37578,10 +37614,10 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- procedure ConvertShape(out Shape:TShape;const DoSubdivideQuadraticBezierCubicIntoLines:boolean);
+ procedure ConvertShape(out Shape:TShape;const DoSubdivideCurvesIntoLines:boolean);
  var CommandIndex:TVkInt32;
      Contour:PContour;
-     StartPoint,LastPoint,ControlPoint,Point:TDoublePrecisionPoint;
+     StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TDoublePrecisionPoint;
  begin
   Shape.Contours:=nil;
   Shape.CountContours:=0;
@@ -37615,17 +37651,35 @@ type PPathSegmentSide=^TPathSegmentSide;
        end;
        LastPoint:=Point;
       end;
-      VkTTF_PolygonCommandType_CURVETO:begin
+      VkTTF_PolygonCommandType_QUADRATICCURVETO:begin
        ControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*RasterizerToScreenScale)+DistanceField.OffsetX;
        ControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*RasterizerToScreenScale)+DistanceField.OffsetY;
        Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*RasterizerToScreenScale)+DistanceField.OffsetX;
        Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*RasterizerToScreenScale)+DistanceField.OffsetY;
        if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
                                      (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
-        if DoSubdivideQuadraticBezierCubicIntoLines then begin
+        if DoSubdivideCurvesIntoLines then begin
          AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
         end else begin
          AddQuadraticBezierCurveToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
+        end;
+       end;
+       LastPoint:=Point;
+      end;
+      VkTTF_PolygonCommandType_CUBICCURVETO:begin
+       ControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*RasterizerToScreenScale)+DistanceField.OffsetX;
+       ControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*RasterizerToScreenScale)+DistanceField.OffsetY;
+       OtherControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*RasterizerToScreenScale)+DistanceField.OffsetX;
+       OtherControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*RasterizerToScreenScale)+DistanceField.OffsetY;
+       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[2].x*RasterizerToScreenScale)+DistanceField.OffsetX;
+       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[2].y*RasterizerToScreenScale)+DistanceField.OffsetY;
+       if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
+                                     (SameValue(LastPoint.x,OtherControlPoint.x) and SameValue(LastPoint.y,OtherControlPoint.y)) and
+                                     (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
+        if DoSubdivideCurvesIntoLines then begin
+         AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
+        end else begin
+         AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
         end;
        end;
        LastPoint:=Point;
