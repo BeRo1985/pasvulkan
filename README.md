@@ -30,7 +30,9 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
     - Optional automatic GPU-based texture mipmap generation (with help of vkCmdBlitImage)
     - Own ObjectPascal-native True Type Font loader
         -  With automatic on-the-fly high-quality fast parallizied signed distance field generation (based on the implementation ideas from [Practical Analytic 2D Signed Distance Field Generation](https://web.archive.org/web/20160909051854/http://malideveloper.arm.com/downloads/Presentations/Siggraph16/Practical_Analytic_2D_Signed_Distance_Field_Generation.pdf) and with [PasMP](https://github.com/BeRo1985/pasmp) )
-        -  a [font vector textures](http://wdobbie.com/post/gpu-text-rendering-with-vector-textures/) feature is also planned for the future, for an own combined signed-distance-field + vector-texture hybrid rendering technology implementation, dependently by the font size and so on.  
+        -  A [font vector textures](http://wdobbie.com/post/gpu-text-rendering-with-vector-textures/) feature is also planned for the future, for an own combined signed-distance-field + vector-texture hybrid rendering technology implementation, dependently by the font size and so on.  
+    - Sprite batch class
+    - Sprite atlases
     - and more useful utils and stuff for Vulkan-programming
     - Supported platforms:
         - Windows (x86-32, x86-64)
