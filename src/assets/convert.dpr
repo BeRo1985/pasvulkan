@@ -148,6 +148,8 @@ end;
 begin
  StringList:=TStringList.Create;
  try
+  ConvertFile('shaders/font/font_frag.spv','FontFragmentSPIRV');
+  ConvertFile('shaders/font/font_vert.spv','FontVertexSPIRV');
   ConvertFile('shaders/spritebatch/spritebatch_frag.spv','SpriteBatchFragmentSPIRV');
   ConvertFile('shaders/spritebatch/spritebatch_vert.spv','SpriteBatchVertexSPIRV');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');

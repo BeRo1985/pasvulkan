@@ -35970,7 +35970,7 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     SortedGlyphs:TPVulkanFontGlyphs;
     DistanceField:TDistanceField;
  procedure GenerateSignedDistanceField(var DistanceField:TDistanceField;const MultiChannel:boolean;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer);
- const DistanceFieldSpreadValue=4;
+ const DistanceFieldSpreadValue=VulkanFontDistanceFieldSpreadValue;
        DistanceFieldMagnitudeValue=DistanceFieldSpreadValue;
        DistanceFieldPadValue=DistanceFieldSpreadValue;
        Scalar1Value=1.0;
