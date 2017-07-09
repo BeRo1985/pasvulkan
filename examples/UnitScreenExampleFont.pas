@@ -138,7 +138,7 @@ begin
   Stream.Free;
  end;
 
-  fVulkanFont.Upload(VulkanApplication.VulkanDevice.GraphicsQueue,
+ fVulkanFont.Upload(VulkanApplication.VulkanDevice.GraphicsQueue,
                     VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
                     VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
                     VulkanApplication.VulkanDevice.TransferQueue,
@@ -396,8 +396,8 @@ procedure TScreenExampleFont.Update(const aDeltaTime:double);
 const BoolToInt:array[boolean] of TVkInt32=(0,1);
       Options:array[0..0] of string=('Back');
 var Index:TVkInt32;
-    cy:single;
-    s:string;
+    cy,FontSize:TVkFloat;
+    s:TVulkanRawByteString;
     IsSelected:boolean;
     SrcRect:TVulkanSpriteRect;
     DstRect:TVulkanSpriteRect;
@@ -406,47 +406,23 @@ begin
 
  fVulkanSpriteBatch.Start(VulkanApplication.UpdateSwapChainImageIndex);
 
- fVulkanSpriteBatch.BlendingMode:=vsbbmAlphaBlending;
-
-{SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
- DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteTest.Width)*0.5)+(cos(fTime*pi*2.0*0.1)*128.0);
- DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteTest.Height)*0.5)+(sin(fTime*pi*3.0*0.1)*128.0);
- DstRect.Right:=DstRect.Left+fVulkanSpriteTest.Width;
- DstRect.Bottom:=DstRect.Top+fVulkanSpriteTest.Height;
- fVulkanSpriteBatch.Draw(fVulkanSpriteTest,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
+ fVulkanSpriteBatch.RenderingMode:=vsbrmFont;
 
  fVulkanSpriteBatch.BlendingMode:=vsbbmAlphaBlending;
 
- SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteAppIcon.Width,fVulkanSpriteAppIcon.Height);
- DstRect.Left:=((fVulkanSpri
- teBatch.Width-fVulkanSpriteAppIcon.Width)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0);
- DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteAppIcon.Height)*0.5)+(cos(fTime*pi*3.0*0.1)*128.0);
- DstRect.Right:=DstRect.Left+fVulkanSpriteAppIcon.Width;
- DstRect.Bottom:=DstRect.Top+fVulkanSpriteAppIcon.Height;
- fVulkanSpriteBatch.Draw(fVulkanSpriteAppIcon,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteAppIcon.Width*0.5,fVulkanSpriteAppIcon.Height*0.5),cos(fTime*pi*1.7*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
+ FontSize:=(-72.0)+(sin(fTime*pi*2.0)*48.0);
 
- SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
- DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
- DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteSmiley0.Height)*0.5)+(cos(fTime*pi*2.3*0.1)*128.0);
- DstRect.Right:=DstRect.Left+fVulkanSpriteSmiley0.Width;
- DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
- fVulkanSpriteBatch.Draw(fVulkanSpriteSmiley0,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,0.9));
+ s:='This is an example text';
 
- fVulkanSpriteBatch.BlendingMode:=vsbbmAdditiveBlending;
-
- SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteDancer0.Width,fVulkanSpriteDancer0.Height);
- DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteDancer0.Width)*0.5)+(cos(fTime*pi*1.7*0.1)*128.0);
- DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteDancer0.Height)*0.5)+(sin(fTime*pi*2.3*0.1)*128.0);
- DstRect.Right:=DstRect.Left+fVulkanSpriteDancer0.Width;
- DstRect.Bottom:=DstRect.Top+fVulkanSpriteDancer0.Height;
- fVulkanSpriteBatch.Draw(fVulkanSpriteDancer0,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteDancer0.Width*0.5,fVulkanSpriteDancer0.Height*0.5),cos(fTime*pi*1.5*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,0.5));
-}
-
- fVulkanFont.Draw(fVulkanSpriteBatch,'This is a test',140.0,90.0,-128.0);
+ fVulkanFont.Draw(fVulkanSpriteBatch,
+                  s,
+                  (fVulkanSpriteBatch.Width-fVulkanFont.TextWidth(s,FontSize))*0.5,
+                  (fVulkanSpriteBatch.Height-fVulkanFont.TextHeight(s,FontSize))*0.5,
+                  FontSize);
 
  fVulkanSpriteBatch.Stop;
 
- ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Sprites');
+ ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Font');
  fStartY:=VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*1.25)-(4*FontSize));
  cy:=fStartY;
  for Index:=0 to 0 do begin
