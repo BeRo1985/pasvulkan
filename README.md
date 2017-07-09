@@ -34,6 +34,7 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
         - A [font vector textures](http://wdobbie.com/post/gpu-text-rendering-with-vector-textures/) feature is also planned for the future, for an own combined signed-distance-field + vector-texture hybrid rendering technology implementation, dependently by the font size and so on.  
     - Sprite batch class
     - Sprite atlases
+        - With automatic fast on-the-fly sprite atlas constructions with optional automatic cropping/trimming, so that you don't need external sprite atlas generation tools, but nevertheless, the output of the TexturePacker tool is also supported by PasVulkan
     - and more useful utils and stuff for Vulkan-programming
     - Supported platforms:
         - Windows (x86-32, x86-64)
