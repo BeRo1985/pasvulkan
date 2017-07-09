@@ -34033,7 +34033,7 @@ begin
     inc(Position,sizeof(TVkUInt16)); // Version-Lo
 
     NumfSubTables:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
-    inc(Position,sizeof(TVkUInt16));
+    inc(Position,sizeof(TVkUInt32));
 
     SetLength(fKerningTables,NumfSubTables);
     if length(fKerningTables)<>NumfSubTables then begin
@@ -34041,6 +34041,53 @@ begin
      result:=fLastError;
      exit;
     end;
+
+    for i:=0 to NumfSubTables-1 do begin
+
+     KerningTable:=@fKerningTables[i];
+
+     SubTableSize:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
+     inc(Position,sizeof(TVkUInt32)); // Subtable Size
+     CoverageFormat:=fFontData[Position];
+     CoverageFlags:=fFontData[Position+1];
+     inc(Position,2);
+     inc(Position,sizeof(TVkUInt16)); // Tuple Index
+     Next:=(Position+SubTableSize)-6;
+
+     if (CoverageFlags and 2)<>0 then begin
+      // No support for variation values
+      Position:=Next;
+      continue;
+     end;
+
+     KerningTable^.Horizontal:=(CoverageFlags and 8)<>0;
+     KerningTable^.Minimum:=false;
+     KerningTable^.XStream:=(CoverageFlags and 4)<>0;
+     KerningTable^.ValueOverride:=false;
+
+     case CoverageFormat of
+      0:begin
+       result:=LoadKerningTableFormat0;
+       if result<>VkTTF_TT_ERR_NoError then begin
+        fLastError:=result;
+        exit;
+       end;
+      end;
+      2:begin
+       result:=LoadKerningTableFormat2;
+       if result<>VkTTF_TT_ERR_NoError then begin
+        fLastError:=result;
+        exit;
+       end;
+      end;
+     end;
+
+     Position:=Next;
+
+    end;
+
+    fLastError:=VkTTF_TT_ERR_NoError;
+    result:=fLastError;
 
    end;
    else begin
