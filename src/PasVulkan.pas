@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-10-00-36-0000                       *
+ *                        Version 2017-07-10-00-45-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -8375,6 +8375,8 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
     result:=Swap64(result);
 {$endif}
     inc(DataIndex,ByteWidth);
+   end else begin
+    result:=0;
    end;
    if ByteWidth=1 then begin
     result:=(TVkUInt32(result and BitsUsed[UsingBitGroup]) and $ffffffff) shr (((CountBitsUsed-UsingBitGroup)-1)*BitShift);
@@ -8520,6 +8522,10 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
      inc(DataIndex,8);
     end;
     else begin
+     pe.r:=0;
+     pe.g:=0;
+     pe.b:=0;
+     pe.a:=0;
      RaiseError;
     end;
    end;
@@ -31498,6 +31504,7 @@ begin
   Steps:=0;
   PC:=0;
   Top:=0;
+  CallStack[0].PC:=0;
   CallStackTop:=0;
 {$ifdef ttfdebug}
   StoreState;
@@ -37744,6 +37751,9 @@ type PPathSegmentSide=^TPathSegmentSide;
   var u:TVkDouble;
   begin
 
+   result.x:=0.0;
+   result.y:=0.0;
+
    // Make sure both line exists
    b:=false;
    if (not l0.exist) or (not l1.exist) then begin
@@ -38562,6 +38572,7 @@ type PPathSegmentSide=^TPathSegmentSide;
      PointLeft,PointRight,Point,p0,p1,Direction,OriginPointDifference:TDoublePrecisionPoint;
      pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time,Value:TvkDouble;
  begin
+  RowData.QuadraticXDirection:=0;
   for ContourIndex:=0 to Shape.CountContours-1 do begin
    Contour:=@Shape.Contours[ContourIndex];
    for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
