@@ -124,7 +124,7 @@ begin
 
  fVulkanSpriteAtlas:=TVulkanSpriteAtlas.Create(VulkanApplication.VulkanDevice);
 
- Stream:=VulkanApplication.Assets.GetAssetStream('fonts/droidsans.ttf');
+ Stream:=VulkanApplication.Assets.GetAssetStream('fonts/vera.ttf');
  try
   TrueTypeFont:=TVulkanTrueTypeFont.Create(Stream,72);
   try
@@ -411,7 +411,7 @@ begin
 
  fVulkanSpriteBatch.BlendingMode:=vsbbmAlphaBlending;
 
- LocalFontSize:=(-72.0)+(sin(fTime*pi*2.0)*48.0);
+ LocalFontSize:=(-56.0)+(sin((fTime*0.1)*pi*2.0)*48.0);
 
  rbs:='This is an example text';
 
