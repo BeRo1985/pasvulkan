@@ -1,7 +1,7 @@
 (******************************************************************************
  *                              PasVulkanApplication                          *
  ******************************************************************************
- *                        Version 2017-06-28-03-23-0000                       *
+ *                        Version 2017-07-09-11-22-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -1114,6 +1114,8 @@ type EVulkanApplication=class(Exception)
 
        procedure UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
        procedure DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+
+       function IsVisibleToUser:boolean;
 
       public
 
@@ -4981,24 +4983,27 @@ end;
 function TVulkanApplication.VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TVkUInt64;const aLocation:TVkSize;aMessageCode:TVkInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32;
 var Prefix:TVulkanCharString;
 begin
- Prefix:='';
- if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_ERROR_BIT_EXT))<>0 then begin
-  Prefix:=Prefix+'ERROR: ';
+ try
+  Prefix:='';
+  if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_ERROR_BIT_EXT))<>0 then begin
+   Prefix:=Prefix+'ERROR: ';
+  end;
+  if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_WARNING_BIT_EXT))<>0 then begin
+   Prefix:=Prefix+'WARNING: ';
+  end;
+  if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT))<>0 then begin
+   Prefix:=Prefix+'PERFORMANCE: ';
+  end;
+  if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_INFORMATION_BIT_EXT))<>0 then begin
+   Prefix:=Prefix+'INFORMATION: ';
+  end;
+  if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_DEBUG_BIT_EXT))<>0 then begin
+   Prefix:=Prefix+'DEBUG: ';
+  end;
+  VulkanDebugLn('[Debug] '+Prefix+'['+aLayerPrefix+'] Code '+TVulkanCharString(IntToStr(aMessageCode))+' : '+aMessage);
+ finally
+  result:=VK_FALSE;
  end;
- if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_WARNING_BIT_EXT))<>0 then begin
-  Prefix:=Prefix+'WARNING: ';
- end;
- if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT))<>0 then begin
-  Prefix:=Prefix+'PERFORMANCE: ';
- end;
- if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_INFORMATION_BIT_EXT))<>0 then begin
-  Prefix:=Prefix+'INFORMATION: ';
- end;
- if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_DEBUG_BIT_EXT))<>0 then begin
-  Prefix:=Prefix+'DEBUG: ';
- end;
- VulkanDebugLn('[Debug] '+Prefix+'['+aLayerPrefix+'] Code '+TVulkanCharString(IntToStr(aMessageCode))+' : '+aMessage);
- result:=VK_FALSE;
 end;
 
 procedure TVulkanApplication.VulkanWaitIdle;
@@ -5721,6 +5726,10 @@ var ImageIndex:TVkInt32;
 begin
  result:=false;
 
+ if not assigned(fVulkanSwapChain) then begin
+  fVulkanRecreationKind:=vavrkSurface;
+ end;
+
  if fVulkanRecreationKind=vavrkNone then begin
 
   if fVulkanPresentCompleteFencesReady[fRealUsedDrawSwapChainImageIndex] then begin
@@ -6159,6 +6168,15 @@ begin
  end;
 end;
 
+function TVulkanApplication.IsVisibleToUser:boolean;
+const FullScreenFocusActiveFlags=SDL_WINDOW_SHOWN or SDL_WINDOW_INPUT_FOCUS {sor SDL_WINDOW_MOUSE_FOCUS};
+var WindowFlags:TSDLUInt32;
+begin
+ WindowFlags:=SDL_GetWindowFlags(fSurfaceWindow);
+ result:=(fCurrentFullScreen=0) or
+         ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags);
+end;
+
 procedure TVulkanApplication.ProcessMessages;
 var Index,Counter:TVkInt32;
     Joystick:TVulkanApplicationJoystick;
@@ -6254,6 +6272,7 @@ begin
      LowMemory;
     end;                       
     SDL_APP_WILLENTERBACKGROUND:begin
+     writeln('SDL_APP_WILLENTERBACKGROUND');
 {$if defined(fpc) and defined(android)}
      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
 {$ifend}
@@ -6264,16 +6283,19 @@ begin
      fHasLastTime:=false;
     end;
     SDL_APP_DIDENTERBACKGROUND:begin
+     writeln('SDL_APP_DIDENTERBACKGROUND');
 {$if defined(fpc) and defined(android)}
      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_DIDENTERBACKGROUND')));
 {$ifend}
     end;
     SDL_APP_WILLENTERFOREGROUND:begin
+     writeln('SDL_APP_WILLENTERFOREGROUND');
 {$if defined(fpc) and defined(android)}
      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_WILLENTERFOREGROUND')));
 {$ifend}
     end;
     SDL_APP_DIDENTERFOREGROUND:begin
+     writeln('SDL_APP_DIDENTERFOREGROUND');
      InitializeGraphics;
      Resume;
      fActive:=true;
@@ -6477,7 +6499,7 @@ begin
   end;
  end;
 
- if fGraphicsReady then begin
+ if fGraphicsReady and IsVisibleToUser then begin
 
   if fSkipNextDrawFrame then begin
 
