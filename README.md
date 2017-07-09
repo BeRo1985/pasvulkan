@@ -20,17 +20,18 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
     - Object oriented Vulkan API abstraction
     - Best-fit red-black-tree based memory manager for the Vulkan memory management, for to manage the sub-allocations in the allocated buffers and for to keep the total count of simultaneous live allocations as much low as possible and less than TVkPhysicalDeviceLimits.maxMemoryAllocationCount.
     - Texture loaders with own ObjectPascal-native loader implementations, so it is independent of external third-party image loaders, even independent of the VCL, LCL and FCL.  
-        -  BMP (untested, but it should work)
-        -  DDS
-        -  HDR
-        -  KTX
-        -  JPG / JPEG (only baseline, only Huffman-coded and only YCrCb at the moment now) 
-        -  PNG (all types, including 16-bit channel PNGs)
-        -  TGA
+        - BMP (untested, but it should work)
+        - DDS
+        - HDR
+        - KTX
+        - JPG / JPEG (only baseline, only Huffman-coded and only YCrCb at the moment now) 
+        - PNG (all types, including 16-bit channel PNGs)
+        - TGA
     - Optional automatic GPU-based texture mipmap generation (with help of vkCmdBlitImage)
     - Own ObjectPascal-native True Type Font loader
-        -  With automatic on-the-fly high-quality fast parallizied signed distance field generation (based on the implementation ideas from [Practical Analytic 2D Signed Distance Field Generation](https://web.archive.org/web/20160909051854/http://malideveloper.arm.com/downloads/Presentations/Siggraph16/Practical_Analytic_2D_Signed_Distance_Field_Generation.pdf) and with [PasMP](https://github.com/BeRo1985/pasmp) )
-        -  A [font vector textures](http://wdobbie.com/post/gpu-text-rendering-with-vector-textures/) feature is also planned for the future, for an own combined signed-distance-field + vector-texture hybrid rendering technology implementation, dependently by the font size and so on.  
+        - With semi-working TTF hinting byte code interpreter as an optional option
+        - With automatic on-the-fly high-quality fast parallizied signed distance field generation (based on the implementation ideas from [Practical Analytic 2D Signed Distance Field Generation](https://web.archive.org/web/20160909051854/http://malideveloper.arm.com/downloads/Presentations/Siggraph16/Practical_Analytic_2D_Signed_Distance_Field_Generation.pdf) and with [PasMP](https://github.com/BeRo1985/pasmp) )
+        - A [font vector textures](http://wdobbie.com/post/gpu-text-rendering-with-vector-textures/) feature is also planned for the future, for an own combined signed-distance-field + vector-texture hybrid rendering technology implementation, dependently by the font size and so on.  
     - Sprite batch class
     - Sprite atlases
     - and more useful utils and stuff for Vulkan-programming
