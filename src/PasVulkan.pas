@@ -3644,7 +3644,8 @@ type EVulkanException=class(Exception);
        procedure Resize(NewWidth,NewHeight:TVkInt32); virtual;
        procedure MoveTo(ToX,ToY:TVkInt32); virtual;
        procedure LineTo(ToX,ToY:TVkInt32); virtual;
-       procedure QuadraticCurveTo(ControlX,ControlY,AnchorX,AnchorY:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32); virtual;
+       procedure QuadraticCurveTo(const ControlX,ControlY,AnchorX,AnchorY:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32); virtual;
+       procedure CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32); virtual;
        procedure Close; virtual;
        procedure Render; virtual;
        property Canvas:TVkPointer read GetCanvas write SetCanvas;
@@ -29353,8 +29354,8 @@ begin
  fLastY:=ToY;
 end;
 
-procedure TVulkanTrueTypeFontRasterizer.QuadraticCurveTo(ControlX,ControlY,AnchorX,AnchorY:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
- procedure Recursive(x1,y1,x2,y2,x3,y3,Level:TVkInt32);
+procedure TVulkanTrueTypeFontRasterizer.QuadraticCurveTo(const ControlX,ControlY,AnchorX,AnchorY:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
+ procedure Recursive(const x1,y1,x2,y2,x3,y3,Level:TVkInt32);
  var x12,y12,x23,y23,x123,y123,MiddleX,MiddleY,Delta:TVkInt32;
  begin
   x12:=SARLongint(x1+x2,1);
@@ -29376,6 +29377,36 @@ procedure TVulkanTrueTypeFontRasterizer.QuadraticCurveTo(ControlX,ControlY,Ancho
 begin
  Recursive(fLastX,fLastY,ControlX,ControlY,AnchorX,AnchorY,0);
  LineTo(AnchorX,AnchorY);
+end;
+
+procedure TVulkanTrueTypeFontRasterizer.CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
+ procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4,Level:TVkInt32);
+ var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,d:TVkInt32;
+ begin
+  x12:=SARLongint(x1+x2,1);
+  y12:=SARLongint(y1+y2,1);
+  x23:=SARLongint(x2+x3,1);
+  y23:=SARLongint(y2+y3,1);
+  x34:=SARLongint(x3+x4,1);
+  y34:=SARLongint(y3+y4,1);
+  x123:=SARLongint(x12+x23,1);
+  y123:=SARLongint(y12+y23,1);
+  x234:=SARLongint(x23+x34,1);
+  y234:=SARLongint(y23+y34,1);
+  x1234:=SARLongint(x123+x234,1);
+  y1234:=SARLongint(y123+y234,1);
+// d:=abs(SARlongint(x1+x4,1)-x1234)+abs(SARLongint(y1+y4,1)-y1234);
+  d:=abs(((x1+x3)-x2)-x2)+abs(((y1+y3)-y2)-y2)+abs(((x2+x4)-x3)-x3)+abs(((y2+y4)-y3)-y3);
+  if (Level>MaxLevel) or (d<Tolerance) then begin
+   LineTo(x1234,y1234);
+  end else begin
+   Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
+   Recursive(x1234,y1234,x234,y234,x34,y34,x4,y4,Level+1);
+  end;
+ end;
+begin
+ Recursive(fLastX,fLastY,c1x,c1y,c2x,c2y,ax,ay,0);
+ LineTo(ax,ay);
 end;
 
 procedure TVulkanTrueTypeFontRasterizer.Close;
@@ -36220,6 +36251,12 @@ begin
      Rasterizer.QuadraticCurveTo(x+PolygonBuffer.Commands[CommandIndex].Points[0].x,y+PolygonBuffer.Commands[CommandIndex].Points[0].y,
                                  x+PolygonBuffer.Commands[CommandIndex].Points[1].x,y+PolygonBuffer.Commands[CommandIndex].Points[1].y,
                                  Tolerance,MaxLevel);
+    end;
+    VkTTF_PolygonCommandType_CUBICCURVETO:begin
+     Rasterizer.CubicCurveTo(x+PolygonBuffer.Commands[CommandIndex].Points[0].x,y+PolygonBuffer.Commands[CommandIndex].Points[0].y,
+                             x+PolygonBuffer.Commands[CommandIndex].Points[1].x,y+PolygonBuffer.Commands[CommandIndex].Points[1].y,
+                             x+PolygonBuffer.Commands[CommandIndex].Points[2].x,y+PolygonBuffer.Commands[CommandIndex].Points[2].y,
+                             Tolerance,MaxLevel);
     end;
     VkTTF_PolygonCommandType_CLOSE:begin
      Rasterizer.Close;
