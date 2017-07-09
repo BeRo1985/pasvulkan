@@ -253,7 +253,8 @@ const VulkanMinimumMemoryChunkSize=1 shl 24; // 16 MB minimum memory chunk size
       VkTTF_TT_ERR_CharacterMapNotPresent=7;
       VkTTF_TT_ERR_UnableToOpenFile=8;
       VkTTF_TT_ERR_UnknownKerningFormat=9;
-      VkTTF_TT_ERR_OutOfBounds=10;
+      VkTTF_TT_ERR_UnknownGPOSFormat=10;
+      VkTTF_TT_ERR_OutOfBounds=11;
 
       VkTTF_LineCapMode_BUTT=0;
       VkTTF_LineCapMode_SQUARE=1;
@@ -4111,6 +4112,7 @@ type EVulkanException=class(Exception);
        function LoadHMTX:TVkInt32;
        function LoadVHEA:TVkInt32;
        function LoadVMTX:TVkInt32;
+       function LoadGPOS:TVkInt32;
        function LoadKERN:TVkInt32;
        function LoadCMAP:TVkInt32;
        function LoadCVT:TVkInt32;
@@ -33126,6 +33128,10 @@ begin
            if LoadHMTX=VkTTF_TT_ERR_NoError then begin
             if LoadVHEA=VkTTF_TT_ERR_NoError then begin
              if LoadVMTX=VkTTF_TT_ERR_NoError then begin
+              if LoadGPOS<>VkTTF_TT_ERR_NoError then begin
+               // GPOS table is only optional
+               fLastError:=VkTTF_TT_ERR_NoError;
+              end;
               if LoadKERN<>VkTTF_TT_ERR_NoError then begin
                // Kerning table is only optional
                fLastError:=VkTTF_TT_ERR_NoError;
@@ -33845,6 +33851,259 @@ begin
    result:=fLastError;
   end;
  end;
+end;
+
+function TVulkanTrueTypeFont.LoadGPOS:TVkInt32;
+var Position,Tag,CheckSum,Offset,Size,Next,
+    MajorVersion,MinorVersion,
+    FeatureVariations,LookupType,LookupFlags,
+    SubTableType,ValueFormat1,ValueFormat2,
+    FirstGlyph,SecondGlyph:TVkUInt32;
+    i,j,k,h,CoverageOffset,BaseOffset,ScriptListOffset,
+    FeatureListOffset,LookupListOffset,LookupListCount,
+    LookupTableOffset,SubTableCount,SubTableOffset,
+    ClassDefOffset1,ClassDefOffset2,
+    Class1Count,Class2Count,
+    PairSetCount,PairSetTableOffset,PairValueCount,
+    CurrentPosition,x,y:TVkInt32;
+    GlyphArray:array of TVkUInt32;
+ function LoadCoverageTable:TVkInt32;
+ var CoverageFormat,CurrentPosition:TVkUInt32;
+     k,h,GlyphCount,RangeCount,StartIndex,EndIndex:TVkInt32;
+     GlyphInt64HashMap:TVulkanInt64HashMap;
+ begin
+
+  CoverageFormat:=ToWORD(fFontData[CoverageOffset+0],fFontData[CoverageOffset+1]);
+
+  GlyphCount:=0;
+
+  case CoverageFormat of
+   1:begin
+    GlyphCount:=ToWORD(fFontData[CoverageOffset+2],fFontData[CoverageOffset+3]);
+    SetLength(GlyphArray,GlyphCount);
+    for k:=0 to GlyphCount-1 do begin
+     GlyphArray[k]:=ToWORD(fFontData[CoverageOffset+4+(k*2)],fFontData[CoverageOffset+5+(k*2)]);
+    end;
+   end;
+   2:begin
+    RangeCount:=ToWORD(fFontData[CoverageOffset+2],fFontData[CoverageOffset+3]);
+    try
+     GlyphInt64HashMap:=TVulkanInt64HashMap.Create;
+     try
+      CurrentPosition:=CoverageOffset+4;
+      for k:=0 to RangeCount-1 do begin
+       StartIndex:=ToWORD(fFontData[CurrentPosition+0],fFontData[CurrentPosition+1]);
+       EndIndex:=ToWORD(fFontData[CurrentPosition+2],fFontData[CurrentPosition+3]);
+       inc(CurrentPosition,6);
+       for h:=StartIndex to EndIndex do begin
+        if not GlyphInt64HashMap.ExistKey(h) then begin
+         GlyphInt64HashMap.Add(h,nil);
+         if length(GlyphArray)<(GlyphCount+1) then begin
+          SetLength(GlyphArray,(GlyphCount+1)*2);
+         end;
+         GlyphArray[GlyphCount]:=h;
+         inc(GlyphCount);
+        end;
+       end;
+      end;
+     finally
+      GlyphInt64HashMap.Free;
+     end;
+    finally
+     SetLength(GlyphArray,GlyphCount);
+    end;
+   end;
+   else begin
+    fLastError:=VkTTF_TT_ERR_UnknownGPOSFormat;
+    result:=fLastError;
+    exit;
+   end;
+  end;
+
+  result:=VkTTF_TT_Err_NoError;
+
+ end;
+ function ReadValueFromValueRecord(var Offset:TVkInt32;const ValueFormat,TargetMask:TVkInt32):TVkInt32;
+ var Mask,Value:TVkInt32;
+ begin
+  result:=0;
+  Mask:=1;
+  while (Mask<=$8000) and (Mask<=ValueFormat) do begin
+   Value:=ToSMALLINT(fFontData[Offset+0],fFontData[Offset+1]);
+   inc(Offset,2);
+   if Mask=TargetMask then begin
+    result:=Value;
+   end;
+   Mask:=Mask shl 1;
+  end;
+ end;
+ procedure AddKerningPair(const FirstGlyph,SecondGlyph,Value:TVkInt32;const Horizontal:boolean);
+ begin
+
+ end;
+begin
+
+ Tag:=ToLONGWORD(TVkUInt8('G'),TVkUInt8('P'),TVkUInt8('O'),TVkUInt8('S'));
+ result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
+ if result=VkTTF_TT_Err_NoError then begin
+
+  Position:=Offset;
+
+  BaseOffset:=Position;
+
+  MajorVersion:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,sizeof(TVkUInt16));
+
+  MinorVersion:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,sizeof(TVkUInt16));
+
+  ScriptListOffset:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,sizeof(TVkUInt16));
+
+  FeatureListOffset:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,sizeof(TVkUInt16));
+
+  LookupListOffset:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,sizeof(TVkUInt16));
+
+  if (MajorVersion=1) and (MinorVersion=0) then begin
+   FeatureVariations:=0;
+  end else if (MajorVersion=1) and (MinorVersion=1) then begin
+   FeatureVariations:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
+   inc(Position,sizeof(TVkUInt32));
+  end else begin
+   fLastError:=VkTTF_TT_ERR_UnknownGPOSFormat;
+   result:=fLastError;
+   exit;
+  end;
+
+  if ScriptListOffset<>0 then begin
+  end;
+
+  if FeatureListOffset<>0 then begin
+  end;
+
+  LookupListCount:=ToWORD(fFontData[BaseOffset+LookupListOffset+0],fFontData[BaseOffset+LookupListOffset+1]);
+
+  for i:=0 to LookupListCount-1 do begin
+
+   LookupTableOffset:=BaseOffset+LookupListOffset+ToWORD(fFontData[BaseOffset+LookupListOffset+2+(i*2)],fFontData[BaseOffset+LookupListOffset+3+(i*2)]);
+
+   LookupType:=ToWORD(fFontData[LookupTableOffset+0],fFontData[LookupTableOffset+1]);
+
+   LookupFlags:=ToWORD(fFontData[LookupTableOffset+2],fFontData[LookupTableOffset+3]);
+
+   SubTableCount:=ToWORD(fFontData[LookupTableOffset+4],fFontData[LookupTableOffset+5]);
+
+   for j:=0 to SubTableCount-1 do begin
+
+    SubTableOffset:=LookupTableOffset+ToWORD(fFontData[LookupTableOffset+6+(i*2)],fFontData[LookupTableOffset+7+(i*2)]);
+
+    case LookupType of
+     2:begin
+
+      // Pair adjustment subtable
+
+      SubTableType:=ToWORD(fFontData[SubTableOffset+0],fFontData[SubTableOffset+1]);
+
+      case SubTableType of
+       1:begin
+
+        // Format 1
+
+        CoverageOffset:=SubTableOffset+ToWORD(fFontData[SubTableOffset+2],fFontData[SubTableOffset+3]);
+        ValueFormat1:=ToWORD(fFontData[SubTableOffset+4],fFontData[SubTableOffset+5]);
+        ValueFormat2:=ToWORD(fFontData[SubTableOffset+6],fFontData[SubTableOffset+7]);
+        PairSetCount:=ToWORD(fFontData[SubTableOffset+8],fFontData[SubTableOffset+9]);
+        PairSetTableOffset:=SubTableOffset+10;
+
+        GlyphArray:=nil;
+        try
+
+         result:=LoadCoverageTable;
+         if result<>VkTTF_TT_Err_NoError then begin
+          fLastError:=result;
+          exit;
+         end;
+
+         PairSetCount:=Min(PairSetCount,length(GlyphArray));
+
+         for k:=0 to PairSetCount-1 do begin
+          FirstGlyph:=GlyphArray[k];
+          CurrentPosition:=ToWORD(fFontData[SubTableOffset+PairSetTableOffset+0+(k*2)],fFontData[SubTableOffset+PairSetTableOffset+1+(k*2)]);
+          PairValueCount:=ToWORD(fFontData[CurrentPosition+0],fFontData[CurrentPosition+1]);
+          inc(CurrentPosition,2);
+          for h:=0 to PairValueCount-1 do begin
+           SecondGlyph:=ToWORD(fFontData[CurrentPosition+0],fFontData[CurrentPosition+1]);
+           inc(CurrentPosition,2);
+           x:=ReadValueFromValueRecord(CurrentPosition,ValueFormat1,$0004);
+           ReadValueFromValueRecord(CurrentPosition,ValueFormat2,$0004);
+           AddKerningPair(FirstGlyph,SecondGlyph,x,true);
+          end;
+         end;
+
+        finally
+         GlyphArray:=nil;
+        end;
+
+       end;
+       2:begin
+
+        // Format 2
+
+        CoverageOffset:=SubTableOffset+ToWORD(fFontData[SubTableOffset+2],fFontData[SubTableOffset+3]);
+        ValueFormat1:=ToWORD(fFontData[SubTableOffset+4],fFontData[SubTableOffset+5]);
+        ValueFormat2:=ToWORD(fFontData[SubTableOffset+6],fFontData[SubTableOffset+7]);
+        ClassDefOffset1:=ToWORD(fFontData[SubTableOffset+8],fFontData[SubTableOffset+9]);
+        ClassDefOffset2:=ToWORD(fFontData[SubTableOffset+10],fFontData[SubTableOffset+11]);
+        Class1Count:=ToWORD(fFontData[SubTableOffset+12],fFontData[SubTableOffset+13]);
+        Class2Count:=ToWORD(fFontData[SubTableOffset+14],fFontData[SubTableOffset+15]);
+
+        GlyphArray:=nil;
+        try
+
+         result:=LoadCoverageTable;
+         if result<>VkTTF_TT_Err_NoError then begin
+          fLastError:=result;
+          exit;
+         end;
+
+
+
+        finally
+         GlyphArray:=nil;
+        end;
+
+       end;
+      end;
+
+     end;
+     9:begin
+
+      // Extension positioning subtable
+
+      SubTableType:=ToWORD(fFontData[SubTableOffset+0],fFontData[SubTableOffset+1]);
+
+      case SubTableType of
+       1:begin
+        // Format 1
+
+       end;
+      end;
+
+     end;
+    end;
+
+
+   end;
+
+  end;
+
+  fLastError:=VkTTF_TT_ERR_NoError;
+  result:=fLastError;
+
+ end;
+
 end;
 
 function TVulkanTrueTypeFont.LoadKERN:TVkInt32;
