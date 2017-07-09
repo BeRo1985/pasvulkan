@@ -34188,6 +34188,8 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
   result:=VkTTF_TT_Err_NoError;
 
  end;
+var KerningTable:PVulkanTrueTypeFontKerningTable;
+    DoNeedSort:boolean;
 begin
 
  Tag:=ToLONGWORD(TVkUInt8('G'),TVkUInt8('P'),TVkUInt8('O'),TVkUInt8('S'));
@@ -34232,6 +34234,8 @@ begin
 
   LookupListCount:=ToWORD(fFontData[BaseOffset+LookupListOffset+0],fFontData[BaseOffset+LookupListOffset+1]);
 
+  fKerningTables:=nil;
+
   for i:=0 to LookupListCount-1 do begin
 
    LookupTableOffset:=BaseOffset+LookupListOffset+ToWORD(fFontData[BaseOffset+LookupListOffset+2+(i*2)],fFontData[BaseOffset+LookupListOffset+3+(i*2)]);
@@ -34254,6 +34258,30 @@ begin
 
    end;
 
+  end;
+
+  for i:=0 to length(fKerningTables)-1 do begin
+   KerningTable:=@fKerningTables[i];
+   KerningTable^.BinarySearch:=false;
+   if length(KerningTable^.KerningPairs)<>0 then begin
+    DoNeedSort:=false;
+    for j:=1 to length(KerningTable^.KerningPairs)-1 do begin
+     if CompareKerningPairs(@KerningTable^.KerningPairs[j-1],@KerningTable^.KerningPairs[j])>0 then begin
+      DoNeedSort:=true;
+      break;
+     end;
+    end;
+    if DoNeedSort then begin
+     DirectIntroSort(@KerningTable^.KerningPairs[0],0,length(KerningTable^.KerningPairs)-1,SizeOf(TVulkanTrueTypeFontKerningPair),CompareKerningPairs);
+    end;
+    KerningTable^.BinarySearch:=true;
+    for j:=1 to length(KerningTable^.KerningPairs)-1 do begin
+     if CompareKerningPairs(@KerningTable^.KerningPairs[j-1],@KerningTable^.KerningPairs[j])>0 then begin
+      KerningTable^.BinarySearch:=false;
+      break;
+     end;
+    end;
+   end;
   end;
 
   fLastError:=VkTTF_TT_ERR_NoError;
