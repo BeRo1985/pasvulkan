@@ -3793,6 +3793,8 @@ type EVulkanException=class(Exception);
      PVulkanTrueTypeFontKerningTable=^TVulkanTrueTypeFontKerningTable;
      TVulkanTrueTypeFontKerningTable=record
       Horizontal:longbool;
+      Minimum:longbool;
+      XStream:longbool;
       ValueOverride:longbool;
       BinarySearch:longbool;
       KerningPairs:TVulkanTrueTypeFontKerningPairs;
@@ -14368,12 +14370,12 @@ begin
   end else begin
 {$ifdef VulkanXMLUnicode}
    if c<#255 then begin
-    result:=result+'&#'+INTTOSTR(ord(c))+';';
+    result:=result+'&#'+TVulkanRawByteString(IntToStr(ord(c)))+';';
    end else begin
-    result:=result+'&#x'+IntToHex(ord(c),4)+';';
+    result:=result+'&#x'+TVulkanRawByteString(IntToHex(ord(c),4))+';';
    end;
 {$else}
-   result:=result+'&#'+INTTOSTR(TVkUInt8(c))+';';
+   result:=result+'&#'+TVulkanRawByteString(IntToStr(TVkUInt8(c)))+';';
 {$endif}
   end;
  end;
@@ -14915,7 +14917,7 @@ var Errors:boolean;
     exit;
    end;
    if XMLProcessTag.Name='xml' then begin
-    EncodingName:=UPPERCASE(XMLProcessTag.GetParameter('encoding','ascii'));
+    EncodingName:=TVulkanRawByteString(UpperCase(String(XMLProcessTag.GetParameter('encoding','ascii'))));
     if EncodingName='UTF-8' then begin
      Encoding:=etUTF8;
     end else if EncodingName='UTF-16' then begin
@@ -14990,10 +14992,10 @@ var Errors:boolean;
     Errors:=true;
     exit;
    end;
-   if POS('DOCTYPE',Content)=1 then begin
+   if pos('DOCTYPE',String(Content))=1 then begin
     XMLDOCTYPETag:=TVulkanXMLDOCTYPETag.Create;
     ParentItem.Add(XMLDOCTYPETag);
-    XMLDOCTYPETag.Text:=TRIMLEFT(COPY(Content,8,length(Content)-7));
+    XMLDOCTYPETag.Text:=TVulkanRawByteString(TrimLeft(Copy(String(Content),8,length(String(Content))-7)));
    end else begin
     XMLExtraTag:=TVulkanXMLExtraTag.Create;
     ParentItem.Add(XMLExtraTag);
@@ -15213,8 +15215,8 @@ var IdentLevel:TVkInt32;
       if Item.Items.Count=1 then begin
        if assigned(Item.Items[0]) then begin
         if Item.Items[0] is TVulkanXMLText then begin
-         if ((POS(#13,TVulkanXMLText(Item.Items[0]).Text)=0) and
-             (POS(#10,TVulkanXMLText(Item.Items[0]).Text)=0)) or not FormatIndentText then begin
+         if ((Pos(#13,String(TVulkanXMLText(Item.Items[0]).Text))=0) and
+             (Pos(#10,String(TVulkanXMLText(Item.Items[0]).Text))=0)) or not FormatIndentText then begin
           TagWithSingleLineText:=true;
          end;
         end;
@@ -25951,22 +25953,22 @@ const RGBE_DATA_RED=0;
      end;
     end;
     line[0]:=TVulkanRawByteChar(TVkUInt8(i));
-    line:=trim(line);
+    line:=ShortString(Trim(String(line)));
     if line='FORMAT=32-bit_rle_rgbe' then begin
      OK:=true;
      break;
-    end else if pos('GAMMA=',line)=1 then begin
+    end else if Pos('GAMMA=',String(line))=1 then begin
      Delete(line,1,6);
      OK:=false;
      gamma:=0;
-     System.Val(line,gamma,k);
+     System.Val(String(line),gamma,k);
      if k>0 then begin
       gamma:=1.0;
      end;
      OK:=false;
-    end else if pos('EXPOSURE=',line)=1 then begin
+    end else if Pos('EXPOSURE=',String(line))=1 then begin
      Delete(line,1,9);
-     System.Val(line,exposure,k);
+     System.Val(String(line),exposure,k);
      if k>0 then begin
       exposure:=1.0;
      end;
@@ -25989,10 +25991,10 @@ const RGBE_DATA_RED=0;
      end;
     end;
     line[0]:=TVulkanRawByteChar(TVkUInt8(i));
-    line:=trim(line);
-    if (pos('-Y',line)=1) and (pos('+X',line)>2) then begin
+    line:=ShortString(Trim(String(line)));
+    if (pos('-Y',String(line))=1) and (pos('+X',String(line))>2) then begin
      Delete(line,1,2);
-     line:=trim(line);
+     line:=ShortString(Trim(String(line)));
      ImageWidth:=0;
      i:=0;
      while ((i+1)<=length(line)) and (line[i+1] in ['0'..'9']) do begin
@@ -26000,10 +26002,10 @@ const RGBE_DATA_RED=0;
       ImageWidth:=(ImageWidth*10)+(TVkUInt8(TVulkanRawByteChar(line[i]))-TVkUInt8(TVulkanRawByteChar('0')));
      end;
      Delete(line,1,i);
-     line:=trim(line);
-     if pos('-X',line)=1 then begin
+     line:=ShortString(Trim(String(line)));
+     if pos('-X',String(line))=1 then begin
       Delete(line,1,2);
-      line:=trim(line);
+      line:=ShortString(Trim(String(line)));
       ImageHeight:=0;
       i:=0;
       while ((i+1)<=length(line)) and (line[i+1] in ['0'..'9']) do begin
@@ -28418,14 +28420,14 @@ begin
              Sprite:=TVulkanSprite.Create;
              Sprite.Texture:=Texture;
              Sprite.Name:=SpriteName;
-             Sprite.x:=StrToIntDef(XMLChildrenTag.GetParameter('x','0'),0);
-             Sprite.y:=StrToIntDef(XMLChildrenTag.GetParameter('y','0'),0);
-             Sprite.Width:=StrToIntDef(XMLChildrenTag.GetParameter('oW',XMLChildrenTag.GetParameter('w','0')),0);
-             Sprite.Height:=StrToIntDef(XMLChildrenTag.GetParameter('oH',XMLChildrenTag.GetParameter('h','0')),0);
-             Sprite.TrimmedX:=StrToIntDef(XMLChildrenTag.GetParameter('oX','0'),0);
-             Sprite.TrimmedY:=StrToIntDef(XMLChildrenTag.GetParameter('oY','0'),0);
-             Sprite.TrimmedWidth:=StrToIntDef(XMLChildrenTag.GetParameter('w','0'),0);
-             Sprite.TrimmedHeight:=StrToIntDef(XMLChildrenTag.GetParameter('h','0'),0);
+             Sprite.x:=StrToIntDef(String(XMLChildrenTag.GetParameter('x','0')),0);
+             Sprite.y:=StrToIntDef(String(XMLChildrenTag.GetParameter('y','0')),0);
+             Sprite.Width:=StrToIntDef(String(XMLChildrenTag.GetParameter('oW',XMLChildrenTag.GetParameter('w','0'))),0);
+             Sprite.Height:=StrToIntDef(String(XMLChildrenTag.GetParameter('oH',XMLChildrenTag.GetParameter('h','0'))),0);
+             Sprite.TrimmedX:=StrToIntDef(String(XMLChildrenTag.GetParameter('oX','0')),0);
+             Sprite.TrimmedY:=StrToIntDef(String(XMLChildrenTag.GetParameter('oY','0')),0);
+             Sprite.TrimmedWidth:=StrToIntDef(String(XMLChildrenTag.GetParameter('w','0')),0);
+             Sprite.TrimmedHeight:=StrToIntDef(String(XMLChildrenTag.GetParameter('h','0')),0);
              Sprite.Rotated:=XMLChildrenTag.GetParameter('r','n')='y';
              AddSprite(Sprite);
             end;
@@ -28463,6 +28465,8 @@ begin
  result:=nil;
 
  try
+
+  Node:=nil;
 
   if assigned(ImageData) and (ImageWidth>0) and (ImageHeight>0) then begin
 
@@ -28840,7 +28844,7 @@ begin
             inc(dp,SpriteWidth);
            end;
 
-           result[Count]:=LoadRawSprite(Name+IntToStr(Count),SpriteData,SpriteWidth,SpriteHeight);
+           result[Count]:=LoadRawSprite(Name+TVulkanRawByteString(IntToStr(Count)),SpriteData,SpriteWidth,SpriteHeight);
 
            inc(Count);
 
@@ -32314,8 +32318,10 @@ begin
          // UNDOCUMENTED! The MS rasterizer does that with twilight points
          p1:=GetPoint(2,VkTTF_PointType_Unhinted,fStack[Top]);
          if assigned(p1) then begin
-          p1^.x:=p0^.x;
-          p1^.y:=p0^.y;
+{         p1^.x:=p0^.x;
+          p1^.y:=p0^.y;}
+          p1^.x:=p^.x;
+          p1^.y:=p^.y;
          end;
         end;
        end else begin
@@ -33810,104 +33816,241 @@ begin
 end;
 
 function TVulkanTrueTypeFont.LoadKERN:TVkInt32;
-var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next:TVkUInt32;
+var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
     NumfSubTables,i,j,NumKerningPairs:TVkInt32;
     CoverageFormat,CoverageFlags:TVkUInt8;
-    DoNeedSort:boolean;
+    DoNeedSort,Minimum,XStream:boolean;
     KerningTable:PVulkanTrueTypeFontKerningTable;
-    KerningPair:PVulkanTrueTypeFontKerningPair;
-begin
- Tag:=ToLONGWORD(TVkUInt8('k'),TVkUInt8('e'),TVkUInt8('r'),TVkUInt8('n'));
- result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
-  Position:=Offset;
-  inc(Position,sizeof(TVkUInt16)); // Table Version number
-  NumfSubTables:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+ function LoadKerningTableFormat0:TVkInt32;
+ var i,j,NumKerningPairs:TVkInt32;
+     DoNeedSort:boolean;
+     KerningPair:PVulkanTrueTypeFontKerningPair;
+ begin
 
-  SetLength(fKerningTables,NumfSubTables);
-  if length(fKerningTables)<>NumfSubTables then begin
+  NumKerningPairs:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TVkUInt16)); // Search range
+  inc(Position,sizeof(TVkUInt16)); // Entry selector
+  inc(Position,sizeof(TVkUInt16)); // Range shift
+
+  KerningTable^.KerningPairs:=nil;
+  SetLength(KerningTable^.KerningPairs,NumKerningPairs);
+  if length(KerningTable^.KerningPairs)<>NumKerningPairs then begin
    fLastError:=VkTTF_TT_ERR_OutOfMemory;
    result:=fLastError;
    exit;
   end;
 
-  for i:=0 to NumfSubTables-1 do begin
+  if (length(KerningTable^.KerningPairs)*12)>length(fFontData) then begin
+   fLastError:=VkTTF_TT_ERR_CorruptFile;
+   result:=fLastError;
+   exit;
+  end;
 
-   KerningTable:=@fKerningTables[i];
-
-   inc(Position,sizeof(TVkUInt16)); // Subtable version number
-   SubTableSize:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16)); // Subtable Size
-   CoverageFormat:=fFontData[Position];
-   CoverageFlags:=fFontData[Position+1];
-   inc(Position,2);
-   Next:=Position+SubTableSize-6;
-
-   if ((CoverageFlags and (2 or 4))<>0) or (CoverageFormat<>0) then begin
-    Position:=Next;
-    continue;
-   end;
-
-   KerningTable^.Horizontal:=(CoverageFlags and 1)<>0;
-   KerningTable^.ValueOverride:=(CoverageFlags and 8)<>0;
-
-   NumKerningPairs:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  for j:=0 to length(KerningTable^.KerningPairs)-1 do begin
+   KerningPair:=@KerningTable^.KerningPairs[j];
+   KerningPair^.Left:=ToWORD(fFontData[Position],fFontData[Position+1]);
    inc(Position,sizeof(TVkUInt16));
+   KerningPair^.Right:=ToWORD(fFontData[Position],fFontData[Position+1]);
+   inc(Position,sizeof(TVkUInt16));
+   KerningPair^.Value:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
+   inc(Position,sizeof(TVkInt16));
+  end;
 
-   inc(Position,sizeof(TVkUInt16)); // Search range
-   inc(Position,sizeof(TVkUInt16)); // Entry selector
-   inc(Position,sizeof(TVkUInt16)); // Range shift
-
-   fKerningTables[i].KerningPairs:=nil;
-   SetLength(KerningTable^.KerningPairs,NumKerningPairs);
-   if length(KerningTable^.KerningPairs)<>NumKerningPairs then begin
-    fLastError:=VkTTF_TT_ERR_OutOfMemory;
-    result:=fLastError;
-    exit;
-   end;
-
-   if (length(KerningTable^.KerningPairs)*12)>length(fFontData) then begin
-    fLastError:=VkTTF_TT_ERR_CorruptFile;
-    result:=fLastError;
-    exit;
-   end;
-
-   for j:=0 to length(KerningTable^.KerningPairs)-1 do begin
-    KerningPair:=@KerningTable^.KerningPairs[j];
-    KerningPair^.Left:=ToWORD(fFontData[Position],fFontData[Position+1]);
-    inc(Position,sizeof(TVkUInt16));
-    KerningPair^.Right:=ToWORD(fFontData[Position],fFontData[Position+1]);
-    inc(Position,sizeof(TVkUInt16));
-    KerningPair^.Value:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-    inc(Position,sizeof(TVkInt16));
-   end;
-
-   KerningTable^.BinarySearch:=false;
-   if length(KerningTable^.KerningPairs)<>0 then begin
-    DoNeedSort:=false;
-    for j:=1 to length(KerningTable^.KerningPairs)-1 do begin
-     if CompareKerningPairs(@KerningTable^.KerningPairs[j-1],@KerningTable^.KerningPairs[j])>0 then begin
-      DoNeedSort:=true;
-      break;
-     end;
-    end;
-    if DoNeedSort then begin
-     DirectIntroSort(@KerningTable^.KerningPairs[0],0,length(KerningTable^.KerningPairs)-1,SizeOf(TVulkanTrueTypeFontKerningPair),CompareKerningPairs);
-    end;
-    fKerningTables[i].BinarySearch:=true;
-    for j:=1 to length(KerningTable^.KerningPairs)-1 do begin
-     if CompareKerningPairs(@KerningTable^.KerningPairs[j-1],@KerningTable^.KerningPairs[j])>0 then begin
-      fKerningTables[i].BinarySearch:=false;
-      break;
-     end;
+  KerningTable^.BinarySearch:=false;
+  if length(KerningTable^.KerningPairs)<>0 then begin
+   DoNeedSort:=false;
+   for j:=1 to length(KerningTable^.KerningPairs)-1 do begin
+    if CompareKerningPairs(@KerningTable^.KerningPairs[j-1],@KerningTable^.KerningPairs[j])>0 then begin
+     DoNeedSort:=true;
+     break;
     end;
    end;
-   Position:=Next;
+   if DoNeedSort then begin
+    DirectIntroSort(@KerningTable^.KerningPairs[0],0,length(KerningTable^.KerningPairs)-1,SizeOf(TVulkanTrueTypeFontKerningPair),CompareKerningPairs);
+   end;
+   KerningTable^.BinarySearch:=true;
+   for j:=1 to length(KerningTable^.KerningPairs)-1 do begin
+    if CompareKerningPairs(@KerningTable^.KerningPairs[j-1],@KerningTable^.KerningPairs[j])>0 then begin
+     KerningTable^.BinarySearch:=false;
+     break;
+    end;
+   end;
   end;
 
   fLastError:=VkTTF_TT_ERR_NoError;
   result:=fLastError;
+
+ end;
+ function LoadKerningTableFormat2:TVkInt32;
+ var i,j,Offset,RowWidth,LeftOffsetTable,RightOffsetTable,KernArray,
+     LeftClassOffset,RightClassOffset,LeftFirstGlyph,LeftCountGlyphs,
+     RightFirstGlyph,RightCountGlyphs,LeftGlyphCounter,RightGlyphCounter,
+     CountKerningPairs,KerningPairIndex:TVkInt32;
+     DoNeedSort:boolean;
+     KerningPair:PVulkanTrueTypeFontKerningPair;
+ begin
+
+  Offset:=Position;
+
+  RowWidth:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,sizeof(TVkUInt16));
+
+  LeftOffsetTable:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,sizeof(TVkUInt16));
+
+  RightOffsetTable:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,sizeof(TVkUInt16));
+
+  KernArray:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,sizeof(TVkUInt16));
+
+  LeftFirstGlyph:=ToWORD(fFontData[Offset+LeftOffsetTable+0],fFontData[Offset+LeftOffsetTable+1]);
+  LeftCountGlyphs:=ToWORD(fFontData[Offset+LeftOffsetTable+2],fFontData[Offset+LeftOffsetTable+3]);
+
+  RightFirstGlyph:=ToWORD(fFontData[Offset+RightOffsetTable+0],fFontData[Offset+RightOffsetTable+1]);
+  RightCountGlyphs:=ToWORD(fFontData[Offset+RightOffsetTable+2],fFontData[Offset+RightOffsetTable+3]);
+
+  CountKerningPairs:=0;
+  KerningTable^.KerningPairs:=nil;
+  try
+   for LeftGlyphCounter:=0 to LeftCountGlyphs-1 do begin
+    LeftClassOffset:=ToWORD(fFontData[(Offset+LeftOffsetTable+4)+(LeftGlyphCounter*2)],fFontData[(Offset+LeftOffsetTable+5)+(LeftGlyphCounter*2)]);
+    for RightGlyphCounter:=0 to RightCountGlyphs-1 do begin
+     RightClassOffset:=ToWORD(fFontData[(Offset+RightOffsetTable+4)+(RightGlyphCounter*2)],fFontData[(Offset+RightOffsetTable+5)+(RightGlyphCounter*2)]);
+     KerningPairIndex:=CountKerningPairs;
+     inc(CountKerningPairs);
+     if length(KerningTable^.KerningPairs)<CountKerningPairs then begin
+      SetLength(KerningTable^.KerningPairs,CountKerningPairs*2);
+     end;
+     KerningPair:=@KerningTable^.KerningPairs[KerningPairIndex];
+     KerningPair^.Left:=LeftGlyphCounter+LeftFirstGlyph;
+     KerningPair^.Right:=RightGlyphCounter+RightFirstGlyph;
+     KerningPair^.Value:=ToSMALLINT(fFontData[Offset+KernArray+LeftClassOffset+RightClassOffset+0],fFontData[Offset+KernArray+LeftClassOffset+RightClassOffset+1]);
+    end;
+   end;
+  finally
+   SetLength(KerningTable^.KerningPairs,CountKerningPairs);
+  end;
+
+  if length(KerningTable^.KerningPairs)<>CountKerningPairs then begin
+   fLastError:=VkTTF_TT_ERR_OutOfMemory;
+   result:=fLastError;
+   exit;
+  end;
+
+  KerningTable^.BinarySearch:=false;
+  if length(KerningTable^.KerningPairs)<>0 then begin
+   DoNeedSort:=false;
+   for j:=1 to length(KerningTable^.KerningPairs)-1 do begin
+    if CompareKerningPairs(@KerningTable^.KerningPairs[j-1],@KerningTable^.KerningPairs[j])>0 then begin
+     DoNeedSort:=true;
+     break;
+    end;
+   end;
+   if DoNeedSort then begin
+    DirectIntroSort(@KerningTable^.KerningPairs[0],0,length(KerningTable^.KerningPairs)-1,SizeOf(TVulkanTrueTypeFontKerningPair),CompareKerningPairs);
+   end;
+   KerningTable^.BinarySearch:=true;
+   for j:=1 to length(KerningTable^.KerningPairs)-1 do begin
+    if CompareKerningPairs(@KerningTable^.KerningPairs[j-1],@KerningTable^.KerningPairs[j])>0 then begin
+     KerningTable^.BinarySearch:=false;
+     break;
+    end;
+   end;
+  end;
+
+  fLastError:=VkTTF_TT_ERR_NoError;
+  result:=fLastError;
+
+ end;
+
+begin
+ Tag:=ToLONGWORD(TVkUInt8('k'),TVkUInt8('e'),TVkUInt8('r'),TVkUInt8('n'));
+ result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
+ if result=VkTTF_TT_Err_NoError then begin
+  Position:=Offset;
+
+  Version:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,sizeof(TVkUInt16)); // Table Version number
+
+  case Version of
+   0:begin
+
+    NumfSubTables:=ToWORD(fFontData[Position],fFontData[Position+1]);
+    inc(Position,sizeof(TVkUInt16));
+
+    SetLength(fKerningTables,NumfSubTables);
+    if length(fKerningTables)<>NumfSubTables then begin
+     fLastError:=VkTTF_TT_ERR_OutOfMemory;
+     result:=fLastError;
+     exit;
+    end;
+
+    for i:=0 to NumfSubTables-1 do begin
+
+     KerningTable:=@fKerningTables[i];
+
+     inc(Position,sizeof(TVkUInt16)); // Subtable version number
+     SubTableSize:=ToWORD(fFontData[Position],fFontData[Position+1]);
+     inc(Position,sizeof(TVkUInt16)); // Subtable Size
+     CoverageFormat:=fFontData[Position];
+     CoverageFlags:=fFontData[Position+1];
+     inc(Position,2);
+     Next:=(Position+SubTableSize)-6;
+
+     KerningTable^.Horizontal:=(CoverageFlags and 1)<>0;
+     KerningTable^.Minimum:=(CoverageFlags and 2)<>0;
+     KerningTable^.XStream:=(CoverageFlags and 4)<>0;
+     KerningTable^.ValueOverride:=(CoverageFlags and 8)<>0;
+
+     case CoverageFormat of
+      0:begin
+       result:=LoadKerningTableFormat0;
+       if result<>VkTTF_TT_ERR_NoError then begin
+        fLastError:=result;
+        exit;
+       end;
+      end;
+      2:begin
+       result:=LoadKerningTableFormat2;
+       if result<>VkTTF_TT_ERR_NoError then begin
+        fLastError:=result;
+        exit;
+       end;
+      end;
+     end;
+
+     Position:=Next;
+    end;
+
+    fLastError:=VkTTF_TT_ERR_NoError;
+    result:=fLastError;
+
+   end;
+   1:begin
+
+    inc(Position,sizeof(TVkUInt16)); // Version-Lo
+
+    NumfSubTables:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
+    inc(Position,sizeof(TVkUInt16));
+
+    SetLength(fKerningTables,NumfSubTables);
+    if length(fKerningTables)<>NumfSubTables then begin
+     fLastError:=VkTTF_TT_ERR_OutOfMemory;
+     result:=fLastError;
+     exit;
+    end;
+
+   end;
+   else begin
+
+    fLastError:=VkTTF_TT_ERR_UnknownKerningFormat;
+    result:=fLastError;
+
+   end;
+  end;
+
  end;
 end;
 
@@ -35077,7 +35220,9 @@ begin
  if length(fKerningTables)>0 then begin
   for KerningIndex:=0 to length(fKerningTables)-1 do begin
    KerningTable:=@fKerningTables[KerningIndex];
-   if (length(KerningTable^.KerningPairs)<>0) and (KerningTable^.Horizontal=Horizontal) then begin
+   if (length(KerningTable^.KerningPairs)<>0) and
+      (Horizontal=((KerningTable^.Horizontal and not KerningTable^.XStream) or
+                   ((not KerningTable^.Horizontal) and KerningTable^.XStream))) then begin
     Index:=-1;
     if KerningTable^.BinarySearch then begin
      LeftIndex:=0;
@@ -35106,7 +35251,13 @@ begin
      end;
     end;
     if Index>=0 then begin
-     if KerningTable^.ValueOverride then begin
+     if KerningTable^.Minimum then begin
+      if KerningTable^.KerningPairs[Index].Value>=0 then begin
+       result:=Min(result,KerningTable^.KerningPairs[Index].Value);
+      end else begin
+       result:=Max(result,KerningTable^.KerningPairs[Index].Value);
+      end;
+     end else if KerningTable^.ValueOverride then begin
       result:=KerningTable^.KerningPairs[Index].Value;
      end else begin
       inc(result,KerningTable^.KerningPairs[Index].Value);
