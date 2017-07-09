@@ -33854,14 +33854,20 @@ begin
 end;
 
 function TVulkanTrueTypeFont.LoadGPOS:TVkInt32;
+type PGlyphs=^TGlyphs;
+     TGlyphs=record
+      Count:TVkInt32;
+      Items:array of TVkInt32;
+     end;
+     TGlyphsByClass=array of TGlyphs;
 var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
     MajorVersion,MinorVersion,
     FeatureVariations,LookupType,LookupFlags,
     i,j,k,h,BaseOffset,ScriptListOffset,
     FeatureListOffset,LookupListOffset,LookupListCount,
     LookupTableOffset,SubTableCount,SubTableOffset:TVkInt32;
-    GlyphArray:array of TVkUInt32;
  function LoadSubTable(const LookupType,SubTableOffset:TVkInt32):TVkInt32;
+ var GlyphArray:array of TVkUInt32;
   function LoadCoverageTable(const CoverageOffset:TVkInt32):TVkInt32;
   var CoverageFormat,CurrentPosition:TVkUInt32;
       k,h,GlyphCount,RangeCount,StartIndex,EndIndex:TVkInt32;
@@ -33918,6 +33924,66 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
    result:=VkTTF_TT_Err_NoError;
 
   end;
+  function LoadClassDefinition(Offset:TVkInt32;const ClassCount:TVkInt32;var GlyphsByClass:TGlyphsByClass):TVkInt32;
+  var ClassFormat,StartGlyph,GlyphCount,i,Glyph,GlyphClass,ClassRangeCount,StartIndex,EndIndex:TVkInt32;
+      Glyphs:PGlyphs;
+  begin
+   GlyphsByClass:=nil;
+   try
+    SetLength(GlyphsByClass,ClassCount);
+    for i:=0 to ClassCount-1 do begin
+     GlyphsByClass[i].Count:=0;
+     GlyphsByClass[i].Items:=nil;
+    end;
+    ClassFormat:=ToWORD(fFontData[Offset+0],fFontData[Offset+1]);
+    inc(Offset,2);
+    case ClassFormat of
+     1:begin
+      StartGlyph:=ToWORD(fFontData[Offset+0],fFontData[Offset+1]);
+      inc(Offset,2);
+      GlyphCount:=ToWORD(fFontData[Offset+0],fFontData[Offset+1]);
+      inc(Offset,2);
+      for i:=0 to GlyphCount-1 do begin
+       Glyph:=StartGlyph+i;
+       GlyphClass:=ToWORD(fFontData[Offset+0],fFontData[Offset+1]);
+       inc(Offset,2);
+       Glyphs:=@GlyphsByClass[GlyphClass];
+       if length(Glyphs^.Items)<(Glyphs^.Count+1) then begin
+        SetLength(Glyphs^.Items,(Glyphs^.Count+1)*2);
+       end;
+       Glyphs^.Items[Glyphs^.Count]:=Glyph;
+       inc(Glyphs^.Count);
+      end;
+     end;
+     2:begin
+      ClassRangeCount:=ToWORD(fFontData[Offset+0],fFontData[Offset+1]);
+      inc(Offset,2);
+      for i:=0 to ClassRangeCount-1 do begin
+       StartIndex:=ToWORD(fFontData[Offset+0],fFontData[Offset+1]);
+       inc(Offset,2);
+       EndIndex:=ToWORD(fFontData[Offset+0],fFontData[Offset+1]);
+       inc(Offset,2);
+       GlyphClass:=ToWORD(fFontData[Offset+0],fFontData[Offset+1]);
+       inc(Offset,2);
+       for Glyph:=StartIndex to EndIndex do begin
+        Glyphs:=@GlyphsByClass[GlyphClass];
+        if length(Glyphs^.Items)<(Glyphs^.Count+1) then begin
+         SetLength(Glyphs^.Items,(Glyphs^.Count+1)*2);
+        end;
+        Glyphs^.Items[Glyphs^.Count]:=Glyph;
+        inc(Glyphs^.Count);
+       end;
+      end;
+     end;
+     else begin
+      result:=VkTTF_TT_ERR_UnknownGPOSFormat;
+      exit;
+     end;
+    end;
+   finally
+   end;
+   result:=VkTTF_TT_Err_NoError;
+  end;
   function ReadValueFromValueRecord(var Offset:TVkInt32;const ValueFormat,TargetMask:TVkInt32):TVkInt32;
   var Mask,Value:TVkInt32;
   begin
@@ -33936,10 +34002,13 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
   begin
 
   end;
- var k,h,SubTableType,CoverageOffset,ValueFormat1,ValueFormat2,PairSetCount,
+ var i,j,k,h,SubTableType,CoverageOffset,ValueFormat1,ValueFormat2,PairSetCount,
      PairSetTableOffset,FirstGlyph,SecondGlyph,CurrentPosition,
      x,ClassDefOffset1,ClassDefOffset2,Class1Count,Class2Count,
-     PairValueCount,NewLookupType:TVkInt32;
+     PairValueCount,NewLookupType,Glyph:TVkInt32;
+     GlyphsByClass1,GlyphsByClass2:TGlyphsByClass;
+     Found:boolean;
+     Glyphs:PGlyphs;
  begin
 
   case LookupType of
@@ -34011,6 +34080,64 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
         exit;
        end;
 
+       GlyphsByClass1:=nil;
+       try
+
+        GlyphsByClass2:=nil;
+        try
+
+         result:=LoadClassDefinition(SubTableOffset+ClassDefOffset1,Class1Count,GlyphsByClass1);
+         if result<>VkTTF_TT_Err_NoError then begin
+          fLastError:=result;
+          exit;
+         end;
+
+         result:=LoadClassDefinition(SubTableOffset+ClassDefOffset2,Class2Count,GlyphsByClass2);
+         if result<>VkTTF_TT_Err_NoError then begin
+          fLastError:=result;
+          exit;
+         end;
+
+         for i:=0 to length(GlyphArray)-1 do begin
+          Glyph:=GlyphArray[i];
+          Found:=false;
+          for j:=1 to Class1Count-1 do begin
+           Glyphs:=@GlyphsByClass1[j];
+           for k:=0 to Glyphs^.Count-1 do begin
+            if Glyphs^.Items[k]=Glyph then begin
+             Found:=true;
+             break;
+            end;
+           end;
+           if Found then begin
+            break;
+           end;
+          end;
+          if not Found then begin
+           Glyphs:=@GlyphsByClass1[0];
+           if length(Glyphs^.Items)<(Glyphs^.Count+1) then begin
+            SetLength(Glyphs^.Items,(Glyphs^.Count+1)*2);
+           end;
+           Glyphs^.Items[Glyphs^.Count]:=Glyph;
+           inc(Glyphs^.Count);
+          end;
+         end;
+
+         for i:=0 to Class1Count-1 do begin
+          for j:=0 to Class2Count-1 do begin
+
+          end;
+         end;
+
+
+        finally
+         GlyphsByClass2:=nil;
+        end;
+
+       finally
+        GlyphsByClass1:=nil;
+       end;
+
       finally
        GlyphArray:=nil;
       end;
@@ -34031,7 +34158,7 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
       // Format 1
 
       NewLookupType:=ToWORD(fFontData[SubTableOffset+2],fFontData[SubTableOffset+3]);
-      CurrentPosition:=SubTableOffset+ToLONGWORD(fFontData[SubTableOffset+4],fFontData[SubTableOffset+5],fFontData[SubTableOffset+6],fFontData[SubTableOffset+7]);
+      CurrentPosition:=SubTableOffset+TVkInt32(ToLONGWORD(fFontData[SubTableOffset+4],fFontData[SubTableOffset+5],fFontData[SubTableOffset+6],fFontData[SubTableOffset+7]));
 
       result:=LoadSubTable(NewLookupType,CurrentPosition);
       if result<>VkTTF_TT_Err_NoError then begin
