@@ -36252,7 +36252,7 @@ begin
 
 {$ifdef PasVulkanPasMP}
        if CountGlyphs>0 then begin
-        PasMPInstance.Invoke(PasMPInstance.ParallelFor(@fDistanceFieldJobs[0],0,CountGlyphs-1,GenerateSignedDistanceFieldParallelForJobFunction));
+        PasMPInstance.Invoke(PasMPInstance.ParallelFor(@fDistanceFieldJobs[0],0,CountGlyphs-1,GenerateSignedDistanceFieldParallelForJobFunction,1,10,nil,0));
        end;
 
       finally
