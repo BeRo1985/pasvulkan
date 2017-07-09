@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-09-11-22-0000                       *
+ *                        Version 2017-07-10-00-36-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -3800,6 +3800,7 @@ type EVulkanException=class(Exception);
       ValueOverride:longbool;
       BinarySearch:longbool;
       KerningPairs:TVulkanTrueTypeFontKerningPairs;
+      CountKerningPairs:TVkInt32;
      end;
 
      TVulkanTrueTypeFontKerningTables=array of TVulkanTrueTypeFontKerningTable;
@@ -33999,8 +34000,38 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
    end;
   end;
   procedure AddKerningPair(const FirstGlyph,SecondGlyph,Value:TVkInt32;const Horizontal:boolean);
+  var i:TVkInt32;
+      KerningTable:PVulkanTrueTypeFontKerningTable;
+      KerningPair:PVulkanTrueTypeFontKerningPair;
   begin
-
+   KerningTable:=nil;
+   for i:=0 to length(fKerningTables)-1 do begin
+    if fKerningTables[i].Horizontal=Horizontal then begin
+     KerningTable:=@fKerningTables[i];
+     break;
+    end;
+   end;
+   if not assigned(KerningTable) then begin
+    i:=length(fKerningTables);
+    SetLength(fKerningTables,i+1);
+    KerningTable:=@fKerningTables[i];
+    KerningTable^.Horizontal:=Horizontal;
+    KerningTable^.Minimum:=false;
+    KerningTable^.XStream:=not Horizontal;
+    KerningTable^.ValueOverride:=true;
+    KerningTable^.BinarySearch:=false;
+    KerningTable^.KerningPairs:=nil;
+    KerningTable^.CountKerningPairs:=0;
+   end;
+   i:=KerningTable^.CountKerningPairs;
+   inc(KerningTable^.CountKerningPairs);
+   if length(KerningTable^.KerningPairs)<KerningTable^.CountKerningPairs then begin
+    SetLength(KerningTable^.KerningPairs,KerningTable^.CountKerningPairs*2);
+   end;
+   KerningPair:=@KerningTable^.KerningPairs[i];
+   KerningPair^.Left:=FirstGlyph;
+   KerningPair^.Right:=SecondGlyph;
+   KerningPair^.Value:=Value;
   end;
  var i,j,k,h,SubTableType,CoverageOffset,ValueFormat1,ValueFormat2,PairSetCount,
      PairSetTableOffset,FirstGlyph,SecondGlyph,CurrentPosition,
@@ -34262,6 +34293,7 @@ begin
 
   for i:=0 to length(fKerningTables)-1 do begin
    KerningTable:=@fKerningTables[i];
+   SetLength(KerningTable^.KerningPairs,KerningTable^.CountKerningPairs);
    KerningTable^.BinarySearch:=false;
    if length(KerningTable^.KerningPairs)<>0 then begin
     DoNeedSort:=false;
@@ -34293,25 +34325,25 @@ end;
 
 function TVulkanTrueTypeFont.LoadKERN:TVkInt32;
 var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
-    NumfSubTables,i,j,NumKerningPairs:TVkInt32;
+    CountSubTables,i,j:TVkInt32;
     CoverageFormat,CoverageFlags:TVkUInt8;
     DoNeedSort,Minimum,XStream:boolean;
     KerningTable:PVulkanTrueTypeFontKerningTable;
  function LoadKerningTableFormat0:TVkInt32;
- var i,j,NumKerningPairs:TVkInt32;
+ var i,j:TVkInt32;
      DoNeedSort:boolean;
      KerningPair:PVulkanTrueTypeFontKerningPair;
  begin
 
-  NumKerningPairs:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  KerningTable^.CountKerningPairs:=ToWORD(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TVkUInt16));
   inc(Position,sizeof(TVkUInt16)); // Search range
   inc(Position,sizeof(TVkUInt16)); // Entry selector
   inc(Position,sizeof(TVkUInt16)); // Range shift
 
   KerningTable^.KerningPairs:=nil;
-  SetLength(KerningTable^.KerningPairs,NumKerningPairs);
-  if length(KerningTable^.KerningPairs)<>NumKerningPairs then begin
+  SetLength(KerningTable^.KerningPairs,KerningTable^.CountKerningPairs);
+  if length(KerningTable^.KerningPairs)<>KerningTable^.CountKerningPairs then begin
    fLastError:=VkTTF_TT_ERR_OutOfMemory;
    result:=fLastError;
    exit;
@@ -34362,7 +34394,7 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
  var i,j,Offset,RowWidth,LeftOffsetTable,RightOffsetTable,KernArray,
      LeftClassOffset,RightClassOffset,LeftFirstGlyph,LeftCountGlyphs,
      RightFirstGlyph,RightCountGlyphs,LeftGlyphCounter,RightGlyphCounter,
-     CountKerningPairs,KerningPairIndex:TVkInt32;
+     KerningPairIndex:TVkInt32;
      DoNeedSort:boolean;
      KerningPair:PVulkanTrueTypeFontKerningPair;
  begin
@@ -34387,17 +34419,17 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
   RightFirstGlyph:=ToWORD(fFontData[Offset+RightOffsetTable+0],fFontData[Offset+RightOffsetTable+1]);
   RightCountGlyphs:=ToWORD(fFontData[Offset+RightOffsetTable+2],fFontData[Offset+RightOffsetTable+3]);
 
-  CountKerningPairs:=0;
+  KerningTable^.CountKerningPairs:=0;
   KerningTable^.KerningPairs:=nil;
   try
    for LeftGlyphCounter:=0 to LeftCountGlyphs-1 do begin
     LeftClassOffset:=ToWORD(fFontData[(Offset+LeftOffsetTable+4)+(LeftGlyphCounter*2)],fFontData[(Offset+LeftOffsetTable+5)+(LeftGlyphCounter*2)]);
     for RightGlyphCounter:=0 to RightCountGlyphs-1 do begin
      RightClassOffset:=ToWORD(fFontData[(Offset+RightOffsetTable+4)+(RightGlyphCounter*2)],fFontData[(Offset+RightOffsetTable+5)+(RightGlyphCounter*2)]);
-     KerningPairIndex:=CountKerningPairs;
-     inc(CountKerningPairs);
-     if length(KerningTable^.KerningPairs)<CountKerningPairs then begin
-      SetLength(KerningTable^.KerningPairs,CountKerningPairs*2);
+     KerningPairIndex:=KerningTable^.CountKerningPairs;
+     inc(KerningTable^.CountKerningPairs);
+     if length(KerningTable^.KerningPairs)<KerningTable^.CountKerningPairs then begin
+      SetLength(KerningTable^.KerningPairs,KerningTable^.CountKerningPairs*2);
      end;
      KerningPair:=@KerningTable^.KerningPairs[KerningPairIndex];
      KerningPair^.Left:=LeftGlyphCounter+LeftFirstGlyph;
@@ -34406,10 +34438,10 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
     end;
    end;
   finally
-   SetLength(KerningTable^.KerningPairs,CountKerningPairs);
+   SetLength(KerningTable^.KerningPairs,KerningTable^.CountKerningPairs);
   end;
 
-  if length(KerningTable^.KerningPairs)<>CountKerningPairs then begin
+  if length(KerningTable^.KerningPairs)<>KerningTable^.CountKerningPairs then begin
    fLastError:=VkTTF_TT_ERR_OutOfMemory;
    result:=fLastError;
    exit;
@@ -34453,17 +34485,17 @@ begin
   case Version of
    0:begin
 
-    NumfSubTables:=ToWORD(fFontData[Position],fFontData[Position+1]);
+    CountSubTables:=ToWORD(fFontData[Position],fFontData[Position+1]);
     inc(Position,sizeof(TVkUInt16));
 
-    SetLength(fKerningTables,NumfSubTables);
-    if length(fKerningTables)<>NumfSubTables then begin
+    SetLength(fKerningTables,CountSubTables);
+    if length(fKerningTables)<>CountSubTables then begin
      fLastError:=VkTTF_TT_ERR_OutOfMemory;
      result:=fLastError;
      exit;
     end;
 
-    for i:=0 to NumfSubTables-1 do begin
+    for i:=0 to CountSubTables-1 do begin
 
      KerningTable:=@fKerningTables[i];
 
@@ -34508,17 +34540,17 @@ begin
 
     inc(Position,sizeof(TVkUInt16)); // Version-Lo
 
-    NumfSubTables:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
+    CountSubTables:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
     inc(Position,sizeof(TVkUInt32));
 
-    SetLength(fKerningTables,NumfSubTables);
-    if length(fKerningTables)<>NumfSubTables then begin
+    SetLength(fKerningTables,CountSubTables);
+    if length(fKerningTables)<>CountSubTables then begin
      fLastError:=VkTTF_TT_ERR_OutOfMemory;
      result:=fLastError;
      exit;
     end;
 
-    for i:=0 to NumfSubTables-1 do begin
+    for i:=0 to CountSubTables-1 do begin
 
      KerningTable:=@fKerningTables[i];
 
