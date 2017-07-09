@@ -34052,7 +34052,7 @@ begin
      CoverageFlags:=fFontData[Position+1];
      inc(Position,2);
      inc(Position,sizeof(TVkUInt16)); // Tuple Index
-     Next:=(Position+SubTableSize)-6;
+     Next:=(Position+SubTableSize)-8;
 
      if (CoverageFlags and 2)<>0 then begin
       // No support for variation values
