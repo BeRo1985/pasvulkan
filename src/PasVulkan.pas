@@ -33808,21 +33808,70 @@ begin
 end;
 
 function TVulkanTrueTypeFont.LoadCFF:TVkInt32;
-type TIndexData=array of TVkInt32;
+type PIndexDataItem=^TIndexDataItem;
+     TIndexDataItem=record
+      Position:TVkInt32;
+      Size:TVkInt32;
+     end;
+     TIndexData=array of TIndexDataItem;
 var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     HeaderFormatMajor,HeaderFormatMinor,HeaderSize,HeaderOffsetSize,
     HeaderStartOffset,HeaderEndOffset:TVkInt32;
     NameIndexData,TopDictIndexData,StringIndexData,
     GlobalSubroutineIndexData:TIndexData;
  function LoadIndex(out IndexData:TIndexData):TVkInt32;
- var Count:TVkInt32;
+ var BaseOffset,Count,OffsetSize,OffsetValue,i,j:TVkInt32;
+     IndexDataItem:PIndexDataItem;
  begin
-   if ((Position+SizeOf(TVkUInt16))-1)>=(Offset+Size) then begin
+
+  IndexData:=nil;
+
+  BaseOffset:=Position;
+
+  if ((Position+SizeOf(TVkUInt16))-1)>=(Offset+Size) then begin
    result:=VkTTF_TT_ERR_CorruptFile;
    exit;
   end;
   Count:=ToWORD(fFontData[Position],fFontData[Position+1]);
   inc(Position,SizeOf(TVkUInt16));
+
+  if Count>0 then begin
+
+   if ((Position+SizeOf(TVkUInt8))-1)>=(Offset+Size) then begin
+    result:=VkTTF_TT_ERR_CorruptFile;
+    exit;
+   end;
+   OffsetSize:=fFontData[Position];
+   inc(Position,SizeOf(TVkUInt8));
+
+   SetLength(IndexData,Count+1);
+   try
+    for i:=0 to Count do begin
+     OffsetValue:=0;
+     for j:=0 to OffsetSize-1 do begin
+      if ((Position+SizeOf(TVkUInt8))-1)>=(Offset+Size) then begin
+       result:=VkTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      OffsetValue:=(OffsetValue shl 8) or fFontData[Position];
+      inc(Position,SizeOf(TVkUInt8));
+     end;
+     IndexDataItem:=@IndexData[i];
+     IndexDataItem^.Position:=OffsetValue;
+    end;
+    for i:=0 to Count-1 do begin
+     IndexDataItem:=@IndexData[i];
+     IndexDataItem^.Size:=IndexData[i+1].Position-IndexDataItem^.Position;
+    end;
+    for i:=0 to Count do begin
+     inc(IndexData[i].Position,Position-1);
+    end;
+    Position:=IndexData[Count].Position;
+   finally
+    SetLength(IndexData,Count);
+   end;
+
+  end;
 
   result:=VkTTF_TT_ERR_NoError;
 
@@ -33885,6 +33934,8 @@ begin
   if result<>VkTTF_TT_ERR_NoError then begin
    exit;
   end;
+
+
 
   result:=VkTTF_TT_ERR_NoError;
 
