@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-10-01-21-0000                       *
+ *                        Version 2017-07-10-03-00-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -3410,6 +3410,7 @@ type EVulkanException=class(Exception);
      
      TVulkanSpriteBatchVulkanBuffers=array of TVulkanBuffer;
 
+     PVulkanSpriteBatchVulkanVertexDataBuffer=^TVulkanSpriteBatchVulkanVertexDataBuffer;
      TVulkanSpriteBatchVulkanVertexDataBuffer=array[0..(32768*4)-1] of TVulkanSpriteBatchVertex;
 
      TVulkanSpriteBatchVulkanVertexDataBuffers=array of TVulkanSpriteBatchVulkanVertexDataBuffer;
@@ -3519,12 +3520,13 @@ type EVulkanException=class(Exception);
        fInverseTextureHeight:single;
        fVertexBufferUsed:TVkSizeInt;
        fIndexBufferUsed:TVkSizeInt;
-       fTemporaryVertices:TVulkanSpriteBatchVertices;
+       fCurrentDestinationVertexDataBuffer:PVulkanSpriteBatchVulkanVertexDataBuffer;
        fScissor:TVkRect2D;
        function RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:single):TVulkanSpritePoint;
        procedure SetTexture(const Texture:TVulkanSpriteTexture);
        procedure SetRenderingMode(aRenderingMode:TVulkanSpriteBatchRenderingMode);
        procedure SetBlendingMode(aBlendingMode:TVulkanSpriteBatchBlendingMode);
+       procedure GetNextDestinationVertexBuffer;
       public
        constructor Create(const aDevice:TVulkanDevice;
                           const aGraphicsQueue:TVulkanQueue;
@@ -27049,15 +27051,13 @@ begin
 
  fPointerToViewport:=@fViewport;
 
- fTemporaryVertices:=nil;
+ fCurrentDestinationVertexDataBuffer:=nil;
 
  fVertexBufferCount:=32768;
  fVertexBufferSize:=SizeOf(TVulkanSpriteBatchVertex)*(4*fVertexBufferCount);
 
  fIndexBufferCount:=(fVertexBufferCount*6) div 4;
  fIndexBufferSize:=SizeOf(TVkUInt32)*fIndexBufferCount;
-
- SetLength(fTemporaryVertices,fVertexBufferCount);
 
  Indices:=nil;
  try
@@ -27359,7 +27359,7 @@ begin
 
  FreeAndNil(fVulkanIndexBuffer);
 
- fTemporaryVertices:=nil;
+ fCurrentDestinationVertexDataBuffer:=nil;
 
  inherited Destroy;
 end;
@@ -27415,6 +27415,8 @@ begin
  fScissor.extent.Width:=trunc(ceil(fViewport.Width));
  fScissor.extent.Height:=trunc(ceil(fViewport.Height));
 
+ GetNextDestinationVertexBuffer;
+
 end;
 
 procedure TVulkanSpriteBatch.Stop;
@@ -27423,6 +27425,27 @@ begin
  Flush;
 
  fCurrentFillSpriteBatchBuffer:=nil;
+
+end;
+
+procedure TVulkanSpriteBatch.GetNextDestinationVertexBuffer;
+var CurrentVulkanVertexBufferIndex,OldCount,NewCount:TVkInt32;
+begin
+
+ CurrentVulkanVertexBufferIndex:=fCurrentVulkanVertexBufferIndex;
+
+ OldCount:=fCurrentFillSpriteBatchBuffer^.fCountVulkanVertexBuffers;
+ if OldCount<=CurrentVulkanVertexBufferIndex then begin
+  NewCount:=(CurrentVulkanVertexBufferIndex+1)*2;
+  SetLength(fCurrentFillSpriteBatchBuffer^.fVulkanVertexBuffers,NewCount);
+  SetLength(fCurrentFillSpriteBatchBuffer^.fVulkanVertexDataBuffers,NewCount);
+  SetLength(fCurrentFillSpriteBatchBuffer^.fVulkanVertexDataBufferSizes,NewCount);
+  FillChar(fCurrentFillSpriteBatchBuffer^.fVulkanVertexBuffers[OldCount],(NewCount-OldCount)*SizeOf(TVulkanBuffer),#0);
+  FillChar(fCurrentFillSpriteBatchBuffer^.fVulkanVertexDataBufferSizes[OldCount],(NewCount-OldCount)*SizeOf(TVkSizeInt),#0);
+  fCurrentFillSpriteBatchBuffer^.fCountVulkanVertexBuffers:=NewCount;
+ end;
+
+ fCurrentDestinationVertexDataBuffer:=@fCurrentFillSpriteBatchBuffer^.fVulkanVertexDataBuffers[CurrentVulkanVertexBufferIndex][0];
 
 end;
 
@@ -27454,7 +27477,6 @@ begin
     fCurrentFillSpriteBatchBuffer^.fCountVulkanVertexBuffers:=NewCount;
    end;
 
-   Move(fTemporaryVertices[0],fCurrentFillSpriteBatchBuffer^.fVulkanVertexDataBuffers[CurrentVulkanVertexBufferIndex][0],fVertexBufferUsed*SizeOf(TVulkanSpriteBatchVertex));
    fCurrentFillSpriteBatchBuffer^.fVulkanVertexDataBufferSizes[CurrentVulkanVertexBufferIndex]:=fVertexBufferUsed*SizeOf(TVulkanSpriteBatchVertex);
 
    PointerHashMapEntity:=fVulkanTextureDescriptorSetHashMap.Get(fLastTexture,false);
@@ -27503,6 +27525,8 @@ begin
 
   fVertexBufferUsed:=0;
   fIndexBufferUsed:=0;
+
+  GetNextDestinationVertexBuffer;
 
  end;
 end;
@@ -27567,29 +27591,29 @@ begin
  sY0:=Src.Top*fInverseTextureHeight;
  sX1:=Src.Right*fInverseTextureWidth;
  sY1:=Src.Bottom*fInverseTextureHeight;
- fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Left*fInverseWidth)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Top*fInverseHeight)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
- fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((Dest.Left*fInverseWidth)-0.5)*2;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((Dest.Top*fInverseHeight)-0.5)*2;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
  inc(fVertexBufferUsed);
- fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Right*fInverseWidth)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Top*fInverseHeight)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
- fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((Dest.Right*fInverseWidth)-0.5)*2;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((Dest.Top*fInverseHeight)-0.5)*2;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
  inc(fVertexBufferUsed);
- fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Right*fInverseWidth)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Bottom*fInverseHeight)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
- fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((Dest.Right*fInverseWidth)-0.5)*2;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((Dest.Bottom*fInverseHeight)-0.5)*2;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
  inc(fVertexBufferUsed);
- fTemporaryVertices[fVertexBufferUsed].Position.x:=((Dest.Left*fInverseWidth)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].Position.y:=((Dest.Bottom*fInverseHeight)-0.5)*2;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
- fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((Dest.Left*fInverseWidth)-0.5)*2;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((Dest.Bottom*fInverseHeight)-0.5)*2;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
  inc(fVertexBufferUsed);
  inc(fIndexBufferUsed,6);
  if fVertexBufferUsed>=fVertexBufferCount then begin
@@ -27691,25 +27715,25 @@ begin
  sY0:=Src.Top*fInverseTextureHeight;
  sX1:=Src.Right*fInverseTextureWidth;
  sY1:=Src.Bottom*fInverseTextureHeight;
- fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
- fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
  inc(fVertexBufferUsed);
- fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
- fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
  inc(fVertexBufferUsed);
- fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
- fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
  inc(fVertexBufferUsed);
- fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
- fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
- fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+ fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
  inc(fVertexBufferUsed);
  inc(fIndexBufferUsed,6);
  if fVertexBufferUsed>=fVertexBufferCount then begin
@@ -27760,29 +27784,29 @@ begin
    sY0:=TempSrc.Top*fInverseTextureHeight;
    sX1:=TempSrc.Right*fInverseTextureWidth;
    sY1:=TempSrc.Bottom*fInverseTextureHeight;
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
    inc(fIndexBufferUsed,6);
    if fVertexBufferUsed>=fVertexBufferCount then begin
@@ -27821,29 +27845,29 @@ begin
    sY0:=TempSrc.Top*fInverseTextureHeight;
    sX1:=TempSrc.Right*fInverseTextureWidth;
    sY1:=TempSrc.Bottom*fInverseTextureHeight;
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
    inc(fIndexBufferUsed,6);
    if fVertexBufferUsed>=fVertexBufferCount then begin
@@ -27896,25 +27920,25 @@ begin
    sY0:=TempSrc.Top*fInverseTextureHeight;
    sX1:=TempSrc.Right*fInverseTextureWidth;
    sY1:=TempSrc.Bottom*fInverseTextureHeight;
-   fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
    inc(fIndexBufferUsed,6);
    if fVertexBufferUsed>=fVertexBufferCount then begin
@@ -27949,25 +27973,25 @@ begin
    sY0:=TempSrc.Top*fInverseTextureHeight;
    sX1:=TempSrc.Right*fInverseTextureWidth;
    sY1:=TempSrc.Bottom*fInverseTextureHeight;
-   fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY0;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX1;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
-   fTemporaryVertices[fVertexBufferUsed].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.x:=sX0;
-   fTemporaryVertices[fVertexBufferUsed].TextureCoord.y:=sY1;
-   fTemporaryVertices[fVertexBufferUsed].Color:=Color;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.x:=sX0;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].TextureCoord.y:=sY1;
+   fCurrentDestinationVertexDataBuffer^[fVertexBufferUsed].Color:=Color;
    inc(fVertexBufferUsed);
    inc(fIndexBufferUsed,6);
    if fVertexBufferUsed>=fVertexBufferCount then begin
