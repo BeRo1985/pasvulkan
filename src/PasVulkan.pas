@@ -31819,7 +31819,13 @@ begin
       end;
       opSLOOP:begin
        dec(Top);
-       if fStack[Top]<=0 then begin
+       // https://developer.apple.com/fonts/TrueType-Reference-Manual/RM05/Chap5.html#SLOOP
+       // "Setting the loop variable to zero is an error", but in reality, at some
+       // byte code sequences in some font files (for example the "2" glyph at
+       // DejaVuSansMono.ttf) gets the SLOOP instruction a zero on top of the stack, so
+       // we use here <0 instead <=0 (which would be more correct according to the
+       // TTF specifications)
+       if fStack[Top]<0 then begin
         raise EVulkanTrueTypeFont.Create('Invalid data');
        end else begin
         fGraphicsState.Loop:=fStack[Top];
