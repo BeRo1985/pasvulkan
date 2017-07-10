@@ -33913,29 +33913,35 @@ begin
   HeaderOffsetSize:=fFontData[Position];
   inc(Position,SizeOf(TVkUInt8));
 
-  Position:=Offset+HeaderSize;
+  Position:=Offset+TVKUInt32(HeaderSize);
 
   result:=LoadIndex(NameIndexData);
   if result<>VkTTF_TT_ERR_NoError then begin
    exit;
+  end;
+  if length(NameIndexData)>0 then begin
   end;
 
   result:=LoadIndex(TopDictIndexData);
   if result<>VkTTF_TT_ERR_NoError then begin
    exit;
   end;
+  if length(TopDictIndexData)>0 then begin
+  end;
 
   result:=LoadIndex(StringIndexData);
   if result<>VkTTF_TT_ERR_NoError then begin
    exit;
+  end;
+  if length(StringIndexData)>0 then begin
   end;
 
   result:=LoadIndex(GlobalSubroutineIndexData);
   if result<>VkTTF_TT_ERR_NoError then begin
    exit;
   end;
-
-
+  if length(GlobalSubroutineIndexData)>0 then begin
+  end;
 
   result:=VkTTF_TT_ERR_NoError;
 
