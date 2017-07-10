@@ -13,6 +13,12 @@ unit PasVulkanStaticLinking;
  {$ifdef cpuamd64}
   {$asmmode intel}
  {$endif}
+{$else}
+ {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}
+  {$ifend}
+ {$endif}
 {$endif}
 {$if defined(Win32) or defined(Win64)}
  {$define Windows}

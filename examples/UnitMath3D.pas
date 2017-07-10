@@ -38,6 +38,11 @@ unit UnitMath3D; // Copyright (C) 2006-2017, Benjamin Rosseaux - License: zlib
   {$undef HAS_TYPE_SINGLE}
  {$endif}
 {$else}
+ {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}
+  {$ifend}
+ {$endif}
  {$realcompatibility off}
  {$localsymbols on}
  {$define little_endian}

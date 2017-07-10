@@ -53,6 +53,13 @@
  ******************************************************************************)
 unit PasVulkanGUI;
 {$i PasVulkan.inc}
+{$ifndef fpc}
+ {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}
+  {$ifend}
+ {$endif}
+{$endif}
 
 interface
 

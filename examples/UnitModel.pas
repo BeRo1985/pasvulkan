@@ -38,6 +38,11 @@ unit UnitModel;
   {$undef HAS_TYPE_SINGLE}
  {$endif}
 {$else}
+ {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}
+  {$ifend}
+ {$endif}
  {$realcompatibility off}
  {$localsymbols on}
  {$define little_endian}

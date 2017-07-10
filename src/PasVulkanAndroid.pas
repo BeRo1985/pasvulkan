@@ -74,6 +74,9 @@ unit PasVulkanAndroid;
  {$define HAS_TYPE_DOUBLE}
  {$define HAS_TYPE_SINGLE}
  {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}
+  {$ifend}
   {$if declared(RawByteString)}
    {$define HAS_TYPE_RAWBYTESTRING}
   {$else}
