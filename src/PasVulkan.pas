@@ -53,6 +53,13 @@
  ******************************************************************************)
 unit PasVulkan;
 {$i PasVulkan.inc}
+{$ifndef fpc}
+ {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}
+  {$ifend}
+ {$endif}
+{$endif}
 
 interface
 
@@ -28183,10 +28190,10 @@ begin
   finally
    InterlockedExchange(CurrentDrawSpriteBatchBuffer^.fSpinLock,0);
   end;
-  aVulkanCommandBuffer.MetaCmdMemoryBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+{ aVulkanCommandBuffer.MetaCmdMemoryBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                             TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
-                                            TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT));
+                                            TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT));}
  end;
 end;
 

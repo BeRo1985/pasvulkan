@@ -53,6 +53,13 @@
  ******************************************************************************)
 unit PasVulkanApplication;
 {$i PasVulkan.inc}
+{$ifndef fpc}
+ {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}
+  {$ifend}
+ {$endif}
+{$endif}
 
 interface
 
@@ -4580,9 +4587,15 @@ constructor TVulkanApplicationAssets.Create(const aVulkanApplication:TVulkanAppl
 begin
  inherited Create;
  fVulkanApplication:=aVulkanApplication;
-{$ifndef Android}
+{$if not defined(Android)}
+{$if defined(PasVulkanAdjustDelphiWorkingDirectory)}
+ fBasePath:=IncludeTrailingPathDelimiter(ExpandFileName(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'..')+'..')+'assets')));
+{$elseif defined(PasVulkanUseCurrentWorkingDirectory)}
+ fBasePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(GetCurrentDir))+'assets');
+{$else}
  fBasePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'assets');
-{$endif}
+{$ifend}
+{$ifend}
 end;
 
 destructor TVulkanApplicationAssets.Destroy;

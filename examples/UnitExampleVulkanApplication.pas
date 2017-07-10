@@ -137,7 +137,7 @@ begin
   VulkanApplication.CatchMouse:=false;
   VulkanApplication.HideSystemBars:=true;
   VulkanApplication.AndroidSeparateMouseAndTouch:=false;
-  VulkanApplication.VSync:=true;
+  VulkanApplication.VSync:={$ifdef NoVSync}false{$else}true{$endif};
   VulkanApplication.Run;
  finally
   FreeAndNil(VulkanApplication);

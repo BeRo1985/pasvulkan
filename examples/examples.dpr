@@ -10,11 +10,13 @@
 //{$if defined(fpc) and defined(Unix)}cthreads,{$ifend}
 
 uses
-  {$if defined(fpc) and defined(Unix)}cthreads,{$ifend}
+  {$if defined(fpc) and defined(Unix)}
+  cthreads,
+  {$ifend }
   SysUtils,
   Classes,
   PasMP in '..\externals\pasmp\src\PasMP.pas',
-  Kraft in '..\externals\kraft\src\kraft.pas',
+  kraft in '..\externals\kraft\src\kraft.pas',
   Vulkan in '..\src\Vulkan.pas',
   PasVulkan in '..\src\PasVulkan.pas',
   PasVulkanAndroid in '..\src\PasVulkanAndroid.pas',
