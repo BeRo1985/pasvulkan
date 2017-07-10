@@ -41,10 +41,10 @@ type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
        fVulkanRenderPass:TVulkanRenderPass;
        fVulkanModel:TVulkanModel;
-       fVulkanUniformBuffer:TVulkanBuffer;
+       fVulkanUniformBuffers:array[0..MaxSwapChainImages-1] of TVulkanBuffer;
        fVulkanDescriptorPool:TVulkanDescriptorPool;
        fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
-       fVulkanDescriptorSet:TVulkanDescriptorSet;
+       fVulkanDescriptorSets:array[0..MaxSwapChainImages-1] of TVulkanDescriptorSet;
        fVulkanPipelineLayout:TVulkanPipelineLayout;
        fVulkanCommandPool:TVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
@@ -189,32 +189,34 @@ begin
   Stream.Free;
  end;
 
- fVulkanUniformBuffer:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
-                                            SizeOf(TScreenExampleDragonUniformBuffer),
-                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                            nil,
-                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                            0,
-                                            0,
-                                            0,
-                                            0,
-                                            0,
-                                            [vbfPersistentMapped]
-                                           );
- fVulkanUniformBuffer.UploadData(VulkanApplication.VulkanDevice.TransferQueue,
-                                 VulkanApplication.VulkanTransferCommandBuffers[0,0],
-                                 VulkanApplication.VulkanTransferCommandBufferFences[0,0],
-                                 fUniformBuffer,
-                                 0,
-                                 SizeOf(TScreenExampleDragonUniformBuffer),
-                                 vbutsbmYes);
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  fVulkanUniformBuffers[Index]:=TVulkanBuffer.Create(VulkanApplication.VulkanDevice,
+                                                     SizeOf(TScreenExampleDragonUniformBuffer),
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     nil,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [vbfPersistentMapped]
+                                                    );
+  fVulkanUniformBuffers[Index].UploadData(VulkanApplication.VulkanDevice.TransferQueue,
+                                          VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                          VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                          fUniformBuffer,
+                                          0,
+                                          SizeOf(TScreenExampleDragonUniformBuffer),
+                                          vbutsbmYes);
+ end;
 
  fVulkanDescriptorPool:=TVulkanDescriptorPool.Create(VulkanApplication.VulkanDevice,
                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                     1);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
+                                                     MaxSwapChainImages);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,MaxSwapChainImages);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxSwapChainImages);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TVulkanDescriptorSetLayout.Create(VulkanApplication.VulkanDevice);
@@ -230,27 +232,29 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.Initialize;
 
- fVulkanDescriptorSet:=TVulkanDescriptorSet.Create(fVulkanDescriptorPool,
-                                                   fVulkanDescriptorSetLayout);
- fVulkanDescriptorSet.WriteToDescriptorSet(0,
-                                           0,
-                                           1,
-                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                           [],
-                                           [fVulkanUniformBuffer.DescriptorBufferInfo],
-                                           [],
-                                           false
-                                          );
- fVulkanDescriptorSet.WriteToDescriptorSet(1,
-                                           0,
-                                           1,
-                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                           [fBoxAlbedoTexture.DescriptorImageInfo],
-                                           [],
-                                           [],
-                                           false
-                                          );
- fVulkanDescriptorSet.Flush;
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  fVulkanDescriptorSets[Index]:=TVulkanDescriptorSet.Create(fVulkanDescriptorPool,
+                                                            fVulkanDescriptorSetLayout);
+  fVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                    [],
+                                                    [fVulkanUniformBuffers[Index].DescriptorBufferInfo],
+                                                    [],
+                                                    false
+                                                   );
+  fVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                    [fBoxAlbedoTexture.DescriptorImageInfo],
+                                                    [],
+                                                    [],
+                                                    false
+                                                   );
+  fVulkanDescriptorSets[Index].Flush;
+ end;
 
  fVulkanPipelineLayout:=TVulkanPipelineLayout.Create(VulkanApplication.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
@@ -263,10 +267,14 @@ var Index:TVkInt32;
 begin
  fVulkanModel.Unload;
  FreeAndNil(fVulkanPipelineLayout);
- FreeAndNil(fVulkanDescriptorSet);
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  FreeAndNil(fVulkanDescriptorSets[Index]);
+ end;
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
- FreeAndNil(fVulkanUniformBuffer);
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  FreeAndNil(fVulkanUniformBuffers[Index]);
+ end;
  FreeAndNil(fVulkanModel);
  FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fVulkanGraphicsPipeline);
@@ -442,10 +450,10 @@ begin
 
   VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
 
-  VulkanCommandBuffer.MetaCmdMemoryBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+ {VulkanCommandBuffer.MetaCmdMemoryBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                            TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
-                                           TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT));
+                                           TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT));}
 
   fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
                                     VulkanApplication.VulkanFrameBuffers[SwapChainImageIndex],
@@ -455,7 +463,7 @@ begin
                                     VulkanApplication.VulkanSwapChain.Width,
                                     VulkanApplication.VulkanSwapChain.Height);
 
-  VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSet.Handle,0,nil);
+  VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[SwapChainImageIndex].Handle,0,nil);
   VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
 
   fVulkanModel.Draw(VulkanCommandBuffer);
@@ -648,12 +656,12 @@ begin
   fUniformBuffer.ModelViewProjectionMatrix:=Matrix4x4TermMul(fUniformBuffer.ModelViewMatrix,ProjectionMatrix);
   fUniformBuffer.ModelViewNormalMatrix:=Matrix4x4(Matrix3x3TermTranspose(Matrix3x3TermInverse(Matrix3x3(fUniformBuffer.ModelViewMatrix))));
 
-  p:=fVulkanUniformBuffer.Memory.MapMemory(0,SizeOf(TScreenExampleDragonUniformBuffer));
+  p:=fVulkanUniformBuffers[VulkanApplication.DrawSwapChainImageIndex].Memory.MapMemory(0,SizeOf(TScreenExampleDragonUniformBuffer));
   if assigned(p) then begin
    try
     Move(fUniformBuffer,p^,SizeOf(TScreenExampleDragonUniformBuffer));
    finally
-    fVulkanUniformBuffer.Memory.UnmapMemory;
+    fVulkanUniformBuffers[VulkanApplication.DrawSwapChainImageIndex].Memory.UnmapMemory;
    end;
   end;
 
