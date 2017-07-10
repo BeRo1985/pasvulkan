@@ -34187,7 +34187,7 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
 
        for k:=0 to PairSetCount-1 do begin
         FirstGlyph:=GlyphArray[k];
-        CurrentPosition:=ToWORD(fFontData[SubTableOffset+PairSetTableOffset+0+(k*2)],fFontData[SubTableOffset+PairSetTableOffset+1+(k*2)]);
+        CurrentPosition:=SubTableOffset+ToWORD(fFontData[PairSetTableOffset+0+(k*2)],fFontData[PairSetTableOffset+1+(k*2)]);
         PairValueCount:=ToWORD(fFontData[CurrentPosition+0],fFontData[CurrentPosition+1]);
         inc(CurrentPosition,2);
         for h:=0 to PairValueCount-1 do begin
