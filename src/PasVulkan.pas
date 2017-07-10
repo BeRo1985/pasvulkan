@@ -4081,6 +4081,7 @@ type EVulkanException=class(Exception);
        fNumTables:TVkUInt16;
        fCMapFormat:TVkUInt16;
        fLastError:TVkUInt16;
+       fPostScriptFlavored:boolean;
        fIndexToLocationFormat:TVkInt16;
        fStringCopyright:TVulkanRawByteString;
        fStringFamily:TVulkanRawByteString;
@@ -4130,6 +4131,7 @@ type EVulkanException=class(Exception);
        function LoadHEAD:TVkInt32;
        function LoadMAXP:TVkInt32;
        function LoadNAME:TVkInt32;
+       function LoadCFF:TVkInt32;
        function LoadLOCA:TVkInt32;
        function LoadGLYF:TVkInt32;
        function LoadHHEA:TVkInt32;
@@ -33236,54 +33238,93 @@ begin
  FillChar(fByteCodeInterpreterParameters,SizeOf(TVulkanTrueTypeFontByteCodeInterpreterParameters),#0);
  fIgnoreByteCodeInterpreter:=true;
  fLastError:=VkTTF_TT_ERR_NoError;
+ fPostScriptFlavored:=false;
  try
   if ReadFontData(Stream,CollectionIndex)=VkTTF_TT_ERR_NoError then begin
-   if LoadOS2=VkTTF_TT_ERR_NoError then begin
-    if LoadHEAD=VkTTF_TT_ERR_NoError then begin
-     if LoadMAXP=VkTTF_TT_ERR_NoError then begin
-      if LoadNAME=VkTTF_TT_ERR_NoError then begin
-       if LoadLOCA=VkTTF_TT_ERR_NoError then begin
-        if LoadCMAP=VkTTF_TT_ERR_NoError then begin
-         if LoadGLYF=VkTTF_TT_ERR_NoError then begin
-          if LoadHHEA=VkTTF_TT_ERR_NoError then begin
-           if LoadHMTX=VkTTF_TT_ERR_NoError then begin
-            if LoadVHEA=VkTTF_TT_ERR_NoError then begin
-             if LoadVMTX=VkTTF_TT_ERR_NoError then begin
-              if LoadGPOS<>VkTTF_TT_ERR_NoError then begin
-               // GPOS table is only optional
-               fLastError:=VkTTF_TT_ERR_NoError;
-              end;
-              if LoadKERN<>VkTTF_TT_ERR_NoError then begin
-               // Kerning table is only optional
-               fLastError:=VkTTF_TT_ERR_NoError;
-              end;
-              if LoadCVT<>VkTTF_TT_ERR_NoError then begin
-               // CVT table is only optional
-               fLastError:=VkTTF_TT_ERR_NoError;
-              end;
-              if LoadFPGM<>VkTTF_TT_ERR_NoError then begin
-               // FPGM table is only optional
-               fLastError:=VkTTF_TT_ERR_NoError;
-              end;
-              if LoadPREP<>VkTTF_TT_ERR_NoError then begin
-               // PREP table is only optional
-               fLastError:=VkTTF_TT_ERR_NoError;
-              end;
-              if LoadGASP<>VkTTF_TT_ERR_NoError then begin
-               // GASP table is only optional
-               fLastError:=VkTTF_TT_ERR_NoError;
-              end;
-             end;
-            end;
-           end;
-          end;
-         end;
-        end;
-       end;
-      end;
-     end;
+
+   repeat
+
+    fLastError:=LoadOS2;
+    if fLastError<>VkTTF_TT_ERR_NoError then begin
+     break;
     end;
-   end;
+
+    fLastError:=LoadHEAD;
+    if fLastError<>VkTTF_TT_ERR_NoError then begin
+     break;
+    end;
+
+    fLastError:=LoadMAXP;
+    if fLastError<>VkTTF_TT_ERR_NoError then begin
+     break;
+    end;
+
+    fLastError:=LoadNAME;
+    if fLastError<>VkTTF_TT_ERR_NoError then begin
+     break;
+    end;
+
+    fLastError:=LoadCMAP;
+    if fLastError<>VkTTF_TT_ERR_NoError then begin
+     break;
+    end;
+
+    fLastError:=LoadCFF;
+    if fLastError=VkTTF_TT_ERR_NoError then begin
+
+     fPostScriptFlavored:=true;
+
+    end else begin
+
+     fLastError:=LoadLOCA;
+     if fLastError<>VkTTF_TT_ERR_NoError then begin
+      break;
+     end;
+
+     fLastError:=LoadGLYF;
+     if fLastError<>VkTTF_TT_ERR_NoError then begin
+      break;
+     end;
+
+    end;
+
+    fLastError:=LoadHHEA;
+    if fLastError<>VkTTF_TT_ERR_NoError then begin
+     break;
+    end;
+
+    fLastError:=LoadHMTX;
+    if fLastError<>VkTTF_TT_ERR_NoError then begin
+     break;
+    end;
+
+    fLastError:=LoadVHEA;
+    if fLastError<>VkTTF_TT_ERR_NoError then begin
+     break;
+    end;
+
+    fLastError:=LoadVMTX;
+    if fLastError<>VkTTF_TT_ERR_NoError then begin
+     break;
+    end;
+
+    LoadGPOS; // GPOS table is only optional
+    LoadKERN; // Kerning table is only optional
+
+    if not fPostScriptFlavored then begin
+
+     LoadCVT; // CVT table is only optional
+     LoadFPGM; // FPGM table is only optional
+     LoadPREP; // PREP table is only optional
+
+    end;
+
+    LoadGASP; // GASP table is only optional
+
+    break;
+
+   until true;
+
   end;
   try
    fByteCodeInterpreter:=TVulkanTrueTypeFontByteCodeInterpreter.Create(self);
@@ -33389,14 +33430,12 @@ var i,tablelength,tabledirsize,tabledatasize:TVkInt32;
     i64:TVkInt64;
 begin
  if (not assigned(Stream)) or (Stream.Seek(0,soBeginning)<>0) then begin
-  fLastError:=VkTTF_TT_ERR_UnableToOpenFile;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_UnableToOpenFile;
   exit;
  end;
 
  if Stream.Read(tfd,VkTTF_OFFSET_TABLE_SIZE)<>VkTTF_OFFSET_TABLE_SIZE then begin
-  fLastError:=VkTTF_TT_ERR_CorruptFile;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_CorruptFile;
   exit;
  end;
 
@@ -33404,29 +33443,24 @@ begin
     ((tfd[4]=$00) or (tfd[5] in [$01,$02]) or (tfd[6]=$00) or (tfd[7]=$00)) then begin
   i:=CollectionIndex;
   if TVkUInt32(i+0)>=ToLONGWORD(tfd[8],tfd[9],tfd[10],tfd[11]) then begin
-   fLastError:=VkTTF_TT_ERR_InvalidFile;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_InvalidFile;
    exit;
   end;
   if Stream.Seek(12+(i*14),soBeginning)<>(12+(i*14)) then begin
-   fLastError:=VkTTF_TT_ERR_CorruptFile;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_CorruptFile;
    exit;
   end;
   if Stream.Read(tfd,4)<>4 then begin
-   fLastError:=VkTTF_TT_ERR_CorruptFile;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_CorruptFile;
    exit;
   end;
   i64:=ToLONGWORD(tfd[0],tfd[1],tfd[2],tfd[3]);
   if Stream.Seek(i64,soBeginning)<>i64 then begin
-   fLastError:=VkTTF_TT_ERR_CorruptFile;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_CorruptFile;
    exit;
   end;
   if Stream.Read(tfd,VkTTF_OFFSET_TABLE_SIZE)<>VkTTF_OFFSET_TABLE_SIZE then begin
-   fLastError:=VkTTF_TT_ERR_CorruptFile;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_CorruptFile;
    exit;
   end;
  end;
@@ -33442,8 +33476,7 @@ begin
   TableDirectory:=nil;
   SetLength(TableDirectory,tabledirsize);              // Allocate storage for Table Directory
   if length(TableDirectory)<>tabledirsize then begin
-   fLastError:=VkTTF_TT_ERR_OutOfMemory;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_OutOfMemory;
    exit;
   end;
 
@@ -33452,8 +33485,7 @@ begin
   while i<tabledirsize do begin
    if Stream.Read(TableDirectory[i],16)<>16 then begin
     SetLength(TableDirectory,0);
-    fLastError:=VkTTF_TT_ERR_CorruptFile;
-    result:=fLastError;
+    result:=VkTTF_TT_ERR_CorruptFile;
     exit;
    end;
    tablelength:=ToLONGWORD(TableDirectory[i+12],TableDirectory[i+13],TableDirectory[i+14],TableDirectory[i+15]);
@@ -33468,8 +33500,7 @@ begin
   SetLength(fFontData,fFontDataSize); // Allocate space for all that Data
   if length(fFontData)<>fFontDataSize then begin
    SetLength(TableDirectory,0);
-   fLastError:=VkTTF_TT_ERR_OutOfMemory;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_OutOfMemory;
    exit;
   end;
   FillChar(fFontData[0],fFontDataSize,#0);
@@ -33481,20 +33512,18 @@ begin
  { SetLength(TableDirectory,0);
    SetLength(fFontData,0);
    fFontDataSize:=0;
-   fLastError:=VkTTF_TT_ERR_CorruptFile;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_OutOfMemory;
    exit;}
   end;
 
   SetLength(TableDirectory,0);
 
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
-  
+  result:=VkTTF_TT_ERR_NoError;
+
  end else begin
-  fLastError:=VkTTF_TT_ERR_CorruptFile;
-  result:=fLastError;
-  exit;
+
+  result:=VkTTF_TT_ERR_CorruptFile;
+
  end;
 end;
 
@@ -33517,11 +33546,10 @@ begin
   inc(Position,16);
  end;
  if Found then begin
-  fLastError:=VkTTF_TT_ERR_NoError;
+  result:=VkTTF_TT_ERR_NoError;
  end else begin
-  fLastError:=VkTTF_TT_ERR_TableNotFound;
+  result:=VkTTF_TT_ERR_TableNotFound;
  end;
- result:=fLastError;
 end;
 
 function TVulkanTrueTypeFont.LoadOS2:TVkInt32;
@@ -33575,11 +33603,10 @@ begin
    end;
    if Position<>0 then begin
    end;
-   fLastError:=VkTTF_TT_ERR_NoError;
+   result:=VkTTF_TT_ERR_NoError;
   end else begin
-   fLastError:=VkTTF_TT_ERR_InvalidFile;
+   result:=VkTTF_TT_ERR_InvalidFile;
   end;
-  result:=fLastError;
  end;
 end;
 
@@ -33596,8 +33623,7 @@ begin
   MagicNumber:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
   inc(Position,sizeof(TVkUInt32)); // Magic number
   if MagicNumber<>$5f0f3cf5 then begin
-   fLastError:=VkTTF_TT_ERR_InvalidFile;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_InvalidFile;
    exit;
   end;
   inc(Position,sizeof(TVkUInt16)); // Flags
@@ -33627,8 +33653,7 @@ begin
    fUnitsPerPixel:=1;
   end;
   fThinBoldStrength:=SARLongint(fUnitsPerEm,4);
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -33646,8 +33671,7 @@ begin
   fMaxStackElements:=ToWORD(fFontData[Offset+24],fFontData[Offset+25]);
   SetLength(fGlyphs,fCountGlyphs);
   if length(fGlyphs)<>fCountGlyphs then begin
-   fLastError:=VkTTF_TT_ERR_OutOfMemory;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_OutOfMemory;
    exit;
   end;
   for i:=0 to fCountGlyphs-1 do begin
@@ -33655,15 +33679,13 @@ begin
   end;
   SetLength(fGlyphLoadedBitmap,(fCountGlyphs+31) shr 3);
   if length(fGlyphLoadedBitmap)<>((fCountGlyphs+31) shr 3) then begin
-   fLastError:=VkTTF_TT_ERR_OutOfMemory;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_OutOfMemory;
    exit;
   end;
   for i:=0 to length(fGlyphLoadedBitmap)-1 do begin
    fGlyphLoadedBitmap[i]:=0;
   end;
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -33741,8 +33763,7 @@ begin
        s:='';
        SetLength(s,ThisStringLength*2);
        if length(s)<>(ThisStringLength*2) then begin
-        fLastError:=VkTTF_TT_ERR_OutOfMemory;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_OutOfMemory;
         exit;
        end;
        j:=0;
@@ -33771,8 +33792,7 @@ begin
        s:='';
        SetLength(s,ThisStringLength);
        if length(s)<>ThisStringLength then begin
-        fLastError:=VkTTF_TT_ERR_OutOfMemory;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_OutOfMemory;
         exit;
        end;
        Move(fFontData[StringStorageOffset+ThisStringOffset],s[1],ThisStringLength);
@@ -33783,8 +33803,91 @@ begin
     end;
    end;
   end;
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
+ end;
+end;
+
+function TVulkanTrueTypeFont.LoadCFF:TVkInt32;
+type TIndexData=array of TVkInt32;
+var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
+    HeaderFormatMajor,HeaderFormatMinor,HeaderSize,HeaderOffsetSize,
+    HeaderStartOffset,HeaderEndOffset:TVkInt32;
+    NameIndexData,TopDictIndexData,StringIndexData,
+    GlobalSubroutineIndexData:TIndexData;
+ function LoadIndex(out IndexData:TIndexData):TVkInt32;
+ var Count:TVkInt32;
+ begin
+   if ((Position+SizeOf(TVkUInt16))-1)>=(Offset+Size) then begin
+   result:=VkTTF_TT_ERR_CorruptFile;
+   exit;
+  end;
+  Count:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,SizeOf(TVkUInt16));
+
+  result:=VkTTF_TT_ERR_NoError;
+
+ end;
+begin
+ Tag:=ToLONGWORD(TVkUInt8('C'),TVkUInt8('F'),TVkUInt8('F'),TVkUInt8(32));
+ result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
+ if result=VkTTF_TT_Err_NoError then begin
+
+  Position:=Offset;
+
+  EndOffset:=Offset+Size;
+
+  if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+   result:=VkTTF_TT_ERR_CorruptFile;
+   exit;
+  end;
+  HeaderFormatMajor:=fFontData[Position];
+  inc(Position,SizeOf(TVkUInt8));
+
+  if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+   result:=VkTTF_TT_ERR_CorruptFile;
+   exit;
+  end;
+  HeaderFormatMinor:=fFontData[Position];
+  inc(Position,SizeOf(TVkUInt8));
+
+  if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+   result:=VkTTF_TT_ERR_CorruptFile;
+   exit;
+  end;
+  HeaderSize:=fFontData[Position];
+  inc(Position,SizeOf(TVkUInt8));
+
+  if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+   result:=VkTTF_TT_ERR_CorruptFile;
+   exit;
+  end;
+  HeaderOffsetSize:=fFontData[Position];
+  inc(Position,SizeOf(TVkUInt8));
+
+  Position:=Offset+HeaderSize;
+
+  result:=LoadIndex(NameIndexData);
+  if result<>VkTTF_TT_ERR_NoError then begin
+   exit;
+  end;
+
+  result:=LoadIndex(TopDictIndexData);
+  if result<>VkTTF_TT_ERR_NoError then begin
+   exit;
+  end;
+
+  result:=LoadIndex(StringIndexData);
+  if result<>VkTTF_TT_ERR_NoError then begin
+   exit;
+  end;
+
+  result:=LoadIndex(GlobalSubroutineIndexData);
+  if result<>VkTTF_TT_ERR_NoError then begin
+   exit;
+  end;
+
+  result:=VkTTF_TT_ERR_NoError;
+
  end;
 end;
 
@@ -33798,8 +33901,7 @@ begin
   Position:=Offset;
   SetLength(fGlyphOffsetArray,fCountGlyphs+1);
   if length(fGlyphOffsetArray)<>(fCountGlyphs+1) then begin
-   fLastError:=VkTTF_TT_ERR_OutOfMemory;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_OutOfMemory;
    exit;
   end;
   thisOffset:=0;
@@ -33814,15 +33916,13 @@ begin
      inc(Position,sizeof(TVkUInt32));
     end;
     else begin
-     fLastError:=VkTTF_TT_ERR_CorruptFile;
-     result:=fLastError;
+     result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
    end;
    fGlyphOffsetArray[i]:=thisOffset;
   end;
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -33832,11 +33932,8 @@ begin
  Tag:=ToLONGWORD(TVkUInt8('g'),TVkUInt8('l'),TVkUInt8('y'),TVkUInt8('f'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
-
   fGlyfOffset:=Offset;
-
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -33867,8 +33964,7 @@ begin
   inc(Position,sizeof(TVkUInt16)*5); // 5 reserved words
   inc(Position,sizeof(TVkInt16)); // MetricDataFormat
   fNumfHMetrics:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -33891,9 +33987,7 @@ begin
    inc(Position,sizeof(TVkInt16));
    inc(i);
   end;
-  if fNumfHMetrics=fCountGlyphs then begin
-   result:=fLastError;
-  end else begin
+  if fNumfHMetrics<>fCountGlyphs then begin
    j:=fGlyphs[i-1].AdvanceWidth;
    while i<fCountGlyphs do begin
     fGlyphs[i].AdvanceWidth:=j;
@@ -33901,9 +33995,8 @@ begin
     inc(Position,sizeof(TVkInt16));
     inc(i);
    end;
-   fLastError:=VkTTF_TT_ERR_NoError;
-   result:=fLastError;
   end;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -33934,8 +34027,7 @@ begin
   inc(Position,sizeof(TVkUInt16)*5); // 5 reserved words
   inc(Position,sizeof(TVkInt16)); // MetricDataFormat
   fNumfVMetrics:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -33958,9 +34050,7 @@ begin
    inc(Position,sizeof(TVkInt16));
    inc(i);
   end;
-  if fNumfVMetrics=fCountGlyphs then begin
-   result:=fLastError;
-  end else begin
+  if fNumfVMetrics<>fCountGlyphs then begin
    j:=fGlyphs[i-1].AdvanceHeight;
    while i<fCountGlyphs do begin
     fGlyphs[i].AdvanceWidth:=j;
@@ -33968,9 +34058,8 @@ begin
     inc(Position,sizeof(TVkInt16));
     inc(i);
    end;
-   fLastError:=VkTTF_TT_ERR_NoError;
-   result:=fLastError;
   end;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -34036,8 +34125,7 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
      end;
     end;
     else begin
-     fLastError:=VkTTF_TT_ERR_UnknownGPOSFormat;
-     result:=fLastError;
+     result:=VkTTF_TT_ERR_UnknownGPOSFormat;
      exit;
     end;
    end;
@@ -34185,7 +34273,6 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
 
        result:=LoadCoverageTable(CoverageOffset);
        if result<>VkTTF_TT_Err_NoError then begin
-        fLastError:=result;
         exit;
        end;
 
@@ -34227,7 +34314,6 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
 
        result:=LoadCoverageTable(CoverageOffset);
        if result<>VkTTF_TT_Err_NoError then begin
-        fLastError:=result;
         exit;
        end;
 
@@ -34239,13 +34325,11 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
 
          result:=LoadClassDefinition(SubTableOffset+ClassDefOffset1,Class1Count,GlyphsByClass1);
          if result<>VkTTF_TT_Err_NoError then begin
-          fLastError:=result;
           exit;
          end;
 
          result:=LoadClassDefinition(SubTableOffset+ClassDefOffset2,Class2Count,GlyphsByClass2);
          if result<>VkTTF_TT_Err_NoError then begin
-          fLastError:=result;
           exit;
          end;
 
@@ -34326,7 +34410,6 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
 
       result:=LoadSubTable(NewLookupType,CurrentPosition);
       if result<>VkTTF_TT_Err_NoError then begin
-       fLastError:=result;
        exit;
       end;
 
@@ -34372,8 +34455,7 @@ begin
    FeatureVariations:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
    inc(Position,sizeof(TVkUInt32));
   end else begin
-   fLastError:=VkTTF_TT_ERR_UnknownGPOSFormat;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_UnknownGPOSFormat;
    exit;
   end;
 
@@ -34403,7 +34485,6 @@ begin
 
     result:=LoadSubTable(LookupType,SubTableOffset);
     if result<>VkTTF_TT_Err_NoError then begin
-     fLastError:=result;
      exit;
     end;
 
@@ -34436,8 +34517,7 @@ begin
    end;
   end;
 
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
 
  end;
 
@@ -34464,14 +34544,12 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
   KerningTable^.KerningPairs:=nil;
   SetLength(KerningTable^.KerningPairs,KerningTable^.CountKerningPairs);
   if length(KerningTable^.KerningPairs)<>KerningTable^.CountKerningPairs then begin
-   fLastError:=VkTTF_TT_ERR_OutOfMemory;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_OutOfMemory;
    exit;
   end;
 
   if (length(KerningTable^.KerningPairs)*12)>length(fFontData) then begin
-   fLastError:=VkTTF_TT_ERR_CorruptFile;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_CorruptFile;
    exit;
   end;
 
@@ -34506,8 +34584,7 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
    end;
   end;
 
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
 
  end;
  function LoadKerningTableFormat2:TVkInt32;
@@ -34562,8 +34639,7 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
   end;
 
   if length(KerningTable^.KerningPairs)<>KerningTable^.CountKerningPairs then begin
-   fLastError:=VkTTF_TT_ERR_OutOfMemory;
-   result:=fLastError;
+   result:=VkTTF_TT_ERR_OutOfMemory;
    exit;
   end;
 
@@ -34588,8 +34664,7 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
    end;
   end;
 
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
 
  end;
 
@@ -34610,8 +34685,7 @@ begin
 
     SetLength(fKerningTables,CountSubTables);
     if length(fKerningTables)<>CountSubTables then begin
-     fLastError:=VkTTF_TT_ERR_OutOfMemory;
-     result:=fLastError;
+     result:=VkTTF_TT_ERR_OutOfMemory;
      exit;
     end;
 
@@ -34636,14 +34710,12 @@ begin
       0:begin
        result:=LoadKerningTableFormat0;
        if result<>VkTTF_TT_ERR_NoError then begin
-        fLastError:=result;
         exit;
        end;
       end;
       2:begin
        result:=LoadKerningTableFormat2;
        if result<>VkTTF_TT_ERR_NoError then begin
-        fLastError:=result;
         exit;
        end;
       end;
@@ -34652,8 +34724,7 @@ begin
      Position:=Next;
     end;
 
-    fLastError:=VkTTF_TT_ERR_NoError;
-    result:=fLastError;
+    result:=VkTTF_TT_ERR_NoError;
 
    end;
    1:begin
@@ -34665,8 +34736,7 @@ begin
 
     SetLength(fKerningTables,CountSubTables);
     if length(fKerningTables)<>CountSubTables then begin
-     fLastError:=VkTTF_TT_ERR_OutOfMemory;
-     result:=fLastError;
+     result:=VkTTF_TT_ERR_OutOfMemory;
      exit;
     end;
 
@@ -34697,14 +34767,12 @@ begin
       0:begin
        result:=LoadKerningTableFormat0;
        if result<>VkTTF_TT_ERR_NoError then begin
-        fLastError:=result;
         exit;
-       end;
+      end;
       end;
       2:begin
        result:=LoadKerningTableFormat2;
        if result<>VkTTF_TT_ERR_NoError then begin
-        fLastError:=result;
         exit;
        end;
       end;
@@ -34714,14 +34782,12 @@ begin
 
     end;
 
-    fLastError:=VkTTF_TT_ERR_NoError;
-    result:=fLastError;
+    result:=VkTTF_TT_ERR_NoError;
 
    end;
    else begin
 
-    fLastError:=VkTTF_TT_ERR_UnknownKerningFormat;
-    result:=fLastError;
+    result:=VkTTF_TT_ERR_UnknownKerningFormat;
 
    end;
   end;
@@ -34855,8 +34921,7 @@ begin
      end;
 
      if not SubtableFound then begin
-      fLastError:=VkTTF_TT_ERR_NoCharacterMapFound;
-      result:=fLastError;
+      result:=VkTTF_TT_ERR_NoCharacterMapFound;
       exit;
      end;
    
@@ -34879,8 +34944,7 @@ begin
      SubtableLength:=ToLONGWORD(fFontData[Position+2],fFontData[Position+3],fFontData[Position+4],fFontData[Position+5]);
     end;
     else begin
-     fLastError:=VkTTF_TT_ERR_UnknownCharacterMapFormat;
-     result:=fLastError;
+     result:=VkTTF_TT_ERR_UnknownCharacterMapFormat;
      exit;
     end;
    end;
@@ -34893,8 +34957,7 @@ begin
    end;
 
   end;
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -34911,8 +34974,7 @@ begin
    fCVT[Index]:=TVkInt16(TVkUInt16(ToWORD(fFontData[Position],fFontData[Position+1])));
    inc(Position,SizeOf(TVkUInt16));
   end;
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -34924,8 +34986,7 @@ begin
  if result=VkTTF_TT_Err_NoError then begin
   fFPGM.Data:=TVkPointer(@fFontData[Offset]);
   fFPGM.Size:=Size;
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -34937,8 +34998,7 @@ begin
  if result=VkTTF_TT_Err_NoError then begin
   fPREP.Data:=TVkPointer(@fFontData[Offset]);
   fPREP.Size:=Size;
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -34973,8 +35033,7 @@ begin
     end;
    end;
   end;
-  fLastError:=VkTTF_TT_ERR_NoError;
-  result:=fLastError;
+  result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
@@ -35036,40 +35095,35 @@ begin
     Position:=Offset+CurrentGlyphOffset;
 
     if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-     fLastError:=VkTTF_TT_ERR_CorruptFile;
-     result:=fLastError;
+     result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     NumContours:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
     inc(Position,sizeof(TVkInt16));
 
     if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-     fLastError:=VkTTF_TT_ERR_CorruptFile;
-     result:=fLastError;
+     result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.XMin:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
     inc(Position,sizeof(TVkInt16));
 
     if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-     fLastError:=VkTTF_TT_ERR_CorruptFile;
-     result:=fLastError;
+     result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.YMin:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
     inc(Position,sizeof(TVkInt16));
 
     if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-     fLastError:=VkTTF_TT_ERR_CorruptFile;
-     result:=fLastError;
+     result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.XMax:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
     inc(Position,sizeof(TVkInt16));
 
     if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-     fLastError:=VkTTF_TT_ERR_CorruptFile;
-     result:=fLastError;
+     result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.YMax:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
@@ -35086,45 +35140,39 @@ begin
       repeat
 
        if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
-        fLastError:=VkTTF_TT_ERR_CorruptFile;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        CurrentFlags:=ToWORD(fFontData[Position],fFontData[Position+1]);
        inc(Position,sizeof(TVkUInt16));
 
        if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
-        fLastError:=VkTTF_TT_ERR_CorruptFile;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        inc(Position,sizeof(TVkUInt16));
 
        if (CurrentFlags and ARGS_ARE_WORDS)<>0 then begin
         if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TVkInt16));
 
         if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TVkInt16));
        end else begin
         if (Position+sizeof(shortint))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position);
 
         if (Position+sizeof(shortint))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position);
@@ -35132,50 +35180,43 @@ begin
 
        if (CurrentFlags and WE_HAVE_A_SCALE)<>0 then begin
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TVkInt16));
        end else if (CurrentFlags and WE_HAVE_AN_XY_SCALE)<>0 then begin
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TVkInt16));
 
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TVkInt16));
        end else if (CurrentFlags and WE_HAVE_A_2X2)<>0 then begin
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TVkInt16));
 
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TVkInt16));
 
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TVkInt16));
 
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TVkInt16));
@@ -35193,16 +35234,14 @@ begin
       repeat
 
        if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
-        fLastError:=VkTTF_TT_ERR_CorruptFile;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        CurrentFlags:=ToWORD(fFontData[Position],fFontData[Position+1]);
        inc(Position,sizeof(TVkUInt16));
 
        if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
-        fLastError:=VkTTF_TT_ERR_CorruptFile;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        CurrentIndex:=ToWORD(fFontData[Position],fFontData[Position+1]);
@@ -35214,32 +35253,28 @@ begin
 
        if (CurrentFlags and ARGS_ARE_WORDS)<>0 then begin
         if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         carg1:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
         inc(Position,sizeof(TVkInt16));
 
         if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         carg2:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
         inc(Position,sizeof(TVkInt16));
        end else begin
         if (Position+sizeof(shortint))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         carg1:=SHORTINT(fFontData[Position]);
         inc(Position);
 
         if (Position+sizeof(shortint))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         carg2:=SHORTINT(fFontData[Position]);
@@ -35253,8 +35288,7 @@ begin
 
        if (CurrentFlags and WE_HAVE_A_SCALE)<>0 then begin
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
@@ -35262,48 +35296,42 @@ begin
         cyy:=cxx;
        end else if (CurrentFlags and WE_HAVE_AN_XY_SCALE)<>0 then begin
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
         inc(Position,sizeof(TVkInt16));
 
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cyy:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
         inc(Position,sizeof(TVkInt16));
        end else if (CurrentFlags and WE_HAVE_A_2X2)<>0 then begin
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
         inc(Position,sizeof(TVkInt16));
 
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cyx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
         inc(Position,sizeof(TVkInt16));
 
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxy:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
         inc(Position,sizeof(TVkInt16));
 
         if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-         fLastError:=VkTTF_TT_ERR_CorruptFile;
-         result:=fLastError;
+         result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cyy:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
@@ -35326,15 +35354,13 @@ begin
 
        // TVkUInt8 code instruction Data
        if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
-        fLastError:=VkTTF_TT_ERR_CorruptFile;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        InstructionLength:=ToWORD(fFontData[Position],fFontData[Position+1]);
        inc(Position,sizeof(TVkUInt16));
        if (Position+InstructionLength)>(NextGlyphOffset+Offset) then begin
-        fLastError:=VkTTF_TT_ERR_CorruptFile;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
 
@@ -35354,16 +35380,14 @@ begin
 
      SetLength(fGlyphs[GlyphIndex].EndPointIndices,NumContours);
      if length(fGlyphs[GlyphIndex].EndPointIndices)<>NumContours then begin
-      fLastError:=VkTTF_TT_ERR_OutOfMemory;
-      result:=fLastError;
+      result:=VkTTF_TT_ERR_OutOfMemory;
       exit;
      end;
 
      // End point indices
      for Index:=0 to NumContours-1 do begin
       if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
-       fLastError:=VkTTF_TT_ERR_CorruptFile;
-       result:=fLastError;
+       result:=VkTTF_TT_ERR_CorruptFile;
        exit;
       end;
       fGlyphs[GlyphIndex].EndPointIndices[Index]:=ToWORD(fFontData[Position],fFontData[Position+1]);
@@ -35373,15 +35397,13 @@ begin
 
      // TVkUInt8 code instruction Data
      if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
-      fLastError:=VkTTF_TT_ERR_CorruptFile;
-      result:=fLastError;
+      result:=VkTTF_TT_ERR_CorruptFile;
       exit;
      end;
      InstructionLength:=ToWORD(fFontData[Position],fFontData[Position+1]);
      inc(Position,sizeof(TVkUInt16));
      if (Position+InstructionLength)>(NextGlyphOffset+Offset) then begin
-      fLastError:=VkTTF_TT_ERR_CorruptFile;
-      result:=fLastError;
+      result:=VkTTF_TT_ERR_CorruptFile;
       exit;
      end;
 
@@ -35396,8 +35418,7 @@ begin
 
      SetLength(fGlyphs[GlyphIndex].Points,NumAllPoints);
      if length(fGlyphs[GlyphIndex].Points)<>NumAllPoints then begin
-      fLastError:=VkTTF_TT_ERR_OutOfMemory;
-      result:=fLastError;
+      result:=VkTTF_TT_ERR_OutOfMemory;
       exit;
      end;
 
@@ -35405,8 +35426,7 @@ begin
      Index:=0;
      while Index<NumAllPoints do begin
       if (Position+sizeof(TVkUInt8))>(NextGlyphOffset+Offset) then begin
-       fLastError:=VkTTF_TT_ERR_CorruptFile;
-       result:=fLastError;
+       result:=VkTTF_TT_ERR_CorruptFile;
        exit;
       end;
       fGlyphs[GlyphIndex].Points[Index].Flags:=fFontData[Position];
@@ -35429,8 +35449,7 @@ begin
       CurrentFlag:=fGlyphs[GlyphIndex].Points[Index].Flags;
       if (CurrentFlag and VkTTF_PathFlag_OnXShortVector)<>0 then begin
        if (Position+sizeof(TVkUInt8))>(NextGlyphOffset+Offset) then begin
-        fLastError:=VkTTF_TT_ERR_CorruptFile;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Current:=fFontData[Position];
@@ -35442,8 +35461,7 @@ begin
        Current:=0;
       end else begin
        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-        fLastError:=VkTTF_TT_ERR_CorruptFile;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Current:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
@@ -35459,8 +35477,7 @@ begin
       CurrentFlag:=fGlyphs[GlyphIndex].Points[Index].Flags;
       if (CurrentFlag and VkTTF_PathFlag_OnYShortVector)<>0 then begin
        if (Position+sizeof(TVkUInt8))>(NextGlyphOffset+Offset) then begin
-        fLastError:=VkTTF_TT_ERR_CorruptFile;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Current:=fFontData[Position];
@@ -35472,8 +35489,7 @@ begin
        Current:=0;
       end else begin
        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
-        fLastError:=VkTTF_TT_ERR_CorruptFile;
-        result:=fLastError;
+        result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Current:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
@@ -35493,21 +35509,20 @@ begin
     end;
    end;
 
-   fLastError:=VkTTF_TT_ERR_NoError;
+   result:=VkTTF_TT_ERR_NoError;
 
   end else begin
 
-   fLastError:=VkTTF_TT_ERR_NoError;
+   result:=VkTTF_TT_ERR_NoError;
 
   end;
 
  end else begin
 
-  fLastError:=VkTTF_TT_ERR_OutOfBounds;
-  
+  result:=VkTTF_TT_ERR_OutOfBounds;
+
  end;
 
- result:=fLastError;
 end;
 
 function TVulkanTrueTypeFont.GetGlyphIndex(CharCode:TVkUInt32;CMapIndex:TVkInt32=0):TVkUInt32;
