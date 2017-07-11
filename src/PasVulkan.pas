@@ -3888,33 +3888,6 @@ type EVulkanException=class(Exception);
       Size:TVkInt32;
      end;
 
-     PVulkanTrueTypeFontGlyph=^TVulkanTrueTypeFontGlyph;
-     TVulkanTrueTypeFontGlyph=record
-      Bounds:TVulkanTrueTypeFontGlyphBounds;
-      Points:TVulkanTrueTypeFontGlyphPoints;
-      EndPointIndices:TVulkanTrueTypeFontGlyphEndPointIndices;
-      CompositeSubGlyphs:TVulkanTrueTypeFontGlyphCompositeSubGlyphs;
-      UseMetricsFrom:TVkInt32;
-      Instructions:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
-      Locked:longbool;
-      AdvanceWidth:TVkInt32;
-      AdvanceHeight:TVkInt32;
-      LeftSideBearing:TVkInt32;
-      TopSideBearing:TVkInt32;
-     end;
-
-     TVulkanTrueTypeFontGlyphs=array of TVulkanTrueTypeFontGlyph;
-
-     TVulkanTrueTypeFontCVTTable=array of TVkInt32;
-
-     TVulkanTrueTypeFontBytes=array of TVkUInt8;
-
-     TVulkanTrueTypeFontLongWords=array of TVkUInt32;
-
-     TVulkanCFFCodePointToGlyphIndexTable=array of TVkInt32;
-
-     TVulkanTrueTypeFontGlyphIndexSubHeaderKeys=array[0..255] of TVkUInt16;
-
      TVulkanTrueTypeFontPolygonCommandType=
       (
        VkTTF_PolygonCommandType_MOVETO,
@@ -3950,6 +3923,32 @@ type EVulkanException=class(Exception);
      end;
 
      TVulkanTrueTypeFontPolygonBuffers=array of TVulkanTrueTypeFontPolygonBuffer;
+     PVulkanTrueTypeFontGlyph=^TVulkanTrueTypeFontGlyph;
+     TVulkanTrueTypeFontGlyph=record
+      Bounds:TVulkanTrueTypeFontGlyphBounds;
+      Points:TVulkanTrueTypeFontGlyphPoints;
+      EndPointIndices:TVulkanTrueTypeFontGlyphEndPointIndices;
+      CompositeSubGlyphs:TVulkanTrueTypeFontGlyphCompositeSubGlyphs;
+      UseMetricsFrom:TVkInt32;
+      Instructions:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
+      Locked:longbool;
+      AdvanceWidth:TVkInt32;
+      AdvanceHeight:TVkInt32;
+      LeftSideBearing:TVkInt32;
+      TopSideBearing:TVkInt32;
+     end;
+
+     TVulkanTrueTypeFontGlyphs=array of TVulkanTrueTypeFontGlyph;
+
+     TVulkanTrueTypeFontCVTTable=array of TVkInt32;
+
+     TVulkanTrueTypeFontBytes=array of TVkUInt8;
+
+     TVulkanTrueTypeFontLongWords=array of TVkUInt32;
+
+     TVulkanCFFCodePointToGlyphIndexTable=array of TVkInt32;
+
+     TVulkanTrueTypeFontGlyphIndexSubHeaderKeys=array[0..255] of TVkUInt16;
 
      PVulkanTrueTypeFontGASPRange=^TVulkanTrueTypeFontGASPRange;
      TVulkanTrueTypeFontGASPRange=record
@@ -34650,9 +34649,11 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    StackSize:=0;
    HaveWidth:=false;
    CountStems:=0;
-   x:=0;
-   y:=0;
+   x:=0.0;
+   y:=0.0;
+   Width:=0.0;
    result:=Execute(GlyphPosition,GlyphSize);
+   Glyph.AdvanceWidth:=round(Width*64.0);
   finally
    Stack:=nil;
   end;
