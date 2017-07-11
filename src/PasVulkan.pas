@@ -40617,7 +40617,7 @@ type PPathSegmentSide=^TPathSegmentSide;
   end;
  end;
  function GenerateDistanceFieldPicture(const DistanceFieldData:TDistanceFieldData;const Width,Height,TryIteration:TVkInt32):boolean;
- var x,x2,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TVkInt32;
+ var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TVkInt32;
      DistanceFieldDataItem:PDistanceFieldDataItem;
      DistanceFieldPixel:PVulkanFontDistanceFieldPixel;
      p:TDoublePrecisionPoint;
@@ -40630,59 +40630,36 @@ type PPathSegmentSide=^TPathSegmentSide;
    WindingNumber:=0;
    for x:=0 to Width-1 do begin
     DistanceFieldDataItem:=@DistanceFieldData[PixelIndex];
-    inc(WindingNumber,DistanceFieldDataItem^.DeltaWindingScore);
-    case FillRule of
-     VkTTF_PolygonWindingRule_NONZERO:begin
-      if WindingNumber<>0 then begin
-       DistanceFieldSign:=1;
-      end else begin
-       DistanceFieldSign:=-1;
-      end;
+    if TryIteration=2 then begin
+     p.x:=x+0.5;
+     p.y:=y+0.5;
+     if PointInPolygon(p) then begin
+      DistanceFieldSign:=1;
+     end else begin
+      DistanceFieldSign:=-1;
      end;
-     else {VkTTF_PolygonWindingRule_EVENODD:}begin
-      if (WindingNumber and 1)<>0 then begin
-       DistanceFieldSign:=1;
-      end else begin
-       DistanceFieldSign:=-1;
+    end else begin
+     inc(WindingNumber,DistanceFieldDataItem^.DeltaWindingScore);
+     case FillRule of
+      VkTTF_PolygonWindingRule_NONZERO:begin
+       if WindingNumber<>0 then begin
+        DistanceFieldSign:=1;
+       end else begin
+        DistanceFieldSign:=-1;
+       end;
+      end;
+      else {VkTTF_PolygonWindingRule_EVENODD:}begin
+       if (WindingNumber and 1)<>0 then begin
+        DistanceFieldSign:=1;
+       end else begin
+        DistanceFieldSign:=-1;
+       end;
       end;
      end;
     end;
     if (x=(Width-1)) and (WindingNumber<>0) then begin
-     case TryIteration of
-      0:begin
-       result:=false;
-       break;
-      end;
-      else begin
-       PixelIndex:=Width*y;
-       p.y:=y+0.5;
-       for x2:=0 to Width-1 do begin
-        DistanceFieldDataItem:=@DistanceFieldData[PixelIndex];
-        p.x:=x+0.5;
-        if PointInPolygon(p) then begin
-         DistanceFieldSign:=-1;
-        end else begin
-         DistanceFieldSign:=1;
-        end;
-        DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
-        if MultiChannel then begin
-         DistanceFieldPixel^.r:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceR)*DistanceFieldSign);
-         DistanceFieldPixel^.g:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceG)*DistanceFieldSign);
-         DistanceFieldPixel^.b:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceB)*DistanceFieldSign);
-         DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-        end else begin
-         Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-         DistanceFieldPixel^.r:=Value;
-         DistanceFieldPixel^.g:=Value;
-         DistanceFieldPixel^.b:=Value;
-         DistanceFieldPixel^.a:=Value;
-        end;
-        inc(PixelIndex);
-       end;
-       PixelIndex:=Width*(y+1);
-       continue;
-      end;
-     end;
+     result:=false;
+     break;
     end;
     DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
     if MultiChannel then begin
@@ -40720,11 +40697,11 @@ begin
    PointInPolygonPathSegments:=nil;
    try
 
-    for TryIteration:=0 to 1 do begin
+    for TryIteration:=0 to 2 do begin
 
      InitializeDistances(DistanceFieldData);
 
-     ConvertShape(Shape,TryIteration=1);
+     ConvertShape(Shape,TryIteration in [1,2]);
 
      if MultiChannel then begin
 
@@ -40736,7 +40713,7 @@ begin
 
      end;
 
-     if TryIteration=1 then begin
+     if TryIteration=2 then begin
       ConvertToPointInPolygonPathSegments(Shape);
      end;
 
