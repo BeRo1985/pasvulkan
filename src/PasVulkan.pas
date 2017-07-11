@@ -39012,7 +39012,13 @@ type PPathSegmentSide=^TPathSegmentSide;
       YAtIntersection:TVkFloat;
       XAtIntersection:array[0..1] of TVkFloat;
      end;
+     PPointInPolygonPathSegment=^TPointInPolygonPathSegment;
+     TPointInPolygonPathSegment=record
+      Points:array[0..1] of TDoublePrecisionPoint;
+     end;
+     TPointInPolygonPathSegments=array of TPointInPolygonPathSegment;
  const DoublePrecisionAffineMatrixIdentity:TDoublePrecisionAffineMatrix=(1.0,0.0,0.0,0.0,1.0,0.0);
+ var PointInPolygonPathSegments:TPointInPolygonPathSegments;
  function Clamp(const Value,MinValue,MaxValue:TVkInt64):TVkInt64; overload;
  begin
   if Value<=MinValue then begin
@@ -39062,6 +39068,10 @@ type PPathSegmentSide=^TPathSegmentSide;
  function DoublePrecisionPointCrossProduct(const a,b:TDoublePrecisionPoint):TVkDouble;
  begin
   result:=(a.x*b.y)-(a.y*b.x);
+ end;
+ function DoublePrecisionPointIsLeft(const a,b,c:TDoublePrecisionPoint):TVkDouble;
+ begin
+  result:=((b.x*a.x)*(c.y*a.y))-((c.x*a.x)*(b.y*a.y));
  end;
  function DoublePrecisionPointDotProduct(const a,b:TDoublePrecisionPoint):TVkDouble;
  begin
@@ -40451,11 +40461,113 @@ type PPathSegmentSide=^TPathSegmentSide;
  begin
   result:=Clamp(Round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0,255);
  end;
-
+ procedure ConvertToPointInPolygonPathSegments(const Shape:TShape);
+ var ContourIndex,PathSegmentIndex,CountPathSegments:TVkInt32;
+     Contour:PContour;
+     PathSegment:PPathSegment;
+     StartPoint,LastPoint:TDoublePrecisionPoint;
+  procedure AddPathSegment(const p0,p1:TDoublePrecisionPoint);
+  var Index:TVkInt32;
+      PointInPolygonPathSegment:PPointInPolygonPathSegment;
+  begin
+   Index:=CountPathSegments;
+   inc(CountPathSegments);
+   if length(PointInPolygonPathSegments)<CountPathSegments then begin
+    SetLength(PointInPolygonPathSegments,CountPathSegments*2);
+   end;
+   PointInPolygonPathSegment:=@PointInPolygonPathSegments[Index];
+   PointInPolygonPathSegment^.Points[0]:=p0;
+   PointInPolygonPathSegment^.Points[1]:=p1;
+  end;
+ begin
+  PointInPolygonPathSegments:=nil;
+  CountPathSegments:=0;
+  try
+   for ContourIndex:=0 to Shape.CountContours-1 do begin
+    Contour:=@Shape.Contours[ContourIndex];
+    if Contour^.CountPathSegments>0 then begin
+     StartPoint.x:=0.0;
+     StartPoint.y:=0.0;
+     LastPoint.x:=0.0;
+     LastPoint.y:=0.0;
+     for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
+      PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
+      case PathSegment^.Type_ of
+       pstLine:begin
+        if PathSegmentIndex=0 then begin
+         StartPoint:=PathSegment^.Points[0];
+        end;
+        LastPoint:=PathSegment^.Points[1];
+        AddPathSegment(PathSegment^.Points[0],PathSegment^.Points[1]);
+       end;
+       pstQuadraticBezierCurve:begin
+        if PathSegmentIndex=0 then begin
+         StartPoint:=PathSegment^.Points[0];
+        end;
+        LastPoint:=PathSegment^.Points[2];
+        AddPathSegment(PathSegment^.Points[0],PathSegment^.Points[2]);
+       end;
+      end;
+     end;
+     if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
+      AddPathSegment(LastPoint,StartPoint);
+     end;
+    end;
+   end;
+  finally
+   SetLength(PointInPolygonPathSegments,CountPathSegments);
+  end;
+ end;
+ function PointInPolygon(const Point:TDoublePrecisionPoint):boolean;
+ var Index,CrossingOrWindingNumber:TVkInt32;
+     PointInPolygonPathSegment:PPointInPolygonPathSegment;
+ begin
+  CrossingOrWindingNumber:=0;
+  case FillRule of
+   VkTTF_PolygonWindingRule_NONZERO:begin
+    for Index:=0 to length(PointInPolygonPathSegments)-1 do begin
+     PointInPolygonPathSegment:=@PointInPolygonPathSegments[Index];
+     if PointInPolygonPathSegment^.Points[0].y<=Point.y then begin
+      if (PointInPolygonPathSegment^.Points[1].y>Point.y) and
+         (DoublePrecisionPointIsLeft(PointInPolygonPathSegment^.Points[0],
+                                     PointInPolygonPathSegment^.Points[1],
+                                     Point)>0.0) then begin
+       inc(CrossingOrWindingNumber);
+      end;
+     end else begin
+      if (PointInPolygonPathSegment^.Points[1].y<=Point.y) and
+         (DoublePrecisionPointIsLeft(PointInPolygonPathSegment^.Points[0],
+                                     PointInPolygonPathSegment^.Points[1],
+                                     Point)<0.0) then begin
+       dec(CrossingOrWindingNumber);
+      end;
+     end;
+    end;
+    result:=CrossingOrWindingNumber<>0;
+   end;
+   else {VkTTF_PolygonWindingRule_EVENODD:}begin
+    for Index:=0 to length(PointInPolygonPathSegments)-1 do begin
+     PointInPolygonPathSegment:=@PointInPolygonPathSegments[Index];
+     if ((PointInPolygonPathSegment^.Points[0].y<=Point.y) and
+         (PointInPolygonPathSegment^.Points[1].y>Point.y)) or
+        ((PointInPolygonPathSegment^.Points[0].y>Point.y) and
+         (PointInPolygonPathSegment^.Points[1].y<=Point.y)) then begin
+      if Point.x<(PointInPolygonPathSegment^.Points[0].x+
+                  ((PointInPolygonPathSegment^.Points[1].x-PointInPolygonPathSegment^.Points[0].x)*
+                   ((Point.y-PointInPolygonPathSegment^.Points[0].y)/(PointInPolygonPathSegment^.Points[1].y-PointInPolygonPathSegment^.Points[0].y)))) then begin
+       inc(CrossingOrWindingNumber);
+      end;
+     end;
+    end;
+    result:=(CrossingOrWindingNumber and 1)<>0;
+   end;
+  end;
+ end;
  function GenerateDistanceFieldPicture(const DistanceFieldData:TDistanceFieldData;const Width,Height,TryIteration:TVkInt32):boolean;
- var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TVkInt32;
+ var x,x2,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TVkInt32;
      DistanceFieldDataItem:PDistanceFieldDataItem;
      DistanceFieldPixel:PVulkanFontDistanceFieldPixel;
+     p:TDoublePrecisionPoint;
  begin
 
   result:=true;
@@ -40490,6 +40602,30 @@ type PPathSegmentSide=^TPathSegmentSide;
       end;
       else begin
        PixelIndex:=Width*y;
+       p.y:=y+0.5;
+       for x2:=0 to Width-1 do begin
+        DistanceFieldDataItem:=@DistanceFieldData[PixelIndex];
+        p.x:=x+0.5;
+        if PointInPolygon(p) then begin
+         DistanceFieldSign:=-1;
+        end else begin
+         DistanceFieldSign:=1;
+        end;
+        DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
+        if MultiChannel then begin
+         DistanceFieldPixel^.r:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceR)*DistanceFieldSign);
+         DistanceFieldPixel^.g:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceG)*DistanceFieldSign);
+         DistanceFieldPixel^.b:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceB)*DistanceFieldSign);
+         DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+        end else begin
+         Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+         DistanceFieldPixel^.r:=Value;
+         DistanceFieldPixel^.g:=Value;
+         DistanceFieldPixel^.b:=Value;
+         DistanceFieldPixel^.a:=Value;
+        end;
+        inc(PixelIndex);
+       end;
        PixelIndex:=Width*(y+1);
        continue;
       end;
@@ -40528,30 +40664,41 @@ begin
 
    SetLength(DistanceFieldData,DistanceField.Width*DistanceField.Height);
 
-   for TryIteration:=0 to 1 do begin
+   PointInPolygonPathSegments:=nil;
+   try
 
-    InitializeDistances(DistanceFieldData);
+    for TryIteration:=0 to 1 do begin
 
-    ConvertShape(Shape,TryIteration=1);
+     InitializeDistances(DistanceFieldData);
 
-    if MultiChannel then begin
+     ConvertShape(Shape,TryIteration=1);
 
-     NormalizeShape(Shape);
+     if MultiChannel then begin
 
-     PathSegmentColorizeShape(Shape);
+      NormalizeShape(Shape);
 
-     NormalizeShape(Shape);
+      PathSegmentColorizeShape(Shape);
+
+      NormalizeShape(Shape);
+
+     end;
+
+     if TryIteration=1 then begin
+      ConvertToPointInPolygonPathSegments(Shape);
+     end;
+
+     CalculateDistanceFieldData(Shape,DistanceFieldData,DistanceField.Width,DistanceField.Height);
+
+     if GenerateDistanceFieldPicture(DistanceFieldData,DistanceField.Width,DistanceField.Height,TryIteration) then begin
+      break;
+     end else begin
+      // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
+     end;
 
     end;
 
-    CalculateDistanceFieldData(Shape,DistanceFieldData,DistanceField.Width,DistanceField.Height);
-
-    if GenerateDistanceFieldPicture(DistanceFieldData,DistanceField.Width,DistanceField.Height,TryIteration) then begin
-     break;
-    end else begin
-     // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
-    end;
-
+   finally
+    PointInPolygonPathSegments:=nil;
    end;
 
   finally
