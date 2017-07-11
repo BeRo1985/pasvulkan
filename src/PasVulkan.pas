@@ -38640,6 +38640,8 @@ type PVulkanFontPathSegmentSide=^TVulkanFontPathSegmentSide;
        DistanceField:PVulkanFontDistanceField;
        MultiChannel:boolean;
        FillRule:TVkInt32;
+       Shape:TVulkanFontShape;
+       DistanceFieldData:TVulkanFontDistanceFieldData;
       protected
        function Clamp(const Value,MinValue,MaxValue:TVkInt64):TVkInt64; overload;
        function Clamp(const Value,MinValue,MaxValue:TVkDouble):TVkDouble; overload;
@@ -38666,7 +38668,7 @@ type PVulkanFontPathSegmentSide=^TVulkanFontPathSegmentSide;
        function PathSegmentEndPoint(const PathSegment:TVulkanFontPathSegment):PVulkanFontDoublePrecisionPoint;
        function PathSegmentCornerPoint(const PathSegment:TVulkanFontPathSegment;const WhichA,WhichB:TVkInt32):PVulkanFontDoublePrecisionPoint;
        procedure InitializePathSegment(var PathSegment:TVulkanFontPathSegment);
-       procedure InitializeDistances(var Data:TVulkanFontDistanceFieldData);
+       procedure InitializeDistances;
        function AddLineToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TVkInt32;
        function AddQuadraticBezierCurveToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TVkInt32;
        function AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint;const Tolerance:TVkDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
@@ -38677,18 +38679,21 @@ type PVulkanFontPathSegmentSide=^TVulkanFontPathSegmentSide;
        procedure PrecomputationForRow(out RowData:TVulkanFontRowData;const PathSegment:TVulkanFontPathSegment;const PointLeft,PointRight:TVulkanFontDoublePrecisionPoint);
        function CalculateSideOfQuadraticBezierCurve(const PathSegment:TVulkanFontPathSegment;const Point,XFormPoint:TVulkanFontDoublePrecisionPoint;const RowData:TVulkanFontRowData):TVulkanFontPathSegmentSide;
        function DistanceToPathSegment(const Point:TVulkanFontDoublePrecisionPoint;const PathSegment:TVulkanFontPathSegment;const RowData:TVulkanFontRowData;out PathSegmentSide:TVulkanFontPathSegmentSide):TVkDouble;
-       procedure ConvertShape(out Shape:TVulkanFontShape;const DoSubdivideCurvesIntoLines:boolean);
+       procedure ConvertShape(const DoSubdivideCurvesIntoLines:boolean);
        procedure SplitPathSegmentIntoThreePartsInsideContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TVkInt32);
        procedure SplitPathSegmentIntoThreePartsToContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TVkInt32;const BasePathSegment:TVulkanFontPathSegment);
-       procedure NormalizeShape(var Shape:TVulkanFontShape);
-       procedure PathSegmentColorizeShape(var Shape:TVulkanFontShape);
+       procedure NormalizeShape;
+       procedure PathSegmentColorizeShape;
        function GetLineNonClippedTime(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TVkDouble;
        function GetQuadraticBezierCurveNonClippedTime(const p,p0,p1,p2:TVulkanFontDoublePrecisionPoint):TVkDouble;
        function GetNonClampedSignedLineDistance(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TVkDouble;
-       procedure CalculateDistanceFieldData(const Shape:TVulkanFontShape;var DistanceFieldData:TVulkanFontDistanceFieldData;const Width,Height:TVkInt32);
+       procedure CalculateDistanceFieldDataLineRange(const FromY,ToY:TVkInt32);
+{$ifdef PasVulkanPasMP}
+       procedure CalculateDistanceFieldDataLineRangeParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:pointer;const FromIndex,ToIndex:TPasMPNativeInt);
+{$endif}
        function PackDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
        function PackPseudoDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
-       procedure ConvertToPointInPolygonPathSegments(const Shape:TVulkanFontShape);
+       procedure ConvertToPointInPolygonPathSegments;
        function GetWindingNumberAtPointInPolygon(const Point:TVulkanFontDoublePrecisionPoint):TVkInt32;
        function GenerateDistanceFieldPicture(const DistanceFieldData:TVulkanFontDistanceFieldData;const Width,Height,TryIteration:TVkInt32):boolean;
       public
@@ -39058,18 +39063,18 @@ begin
  PathSegment.P2T:=DoublePrecisionPointMap(p2,PathSegment.XFormMatrix);
 end;
 
-procedure TVulkanFontDataGenerator.InitializeDistances(var Data:TVulkanFontDistanceFieldData);
+procedure TVulkanFontDataGenerator.InitializeDistances;
 var Index:TVkInt32;
 begin
- for Index:=0 to length(Data)-1 do begin
-  Data[Index].SquaredDistance:=sqr(VulkanFontDistanceFieldMagnitudeValue);
-  Data[Index].SquaredDistanceR:=sqr(VulkanFontDistanceFieldMagnitudeValue);
-  Data[Index].SquaredDistanceG:=sqr(VulkanFontDistanceFieldMagnitudeValue);
-  Data[Index].SquaredDistanceB:=sqr(VulkanFontDistanceFieldMagnitudeValue);
-  Data[Index].PseudoSquaredDistanceR:=sqr(VulkanFontDistanceFieldMagnitudeValue);
-  Data[Index].PseudoSquaredDistanceG:=sqr(VulkanFontDistanceFieldMagnitudeValue);
-  Data[Index].PseudoSquaredDistanceB:=sqr(VulkanFontDistanceFieldMagnitudeValue);
-  Data[Index].DeltaWindingScore:=0;
+ for Index:=0 to length(DistanceFieldData)-1 do begin
+  DistanceFieldData[Index].SquaredDistance:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+  DistanceFieldData[Index].SquaredDistanceR:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+  DistanceFieldData[Index].SquaredDistanceG:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+  DistanceFieldData[Index].SquaredDistanceB:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+  DistanceFieldData[Index].PseudoSquaredDistanceR:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+  DistanceFieldData[Index].PseudoSquaredDistanceG:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+  DistanceFieldData[Index].PseudoSquaredDistanceB:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+  DistanceFieldData[Index].DeltaWindingScore:=0;
  end;
 end;
 
@@ -39618,7 +39623,7 @@ begin
  end;
 end;
 
-procedure TVulkanFontDataGenerator.ConvertShape(out Shape:TVulkanFontShape;const DoSubdivideCurvesIntoLines:boolean);
+procedure TVulkanFontDataGenerator.ConvertShape(const DoSubdivideCurvesIntoLines:boolean);
 var CommandIndex:TVkInt32;
     Contour:PVulkanFontPathContour;
     StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TVulkanFontDoublePrecisionPoint;
@@ -39812,7 +39817,7 @@ begin
  end;
 end;
 
-procedure TVulkanFontDataGenerator.NormalizeShape(var Shape:TVulkanFontShape);
+procedure TVulkanFontDataGenerator.NormalizeShape;
 var ContourIndex:TVkInt32;
     Contour:PVulkanFontPathContour;
 begin
@@ -39828,7 +39833,7 @@ begin
  end;
 end;
 
-procedure TVulkanFontDataGenerator.PathSegmentColorizeShape(var Shape:TVulkanFontShape);
+procedure TVulkanFontDataGenerator.PathSegmentColorizeShape;
 const AngleThreshold=3.0;
       EdgeThreshold=1.00000001;
 type PCorner=^TCorner;
@@ -40051,7 +40056,7 @@ begin
  result:=((p.x*(p0.y-p1.y))+(p0.x*(p1.y-p.y))+(p1.x*(p.y-p0.y)))/sqrt(sqr(p1.x-p0.x)+sqr(p1.y-p0.y));
 end;
 
-procedure TVulkanFontDataGenerator.CalculateDistanceFieldData(const Shape:TVulkanFontShape;var DistanceFieldData:TVulkanFontDistanceFieldData;const Width,Height:TVkInt32);
+procedure TVulkanFontDataGenerator.CalculateDistanceFieldDataLineRange(const FromY,ToY:TVkInt32);
 var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
     Contour:PVulkanFontPathContour;
     PathSegment:PVulkanFontPathSegment;
@@ -40071,15 +40076,15 @@ begin
    PathSegmentBoundingBox.Min.y:=PathSegment.BoundingBox.Min.y-VulkanFontDistanceFieldPadValue;
    PathSegmentBoundingBox.Max.x:=PathSegment.BoundingBox.Max.x+VulkanFontDistanceFieldPadValue;
    PathSegmentBoundingBox.Max.y:=PathSegment.BoundingBox.Max.y+VulkanFontDistanceFieldPadValue;
-   x0:=Clamp(Trunc(Floor(PathSegmentBoundingBox.Min.x)),0,Width-1);
-   y0:=Clamp(Trunc(Floor(PathSegmentBoundingBox.Min.y)),0,Height-1);
-   x1:=Clamp(Trunc(Ceil(PathSegmentBoundingBox.Max.x)),0,Width-1);
-   y1:=Clamp(Trunc(Ceil(PathSegmentBoundingBox.Max.y)),0,Height-1);
-{   x0:=0;
+   x0:=Clamp(Trunc(Floor(PathSegmentBoundingBox.Min.x)),0,DistanceField.Width-1);
+   y0:=Clamp(Trunc(Floor(PathSegmentBoundingBox.Min.y)),0,DistanceField.Height-1);
+   x1:=Clamp(Trunc(Ceil(PathSegmentBoundingBox.Max.x)),0,DistanceField.Width-1);
+   y1:=Clamp(Trunc(Ceil(PathSegmentBoundingBox.Max.y)),0,DistanceField.Height-1);
+{  x0:=0;
    y0:=0;
-   x1:=Width-1;
-   y1:=Height-1;}
-   for y:=y0 to y1 do begin
+   x1:=DistanceField.Width-1;
+   y1:=DistanceField.Height-1;}
+   for y:=Max(FromY,y0) to Min(ToY,y1) do begin
     PreviousPathSegmentSide:=pssNone;
     pY:=y+0.5;
     PointLeft.x:=x0;
@@ -40090,7 +40095,7 @@ begin
      PrecomputationForRow(RowData,PathSegment^,PointLeft,PointRight);
     end;
     for x:=x0 to x1 do begin
-     PixelIndex:=(y*Width)+x;
+     PixelIndex:=(y*DistanceField.Width)+x;
      pX:=x+0.5;
      Point.x:=pX;
      Point.y:=pY;
@@ -40132,7 +40137,7 @@ begin
           CurrentSquaredPseudoDistance:=abs(Value);
          end;
         end;
-{         Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,0,0)^,PathSegmentCornerPoint(PathSegment^,0,1)^);
+{       Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,0,0)^,PathSegmentCornerPoint(PathSegment^,0,1)^);
         if Value<0.0 then begin
          Value:=sqr(Value);
          if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
@@ -40151,7 +40156,7 @@ begin
           CurrentSquaredPseudoDistance:=abs(Value);
          end;
         end;
-{         Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,1,0)^,PathSegmentCornerPoint(PathSegment^,1,1)^);
+{       Value:=GetNonClampedSignedLineDistance(Point,PathSegmentCornerPoint(PathSegment^,1,0)^,PathSegmentCornerPoint(PathSegment^,1,1)^);
         if Value>0.0 then begin
          Value:=sqr(Value);
          if abs(Value)<=abs(CurrentSquaredPseudoDistance) then begin
@@ -40196,6 +40201,13 @@ begin
  end;
 end;
 
+{$ifdef PasVulkanPasMP}
+procedure TVulkanFontDataGenerator.CalculateDistanceFieldDataLineRangeParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:pointer;const FromIndex,ToIndex:TPasMPNativeInt);
+begin
+ CalculateDistanceFieldDataLineRange(FromIndex,ToIndex);
+end;
+{$endif}
+
 function TVulkanFontDataGenerator.PackDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
 begin
  result:=Clamp(Round((Distance*(128.0/VulkanFontDistanceFieldMagnitudeValue))+128.0),0,255);
@@ -40206,7 +40218,7 @@ begin
  result:=Clamp(Round((Distance*(128.0/VulkanFontDistanceFieldMagnitudeValue))+128.0),0,255);
 end;
 
-procedure TVulkanFontDataGenerator.ConvertToPointInPolygonPathSegments(const Shape:TVulkanFontShape);
+procedure TVulkanFontDataGenerator.ConvertToPointInPolygonPathSegments;
 var ContourIndex,PathSegmentIndex,CountPathSegments:TVkInt32;
     Contour:PVulkanFontPathContour;
     PathSegment:PVulkanFontPathSegment;
@@ -40401,9 +40413,14 @@ end;
 
 procedure TVulkanFontDataGenerator.DoIt;
 var TryIteration:TVkInt32;
-    Shape:TVulkanFontShape;
-    DistanceFieldData:TVulkanFontDistanceFieldData;
+{$ifdef PasVulkanPasMP}
+    PasMPInstance:TPasMP;
+{$endif}
 begin
+
+{$ifdef PasVulkanPasMP}
+ PasMPInstance:=GetVulkanPasMP;
+{$endif}
 
  Initialize(Shape);
  try
@@ -40419,19 +40436,23 @@ begin
     for TryIteration:=0 to 2 do begin
      case TryIteration of
       0,1:begin
-       InitializeDistances(DistanceFieldData);
-       ConvertShape(Shape,TryIteration in [1,2]);
+       InitializeDistances;
+       ConvertShape(TryIteration in [1,2]);
        if MultiChannel then begin
-        NormalizeShape(Shape);
-        PathSegmentColorizeShape(Shape);
-        NormalizeShape(Shape);
+        NormalizeShape;
+        PathSegmentColorizeShape;
+        NormalizeShape;
        end;
       end;
       else {2:}begin
-       ConvertToPointInPolygonPathSegments(Shape);
+       ConvertToPointInPolygonPathSegments;
       end;
      end;
-     CalculateDistanceFieldData(Shape,DistanceFieldData,DistanceField.Width,DistanceField.Height);
+{$ifdef PasVulkanPasMP}
+     PasMPInstance.Invoke(PasMPInstance.ParallelFor(nil,0,DistanceField.Height-1,CalculateDistanceFieldDataLineRangeParallelForJobFunction,1,10,nil,0));
+{$else}
+     CalculateDistanceFieldDataLineRange(0,DistanceField.Height-1);
+{$endif}
      if GenerateDistanceFieldPicture(DistanceFieldData,DistanceField.Width,DistanceField.Height,TryIteration) then begin
       break;
      end else begin
