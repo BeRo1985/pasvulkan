@@ -3913,6 +3913,8 @@ type EVulkanException=class(Exception);
 
      TVulkanCFFSubroutineData=array of TVulkanTrueTypeFontBytes;
 
+     TVulkanCFFCodePointToGlyphIndexTable=array of TVkInt32;
+
      TVulkanTrueTypeFontGlyphIndexSubHeaderKeys=array[0..255] of TVkUInt16;
 
      TVulkanTrueTypeFontPolygonCommandType=
@@ -4130,6 +4132,7 @@ type EVulkanException=class(Exception);
        fByteCodeInterpreterParameters:TVulkanTrueTypeFontByteCodeInterpreterParameters;
        fIgnoreByteCodeInterpreter:boolean;
        fGASPRanges:TVulkanTrueTypeFontGASPRanges;
+       fCFFCodePointToGlyphIndexTable:TVulkanCFFCodePointToGlyphIndexTable;
        fCFFGlobalSubroutineData:TVulkanCFFSubroutineData;
        fCFFGlobalSubroutineBias:TVkInt32;
        fCFFSubroutineData:TVulkanCFFSubroutineData;
@@ -33221,6 +33224,7 @@ begin
  fStyleIndex:=0;
  fHinting:=false;
  fByteCodeInterpreter:=nil;
+ fCFFCodePointToGlyphIndexTable:=nil;
  fCFFGlobalSubroutineData:=nil;
  fCFFGlobalSubroutineBias:=0;
  fCFFSubroutineData:=nil;
@@ -33418,6 +33422,7 @@ begin
  SetLength(fGlyphBuffer.UnhintedPoints,0);
  SetLength(fGlyphBuffer.InFontUnitsPoints,0);
  SetLength(fGlyphBuffer.EndPointIndices,0);
+ SetLength(fCFFCodePointToGlyphIndexTable,0);
  SetLength(fCFFGlobalSubroutineData,0);
  SetLength(fCFFSubroutineData,0);
  inherited Destroy;
@@ -33987,6 +33992,8 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     DictEntry:PDictEntry;
     StringTable,CharsetTable,EncodingTable:TVulkanRawByteStringArray;
     CurrentRawByteString:TVulkanRawByteString;
+    CharsetTableHashMap:TVulkanStringHashMap;
+    CharsetTableHashMapData:TVulkanStringHashMapData;
  function GetCFFSubroutineBias(const SubroutineIndexData:TIndexData):TVkInt32;
  begin
   // http://download.microsoft.com/download/8/0/1/801a191c-029d-4af3-9642-555f6fe514ee/type2.pdf
@@ -34733,6 +34740,29 @@ begin
           end;
          end;
         end;
+       end;
+
+       CharsetTableHashMap:=TVulkanStringHashMap.Create;
+       try
+
+        for i:=0 to length(CharsetTable)-1 do begin
+         if not CharsetTableHashMap.ExistKey(CharsetTable[i]) then begin
+          CharsetTableHashMap.Add(CharsetTable[i],{%H-}TVkPointer(TVkPtrUInt(i)));
+         end;
+        end;
+
+        SetLength(fCFFCodePointToGlyphIndexTable,length(EncodingTable));
+
+        for i:=0 to length(EncodingTable)-1 do begin
+         if CharsetTableHashMap.TryGet(EncodingTable[i],CharsetTableHashMapData) then begin
+          fCFFCodePointToGlyphIndexTable[i]:={%H-}TVkPtrUInt(TVkPointer(CharsetTableHashMapData));
+         end else begin
+          fCFFCodePointToGlyphIndexTable[i]:=-1;
+         end;
+        end;
+
+       finally
+        CharsetTableHashMap.Free;
        end;
 
       finally
