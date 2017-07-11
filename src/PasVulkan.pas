@@ -3898,8 +3898,8 @@ type EVulkanException=class(Exception);
       );
 
      TVulkanTrueTypeFontPolygonCommandPoint=packed record
-      x:TVkInt32;
-      y:TVkInt32;
+      x:TVkDouble;
+      y:TVkDouble;
      end;
 
      TVulkanTrueTypeFontPolygonCommandPoints=array[0..2] of TVulkanTrueTypeFontPolygonCommandPoint;
@@ -4174,6 +4174,7 @@ type EVulkanException=class(Exception);
        function GetScaleFactor:TVkDouble;
        function GetScaleFactorFixed:TVkInt32;
        function Scale(Value:TVkInt32):TVkInt32;
+       function FloatScale(Value:TVkDouble):TVkDouble;
        function GetScale:TVkInt32;
        function ScaleRound(Value:TVkInt32):TVkInt32;
        function IsPostScriptGlyph(const GlyphIndex:TVkInt32):boolean;
@@ -4184,7 +4185,7 @@ type EVulkanException=class(Exception);
        procedure FillPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer);
        procedure FillPostScriptPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphIndex:TVkInt32);
        procedure FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:UTF8String;const StartX:TVkInt32=0;const StartY:TVkInt32=0);
-       procedure GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
+       procedure GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TVkDouble;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
        procedure DrawPolygonBuffer(Rasterizer:TVulkanTrueTypeFontRasterizer;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;x,y:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
        property Glyphs:TVulkanTrueTypeFontGlyphs read fGlyphs;
        property CountGlyphs:TVkInt32 read fCountGlyphs;
@@ -34323,8 +34324,8 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
    Command^.CommandType:=VkTTF_PolygonCommandType_MOVETO;
-   Command^.Points[0].x:=round(aX*CFFScaleFactor);
-   Command^.Points[0].y:=round(aY*CFFScaleFactor);
+   Command^.Points[0].x:=aX*CFFScaleFactor;
+   Command^.Points[0].y:=aY*CFFScaleFactor;
    GlyphMinX:=Min(GlyphMinX,aX);
    GlyphMinY:=Min(GlyphMinY,aY);
    GlyphMaxX:=Max(GlyphMaxX,aX);
@@ -34342,8 +34343,8 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
    Command^.CommandType:=VkTTF_PolygonCommandType_LINETO;
-   Command^.Points[0].x:=round(aX*CFFScaleFactor);
-   Command^.Points[0].y:=round(aY*CFFScaleFactor);
+   Command^.Points[0].x:=aX*CFFScaleFactor;
+   Command^.Points[0].y:=aY*CFFScaleFactor;
    GlyphMinX:=Min(GlyphMinX,aX);
    GlyphMinY:=Min(GlyphMinY,aY);
    GlyphMaxX:=Max(GlyphMaxX,aX);
@@ -34363,12 +34364,12 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
    Command^.CommandType:=VkTTF_PolygonCommandType_CUBICCURVETO;
-   Command^.Points[0].x:=round(aC0X*CFFScaleFactor);
-   Command^.Points[0].y:=round(aC0Y*CFFScaleFactor);
-   Command^.Points[1].x:=round(aC1X*CFFScaleFactor);
-   Command^.Points[1].y:=round(aC1Y*CFFScaleFactor);
-   Command^.Points[2].x:=round(aAX*CFFScaleFactor);
-   Command^.Points[2].y:=round(aAY*CFFScaleFactor);
+   Command^.Points[0].x:=aC0X*CFFScaleFactor;
+   Command^.Points[0].y:=aC0Y*CFFScaleFactor;
+   Command^.Points[1].x:=aC1X*CFFScaleFactor;
+   Command^.Points[1].y:=aC1Y*CFFScaleFactor;
+   Command^.Points[2].x:=aAX*CFFScaleFactor;
+   Command^.Points[2].y:=aAY*CFFScaleFactor;
    GlyphMinX:=Min(GlyphMinX,aC0X);
    GlyphMinY:=Min(GlyphMinY,aC0Y);
    GlyphMaxX:=Max(GlyphMaxX,aC0X);
@@ -37509,6 +37510,15 @@ begin
  end;
 end;
 
+function TVulkanTrueTypeFont.FloatScale(Value:TVkDouble):TVkDouble;
+begin
+ if fSize<0 then begin
+  result:=(Value*TVkInt64((-fSize)*64))/fUnitsPerEm;
+ end else begin
+  result:=(Value*TVkInt64(fSize*64*fTargetPPI))/(fUnitsPerEm*72);
+ end;
+end;
+
 function TVulkanTrueTypeFont.GetScale:TVkInt32;
 begin
  if fSize<0 then begin
@@ -38114,26 +38124,26 @@ begin
     Command^:=Glyph^.PostScriptPolygon.Commands[CommandIndex];
     case Command^.CommandType of
      VkTTF_PolygonCommandType_MOVETO:begin
-      Command^.Points[0].x:=Scale(Command^.Points[0].x);
-      Command^.Points[0].y:=Scale(Command^.Points[0].y);
+      Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
+      Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
      end;
      VkTTF_PolygonCommandType_LINETO:begin
-      Command^.Points[0].x:=Scale(Command^.Points[0].x);
-      Command^.Points[0].y:=Scale(Command^.Points[0].y);
+      Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
+      Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
      end;
      VkTTF_PolygonCommandType_QUADRATICCURVETO:begin
-      Command^.Points[0].x:=Scale(Command^.Points[0].x);
-      Command^.Points[0].y:=Scale(Command^.Points[0].y);
-      Command^.Points[1].x:=Scale(Command^.Points[1].x);
-      Command^.Points[1].y:=Scale(Command^.Points[1].y);
+      Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
+      Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
+      Command^.Points[1].x:=FloatScale(Command^.Points[1].x);
+      Command^.Points[1].y:=FloatScale(Command^.Points[1].y);
      end;
      VkTTF_PolygonCommandType_CUBICCURVETO:begin
-      Command^.Points[0].x:=Scale(Command^.Points[0].x);
-      Command^.Points[0].y:=Scale(Command^.Points[0].y);
-      Command^.Points[1].x:=Scale(Command^.Points[1].x);
-      Command^.Points[1].y:=Scale(Command^.Points[1].y);
-      Command^.Points[2].x:=Scale(Command^.Points[2].x);
-      Command^.Points[2].y:=Scale(Command^.Points[2].y);
+      Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
+      Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
+      Command^.Points[1].x:=FloatScale(Command^.Points[1].x);
+      Command^.Points[1].y:=FloatScale(Command^.Points[1].y);
+      Command^.Points[2].x:=FloatScale(Command^.Points[2].x);
+      Command^.Points[2].y:=FloatScale(Command^.Points[2].y);
      end;
      VkTTF_PolygonCommandType_CLOSE:begin
      end;
@@ -38209,10 +38219,12 @@ begin
     for CommandIndex:=0 to GlyphPolygonBuffer.CountCommands-1 do begin
      Command:=@PolygonBuffer.Commands[CommandBaseIndex+CommandIndex];
      Command^:=GlyphPolygonBuffer.Commands[CommandIndex];
-     inc(Command^.Points[0].x,OffsetX);
-     inc(Command^.Points[0].y,OffsetY);
-     inc(Command^.Points[1].x,OffsetX);
-     inc(Command^.Points[1].y,OffsetY);
+     Command^.Points[0].x:=Command^.Points[0].x+OffsetX;
+     Command^.Points[0].y:=Command^.Points[0].y+OffsetY;
+     Command^.Points[1].x:=Command^.Points[1].x+OffsetX;
+     Command^.Points[1].y:=Command^.Points[1].y+OffsetY;
+     Command^.Points[2].x:=Command^.Points[2].x+OffsetX;
+     Command^.Points[2].y:=Command^.Points[2].y+OffsetY;
     end;
 
     inc(CurrentX,GetGlyphAdvanceWidth(CurrentGlyph)+fLetterSpacingX);
@@ -38333,10 +38345,10 @@ begin
  result:=fUnitsPerEm;
 end;
 
-procedure TVulkanTrueTypeFont.GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
-var lastcx,lastcy:TVkInt32;
+procedure TVulkanTrueTypeFont.GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TVkDouble;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
+var lastcx,lastcy:TVkDouble;
     First:boolean;
- procedure PointAt(x,y:TVkInt32);
+ procedure PointAt(x,y:TVkDouble);
  begin
   lastcx:=x;
   lastcy:=y;
@@ -38361,18 +38373,18 @@ var lastcx,lastcy:TVkInt32;
    end;
   end;
  end;
- procedure QuadraticCurveTo(const cx,cy,ax,ay:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
-  procedure Recursive(const x1,y1,x2,y2,x3,y3,Level:TVkInt32);
-  var x12,y12,x23,y23,x123,y123,mx,my,d:TVkInt32;
+ procedure QuadraticCurveTo(const cx,cy,ax,ay:TVkDouble;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3:TVkDouble;const Level:TVkInt32);
+  var x12,y12,x23,y23,x123,y123,mx,my,d:TVkDouble;
   begin
-   x12:=SARLongint(x1+x2,1);
-   y12:=SARLongint(y1+y2,1);
-   x23:=SARLongint(x2+x3,1);
-   y23:=SARLongint(y2+y3,1);
-   x123:=SARLongint(x12+x23,1);
-   y123:=SARLongint(y12+y23,1);
-   mx:=SARLongint(x1+x3,1);
-   my:=SARLongint(y1+y3,1);
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   mx:=(x1+x3)*0.5;
+   my:=(y1+y3)*0.5;
    d:=abs(mx-x123)+abs(my-y123);
    if (Level>MaxLevel) or (d<Tolerance) then begin
     PointAt(x123,y123);
@@ -38385,23 +38397,23 @@ var lastcx,lastcy:TVkInt32;
   Recursive(lastcx,lastcy,cx,cy,ax,ay,0);
   PointAt(ax,ay);
  end;
- procedure CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
-  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4,Level:TVkInt32);
-  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,d:TVkInt32;
+ procedure CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TVkDouble;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TVkDouble;Level:TVkInt32);
+  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,d:TVkDouble;
   begin
-   x12:=SARLongint(x1+x2,1);
-   y12:=SARLongint(y1+y2,1);
-   x23:=SARLongint(x2+x3,1);
-   y23:=SARLongint(y2+y3,1);
-   x34:=SARLongint(x3+x4,1);
-   y34:=SARLongint(y3+y4,1);
-   x123:=SARLongint(x12+x23,1);
-   y123:=SARLongint(y12+y23,1);
-   x234:=SARLongint(x23+x34,1);
-   y234:=SARLongint(y23+y34,1);
-   x1234:=SARLongint(x123+x234,1);
-   y1234:=SARLongint(y123+y234,1);
-// d:=abs(SARlongint(x1+x4,1)-x1234)+abs(SARLongint(y1+y4,1)-y1234);
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x34:=(x3+x4)*0.5;
+   y34:=(y3+y4)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   x234:=(x23+x34)*0.5;
+   y234:=(y23+y34)*0.5;
+   x1234:=(x123+x234)*0.5;
+   y1234:=(y123+y234)*0.5;
+// d:=abs(((x1+x4)*0.5)-x1234)+abs(((y1+y4)*0.5)-y1234);
    d:=abs(((x1+x3)-x2)-x2)+abs(((y1+y3)-y2)-y2)+abs(((x2+x4)-x3)-x3)+abs(((y2+y4)-y3)-y3);
    if (Level>MaxLevel) or (d<Tolerance) then begin
     PointAt(x1234,y1234);
@@ -38452,20 +38464,27 @@ begin
   for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
    case PolygonBuffer.Commands[CommandIndex].CommandType of
     VkTTF_PolygonCommandType_MOVETO:begin
-     Rasterizer.MoveTo(x+PolygonBuffer.Commands[CommandIndex].Points[0].x,y+PolygonBuffer.Commands[CommandIndex].Points[0].y);
+     Rasterizer.MoveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
+                       round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y));
     end;
     VkTTF_PolygonCommandType_LINETO:begin
-     Rasterizer.LineTo(x+PolygonBuffer.Commands[CommandIndex].Points[0].x,y+PolygonBuffer.Commands[CommandIndex].Points[0].y);
+     Rasterizer.LineTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
+                       round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y));
     end;
     VkTTF_PolygonCommandType_QUADRATICCURVETO:begin
-     Rasterizer.QuadraticCurveTo(x+PolygonBuffer.Commands[CommandIndex].Points[0].x,y+PolygonBuffer.Commands[CommandIndex].Points[0].y,
-                                 x+PolygonBuffer.Commands[CommandIndex].Points[1].x,y+PolygonBuffer.Commands[CommandIndex].Points[1].y,
+     Rasterizer.QuadraticCurveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
+                                 round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y),
+                                 round(x+PolygonBuffer.Commands[CommandIndex].Points[1].x),
+                                 round(y+PolygonBuffer.Commands[CommandIndex].Points[1].y),
                                  Tolerance,MaxLevel);
     end;
     VkTTF_PolygonCommandType_CUBICCURVETO:begin
-     Rasterizer.CubicCurveTo(x+PolygonBuffer.Commands[CommandIndex].Points[0].x,y+PolygonBuffer.Commands[CommandIndex].Points[0].y,
-                             x+PolygonBuffer.Commands[CommandIndex].Points[1].x,y+PolygonBuffer.Commands[CommandIndex].Points[1].y,
-                             x+PolygonBuffer.Commands[CommandIndex].Points[2].x,y+PolygonBuffer.Commands[CommandIndex].Points[2].y,
+     Rasterizer.CubicCurveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
+                             round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y),
+                             round(x+PolygonBuffer.Commands[CommandIndex].Points[1].x),
+                             round(y+PolygonBuffer.Commands[CommandIndex].Points[1].y),
+                             round(x+PolygonBuffer.Commands[CommandIndex].Points[2].x),
+                             round(y+PolygonBuffer.Commands[CommandIndex].Points[2].y),
                              Tolerance,MaxLevel);
     end;
     VkTTF_PolygonCommandType_CLOSE:begin
@@ -38536,8 +38555,8 @@ const GlyphMetaDataScaleFactor=1.0;
 var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     CodePointGlyphPairIndex,CountCodePointGlyphPairs,
     TrueTypeFontKerningIndex,TrueTypeFontKerningPairIndex,
-    KerningPairIndex,CountKerningPairs,
-    x0,y0,x1,y1:TVkInt32;
+    KerningPairIndex,CountKerningPairs:TVkInt32;
+    x0,y0,x1,y1:TVkDouble;
     KerningPairDoubleIndex:TVkUInt64;
     CodePointRange:PVulkanFontCodePointRange;
     CodePointIndex,BitmapCodePointIndex:TVkUInt32;
