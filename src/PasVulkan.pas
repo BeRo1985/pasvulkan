@@ -262,7 +262,8 @@ const VulkanMinimumMemoryChunkSize=1 shl 24; // 16 MB minimum memory chunk size
       VkTTF_TT_ERR_UnknownKerningFormat=9;
       VkTTF_TT_ERR_UnknownGPOSFormat=10;
       VkTTF_TT_ERR_UnknownCharsetFormat=11;
-      VkTTF_TT_ERR_OutOfBounds=12;
+      VkTTF_TT_ERR_UnknownEncodingFormat=12;
+      VkTTF_TT_ERR_OutOfBounds=13;
 
       VkTTF_LineCapMode_BUTT=0;
       VkTTF_LineCapMode_SQUARE=1;
@@ -33892,6 +33893,55 @@ const TopDictVersionOp=0;
         'Uacutesmall','Ucircumflexsmall','Udieresissmall','Yacutesmall','Thornsmall','Ydieresissmall','001.000',
         '001.001','001.002','001.003','Black','Bold','Book','Light','Medium','Regular','Roman','Semibold'
        );
+      CFFStandardEncoding:array[0..251] of TVulkanRawByteString=
+       (
+        '','','','','','','','','','','','','','','','','','','','','','','','','','','','',
+        '','','','','space','exclam','quotedbl','numbersign','dollar','percent','ampersand','quoteright',
+        'parenleft','parenright','asterisk','plus','comma','hyphen','period','slash','zero','one','two',
+        'three','four','five','six','seven','eight','nine','colon','semicolon','less','equal','greater',
+        'question','at','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S',
+        'T','U','V','W','X','Y','Z','bracketleft','backslash','bracketright','asciicircum','underscore',
+        'quoteleft','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t',
+        'u','v','w','x','y','z','braceleft','bar','braceright','asciitilde','','','','','','','','',
+        '','','','','','','','','','','','','','','','','','','','','','','','','','',
+        'exclamdown','cent','sterling','fraction','yen','florin','section','currency','quotesingle',
+        'quotedblleft','guillemotleft','guilsinglleft','guilsinglright','fi','fl','','endash','dagger',
+        'daggerdbl','periodcentered','','paragraph','bullet','quotesinglbase','quotedblbase','quotedblright',
+        'guillemotright','ellipsis','perthousand','','questiondown','','grave','acute','circumflex','tilde',
+        'macron','breve','dotaccent','dieresis','','ring','cedilla','','hungarumlaut','ogonek','caron',
+        'emdash','','','','','','','','','','','','','','','','','AE','','ordfeminine','','','',
+        '','Lslash','Oslash','OE','ordmasculine','','','','','','ae','','','','dotlessi','','',
+        'lslash','oslash','oe','germandbls'
+       );
+      CFFExpertEncoding:array[0..254] of TVulkanRawByteString=
+       (
+        '','','','','','','','','','','','','','','','','','','','','','','','','','','','',
+        '','','','','space','exclamsmall','Hungarumlautsmall','','dollaroldstyle','dollarsuperior',
+        'ampersandsmall','Acutesmall','parenleftsuperior','parenrightsuperior','twodotenleader','onedotenleader',
+        'comma','hyphen','period','fraction','zerooldstyle','oneoldstyle','twooldstyle','threeoldstyle',
+        'fouroldstyle','fiveoldstyle','sixoldstyle','sevenoldstyle','eightoldstyle','nineoldstyle','colon',
+        'semicolon','commasuperior','threequartersemdash','periodsuperior','questionsmall','','asuperior',
+        'bsuperior','centsuperior','dsuperior','esuperior','','','isuperior','','','lsuperior','msuperior',
+        'nsuperior','osuperior','','','rsuperior','ssuperior','tsuperior','','ff','fi','fl','ffi','ffl',
+        'parenleftinferior','','parenrightinferior','Circumflexsmall','hyphensuperior','Gravesmall','Asmall',
+        'Bsmall','Csmall','Dsmall','Esmall','Fsmall','Gsmall','Hsmall','Ismall','Jsmall','Ksmall','Lsmall',
+        'Msmall','Nsmall','Osmall','Psmall','Qsmall','Rsmall','Ssmall','Tsmall','Usmall','Vsmall','Wsmall',
+        'Xsmall','Ysmall','Zsmall','colonmonetary','onefitted','rupiah','Tildesmall','','','','','','','',
+        '','','','','','','','','','','','','','','','','','','','','','','','','','','',
+        'exclamdownsmall','centoldstyle','Lslashsmall','','','Scaronsmall','Zcaronsmall','Dieresissmall',
+        'Brevesmall','Caronsmall','','Dotaccentsmall','','','Macronsmall','','','figuredash','hypheninferior',
+        '','','Ogoneksmall','Ringsmall','Cedillasmall','','','','onequarter','onehalf','threequarters',
+        'questiondownsmall','oneeighth','threeeighths','fiveeighths','seveneighths','onethird','twothirds','',
+        '','zerosuperior','onesuperior','twosuperior','threesuperior','foursuperior','fivesuperior',
+        'sixsuperior','sevensuperior','eightsuperior','ninesuperior','zeroinferior','oneinferior','twoinferior',
+        'threeinferior','fourinferior','fiveinferior','sixinferior','seveninferior','eightinferior',
+        'nineinferior','centinferior','dollarinferior','periodinferior','commainferior','Agravesmall',
+        'Aacutesmall','Acircumflexsmall','Atildesmall','Adieresissmall','Aringsmall','AEsmall','Ccedillasmall',
+        'Egravesmall','Eacutesmall','Ecircumflexsmall','Edieresissmall','Igravesmall','Iacutesmall',
+        'Icircumflexsmall','Idieresissmall','Ethsmall','Ntildesmall','Ogravesmall','Oacutesmall',
+        'Ocircumflexsmall','Otildesmall','Odieresissmall','OEsmall','Oslashsmall','Ugravesmall','Uacutesmall',
+        'Ucircumflexsmall','Udieresissmall','Yacutesmall','Thornsmall','Ydieresissmall'
+           );
 type PIndexDataItem=^TIndexDataItem;
      TIndexDataItem=record
       Position:TVkInt32;
@@ -33926,7 +33976,8 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     HeaderStartOffset,HeaderEndOffset,i,j,Count,UntilExcludingPosition,
     TopDictCharStringType,TopDictCharset,TopDictEncoding,TopDictCharStrings,
     PrivateDictSubRoutine,PrivateDictDefaultWidthX,PrivateDictNominalWidthX,
-    CharsetFormat,SID:TVkInt32;
+    CharsetFormat,SID,EncodingFormat,CountCodes,Code,CountRanges,First,
+    CountSubCodes:TVkInt32;
     TopDictFontBBox:array[0..3] of TVkInt32;
     TopDictPrivate:array[0..1] of TVkInt32;
     TopDictFontMatrix:array[0..5] of TVkDouble;
@@ -33934,7 +33985,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     GlobalSubroutineIndexData,SubroutineIndexData,
     TopDictCharStringsIndexData:TIndexData;
     DictEntry:PDictEntry;
-    StringTable,CharsetTable:TVulkanRawByteStringArray;
+    StringTable,CharsetTable,EncodingTable:TVulkanRawByteStringArray;
     CurrentRawByteString:TVulkanRawByteString;
  function GetCFFSubroutineBias(const SubroutineIndexData:TIndexData):TVkInt32;
  begin
@@ -34595,6 +34646,97 @@ begin
       end else begin
        result:=VkTTF_TT_ERR_CorruptFile;
        exit;
+      end;
+
+      EncodingTable:=nil;
+      try
+
+       case TopDictEncoding of
+        0:begin
+         SetLength(EncodingTable,length(CFFStandardEncoding));
+         for i:=0 to length(CFFStandardEncoding)-1 do begin
+          EncodingTable[i]:=CFFStandardEncoding[i];
+         end;
+        end;
+        1:begin
+         SetLength(EncodingTable,length(CFFExpertEncoding));
+         for i:=0 to length(CFFExpertEncoding)-1 do begin
+          EncodingTable[i]:=CFFExpertEncoding[i];
+         end;
+        end;
+        else begin
+         Position:=TVkInt32(TVkInt32(Offset)+TopDictEncoding);
+         if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+          result:=VkTTF_TT_ERR_CorruptFile;
+          exit;
+         end;
+         EncodingFormat:=fFontData[Position];
+         inc(Position,SizeOf(TVkUInt8));
+         case EncodingFormat of
+          0:begin
+           if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+            result:=VkTTF_TT_ERR_CorruptFile;
+            exit;
+           end;
+           CountCodes:=fFontData[Position];
+           inc(Position,SizeOf(TVkUInt8));
+           SetLength(EncodingTable,CountCodes);
+           for i:=0 to CountCodes-1 do begin
+            if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+             result:=VkTTF_TT_ERR_CorruptFile;
+             exit;
+            end;
+            Code:=fFontData[Position];
+            inc(Position,SizeOf(TVkUInt8));
+            EncodingTable[i]:=#0+TVulkanRawByteString(IntToStr(Code));
+           end;
+          end;
+          1:begin
+           CountCodes:=0;
+           try
+            if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+             result:=VkTTF_TT_ERR_CorruptFile;
+             exit;
+            end;
+            CountRanges:=fFontData[Position];
+            inc(Position,SizeOf(TVkUInt8));
+            Code:=1;
+            for i:=0 to CountRanges-1 do begin
+             if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+              result:=VkTTF_TT_ERR_CorruptFile;
+              exit;
+             end;
+             First:=fFontData[Position];
+             inc(Position,SizeOf(TVkUInt8));
+             if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+              result:=VkTTF_TT_ERR_CorruptFile;
+              exit;
+             end;
+             CountSubCodes:=fFontData[Position];
+             inc(Position,SizeOf(TVkUInt8));
+             for j:=First to First+CountSubCodes do begin
+              if length(EncodingTable)<(j+1) then begin
+               SetLength(EncodingTable,(j+1)*2);
+              end;
+              CountCodes:=Max(CountCodes,j+1);
+              EncodingTable[j]:=#0+TVulkanRawByteString(IntToStr(Code));
+              inc(Code);
+             end;
+            end;
+           finally
+            SetLength(EncodingTable,CountCodes);
+           end;
+          end;
+          else begin
+           result:=VkTTF_TT_ERR_UnknownEncodingFormat;
+           exit;
+          end;
+         end;
+        end;
+       end;
+
+      finally
+       EncodingTable:=nil;
       end;
 
      finally
