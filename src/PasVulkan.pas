@@ -261,7 +261,8 @@ const VulkanMinimumMemoryChunkSize=1 shl 24; // 16 MB minimum memory chunk size
       VkTTF_TT_ERR_UnableToOpenFile=8;
       VkTTF_TT_ERR_UnknownKerningFormat=9;
       VkTTF_TT_ERR_UnknownGPOSFormat=10;
-      VkTTF_TT_ERR_OutOfBounds=11;
+      VkTTF_TT_ERR_UnknownCharsetFormat=11;
+      VkTTF_TT_ERR_OutOfBounds=12;
 
       VkTTF_LineCapMode_BUTT=0;
       VkTTF_LineCapMode_SQUARE=1;
@@ -373,6 +374,7 @@ type EVulkanException=class(Exception);
      TVulkanCharString=TVkCharString;
 
      TVulkanCharStringArray=array of TVulkanCharString;
+     TVulkanRawByteStringArray=array of TVulkanRawByteString;
      TVkUInt8Array=array of TVkUInt8;
      TVkInt32Array=array of TVkInt32;
      TVkUInt32Array=array of TVkUInt32;
@@ -33844,6 +33846,52 @@ const TopDictVersionOp=0;
       PrivateDictSubRoutineOp=19;
       PrivateDictDefaultWidthXOp=20;
       PrivateDictNominalWidthXOp=21;
+      CFFStandardStrings:array[0..390] of TVulkanRawByteString=
+       (
+        '.notdef','space','exclam','quotedbl','numbersign','dollar','percent','ampersand','quoteright',
+        'parenleft','parenright','asterisk','plus','comma','hyphen','period','slash','zero','one','two',
+        'three','four','five','six','seven','eight','nine','colon','semicolon','less','equal','greater',
+        'question','at','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S',
+        'T','U','V','W','X','Y','Z','bracketleft','backslash','bracketright','asciicircum','underscore',
+        'quoteleft','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t',
+        'u','v','w','x','y','z','braceleft','bar','braceright','asciitilde','exclamdown','cent','sterling',
+        'fraction','yen','florin','section','currency','quotesingle','quotedblleft','guillemotleft',
+        'guilsinglleft','guilsinglright','fi','fl','endash','dagger','daggerdbl','periodcentered','paragraph',
+        'bullet','quotesinglbase','quotedblbase','quotedblright','guillemotright','ellipsis','perthousand',
+        'questiondown','grave','acute','circumflex','tilde','macron','breve','dotaccent','dieresis','ring',
+        'cedilla','hungarumlaut','ogonek','caron','emdash','AE','ordfeminine','Lslash','Oslash','OE',
+        'ordmasculine','ae','dotlessi','lslash','oslash','oe','germandbls','onesuperior','logicalnot','mu',
+        'trademark','Eth','onehalf','plusminus','Thorn','onequarter','divide','brokenbar','degree','thorn',
+        'threequarters','twosuperior','registered','minus','eth','multiply','threesuperior','copyright',
+        'Aacute','Acircumflex','Adieresis','Agrave','Aring','Atilde','Ccedilla','Eacute','Ecircumflex',
+        'Edieresis','Egrave','Iacute','Icircumflex','Idieresis','Igrave','Ntilde','Oacute','Ocircumflex',
+        'Odieresis','Ograve','Otilde','Scaron','Uacute','Ucircumflex','Udieresis','Ugrave','Yacute',
+        'Ydieresis','Zcaron','aacute','acircumflex','adieresis','agrave','aring','atilde','ccedilla','eacute',
+        'ecircumflex','edieresis','egrave','iacute','icircumflex','idieresis','igrave','ntilde','oacute',
+        'ocircumflex','odieresis','ograve','otilde','scaron','uacute','ucircumflex','udieresis','ugrave',
+        'yacute','ydieresis','zcaron','exclamsmall','Hungarumlautsmall','dollaroldstyle','dollarsuperior',
+        'ampersandsmall','Acutesmall','parenleftsuperior','parenrightsuperior','266 ff','onedotenleader',
+        'zerooldstyle','oneoldstyle','twooldstyle','threeoldstyle','fouroldstyle','fiveoldstyle','sixoldstyle',
+        'sevenoldstyle','eightoldstyle','nineoldstyle','commasuperior','threequartersemdash','periodsuperior',
+        'questionsmall','asuperior','bsuperior','centsuperior','dsuperior','esuperior','isuperior','lsuperior',
+        'msuperior','nsuperior','osuperior','rsuperior','ssuperior','tsuperior','ff','ffi','ffl',
+        'parenleftinferior','parenrightinferior','Circumflexsmall','hyphensuperior','Gravesmall','Asmall',
+        'Bsmall','Csmall','Dsmall','Esmall','Fsmall','Gsmall','Hsmall','Ismall','Jsmall','Ksmall','Lsmall',
+        'Msmall','Nsmall','Osmall','Psmall','Qsmall','Rsmall','Ssmall','Tsmall','Usmall','Vsmall','Wsmall',
+        'Xsmall','Ysmall','Zsmall','colonmonetary','onefitted','rupiah','Tildesmall','exclamdownsmall',
+        'centoldstyle','Lslashsmall','Scaronsmall','Zcaronsmall','Dieresissmall','Brevesmall','Caronsmall',
+        'Dotaccentsmall','Macronsmall','figuredash','hypheninferior','Ogoneksmall','Ringsmall','Cedillasmall',
+        'questiondownsmall','oneeighth','threeeighths','fiveeighths','seveneighths','onethird','twothirds',
+        'zerosuperior','foursuperior','fivesuperior','sixsuperior','sevensuperior','eightsuperior','ninesuperior',
+        'zeroinferior','oneinferior','twoinferior','threeinferior','fourinferior','fiveinferior','sixinferior',
+        'seveninferior','eightinferior','nineinferior','centinferior','dollarinferior','periodinferior',
+        'commainferior','Agravesmall','Aacutesmall','Acircumflexsmall','Atildesmall','Adieresissmall',
+        'Aringsmall','AEsmall','Ccedillasmall','Egravesmall','Eacutesmall','Ecircumflexsmall','Edieresissmall',
+        'Igravesmall','Iacutesmall','Icircumflexsmall','Idieresissmall','Ethsmall','Ntildesmall','Ogravesmall',
+        'Oacutesmall','Ocircumflexsmall','Otildesmall','Odieresissmall','OEsmall','Oslashsmall','Ugravesmall',
+        'Uacutesmall','Ucircumflexsmall','Udieresissmall','Yacutesmall','Thornsmall','Ydieresissmall','001.000',
+        '001.001','001.002','001.003','Black','Bold','Book','Light','Medium','Regular','Roman','Semibold'
+       );
 type PIndexDataItem=^TIndexDataItem;
      TIndexDataItem=record
       Position:TVkInt32;
@@ -33875,15 +33923,19 @@ type PIndexDataItem=^TIndexDataItem;
      TDictEntryArray=array of TDictEntry;
 var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     HeaderFormatMajor,HeaderFormatMinor,HeaderSize,HeaderOffsetSize,
-    HeaderStartOffset,HeaderEndOffset,i,j,UntilExcludingPosition,
+    HeaderStartOffset,HeaderEndOffset,i,j,Count,UntilExcludingPosition,
     TopDictCharStringType,TopDictCharset,TopDictEncoding,TopDictCharStrings,
-    PrivateDictSubRoutine,PrivateDictDefaultWidthX,PrivateDictNominalWidthX:TVkInt32;
+    PrivateDictSubRoutine,PrivateDictDefaultWidthX,PrivateDictNominalWidthX,
+    CharsetFormat,SID:TVkInt32;
     TopDictFontBBox:array[0..3] of TVkInt32;
     TopDictPrivate:array[0..1] of TVkInt32;
     TopDictFontMatrix:array[0..5] of TVkDouble;
     NameIndexData,TopDictIndexData,StringIndexData,
-    GlobalSubroutineIndexData,SubroutineIndexData:TIndexData;
+    GlobalSubroutineIndexData,SubroutineIndexData,
+    TopDictCharStringsIndexData:TIndexData;
     DictEntry:PDictEntry;
+    StringTable,CharsetTable:TVulkanRawByteStringArray;
+    CurrentRawByteString:TVulkanRawByteString;
  function GetCFFSubroutineBias(const SubroutineIndexData:TIndexData):TVkInt32;
  begin
   // http://download.microsoft.com/download/8/0/1/801a191c-029d-4af3-9642-555f6fe514ee/type2.pdf
@@ -34145,7 +34197,19 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   end;
   result:=VkTTF_TT_ERR_NoError;
  end;}
+ function GetCFFString(const SID:TVkInt32):TVulkanRawByteString;
+ begin
+  case SID of
+   0..390:begin
+    result:=CFFStandardStrings[SID];
+   end;
+   else begin
+    result:=StringTable[SID-391];
+   end;
+  end;
+ end;
 var TopDictEntryArray,PrivateDictEntryArray:TDictEntryArray;
+    IndexDataItem:PIndexDataItem;
 begin
  Tag:=ToLONGWORD(TVkUInt8('C'),TVkUInt8('F'),TVkUInt8('F'),TVkUInt8(32));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
@@ -34389,50 +34453,156 @@ begin
      exit;
     end;
 
-    result:=LoadIndex(StringIndexData);
-    if result<>VkTTF_TT_ERR_NoError then begin
-     exit;
-    end;
-    if length(StringIndexData)>0 then begin
-    end;
+    StringTable:=nil;
+    try
 
-    result:=LoadIndex(GlobalSubroutineIndexData);
-    if result<>VkTTF_TT_ERR_NoError then begin
-     exit;
-    end;
-    fCFFGlobalSubroutineData:=nil;
-    if length(GlobalSubroutineIndexData)>0 then begin
-     SetLength(fCFFGlobalSubroutineData,length(GlobalSubroutineIndexData));
-     for i:=0 to length(GlobalSubroutineIndexData)-1 do begin
-      if ((GlobalSubroutineIndexData[i].Position+GlobalSubroutineIndexData[i].Size)-1)>=TVkInt32(EndOffset) then begin
-       result:=VkTTF_TT_ERR_CorruptFile;
-       exit;
-      end;
-      SetLength(fCFFGlobalSubroutineData[i],GlobalSubroutineIndexData[i].Size);
-      Move(fFontData[GlobalSubroutineIndexData[i].Position],fCFFGlobalSubroutineData[i][0],GlobalSubroutineIndexData[i].Size);
-     end;
-    end;
-    fCFFGlobalSubroutineBias:=GetCFFSubroutineBias(GlobalSubroutineIndexData);
-
-    if (TopDictPrivate[0]>0) and (TopDictPrivate[1]>0) and (PrivateDictSubRoutine<>0) then begin
-     Position:=TVkInt32(Offset)+TopDictPrivate[1]+PrivateDictSubRoutine;
-     result:=LoadIndex(SubroutineIndexData);
+     result:=LoadIndex(StringIndexData);
      if result<>VkTTF_TT_ERR_NoError then begin
       exit;
      end;
-     fCFFSubroutineData:=nil;
-     if length(SubroutineIndexData)>0 then begin
-      SetLength(fCFFSubroutineData,length(SubroutineIndexData));
-      for i:=0 to length(SubroutineIndexData)-1 do begin
-       if ((SubroutineIndexData[i].Position+SubroutineIndexData[i].Size)-1)>=TVkInt32(EndOffset) then begin
+     if length(StringIndexData)>0 then begin
+      SetLength(StringTable,length(StringIndexData));
+      for i:=0 to length(StringIndexData)-1 do begin
+       IndexDataItem:=@StringIndexData[i];
+       SetLength(CurrentRawByteString,IndexDataItem^.Size);
+       if (IndexDataItem^.Position+(IndexDataItem^.Size-1))<EndOffset then begin
+        Move(fFontData[IndexDataItem^.Position],CurrentRawByteString[1],IndexDataItem^.Size);
+        StringTable[i]:=CurrentRawByteString;
+       end else begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
-       SetLength(fCFFSubroutineData[i],SubroutineIndexData[i].Size);
-       Move(fFontData[SubroutineIndexData[i].Position],fCFFSubroutineData[i][0],SubroutineIndexData[i].Size);
       end;
      end;
-     fCFFSubroutineBias:=GetCFFSubroutineBias(SubroutineIndexData);
+
+     result:=LoadIndex(GlobalSubroutineIndexData);
+     if result<>VkTTF_TT_ERR_NoError then begin
+      exit;
+     end;
+     fCFFGlobalSubroutineData:=nil;
+     if length(GlobalSubroutineIndexData)>0 then begin
+      SetLength(fCFFGlobalSubroutineData,length(GlobalSubroutineIndexData));
+      for i:=0 to length(GlobalSubroutineIndexData)-1 do begin
+       if ((GlobalSubroutineIndexData[i].Position+GlobalSubroutineIndexData[i].Size)-1)>=TVkInt32(EndOffset) then begin
+        result:=VkTTF_TT_ERR_CorruptFile;
+        exit;
+       end;
+       SetLength(fCFFGlobalSubroutineData[i],GlobalSubroutineIndexData[i].Size);
+       Move(fFontData[GlobalSubroutineIndexData[i].Position],fCFFGlobalSubroutineData[i][0],GlobalSubroutineIndexData[i].Size);
+      end;
+     end;
+     fCFFGlobalSubroutineBias:=GetCFFSubroutineBias(GlobalSubroutineIndexData);
+
+     if (TopDictPrivate[0]>0) and (TopDictPrivate[1]>0) and (PrivateDictSubRoutine<>0) then begin
+      Position:=TVkInt32(Offset)+TopDictPrivate[1]+PrivateDictSubRoutine;
+      result:=LoadIndex(SubroutineIndexData);
+      if result<>VkTTF_TT_ERR_NoError then begin
+       exit;
+      end;
+      fCFFSubroutineData:=nil;
+      if length(SubroutineIndexData)>0 then begin
+       SetLength(fCFFSubroutineData,length(SubroutineIndexData));
+       for i:=0 to length(SubroutineIndexData)-1 do begin
+        if ((SubroutineIndexData[i].Position+SubroutineIndexData[i].Size)-1)>=TVkInt32(EndOffset) then begin
+         result:=VkTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        SetLength(fCFFSubroutineData[i],SubroutineIndexData[i].Size);
+        Move(fFontData[SubroutineIndexData[i].Position],fCFFSubroutineData[i][0],SubroutineIndexData[i].Size);
+       end;
+      end;
+      fCFFSubroutineBias:=GetCFFSubroutineBias(SubroutineIndexData);
+     end;
+
+     if TopDictCharStrings>0 then begin
+      Position:=TVkInt32(TVkInt32(Offset)+TopDictCharStrings);
+      result:=LoadIndex(TopDictCharStringsIndexData);
+      if result<>VkTTF_TT_ERR_NoError then begin
+       exit;
+      end;
+      fCountGlyphs:=length(TopDictCharStringsIndexData);
+      SetLength(fGlyphs,fCountGlyphs);
+     end else begin
+      result:=VkTTF_TT_ERR_CorruptFile;
+      exit;
+     end;
+
+     CharsetTable:=nil;
+     try
+
+      if TopDictCharset>0 then begin
+       Position:=TVkInt32(TVkInt32(Offset)+TopDictCharset);
+       if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+        result:=VkTTF_TT_ERR_CorruptFile;
+        exit;
+       end;
+       CharsetFormat:=fFontData[Position];
+       inc(Position,SizeOf(TVkUInt8));
+       SetLength(CharsetTable,fCountGlyphs);
+       CharsetTable[0]:='.notdef';
+       case CharsetFormat of
+        0:begin
+         for i:=0 to fCountGlyphs-2 do begin
+          if ((Position+SizeOf(TVkUInt16))-1)>=EndOffset then begin
+           result:=VkTTF_TT_ERR_CorruptFile;
+           exit;
+          end;
+          SID:=ToWORD(fFontData[Position],fFontData[Position+1]);
+          inc(Position,SizeOf(TVkUInt16));
+          CharsetTable[i+1]:=GetCFFString(SID);
+         end;
+        end;
+        1,2:begin
+         i:=1;
+         while i<fCountGlyphs do begin
+          if ((Position+SizeOf(TVkUInt16))-1)>=EndOffset then begin
+           result:=VkTTF_TT_ERR_CorruptFile;
+           exit;
+          end;
+          SID:=ToWORD(fFontData[Position],fFontData[Position+1]);
+          inc(Position,SizeOf(TVkUInt16));
+          if CharsetFormat=1 then begin
+           if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+            result:=VkTTF_TT_ERR_CorruptFile;
+            exit;
+           end;
+           Count:=fFontData[Position];
+           inc(Position,SizeOf(TVkUInt8));
+          end else begin
+           if ((Position+SizeOf(TVkUInt16))-1)>=EndOffset then begin
+            result:=VkTTF_TT_ERR_CorruptFile;
+            exit;
+           end;
+           Count:=ToWORD(fFontData[Position],fFontData[Position+1]);
+           inc(Position,SizeOf(TVkUInt16));
+          end;
+          if Count=0 then begin
+           result:=VkTTF_TT_ERR_CorruptFile;
+           exit;
+          end else begin
+           for j:=1 to Count do begin
+            CharsetTable[i]:=GetCFFString(SID);
+            inc(i);
+           end;
+          end;
+         end;
+        end;
+        else begin
+         result:=VkTTF_TT_ERR_UnknownCharsetFormat;
+         exit;
+        end;
+       end;
+      end else begin
+       result:=VkTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+
+     finally
+      CharsetTable:=nil;
+     end;
+
+    finally
+     StringTable:=nil;
     end;
 
    finally
