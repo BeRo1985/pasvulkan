@@ -3911,8 +3911,6 @@ type EVulkanException=class(Exception);
 
      TVulkanTrueTypeFontLongWords=array of TVkUInt32;
 
-     TVulkanCFFSubroutineData=array of TVulkanTrueTypeFontBytes;
-
      TVulkanCFFCodePointToGlyphIndexTable=array of TVkInt32;
 
      TVulkanTrueTypeFontGlyphIndexSubHeaderKeys=array[0..255] of TVkUInt16;
@@ -4133,10 +4131,6 @@ type EVulkanException=class(Exception);
        fIgnoreByteCodeInterpreter:boolean;
        fGASPRanges:TVulkanTrueTypeFontGASPRanges;
        fCFFCodePointToGlyphIndexTable:TVulkanCFFCodePointToGlyphIndexTable;
-       fCFFGlobalSubroutineData:TVulkanCFFSubroutineData;
-       fCFFGlobalSubroutineBias:TVkInt32;
-       fCFFSubroutineData:TVulkanCFFSubroutineData;
-       fCFFSubroutineBias:TVkInt32;
        function ReadFontData(Stream:TStream;CollectionIndex:TVkInt32):TVkInt32;
        function GetTableDirEntry(Tag:TVkUInt32;var CheckSum,Offset,Size:TVkUInt32):TVkInt32;
        function LoadOS2:TVkInt32;
@@ -33225,10 +33219,6 @@ begin
  fHinting:=false;
  fByteCodeInterpreter:=nil;
  fCFFCodePointToGlyphIndexTable:=nil;
- fCFFGlobalSubroutineData:=nil;
- fCFFGlobalSubroutineBias:=0;
- fCFFSubroutineData:=nil;
- fCFFSubroutineBias:=0;
  begin
   SetLength(fGASPRanges,4);
   begin
@@ -33423,8 +33413,6 @@ begin
  SetLength(fGlyphBuffer.InFontUnitsPoints,0);
  SetLength(fGlyphBuffer.EndPointIndices,0);
  SetLength(fCFFCodePointToGlyphIndexTable,0);
- SetLength(fCFFGlobalSubroutineData,0);
- SetLength(fCFFSubroutineData,0);
  inherited Destroy;
 end;
 
@@ -33994,6 +33982,8 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     CurrentRawByteString:TVulkanRawByteString;
     CharsetTableHashMap:TVulkanStringHashMap;
     CharsetTableHashMapData:TVulkanStringHashMapData;
+    CFFGlobalSubroutineBias:TVkInt32;
+    CFFSubroutineBias:TVkInt32;
  function GetCFFSubroutineBias(const SubroutineIndexData:TIndexData):TVkInt32;
  begin
   // http://download.microsoft.com/download/8/0/1/801a191c-029d-4af3-9642-555f6fe514ee/type2.pdf
@@ -34198,7 +34188,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
         SetLength(Operands,(CountOperands+1)*2);
        end;
        Operands[CountOperands].Kind:=nkINT;
-       Operands[CountOperands].IntegerValue:=(((Op-247) shl 8) or fFontData[Position])+108;
+       Operands[CountOperands].IntegerValue:=(((Op-247) shl 8)+fFontData[Position])+108;
        inc(CountOperands);
        inc(Position,SizeOf(TVkUInt8));
       end;
@@ -34211,7 +34201,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
         SetLength(Operands,(CountOperands+1)*2);
        end;
        Operands[CountOperands].Kind:=nkINT;
-       Operands[CountOperands].IntegerValue:=-((((Op-251) shl 8) or fFontData[Position])+108);
+       Operands[CountOperands].IntegerValue:=((-((Op-251) shl 8))-fFontData[Position])-108;
        inc(CountOperands);
        inc(Position,SizeOf(TVkUInt8));
       end;
@@ -34266,12 +34256,396 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    end;
   end;
  end;
+ function LoadCFFGlyph(var Glyph:TVulkanTrueTypeFontGlyph;const GlyphPosition,GlyphSize:TVkInt32):TVkInt32;
+ type TStack=array of TVkInt32;
+ var i,x,y,c0x,c0y,c1x,c1y,v,StackSize,Width,CountStems:TVkInt32;
+     Stack:TStack;
+     HaveWidth:boolean;
+  function StackShift:TVkInt32;
+  begin
+   if StackSize>0 then begin
+    result:=Stack[0];
+    dec(StackSize);
+    if StackSize>0 then begin
+     Move(Stack[1],Stack[0],StackSize*SizeOf(TVkInt32));
+    end;
+   end else begin
+    result:=0;
+   end;
+  end;
+  function StackPop:TVkInt32;
+  begin
+   if StackSize>0 then begin
+    dec(StackSize);
+    result:=Stack[StackSize];
+   end else begin
+    result:=0;
+   end;
+  end;
+  procedure StackPush(const Value:TVkInt32);
+  begin
+   if length(Stack)<(StackSize+1) then begin
+    SetLength(Stack,(StackSize+1)*2);
+   end;
+   Stack[StackSize]:=Value;
+   inc(StackSize);
+  end;
+  procedure ParseStems;
+  var HasWidthArgument:boolean;
+  begin
+   HasWidthArgument:=(StackSize and 1)<>0;
+   if HasWidthArgument and not HaveWidth then begin
+    Width:=StackShift+PrivateDictNominalWidthX;
+   end;
+   inc(CountStems,StackSize shr 1);
+   StackSize:=0;
+   HaveWidth:=true;
+  end;
+  procedure MoveTo(aX,aY:TVkInt32);
+  begin
+
+  end;
+  procedure LineTo(aX,aY:TVkInt32);
+  begin
+
+  end;
+  procedure CubicCurveTo(aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TVkInt32);
+  begin
+
+  end;
+  procedure ClosePath;
+  begin
+
+  end;
+  function Execute(const CodePosition,CodeSize:TVkInt32):TVkInt32;
+  var Position,UntilExcludingPosition,CodeIndex:TVkInt32;
+  begin
+   Position:=CodePosition;
+   UntilExcludingPosition:=CodePosition+CodeSize;
+   while Position<UntilExcludingPosition do begin
+    if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+     result:=VkTTF_TT_ERR_CorruptFile;
+     exit;
+    end;
+    v:=fFontData[Position];
+    inc(Position,SizeOf(TVkUInt8));
+    case v of
+     1:begin
+      // hstem
+      ParseStems;
+     end;
+     3:begin
+      // vstem
+      ParseStems;
+     end;
+     4:begin
+      // vmoveto
+      if (StackSize>1) and not HaveWidth then begin
+       Width:=StackShift+PrivateDictNominalWidthX;
+       HaveWidth:=true;
+      end;
+      inc(y,StackPop);
+      MoveTo(x,y);
+     end;
+     5:begin
+      // rlineto
+      while StackSize>0 do begin
+       inc(x,StackShift);
+       inc(y,StackShift);
+       LineTo(x,y);
+      end;
+     end;
+     6:begin
+      // hlineto
+      while StackSize>0 do begin
+       inc(x,StackShift);
+       LineTo(x,y);
+       if StackSize>0 then begin
+        inc(y,StackShift);
+        LineTo(x,y);
+       end else begin
+        break;
+       end;
+      end;
+     end;
+     7:begin
+      // vlineto
+      while StackSize>0 do begin
+       inc(y,StackShift);
+       LineTo(x,y);
+       if StackSize>0 then begin
+        inc(x,StackShift);
+        LineTo(x,y);
+       end else begin
+        break;
+       end;
+      end;
+     end;
+     8:begin
+      // rrcurveto
+      while StackSize>0 do begin
+       c0x:=x+StackShift;
+       c0y:=y+StackShift;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       x:=c1x+StackShift;
+       y:=c1y+StackShift;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+      end;
+     end;
+     10:begin
+      // callsubr
+      CodeIndex:=StackPop+CFFSubroutineBias;
+      if SubroutineIndexData[CodeIndex].Size>0 then begin
+       Execute(SubroutineIndexData[CodeIndex].Position,SubroutineIndexData[CodeIndex].Size);
+      end;
+     end;
+     11:begin
+      // return
+      result:=VkTTF_TT_ERR_NoError;
+      exit;
+     end;
+     12:begin
+      // escape
+      if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+       result:=VkTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      v:=fFontData[Position];
+      inc(Position,SizeOf(TVkUInt8));
+     end;
+     14:begin
+      // endchar
+      if (StackSize>0) and not HaveWidth then begin
+       Width:=StackShift+PrivateDictNominalWidthX;
+       HaveWidth:=true;
+      end;
+      ClosePath;
+     end;
+     18:begin
+      // hstemhm
+      ParseStems;
+     end;
+     19:begin
+      // hintmask
+      ParseStems;
+      inc(Position,(CountStems+7) shr 3);
+     end;
+     20:begin
+      // cntrmask
+      ParseStems;
+      inc(Position,(CountStems+7) shr 3);
+     end;
+     21:begin
+      // rmoveto
+      if (StackSize>2) and not HaveWidth then begin
+       Width:=StackShift+PrivateDictNominalWidthX;
+       HaveWidth:=true;
+      end;
+      inc(y,StackPop);
+      inc(x,StackPop);
+      MoveTo(x,y);
+     end;
+     22:begin
+      // hmoveto
+      if (StackSize>1) and not HaveWidth then begin
+       Width:=StackShift+PrivateDictNominalWidthX;
+       HaveWidth:=true;
+      end;
+      inc(x,StackPop);
+      MoveTo(x,y);
+     end;
+     23:begin
+      // vstemhm
+      ParseStems;
+     end;
+     24:begin
+      // rcurveline
+      while StackSize>2 do begin
+       c0x:=x+StackShift;
+       c0y:=y+StackShift;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       x:=c1x+StackShift;
+       y:=c1y+StackShift;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+      end;
+      inc(x,StackShift);
+      inc(y,StackShift);
+      LineTo(x,y);
+     end;
+     25:begin
+      // rlinecurve
+      while StackSize>6 do begin
+       inc(x,StackShift);
+       inc(y,StackShift);
+       LineTo(x,y);
+      end;
+      c0x:=x+StackShift;
+      c0y:=y+StackShift;
+      c1x:=c0x+StackShift;
+      c1y:=c0y+StackShift;
+      x:=c1x+StackShift;
+      y:=c1y+StackShift;
+      CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+     end;
+     26:begin
+      // vvcurveto
+      if (StackSize and 1)<>0 then begin
+       inc(x,StackShift);
+      end;
+      while StackSize>0 do begin
+       c0x:=x;
+       c0y:=y+StackShift;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       x:=c1x;
+       y:=c1y+StackShift;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+      end;
+     end;
+     27:begin
+      // hhcurveto
+      if (StackSize and 1)<>0 then begin
+       inc(y,StackShift);
+      end;
+      while StackSize>0 do begin
+       c0x:=x+StackShift;
+       c0y:=y;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       x:=c1x+StackShift;
+       y:=c1y;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+      end;
+     end;
+     28:begin
+      // smallint
+      if ((Position+SizeOf(TVkUInt16))-1)>=UntilExcludingPosition then begin
+       result:=VkTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      StackPush(ToSMALLINT(fFontData[Position],fFontData[Position+1]));
+      inc(Position,SizeOf(TVkUInt16));
+     end;
+     29:begin
+      // callgsubnr
+      CodeIndex:=StackPop+CFFGlobalSubroutineBias;
+      if GlobalSubroutineIndexData[CodeIndex].Size>0 then begin
+       Execute(GlobalSubroutineIndexData[CodeIndex].Position,GlobalSubroutineIndexData[CodeIndex].Size);
+      end;
+     end;
+     30:begin
+      // vhcurveto
+      while StackSize>0 do begin
+       c0x:=x;
+       c0y:=y+StackShift;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       x:=c1x;
+       if StackSize=1 then begin
+        y:=c1y+StackShift;
+       end else begin
+        y:=c1y;
+       end;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       if StackSize>0 then begin
+        c0x:=x+StackShift;
+        c0y:=y;
+        c1x:=c0x+StackShift;
+        c1y:=c0y+StackShift;
+        if StackSize=1 then begin
+         x:=c1x+StackShift;
+        end else begin
+         x:=c1x;
+        end;
+        y:=c1y;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end else begin
+        break;
+       end;
+      end;
+     end;
+     31:begin
+      // hvcurveto
+      while StackSize>0 do begin
+       c0x:=x+StackShift;
+       c0y:=y;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       if StackSize=1 then begin
+        x:=c1x+StackShift;
+       end else begin
+        x:=c1x;
+       end;
+       y:=c1y;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       if StackSize>0 then begin
+        c0x:=x;
+        c0y:=y+StackShift;
+        c1x:=c0x+StackShift;
+        c1y:=c0y+StackShift;
+        x:=c1x;
+        if StackSize=1 then begin
+         y:=c1y+StackShift;
+        end else begin
+         y:=c1y;
+        end;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end else begin
+        break;
+       end;
+      end;
+     end;
+     32..246:begin
+      StackPush(v-139);
+     end;
+     247..250:begin
+      if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+       result:=VkTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      StackPush((((v-247) shl 8)+fFontData[Position])+108);
+      inc(Position,SizeOf(TVkUInt8));
+     end;
+     251..254:begin
+      if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+       result:=VkTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      StackPush(((-((v-251) shl 8))-fFontData[Position])-108);
+      inc(Position,SizeOf(TVkUInt8));
+     end;
+     else begin
+      result:=VkTTF_TT_ERR_CorruptFile;
+      exit;
+     end;
+    end;
+   end;
+   result:=VkTTF_TT_ERR_NoError;
+  end;
+ begin
+  Stack:=nil;
+  try
+   StackSize:=0;
+   HaveWidth:=false;
+   CountStems:=0;
+   x:=0;
+   y:=0;
+   result:=Execute(GlyphPosition,GlyphSize);
+  finally
+   Stack:=nil;
+  end;
+ end;
 var TopDictEntryArray,PrivateDictEntryArray:TDictEntryArray;
     IndexDataItem:PIndexDataItem;
 begin
  Tag:=ToLONGWORD(TVkUInt8('C'),TVkUInt8('F'),TVkUInt8('F'),TVkUInt8(32));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
+
+  CFFGlobalSubroutineBias:=0;
+  CFFSubroutineBias:=0;
 
   TopDictEntryArray:=nil;
   try
@@ -34523,7 +34897,7 @@ begin
       for i:=0 to length(StringIndexData)-1 do begin
        IndexDataItem:=@StringIndexData[i];
        SetLength(CurrentRawByteString,IndexDataItem^.Size);
-       if (IndexDataItem^.Position+(IndexDataItem^.Size-1))<EndOffset then begin
+       if TVkUInt32(IndexDataItem^.Position+(IndexDataItem^.Size-1))<EndOffset then begin
         Move(fFontData[IndexDataItem^.Position],CurrentRawByteString[1],IndexDataItem^.Size);
         StringTable[i]:=CurrentRawByteString;
        end else begin
@@ -34537,19 +34911,15 @@ begin
      if result<>VkTTF_TT_ERR_NoError then begin
       exit;
      end;
-     fCFFGlobalSubroutineData:=nil;
      if length(GlobalSubroutineIndexData)>0 then begin
-      SetLength(fCFFGlobalSubroutineData,length(GlobalSubroutineIndexData));
       for i:=0 to length(GlobalSubroutineIndexData)-1 do begin
        if ((GlobalSubroutineIndexData[i].Position+GlobalSubroutineIndexData[i].Size)-1)>=TVkInt32(EndOffset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
-       SetLength(fCFFGlobalSubroutineData[i],GlobalSubroutineIndexData[i].Size);
-       Move(fFontData[GlobalSubroutineIndexData[i].Position],fCFFGlobalSubroutineData[i][0],GlobalSubroutineIndexData[i].Size);
       end;
      end;
-     fCFFGlobalSubroutineBias:=GetCFFSubroutineBias(GlobalSubroutineIndexData);
+     CFFGlobalSubroutineBias:=GetCFFSubroutineBias(GlobalSubroutineIndexData);
 
      if (TopDictPrivate[0]>0) and (TopDictPrivate[1]>0) and (PrivateDictSubRoutine<>0) then begin
       Position:=TVkInt32(Offset)+TopDictPrivate[1]+PrivateDictSubRoutine;
@@ -34557,19 +34927,15 @@ begin
       if result<>VkTTF_TT_ERR_NoError then begin
        exit;
       end;
-      fCFFSubroutineData:=nil;
       if length(SubroutineIndexData)>0 then begin
-       SetLength(fCFFSubroutineData,length(SubroutineIndexData));
        for i:=0 to length(SubroutineIndexData)-1 do begin
         if ((SubroutineIndexData[i].Position+SubroutineIndexData[i].Size)-1)>=TVkInt32(EndOffset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        SetLength(fCFFSubroutineData[i],SubroutineIndexData[i].Size);
-        Move(fFontData[SubroutineIndexData[i].Position],fCFFSubroutineData[i][0],SubroutineIndexData[i].Size);
        end;
       end;
-      fCFFSubroutineBias:=GetCFFSubroutineBias(SubroutineIndexData);
+      CFFSubroutineBias:=GetCFFSubroutineBias(SubroutineIndexData);
      end;
 
      if TopDictCharStrings>0 then begin
@@ -34580,6 +34946,12 @@ begin
       end;
       fCountGlyphs:=length(TopDictCharStringsIndexData);
       SetLength(fGlyphs,fCountGlyphs);
+      for i:=0 to fCountGlyphs-1 do begin
+       result:=LoadCFFGlyph(fGlyphs[i],TopDictCharStringsIndexData[i].Position,TopDictCharStringsIndexData[i].Size);
+       if result<>VkTTF_TT_ERR_NoError then begin
+        exit;
+       end;
+      end;
      end else begin
       result:=VkTTF_TT_ERR_CorruptFile;
       exit;
