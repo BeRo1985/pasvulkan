@@ -33820,6 +33820,30 @@ begin
 end;
 
 function TVulkanTrueTypeFont.LoadCFF:TVkInt32;
+const TopDictVersionOp=0;
+      TopDictNoticeOp=1;
+      TopDictFullNameOp=2;
+      TopDictFamilyNameOp=3;
+      TopDictWeightOp=4;
+      TopDictFontBBoxOp=5;
+      TopDictUniqueIdOp=13;
+      TopDictXuidOp=14;
+      TopDictCharsetOp=15;
+      TopDictEncodingOp=16;
+      TopDictCharStringsOp=17;
+      TopDictPrivateOp=18;
+      TopDictCopyrightOp=1200;
+      TopDictIsFixedPitchOp=1201;
+      TopDictItalicAngleOp=1202;
+      TopDictUnderlinePositionOp=1203;
+      TopDictUnderlineThicknessOp=1204;
+      TopDictPaintTypeOp=1205;
+      TopDictCharstringTypeOp=1206;
+      TopDictFontMatrixOp=1207;
+      TopDictStrokeWidthOp=1208;
+      PrivateDictSubRoutineOp=19;
+      PrivateDictDefaultWidthXOp=20;
+      PrivateDictNominalWidthXOp=21;
 type PIndexDataItem=^TIndexDataItem;
      TIndexDataItem=record
       Position:TVkInt32;
@@ -33845,16 +33869,21 @@ type PIndexDataItem=^TIndexDataItem;
      TNumberArray=array of TNumber;
      PDictEntry=^TDictEntry;
      TDictEntry=record
-      Op:TVkUInt8;
+      Op:TVkInt32;
       Operands:TNumberArray;
      end;
      TDictEntryArray=array of TDictEntry;
 var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     HeaderFormatMajor,HeaderFormatMinor,HeaderSize,HeaderOffsetSize,
-    HeaderStartOffset,HeaderEndOffset,i,
-    UntilExcludingPosition:TVkInt32;
+    HeaderStartOffset,HeaderEndOffset,i,j,UntilExcludingPosition,
+    TopDictCharStringType,TopDictCharset,TopDictEncoding,TopDictCharStrings,
+    PrivateDictSubRoutine,PrivateDictDefaultWidthX,PrivateDictNominalWidthX:TVkInt32;
+    TopDictFontBBox:array[0..3] of TVkInt32;
+    TopDictPrivate:array[0..1] of TVkInt32;
+    TopDictFontMatrix:array[0..5] of TVkDouble;
     NameIndexData,TopDictIndexData,StringIndexData,
     GlobalSubroutineIndexData:TIndexData;
+    DictEntry:PDictEntry;
  function GetCFFSubroutineBias(const SubroutineIndexData:TIndexData):TVkInt32;
  begin
   // http://download.microsoft.com/download/8/0/1/801a191c-029d-4af3-9642-555f6fe514ee/type2.pdf
@@ -33930,7 +33959,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
  end;
  function LoadDict(const DictPosition,DictSize:TVkInt32;out DictEntryArray:TDictEntryArray):TVkInt32;
  const FloatStrings:array[0..15] of string=('0','1','2','3','4','5','6','7','8','9','.','e','e-','','-','');
- var Position,UntilExcludingPosition,Op,CountOperands,CountDictEntries,Value:TVkInt32;
+ var Position,UntilExcludingPosition,Op,CountOperands,CountDictEntries,Value,Code:TVkInt32;
      Operands:TNumberArray;
      DictEntry:PDictEntry;
      FloatString:string;
@@ -33939,10 +33968,10 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   Position:=DictPosition;
   UntilExcludingPosition:=DictPosition+DictSize;
 
+  CountDictEntries:=0;
+
   DictEntryArray:=nil;
   try
-
-   CountDictEntries:=0;
 
    Operands:=nil;
    try
@@ -34039,7 +34068,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
         SetLength(Operands,(CountOperands+1)*2);
        end;
        Operands[CountOperands].Kind:=nkFLOAT;
-       Str(Operands[CountOperands].FloatValue,FloatString);
+       Val(FloatString,Operands[CountOperands].FloatValue,Code);
        inc(CountOperands);
       end;
       32..246:begin
@@ -34095,7 +34124,28 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   result:=VkTTF_TT_ERR_NoError;
 
  end;
-var TopDictEntryArray:TDictEntryArray;
+{function ConvertDict(const DictEntryArray:TDictEntryArray;var Dict:TDict):TVkInt32;
+ var i,j:TVkInt32;
+     DictEntry:PDictEntry;
+ begin
+  for i:=0 to length(DictEntryArray)-1 do begin
+   DictEntry:=@DictEntryArray[i];
+   if (DictEntry^.Op>=Low(TDict)) and (DictEntry^.Op<=High(TDict)) then begin
+    if length(DictEntry^.Operands)<length(Dict[DictEntry^.Op]) then begin
+     for j:=0 to length(DictEntry^.Operands)-1 do begin
+      Dict[DictEntry^.Op,j]:=DictEntry^.Operands[j];
+     end;
+    end else begin
+     Dict[DictEntry^.Op]:=copy(DictEntry^.Operands);
+    end;
+   end else begin
+    result:=VkTTF_TT_ERR_CorruptFile;
+    exit;
+   end;
+  end;
+  result:=VkTTF_TT_ERR_NoError;
+ end;}
+var TopDictEntryArray,PrivateDictEntryArray:TDictEntryArray;
 begin
  Tag:=ToLONGWORD(TVkUInt8('C'),TVkUInt8('F'),TVkUInt8('F'),TVkUInt8(32));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
@@ -34104,82 +34154,269 @@ begin
   TopDictEntryArray:=nil;
   try
 
-   Position:=Offset;
+   PrivateDictEntryArray:=nil;
+   try
 
-   EndOffset:=Offset+Size;
+    TopDictCharStringType:=2;
+    TopDictCharset:=0;
+    TopDictEncoding:=0;
+    TopDictCharStrings:=0;
+    TopDictFontBBox[0]:=0;
+    TopDictFontBBox[1]:=0;
+    TopDictFontBBox[2]:=0;
+    TopDictFontBBox[3]:=0;
+    TopDictPrivate[0]:=0;
+    TopDictPrivate[1]:=0;
+    TopDictFontMatrix[0]:=1e-3;
+    TopDictFontMatrix[1]:=0.0;
+    TopDictFontMatrix[2]:=0.0;
+    TopDictFontMatrix[3]:=0.0;
+    TopDictFontMatrix[4]:=1e-3;
+    TopDictFontMatrix[5]:=0.0;
 
-   if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
-    result:=VkTTF_TT_ERR_CorruptFile;
-    exit;
-   end;
-   HeaderFormatMajor:=fFontData[Position];
-   inc(Position,SizeOf(TVkUInt8));
+    PrivateDictSubRoutine:=0;
+    PrivateDictDefaultWidthX:=0;
+    PrivateDictNominalWidthX:=0;
 
-   if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
-    result:=VkTTF_TT_ERR_CorruptFile;
-    exit;
-   end;
-   HeaderFormatMinor:=fFontData[Position];
-   inc(Position,SizeOf(TVkUInt8));
+    Position:=Offset;
 
-   if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
-    result:=VkTTF_TT_ERR_CorruptFile;
-    exit;
-   end;
-   HeaderSize:=fFontData[Position];
-   inc(Position,SizeOf(TVkUInt8));
+    EndOffset:=Offset+Size;
 
-   if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
-    result:=VkTTF_TT_ERR_CorruptFile;
-    exit;
-   end;
-   HeaderOffsetSize:=fFontData[Position];
-   inc(Position,SizeOf(TVkUInt8));
+    if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+     result:=VkTTF_TT_ERR_CorruptFile;
+     exit;
+    end;
+    HeaderFormatMajor:=fFontData[Position];
+    inc(Position,SizeOf(TVkUInt8));
 
-   Position:=Offset+TVKUInt32(HeaderSize);
+    if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+     result:=VkTTF_TT_ERR_CorruptFile;
+     exit;
+    end;
+    HeaderFormatMinor:=fFontData[Position];
+    inc(Position,SizeOf(TVkUInt8));
 
-   result:=LoadIndex(NameIndexData);
-   if result<>VkTTF_TT_ERR_NoError then begin
-    exit;
-   end;
-   if length(NameIndexData)>0 then begin
-   end;
+    if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+     result:=VkTTF_TT_ERR_CorruptFile;
+     exit;
+    end;
+    HeaderSize:=fFontData[Position];
+    inc(Position,SizeOf(TVkUInt8));
 
-   result:=LoadIndex(TopDictIndexData);
-   if result<>VkTTF_TT_ERR_NoError then begin
-    exit;
-   end;
-   if length(TopDictIndexData)>0 then begin
-    result:=LoadDict(TopDictIndexData[0].Position,TopDictIndexData[0].Size,TopDictEntryArray);
+    if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+     result:=VkTTF_TT_ERR_CorruptFile;
+     exit;
+    end;
+    HeaderOffsetSize:=fFontData[Position];
+    inc(Position,SizeOf(TVkUInt8));
+
+    Position:=Offset+TVKUInt32(HeaderSize);
+
+    result:=LoadIndex(NameIndexData);
     if result<>VkTTF_TT_ERR_NoError then begin
      exit;
     end;
-   end;
+    if length(NameIndexData)>0 then begin
+    end;
 
-   result:=LoadIndex(StringIndexData);
-   if result<>VkTTF_TT_ERR_NoError then begin
-    exit;
-   end;
-   if length(StringIndexData)>0 then begin
-   end;
+    result:=LoadIndex(TopDictIndexData);
+    if result<>VkTTF_TT_ERR_NoError then begin
+     exit;
+    end;
+    if length(TopDictIndexData)>0 then begin
 
-   result:=LoadIndex(GlobalSubroutineIndexData);
-   if result<>VkTTF_TT_ERR_NoError then begin
-    exit;
-   end;
-   fCFFGlobalSubroutineData:=nil;
-   if length(GlobalSubroutineIndexData)>0 then begin
-    SetLength(fCFFGlobalSubroutineData,length(GlobalSubroutineIndexData));
-    for i:=0 to length(GlobalSubroutineIndexData)-1 do begin
-     if ((GlobalSubroutineIndexData[i].Position+GlobalSubroutineIndexData[i].Size)-1)>=EndOffset then begin
-      result:=VkTTF_TT_ERR_CorruptFile;
+     result:=LoadDict(TopDictIndexData[0].Position,TopDictIndexData[0].Size,TopDictEntryArray);
+     if result<>VkTTF_TT_ERR_NoError then begin
       exit;
      end;
-     SetLength(fCFFGlobalSubroutineData[i],GlobalSubroutineIndexData[i].Size);
-     Move(fFontData[GlobalSubroutineIndexData[i].Position],fCFFGlobalSubroutineData[i][0],GlobalSubroutineIndexData[i].Size);
+
+     for i:=0 to length(TopDictEntryArray)-1 do begin
+      DictEntry:=@TopDictEntryArray[i];
+      case DictEntry^.Op of
+       TopDictCharStringTypeOp:begin
+        if length(DictEntry^.Operands)<1 then begin
+         result:=VkTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=nkINT then begin
+         TopDictCharStringType:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         TopDictCharStringType:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+       end;
+       TopDictCharsetOp:begin
+        if length(DictEntry^.Operands)<1 then begin
+         result:=VkTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=nkINT then begin
+         TopDictCharset:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         TopDictCharset:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+       end;
+       TopDictEncodingOp:begin
+        if length(DictEntry^.Operands)<1 then begin
+         result:=VkTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=nkINT then begin
+         TopDictEncoding:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         TopDictEncoding:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+       end;
+       TopDictCharStringsOp:begin
+        if length(DictEntry^.Operands)<1 then begin
+         result:=VkTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=nkINT then begin
+         TopDictCharStrings:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         TopDictCharStrings:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+       end;
+       TopDictFontBBoxOp:begin
+        if length(DictEntry^.Operands)<4 then begin
+         result:=VkTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=nkINT then begin
+         TopDictFontBBox[0]:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         TopDictFontBBox[0]:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+        if DictEntry^.Operands[1].Kind=nkINT then begin
+         TopDictFontBBox[1]:=DictEntry^.Operands[1].IntegerValue;
+        end else begin
+         TopDictFontBBox[1]:=trunc(DictEntry^.Operands[1].FloatValue);
+        end;
+        if DictEntry^.Operands[2].Kind=nkINT then begin
+         TopDictFontBBox[2]:=DictEntry^.Operands[2].IntegerValue;
+        end else begin
+         TopDictFontBBox[2]:=trunc(DictEntry^.Operands[2].FloatValue);
+        end;
+        if DictEntry^.Operands[3].Kind=nkINT then begin
+         TopDictFontBBox[3]:=DictEntry^.Operands[3].IntegerValue;
+        end else begin
+         TopDictFontBBox[3]:=trunc(DictEntry^.Operands[3].FloatValue);
+        end;
+       end;
+       TopDictPrivateOp:begin
+        if length(DictEntry^.Operands)<2 then begin
+         result:=VkTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=nkINT then begin
+         TopDictPrivate[0]:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         TopDictPrivate[0]:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+        if DictEntry^.Operands[1].Kind=nkINT then begin
+         TopDictPrivate[1]:=DictEntry^.Operands[1].IntegerValue;
+        end else begin
+         TopDictPrivate[1]:=trunc(DictEntry^.Operands[1].FloatValue);
+        end;
+       end;
+       TopDictFontMatrixOp:begin
+        if length(DictEntry^.Operands)<6 then begin
+         result:=VkTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        for j:=0 to 5 do begin
+         if DictEntry^.Operands[j].Kind=nkINT then begin
+          TopDictFontMatrix[j]:=DictEntry^.Operands[j].IntegerValue;
+         end else begin
+          TopDictFontMatrix[j]:=DictEntry^.Operands[j].FloatValue;
+         end;
+        end;
+       end;
+      end;
+
+     end;
+
     end;
+
+    if (TopDictPrivate[0]>0) and (TopDictPrivate[1]>0) then begin
+
+     result:=LoadDict(TVkInt32(Offset)+TopDictPrivate[1],TopDictPrivate[0],PrivateDictEntryArray);
+     if result<>VkTTF_TT_ERR_NoError then begin
+      exit;
+     end;
+
+     for i:=0 to length(PrivateDictEntryArray)-1 do begin
+      DictEntry:=@PrivateDictEntryArray[i];
+      case DictEntry^.Op of
+       PrivateDictSubRoutineOp:begin
+        if length(DictEntry^.Operands)<1 then begin
+         result:=VkTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=nkINT then begin
+         PrivateDictSubRoutine:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         PrivateDictSubRoutine:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+       end;
+       PrivateDictDefaultWidthXOp:begin
+        if length(DictEntry^.Operands)<1 then begin
+         result:=VkTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=nkINT then begin
+         PrivateDictDefaultWidthX:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         PrivateDictDefaultWidthX:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+       end;
+       PrivateDictNominalWidthXOp:begin
+        if length(DictEntry^.Operands)<1 then begin
+         result:=VkTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=nkINT then begin
+         PrivateDictNominalWidthX:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         PrivateDictNominalWidthX:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+       end;
+      end;
+     end;
+
+    end else begin
+     result:=VkTTF_TT_ERR_CorruptFile;
+     exit;
+    end;
+
+    result:=LoadIndex(StringIndexData);
+    if result<>VkTTF_TT_ERR_NoError then begin
+     exit;
+    end;
+    if length(StringIndexData)>0 then begin
+    end;
+
+    result:=LoadIndex(GlobalSubroutineIndexData);
+    if result<>VkTTF_TT_ERR_NoError then begin
+     exit;
+    end;
+    fCFFGlobalSubroutineData:=nil;
+    if length(GlobalSubroutineIndexData)>0 then begin
+     SetLength(fCFFGlobalSubroutineData,length(GlobalSubroutineIndexData));
+     for i:=0 to length(GlobalSubroutineIndexData)-1 do begin
+      if ((GlobalSubroutineIndexData[i].Position+GlobalSubroutineIndexData[i].Size)-1)>=TVkInt32(EndOffset) then begin
+       result:=VkTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      SetLength(fCFFGlobalSubroutineData[i],GlobalSubroutineIndexData[i].Size);
+      Move(fFontData[GlobalSubroutineIndexData[i].Position],fCFFGlobalSubroutineData[i][0],GlobalSubroutineIndexData[i].Size);
+     end;
+    end;
+    fCFFGlobalSubroutineBias:=GetCFFSubroutineBias(GlobalSubroutineIndexData);
+
+   finally
+    PrivateDictEntryArray:=nil;
    end;
-   fCFFGlobalSubroutineBias:=GetCFFSubroutineBias(GlobalSubroutineIndexData);
 
   finally
    TopDictEntryArray:=nil;
