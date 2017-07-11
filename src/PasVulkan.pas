@@ -34268,7 +34268,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
  function LoadCFFGlyph(var Glyph:TVulkanTrueTypeFontGlyph;const GlyphPosition,GlyphSize:TVkInt32):TVkInt32;
  type TStack=array of TVkDouble;
  var i,v,StackSize,CountStems:TVkInt32;
-     Width,x,y,c0x,c0y,c1x,c1y:TVkDouble;
+     Width,x,y,c0x,c0y,c1x,c1y,MinX,MinY,MaxX,MaxY:TVkDouble;
      Stack:TStack;
      HaveWidth:boolean;
   function StackShift:TVkDouble;
@@ -34324,6 +34324,10 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    Command^.CommandType:=VkTTF_PolygonCommandType_MOVETO;
    Command^.Points[0].x:=round(aX*CFFScaleFactor);
    Command^.Points[0].y:=round(aY*CFFScaleFactor);
+   MinX:=Min(MinX,aX);
+   MinY:=Min(MinY,aY);
+   MaxX:=Max(MaxX,aX);
+   MaxY:=Max(MaxY,aY);
   end;
   procedure LineTo(aX,aY:TVkDouble);
   var CommandIndex:TVkInt32;
@@ -34338,6 +34342,10 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    Command^.CommandType:=VkTTF_PolygonCommandType_LINETO;
    Command^.Points[0].x:=round(aX*CFFScaleFactor);
    Command^.Points[0].y:=round(aY*CFFScaleFactor);
+   MinX:=Min(MinX,aX);
+   MinY:=Min(MinY,aY);
+   MaxX:=Max(MaxX,aX);
+   MaxY:=Max(MaxY,aY);
   end;
   procedure CubicCurveTo(aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TVkDouble);
   var CommandIndex:TVkInt32;
@@ -34356,6 +34364,18 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    Command^.Points[1].y:=round(aC1Y*CFFScaleFactor);
    Command^.Points[2].x:=round(aAX*CFFScaleFactor);
    Command^.Points[2].y:=round(aAY*CFFScaleFactor);
+   MinX:=Min(MinX,aC0X);
+   MinY:=Min(MinY,aC0Y);
+   MaxX:=Max(MaxX,aC0X);
+   MaxY:=Max(MaxY,aC0Y);
+   MinX:=Min(MinX,aC1X);
+   MinY:=Min(MinY,aC1Y);
+   MaxX:=Max(MaxX,aC1X);
+   MaxY:=Max(MaxY,aC1Y);
+   MinX:=Min(MinX,aAX);
+   MinY:=Min(MinY,aAY);
+   MaxX:=Max(MaxX,aAX);
+   MaxY:=Max(MaxY,aAY);
   end;
   procedure ClosePath;
   var CommandIndex:TVkInt32;
@@ -34822,6 +34842,10 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    x:=0.0;
    y:=0.0;
    Width:=0.0;
+   MinX:=MaxDouble;
+   MinY:=MaxDouble;
+   MaxX:=-MaxDouble;
+   MaxY:=-MaxDouble;
    FillChar(Glyph,SizeOf(TVulkanTrueTypeFontGlyph),#0);
    Glyph.PostScriptPolygon.Commands:=nil;
    Glyph.PostScriptPolygon.CountCommands:=0;
@@ -34830,7 +34854,11 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    finally
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands);
    end;
-   Glyph.AdvanceWidth:=round(Width*64.0);
+   Glyph.AdvanceWidth:=round(Width);
+   Glyph.Bounds.XMin:=round(MinX);
+   Glyph.Bounds.YMin:=round(MinY);
+   Glyph.Bounds.XMax:=round(MaxX);
+   Glyph.Bounds.YMax:=round(MaxY);
   finally
    Stack:=nil;
   end;
@@ -34996,6 +35024,10 @@ begin
         end else begin
          TopDictFontBBox[3]:=trunc(DictEntry^.Operands[3].FloatValue);
         end;
+        fMinX:=TopDictFontBBox[0];
+        fMinY:=TopDictFontBBox[1];
+        fMaxX:=TopDictFontBBox[2];
+        fMaxY:=TopDictFontBBox[3];
        end;
        TopDictPrivateOp:begin
         if length(DictEntry^.Operands)<2 then begin
@@ -38064,7 +38096,11 @@ begin
    BaseIndex:=PolygonBuffer.CountCommands;
    inc(PolygonBuffer.CountCommands,Glyph^.PostScriptPolygon.CountCommands);
    if length(PolygonBuffer.Commands)<PolygonBuffer.CountCommands then begin
-    SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(PolygonBuffer.CountCommands));
+    if PolygonBuffer.CountCommands=Glyph^.PostScriptPolygon.CountCommands then begin
+     SetLength(PolygonBuffer.Commands,PolygonBuffer.CountCommands);
+    end else begin
+     SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(PolygonBuffer.CountCommands));
+    end;
    end;
 
    for CommandIndex:=0 to Glyph^.PostScriptPolygon.CountCommands-1 do begin
@@ -39870,7 +39906,8 @@ type PPathSegmentSide=^TPathSegmentSide;
         if DoSubdivideCurvesIntoLines then begin
          AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
         end else begin
-         AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
+         AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
+//       AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
         end;
        end;
        LastPoint:=Point;
