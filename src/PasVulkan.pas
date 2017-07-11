@@ -34210,7 +34210,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
         SetLength(Operands,(CountOperands+1)*2);
        end;
        Operands[CountOperands].Kind:=nkINT;
-       Operands[CountOperands].IntegerValue:=((-((Op-251) shl 8))-fFontData[Position])-108;
+       Operands[CountOperands].IntegerValue:=((-((Op-251)*256))-fFontData[Position])-108;
        inc(CountOperands);
        inc(Position,SizeOf(TVkUInt8));
       end;
@@ -34743,7 +34743,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        c0y:=y+StackShift;
        c1x:=c0x+StackShift;
        c1y:=c0y+StackShift;
-       x:=c1x;
+       x:=c1x+StackShift;
        if StackSize=1 then begin
         y:=c1y+StackShift;
        end else begin
@@ -34755,12 +34755,12 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
         c0y:=y;
         c1x:=c0x+StackShift;
         c1y:=c0y+StackShift;
+        y:=c1y+StackShift;
         if StackSize=1 then begin
          x:=c1x+StackShift;
         end else begin
          x:=c1x;
         end;
-        y:=c1y;
         CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
        end else begin
         break;
@@ -34774,19 +34774,19 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        c0y:=y;
        c1x:=c0x+StackShift;
        c1y:=c0y+StackShift;
+       y:=c1y+StackShift;
        if StackSize=1 then begin
         x:=c1x+StackShift;
        end else begin
         x:=c1x;
        end;
-       y:=c1y;
        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
        if StackSize>0 then begin
         c0x:=x;
         c0y:=y+StackShift;
         c1x:=c0x+StackShift;
         c1y:=c0y+StackShift;
-        x:=c1x;
+        x:=c1x+StackShift;
         if StackSize=1 then begin
          y:=c1y+StackShift;
         end else begin
@@ -34814,7 +34814,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        result:=VkTTF_TT_ERR_CorruptFile;
        exit;
       end;
-      StackPush(((-((v-251) shl 8))-fFontData[Position])-108);
+      StackPush(((-((v-251)*256))-fFontData[Position])-108);
       inc(Position,SizeOf(TVkUInt8));
      end;
      255:begin
@@ -34841,7 +34841,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    CountStems:=0;
    x:=0.0;
    y:=0.0;
-   Width:=0.0;
+   Width:=PrivateDictDefaultWidthX;
    MinX:=MaxDouble;
    MinY:=MaxDouble;
    MaxX:=-MaxDouble;
