@@ -30855,6 +30855,11 @@ begin
  result:=(b1 shl 24) or (b2 shl 16) or (b3 shl 8) or b4;
 end;
 
+function ToLONGINT(const b1,b2,b3,b4:TVkUInt8):TVkInt32;
+begin
+ result:=TVkInt32(TVkUInt32((b1 shl 24) or (b2 shl 16) or (b3 shl 8) or b4));
+end;
+
 function ToUINT24(const b1,b2,b3:TVkUInt8):TVkUInt32;
 begin
  result:=(b1 shl 16) or (b2 shl 8) or b3;
@@ -34257,23 +34262,24 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   end;
  end;
  function LoadCFFGlyph(var Glyph:TVulkanTrueTypeFontGlyph;const GlyphPosition,GlyphSize:TVkInt32):TVkInt32;
- type TStack=array of TVkInt32;
- var i,x,y,c0x,c0y,c1x,c1y,v,StackSize,Width,CountStems:TVkInt32;
+ type TStack=array of TVkDouble;
+ var i,v,StackSize,CountStems:TVkInt32;
+     Width,x,y,c0x,c0y,c1x,c1y:TVkDouble;
      Stack:TStack;
      HaveWidth:boolean;
-  function StackShift:TVkInt32;
+  function StackShift:TVkDouble;
   begin
    if StackSize>0 then begin
     result:=Stack[0];
     dec(StackSize);
     if StackSize>0 then begin
-     Move(Stack[1],Stack[0],StackSize*SizeOf(TVkInt32));
+     Move(Stack[1],Stack[0],StackSize*SizeOf(TVkDouble));
     end;
    end else begin
     result:=0;
    end;
   end;
-  function StackPop:TVkInt32;
+  function StackPop:TVkDouble;
   begin
    if StackSize>0 then begin
     dec(StackSize);
@@ -34282,7 +34288,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     result:=0;
    end;
   end;
-  procedure StackPush(const Value:TVkInt32);
+  procedure StackPush(const Value:TVkDouble);
   begin
    if length(Stack)<(StackSize+1) then begin
     SetLength(Stack,(StackSize+1)*2);
@@ -34301,15 +34307,15 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    StackSize:=0;
    HaveWidth:=true;
   end;
-  procedure MoveTo(aX,aY:TVkInt32);
+  procedure MoveTo(aX,aY:TVkDouble);
   begin
 
   end;
-  procedure LineTo(aX,aY:TVkInt32);
+  procedure LineTo(aX,aY:TVkDouble);
   begin
 
   end;
-  procedure CubicCurveTo(aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TVkInt32);
+  procedure CubicCurveTo(aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TVkDouble);
   begin
 
   end;
@@ -34344,24 +34350,24 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        Width:=StackShift+PrivateDictNominalWidthX;
        HaveWidth:=true;
       end;
-      inc(y,StackPop);
+      y:=y+StackPop;
       MoveTo(x,y);
      end;
      5:begin
       // rlineto
       while StackSize>0 do begin
-       inc(x,StackShift);
-       inc(y,StackShift);
+       x:=x+StackShift;
+       y:=y+StackShift;
        LineTo(x,y);
       end;
      end;
      6:begin
       // hlineto
       while StackSize>0 do begin
-       inc(x,StackShift);
+       x:=x+StackShift;
        LineTo(x,y);
        if StackSize>0 then begin
-        inc(y,StackShift);
+        y:=y+StackShift;
         LineTo(x,y);
        end else begin
         break;
@@ -34371,10 +34377,10 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
      7:begin
       // vlineto
       while StackSize>0 do begin
-       inc(y,StackShift);
+       y:=y+StackShift;
        LineTo(x,y);
        if StackSize>0 then begin
-        inc(x,StackShift);
+        x:=x+StackShift;
         LineTo(x,y);
        end else begin
         break;
@@ -34395,9 +34401,12 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
      end;
      10:begin
       // callsubr
-      CodeIndex:=StackPop+CFFSubroutineBias;
+      CodeIndex:=trunc(StackPop)+CFFSubroutineBias;
       if SubroutineIndexData[CodeIndex].Size>0 then begin
-       Execute(SubroutineIndexData[CodeIndex].Position,SubroutineIndexData[CodeIndex].Size);
+       result:=Execute(SubroutineIndexData[CodeIndex].Position,SubroutineIndexData[CodeIndex].Size);
+       if result<>VkTTF_TT_ERR_NoError then begin
+        exit;
+       end;
       end;
      end;
      11:begin
@@ -34442,8 +34451,8 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        Width:=StackShift+PrivateDictNominalWidthX;
        HaveWidth:=true;
       end;
-      inc(y,StackPop);
-      inc(x,StackPop);
+      y:=y+StackPop;
+      x:=x+StackPop;
       MoveTo(x,y);
      end;
      22:begin
@@ -34452,7 +34461,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        Width:=StackShift+PrivateDictNominalWidthX;
        HaveWidth:=true;
       end;
-      inc(x,StackPop);
+      x:=x+StackPop;
       MoveTo(x,y);
      end;
      23:begin
@@ -34470,15 +34479,15 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        y:=c1y+StackShift;
        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
       end;
-      inc(x,StackShift);
-      inc(y,StackShift);
+      x:=x+StackShift;
+      y:=y+StackShift;
       LineTo(x,y);
      end;
      25:begin
       // rlinecurve
       while StackSize>6 do begin
-       inc(x,StackShift);
-       inc(y,StackShift);
+       x:=x+StackShift;
+       y:=y+StackShift;
        LineTo(x,y);
       end;
       c0x:=x+StackShift;
@@ -34492,7 +34501,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
      26:begin
       // vvcurveto
       if (StackSize and 1)<>0 then begin
-       inc(x,StackShift);
+       x:=x+StackShift;
       end;
       while StackSize>0 do begin
        c0x:=x;
@@ -34507,7 +34516,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
      27:begin
       // hhcurveto
       if (StackSize and 1)<>0 then begin
-       inc(y,StackShift);
+       y:=y+StackShift;
       end;
       while StackSize>0 do begin
        c0x:=x+StackShift;
@@ -34530,9 +34539,12 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
      end;
      29:begin
       // callgsubnr
-      CodeIndex:=StackPop+CFFGlobalSubroutineBias;
+      CodeIndex:=trunc(StackPop)+CFFGlobalSubroutineBias;
       if GlobalSubroutineIndexData[CodeIndex].Size>0 then begin
-       Execute(GlobalSubroutineIndexData[CodeIndex].Position,GlobalSubroutineIndexData[CodeIndex].Size);
+       result:=Execute(GlobalSubroutineIndexData[CodeIndex].Position,GlobalSubroutineIndexData[CodeIndex].Size);
+       if result<>VkTTF_TT_ERR_NoError then begin
+        exit;
+       end;
       end;
      end;
      30:begin
@@ -34616,6 +34628,14 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
       StackPush(((-((v-251) shl 8))-fFontData[Position])-108);
       inc(Position,SizeOf(TVkUInt8));
      end;
+     255:begin
+      if ((Position+SizeOf(TVkUInt32))-1)>=UntilExcludingPosition then begin
+       result:=VkTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      StackPush(ToLONGINT(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3])/65536.0);
+      inc(Position,SizeOf(TVkUInt32));
+     end
      else begin
       result:=VkTTF_TT_ERR_CorruptFile;
       exit;
@@ -34947,6 +34967,7 @@ begin
       fCountGlyphs:=length(TopDictCharStringsIndexData);
       SetLength(fGlyphs,fCountGlyphs);
       for i:=0 to fCountGlyphs-1 do begin
+       writeln(i);
        result:=LoadCFFGlyph(fGlyphs[i],TopDictCharStringsIndexData[i].Position,TopDictCharStringsIndexData[i].Size);
        if result<>VkTTF_TT_ERR_NoError then begin
         exit;
