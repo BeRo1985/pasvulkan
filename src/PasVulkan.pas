@@ -34582,7 +34582,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
         dy1:=StackShift;
         dx2:=StackShift;
         dy2:=StackShift;
-        dy3:=StackShift;
+        dx3:=StackShift;
         dy3:=StackShift;
         dx4:=StackShift;
         dy4:=StackShift;
@@ -38506,7 +38506,134 @@ begin
  if result=0 then begin
   result:=TVkInt64(PVulkanFontKerningPair(a)^.Right)-TVkInt64(PVulkanFontKerningPair(b)^.Right);
  end;
-end;                                              
+end;
+
+const VulkanFontDistanceFieldMagnitudeValue=VulkanFontDistanceFieldSpreadValue;
+      VulkanFontDistanceFieldPadValue=VulkanFontDistanceFieldSpreadValue;
+      VulkanFontScalar1Value=1.0;
+      VulkanFontCloseValue=VulkanFontScalar1Value/16.0;
+      VulkanFontCloseSquaredValue=VulkanFontCloseValue*VulkanFontCloseValue;
+      VulkanFontNearlyZeroValue=VulkanFontScalar1Value/int64(1 shl 18);
+      VulkanFontTangentToleranceValue=VulkanFontScalar1Value/int64(1 shl 11);
+      VulkanFontRasterizerToScreenScale=1.0/256.0;
+
+type PVulkanFontPathSegmentSide=^TVulkanFontPathSegmentSide;
+     TVulkanFontPathSegmentSide=
+      (
+       pssLeft=-1,
+       pssOn=0,
+       pssRight=1,
+       pssNone=2
+      );
+
+     PVulkanFontDistanceFieldDataItem=^TVulkanFontDistanceFieldDataItem;
+     TVulkanFontDistanceFieldDataItem=record
+      SquaredDistance:TVkFloat;
+      SquaredDistanceR:TVkFloat;
+      SquaredDistanceG:TVkFloat;
+      SquaredDistanceB:TVkFloat;
+      PseudoSquaredDistanceR:TVkFloat;
+      PseudoSquaredDistanceG:TVkFloat;
+      PseudoSquaredDistanceB:TVkFloat;
+      DeltaWindingScore:TVkInt32;
+     end;
+
+     TVulkanFontDistanceFieldData=array of TVulkanFontDistanceFieldDataItem;
+
+     PVulkanFontDoublePrecisionPoint=^TVulkanFontDoublePrecisionPoint;
+     TVulkanFontDoublePrecisionPoint=record
+      x:TVkDouble;
+      y:TVkDouble;
+     end;
+
+     PVulkanFontDoublePrecisionAffineMatrix=^TVulkanFontDoublePrecisionAffineMatrix;
+     TVulkanFontDoublePrecisionAffineMatrix=array[0..5] of TVkDouble;
+
+     PVulkanFontPathSegmentType=^TVulkanFontPathSegmentType;
+     TVulkanFontPathSegmentType=
+      (
+       pstLine,
+       pstQuadraticBezierCurve
+      );
+
+     PVulkanFontBoundingBox=^TVulkanFontBoundingBox;
+     TVulkanFontBoundingBox=record
+      Min:TVulkanFontDoublePrecisionPoint;
+      Max:TVulkanFontDoublePrecisionPoint;
+     end;
+
+     PVulkanFontPathSegmentColor=^TVulkanFontPathSegmentColor;
+     TVulkanFontPathSegmentColor=
+      (
+       pscBlack=0,
+       pscRed=1,
+       pscGreen=2,
+       pscYellow=3,
+       pscBlue=4,
+       pscMagenta=5,
+       pscCyan=6,
+       pscWhite=7
+      );
+
+     PVulkanFontPathSegmentPoints=^TVulkanFontPathSegmentPoints;
+     TVulkanFontPathSegmentPoints=array[0..2] of TVulkanFontDoublePrecisionPoint;
+
+     PVulkanFontPathSegment=^TVulkanFontPathSegment;
+     TVulkanFontPathSegment=record
+      Type_:TVulkanFontPathSegmentType;
+      Color:TVulkanFontPathSegmentColor;
+      Points:TVulkanFontPathSegmentPoints;
+      P0T,P2T:TVulkanFontDoublePrecisionPoint;
+      XFormMatrix:TVulkanFontDoublePrecisionAffineMatrix;
+      ScalingFactor:TVkDouble;
+      SquaredScalingFactor:TVkDouble;
+      NearlyZeroScaled:TVkDouble;
+      SquaredTangentToleranceScaled:TVkDouble;
+      BoundingBox:TVulkanFontBoundingBox;
+     end;
+
+     TVulkanFontPathSegments=array of TVulkanFontPathSegment;
+
+     PVulkanFontPathContour=^TVulkanFontPathContour;
+     TVulkanFontPathContour=record
+      PathSegments:TVulkanFontPathSegments;
+      CountPathSegments:TVkInt32;
+     end;
+
+     TVulkanFontPathContours=array of TVulkanFontPathContour;
+
+     PVulkanFontShape=^TVulkanFontShape;
+     TVulkanFontShape=record
+      Contours:TVulkanFontPathContours;
+      CountContours:TVkInt32;
+     end;
+
+     PVulkanFontRowDataIntersectionType=^TVulkanFontRowDataIntersectionType;
+     TVulkanFontRowDataIntersectionType=
+      (
+       rditNoIntersection,
+       rditVerticalLine,
+       rditTangentLine,
+       rditTwoPointsIntersect
+      );
+
+     PVulkanFontRowData=^TVulkanFontRowData;
+     TVulkanFontRowData=record
+      IntersectionType:TVulkanFontRowDataIntersectionType;
+      QuadraticXDirection:TVkInt32;
+      ScanlineXDirection:TVkInt32;
+      YAtIntersection:TVkFloat;
+      XAtIntersection:array[0..1] of TVkFloat;
+     end;
+
+     PVulkanFontPointInPolygonPathSegment=^TVulkanFontPointInPolygonPathSegment;
+     TVulkanFontPointInPolygonPathSegment=record
+      Points:array[0..1] of TVulkanFontDoublePrecisionPoint;
+     end;
+
+     TVulkanFontPointInPolygonPathSegments=array of TVulkanFontPointInPolygonPathSegment;
+
+const VulkanFontDoublePrecisionAffineMatrixIdentity:TVulkanFontDoublePrecisionAffineMatrix=(1.0,0.0,0.0,0.0,1.0,0.0);
 
 constructor TVulkanFont.Create(const aDevice:TVulkanDevice;const aTargetPPI:TVkInt32=72);
 begin
@@ -38929,115 +39056,7 @@ begin
 end;
 
 procedure TVulkanFont.GenerateSignedDistanceField(var DistanceField:TVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const FillRule:TVkInt32);
-const DistanceFieldSpreadValue=VulkanFontDistanceFieldSpreadValue;
-      DistanceFieldMagnitudeValue=DistanceFieldSpreadValue;
-      DistanceFieldPadValue=DistanceFieldSpreadValue;
-      Scalar1Value=1.0;
-      CloseValue=Scalar1Value/16.0;
-      CloseSquaredValue=CloseValue*CloseValue;
-      NearlyZeroValue=Scalar1Value/int64(1 shl 18);
-      TangentToleranceValue=Scalar1Value/int64(1 shl 11);
-      RasterizerToScreenScale=1.0/256.0;
-type PPathSegmentSide=^TPathSegmentSide;
-     TPathSegmentSide=
-      (
-       pssLeft=-1,
-       pssOn=0,
-       pssRight=1,
-       pssNone=2
-      );
-     PDistanceFieldDataItem=^TDistanceFieldDataItem;
-     TDistanceFieldDataItem=record
-      SquaredDistance:TVkFloat;
-      SquaredDistanceR:TVkFloat;
-      SquaredDistanceG:TVkFloat;
-      SquaredDistanceB:TVkFloat;
-      PseudoSquaredDistanceR:TVkFloat;
-      PseudoSquaredDistanceG:TVkFloat;
-      PseudoSquaredDistanceB:TVkFloat;
-      DeltaWindingScore:TVkInt32;
-     end;
-     TDistanceFieldData=array of TDistanceFieldDataItem;
-     PDoublePrecisionPoint=^TDoublePrecisionPoint;
-     TDoublePrecisionPoint=record
-      x:TVkDouble;
-      y:TVkDouble;
-     end;
-     PDoublePrecisionAffineMatrix=^TDoublePrecisionAffineMatrix;
-     TDoublePrecisionAffineMatrix=array[0..5] of TVkDouble;
-     PPathSegmentType=^TPathSegmentType;
-     TPathSegmentType=
-      (
-       pstLine,
-       pstQuadraticBezierCurve
-      );
-     PBoundingBox=^TBoundingBox;
-     TBoundingBox=record
-      Min:TDoublePrecisionPoint;
-      Max:TDoublePrecisionPoint;
-     end;
-     PPathSegmentColor=^TPathSegmentColor;
-     TPathSegmentColor=
-      (
-       pscBlack=0,
-       pscRed=1,
-       pscGreen=2,
-       pscYellow=3,
-       pscBlue=4,
-       pscMagenta=5,
-       pscCyan=6,
-       pscWhite=7
-      );
-     PPathSegmentPoints=^TPathSegmentPoints;
-     TPathSegmentPoints=array[0..2] of TDoublePrecisionPoint;
-     PPathSegment=^TPathSegment;
-     TPathSegment=record
-      Type_:TPathSegmentType;
-      Color:TPathSegmentColor;
-      Points:TPathSegmentPoints;
-      P0T,P2T:TDoublePrecisionPoint;
-      XFormMatrix:TDoublePrecisionAffineMatrix;
-      ScalingFactor:TVkDouble;
-      SquaredScalingFactor:TVkDouble;
-      NearlyZeroScaled:TVkDouble;
-      SquaredTangentToleranceScaled:TVkDouble;
-      BoundingBox:TBoundingBox;
-     end;
-     TPathSegments=array of TPathSegment;
-     PContour=^TContour;
-     TContour=record
-      PathSegments:TPathSegments;
-      CountPathSegments:TVkInt32;
-     end;
-     TContours=array of TContour;
-     PShape=^TShape;
-     TShape=record
-      Contours:TContours;
-      CountContours:TVkInt32;
-     end;
-     PRowDataIntersectionType=^TRowDataIntersectionType;
-     TRowDataIntersectionType=
-      (
-       rditNoIntersection,
-       rditVerticalLine,
-       rditTangentLine,
-       rditTwoPointsIntersect
-      );
-     PRowData=^TRowData;
-     TRowData=record
-      IntersectionType:TRowDataIntersectionType;
-      QuadraticXDirection:TVkInt32;
-      ScanlineXDirection:TVkInt32;
-      YAtIntersection:TVkFloat;
-      XAtIntersection:array[0..1] of TVkFloat;
-     end;
-     PPointInPolygonPathSegment=^TPointInPolygonPathSegment;
-     TPointInPolygonPathSegment=record
-      Points:array[0..1] of TDoublePrecisionPoint;
-     end;
-     TPointInPolygonPathSegments=array of TPointInPolygonPathSegment;
- const DoublePrecisionAffineMatrixIdentity:TDoublePrecisionAffineMatrix=(1.0,0.0,0.0,0.0,1.0,0.0);
- var PointInPolygonPathSegments:TPointInPolygonPathSegments;
+ var PointInPolygonPathSegments:TVulkanFontPointInPolygonPathSegments;
  function Clamp(const Value,MinValue,MaxValue:TVkInt64):TVkInt64; overload;
  begin
   if Value<=MinValue then begin
@@ -39058,45 +39077,45 @@ type PPathSegmentSide=^TPathSegmentSide;
    result:=Value;
   end;
  end;
- function DoublePrecisionPointAdd(const a,b:TDoublePrecisionPoint):TDoublePrecisionPoint;
+ function DoublePrecisionPointAdd(const a,b:TVulkanFontDoublePrecisionPoint):TVulkanFontDoublePrecisionPoint;
  begin
   result.x:=a.x+b.x;
   result.y:=a.y+b.y;
  end;
- function DoublePrecisionPointSub(const a,b:TDoublePrecisionPoint):TDoublePrecisionPoint;
+ function DoublePrecisionPointSub(const a,b:TVulkanFontDoublePrecisionPoint):TVulkanFontDoublePrecisionPoint;
  begin
   result.x:=a.x-b.x;
   result.y:=a.y-b.y;
  end;
- function DoublePrecisionPointLength(const p:TDoublePrecisionPoint):TVkDouble;
+ function DoublePrecisionPointLength(const p:TVulkanFontDoublePrecisionPoint):TVkDouble;
  begin
   result:=sqrt(sqr(p.x)+sqr(p.y));
  end;
- function DoublePrecisionPointDistance(const a,b:TDoublePrecisionPoint):TVkDouble;
+ function DoublePrecisionPointDistance(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
  begin
   result:=sqrt(sqr(a.x-b.x)+sqr(a.y-b.y));
  end;
- function DoublePrecisionPointLengthSquared(const v:TDoublePrecisionPoint):TVkDouble;
+ function DoublePrecisionPointLengthSquared(const v:TVulkanFontDoublePrecisionPoint):TVkDouble;
  begin
   result:=sqr(v.x)+sqr(v.y);
  end;
- function DoublePrecisionPointDistanceSquared(const a,b:TDoublePrecisionPoint):TVkDouble;
+ function DoublePrecisionPointDistanceSquared(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
  begin
   result:=sqr(a.x-b.x)+sqr(a.y-b.y);
  end;
- function DoublePrecisionPointCrossProduct(const a,b:TDoublePrecisionPoint):TVkDouble;
+ function DoublePrecisionPointCrossProduct(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
  begin
   result:=(a.x*b.y)-(a.y*b.x);
  end;
- function DoublePrecisionPointIsLeft(const a,b,c:TDoublePrecisionPoint):TVkDouble;
+ function DoublePrecisionPointIsLeft(const a,b,c:TVulkanFontDoublePrecisionPoint):TVkDouble;
  begin
   result:=((b.x*a.x)*(c.y*a.y))-((c.x*a.x)*(b.y*a.y));
  end;
- function DoublePrecisionPointDotProduct(const a,b:TDoublePrecisionPoint):TVkDouble;
+ function DoublePrecisionPointDotProduct(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
  begin
   result:=(a.x*b.x)+(a.y*b.y);
  end;
- function DoublePrecisionPointNormalize(const v:TDoublePrecisionPoint):TDoublePrecisionPoint;
+ function DoublePrecisionPointNormalize(const v:TVulkanFontDoublePrecisionPoint):TVulkanFontDoublePrecisionPoint;
  var f:TVkDouble;
  begin
   f:=sqr(v.x)+sqr(v.y);
@@ -39108,7 +39127,7 @@ type PPathSegmentSide=^TPathSegmentSide;
    result.y:=v.y/f;
   end;
  end;
- function DoublePrecisionPointLerp(const a,b:TDoublePrecisionPoint;const t:TVkDouble):TDoublePrecisionPoint;
+ function DoublePrecisionPointLerp(const a,b:TVulkanFontDoublePrecisionPoint;const t:TVkDouble):TVulkanFontDoublePrecisionPoint;
  begin
   if t<=0.0 then begin
    result:=a;
@@ -39119,7 +39138,7 @@ type PPathSegmentSide=^TPathSegmentSide;
    result.y:=(a.y*(1.0-t))+(b.y*t);
   end;
  end;
- function DoublePrecisionPointMap(const p:TDoublePrecisionPoint;const m:TDoublePrecisionAffineMatrix):TDoublePrecisionPoint;
+ function DoublePrecisionPointMap(const p:TVulkanFontDoublePrecisionPoint;const m:TVulkanFontDoublePrecisionAffineMatrix):TVulkanFontDoublePrecisionPoint;
  begin
   result.x:=(p.x*m[0])+(p.y*m[1])+m[2];
   result.y:=(p.x*m[3])+(p.y*m[4])+m[5];
@@ -39158,12 +39177,12 @@ type PPathSegmentSide=^TPathSegmentSide;
    result:=(a>=(c-ToleranceC)) and (a<=(b+ToleranceB));
   end;
  end;
- function NearlyZero(const Value:TVkDouble;const Tolerance:TVkDouble=NearlyZeroValue):boolean;
+ function NearlyZero(const Value:TVkDouble;const Tolerance:TVkDouble=VulkanFontNearlyZeroValue):boolean;
  begin
   Assert(Tolerance>=0.0);
   result:=abs(Value)<=Tolerance;
  end;
- function NearlyEqual(const x,y:TVkDouble;const Tolerance:TVkDouble=NearlyZeroValue;const XFormToleranceToX:boolean=false):boolean;
+ function NearlyEqual(const x,y:TVkDouble;const Tolerance:TVkDouble=VulkanFontNearlyZeroValue;const XFormToleranceToX:boolean=false):boolean;
  begin
   Assert(Tolerance>=0.0);
   if XFormToleranceToX then begin
@@ -39180,13 +39199,13 @@ type PPathSegmentSide=^TPathSegmentSide;
    result:=1;
   end;
  end;
- function IsColinear(const Points:array of TDoublePrecisionPoint):boolean;
+ function IsColinear(const Points:array of TVulkanFontDoublePrecisionPoint):boolean;
  begin
   Assert(length(Points)=3);
   result:=abs(((Points[1].y-Points[0].y)*(Points[1].x-Points[2].x))-
-              ((Points[1].y-Points[2].y)*(Points[1].x-Points[0].x)))<=CloseSquaredValue;
+              ((Points[1].y-Points[2].y)*(Points[1].x-Points[0].x)))<=VulkanFontCloseSquaredValue;
  end;
- function PathSegmentDirection(const PathSegment:TPathSegment;const Which:TVkInt32):TDoublePrecisionPoint;
+ function PathSegmentDirection(const PathSegment:TVulkanFontPathSegment;const Which:TVkInt32):TVulkanFontDoublePrecisionPoint;
  begin
   case PathSegment.Type_ of
    pstLine:begin
@@ -39217,7 +39236,7 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- function PathSegmentCountPoints(const PathSegment:TPathSegment):TVkInt32;
+ function PathSegmentCountPoints(const PathSegment:TVulkanFontPathSegment):TVkInt32;
  begin
   case PathSegment.Type_ of
    pstLine:begin
@@ -39232,7 +39251,7 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- function PathSegmentEndPoint(const PathSegment:TPathSegment):PDoublePrecisionPoint;
+ function PathSegmentEndPoint(const PathSegment:TVulkanFontPathSegment):PVulkanFontDoublePrecisionPoint;
  begin
   case PathSegment.Type_ of
    pstLine:begin
@@ -39247,7 +39266,7 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- function PathSegmentCornerPoint(const PathSegment:TPathSegment;const WhichA,WhichB:TVkInt32):PDoublePrecisionPoint;
+ function PathSegmentCornerPoint(const PathSegment:TVulkanFontPathSegment;const WhichA,WhichB:TVkInt32):PVulkanFontDoublePrecisionPoint;
  begin
   case PathSegment.Type_ of
    pstLine:begin
@@ -39262,8 +39281,8 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- procedure InitializePathSegment(var PathSegment:TPathSegment);
- var p0,p1,p2,p1mp0,d,t,sp0,sp1,sp2,p01p,p02p,p12p:TDoublePrecisionPoint;
+ procedure InitializePathSegment(var PathSegment:TVulkanFontPathSegment);
+ var p0,p1,p2,p1mp0,d,t,sp0,sp1,sp2,p01p,p02p,p12p:TVulkanFontDoublePrecisionPoint;
      Hypotenuse,CosTheta,SinTheta,a,b,h,c,g,f,gd,fd,x,y,Lambda:TVkDouble;
  begin
   case PathSegment.Type_ of
@@ -39349,27 +39368,27 @@ type PPathSegmentSide=^TPathSegmentSide;
     PathSegment.XFormMatrix[5]:=y*Lambda;
    end;
   end;
-  PathSegment.NearlyZeroScaled:=NearlyZeroValue/PathSegment.ScalingFactor;
-  PathSegment.SquaredTangentToleranceScaled:=sqr(TangentToleranceValue)/PathSegment.SquaredScalingFactor;
+  PathSegment.NearlyZeroScaled:=VulkanFontNearlyZeroValue/PathSegment.ScalingFactor;
+  PathSegment.SquaredTangentToleranceScaled:=sqr(VulkanFontTangentToleranceValue)/PathSegment.SquaredScalingFactor;
   PathSegment.P0T:=DoublePrecisionPointMap(p0,PathSegment.XFormMatrix);
   PathSegment.P2T:=DoublePrecisionPointMap(p2,PathSegment.XFormMatrix);
  end;
- procedure InitializeDistances(var Data:TDistanceFieldData);
+ procedure InitializeDistances(var Data:TVulkanFontDistanceFieldData);
  var Index:TVkInt32;
  begin
   for Index:=0 to length(Data)-1 do begin
-   Data[Index].SquaredDistance:=sqr(DistanceFieldMagnitudeValue);
-   Data[Index].SquaredDistanceR:=sqr(DistanceFieldMagnitudeValue);
-   Data[Index].SquaredDistanceG:=sqr(DistanceFieldMagnitudeValue);
-   Data[Index].SquaredDistanceB:=sqr(DistanceFieldMagnitudeValue);
-   Data[Index].PseudoSquaredDistanceR:=sqr(DistanceFieldMagnitudeValue);
-   Data[Index].PseudoSquaredDistanceG:=sqr(DistanceFieldMagnitudeValue);
-   Data[Index].PseudoSquaredDistanceB:=sqr(DistanceFieldMagnitudeValue);
+   Data[Index].SquaredDistance:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+   Data[Index].SquaredDistanceR:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+   Data[Index].SquaredDistanceG:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+   Data[Index].SquaredDistanceB:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+   Data[Index].PseudoSquaredDistanceR:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+   Data[Index].PseudoSquaredDistanceG:=sqr(VulkanFontDistanceFieldMagnitudeValue);
+   Data[Index].PseudoSquaredDistanceB:=sqr(VulkanFontDistanceFieldMagnitudeValue);
    Data[Index].DeltaWindingScore:=0;
   end;
  end;
- function AddLineToPathSegmentArray(var Contour:TContour;const Points:array of TDoublePrecisionPoint):TVkInt32;
- var PathSegment:PPathSegment;
+ function AddLineToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TVkInt32;
+ var PathSegment:PVulkanFontPathSegment;
  begin
   Assert(length(Points)=2);
   result:=Contour.CountPathSegments;
@@ -39384,13 +39403,13 @@ type PPathSegmentSide=^TPathSegmentSide;
   PathSegment^.Points[1]:=Points[1];
   InitializePathSegment(PathSegment^);
  end;
- function AddQuadraticBezierCurveToPathSegmentArray(var Contour:TContour;const Points:array of TDoublePrecisionPoint):TVkInt32;
- var PathSegment:PPathSegment;
+ function AddQuadraticBezierCurveToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TVkInt32;
+ var PathSegment:PVulkanFontPathSegment;
  begin
   Assert(length(Points)=3);
   result:=Contour.CountPathSegments;
-  if (DoublePrecisionPointDistanceSquared(Points[0],Points[1])<CloseSquaredValue) or
-     (DoublePrecisionPointDistanceSquared(Points[1],Points[2])<CloseSquaredValue) or
+  if (DoublePrecisionPointDistanceSquared(Points[0],Points[1])<VulkanFontCloseSquaredValue) or
+     (DoublePrecisionPointDistanceSquared(Points[1],Points[2])<VulkanFontCloseSquaredValue) or
      IsColinear(Points) then begin
    if not (SameValue(Points[0].x,Points[2].x) and SameValue(Points[0].y,Points[2].y)) then begin
     inc(Contour.CountPathSegments);
@@ -39418,16 +39437,16 @@ type PPathSegmentSide=^TPathSegmentSide;
    InitializePathSegment(PathSegment^);
   end;
  end;
- function AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TContour;const Points:array of TDoublePrecisionPoint;const Tolerance:TVkDouble=RasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
- var LastPoint:TDoublePrecisionPoint;
-  procedure LineToPointAt(const Point:TDoublePrecisionPoint);
+ function AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint;const Tolerance:TVkDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
+ var LastPoint:TVulkanFontDoublePrecisionPoint;
+  procedure LineToPointAt(const Point:TVulkanFontDoublePrecisionPoint);
   begin
    AddLineToPathSegmentArray(Contour,[LastPoint,Point]);
    LastPoint:=Point;
   end;
   procedure Recursive(const x1,y1,x2,y2,x3,y3:TVkDouble;const Level:TVkInt32);
   var x12,y12,x23,y23,x123,y123,mx,my,d:TVkDouble;
-      Point:TDoublePrecisionPoint;
+      Point:TVulkanFontDoublePrecisionPoint;
   begin
    x12:=(x1+x2)*0.5;
    y12:=(y1+y2)*0.5;
@@ -39454,31 +39473,31 @@ type PPathSegmentSide=^TPathSegmentSide;
   Recursive(Points[0].x,Points[0].y,Points[1].x,Points[1].y,Points[2].x,Points[2].y,0);
   LineToPointAt(Points[2]);
  end;
- function AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(var Contour:TContour;const Points:array of TDoublePrecisionPoint):TVkInt32;
+ function AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TVkInt32;
  type TLine=record
        a,b,c:TVkDouble;
        Exist,Vertical:boolean;
       end;
       TPointLine=record
-       p:TDoublePrecisionPoint;
+       p:TVulkanFontDoublePrecisionPoint;
        l:TLine;
       end;
- var LastPoint:TDoublePrecisionPoint;
-  procedure MoveTo(const p:TDoublePrecisionPoint);
+ var LastPoint:TVulkanFontDoublePrecisionPoint;
+  procedure MoveTo(const p:TVulkanFontDoublePrecisionPoint);
   begin
    LastPoint:=p;
   end;
-  procedure LineTo(const p:TDoublePrecisionPoint);
+  procedure LineTo(const p:TVulkanFontDoublePrecisionPoint);
   begin
    AddLineToPathSegmentArray(Contour,[LastPoint,p]);
    LastPoint:=p;
   end;
-  procedure CurveTo(const p0,p1:TDoublePrecisionPoint);
+  procedure CurveTo(const p0,p1:TVulkanFontDoublePrecisionPoint);
   begin
    AddQuadraticBezierCurveToPathSegmentArray(Contour,[LastPoint,p0,p1]);
    LastPoint:=p1;
   end;
-  function GetLine(const P0,P1:TDoublePrecisionPoint):TLine;
+  function GetLine(const P0,P1:TVulkanFontDoublePrecisionPoint):TLine;
   begin
    FillChar(result,SizeOf(TLine),#0);
    if SameValue(P0.x,P1.x) then begin
@@ -39499,7 +39518,7 @@ type PPathSegmentSide=^TPathSegmentSide;
     result.b:=P0.y-(result.a*P0.x);
    end;
   end;
-  function GetLine2(const P0,v0:TDoublePrecisionPoint):TLine;
+  function GetLine2(const P0,v0:TVulkanFontDoublePrecisionPoint):TLine;
   begin
    FillChar(result,SizeOf(TLine),#0);
    result.Exist:=true;
@@ -39513,7 +39532,7 @@ type PPathSegmentSide=^TPathSegmentSide;
     result.b:=P0.y-(result.a*P0.x);
    end;
   end;
-  function GetLineCross(const l0,l1:TLine;var b:boolean):TDoublePrecisionPoint;
+  function GetLineCross(const l0,l1:TLine;var b:boolean):TVulkanFontDoublePrecisionPoint;
   var u:TVkDouble;
   begin
 
@@ -39577,8 +39596,8 @@ type PPathSegmentSide=^TPathSegmentSide;
    a:=((c3-c0)-b)-g;
    result:=(3*a*t*t)+(2*b*t)+g;
   end;
-  function GetCubicTangent(const P0,P1,P2,P3:TDoublePrecisionPoint;t:TVkDouble):TPointLine;
-  var P,V:TDoublePrecisionPoint;
+  function GetCubicTangent(const P0,P1,P2,P3:TVulkanFontDoublePrecisionPoint;t:TVkDouble):TPointLine;
+  var P,V:TVulkanFontDoublePrecisionPoint;
       l:TLine;
   begin
 
@@ -39598,10 +39617,10 @@ type PPathSegmentSide=^TPathSegmentSide;
    result.l:=l;
 
   end;
-  procedure CubicCurveToTangent(const P0,P1,P2,P3:TDoublePrecisionPoint);
+  procedure CubicCurveToTangent(const P0,P1,P2,P3:TVulkanFontDoublePrecisionPoint);
   const NumberOfSegments=8;
-   function SliceCubicBezierSegment(const p0,p1,p2,p3:TDoublePrecisionPoint;const u1,u2:TVkDouble;const Tu1,Tu2:TPointLine;Recursion:TVkInt32):TVkInt32;
-   var P,ControlPoint:TDoublePrecisionPoint;
+   function SliceCubicBezierSegment(const p0,p1,p2,p3:TVulkanFontDoublePrecisionPoint;const u1,u2:TVkDouble;const Tu1,Tu2:TPointLine;Recursion:TVkInt32):TVkInt32;
+   var P,ControlPoint:TVulkanFontDoublePrecisionPoint;
        b:boolean;
        d,uMid:TVkDouble;
        TuMid:TPointLine;
@@ -39675,16 +39694,16 @@ type PPathSegmentSide=^TPathSegmentSide;
   result:=Contour.CountPathSegments;
   CubicCurveToTangent(Points[0],Points[1],Points[2],Points[3]);
  end;
- function AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TContour;const Points:array of TDoublePrecisionPoint;const Tolerance:TVkDouble=RasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
- var LastPoint:TDoublePrecisionPoint;
-  procedure LineToPointAt(const Point:TDoublePrecisionPoint);
+ function AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint;const Tolerance:TVkDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
+ var LastPoint:TVulkanFontDoublePrecisionPoint;
+  procedure LineToPointAt(const Point:TVulkanFontDoublePrecisionPoint);
   begin
    AddLineToPathSegmentArray(Contour,[LastPoint,Point]);
    LastPoint:=Point;
   end;
   procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TVkDouble;const Level:TVkInt32);
   var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,mx,my,d:TVkDouble;
-      Point:TDoublePrecisionPoint;
+      Point:TVulkanFontDoublePrecisionPoint;
   begin
    x12:=(x1+x2)*0.5;
    y12:=(y1+y2)*0.5;
@@ -39728,7 +39747,7 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- function CalculateNearestPointForQuadraticBezierCurve(const PathSegment:TPathSegment;const XFormPoint:TDoublePrecisionPoint):TVkDouble;
+ function CalculateNearestPointForQuadraticBezierCurve(const PathSegment:TVulkanFontPathSegment;const XFormPoint:TVulkanFontDoublePrecisionPoint):TVkDouble;
  const OneDiv3=1.0/3.0;
        OneDiv27=1.0/27.0;
  var a,b,a3,b2,c,SqrtC,CosPhi,Phi:TVkDouble;
@@ -39761,8 +39780,8 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- procedure PrecomputationForRow(out RowData:TRowData;const PathSegment:TPathSegment;const PointLeft,PointRight:TDoublePrecisionPoint);
- var XFormPointLeft,XFormPointRight:TDoublePrecisionPoint;
+ procedure PrecomputationForRow(out RowData:TVulkanFontRowData;const PathSegment:TVulkanFontPathSegment;const PointLeft,PointRight:TVulkanFontDoublePrecisionPoint);
+ var XFormPointLeft,XFormPointRight:TVulkanFontDoublePrecisionPoint;
      x0,y0,x1,y1,m,b,m2,c,Tolerance,d:TVkDouble;
  begin
   if PathSegment.Type_=pstQuadraticBezierCurve then begin
@@ -39802,14 +39821,14 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- function CalculateSideOfQuadraticBezierCurve(const PathSegment:TPathSegment;const Point,XFormPoint:TDoublePrecisionPoint;const RowData:TRowData):TPathSegmentSide;
+ function CalculateSideOfQuadraticBezierCurve(const PathSegment:TVulkanFontPathSegment;const Point,XFormPoint:TVulkanFontDoublePrecisionPoint;const RowData:TVulkanFontRowData):TVulkanFontPathSegmentSide;
  var p0,p1:TVkDouble;
      sp0,sp1:TVkInt32;
      ip0,ip1:boolean;
  begin
   case RowData.IntersectionType of
    rditVerticalLine:begin
-    result:=TPathSegmentSide(TVkInt32(SignOf(XFormPoint.y-RowData.YAtIntersection)*RowData.QuadraticXDirection));
+    result:=TVulkanFontPathSegmentSide(TVkInt32(SignOf(XFormPoint.y-RowData.YAtIntersection)*RowData.QuadraticXDirection));
    end;
    rditTwoPointsIntersect:begin
     result:=pssNone;
@@ -39837,12 +39856,12 @@ type PPathSegmentSide=^TPathSegmentSide;
      end;
     end;
     if ip0 and BetweenClosed(p0,PathSegment.P0T.x,PathSegment.P2T.x,PathSegment.NearlyZeroScaled,true) then begin
-     result:=TPathSegmentSide(TVkInt32(sp0*RowData.QuadraticXDirection));
+     result:=TVulkanFontPathSegmentSide(TVkInt32(sp0*RowData.QuadraticXDirection));
     end;
     if ip1 and BetweenClosed(p1,PathSegment.P0T.x,PathSegment.P2T.x,PathSegment.NearlyZeroScaled,true) then begin
      sp1:=SignOf(p1-XFormPoint.x);
      if (result=pssNone) or (sp1=1) then begin
-      result:=TPathSegmentSide(TVkInt32(-sp1*RowData.QuadraticXDirection));
+      result:=TVulkanFontPathSegmentSide(TVkInt32(-sp1*RowData.QuadraticXDirection));
      end;
     end;
    end;
@@ -39850,9 +39869,9 @@ type PPathSegmentSide=^TPathSegmentSide;
     result:=pssNone;
     if RowData.ScanlineXDirection=1 then begin
      if SameValue(PathSegment.Points[0].y,Point.y) then begin
-      result:=TPathSegmentSide(TVkInt32(SignOf(RowData.XAtIntersection[0]-XFormPoint.x)));
+      result:=TVulkanFontPathSegmentSide(TVkInt32(SignOf(RowData.XAtIntersection[0]-XFormPoint.x)));
      end else if SameValue(PathSegment.Points[2].y,Point.y) then begin
-      result:=TPathSegmentSide(TVkInt32(SignOf(XFormPoint.x-RowData.XAtIntersection[0])));
+      result:=TVulkanFontPathSegmentSide(TVkInt32(SignOf(XFormPoint.x-RowData.XAtIntersection[0])));
      end;
     end;
    end;
@@ -39861,8 +39880,8 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- function DistanceToPathSegment(const Point:TDoublePrecisionPoint;const PathSegment:TPathSegment;const RowData:TRowData;out PathSegmentSide:TPathSegmentSide):TVkDouble;
- var XFormPoint,x:TDoublePrecisionPoint;
+ function DistanceToPathSegment(const Point:TVulkanFontDoublePrecisionPoint;const PathSegment:TVulkanFontPathSegment;const RowData:TVulkanFontRowData;out PathSegmentSide:TVulkanFontPathSegmentSide):TVkDouble;
+ var XFormPoint,x:TVulkanFontDoublePrecisionPoint;
      NearestPoint:TVkDouble;
  begin
   XFormPoint:=DoublePrecisionPointMap(Point,PathSegment.XFormMatrix);
@@ -39876,7 +39895,7 @@ type PPathSegmentSide=^TPathSegmentSide;
      result:=sqr(XFormPoint.x-PathSegment.P2T.x)+sqr(XFormPoint.y);
     end;
     if BetweenClosedOpen(Point.y,PathSegment.BoundingBox.Min.y,PathSegment.BoundingBox.Max.y) then begin
-     PathSegmentSide:=TPathSegmentSide(TVkInt32(SignOf(XFormPoint.y)));
+     PathSegmentSide:=TVulkanFontPathSegmentSide(TVkInt32(SignOf(XFormPoint.y)));
     end else begin
      PathSegmentSide:=pssNone;
     end;
@@ -39903,10 +39922,10 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- procedure ConvertShape(out Shape:TShape;const DoSubdivideCurvesIntoLines:boolean);
+ procedure ConvertShape(out Shape:TVulkanFontShape;const DoSubdivideCurvesIntoLines:boolean);
  var CommandIndex:TVkInt32;
-     Contour:PContour;
-     StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TDoublePrecisionPoint;
+     Contour:PVulkanFontPathContour;
+     StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TVulkanFontDoublePrecisionPoint;
  begin
   Shape.Contours:=nil;
   Shape.CountContours:=0;
@@ -39928,23 +39947,23 @@ type PPathSegmentSide=^TPathSegmentSide;
        end;
        Contour:=@Shape.Contours[Shape.CountContours];
        inc(Shape.CountContours);
-       LastPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*RasterizerToScreenScale)+DistanceField.OffsetX;
-       LastPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*RasterizerToScreenScale)+DistanceField.OffsetY;
+       LastPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetX;
+       LastPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetY;
        StartPoint:=LastPoint;
       end;
       VkTTF_PolygonCommandType_LINETO:begin
-       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*RasterizerToScreenScale)+DistanceField.OffsetX;
-       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*RasterizerToScreenScale)+DistanceField.OffsetY;
+       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetX;
+       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetY;
        if assigned(Contour) and not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
         AddLineToPathSegmentArray(Contour^,[LastPoint,Point]);
        end;
        LastPoint:=Point;
       end;
       VkTTF_PolygonCommandType_QUADRATICCURVETO:begin
-       ControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*RasterizerToScreenScale)+DistanceField.OffsetX;
-       ControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*RasterizerToScreenScale)+DistanceField.OffsetY;
-       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*RasterizerToScreenScale)+DistanceField.OffsetX;
-       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*RasterizerToScreenScale)+DistanceField.OffsetY;
+       ControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetX;
+       ControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetY;
+       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetX;
+       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetY;
        if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
                                      (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
         if DoSubdivideCurvesIntoLines then begin
@@ -39956,12 +39975,12 @@ type PPathSegmentSide=^TPathSegmentSide;
        LastPoint:=Point;
       end;
       VkTTF_PolygonCommandType_CUBICCURVETO:begin
-       ControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*RasterizerToScreenScale)+DistanceField.OffsetX;
-       ControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*RasterizerToScreenScale)+DistanceField.OffsetY;
-       OtherControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*RasterizerToScreenScale)+DistanceField.OffsetX;
-       OtherControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*RasterizerToScreenScale)+DistanceField.OffsetY;
-       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[2].x*RasterizerToScreenScale)+DistanceField.OffsetX;
-       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[2].y*RasterizerToScreenScale)+DistanceField.OffsetY;
+       ControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[0].x*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetX;
+       ControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[0].y*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetY;
+       OtherControlPoint.x:=(PolygonBuffer.Commands[CommandIndex].Points[1].x*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetX;
+       OtherControlPoint.y:=(PolygonBuffer.Commands[CommandIndex].Points[1].y*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetY;
+       Point.x:=(PolygonBuffer.Commands[CommandIndex].Points[2].x*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetX;
+       Point.y:=(PolygonBuffer.Commands[CommandIndex].Points[2].y*VulkanFontRasterizerToScreenScale)+DistanceField.OffsetY;
        if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
                                      (SameValue(LastPoint.x,OtherControlPoint.x) and SameValue(LastPoint.y,OtherControlPoint.y)) and
                                      (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
@@ -39994,8 +40013,8 @@ type PPathSegmentSide=^TPathSegmentSide;
    SetLength(Shape.Contours,Shape.CountContours);
   end;
  end;
- procedure SplitPathSegmentIntoThreePartsInsideContour(var Contour:TContour;const BasePathSegmentIndex:TVkInt32);
- var BasePathSegment:TPathSegment;
+ procedure SplitPathSegmentIntoThreePartsInsideContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TVkInt32);
+ var BasePathSegment:TVulkanFontPathSegment;
  begin
   if (BasePathSegmentIndex>=0) and (BasePathSegmentIndex<Contour.CountPathSegments) then begin
    BasePathSegment:=Contour.PathSegments[BasePathSegmentIndex];
@@ -40004,8 +40023,8 @@ type PPathSegmentSide=^TPathSegmentSide;
     if length(Contour.PathSegments)<=Contour.CountPathSegments then begin
      SetLength(Contour.PathSegments,Contour.CountPathSegments*2);
     end;
-    Move(Contour.PathSegments[BasePathSegmentIndex+1],Contour.PathSegments[BasePathSegmentIndex+3],(Contour.CountPathSegments-(BasePathSegmentIndex+3))*SizeOf(TPathSegment));
-    FillChar(Contour.PathSegments[BasePathSegmentIndex],SizeOf(TPathSegment)*3,#0);
+    Move(Contour.PathSegments[BasePathSegmentIndex+1],Contour.PathSegments[BasePathSegmentIndex+3],(Contour.CountPathSegments-(BasePathSegmentIndex+3))*SizeOf(TVulkanFontPathSegment));
+    FillChar(Contour.PathSegments[BasePathSegmentIndex],SizeOf(TVulkanFontPathSegment)*3,#0);
    end else begin
     Assert(false);
    end;
@@ -40050,7 +40069,7 @@ type PPathSegmentSide=^TPathSegmentSide;
    InitializePathSegment(Contour.PathSegments[BasePathSegmentIndex+2]);
   end;
  end;
- procedure SplitPathSegmentIntoThreePartsToContour(var Contour:TContour;const BasePathSegmentIndex:TVkInt32;const BasePathSegment:TPathSegment);
+ procedure SplitPathSegmentIntoThreePartsToContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TVkInt32;const BasePathSegment:TVulkanFontPathSegment);
  begin
   if (BasePathSegmentIndex>=0) and (BasePathSegmentIndex<Contour.CountPathSegments) then begin
    case BasePathSegment.Type_ of
@@ -40094,9 +40113,9 @@ type PPathSegmentSide=^TPathSegmentSide;
    InitializePathSegment(Contour.PathSegments[BasePathSegmentIndex+2]);
   end;
  end;
- procedure NormalizeShape(var Shape:TShape);
+ procedure NormalizeShape(var Shape:TVulkanFontShape);
  var ContourIndex:TVkInt32;
-     Contour:PContour;
+     Contour:PVulkanFontPathContour;
  begin
   for ContourIndex:=0 to Shape.CountContours-1 do begin
    Contour:=@Shape.Contours[ContourIndex];
@@ -40109,7 +40128,7 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- procedure PathSegmentColorizeShape(var Shape:TShape);
+ procedure PathSegmentColorizeShape(var Shape:TVulkanFontShape);
  const AngleThreshold=3.0;
        EdgeThreshold=1.00000001;
  type PCorner=^TCorner;
@@ -40118,28 +40137,28 @@ type PPathSegmentSide=^TPathSegmentSide;
  var ContourIndex,PathSegmentIndex,CountCorners,CornerIndex,SplineIndex,StartIndex,
      OtherPathSegmentIndex:TVkInt32;
      Seed:TVkUInt64;
-     Contour:PContour;
-     PathSegment:PPathSegment;
+     Contour:PVulkanFontPathContour;
+     PathSegment:PVulkanFontPathSegment;
      Corners:TCorners;
-     CurrentDirection,PreviousDirection,a,b:TDoublePrecisionPoint;
+     CurrentDirection,PreviousDirection,a,b:TVulkanFontDoublePrecisionPoint;
      CrossThreshold:TVkDouble;
-     Color,InitialColor:TPathSegmentColor;
-     Colors:array[0..2] of TPathSegmentColor;
-     PathSegments:TPathSegments;
-  procedure SwitchColor(var Color:TPathSegmentColor;const BannedColor:TPathSegmentColor=pscBlack);
-  const StartColors:array[0..2] of TPathSegmentColor=(pscCyan,pscMagenta,pscYellow);
-  var CombinedColor:TPathSegmentColor;
+     Color,InitialColor:TVulkanFontPathSegmentColor;
+     Colors:array[0..2] of TVulkanFontPathSegmentColor;
+     PathSegments:TVulkanFontPathSegments;
+  procedure SwitchColor(var Color:TVulkanFontPathSegmentColor;const BannedColor:TVulkanFontPathSegmentColor=pscBlack);
+  const StartColors:array[0..2] of TVulkanFontPathSegmentColor=(pscCyan,pscMagenta,pscYellow);
+  var CombinedColor:TVulkanFontPathSegmentColor;
       Shifted:TVkUInt64;
   begin
-   CombinedColor:=TPathSegmentColor(TVkInt32(TVkInt32(Color) and TVkInt32(BannedColor)));
+   CombinedColor:=TVulkanFontPathSegmentColor(TVkInt32(TVkInt32(Color) and TVkInt32(BannedColor)));
    if CombinedColor in [pscRed,pscGreen,pscBlue] then begin
-    Color:=TPathSegmentColor(TVkInt32(TVkInt32(CombinedColor) xor TVkInt32(TPathSegmentColor(pscWhite))));
+    Color:=TVulkanFontPathSegmentColor(TVkInt32(TVkInt32(CombinedColor) xor TVkInt32(TVulkanFontPathSegmentColor(pscWhite))));
    end else if CombinedColor in [pscBlack,pscWhite] then begin
     Color:=StartColors[Seed mod 3];
     Seed:=Seed div 3;
    end else begin
     Shifted:=TVkInt32(Color) shl (1+(Seed and 1));
-    Color:=TPathSegmentColor(TVkInt32((Shifted or (Shifted shr 3)) and TVkInt32(TPathSegmentColor(pscWhite))));
+    Color:=TVulkanFontPathSegmentColor(TVkInt32((Shifted or (Shifted shr 3)) and TVkInt32(TVulkanFontPathSegmentColor(pscWhite))));
     Seed:=Seed shr 1;
    end;
   end;
@@ -40261,7 +40280,7 @@ type PPathSegmentSide=^TPathSegmentSide;
         end;
         if ((SplineIndex+1)<CountCorners) and (Corners[SplineIndex+1]=OtherPathSegmentIndex) then begin
          inc(SplineIndex);
-         SwitchColor(Color,TPathSegmentColor(TVkInt32(IfThen(SplineIndex=(CountCorners-1),TVkInt32(InitialColor),TVkInt32(TPathSegmentColor(pscBlack))))));
+         SwitchColor(Color,TVulkanFontPathSegmentColor(TVkInt32(IfThen(SplineIndex=(CountCorners-1),TVkInt32(InitialColor),TVkInt32(TVulkanFontPathSegmentColor(pscBlack))))));
         end;
         Contour^.PathSegments[OtherPathSegmentIndex].Color:=Color;
        end;
@@ -40279,8 +40298,8 @@ type PPathSegmentSide=^TPathSegmentSide;
   end;
 
  end;
- function GetLineNonClippedTime(const p,p0,p1:TDoublePrecisionPoint):TVkDouble;
- var pAP,pAB:TDoublePrecisionPoint;
+ function GetLineNonClippedTime(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TVkDouble;
+ var pAP,pAB:TVulkanFontDoublePrecisionPoint;
  begin
   pAP.x:=p.x-p0.x;
   pAP.y:=p.y-p0.y;
@@ -40288,8 +40307,8 @@ type PPathSegmentSide=^TPathSegmentSide;
   pAB.y:=p1.y-p0.y;
   result:=((pAP.x*pAB.x)+(pAP.y*pAB.y))/(sqr(pAB.x)+sqr(pAB.y));
  end;
- function GetQuadraticBezierCurveNonClippedTime(const p,p0,p1,p2:TDoublePrecisionPoint):TVkDouble;
- var b0,b1,b2,d21,d10,d20,gf,pp,d0p:TDoublePrecisionPoint;
+ function GetQuadraticBezierCurveNonClippedTime(const p,p0,p1,p2:TVulkanFontDoublePrecisionPoint):TVkDouble;
+ var b0,b1,b2,d21,d10,d20,gf,pp,d0p:TVulkanFontDoublePrecisionPoint;
      a,b,d,f,ap,bp,v,c:TVkDouble;
  begin
   b0.x:=p0.x-p.x;
@@ -40324,19 +40343,19 @@ type PPathSegmentSide=^TPathSegmentSide;
    result:=(ap+bp)/c;
   end;
  end;
- function GetNonClampedSignedLineDistance(const p,p0,p1:TDoublePrecisionPoint):TVkDouble;
+ function GetNonClampedSignedLineDistance(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TVkDouble;
  begin
   result:=((p.x*(p0.y-p1.y))+(p0.x*(p1.y-p.y))+(p1.x*(p.y-p0.y)))/sqrt(sqr(p1.x-p0.x)+sqr(p1.y-p0.y));
  end;
- procedure CalculateDistanceFieldData(const Shape:TShape;var DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32);
+ procedure CalculateDistanceFieldData(const Shape:TVulkanFontShape;var DistanceFieldData:TVulkanFontDistanceFieldData;const Width,Height:TVkInt32);
  var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
-     Contour:PContour;
-     PathSegment:PPathSegment;
-     PathSegmentBoundingBox:TBoundingBox;
-     PreviousPathSegmentSide,PathSegmentSide:TPathSegmentSide;
-     RowData:TRowData;
-     DistanceFieldDataItem:PDistanceFieldDataItem;
-     PointLeft,PointRight,Point,p0,p1,Direction,OriginPointDifference:TDoublePrecisionPoint;
+     Contour:PVulkanFontPathContour;
+     PathSegment:PVulkanFontPathSegment;
+     PathSegmentBoundingBox:TVulkanFontBoundingBox;
+     PreviousPathSegmentSide,PathSegmentSide:TVulkanFontPathSegmentSide;
+     RowData:TVulkanFontRowData;
+     DistanceFieldDataItem:PVulkanFontDistanceFieldDataItem;
+     PointLeft,PointRight,Point,p0,p1,Direction,OriginPointDifference:TVulkanFontDoublePrecisionPoint;
      pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time,Value:TvkDouble;
  begin
   RowData.QuadraticXDirection:=0;
@@ -40344,10 +40363,10 @@ type PPathSegmentSide=^TPathSegmentSide;
    Contour:=@Shape.Contours[ContourIndex];
    for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
     PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
-    PathSegmentBoundingBox.Min.x:=PathSegment.BoundingBox.Min.x-DistanceFieldPadValue;
-    PathSegmentBoundingBox.Min.y:=PathSegment.BoundingBox.Min.y-DistanceFieldPadValue;
-    PathSegmentBoundingBox.Max.x:=PathSegment.BoundingBox.Max.x+DistanceFieldPadValue;
-    PathSegmentBoundingBox.Max.y:=PathSegment.BoundingBox.Max.y+DistanceFieldPadValue;
+    PathSegmentBoundingBox.Min.x:=PathSegment.BoundingBox.Min.x-VulkanFontDistanceFieldPadValue;
+    PathSegmentBoundingBox.Min.y:=PathSegment.BoundingBox.Min.y-VulkanFontDistanceFieldPadValue;
+    PathSegmentBoundingBox.Max.x:=PathSegment.BoundingBox.Max.x+VulkanFontDistanceFieldPadValue;
+    PathSegmentBoundingBox.Max.y:=PathSegment.BoundingBox.Max.y+VulkanFontDistanceFieldPadValue;
     x0:=Clamp(Trunc(Floor(PathSegmentBoundingBox.Min.x)),0,Width-1);
     y0:=Clamp(Trunc(Floor(PathSegmentBoundingBox.Min.y)),0,Height-1);
     x1:=Clamp(Trunc(Ceil(PathSegmentBoundingBox.Max.x)),0,Width-1);
@@ -40372,12 +40391,12 @@ type PPathSegmentSide=^TPathSegmentSide;
       Point.x:=pX;
       Point.y:=pY;
       DistanceFieldDataItem:=@DistanceFieldData[PixelIndex];
-      Dilation:=Clamp(Floor(sqrt(Max(1,DistanceFieldDataItem^.SquaredDistance))+0.5),1,DistanceFieldPadValue);
-      PathSegmentBoundingBox.Min.x:=Floor(PathSegment.BoundingBox.Min.x)-DistanceFieldPadValue;
-      PathSegmentBoundingBox.Min.y:=Floor(PathSegment.BoundingBox.Min.y)-DistanceFieldPadValue;
-      PathSegmentBoundingBox.Max.x:=Ceil(PathSegment.BoundingBox.Max.x)+DistanceFieldPadValue;
-      PathSegmentBoundingBox.Max.y:=Ceil(PathSegment.BoundingBox.Max.y)+DistanceFieldPadValue;
-      if (Dilation<>DistanceFieldPadValue) and not
+      Dilation:=Clamp(Floor(sqrt(Max(1,DistanceFieldDataItem^.SquaredDistance))+0.5),1,VulkanFontDistanceFieldPadValue);
+      PathSegmentBoundingBox.Min.x:=Floor(PathSegment.BoundingBox.Min.x)-VulkanFontDistanceFieldPadValue;
+      PathSegmentBoundingBox.Min.y:=Floor(PathSegment.BoundingBox.Min.y)-VulkanFontDistanceFieldPadValue;
+      PathSegmentBoundingBox.Max.x:=Ceil(PathSegment.BoundingBox.Max.x)+VulkanFontDistanceFieldPadValue;
+      PathSegmentBoundingBox.Max.y:=Ceil(PathSegment.BoundingBox.Max.y)+VulkanFontDistanceFieldPadValue;
+      if (Dilation<>VulkanFontDistanceFieldPadValue) and not
          (((x>=PathSegmentBoundingBox.Min.x) and (x<=PathSegmentBoundingBox.Max.x)) and
           ((y>=PathSegmentBoundingBox.Min.y) and (y<=PathSegmentBoundingBox.Max.y))) then begin
        continue;
@@ -40449,17 +40468,17 @@ type PPathSegmentSide=^TPathSegmentSide;
         DistanceFieldDataItem^.SquaredDistance:=CurrentSquaredDistance;
        end;
        if MultiChannel then begin
-        if (((TVKInt32(PathSegment^.Color) and TVkInt32(TPathSegmentColor(pscRed)))<>0)) and
+        if (((TVKInt32(PathSegment^.Color) and TVkInt32(TVulkanFontPathSegmentColor(pscRed)))<>0)) and
            (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceR) then begin
          DistanceFieldDataItem^.SquaredDistanceR:=CurrentSquaredDistance;
          DistanceFieldDataItem^.PseudoSquaredDistanceR:=CurrentSquaredPseudoDistance;
         end;
-        if (((TVKInt32(PathSegment^.Color) and TVkInt32(TPathSegmentColor(pscGreen)))<>0)) and
+        if (((TVKInt32(PathSegment^.Color) and TVkInt32(TVulkanFontPathSegmentColor(pscGreen)))<>0)) and
            (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceG) then begin
          DistanceFieldDataItem^.SquaredDistanceG:=CurrentSquaredDistance;
          DistanceFieldDataItem^.PseudoSquaredDistanceG:=CurrentSquaredPseudoDistance;
         end;
-        if (((TVKInt32(PathSegment^.Color) and TVkInt32(TPathSegmentColor(pscBlue)))<>0)) and
+        if (((TVKInt32(PathSegment^.Color) and TVkInt32(TVulkanFontPathSegmentColor(pscBlue)))<>0)) and
            (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceB) then begin
          DistanceFieldDataItem^.SquaredDistanceB:=CurrentSquaredDistance;
          DistanceFieldDataItem^.PseudoSquaredDistanceB:=CurrentSquaredPseudoDistance;
@@ -40474,20 +40493,20 @@ type PPathSegmentSide=^TPathSegmentSide;
  end;
  function PackDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
  begin
-  result:=Clamp(Round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0,255);
+  result:=Clamp(Round((Distance*(128.0/VulkanFontDistanceFieldMagnitudeValue))+128.0),0,255);
  end;
  function PackPseudoDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
  begin
-  result:=Clamp(Round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0,255);
+  result:=Clamp(Round((Distance*(128.0/VulkanFontDistanceFieldMagnitudeValue))+128.0),0,255);
  end;
- procedure ConvertToPointInPolygonPathSegments(const Shape:TShape);
+ procedure ConvertToPointInPolygonPathSegments(const Shape:TVulkanFontShape);
  var ContourIndex,PathSegmentIndex,CountPathSegments:TVkInt32;
-     Contour:PContour;
-     PathSegment:PPathSegment;
-     StartPoint,LastPoint:TDoublePrecisionPoint;
-  procedure AddPathSegment(const p0,p1:TDoublePrecisionPoint);
+     Contour:PVulkanFontPathContour;
+     PathSegment:PVulkanFontPathSegment;
+     StartPoint,LastPoint:TVulkanFontDoublePrecisionPoint;
+  procedure AddPathSegment(const p0,p1:TVulkanFontDoublePrecisionPoint);
   var Index:TVkInt32;
-      PointInPolygonPathSegment:PPointInPolygonPathSegment;
+      PointInPolygonPathSegment:PVulkanFontPointInPolygonPathSegment;
   begin
    Index:=CountPathSegments;
    inc(CountPathSegments);
@@ -40498,16 +40517,16 @@ type PPathSegmentSide=^TPathSegmentSide;
    PointInPolygonPathSegment^.Points[0]:=p0;
    PointInPolygonPathSegment^.Points[1]:=p1;
   end;
-  procedure AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(const p0,p1,p2:TDoublePrecisionPoint;const Tolerance:TVkDouble=RasterizerToScreenScale;const MaxLevel:TVkInt32=32);
-  var LastPoint:TDoublePrecisionPoint;
-   procedure LineToPointAt(const Point:TDoublePrecisionPoint);
+  procedure AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(const p0,p1,p2:TVulkanFontDoublePrecisionPoint;const Tolerance:TVkDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TVkInt32=32);
+  var LastPoint:TVulkanFontDoublePrecisionPoint;
+   procedure LineToPointAt(const Point:TVulkanFontDoublePrecisionPoint);
    begin
     AddPathSegment(LastPoint,Point);
     LastPoint:=Point;
    end;
    procedure Recursive(const x1,y1,x2,y2,x3,y3:TVkDouble;const Level:TVkInt32);
    var x12,y12,x23,y23,x123,y123,mx,my,d:TVkDouble;
-       Point:TDoublePrecisionPoint;
+       Point:TVulkanFontDoublePrecisionPoint;
    begin
     x12:=(x1+x2)*0.5;
     y12:=(y1+y2)*0.5;
@@ -40571,9 +40590,9 @@ type PPathSegmentSide=^TPathSegmentSide;
    SetLength(PointInPolygonPathSegments,CountPathSegments);
   end;
  end;
- function GetWindingNumberAtPointInPolygon(const Point:TDoublePrecisionPoint):TVkInt32;
+ function GetWindingNumberAtPointInPolygon(const Point:TVulkanFontDoublePrecisionPoint):TVkInt32;
  var Index,CaseIndex:TVkInt32;
-     PointInPolygonPathSegment:PPointInPolygonPathSegment;
+     PointInPolygonPathSegment:PVulkanFontPointInPolygonPathSegment;
      x0,y0,x1,y1:TVkDouble;
  begin
   result:=0;
@@ -40608,11 +40627,11 @@ type PPathSegmentSide=^TPathSegmentSide;
    end;
   end;
  end;
- function GenerateDistanceFieldPicture(const DistanceFieldData:TDistanceFieldData;const Width,Height,TryIteration:TVkInt32):boolean;
+ function GenerateDistanceFieldPicture(const DistanceFieldData:TVulkanFontDistanceFieldData;const Width,Height,TryIteration:TVkInt32):boolean;
  var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TVkInt32;
-     DistanceFieldDataItem:PDistanceFieldDataItem;
+     DistanceFieldDataItem:PVulkanFontDistanceFieldDataItem;
      DistanceFieldPixel:PVulkanFontDistanceFieldPixel;
-     p:TDoublePrecisionPoint;
+     p:TVulkanFontDoublePrecisionPoint;
  begin
 
   result:=true;
@@ -40671,8 +40690,8 @@ type PPathSegmentSide=^TPathSegmentSide;
 
  end;
 var TryIteration:TVkInt32;
-    Shape:TShape;
-    DistanceFieldData:TDistanceFieldData;
+    Shape:TVulkanFontShape;
+    DistanceFieldData:TVulkanFontDistanceFieldData;
 begin
  Initialize(Shape);
  try
