@@ -36717,6 +36717,7 @@ begin
   if (TVkInt32(CodePointCode)<length(fCFFCodePointToGlyphIndexTable)) and
      ((fCFFCodePointToGlyphIndexTable[TVkInt32(CodePointCode)]>=0) and
       (fCFFCodePointToGlyphIndexTable[TVkInt32(CodePointCode)]<fCountGlyphs)) then begin
+   fLastError:=VkTTF_TT_ERR_NoError;
    result:=fCFFCodePointToGlyphIndexTable[TVkInt32(CodePointCode)];
   end;
  end;
