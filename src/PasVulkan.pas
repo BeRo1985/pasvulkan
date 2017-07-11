@@ -33882,7 +33882,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     TopDictPrivate:array[0..1] of TVkInt32;
     TopDictFontMatrix:array[0..5] of TVkDouble;
     NameIndexData,TopDictIndexData,StringIndexData,
-    GlobalSubroutineIndexData:TIndexData;
+    GlobalSubroutineIndexData,SubroutineIndexData:TIndexData;
     DictEntry:PDictEntry;
  function GetCFFSubroutineBias(const SubroutineIndexData:TIndexData):TVkInt32;
  begin
@@ -34413,6 +34413,27 @@ begin
      end;
     end;
     fCFFGlobalSubroutineBias:=GetCFFSubroutineBias(GlobalSubroutineIndexData);
+
+    if (TopDictPrivate[0]>0) and (TopDictPrivate[1]>0) and (PrivateDictSubRoutine<>0) then begin
+     Position:=TVkInt32(Offset)+TopDictPrivate[1]+PrivateDictSubRoutine;
+     result:=LoadIndex(SubroutineIndexData);
+     if result<>VkTTF_TT_ERR_NoError then begin
+      exit;
+     end;
+     fCFFSubroutineData:=nil;
+     if length(SubroutineIndexData)>0 then begin
+      SetLength(fCFFSubroutineData,length(SubroutineIndexData));
+      for i:=0 to length(SubroutineIndexData)-1 do begin
+       if ((SubroutineIndexData[i].Position+SubroutineIndexData[i].Size)-1)>=TVkInt32(EndOffset) then begin
+        result:=VkTTF_TT_ERR_CorruptFile;
+        exit;
+       end;
+       SetLength(fCFFSubroutineData[i],SubroutineIndexData[i].Size);
+       Move(fFontData[SubroutineIndexData[i].Position],fCFFSubroutineData[i][0],SubroutineIndexData[i].Size);
+      end;
+     end;
+     fCFFSubroutineBias:=GetCFFSubroutineBias(SubroutineIndexData);
+    end;
 
    finally
     PrivateDictEntryArray:=nil;
