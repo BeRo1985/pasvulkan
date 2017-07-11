@@ -4176,11 +4176,13 @@ type EVulkanException=class(Exception);
        function Scale(Value:TVkInt32):TVkInt32;
        function GetScale:TVkInt32;
        function ScaleRound(Value:TVkInt32):TVkInt32;
+       function IsPostScriptGlyph(const GlyphIndex:TVkInt32):boolean;
        procedure ResetGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer);
        procedure TransformGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;GlyphStartPointIndex,StartIndex,EndIndex:TVkInt32);
        procedure FillGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;const GlyphIndex:TVkInt32);
        procedure ResetPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer);
        procedure FillPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer);
+       procedure FillPostScriptPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphIndex:TVkInt32);
        procedure FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:UTF8String;const StartX:TVkInt32=0;const StartY:TVkInt32=0);
        procedure GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
        procedure DrawPolygonBuffer(Rasterizer:TVulkanTrueTypeFontRasterizer;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;x,y:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
@@ -37495,6 +37497,20 @@ begin
  end;
 end;
 
+function TVulkanTrueTypeFont.IsPostScriptGlyph(const GlyphIndex:TVkInt32):boolean;
+begin
+ if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and not fGlyphs[GlyphIndex].Locked then begin
+  fGlyphs[GlyphIndex].Locked:=true;
+  try
+   result:=fGlyphs[GlyphIndex].PostScriptPolygon.CountCommands>0;
+  finally
+   fGlyphs[GlyphIndex].Locked:=false;
+  end;
+ end else begin
+  result:=false;
+ end;
+end;
+
 procedure TVulkanTrueTypeFont.ResetGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer);
 begin
  GlyphBuffer.CountPoints:=0;
@@ -38033,6 +38049,34 @@ begin
  PolygonBuffer.CountCommands:=CommandCount;
 end;
 
+procedure TVulkanTrueTypeFont.FillPostScriptPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphIndex:TVkInt32);
+var CommandIndex,BaseIndex:TVkInt32;
+    Glyph:PVulkanTrueTypeFontGlyph;
+begin
+ if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and not fGlyphs[GlyphIndex].Locked then begin
+
+  Glyph:=@fGlyphs[GlyphIndex];
+
+  fGlyphs[GlyphIndex].Locked:=true;
+  try
+
+   BaseIndex:=PolygonBuffer.CountCommands;
+   inc(PolygonBuffer.CountCommands,Glyph^.PostScriptPolygon.CountCommands);
+   if length(PolygonBuffer.Commands)<PolygonBuffer.CountCommands then begin
+    SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(PolygonBuffer.CountCommands));
+   end;
+
+   for CommandIndex:=0 to Glyph^.PostScriptPolygon.CountCommands-1 do begin
+    PolygonBuffer.Commands[BaseIndex+CommandIndex]:=Glyph^.PostScriptPolygon.Commands[CommandIndex];
+   end;
+
+  finally
+   fGlyphs[GlyphIndex].Locked:=false;
+  end;
+
+ end;
+end;
+
 procedure TVulkanTrueTypeFont.FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:UTF8String;const StartX:TVkInt32=0;const StartY:TVkInt32=0);
 var TextIndex,CurrentGlyph,LastGlyph,CurrentX,CurrentY,OffsetX,OffsetY,
     CommandCount,CommandIndex,CommandBaseIndex:TVkInt32;
@@ -38067,11 +38111,20 @@ begin
      dec(CurrentY,GetGlyphTopSideBearing(CurrentGlyph));
     end;
 
-    ResetGlyphBuffer(GlyphBuffer);
-    FillGlyphBuffer(GlyphBuffer,CurrentGlyph);
+    if IsPostScriptGlyph(CurrentGlyph) then begin
 
-    ResetPolygonBuffer(GlyphPolygonBuffer);
-    FillPolygonBuffer(GlyphPolygonBuffer,GlyphBuffer);
+     ResetPolygonBuffer(GlyphPolygonBuffer);
+     FillPostScriptPolygonBuffer(GlyphPolygonBuffer,CurrentGlyph);
+
+    end else begin
+
+     ResetGlyphBuffer(GlyphBuffer);
+     FillGlyphBuffer(GlyphBuffer,CurrentGlyph);
+
+     ResetPolygonBuffer(GlyphPolygonBuffer);
+     FillPolygonBuffer(GlyphPolygonBuffer,GlyphBuffer);
+
+    end;
 
     CommandBaseIndex:=CommandCount;
     inc(CommandCount,GlyphPolygonBuffer.CountCommands);
@@ -38556,11 +38609,21 @@ begin
        GlyphBuffer.Points:=nil;
        PolygonBuffers[GlyphIndex].Commands:=nil;
        try
-        aTrueTypeFont.ResetGlyphBuffer(GlyphBuffer);
-        aTrueTypeFont.FillGlyphBuffer(GlyphBuffer,TTFGlyphIndex);
 
-        aTrueTypeFont.ResetPolygonBuffer(PolygonBuffers[GlyphIndex]);
-        aTrueTypeFont.FillPolygonBuffer(PolygonBuffers[GlyphIndex],GlyphBuffer);
+        if aTrueTypeFont.IsPostScriptGlyph(TTFGlyphIndex) then begin
+
+         aTrueTypeFont.ResetPolygonBuffer(PolygonBuffers[GlyphIndex]);
+         aTrueTypeFont.FillPostScriptPolygonBuffer(PolygonBuffers[GlyphIndex],TTFGlyphIndex);
+
+        end else begin
+
+         aTrueTypeFont.ResetGlyphBuffer(GlyphBuffer);
+         aTrueTypeFont.FillGlyphBuffer(GlyphBuffer,TTFGlyphIndex);
+
+         aTrueTypeFont.ResetPolygonBuffer(PolygonBuffers[GlyphIndex]);
+         aTrueTypeFont.FillPolygonBuffer(PolygonBuffers[GlyphIndex],GlyphBuffer);
+
+        end;
 
         aTrueTypeFont.GetPolygonBufferBounds(PolygonBuffers[GlyphIndex],x0,y0,x1,y1);
 
@@ -39804,9 +39867,9 @@ type PPathSegmentSide=^TPathSegmentSide;
                                      (SameValue(LastPoint.x,OtherControlPoint.x) and SameValue(LastPoint.y,OtherControlPoint.y)) and
                                      (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
         if DoSubdivideCurvesIntoLines then begin
-         AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
+         AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
         end else begin
-         AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
+         AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
         end;
        end;
        LastPoint:=Point;
