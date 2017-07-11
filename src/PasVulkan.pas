@@ -34688,7 +34688,7 @@ begin
             end;
             Code:=fFontData[Position];
             inc(Position,SizeOf(TVkUInt8));
-            EncodingTable[i]:=#0+TVulkanRawByteString(IntToStr(Code));
+            EncodingTable[i]:=TVulkanRawByteString(IntToStr(Code));
            end;
           end;
           1:begin
@@ -34719,7 +34719,7 @@ begin
                SetLength(EncodingTable,(j+1)*2);
               end;
               CountCodes:=Max(CountCodes,j+1);
-              EncodingTable[j]:=#0+TVulkanRawByteString(IntToStr(Code));
+              EncodingTable[j]:=TVulkanRawByteString(IntToStr(Code));
               inc(Code);
              end;
             end;
