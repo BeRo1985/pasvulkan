@@ -34368,6 +34368,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   end;
   function Execute(const CodePosition,CodeSize:TVkInt32):TVkInt32;
   var Position,UntilExcludingPosition,CodeIndex:TVkInt32;
+      dx1,dy1,dx2,dy2,dx3,dy3,dx4,dy4,dx5,dy5,dx6,dy6,dx,dy:TVkDouble;
   begin
    Position:=CodePosition;
    UntilExcludingPosition:=CodePosition+CodeSize;
@@ -34465,6 +34466,128 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
       end;
       v:=fFontData[Position];
       inc(Position,SizeOf(TVkUInt8));
+      case v of
+       34:begin
+        // hflex
+        dx1:=StackShift;
+        dx2:=StackShift;
+        dy2:=StackShift;
+        dx3:=StackShift;
+        dx4:=StackShift;
+        dx5:=StackShift;
+        dx6:=StackShift;
+        c0x:=x+dx1;
+        c0y:=y+0.0;
+        c1x:=c0x+dx2;
+        c1y:=c0y+dy2;
+        x:=c1x+dx3;
+        y:=c1y+0.0;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+        c0x:=x+dx4;
+        c0y:=y+0.0;
+        c1x:=c0x+dx5;
+        c1y:=c0y-dy2;
+        x:=c1x+dx6;
+        y:=c1y+0.0;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end;
+       35:begin
+        // flex
+        dx1:=StackShift;
+        dy1:=StackShift;
+        dx2:=StackShift;
+        dy2:=StackShift;
+        dx3:=StackShift;
+        dy3:=StackShift;
+        dx4:=StackShift;
+        dy4:=StackShift;
+        dx5:=StackShift;
+        dy5:=StackShift;
+        dx6:=StackShift;
+        dy6:=StackShift;
+        StackShift;
+        c0x:=x+dx1;
+        c0y:=y+dy1;
+        c1x:=c0x+dx2;
+        c1y:=c0y+dy2;
+        x:=c1x+dx3;
+        y:=c1y+dy3;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+        c0x:=x+dx4;
+        c0y:=y+dy4;
+        c1x:=c0x+dx5;
+        c1y:=c0y+dy5;
+        x:=c1x+dx6;
+        y:=c1y+dy6;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end;
+       36:begin
+        // hflex1
+        dx1:=StackShift;
+        dy1:=StackShift;
+        dx2:=StackShift;
+        dy2:=StackShift;
+        dx3:=StackShift;
+        dx4:=StackShift;
+        dx5:=StackShift;
+        dy5:=StackShift;
+        dx6:=StackShift;
+        c0x:=x+dx1;
+        c0y:=y+dy1;
+        c1x:=c0x+dx2;
+        c1y:=c0y+dy2;
+        x:=c1x+dx3;
+        y:=c1y+0.0;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+        c0x:=x+dx4;
+        c0y:=y+0.0;
+        c1x:=c0x+dx5;
+        c1y:=c0y+dy5;
+        x:=c1x+dx6;
+        y:=c1y-(dy1+dy2+dy5);
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end;
+       37:begin
+        // flex1
+        dx1:=StackShift;
+        dy1:=StackShift;
+        dx2:=StackShift;
+        dy2:=StackShift;
+        dy3:=StackShift;
+        dy3:=StackShift;
+        dx4:=StackShift;
+        dy4:=StackShift;
+        dx5:=StackShift;
+        dy5:=StackShift;
+        dx6:=StackShift;
+        dy6:=dx6;
+        dx:=dx1+dx2+dx3+dx4+dx5;
+        dy:=dy1+dy2+dy3+dy4+dy5;
+        if abs(dx)<abs(dy) then begin
+         dx6:=-dx;
+        end else begin
+         dy6:=-dy;
+        end;
+        c0x:=x+dx1;
+        c0y:=y+dy1;
+        c1x:=c0x+dx2;
+        c1y:=c0y+dy2;
+        x:=c1x+dx3;
+        y:=c1y+dy3;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+        c0x:=x+dx4;
+        c0y:=y+dy4;
+        c1x:=c0x+dx5;
+        c1y:=c0y+dy5;
+        x:=c1x+dx6;
+        y:=c1y+dy6;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end;
+       else begin
+        result:=VkTTF_TT_ERR_CorruptFile;
+        exit;
+       end;
+      end;
      end;
      14:begin
       // endchar
@@ -34696,6 +34819,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    x:=0.0;
    y:=0.0;
    Width:=0.0;
+   FillChar(Glyph,SizeOf(TVulkanTrueTypeFontGlyph),#0);
    Glyph.PostScriptPolygon.Commands:=nil;
    Glyph.PostScriptPolygon.CountCommands:=0;
    try
