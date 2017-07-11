@@ -39035,7 +39035,7 @@ type PPathSegmentSide=^TPathSegmentSide;
      TPointInPolygonPathSegment=record
       Points:array[0..1] of TDoublePrecisionPoint;
      end;
-     TPointInPolygonPathSegments=array of TPointInPolygonPathSegment;
+     TPointInPolygonPathSegments=array of array of TPointInPolygonPathSegment;
  const DoublePrecisionAffineMatrixIdentity:TDoublePrecisionAffineMatrix=(1.0,0.0,0.0,0.0,1.0,0.0);
  var PointInPolygonPathSegments:TPointInPolygonPathSegments;
  function Clamp(const Value,MinValue,MaxValue:TVkInt64):TVkInt64; overload;
@@ -40491,10 +40491,10 @@ type PPathSegmentSide=^TPathSegmentSide;
   begin
    Index:=CountPathSegments;
    inc(CountPathSegments);
-   if length(PointInPolygonPathSegments)<CountPathSegments then begin
-    SetLength(PointInPolygonPathSegments,CountPathSegments*2);
+   if length(PointInPolygonPathSegments[ContourIndex])<CountPathSegments then begin
+    SetLength(PointInPolygonPathSegments[ContourIndex],CountPathSegments*2);
    end;
-   PointInPolygonPathSegment:=@PointInPolygonPathSegments[Index];
+   PointInPolygonPathSegment:=@PointInPolygonPathSegments[ContourIndex,Index];
    PointInPolygonPathSegment^.Points[0]:=p0;
    PointInPolygonPathSegment^.Points[1]:=p1;
   end;
@@ -40534,85 +40534,84 @@ type PPathSegmentSide=^TPathSegmentSide;
   end;
  begin
   PointInPolygonPathSegments:=nil;
-  CountPathSegments:=0;
   try
+   SetLength(PointInPolygonPathSegments,Shape.CountContours);
    for ContourIndex:=0 to Shape.CountContours-1 do begin
     Contour:=@Shape.Contours[ContourIndex];
-    if Contour^.CountPathSegments>0 then begin
-     StartPoint.x:=0.0;
-     StartPoint.y:=0.0;
-     LastPoint.x:=0.0;
-     LastPoint.y:=0.0;
-     for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
-      PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
-      case PathSegment^.Type_ of
-       pstLine:begin
-        if PathSegmentIndex=0 then begin
-         StartPoint:=PathSegment^.Points[0];
+    try
+     CountPathSegments:=0;
+     if Contour^.CountPathSegments>0 then begin
+      StartPoint.x:=0.0;
+      StartPoint.y:=0.0;
+      LastPoint.x:=0.0;
+      LastPoint.y:=0.0;
+      for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
+       PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
+       case PathSegment^.Type_ of
+        pstLine:begin
+         if PathSegmentIndex=0 then begin
+          StartPoint:=PathSegment^.Points[0];
+         end;
+         LastPoint:=PathSegment^.Points[1];
+         AddPathSegment(PathSegment^.Points[0],PathSegment^.Points[1]);
         end;
-        LastPoint:=PathSegment^.Points[1];
-        AddPathSegment(PathSegment^.Points[0],PathSegment^.Points[1]);
-       end;
-       pstQuadraticBezierCurve:begin
-        if PathSegmentIndex=0 then begin
-         StartPoint:=PathSegment^.Points[0];
+        pstQuadraticBezierCurve:begin
+         if PathSegmentIndex=0 then begin
+          StartPoint:=PathSegment^.Points[0];
+         end;
+         LastPoint:=PathSegment^.Points[2];
+         AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(PathSegment^.Points[0],PathSegment^.Points[1],PathSegment^.Points[2]);
         end;
-        LastPoint:=PathSegment^.Points[2];
-        AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(PathSegment^.Points[0],PathSegment^.Points[1],PathSegment^.Points[2]);
        end;
       end;
+      if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
+       AddPathSegment(LastPoint,StartPoint);
+      end;
      end;
-     if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
-      AddPathSegment(LastPoint,StartPoint);
-     end;
+    finally
+     SetLength(PointInPolygonPathSegments[ContourIndex],CountPathSegments);
     end;
    end;
   finally
-   SetLength(PointInPolygonPathSegments,CountPathSegments);
+   SetLength(PointInPolygonPathSegments,Shape.CountContours);
   end;
  end;
- function PointInPolygon(const Point:TDoublePrecisionPoint):boolean;
- var Index,CrossingOrWindingNumber:TVkInt32;
+ function GetWindingNumberAtPointInPolygon(const Point:TDoublePrecisionPoint):TVkInt32;
+ var Index,SubIndex,CaseIndex:TVkInt32;
      PointInPolygonPathSegment:PPointInPolygonPathSegment;
+     x0,y0,x1,y1:TVkDouble;
  begin
-  CrossingOrWindingNumber:=0;
-  case FillRule of
-   VkTTF_PolygonWindingRule_NONZERO:begin
-    for Index:=0 to length(PointInPolygonPathSegments)-1 do begin
-     PointInPolygonPathSegment:=@PointInPolygonPathSegments[Index];
-     if PointInPolygonPathSegment^.Points[0].y<=Point.y then begin
-      if (PointInPolygonPathSegment^.Points[1].y>Point.y) and
-         (DoublePrecisionPointIsLeft(PointInPolygonPathSegment^.Points[0],
-                                     PointInPolygonPathSegment^.Points[1],
-                                     Point)>0.0) then begin
-       inc(CrossingOrWindingNumber);
-      end;
-     end else begin
-      if (PointInPolygonPathSegment^.Points[1].y<=Point.y) and
-         (DoublePrecisionPointIsLeft(PointInPolygonPathSegment^.Points[0],
-                                     PointInPolygonPathSegment^.Points[1],
-                                     Point)<0.0) then begin
-       dec(CrossingOrWindingNumber);
+  result:=0;
+  for Index:=0 to length(PointInPolygonPathSegments)-1 do begin
+   for SubIndex:=0 to length(PointInPolygonPathSegments[Index])-1 do begin
+    PointInPolygonPathSegment:=@PointInPolygonPathSegments[Index,SubIndex];
+    y0:=PointInPolygonPathSegment^.Points[0].y-Point.y;
+    y1:=PointInPolygonPathSegment^.Points[1].y-Point.y;
+    if y0<0.0 then begin
+     CaseIndex:=0;
+    end else if y0>0.0 then begin
+     CaseIndex:=2;
+    end else begin
+     CaseIndex:=1;
+    end;
+    if y1<0.0 then begin
+     inc(CaseIndex,0);
+    end else if y1>0.0 then begin
+     inc(CaseIndex,6);
+    end else begin
+     inc(CaseIndex,3);
+    end;
+    if CaseIndex in [1,2,3,6] then begin
+     x0:=PointInPolygonPathSegment^.Points[0].x-Point.x;
+     x1:=PointInPolygonPathSegment^.Points[1].x-Point.x;
+     if not (((x0>0.0) and (x1>0.0)) or ((not ((x0<=0.0) and (x1<=0.0))) and ((x0-(y0*((x1-x0)/(y1-y0))))>0.0))) then begin
+      if CaseIndex in [1,2] then begin
+       inc(result);
+      end else begin
+       dec(result);
       end;
      end;
     end;
-    result:=CrossingOrWindingNumber<>0;
-   end;
-   else {VkTTF_PolygonWindingRule_EVENODD:}begin
-    for Index:=0 to length(PointInPolygonPathSegments)-1 do begin
-     PointInPolygonPathSegment:=@PointInPolygonPathSegments[Index];
-     if ((PointInPolygonPathSegment^.Points[0].y<=Point.y) and
-         (PointInPolygonPathSegment^.Points[1].y>Point.y)) or
-        ((PointInPolygonPathSegment^.Points[0].y>Point.y) and
-         (PointInPolygonPathSegment^.Points[1].y<=Point.y)) then begin
-      if Point.x<(PointInPolygonPathSegment^.Points[0].x+
-                  ((PointInPolygonPathSegment^.Points[1].x-PointInPolygonPathSegment^.Points[0].x)*
-                   ((Point.y-PointInPolygonPathSegment^.Points[0].y)/(PointInPolygonPathSegment^.Points[1].y-PointInPolygonPathSegment^.Points[0].y)))) then begin
-       inc(CrossingOrWindingNumber);
-      end;
-     end;
-    end;
-    result:=(CrossingOrWindingNumber and 1)<>0;
    end;
   end;
  end;
@@ -40633,33 +40632,29 @@ type PPathSegmentSide=^TPathSegmentSide;
     if TryIteration=2 then begin
      p.x:=x+0.5;
      p.y:=y+0.5;
-     if PointInPolygon(p) then begin
-      DistanceFieldSign:=1;
-     end else begin
-      DistanceFieldSign:=-1;
-     end;
+     WindingNumber:=GetWindingNumberAtPointInPolygon(p);
     end else begin
      inc(WindingNumber,DistanceFieldDataItem^.DeltaWindingScore);
-     case FillRule of
-      VkTTF_PolygonWindingRule_NONZERO:begin
-       if WindingNumber<>0 then begin
-        DistanceFieldSign:=1;
-       end else begin
-        DistanceFieldSign:=-1;
-       end;
-      end;
-      else {VkTTF_PolygonWindingRule_EVENODD:}begin
-       if (WindingNumber and 1)<>0 then begin
-        DistanceFieldSign:=1;
-       end else begin
-        DistanceFieldSign:=-1;
-       end;
-      end;
+     if (x=(Width-1)) and (WindingNumber<>0) then begin
+      result:=false;
+      break;
      end;
     end;
-    if (x=(Width-1)) and (WindingNumber<>0) then begin
-     result:=false;
-     break;
+    case FillRule of
+     VkTTF_PolygonWindingRule_NONZERO:begin
+      if WindingNumber<>0 then begin
+       DistanceFieldSign:=1;
+      end else begin
+       DistanceFieldSign:=-1;
+      end;
+     end;
+     else {VkTTF_PolygonWindingRule_EVENODD:}begin
+      if (WindingNumber and 1)<>0 then begin
+       DistanceFieldSign:=1;
+      end else begin
+       DistanceFieldSign:=-1;
+      end;
+     end;
     end;
     DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
     if MultiChannel then begin
@@ -40698,33 +40693,26 @@ begin
    try
 
     for TryIteration:=0 to 2 do begin
-
-     InitializeDistances(DistanceFieldData);
-
-     ConvertShape(Shape,TryIteration in [1,2]);
-
-     if MultiChannel then begin
-
-      NormalizeShape(Shape);
-
-      PathSegmentColorizeShape(Shape);
-
-      NormalizeShape(Shape);
-
+     case TryIteration of
+      0,1:begin
+       InitializeDistances(DistanceFieldData);
+       ConvertShape(Shape,TryIteration in [1,2]);
+       if MultiChannel then begin
+        NormalizeShape(Shape);
+        PathSegmentColorizeShape(Shape);
+        NormalizeShape(Shape);
+       end;
+      end;
+      else {2:}begin
+       ConvertToPointInPolygonPathSegments(Shape);
+      end;
      end;
-
-     if TryIteration=2 then begin
-      ConvertToPointInPolygonPathSegments(Shape);
-     end;
-
      CalculateDistanceFieldData(Shape,DistanceFieldData,DistanceField.Width,DistanceField.Height);
-
      if GenerateDistanceFieldPicture(DistanceFieldData,DistanceField.Width,DistanceField.Height,TryIteration) then begin
       break;
      end else begin
       // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
      end;
-
     end;
 
    finally
