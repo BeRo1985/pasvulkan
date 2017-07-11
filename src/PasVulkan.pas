@@ -35142,7 +35142,6 @@ begin
       fCountGlyphs:=length(TopDictCharStringsIndexData);
       SetLength(fGlyphs,fCountGlyphs);
       for i:=0 to fCountGlyphs-1 do begin
-       writeln(i);
        result:=LoadCFFGlyph(fGlyphs[i],TopDictCharStringsIndexData[i].Position,TopDictCharStringsIndexData[i].Size);
        if result<>VkTTF_TT_ERR_NoError then begin
         exit;
