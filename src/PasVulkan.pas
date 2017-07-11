@@ -33843,6 +33843,12 @@ type PIndexDataItem=^TIndexDataItem;
        );
      end;
      TNumberArray=array of TNumber;
+     PDictEntry=^TDictEntry;
+     TDictEntry=record
+      Op:TVkUInt8;
+      Operands:TNumberArray;
+     end;
+     TDictEntryArray=array of TDictEntry;
 var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     HeaderFormatMajor,HeaderFormatMinor,HeaderSize,HeaderOffsetSize,
     HeaderStartOffset,HeaderEndOffset,i,
@@ -33922,28 +33928,21 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   result:=VkTTF_TT_ERR_NoError;
 
  end;
- function LoadDict(const DictPosition,DictSize:TVkInt32):TVkInt32;
- type PEntry=^TEntry;
-      TEntry=record
-       Op:TVkUInt8;
-       Operands:TNumberArray;
-      end;
-      TEntryArray=array of TEntry;
+ function LoadDict(const DictPosition,DictSize:TVkInt32;out DictEntryArray:TDictEntryArray):TVkInt32;
  const FloatStrings:array[0..15] of string=('0','1','2','3','4','5','6','7','8','9','.','e','e-','','-','');
- var Position,UntilExcludingPosition,Op,CountOperands,CountEntries,Value:TVkInt32;
+ var Position,UntilExcludingPosition,Op,CountOperands,CountDictEntries,Value:TVkInt32;
      Operands:TNumberArray;
-     Entries:TEntryArray;
-     Entry:PEntry;
+     DictEntry:PDictEntry;
      FloatString:string;
  begin
 
   Position:=DictPosition;
   UntilExcludingPosition:=DictPosition+DictSize;
 
-  Entries:=nil;
+  DictEntryArray:=nil;
   try
 
-   CountEntries:=0;
+   CountDictEntries:=0;
 
    Operands:=nil;
    try
@@ -33968,25 +33967,25 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        end;
        Op:=1200+fFontData[Position];
        inc(Position,SizeOf(TVkUInt8));
-       if length(Entries)<(CountEntries+1) then begin
-        SetLength(Entries,(CountEntries+1)*2);
+       if length(DictEntryArray)<(CountDictEntries+1) then begin
+        SetLength(DictEntryArray,(CountDictEntries+1)*2);
        end;
-       Entry:=@Entries[CountEntries];
-       inc(CountEntries);
-       Entry^.Op:=Op;
-       Entry^.Operands:=Operands;
+       DictEntry:=@DictEntryArray[CountDictEntries];
+       inc(CountDictEntries);
+       DictEntry^.Op:=Op;
+       DictEntry^.Operands:=Operands;
        Operands:=nil;
        CountOperands:=0;
       end;
       0..11,13..21:begin
        SetLength(Operands,CountOperands);
-       if length(Entries)<(CountEntries+1) then begin
-        SetLength(Entries,(CountEntries+1)*2);
+       if length(DictEntryArray)<(CountDictEntries+1) then begin
+        SetLength(DictEntryArray,(CountDictEntries+1)*2);
        end;
-       Entry:=@Entries[CountEntries];
-       inc(CountEntries);
-       Entry^.Op:=Op;
-       Entry^.Operands:=Operands;
+       DictEntry:=@DictEntryArray[CountDictEntries];
+       inc(CountDictEntries);
+       DictEntry^.Op:=Op;
+       DictEntry^.Operands:=Operands;
        Operands:=nil;
        CountOperands:=0;
       end;
@@ -34090,94 +34089,101 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    end;
 
   finally
-   Entries:=nil;
+   SetLength(DictEntryArray,CountDictEntries);
   end;
 
   result:=VkTTF_TT_ERR_NoError;
 
  end;
+var TopDictEntryArray:TDictEntryArray;
 begin
  Tag:=ToLONGWORD(TVkUInt8('C'),TVkUInt8('F'),TVkUInt8('F'),TVkUInt8(32));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
 
-  Position:=Offset;
+  TopDictEntryArray:=nil;
+  try
 
-  EndOffset:=Offset+Size;
+   Position:=Offset;
 
-  if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
-   result:=VkTTF_TT_ERR_CorruptFile;
-   exit;
-  end;
-  HeaderFormatMajor:=fFontData[Position];
-  inc(Position,SizeOf(TVkUInt8));
+   EndOffset:=Offset+Size;
 
-  if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
-   result:=VkTTF_TT_ERR_CorruptFile;
-   exit;
-  end;
-  HeaderFormatMinor:=fFontData[Position];
-  inc(Position,SizeOf(TVkUInt8));
+   if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+    result:=VkTTF_TT_ERR_CorruptFile;
+    exit;
+   end;
+   HeaderFormatMajor:=fFontData[Position];
+   inc(Position,SizeOf(TVkUInt8));
 
-  if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
-   result:=VkTTF_TT_ERR_CorruptFile;
-   exit;
-  end;
-  HeaderSize:=fFontData[Position];
-  inc(Position,SizeOf(TVkUInt8));
+   if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+    result:=VkTTF_TT_ERR_CorruptFile;
+    exit;
+   end;
+   HeaderFormatMinor:=fFontData[Position];
+   inc(Position,SizeOf(TVkUInt8));
 
-  if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
-   result:=VkTTF_TT_ERR_CorruptFile;
-   exit;
-  end;
-  HeaderOffsetSize:=fFontData[Position];
-  inc(Position,SizeOf(TVkUInt8));
+   if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+    result:=VkTTF_TT_ERR_CorruptFile;
+    exit;
+   end;
+   HeaderSize:=fFontData[Position];
+   inc(Position,SizeOf(TVkUInt8));
 
-  Position:=Offset+TVKUInt32(HeaderSize);
+   if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+    result:=VkTTF_TT_ERR_CorruptFile;
+    exit;
+   end;
+   HeaderOffsetSize:=fFontData[Position];
+   inc(Position,SizeOf(TVkUInt8));
 
-  result:=LoadIndex(NameIndexData);
-  if result<>VkTTF_TT_ERR_NoError then begin
-   exit;
-  end;
-  if length(NameIndexData)>0 then begin
-  end;
+   Position:=Offset+TVKUInt32(HeaderSize);
 
-  result:=LoadIndex(TopDictIndexData);
-  if result<>VkTTF_TT_ERR_NoError then begin
-   exit;
-  end;
-  if length(TopDictIndexData)>0 then begin
-   result:=LoadDict(TopDictIndexData[0].Position,TopDictIndexData[0].Size);
+   result:=LoadIndex(NameIndexData);
    if result<>VkTTF_TT_ERR_NoError then begin
     exit;
    end;
-  end;
+   if length(NameIndexData)>0 then begin
+   end;
 
-  result:=LoadIndex(StringIndexData);
-  if result<>VkTTF_TT_ERR_NoError then begin
-   exit;
-  end;
-  if length(StringIndexData)>0 then begin
-  end;
-
-  result:=LoadIndex(GlobalSubroutineIndexData);
-  if result<>VkTTF_TT_ERR_NoError then begin
-   exit;
-  end;
-  fCFFGlobalSubroutineData:=nil;
-  if length(GlobalSubroutineIndexData)>0 then begin
-   SetLength(fCFFGlobalSubroutineData,length(GlobalSubroutineIndexData));
-   for i:=0 to length(GlobalSubroutineIndexData)-1 do begin
-    if ((GlobalSubroutineIndexData[i].Position+GlobalSubroutineIndexData[i].Size)-1)>=EndOffset then begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+   result:=LoadIndex(TopDictIndexData);
+   if result<>VkTTF_TT_ERR_NoError then begin
+    exit;
+   end;
+   if length(TopDictIndexData)>0 then begin
+    result:=LoadDict(TopDictIndexData[0].Position,TopDictIndexData[0].Size,TopDictEntryArray);
+    if result<>VkTTF_TT_ERR_NoError then begin
      exit;
     end;
-    SetLength(fCFFGlobalSubroutineData[i],GlobalSubroutineIndexData[i].Size);
-    Move(fFontData[GlobalSubroutineIndexData[i].Position],fCFFGlobalSubroutineData[i][0],GlobalSubroutineIndexData[i].Size);
    end;
-  end;
-  fCFFGlobalSubroutineBias:=GetCFFSubroutineBias(GlobalSubroutineIndexData);
 
+   result:=LoadIndex(StringIndexData);
+   if result<>VkTTF_TT_ERR_NoError then begin
+    exit;
+   end;
+   if length(StringIndexData)>0 then begin
+   end;
+
+   result:=LoadIndex(GlobalSubroutineIndexData);
+   if result<>VkTTF_TT_ERR_NoError then begin
+    exit;
+   end;
+   fCFFGlobalSubroutineData:=nil;
+   if length(GlobalSubroutineIndexData)>0 then begin
+    SetLength(fCFFGlobalSubroutineData,length(GlobalSubroutineIndexData));
+    for i:=0 to length(GlobalSubroutineIndexData)-1 do begin
+     if ((GlobalSubroutineIndexData[i].Position+GlobalSubroutineIndexData[i].Size)-1)>=EndOffset then begin
+      result:=VkTTF_TT_ERR_CorruptFile;
+      exit;
+     end;
+     SetLength(fCFFGlobalSubroutineData[i],GlobalSubroutineIndexData[i].Size);
+     Move(fFontData[GlobalSubroutineIndexData[i].Position],fCFFGlobalSubroutineData[i][0],GlobalSubroutineIndexData[i].Size);
+    end;
+   end;
+   fCFFGlobalSubroutineBias:=GetCFFSubroutineBias(GlobalSubroutineIndexData);
+
+  finally
+   TopDictEntryArray:=nil;
+  end;
 
   result:=VkTTF_TT_ERR_NoError;
 
