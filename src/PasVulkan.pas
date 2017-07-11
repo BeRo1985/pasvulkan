@@ -4163,7 +4163,7 @@ type EVulkanException=class(Exception);
        constructor Create(const Stream:TStream;const TargetPPI:TVkInt32=96;const ForceSelector:boolean=false;const PlatformID:TVkUInt16=VkTTF_PID_Microsoft;const SpecificID:TVkUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TVkUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TVkInt32=0);
        destructor Destroy; override;
        function GetGASPRange:PVulkanTrueTypeFontGASPRange;
-       function GetGlyphIndex(CharCode:TVkUInt32;CMapIndex:TVkInt32=0):TVkUInt32;
+       function GetGlyphIndex(CodePointCode:TVkUInt32;CMapIndex:TVkInt32=0):TVkUInt32;
        function GetGlyphAdvanceWidth(GlyphIndex:TVkInt32):TVkInt32;
        function GetGlyphAdvanceHeight(GlyphIndex:TVkInt32):TVkInt32;
        function GetGlyphLeftSideBearing(GlyphIndex:TVkInt32):TVkInt32;
@@ -36424,7 +36424,7 @@ begin
 
 end;
 
-function TVulkanTrueTypeFont.GetGlyphIndex(CharCode:TVkUInt32;CMapIndex:TVkInt32=0):TVkUInt32;
+function TVulkanTrueTypeFont.GetGlyphIndex(CodePointCode:TVkUInt32;CMapIndex:TVkInt32=0):TVkUInt32;
 var CMap:PVulkanTrueTypeFontByteArray;
     SegCount,u:TVkUInt16;
     EndCount,StartCount,IDDelta,IDRangeOffset,Data,SubHeaderKeysData:PVulkanTrueTypeFontByteArray;
@@ -36447,7 +36447,7 @@ begin
   fLastError:=VkTTF_TT_ERR_NoError;
   case fCMapFormat of
    VkTTF_CMAP_FORMAT0:begin
-    Offset:=CharCode+6;
+    Offset:=CodePointCode+6;
     if Offset<TVkUInt32(CMapLength) then begin
      result:=CMap^[Offset];
     end else begin
@@ -36455,13 +36455,13 @@ begin
     end;
    end;
    VkTTF_CMAP_FORMAT2:begin
-    if CharCode>$ffff then begin
+    if CodePointCode>$ffff then begin
      result:=0;
     end else begin
-     if CharCode<256 then begin
-      Index:=CharCode;
+     if CodePointCode<256 then begin
+      Index:=CodePointCode;
      end else begin
-      Index:=CharCode shr 8;
+      Index:=CodePointCode shr 8;
      end;
      SubHeaderKeysData:=@CMap^[6];
      NumSH:=0;
@@ -36475,10 +36475,10 @@ begin
      NumGlyphID:=((TVkUInt32(CMapLength)-(2*(256+3))-(NumSH*8)) and $ffff) shr 1;
      index1:=fSubHeaderKeys[Index];
      if index1=0 then begin
-      if CharCode<256 then begin
-       if CharCode<NumGlyphID then begin
+      if CodePointCode<256 then begin
+       if CodePointCode<NumGlyphID then begin
         Data:=@CMap^[6+(256*2)+(NumSH*8)];
-        result:=ToWORD(Data^[CharCode*2],Data^[(CharCode*2)+1]);
+        result:=ToWORD(Data^[CodePointCode*2],Data^[(CodePointCode*2)+1]);
        end else begin
         result:=0;
        end;
@@ -36486,10 +36486,10 @@ begin
        result:=0;
       end;
      end else begin
-      if CharCode<256 then begin
+      if CodePointCode<256 then begin
        result:=0;
       end else begin
-       idx:=CharCode and $ff;
+       idx:=CodePointCode and $ff;
        Data:=@CMap^[6+(256*2)+(index1*8)];
        FirstCode:=ToWORD(Data^[0],Data^[1]);
        EntryCount:=ToWORD(Data^[2],Data^[3]);
@@ -36514,10 +36514,10 @@ begin
     end;
    end;
    VkTTF_CMAP_FORMAT4:begin
-    if CharCode>$ffff then begin
+    if CodePointCode>$ffff then begin
      result:=0;
     end else begin
-     CharCode:=CharCode and $ffff;
+     CodePointCode:=CodePointCode and $ffff;
      SegCount:=ToWORD(CMap^[6],CMap^[7]) shr 1;
      EndCount:=@CMap^[14];
      StartCount:=@CMap^[16+(2*SegCount)];
@@ -36525,20 +36525,20 @@ begin
      IDRangeOffset:=@CMap^[16+(6*SegCount)];
      seg:=0;
      EndV:=ToWORD(EndCount^[0],EndCount^[1]);
-     while EndV<CharCode do begin
+     while EndV<CodePointCode do begin
       inc(seg);
       EndV:=ToWORD(EndCount^[seg*2],EndCount^[(seg*2)+1]);
      end;
      Start:=ToWORD(StartCount^[seg*2],StartCount^[(seg*2)+1]);
      Delta:=ToWORD(IDDelta^[seg*2],IDDelta^[(seg*2)+1]);
      Range:=ToWORD(IDRangeOffset[seg*2],IDRangeOffset[(seg*2)+1]);
-     if Start>CharCode then begin
+     if Start>CodePointCode then begin
       result:=0;
      end else begin
       if Range=0 then begin
-       Index:=(TVkUInt16(CharCode)+TVkUInt16(Delta)) and $ffff;
+       Index:=(TVkUInt16(CodePointCode)+TVkUInt16(Delta)) and $ffff;
       end else begin
-       Index:=Range+((CharCode-Start)*2)+((16+(6*SegCount))+(seg*2));
+       Index:=Range+((CodePointCode-Start)*2)+((16+(6*SegCount))+(seg*2));
        Index:=ToWORD(CMap^[Index],CMap^[Index+1]);
        if Index<>0 then begin
         Index:=(TVkUInt16(Index)+TVkUInt16(Delta)) and $ffff;
@@ -36551,8 +36551,8 @@ begin
    VkTTF_CMAP_FORMAT6:begin
     FirstCode:=ToWORD(CMap^[6],CMap^[7]);
     EntryCount:=ToWORD(CMap^[8],CMap^[9]);
-    if (CharCode>=FirstCode) and (CharCode<(FirstCode+EntryCount)) then begin
-     Offset:=(TVkUInt32(CharCode-FirstCode)*2)+10;
+    if (CodePointCode>=FirstCode) and (CodePointCode<(FirstCode+EntryCount)) then begin
+     Offset:=(TVkUInt32(CodePointCode-FirstCode)*2)+10;
      result:=ToWORD(CMap^[Offset],CMap^[Offset+1]);
     end else begin
      result:=0;
@@ -36569,9 +36569,9 @@ begin
       Offset:=8208+(m*12);
       Start:=ToLONGWORD(CMap^[Offset],CMap^[Offset+1],CMap^[Offset+2],CMap^[Offset+3]);
       EndV:=ToLONGWORD(CMap^[Offset+4],CMap^[Offset+5],CMap^[Offset+6],CMap^[Offset+7]);
-      if CharCode<Start then begin
+      if CodePointCode<Start then begin
        h:=m;
-      end else if CharCode>EndV then begin
+      end else if CodePointCode>EndV then begin
        l:=m+1;
       end else begin
        if (m and $ffff0000)=0 then begin
@@ -36584,7 +36584,7 @@ begin
           break;
         end;
        end;
-       result:=(ToLONGWORD(CMap^[Offset+8],CMap^[Offset+9],CMap^[Offset+10],CMap^[Offset+11])+CharCode)-Start;
+       result:=(ToLONGWORD(CMap^[Offset+8],CMap^[Offset+9],CMap^[Offset+10],CMap^[Offset+11])+CodePointCode)-Start;
        break;
       end;
      end;
@@ -36593,8 +36593,8 @@ begin
    VkTTF_CMAP_FORMAT10:begin
     FirstCode:=ToLONGWORD(CMap^[12],CMap^[13],CMap^[14],CMap^[15]);
     EntryCount:=ToLONGWORD(CMap^[16],CMap^[17],CMap^[18],CMap^[19]);
-    if (CharCode>=FirstCode) and (CharCode<(FirstCode+EntryCount)) then begin
-     Offset:=(TVkUInt32(CharCode-FirstCode)*2)+20;
+    if (CodePointCode>=FirstCode) and (CodePointCode<(FirstCode+EntryCount)) then begin
+     Offset:=(TVkUInt32(CodePointCode-FirstCode)*2)+20;
      result:=ToWORD(CMap^[Offset],CMap^[Offset+1]);
     end else begin
      result:=0;
@@ -36611,12 +36611,12 @@ begin
       Offset:=16+(m*12);
       Start:=ToLONGWORD(CMap^[Offset],CMap^[Offset+1],CMap^[Offset+2],CMap^[Offset+3]);
       EndV:=ToLONGWORD(CMap^[Offset+4],CMap^[Offset+5],CMap^[Offset+6],CMap^[Offset+7]);
-      if CharCode<Start then begin
+      if CodePointCode<Start then begin
        h:=m;
-      end else if CharCode>EndV then begin
+      end else if CodePointCode>EndV then begin
        l:=m+1;
       end else begin
-       result:=(ToLONGWORD(CMap^[Offset+8],CMap^[Offset+9],CMap^[Offset+10],CMap^[Offset+11])+CharCode)-Start;
+       result:=(ToLONGWORD(CMap^[Offset+8],CMap^[Offset+9],CMap^[Offset+10],CMap^[Offset+11])+CodePointCode)-Start;
        break;
       end;
      end;
@@ -36633,9 +36633,9 @@ begin
       Offset:=16+(m*12);
       Start:=ToLONGWORD(CMap^[Offset],CMap^[Offset+1],CMap^[Offset+2],CMap^[Offset+3]);
       EndV:=ToLONGWORD(CMap^[Offset+4],CMap^[Offset+5],CMap^[Offset+6],CMap^[Offset+7]);
-      if CharCode<Start then begin
+      if CodePointCode<Start then begin
        h:=m;
-      end else if CharCode>EndV then begin
+      end else if CodePointCode>EndV then begin
        l:=m+1;
       end else begin
        result:=ToLONGWORD(CMap^[Offset+8],CMap^[Offset+9],CMap^[Offset+10],CMap^[Offset+11]);
@@ -36658,9 +36658,9 @@ begin
       VarSelector:=ToUINT24(CMap^[Offset],CMap^[Offset+1],CMap^[Offset+2]);
       DefaultOffset:=ToLONGWORD(CMap^[Offset+3],CMap^[Offset+4],CMap^[Offset+5],CMap^[Offset+6]);
       NonDefaultOffset:=ToLONGWORD(CMap^[Offset+7],CMap^[Offset+8],CMap^[Offset+9],CMap^[Offset+10]);
-      if CharCode<VarSelector then begin
+      if CodePointCode<VarSelector then begin
        h:=m;
-      end else if CharCode>VarSelector then begin
+      end else if CodePointCode>VarSelector then begin
        l:=m+1;
       end else begin
        break;
@@ -36675,12 +36675,12 @@ begin
         m:=(l+h) shr 1;
         Offset:=(NonDefaultOffset+4)+(m*4);
         Unicode:=ToUINT24(CMap^[Offset],CMap^[Offset+1],CMap^[Offset+2]);
-        if CharCode<Unicode then begin
+        if CodePointCode<Unicode then begin
          h:=m;
-        end else if CharCode>(Unicode+CMap^[Offset+3]) then begin
+        end else if CodePointCode>(Unicode+CMap^[Offset+3]) then begin
          l:=m+1;
         end else begin
-         result:=GetGlyphIndex(CharCode,CMapIndex+1);
+         result:=GetGlyphIndex(CodePointCode,CMapIndex+1);
          exit;
         end;
        end;
@@ -36695,9 +36695,9 @@ begin
         m:=(l+h) shr 1;
         Offset:=(NonDefaultOffset+4)+(m*5);
         Unicode:=ToUINT24(CMap^[Offset],CMap^[Offset+1],CMap^[Offset+2]);
-        if CharCode<Unicode then begin
+        if CodePointCode<Unicode then begin
          h:=m;
-        end else if CharCode>Unicode then begin
+        end else if CodePointCode>Unicode then begin
          l:=m+1;
         end else begin
          result:=ToWORD(CMap^[Offset+3],CMap^[Offset+4]);
@@ -36711,6 +36711,13 @@ begin
    else begin
     result:=0;
    end;
+  end;
+ end;
+ if fLastError=VkTTF_TT_ERR_CharacterMapNotPresent then begin
+  if (TVkInt32(CodePointCode)<length(fCFFCodePointToGlyphIndexTable)) and
+     ((fCFFCodePointToGlyphIndexTable[TVkInt32(CodePointCode)]>=0) and
+      (fCFFCodePointToGlyphIndexTable[TVkInt32(CodePointCode)]<fCountGlyphs)) then begin
+   result:=fCFFCodePointToGlyphIndexTable[TVkInt32(CodePointCode)];
   end;
  end;
 end;
