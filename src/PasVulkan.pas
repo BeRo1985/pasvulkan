@@ -4310,7 +4310,7 @@ type EVulkanException=class(Exception);
 {$ifdef PasVulkanPasMP}
        fDistanceFieldJobs:TVulkanFontDistanceFieldJobs;
 {$endif}
-       procedure GenerateSignedDistanceField(var DistanceField:TVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer);
+       procedure GenerateSignedDistanceField(var DistanceField:TVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const FillRule:TVkInt32);
 {$ifdef PasVulkanPasMP}
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:pointer;const FromIndex,ToIndex:TPasMPNativeInt);
 {$endif}
@@ -38737,7 +38737,7 @@ begin
         GlyphDistanceFieldJob^.MultiChannel:=false;
         GlyphDistanceFieldJob^.PolygonBuffer:=PolygonBuffers[GlyphIndex];
 {$else}
-        GenerateSignedDistanceField(GlyphDistanceField^,false,PolygonBuffers[GlyphIndex]);
+        GenerateSignedDistanceField(GlyphDistanceField^,false,PolygonBuffers[GlyphIndex],VkTTF_PolygonWindingRule_NONZERO);
 {$endif}
        end;
 
@@ -38909,7 +38909,7 @@ begin
  end;
 end;
 
-procedure TVulkanFont.GenerateSignedDistanceField(var DistanceField:TVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer);
+procedure TVulkanFont.GenerateSignedDistanceField(var DistanceField:TVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const FillRule:TVkInt32);
 const DistanceFieldSpreadValue=VulkanFontDistanceFieldSpreadValue;
       DistanceFieldMagnitudeValue=DistanceFieldSpreadValue;
       DistanceFieldPadValue=DistanceFieldSpreadValue;
@@ -40451,7 +40451,8 @@ type PPathSegmentSide=^TPathSegmentSide;
  begin
   result:=Clamp(Round((Distance*(128.0/DistanceFieldMagnitudeValue))+128.0),0,255);
  end;
- function GenerateDistanceFieldPicture(const DistanceFieldData:TDistanceFieldData;const Width,Height:TVkInt32):boolean;
+
+ function GenerateDistanceFieldPicture(const DistanceFieldData:TDistanceFieldData;const Width,Height,TryIteration:TVkInt32):boolean;
  var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TVkInt32;
      DistanceFieldDataItem:PDistanceFieldDataItem;
      DistanceFieldPixel:PVulkanFontDistanceFieldPixel;
@@ -40465,30 +40466,49 @@ type PPathSegmentSide=^TPathSegmentSide;
    for x:=0 to Width-1 do begin
     DistanceFieldDataItem:=@DistanceFieldData[PixelIndex];
     inc(WindingNumber,DistanceFieldDataItem^.DeltaWindingScore);
-    if WindingNumber<>0 then begin
-     DistanceFieldSign:=1;
-    end else begin
-     DistanceFieldSign:=-1;
+    case FillRule of
+     VkTTF_PolygonWindingRule_NONZERO:begin
+      if WindingNumber<>0 then begin
+       DistanceFieldSign:=1;
+      end else begin
+       DistanceFieldSign:=-1;
+      end;
+     end;
+     else {VkTTF_PolygonWindingRule_EVENODD:}begin
+      if (WindingNumber and 1)<>0 then begin
+       DistanceFieldSign:=1;
+      end else begin
+       DistanceFieldSign:=-1;
+      end;
+     end;
     end;
     if (x=(Width-1)) and (WindingNumber<>0) then begin
-     result:=false;
-     break;
-    end else begin
-     DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
-     if MultiChannel then begin
-      DistanceFieldPixel^.r:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceR)*DistanceFieldSign);
-      DistanceFieldPixel^.g:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceG)*DistanceFieldSign);
-      DistanceFieldPixel^.b:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceB)*DistanceFieldSign);
-      DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-     end else begin
-      Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
-      DistanceFieldPixel^.r:=Value;
-      DistanceFieldPixel^.g:=Value;
-      DistanceFieldPixel^.b:=Value;
-      DistanceFieldPixel^.a:=Value;
+     case TryIteration of
+      0:begin
+       result:=false;
+       break;
+      end;
+      else begin
+       PixelIndex:=Width*y;
+       PixelIndex:=Width*(y+1);
+       continue;
+      end;
      end;
-     inc(PixelIndex);
     end;
+    DistanceFieldPixel:=@DistanceField.Pixels[PixelIndex];
+    if MultiChannel then begin
+     DistanceFieldPixel^.r:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceR)*DistanceFieldSign);
+     DistanceFieldPixel^.g:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceG)*DistanceFieldSign);
+     DistanceFieldPixel^.b:=PackPseudoDistanceFieldValue(sqrt(DistanceFieldDataItem^.PseudoSquaredDistanceB)*DistanceFieldSign);
+     DistanceFieldPixel^.a:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+    end else begin
+     Value:=PackDistanceFieldValue(sqrt(DistanceFieldDataItem^.SquaredDistance)*DistanceFieldSign);
+     DistanceFieldPixel^.r:=Value;
+     DistanceFieldPixel^.g:=Value;
+     DistanceFieldPixel^.b:=Value;
+     DistanceFieldPixel^.a:=Value;
+    end;
+    inc(PixelIndex);
    end;
    if not result then begin
     break;
@@ -40526,7 +40546,7 @@ begin
 
     CalculateDistanceFieldData(Shape,DistanceFieldData,DistanceField.Width,DistanceField.Height);
 
-    if GenerateDistanceFieldPicture(DistanceFieldData,DistanceField.Width,DistanceField.Height) then begin
+    if GenerateDistanceFieldPicture(DistanceFieldData,DistanceField.Width,DistanceField.Height,TryIteration) then begin
      break;
     end else begin
      // Try it again, after all quadratic bezier curves were subdivided into lines at the next try iteration
@@ -40552,7 +40572,7 @@ begin
  Index:=FromIndex;
  while Index<=ToIndex do begin
   JobData:=@fDistanceFieldJobs[Index];
-  GenerateSignedDistanceField(JobData^.DistanceField^,JobData^.MultiChannel,JobData^.PolygonBuffer);
+  GenerateSignedDistanceField(JobData^.DistanceField^,JobData^.MultiChannel,JobData^.PolygonBuffer,VkTTF_PolygonWindingRule_NONZERO);
   inc(Index);
  end;
 end;
