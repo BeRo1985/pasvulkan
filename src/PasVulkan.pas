@@ -33824,7 +33824,7 @@ begin
 end;
 
 function TVulkanTrueTypeFont.LoadCFF:TVkInt32;
-const CFFScaleFactor=16.0;
+const CFFScaleFactor=4.0;
       TopDictVersionOp=0;
       TopDictNoticeOp=1;
       TopDictFullNameOp=2;
@@ -34315,6 +34315,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   var CommandIndex:TVkInt32;
       Command:PVulkanTrueTypeFontPolygonCommand;
   begin
+   aY:=fMaxY-aY;
    CommandIndex:=Glyph.PostScriptPolygon.CountCommands;
    inc(Glyph.PostScriptPolygon.CountCommands);
    if length(Glyph.PostScriptPolygon.Commands)<Glyph.PostScriptPolygon.CountCommands then begin
@@ -34333,6 +34334,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   var CommandIndex:TVkInt32;
       Command:PVulkanTrueTypeFontPolygonCommand;
   begin
+   aY:=fMaxY-aY;
    CommandIndex:=Glyph.PostScriptPolygon.CountCommands;
    inc(Glyph.PostScriptPolygon.CountCommands);
    if length(Glyph.PostScriptPolygon.Commands)<Glyph.PostScriptPolygon.CountCommands then begin
@@ -34351,6 +34353,9 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   var CommandIndex:TVkInt32;
       Command:PVulkanTrueTypeFontPolygonCommand;
   begin
+   aC0Y:=fMaxY-aC0Y;
+   aC1Y:=fMaxY-aC1Y;
+   aAY:=fMaxY-aAY;
    CommandIndex:=Glyph.PostScriptPolygon.CountCommands;
    inc(Glyph.PostScriptPolygon.CountCommands);
    if length(Glyph.PostScriptPolygon.Commands)<Glyph.PostScriptPolygon.CountCommands then begin
@@ -38085,6 +38090,7 @@ end;
 procedure TVulkanTrueTypeFont.FillPostScriptPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphIndex:TVkInt32);
 var CommandIndex,BaseIndex:TVkInt32;
     Glyph:PVulkanTrueTypeFontGlyph;
+    Command:PVulkanTrueTypeFontPolygonCommand;
 begin
  if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and not fGlyphs[GlyphIndex].Locked then begin
 
@@ -38104,7 +38110,34 @@ begin
    end;
 
    for CommandIndex:=0 to Glyph^.PostScriptPolygon.CountCommands-1 do begin
-    PolygonBuffer.Commands[BaseIndex+CommandIndex]:=Glyph^.PostScriptPolygon.Commands[CommandIndex];
+    Command:=@PolygonBuffer.Commands[BaseIndex+CommandIndex];
+    Command^:=Glyph^.PostScriptPolygon.Commands[CommandIndex];
+    case Command^.CommandType of
+     VkTTF_PolygonCommandType_MOVETO:begin
+      Command^.Points[0].x:=Scale(Command^.Points[0].x);
+      Command^.Points[0].y:=Scale(Command^.Points[0].y);
+     end;
+     VkTTF_PolygonCommandType_LINETO:begin
+      Command^.Points[0].x:=Scale(Command^.Points[0].x);
+      Command^.Points[0].y:=Scale(Command^.Points[0].y);
+     end;
+     VkTTF_PolygonCommandType_QUADRATICCURVETO:begin
+      Command^.Points[0].x:=Scale(Command^.Points[0].x);
+      Command^.Points[0].y:=Scale(Command^.Points[0].y);
+      Command^.Points[1].x:=Scale(Command^.Points[1].x);
+      Command^.Points[1].y:=Scale(Command^.Points[1].y);
+     end;
+     VkTTF_PolygonCommandType_CUBICCURVETO:begin
+      Command^.Points[0].x:=Scale(Command^.Points[0].x);
+      Command^.Points[0].y:=Scale(Command^.Points[0].y);
+      Command^.Points[1].x:=Scale(Command^.Points[1].x);
+      Command^.Points[1].y:=Scale(Command^.Points[1].y);
+      Command^.Points[2].x:=Scale(Command^.Points[2].x);
+      Command^.Points[2].y:=Scale(Command^.Points[2].y);
+     end;
+     VkTTF_PolygonCommandType_CLOSE:begin
+     end;
+    end;
    end;
 
   finally
