@@ -39035,7 +39035,7 @@ type PPathSegmentSide=^TPathSegmentSide;
      TPointInPolygonPathSegment=record
       Points:array[0..1] of TDoublePrecisionPoint;
      end;
-     TPointInPolygonPathSegments=array of array of TPointInPolygonPathSegment;
+     TPointInPolygonPathSegments=array of TPointInPolygonPathSegment;
  const DoublePrecisionAffineMatrixIdentity:TDoublePrecisionAffineMatrix=(1.0,0.0,0.0,0.0,1.0,0.0);
  var PointInPolygonPathSegments:TPointInPolygonPathSegments;
  function Clamp(const Value,MinValue,MaxValue:TVkInt64):TVkInt64; overload;
@@ -40491,10 +40491,10 @@ type PPathSegmentSide=^TPathSegmentSide;
   begin
    Index:=CountPathSegments;
    inc(CountPathSegments);
-   if length(PointInPolygonPathSegments[ContourIndex])<CountPathSegments then begin
-    SetLength(PointInPolygonPathSegments[ContourIndex],CountPathSegments*2);
+   if length(PointInPolygonPathSegments)<CountPathSegments then begin
+    SetLength(PointInPolygonPathSegments,CountPathSegments*2);
    end;
-   PointInPolygonPathSegment:=@PointInPolygonPathSegments[ContourIndex,Index];
+   PointInPolygonPathSegment:=@PointInPolygonPathSegments[Index];
    PointInPolygonPathSegment^.Points[0]:=p0;
    PointInPolygonPathSegment^.Points[1]:=p1;
   end;
@@ -40534,82 +40534,75 @@ type PPathSegmentSide=^TPathSegmentSide;
   end;
  begin
   PointInPolygonPathSegments:=nil;
+  CountPathSegments:=0;
   try
-   SetLength(PointInPolygonPathSegments,Shape.CountContours);
    for ContourIndex:=0 to Shape.CountContours-1 do begin
     Contour:=@Shape.Contours[ContourIndex];
-    try
-     CountPathSegments:=0;
-     if Contour^.CountPathSegments>0 then begin
-      StartPoint.x:=0.0;
-      StartPoint.y:=0.0;
-      LastPoint.x:=0.0;
-      LastPoint.y:=0.0;
-      for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
-       PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
-       case PathSegment^.Type_ of
-        pstLine:begin
-         if PathSegmentIndex=0 then begin
-          StartPoint:=PathSegment^.Points[0];
-         end;
-         LastPoint:=PathSegment^.Points[1];
-         AddPathSegment(PathSegment^.Points[0],PathSegment^.Points[1]);
+    if Contour^.CountPathSegments>0 then begin
+     StartPoint.x:=0.0;
+     StartPoint.y:=0.0;
+     LastPoint.x:=0.0;
+     LastPoint.y:=0.0;
+     for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
+      PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
+      case PathSegment^.Type_ of
+       pstLine:begin
+        if PathSegmentIndex=0 then begin
+         StartPoint:=PathSegment^.Points[0];
         end;
-        pstQuadraticBezierCurve:begin
-         if PathSegmentIndex=0 then begin
-          StartPoint:=PathSegment^.Points[0];
-         end;
-         LastPoint:=PathSegment^.Points[2];
-         AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(PathSegment^.Points[0],PathSegment^.Points[1],PathSegment^.Points[2]);
+        LastPoint:=PathSegment^.Points[1];
+        AddPathSegment(PathSegment^.Points[0],PathSegment^.Points[1]);
+       end;
+       pstQuadraticBezierCurve:begin
+        if PathSegmentIndex=0 then begin
+         StartPoint:=PathSegment^.Points[0];
         end;
+        LastPoint:=PathSegment^.Points[2];
+        AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(PathSegment^.Points[0],PathSegment^.Points[1],PathSegment^.Points[2]);
        end;
       end;
-      if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
-       AddPathSegment(LastPoint,StartPoint);
-      end;
      end;
-    finally
-     SetLength(PointInPolygonPathSegments[ContourIndex],CountPathSegments);
+     if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
+      AddPathSegment(LastPoint,StartPoint);
+     end;
     end;
    end;
   finally
-   SetLength(PointInPolygonPathSegments,Shape.CountContours);
+   SetLength(PointInPolygonPathSegments,CountPathSegments);
   end;
  end;
  function GetWindingNumberAtPointInPolygon(const Point:TDoublePrecisionPoint):TVkInt32;
- var Index,SubIndex,CaseIndex:TVkInt32;
+ var Index,CaseIndex:TVkInt32;
      PointInPolygonPathSegment:PPointInPolygonPathSegment;
      x0,y0,x1,y1:TVkDouble;
  begin
   result:=0;
   for Index:=0 to length(PointInPolygonPathSegments)-1 do begin
-   for SubIndex:=0 to length(PointInPolygonPathSegments[Index])-1 do begin
-    PointInPolygonPathSegment:=@PointInPolygonPathSegments[Index,SubIndex];
-    y0:=PointInPolygonPathSegment^.Points[0].y-Point.y;
-    y1:=PointInPolygonPathSegment^.Points[1].y-Point.y;
-    if y0<0.0 then begin
-     CaseIndex:=0;
-    end else if y0>0.0 then begin
-     CaseIndex:=2;
-    end else begin
-     CaseIndex:=1;
-    end;
-    if y1<0.0 then begin
-     inc(CaseIndex,0);
-    end else if y1>0.0 then begin
-     inc(CaseIndex,6);
-    end else begin
-     inc(CaseIndex,3);
-    end;
-    if CaseIndex in [1,2,3,6] then begin
-     x0:=PointInPolygonPathSegment^.Points[0].x-Point.x;
-     x1:=PointInPolygonPathSegment^.Points[1].x-Point.x;
-     if not (((x0>0.0) and (x1>0.0)) or ((not ((x0<=0.0) and (x1<=0.0))) and ((x0-(y0*((x1-x0)/(y1-y0))))>0.0))) then begin
-      if CaseIndex in [1,2] then begin
-       inc(result);
-      end else begin
-       dec(result);
-      end;
+   PointInPolygonPathSegment:=@PointInPolygonPathSegments[Index];
+   y0:=PointInPolygonPathSegment^.Points[0].y-Point.y;
+   y1:=PointInPolygonPathSegment^.Points[1].y-Point.y;
+   if y0<0.0 then begin
+    CaseIndex:=0;
+   end else if y0>0.0 then begin
+    CaseIndex:=2;
+   end else begin
+    CaseIndex:=1;
+   end;
+   if y1<0.0 then begin
+    inc(CaseIndex,0);
+   end else if y1>0.0 then begin
+    inc(CaseIndex,6);
+   end else begin
+    inc(CaseIndex,3);
+   end;
+   if CaseIndex in [1,2,3,6] then begin
+    x0:=PointInPolygonPathSegment^.Points[0].x-Point.x;
+    x1:=PointInPolygonPathSegment^.Points[1].x-Point.x;
+    if not (((x0>0.0) and (x1>0.0)) or ((not ((x0<=0.0) and (x1<=0.0))) and ((x0-(y0*((x1-x0)/(y1-y0))))>0.0))) then begin
+     if CaseIndex in [1,2] then begin
+      inc(result);
+     end else begin
+      dec(result);
      end;
     end;
    end;
