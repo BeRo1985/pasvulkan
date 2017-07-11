@@ -34860,11 +34860,11 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    finally
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands);
    end;
-   Glyph.AdvanceWidth:=round(Width);
-   Glyph.Bounds.XMin:=round(GlyphMinX);
-   Glyph.Bounds.YMin:=round(GlyphMinY);
-   Glyph.Bounds.XMax:=round(GlyphMaxX);
-   Glyph.Bounds.YMax:=round(GlyphMaxY);
+   Glyph.AdvanceWidth:=ceil(Width);
+   Glyph.Bounds.XMin:=floor(GlyphMinX);
+   Glyph.Bounds.YMin:=floor(GlyphMinY);
+   Glyph.Bounds.XMax:=ceil(GlyphMaxX);
+   Glyph.Bounds.YMax:=ceil(GlyphMaxY);
   finally
    Stack:=nil;
   end;
