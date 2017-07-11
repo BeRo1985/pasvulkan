@@ -40498,6 +40498,40 @@ type PPathSegmentSide=^TPathSegmentSide;
    PointInPolygonPathSegment^.Points[0]:=p0;
    PointInPolygonPathSegment^.Points[1]:=p1;
   end;
+  procedure AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(const p0,p1,p2:TDoublePrecisionPoint;const Tolerance:TVkDouble=RasterizerToScreenScale;const MaxLevel:TVkInt32=32);
+  var LastPoint:TDoublePrecisionPoint;
+   procedure LineToPointAt(const Point:TDoublePrecisionPoint);
+   begin
+    AddPathSegment(LastPoint,Point);
+    LastPoint:=Point;
+   end;
+   procedure Recursive(const x1,y1,x2,y2,x3,y3:TVkDouble;const Level:TVkInt32);
+   var x12,y12,x23,y23,x123,y123,mx,my,d:TVkDouble;
+       Point:TDoublePrecisionPoint;
+   begin
+    x12:=(x1+x2)*0.5;
+    y12:=(y1+y2)*0.5;
+    x23:=(x2+x3)*0.5;
+    y23:=(y2+y3)*0.5;
+    x123:=(x12+x23)*0.5;
+    y123:=(y12+y23)*0.5;
+    mx:=(x1+x3)*0.5;
+    my:=(y1+y3)*0.5;
+    d:=abs(mx-x123)+abs(my-y123);
+    if (Level>MaxLevel) or (d<Tolerance) then begin
+     Point.x:=x123;
+     Point.y:=y123;
+     LineToPointAt(Point);
+    end else begin
+     Recursive(x1,y1,x12,y12,x123,y123,level+1);
+     Recursive(x123,y123,x23,y23,x3,y3,level+1);
+    end;
+   end;
+  begin
+   LastPoint:=p0;
+   Recursive(p0.x,p0.y,p1.x,p1.y,p2.x,p2.y,0);
+   LineToPointAt(p2);
+  end;
  begin
   PointInPolygonPathSegments:=nil;
   CountPathSegments:=0;
@@ -40524,7 +40558,7 @@ type PPathSegmentSide=^TPathSegmentSide;
          StartPoint:=PathSegment^.Points[0];
         end;
         LastPoint:=PathSegment^.Points[2];
-        AddPathSegment(PathSegment^.Points[0],PathSegment^.Points[2]);
+        AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(PathSegment^.Points[0],PathSegment^.Points[1],PathSegment^.Points[2]);
        end;
       end;
      end;
