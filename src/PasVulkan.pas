@@ -3169,7 +3169,7 @@ type EVulkanException=class(Exception);
                                     const aWidth:TVkInt32;
                                     const aHeight:TVkInt32;
                                     const aDepth:TVkInt32;
-                                    const aCountArrayElements:TVkInt32;
+                                    const aCountArrayLayers:TVkInt32;
                                     const aCountFaces:TVkInt32;
                                     const aCountMipMaps:TVkInt32;
                                     const aUsageFlags:TVulkanTextureUsageFlags;
@@ -3191,7 +3191,7 @@ type EVulkanException=class(Exception);
                                     const aWidth:TVkInt32;
                                     const aHeight:TVkInt32;
                                     const aDepth:TVkInt32;
-                                    const aCountArrayElements:TVkInt32;
+                                    const aCountArrayLayers:TVkInt32;
                                     const aCountFaces:TVkInt32;
                                     const aCountMipMaps:TVkInt32;
                                     const aUsageFlags:TVulkanTextureUsageFlags;
@@ -3281,7 +3281,7 @@ type EVulkanException=class(Exception);
                                  const aWidth:TVkInt32;
                                  const aHeight:TVkInt32;
                                  const aDepth:TVkInt32;
-                                 const aCountArrayElements:TVkInt32;
+                                 const aCountArrayLayers:TVkInt32;
                                  const aCountFaces:TVkInt32;
                                  const aMipmaps:boolean;
                                  const aBorder:boolean);
@@ -3328,22 +3328,46 @@ type EVulkanException=class(Exception);
 
      PVulkanSpriteColor=^TVulkanSpriteColor;
      TVulkanSpriteColor=record
-      r:single;
-      g:single;
-      b:single;
-      a:single;
+      r:TVkFloat;
+      g:TVkFloat;
+      b:TVkFloat;
+      a:TVkFloat;
      end;
 
-     PVulkanSpriteTexturePixel=^TVulkanSpriteTexturePixel;
-     TVulkanSpriteTexturePixel=packed record
+     PVulkanSpriteVertexPoint=^TVulkanSpriteVertexPoint;
+     TVulkanSpriteVertexPoint=TVulkanSpritePoint;
+
+     PVulkanSpriteVertexTextureCoord=^TVulkanSpriteVertexTextureCoord;
+     TVulkanSpriteVertexTextureCoord=packed record
+      x:TVkFloat;
+      y:TVkFloat;
+      Layer:TVkFloat;
+     end;
+
+     PVulkanSpriteVertexColor=^TVulkanSpriteVertexColor;
+     TVulkanSpriteVertexColor=packed record
+      r:TVkHalfFloat;
+      g:TVkHalfFloat;
+      b:TVkHalfFloat;
+      a:TVkHalfFloat;
+     end;
+
+     PVulkanSpriteVertexState=^TVulkanSpriteVertexState;
+     TVulkanSpriteVertexState=record
+      AdditiveFactor:TVkHalfFloat;
+      FontFactor:TVkHalfFloat;
+     end;
+
+     PVulkanSpriteTextureTexel=^TVulkanSpriteTextureTexel;
+     TVulkanSpriteTextureTexel=packed record
       r:TVkUInt8;
       g:TVkUInt8;
       b:TVkUInt8;
       a:TVkUInt8;
      end;
 
-     PVulkanSpriteTexturePixels=^TVulkanSpriteTexturePixels;
-     TVulkanSpriteTexturePixels=array[0..65535] of TVulkanSpriteTexturePixel;
+     PVulkanSpriteTextureTexels=^TVulkanSpriteTextureTexels;
+     TVulkanSpriteTextureTexels=array[0..65535] of TVulkanSpriteTextureTexel;
 
      TVulkanSpriteTexture=class
       private
@@ -3352,9 +3376,9 @@ type EVulkanException=class(Exception);
        fHeight:TVkInt32;
        fUploaded:boolean;
        fDirty:boolean;
-       fPixels:PVulkanSpriteTexturePixels;
+       fPixels:PVulkanSpriteTextureTexels;
       public
-       constructor Create(const aPixels:PVulkanSpriteTexturePixels;const aWidth,aHeight:TVkInt32); reintroduce;
+       constructor Create(const aPixels:PVulkanSpriteTextureTexels;const aWidth,aHeight:TVkInt32); reintroduce;
        destructor Destroy; override;
        procedure Upload(const aDevice:TVulkanDevice;
                         const aGraphicsQueue:TVulkanQueue;
@@ -3373,29 +3397,81 @@ type EVulkanException=class(Exception);
        property Dirty:boolean read fDirty write fDirty;
      end;
 
-     PVulkanSpriteFontChar=^TVulkanSpriteFontChar;
-     TVulkanSpriteFontChar=record
-      TextureRect:TVulkanSpriteRect;
-      Advance:TVulkanSpritePoint;
+     PVulkanSpriteAtlasArrayTextureTexel=^TVulkanSpriteAtlasArrayTextureTexel;
+     TVulkanSpriteAtlasArrayTextureTexel=TVulkanSpriteTextureTexel;
+
+     TVulkanSpriteAtlasArrayTextureTexels=array of TVulkanSpriteAtlasArrayTextureTexel;
+
+     TVulkanSpriteAtlasArrayTexture=class;
+
+     PVulkanSpriteAtlasArrayTextureLayerRectNode=^TVulkanSpriteAtlasArrayTextureLayerRectNode;
+     TVulkanSpriteAtlasArrayTextureLayerRectNode=record
+      Left:PVulkanSpriteAtlasArrayTextureLayerRectNode;
+      Right:PVulkanSpriteAtlasArrayTextureLayerRectNode;
+      x:TVkInt32;
+      y:TVkInt32;
+      Width:TVkInt32;
+      Height:TVkInt32;
+      FreeArea:TVkInt32;
+      ContentWidth:TVkInt32;
+      ContentHeight:TVkInt32;
      end;
 
-     PVulkanSpriteFontChars=^TVulkanSpriteFontChars;
-     TVulkanSpriteFontChars=array[TVulkanRawByteChar] of TVulkanSpriteFontChar;
+     TPVulkanSpriteAtlasArrayTextureLayerRectNodes=array of PVulkanSpriteAtlasArrayTextureLayerRectNode;
 
-     TVulkanSpriteFont=class
+     PVulkanSpriteAtlasArrayTextureLayer=^TVulkanSpriteAtlasArrayTextureLayer;
+     TVulkanSpriteAtlasArrayTextureLayer=record
+      Next:PVulkanSpriteAtlasArrayTextureLayer;
+      ArrayTexture:TVulkanSpriteAtlasArrayTexture;
+      RootNode:PVulkanSpriteAtlasArrayTextureLayerRectNode;
+     end;
+
+     TVulkanSpriteAtlasArrayTexture=class
+      private
+       fTexels:TVulkanSpriteAtlasArrayTextureTexels;
+       fTexture:TVulkanTexture;
+       fWidth:TVkInt32;
+       fHeight:TVkInt32;
+       fLayers:TVkInt32;
+       fCountTexels:TVkInt64;
+       fUploaded:boolean;
+       fDirty:boolean;
+       fSpecialSizedArrayTexture:boolean;
+       fLayerRootNodes:TPVulkanSpriteAtlasArrayTextureLayerRectNodes;
       public
-       Texture:TVulkanSpriteTexture;
-       Chars:TVulkanSpriteFontChars;
-       constructor Create; virtual;
+       constructor Create; reintroduce;
        destructor Destroy; override;
+       procedure Resize(const aWidth,aHeight,aLayers:TVkInt32);
+       procedure CopyIn(const aData;const aSrcWidth,aSrcHeight,aDestX,aDestY,aDestLayer:TVkInt32);
+       function GetTexelPointer(const aX,aY,aLayer:TVkInt32):PVulkanSpriteTextureTexel;
+       procedure Upload(const aDevice:TVulkanDevice;
+                        const aGraphicsQueue:TVulkanQueue;
+                        const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                        const aGraphicsFence:TVulkanFence;
+                        const aTransferQueue:TVulkanQueue;
+                        const aTransferCommandBuffer:TVulkanCommandBuffer;
+                        const aTransferFence:TVulkanFence;
+                        const aMipMaps:boolean);
+       procedure Unload;
+      published
+       property Texture:TVulkanTexture read fTexture;
+       property Width:TVkInt32 read fWidth;
+       property Height:TVkInt32 read fHeight;
+       property Layers:TVkInt32 read fLayers;
+       property CountTexels:TVkInt64 read fCountTexels;
+       property Uploaded:boolean read fUploaded;
+       property Dirty:boolean read fDirty write fDirty;
      end;
+
+     TVulkanSpriteAtlasArrayTextures=array of TVulkanSpriteAtlasArrayTexture;
 
      TVulkanSprite=class
       public
-       Texture:TVulkanSpriteTexture;
        Name:TVulkanRawByteString;
+       ArrayTexture:TVulkanSpriteAtlasArrayTexture;
        x:TVkInt32;
        y:TVkInt32;
+       Layer:TVkInt32;
        Width:TVkInt32;
        Height:TVkInt32;
        TrimmedX:TVkInt32;
@@ -3411,10 +3487,11 @@ type EVulkanException=class(Exception);
 
      PVulkanSpriteBatchVertex=^TVulkanSpriteBatchVertex;
      TVulkanSpriteBatchVertex=packed record
-      Position:TVulkanSpritePoint;
-      TextureCoord:TVulkanSpritePoint;
-      Color:TVulkanSpriteColor;
-     end;
+      Position:TVulkanSpriteVertexPoint;             // +  8 (2x 32-bit floats)
+      TextureCoord:TVulkanSpriteVertexTextureCoord;  // + 12 (3x 32-bit floats)
+      Color:TVulkanSpriteVertexColor;                // +  8 (4x 16-bit half-floats)
+      State:TVulkanSpriteVertexState;                // +  4 (2x 16-bit half-floats)
+     end;                                            // = 32 per vertex
 
      TVulkanSpriteBatchVertices=array of TVulkanSpriteBatchVertex;
 
@@ -3524,7 +3601,7 @@ type EVulkanException=class(Exception);
        fCurrentVulkanVertexBufferOffset:TVkInt32;
        fRenderingMode:TVulkanSpriteBatchRenderingMode;
        fBlendingMode:TVulkanSpriteBatchBlendingMode;
-       fLastTexture:TVulkanSpriteTexture;
+       fLastArrayTexture:TVulkanSpriteAtlasArrayTexture;
        fInverseWidth:single;
        fInverseHeight:single;
        fInverseTextureWidth:single;
@@ -3534,7 +3611,7 @@ type EVulkanException=class(Exception);
        fCurrentDestinationVertexBufferPointer:PVulkanSpriteBatchVertexBuffer;
        fScissor:TVkRect2D;
        function RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:single):TVulkanSpritePoint;
-       procedure SetTexture(const Texture:TVulkanSpriteTexture);
+       procedure SetArrayTexture(const ArrayTexture:TVulkanSpriteAtlasArrayTexture);
        procedure SetRenderingMode(aRenderingMode:TVulkanSpriteBatchRenderingMode);
        procedure SetBlendingMode(aBlendingMode:TVulkanSpriteBatchBlendingMode);
        procedure GetNextDestinationVertexBuffer;
@@ -3557,19 +3634,11 @@ type EVulkanException=class(Exception);
        procedure SetScissor(const aScissor:TVkRect2D); overload;
        procedure SetScissor(const aLeft,aTop,aWidth,aHeight:TVkInt32); overload;
        procedure Hook(const aHook:TVulkanSpriteBatchHook;const aData:TVkPointer); overload;
-       procedure Draw(const Texture:TVulkanSpriteTexture;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor); overload;
-       procedure Draw(const Texture:TVulkanSpriteTexture;Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor); overload;
-       procedure Draw(const Texture:TVulkanSpriteTexture;const x,y:single;const Color:TVulkanSpriteColor); overload;
-       procedure Draw(const Texture:TVulkanSpriteTexture;const x,y:single); overload;
-       procedure Draw(const Texture:TVulkanSpriteTexture;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single); overload;
-       procedure Draw(const Texture:TVulkanSpriteTexture;const Src:TVulkanSpriteRect;Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;const Color:TVulkanSpriteColor); overload;
-       procedure Draw(const Texture:TVulkanSpriteTexture;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:single;const Color:TVulkanSpriteColor); overload;
        procedure Draw(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor); overload;
        procedure Draw(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:single;const Color:TVulkanSpriteColor); overload;
        procedure Draw(const Sprite:TVulkanSprite;const x,y:single;const Color:TVulkanSpriteColor); overload;
        procedure Draw(const Sprite:TVulkanSprite;const x,y:single); overload;
        procedure Draw(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single); overload;
-       procedure DrawText(const Font:TVulkanSpriteFont;const Text:TVulkanRawByteString;x,y:single;const Color:TVulkanSpriteColor);
        procedure ExecuteUpload(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
       public
@@ -3582,39 +3651,19 @@ type EVulkanException=class(Exception);
        property BlendingMode:TVulkanSpriteBatchBlendingMode read fBlendingMode write SetBlendingMode;
      end;
 
-     PVulkanSpriteAtlasTextureRectNode=^TVulkanSpriteAtlasTextureRectNode;
-     TVulkanSpriteAtlasTextureRectNode=record
-      Left:PVulkanSpriteAtlasTextureRectNode;
-      Right:PVulkanSpriteAtlasTextureRectNode;
-      x:TVkInt32;
-      y:TVkInt32;
-      Width:TVkInt32;
-      Height:TVkInt32;
-      FreeArea:TVkInt32;
-      ContentWidth:TVkInt32;
-      ContentHeight:TVkInt32;
-     end;
-
-     PVulkanSpriteAtlasTexture=^TVulkanSpriteAtlasTexture;
-     TVulkanSpriteAtlasTexture=record
-      Next:PVulkanSpriteAtlasTexture;
-      Texture:TVulkanSpriteTexture;
-      Data:TVkPointer;
-      Width:TVkInt32;
-      Height:TVkInt32;
-      Dirty:boolean;
-      RootNode:PVulkanSpriteAtlasTextureRectNode;
-     end;
-
      TVulkanSpriteAtlas=class
       private
        fDevice:TVulkanDevice;
-       fTextureList:PVulkanSpriteAtlasTexture;
+       fArrayTextures:TVulkanSpriteAtlasArrayTextures;
+       fCountArrayTextures:TVkInt32;
        fList:TList;
        fHashMap:TVulkanStringHashMap;
        fIsUploaded:boolean;
        fMipMaps:boolean;
        fAutomaticTrim:boolean;
+       fWidth:TVkInt32;
+       fHeight:TVkInt32;
+       fMaximumCountArrayLayers:TVkInt32;
        function GetCount:TVkInt32;
        function GetItem(Index:TVkInt32):TVulkanSprite;
        procedure SetItem(Index:TVkInt32;Item:TVulkanSprite);
@@ -3647,6 +3696,9 @@ type EVulkanException=class(Exception);
       published
        property MipMaps:boolean read fMipMaps write fMipMaps;
        property AutomaticTrim:boolean read fAutomaticTrim write fAutomaticTrim;
+       property Width:TVkInt32 read fWidth write fWidth;
+       property Height:TVkInt32 read fHeight write fHeight;
+       property MaximumCountArrayLayers:TVkInt32 read fMaximumCountArrayLayers write fMaximumCountArrayLayers;
      end;
 
      EVulkanTrueTypeFont=class(Exception);
@@ -23929,7 +23981,7 @@ constructor TVulkanTexture.CreateFromMemory(const aDevice:TVulkanDevice;
                                             const aWidth:TVkInt32;
                                             const aHeight:TVkInt32;
                                             const aDepth:TVkInt32;
-                                            const aCountArrayElements:TVkInt32;
+                                            const aCountArrayLayers:TVkInt32;
                                             const aCountFaces:TVkInt32;
                                             const aCountMipMaps:TVkInt32;
                                             const aUsageFlags:TVulkanTextureUsageFlags;
@@ -24340,11 +24392,15 @@ begin
 
  fMaxAnisotropy:=1.0;
 
- if (aDepth<1) or (aCountArrayElements<1) or (aCountFaces<1) then begin
+ if (aDepth<0) or (aCountArrayLayers<0) or (aCountFaces<1) then begin
   raise EVulkanTextureException.Create('Invalid parameters');
  end;
- if (aWidth<1) or (aWidth>32768) or (aHeight<1) or (aHeight>32768) or (aDepth<1) or (aDepth>32768) then begin
-  raise EVulkanTextureException.Create('Invalid texture size ('+IntToStr(aWidth)+'x'+IntToStr(aHeight)+'x'+IntToStr(aDepth)+')');
+ if (aWidth<1) or (aWidth>32768) or (aHeight<1) or (aHeight>32768) or (aDepth<0) or (aDepth>32768) then begin
+  if aDepth>0 then begin
+   raise EVulkanTextureException.Create('Invalid texture size ('+IntToStr(aWidth)+'x'+IntToStr(aHeight)+'x'+IntToStr(aDepth)+')');
+  end else begin
+   raise EVulkanTextureException.Create('Invalid texture size ('+IntToStr(aWidth)+'x'+IntToStr(aHeight)+')');
+  end;
  end;
  if not (aCountFaces in [1,6]) then begin
   raise EVulkanTextureException.Create('Cube maps must have 6 faces');
@@ -24356,7 +24412,7 @@ begin
   raise EVulkanTextureException.Create('3D array textures not supported yet');
  end;}
 
- MaxDimension:=Max(Max(aWidth,aHeight),aDepth);
+ MaxDimension:=Max(1,Max(aWidth,Max(aHeight,aDepth)));
  MaxMipMapLevels:=VulkanIntLog2(MaxDimension)+1;
  if aCountMipMaps>MaxMipMapLevels then begin
   raise EVulkanTextureException.Create('Too many mip levels ('+IntToStr(aCountMipMaps)+' > '+IntToStr(MaxMipMapLevels)+')');
@@ -24382,12 +24438,12 @@ begin
   CountStorageLevels:=MaxMipMapLevels;
  end;
 
- CountArrayLayers:=aCountFaces*aCountArrayElements;
+ CountArrayLayers:=Max(1,aCountFaces)*Max(1,aCountArrayLayers);
 
- fWidth:=aWidth;
- fHeight:=aHeight;
- fDepth:=aDepth;
- fCountArrayLayers:=CountArrayLayers;
+ fWidth:=Max(1,aWidth);
+ fHeight:=Max(1,aHeight);
+ fDepth:=Max(1,aDepth);
+ fCountArrayLayers:=Max(1,CountArrayLayers);
  fCountMipMaps:=CountStorageLevels;
  fSampleCount:=aSampleCount;
  fUsage:=vtufUndefined;
@@ -24428,7 +24484,7 @@ begin
   ImageCreateFlags:=ImageCreateFlags or TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
  end;
 
- if aDepth>1 then begin
+ if aDepth>0 then begin
   ImageType:=VK_IMAGE_TYPE_3D;
  end else begin
   ImageType:=VK_IMAGE_TYPE_2D;
@@ -24548,13 +24604,13 @@ begin
        end;
        inc(TotalMipMapSize,MipMapSize);
        inc(DataOffset,MipMapSize);
-       if aMipMapSizeStored and ((fDepth<=1) and (aCountArrayElements<=1)) then begin
+       if aMipMapSizeStored and ((aDepth<=1) and (aCountArrayLayers<=1)) then begin
         Assert(TotalMipMapSize=StoredMipMapSize);
         inc(DataOffset,3-((MipMapSize+3) and 3));
        end;
       end;
      end;
-     if aMipMapSizeStored and ((fDepth>1) or (aCountArrayElements>1)) then begin
+     if aMipMapSizeStored and ((aDepth>1) or (aCountArrayLayers>1)) then begin
       Assert(TotalMipMapSize=StoredMipMapSize);
       inc(DataOffset,3-((TotalMipMapSize+3) and 3));
      end;
@@ -24696,13 +24752,13 @@ begin
           Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(aDataSize));
           inc(TotalMipMapSize,MipMapSize);
           inc(DataOffset,MipMapSize);
-          if aMipMapSizeStored and ((fDepth<=1) and (aCountArrayElements<=1)) then begin
+          if aMipMapSizeStored and ((aDepth<=1) and (aCountArrayLayers<=1)) then begin
            Assert(TotalMipMapSize=StoredMipMapSize);
            inc(DataOffset,3-((MipMapSize+3) and 3));
           end;
          end;
         end;
-        if aMipMapSizeStored and ((fDepth>1) or (aCountArrayElements>1)) then begin
+        if aMipMapSizeStored and ((aDepth>1) or (aCountArrayLayers>1)) then begin
          Assert(TotalMipMapSize=StoredMipMapSize);
          inc(DataOffset,3-((TotalMipMapSize+3) and 3));
         end;
@@ -24869,17 +24925,17 @@ begin
  fUsage:=vtufSampled;
  fImageLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
- if fDepth>1 then begin
+ if aDepth>0 then begin
   ImageViewType:=VK_IMAGE_VIEW_TYPE_3D;
  end else begin
   if aCountFaces>1 then begin
-   if aCountArrayElements>1 then begin
+   if aCountArrayLayers>0 then begin
     ImageViewType:=VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
    end else begin
     ImageViewType:=VK_IMAGE_VIEW_TYPE_CUBE;
    end;
   end else begin
-   if aCountArrayElements>1 then begin
+   if aCountArrayLayers>0 then begin
     ImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
    end else begin
     ImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
@@ -24928,7 +24984,7 @@ constructor TVulkanTexture.CreateFromStream(const aDevice:TVulkanDevice;
                                             const aWidth:TVkInt32;
                                             const aHeight:TVkInt32;
                                             const aDepth:TVkInt32;
-                                            const aCountArrayElements:TVkInt32;
+                                            const aCountArrayLayers:TVkInt32;
                                             const aCountFaces:TVkInt32;
                                             const aCountMipMaps:TVkInt32;
                                             const aUsageFlags:TVulkanTextureUsageFlags;
@@ -24958,7 +25014,7 @@ begin
                    aWidth,
                    aHeight,
                    aDepth,
-                   aCountArrayElements,
+                   aCountArrayLayers,
                    aCountFaces,
                    aCountMipMaps,
                    aUsageFlags,
@@ -25110,7 +25166,7 @@ begin
                    Max(1,KTXHeader.PixelWidth),
                    Max(1,KTXHeader.PixelHeight),
                    Max(1,KTXHeader.PixelDepth),
-                   NumberOfArrayElements,
+                   IfThen(NumberOfArrayElements=1,0,NumberOfArrayElements),
                    NumberOfFaces,
                    NumberOfMipMapLevels,
                    [vtufSampled],
@@ -25913,7 +25969,7 @@ begin
                    Max(1,ImageWidth),
                    Max(1,ImageHeight),
                    Max(1,ImageDepth),
-                   ImageArrayElements,
+                   IfThen(ImageArrayElements=1,0,ImageArrayElements),
                    ImageFaces,
                    ImageMipMaps,
                    [vtufTransferDst,vtufSampled],
@@ -26211,8 +26267,8 @@ begin
                     VK_SAMPLE_COUNT_1_BIT,
                     Max(1,ImageWidth),
                     Max(1,ImageHeight),
-                    1,
-                    1,
+                    0,
+                    0,
                     1,
                     MipMapLevels[aMipMaps],
                     [vtufTransferDst,vtufSampled],
@@ -26266,8 +26322,8 @@ begin
                      VK_SAMPLE_COUNT_1_BIT,
                      Max(1,ImageWidth),
                      Max(1,ImageHeight),
-                     1,
-                     1,
+                     0,
+                     0,
                      1,
                      MipMapLevels[aMipMaps],
                      [vtufTransferDst,vtufSampled],
@@ -26342,8 +26398,8 @@ begin
                      VK_SAMPLE_COUNT_1_BIT,
                      Max(1,ImageWidth),
                      Max(1,ImageHeight),
-                     1,
-                     1,
+                     0,
+                     0,
                      1,
                      MipMapLevels[aMipMaps],
                      [vtufTransferDst,vtufSampled],
@@ -26400,8 +26456,8 @@ begin
                      VK_SAMPLE_COUNT_1_BIT,
                      Max(1,ImageWidth),
                      Max(1,ImageHeight),
-                     1,
-                     1,
+                     0,
+                     0,
                      1,
                      MipMapLevels[aMipMaps],
                      [vtufTransferDst,vtufSampled],
@@ -26458,8 +26514,8 @@ begin
                      VK_SAMPLE_COUNT_1_BIT,
                      Max(1,ImageWidth),
                      Max(1,ImageHeight),
-                     1,
-                     1,
+                     0,
+                     0,
                      1,
                      MipMapLevels[aMipMaps],
                      [vtufTransferDst,vtufSampled],
@@ -26595,7 +26651,7 @@ constructor TVulkanTexture.CreateDefault(const aDevice:TVulkanDevice;
                                          const aWidth:TVkInt32;
                                          const aHeight:TVkInt32;
                                          const aDepth:TVkInt32;
-                                         const aCountArrayElements:TVkInt32;
+                                         const aCountArrayLayers:TVkInt32;
                                          const aCountFaces:TVkInt32;
                                          const aMipmaps:boolean;
                                          const aBorder:boolean);
@@ -26614,7 +26670,7 @@ var LayerSize,DataSize,LayerIndex,x,y,Offset,lx,ly,rx,ry,cx,cy,m,Index,dx,dy,ds,
 begin
 
  LayerSize:=aWidth*aHeight*TexelSize;
- DataSize:=LayerSize*aDepth*aCountArrayElements*aCountFaces;
+ DataSize:=LayerSize*Max(1,aDepth)*Max(1,aCountArrayLayers)*Max(1,aCountFaces);
 
  Data:=nil;
  try
@@ -26623,7 +26679,7 @@ begin
 
   case aDefaultType of
    vtdtCheckerboard:begin
-    for LayerIndex:=0 to (aDepth*aCountArrayElements*aCountFaces)-1 do begin
+    for LayerIndex:=0 to (Max(1,aDepth)*Max(1,aCountArrayLayers)*Max(1,aCountFaces))-1 do begin
      for y:=0 to aHeight-1 do begin
       for x:=0 to aWidth-1 do begin
        Offset:=(LayerIndex*LayerSize)+(((y*aWidth)+x)*TexelSize);
@@ -26658,7 +26714,7 @@ begin
     end;
    end;
    vtdtPyramids:begin
-    for LayerIndex:=0 to (aDepth*aCountArrayElements*aCountFaces)-1 do begin
+    for LayerIndex:=0 to (Max(1,aDepth)*Max(1,aCountArrayLayers)*Max(1,aCountFaces))-1 do begin
      for y:=0 to aHeight-1 do begin
       for x:=0 to aWidth-1 do begin
        Offset:=(LayerIndex*LayerSize)+(((y*aWidth)+x)*TexelSize);
@@ -26702,7 +26758,7 @@ begin
     end;
    end;
    else {vtdtCircles:}begin
-    for LayerIndex:=0 to (aDepth*aCountArrayElements*aCountFaces)-1 do begin
+    for LayerIndex:=0 to (Max(1,aDepth)*Max(1,aCountArrayLayers)*Max(1,aCountFaces))-1 do begin
      for y:=0 to aHeight-1 do begin
       for x:=0 to aWidth-1 do begin
        Offset:=(LayerIndex*LayerSize)+(((y*aWidth)+x)*TexelSize);
@@ -26723,7 +26779,7 @@ begin
   end;
 
   if aBorder then begin
-   for LayerIndex:=0 to (aDepth*aCountArrayElements*aCountFaces)-1 do begin
+   for LayerIndex:=0 to (Max(1,aDepth)*Max(1,aCountArrayLayers)*Max(1,aCountFaces))-1 do begin
     for y:=0 to aHeight-1 do begin
      Offset:=(LayerIndex*LayerSize)+(((y*aWidth)+0)*TexelSize);
      Data[Offset+0]:=0;
@@ -26769,7 +26825,7 @@ begin
                    aWidth,
                    aHeight,
                    aDepth,
-                   aCountArrayElements,
+                   aCountArrayLayers,
                    aCountFaces,
                    CountMipMaps,
                    [vtufTransferDst,vtufSampled],
@@ -26884,7 +26940,86 @@ end;
 
 //////////////////////////////////////////// Sprites ///////////////////////////////////////////////////
 
-constructor TVulkanSpriteTexture.Create(const aPixels:PVulkanSpriteTexturePixels;const aWidth,aHeight:TVkInt32);
+function NewTextureRectNode:PVulkanSpriteAtlasArrayTextureLayerRectNode;
+begin
+ GetMem(result,SizeOf(TVulkanSpriteAtlasArrayTextureLayerRectNode));
+ FillChar(result^,SizeOf(TVulkanSpriteAtlasArrayTextureLayerRectNode),AnsiChar(#0));
+end;
+
+procedure FreeTextureRectNode(const Node:PVulkanSpriteAtlasArrayTextureLayerRectNode);
+begin
+ if assigned(Node) then begin
+  FreeTextureRectNode(Node^.Left);
+  FreeTextureRectNode(Node^.Right);
+  Node^.Left:=nil;
+  Node^.Right:=nil;
+  FreeMem(Node);
+ end;
+end;
+
+function InsertTextureRectNode(const Node:PVulkanSpriteAtlasArrayTextureLayerRectNode;const Width,Height,Area:TVkInt32):PVulkanSpriteAtlasArrayTextureLayerRectNode;
+var RemainWidth,RemainHeight:TVkInt32;
+begin
+ result:=nil;
+ if (Width<=Node^.Width) and (Height<=Node^.Height) and (Area<=Node^.FreeArea) then begin
+  if assigned(Node^.Left) or assigned(Node^.Right) then begin
+   // This node has children nodes, so this node has content already, so the subnodes will be processing
+   if assigned(Node^.Left) then begin
+    result:=InsertTextureRectNode(Node^.Left,Width,Height,Area);
+    if assigned(result) then begin
+     dec(Node^.FreeArea,Area);
+     exit;
+    end;
+   end;
+   if assigned(Node^.Right) then begin
+    result:=InsertTextureRectNode(Node^.Right,Width,Height,Area);
+    if assigned(result) then begin
+     dec(Node^.FreeArea,Area);
+     exit;
+    end;
+   end;
+  end else begin
+   // No children nodes, so allocate a rect here and subdivide the remained space into two subnodes
+   RemainWidth:=Node^.Width-Width;
+   RemainHeight:=Node^.Height-Height;
+   Node^.Left:=NewTextureRectNode;
+   Node^.Right:=NewTextureRectNode;
+   if RemainWidth<=RemainHeight then begin
+    Node^.Left^.x:=Node^.x+Width;
+    Node^.Left^.y:=Node^.y;
+    Node^.Left^.Width:=RemainWidth;
+    Node^.Left^.Height:=Height;
+    Node^.Left^.FreeArea:=Node^.Left^.Width*Node^.Left^.Height;
+    Node^.Right^.x:=Node^.x;
+    Node^.Right^.y:=Node^.y+Height;
+    Node^.Right^.Width:=Node^.Width;
+    Node^.Right^.Height:=RemainHeight;
+    Node^.Right^.FreeArea:=Node^.Right^.Width*Node^.Right^.Height;
+   end else begin
+    Node^.Left^.x:=Node^.x;
+    Node^.Left^.y:=Node^.y+Height;
+    Node^.Left^.Width:=Width;
+    Node^.Left^.Height:=RemainHeight;
+    Node^.Left^.FreeArea:=Node^.Left^.Width*Node^.Left^.Height;
+    Node^.Right^.x:=Node^.x+Width;
+    Node^.Right^.y:=Node^.y;
+    Node^.Right^.Width:=RemainWidth;
+    Node^.Right^.Height:=Node^.Height;
+    Node^.Right^.FreeArea:=Node^.Right^.Width*Node^.Right^.Height;
+   end;
+   Node^.Left^.ContentWidth:=0;
+   Node^.Left^.ContentHeight:=0;
+   Node^.Right^.ContentWidth:=0;
+   Node^.Right^.ContentHeight:=0;
+   Node^.ContentWidth:=Width;
+   Node^.ContentHeight:=Height;
+   dec(Node^.FreeArea,Area);
+   result:=Node;
+  end;
+ end;
+end;
+
+constructor TVulkanSpriteTexture.Create(const aPixels:PVulkanSpriteTextureTexels;const aWidth,aHeight:TVkInt32);
 begin
  inherited Create;
 
@@ -26938,10 +27073,10 @@ begin
                                             VK_SAMPLE_COUNT_1_BIT,
                                             Max(1,fWidth),
                                             Max(1,fHeight),
+                                            0,
+                                            0,
                                             1,
-                                            1,
-                                            1,
-                                            MipMapLevels[aMipMaps],  
+                                            MipMapLevels[aMipMaps],
                                             [vtufTransferDst,vtufSampled],
                                             fPixels,
                                             fWidth*fHeight*SizeOf(TVkUInt8)*4,
@@ -26991,14 +27126,174 @@ begin
 
 end;
 
-constructor TVulkanSpriteFont.Create;
+constructor TVulkanSpriteAtlasArrayTexture.Create;
 begin
  inherited Create;
+ fTexels:=nil;
+ fTexture:=nil;
+ fLayerRootNodes:=nil;
+ fWidth:=0;
+ fHeight:=0;
+ fLayers:=0;
+ fCountTexels:=0;
+ fUploaded:=false;
+ fDirty:=true;
+ fSpecialSizedArrayTexture:=false;
 end;
 
-destructor TVulkanSpriteFont.Destroy;
+destructor TVulkanSpriteAtlasArrayTexture.Destroy;
+var LayerIndex:TVkInt32;
 begin
+ Unload;
+ FreeAndNil(fTexture);
+ for LayerIndex:=0 to fLayers-1 do begin
+  if assigned(fLayerRootNodes[LayerIndex]) then begin
+   FreeTextureRectNode(fLayerRootNodes[LayerIndex]);
+   fLayerRootNodes[LayerIndex]:=nil;
+  end;
+ end;
+ fLayerRootNodes:=nil;
+ fTexels:=nil;
  inherited Destroy;
+end;
+
+procedure TVulkanSpriteAtlasArrayTexture.Resize(const aWidth,aHeight,aLayers:TVkInt32);
+var y,LayerIndex,OldWidth,OldHeight,OldLayers:TVkInt32;
+    OldTexels:TVulkanSpriteAtlasArrayTextureTexels;
+begin
+ if (fWidth<>aWidth) or
+    (fHeight<>aHeight) or
+    (fLayers<>aLayers) then begin
+  OldWidth:=fWidth;
+  OldHeight:=fHeight;
+  OldLayers:=fLayers;
+  OldTexels:=fTexels;
+  try
+   fTexels:=nil;
+   fWidth:=aWidth;
+   fHeight:=aHeight;
+   fLayers:=aLayers;
+   fCountTexels:=TVkInt64(fWidth)*TVkInt64(fHeight)*TVkInt64(fLayers);
+   if fCountTexels>0 then begin
+    SetLength(fTexels,fCountTexels);
+    FillChar(fTexels[0],fCountTexels*SizeOf(TVulkanSpriteTextureTexel),#0);
+    for LayerIndex:=0 to Min(fLayers,OldLayers)-1 do begin
+     for y:=0 to Min(fHeight,OldHeight)-1 do begin
+      Move(OldTexels[((TVkInt64(LayerIndex)*OldHeight)+y)*OldWidth],fTexels[((TVkInt64(LayerIndex)*fHeight)+y)*fWidth],Min(fWidth,OldWidth)*SizeOf(TVulkanSpriteTextureTexel));
+     end;
+    end;
+   end;
+   for LayerIndex:=fLayers to Min(OldLayers,length(fLayerRootNodes))-1 do begin
+    if assigned(fLayerRootNodes[LayerIndex]) then begin
+     FreeTextureRectNode(fLayerRootNodes[LayerIndex]);
+     fLayerRootNodes[LayerIndex]:=nil;
+    end;
+   end;
+   SetLength(fLayerRootNodes,fLayers);
+   for LayerIndex:=OldLayers to fLayers-1 do begin
+    fLayerRootNodes[LayerIndex]:=NewTextureRectNode;
+    fLayerRootNodes[LayerIndex]^.x:=0;
+    fLayerRootNodes[LayerIndex]^.y:=0;
+    fLayerRootNodes[LayerIndex]^.Width:=fWidth;
+    fLayerRootNodes[LayerIndex]^.Height:=fHeight;
+    fLayerRootNodes[LayerIndex]^.FreeArea:=fWidth*fHeight;
+   end;
+  finally
+   OldTexels:=nil;
+  end;
+ end;
+end;
+
+procedure TVulkanSpriteAtlasArrayTexture.CopyIn(const aData;const aSrcWidth,aSrcHeight,aDestX,aDestY,aDestLayer:TVkInt32);
+var dy,sx,dw:TVkInt32;
+    Src,Dst:PVulkanSpriteTextureTexel;
+begin
+ sx:=Min(0,-aDestX);
+ dw:=Min(Max(aSrcWidth-sx,0),fWidth-aDestX);
+ if dw>0 then begin
+  for dy:=Min(Max(aDestY,0),fHeight-1) to Min(Max(aDestY+(aSrcHeight-1),0),fHeight-1) do begin
+   Move(PVulkanSpriteTextureTexels(TVkPointer(@aData))^[((dy-aDestY)*aSrcWidth)+sx],fTexels[(((TVkInt64(aDestLayer)*fHeight)+dy)*fWidth)+aDestX],dw*SizeOf(TVulkanSpriteTextureTexel));
+  end;
+ end;
+end;
+
+function TVulkanSpriteAtlasArrayTexture.GetTexelPointer(const aX,aY,aLayer:TVkInt32):PVulkanSpriteTextureTexel;
+begin
+ result:=@fTexels[(((TVkInt64(aLayer)*fHeight)+aY)*fWidth)+aX];
+end;
+
+procedure TVulkanSpriteAtlasArrayTexture.Upload(const aDevice:TVulkanDevice;
+                                           const aGraphicsQueue:TVulkanQueue;
+                                           const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                                           const aGraphicsFence:TVulkanFence;
+                                           const aTransferQueue:TVulkanQueue;
+                                           const aTransferCommandBuffer:TVulkanCommandBuffer;
+                                           const aTransferFence:TVulkanFence;
+                                           const aMipMaps:boolean);
+begin
+
+ if not fUploaded then begin
+
+  FreeAndNil(fTexture);
+
+{$if true}
+  fTexture:=TVulkanTexture.CreateFromMemory(aDevice,
+                                            aGraphicsQueue,
+                                            aGraphicsCommandBuffer,
+                                            aGraphicsFence,
+                                            aTransferQueue,
+                                            aTransferCommandBuffer,
+                                            aTransferFence,
+                                            VK_FORMAT_R8G8B8A8_UNORM,
+                                            VK_SAMPLE_COUNT_1_BIT,
+                                            Max(1,fWidth),
+                                            Max(1,fHeight),
+                                            0,
+                                            Max(1,fLayers),
+                                            1,
+                                            MipMapLevels[aMipMaps],
+                                            [vtufTransferDst,vtufSampled],
+                                            @fTexels[0],
+                                            fCountTexels*SizeOf(TVulkanSpriteTextureTexel),
+                                            false,
+                                            false,
+                                            1,
+                                            true);
+{$else}
+ fTexture:=TVulkanTexture.CreateDefault(aDevice,
+                                         aGraphicsQueue,
+                                         aGraphicsCommandBuffer,
+                                         aGraphicsFence,
+                                         aTransferQueue,
+                                         aTransferCommandBuffer,
+                                         aTransferFence,
+                                         vtdtCheckerboard,
+                                         Max(1,fWidth),
+                                         Max(1,fHeight),
+                                         0,
+                                         Max(1,fLayers),
+                                         1,
+                                         aMipMaps,
+                                         false);
+{$ifend}
+  fTexture.WrapModeU:=vtwmClampToBorder;
+  fTexture.WrapModeV:=vtwmClampToBorder;
+  fTexture.WrapModeW:=vtwmClampToBorder;
+  fTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+  fTexture.UpdateSampler;
+
+  fUploaded:=true;
+
+ end;
+
+end;
+
+procedure TVulkanSpriteAtlasArrayTexture.Unload;
+begin
+ if fUploaded then begin
+  FreeAndNil(fTexture);
+  fUploaded:=false;
+ end;
 end;
 
 constructor TVulkanSprite.Create;
@@ -27051,7 +27346,7 @@ begin
 
  SetLength(fVulkanSpriteBatchBuffers,aCountBuffers);
 
- fLastTexture:=nil;
+ fLastArrayTexture:=nil;
 
  fCurrentCountVertices:=0;
  fCurrentCountIndices:=0;
@@ -27217,8 +27512,8 @@ begin
 
    VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVulkanSpriteBatchVertex),VK_VERTEX_INPUT_RATE_VERTEX);
    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.Position)));
-   VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.TextureCoord)));
-   VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32A32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.Color)));
+   VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.TextureCoord)));
+   VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.Color)));
 
    VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
    VulkanGraphicsPipeline.ViewPortState.DynamicViewPorts:=true;
@@ -27257,7 +27552,7 @@ begin
                                                                          VK_BLEND_FACTOR_SRC_ALPHA,
                                                                          VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
                                                                          VK_BLEND_OP_ADD,
-                                                                         VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                         VK_BLEND_FACTOR_ONE,
                                                                          VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
                                                                          VK_BLEND_OP_ADD,
                                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
@@ -27408,7 +27703,7 @@ begin
  fInverseWidth:=1.0/fWidth;
  fInverseHeight:=1.0/fHeight;
 
- fLastTexture:=nil;
+ fLastArrayTexture:=nil;
 
  fCurrentCountVertices:=0;
  fCurrentCountIndices:=0;
@@ -27470,7 +27765,7 @@ begin
 
    inc(fCurrentFillSpriteBatchBuffer^.fVertexBufferSizes[CurrentVulkanVertexBufferIndex],fCurrentCountVertices*SizeOf(TVulkanSpriteBatchVertex));
 
-   PointerHashMapEntity:=fVulkanTextureDescriptorSetHashMap.Get(fLastTexture,false);
+   PointerHashMapEntity:=fVulkanTextureDescriptorSetHashMap.Get(fLastArrayTexture,false);
    if assigned(PointerHashMapEntity) then begin
     DescriptorSetIndex:=TVkPtrUInt(PointerHashMapEntity^.Value);
    end else begin
@@ -27485,14 +27780,14 @@ begin
                                              0,
                                              1,
                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                             [fLastTexture.fTexture.DescriptorImageInfo],
+                                             [fLastArrayTexture.fTexture.DescriptorImageInfo],
                                              [],
                                              [],
                                              false
                                             );
     VulkanDescriptorSet.Flush;
     fVulkanDescriptorSets[DescriptorSetIndex]:=VulkanDescriptorSet;
-    fVulkanTextureDescriptorSetHashMap.Add(fLastTexture,TVkPointer(TVkPtrUInt(DescriptorSetIndex)));
+    fVulkanTextureDescriptorSetHashMap.Add(fLastArrayTexture,TVkPointer(TVkPtrUInt(DescriptorSetIndex)));
    end;
 
    QueueItemIndex:=fCurrentFillSpriteBatchBuffer^.fCountQueueItems;
@@ -27560,13 +27855,13 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteBatch.SetTexture(const Texture:TVulkanSpriteTexture);
+procedure TVulkanSpriteBatch.SetArrayTexture(const ArrayTexture:TVulkanSpriteAtlasArrayTexture);
 begin
- if fLastTexture<>Texture then begin
+ if fLastArrayTexture<>ArrayTexture then begin
   Flush;
-  fLastTexture:=Texture;
-  fInverseTextureWidth:=1.0/Texture.Width;
-  fInverseTextureHeight:=1.0/Texture.Height;
+  fLastArrayTexture:=ArrayTexture;
+  fInverseTextureWidth:=1.0/ArrayTexture.Width;
+  fInverseTextureHeight:=1.0/ArrayTexture.Height;
  end;
 end;
 
@@ -27612,170 +27907,21 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteBatch.Draw(const Texture:TVulkanSpriteTexture;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor);
-var sX0,sY0,sX1,sY1:single;
-begin
- SetTexture(Texture);
- FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
- sX0:=Src.Left*fInverseTextureWidth;
- sY0:=Src.Top*fInverseTextureHeight;
- sX1:=Src.Right*fInverseTextureWidth;
- sY1:=Src.Bottom*fInverseTextureHeight;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((Dest.Left*fInverseWidth)-0.5)*2;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((Dest.Top*fInverseHeight)-0.5)*2;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
- inc(fCurrentCountVertices);
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((Dest.Right*fInverseWidth)-0.5)*2;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((Dest.Top*fInverseHeight)-0.5)*2;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
- inc(fCurrentCountVertices);
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((Dest.Right*fInverseWidth)-0.5)*2;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((Dest.Bottom*fInverseHeight)-0.5)*2;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
- inc(fCurrentCountVertices);
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((Dest.Left*fInverseWidth)-0.5)*2;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((Dest.Bottom*fInverseHeight)-0.5)*2;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
- inc(fCurrentCountVertices);
- inc(fCurrentCountIndices,6);
-end;
-
-procedure TVulkanSpriteBatch.Draw(const Texture:TVulkanSpriteTexture;Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor);
-var Src:TVulkanSpriteRect;
-begin
- Src.Left:=0;
- Src.Top:=0;
- Src.Right:=Texture.Width;
- Src.Bottom:=Texture.Height;
- Dest.Right:=Texture.Width;
- Dest.Bottom:=Texture.Height;
- Draw(Texture,Src,Dest,Color);
-end;
-
-procedure TVulkanSpriteBatch.Draw(const Texture:TVulkanSpriteTexture;const x,y:single;const Color:TVulkanSpriteColor);
-var Src,Dest:TVulkanSpriteRect;
-begin
- Src.Left:=0;
- Src.Top:=0;
- Src.Right:=Texture.Width;
- Src.Bottom:=Texture.Height;
- Dest.Left:=x;
- Dest.Top:=y;
- Dest.Right:=x+Texture.Width;
- Dest.Bottom:=y+Texture.Height;
- Draw(Texture,Src,Dest,Color);
-end;
-
-procedure TVulkanSpriteBatch.Draw(const Texture:TVulkanSpriteTexture;const x,y:single);
-var Src,Dest:TVulkanSpriteRect;
-    Color:TVulkanSpriteColor;
-begin
- Src.Left:=0;
- Src.Top:=0;
- Src.Right:=Texture.Width;
- Src.Bottom:=Texture.Height;
- Dest.Left:=x;
- Dest.Top:=y;
- Dest.Right:=x+Texture.Width;
- Dest.Bottom:=y+Texture.Height;
- Color.r:=1.0;
- Color.g:=1.0;
- Color.b:=1.0;
- Color.a:=1.0;
- Draw(Texture,Src,Dest,Color);
-end;
-
-procedure TVulkanSpriteBatch.Draw(const Texture:TVulkanSpriteTexture;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single);
-var Src,Dest:TVulkanSpriteRect;
-    Color:TVulkanSpriteColor;
-begin
- Dest.Left:=dx1;
- Dest.Top:=dy1;
- Dest.Right:=dx2;
- Dest.Bottom:=dy2;
- Src.Left:=sx1;
- Src.Top:=sy1;
- Src.Right:=sx2;
- Src.Bottom:=sy2;
- Color.r:=1;
- Color.g:=1;
- Color.b:=1;
- Color.a:=Alpha;
- Draw(Texture,Src,Dest,Color);
-end;
-
-procedure TVulkanSpriteBatch.Draw(const Texture:TVulkanSpriteTexture;const Src:TVulkanSpriteRect;Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;const Color:TVulkanSpriteColor);
-begin
- Dest.Left:=Dest.Left-Origin.x;
- Dest.Top:=Dest.Top-Origin.y;
- Dest.Right:=Dest.Right-Origin.x;
- Dest.Bottom:=Dest.Bottom-Origin.y;
- Draw(Texture,Src,Dest,Color);
-end;
-
-procedure TVulkanSpriteBatch.Draw(const Texture:TVulkanSpriteTexture;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:single;const Color:TVulkanSpriteColor);
-var Cosinus,Sinus,sX0,sY0,sX1,sY1:single;
-    AroundPoint:TVulkanSpritePoint;
-    Points:array[0..3] of TVulkanSpritePoint;
-begin
- FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
- Cosinus:=cos(Rotation);
- Sinus:=sin(Rotation);
- AroundPoint.x:=Dest.Left+Origin.x;
- AroundPoint.y:=Dest.Top+Origin.y;
- Points[0].x:=Dest.Left;
- Points[0].y:=Dest.Top;
- Points[1].x:=Dest.Right;
- Points[1].y:=Dest.Top;
- Points[2].x:=Dest.Right;
- Points[2].y:=Dest.Bottom;
- Points[3].x:=Dest.Left;
- Points[3].y:=Dest.Bottom;
- sX0:=Src.Left*fInverseTextureWidth;
- sY0:=Src.Top*fInverseTextureHeight;
- sX1:=Src.Right*fInverseTextureWidth;
- sY1:=Src.Bottom*fInverseTextureHeight;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
- inc(fCurrentCountVertices);
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
- inc(fCurrentCountVertices);
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
- inc(fCurrentCountVertices);
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
- fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
- inc(fCurrentCountVertices);
- inc(fCurrentCountIndices,6);
-end;
-
 procedure TVulkanSpriteBatch.Draw(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor);
 const MinA=1.0/1024.0;
 var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:single;
     TempDest,TempSrc:TVulkanSpriteRect;
+    VertexColor:TVulkanSpriteVertexColor;
 begin
  if (abs(Color.a)>MinA) and
     (((Src.Right>=Sprite.TrimmedX) and (Src.Bottom>=Sprite.TrimmedY)) and
     (((not Sprite.Rotated) and (((Sprite.TrimmedX+Sprite.TrimmedWidth)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedHeight)>=Src.Top))) or
      (Sprite.Rotated and (((Sprite.TrimmedX+Sprite.TrimmedHeight)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedWidth)>=Src.Top))))) then begin
-  SetTexture(Sprite.Texture);
+  VertexColor.r:=VulkanConvertFloatToHalfFloat(Color.r);
+  VertexColor.g:=VulkanConvertFloatToHalfFloat(Color.g);
+  VertexColor.b:=VulkanConvertFloatToHalfFloat(Color.b);
+  VertexColor.a:=VulkanConvertFloatToHalfFloat(Color.a);
+  SetArrayTexture(Sprite.ArrayTexture);
   FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
   if Sprite.Rotated then begin
    tx1:=Max(Sprite.TrimmedX,Src.Left);
@@ -27814,25 +27960,29 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
   end else begin
@@ -27872,25 +28022,29 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
   end;
@@ -27903,14 +28057,19 @@ var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:single;
     AroundPoint:TVulkanSpritePoint;
     Points:array[0..3] of TVulkanSpritePoint;
     TempDest,TempSrc:TVulkanSpriteRect;
+    VertexColor:TVulkanSpriteVertexColor;
 begin
  if (abs(Color.a)>MinA) and
     (((Src.Right>=Sprite.TrimmedX) and (Src.Bottom>=Sprite.TrimmedY)) and
     (((not Sprite.Rotated) and (((Sprite.TrimmedX+Sprite.TrimmedWidth)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedHeight)>=Src.Top))) or
      (Sprite.Rotated and (((Sprite.TrimmedX+Sprite.TrimmedHeight)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedWidth)>=Src.Top))))) then begin
+  VertexColor.r:=VulkanConvertFloatToHalfFloat(Color.r);
+  VertexColor.g:=VulkanConvertFloatToHalfFloat(Color.g);
+  VertexColor.b:=VulkanConvertFloatToHalfFloat(Color.b);
+  VertexColor.a:=VulkanConvertFloatToHalfFloat(Color.a);
   Cosinus:=cos(Rotation);
   Sinus:=sin(Rotation);
-  SetTexture(Sprite.Texture);
+  SetArrayTexture(Sprite.ArrayTexture);
   FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
   if Sprite.Rotated then begin
    tx1:=Max(Sprite.TrimmedX,Src.Left);
@@ -27944,22 +28103,26 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
   end else begin
@@ -27994,22 +28157,26 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=Color;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
   end;
@@ -28057,102 +28224,6 @@ begin
  Color.b:=1;
  Color.a:=Alpha;
  Draw(Sprite,Src,Dest,Color);
-end;
-
-procedure TVulkanSpriteBatch.DrawText(const Font:TVulkanSpriteFont;const Text:TVulkanRawByteString;x,y:single;const Color:TVulkanSpriteColor);
-var Index:TVkInt32;
-    Item:PVulkanSpriteFontChar;
-    Dest:TVulkanSpriteRect;
-begin
- Dest.Left:=x;
- Dest.Top:=y;
- for Index:=1 to length(Text) do begin
-  Item:=@Font.Chars[Text[Index]];
-  Dest.Right:=Dest.Left+(Item^.TextureRect.Right-Item^.TextureRect.Left);
-  Dest.Bottom:=Dest.Bottom+(Item^.TextureRect.Bottom-Item^.TextureRect.Top);
-  Draw(Font.Texture,Item^.TextureRect,Dest,Color);
-  Dest.Left:=Dest.Left+Item^.Advance.x;
-  Dest.Top:=Dest.Top+Item^.Advance.y;
- end;
-end;
-
-function NewTextureRectNode:PVulkanSpriteAtlasTextureRectNode;
-begin
- GetMem(result,SizeOf(TVulkanSpriteAtlasTextureRectNode));
- FillChar(result^,SizeOf(TVulkanSpriteAtlasTextureRectNode),AnsiChar(#0));
-end;
-
-procedure FreeTextureRectNode(const Node:PVulkanSpriteAtlasTextureRectNode);
-begin
- if assigned(Node) then begin
-  FreeTextureRectNode(Node^.Left);
-  FreeTextureRectNode(Node^.Right);
-  Node^.Left:=nil;
-  Node^.Right:=nil;
-  FreeMem(Node);
- end;
-end;
-
-function InsertTextureRectNode(const Node:PVulkanSpriteAtlasTextureRectNode;const Width,Height,Area:TVkInt32):PVulkanSpriteAtlasTextureRectNode;
-var RemainWidth,RemainHeight:TVkInt32;
-begin
- result:=nil;
- if (Width<=Node^.Width) and (Height<=Node^.Height) and (Area<=Node^.FreeArea) then begin
-  if assigned(Node^.Left) or assigned(Node^.Right) then begin
-   // This node has children nodes, so this node has content already, so the subnodes will be processing
-   if assigned(Node^.Left) then begin
-    result:=InsertTextureRectNode(Node^.Left,Width,Height,Area);
-    if assigned(result) then begin
-     dec(Node^.FreeArea,Area);
-     exit;
-    end;
-   end;
-   if assigned(Node^.Right) then begin
-    result:=InsertTextureRectNode(Node^.Right,Width,Height,Area);
-    if assigned(result) then begin
-     dec(Node^.FreeArea,Area);
-     exit;
-    end;
-   end;
-  end else begin
-   // No children nodes, so allocate a rect here and subdivide the remained space into two subnodes
-   RemainWidth:=Node^.Width-Width;
-   RemainHeight:=Node^.Height-Height;
-   Node^.Left:=NewTextureRectNode;
-   Node^.Right:=NewTextureRectNode;
-   if RemainWidth<=RemainHeight then begin
-    Node^.Left^.x:=Node^.x+Width;
-    Node^.Left^.y:=Node^.y;
-    Node^.Left^.Width:=RemainWidth;
-    Node^.Left^.Height:=Height;
-    Node^.Left^.FreeArea:=Node^.Left^.Width*Node^.Left^.Height;
-    Node^.Right^.x:=Node^.x;
-    Node^.Right^.y:=Node^.y+Height;
-    Node^.Right^.Width:=Node^.Width;
-    Node^.Right^.Height:=RemainHeight;
-    Node^.Right^.FreeArea:=Node^.Right^.Width*Node^.Right^.Height;
-   end else begin
-    Node^.Left^.x:=Node^.x;
-    Node^.Left^.y:=Node^.y+Height;
-    Node^.Left^.Width:=Width;
-    Node^.Left^.Height:=RemainHeight;
-    Node^.Left^.FreeArea:=Node^.Left^.Width*Node^.Left^.Height;
-    Node^.Right^.x:=Node^.x+Width;
-    Node^.Right^.y:=Node^.y;
-    Node^.Right^.Width:=RemainWidth;
-    Node^.Right^.Height:=Node^.Height;
-    Node^.Right^.FreeArea:=Node^.Right^.Width*Node^.Right^.Height;
-   end;
-   Node^.Left^.ContentWidth:=0;
-   Node^.Left^.ContentHeight:=0;
-   Node^.Right^.ContentWidth:=0;
-   Node^.Right^.ContentHeight:=0;
-   Node^.ContentWidth:=Width;
-   Node^.ContentHeight:=Height;
-   dec(Node^.FreeArea,Area);
-   result:=Node;
-  end;
- end;
 end;
 
 procedure TVulkanSpriteBatch.ExecuteUpload(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
@@ -28314,28 +28385,27 @@ end;
 constructor TVulkanSpriteAtlas.Create(const aDevice:TVulkanDevice);
 begin
  fDevice:=aDevice;
- fTextureList:=nil;
+ fArrayTextures:=nil;
+ fCountArrayTextures:=0;
  fList:=TList.Create;
  fHashMap:=TVulkanStringHashMap.Create;
  fIsUploaded:=false;
  fMipMaps:=true;
  fAutomaticTrim:=true;
+ fWidth:=Min(VULKAN_SPRITEATLASTEXTURE_WIDTH,fDevice.fPhysicalDevice.fProperties.limits.maxImageDimension2D);
+ fHeight:=Min(VULKAN_SPRITEATLASTEXTURE_HEIGHT,fDevice.fPhysicalDevice.fProperties.limits.maxImageDimension2D);
+ fMaximumCountArrayLayers:=fDevice.fPhysicalDevice.fProperties.limits.maxImageArrayLayers;
  inherited Create;
 end;
 
 destructor TVulkanSpriteAtlas.Destroy;
-var Texture,NextTexture:PVulkanSpriteAtlasTexture;
+var Index:TVkInt32;
 begin
  Unload;
- Texture:=fTextureList;
- while assigned(Texture) do begin
-  NextTexture:=Texture^.Next;
-  FreeTextureRectNode(Texture^.RootNode);
-  FreeAndNil(Texture^.Texture);
-  FreeMem(Texture^.Data);
-  FreeMem(Texture);
-  Texture:=NextTexture;
+ for Index:=0 to fCountArrayTextures-1 do begin
+  FreeAndNil(fArrayTextures[Index]);
  end;
+ fArrayTextures:=nil;
  ClearAll;
  fHashMap.Free;
  fList.Free;
@@ -28359,38 +28429,38 @@ procedure TVulkanSpriteAtlas.Upload(const aGraphicsQueue:TVulkanQueue;
                                     const aTransferQueue:TVulkanQueue;
                                     const aTransferCommandBuffer:TVulkanCommandBuffer;
                                     const aTransferFence:TVulkanFence);
-var Texture:PVulkanSpriteAtlasTexture;
+var Index:TVkInt32;
+    ArrayTexture:TVulkanSpriteAtlasArrayTexture;
 begin
  if not fIsUploaded then begin
-  Texture:=fTextureList;
-  while assigned(Texture) do begin
-   if not Texture^.Texture.Uploaded then begin
-    Texture^.Texture.Upload(fDevice,
-                            aGraphicsQueue,
-                            aGraphicsCommandBuffer,
-                            aGraphicsFence,
-                            aTransferQueue,
-                            aTransferCommandBuffer,
-                            aTransferFence,
-                            fMipMaps);
-    Texture^.Dirty:=false;
+  for Index:=0 to fCountArrayTextures-1 do begin
+   ArrayTexture:=fArrayTextures[Index];
+   if not ArrayTexture.Uploaded then begin
+    ArrayTexture.Upload(fDevice,
+                        aGraphicsQueue,
+                        aGraphicsCommandBuffer,
+                        aGraphicsFence,
+                        aTransferQueue,
+                        aTransferCommandBuffer,
+                        aTransferFence,
+                        fMipMaps);
+    ArrayTexture.Dirty:=false;
    end;
-   Texture:=Texture^.Next;
   end;
   fIsUploaded:=true;
  end;
 end;
 
 procedure TVulkanSpriteAtlas.Unload;
-var Texture:PVulkanSpriteAtlasTexture;
+var Index:TVkInt32;
+    ArrayTexture:TVulkanSpriteAtlasArrayTexture;
 begin
  if fIsUploaded then begin
-  Texture:=fTextureList;
-  while assigned(Texture) do begin
-   if Texture^.Texture.Uploaded then begin
-    Texture^.Texture.Unload;
+  for Index:=0 to fCountArrayTextures-1 do begin
+   ArrayTexture:=fArrayTextures[Index];
+   if ArrayTexture.Uploaded then begin
+    ArrayTexture.Unload;
    end;
-   Texture:=Texture^.Next;
   end;
   fIsUploaded:=false;
  end;
@@ -28482,14 +28552,13 @@ var XML:TVulkanXML;
     XMLTag,XMLChildrenTag:TVulkanXMLTag;
     SpriteName:TVulkanRawByteString;
     Sprite:TVulkanSprite;
-    SpriteAtlasTexture:PVulkanSpriteAtlasTexture;
-    Texture:TVulkanSpriteTexture;
+    SpriteAtlasArrayTexture:TVulkanSpriteAtlasArrayTexture;
     ImageData:TVkPointer;
     ImageWidth,ImageHeight:TVkInt32;
 begin
  result:=false;
  if assigned(aTextureStream) and assigned(aStream) then begin
-  Texture:=nil;
+  SpriteAtlasArrayTexture:=nil;
   MemoryStream:=TMemoryStream.Create;
   try
    aStream.Seek(0,soBeginning);
@@ -28498,23 +28567,19 @@ begin
    ImageData:=nil;
    try
     if LoadImage(MemoryStream.Memory,MemoryStream.Size,ImageData,ImageWidth,ImageHeight) then begin
-     GetMem(SpriteAtlasTexture,SizeOf(TVulkanSpriteAtlasTexture));
-     FillChar(SpriteAtlasTexture^,SizeOf(TVulkanSpriteAtlasTexture),AnsiChar(#0));
-     SpriteAtlasTexture^.Width:=ImageWidth;
-     SpriteAtlasTexture^.Height:=ImageHeight;
-     SpriteAtlasTexture^.Data:=ImageData;
-     SpriteAtlasTexture^.Next:=fTextureList;
-     fTextureList:=SpriteAtlasTexture;
-     SpriteAtlasTexture^.Dirty:=true;
-     SpriteAtlasTexture^.RootNode:=NewTextureRectNode;
-     SpriteAtlasTexture^.RootNode^.x:=0;
-     SpriteAtlasTexture^.RootNode^.y:=0;
-     SpriteAtlasTexture^.RootNode^.Width:=SpriteAtlasTexture^.Width;
-     SpriteAtlasTexture^.RootNode^.Height:=SpriteAtlasTexture^.Height;
-     SpriteAtlasTexture^.RootNode^.FreeArea:=0;
-     SpriteAtlasTexture^.Texture:=TVulkanSpriteTexture.Create(SpriteAtlasTexture^.Data,SpriteAtlasTexture^.Width,SpriteAtlasTexture^.Height);
-     Texture:=SpriteAtlasTexture^.Texture;
-     ImageData:=nil;
+     SpriteAtlasArrayTexture:=TVulkanSpriteAtlasArrayTexture.Create;
+     SpriteAtlasArrayTexture.Resize(ImageWidth,ImageHeight,1);
+     if length(fArrayTextures)<(fCountArrayTextures+1) then begin
+      SetLength(fArrayTextures,(fCountArrayTextures+1)*2);
+     end;
+     fArrayTextures[fCountArrayTextures]:=SpriteAtlasArrayTexture;
+     inc(fCountArrayTextures);
+     SpriteAtlasArrayTexture.fSpecialSizedArrayTexture:=true;
+     SpriteAtlasArrayTexture.Dirty:=true;
+     SpriteAtlasArrayTexture.fLayerRootNodes[0].FreeArea:=0;
+     SpriteAtlasArrayTexture.fLayerRootNodes[0].ContentWidth:=ImageWidth;
+     SpriteAtlasArrayTexture.fLayerRootNodes[0].ContentHeight:=ImageHeight;
+     SpriteAtlasArrayTexture.CopyIn(ImageData^,ImageWidth,ImageHeight,0,0,0);
     end;
    finally
     if assigned(ImageData) then begin
@@ -28524,7 +28589,7 @@ begin
   finally
    MemoryStream.Free;
   end;
-  if assigned(Texture) then begin
+  if assigned(SpriteAtlasArrayTexture) then begin
    MemoryStream:=TMemoryStream.Create;
    try
     aStream.Seek(0,soBeginning);
@@ -28546,10 +28611,11 @@ begin
             SpriteName:=XMLChildrenTag.GetParameter('n','');
             if length(SpriteName)>0 then begin
              Sprite:=TVulkanSprite.Create;
-             Sprite.Texture:=Texture;
+             Sprite.ArrayTexture:=SpriteAtlasArrayTexture;
              Sprite.Name:=SpriteName;
              Sprite.x:=StrToIntDef(String(XMLChildrenTag.GetParameter('x','0')),0);
              Sprite.y:=StrToIntDef(String(XMLChildrenTag.GetParameter('y','0')),0);
+             Sprite.Layer:=0;
              Sprite.Width:=StrToIntDef(String(XMLChildrenTag.GetParameter('oW',XMLChildrenTag.GetParameter('w','0'))),0);
              Sprite.Height:=StrToIntDef(String(XMLChildrenTag.GetParameter('oH',XMLChildrenTag.GetParameter('h','0'))),0);
              Sprite.TrimmedX:=StrToIntDef(String(XMLChildrenTag.GetParameter('oX','0')),0);
@@ -28579,12 +28645,12 @@ end;
 
 function TVulkanSpriteAtlas.LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32):TVulkanSprite;
 type PVkUInt32=^TVkUInt32;
-var x,y,x0,y0,x1,y1:TVkInt32;
-    Texture:PVulkanSpriteAtlasTexture;
-    Node:PVulkanSpriteAtlasTextureRectNode;
+var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer:TVkInt32;
+    ArrayTexture:TVulkanSpriteAtlasArrayTexture;
+    Node:PVulkanSpriteAtlasArrayTextureLayerRectNode;
     Sprite:TVulkanSprite;
     sp,dp:PVkUInt32;
-    OK:boolean;
+    OK,SpecialSizedArrayTexture:boolean;
     TrimmedImageData:TVkPointer;
     TrimmedImageWidth:TVkInt32;
     TrimmedImageHeight:TVkInt32;
@@ -28706,124 +28772,139 @@ begin
     end;
 
     // Get free texture area
-    Texture:=fTextureList;
-    while assigned(Texture) do begin
-     if assigned(Texture^.RootNode) then begin
-      // Including 2px texel bilinear interpolation protection border pixels
-      Node:=InsertTextureRectNode(Texture^.RootNode,TrimmedImageWidth+4,TrimmedImageHeight+4,(TrimmedImageWidth+4)*(TrimmedImageHeight+4));
-      if assigned(Node) then begin
-       break;
+    Layer:=-1;
+    for TextureIndex:=0 to fCountArrayTextures-1 do begin
+     ArrayTexture:=fArrayTextures[TextureIndex];
+     if not ArrayTexture.fSpecialSizedArrayTexture then begin
+      for LayerIndex:=0 to ArrayTexture.fLayers-1 do begin
+       if assigned(ArrayTexture.fLayerRootNodes[LayerIndex]) then begin
+        // Including 2px texel bilinear interpolation protection border pixels
+        Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],TrimmedImageWidth+4,TrimmedImageHeight+4,(TrimmedImageWidth+4)*(TrimmedImageHeight+4));
+        if assigned(ArrayTexture) and assigned(Node) then begin
+         Layer:=LayerIndex;
+         break;
+        end;
+       end;
+       if (Layer>=0) and (assigned(ArrayTexture) and assigned(Node)) then begin
+        break;
+       end;
       end;
      end;
-     Texture:=Texture^.Next;
     end;
 
-    if not (assigned(Texture) and assigned(Node)) then begin
-     GetMem(Texture,SizeOf(TVulkanSpriteAtlasTexture));
-     FillChar(Texture^,SizeOf(TVulkanSpriteAtlasTexture),AnsiChar(#0));
-     Texture^.Width:=VULKAN_SPRITEATLASTEXTURE_WIDTH;
-     Texture^.Height:=VULKAN_SPRITEATLASTEXTURE_HEIGHT;
-     GetMem(Texture^.Data,Texture^.Width*Texture^.Height*4);
-     FillChar(Texture^.Data^,Texture^.Width*Texture^.Height*4,AnsiChar(#$00));
-     Texture^.Texture:=TVulkanSpriteTexture.Create(Texture^.Data,Texture^.Width,Texture^.Height);
-     Texture^.Next:=fTextureList;
-     fTextureList:=Texture;
-     Texture^.Dirty:=true;
-     Texture^.RootNode:=NewTextureRectNode;
-     Texture^.RootNode^.x:=0;
-     Texture^.RootNode^.y:=0;
-     Texture^.RootNode^.Width:=Texture^.Width;
-     Texture^.RootNode^.Height:=Texture^.Height;
-     Texture^.RootNode^.FreeArea:=Texture^.Width*Texture^.Height;
-     Node:=InsertTextureRectNode(Texture^.RootNode,TrimmedImageWidth+4,TrimmedImageHeight+4,(TrimmedImageWidth+4)*(TrimmedImageHeight+4));
+    SpecialSizedArrayTexture:=false;
+
+    // First try to resize a already existent atlas array texture by an one new layer, but not on
+    // special sized atlas array textures for big sprites, which are larger than a normal atlas
+    // array texture in width and height, or for external imported sprite atlases
+    if (Layer<0) or not (assigned(ArrayTexture) and assigned(Node)) then begin
+     for TextureIndex:=0 to fCountArrayTextures-1 do begin
+      ArrayTexture:=fArrayTextures[TextureIndex];
+      if ((TrimmedImageWidth+4)<=ArrayTexture.fWidth) and
+         ((TrimmedImageHeight+4)<=ArrayTexture.fHeight) and
+         (ArrayTexture.fLayers<fMaximumCountArrayLayers) and
+         not ArrayTexture.fSpecialSizedArrayTexture then begin
+       LayerIndex:=ArrayTexture.fLayers;
+       ArrayTexture.Resize(ArrayTexture.fWidth,ArrayTexture.fHeight,LayerIndex+1);
+       Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],TrimmedImageWidth+4,TrimmedImageHeight+4,(TrimmedImageWidth+4)*(TrimmedImageHeight+4));
+       if assigned(Node) then begin
+        Layer:=LayerIndex;
+       end;
+      end;
+     end;
     end;
 
-    if assigned(Texture) and assigned(Node) then begin
-     Sprite:=TVulkanSprite.Create;
-     Sprite.Texture:=Texture^.Texture;
-     Sprite.Name:=Name;
-     Sprite.x:=Node^.x+2;
-     Sprite.y:=Node^.y+2;
-     Sprite.Width:=ImageWidth;
-     Sprite.Height:=ImageHeight;
-     Sprite.TrimmedX:=x0;
-     Sprite.TrimmedY:=y0;
-     Sprite.TrimmedWidth:=TrimmedImageWidth;
-     Sprite.TrimmedHeight:=TrimmedImageHeight;
-     Sprite.Rotated:=false;
-     AddSprite(Sprite);
-     for y:=0 to TrimmedImageHeight-1 do begin
-      sp:=TrimmedImageData;
-      inc(sp,y*TrimmedImageWidth);
-      dp:=Texture^.Data;
-      inc(dp,((Sprite.y+y)*Texture^.Width)+Sprite.x);
-      Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
+    // Otherwise allocate a fresh new atlas array texture
+    if (Layer<0) or not (assigned(ArrayTexture) and assigned(Node)) then begin
+     Layer:=0;
+     SpecialSizedArrayTexture:=(fWidth<=TrimmedImageWidth) or (fHeight<=TrimmedImageHeight);
+     ArrayTexture:=TVulkanSpriteAtlasArrayTexture.Create;
+     ArrayTexture.fSpecialSizedArrayTexture:=SpecialSizedArrayTexture;
+     ArrayTexture.Resize(Max(fWidth,TrimmedImageWidth),Max(fHeight,TrimmedImageHeight),1);
+     if length(fArrayTextures)<(fCountArrayTextures+1) then begin
+      SetLength(fArrayTextures,(fCountArrayTextures+1)*2);
      end;
-     begin
-      begin
+     fArrayTextures[fCountArrayTextures]:=ArrayTexture;
+     inc(fCountArrayTextures);
+     ArrayTexture.Dirty:=true;
+     if SpecialSizedArrayTexture then begin
+      Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[Layer],TrimmedImageWidth,TrimmedImageHeight,TrimmedImageWidth*TrimmedImageHeight);
+     end else begin
+      Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[Layer],TrimmedImageWidth+4,TrimmedImageHeight+4,(TrimmedImageWidth+4)*(TrimmedImageHeight+4));
+     end;
+    end;
+
+    Assert((Layer>=0) and (assigned(ArrayTexture) and assigned(Node)));
+
+    if (Layer>=0) and (assigned(ArrayTexture) and assigned(Node)) then begin
+     Sprite:=TVulkanSprite.Create;
+     Sprite.ArrayTexture:=ArrayTexture;
+     Sprite.Name:=Name;
+     if SpecialSizedArrayTexture then begin
+      Sprite.x:=Node^.x;
+      Sprite.y:=Node^.y;
+      Sprite.Width:=ImageWidth;
+      Sprite.Height:=ImageHeight;
+      Sprite.TrimmedX:=x0;
+      Sprite.TrimmedY:=y0;
+      Sprite.TrimmedWidth:=TrimmedImageWidth;
+      Sprite.TrimmedHeight:=TrimmedImageHeight;
+      Sprite.Rotated:=false;
+      AddSprite(Sprite);
+      for y:=0 to TrimmedImageHeight-1 do begin
        sp:=TrimmedImageData;
-       dp:=Texture^.Data;
-       inc(dp,((Sprite.y-1)*Texture^.Width)+Sprite.x);
+       inc(sp,y*TrimmedImageWidth);
+       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+y,Layer));
        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
-       dp:=Texture^.Data;
-       inc(dp,((Sprite.y-2)*Texture^.Width)+Sprite.x);
+      end;
+     end else begin
+      Sprite.x:=Node^.x+2;
+      Sprite.y:=Node^.y+2;
+      Sprite.Width:=ImageWidth;
+      Sprite.Height:=ImageHeight;
+      Sprite.TrimmedX:=x0;
+      Sprite.TrimmedY:=y0;
+      Sprite.TrimmedWidth:=TrimmedImageWidth;
+      Sprite.TrimmedHeight:=TrimmedImageHeight;
+      Sprite.Rotated:=false;
+      AddSprite(Sprite);
+      for y:=0 to TrimmedImageHeight-1 do begin
+       sp:=TrimmedImageData;
+       inc(sp,y*TrimmedImageWidth);
+       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+y,Layer));
        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
       end;
       begin
-       sp:=TrimmedImageData;
-       inc(sp,(TrimmedImageHeight-1)*TrimmedImageWidth);
-       dp:=Texture^.Data;
-       inc(dp,((Sprite.y+TrimmedImageHeight)*Texture^.Width)+Sprite.x);
-       Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
-       dp:=Texture^.Data;
-       inc(dp,((Sprite.y+TrimmedImageHeight+1)*Texture^.Width)+Sprite.x);
-       Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
+       begin
+        sp:=TrimmedImageData;
+        dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y-1,Layer));
+        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
+        dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y-2,Layer));
+        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
+       end;
+       begin
+        sp:=TrimmedImageData;
+        inc(sp,(TrimmedImageHeight-1)*TrimmedImageWidth);
+        dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+TrimmedImageHeight,Layer));
+        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
+        dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+TrimmedImageHeight+1,Layer));
+        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
+       end;
+      end;
+      for y:=-1 to TrimmedImageHeight do begin
+       sp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y,Layer));
+       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x-1,Sprite.y,Layer));
+       dp^:=sp^;
+       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x-2,Sprite.y,Layer));
+       dp^:=sp^;
+       sp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x+(TrimmedImageWidth-1),Sprite.y,Layer));
+       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x+TrimmedImageWidth,Sprite.y,Layer));
+       dp^:=sp^;
+       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x+TrimmedImageWidth+1,Sprite.y,Layer));
+       dp^:=sp^;
       end;
      end;
-     for y:=-1 to TrimmedImageHeight do begin
-      sp:=Texture^.Data;
-      inc(sp,((Sprite.y+y)*Texture^.Width)+Sprite.x);
-      dp:=Texture^.Data;
-      inc(dp,(((Sprite.y+y)*Texture^.Width)+Sprite.x)-1);
-      dp^:=sp^;
-      dp:=Texture^.Data;
-      inc(dp,(((Sprite.y+y)*Texture^.Width)+Sprite.x)-2);
-      dp^:=sp^;
-      sp:=Texture^.Data;
-      inc(sp,(((Sprite.y+y)*Texture^.Width)+Sprite.x)+(TrimmedImageWidth-1));
-      dp:=Texture^.Data;
-      inc(dp,(((Sprite.y+y)*Texture^.Width)+Sprite.x)+TrimmedImageWidth);
-      dp^:=sp^;
-      dp:=Texture^.Data;
-      inc(dp,(((Sprite.y+y)*Texture^.Width)+Sprite.x)+TrimmedImageWidth+1);
-      dp^:=sp^;
-     end;
-     Texture^.Dirty:=true;
-    end else begin
-     GetMem(Texture,SizeOf(TVulkanSpriteAtlasTexture));
-     FillChar(Texture^,SizeOf(TVulkanSpriteAtlasTexture),AnsiChar(#0));
-     Texture^.Width:=TrimmedImageWidth;
-     Texture^.Height:=TrimmedImageHeight;
-     Texture^.Data:=TrimmedImageData;
-     TrimmedImageData:=nil;
-     Texture^.Texture:=TVulkanSpriteTexture.Create(Texture^.Data,Texture^.Width,Texture^.Height);
-     Texture^.Next:=fTextureList;
-     fTextureList:=Texture;
-     Texture^.Dirty:=true;
-     Texture^.RootNode:=nil;
-     Sprite:=TVulkanSprite.Create;
-     Sprite.Texture:=Texture^.Texture;
-     Sprite.Name:=Name;
-     Sprite.x:=0;
-     Sprite.y:=0;
-     Sprite.Width:=ImageWidth;
-     Sprite.Height:=ImageHeight;
-     Sprite.TrimmedX:=x0;
-     Sprite.TrimmedY:=y0;
-     Sprite.TrimmedWidth:=TrimmedImageWidth;
-     Sprite.TrimmedHeight:=TrimmedImageHeight;
-     Sprite.Rotated:=false;
-     AddSprite(Sprite);
+     ArrayTexture.Dirty:=true;
     end;
 
    finally

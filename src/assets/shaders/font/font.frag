@@ -1,10 +1,10 @@
 #version 450 core
 
 layout (location = 0) in vec2 inPosition;
-layout (location = 1) in vec2 inTexCoord;
+layout (location = 1) in vec3 inTexCoord;
 layout (location = 2) in vec4 inColor;
 
-layout (binding = 0) uniform sampler2D uTexture;
+layout (binding = 0) uniform sampler2DArray uTexture;
 
 layout (location = 0) out vec4 outFragColor;
 
@@ -18,10 +18,10 @@ void main(void){
   vec4 color = vec4(inColor.xyz, inColor.w * clamp((smoothstep(width.x, width.y, center) + 
                                                     dot(smoothstep(width.xxxx, 
                                                                    width.yyyy,
-                                                                   vec4(textureLod(uTexture, buv.xy, 0.0).w,
-                                                                        textureLod(uTexture, buv.zw, 0.0).w,
-                                                                        textureLod(uTexture, buv.xw, 0.0).w,
-                                                                        textureLod(uTexture, buv.zy, 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
+                                                                   vec4(textureLod(uTexture, vec3(buv.xy, inTexCoord.z), 0.0).w,
+                                                                        textureLod(uTexture, vec3(buv.zw, inTexCoord.z), 0.0).w,
+                                                                        textureLod(uTexture, vec3(buv.xw, inTexCoord.z), 0.0).w,
+                                                                        textureLod(uTexture, vec3(buv.zy, inTexCoord.z), 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
   if(color.a < 1e-10){
     discard;
   }

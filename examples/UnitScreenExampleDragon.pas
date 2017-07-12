@@ -164,8 +164,8 @@ begin
                                                  vtdtCheckerboard,
                                                  512,
                                                  512,
-                                                 1,
-                                                 1,
+                                                 0,
+                                                 0,
                                                  1,
                                                  true,
                                                  false);{}

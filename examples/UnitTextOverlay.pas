@@ -192,7 +192,7 @@ begin
                                                 VK_SAMPLE_COUNT_1_BIT,
                                                 SDFFontWidth,
                                                 SDFFontHeight,
-                                                1,
+                                                0,
                                                 SDFFontDepth,
                                                 1,
                                                 1,

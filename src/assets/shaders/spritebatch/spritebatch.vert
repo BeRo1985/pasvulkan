@@ -1,11 +1,11 @@
 #version 450 core
 
 layout (location = 0) in vec2 inPosition;
-layout (location = 1) in vec2 inTexCoord;
+layout (location = 1) in vec3 inTexCoord;
 layout (location = 2) in vec4 inColor;
 
 layout (location = 0) out vec2 outPosition;
-layout (location = 1) out vec2 outTexCoord;
+layout (location = 1) out vec3 outTexCoord;
 layout (location = 2) out vec4 outColor;
 
 out gl_PerVertex {
