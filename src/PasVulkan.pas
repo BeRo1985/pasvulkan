@@ -3660,7 +3660,6 @@ type EVulkanException=class(Exception);
        fHashMap:TVulkanStringHashMap;
        fIsUploaded:boolean;
        fMipMaps:boolean;
-       fAutomaticTrim:boolean;
        fWidth:TVkInt32;
        fHeight:TVkInt32;
        fMaximumCountArrayLayers:TVkInt32;
@@ -3685,17 +3684,16 @@ type EVulkanException=class(Exception);
        procedure Unload; virtual;
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
-       function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean; virtual;
-       function LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32):TVulkanSprite; virtual;
-       function LoadSprite(const Name:TVulkanRawByteString;Stream:TStream):TVulkanSprite; virtual;
-       function LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64):TVulkanSprites; virtual;
+       function LoadXML(const aTextureStream:TStream;const aStream:TStream;const aAutomaticTrim:boolean=true):boolean; virtual;
+       function LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32;const aAutomaticTrim:boolean=true):TVulkanSprite; virtual;
+       function LoadSprite(const Name:TVulkanRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TVulkanSprite; virtual;
+       function LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64;const aAutomaticTrim:boolean=true):TVulkanSprites; virtual;
        property Device:TVulkanDevice read fDevice;
        property Count:TVkInt32 read GetCount;
        property Items[Index:TVkInt32]:TVulkanSprite read GetItem write SetItem;
        property Sprites[const Name:TVulkanRawByteString]:TVulkanSprite read GetSprite; default;
       published
        property MipMaps:boolean read fMipMaps write fMipMaps;
-       property AutomaticTrim:boolean read fAutomaticTrim write fAutomaticTrim;
        property Width:TVkInt32 read fWidth write fWidth;
        property Height:TVkInt32 read fHeight write fHeight;
        property MaximumCountArrayLayers:TVkInt32 read fMaximumCountArrayLayers write fMaximumCountArrayLayers;
@@ -4344,8 +4342,10 @@ type EVulkanException=class(Exception);
 
      TVulkanFontDistanceFieldJobs=array of TVulkanFontDistanceFieldJob;
 
-     TVulkanFont=class(TVulkanSpriteAtlas)
+     TVulkanFont=class
       private
+       fDevice:TVulkanDevice;
+       fSpriteAtlas:TVulkanSpriteAtlas;
        fTargetPPI:TVkInt32;
        fUnitsPerEm:TVkInt32;
        fBaseScaleFactor:TVkFloat;
@@ -4370,8 +4370,8 @@ type EVulkanException=class(Exception);
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:pointer;const FromIndex,ToIndex:TPasMPNativeInt);
 {$endif}
       public
-       constructor Create(const aDevice:TVulkanDevice;const aTargetPPI:TVkInt32=72); reintroduce;
-       constructor CreateFromTrueTypeFont(const aDevice:TVulkanDevice;const aTrueTypeFont:TVulkanTrueTypeFont;const aCodePointRanges:array of TVulkanFontCodePointRange);
+       constructor Create(const aDevice:TVulkanDevice;const aSpriteAtlas:TVulkanSpriteAtlas;const aTargetPPI:TVkInt32=72); reintroduce;
+       constructor CreateFromTrueTypeFont(const aDevice:TVulkanDevice;const aSpriteAtlas:TVulkanSpriteAtlas;const aTrueTypeFont:TVulkanTrueTypeFont;const aCodePointRanges:array of TVulkanFontCodePointRange);
        destructor Destroy; override;
        class function CodePointRange(const aFromCodePoint,aToCodePoint:TVkUInt32):TVulkanFontCodePointRange; overload;
        class function CodePointRange(const aFromCodePoint,aToCodePoint:WideChar):TVulkanFontCodePointRange; overload;
@@ -28391,7 +28391,6 @@ begin
  fHashMap:=TVulkanStringHashMap.Create;
  fIsUploaded:=false;
  fMipMaps:=true;
- fAutomaticTrim:=true;
  fWidth:=Min(VULKAN_SPRITEATLASTEXTURE_WIDTH,fDevice.fPhysicalDevice.fProperties.limits.maxImageDimension2D);
  fHeight:=Min(VULKAN_SPRITEATLASTEXTURE_HEIGHT,fDevice.fPhysicalDevice.fProperties.limits.maxImageDimension2D);
  fMaximumCountArrayLayers:=fDevice.fPhysicalDevice.fProperties.limits.maxImageArrayLayers;
@@ -28544,7 +28543,7 @@ begin
  end;
 end;
 
-function TVulkanSpriteAtlas.LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean;
+function TVulkanSpriteAtlas.LoadXML(const aTextureStream:TStream;const aStream:TStream;const aAutomaticTrim:boolean=true):boolean;
 var XML:TVulkanXML;
     MemoryStream:TMemoryStream;
     i,j:TVkInt32;
@@ -28643,7 +28642,7 @@ begin
  end;
 end;
 
-function TVulkanSpriteAtlas.LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32):TVulkanSprite;
+function TVulkanSpriteAtlas.LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32;const aAutomaticTrim:boolean=true):TVulkanSprite;
 type PVkUInt32=^TVkUInt32;
 var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer:TVkInt32;
     ArrayTexture:TVulkanSpriteAtlasArrayTexture;
@@ -28669,7 +28668,7 @@ begin
    x1:=ImageWidth;
    y1:=ImageHeight;
 
-   if fAutomaticTrim then begin
+   if aAutomaticTrim then begin
 
     // Trim input
 
@@ -28929,7 +28928,7 @@ begin
 
 end;
 
-function TVulkanSpriteAtlas.LoadSprite(const Name:TVulkanRawByteString;Stream:TStream):TVulkanSprite;
+function TVulkanSpriteAtlas.LoadSprite(const Name:TVulkanRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TVulkanSprite;
 var InputImageData,ImageData:TVkPointer;
     InputImageDataSize,ImageWidth,ImageHeight:TVkInt32;
 begin
@@ -28951,7 +28950,7 @@ begin
 
      if LoadImage(InputImageData,InputImageDataSize,ImageData,ImageWidth,ImageHeight) then begin
 
-      result:=LoadRawSprite(Name,ImageData,ImageWidth,ImageHeight);
+      result:=LoadRawSprite(Name,ImageData,ImageWidth,ImageHeight,aAutomaticTrim);
 
      end else begin
       raise Exception.Create('Can''t load image');
@@ -28985,7 +28984,7 @@ begin
 
 end;
 
-function TVulkanSpriteAtlas.LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64):TVulkanSprites;
+function TVulkanSpriteAtlas.LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64;const aAutomaticTrim:boolean=true):TVulkanSprites;
 type PVkUInt32=^TVkUInt32;
 var InputImageData,ImageData,SpriteData:TVkPointer;
     InputImageDataSize,ImageWidth,ImageHeight,Count,x,y,sy,sw,sh:TVkInt32;
@@ -29053,7 +29052,7 @@ begin
             inc(dp,SpriteWidth);
            end;
 
-           result[Count]:=LoadRawSprite(Name+TVulkanRawByteString(IntToStr(Count)),SpriteData,SpriteWidth,SpriteHeight);
+           result[Count]:=LoadRawSprite(Name+TVulkanRawByteString(IntToStr(Count)),SpriteData,SpriteWidth,SpriteHeight,aAutomaticTrim);
 
            inc(Count);
 
@@ -40553,10 +40552,14 @@ begin
 
 end;
 
-constructor TVulkanFont.Create(const aDevice:TVulkanDevice;const aTargetPPI:TVkInt32=72);
+constructor TVulkanFont.Create(const aDevice:TVulkanDevice;const aSpriteAtlas:TVulkanSpriteAtlas;const aTargetPPI:TVkInt32=72);
 begin
 
- inherited Create(aDevice);
+ inherited Create;
+
+ fDevice:=aDevice;
+
+ fSpriteAtlas:=aSpriteAtlas;
 
  fTargetPPI:=aTargetPPI;
 
@@ -40590,11 +40593,9 @@ begin
  fDistanceFieldJobs:=nil;
 {$endif}
 
- fAutomaticTrim:=false;
-
 end;
 
-constructor TVulkanFont.CreateFromTrueTypeFont(const aDevice:TVulkanDevice;const aTrueTypeFont:TVulkanTrueTypeFont;const aCodePointRanges:array of TVulkanFontCodePointRange);
+constructor TVulkanFont.CreateFromTrueTypeFont(const aDevice:TVulkanDevice;const aSpriteAtlas:TVulkanSpriteAtlas;const aTrueTypeFont:TVulkanTrueTypeFont;const aCodePointRanges:array of TVulkanFontCodePointRange);
 const GlyphMetaDataScaleFactor=1.0;
       GlyphRasterizationScaleFactor=1.0/256.0;
 var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
@@ -40628,7 +40629,7 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
 {$endif}
 begin
 
- Create(aDevice,aTrueTypeFont.fTargetPPI);
+ Create(aDevice,aSpriteAtlas,aTrueTypeFont.fTargetPPI);
 
 {$ifdef PasVulkanPasMP}
  PasMPInstance:=GetVulkanPasMP;
@@ -40833,10 +40834,11 @@ begin
         Glyph:=SortedGlyphs[GlyphIndex];
         if (Glyph^.Width>0) and (Glyph^.Height>0) then begin
          OtherGlyphIndex:={$H-}((TVkPtrUInt(TVkPointer(Glyph))-TVkPtrUInt(TVkPointer(@fGlyphs[0])))) div SizeOf(TVulkanFontGlyph);
-         Glyph^.Sprite:=LoadRawSprite(TVulkanRawByteString(String('glyph'+IntToStr(OtherGlyphIndex))),
-                                      @GlyphDistanceFields[OtherGlyphIndex].Pixels[0],
-                                      Glyph^.Width,
-                                      Glyph^.Height);
+         Glyph^.Sprite:=aSpriteAtlas.LoadRawSprite(TVulkanRawByteString(String('glyph'+IntToStr(OtherGlyphIndex))),
+                                                   @GlyphDistanceFields[OtherGlyphIndex].Pixels[0],
+                                                   Glyph^.Width,
+                                                   Glyph^.Height,
+                                                   false);
         end;
        end;
 

@@ -137,7 +137,7 @@ begin
   try
    TrueTypeFont.Size:=-64;
    TrueTypeFont.Hinting:=false;
-   fVulkanFont:=TVulkanFont.CreateFromTrueTypeFont(VulkanApplication.VulkanDevice,TrueTypeFont,[TVulkanFont.CodePointRange(0,255)]);
+   fVulkanFont:=TVulkanFont.CreateFromTrueTypeFont(VulkanApplication.VulkanDevice,fVulkanSpriteAtlas,TrueTypeFont,[TVulkanFont.CodePointRange(0,255)]);
   finally
    TrueTypeFont.Free;
   end;
@@ -145,12 +145,12 @@ begin
   Stream.Free;
  end;
 
- fVulkanFont.Upload(VulkanApplication.VulkanDevice.GraphicsQueue,
-                    VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
-                    VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
-                    VulkanApplication.VulkanDevice.TransferQueue,
-                    VulkanApplication.VulkanTransferCommandBuffers[0,0],
-                    VulkanApplication.VulkanTransferCommandBufferFences[0,0]);
+ fVulkanSpriteAtlas.Upload(VulkanApplication.VulkanDevice.GraphicsQueue,
+                           VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
+                           VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
+                           VulkanApplication.VulkanDevice.TransferQueue,
+                           VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                           VulkanApplication.VulkanTransferCommandBufferFences[0,0]);
 
 end;
 
@@ -158,6 +158,7 @@ procedure TScreenExampleFont.Hide;
 var Index:TVkInt32;
 begin
  FreeAndNil(fVulkanFont);
+ FreeAndNil(fVulkanSpriteAtlas);
  FreeAndNil(fVulkanRenderPass);
  for Index:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[Index]);
