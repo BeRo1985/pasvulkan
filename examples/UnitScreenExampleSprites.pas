@@ -461,14 +461,14 @@ begin
  DstRect.Right:=DstRect.Left+fVulkanSpriteAppIcon.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteAppIcon.Height;
  fVulkanSpriteBatch.Draw(fVulkanSpriteAppIcon,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteAppIcon.Width*0.5,fVulkanSpriteAppIcon.Height*0.5),cos(fTime*pi*1.7*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
-
+ {
  SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
  DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
  DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteSmiley0.Height)*0.5)+(cos(fTime*pi*2.3*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteSmiley0.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
  fVulkanSpriteBatch.Draw(fVulkanSpriteSmiley0,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,0.9));
-
+}
  fVulkanSpriteBatch.BlendingMode:=vsbbmAdditiveBlending;
 
  SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteDancer0.Width,fVulkanSpriteDancer0.Height);
@@ -477,6 +477,15 @@ begin
  DstRect.Right:=DstRect.Left+fVulkanSpriteDancer0.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteDancer0.Height;
  fVulkanSpriteBatch.Draw(fVulkanSpriteDancer0,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteDancer0.Width*0.5,fVulkanSpriteDancer0.Height*0.5),cos(fTime*pi*1.5*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,0.5));
+
+ fVulkanSpriteBatch.BlendingMode:=vsbbmAlphaBlending;
+
+ SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
+ DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
+ DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteSmiley0.Height)*0.5)+(cos(fTime*pi*2.3*0.1)*128.0);
+ DstRect.Right:=DstRect.Left+fVulkanSpriteSmiley0.Width;
+ DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
+ fVulkanSpriteBatch.Draw(fVulkanSpriteSmiley0,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
 
  fVulkanSpriteBatch.Stop;
 
