@@ -28,7 +28,8 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
         - PNG (all types, including 16-bit channel PNGs)
         - TGA
     - Optional automatic GPU-based texture mipmap generation (with help of vkCmdBlitImage)
-    - Own ObjectPascal-native True Type Font loader
+    - Own ObjectPascal-native TrueType/OpenType Font loader implementation
+        - With experimental PostScript-flavoured OpenType Font support (CFF Type 2)
         - With semi-working TTF hinting byte code interpreter as an optional option
         - With automatic on-the-fly high-quality fast parallizied signed distance field generation (based on the implementation ideas from [Practical Analytic 2D Signed Distance Field Generation](https://web.archive.org/web/20160909051854/http://malideveloper.arm.com/downloads/Presentations/Siggraph16/Practical_Analytic_2D_Signed_Distance_Field_Generation.pdf) and with [PasMP](https://github.com/BeRo1985/pasmp) )
         - A [font vector textures](http://wdobbie.com/post/gpu-text-rendering-with-vector-textures/) feature is also planned for the future, for an own combined signed-distance-field + vector-texture hybrid font rendering technology implementation, dependently by the font size and so on, where the RGB channels of a texel would be then the together OR'ed 24-bit first-bezier-linked-list-index (to a Vulkan buffer with the bezier data, 0xffffff = no (next) bezier), and the alpha channel of a texel would be just the 8-bit signed distance field.
