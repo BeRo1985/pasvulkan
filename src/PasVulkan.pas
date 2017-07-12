@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-12-21-37-0000                       *
+ *                        Version 2017-07-13-01-54-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -3604,6 +3604,7 @@ type EVulkanException=class(Exception);
        fCurrentVulkanVertexBufferOffset:TVkInt32;
        fState:TVulkanSpriteVertexState;
        fClipRect:TVulkanSpriteVertexClipRect;
+       fUnscaledClipRect:TVulkanSpriteVertexClipRect;
        fRenderingMode:TVulkanSpriteBatchRenderingMode;
        fBlendingMode:TVulkanSpriteBatchBlendingMode;
        fLastArrayTexture:TVulkanSpriteAtlasArrayTexture;
@@ -3621,6 +3622,7 @@ type EVulkanException=class(Exception);
        procedure SetBlendingMode(aBlendingMode:TVulkanSpriteBatchBlendingMode);
        procedure GetNextDestinationVertexBuffer;
        procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TVkInt32);
+       function ClipCheck(const aX0,aY0,aX1,aY1:TVkFloat):boolean;
       public
        constructor Create(const aDevice:TVulkanDevice;
                           const aGraphicsQueue:TVulkanQueue;
@@ -3638,6 +3640,8 @@ type EVulkanException=class(Exception);
        procedure Flush;
        procedure SetScissor(const aScissor:TVkRect2D); overload;
        procedure SetScissor(const aLeft,aTop,aWidth,aHeight:TVkInt32); overload;
+       procedure SetClipRect(const aClipRect:TVkRect2D); overload;
+       procedure SetClipRect(const aLeft,aTop,aWidth,aHeight:TVkInt32); overload;
        procedure Hook(const aHook:TVulkanSpriteBatchHook;const aData:TVkPointer); overload;
        procedure Draw(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor); overload;
        procedure Draw(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:single;const Color:TVulkanSpriteColor); overload;
@@ -27675,6 +27679,11 @@ begin
  fClipRect.x1:=1.0;
  fClipRect.y1:=1.0;
 
+ fUnscaledClipRect.x0:=0.0;
+ fUnscaledClipRect.y0:=0.0;
+ fUnscaledClipRect.x1:=fWidth;
+ fUnscaledClipRect.y1:=fHeight;
+
 end;
 
 procedure TVulkanSpriteBatch.Stop;
@@ -27805,6 +27814,15 @@ begin
  end;
 end;
 
+function TVulkanSpriteBatch.ClipCheck(const aX0,aY0,aX1,aY1:TVkFloat):boolean;
+const Threshold=1e-6;
+begin
+ result:=(fUnscaledClipRect.x0<=(aX1+Threshold)) and
+         (aX0<=(fUnscaledClipRect.x1+Threshold)) and
+         (fUnscaledClipRect.y0<=(aY1+Threshold)) and
+         (aY0<=(fUnscaledClipRect.y1+Threshold));
+end;
+
 procedure TVulkanSpriteBatch.SetArrayTexture(const ArrayTexture:TVulkanSpriteAtlasArrayTexture);
 begin
  if fLastArrayTexture<>ArrayTexture then begin
@@ -27836,6 +27854,30 @@ begin
  SetScissor(NewScissor);
 end;
 
+procedure TVulkanSpriteBatch.SetClipRect(const aClipRect:TVkRect2D);
+begin
+ fUnscaledClipRect.x0:=aClipRect.offset.x;
+ fUnscaledClipRect.y0:=aClipRect.offset.y;
+ fUnscaledClipRect.x1:=aClipRect.offset.x+(aClipRect.extent.width+0.0);
+ fUnscaledClipRect.y1:=aClipRect.offset.y+(aClipRect.extent.height+0.0);
+ fClipRect.x0:=((aClipRect.offset.x*fInverseWidth)-0.5)*2.0;
+ fClipRect.y0:=((aClipRect.offset.y*fInverseHeight)-0.5)*2.0;
+ fClipRect.x1:=(((aClipRect.offset.x+(aClipRect.extent.width+0.0))*fInverseWidth)-0.5)*2.0;
+ fClipRect.y1:=(((aClipRect.offset.y+(aClipRect.extent.height+0.0))*fInverseHeight)-0.5)*2.0;
+end;
+
+procedure TVulkanSpriteBatch.SetClipRect(const aLeft,aTop,aWidth,aHeight:TVkInt32);
+begin
+ fUnscaledClipRect.x0:=aLeft;
+ fUnscaledClipRect.y0:=aTop;
+ fUnscaledClipRect.x1:=aLeft+aWidth;
+ fUnscaledClipRect.y1:=aTop+aHeight;
+ fClipRect.x0:=((aLeft*fInverseWidth)-0.5)*2.0;
+ fClipRect.y0:=((aTop*fInverseHeight)-0.5)*2.0;
+ fClipRect.x1:=(((aLeft+aWidth)*fInverseWidth)-0.5)*2.0;
+ fClipRect.y1:=(((aTop+aHeight)*fInverseHeight)-0.5)*2.0;
+end;
+
 procedure TVulkanSpriteBatch.Hook(const aHook:TVulkanSpriteBatchHook;const aData:TVkPointer);
 var QueueItemIndex:TVkInt32;
     QueueItem:PVulkanSpriteBatchQueueItem;
@@ -27864,6 +27906,7 @@ var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:single;
     VertexColor:TVulkanSpriteVertexColor;
 begin
  if (abs(Color.a)>MinA) and
+    ClipCheck(Dest.Left,Dest.Top,Dest.Right,Dest.Bottom) and
     (((Src.Right>=Sprite.TrimmedX) and (Src.Bottom>=Sprite.TrimmedY)) and
     (((not Sprite.Rotated) and (((Sprite.TrimmedX+Sprite.TrimmedWidth)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedHeight)>=Src.Top))) or
      (Sprite.Rotated and (((Sprite.TrimmedX+Sprite.TrimmedHeight)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedWidth)>=Src.Top))))) then begin
@@ -27972,6 +28015,22 @@ begin
    TempSrc.Top:=(ty1-Sprite.TrimmedY)+Sprite.y;
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
+   if TempDest.Left<fUnscaledClipRect.x0 then begin
+    TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.x0-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+    TempDest.Left:=fUnscaledClipRect.x0;
+   end;
+   if TempDest.Top<fUnscaledClipRect.y0 then begin
+    TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.y0-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+    TempDest.Top:=fUnscaledClipRect.y0;
+   end;
+   if TempDest.Right>fUnscaledClipRect.x1 then begin
+    TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.x1-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+    TempDest.Right:=fUnscaledClipRect.x1;
+   end;
+   if TempDest.Bottom>fUnscaledClipRect.y1 then begin
+    TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.y1-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+    TempDest.Bottom:=fUnscaledClipRect.y1;
+   end;
    sX0:=TempSrc.Left*fInverseTextureWidth;
    sY0:=TempSrc.Top*fInverseTextureHeight;
    sX1:=TempSrc.Right*fInverseTextureWidth;
@@ -28114,6 +28173,24 @@ begin
    TempSrc.Top:=(ty1-Sprite.TrimmedY)+Sprite.y;
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
+   if Rotation=0.0 then begin
+    if TempDest.Left<fUnscaledClipRect.x0 then begin
+     TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.x0-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+     TempDest.Left:=fUnscaledClipRect.x0;
+    end;
+    if TempDest.Top<fUnscaledClipRect.y0 then begin
+     TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.y0-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+     TempDest.Top:=fUnscaledClipRect.y0;
+    end;
+    if TempDest.Right>fUnscaledClipRect.x1 then begin
+     TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.x1-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+     TempDest.Right:=fUnscaledClipRect.x1;
+    end;
+    if TempDest.Bottom>fUnscaledClipRect.y1 then begin
+     TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.y1-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+     TempDest.Bottom:=fUnscaledClipRect.y1;
+    end;
+   end;
    AroundPoint.x:=TempDest.Left+Origin.x;
    AroundPoint.y:=TempDest.Top+Origin.y;
    Points[0].x:=TempDest.Left;
