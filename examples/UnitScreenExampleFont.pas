@@ -130,6 +130,7 @@ begin
 
  fVulkanSpriteAtlas:=TVulkanSpriteAtlas.Create(VulkanApplication.VulkanDevice);
 
+ //Stream:=VulkanApplication.Assets.GetAssetStream('fonts/linbiolinum_r.otf');
  Stream:=VulkanApplication.Assets.GetAssetStream('fonts/vera.ttf');
  try
   TrueTypeFont:=TVulkanTrueTypeFont.Create(Stream,72);
