@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-13-01-54-0000                       *
+ *                        Version 2017-07-13-02-40-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -79,9 +79,15 @@ uses {$if defined(Windows)}
      {$endif}
      Vulkan;
 
-const VulkanMinimumMemoryChunkSize=1 shl 24; // 16 MB minimum memory chunk size
+var VulkanMinimumMemoryChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 24; // 16 MB minimum memory chunk size
 
-      VkTTF_PID_Apple=0;
+    VulkanSmallMaximumHeapSize:TVkDeviceSize=TVkDeviceSize(1) shl 31; // 2048 MB small maximum heap size as threshold
+
+    VulkanDefaultSmallHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 25; // 32 MB memory chunk size at small-sized heaps
+
+    VulkanDefaultLargeHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 27; // 128 MB memory chunk size at large-sized heaps
+
+const VkTTF_PID_Apple=0;
       VkTTF_PID_Macintosh=1;
       VkTTF_PID_ISO=2;
       VkTTF_PID_Microsoft=3;
@@ -1519,6 +1525,7 @@ type EVulkanException=class(Exception);
        constructor Create(const aMemoryManager:TVulkanDeviceMemoryManager;
                           const aMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
                           const aSize:TVkDeviceSize;
+                          const aSizeIsMinimumSize:boolean;
                           const aMemoryTypeBits:TVkUInt32;
                           const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
                           const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
@@ -17189,6 +17196,7 @@ end;
 constructor TVulkanDeviceMemoryChunk.Create(const aMemoryManager:TVulkanDeviceMemoryManager;
                                             const aMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
                                             const aSize:TVkDeviceSize;
+                                            const aSizeIsMinimumSize:boolean;
                                             const aMemoryTypeBits:TVkUInt32;
                                             const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
                                             const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
@@ -17197,16 +17205,19 @@ constructor TVulkanDeviceMemoryChunk.Create(const aMemoryManager:TVulkanDeviceMe
                                             const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                                             const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                             const aMemoryChunkList:PVulkanDeviceMemoryManagerChunkList);
-var Index,HeapIndex,CurrentScore,BestScore:TVkInt32;
+type TBlacklistedHeaps=array of TVkInt32;
+var Index,HeapIndex,CurrentScore,BestScore,CountBlacklistedHeaps,BlacklistedHeapIndex:TVkInt32;
     MemoryAllocateInfo:TVkMemoryAllocateInfo;
     PhysicalDevice:TVulkanPhysicalDevice;
-    CurrentSize,BestSize:TVkDeviceSize;
-    Found:boolean;
+    CurrentSize,BestSize,CurrentWantedChunkSize,BestWantedChunkSize:TVkDeviceSize;
+    Found,OK:boolean;
+    ResultCode,LastResultCode:TVkResult;
+    BlacklistedHeaps:TBlacklistedHeaps;
 begin
  inherited Create;
 
  fMemoryManager:=aMemoryManager;
-                    
+
  fMemoryChunkFlags:=aMemoryChunkFlags;
 
  fSize:=aSize;
@@ -17218,65 +17229,120 @@ begin
  fMappedOffset:=0;
 
  fMappedSize:=fSize;
-                                        
+
  fMemoryHandle:=VK_NULL_HANDLE;
 
  fMemory:=nil;
 
- fMemoryTypeIndex:=0;
- fMemoryTypeBits:=0;
- fMemoryHeapIndex:=0;
- PhysicalDevice:=fMemoryManager.fDevice.fPhysicalDevice;
- BestSize:=0;
- BestScore:=-1;
- Found:=false;
- for Index:=0 to length(PhysicalDevice.fMemoryProperties.memoryTypes)-1 do begin
-  if ((aMemoryTypeBits and (TVkUInt32(1) shl Index))<>0) and
-     ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryRequiredPropertyFlags)=aMemoryRequiredPropertyFlags) and
-     ((aMemoryAvoidPropertyFlags=0) or ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryAvoidPropertyFlags)=0)) then begin
-   HeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
-   CurrentSize:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size;
-   if ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryRequiredHeapFlags)=aMemoryRequiredHeapFlags) and
-      ((aMemoryAvoidHeapFlags=0) or ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryAvoidHeapFlags)=0)) and
-      (aSize<=CurrentSize) and (BestSize<CurrentSize) then begin
-    CurrentScore:=0;
-    if (PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryPreferredPropertyFlags)=aMemoryPreferredPropertyFlags then begin
-     CurrentScore:=CurrentScore or 2;
-    end;
-    if (PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryPreferredHeapFlags)=aMemoryPreferredHeapFlags then begin
-     CurrentScore:=CurrentScore or 1;
-    end;
-    if BestScore<CurrentScore then begin
-     BestScore:=CurrentScore;
-     BestSize:=CurrentSize;
-     fMemoryTypeIndex:=Index;
-     fMemoryTypeBits:=TVkUInt32(1) shl Index;
-     fMemoryHeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
-     Found:=true;
+ LastResultCode:=VK_SUCCESS;
+
+ BlacklistedHeaps:=nil;
+ CountBlacklistedHeaps:=0;
+ try
+
+  repeat
+
+   fMemoryTypeIndex:=0;
+   fMemoryTypeBits:=0;
+   fMemoryHeapIndex:=0;
+   PhysicalDevice:=fMemoryManager.fDevice.fPhysicalDevice;
+   BestSize:=0;
+   BestScore:=-1;
+   BestWantedChunkSize:=aSize;
+   Found:=false;
+   for Index:=0 to length(PhysicalDevice.fMemoryProperties.memoryTypes)-1 do begin
+    if ((aMemoryTypeBits and (TVkUInt32(1) shl Index))<>0) and
+       ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryRequiredPropertyFlags)=aMemoryRequiredPropertyFlags) and
+       ((aMemoryAvoidPropertyFlags=0) or ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryAvoidPropertyFlags)=0)) then begin
+     HeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
+     CurrentSize:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size;
+     if aSizeIsMinimumSize then begin
+      if CurrentSize<=VulkanSmallMaximumHeapSize then begin
+       CurrentWantedChunkSize:=Max(aSize,VulkanDefaultSmallHeapChunkSize);
+      end else begin
+       CurrentWantedChunkSize:=Max(aSize,VulkanDefaultLargeHeapChunkSize);
+      end;
+     end else begin
+      CurrentWantedChunkSize:=aSize;
+     end;
+     if ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryRequiredHeapFlags)=aMemoryRequiredHeapFlags) and
+        ((aMemoryAvoidHeapFlags=0) or ((PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryAvoidHeapFlags)=0)) and
+        (CurrentWantedChunkSize<=CurrentSize) and (BestSize<CurrentSize) then begin
+      CurrentScore:=0;
+      if (PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryPreferredPropertyFlags)=aMemoryPreferredPropertyFlags then begin
+       CurrentScore:=CurrentScore or 2;
+      end;
+      if (PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and aMemoryPreferredHeapFlags)=aMemoryPreferredHeapFlags then begin
+       CurrentScore:=CurrentScore or 1;
+      end;
+      if BestScore<CurrentScore then begin
+       OK:=true;
+       for BlacklistedHeapIndex:=0 to CountBlacklistedHeaps-1 do begin
+        if BlacklistedHeaps[BlacklistedHeapIndex]=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex then begin
+         OK:=false;
+         break;
+        end;
+       end;
+       if OK then begin
+        BestScore:=CurrentScore;
+        BestSize:=CurrentSize;
+        BestWantedChunkSize:=CurrentWantedChunkSize;
+        fMemoryTypeIndex:=Index;
+        fMemoryTypeBits:=TVkUInt32(1) shl Index;
+        fMemoryHeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
+        Found:=true;
+       end;
+      end;
+     end;
     end;
    end;
-  end;
+   if not Found then begin
+    if LastResultCode<>VK_SUCCESS then begin
+     HandleResultCode(LastResultCode);
+    end;
+    raise EVulkanException.Create('No suitable device memory heap available');
+   end;
+
+   fMemoryPropertyFlags:=PhysicalDevice.fMemoryProperties.memoryTypes[fMemoryTypeIndex].propertyFlags;
+
+   fMemoryHeapFlags:=PhysicalDevice.fMemoryProperties.memoryHeaps[fMemoryHeapIndex].flags;
+
+   FillChar(MemoryAllocateInfo,SizeOf(TVkMemoryAllocateInfo),#0);
+   MemoryAllocateInfo.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+   MemoryAllocateInfo.pNext:=nil;
+   MemoryAllocateInfo.allocationSize:=BestWantedChunkSize;
+   MemoryAllocateInfo.memoryTypeIndex:=fMemoryTypeIndex;
+
+   ResultCode:=fMemoryManager.fDevice.Commands.AllocateMemory(fMemoryManager.fDevice.fDeviceHandle,@MemoryAllocateInfo,fMemoryManager.fDevice.fAllocationCallbacks,@fMemoryHandle);
+
+   case ResultCode of
+    VK_ERROR_FRAGMENTED_POOL,
+    VK_ERROR_OUT_OF_HOST_MEMORY,
+    VK_ERROR_OUT_OF_DEVICE_MEMORY:begin
+     LastResultCode:=ResultCode;
+     if length(BlacklistedHeaps)<(CountBlacklistedHeaps+1) then begin
+      SetLength(BlacklistedHeaps,(CountBlacklistedHeaps+1)*2);
+     end;
+     BlacklistedHeaps[CountBlacklistedHeaps]:=fMemoryHeapIndex;
+     inc(CountBlacklistedHeaps);
+     continue;
+    end;
+    else begin
+     HandleResultCode(ResultCode);
+     break;
+    end;
+   end;
+
+  until false;
+
+ finally
+  BlacklistedHeaps:=nil;
  end;
- if not Found then begin
-  raise EVulkanException.Create('No suitable device memory heap available');
- end;
-
- fMemoryPropertyFlags:=PhysicalDevice.fMemoryProperties.memoryTypes[fMemoryTypeIndex].propertyFlags;
-
- fMemoryHeapFlags:=PhysicalDevice.fMemoryProperties.memoryHeaps[fMemoryHeapIndex].flags;
-
- FillChar(MemoryAllocateInfo,SizeOf(TVkMemoryAllocateInfo),#0);
- MemoryAllocateInfo.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
- MemoryAllocateInfo.pNext:=nil;
- MemoryAllocateInfo.allocationSize:=fSize;
- MemoryAllocateInfo.memoryTypeIndex:=fMemoryTypeIndex;
-
- HandleResultCode(fMemoryManager.fDevice.Commands.AllocateMemory(fMemoryManager.fDevice.fDeviceHandle,@MemoryAllocateInfo,fMemoryManager.fDevice.fAllocationCallbacks,@fMemoryHandle));
 
  fOffsetRedBlackTree:=TVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
  fSizeRedBlackTree:=TVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
 
- TVulkanDeviceMemoryChunkBlock.Create(self,0,aSize,vdmatFree);
+ TVulkanDeviceMemoryChunkBlock.Create(self,0,BestWantedChunkSize,vdmatFree);
 
  fLock:=TCriticalSection.Create;
 
@@ -17298,7 +17364,7 @@ begin
      raise EVulkanException.Create('Memory is already mapped');
     end else begin
      fMappedOffset:=0;
-     fMappedSize:=aSize;
+     fMappedSize:=BestWantedChunkSize;
      HandleResultCode(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,0,aSize,0,@fMemory));
     end;
    end else begin
@@ -17308,6 +17374,8 @@ begin
    fLock.Release;
   end;
  end;
+
+ fSize:=BestWantedChunkSize;
 
 end;
 
@@ -18004,6 +18072,7 @@ begin
    MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,
                                                 MemoryChunkFlags,
                                                 aMemoryBlockSize,
+                                                false,
                                                 aMemoryTypeBits,
                                                 aMemoryRequiredPropertyFlags,
                                                 aMemoryPreferredPropertyFlags,
@@ -18080,9 +18149,11 @@ begin
 
    if not assigned(result) then begin
     // Otherwise allocate a block inside a new chunk
+
     MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,
                                                  MemoryChunkFlags,
                                                  VulkanDeviceSizeRoundUpToPowerOfTwo(Max(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
+                                                 true,
                                                  aMemoryTypeBits,
                                                  aMemoryRequiredPropertyFlags,
                                                  aMemoryPreferredPropertyFlags,
