@@ -4235,8 +4235,9 @@ type EVulkanException=class(Exception);
        function GetGlyphBottomSideBearing(GlyphIndex:TVkInt32):TVkInt32;
        function GetKerning(Left,Right:TVkUInt32;Horizontal:boolean):TVkInt32;
        function GetStyleIndex(Thin,Bold,Italic:boolean):TVkInt32;
-       function TextWidth(const Text:TVulkanUTF8String):TVkInt32;
-       function TextHeight(const Text:TVulkanUTF8String):TVkInt32;
+       function TextWidth(const aText:TVulkanUTF8String):TVkInt32;
+       function TextHeight(const aText:TVulkanUTF8String):TVkInt32;
+       procedure TextSize(const aText:TVulkanUTF8String;out aWidth,aHeight:TVkInt32);
        function RowHeight(const Percent:TVkInt32):TVkInt32;
        function GetUnitsPerEm:TVkInt32;
        function GetScaleFactor:TVkDouble;
@@ -4395,6 +4396,7 @@ type EVulkanException=class(Exception);
        function GetScaleFactor(const aSize:TVkFloat):TVkFloat;
        function TextWidth(const aText:TVulkanUTF8String;const aSize:TVkFloat):TVkFloat;
        function TextHeight(const aText:TVulkanUTF8String;const aSize:TVkFloat):TVkFloat;
+       procedure TextSize(const aText:TVulkanUTF8String;const aSize:TVkFloat;out aWidth,aHeight:TVkFloat);
        function RowHeight(const Percent:TVkFloat):TVkFloat;
        procedure Draw(const aSpriteBatch:TVulkanSpriteBatch;const aText:TVulkanUTF8String;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
      end;
@@ -38478,15 +38480,15 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.TextWidth(const Text:TVulkanUTF8String):TVkInt32;
+function TVulkanTrueTypeFont.TextWidth(const aText:TVulkanUTF8String):TVkInt32;
 var TextIndex,CurrentGlyph,LastGlyph,Width,NewWidth:TVkInt32;
 begin
  result:=0;
  Width:=0;
  TextIndex:=1;
  LastGlyph:=-1;
- while TextIndex<=length(Text) do begin
-  CurrentGlyph:=GetGlyphIndex(VulkanUTF8CodeUnitGetCharAndIncFallback(Text,TextIndex));
+ while TextIndex<=length(aText) do begin
+  CurrentGlyph:=GetGlyphIndex(VulkanUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex));
   if (CurrentGlyph>0) or (CurrentGlyph<fCountGlyphs) then begin
    if (LastGlyph>=0) and (LastGlyph<fCountGlyphs) then begin
     inc(result,GetKerning(LastGlyph,CurrentGlyph,true));
@@ -38512,15 +38514,15 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.TextHeight(const Text:TVulkanUTF8String):TVkInt32;
+function TVulkanTrueTypeFont.TextHeight(const aText:TVulkanUTF8String):TVkInt32;
 var TextIndex,CurrentGlyph,LastGlyph,Height,NewHeight:TVkInt32;
 begin
  result:=0;
  Height:=0;
  TextIndex:=1;
  LastGlyph:=-1;
- while TextIndex<=length(Text) do begin
-  CurrentGlyph:=GetGlyphIndex(VulkanUTF8CodeUnitGetCharAndIncFallback(Text,TextIndex));
+ while TextIndex<=length(aText) do begin
+  CurrentGlyph:=GetGlyphIndex(VulkanUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex));
   if (CurrentGlyph>0) or (CurrentGlyph<fCountGlyphs) then begin
    if (LastGlyph>=0) and (LastGlyph<fCountGlyphs) then begin
     inc(result,GetKerning(LastGlyph,CurrentGlyph,false));
@@ -38543,6 +38545,55 @@ begin
  end;
  if result<Height then begin
   result:=Height;
+ end;
+end;
+
+procedure TVulkanTrueTypeFont.TextSize(const aText:TVulkanUTF8String;out aWidth,aHeight:TVkInt32);
+var TextIndex,CurrentGlyph,LastGlyph,Width,NewWidth,Height,NewHeight:TVkInt32;
+begin
+ aWidth:=0;
+ aHeight:=0;
+ Width:=0;
+ Height:=0;
+ TextIndex:=1;
+ LastGlyph:=-1;
+ while TextIndex<=length(aText) do begin
+  CurrentGlyph:=GetGlyphIndex(VulkanUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex));
+  if (CurrentGlyph>0) or (CurrentGlyph<fCountGlyphs) then begin
+   if (LastGlyph>=0) and (LastGlyph<fCountGlyphs) then begin
+    inc(aWidth,GetKerning(LastGlyph,CurrentGlyph,true));
+    inc(aHeight,GetKerning(LastGlyph,CurrentGlyph,false));
+   end;
+   if LastGlyph<0 then begin
+    dec(aWidth,GetGlyphLeftSideBearing(CurrentGlyph));
+    dec(aHeight,GetGlyphTopSideBearing(CurrentGlyph));
+   end;
+   if LoadGlyphData(CurrentGlyph)=VkTTF_TT_ERR_NoError then begin
+    NewWidth:=aWidth+(fGlyphs[CurrentGlyph].Bounds.XMax-fGlyphs[CurrentGlyph].Bounds.XMin);
+    NewHeight:=aHeight+(fGlyphs[CurrentGlyph].Bounds.YMax-fGlyphs[CurrentGlyph].Bounds.YMin);
+    if Width<NewWidth then begin
+     Width:=NewWidth;
+    end;
+    if Height<NewHeight then begin
+     Height:=NewHeight;
+    end;
+   end;
+   inc(aWidth,GetGlyphAdvanceWidth(CurrentGlyph)+fLetterSpacingX);
+   inc(aHeight,GetGlyphAdvanceHeight(CurrentGlyph)+fLetterSpacingY);
+  end;
+  LastGlyph:=CurrentGlyph;
+ end;
+ if aWidth=0 then begin
+  aWidth:=fMaxX-fMinX;
+ end;
+ if aWidth<Width then begin
+  aWidth:=Width;
+ end;
+ if aHeight=0 then begin
+  aHeight:=fMaxY-fMinY;
+ end;
+ if aHeight<Height then begin
+  aHeight:=Height;
  end;
 end;
 
@@ -41224,6 +41275,69 @@ begin
   result:=Height;
  end;
  result:=result*GetScaleFactor(aSize);
+end;
+
+procedure TVulkanFont.TextSize(const aText:TVulkanUTF8String;const aSize:TVkFloat;out aWidth,aHeight:TVkFloat);
+var TextIndex,CurrentGlyph,LastGlyph:TVkInt32;
+    CurrentCodePoint:TVkUInt32;
+    Width,NewWidth,Height,NewHeight,ScaleFactor:TVkFloat;
+    Int64HashMapData:TVulkanInt64HashMapData;
+    Glyph:PVulkanFontGlyph;
+    KerningPair:PVulkanFontKerningPair;
+begin
+ aWidth:=0.0;
+ aHeight:=0.0;
+ Width:=0.0;
+ Height:=0.0;
+ TextIndex:=1;
+ LastGlyph:=-1;
+ while TextIndex<=length(aText) do begin
+  CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
+  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
+   CurrentGlyph:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
+     KerningPair:=@fKerningPairs[TVkPtrUInt(TVkPointer(Int64HashMapData))];
+     aWidth:=aWidth+KerningPair^.Horizontal;
+     aHeight:=aHeight+KerningPair^.Vertical;
+    end;
+    Glyph:=@fGlyphs[CurrentGlyph];
+    if LastGlyph<0 then begin
+     aWidth:=aWidth+Glyph^.LeftSideBearing;
+     aHeight:=aHeight+Glyph^.TopSideBearing;
+    end;
+    NewWidth:=aWidth+(Glyph^.BoundsMaxX-Glyph^.BoundsMinX);
+    if Width<NewWidth then begin
+     Width:=NewWidth;
+    end;
+    NewHeight:=aHeight+(Glyph^.BoundsMaxY-Glyph^.BoundsMinY);
+    if Height<NewHeight then begin
+     Height:=NewHeight;
+    end;
+    aWidth:=aWidth+Glyph^.AdvanceWidth;
+    aHeight:=aHeight+Glyph^.AdvanceHeight;
+   end;
+  end else begin
+   CurrentGlyph:=0;
+  end;
+  LastGlyph:=CurrentGlyph;
+ end;
+ if aWidth=0 then begin
+  aWidth:=fMaxX-fMinX;
+ end;
+ if aWidth<Width then begin
+  aWidth:=Width;
+ end;
+ if aHeight=0 then begin
+  aHeight:=fMaxY-fMinY;
+ end;
+ if aHeight<Height then begin
+  aHeight:=Height;
+ end;
+ ScaleFactor:=GetScaleFactor(aSize);
+ aWidth:=aWidth*ScaleFactor;
+ aHeight:=aHeight*ScaleFactor;
 end;
 
 function TVulkanFont.RowHeight(const Percent:TVkFloat):TVkFloat;
