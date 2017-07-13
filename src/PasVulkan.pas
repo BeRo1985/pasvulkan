@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-13-02-40-0000                       *
+ *                        Version 2017-07-13-03-19-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -17258,9 +17258,17 @@ begin
      CurrentSize:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size;
      if aSizeIsMinimumSize then begin
       if CurrentSize<=VulkanSmallMaximumHeapSize then begin
-       CurrentWantedChunkSize:=Max(aSize,VulkanDefaultSmallHeapChunkSize);
+       if aSize<VulkanDefaultSmallHeapChunkSize then begin
+        CurrentWantedChunkSize:=VulkanDefaultSmallHeapChunkSize;
+       end else begin
+        CurrentWantedChunkSize:=aSize;
+       end;
       end else begin
-       CurrentWantedChunkSize:=Max(aSize,VulkanDefaultLargeHeapChunkSize);
+       if aSize<VulkanDefaultLargeHeapChunkSize then begin
+        CurrentWantedChunkSize:=VulkanDefaultLargeHeapChunkSize;
+       end else begin
+        CurrentWantedChunkSize:=aSize;
+       end;
       end;
      end else begin
       CurrentWantedChunkSize:=aSize;
@@ -18152,7 +18160,7 @@ begin
 
     MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,
                                                  MemoryChunkFlags,
-                                                 VulkanDeviceSizeRoundUpToPowerOfTwo(Max(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
+                                                 VulkanDeviceSizeRoundUpToPowerOfTwo(Max(TVkInt64(VulkanMinimumMemoryChunkSize),TVkInt64(aMemoryBlockSize shl 1))),
                                                  true,
                                                  aMemoryTypeBits,
                                                  aMemoryRequiredPropertyFlags,
