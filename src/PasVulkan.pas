@@ -33791,7 +33791,7 @@ begin
   Position:=Offset;
   Version:=ToWORD(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TVkUInt16));
-  if Version<4 then begin
+  if Version<6 then begin
    inc(Position,sizeof(TVkUInt16)); // avg char width
    inc(Position,sizeof(TVkUInt16)); // weight class
    inc(Position,sizeof(TVkUInt16)); // width class
