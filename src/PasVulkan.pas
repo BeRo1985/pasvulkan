@@ -4235,8 +4235,8 @@ type EVulkanException=class(Exception);
        function GetGlyphBottomSideBearing(GlyphIndex:TVkInt32):TVkInt32;
        function GetKerning(Left,Right:TVkUInt32;Horizontal:boolean):TVkInt32;
        function GetStyleIndex(Thin,Bold,Italic:boolean):TVkInt32;
-       function TextWidth(const Text:UTF8String):TVkInt32;
-       function TextHeight(const Text:UTF8String):TVkInt32;
+       function TextWidth(const Text:TVulkanUTF8String):TVkInt32;
+       function TextHeight(const Text:TVulkanUTF8String):TVkInt32;
        function RowHeight(const Percent:TVkInt32):TVkInt32;
        function GetUnitsPerEm:TVkInt32;
        function GetScaleFactor:TVkDouble;
@@ -4252,7 +4252,7 @@ type EVulkanException=class(Exception);
        procedure ResetPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer);
        procedure FillPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer);
        procedure FillPostScriptPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphIndex:TVkInt32);
-       procedure FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:UTF8String;const StartX:TVkInt32=0;const StartY:TVkInt32=0);
+       procedure FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:TVulkanUTF8String;const StartX:TVkInt32=0;const StartY:TVkInt32=0);
        procedure GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TVkDouble;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
        procedure DrawPolygonBuffer(Rasterizer:TVulkanTrueTypeFontRasterizer;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;x,y:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
        property Glyphs:TVulkanTrueTypeFontGlyphs read fGlyphs;
@@ -4393,10 +4393,10 @@ type EVulkanException=class(Exception);
        class function CodePointRange(const aFromCodePoint,aToCodePoint:WideChar):TVulkanFontCodePointRange; overload;
        class function CodePointRange(const aCharacterRange:TVulkanFontCharacterRange):TVulkanFontCodePointRange; overload;
        function GetScaleFactor(const aSize:TVkFloat):TVkFloat;
-       function TextWidth(const aText:TVulkanRawByteString;const aSize:TVkFloat):TVkFloat;
-       function TextHeight(const aText:TVulkanRawByteString;const aSize:TVkFloat):TVkFloat;
+       function TextWidth(const aText:TVulkanUTF8String;const aSize:TVkFloat):TVkFloat;
+       function TextHeight(const aText:TVulkanUTF8String;const aSize:TVkFloat):TVkFloat;
        function RowHeight(const Percent:TVkFloat):TVkFloat;
-       procedure Draw(const aSpriteBatch:TVulkanSpriteBatch;const aText:TVulkanRawByteString;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
+       procedure Draw(const aSpriteBatch:TVulkanSpriteBatch;const aText:TVulkanUTF8String;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
      end;
 
 var VulkanFloatToHalfFloatBaseTable:array[0..511] of TVkUInt16;
@@ -11590,7 +11590,7 @@ begin
  result.a:=a;
 end;
 
-function VulkanUTF32CharToUTF8(CharValue:TVulkanUTF32Char):TVulkanRawByteString;
+function VulkanUTF32CharToUTF8(CharValue:TVulkanUTF32Char):TVulkanUTF8String;
 var Data:array[0..5] of TVulkanRawByteChar;
     ResultLen:TVkInt32;
 begin
@@ -11641,7 +11641,7 @@ begin
  end;
 end;
 
-function VulkanUTF32CharToUTF8At(CharValue:TVulkanUTF32Char;var s:TVulkanRawByteString;const Index:TVkInt32):TVkInt32;
+function VulkanUTF32CharToUTF8At(CharValue:TVulkanUTF32Char;var s:TVulkanUTF8String;const Index:TVkInt32):TVkInt32;
 var Data:array[0..5] of TVulkanRawByteChar;
     ResultLen:TVkInt32;
 begin
@@ -11710,7 +11710,7 @@ begin
  result:=State=ucACCEPT;
 end;
 
-function VulkanUTF8Correct(const Str:TVulkanRawByteString):TVulkanRawByteString;
+function VulkanUTF8Correct(const Str:TVulkanRawByteString):TVulkanUTF8String;
 var CodeUnit,Len,ResultLen:TVkInt32;
     StartCodeUnit,Value,CharClass,State,CharValue:TVkUInt32;
     Data:PVulkanRawByteChar;
@@ -11790,7 +11790,7 @@ begin
  end;
 end;
 
-function VulkanUTF8CodeUnitGetCharAndIncFallback(const s:TVulkanRawByteString;var CodeUnit:TVkInt32):TVkUInt32;
+function VulkanUTF8CodeUnitGetCharAndIncFallback(const s:TVulkanUTF8String;var CodeUnit:TVkInt32):TVkUInt32;
 var Len:TVkInt32;
     StartCodeUnit,Value,CharClass,State:TVkUInt32;
 begin
@@ -33922,8 +33922,8 @@ type PVulkanRawByteString=^TVulkanRawByteString;
 var Position,Tag,CheckSum,Offset,Size,NumNameRecords,StringStorageOffset,i,j,c,c2,o:TVkUInt32;
     ThisPlatformID,ThisSpecificID,ThisLanguageID,ThisNameID,ThisStringLength,ThisStringOffset:TVkUInt16;
     NameFound:boolean;
-    u8s:PVulkanRawByteString;
-    s:TVulkanRawByteString;
+    u8s:PVulkanUTF8String;
+    s:TVulkanUTF8String;
     si,sl:TVkInt32;
 begin
  Tag:=ToLONGWORD(TVkUInt8('n'),TVkUInt8('a'),TVkUInt8('m'),TVkUInt8('e'));
@@ -38368,7 +38368,7 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFont.FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:UTF8String;const StartX:TVkInt32=0;const StartY:TVkInt32=0);
+procedure TVulkanTrueTypeFont.FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:TVulkanUTF8String;const StartX:TVkInt32=0;const StartY:TVkInt32=0);
 var TextIndex,CurrentGlyph,LastGlyph,CurrentX,CurrentY,OffsetX,OffsetY,
     CommandCount,CommandIndex,CommandBaseIndex:TVkInt32;
     GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;
@@ -38478,7 +38478,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.TextWidth(const Text:UTF8String):TVkInt32;
+function TVulkanTrueTypeFont.TextWidth(const Text:TVulkanUTF8String):TVkInt32;
 var TextIndex,CurrentGlyph,LastGlyph,Width,NewWidth:TVkInt32;
 begin
  result:=0;
@@ -38512,7 +38512,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.TextHeight(const Text:UTF8String):TVkInt32;
+function TVulkanTrueTypeFont.TextHeight(const Text:TVulkanUTF8String):TVkInt32;
 var TextIndex,CurrentGlyph,LastGlyph,Height,NewHeight:TVkInt32;
 begin
  result:=0;
@@ -41138,7 +41138,7 @@ begin
 end;
 {$endif}
 
-function TVulkanFont.TextWidth(const aText:TVulkanRawByteString;const aSize:TVkFloat):TVkFloat;
+function TVulkanFont.TextWidth(const aText:TVulkanUTF8String;const aSize:TVkFloat):TVkFloat;
 var TextIndex,CurrentGlyph,LastGlyph:TVkInt32;
     CurrentCodePoint:TVkUInt32;
     Width,NewWidth:TVkFloat;
@@ -41182,7 +41182,7 @@ begin
  result:=result*GetScaleFactor(aSize);
 end;
 
-function TVulkanFont.TextHeight(const aText:TVulkanRawByteString;const aSize:TVkFloat):TVkFloat;
+function TVulkanFont.TextHeight(const aText:TVulkanUTF8String;const aSize:TVkFloat):TVkFloat;
 var TextIndex,CurrentGlyph,LastGlyph:TVkInt32;
     CurrentCodePoint:TVkUInt32;
     Height,NewHeight:TVkFloat;
@@ -41231,7 +41231,7 @@ begin
  result:=fUnitsPerEm*(Percent*0.01);
 end;
 
-procedure TVulkanFont.Draw(const aSpriteBatch:TVulkanSpriteBatch;const aText:TVulkanRawByteString;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
+procedure TVulkanFont.Draw(const aSpriteBatch:TVulkanSpriteBatch;const aText:TVulkanUTF8String;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
 var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TVkInt32;
     x,y,ScaleFactor,RescaleFactor:TVkFloat;
     Int64HashMapData:TVulkanInt64HashMapData;
