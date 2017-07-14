@@ -12117,11 +12117,11 @@ begin
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
    ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-   if (aDevice.fPresentQueueFamilyIndex<>aDevice.fGraphicsQueueFamilyIndex) or
-      ((assigned(aDevice.fPresentQueue) and assigned(aDevice.fGraphicsQueue)) and
-       (aDevice.fPresentQueue<>aDevice.fGraphicsQueue)) then begin
-    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fPresentQueueFamilyIndex;
-    ImageMemoryBarrier.dstQueueFamilyIndex:=aDevice.fGraphicsQueueFamilyIndex;
+   if (aDevice.fGraphicsQueueFamilyIndex<>aDevice.fTransferQueueFamilyIndex) or
+      ((assigned(aDevice.fGraphicsQueue) and assigned(aDevice.fTransferQueue)) and
+       (aDevice.fGraphicsQueue<>aDevice.fTransferQueue)) then begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fGraphicsQueueFamilyIndex;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=aDevice.fTransferQueueFamilyIndex;
    end else begin
     ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
     ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
@@ -12146,11 +12146,11 @@ begin
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
    ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-   if (aDevice.fPresentQueueFamilyIndex<>aDevice.fGraphicsQueueFamilyIndex) or
-      ((assigned(aDevice.fPresentQueue) and assigned(aDevice.fGraphicsQueue)) and
-       (aDevice.fPresentQueue<>aDevice.fGraphicsQueue)) then begin
-    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fPresentQueueFamilyIndex;
-    ImageMemoryBarrier.dstQueueFamilyIndex:=aDevice.fGraphicsQueueFamilyIndex;
+   if (aDevice.fGraphicsQueueFamilyIndex<>aDevice.fTransferQueueFamilyIndex) or
+      ((assigned(aDevice.fGraphicsQueue) and assigned(aDevice.fTransferQueue)) and
+       (aDevice.fGraphicsQueue<>aDevice.fTransferQueue)) then begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fGraphicsQueueFamilyIndex;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=aDevice.fTransferQueueFamilyIndex;
    end else begin
     ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
     ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
@@ -12167,6 +12167,17 @@ begin
                                              0,nil,
                                              0,nil,
                                              1,@ImageMemoryBarrier);
+
+   if (aGraphicsCommandBuffer<>aTransferCommandBuffer) or
+      (aGraphicsQueue<>aTransferQueue) then begin
+
+    aTransferCommandBuffer.EndRecording;
+    aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+    aGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    aGraphicsCommandBuffer.BeginRecording;
+
+   end;
 
    if BlitSupported then begin
 
@@ -12191,7 +12202,7 @@ begin
     ImageBlit.dstOffsets[1].x:=aSwapChainWidth;
     ImageBlit.dstOffsets[1].y:=aSwapChainHeight;
     ImageBlit.dstOffsets[1].z:=1;
-    aTransferCommandBuffer.CmdBlitImage(aSwapChainImage,
+    aGraphicsCommandBuffer.CmdBlitImage(aSwapChainImage,
                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                         DstImage.fImageHandle,
                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -12213,12 +12224,23 @@ begin
     ImageCopy.extent.width:=aSwapChainWidth;
     ImageCopy.extent.height:=aSwapChainHeight;
     ImageCopy.extent.depth:=1;
-    aTransferCommandBuffer.CmdCopyImage(aSwapChainImage,
+    aGraphicsCommandBuffer.CmdCopyImage(aSwapChainImage,
                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                         DstImage.fImageHandle,
                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                         1,
                                         @ImageCopy);
+
+   end;
+
+   if (aGraphicsCommandBuffer<>aTransferCommandBuffer) or
+      (aGraphicsQueue<>aTransferQueue) then begin
+
+    aGraphicsCommandBuffer.EndRecording;
+    aGraphicsCommandBuffer.Execute(aGraphicsQueue,0,nil,nil,aGraphicsFence,true);
+
+    aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    aTransferCommandBuffer.BeginRecording;
 
    end;
 
@@ -12229,10 +12251,10 @@ begin
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
    ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
-   if (aDevice.fPresentQueueFamilyIndex<>aDevice.fGraphicsQueueFamilyIndex) or
-      ((assigned(aDevice.fPresentQueue) and assigned(aDevice.fGraphicsQueue)) and
-       (aDevice.fPresentQueue<>aDevice.fGraphicsQueue)) then begin
-    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fPresentQueueFamilyIndex;
+   if (aDevice.fGraphicsQueueFamilyIndex<>aDevice.fTransferQueueFamilyIndex) or
+      ((assigned(aDevice.fGraphicsQueue) and assigned(aDevice.fTransferQueue)) and
+       (aDevice.fGraphicsQueue<>aDevice.fTransferQueue)) then begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fTransferQueueFamilyIndex;
     ImageMemoryBarrier.dstQueueFamilyIndex:=aDevice.fGraphicsQueueFamilyIndex;
    end else begin
     ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
@@ -12258,10 +12280,10 @@ begin
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
    ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-   if (aDevice.fPresentQueueFamilyIndex<>aDevice.fGraphicsQueueFamilyIndex) or
-      ((assigned(aDevice.fPresentQueue) and assigned(aDevice.fGraphicsQueue)) and
-       (aDevice.fPresentQueue<>aDevice.fGraphicsQueue)) then begin
-    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fPresentQueueFamilyIndex;
+   if (aDevice.fGraphicsQueueFamilyIndex<>aDevice.fTransferQueueFamilyIndex) or
+      ((assigned(aDevice.fGraphicsQueue) and assigned(aDevice.fTransferQueue)) and
+       (aDevice.fGraphicsQueue<>aDevice.fTransferQueue)) then begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fTransferQueueFamilyIndex;
     ImageMemoryBarrier.dstQueueFamilyIndex:=aDevice.fGraphicsQueueFamilyIndex;
    end else begin
     ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
@@ -12282,7 +12304,6 @@ begin
 
 
    aTransferCommandBuffer.EndRecording;
-
    aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
 
    FillChar(ImageSubresource,SizeOf(TVkImageSubresource),#0);
