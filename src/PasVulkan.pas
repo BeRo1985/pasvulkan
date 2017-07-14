@@ -9653,8 +9653,8 @@ const PNGHeaderTemplate:TPNGHeader=
 var PNGHeader:PPNGHeader;
     PNGFooter:PPNGFooter;
     CRC32ChecksumValue,ImageDataSize,RowSize,IDATDataSize,LineIndex,Index,
-    InByteIndex,OutByteIndex,NewImageDataSize:TVKUInt32;
-    ImageData,IDATData,NewImageData:TVkPointer;
+    InByteIndex,OutByteIndex:TVKUInt32;
+    ImageData,IDATData:TVkPointer;
 begin
  case aImagePixelFormat of
   ppfR8G8B8A8:begin
@@ -9690,15 +9690,6 @@ begin
   DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,true);
   if assigned(IDATData) then begin
    try
-    NewImageData:=nil;
-    DoInflate(IDATData,IDATDataSize,NewImageData,NewImageDataSize,true);
-    if ImageDataSize=NewImageDataSize then begin
-     if CompareMem(ImageData,NewImageData,NewImageDataSize) then begin
-      if ImageDataSize=NewImageDataSize then begin
-      end;
-     end;
-    end;
-    FreeMem(NewImageData);
     if assigned(ImageData) then begin
      FreeMem(ImageData);
      ImageData:=nil;
