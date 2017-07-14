@@ -131,6 +131,7 @@ begin
  fVulkanSpriteAtlas:=TVulkanSpriteAtlas.Create(VulkanApplication.VulkanDevice);
 
  //Stream:=VulkanApplication.Assets.GetAssetStream('fonts/linbiolinum_r.otf');
+ //Stream:=VulkanApplication.Assets.GetAssetStream('fonts/notosans.ttf');
  Stream:=VulkanApplication.Assets.GetAssetStream('fonts/vera.ttf');
  try
   TrueTypeFont:=TVulkanTrueTypeFont.Create(Stream,72);
@@ -405,7 +406,7 @@ const BoolToInt:array[boolean] of TVkInt32=(0,1);
       Options:array[0..0] of string=('Back');
 var Index:TVkInt32;
     cy,LocalFontSize:TVkFloat;
-    rbs:TVulkanRawByteString;
+    rbs:TVulkanUTF8String;
     s:string;
     IsSelected:boolean;
     SrcRect:TVulkanSpriteRect;

@@ -28,6 +28,10 @@ const MenuColors:array[boolean,0..1,0..3] of single=
 
 type TExampleVulkanApplication=class(TVulkanApplication)
       private
+       fVulkanCommandPool:TVulkanCommandPool;
+       fVulkanScreenShotCommandBuffer:TVulkanCommandBuffer;
+       fVulkanScreenShotFence:TVulkanFence;
+       fMakeScreenshot:boolean;
        fTextOverlay:TTextOverlay;
       public
        constructor Create; override;
@@ -40,6 +44,7 @@ type TExampleVulkanApplication=class(TVulkanApplication)
        procedure BeforeDestroySwapChain; override;
        procedure Resume; override;
        procedure Pause; override;
+       function KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
        procedure Update(const aDeltaTime:double); override;
        procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
        class procedure Main; override;
@@ -81,12 +86,20 @@ end;
 procedure TExampleVulkanApplication.Load;
 begin
  inherited Load;
+ fVulkanCommandPool:=TVulkanCommandPool.Create(VulkanDevice,
+                                               VulkanDevice.GraphicsQueueFamilyIndex,
+                                               TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ fVulkanScreenShotCommandBuffer:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+ fVulkanScreenShotFence:=TVulkanFence.Create(VulkanDevice);
  fTextOverlay.Load;
 end;
 
 procedure TExampleVulkanApplication.Unload;
 begin
  fTextOverlay.Unload;
+ FreeAndNil(fVulkanScreenShotFence);
+ FreeAndNil(fVulkanScreenShotCommandBuffer);
+ FreeAndNil(fVulkanCommandPool);
  inherited Unload;
 end;
 
@@ -115,6 +128,16 @@ begin
  inherited Pause;
 end;
 
+function TExampleVulkanApplication.KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+begin
+ result:=inherited KeyDown(aKeyCode,aKeyModifier);
+ case aKeyCode of
+  KEYCODE_F11:begin
+   fMakeScreenshot:=true;
+  end;
+ end;
+end;
+
 procedure TExampleVulkanApplication.Update(const aDeltaTime:double);
 begin
  fTextOverlay.PreUpdate(aDeltaTime);
@@ -123,9 +146,29 @@ begin
 end;
 
 procedure TExampleVulkanApplication.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+var Stream:TMemoryStream;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  fTextOverlay.Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+ if fMakeScreenshot then begin
+  fMakeScreenshot:=false;
+  VulkanDevice.GraphicsQueue.WaitIdle;
+  Stream:=TMemoryStream.Create;
+  try
+   VulkanSaveScreenshot(VulkanDevice,
+                        VulkanDevice.GraphicsQueue,
+                        fVulkanScreenShotCommandBuffer,
+                        fVulkanScreenShotFence,
+                        VulkanSwapChain.ImageFormat,
+                        VulkanSwapChain.CurrentImage.Handle,
+                        VulkanSwapChain.Width,
+                        VulkanSwapChain.Height,
+                        Stream);
+   Stream.SaveToFile('screenshot.png');
+  finally
+   Stream.Free;
+  end;
+ end;
 end;
 
 class procedure TExampleVulkanApplication.Main;

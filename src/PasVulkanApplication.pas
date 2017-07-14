@@ -5925,11 +5925,11 @@ begin
  if assigned(fVulkanDrawToPresentImageBarrierCommandBuffers[fRealUsedDrawSwapChainImageIndex]) then begin
   // If present and graphics queue families are different, then a image barrier is required
   fVulkanDrawToPresentImageBarrierCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
-                                                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                                                      fVulkanWaitSemaphore,
-                                                                                      fVulkanDrawToPresentImageBarrierCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
-                                                                                      fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex],
-                                                                                      false);
+                                                                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                           fVulkanWaitSemaphore,
+                                                                                           fVulkanDrawToPresentImageBarrierCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
+                                                                                           fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex],
+                                                                                           false);
   fVulkanWaitSemaphore:=fVulkanDrawToPresentImageBarrierCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
   fVulkanWaitFence:=fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex];
  end;
