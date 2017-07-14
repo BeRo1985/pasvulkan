@@ -6982,7 +6982,7 @@ begin
    result.BlockHeight:=12;
    result.BlockDepth:=1;
   end;
-  else begin 
+  else begin
    result.Flags:=[];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=0*8;
@@ -7867,25 +7867,25 @@ begin
  result:=(TVkUInt64(a) shl 32) or b;
 end;
 
-function CRC32(data:TVkPointer;length:TVkUInt32):TVkUInt32;
+function CRC32(const aData:TVkPointer;const aLength:TVkUInt32):TVkUInt32;
 const CRC32Table:array[0..15] of TVkUInt32=($00000000,$1db71064,$3b6e20c8,$26d930ac,$76dc4190,
-                                           $6b6b51f4,$4db26158,$5005713c,$edb88320,$f00f9344,
-                                           $d6d6a3e8,$cb61b38c,$9b64c2b0,$86d3d2d4,$a00ae278,
-                                           $bdbdf21c);
+                                            $6b6b51f4,$4db26158,$5005713c,$edb88320,$f00f9344,
+                                            $d6d6a3e8,$cb61b38c,$9b64c2b0,$86d3d2d4,$a00ae278,
+                                            $bdbdf21c);
 
-var buf:PVulkanRawByteChar;
-    i:TVkUInt32;
+var Buf:PVkUInt8;
+    Index:TVkUInt32;
 begin
- if length=0 then begin
+ if aLength=0 then begin
   result:=0;
  end else begin
-  buf:=data;
+  Buf:=aData;
   result:=$ffffffff;
-  for i:=1 to length do begin
-   result:=result xor TVkUInt8(buf^);
+  for Index:=1 to aLength do begin
+   result:=result xor Buf^;
    result:=CRC32Table[result and $f] xor (result shr 4);
    result:=CRC32Table[result and $f] xor (result shr 4);
-   inc(buf);
+   inc(Buf);
   end;
   result:=result xor $ffffffff;
  end;
@@ -9527,7 +9527,7 @@ begin
              end;
              4:begin // Paeth
               for rx:=0 to l-1 do begin
-               if rx<ByteWidth then begin             
+               if rx<ByteWidth then begin
                 CurrentLine^[rx]:=(CurrentLine^[rx]+Paeth(0,PreviousLine^[rx],0)) and $ff;
                end else begin
                 CurrentLine^[rx]:=(CurrentLine^[rx]+Paeth(CurrentLine^[rx-ByteWidth],PreviousLine^[rx],PreviousLine^[rx-ByteWidth])) and $ff;
@@ -9582,6 +9582,125 @@ begin
    ImageData:=nil;
   end;
   result:=false;
+ end;
+end;
+
+procedure SavePNG(const aImageData:TVkPointer;const aImageWidth,aImageHeight:TVkUInt32;out aDestData:TVkPointer;out aDestDataSize:TVkUInt32;const aImagePixelFormat:TPNGPixelFormat=ppfR8G8B8A8);
+type PPNGHeader=^TPNGHeader;
+     TPNGHeader=packed record
+      PNGSignature:array[0..7] of TVkUInt8;
+      IHDRChunkSize:array[0..3] of TVkUInt8;
+      IHDRChunkSignature:array[0..3] of TVkUInt8;
+      IHDRChunkWidth:array[0..3] of TVkUInt8;
+      IHDRChunkHeight:array[0..3] of TVkUInt8;
+      IHDRChunkBitDepth:TVkUInt8;
+      IHDRChunkColorType:TVkUInt8;
+      IHDRChunkCompressionMethod:TVkUInt8;
+      IHDRChunkFilterMethod:TVkUInt8;
+      IHDRChunkInterlaceMethod:TVkUInt8;
+      IHDRChunkCRC32Checksum:array[0..3] of TVkUInt8;
+      IDATChunkSize:array[0..3] of TVkUInt8;
+      IDATChunkSignature:array[0..3] of TVkUInt8;
+     end;
+     PPNGFooter=^TPNGFooter;
+     TPNGFooter=packed record
+      IDATChunkCRC32Checksum:array[0..3] of TVkUInt8;
+      IENDChunkSize:array[0..3] of TVkUInt8;
+      IENDChunkSignature:array[0..3] of TVkUInt8;
+      IENDChunkCRC32Checksum:array[0..3] of TVkUInt8;
+     end;
+     PBytes=^TBytes;
+     TBytes=array[0..$7ffffffe] of TVkUInt8;
+const PNGHeaderTemplate:TPNGHeader=
+       (
+        PNGSignature:($89,$50,$4e,$47,$0d,$0a,$1a,$0a);
+        IHDRChunkSize:($00,$00,$00,$0d);
+        IHDRChunkSignature:($49,$48,$44,$52);
+        IHDRChunkWidth:($00,$00,$00,$00);
+        IHDRChunkHeight:($00,$00,$00,$00);
+        IHDRChunkBitDepth:$08;
+        IHDRChunkColorType:$06; // RGBA
+        IHDRChunkCompressionMethod:$00;
+        IHDRChunkFilterMethod:$01; // Sub
+        IHDRChunkInterlaceMethod:$00;
+        IHDRChunkCRC32Checksum:($00,$00,$00,$00);
+        IDATChunkSize:($00,$00,$00,$00);
+        IDATChunkSignature:($49,$44,$41,$54);
+       );
+      PNGFooterTemplate:TPNGFooter=
+       (
+        IDATChunkCRC32Checksum:($00,$00,$00,$00);
+        IENDChunkSize:($00,$00,$00,$00);
+        IENDChunkSignature:($49,$45,$4e,$44);
+        IENDChunkCRC32Checksum:($ae,$42,$60,$82);
+       );
+var PNGHeader:TPNGHeader;
+    PNGFooter:TPNGFooter;
+    CRC32ChecksumValue,ImageDataSize,RowSize,IDATDataSize:TVKUInt32;
+    Index:TVkInt32;
+    ImageData,IDATData:TVkPointer;
+begin
+ PNGHeader:=PNGHeaderTemplate;
+ PNGFooter:=PNGFooterTemplate;
+ case aImagePixelFormat of
+  ppfR8G8B8A8:begin
+   PNGHeader.IHDRChunkBitDepth:=$08;
+   RowSize:=aImageWidth*4;
+  end;
+  ppfR16G16B16A16:begin
+   PNGHeader.IHDRChunkBitDepth:=$10;
+   RowSize:=aImageWidth*8;
+  end;
+  else begin
+   Assert(false);
+   RowSize:=0;
+  end;
+ end;
+ PNGHeader.IHDRChunkWidth[0]:=(aImageWidth shr 24) and $ff;
+ PNGHeader.IHDRChunkWidth[1]:=(aImageWidth shr 16) and $ff;
+ PNGHeader.IHDRChunkWidth[2]:=(aImageWidth shr 8) and $ff;
+ PNGHeader.IHDRChunkWidth[3]:=(aImageWidth shr 0) and $ff;
+ PNGHeader.IHDRChunkHeight[0]:=(aImageHeight shr 24) and $ff;
+ PNGHeader.IHDRChunkHeight[1]:=(aImageHeight shr 16) and $ff;
+ PNGHeader.IHDRChunkHeight[2]:=(aImageHeight shr 8) and $ff;
+ PNGHeader.IHDRChunkHeight[3]:=(aImageHeight shr 0) and $ff;
+ CRC32ChecksumValue:=CRC32(@PNGHeader.IHDRChunkWidth,{%H-}TVkPtrUInt(TVkPointer(@PPNGHeader(nil)^.IHDRChunkCRC32Checksum))-{%H-}TVkPtrUInt(TVkPointer(@PPNGHeader(nil)^.IHDRChunkWidth)));
+ PNGHeader.IHDRChunkCRC32Checksum[0]:=(CRC32ChecksumValue shr 24) and $ff;
+ PNGHeader.IHDRChunkCRC32Checksum[1]:=(CRC32ChecksumValue shr 16) and $ff;
+ PNGHeader.IHDRChunkCRC32Checksum[2]:=(CRC32ChecksumValue shr 8) and $ff;
+ PNGHeader.IHDRChunkCRC32Checksum[3]:=(CRC32ChecksumValue shr 0) and $ff;
+ ImageDataSize:=RowSize*aImageHeight;
+ GetMem(ImageData,ImageDataSize);
+ try
+  Move(aImageData^,ImageData^,RowSize);
+  for Index:=TVkInt32(RowSize) to TVkInt32(ImageDataSize)-1 do begin
+   PBytes(ImageData)^[Index]:=PBytes(aImageData)^[Index]-PBytes(aImageData)^[Index-TVkInt32(RowSize)];
+  end;
+  DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,true);
+  if assigned(IDATData) then begin
+   try
+    if assigned(ImageData) then begin
+     FreeMem(ImageData);
+     ImageData:=nil;
+    end;
+    CRC32ChecksumValue:=CRC32(IDATData,IDATDataSize);
+    PNGFooter.IDATChunkCRC32Checksum[0]:=(CRC32ChecksumValue shr 24) and $ff;
+    PNGFooter.IDATChunkCRC32Checksum[1]:=(CRC32ChecksumValue shr 16) and $ff;
+    PNGFooter.IDATChunkCRC32Checksum[2]:=(CRC32ChecksumValue shr 8) and $ff;
+    PNGFooter.IDATChunkCRC32Checksum[3]:=(CRC32ChecksumValue shr 0) and $ff;
+    aDestDataSize:=TVKUInt32(TVKUInt32(SizeOf(TPNGHeader)+SizeOf(TPNGFooter))+IDATDataSize);
+    GetMem(aDestData,aDestDataSize);
+    Move(PNGHeader,PBytes(aDestData)^[0],SizeOf(TPNGHeader));
+    Move(IDATData^,PBytes(aDestData)^[SizeOf(TPNGHeader)],IDATDataSize);
+    Move(PNGFooter,PBytes(aDestData)^[TVkUInt32(TVkUInt32(SizeOf(TPNGHeader))+IDATDataSize)],SizeOf(TPNGFooter));
+   finally
+    FreeMem(IDATData);
+   end;
+  end;
+ finally
+  if assigned(ImageData) then begin
+   FreeMem(ImageData);
+  end;
  end;
 end;
 
