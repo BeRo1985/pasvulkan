@@ -160,7 +160,7 @@ begin
                         fVulkanScreenShotCommandBuffer,
                         fVulkanScreenShotFence,
                         VulkanSwapChain.ImageFormat,
-                        VulkanSwapChain.PreviousImage.Handle,
+                        VulkanSwapChain.CurrentImage.Handle,
                         VulkanSwapChain.Width,
                         VulkanSwapChain.Height,
                         Stream);

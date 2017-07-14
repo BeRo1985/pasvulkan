@@ -12424,12 +12424,12 @@ begin
            PBytes(TVkPointer(pp))^[0]:=PBytes(TVkPointer(pr))^[2];
            PBytes(TVkPointer(pp))^[1]:=PBytes(TVkPointer(pr))^[1];
            PBytes(TVkPointer(pp))^[2]:=PBytes(TVkPointer(pr))^[0];
-           PBytes(TVkPointer(pp))^[3]:=PBytes(TVkPointer(pr))^[3];
+           PBytes(TVkPointer(pp))^[3]:=$ff;//PBytes(TVkPointer(pr))^[3];
           end else begin
            PBytes(TVkPointer(pp))^[0]:=PBytes(TVkPointer(pr))^[0];
            PBytes(TVkPointer(pp))^[1]:=PBytes(TVkPointer(pr))^[1];
            PBytes(TVkPointer(pp))^[2]:=PBytes(TVkPointer(pr))^[2];
-           PBytes(TVkPointer(pp))^[3]:=PBytes(TVkPointer(pr))^[3];
+           PBytes(TVkPointer(pp))^[3]:=$ff;//PBytes(TVkPointer(pr))^[3];
           end;
           inc(pp,4);
           inc(pr,4);
