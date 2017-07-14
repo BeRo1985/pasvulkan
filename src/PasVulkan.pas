@@ -12402,10 +12402,10 @@ begin
 
      if NeedTwoSteps then begin
       aDevice.fDeviceVulkan.GetImageSubresourceLayout(aDevice.fDeviceHandle,SecondImage.fImageHandle,@ImageSubresource,@SubresourceLayout);
-      p:=SecondMemoryBlock.MapMemory(SecondMemoryBlock.fSize);
+      p:=SecondMemoryBlock.MapMemory(0,SecondMemoryBlock.fSize);
      end else begin
       aDevice.fDeviceVulkan.GetImageSubresourceLayout(aDevice.fDeviceHandle,FirstImage.fImageHandle,@ImageSubresource,@SubresourceLayout);
-      p:=FirstMemoryBlock.MapMemory(FirstMemoryBlock.fSize);
+      p:=FirstMemoryBlock.MapMemory(0,FirstMemoryBlock.fSize);
      end;
      if assigned(p) then begin
       try
