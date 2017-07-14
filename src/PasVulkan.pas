@@ -8021,6 +8021,23 @@ type PHashTable=^THashTable;
 var DoCompression:boolean;
     OutputBits,CountOutputBits:TVkUInt32;
     AllocatedDestSize:TVkUInt64;
+    LengthCodesLookUpTable,DistanceCodesLookUpTable:TVkInt32Array;
+ procedure InitializeLookUpTables;
+ var Index,ValueIndex:TVkInt32;
+ begin
+  SetLength(LengthCodesLookUpTable,LengthCodes[length(LengthCodes)-1,3]+1);
+  SetLength(DistanceCodesLookUpTable,DistanceCodes[length(DistanceCodes)-1,3]+1);
+  for Index:=0 to length(LengthCodes)-1 do begin
+   for ValueIndex:=IfThen(Index=0,0,LengthCodes[Index,2]) to LengthCodes[Index,3] do begin
+    LengthCodesLookUpTable[ValueIndex]:=Index;
+   end;
+  end;
+  for Index:=0 to length(DistanceCodes)-1 do begin
+   for ValueIndex:=IfThen(Index=0,0,DistanceCodes[Index,2]) to DistanceCodes[Index,3] do begin
+    DistanceCodesLookUpTable[ValueIndex]:=Index;
+   end;
+  end;
+ end;
  function HashData(const aData:TVKPointer):TVkUInt32;
  begin
   result:=(PThreeBytes(aData)^[0] shl 16) or (PThreeBytes(aData)^[1] shl 8) or PThreeBytes(aData)^[2];
@@ -8058,8 +8075,7 @@ var DoCompression:boolean;
   end;
  end;
  procedure DoOutputCopy(const aDistance,aLength:TVkUInt32);
- var Remain,ToDo:TVkUInt32;
-     MinIndex,MaxIndex,MidIndex,FoundIndex:TVkInt32;
+ var Remain,ToDo,Index:TVkUInt32;
  begin
   Remain:=aLength;
   while Remain>0 do begin
@@ -8075,47 +8091,19 @@ var DoCompression:boolean;
     end;
    end;
    dec(Remain,ToDo);
-   MinIndex:=Low(LengthCodes);
-   MaxIndex:=High(LengthCodes);
-   FoundIndex:=-1;
-   while MinIndex<=MaxIndex do begin
-    MidIndex:=MinIndex+((MaxIndex-MinIndex) shr 1);
-    if ToDo<LengthCodes[MidIndex,2] then begin
-     MaxIndex:=MidIndex-1;
-    end else if ToDo>LengthCodes[MidIndex,3] then begin
-     MinIndex:=MidIndex+1;
-    end else begin
-     FoundIndex:=MidIndex;
-     break;
-    end;
-   end;
-   Assert(FoundIndex>=0);
-   if LengthCodes[FoundIndex,0]<=279 then begin
-    DoOutputBits(MirrorBytes[(LengthCodes[FoundIndex,0]-256) shl 1],7);
+   Index:=LengthCodesLookUpTable[Min(Max(ToDo,0),258)];
+   if LengthCodes[Index,0]<=279 then begin
+    DoOutputBits(MirrorBytes[(LengthCodes[Index,0]-256) shl 1],7);
    end else begin
-    DoOutputBits(MirrorBytes[$c0+(LengthCodes[FoundIndex,0]-280)],8);
+    DoOutputBits(MirrorBytes[$c0+(LengthCodes[Index,0]-280)],8);
    end;
-   if LengthCodes[FoundIndex,1]<>0 then begin
-    DoOutputBits(ToDo-LengthCodes[FoundIndex,2],LengthCodes[FoundIndex,1]);
+   if LengthCodes[Index,1]<>0 then begin
+    DoOutputBits(ToDo-LengthCodes[Index,2],LengthCodes[Index,1]);
    end;
-   MinIndex:=Low(DistanceCodes);
-   MaxIndex:=High(DistanceCodes);
-   FoundIndex:=-1;
-   while MinIndex<=MaxIndex do begin
-    MidIndex:=MinIndex+((MaxIndex-MinIndex) shr 1);
-    if aDistance<DistanceCodes[MidIndex,2] then begin
-     MaxIndex:=MidIndex-1;
-    end else if aDistance>DistanceCodes[MidIndex,3] then begin
-     MinIndex:=MidIndex+1;
-    end else begin
-     FoundIndex:=MidIndex;
-     break;
-    end;
-   end;
-   Assert(FoundIndex>=0);
-   DoOutputBits(MirrorBytes[DistanceCodes[FoundIndex,0] shl 3],5);
-   if DistanceCodes[FoundIndex,1]<>0 then begin
-    DoOutputBits(aDistance-DistanceCodes[FoundIndex,2],DistanceCodes[FoundIndex,1]);
+   Index:=DistanceCodesLookUpTable[Min(Max(aDistance,0),32768)];
+   DoOutputBits(MirrorBytes[DistanceCodes[Index,0] shl 3],5);
+   if DistanceCodes[Index,1]<>0 then begin
+    DoOutputBits(aDistance-DistanceCodes[Index,2],DistanceCodes[Index,1]);
    end;
   end;
  end;
@@ -8164,76 +8152,90 @@ begin
  result:=false;
  AllocatedDestSize:=SizeOf(TVkUInt32);
  GetMem(DestData,AllocatedDestSize);
- DestLen:=0;
+ LengthCodesLookUpTable:=nil;
+ DistanceCodesLookUpTable:=nil;
  try
-  OutputBits:=0;
-  CountOutputBits:=0;
-  if WithHeader then begin
-   DoOutputBits($78,8); // CMF
-   DoOutputBits($9c,8); // FLG Default Compression
-  end;
-  OutputStartBlock;
-  GetMem(HashTable,SizeOf(THashTable));
+  InitializeLookUpTables;
+  DestLen:=0;
   try
-   FillChar(HashTable^,SizeOf(THashTable),#0);
-   CurrentPointer:=InData;
-   EndPointer:={%H-}TVkPointer(TVkPtrUInt(TVkPtrUInt(CurrentPointer)+TVkPtrUInt(InLen)));
-   EndSearchPointer:={%H-}TVkPointer(TVkPtrUInt((TVkPtrUInt(CurrentPointer)+TVkPtrUInt(InLen))-TVkPtrUInt(MinMatch)));
-   while {%H-}TVkPtrUInt(CurrentPointer)<{$H-}TVkPtrUInt(EndSearchPointer) do begin
-    HashValue:=HashData(CurrentPointer);
-    Bucket:=@HashTable[HashValue and HashMask];
-    Substitution:=Bucket^;
-    Bucket^:=CurrentPointer;
-    if assigned(Substitution) and
-       ({%H-}TVkPtrUInt(CurrentPointer)>{%H-}TVkPtrUInt(Substitution)) and
-       ({$H-}TVkPtrInt({%H-}TVkPtrInt(CurrentPointer)-{%H-}TVkPtrInt(Substitution))<TVkPtrInt(MaxOffset)) and
-       ((PThreeBytes(CurrentPointer)^[0]=PThreeBytes(Substitution)^[0]) and
-        (PThreeBytes(CurrentPointer)^[1]=PThreeBytes(Substitution)^[1]) and
-        (PThreeBytes(CurrentPointer)^[2]=PThreeBytes(Substitution)^[2])) then begin
-     inc(CurrentPointer,MinMatch);
-     Match:={%H-}TVkPointer(TVkPtrUInt(TVkPtrUInt(Substitution)+TVkPtrUInt(MinMatch)));
-     MatchLength:=MinMatch;
-     while ({%H-}TVkPtrUInt(CurrentPointer)<{$H-}TVkPtrUInt(EndPointer)) and
-           (CurrentPointer^=Match^) and
-           (MatchLength<TVkPtrUInt(MaxOffset)) do begin
-      inc(CurrentPointer);
-      inc(Match);
-      inc(MatchLength);
-     end;
-     DoOutputCopy({%H-}TVkPtrUInt({%H-}TVkPtrUInt(CurrentPointer)-({%H-}TVkPtrUInt(Substitution)+TVkPtrUInt(MatchLength))),MatchLength);
+   DoCompression:=true;
+   OutputBits:=0;
+   CountOutputBits:=0;
+   if WithHeader then begin
+    if DoCompression then begin
+     DoOutputBits($78,8); // CMF
+     DoOutputBits($9c,8); // FLG Default Compression
     end else begin
+     DoOutputBits($78,8); // CMF
+     DoOutputBits($01,8); // FLG No Compression
+    end;
+   end;
+   OutputStartBlock;
+   GetMem(HashTable,SizeOf(THashTable));
+   try
+    FillChar(HashTable^,SizeOf(THashTable),#0);
+    CurrentPointer:=InData;
+    EndPointer:={%H-}TVkPointer(TVkPtrUInt(TVkPtrUInt(CurrentPointer)+TVkPtrUInt(InLen)));
+    EndSearchPointer:={%H-}TVkPointer(TVkPtrUInt((TVkPtrUInt(CurrentPointer)+TVkPtrUInt(InLen))-TVkPtrUInt(MinMatch)));
+    while {%H-}TVkPtrUInt(CurrentPointer)<{$H-}TVkPtrUInt(EndSearchPointer) do begin
+     HashValue:=HashData(CurrentPointer);
+     Bucket:=@HashTable[HashValue and HashMask];
+     Substitution:=Bucket^;
+     Bucket^:=CurrentPointer;
+     if assigned(Substitution) and
+        ({%H-}TVkPtrUInt(CurrentPointer)>{%H-}TVkPtrUInt(Substitution)) and
+        ({$H-}TVkPtrInt({%H-}TVkPtrInt(CurrentPointer)-{%H-}TVkPtrInt(Substitution))<TVkPtrInt(MaxOffset)) and
+        ((PThreeBytes(CurrentPointer)^[0]=PThreeBytes(Substitution)^[0]) and
+         (PThreeBytes(CurrentPointer)^[1]=PThreeBytes(Substitution)^[1]) and
+         (PThreeBytes(CurrentPointer)^[2]=PThreeBytes(Substitution)^[2])) then begin
+      inc(CurrentPointer,MinMatch);
+      Match:={%H-}TVkPointer(TVkPtrUInt(TVkPtrUInt(Substitution)+TVkPtrUInt(MinMatch)));
+      MatchLength:=MinMatch;
+      while ({%H-}TVkPtrUInt(CurrentPointer)<{$H-}TVkPtrUInt(EndPointer)) and
+            (CurrentPointer^=Match^) and
+            (MatchLength<TVkPtrUInt(MaxOffset)) do begin
+       inc(CurrentPointer);
+       inc(Match);
+       inc(MatchLength);
+      end;
+      DoOutputCopy({%H-}TVkPtrUInt({%H-}TVkPtrUInt(CurrentPointer)-({%H-}TVkPtrUInt(Substitution)+TVkPtrUInt(MatchLength))),MatchLength);
+     end else begin
+      DoOutputLiteral(CurrentPointer^);
+      inc(CurrentPointer);
+     end;
+    end;
+    while {%H-}TVkPtrUInt(CurrentPointer)<{$H-}TVkPtrUInt(EndPointer) do begin
      DoOutputLiteral(CurrentPointer^);
      inc(CurrentPointer);
     end;
+   finally
+    FreeMem(HashTable);
    end;
-   while {%H-}TVkPtrUInt(CurrentPointer)<{$H-}TVkPtrUInt(EndPointer) do begin
-    DoOutputLiteral(CurrentPointer^);
-    inc(CurrentPointer);
+   OutputEndBlock;
+   if WithHeader then begin
+    CheckSum:=Adler32(InData,InLen);
+    if AllocatedDestSize<(DestLen+4) then begin
+     AllocatedDestSize:=(DestLen+4) shl 1;
+     ReallocMem(DestData,AllocatedDestSize);
+    end;
+    PBytes(DestData)^[DestLen+0]:=(CheckSum shr 24) and $ff;
+    PBytes(DestData)^[DestLen+1]:=(CheckSum shr 16) and $ff;
+    PBytes(DestData)^[DestLen+2]:=(CheckSum shr 8) and $ff;
+    PBytes(DestData)^[DestLen+3]:=(CheckSum shr 0) and $ff;
+    inc(DestLen,4);
    end;
   finally
-   FreeMem(HashTable);
-  end;
-  OutputEndBlock;
-  if WithHeader then begin
-   CheckSum:=Adler32(InData,InLen);
-   if AllocatedDestSize<(DestLen+4) then begin
-    AllocatedDestSize:=(DestLen+4) shl 1;
-    ReallocMem(DestData,AllocatedDestSize);
+   if DestLen>0 then begin
+    ReallocMem(DestData,DestLen);
+    result:=true;
+   end else if assigned(DestData) then begin
+    FreeMem(DestData);
+    DestData:=nil;
    end;
-   PBytes(DestData)^[DestLen+0]:=(CheckSum shr 24) and $ff;
-   PBytes(DestData)^[DestLen+1]:=(CheckSum shr 16) and $ff;
-   PBytes(DestData)^[DestLen+2]:=(CheckSum shr 8) and $ff;
-   PBytes(DestData)^[DestLen+3]:=(CheckSum shr 0) and $ff;
-   inc(DestLen,4);
   end;
  finally
-  if DestLen>0 then begin
-   ReallocMem(DestData,DestLen);
-   result:=true;
-  end else if assigned(DestData) then begin
-   FreeMem(DestData);
-   DestData:=nil;
-  end;
+  LengthCodesLookUpTable:=nil;
+  DistanceCodesLookUpTable:=nil;
  end;
 end;
 
