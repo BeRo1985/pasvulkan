@@ -4459,6 +4459,19 @@ procedure VulkanSetImageLayout(const aImage:TVkImage;
 
 procedure VulkanDisableFloatingPointExceptions;
 
+procedure VulkanSaveScreenshot(const aDevice:TVulkanDevice;
+                               const aGraphicsQueue:TVulkanQueue;
+                               const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                               const aGraphicsFence:TVulkanFence;
+                               const aTransferQueue:TVulkanQueue;
+                               const aTransferCommandBuffer:TVulkanCommandBuffer;
+                               const aTransferFence:TVulkanFence;
+                               const aSwapChainColorFormat:TVkFormat;
+                               const aSwapChainImage:TVkImage;
+                               const aSwapChainWidth:TVkInt32;
+                               const aSwapChainHeight:TVkInt32;
+                               const aStream:TStream);
+
 function VulkanSpritePoint(const x,y:single):TVulkanSpritePoint;
 function VulkanSpriteRect(const Left,Top,Right,Bottom:single):TVulkanSpriteRect;
 function VulkanSpriteColor(const r,g,b,a:single):TVulkanSpriteColor;
@@ -12017,6 +12030,327 @@ begin
 {$if declared(SetExceptionMask)}
  SetExceptionMask([exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
 {$ifend}
+end;
+
+procedure VulkanSaveScreenshot(const aDevice:TVulkanDevice;
+                               const aGraphicsQueue:TVulkanQueue;
+                               const aGraphicsCommandBuffer:TVulkanCommandBuffer;
+                               const aGraphicsFence:TVulkanFence;
+                               const aTransferQueue:TVulkanQueue;
+                               const aTransferCommandBuffer:TVulkanCommandBuffer;
+                               const aTransferFence:TVulkanFence;
+                               const aSwapChainColorFormat:TVkFormat;
+                               const aSwapChainImage:TVkImage;
+                               const aSwapChainWidth:TVkInt32;
+                               const aSwapChainHeight:TVkInt32;
+                               const aStream:TStream);
+type PBytes=^TBytes;
+     TBytes=array[0..$7ffffffe] of TVkUInt8;
+var x,y:TVkInt32;
+    BlitSupported,NeedColorSwizzle:boolean;
+    SrcColorFormatProperties,
+    DstColorFormatProperties:TVkFormatProperties;
+    DstImage:TVulkanImage;
+    MemoryRequirements:TVkMemoryRequirements;
+    MemoryBlock:TVulkanDeviceMemoryBlock;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
+    ImageBlit:TVkImageBlit;
+    ImageCopy:TVkImageCopy;
+    ImageSubresource:TVkImageSubresource;
+    SubresourceLayout:TVkSubresourceLayout;
+    ImageData,p,pr,pp:PVkUInt8;
+    PNGData:TVkPointer;
+    PNGDataSize:TVkUInt32;
+begin
+
+ SrcColorFormatProperties:=aDevice.fPhysicalDevice.GetFormatProperties(aSwapChainColorFormat);
+
+ DstColorFormatProperties:=aDevice.fPhysicalDevice.GetFormatProperties(VK_FORMAT_R8G8B8A8_UNORM);
+
+ BlitSupported:=((SrcColorFormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_BLIT_SRC_BIT))<>0) and
+                ((DstColorFormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_BLIT_DST_BIT))<>0);
+
+ DstImage:=TVulkanImage.Create(aDevice,
+                               0,
+                               VK_IMAGE_TYPE_2D,
+                               VK_FORMAT_R8G8B8A8_UNORM,
+                               aSwapChainWidth,
+                               aSwapChainHeight,
+                               1,
+                               1,
+                               1,
+                               VK_SAMPLE_COUNT_1_BIT,
+                               VK_IMAGE_TILING_LINEAR,
+                               TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
+                               VK_SHARING_MODE_EXCLUSIVE,
+                               [],
+                               VK_IMAGE_LAYOUT_UNDEFINED);
+ try
+
+  aDevice.fDeviceVulkan.GetImageMemoryRequirements(aDevice.fDeviceHandle,DstImage.fImageHandle,@MemoryRequirements);
+
+  MemoryBlock:=aDevice.fMemoryManager.AllocateMemoryBlock([vdmbfPersistentMapped],
+                                                          MemoryRequirements.size,
+                                                          MemoryRequirements.alignment,
+                                                          MemoryRequirements.memoryTypeBits,
+                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          vdmatImageLinear);
+  try
+   if not assigned(MemoryBlock) then begin
+    raise EVulkanMemoryAllocationException.Create('Memory for screenshot couldn''t be allocated!');
+   end;
+
+   HandleResultCode(aDevice.fDeviceVulkan.BindImageMemory(aDevice.fDeviceHandle,DstImage.fImageHandle,MemoryBlock.fMemoryChunk.fMemoryHandle,MemoryBlock.fOffset));
+
+   aTransferCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aTransferCommandBuffer.BeginRecording;
+
+   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+   ImageMemoryBarrier.pNext:=nil;
+   ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(0);
+   ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+   ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+   if (aDevice.fPresentQueueFamilyIndex<>aDevice.fGraphicsQueueFamilyIndex) or
+      ((assigned(aDevice.fPresentQueue) and assigned(aDevice.fGraphicsQueue)) and
+       (aDevice.fPresentQueue<>aDevice.fGraphicsQueue)) then begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fPresentQueueFamilyIndex;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=aDevice.fGraphicsQueueFamilyIndex;
+   end else begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   end;
+   ImageMemoryBarrier.image:=DstImage.fImageHandle;
+   ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+   ImageMemoryBarrier.subresourceRange.levelCount:=1;
+   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+   ImageMemoryBarrier.subresourceRange.layerCount:=1;
+   aTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                             0,
+                                             0,nil,
+                                             0,nil,
+                                             1,@ImageMemoryBarrier);
+
+   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+   ImageMemoryBarrier.pNext:=nil;
+   ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+   ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+   ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+   if (aDevice.fPresentQueueFamilyIndex<>aDevice.fGraphicsQueueFamilyIndex) or
+      ((assigned(aDevice.fPresentQueue) and assigned(aDevice.fGraphicsQueue)) and
+       (aDevice.fPresentQueue<>aDevice.fGraphicsQueue)) then begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fPresentQueueFamilyIndex;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=aDevice.fGraphicsQueueFamilyIndex;
+   end else begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   end;
+   ImageMemoryBarrier.image:=aSwapChainImage;
+   ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+   ImageMemoryBarrier.subresourceRange.levelCount:=1;
+   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+   ImageMemoryBarrier.subresourceRange.layerCount:=1;
+   aTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                             0,
+                                             0,nil,
+                                             0,nil,
+                                             1,@ImageMemoryBarrier);
+
+   if BlitSupported then begin
+
+    FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
+    ImageBlit.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+    ImageBlit.srcSubresource.mipLevel:=0;
+    ImageBlit.srcSubresource.baseArrayLayer:=0;
+    ImageBlit.srcSubresource.layerCount:=1;
+    ImageBlit.srcOffsets[0].x:=0;
+    ImageBlit.srcOffsets[0].y:=0;
+    ImageBlit.srcOffsets[0].z:=0;
+    ImageBlit.srcOffsets[1].x:=aSwapChainWidth;
+    ImageBlit.srcOffsets[1].y:=aSwapChainHeight;
+    ImageBlit.srcOffsets[1].z:=1;
+    ImageBlit.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+    ImageBlit.dstSubresource.mipLevel:=0;
+    ImageBlit.dstSubresource.baseArrayLayer:=0;
+    ImageBlit.dstSubresource.layerCount:=1;
+    ImageBlit.dstOffsets[0].x:=0;
+    ImageBlit.dstOffsets[0].y:=0;
+    ImageBlit.dstOffsets[0].z:=0;
+    ImageBlit.dstOffsets[1].x:=aSwapChainWidth;
+    ImageBlit.dstOffsets[1].y:=aSwapChainHeight;
+    ImageBlit.dstOffsets[1].z:=1;
+    aTransferCommandBuffer.CmdBlitImage(aSwapChainImage,
+                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                        DstImage.fImageHandle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                        1,
+                                        @ImageBlit,
+                                        VK_FILTER_NEAREST);
+
+   end else begin
+
+    FillChar(ImageCopy,SizeOf(TVkImageCopy),#0);
+    ImageCopy.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+    ImageCopy.srcSubresource.mipLevel:=0;
+    ImageCopy.srcSubresource.baseArrayLayer:=0;
+    ImageCopy.srcSubresource.layerCount:=1;
+    ImageCopy.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+    ImageCopy.dstSubresource.mipLevel:=0;
+    ImageCopy.dstSubresource.baseArrayLayer:=0;
+    ImageCopy.dstSubresource.layerCount:=1;
+    ImageCopy.extent.width:=aSwapChainWidth;
+    ImageCopy.extent.height:=aSwapChainHeight;
+    ImageCopy.extent.depth:=1;
+    aTransferCommandBuffer.CmdCopyImage(aSwapChainImage,
+                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                        DstImage.fImageHandle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                        1,
+                                        @ImageCopy);
+
+   end;
+
+   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+   ImageMemoryBarrier.pNext:=nil;
+   ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+   ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+   ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+   if (aDevice.fPresentQueueFamilyIndex<>aDevice.fGraphicsQueueFamilyIndex) or
+      ((assigned(aDevice.fPresentQueue) and assigned(aDevice.fGraphicsQueue)) and
+       (aDevice.fPresentQueue<>aDevice.fGraphicsQueue)) then begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fPresentQueueFamilyIndex;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=aDevice.fGraphicsQueueFamilyIndex;
+   end else begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   end;
+   ImageMemoryBarrier.image:=DstImage.fImageHandle;
+   ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+   ImageMemoryBarrier.subresourceRange.levelCount:=1;
+   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+   ImageMemoryBarrier.subresourceRange.layerCount:=1;
+   aTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                             0,
+                                             0,nil,
+                                             0,nil,
+                                             1,@ImageMemoryBarrier);
+
+   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+   ImageMemoryBarrier.pNext:=nil;
+   ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+   ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+   ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+   if (aDevice.fPresentQueueFamilyIndex<>aDevice.fGraphicsQueueFamilyIndex) or
+      ((assigned(aDevice.fPresentQueue) and assigned(aDevice.fGraphicsQueue)) and
+       (aDevice.fPresentQueue<>aDevice.fGraphicsQueue)) then begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=aDevice.fPresentQueueFamilyIndex;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=aDevice.fGraphicsQueueFamilyIndex;
+   end else begin
+    ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   end;
+   ImageMemoryBarrier.image:=aSwapChainImage;
+   ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+   ImageMemoryBarrier.subresourceRange.levelCount:=1;
+   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+   ImageMemoryBarrier.subresourceRange.layerCount:=1;
+   aTransferCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                             0,
+                                             0,nil,
+                                             0,nil,
+                                             1,@ImageMemoryBarrier);
+
+
+   aTransferCommandBuffer.EndRecording;
+
+   aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
+
+   FillChar(ImageSubresource,SizeOf(TVkImageSubresource),#0);
+   ImageSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+
+   SubresourceLayout.offset:=0;
+
+   aDevice.fDeviceVulkan.GetImageSubresourceLayout(aDevice.fDeviceHandle,DstImage.fImageHandle,@ImageSubresource,@SubresourceLayout);
+
+   p:=MemoryBlock.MapMemory(MemoryBlock.fSize);
+   if assigned(MemoryBlock) then begin
+    try
+
+     inc(p,SubresourceLayout.offset);
+
+     NeedColorSwizzle:=(not BlitSupported) and (aSwapChainColorFormat in [VK_FORMAT_B8G8R8A8_SRGB,VK_FORMAT_B8G8R8A8_UNORM,VK_FORMAT_B8G8R8A8_SNORM]);
+
+     GetMem(ImageData,aSwapChainWidth*aSwapChainHeight*4);
+     try
+      pp:=ImageData;
+      for y:=0 to aSwapChainHeight-1 do begin
+       pr:=p;
+       for x:=0 to aSwapChainWidth-1 do begin
+        if NeedColorSwizzle then begin
+         PBytes(TVkPointer(pp))^[0]:=PBytes(TVkPointer(pr))^[2];
+         PBytes(TVkPointer(pp))^[1]:=PBytes(TVkPointer(pr))^[1];
+         PBytes(TVkPointer(pp))^[2]:=PBytes(TVkPointer(pr))^[0];
+         PBytes(TVkPointer(pp))^[3]:=PBytes(TVkPointer(pr))^[3];
+        end else begin
+         PBytes(TVkPointer(pp))^[0]:=PBytes(TVkPointer(pr))^[0];
+         PBytes(TVkPointer(pp))^[1]:=PBytes(TVkPointer(pr))^[1];
+         PBytes(TVkPointer(pp))^[2]:=PBytes(TVkPointer(pr))^[2];
+         PBytes(TVkPointer(pp))^[3]:=PBytes(TVkPointer(pr))^[3];
+        end;
+        inc(pp,4);
+        inc(pr,4);
+       end;
+       inc(p,SubresourceLayout.rowPitch);
+      end;
+
+      SavePNG(ImageData,aSwapChainWidth,aSwapChainHeight,PNGData,PNGDataSize,ppfR8G8B8A8);
+      if assigned(PNGData) then begin
+       try
+        aStream.Seek(0,soBeginning);
+        aStream.WriteBuffer(PNGData^,PNGDataSize);
+        aStream.Seek(0,soBeginning);
+       finally
+        FreeMem(PNGData);
+       end;
+      end;
+
+     finally
+      FreeMem(ImageData);
+     end;
+
+    finally
+     MemoryBlock.UnmapMemory;
+    end;
+   end;
+
+  finally
+   MemoryBlock.Free;
+  end;
+
+ finally
+  DstImage.Free;
+ end;
+
 end;
 
 function VulkanSpritePoint(const x,y:single):TVulkanSpritePoint;
