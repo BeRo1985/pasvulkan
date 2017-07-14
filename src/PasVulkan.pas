@@ -8113,7 +8113,7 @@ var DoCompression:boolean;
     end;
    end;
    Assert(FoundIndex>=0);
-   DoOutputBits(MirrorBytes[DistanceCodes[FoundIndex,0] shl 3],4);
+   DoOutputBits(MirrorBytes[DistanceCodes[FoundIndex,0] shl 3],5);
    if DistanceCodes[FoundIndex,1]<>0 then begin
     DoOutputBits(aDistance-DistanceCodes[FoundIndex,2],DistanceCodes[FoundIndex,1]);
    end;
@@ -9653,8 +9653,8 @@ const PNGHeaderTemplate:TPNGHeader=
 var PNGHeader:PPNGHeader;
     PNGFooter:PPNGFooter;
     CRC32ChecksumValue,ImageDataSize,RowSize,IDATDataSize,LineIndex,Index,
-    InByteIndex,OutByteIndex:TVKUInt32;
-    ImageData,IDATData:TVkPointer;
+    InByteIndex,OutByteIndex,NewImageDataSize:TVKUInt32;
+    ImageData,IDATData,NewImageData:TVkPointer;
 begin
  case aImagePixelFormat of
   ppfR8G8B8A8:begin
@@ -9673,16 +9673,16 @@ begin
  try
   InByteIndex:=0;
   OutByteIndex:=0;
-  PBytes(ImageData)^[OutByteIndex]:=1;
+  PBytes(ImageData)^[OutByteIndex]:=0;
   inc(OutByteIndex);
   Move(PBytes(aImageData)^[InByteIndex],PBytes(ImageData)^[OutByteIndex],RowSize);
   inc(InByteIndex,RowSize);
   inc(OutByteIndex,RowSize);
   for LineIndex:=2 to aImageHeight do begin
-   PBytes(ImageData)^[OutByteIndex]:=1;
+   PBytes(ImageData)^[OutByteIndex]:=0;
    inc(OutByteIndex);
    for Index:=1 to RowSize do begin
-    PBytes(ImageData)^[OutByteIndex]:=PBytes(aImageData)^[InByteIndex]-PBytes(aImageData)^[InByteIndex-TVkUInt32(RowSize)];
+    PBytes(ImageData)^[OutByteIndex]:=PBytes(aImageData)^[InByteIndex];//-PBytes(aImageData)^[InByteIndex-TVkUInt32(RowSize)];
     inc(InByteIndex);
     inc(OutByteIndex);
    end;
@@ -9690,6 +9690,15 @@ begin
   DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,true);
   if assigned(IDATData) then begin
    try
+    NewImageData:=nil;
+    DoInflate(IDATData,IDATDataSize,NewImageData,NewImageDataSize,true);
+    if ImageDataSize=NewImageDataSize then begin
+     if CompareMem(ImageData,NewImageData,NewImageDataSize) then begin
+      if ImageDataSize=NewImageDataSize then begin
+      end;
+     end;
+    end;
+    FreeMem(NewImageData);
     if assigned(ImageData) then begin
      FreeMem(ImageData);
      ImageData:=nil;
