@@ -160,11 +160,14 @@ begin
                         fVulkanScreenShotCommandBuffer,
                         fVulkanScreenShotFence,
                         VulkanSwapChain.ImageFormat,
-                        VulkanSwapChain.CurrentImage.Handle,
+                        VulkanSwapChain.PreviousImage.Handle,
                         VulkanSwapChain.Width,
                         VulkanSwapChain.Height,
                         Stream);
-   Stream.SaveToFile('screenshot.png');
+   try
+    Stream.SaveToFile('screenshot.png');
+   except
+   end;
   finally
    Stream.Free;
   end;

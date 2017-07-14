@@ -2208,11 +2208,13 @@ type EVulkanException=class(Exception);
        fImageColorSpace:TVkColorSpaceKHR;
        fImages:TVulkanSwapChainImages;
        fPresentMode:TVkPresentModeKHR;
+       fPreviousImageIndex:TVkUInt32;
        fCurrentImageIndex:TVkUInt32;
        fCountImages:TVkUInt32;
        fWidth:TVkInt32;
        fHeight:TVkInt32;
        function GetImage(const aImageIndex:TVkInt32):TVulkanImage;
+       function GetPreviousImage:TVulkanImage;
        function GetCurrentImage:TVulkanImage;
       public
        constructor Create(const aDevice:TVulkanDevice;
@@ -2242,8 +2244,10 @@ type EVulkanException=class(Exception);
        property ImageFormat:TVkFormat read fImageFormat;
        property ImageColorSpace:TVkColorSpaceKHR read fImageColorSpace;
        property PresentMode:TVkPresentModeKHR read fPresentMode;
+       property PreviousImageIndex:TVkUInt32 read fPreviousImageIndex;
        property CurrentImageIndex:TVkUInt32 read fCurrentImageIndex;
        property CountImages:TVkUInt32 read fCountImages;
+       property PreviousImage:TVulkanImage read GetPreviousImage;
        property CurrentImage:TVulkanImage read GetCurrentImage;
        property Width:TVkInt32 read fWidth;
        property Height:TVkInt32 read fHeight;
@@ -21333,6 +21337,8 @@ begin
 
  fPresentMode:=aPresentMode;
 
+ fPreviousImageIndex:=0;
+
  fCurrentImageIndex:=0;
 
  fCountImages:=0;
@@ -21524,6 +21530,8 @@ begin
    SetLength(SwapChainImages,0);
   end;
 
+  fPreviousImageIndex:=0;
+
   fCurrentImageIndex:=fCountImages-1;
 
  except
@@ -21588,6 +21596,7 @@ function TVulkanSwapChain.AcquireNextImage(const aSemaphore:TVulkanSemaphore=nil
 var SemaphoreHandle:TVkFence;
     FenceHandle:TVkFence;
 begin
+ fPreviousImageIndex:=fCurrentImageIndex;
  if assigned(aSemaphore) then begin
   SemaphoreHandle:=aSemaphore.fSemaphoreHandle;
  end else begin
@@ -21607,6 +21616,11 @@ end;
 function TVulkanSwapChain.GetImage(const aImageIndex:TVkInt32):TVulkanImage;
 begin
  result:=fImages[aImageIndex];
+end;
+
+function TVulkanSwapChain.GetPreviousImage:TVulkanImage;
+begin
+ result:=fImages[fPreviousImageIndex];
 end;
 
 function TVulkanSwapChain.GetCurrentImage:TVulkanImage;
