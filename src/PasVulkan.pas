@@ -9617,6 +9617,14 @@ type PPNGHeader=^TPNGHeader;
       IHDRChunkFilterMethod:TVkUInt8;
       IHDRChunkInterlaceMethod:TVkUInt8;
       IHDRChunkCRC32Checksum:array[0..3] of TVkUInt8;
+      sRGBChunkSize:array[0..3] of TVkUInt8;
+      sRGBChunkSignature:array[0..3] of TVkUInt8;
+      sRGBChunkData:TVkUInt8;
+      sRGBChunkCRC32Checksum:array[0..3] of TVkUInt8;
+      gAMAChunkSize:array[0..3] of TVkUInt8;
+      gAMAChunkSignature:array[0..3] of TVkUInt8;
+      gAMAChunkData:array[0..3] of TVkUInt8;
+      gAMAChunkCRC32Checksum:array[0..3] of TVkUInt8;
       IDATChunkSize:array[0..3] of TVkUInt8;
       IDATChunkSignature:array[0..3] of TVkUInt8;
      end;
@@ -9642,6 +9650,14 @@ const PNGHeaderTemplate:TPNGHeader=
         IHDRChunkFilterMethod:$00;
         IHDRChunkInterlaceMethod:$00;
         IHDRChunkCRC32Checksum:($00,$00,$00,$00);
+        sRGBChunkSize:($00,$00,$00,$01);
+        sRGBChunkSignature:($73,$52,$47,$42);
+        sRGBChunkData:$00;
+        sRGBChunkCRC32Checksum:($ae,$ce,$1c,$e9);
+        gAMAChunkSize:($00,$00,$00,$04);
+        gAMAChunkSignature:($67,$41,$4d,$41);
+        gAMAChunkData:($00,$00,$b1,$8f);
+        gAMAChunkCRC32Checksum:($0b,$fc,$61,$05);
         IDATChunkSize:($00,$00,$00,$00);
         IDATChunkSignature:($49,$44,$41,$54);
        );
@@ -9652,42 +9668,124 @@ const PNGHeaderTemplate:TPNGHeader=
         IENDChunkSignature:($49,$45,$4e,$44);
         IENDChunkCRC32Checksum:($ae,$42,$60,$82);
        );
+ function Paeth(a,b,c:TVkInt32):TVkInt32;
+ var p,pa,pb,pc:TVkInt32;
+ begin
+  p:=(a+b)-c;
+  pa:=abs(p-a);
+  pb:=abs(p-b);
+  pc:=abs(p-c);
+  if (pa<=pb) and (pa<=pc) then begin
+   result:=a;
+  end else if pb<=pc then begin
+   result:=b;
+  end else begin
+   result:=c;
+  end;
+ end;
+ procedure ProcessLineFilter(const aInput,aOutput:PBytes;const aRowSize,aByteWidth,aLineFilterIndex:TVkUInt32);
+ var InByteIndex,OutByteIndex,Index:TVkUInt32;
+ begin
+  InByteIndex:=0;
+  OutByteIndex:=0;
+  aOutput^[OutByteIndex]:=aLineFilterIndex;
+  inc(OutByteIndex);
+  case aLineFilterIndex of
+   1:begin
+    // Sub
+    for Index:=1 to aRowSize do begin
+     if Index<=aByteWidth then begin
+      aOutput^[OutByteIndex]:=aInput^[InByteIndex];
+     end else begin
+      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-aInput^[InByteIndex-aByteWidth];
+     end;
+     inc(InByteIndex);
+     inc(OutByteIndex);
+    end;
+   end;
+   2:begin
+    // Up
+    for Index:=1 to aRowSize do begin
+     aOutput^[OutByteIndex]:=aInput^[InByteIndex]-aInput^[InByteIndex-TVkUInt32(aRowSize)];
+     inc(InByteIndex);
+     inc(OutByteIndex);
+    end;
+   end;
+   3:begin
+    // Average
+    for Index:=1 to aRowSize do begin
+     if Index<=aByteWidth then begin
+      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-(aInput^[InByteIndex-aRowSize] shr 1);
+     end else begin
+      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-((aInput^[InByteIndex-aByteWidth]+aInput^[InByteIndex-aRowSize]) shr 1);
+     end;
+     inc(InByteIndex);
+     inc(OutByteIndex);
+    end;
+   end;
+   4:begin
+    // Paeth
+    for Index:=1 to aRowSize do begin
+     if Index<=aByteWidth then begin
+      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-aInput^[InByteIndex-aRowSize];
+     end else begin
+      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-Paeth(aInput^[InByteIndex-aByteWidth],aInput^[InByteIndex-aRowSize],aInput^[InByteIndex-(aRowSize+aByteWidth)]);
+     end;
+     inc(InByteIndex);
+     inc(OutByteIndex);
+    end;
+   end;
+   else begin
+    // None
+    Move(aInput^[InByteIndex],aOutput^[OutByteIndex],aRowSize);
+   end;
+  end;
+ end;
 var PNGHeader:PPNGHeader;
     PNGFooter:PPNGFooter;
-    CRC32ChecksumValue,ImageDataSize,RowSize,IDATDataSize,LineIndex,Index,
-    InByteIndex,OutByteIndex:TVKUInt32;
+    CRC32ChecksumValue,ImageDataSize,RowSize,IDATDataSize,LineIndex,Index,ByteWidth,
+    InByteIndex,OutByteIndex,FakeEntropy,LineFilterIndex,BestFakeEntropy,BestLineFilterIndex:TVkUInt32;
     ImageData,IDATData:TVkPointer;
 begin
  case aImagePixelFormat of
   ppfR8G8B8A8:begin
-   RowSize:=aImageWidth*4;
+   ByteWidth:=4;
   end;
   ppfR16G16B16A16:begin
-   RowSize:=aImageWidth*8;
+   ByteWidth:=8;
   end;
   else begin
    Assert(false);
-   RowSize:=0;
+   ByteWidth:=0;
   end;
  end;
+ RowSize:=aImageWidth*ByteWidth;
  ImageDataSize:=(RowSize+1)*aImageHeight;
  GetMem(ImageData,ImageDataSize);
  try
   InByteIndex:=0;
   OutByteIndex:=0;
-  PBytes(ImageData)^[OutByteIndex]:=0;
-  inc(OutByteIndex);
-  Move(PBytes(aImageData)^[InByteIndex],PBytes(ImageData)^[OutByteIndex],RowSize);
-  inc(InByteIndex,RowSize);
-  inc(OutByteIndex,RowSize);
-  for LineIndex:=2 to aImageHeight do begin
-   PBytes(ImageData)^[OutByteIndex]:=0;
-   inc(OutByteIndex);
-   for Index:=1 to RowSize do begin
-    PBytes(ImageData)^[OutByteIndex]:=PBytes(aImageData)^[InByteIndex];//-PBytes(aImageData)^[InByteIndex-TVkUInt32(RowSize)];
-    inc(InByteIndex);
-    inc(OutByteIndex);
+  for LineIndex:=1 to aImageHeight do begin
+   BestFakeEntropy:=$ffffffff;
+   BestLineFilterIndex:=0;
+   for LineFilterIndex:=0 to 4 do begin
+    if (LineIndex>1) or (LineFilterIndex in [0,1]) then begin
+     ProcessLineFilter(@PBytes(aImageData)^[InByteIndex],@PBytes(ImageData)^[OutByteIndex],RowSize,ByteWidth,LineFilterIndex);
+     FakeEntropy:=0;
+     for Index:=0 to RowSize do begin
+      inc(FakeEntropy,PBytes(ImageData)^[OutByteIndex+Index]);
+     end;
+     if BestFakeEntropy>FakeEntropy then begin
+      BestFakeEntropy:=FakeEntropy;
+      BestLineFilterIndex:=LineFilterIndex;
+     end;
+    end else begin
+     break;
+    end;
    end;
+   ProcessLineFilter(@PBytes(aImageData)^[InByteIndex],@PBytes(ImageData)^[OutByteIndex],RowSize,ByteWidth,BestLineFilterIndex);
+   inc(InByteIndex,RowSize);
+   inc(OutByteIndex,RowSize+1);
   end;
   DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,true);
   if assigned(IDATData) then begin
