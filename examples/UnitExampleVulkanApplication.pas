@@ -28,9 +28,6 @@ const MenuColors:array[boolean,0..1,0..3] of single=
 
 type TExampleVulkanApplication=class(TVulkanApplication)
       private
-       fVulkanCommandPool:TVulkanCommandPool;
-       fVulkanScreenShotCommandBuffer:TVulkanCommandBuffer;
-       fVulkanScreenShotFence:TVulkanFence;
        fMakeScreenshot:boolean;
        fTextOverlay:TTextOverlay;
       public
@@ -86,20 +83,12 @@ end;
 procedure TExampleVulkanApplication.Load;
 begin
  inherited Load;
- fVulkanCommandPool:=TVulkanCommandPool.Create(VulkanDevice,
-                                               VulkanDevice.GraphicsQueueFamilyIndex,
-                                               TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
- fVulkanScreenShotCommandBuffer:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
- fVulkanScreenShotFence:=TVulkanFence.Create(VulkanDevice);
  fTextOverlay.Load;
 end;
 
 procedure TExampleVulkanApplication.Unload;
 begin
  fTextOverlay.Unload;
- FreeAndNil(fVulkanScreenShotFence);
- FreeAndNil(fVulkanScreenShotCommandBuffer);
- FreeAndNil(fVulkanCommandPool);
  inherited Unload;
 end;
 
@@ -152,18 +141,9 @@ begin
  fTextOverlay.Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
  if fMakeScreenshot then begin
   fMakeScreenshot:=false;
-  VulkanDevice.GraphicsQueue.WaitIdle;
   Stream:=TMemoryStream.Create;
   try
-   VulkanSaveScreenshot(VulkanDevice,
-                        VulkanDevice.GraphicsQueue,
-                        fVulkanScreenShotCommandBuffer,
-                        fVulkanScreenShotFence,
-                        VulkanSwapChain.ImageFormat,
-                        VulkanSwapChain.CurrentImage.Handle,
-                        VulkanSwapChain.Width,
-                        VulkanSwapChain.Height,
-                        Stream);
+   VulkanSwapChain.SaveScreenshotAsPNGToStream(Stream);
    try
     Stream.SaveToFile('screenshot.png');
    except
