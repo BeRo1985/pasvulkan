@@ -8175,16 +8175,11 @@ begin
    end;
    OutputBits:=0;
    CountOutputBits:=0;
-   if aWithHeader then begin
-    if DoCompression then begin
+   if DoCompression then begin
+    if aWithHeader then begin
      DoOutputBits($78,8); // CMF
      DoOutputBits($9c,8); // FLG Default Compression
-    end else begin
-     DoOutputBits($78,8); // CMF
-     DoOutputBits($01,8); // FLG No Compression
     end;
-   end;
-   if DoCompression then begin
     OutputStartBlock;
     GetMem(HashTable,SizeOf(THashTable));
     try
@@ -8270,6 +8265,15 @@ begin
     end;
     OutputEndBlock;
    end else begin
+    if aWithHeader then begin
+     if AllocatedDestSize<(aDestLen+2) then begin
+      AllocatedDestSize:=(aDestLen+2) shl 1;
+      ReallocMem(aDestData,AllocatedDestSize);
+     end;
+     PBytes(aDestData)^[aDestLen+0]:=$78; // CMF
+     PBytes(aDestData)^[aDestLen+1]:=$01; // FLG No Compression
+     inc(aDestLen,2);
+    end;
     if aInLen>0 then begin
      if AllocatedDestSize<(aDestLen+aInLen) then begin
       AllocatedDestSize:=(aDestLen+aInLen) shl 1;
