@@ -7909,6 +7909,7 @@ function DoDeflate(InData:TVkPointer;InLen:TVkUInt32;var DestData:TVkPointer;var
 const HashBits=12;
       HashSize=1 shl HashBits;
       HashMask=HashSize-1;
+      HashShift=32-HashBits;
       MinMatch=3;
       MaxMatch=258;
       MaxOffset=32768;
@@ -8038,11 +8039,6 @@ var DoCompression:boolean;
    end;
   end;
  end;
- function HashData(const aData:TVKPointer):TVkUInt32;
- begin
-  result:=(PThreeBytes(aData)^[0] shl 16) or (PThreeBytes(aData)^[1] shl 8) or PThreeBytes(aData)^[2];
-  result:=((result shr ((3 shl 3)-HashBits))-result) and HashMask;
- end;
  procedure DoOutputBits(const aBits,aCountBits:TVkUInt32);
  begin
   Assert((CountOutputBits+aCountBits)<=32);
@@ -8145,7 +8141,7 @@ var DoCompression:boolean;
   result:=(s2 shl 16) or s1;
  end;
 var CurrentPointer,EndPointer,EndSearchPointer,Substitution,Match:PVkUInt8;
-    HashValue,MatchLength,CheckSum:TVkUInt32;
+    MatchLength,CheckSum:TVkUInt32;
     HashTable:PHashTable;
     Bucket:PPVkUInt8;
 begin
@@ -8178,8 +8174,9 @@ begin
     EndPointer:={%H-}TVkPointer(TVkPtrUInt(TVkPtrUInt(CurrentPointer)+TVkPtrUInt(InLen)));
     EndSearchPointer:={%H-}TVkPointer(TVkPtrUInt((TVkPtrUInt(CurrentPointer)+TVkPtrUInt(InLen))-TVkPtrUInt(MinMatch)));
     while {%H-}TVkPtrUInt(CurrentPointer)<{$H-}TVkPtrUInt(EndSearchPointer) do begin
-     HashValue:=HashData(CurrentPointer);
-     Bucket:=@HashTable[HashValue and HashMask];
+     Bucket:=@HashTable[((((TVkUInt32(PBytes(CurrentPointer)^[0]) shl 0) or
+                           (TVkUInt32(PBytes(CurrentPointer)^[1]) shl 8) or
+                           (TVkUInt32(PBytes(CurrentPointer)^[2]) shl 16))*TVkUInt32($1e35a7bd)) shr HashShift) and HashMask];
      Substitution:=Bucket^;
      Bucket^:=CurrentPointer;
      if assigned(Substitution) and
