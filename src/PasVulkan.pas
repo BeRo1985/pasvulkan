@@ -7909,6 +7909,7 @@ type PDeflateMode=^TDeflateMode;
      TDeflateMode=
       (
        dmNone,
+       dmVeryFast,
        dmFast,
        dmMedium,
        dmSlow
@@ -8168,10 +8169,16 @@ begin
   try
    DoCompression:=aMode<>dmNone;
    Greedy:=aMode in [dmMedium,dmSlow];
-   if aMode=dmSlow then begin
-    MaxSteps:=MaxOffset;
-   end else begin
-    MaxSteps:=128;
+   case aMode of
+    dmVeryFast:begin
+     MaxSteps:=1;
+    end;
+    dmSlow:begin
+     MaxSteps:=MaxOffset;
+    end;
+    else begin
+     MaxSteps:=128;
+    end;
    end;
    OutputBits:=0;
    CountOutputBits:=0;
@@ -8199,8 +8206,7 @@ begin
        Step:=0;
        while assigned(CurrentPossibleMatch) and
              ({%H-}TVkPtrUInt(CurrentPointer)>{%H-}TVkPtrUInt(CurrentPossibleMatch)) and
-             (TVkPtrInt({%H-}TVkPtrUInt({%H-}TVkPtrUInt(CurrentPointer)-{%H-}TVkPtrUInt(CurrentPossibleMatch)))<TVkPtrInt(MaxOffset)) and
-             (Step<MaxSteps) do begin
+             (TVkPtrInt({%H-}TVkPtrUInt({%H-}TVkPtrUInt(CurrentPointer)-{%H-}TVkPtrUInt(CurrentPossibleMatch)))<TVkPtrInt(MaxOffset)) do begin
         Difference:=PVkUInt32(TVkPointer(@PBytes(CurrentPointer)^[0]))^ xor PVkUInt32(TVkPointer(@PBytes(CurrentPossibleMatch)^[0]))^;
         if (Difference and TVkUInt32({$if defined(FPC_BIG_ENDIAN)}$ffffff00{$else}$00ffffff{$ifend}))=0 then begin
          if (BestMatchLength<=({%H-}TVkPtrUInt(EndPointer)-{%H-}TVkPtrUInt(CurrentPointer))) and
@@ -8229,8 +8235,12 @@ begin
           end;
          end;
         end;
-        CurrentPossibleMatch:=ChainTable^[({%H-}TVkPtrUInt(CurrentPossibleMatch)-{%H-}TVkPtrUInt(aInData)) and WindowMask];
         inc(Step);
+        if Step<MaxSteps then begin
+         CurrentPossibleMatch:=ChainTable^[({%H-}TVkPtrUInt(CurrentPossibleMatch)-{%H-}TVkPtrUInt(aInData)) and WindowMask];
+        end else begin
+         break;
+        end;
        end;
        if (BestMatchDistance>0) and (BestMatchLength>1) then begin
         DoOutputCopy(BestMatchDistance,BestMatchLength);
