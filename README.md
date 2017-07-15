@@ -27,6 +27,8 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
         - JPG / JPEG (only baseline, only Huffman-coded and only YCrCb at the moment now) 
         - PNG (all types, including 16-bit channel PNGs)
         - TGA
+    - Features swap chain screenshot API functions
+        - including an own ObjectPascal-native minimal PNG writer implementation (including an own minimal static-huffman only deflate implementation)
     - Optional automatic GPU-based texture mipmap generation (with help of vkCmdBlitImage)
     - Own ObjectPascal-native TrueType/OpenType Font loader implementation
         - With experimental PostScript-flavoured OpenType Font support (CFF Type 2)
