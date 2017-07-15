@@ -969,6 +969,10 @@ type EVulkanApplication=class(Exception)
        fVulkanCommandBuffers:array of TVulkanApplicationCommandBuffers;
        fVulkanCommandBufferFences:array of TVulkanApplicationCommandBufferFences;
 
+       fVulkanUniversalCommandPools:TVulkanApplicationCommandPools;
+       fVulkanUniversalCommandBuffers:TVulkanApplicationCommandBuffers;
+       fVulkanUniversalCommandBufferFences:TVulkanApplicationCommandBufferFences;
+
        fVulkanPresentCommandPools:TVulkanApplicationCommandPools;
        fVulkanPresentCommandBuffers:TVulkanApplicationCommandBuffers;
        fVulkanPresentCommandBufferFences:TVulkanApplicationCommandBufferFences;
@@ -1257,6 +1261,10 @@ type EVulkanApplication=class(Exception)
        property VulkanPipelineCache:TVulkanPipelineCache read fVulkanPipelineCache;
 
        property VulkanPipelineCacheFileName:string read fVulkanPipelineCacheFileName write fVulkanPipelineCacheFileName; 
+
+       property VulkanUniversalCommandPools:TVulkanApplicationCommandPools read fVulkanUniversalCommandPools;
+       property VulkanUniversalCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanUniversalCommandBuffers;
+       property VulkamUniversalCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanUniversalCommandBufferFences;
 
        property VulkanPresentCommandPools:TVulkanApplicationCommandPools read fVulkanPresentCommandPools;
        property VulkanPresentCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanPresentCommandBuffers;
@@ -4890,6 +4898,10 @@ begin
  fVulkanCommandBuffers:=nil;
  fVulkanCommandBufferFences:=nil;
 
+ fVulkanUniversalCommandPools:=nil;
+ fVulkanUniversalCommandBuffers:=nil;
+ fVulkanUniversalCommandBufferFences:=nil;
+
  fVulkanPresentCommandPools:=nil;
  fVulkanPresentCommandBuffers:=nil;
  fVulkanPresentCommandBufferFences:=nil;
@@ -5073,7 +5085,8 @@ begin
   SetLength(fVulkanCommandBuffers,fVulkanCountCommandQueues,fCountCPUThreads+1,MaxSwapChainImages);
   SetLength(fVulkanCommandBufferFences,fVulkanCountCommandQueues,fCountCPUThreads+1,MaxSwapChainImages);
   for QueueFamilyIndex:=0 to length(fVulkanDevice.PhysicalDevice.QueueFamilyProperties)-1 do begin
-   if (QueueFamilyIndex=fVulkanDevice.PresentQueueFamilyIndex) or
+   if (QueueFamilyIndex=fVulkanDevice.UniversalQueueFamilyIndex) or
+      (QueueFamilyIndex=fVulkanDevice.PresentQueueFamilyIndex) or
       (QueueFamilyIndex=fVulkanDevice.GraphicsQueueFamilyIndex) or
       (QueueFamilyIndex=fVulkanDevice.ComputeQueueFamilyIndex) or
       (QueueFamilyIndex=fVulkanDevice.TransferQueueFamilyIndex) then begin
@@ -5085,6 +5098,16 @@ begin
      end;
     end;
    end;
+  end;
+
+  if fVulkanDevice.UniversalQueueFamilyIndex>=0 then begin
+   fVulkanUniversalCommandPools:=fVulkanCommandPools[fVulkanDevice.UniversalQueueFamilyIndex];
+   fVulkanUniversalCommandBuffers:=fVulkanCommandBuffers[fVulkanDevice.UniversalQueueFamilyIndex];
+   fVulkanUniversalCommandBufferFences:=fVulkanCommandBufferFences[fVulkanDevice.UniversalQueueFamilyIndex];
+  end else begin
+   fVulkanUniversalCommandPools:=nil;
+   fVulkanUniversalCommandBuffers:=nil;
+   fVulkanUniversalCommandBufferFences:=nil;
   end;
 
   if fVulkanDevice.PresentQueueFamilyIndex>=0 then begin
@@ -5240,6 +5263,10 @@ begin
   except
   end;
  end;
+
+ fVulkanUniversalCommandPools:=nil;
+ fVulkanUniversalCommandBuffers:=nil;
+ fVulkanUniversalCommandBufferFences:=nil;
 
  fVulkanPresentCommandPools:=nil;
  fVulkanPresentCommandBuffers:=nil;

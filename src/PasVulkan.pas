@@ -1313,11 +1313,13 @@ type EVulkanException=class(Exception);
        fAllocationCallbacks:PVkAllocationCallbacks;
        fDeviceHandle:TVkDevice;
        fDeviceVulkan:TVulkan;
+       fUniversalQueueFamilyIndex:TVkInt32;
        fPresentQueueFamilyIndex:TVkInt32;
        fGraphicsQueueFamilyIndex:TVkInt32;
        fComputeQueueFamilyIndex:TVkInt32;
        fTransferQueueFamilyIndex:TVkInt32;
        fQueues:TVulkanQueues;
+       fUniversalQueue:TVulkanQueue;
        fPresentQueue:TVulkanQueue;
        fGraphicsQueue:TVulkanQueue;
        fComputeQueue:TVulkanQueue;
@@ -1331,7 +1333,8 @@ type EVulkanException=class(Exception);
                           const aAllocationManager:TVulkanAllocationManager=nil);
        destructor Destroy; override;
        procedure AddQueue(const aQueueFamilyIndex:TVkUInt32;const aQueuePriorities:array of TVkFloat;const aSurface:TVulkanSurface=nil);
-       procedure AddQueues(const aPresent:boolean=true;
+       procedure AddQueues(const aUniversal:boolean=true;
+                           const aPresent:boolean=true;
                            const aGraphics:boolean=true;
                            const aCompute:boolean=true;
                            const aTransfer:boolean=true;
@@ -1347,11 +1350,13 @@ type EVulkanException=class(Exception);
        property EnabledExtensionNames:TStringList read fEnabledExtensionNames;
        property Handle:TVkDevice read fDeviceHandle;
        property Commands:TVulkan read fDeviceVulkan;
+       property UniversalQueueFamilyIndex:TVkInt32 read fUniversalQueueFamilyIndex;
        property PresentQueueFamilyIndex:TVkInt32 read fPresentQueueFamilyIndex;
        property GraphicsQueueFamilyIndex:TVkInt32 read fGraphicsQueueFamilyIndex;
        property ComputeQueueFamilyIndex:TVkInt32 read fComputeQueueFamilyIndex;
        property TransferQueueFamilyIndex:TVkInt32 read fTransferQueueFamilyIndex;
        property Queues:TVulkanQueues read fQueues;
+       property UniversalQueue:TVulkanQueue read fUniversalQueue;
        property PresentQueue:TVulkanQueue read fPresentQueue;
        property GraphicsQueue:TVulkanQueue read fGraphicsQueue;
        property ComputeQueue:TVulkanQueue read fComputeQueue;
@@ -17497,11 +17502,13 @@ begin
 
  fQueues:=nil;
 
+ fUniversalQueueFamilyIndex:=-1;
  fPresentQueueFamilyIndex:=-1;
  fGraphicsQueueFamilyIndex:=-1;
  fComputeQueueFamilyIndex:=-1;
  fTransferQueueFamilyIndex:=-1;
 
+ fUniversalQueue:=nil;
  fPresentQueue:=nil;
  fGraphicsQueue:=nil;
  fComputeQueue:=nil;
@@ -17611,6 +17618,14 @@ var QueueFamilyProperties:PVkQueueFamilyProperties;
 begin
  if aQueueFamilyIndex<TVkUInt32(length(fPhysicalDevice.fQueueFamilyProperties)) then begin
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[aQueueFamilyIndex];
+  if (((QueueFamilyProperties.queueFlags and (TVKUInt32(VK_QUEUE_GRAPHICS_BIT) or
+                                              TVKUInt32(VK_QUEUE_COMPUTE_BIT) or
+                                              TVKUInt32(VK_QUEUE_TRANSFER_BIT)))=(TVKUInt32(VK_QUEUE_GRAPHICS_BIT) or
+                                                                                  TVKUInt32(VK_QUEUE_COMPUTE_BIT) or
+                                                                                  TVKUInt32(VK_QUEUE_TRANSFER_BIT))) and (fUniversalQueueFamilyIndex<0)) and
+     ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(aQueueFamilyIndex,aSurface)) or not assigned(aSurface)) then begin
+   fUniversalQueueFamilyIndex:=aQueueFamilyIndex;
+  end;
   if (fPresentQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(aQueueFamilyIndex,aSurface)) or not assigned(aSurface)) then begin
    fPresentQueueFamilyIndex:=aQueueFamilyIndex;
   end;
@@ -17629,7 +17644,8 @@ begin
  end;
 end;
 
-procedure TVulkanDevice.AddQueues(const aPresent:boolean=true;
+procedure TVulkanDevice.AddQueues(const aUniversal:boolean=true;
+                                  const aPresent:boolean=true;
                                   const aGraphics:boolean=true;
                                   const aCompute:boolean=true;
                                   const aTransfer:boolean=true;
@@ -17642,6 +17658,17 @@ begin
  for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
   DoAdd:=false;
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
+  if (((QueueFamilyProperties.queueFlags and (TVKUInt32(VK_QUEUE_GRAPHICS_BIT) or
+                                              TVKUInt32(VK_QUEUE_COMPUTE_BIT) or
+                                              TVKUInt32(VK_QUEUE_TRANSFER_BIT)))=(TVKUInt32(VK_QUEUE_GRAPHICS_BIT) or
+                                                                                  TVKUInt32(VK_QUEUE_COMPUTE_BIT) or
+                                                                                  TVKUInt32(VK_QUEUE_TRANSFER_BIT))) and (fUniversalQueueFamilyIndex<0)) and
+     ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or not assigned(aSurface)) then begin
+   fUniversalQueueFamilyIndex:=Index;
+   if aUniversal then begin
+    DoAdd:=true;
+   end;
+  end;
   if (fPresentQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or not assigned(aSurface)) then begin
    fPresentQueueFamilyIndex:=Index;
    if aPresent then begin
@@ -17688,7 +17715,8 @@ begin
    fTransferQueueFamilyIndex:=fComputeQueueFamilyIndex;
   end;
  end;
- if ((fPresentQueueFamilyIndex<0) and aPresent) or
+ if ((fUniversalQueueFamilyIndex<0) and aUniversal) or
+    ((fPresentQueueFamilyIndex<0) and aPresent) or
     ((fGraphicsQueueFamilyIndex<0) and aGraphics) or
     ((fComputeQueueFamilyIndex<0) and aCompute) or
     ((fTransferQueueFamilyIndex<0) and aTransfer) then begin
@@ -17778,7 +17806,8 @@ begin
 
   SetLength(fQueues,length(fPhysicalDevice.fQueueFamilyProperties));
   for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
-   if (Index=fPresentQueueFamilyIndex) or
+   if (Index=fUniversalQueueFamilyIndex) or
+      (Index=fPresentQueueFamilyIndex) or
       (Index=fGraphicsQueueFamilyIndex) or
       (Index=fComputeQueueFamilyIndex) or
       (Index=fTransferQueueFamilyIndex) then begin
@@ -17789,21 +17818,30 @@ begin
    end;
   end;
 
+  if fUniversalQueueFamilyIndex>=0 then begin
+   fUniversalQueue:=fQueues[fUniversalQueueFamilyIndex];
+  end else begin
+   fUniversalQueue:=nil;
+  end;
+
   if fPresentQueueFamilyIndex>=0 then begin
    fPresentQueue:=fQueues[fPresentQueueFamilyIndex];
   end else begin
    fPresentQueue:=nil;
   end;
+
   if fGraphicsQueueFamilyIndex>=0 then begin
    fGraphicsQueue:=fQueues[fGraphicsQueueFamilyIndex];
   end else begin
    fGraphicsQueue:=nil;
   end;
+
   if fComputeQueueFamilyIndex>=0 then begin
    fComputeQueue:=fQueues[fComputeQueueFamilyIndex];
   end else begin
    fComputeQueue:=nil;
   end;
+
   if fTransferQueueFamilyIndex>=0 then begin
    fTransferQueue:=fQueues[fTransferQueueFamilyIndex];
   end else begin
