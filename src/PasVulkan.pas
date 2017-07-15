@@ -8182,7 +8182,7 @@ begin
      CurrentPointer:=aInData;
      EndPointer:={%H-}TVkPointer(TVkPtrUInt(TVkPtrUInt(CurrentPointer)+TVkPtrUInt(aInLen)));
      EndSearchPointer:={%H-}TVkPointer(TVkPtrUInt((TVkPtrUInt(CurrentPointer)+TVkPtrUInt(aInLen))-TVkPtrUInt(MinMatch)));
-     while {%H-}TVkPtrUInt(CurrentPointer)<{$H-}TVkPtrUInt(EndSearchPointer) do begin
+     while {%H-}TVkPtrUInt(CurrentPointer)<{%H-}TVkPtrUInt(EndSearchPointer) do begin
       HashTableItem:=@HashTable[((((TVkUInt32(PBytes(CurrentPointer)^[0]) shl 0) or
                                    (TVkUInt32(PBytes(CurrentPointer)^[1]) shl 8) or
                                    (TVkUInt32(PBytes(CurrentPointer)^[2]) shl 16))*TVkUInt32($1e35a7bd)) shr HashShift) and HashMask];
@@ -8193,13 +8193,13 @@ begin
       Step:=0;
       while assigned(CurrentPossibleMatch) and
             ({%H-}TVkPtrUInt(CurrentPointer)>{%H-}TVkPtrUInt(CurrentPossibleMatch)) and
-            ({$H-}TVkPtrInt({%H-}TVkPtrInt(CurrentPointer)-{%H-}TVkPtrInt(CurrentPossibleMatch))<TVkPtrInt(MaxOffset)) and
+            (TVkPtrInt({%H-}TVkPtrUInt({%H-}TVkPtrUInt(CurrentPointer)-{%H-}TVkPtrUInt(CurrentPossibleMatch)))<TVkPtrInt(MaxOffset)) and
             (Step<MaxSteps) do begin
        if ((PThreeBytes(CurrentPointer)^[0]=PThreeBytes(CurrentPossibleMatch)^[0]) and
            (PThreeBytes(CurrentPointer)^[1]=PThreeBytes(CurrentPossibleMatch)^[1]) and
            (PThreeBytes(CurrentPointer)^[2]=PThreeBytes(CurrentPossibleMatch)^[2])) then begin
         MatchLength:=MinMatch;
-        MaximumMatchLength:={$H-}TVkPtrUInt(EndPointer)-{$H-}TVkPtrUInt(CurrentPointer);
+        MaximumMatchLength:={%H-}TVkPtrUInt(EndPointer)-{%H-}TVkPtrUInt(CurrentPointer);
         if (BestMatchLength<=MaximumMatchLength) and
            (PBytes(CurrentPointer)^[MaximumMatchLength-1]=PBytes(CurrentPossibleMatch)^[MaximumMatchLength-1]) then begin
          while (TVkUInt32(MatchLength+(SizeOf(TVkUInt32)-1))<MaximumMatchLength) and (PVkUInt32(TVkPointer(@PBytes(CurrentPointer)^[MatchLength]))^=PVkUInt32(TVkPointer(@PBytes(CurrentPossibleMatch)^[MatchLength]))^) do begin
@@ -8214,7 +8214,7 @@ begin
          end;
         end;
        end;
-       CurrentPossibleMatch:=ChainTable^[({%H-}TVkPtrUInt(CurrentPossibleMatch)-{$H-}TVkPtrUInt(aInData)) and WindowMask];
+       CurrentPossibleMatch:=ChainTable^[({%H-}TVkPtrUInt(CurrentPossibleMatch)-{%H-}TVkPtrUInt(aInData)) and WindowMask];
        inc(Step);
       end;
       if (BestMatchDistance>0) and (BestMatchLength>1) then begin
@@ -8223,24 +8223,24 @@ begin
        DoOutputLiteral(CurrentPointer^);
       end;
       HashTableItem^:=CurrentPointer;
-      ChainTable^[({%H-}TVkPtrUInt(CurrentPointer)-{$H-}TVkPtrUInt(aInData)) and WindowMask]:=Head;
+      ChainTable^[({%H-}TVkPtrUInt(CurrentPointer)-{%H-}TVkPtrUInt(aInData)) and WindowMask]:=Head;
       if aGreedy then begin
        inc(CurrentPointer);
        dec(BestMatchLength);
-       while (BestMatchLength>0) and ({%H-}TVkPtrUInt(CurrentPointer)<{$H-}TVkPtrUInt(EndSearchPointer)) do begin
+       while (BestMatchLength>0) and ({%H-}TVkPtrUInt(CurrentPointer)<{%H-}TVkPtrUInt(EndSearchPointer)) do begin
         HashTableItem:=@HashTable[((((TVkUInt32(PBytes(CurrentPointer)^[0]) shl 0) or
                                      (TVkUInt32(PBytes(CurrentPointer)^[1]) shl 8) or
                                      (TVkUInt32(PBytes(CurrentPointer)^[2]) shl 16))*TVkUInt32($1e35a7bd)) shr HashShift) and HashMask];
         Head:=HashTableItem^;
         HashTableItem^:=CurrentPointer;
-        ChainTable^[({%H-}TVkPtrUInt(CurrentPointer)-{$H-}TVkPtrUInt(aInData)) and WindowMask]:=Head;
+        ChainTable^[({%H-}TVkPtrUInt(CurrentPointer)-{%H-}TVkPtrUInt(aInData)) and WindowMask]:=Head;
         inc(CurrentPointer);
         dec(BestMatchLength);
        end;
       end;
       inc(CurrentPointer,BestMatchLength);
      end;
-     while {%H-}TVkPtrUInt(CurrentPointer)<{$H-}TVkPtrUInt(EndPointer) do begin
+     while {%H-}TVkPtrUInt(CurrentPointer)<{%H-}TVkPtrUInt(EndPointer) do begin
       DoOutputLiteral(CurrentPointer^);
       inc(CurrentPointer);
      end;
@@ -42079,7 +42079,7 @@ begin
        for GlyphIndex:=0 to length(SortedGlyphs)-1 do begin
         Glyph:=SortedGlyphs[GlyphIndex];
         if (Glyph^.Width>0) and (Glyph^.Height>0) then begin
-         OtherGlyphIndex:={$H-}((TVkPtrUInt(TVkPointer(Glyph))-TVkPtrUInt(TVkPointer(@fGlyphs[0])))) div SizeOf(TVulkanFontGlyph);
+         OtherGlyphIndex:={%H-}((TVkPtrUInt(TVkPointer(Glyph))-TVkPtrUInt(TVkPointer(@fGlyphs[0])))) div SizeOf(TVulkanFontGlyph);
          Glyph^.Sprite:=aSpriteAtlas.LoadRawSprite(TVulkanRawByteString(String('glyph'+IntToStr(OtherGlyphIndex))),
                                                    @GlyphDistanceFields[OtherGlyphIndex].Pixels[0],
                                                    Glyph^.Width,
