@@ -9,7 +9,7 @@ uses SysUtils,
      TypInfo,
      PasMP,
      PasVulkan.Types,
-     System.Generics.Collections;
+     Generics.Collections;
 
 type TpvDynamicArray<T>=class
       private
@@ -91,10 +91,35 @@ type TpvDynamicArray<T>=class
        property OwnObjects:boolean read fOwnObjects write fOwnObjects;
      end;
 
-     TpvObjectList=class(TpvObjectGenericList<TObject>);
+     TpvObjectList=TpvObjectGenericList<TObject>;
 
-     TpvGenericList<T>=class(TList<T>);
-
+     TpvGenericList<T>=class
+      private
+       fItems:array of T;
+       fCount:TpvSizeInt;
+       fAllocated:TpvSizeInt;
+       fSorted:boolean;
+       function GetItem(const pIndex:TpvSizeInt):T;
+       procedure SetItem(const pIndex:TpvSizeInt;const pItem:T);
+      protected
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Clear;
+       procedure Assign(const pFrom:TpvGenericList<T>);
+       function IndexOf(const pItem:T):TpvSizeInt;
+       function Add(const pItem:T):TpvSizeInt;
+       procedure Insert(const pIndex:TpvSizeInt;const pItem:T);
+       procedure Delete(const pIndex:TpvSizeInt);
+       procedure Remove(const pItem:T);
+       procedure Exchange(const pIndex,pWithIndex:TpvSizeInt);
+       procedure Sort;
+       property Count:TpvSizeInt read fCount{ write SetCount};
+       property Allocated:TpvSizeInt read fAllocated;
+       property Items[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
+       property Sorted:boolean read fSorted;
+     end;
+     
      EpvHandleMap=class(Exception);
 
      TpvCustomHandleMap=class
@@ -222,7 +247,9 @@ type TpvDynamicArray<T>=class
      
 implementation
 
-uses PasVulkan.Math;
+uses Generics.Defaults,
+     PasVulkan.Math,
+     PasVulkan.Utils;
 
 function RoundUpToPowerOfTwo(Value:TpvSizeInt):TpvSizeInt;
 begin
@@ -237,7 +264,7 @@ begin
 {$endif}
  result:=Value+1;
 end;
-
+     
 constructor TpvDynamicArray<T>.Create;
 begin
  fItems:=nil;
@@ -865,6 +892,210 @@ end;
 procedure TpvObjectGenericList<T>.Remove(const pItem:T);
 begin
  inherited Remove(pItem);
+end;
+
+constructor TpvGenericList<T>.Create;
+begin
+ inherited Create;
+ fItems:=nil;
+ fCount:=0;
+ fAllocated:=0;
+ fSorted:=false;
+end;
+
+destructor TpvGenericList<T>.Destroy;
+begin
+ SetLength(fItems,0);
+ fCount:=0;
+ fAllocated:=0;
+ fSorted:=false;
+ inherited Destroy;
+end;
+
+procedure TpvGenericList<T>.Clear;
+begin
+ SetLength(fItems,0);
+ fCount:=0;
+ fAllocated:=0;
+ fSorted:=false;
+end;
+
+function TpvGenericList<T>.GetItem(const pIndex:TpvSizeInt):T;
+begin
+ if (pIndex<0) or (pIndex>=fCount) then begin
+  raise ERangeError.Create('Out of index range');
+ end;
+ result:=fItems[pIndex];
+end;
+
+procedure TpvGenericList<T>.SetItem(const pIndex:TpvSizeInt;const pItem:T);
+begin
+ if (pIndex<0) or (pIndex>=fCount) then begin
+  raise ERangeError.Create('Out of index range');
+ end;
+ fItems[pIndex]:=pItem;
+end;
+
+procedure TpvGenericList<T>.Assign(const pFrom:TpvGenericList<T>);
+begin
+ fItems:=pFrom.fItems;
+ fCount:=pFrom.Count;
+ fAllocated:=pFrom.fAllocated;
+ fSorted:=pFrom.fSorted;
+end;
+
+function TpvGenericList<T>.IndexOf(const pItem:T):TpvSizeInt;
+var Index,LowerIndexBound,UpperIndexBound,Difference:TpvInt32;
+    Comparer:IComparer<T>;
+begin
+ Comparer:=TComparer<T>.Default;
+ result:=-1;
+ if fSorted then begin
+  LowerIndexBound:=0;
+  UpperIndexBound:=fCount-1;
+  while LowerIndexBound<=UpperIndexBound do begin
+   Index:=LowerIndexBound+((UpperIndexBound-LowerIndexBound) shr 1);
+   Difference:=Comparer.Compare(fItems[Index],pItem);
+   if Difference=0 then begin
+    result:=Index;
+    exit;
+   end else if Difference<0 then begin
+    LowerIndexBound:=Index+1;
+   end else begin
+    UpperIndexBound:=Index-1;
+   end;
+  end;
+ end else begin
+  for Index:=0 to fCount-1 do begin
+   if Comparer.Compare(fItems[Index],pItem)=0 then begin
+    result:=Index;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TpvGenericList<T>.Add(const pItem:T):TpvSizeInt;
+var Index,LowerIndexBound,UpperIndexBound,Difference:TpvInt32;
+    Comparer:IComparer<T>;
+begin
+ Comparer:=TComparer<T>.Default;
+ if fSorted and (fCount>0) then begin
+  if Comparer.Compare(fItems[fCount-1],pItem)<0 then begin
+   result:=fCount;
+  end else if Comparer.Compare(pItem,fItems[0])<0 then begin
+   result:=0;
+  end else begin
+   LowerIndexBound:=0;
+   UpperIndexBound:=fCount-1;
+   while LowerIndexBound<=UpperIndexBound do begin
+    Index:=LowerIndexBound+((UpperIndexBound-LowerIndexBound) shr 1);
+    Difference:=Comparer.Compare(fItems[Index],pItem);
+    if Difference=0 then begin
+     LowerIndexBound:=Index;
+     break;
+    end else if Difference<0 then begin
+     LowerIndexBound:=Index+1;
+    end else begin
+     UpperIndexBound:=Index-1;
+    end;
+   end;
+   result:=LowerIndexBound;
+  end;
+  if result>=0 then begin
+   if result<fCount then begin
+    inc(fCount);
+    if length(fItems)<fCount then begin
+     SetLength(fItems,fCount*2);
+    end;
+    Move(fItems[result],fItems[result+1],(fCount-(result+1))*SizeOf(T));
+    FillChar(fItems[result],SizeOf(T),#0);
+   end else begin
+    fCount:=result+1;
+    if length(fItems)<fCount then begin
+     SetLength(fItems,fCount*2);
+    end;
+   end;
+   fItems[result]:=pItem;
+  end;
+ end else begin
+  result:=fCount;
+  inc(fCount);
+  if fAllocated<fCount then begin
+   fAllocated:=fCount+fCount;
+   SetLength(fItems,fAllocated);
+  end;
+  fItems[result]:=pItem;
+ end;
+end;
+
+procedure TpvGenericList<T>.Insert(const pIndex:TpvSizeInt;const pItem:T);
+begin
+ if pIndex>=0 then begin
+  if pIndex<fCount then begin
+   inc(fCount);
+   if fCount<fAllocated then begin
+    fAllocated:=fCount shl 1;
+    SetLength(fItems,fAllocated);
+   end;
+   Move(fItems[pIndex],fItems[pIndex+1],(fCount-(pIndex+1))*SizeOf(T));
+   FillChar(fItems[pIndex],SizeOf(T),#0);
+  end else begin
+   fCount:=pIndex+1;
+   if fCount<fAllocated then begin
+    fAllocated:=fCount shl 1;
+    SetLength(fItems,fAllocated);
+   end;
+  end;
+  fItems[pIndex]:=pItem;
+ end;
+ fSorted:=false;
+end;
+
+procedure TpvGenericList<T>.Delete(const pIndex:TpvSizeInt);
+begin
+ if (pIndex<0) or (pIndex>=fCount) then begin
+  raise ERangeError.Create('Out of index range');
+ end;
+ Finalize(fItems[pIndex]);
+ Move(fItems[pIndex+1],fItems[pIndex],(fCount-pIndex)*SizeOf(T));
+ dec(fCount);
+ FillChar(fItems[fCount],SizeOf(T),#0);
+ if fCount<(fAllocated shr 1) then begin
+  fAllocated:=fAllocated shr 1;
+  SetLength(fItems,fAllocated);
+ end;
+end;
+
+procedure TpvGenericList<T>.Remove(const pItem:T);
+var Index:TpvSizeInt;
+begin
+ Index:=IndexOf(pItem);
+ if Index>=0 then begin
+  Delete(Index);
+ end;
+end;
+
+procedure TpvGenericList<T>.Exchange(const pIndex,pWithIndex:TpvSizeInt);
+var Temporary:T;
+begin
+ if ((pIndex<0) or (pIndex>=fCount)) or ((pWithIndex<0) or (pWithIndex>=fCount)) then begin
+  raise ERangeError.Create('Out of index range');
+ end;
+ Temporary:=fItems[pIndex];
+ fItems[pIndex]:=fItems[pWithIndex];
+ fItems[pWithIndex]:=Temporary;
+ fSorted:=false;
+end;
+
+procedure TpvGenericList<T>.Sort;
+begin
+ if not fSorted then begin
+  if fCount>1 then begin
+   TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1);
+  end;
+  fSorted:=true;
+ end;
 end;
 
 constructor TpvCustomHandleMap.Create(const pDataSize:TpvSizeUInt);
