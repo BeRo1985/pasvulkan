@@ -77,6 +77,56 @@ type TpvUntypedSortCompareFunction=function(const a,b:TpvPointer):TpvInt32;
        class procedure IntroSort(const pItems:TpvPointer;const pLeft,pRight:TpvInt32;const pCompareFunc:TpvTypedSortCompareFunction); overload;
      end;
 
+     TpvTopologicalSortNodeDependsOnKeys=array of TpvInt32;
+
+     PpvTopologicalSortNode=^TpvTopologicalSortNode;
+     TpvTopologicalSortNode=record
+      Key:TpvInt32;
+      DependsOnKeys:TpvTopologicalSortNodeDependsOnKeys;
+     end;
+
+     TpvTopologicalSortNodes=array of TpvTopologicalSortNode;
+
+     TpvTopologicalSortVisitedBitmap=array of TpvUInt32;
+
+     TpvTopologicalSortStack=array of TpvInt32;
+
+     TpvTopologicalSortKeyToNodeIndex=array of TpvInt32;
+
+     TpvTopologicalSortKeys=array of TpvInt32;
+
+     TpvTopologicalSort=class
+      private
+       fNodes:TpvTopologicalSortNodes;
+       fCount:TpvInt32;
+       fCountKeys:TpvInt32;
+{$ifdef UseIndexingForTopologicalSorting}
+       fKeyToNodeIndex:TpvTopologicalSortKeyToNodeIndex;
+{$endif}
+       fVisitedBitmap:TpvTopologicalSortVisitedBitmap;
+       fVisitedBitmapSize:TpvInt32;
+       fStack:TpvTopologicalSortStack;
+       fSortedKeys:TpvTopologicalSortKeys;
+       fDirty:boolean;
+       fSolveDirty:boolean;
+       fCyclicState:TpvInt32;
+       function GetNode(const pIndex:TpvInt32):TpvTopologicalSortNode;
+       procedure SetNode(const pIndex:TpvInt32;const pNode:TpvTopologicalSortNode);
+       function GetSortedKey(const pIndex:TpvInt32):TpvInt32;
+       procedure SetCount(const pNewCount:TpvInt32);
+       procedure Setup;
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Clear;
+       procedure Add(const pKey:TpvInt32;const pDependsOnKeys:array of TpvInt32);
+       procedure Solve(const pBackwards:boolean=false);
+       function Cyclic:boolean;
+       property Nodes[const pIndex:TpvInt32]:TpvTopologicalSortNode read GetNode write SetNode;
+       property SortedKeys[const pIndex:TpvInt32]:TpvInt32 read GetSortedKey;
+       property Count:TpvInt32 read fCount write SetCount;
+     end;
+
 // Sorts data direct inplace
 procedure UntypedDirectIntroSort(const pItems:TpvPointer;const pLeft,pRight,pElementSize:TpvInt32;const pCompareFunc:TpvUntypedSortCompareFunction);
 
@@ -763,4 +813,281 @@ begin
  end;
 end;
 
+constructor TpvTopologicalSort.Create;
+begin
+ inherited Create;
+ fNodes:=nil;
+ fCount:=0;
+ fCountKeys:=0;
+{$ifdef UseIndexingForTopologicalSorting}
+ fKeyToNodeIndex:=nil;
+{$endif}
+ fVisitedBitmap:=nil;
+ fVisitedBitmapSize:=0;
+ fStack:=nil;
+ SetLength(fStack,32);
+ fSortedKeys:=nil;
+ fDirty:=true;
+ fSolveDirty:=true;
+ fCyclicState:=-1;
+end;
+
+destructor TpvTopologicalSort.Destroy;
+begin
+ SetLength(fNodes,0);
+{$ifdef UseIndexingForTopologicalSorting}
+ SetLength(fKeyToNodeIndex,0);
+{$endif}
+ SetLength(fVisitedBitmap,0);
+ SetLength(fStack,0);
+ SetLength(fSortedKeys,0);
+ inherited Destroy;
+end;
+
+procedure TpvTopologicalSort.Clear;
+begin
+ fCount:=0;
+ fDirty:=true;
+ fSolveDirty:=true;
+ fCyclicState:=-1;
+end;
+
+function TpvTopologicalSort.GetNode(const pIndex:TpvInt32):TpvTopologicalSortNode;
+begin
+ result:=fNodes[pIndex];
+end;
+
+procedure TpvTopologicalSort.SetNode(const pIndex:TpvInt32;const pNode:TpvTopologicalSortNode);
+begin
+ fNodes[pIndex]:=pNode;
+end;
+
+function TpvTopologicalSort.GetSortedKey(const pIndex:TpvInt32):TpvInt32;
+begin
+ result:=fSortedKeys[pIndex];
+end;
+
+procedure TpvTopologicalSort.SetCount(const pNewCount:TpvInt32);
+begin
+ fCount:=pNewCount;
+ if length(fNodes)<fCount then begin
+  SetLength(fNodes,fCount*2);
+ end;
+end;
+
+procedure TpvTopologicalSort.Add(const pKey:TpvInt32;const pDependsOnKeys:array of TpvInt32);
+var Index:TpvInt32;
+    Node:PpvTopologicalSortNode;
+begin
+ Index:=fCount;
+ SetCount(fCount+1);
+ Node:=@fNodes[Index];
+ Node^.Key:=pKey;
+ SetLength(Node^.DependsOnKeys,length(pDependsOnKeys));
+ if length(pDependsOnKeys)>0 then begin
+  Move(pDependsOnKeys[0],Node^.DependsOnKeys[0],length(pDependsOnKeys)*SizeOf(TpvInt32));
+ end;
+ fDirty:=true;
+ fSolveDirty:=true;
+ fCyclicState:=-1;
+end;
+
+procedure TpvTopologicalSort.Setup;
+var Index:TpvInt32;
+    Node:PpvTopologicalSortNode;
+begin
+ if fDirty then begin
+  fCountKeys:=0;
+  for Index:=0 to fCount-1 do begin
+   Node:=@fNodes[Index];
+   if fCountKeys<=Node^.Key then begin
+    fCountKeys:=Node^.Key+1;
+   end;
+  end;
+  if fCountKeys>0 then begin
+{$ifdef UseIndexingForTopologicalSorting}
+   if length(fKeyToNodeIndex)<fCountKeys then begin
+    SetLength(fKeyToNodeIndex,fCountKeys);
+   end;
+   FillChar(fKeyToNodeIndex[0],fCountKeys*SizeOf(TpvInt32),#$ff);
+   for Index:=0 to fCount-1 do begin
+    fKeyToNodeIndex[fNodes[Index].Key]:=Index;
+   end;
+{$endif}
+   fVisitedBitmapSize:=(fCountKeys+31) shr 5;
+   if length(fVisitedBitmap)<fVisitedBitmapSize then begin
+    SetLength(fVisitedBitmap,fVisitedBitmapSize);
+   end;
+   FillChar(fVisitedBitmap[0],fVisitedBitmapSize*SizeOf(TpvUInt32),#0);
+  end;
+  if length(fSortedKeys)<fCount then begin
+   SetLength(fSortedKeys,fCount);
+  end;
+  fDirty:=false;
+ end;
+end;
+
+procedure TpvTopologicalSort.Solve(const pBackwards:boolean=false);
+var Index,SubIndex,StackPointer,Key,DependsOnKey,CountDependOnKeys,SortIndex:TpvInt32;
+    Node:PpvTopologicalSortNode;
+begin
+ if fDirty then begin
+  Setup;
+ end;
+ if fSolveDirty then begin
+  if fCountKeys>0 then begin
+   FillChar(fVisitedBitmap[0],fVisitedBitmapSize*SizeOf(TpvUInt32),#0);
+   if pBackwards then begin
+    SortIndex:=0;
+   end else begin
+    SortIndex:=fCount;
+   end;
+   for Index:=0 to fCount-1 do begin
+    Key:=fNodes[Index].Key;
+    if (Key>=0) and (Key<fCountKeys) and
+       ((fVisitedBitmap[Key shr 5] and (TpvUInt32(1) shl (Key and 31)))=0) then begin
+     StackPointer:=0;
+     if length(fStack)<(StackPointer+2) then begin
+      SetLength(fStack,(StackPointer+2)*2);
+     end;
+     fStack[StackPointer]:=Key;
+     inc(StackPointer);
+     while StackPointer>0 do begin
+      dec(StackPointer);
+      Key:=fStack[StackPointer];
+      if Key<0 then begin
+       Key:=-(Key+1);
+       if pBackwards then begin
+        if SortIndex<fCount then begin
+         fSortedKeys[SortIndex]:=Key;
+         inc(SortIndex);
+        end;
+       end else begin
+        if SortIndex>1 then begin
+         dec(SortIndex);
+         fSortedKeys[SortIndex]:=Key;
+        end;
+       end;
+      end else if (Key<fCountKeys) and
+                  ((fVisitedBitmap[Key shr 5] and (TpvUInt32(1) shl (Key and 31)))=0) then begin
+       fVisitedBitmap[Key shr 5]:=fVisitedBitmap[Key shr 5] or (TpvUInt32(1) shl (Key and 31));
+ {$ifdef UseIndexingForTopologicalSorting}
+       if fKeyToNodeIndex[Key]>=0 then begin
+        Node:=@fNodes[fKeyToNodeIndex[Key]];
+       end else begin
+        Node:=nil;
+       end;
+ {$else}
+       Node:=nil;
+       for SubIndex:=0 to fCount-1 do begin
+        if fNodes[SubIndex].Key=Key then begin
+         Node:=@fNodes[SubIndex];
+         break;
+        end;
+       end;
+ {$endif}
+       if assigned(Node) then begin
+        CountDependOnKeys:=length(Node^.DependsOnKeys);
+        if length(fStack)<(StackPointer+CountDependOnKeys+1) then begin
+         SetLength(fStack,(StackPointer+CountDependOnKeys+1)*2);
+        end;
+        fStack[StackPointer]:=-(Key+1);
+        inc(StackPointer);
+        for SubIndex:=CountDependOnKeys-1 downto 0 do begin
+         DependsOnKey:=Node^.DependsOnKeys[SubIndex];
+         if (DependsOnKey>=0) and (DependsOnKey<fCountKeys) then begin
+          fStack[StackPointer]:=DependsOnKey;
+          inc(StackPointer);
+         end;
+        end;
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+  fSolveDirty:=false;
+ end;
+end;
+
+function TpvTopologicalSort.Cyclic:boolean;
+var Index,SubIndex,StackPointer,Key,DependsOnKey,CountDependOnKeys:TpvInt32;
+    Node:PpvTopologicalSortNode;
+begin
+ if fCyclicState>=0 then begin
+  result:=fCyclicState<>0;
+ end else begin
+  result:=false;
+  if fDirty then begin
+   Setup;
+  end;
+  if fCountKeys>0 then begin
+   FillChar(fVisitedBitmap[0],fVisitedBitmapSize*SizeOf(TpvUInt32),#0);
+   for Index:=0 to fCount-1 do begin
+    Key:=fNodes[Index].Key;
+    if (Key>=0) and (Key<fCountKeys) then begin
+     StackPointer:=0;
+     if length(fStack)<(StackPointer+2) then begin
+      SetLength(fStack,(StackPointer+2)*2);
+     end;
+     fStack[StackPointer]:=Key;
+     inc(StackPointer);
+     while StackPointer>0 do begin
+      dec(StackPointer);
+      Key:=fStack[StackPointer];
+      if Key<0 then begin
+       Key:=-(Key+1);
+       fVisitedBitmap[Key shr 5]:=fVisitedBitmap[Key shr 5] and not (TpvUInt32(1) shl (Key and 31));
+      end else if (fVisitedBitmap[Key shr 5] and (TpvUInt32(1) shl (Key and 31)))=0 then begin
+       fVisitedBitmap[Key shr 5]:=fVisitedBitmap[Key shr 5] or (TpvUInt32(1) shl (Key and 31));
+ {$ifdef UseIndexingForTopologicalSorting}
+       if fKeyToNodeIndex[Key]>=0 then begin
+        Node:=@fNodes[fKeyToNodeIndex[Key]];
+       end else begin
+        Node:=nil;
+       end;
+ {$else}
+       Node:=nil;
+       for SubIndex:=0 to fCount-1 do begin
+        if fNodes[SubIndex].Key=Key then begin
+         Node:=@fNodes[SubIndex];
+         break;
+        end;
+       end;
+ {$endif}
+       if assigned(Node) then begin
+        CountDependOnKeys:=length(Node^.DependsOnKeys);
+        if length(fStack)<(StackPointer+CountDependOnKeys+1) then begin
+         SetLength(fStack,(StackPointer+CountDependOnKeys+1)*2);
+        end;
+        fStack[StackPointer]:=-(Key+1);
+        inc(StackPointer);
+        for SubIndex:=CountDependOnKeys-1 downto 0 do begin
+         DependsOnKey:=Node^.DependsOnKeys[SubIndex];
+         if (DependsOnKey>=0) and (DependsOnKey<fCountKeys) then begin
+          fStack[StackPointer]:=DependsOnKey;
+          inc(StackPointer);
+         end;
+        end;
+       end;
+      end else begin
+       result:=true;
+       break;
+      end;
+     end;
+     if result then begin
+      break;
+     end;
+    end;
+   end;
+  end;
+  if result then begin
+   fCyclicState:=1;
+  end else begin
+   fCyclicState:=0;
+  end;
+ end;
+end;
+
 end.
+
