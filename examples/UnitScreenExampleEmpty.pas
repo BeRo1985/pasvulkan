@@ -20,7 +20,15 @@ unit UnitScreenExampleEmpty;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application,UnitRegisteredExamplesList;
+uses SysUtils,
+     Classes,
+     UnitRegisteredExamplesList,
+     Vulkan,
+     PasVulkan.Types.Standard,
+     PasVulkan.Types.HalfFloat,
+     PasVulkan.Math,
+     PasVulkan.Framework,
+     PasVulkan.Application;
 
 type TScreenExampleEmpty=class(TVulkanApplicationScreen)
       private
@@ -29,8 +37,8 @@ type TScreenExampleEmpty=class(TVulkanApplicationScreen)
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
        fReady:boolean;
-       fSelectedIndex:TVkInt32;
-       fStartY:single;
+       fSelectedIndex:TInt32;
+       fStartY:TFloat;
       public
 
        constructor Create; override;
@@ -45,31 +53,31 @@ type TScreenExampleEmpty=class(TVulkanApplicationScreen)
 
        procedure Pause; override;
 
-       procedure Resize(const aWidth,aHeight:TVkInt32); override;
+       procedure Resize(const aWidth,aHeight:TInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
 
-       function KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
+       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; override;
 
-       function KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean; override;
 
-       function KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean; override;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean; override;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean; override;
 
-       function MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean; override;
+       function MouseMoved(const aScreenX,aScreenY:TInt32):boolean; override;
 
-       function Scrolled(const aAmount:TVkInt32):boolean; override;
+       function Scrolled(const aAmount:TInt32):boolean; override;
 
-       procedure Update(const aDeltaTime:double); override;
+       procedure Update(const aDeltaTime:TDouble); override;
 
-       procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
 
      end;
 
@@ -82,7 +90,7 @@ const EmptyVertices:array[0..2,0..1,0..2] of TVkFloat=
         ((-0.5,0.5,0.0),(0.0,1.0,0.0)),
         ((0.0,-0.5,0.0),(0.0,0.0,1.0)));
 
-      EmptyIndices:array[0..2] of TVkInt32=(0,1,2);
+      EmptyIndices:array[0..2] of TInt32=(0,1,2);
 
       UniformBuffer:array[0..2,0..3,0..3] of TVkFloat=
        (((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)),  // Projection matrix
@@ -107,7 +115,7 @@ end;
 
 procedure TScreenExampleEmpty.Show;
 var Stream:TStream;
-    Index:TVkInt32;
+    Index:TInt32;
 begin
  inherited Show;
 
@@ -124,7 +132,7 @@ begin
 end;
 
 procedure TScreenExampleEmpty.Hide;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  FreeAndNil(fVulkanRenderPass);
  for Index:=0 to MaxSwapChainImages-1 do begin
@@ -145,13 +153,13 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenExampleEmpty.Resize(const aWidth,aHeight:TVkInt32);
+procedure TScreenExampleEmpty.Resize(const aWidth,aHeight:TInt32);
 begin
  inherited Resize(aWidth,aHeight);
 end;
 
 procedure TScreenExampleEmpty.AfterCreateSwapChain;
-var SwapChainImageIndex:TVkInt32;
+var SwapChainImageIndex:TInt32;
     VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
  inherited AfterCreateSwapChain;
@@ -244,7 +252,7 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-function TScreenExampleEmpty.KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TScreenExampleEmpty.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
  if fReady then begin
@@ -291,19 +299,19 @@ begin
  end;
 end;
 
-function TScreenExampleEmpty.KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TScreenExampleEmpty.KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleEmpty.KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TScreenExampleEmpty.KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleEmpty.TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
-var Index:TVkInt32;
-    cy:single;
+function TScreenExampleEmpty.TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
+var Index:TInt32;
+    cy:TFloat;
 begin
  result:=false;
  if fReady then begin
@@ -321,31 +329,14 @@ begin
  end;
 end;
 
-function TScreenExampleEmpty.TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
+function TScreenExampleEmpty.TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleEmpty.TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean;
-var Index:TVkInt32;
-    cy:single;
-begin
- result:=false;
- if fReady then begin
-  fSelectedIndex:=-1;
-  cy:=fStartY;
-  for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
-    fSelectedIndex:=Index;
-   end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
-  end;
- end;
-end;
-
-function TScreenExampleEmpty.MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean;
-var Index:TVkInt32;
-    cy:single;
+function TScreenExampleEmpty.TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean;
+var Index:TInt32;
+    cy:TFloat;
 begin
  result:=false;
  if fReady then begin
@@ -360,16 +351,33 @@ begin
  end;
 end;
 
-function TScreenExampleEmpty.Scrolled(const aAmount:TVkInt32):boolean;
+function TScreenExampleEmpty.MouseMoved(const aScreenX,aScreenY:TInt32):boolean;
+var Index:TInt32;
+    cy:TFloat;
+begin
+ result:=false;
+ if fReady then begin
+  fSelectedIndex:=-1;
+  cy:=fStartY;
+  for Index:=0 to 0 do begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+    fSelectedIndex:=Index;
+   end;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+  end;
+ end;
+end;
+
+function TScreenExampleEmpty.Scrolled(const aAmount:TInt32):boolean;
 begin
  result:=false;
 end;
 
-procedure TScreenExampleEmpty.Update(const aDeltaTime:double);
-const BoolToInt:array[boolean] of TVkInt32=(0,1);
+procedure TScreenExampleEmpty.Update(const aDeltaTime:TDouble);
+const BoolToInt:array[boolean] of TInt32=(0,1);
       Options:array[0..0] of string=('Back');
-var Index:TVkInt32;
-    cy:single;
+var Index:TInt32;
+    cy:TFloat;
     s:string;
     IsSelected:boolean;
 begin
@@ -389,9 +397,9 @@ begin
  fReady:=true;
 end;
 
-procedure TScreenExampleEmpty.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TScreenExampleEmpty.Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
-var BufferIndex,Size:TVkInt32;
+var BufferIndex,Size:TInt32;
     VulkanVertexBuffer:TVulkanBuffer;
     VulkanCommandBuffer:TVulkanCommandBuffer;
     VulkanSwapChain:TVulkanSwapChain;

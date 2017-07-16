@@ -315,7 +315,7 @@ const VkTTF_PID_Apple=0;
       VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
       VULKAN_SPRITEATLASTEXTURE_HEIGHT=2048;
 
-      VulkanXMLMaxListSize=2147483647 div SizeOf(TVkPointer);
+      VulkanXMLMaxListSize=2147483647 div SizeOf(TPointer);
 
       VulkanFontDistanceFieldSpreadValue=4;
 
@@ -340,10 +340,10 @@ type EVulkanException=class(Exception);
      end;
 
      PVulkanUUID=^TVulkanUUID;
-     TVulkanUUID=array[0..VK_UUID_SIZE-1] of TVkUInt8;
+     TVulkanUUID=array[0..VK_UUID_SIZE-1] of TUInt8;
 
      PVulkanBytes=^TVulkanBytes;
-     TVulkanBytes=array[0..65535] of TVkUInt8;
+     TVulkanBytes=array[0..65535] of TUInt8;
 
      TVulkanFormatSizeFlag=
       (
@@ -359,11 +359,11 @@ type EVulkanException=class(Exception);
      PVulkanFormatSize=^TVulkanFormatSize;
      TVulkanFormatSize=record
       Flags:TVulkanFormatSizeFlags;
-      PaletteSizeInBits:TVkUInt32;
-      BlockSizeInBits:TVkUInt32;
-      BlockWidth:TVkUInt32; // in texels
-      BlockHeight:TVkUInt32; // in texels
-      BlockDepth:TVkUInt32; // in texels
+      PaletteSizeInBits:TUInt32;
+      BlockSizeInBits:TUInt32;
+      BlockWidth:TUInt32; // in texels
+      BlockHeight:TUInt32; // in texels
+      BlockDepth:TUInt32; // in texels
      end;
 
      TVulkanObject=class(TInterfacedObject);
@@ -372,7 +372,7 @@ type EVulkanException=class(Exception);
      TVulkanRawByteChar=AnsiChar;
 
      PVulkanUTF32Char=^TVulkanUTF32Char;
-     TVulkanUTF32Char=TVKUInt32;
+     TVulkanUTF32Char=TUInt32;
 
      PVulkanRawByteString=^TVulkanRawByteString;
      TVulkanRawByteString={$if declared(RawByteString)}RawByteString{$else}AnsiString{$ifend};
@@ -388,7 +388,7 @@ type EVulkanException=class(Exception);
      TVkUInt8Array=array of TVkUInt8;
      TVkInt32Array=array of TVkInt32;
      TVkUInt32Array=array of TVkUInt32;
-     TVkFloatArray=array of TVkFloat;
+     TVkFloatArray=array of TFloat;
      TVkLayerPropertiesArray=array of TVkLayerProperties;
      TVkExtensionPropertiesArray=array of TVkExtensionProperties;
      TVkLayerExtensionPropertiesArray=array of array of TVkExtensionProperties;
@@ -442,15 +442,15 @@ type EVulkanException=class(Exception);
        fItemSize:TVkSizeInt;
        fCount:TVkSizeInt;
        fAllocated:TVkSizeInt;
-       fMemory:TVkPointer;
+       fMemory:TPointer;
        procedure SetCount(const NewCount:TVkSizeInt);
-       function GetItem(const Index:TVkSizeInt):TVkPointer;
+       function GetItem(const Index:TVkSizeInt):TPointer;
       protected
        procedure InitializeItem(var Item); virtual;
        procedure FinalizeItem(var Item); virtual;
        procedure CopyItem(const Source;var Destination); virtual;
        procedure ExchangeItem(var Source,Destination); virtual;
-       function CompareItem(const Source,Destination):TVkInt32; virtual;
+       function CompareItem(const Source,Destination):TInt32; virtual;
       public
        constructor Create(const aItemSize:TVkSizeInt);
        destructor Destroy; override;
@@ -464,8 +464,8 @@ type EVulkanException=class(Exception);
        procedure Exchange(const Index,WithIndex:TVkSizeInt);
        property Count:TVkSizeInt read fCount write SetCount;
        property Allocated:TVkSizeInt read fAllocated;
-       property Memory:TVkPointer read fMemory;
-       property ItemPointers[const Index:TVkSizeInt]:TVkPointer read GetItem; default;
+       property Memory:TPointer read fMemory;
+       property ItemPointers[const Index:TVkSizeInt]:TPointer read GetItem; default;
      end;
 
      TVulkanObjectList=class(TVulkanBaseList)
@@ -478,7 +478,7 @@ type EVulkanException=class(Exception);
        procedure FinalizeItem(var Item); override;
        procedure CopyItem(const Source;var Destination); override;
        procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TVkInt32; override;
+       function CompareItem(const Source,Destination):TInt32; override;
       public
        constructor Create;
        destructor Destroy; override;
@@ -493,42 +493,42 @@ type EVulkanException=class(Exception);
 
      TVkUInt32List=class(TVulkanBaseList)
       private
-       function GetItem(const Index:TVkSizeInt):TVkUInt32;
-       procedure SetItem(const Index:TVkSizeInt;const Item:TVkUInt32);
+       function GetItem(const Index:TVkSizeInt):TUInt32;
+       procedure SetItem(const Index:TVkSizeInt;const Item:TUInt32);
       protected
        procedure InitializeItem(var Item); override;
        procedure FinalizeItem(var Item); override;
        procedure CopyItem(const Source;var Destination); override;
        procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TVkInt32; override;
+       function CompareItem(const Source,Destination):TInt32; override;
       public
        constructor Create;
        destructor Destroy; override;
-       function Add(const Item:TVkUInt32):TVkSizeInt; reintroduce;
-       function Find(const Item:TVkUInt32):TVkSizeInt; reintroduce;
-       procedure Insert(const Index:TVkSizeInt;const Item:TVkUInt32); reintroduce;
-       procedure Remove(const Item:TVkUInt32); reintroduce;
-       property Items[const Index:TVkSizeInt]:TVkUInt32 read GetItem write SetItem; default;
+       function Add(const Item:TUInt32):TVkSizeInt; reintroduce;
+       function Find(const Item:TUInt32):TVkSizeInt; reintroduce;
+       procedure Insert(const Index:TVkSizeInt;const Item:TUInt32); reintroduce;
+       procedure Remove(const Item:TUInt32); reintroduce;
+       property Items[const Index:TVkSizeInt]:TUInt32 read GetItem write SetItem; default;
      end;
 
      TVkFloatList=class(TVulkanBaseList)
       private
-       function GetItem(const Index:TVkSizeInt):TVkFloat;
-       procedure SetItem(const Index:TVkSizeInt;const Item:TVkFloat);
+       function GetItem(const Index:TVkSizeInt):TFloat;
+       procedure SetItem(const Index:TVkSizeInt;const Item:TFloat);
       protected
        procedure InitializeItem(var Item); override;
        procedure FinalizeItem(var Item); override;
        procedure CopyItem(const Source;var Destination); override;
        procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TVkInt32; override;
+       function CompareItem(const Source,Destination):TInt32; override;
       public
        constructor Create;
        destructor Destroy; override;
-       function Add(const Item:TVkFloat):TVkSizeInt; reintroduce;
-       function Find(const Item:TVkFloat):TVkSizeInt; reintroduce;
-       procedure Insert(const Index:TVkSizeInt;const Item:TVkFloat); reintroduce;
-       procedure Remove(const Item:TVkFloat); reintroduce;
-       property Items[const Index:TVkSizeInt]:TVkFloat read GetItem write SetItem; default;
+       function Add(const Item:TFloat):TVkSizeInt; reintroduce;
+       function Find(const Item:TFloat):TVkSizeInt; reintroduce;
+       procedure Insert(const Index:TVkSizeInt;const Item:TFloat); reintroduce;
+       procedure Remove(const Item:TFloat); reintroduce;
+       property Items[const Index:TVkSizeInt]:TFloat read GetItem write SetItem; default;
      end;
 
      TVkImageViewList=class(TVulkanBaseList)
@@ -540,7 +540,7 @@ type EVulkanException=class(Exception);
        procedure FinalizeItem(var Item); override;
        procedure CopyItem(const Source;var Destination); override;
        procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TVkInt32; override;
+       function CompareItem(const Source,Destination):TInt32; override;
       public
        constructor Create;
        destructor Destroy; override;
@@ -560,7 +560,7 @@ type EVulkanException=class(Exception);
        procedure FinalizeItem(var Item); override;
        procedure CopyItem(const Source;var Destination); override;
        procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TVkInt32; override;
+       function CompareItem(const Source,Destination):TInt32; override;
       public
        constructor Create;
        destructor Destroy; override;
@@ -580,7 +580,7 @@ type EVulkanException=class(Exception);
        procedure FinalizeItem(var Item); override;
        procedure CopyItem(const Source;var Destination); override;
        procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TVkInt32; override;
+       function CompareItem(const Source,Destination):TInt32; override;
       public
        constructor Create;
        destructor Destroy; override;
@@ -600,7 +600,7 @@ type EVulkanException=class(Exception);
        procedure FinalizeItem(var Item); override;
        procedure CopyItem(const Source;var Destination); override;
        procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TVkInt32; override;
+       function CompareItem(const Source,Destination):TInt32; override;
       public
        constructor Create;
        destructor Destroy; override;
@@ -620,7 +620,7 @@ type EVulkanException=class(Exception);
        procedure FinalizeItem(var Item); override;
        procedure CopyItem(const Source;var Destination); override;
        procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TVkInt32; override;
+       function CompareItem(const Source,Destination):TInt32; override;
       public
        constructor Create;
        destructor Destroy; override;
@@ -640,7 +640,7 @@ type EVulkanException=class(Exception);
        procedure FinalizeItem(var Item); override;
        procedure CopyItem(const Source;var Destination); override;
        procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TVkInt32; override;
+       function CompareItem(const Source,Destination):TInt32; override;
       public
        constructor Create;
        destructor Destroy; override;
@@ -660,7 +660,7 @@ type EVulkanException=class(Exception);
        procedure FinalizeItem(var Item); override;
        procedure CopyItem(const Source;var Destination); override;
        procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TVkInt32; override;
+       function CompareItem(const Source,Destination):TInt32; override;
       public
        constructor Create;
        destructor Destroy; override;
@@ -675,21 +675,21 @@ type EVulkanException=class(Exception);
 
      TVulkanDataStream=class(TStream)
       private
-       fData:TVkPointer;
-       fSize:TVkInt64;
-       fPosition:TVkInt64;
+       fData:TPointer;
+       fSize:TInt64;
+       fPosition:TInt64;
       public
-       constructor Create(const AData:TVkPointer;const ASize:TVkInt64);
+       constructor Create(const AData:TPointer;const ASize:TInt64);
        destructor Destroy; override;
-       function Read(var Buffer;Count:TVkInt32):TVkInt32; override;
-       function Write(const Buffer;Count:TVkInt32):TVkInt32; override;
-       function Seek(Offset:TVkInt32;Origin:TVkUInt16):TVkInt32; overload; override;
-       function Seek(const Offset:TVkInt64;Origin:TSeekOrigin):TVkInt64; overload; override;
-       procedure SetSize(NewSize:TVkInt32); overload; override;
-       procedure SetSize(const NewSize:TVkInt64); overload; override;
+       function Read(var Buffer;Count:TInt32):TInt32; override;
+       function Write(const Buffer;Count:TInt32):TInt32; override;
+       function Seek(Offset:TInt32;Origin:TUInt16):TInt32; overload; override;
+       function Seek(const Offset:TInt64;Origin:TSeekOrigin):TInt64; overload; override;
+       procedure SetSize(NewSize:TInt32); overload; override;
+       procedure SetSize(const NewSize:TInt64); overload; override;
      end;
 
-     TVulkanStringHashMapData=TVkPointer;
+     TVulkanStringHashMapData=TPointer;
 
      PVulkanStringHashMapEntity=^TVulkanStringHashMapEntity;
      TVulkanStringHashMapEntity=record
@@ -699,19 +699,19 @@ type EVulkanException=class(Exception);
 
      TVulkanStringHashMapEntities=array of TVulkanStringHashMapEntity;
 
-     TVulkanStringHashMapEntityIndices=array of TVkInt32;
+     TVulkanStringHashMapEntityIndices=array of TInt32;
 
      TVulkanStringHashMap=class
       private
-       function FindCell(const Key:TVulkanRawByteString):TVkUInt32;
+       function FindCell(const Key:TVulkanRawByteString):TUInt32;
        procedure Resize;
       protected
        function GetValue(const Key:TVulkanRawByteString):TVulkanStringHashMapData;
        procedure SetValue(const Key:TVulkanRawByteString;const Value:TVulkanStringHashMapData);
       public
-       RealSize:TVkInt32;
-       LogSize:TVkInt32;
-       Size:TVkInt32;
+       RealSize:TInt32;
+       LogSize:TInt32;
+       Size:TInt32;
        Entities:TVulkanStringHashMapEntities;
        EntityToCellIndex:TVulkanStringHashMapEntityIndices;
        CellToEntityIndex:TVulkanStringHashMapEntityIndices;
@@ -726,84 +726,84 @@ type EVulkanException=class(Exception);
        property Values[const Key:TVulkanRawByteString]:TVulkanStringHashMapData read GetValue write SetValue; default;
      end;
 
-     TVulkanPointerHashMapData=TVkPointer;
+     TVulkanPointerHashMapData=TPointer;
 
      PVulkanPointerHashMapEntity=^TVulkanPointerHashMapEntity;
      TVulkanPointerHashMapEntity=record
-      Key:TVkPointer;
+      Key:TPointer;
       Value:TVulkanPointerHashMapData;
      end;
 
      TVulkanPointerHashMapEntities=array of TVulkanPointerHashMapEntity;
 
-     TVulkanPointerHashMapEntityIndices=array of TVkInt32;
+     TVulkanPointerHashMapEntityIndices=array of TInt32;
 
      TVulkanPointerHashMap=class
       private
-       function FindCell(const Key:TVkPointer):TVkUInt32;
+       function FindCell(const Key:TPointer):TUInt32;
        procedure Resize;
       protected
-       function GetValue(const Key:TVkPointer):TVulkanPointerHashMapData;
-       procedure SetValue(const Key:TVkPointer;const Value:TVulkanPointerHashMapData);
+       function GetValue(const Key:TPointer):TVulkanPointerHashMapData;
+       procedure SetValue(const Key:TPointer;const Value:TVulkanPointerHashMapData);
       public
-       RealSize:TVkInt32;
-       LogSize:TVkInt32;
-       Size:TVkInt32;
+       RealSize:TInt32;
+       LogSize:TInt32;
+       Size:TInt32;
        Entities:TVulkanPointerHashMapEntities;
        EntityToCellIndex:TVulkanPointerHashMapEntityIndices;
        CellToEntityIndex:TVulkanPointerHashMapEntityIndices;
        constructor Create;
        destructor Destroy; override;
        procedure Clear;
-       function Add(const Key:TVkPointer;Value:TVulkanPointerHashMapData):PVulkanPointerHashMapEntity;
-       function Get(const Key:TVkPointer;CreateIfNotExist:boolean=false):PVulkanPointerHashMapEntity;
-       function TryGet(const Key:TVkPointer;out Value:TVulkanPointerHashMapData):boolean;
-       function ExistKey(const Key:TVkPointer):boolean;
-       function Delete(const Key:TVkPointer):boolean;
-       property Values[const Key:TVkPointer]:TVulkanPointerHashMapData read GetValue write SetValue; default;
+       function Add(const Key:TPointer;Value:TVulkanPointerHashMapData):PVulkanPointerHashMapEntity;
+       function Get(const Key:TPointer;CreateIfNotExist:boolean=false):PVulkanPointerHashMapEntity;
+       function TryGet(const Key:TPointer;out Value:TVulkanPointerHashMapData):boolean;
+       function ExistKey(const Key:TPointer):boolean;
+       function Delete(const Key:TPointer):boolean;
+       property Values[const Key:TPointer]:TVulkanPointerHashMapData read GetValue write SetValue; default;
      end;
 
-     TVulkanInt64HashMapData=TVkPointer;
+     TVulkanInt64HashMapData=TPointer;
 
      PVulkanInt64HashMapEntity=^TVulkanInt64HashMapEntity;
      TVulkanInt64HashMapEntity=record
-      Key:TVkInt64;
+      Key:TInt64;
       Value:TVulkanInt64HashMapData;
      end;
 
      TVulkanInt64HashMapEntities=array of TVulkanInt64HashMapEntity;
 
-     TVulkanInt64HashMapEntityIndices=array of TVkInt32;
+     TVulkanInt64HashMapEntityIndices=array of TInt32;
 
      TVulkanInt64HashMap=class
       private
-       function FindCell(const Key:TVkInt64):TVkUInt32;
+       function FindCell(const Key:TInt64):TUInt32;
        procedure Resize;
       protected
-       function GetValue(const Key:TVkInt64):TVulkanInt64HashMapData;
-       procedure SetValue(const Key:TVkInt64;const Value:TVulkanInt64HashMapData);
+       function GetValue(const Key:TInt64):TVulkanInt64HashMapData;
+       procedure SetValue(const Key:TInt64;const Value:TVulkanInt64HashMapData);
       public
-       RealSize:TVkInt32;
-       LogSize:TVkInt32;
-       Size:TVkInt32;
+       RealSize:TInt32;
+       LogSize:TInt32;
+       Size:TInt32;
        Entities:TVulkanInt64HashMapEntities;
        EntityToCellIndex:TVulkanInt64HashMapEntityIndices;
        CellToEntityIndex:TVulkanInt64HashMapEntityIndices;
        constructor Create;
        destructor Destroy; override;
        procedure Clear;
-       function Add(const Key:TVkInt64;Value:TVulkanInt64HashMapData):PVulkanInt64HashMapEntity;
-       function Get(const Key:TVkInt64;CreateIfNotExist:boolean=false):PVulkanInt64HashMapEntity;
-       function TryGet(const Key:TVkInt64;out Value:TVulkanInt64HashMapData):boolean;
-       function ExistKey(const Key:TVkInt64):boolean;
-       function Delete(const Key:TVkInt64):boolean;
-       property Values[const Key:TVkInt64]:TVulkanInt64HashMapData read GetValue write SetValue; default;
+       function Add(const Key:TInt64;Value:TVulkanInt64HashMapData):PVulkanInt64HashMapEntity;
+       function Get(const Key:TInt64;CreateIfNotExist:boolean=false):PVulkanInt64HashMapEntity;
+       function TryGet(const Key:TInt64;out Value:TVulkanInt64HashMapData):boolean;
+       function ExistKey(const Key:TInt64):boolean;
+       function Delete(const Key:TInt64):boolean;
+       property Values[const Key:TInt64]:TVulkanInt64HashMapData read GetValue write SetValue; default;
      end;
 
      TVulkanXMLClass=class
       public
        Previous,Next:TVulkanXMLClass;
-       Core:TVkPointer;
+       Core:TPointer;
        constructor Create; overload; virtual;
        destructor Destroy; override;
      end;
@@ -814,43 +814,43 @@ type EVulkanException=class(Exception);
      TVulkanXMLClassList=class(TVulkanXMLClass)
       private
        InternalList:PVulkanXMLClasses;
-       InternalCount,InternalCapacity:TVkInt32;
-       function GetItem(Index:TVkInt32):TVulkanXMLClass;
-       procedure SetItem(Index:TVkInt32;Value:TVulkanXMLClass);
-       function GetItemPointer(Index:TVkInt32):TVulkanXMLClass;
+       InternalCount,InternalCapacity:TInt32;
+       function GetItem(Index:TInt32):TVulkanXMLClass;
+       procedure SetItem(Index:TInt32;Value:TVulkanXMLClass);
+       function GetItemPointer(Index:TInt32):TVulkanXMLClass;
       public
        ClearWithContentDestroying:boolean;
-       CapacityMinimium:TVkInt32;
+       CapacityMinimium:TInt32;
        constructor Create; override;
        destructor Destroy; override;
        procedure Clear;
        procedure ClearNoFree;
        procedure ClearWithFree;
-       function Add(Item:TVulkanXMLClass):TVkInt32;
-       function Append(Item:TVulkanXMLClass):TVkInt32;
-       function AddList(List:TVulkanXMLClassList):TVkInt32;
-       function AppendList(List:TVulkanXMLClassList):TVkInt32;
+       function Add(Item:TVulkanXMLClass):TInt32;
+       function Append(Item:TVulkanXMLClass):TInt32;
+       function AddList(List:TVulkanXMLClassList):TInt32;
+       function AppendList(List:TVulkanXMLClassList):TInt32;
        function NewClass:TVulkanXMLClass;
-       procedure Insert(Index:TVkInt32;Item:TVulkanXMLClass);
-       procedure Delete(Index:TVkInt32);
-       procedure DeleteClass(Index:TVkInt32);
-       function Remove(Item:TVulkanXMLClass):TVkInt32;
-       function RemoveClass(Item:TVulkanXMLClass):TVkInt32;
-       function Find(Item:TVulkanXMLClass):TVkInt32;
-       function IndexOf(Item:TVulkanXMLClass):TVkInt32;
-       procedure Exchange(Index1,Index2:TVkInt32);
-       procedure SetCapacity(NewCapacity:TVkInt32);
-       procedure SetOptimalCapacity(TargetCapacity:TVkInt32);
-       procedure SetCount(NewCount:TVkInt32);
-       function Push(Item:TVulkanXMLClass):TVkInt32;
+       procedure Insert(Index:TInt32;Item:TVulkanXMLClass);
+       procedure Delete(Index:TInt32);
+       procedure DeleteClass(Index:TInt32);
+       function Remove(Item:TVulkanXMLClass):TInt32;
+       function RemoveClass(Item:TVulkanXMLClass):TInt32;
+       function Find(Item:TVulkanXMLClass):TInt32;
+       function IndexOf(Item:TVulkanXMLClass):TInt32;
+       procedure Exchange(Index1,Index2:TInt32);
+       procedure SetCapacity(NewCapacity:TInt32);
+       procedure SetOptimalCapacity(TargetCapacity:TInt32);
+       procedure SetCount(NewCount:TInt32);
+       function Push(Item:TVulkanXMLClass):TInt32;
        function Pop(var Item:TVulkanXMLClass):boolean; overload;
        function Pop:TVulkanXMLClass; overload;
        function Last:TVulkanXMLClass;
-       property Count:TVkInt32 read InternalCount; 
-       property Capacity:TVkInt32 read InternalCapacity write SetCapacity;
-       property Item[Index:TVkInt32]:TVulkanXMLClass read GetItem write SetItem; default;
-       property Items[Index:TVkInt32]:TVulkanXMLClass read GetItem write SetItem;
-       property PItems[Index:TVkInt32]:TVulkanXMLClass read GetItemPointer;
+       property Count:TInt32 read InternalCount;
+       property Capacity:TInt32 read InternalCapacity write SetCapacity;
+       property Item[Index:TInt32]:TVulkanXMLClass read GetItem write SetItem; default;
+       property Items[Index:TInt32]:TVulkanXMLClass read GetItem write SetItem;
+       property PItems[Index:TInt32]:TVulkanXMLClass read GetItemPointer;
      end;
 
      TVulkanXMLClassLinkedList=class(TVulkanXMLClass)
@@ -871,7 +871,7 @@ type EVulkanException=class(Exception);
        procedure Push(Item:TVulkanXMLClass);
        function Pop(var Item:TVulkanXMLClass):boolean; overload;
        function Pop:TVulkanXMLClass; overload;
-       function Count:TVkInt32;
+       function Count:TInt32;
      end;
 
      TVulkanXMLString={$ifdef VulkanXMLUnicode}{$if declared(UnicodeString)}UnicodeString{$else}WideString{$ifend}{$else}TVulkanRawByteString{$endif};
@@ -903,15 +903,15 @@ type EVulkanException=class(Exception);
 
      TVulkanXMLItemList=class(TVulkanXMLClassList)
       private
-       function GetItem(Index:TVkInt32):TVulkanXMLItem;
-       procedure SetItem(Index:TVkInt32;Value:TVulkanXMLItem);
+       function GetItem(Index:TInt32):TVulkanXMLItem;
+       procedure SetItem(Index:TInt32;Value:TVulkanXMLItem);
       public
        constructor Create; override;
        destructor Destroy; override;
        function NewClass:TVulkanXMLItem;
        function FindTag(const TagName:TVulkanRawByteString):TVulkanXMLTag;
-       property Item[Index:TVkInt32]:TVulkanXMLItem read GetItem write SetItem; default;
-       property Items[Index:TVkInt32]:TVulkanXMLItem read GetItem write SetItem;
+       property Item[Index:TInt32]:TVulkanXMLItem read GetItem write SetItem; default;
+       property Items[Index:TInt32]:TVulkanXMLItem read GetItem write SetItem;
      end;
 
      TVulkanXMLText=class(TVulkanXMLItem)
@@ -1006,7 +1006,7 @@ type EVulkanException=class(Exception);
        procedure Assign(From:TVulkanXML);
        function Parse(Stream:TStream):boolean;
        function Read(Stream:TStream):boolean;
-       function Write(Stream:TStream;IdentSize:TVkInt32=2):boolean;
+       function Write(Stream:TStream;IdentSize:TInt32=2):boolean;
        property Text:TVulkanRawByteString read ReadXMLText write WriteXMLText;
      end;
 
@@ -1028,8 +1028,8 @@ type EVulkanException=class(Exception);
      PVulkanAvailableLayer=^TVulkanAvailableLayer;
      TVulkanAvailableLayer=record
       LayerName:TVulkanCharString;
-      SpecVersion:TVkUInt32;
-      ImplementationVersion:TVkUInt32;
+      SpecVersion:TUInt32;
+      ImplementationVersion:TUInt32;
       Description:TVulkanCharString;
      end;
 
@@ -1037,9 +1037,9 @@ type EVulkanException=class(Exception);
 
      PVulkanAvailableExtension=^TVulkanAvailableExtension;
      TVulkanAvailableExtension=record
-      LayerIndex:TVkUInt32;
+      LayerIndex:TUInt32;
       ExtensionName:TVulkanCharString;
-      SpecVersion:TVkUInt32;
+      SpecVersion:TUInt32;
      end;
 
      TVulkanAvailableExtensions=array of TVulkanAvailableExtension;
@@ -1050,7 +1050,7 @@ type EVulkanException=class(Exception);
 
      TVulkanPhysicalDeviceList=class;
 
-     TVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const aLayerPrefix,aMessage:string):TVkBool32 of object;
+     TVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TInt32;const aLayerPrefix,aMessage:string):TVkBool32 of object;
 
      TVulkanInstance=class(TVulkanObject)
       private    
@@ -1081,23 +1081,23 @@ type EVulkanException=class(Exception);
        procedure SetApplicationInfo(const NewApplicationInfo:TVkApplicationInfo);
        function GetApplicationName:TVulkanCharString;
        procedure SetApplicationName(const NewApplicationName:TVulkanCharString);
-       function GetApplicationVersion:TVkUInt32;
-       procedure SetApplicationVersion(const NewApplicationVersion:TVkUInt32);
+       function GetApplicationVersion:TUInt32;
+       procedure SetApplicationVersion(const NewApplicationVersion:TUInt32);
        function GetEngineName:TVulkanCharString;
        procedure SetEngineName(const NewEngineName:TVulkanCharString);
-       function GetEngineVersion:TVkUInt32;
-       procedure SetEngineVersion(const NewEngineVersion:TVkUInt32);
-       function GetAPIVersion:TVkUInt32;
-       procedure SetAPIVersion(const NewAPIVersion:TVkUInt32);
+       function GetEngineVersion:TUInt32;
+       procedure SetEngineVersion(const NewEngineVersion:TUInt32);
+       function GetAPIVersion:TUInt32;
+       procedure SetAPIVersion(const NewAPIVersion:TUInt32);
        procedure EnumeratePhysicalDevices;
       protected
-       function DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32; virtual;
+       function DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32; virtual;
       public
        constructor Create(const aApplicationName:TVulkanCharString='Vulkan application';
-                          const aApplicationVersion:TVkUInt32=1;
+                          const aApplicationVersion:TUInt32=1;
                           const aEngineName:TVulkanCharString='Vulkan engine';
-                          const aEngineVersion:TVkUInt32=1;
-                          const pAPIVersion:TVkUInt32=VK_API_VERSION_1_0;
+                          const aEngineVersion:TUInt32=1;
+                          const pAPIVersion:TUInt32=VK_API_VERSION_1_0;
                           const aValidation:boolean=false;
                           const aAllocationManager:TVulkanAllocationManager=nil);
        destructor Destroy; override;
@@ -1106,10 +1106,10 @@ type EVulkanException=class(Exception);
        property ApplicationInfo:TVkApplicationInfo read fApplicationInfo write SetApplicationInfo;
       published
        property ApplicationName:TVulkanCharString read GetApplicationName write SetApplicationName;
-       property ApplicationVersion:TVkUInt32 read GetApplicationVersion write SetApplicationVersion;
+       property ApplicationVersion:TUInt32 read GetApplicationVersion write SetApplicationVersion;
        property EngineName:TVulkanCharString read GetEngineName write SetEngineName;
-       property EngineVersion:TVkUInt32 read GetEngineVersion write SetEngineVersion;
-       property APIVersion:TVkUInt32 read GetAPIVersion write SetAPIVersion;
+       property EngineVersion:TUInt32 read GetEngineVersion write SetEngineVersion;
+       property APIVersion:TUInt32 read GetAPIVersion write SetAPIVersion;
        property Validation:longbool read fValidation write fValidation;
        property AvailableLayers:TVulkanAvailableLayers read fAvailableLayers;
        property AvailableExtensions:TVulkanAvailableExtensions read fAvailableExtensions;
@@ -1141,7 +1141,7 @@ type EVulkanException=class(Exception);
       public
        constructor Create(const aInstance:TVulkanInstance;const aPhysicalDevice:TVkPhysicalDevice);
        destructor Destroy; override;
-       function HasQueueSupportForSparseBindings(const aQueueFamilyIndex:TVkUInt32):boolean;
+       function HasQueueSupportForSparseBindings(const aQueueFamilyIndex:TUInt32):boolean;
        function GetFormatProperties(const aFormat:TVkFormat):TVkFormatProperties;
        function GetImageFormatProperties(const aFormat:TVkFormat;
                                          const aType:TVkImageType;
@@ -1153,17 +1153,17 @@ type EVulkanException=class(Exception);
                                                const aSamples:TVkSampleCountFlagBits;
                                                const aUsageFlags:TVkImageUsageFlags;
                                                const aTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
-       function GetSurfaceSupport(const aQueueFamilyIndex:TVkUInt32;const aSurface:TVulkanSurface):boolean;
+       function GetSurfaceSupport(const aQueueFamilyIndex:TUInt32;const aSurface:TVulkanSurface):boolean;
        function GetSurfaceCapabilities(const aSurface:TVulkanSurface):TVkSurfaceCapabilitiesKHR;
        function GetSurfaceFormats(const aSurface:TVulkanSurface):TVkSurfaceFormatKHRArray;
        function GetSurfacePresentModes(const aSurface:TVulkanSurface):TVkPresentModeKHRArray;
        function GetDisplayProperties:TVkDisplayPropertiesKHRArray;
        function GetDisplayPlaneProperties:TVkDisplayPlanePropertiesKHRArray;
-       function GetDisplayPlaneSupportedDisplays(const aPlaneIndex:TVkUInt32):TVkDisplayKHRArray;
+       function GetDisplayPlaneSupportedDisplays(const aPlaneIndex:TUInt32):TVkDisplayKHRArray;
        function GetDisplayModeProperties(const aDisplay:TVkDisplayKHR):TVkDisplayModePropertiesKHRArray;
-       function GetMemoryType(const aTypeBits:TVkUInt32;const aProperties:TVkFlags):TVkUInt32;
+       function GetMemoryType(const aTypeBits:TUInt32;const aProperties:TVkFlags):TUInt32;
        function GetBestSupportedDepthFormat(const aWithStencil:boolean):TVkFormat;
-       function GetQueueNodeIndex(const aSurface:TVulkanSurface;const aQueueFlagBits:TVkQueueFlagBits):TVkInt32;
+       function GetQueueNodeIndex(const aSurface:TVulkanSurface;const aQueueFlagBits:TVkQueueFlagBits):TInt32;
        function GetSurfaceFormat(const aSurface:TVulkanSurface):TVkSurfaceFormatKHR;
        property Properties:TVkPhysicalDeviceProperties read fProperties;
        property MemoryProperties:TVkPhysicalDeviceMemoryProperties read fMemoryProperties;
@@ -1205,7 +1205,7 @@ type EVulkanException=class(Exception);
       case TVulkanSurfacePlatform of
        vspUnknown:(
         sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_*_SURFACE_CREATE_INFO_KHR
-        aNext:PVkVoid; //< TVkPointer to next structure
+        aNext:PVkVoid; //< TPointer to next structure
         flags:TVkFlags; //< Reserved
        );
 {$if defined(Android) and defined(Unix)}
@@ -1316,11 +1316,11 @@ type EVulkanException=class(Exception);
        fAllocationCallbacks:PVkAllocationCallbacks;
        fDeviceHandle:TVkDevice;
        fDeviceVulkan:TVulkan;
-       fUniversalQueueFamilyIndex:TVkInt32;
-       fPresentQueueFamilyIndex:TVkInt32;
-       fGraphicsQueueFamilyIndex:TVkInt32;
-       fComputeQueueFamilyIndex:TVkInt32;
-       fTransferQueueFamilyIndex:TVkInt32;
+       fUniversalQueueFamilyIndex:TInt32;
+       fPresentQueueFamilyIndex:TInt32;
+       fGraphicsQueueFamilyIndex:TInt32;
+       fComputeQueueFamilyIndex:TInt32;
+       fTransferQueueFamilyIndex:TInt32;
        fQueues:TVulkanQueues;
        fUniversalQueue:TVulkanQueue;
        fPresentQueue:TVulkanQueue;
@@ -1335,7 +1335,7 @@ type EVulkanException=class(Exception);
                           const aSurface:TVulkanSurface=nil;
                           const aAllocationManager:TVulkanAllocationManager=nil);
        destructor Destroy; override;
-       procedure AddQueue(const aQueueFamilyIndex:TVkUInt32;const aQueuePriorities:array of TVkFloat;const aSurface:TVulkanSurface=nil);
+       procedure AddQueue(const aQueueFamilyIndex:TUInt32;const aQueuePriorities:array of TFloat;const aSurface:TVulkanSurface=nil);
        procedure AddQueues(const aUniversal:boolean=true;
                            const aPresent:boolean=true;
                            const aGraphics:boolean=true;
@@ -1353,11 +1353,11 @@ type EVulkanException=class(Exception);
        property EnabledExtensionNames:TStringList read fEnabledExtensionNames;
        property Handle:TVkDevice read fDeviceHandle;
        property Commands:TVulkan read fDeviceVulkan;
-       property UniversalQueueFamilyIndex:TVkInt32 read fUniversalQueueFamilyIndex;
-       property PresentQueueFamilyIndex:TVkInt32 read fPresentQueueFamilyIndex;
-       property GraphicsQueueFamilyIndex:TVkInt32 read fGraphicsQueueFamilyIndex;
-       property ComputeQueueFamilyIndex:TVkInt32 read fComputeQueueFamilyIndex;
-       property TransferQueueFamilyIndex:TVkInt32 read fTransferQueueFamilyIndex;
+       property UniversalQueueFamilyIndex:TInt32 read fUniversalQueueFamilyIndex;
+       property PresentQueueFamilyIndex:TInt32 read fPresentQueueFamilyIndex;
+       property GraphicsQueueFamilyIndex:TInt32 read fGraphicsQueueFamilyIndex;
+       property ComputeQueueFamilyIndex:TInt32 read fComputeQueueFamilyIndex;
+       property TransferQueueFamilyIndex:TInt32 read fTransferQueueFamilyIndex;
        property Queues:TVulkanQueues read fQueues;
        property UniversalQueue:TVulkanQueue read fUniversalQueue;
        property PresentQueue:TVulkanQueue read fPresentQueue;
@@ -1369,13 +1369,13 @@ type EVulkanException=class(Exception);
 
      TVulkanDeviceQueueCreateInfo=class(TVulkanObject)
       private
-       fQueueFamilyIndex:TVkUInt32;
+       fQueueFamilyIndex:TUInt32;
        fQueuePriorities:TVkFloatArray;
       public
-       constructor Create(const aQueueFamilyIndex:TVkUInt32;const aQueuePriorities:array of TVkFloat);
+       constructor Create(const aQueueFamilyIndex:TUInt32;const aQueuePriorities:array of TFloat);
        destructor Destroy; override;
       published
-       property QueueFamilyIndex:TVkUInt32 read fQueueFamilyIndex;
+       property QueueFamilyIndex:TUInt32 read fQueueFamilyIndex;
        property QueuePriorities:TVkFloatArray read fQueuePriorities;
      end;
 
@@ -1522,9 +1522,9 @@ type EVulkanException=class(Exception);
        fMappedSize:TVkDeviceSize;
        fOffsetRedBlackTree:TVulkanDeviceMemoryChunkBlockRedBlackTree;
        fSizeRedBlackTree:TVulkanDeviceMemoryChunkBlockRedBlackTree;
-       fMemoryTypeIndex:TVkUInt32;
-       fMemoryTypeBits:TVkUInt32;
-       fMemoryHeapIndex:TVkUInt32;
+       fMemoryTypeIndex:TUInt32;
+       fMemoryTypeBits:TUInt32;
+       fMemoryHeapIndex:TUInt32;
        fMemoryPropertyFlags:TVkMemoryPropertyFlags;
        fMemoryHeapFlags:TVkMemoryHeapFlags;
        fMemoryHandle:TVkDeviceMemory;
@@ -1534,7 +1534,7 @@ type EVulkanException=class(Exception);
                           const aMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
                           const aSize:TVkDeviceSize;
                           const aSizeIsMinimumSize:boolean;
-                          const aMemoryTypeBits:TVkUInt32;
+                          const aMemoryTypeBits:TUInt32;
                           const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
                           const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
                           const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
@@ -1549,18 +1549,18 @@ type EVulkanException=class(Exception);
        function MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
        procedure UnmapMemory;
        procedure FlushMappedMemory;
-       procedure FlushMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
+       procedure FlushMappedMemoryRange(const aBase:TPointer;const aSize:TVkDeviceSize);
        procedure InvalidateMappedMemory;
-       procedure InvalidateMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
+       procedure InvalidateMappedMemoryRange(const aBase:TPointer;const aSize:TVkDeviceSize);
        property Memory:PVkVoid read fMemory;
       published
        property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
        property Size:TVkDeviceSize read fSize;
        property MemoryPropertyFlags:TVkMemoryPropertyFlags read fMemoryPropertyFlags;
        property MemoryHeapFlags:TVkMemoryPropertyFlags read fMemoryHeapFlags;
-       property MemoryTypeIndex:TVkUInt32 read fMemoryTypeIndex;
-       property MemoryTypeBits:TVkUInt32 read fMemoryTypeBits;
-       property MemoryHeapIndex:TVkUInt32 read fMemoryHeapIndex;
+       property MemoryTypeIndex:TUInt32 read fMemoryTypeIndex;
+       property MemoryTypeBits:TUInt32 read fMemoryTypeBits;
+       property MemoryHeapIndex:TUInt32 read fMemoryHeapIndex;
        property Handle:TVkDeviceMemory read fMemoryHandle;
      end;
 
@@ -1591,9 +1591,9 @@ type EVulkanException=class(Exception);
        function MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
        procedure UnmapMemory;
        procedure FlushMappedMemory;
-       procedure FlushMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
+       procedure FlushMappedMemoryRange(const aBase:TPointer;const aSize:TVkDeviceSize);
        procedure InvalidateMappedMemory;
-       procedure InvalidateMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
+       procedure InvalidateMappedMemoryRange(const aBase:TPointer;const aSize:TVkDeviceSize);
        function Fill(const aData:PVkVoid;const aSize:TVkDeviceSize):TVkDeviceSize;
       published
        property MemoryManager:TVulkanDeviceMemoryManager read fMemoryManager;
@@ -1622,7 +1622,7 @@ type EVulkanException=class(Exception);
        function AllocateMemoryBlock(const aMemoryBlockFlags:TVulkanDeviceMemoryBlockFlags;
                                     const aMemoryBlockSize:TVkDeviceSize;
                                     const aMemoryBlockAlignment:TVkDeviceSize;
-                                    const aMemoryTypeBits:TVkUInt32;
+                                    const aMemoryTypeBits:TUInt32;
                                     const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
                                     const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
                                     const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
@@ -1633,7 +1633,7 @@ type EVulkanException=class(Exception);
        function FreeMemoryBlock(const aMemoryBlock:TVulkanDeviceMemoryBlock):boolean;
      end;
 
-     TVulkanQueueFamilyIndices=array of TVkUInt32;
+     TVulkanQueueFamilyIndices=array of TUInt32;
 
      TVulkanFence=class;
 
@@ -1666,7 +1666,7 @@ type EVulkanException=class(Exception);
        fMemoryRequirements:TVkMemoryRequirements;
        fMemoryBlock:TVulkanDeviceMemoryBlock;
        fQueueFamilyIndices:TVulkanQueueFamilyIndices;
-       fCountQueueFamilyIndices:TVkInt32;
+       fCountQueueFamilyIndices:TInt32;
        fDescriptorBufferInfo:TVkDescriptorBufferInfo;
        procedure Bind;
       public
@@ -1751,8 +1751,8 @@ type EVulkanException=class(Exception);
        function GetStatus:TVkResult;
        function Reset:TVkResult; overload;
        class function Reset(const aFences:array of TVulkanFence):TVkResult; overload;
-       function WaitFor(const aTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult; overload;
-       class function WaitFor(const aFences:array of TVulkanFence;const aWaitAll:boolean=true;const aTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult; overload;
+       function WaitFor(const aTimeOut:TUInt64=TUInt64(TInt64(-1))):TVkResult; overload;
+       class function WaitFor(const aFences:array of TVulkanFence;const aWaitAll:boolean=true;const aTimeOut:TUInt64=TUInt64(TInt64(-1))):TVkResult; overload;
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkFence read fFenceHandle;
@@ -1775,37 +1775,37 @@ type EVulkanException=class(Exception);
       private
        fDevice:TVulkanDevice;
        fQueueHandle:TVkQueue;
-       fQueueFamilyIndex:TVkUInt32;
+       fQueueFamilyIndex:TUInt32;
        fHasSupportForSparseBindings:boolean;
       public
        constructor Create(const aDevice:TVulkanDevice;
                           const aQueue:TVkQueue;
-                          const aQueueFamilyIndex:TVKUInt32);
+                          const aQueueFamilyIndex:TUInt32);
        destructor Destroy; override;
-       procedure Submit(const aSubmitCount:TVkUInt32;const aSubmits:PVkSubmitInfo;const aFence:TVulkanFence=nil);
-       procedure BindSparse(const aBindInfoCount:TVkUInt32;const aBindInfo:PVkBindSparseInfo;const aFence:TVulkanFence=nil);
+       procedure Submit(const aSubmitCount:TUInt32;const aSubmits:PVkSubmitInfo;const aFence:TVulkanFence=nil);
+       procedure BindSparse(const aBindInfoCount:TUInt32;const aBindInfo:PVkBindSparseInfo;const aFence:TVulkanFence=nil);
        procedure WaitIdle;
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkQueue read fQueueHandle;
-       property QueueFamilyIndex:TVkUInt32 read fQueueFamilyIndex;
+       property QueueFamilyIndex:TUInt32 read fQueueFamilyIndex;
        property HasSupportForSparseBindings:boolean read fHasSupportForSparseBindings;
      end;
 
      TVulkanCommandPool=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
-       fQueueFamilyIndex:TVkUInt32;
+       fQueueFamilyIndex:TUInt32;
        fFlags:TVkCommandPoolCreateFlags;
        fCommandPoolHandle:TVkCommandPool;
       public
        constructor Create(const aDevice:TVulkanDevice;
-                          const aQueueFamilyIndex:TVkUInt32;
+                          const aQueueFamilyIndex:TUInt32;
                           const aFlags:TVkCommandPoolCreateFlags=TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
-       property QueueFamilyIndex:TVkUInt32 read fQueueFamilyIndex;
+       property QueueFamilyIndex:TUInt32 read fQueueFamilyIndex;
        property Handle:TVkCommandPool read fCommandPoolHandle;
      end;
 
@@ -1827,56 +1827,56 @@ type EVulkanException=class(Exception);
        destructor Destroy; override;
        class function Allocate(const aCommandPool:TVulkanCommandPool;
                                const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                               const aCommandBufferCount:TVkUInt32=1):TVulkanObjectList;
+                               const aCommandBufferCount:TUInt32=1):TVulkanObjectList;
        procedure BeginRecording(const aFlags:TVkCommandBufferUsageFlags=0;const aInheritanceInfo:PVkCommandBufferInheritanceInfo=nil);
        procedure BeginRecordingPrimary;
-       procedure BeginRecordingSecondary(const aRenderPass:TVkRenderPass;const aSubPass:TVkUInt32;const aFrameBuffer:TVkFramebuffer;const aOcclusionQueryEnable:boolean;const aQueryFlags:TVkQueryControlFlags;const aPipelineStatistics:TVkQueryPipelineStatisticFlags;const aFlags:TVkCommandBufferUsageFlags=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
+       procedure BeginRecordingSecondary(const aRenderPass:TVkRenderPass;const aSubPass:TUInt32;const aFrameBuffer:TVkFramebuffer;const aOcclusionQueryEnable:boolean;const aQueryFlags:TVkQueryControlFlags;const aPipelineStatistics:TVkQueryPipelineStatisticFlags;const aFlags:TVkCommandBufferUsageFlags=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
        procedure EndRecording;
        procedure Reset(const aFlags:TVkCommandBufferResetFlags=TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
        procedure CmdBindPipeline(pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline);
-       procedure CmdSetViewport(firstViewport:TVkUInt32;viewportCount:TVkUInt32;const aViewports:PVkViewport);
-       procedure CmdSetScissor(firstScissor:TVkUInt32;scissorCount:TVkUInt32;const aScissors:PVkRect2D);
-       procedure CmdSetLineWidth(lineWidth:TVkFloat);
-       procedure CmdSetDepthBias(depthBiasConstantFactor:TVkFloat;depthBiasClamp:TVkFloat;depthBiasSlopeFactor:TVkFloat);
-       procedure CmdSetBlendConstants(const blendConstants:TVkFloat);
-       procedure CmdSetDepthBounds(minDepthBounds:TVkFloat;maxDepthBounds:TVkFloat);
-       procedure CmdSetStencilCompareMask(faceMask:TVkStencilFaceFlags;compareMask:TVkUInt32);
-       procedure CmdSetStencilWriteMask(faceMask:TVkStencilFaceFlags;writeMask:TVkUInt32);
-       procedure CmdSetStencilReference(faceMask:TVkStencilFaceFlags;reference:TVkUInt32);
-       procedure CmdBindDescriptorSets(pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const aDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const aDynamicOffsets:PVkUInt32);
+       procedure CmdSetViewport(firstViewport:TUInt32;viewportCount:TUInt32;const aViewports:PVkViewport);
+       procedure CmdSetScissor(firstScissor:TUInt32;scissorCount:TUInt32;const aScissors:PVkRect2D);
+       procedure CmdSetLineWidth(lineWidth:TFloat);
+       procedure CmdSetDepthBias(depthBiasConstantFactor:TFloat;depthBiasClamp:TFloat;depthBiasSlopeFactor:TFloat);
+       procedure CmdSetBlendConstants(const blendConstants:TFloat);
+       procedure CmdSetDepthBounds(minDepthBounds:TFloat;maxDepthBounds:TFloat);
+       procedure CmdSetStencilCompareMask(faceMask:TVkStencilFaceFlags;compareMask:TUInt32);
+       procedure CmdSetStencilWriteMask(faceMask:TVkStencilFaceFlags;writeMask:TUInt32);
+       procedure CmdSetStencilReference(faceMask:TVkStencilFaceFlags;reference:TUInt32);
+       procedure CmdBindDescriptorSets(pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TUInt32;descriptorSetCount:TUInt32;const aDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TUInt32;const aDynamicOffsets:PUInt32);
        procedure CmdBindIndexBuffer(buffer:TVkBuffer;offset:TVkDeviceSize;indexType:TVkIndexType);
-       procedure CmdBindVertexBuffers(firstBinding:TVkUInt32;bindingCount:TVkUInt32;const aBuffers:PVkBuffer;const aOffsets:PVkDeviceSize);
-       procedure CmdDraw(vertexCount:TVkUInt32;instanceCount:TVkUInt32;firstVertex:TVkUInt32;firstInstance:TVkUInt32);
-       procedure CmdDrawIndexed(indexCount:TVkUInt32;instanceCount:TVkUInt32;firstIndex:TVkUInt32;vertexOffset:TVkInt32;firstInstance:TVkUInt32);
-       procedure CmdDrawIndirect(buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32);
-       procedure CmdDrawIndexedIndirect(buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32);
-       procedure CmdDispatch(x:TVkUInt32;y:TVkUInt32;z:TVkUInt32);
+       procedure CmdBindVertexBuffers(firstBinding:TUInt32;bindingCount:TUInt32;const aBuffers:PVkBuffer;const aOffsets:PVkDeviceSize);
+       procedure CmdDraw(vertexCount:TUInt32;instanceCount:TUInt32;firstVertex:TUInt32;firstInstance:TUInt32);
+       procedure CmdDrawIndexed(indexCount:TUInt32;instanceCount:TUInt32;firstIndex:TUInt32;vertexOffset:TInt32;firstInstance:TUInt32);
+       procedure CmdDrawIndirect(buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TUInt32;stride:TUInt32);
+       procedure CmdDrawIndexedIndirect(buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TUInt32;stride:TUInt32);
+       procedure CmdDispatch(x:TUInt32;y:TUInt32;z:TUInt32);
        procedure CmdDispatchIndirect(buffer:TVkBuffer;offset:TVkDeviceSize);
-       procedure CmdCopyBuffer(srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const aRegions:PVkBufferCopy);
-       procedure CmdCopyImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageCopy);
-       procedure CmdBlitImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageBlit;filter:TVkFilter);
-       procedure CmdCopyBufferToImage(srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkBufferImageCopy);
-       procedure CmdCopyImageToBuffer(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const aRegions:PVkBufferImageCopy);
+       procedure CmdCopyBuffer(srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TUInt32;const aRegions:PVkBufferCopy);
+       procedure CmdCopyImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TUInt32;const aRegions:PVkImageCopy);
+       procedure CmdBlitImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TUInt32;const aRegions:PVkImageBlit;filter:TVkFilter);
+       procedure CmdCopyBufferToImage(srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TUInt32;const aRegions:PVkBufferImageCopy);
+       procedure CmdCopyImageToBuffer(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TUInt32;const aRegions:PVkBufferImageCopy);
        procedure CmdUpdateBuffer(dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const aData:PVkVoid);
-       procedure CmdFillBuffer(dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TVkUInt32);
-       procedure CmdClearColorImage(image:TVkImage;imageLayout:TVkImageLayout;const aColor:PVkClearColorValue;rangeCount:TVkUInt32;const aRanges:PVkImageSubresourceRange);
-       procedure CmdClearDepthStencilImage(image:TVkImage;imageLayout:TVkImageLayout;const aDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const aRanges:PVkImageSubresourceRange);
-       procedure CmdClearAttachments(attachmentCount:TVkUInt32;const aAttachments:PVkClearAttachment;rectCount:TVkUInt32;const aRects:PVkClearRect);
-       procedure CmdResolveImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageResolve);
+       procedure CmdFillBuffer(dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TUInt32);
+       procedure CmdClearColorImage(image:TVkImage;imageLayout:TVkImageLayout;const aColor:PVkClearColorValue;rangeCount:TUInt32;const aRanges:PVkImageSubresourceRange);
+       procedure CmdClearDepthStencilImage(image:TVkImage;imageLayout:TVkImageLayout;const aDepthStencil:PVkClearDepthStencilValue;rangeCount:TUInt32;const aRanges:PVkImageSubresourceRange);
+       procedure CmdClearAttachments(attachmentCount:TUInt32;const aAttachments:PVkClearAttachment;rectCount:TUInt32;const aRects:PVkClearRect);
+       procedure CmdResolveImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TUInt32;const aRegions:PVkImageResolve);
        procedure CmdSetEvent(event:TVkEvent;stageMask:TVkPipelineStageFlags);
        procedure CmdResetEvent(event:TVkEvent;stageMask:TVkPipelineStageFlags);
-       procedure CmdWaitEvents(eventCount:TVkUInt32;const aEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
-       procedure CmdPipelineBarrier(srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
-       procedure CmdBeginQuery(queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags);
-       procedure CmdEndQuery(queryPool:TVkQueryPool;query:TVkUInt32);
-       procedure CmdResetQueryPool(queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32);
-       procedure CmdWriteTimestamp(pipelineStage:TVkPipelineStageFlagBits;queryPool:TVkQueryPool;query:TVkUInt32);
-       procedure CmdCopyQueryPoolResults(queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags);
-       procedure CmdPushConstants(layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const aValues:PVkVoid);
+       procedure CmdWaitEvents(eventCount:TUInt32;const aEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
+       procedure CmdPipelineBarrier(srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
+       procedure CmdBeginQuery(queryPool:TVkQueryPool;query:TUInt32;flags:TVkQueryControlFlags);
+       procedure CmdEndQuery(queryPool:TVkQueryPool;query:TUInt32);
+       procedure CmdResetQueryPool(queryPool:TVkQueryPool;firstQuery:TUInt32;queryCount:TUInt32);
+       procedure CmdWriteTimestamp(pipelineStage:TVkPipelineStageFlagBits;queryPool:TVkQueryPool;query:TUInt32);
+       procedure CmdCopyQueryPoolResults(queryPool:TVkQueryPool;firstQuery:TUInt32;queryCount:TUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags);
+       procedure CmdPushConstants(layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TUInt32;size:TUInt32;const aValues:PVkVoid);
        procedure CmdBeginRenderPass(const aRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents);
        procedure CmdNextSubpass(contents:TVkSubpassContents);
        procedure CmdEndRenderPass;
-       procedure CmdExecuteCommands(commandBufferCount:TVkUInt32;const aCommandBuffers:PVkCommandBuffer);
+       procedure CmdExecuteCommands(commandBufferCount:TUInt32;const aCommandBuffers:PVkCommandBuffer);
        procedure CmdExecute(const aCommandBuffer:TVulkanCommandBuffer);
        procedure MetaCmdPresentToDrawImageBarrier(const aImage:TVulkanImage;const aDoTransitionToColorAttachmentOptimalLayout:boolean=true);
        procedure MetaCmdDrawToPresentImageBarrier(const aImage:TVulkanImage;const aDoTransitionToPresentSrcLayout:boolean=true);
@@ -1905,7 +1905,7 @@ type EVulkanException=class(Exception);
        fSubmitInfoWaitSemaphores:TVulkanCommandBufferSubmitQueueSubmitInfoSubmitInfoWaitSemaphores;
        fSubmitInfoWaitDstStageFlags:TVulkanCommandBufferSubmitQueueSubmitInfoWaitDstStageFlags;
        fSubmitInfoSignalSemaphores:TVulkanCommandBufferSubmitQueueSubmitInfoSubmitInfoSignalSemaphores;
-       fCountSubmitInfos:TVkInt32;
+       fCountSubmitInfos:TInt32;
       public
        constructor Create(const aQueue:TVulkanQueue); reintroduce;
        destructor Destroy; override;
@@ -1922,11 +1922,11 @@ type EVulkanException=class(Exception);
      TVulkanRenderPassSubpassDescription=record
       Flags:TVkSubpassDescriptionFlags;
       PipelineBindPoint:TVkPipelineBindPoint;
-      InputAttachments:array of TVkInt32;
-      ColorAttachments:array of TVkInt32;
-      ResolveAttachments:array of TVkInt32;
-      DepthStencilAttachment:TVkInt32;
-      PreserveAttachments:array of TVkUInt32;
+      InputAttachments:array of TInt32;
+      ColorAttachments:array of TInt32;
+      ResolveAttachments:array of TInt32;
+      DepthStencilAttachment:TInt32;
+      PreserveAttachments:array of TUInt32;
       aInputAttachments:TVulkanRenderPassAttachmentReferences;
       aColorAttachments:TVulkanRenderPassAttachmentReferences;
       aResolveAttachments:TVulkanRenderPassAttachmentReferences;
@@ -1941,16 +1941,16 @@ type EVulkanException=class(Exception);
        fDevice:TVulkanDevice;
        fRenderPassHandle:TVkRenderPass;
        fAttachmentDescriptions:TVulkanRenderPassAttachmentDescriptions;
-       fCountAttachmentDescriptions:TVkInt32;
+       fCountAttachmentDescriptions:TInt32;
        fAttachmentReferences:TVulkanRenderPassAttachmentReferences;
-       fCountAttachmentReferences:TVkInt32;
+       fCountAttachmentReferences:TInt32;
        fRenderPassSubpassDescriptions:TVulkanRenderPassSubpassDescriptions;
        fSubpassDescriptions:TVkSubpassDescriptionArray;
-       fCountSubpassDescriptions:TVkInt32;
+       fCountSubpassDescriptions:TInt32;
        fSubpassDependencies:TVkSubpassDependencyArray;
-       fCountSubpassDependencies:TVkInt32;
+       fCountSubpassDependencies:TInt32;
        fClearValues:TVkClearValueArray;
-       function GetClearValue(const Index:TVkUInt32):PVkClearValue;
+       function GetClearValue(const Index:TUInt32):PVkClearValue;
       public
        constructor Create(const aDevice:TVulkanDevice);
        destructor Destroy; override;
@@ -1962,30 +1962,30 @@ type EVulkanException=class(Exception);
                                          const aStencilLoadOp:TVkAttachmentLoadOp;
                                          const aStencilStoreOp:TVkAttachmentStoreOp;
                                          const aInitialLayout:TVkImageLayout;
-                                         const aFinalLayout:TVkImageLayout):TVkUInt32;
-       function AddAttachmentReference(const aAttachment:TVkUInt32;
-                                       const aLayout:TVkImageLayout):TVkUInt32;
+                                         const aFinalLayout:TVkImageLayout):TUInt32;
+       function AddAttachmentReference(const aAttachment:TUInt32;
+                                       const aLayout:TVkImageLayout):TUInt32;
        function AddSubpassDescription(const aFlags:TVkSubpassDescriptionFlags;
                                       const aPipelineBindPoint:TVkPipelineBindPoint;
-                                      const aInputAttachments:array of TVkInt32;
-                                      const aColorAttachments:array of TVkInt32;
-                                      const aResolveAttachments:array of TVkInt32;
-                                      const aDepthStencilAttachment:TVkInt32;
-                                      const aPreserveAttachments:array of TVkUInt32):TVkUInt32;
-       function AddSubpassDependency(const aSrcSubpass:TVkUInt32;
-                                     const aDstSubpass:TVkUInt32;
+                                      const aInputAttachments:array of TInt32;
+                                      const aColorAttachments:array of TInt32;
+                                      const aResolveAttachments:array of TInt32;
+                                      const aDepthStencilAttachment:TInt32;
+                                      const aPreserveAttachments:array of TUInt32):TUInt32;
+       function AddSubpassDependency(const aSrcSubpass:TUInt32;
+                                     const aDstSubpass:TUInt32;
                                      const aSrcStageMask:TVkPipelineStageFlags;
                                      const aDstStageMask:TVkPipelineStageFlags;
                                      const aSrcAccessMask:TVkAccessFlags;
                                      const aDstAccessMask:TVkAccessFlags;
-                                     const aDependencyFlags:TVkDependencyFlags):TVkUInt32;
+                                     const aDependencyFlags:TVkDependencyFlags):TUInt32;
        procedure Initialize;
        procedure BeginRenderPass(const aCommandBuffer:TVulkanCommandBuffer;
                                  const aFrameBuffer:TVulkanFrameBuffer;
                                  const aSubpassContents:TVkSubpassContents;
-                                 const aOffsetX,aOffsetY,aWidth,aHeight:TVkUInt32);
+                                 const aOffsetX,aOffsetY,aWidth,aHeight:TUInt32);
        procedure EndRenderPass(const aCommandBuffer:TVulkanCommandBuffer);
-       property ClearValues[const Index:TVkUInt32]:PVkClearValue read GetClearValue;
+       property ClearValues[const Index:TUInt32]:PVkClearValue read GetClearValue;
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkRenderPass read fRenderPassHandle;
@@ -2007,13 +2007,13 @@ type EVulkanException=class(Exception);
                           const aAddressModeU:TVkSamplerAddressMode;
                           const aAddressModeV:TVkSamplerAddressMode;
                           const aAddressModeW:TVkSamplerAddressMode;
-                          const aMipLodBias:TVkFloat;
+                          const aMipLodBias:TFloat;
                           const aAnisotropyEnable:boolean;
-                          const aMaxAnisotropy:TVkFloat;
+                          const aMaxAnisotropy:TFloat;
                           const aCompareEnable:boolean;
                           const aCompareOp:TVkCompareOp;
-                          const aMinLod:TVkFloat;
-                          const aMaxLod:TVkFloat;
+                          const aMinLod:TFloat;
+                          const aMaxLod:TFloat;
                           const aBorderColor:TVkBorderColor;
                           const aUnnormalizedCoordinates:boolean); reintroduce; overload;
        destructor Destroy; override;
@@ -2039,32 +2039,32 @@ type EVulkanException=class(Exception);
                           const aFlags:TVkImageCreateFlags;
                           const aImageType:TVkImageType;
                           const aFormat:TVkFormat;
-                          const aExtentWidth:TVkUInt32;
-                          const aExtentHeight:TVkUInt32;
-                          const aExtentDepth:TVkUInt32;
-                          const aMipLevels:TVkUInt32;
-                          const aArrayLayers:TVkUInt32;
+                          const aExtentWidth:TUInt32;
+                          const aExtentHeight:TUInt32;
+                          const aExtentDepth:TUInt32;
+                          const aMipLevels:TUInt32;
+                          const aArrayLayers:TUInt32;
                           const aSamples:TVkSampleCountFlagBits;
                           const aTiling:TVkImageTiling;
                           const aUsage:TVkImageUsageFlags;
                           const aSharingMode:TVkSharingMode;
-                          const aQueueFamilyIndexCount:TVkUInt32;
-                          const aQueueFamilyIndices:PVkUInt32;
+                          const aQueueFamilyIndexCount:TUInt32;
+                          const aQueueFamilyIndices:PUInt32;
                           const aInitialLayout:TVkImageLayout); reintroduce; overload;
        constructor Create(const aDevice:TVulkanDevice;
                           const aFlags:TVkImageCreateFlags;
                           const aImageType:TVkImageType;
                           const aFormat:TVkFormat;
-                          const aExtentWidth:TVkUInt32;
-                          const aExtentHeight:TVkUInt32;
-                          const aExtentDepth:TVkUInt32;
-                          const aMipLevels:TVkUInt32;
-                          const aArrayLayers:TVkUInt32;
+                          const aExtentWidth:TUInt32;
+                          const aExtentHeight:TUInt32;
+                          const aExtentDepth:TUInt32;
+                          const aMipLevels:TUInt32;
+                          const aArrayLayers:TUInt32;
                           const aSamples:TVkSampleCountFlagBits;
                           const aTiling:TVkImageTiling;
                           const aUsage:TVkImageUsageFlags;
                           const aSharingMode:TVkSharingMode;
-                          const aQueueFamilyIndices:array of TVkUInt32;
+                          const aQueueFamilyIndices:array of TUInt32;
                           const aInitialLayout:TVkImageLayout); reintroduce; overload;
        destructor Destroy; override;
        procedure SetLayout(const aAspectMask:TVkImageAspectFlags;
@@ -2101,10 +2101,10 @@ type EVulkanException=class(Exception);
                           const aComponentBlue:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
                           const aComponentAlpha:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
                           const aImageAspectFlags:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-                          const aBaseMipLevel:TVkUInt32=0;
-                          const aCountMipMapLevels:TVkUInt32=1;
-                          const aBaseArrayLayer:TVkUInt32=1;
-                          const aCountArrayLayers:TVkUInt32=0); reintroduce; overload;
+                          const aBaseMipLevel:TUInt32=0;
+                          const aCountMipMapLevels:TUInt32=1;
+                          const aBaseArrayLayer:TUInt32=1;
+                          const aCountArrayLayers:TUInt32=0); reintroduce; overload;
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
@@ -2115,8 +2115,8 @@ type EVulkanException=class(Exception);
      TVulkanFrameBufferAttachment=class(TVulkanObject)
       private
        fDevice:TVulkanDevice;
-       fWidth:TVkUInt32;
-       fHeight:TVkUInt32;
+       fWidth:TUInt32;
+       fHeight:TUInt32;
        fFormat:TVkFormat;
        fImage:TVulkanImage;
        fImageView:TVulkanImageView;
@@ -2127,22 +2127,22 @@ type EVulkanException=class(Exception);
                           const aGraphicsQueue:TVulkanQueue;
                           const aGraphicsCommandBuffer:TVulkanCommandBuffer;
                           const aGraphicsCommandBufferFence:TVulkanFence;
-                          const aWidth:TVkUInt32;
-                          const aHeight:TVkUInt32;
+                          const aWidth:TUInt32;
+                          const aHeight:TUInt32;
                           const aFormat:TVkFormat;
                           const aUsage:TVkBufferUsageFlags); reintroduce; overload;
        constructor Create(const aDevice:TVulkanDevice;
                           const aImage:TVulkanImage;
                           const aImageView:TVulkanImageView;
-                          const aWidth:TVkUInt32;
-                          const aHeight:TVkUInt32;
+                          const aWidth:TUInt32;
+                          const aHeight:TUInt32;
                           const aFormat:TVkFormat;
                           const aDoDestroy:boolean=true); reintroduce; overload;
        destructor Destroy; override;
       published
        property Device:TVulkanDevice read fDevice;
-       property Width:TVkUInt32 read fWidth;
-       property Height:TVkUInt32 read fHeight;
+       property Width:TUInt32 read fWidth;
+       property Height:TUInt32 read fHeight;
        property Format:TVkFormat read fFormat;
        property Image:TVulkanImage read fImage;
        property ImageView:TVulkanImageView read fImageView;
@@ -2159,56 +2159,56 @@ type EVulkanException=class(Exception);
        fFrameBufferHandle:TVkFrameBuffer;
        fFrameBufferAttachments:TVulkanFrameBufferAttachments;
        fFrameBufferAttachmentImageViews:TVulkanFrameBufferAttachmentImageViews;
-       fCountFrameBufferAttachments:TVkInt32;
+       fCountFrameBufferAttachments:TInt32;
        fRenderPass:TVulkanRenderPass;
-       fWidth:TVkUInt32;
-       fHeight:TVkUInt32;
-       fLayers:TVkUInt32;
+       fWidth:TUInt32;
+       fHeight:TUInt32;
+       fLayers:TUInt32;
        fDoDestroy:boolean;
        fDoDestroyAttachments:boolean;
-       function GetFrameBufferAttachment(const aIndex:TVkInt32):TVulkanFrameBufferAttachment;
+       function GetFrameBufferAttachment(const aIndex:TInt32):TVulkanFrameBufferAttachment;
       public
        constructor Create(const aDevice:TVulkanDevice;
                           const aRenderPass:TVulkanRenderPass;
-                          const aWidth:TVkUInt32;
-                          const aHeight:TVkUInt32;
-                          const aLayers:TVkUInt32); reintroduce; overload;
+                          const aWidth:TUInt32;
+                          const aHeight:TUInt32;
+                          const aLayers:TUInt32); reintroduce; overload;
        constructor Create(const aDevice:TVulkanDevice;
                           const aRenderPass:TVulkanRenderPass;
-                          const aWidth:TVkUInt32;
-                          const aHeight:TVkUInt32;
-                          const aLayers:TVkUInt32;
+                          const aWidth:TUInt32;
+                          const aHeight:TUInt32;
+                          const aLayers:TUInt32;
                           const aFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
                           const aDoDestroyAttachments:boolean=true); reintroduce; overload;
        constructor Create(const aDevice:TVulkanDevice;
                           const aRenderPass:TVulkanRenderPass;
-                          const aWidth:TVkUInt32;
-                          const aHeight:TVkUInt32;
-                          const aLayers:TVkUInt32;
+                          const aWidth:TUInt32;
+                          const aHeight:TUInt32;
+                          const aLayers:TUInt32;
                           const aFrameBufferHandle:TVkFrameBuffer;
                           const aFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
                           const aDoDestroy:boolean=true;
                           const aDoDestroyAttachments:boolean=true); reintroduce; overload;
        destructor Destroy; override;
-       function AddAttachment(const aFrameBufferAttachment:TVulkanFrameBufferAttachment):TVkInt32;
+       function AddAttachment(const aFrameBufferAttachment:TVulkanFrameBufferAttachment):TInt32;
        procedure Initialize;
-       property Attachments[const aIndex:TVkInt32]:TVulkanFrameBufferAttachment read GetFrameBufferAttachment; default;
+       property Attachments[const aIndex:TInt32]:TVulkanFrameBufferAttachment read GetFrameBufferAttachment; default;
       published
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkFrameBuffer read fFrameBufferHandle;
-       property CountAttachments:TVkInt32 read fCountFrameBufferAttachments;
+       property CountAttachments:TInt32 read fCountFrameBufferAttachments;
        property RenderPass:TVulkanRenderPass read fRenderPass;
-       property Width:TVkUInt32 read fWidth;
-       property Height:TVkUInt32 read fHeight;
-       property Layers:TVkUInt32 read fLayers;
+       property Width:TUInt32 read fWidth;
+       property Height:TUInt32 read fHeight;
+       property Layers:TUInt32 read fLayers;
      end;
 
      TVulkanSwapChainImages=array of TVulkanImage;
 
      PVulkanSwapChainScreenshot=^TVulkanSwapChainScreenshot;
      TVulkanSwapChainScreenshot=record
-      Width:TVkInt32;
-      Height:TVkInt32;
+      Width:TInt32;
+      Height:TInt32;
       Data:TVkUInt8Array;
      end;
 
@@ -2218,27 +2218,27 @@ type EVulkanException=class(Exception);
        fSurface:TVulkanSurface;
        fSwapChainHandle:TVkSwapChainKHR;
        fQueueFamilyIndices:TVulkanQueueFamilyIndices;
-       fCountQueueFamilyIndices:TVkInt32;
+       fCountQueueFamilyIndices:TInt32;
        fImageFormat:TVkFormat;
        fImageColorSpace:TVkColorSpaceKHR;
        fImages:TVulkanSwapChainImages;
        fPresentMode:TVkPresentModeKHR;
-       fPreviousImageIndex:TVkUInt32;
-       fCurrentImageIndex:TVkUInt32;
-       fCountImages:TVkUInt32;
-       fWidth:TVkInt32;
-       fHeight:TVkInt32;
-       function GetImage(const aImageIndex:TVkInt32):TVulkanImage;
+       fPreviousImageIndex:TUInt32;
+       fCurrentImageIndex:TUInt32;
+       fCountImages:TUInt32;
+       fWidth:TInt32;
+       fHeight:TInt32;
+       function GetImage(const aImageIndex:TInt32):TVulkanImage;
        function GetPreviousImage:TVulkanImage;
        function GetCurrentImage:TVulkanImage;
       public
        constructor Create(const aDevice:TVulkanDevice;
                           const aSurface:TVulkanSurface;
                           const aOldSwapChain:TVulkanSwapChain=nil;
-                          const aDesiredImageWidth:TVkUInt32=0;
-                          const aDesiredImageHeight:TVkUInt32=0;
-                          const aDesiredImageCount:TVkUInt32=2;
-                          const aImageArrayLayers:TVkUInt32=1;
+                          const aDesiredImageWidth:TUInt32=0;
+                          const aDesiredImageHeight:TUInt32=0;
+                          const aDesiredImageCount:TUInt32=2;
+                          const aImageArrayLayers:TUInt32=1;
                           const aImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
                           const aImageColorSpace:TVkColorSpaceKHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
                           const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
@@ -2250,10 +2250,10 @@ type EVulkanException=class(Exception);
                           const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff));
        destructor Destroy; override;
        function QueuePresent(const aQueue:TVulkanQueue;const aSemaphore:TVulkanSemaphore=nil):TVkResult;
-       function AcquireNextImage(const aSemaphore:TVulkanSemaphore=nil;const aFence:TVulkanFence=nil;const aTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkResult;
+       function AcquireNextImage(const aSemaphore:TVulkanSemaphore=nil;const aFence:TVulkanFence=nil;const aTimeOut:TUInt64=TUInt64(high(TUInt64))):TVkResult;
        procedure GetScreenshot(out aScreenshot:TVulkanSwapChainScreenshot;const aSwapChainImage:TVulkanImage=nil);
        procedure SaveScreenshotAsPNGToStream(const aStream:TStream;const aSwapChainImage:TVulkanImage=nil);
-       property Images[const aImageIndex:TVkInt32]:TVulkanImage read GetImage; default;
+       property Images[const aImageIndex:TInt32]:TVulkanImage read GetImage; default;
       published
        property Device:TVulkanDevice read fDevice;
        property Surface:TVulkanSurface read fSurface;
@@ -2261,13 +2261,13 @@ type EVulkanException=class(Exception);
        property ImageFormat:TVkFormat read fImageFormat;
        property ImageColorSpace:TVkColorSpaceKHR read fImageColorSpace;
        property PresentMode:TVkPresentModeKHR read fPresentMode;
-       property PreviousImageIndex:TVkUInt32 read fPreviousImageIndex;
-       property CurrentImageIndex:TVkUInt32 read fCurrentImageIndex;
-       property CountImages:TVkUInt32 read fCountImages;
+       property PreviousImageIndex:TUInt32 read fPreviousImageIndex;
+       property CurrentImageIndex:TUInt32 read fCurrentImageIndex;
+       property CountImages:TUInt32 read fCountImages;
        property PreviousImage:TVulkanImage read GetPreviousImage;
        property CurrentImage:TVulkanImage read GetCurrentImage;
-       property Width:TVkInt32 read fWidth;
-       property Height:TVkInt32 read fHeight;
+       property Width:TInt32 read fWidth;
+       property Height:TInt32 read fHeight;
      end;
 
      TVulkanRenderTarget=class(TVulkanObject)
@@ -2295,7 +2295,7 @@ type EVulkanException=class(Exception);
       protected
        function GetRenderPass:TVulkanRenderPass; override;
        function GetFrameBuffer:TVulkanFrameBuffer; override;
-       function GetFrameBufferAtIndex(const aIndex:TVkInt32):TVulkanFrameBuffer;
+       function GetFrameBufferAtIndex(const aIndex:TInt32):TVulkanFrameBuffer;
       public
        constructor Create(const aDevice:TVulkanDevice;
                           const aSwapChain:TVulkanSwapChain;
@@ -2309,7 +2309,7 @@ type EVulkanException=class(Exception);
                           const aDepthImageFormatWithStencil:boolean=false;
                           const aClear:boolean=true);
        destructor Destroy; override;
-       property FrameBuffers[const aIndex:TVkInt32]:TVulkanFrameBuffer read GetFrameBufferAtIndex;
+       property FrameBuffers[const aIndex:TInt32]:TVulkanFrameBuffer read GetFrameBufferAtIndex;
       published
        property Device:TVulkanDevice read fDevice;
        property SwapChain:TVulkanSwapChain read fSwapChain;
@@ -2339,19 +2339,19 @@ type EVulkanException=class(Exception);
      TVulkanShaderModuleVariable={$ifdef HAS_ADVANCED_RECORDS}record{$else}object{$endif}
       private
        fDebugName:TVkCharString;
-       fName:TVkInt32;
-       fLocation:TVkInt32;
-       fBinding:TVkInt32;
-       fDescriptorSet:TVkInt32;
-       fInstruction:TVkInt32;
+       fName:TInt32;
+       fLocation:TInt32;
+       fBinding:TInt32;
+       fDescriptorSet:TInt32;
+       fInstruction:TInt32;
        fStorageClass:TVulkanShaderModuleVariableStorageClass;
       public
        property DebugName:TVkCharString read fDebugName;                                 // The name of the variable
-       property Name:TVkInt32 read fName;                                                // The internal name (integer) of the variable
-       property Location:TVkInt32 read fLocation;                                        // The location in the binding
-       property Binding:TVkInt32 read fBinding;                                          // The binding in the descriptor set or I/O channel
-       property DescriptorSet:TVkInt32 read fDescriptorSet;                              // The descriptor set (for uniforms)
-       property Instruction:TVkInt32 read fInstruction;                                  // The instruction index
+       property Name:TInt32 read fName;                                                // The internal name (integer) of the variable
+       property Location:TInt32 read fLocation;                                        // The location in the binding
+       property Binding:TInt32 read fBinding;                                          // The binding in the descriptor set or I/O channel
+       property DescriptorSet:TInt32 read fDescriptorSet;                              // The descriptor set (for uniforms)
+       property Instruction:TInt32 read fInstruction;                                  // The instruction index
        property StorageClass:TVulkanShaderModuleVariableStorageClass read fStorageClass; // Storage class of the variable
      end;
 
@@ -2383,15 +2383,15 @@ type EVulkanException=class(Exception);
        fDevice:TVulkanDevice;
        fDescriptorPoolHandle:TVkDescriptorPool;
        fDescriptorPoolSizes:TVkDescriptorPoolSizeArray;
-       fCountDescriptorPoolSizes:TVkInt32;
+       fCountDescriptorPoolSizes:TInt32;
        fFlags:TVkDescriptorPoolCreateFlags;
-       fMaxSets:TVkUInt32;
+       fMaxSets:TUInt32;
       public
        constructor Create(const aDevice:TVulkanDevice;
                           const aFlags:TVkDescriptorPoolCreateFlags;
-                          const aMaxSets:TVkUInt32);
+                          const aMaxSets:TUInt32);
        destructor Destroy; override;
-       function AddDescriptorPoolSize(const aType:TVkDescriptorType;const aDescriptorCount:TVkUInt32):TVkInt32;
+       function AddDescriptorPoolSize(const aType:TVkDescriptorType;const aDescriptorCount:TUInt32):TInt32;
        procedure Initialize;
        property Device:TVulkanDevice read fDevice;
        property Handle:TVkDescriptorPool read fDescriptorPoolHandle;
@@ -2401,28 +2401,28 @@ type EVulkanException=class(Exception);
       private                     
        fDescriptorSetLayoutBinding:TVkDescriptorSetLayoutBinding;
        fImmutableSamplers:TVkSamplerArray;
-       fCountImmutableSamplers:TVkInt32;
-       function GetBinding:TVkUInt32;
-       procedure SetBinding(const aBinding:TVkUInt32);
+       fCountImmutableSamplers:TInt32;
+       function GetBinding:TUInt32;
+       procedure SetBinding(const aBinding:TUInt32);
        function GetDescriptorType:TVkDescriptorType;
        procedure SetDescriptorType(const aDescriptorType:TVkDescriptorType);
-       function GetDescriptorCount:TVkUInt32;
-       procedure SetDescriptorCount(const aDescriptorCount:TVkUInt32);
+       function GetDescriptorCount:TUInt32;
+       procedure SetDescriptorCount(const aDescriptorCount:TUInt32);
        function GetStageFlags:TVkShaderStageFlags;
        procedure SetStageFlags(const aStageFlags:TVkShaderStageFlags);
       public
-       constructor Create(const aBinding:TVkUInt32;
+       constructor Create(const aBinding:TUInt32;
                           const aDescriptorType:TVkDescriptorType;
-                          const aDescriptorCount:TVkUInt32;
+                          const aDescriptorCount:TUInt32;
                           const aStageFlags:TVkShaderStageFlags);
        destructor Destroy; override;
        procedure AddImmutableSampler(const aImmutableSampler:TVulkanSampler);
        procedure AddImmutableSamplers(const aImmutableSamplers:array of TVulkanSampler);
        procedure Initialize;
       published
-       property Binding:TVkUInt32 read GetBinding write SetBinding;
+       property Binding:TUInt32 read GetBinding write SetBinding;
        property DescriptorType:TVkDescriptorType read GetDescriptorType write SetDescriptorType;
-       property DescriptorCount:TVkUInt32 read GetDescriptorCount write SetDescriptorCount;
+       property DescriptorCount:TUInt32 read GetDescriptorCount write SetDescriptorCount;
        property StageFlags:TVkShaderStageFlags read GetStageFlags write SetStageFlags;
      end;
 
@@ -2435,9 +2435,9 @@ type EVulkanException=class(Exception);
       public
        constructor Create(const aDevice:TVulkanDevice);
        destructor Destroy; override;
-       procedure AddBinding(const aBinding:TVkUInt32;
+       procedure AddBinding(const aBinding:TUInt32;
                             const aDescriptorType:TVkDescriptorType;
-                            const aDescriptorCount:TVkUInt32;
+                            const aDescriptorCount:TUInt32;
                             const aStageFlags:TVkShaderStageFlags;
                             const aImmutableSamplers:array of TVulkanSampler);
        procedure Initialize;
@@ -2462,10 +2462,10 @@ type EVulkanException=class(Exception);
        fDescriptorSetHandle:TVkDescriptorSet;
        fDescriptorSetAllocateInfo:TVkDescriptorSetAllocateInfo;
        fCopyDescriptorSetQueue:TVkCopyDescriptorSetArray;
-       fCopyDescriptorSetQueueSize:TVkInt32;
+       fCopyDescriptorSetQueueSize:TInt32;
        fWriteDescriptorSetQueue:TVkWriteDescriptorSetArray;
        fWriteDescriptorSetQueueMetaData:TVulkanDescriptorSetWriteDescriptorSetMetaDataArray;
-       fWriteDescriptorSetQueueSize:TVkInt32;
+       fWriteDescriptorSetQueueSize:TInt32;
       public
        constructor Create(const aDescriptorPool:TVulkanDescriptorPool;
                           const aDescriptorSetLayout:TVulkanDescriptorSetLayout);
@@ -2473,15 +2473,15 @@ type EVulkanException=class(Exception);
        class function Allocate(const aDescriptorPool:TVulkanDescriptorPool;
                                const aDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVulkanObjectList;
        procedure CopyFromDescriptorSet(const aSourceDescriptorSet:TVulkanDescriptorSet;
-                                       const aSourceBinding:TVkUInt32;
-                                       const aSourceArrayElement:TVkUInt32;
-                                       const aDestinationBinding:TVkUInt32;
-                                       const aDestinationArrayElement:TVkUInt32;
-                                       const aDescriptorCount:TVkUInt32;
+                                       const aSourceBinding:TUInt32;
+                                       const aSourceArrayElement:TUInt32;
+                                       const aDestinationBinding:TUInt32;
+                                       const aDestinationArrayElement:TUInt32;
+                                       const aDescriptorCount:TUInt32;
                                        const aDoInstant:boolean=false);
-       procedure WriteToDescriptorSet(const aDestinationBinding:TVkUInt32;
-                                      const aDestinationArrayElement:TVkUInt32;
-                                      const aDescriptorCount:TVkUInt32;
+       procedure WriteToDescriptorSet(const aDestinationBinding:TUInt32;
+                                      const aDestinationArrayElement:TUInt32;
+                                      const aDescriptorCount:TUInt32;
                                       const aDescriptorType:TVkDescriptorType;
                                       const aImageInfo:array of TVkDescriptorImageInfo;
                                       const aBufferInfo:array of TVkDescriptorBufferInfo;
@@ -2500,19 +2500,19 @@ type EVulkanException=class(Exception);
        fDevice:TVulkanDevice;
        fPipelineLayoutHandle:TVkPipelineLayout;
        fDescriptorSetLayouts:TVkDescriptorSetLayoutArray;
-       fCountDescriptorSetLayouts:TVkInt32;
+       fCountDescriptorSetLayouts:TInt32;
        fPushConstantRanges:TVkPushConstantRangeArray;
-       fCountPushConstantRanges:TVkInt32;
+       fCountPushConstantRanges:TInt32;
       public
        constructor Create(const aDevice:TVulkanDevice);
        destructor Destroy; override;
-       function AddDescriptorSetLayout(const aDescriptorSetLayout:TVkDescriptorSetLayout):TVkInt32; overload;
-       function AddDescriptorSetLayout(const aDescriptorSetLayout:TVulkanDescriptorSetLayout):TVkInt32; overload;
-       function AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVkDescriptorSetLayout):TVkInt32; overload;
-       function AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVkInt32; overload;
-       function AddPushConstantRange(const aPushConstantRange:TVkPushConstantRange):TVkInt32; overload;
-       function AddPushConstantRange(const aStageFlags:TVkShaderStageFlags;const aOffset,aSize:TVkUInt32):TVkInt32; overload;
-       function AddPushConstantRanges(const aPushConstantRanges:array of TVkPushConstantRange):TVkInt32;
+       function AddDescriptorSetLayout(const aDescriptorSetLayout:TVkDescriptorSetLayout):TInt32; overload;
+       function AddDescriptorSetLayout(const aDescriptorSetLayout:TVulkanDescriptorSetLayout):TInt32; overload;
+       function AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVkDescriptorSetLayout):TInt32; overload;
+       function AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TInt32; overload;
+       function AddPushConstantRange(const aPushConstantRange:TVkPushConstantRange):TInt32; overload;
+       function AddPushConstantRange(const aStageFlags:TVkShaderStageFlags;const aOffset,aSize:TUInt32):TInt32; overload;
+       function AddPushConstantRanges(const aPushConstantRanges:array of TVkPushConstantRange):TInt32;
        procedure Initialize;
       published
        property Device:TVulkanDevice read fDevice;
@@ -2527,7 +2527,7 @@ type EVulkanException=class(Exception);
        fSpecializationInfo:PVkSpecializationInfo;
        fDoCopyAndDoFree:boolean;
        fSpecializationMapEntries:TVkSpecializationMapEntryArray;
-       fCountSpecializationMapEntries:TVkInt32;
+       fCountSpecializationMapEntries:TInt32;
        fInitialized:boolean;
        procedure AllocateSpecializationInfo;
       public
@@ -2535,12 +2535,12 @@ type EVulkanException=class(Exception);
                           const aModule:TVulkanShaderModule;
                           const aName:TVkCharString);
        destructor Destroy; override;
-       procedure AddSpecializationDataFromMemory(const aData:TVkPointer;const aDataSize:TVkSize;const aDoCopyAndDoFree:boolean=true);
+       procedure AddSpecializationDataFromMemory(const aData:TPointer;const aDataSize:TVkSize;const aDoCopyAndDoFree:boolean=true);
        procedure AddSpecializationDataFromStream(const aStream:TStream);
        procedure AddSpecializationDataFromFile(const aFileName:string);
-       function AddSpecializationMapEntry(const aSpecializationMapEntry:TVkSpecializationMapEntry):TVkInt32; overload;
-       function AddSpecializationMapEntry(const aConstantID,aOffset:TVkUInt32;const aSize:TVkSize):TVkInt32; overload;
-       function AddSpecializationMapEntries(const aSpecializationMapEntries:array of TVkSpecializationMapEntry):TVkInt32;
+       function AddSpecializationMapEntry(const aSpecializationMapEntry:TVkSpecializationMapEntry):TInt32; overload;
+       function AddSpecializationMapEntry(const aConstantID,aOffset:TUInt32;const aSize:TVkSize):TInt32; overload;
+       function AddSpecializationMapEntries(const aSpecializationMapEntries:array of TVkSpecializationMapEntry):TInt32;
        procedure Initialize;
        property PipelineShaderStageCreateInfo:PVkPipelineShaderStageCreateInfo read fPointerToPipelineShaderStageCreateInfo;
       published
@@ -2551,8 +2551,8 @@ type EVulkanException=class(Exception);
        fDevice:TVulkanDevice;
        fPipelineCacheHandle:TVkPipelineCache;
       public
-       constructor Create(const aDevice:TVulkanDevice;const aInitialData:TVkPointer=nil;const aInitialDataSize:TVkSize=0);
-       constructor CreateFromMemory(const aDevice:TVulkanDevice;const aInitialData:TVkPointer;const aInitialDataSize:TVkSize);
+       constructor Create(const aDevice:TVulkanDevice;const aInitialData:TPointer=nil;const aInitialDataSize:TVkSize=0);
+       constructor CreateFromMemory(const aDevice:TVulkanDevice;const aInitialData:TPointer;const aInitialDataSize:TVkSize);
        constructor CreateFromStream(const aDevice:TVulkanDevice;const aStream:TStream);
        constructor CreateFromFile(const aDevice:TVulkanDevice;const aFileName:string);
        destructor Destroy; override;
@@ -2585,7 +2585,7 @@ type EVulkanException=class(Exception);
                           const aStage:TVulkanPipelineShaderStage;
                           const aLayout:TVulkanPipelineLayout;
                           const aBasePipelineHandle:TVulkanPipeline;
-                          const aBasePipelineIndex:TVkInt32); reintroduce;
+                          const aBasePipelineIndex:TInt32); reintroduce;
      end;
 
      TVulkanPipelineState=class(TVulkanObject)
@@ -2599,30 +2599,30 @@ type EVulkanException=class(Exception);
        fVertexInputStateCreateInfo:TVkPipelineVertexInputStateCreateInfo;
        fPointerToVertexInputStateCreateInfo:PVkPipelineVertexInputStateCreateInfo;
        fVertexInputBindingDescriptions:TVkVertexInputBindingDescriptionArray;
-       fCountVertexInputBindingDescriptions:TVkInt32;
+       fCountVertexInputBindingDescriptions:TInt32;
        fVertexInputAttributeDescriptions:TVkVertexInputAttributeDescriptionArray;
-       fCountVertexInputAttributeDescriptions:TVkInt32;
-       function GetVertexInputBindingDescription(const aIndex:TVkInt32):PVkVertexInputBindingDescription;
-       function GetVertexInputAttributeDescription(const aIndex:TVkInt32):PVkVertexInputAttributeDescription;
-       procedure SetCountVertexInputBindingDescriptions(const aNewCount:TVkInt32);
-       procedure SetCountVertexInputAttributeDescriptions(const aNewCount:TVkInt32);
+       fCountVertexInputAttributeDescriptions:TInt32;
+       function GetVertexInputBindingDescription(const aIndex:TInt32):PVkVertexInputBindingDescription;
+       function GetVertexInputAttributeDescription(const aIndex:TInt32):PVkVertexInputAttributeDescription;
+       procedure SetCountVertexInputBindingDescriptions(const aNewCount:TInt32);
+       procedure SetCountVertexInputAttributeDescriptions(const aNewCount:TInt32);
        procedure Initialize;
       public
        constructor Create;
        destructor Destroy; override;
        procedure Assign(const aFrom:TVulkanPipelineVertexInputState);
-       function AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
-       function AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32; overload;
-       function AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
-       function AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32; overload;
-       function AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32; overload;
-       function AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+       function AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TInt32; overload;
+       function AddVertexInputBindingDescription(const aBinding,aStride:TUInt32;const aInputRate:TVkVertexInputRate):TInt32; overload;
+       function AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TInt32;
+       function AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TInt32; overload;
+       function AddVertexInputAttributeDescription(const aLocation,aBinding:TUInt32;const aFormat:TVkFormat;const aOffset:TUInt32):TInt32; overload;
+       function AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TInt32;
        property VertexInputStateCreateInfo:PVkPipelineVertexInputStateCreateInfo read fPointerToVertexInputStateCreateInfo;
-       property VertexInputBindingDescriptions[const aIndex:TVkInt32]:PVkVertexInputBindingDescription read GetVertexInputBindingDescription;
-       property VertexInputAttributeDescriptions[const aIndex:TVkInt32]:PVkVertexInputAttributeDescription read GetVertexInputAttributeDescription;
+       property VertexInputBindingDescriptions[const aIndex:TInt32]:PVkVertexInputBindingDescription read GetVertexInputBindingDescription;
+       property VertexInputAttributeDescriptions[const aIndex:TInt32]:PVkVertexInputAttributeDescription read GetVertexInputAttributeDescription;
       published
-       property CountVertexInputBindingDescriptions:TVkInt32 read fCountVertexInputBindingDescriptions write SetCountVertexInputBindingDescriptions;
-       property CountVertexInputAttributeDescriptions:TVkInt32 read fCountVertexInputAttributeDescriptions write SetCountVertexInputAttributeDescriptions;
+       property CountVertexInputBindingDescriptions:TInt32 read fCountVertexInputBindingDescriptions write SetCountVertexInputBindingDescriptions;
+       property CountVertexInputAttributeDescriptions:TInt32 read fCountVertexInputAttributeDescriptions write SetCountVertexInputAttributeDescriptions;
      end;
 
      TVulkanPipelineInputAssemblyState=class(TVulkanPipelineState)
@@ -2648,16 +2648,16 @@ type EVulkanException=class(Exception);
       private
        fTessellationStateCreateInfo:TVkPipelineTessellationStateCreateInfo;
        fPointerToTessellationStateCreateInfo:PVkPipelineTessellationStateCreateInfo;
-       function GetPatchControlPoints:TVkUInt32;
-       procedure SetPatchControlPoints(const aNewValue:TVkUInt32);
+       function GetPatchControlPoints:TUInt32;
+       procedure SetPatchControlPoints(const aNewValue:TUInt32);
       public
        constructor Create;
        destructor Destroy; override;
        procedure Assign(const aFrom:TVulkanPipelineTessellationState);
-       procedure SetTessellationState(const aPatchControlPoints:TVkUInt32);
+       procedure SetTessellationState(const aPatchControlPoints:TUInt32);
        property TessellationStateCreateInfo:PVkPipelineTessellationStateCreateInfo read fPointerToTessellationStateCreateInfo;
       published
-       property PatchControlPoints:TVkUInt32 read GetPatchControlPoints write SetPatchControlPoints;
+       property PatchControlPoints:TUInt32 read GetPatchControlPoints write SetPatchControlPoints;
      end;
 
      TVulkanPipelineViewPortState=class(TVulkanPipelineState)
@@ -2665,33 +2665,33 @@ type EVulkanException=class(Exception);
        fViewportStateCreateInfo:TVkPipelineViewportStateCreateInfo;
        fPointerToViewportStateCreateInfo:PVkPipelineViewportStateCreateInfo;
        fViewPorts:TVkViewportArray;
-       fCountViewPorts:TVkInt32;
+       fCountViewPorts:TInt32;
        fDynamicViewPorts:boolean;
        fScissors:TVkRect2DArray;
-       fCountScissors:TVkInt32;
+       fCountScissors:TInt32;
        fDynamicScissors:boolean;
-       function GetViewPort(const aIndex:TVkInt32):PVkViewport;
-       function GetScissor(const aIndex:TVkInt32):PVkRect2D;
-       procedure SetCountViewPorts(const aNewCount:TVkInt32);
-       procedure SetCountScissors(const aNewCount:TVkInt32);
+       function GetViewPort(const aIndex:TInt32):PVkViewport;
+       function GetScissor(const aIndex:TInt32):PVkRect2D;
+       procedure SetCountViewPorts(const aNewCount:TInt32);
+       procedure SetCountScissors(const aNewCount:TInt32);
        procedure Initialize;
       public
        constructor Create;
        destructor Destroy; override;
        procedure Assign(const aFrom:TVulkanPipelineViewPortState);
-       function AddViewPort(const aViewPort:TVkViewport):TVkInt32; overload;
-       function AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32; overload;
-       function AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32; overload;
-       function AddScissor(const aScissor:TVkRect2D):TVkInt32; overload;
-       function AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32; overload;
-       function AddScissors(const aScissors:array of TVkRect2D):TVkInt32; overload;
+       function AddViewPort(const aViewPort:TVkViewport):TInt32; overload;
+       function AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TFloat):TInt32; overload;
+       function AddViewPorts(const aViewPorts:array of TVkViewport):TInt32; overload;
+       function AddScissor(const aScissor:TVkRect2D):TInt32; overload;
+       function AddScissor(const pX,pY:TInt32;const aWidth,aHeight:TUInt32):TInt32; overload;
+       function AddScissors(const aScissors:array of TVkRect2D):TInt32; overload;
        property ViewportStateCreateInfo:PVkPipelineViewportStateCreateInfo read fPointerToViewportStateCreateInfo;
-       property ViewPorts[const aIndex:TVkInt32]:PVkViewport read GetViewPort;
-       property Scissors[const aIndex:TVkInt32]:PVkRect2D read GetScissor;
+       property ViewPorts[const aIndex:TInt32]:PVkViewport read GetViewPort;
+       property Scissors[const aIndex:TInt32]:PVkRect2D read GetScissor;
       published
-       property CountViewPorts:TVkInt32 read fCountViewPorts write SetCountViewPorts;
+       property CountViewPorts:TInt32 read fCountViewPorts write SetCountViewPorts;
        property DynamicViewPorts:boolean read fDynamicViewPorts write fDynamicViewPorts;
-       property CountScissors:TVkInt32 read fCountScissors write SetCountScissors;
+       property CountScissors:TInt32 read fCountScissors write SetCountScissors;
        property DynamicScissors:boolean read fDynamicScissors write fDynamicScissors;
      end;
 
@@ -2711,14 +2711,14 @@ type EVulkanException=class(Exception);
        procedure SetFrontFace(const aNewValue:TVkFrontFace);
        function GetDepthBiasEnable:boolean;
        procedure SetDepthBiasEnable(const aNewValue:boolean);
-       function GetDepthBiasConstantFactor:TVkFloat;
-       procedure SetDepthBiasConstantFactor(const aNewValue:TVkFloat);
-       function GetDepthBiasClamp:TVkFloat;
-       procedure SetDepthBiasClamp(const aNewValue:TVkFloat);
-       function GetDepthBiasSlopeFactor:TVkFloat;
-       procedure SetDepthBiasSlopeFactor(const aNewValue:TVkFloat);
-       function GetLineWidth:TVkFloat;
-       procedure SetLineWidth(const aNewValue:TVkFloat);
+       function GetDepthBiasConstantFactor:TFloat;
+       procedure SetDepthBiasConstantFactor(const aNewValue:TFloat);
+       function GetDepthBiasClamp:TFloat;
+       procedure SetDepthBiasClamp(const aNewValue:TFloat);
+       function GetDepthBiasSlopeFactor:TFloat;
+       procedure SetDepthBiasSlopeFactor(const aNewValue:TFloat);
+       function GetLineWidth:TFloat;
+       procedure SetLineWidth(const aNewValue:TFloat);
       public
        constructor Create;
        destructor Destroy; override;
@@ -2729,10 +2729,10 @@ type EVulkanException=class(Exception);
                                        const aCullMode:TVkCullModeFlags;
                                        const aFrontFace:TVkFrontFace;
                                        const aDepthBiasEnable:boolean;
-                                       const aDepthBiasConstantFactor:TVkFloat;
-                                       const aDepthBiasClamp:TVkFloat;
-                                       const aDepthBiasSlopeFactor:TVkFloat;
-                                       const aLineWidth:TVkFloat);
+                                       const aDepthBiasConstantFactor:TFloat;
+                                       const aDepthBiasClamp:TFloat;
+                                       const aDepthBiasSlopeFactor:TFloat;
+                                       const aLineWidth:TFloat);
        property RasterizationStateCreateInfo:PVkPipelineRasterizationStateCreateInfo read fPointerToRasterizationStateCreateInfo;
       published
        property DepthClampEnable:boolean read GetDepthClampEnable write SetDepthClampEnable;
@@ -2741,10 +2741,10 @@ type EVulkanException=class(Exception);
        property CullMode:TVkCullModeFlags read GetCullMode write SetCullMode;
        property FrontFace:TVkFrontFace read GetFrontFace write SetFrontFace;
        property DepthBiasEnable:boolean read GetDepthBiasEnable write SetDepthBiasEnable;
-       property DepthBiasConstantFactor:TVkFloat read GetDepthBiasConstantFactor write SetDepthBiasConstantFactor;
-       property DepthBiasClamp:TVkFloat read GetDepthBiasClamp write SetDepthBiasClamp;
-       property DepthBiasSlopeFactor:TVkFloat read GetDepthBiasSlopeFactor write SetDepthBiasSlopeFactor;
-       property LineWidth:TVkFloat read GetLineWidth write SetLineWidth;
+       property DepthBiasConstantFactor:TFloat read GetDepthBiasConstantFactor write SetDepthBiasConstantFactor;
+       property DepthBiasClamp:TFloat read GetDepthBiasClamp write SetDepthBiasClamp;
+       property DepthBiasSlopeFactor:TFloat read GetDepthBiasSlopeFactor write SetDepthBiasSlopeFactor;
+       property LineWidth:TFloat read GetLineWidth write SetLineWidth;
      end;
 
      TVulkanPipelineMultisampleState=class(TVulkanPipelineState)
@@ -2752,16 +2752,16 @@ type EVulkanException=class(Exception);
        fMultisampleStateCreateInfo:TVkPipelineMultisampleStateCreateInfo;
        fPointerToMultisampleStateCreateInfo:PVkPipelineMultisampleStateCreateInfo;
        fSampleMasks:TVkSampleMaskArray;
-       fCountSampleMasks:TVkInt32;
+       fCountSampleMasks:TInt32;
        function GetRasterizationSamples:TVkSampleCountFlagBits;
        procedure SetRasterizationSamples(const aNewValue:TVkSampleCountFlagBits);
        function GetSampleShadingEnable:boolean;
        procedure SetSampleShadingEnable(const aNewValue:boolean);
-       function GetSampleMask(const aIndex:TVkInt32):TVkSampleMask;
-       procedure SetSampleMask(const aIndex:TVkInt32;const aNewValue:TVkSampleMask);
-       procedure SetCountSampleMasks(const aNewCount:TVkInt32);
-       function GetMinSampleShading:TVkFloat;
-       procedure SetMinSampleShading(const aNewValue:TVkFloat);
+       function GetSampleMask(const aIndex:TInt32):TVkSampleMask;
+       procedure SetSampleMask(const aIndex:TInt32;const aNewValue:TVkSampleMask);
+       procedure SetCountSampleMasks(const aNewCount:TInt32);
+       function GetMinSampleShading:TFloat;
+       procedure SetMinSampleShading(const aNewValue:TFloat);
        function GetAlphaToCoverageEnable:boolean;
        procedure SetAlphaToCoverageEnable(const aNewValue:boolean);
        function GetAlphaToOneEnable:boolean;
@@ -2771,21 +2771,21 @@ type EVulkanException=class(Exception);
        constructor Create;
        destructor Destroy; override;
        procedure Assign(const aFrom:TVulkanPipelineMultisampleState);
-       function AddSampleMask(const aSampleMask:TVkSampleMask):TVkInt32;
-       function AddSampleMasks(const aSampleMasks:array of TVkSampleMask):TVkInt32;
+       function AddSampleMask(const aSampleMask:TVkSampleMask):TInt32;
+       function AddSampleMasks(const aSampleMasks:array of TVkSampleMask):TInt32;
        procedure SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
                                      const aSampleShadingEnable:boolean;
-                                     const aMinSampleShading:TVkFloat;
+                                     const aMinSampleShading:TFloat;
                                      const aSampleMask:array of TVkSampleMask;
                                      const aAlphaToCoverageEnable:boolean;
                                      const aAlphaToOneEnable:boolean);
        property MultisampleStateCreateInfo:PVkPipelineMultisampleStateCreateInfo read fPointerToMultisampleStateCreateInfo;
-       property SampleMasks[const aIndex:TVkInt32]:TVkSampleMask read GetSampleMask write SetSampleMask;
+       property SampleMasks[const aIndex:TInt32]:TVkSampleMask read GetSampleMask write SetSampleMask;
       published                                                                            
        property RasterizationSamples:TVkSampleCountFlagBits read GetRasterizationSamples write SetRasterizationSamples;
        property SampleShadingEnable:boolean read GetSampleShadingEnable write SetSampleShadingEnable;
-       property MinSampleShading:TVkFloat read GetMinSampleShading write SetMinSampleShading;
-       property CountSampleMasks:TVkInt32 read fCountSampleMasks write SetCountSampleMasks;
+       property MinSampleShading:TFloat read GetMinSampleShading write SetMinSampleShading;
+       property CountSampleMasks:TInt32 read fCountSampleMasks write SetCountSampleMasks;
        property AlphaToCoverageEnable:boolean read GetAlphaToCoverageEnable write SetAlphaToCoverageEnable;
        property AlphaToOneEnable:boolean read GetAlphaToOneEnable write SetAlphaToOneEnable;
      end;
@@ -2801,12 +2801,12 @@ type EVulkanException=class(Exception);
        procedure SetDepthFailOp(const aNewValue:TVkStencilOp);
        function GetCompareOp:TVkCompareOp;
        procedure SetCompareOp(const aNewValue:TVkCompareOp);
-       function GetCompareMask:TVkUInt32;
-       procedure SetCompareMask(const aNewValue:TVkUInt32);
-       function GetWriteMask:TVkUInt32;
-       procedure SetWriteMask(const aNewValue:TVkUInt32);
-       function GetReference:TVkUInt32;
-       procedure SetReference(const aNewValue:TVkUInt32);
+       function GetCompareMask:TUInt32;
+       procedure SetCompareMask(const aNewValue:TUInt32);
+       function GetWriteMask:TUInt32;
+       procedure SetWriteMask(const aNewValue:TUInt32);
+       function GetReference:TUInt32;
+       procedure SetReference(const aNewValue:TUInt32);
       public
        constructor Create(const aStencilOpState:PVkStencilOpState);
        destructor Destroy; override;
@@ -2817,9 +2817,9 @@ type EVulkanException=class(Exception);
        property PassOp:TVkStencilOp read GetPassOp write SetPassOp;
        property DepthFailOp:TVkStencilOp read GetDepthFailOp write SetDepthFailOp;
        property CompareOp:TVkCompareOp read GetCompareOp write SetCompareOp;
-       property CompareMask:TVkUInt32 read GetCompareMask write SetCompareMask;
-       property WriteMask:TVkUInt32 read GetWriteMask write SetWriteMask;
-       property Reference:TVkUInt32 read GetReference write SetReference;
+       property CompareMask:TUInt32 read GetCompareMask write SetCompareMask;
+       property WriteMask:TUInt32 read GetWriteMask write SetWriteMask;
+       property Reference:TUInt32 read GetReference write SetReference;
      end;
 
      TVulkanPipelineDepthStencilState=class(TVulkanPipelineState)
@@ -2838,10 +2838,10 @@ type EVulkanException=class(Exception);
        procedure SetDepthBoundsTestEnable(const aNewValue:boolean);
        function GetStencilTestEnable:boolean;
        procedure SetStencilTestEnable(const aNewValue:boolean);
-       function GetMinDepthBounds:TVkFloat;
-       procedure SetMinDepthBounds(const aNewValue:TVkFloat);
-       function GetMaxDepthBounds:TVkFloat;
-       procedure SetMaxDepthBounds(const aNewValue:TVkFloat);
+       function GetMinDepthBounds:TFloat;
+       procedure SetMinDepthBounds(const aNewValue:TFloat);
+       function GetMaxDepthBounds:TFloat;
+       procedure SetMaxDepthBounds(const aNewValue:TFloat);
       public
        constructor Create;
        destructor Destroy; override;
@@ -2853,8 +2853,8 @@ type EVulkanException=class(Exception);
                                       const aStencilTestEnable:boolean;
                                       const aFront:TVkStencilOpState;
                                       const aBack:TVkStencilOpState;
-                                      const aMinDepthBounds:TVkFloat;
-                                      const aMaxDepthBounds:TVkFloat);
+                                      const aMinDepthBounds:TFloat;
+                                      const aMaxDepthBounds:TFloat);
        property DepthStencilStateCreateInfo:PVkPipelineDepthStencilStateCreateInfo read fPointerToDepthStencilStateCreateInfo;
       published
        property DepthTestEnable:boolean read GetDepthTestEnable write SetDepthTestEnable;
@@ -2864,8 +2864,8 @@ type EVulkanException=class(Exception);
        property StencilTestEnable:boolean read GetStencilTestEnable write SetStencilTestEnable;
        property Front:TVulkanStencilOpState read fFrontStencilOpState;
        property Back:TVulkanStencilOpState read fBackStencilOpState;
-       property MinDepthBounds:TVkFloat read GetMinDepthBounds write SetMinDepthBounds;
-       property MaxDepthBounds:TVkFloat read GetMaxDepthBounds write SetMaxDepthBounds;
+       property MinDepthBounds:TFloat read GetMinDepthBounds write SetMinDepthBounds;
+       property MaxDepthBounds:TFloat read GetMaxDepthBounds write SetMaxDepthBounds;
      end;
 
      TVulkanPipelineColorBlendState=class(TVulkanPipelineState)
@@ -2873,23 +2873,23 @@ type EVulkanException=class(Exception);
        fColorBlendStateCreateInfo:TVkPipelineColorBlendStateCreateInfo;
        fPointerToColorBlendStateCreateInfo:PVkPipelineColorBlendStateCreateInfo;
        fColorBlendAttachmentStates:TVkPipelineColorBlendAttachmentStateArray;
-       fCountColorBlendAttachmentStates:TVkInt32;
+       fCountColorBlendAttachmentStates:TInt32;
        function GetLogicOpEnable:boolean;
        procedure SetLogicOpEnable(const aNewValue:boolean);
        function GetLogicOp:TVkLogicOp;
        procedure SetLogicOp(const aNewValue:TVkLogicOp);
-       procedure SetCountColorBlendAttachmentStates(const aNewCount:TVkInt32);
-       function GetColorBlendAttachmentState(const aIndex:TVkInt32):PVkPipelineColorBlendAttachmentState;
-       function GetBlendConstant(const aIndex:TVkInt32):TVkFloat;
-       procedure SetBlendConstant(const aIndex:TVkInt32;const aNewValue:TVkFloat);
+       procedure SetCountColorBlendAttachmentStates(const aNewCount:TInt32);
+       function GetColorBlendAttachmentState(const aIndex:TInt32):PVkPipelineColorBlendAttachmentState;
+       function GetBlendConstant(const aIndex:TInt32):TFloat;
+       procedure SetBlendConstant(const aIndex:TInt32;const aNewValue:TFloat);
       public
        constructor Create;
        destructor Destroy; override;
        procedure Assign(const aFrom:TVulkanPipelineColorBlendState);
        procedure SetColorBlendState(const aLogicOpEnable:boolean;
                                     const aLogicOp:TVkLogicOp;
-                                    const aBlendConstants:array of TVkFloat);
-       function AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32; overload;
+                                    const aBlendConstants:array of TFloat);
+       function AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TInt32; overload;
        function AddColorBlendAttachmentState(const aBlendEnable:boolean;
                                              const aSrcColorBlendFactor:TVkBlendFactor;
                                              const aDstColorBlendFactor:TVkBlendFactor;
@@ -2897,16 +2897,16 @@ type EVulkanException=class(Exception);
                                              const aSrcAlphaBlendFactor:TVkBlendFactor;
                                              const aDstAlphaBlendFactor:TVkBlendFactor;
                                              const aAlphaBlendOp:TVkBlendOp;
-                                             const aColorWriteMask:TVkColorComponentFlags):TVkInt32; overload;
-       function AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+                                             const aColorWriteMask:TVkColorComponentFlags):TInt32; overload;
+       function AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TInt32;
        procedure Initialize;
        property ColorBlendStateCreateInfo:PVkPipelineColorBlendStateCreateInfo read fPointerToColorBlendStateCreateInfo;
-       property ColorBlendAttachmentStates[const aIndex:TVkInt32]:PVkPipelineColorBlendAttachmentState read GetColorBlendAttachmentState;
-       property BlendConstants[const aIndex:TVkInt32]:TVkFloat read GetBlendConstant write SetBlendConstant;
+       property ColorBlendAttachmentStates[const aIndex:TInt32]:PVkPipelineColorBlendAttachmentState read GetColorBlendAttachmentState;
+       property BlendConstants[const aIndex:TInt32]:TFloat read GetBlendConstant write SetBlendConstant;
       published
        property LogicOpEnable:boolean read GetLogicOpEnable write SetLogicOpEnable;
        property LogicOp:TVkLogicOp read GetLogicOp write SetLogicOp;
-       property CountColorBlendAttachmentStates:TVkInt32 read fCountColorBlendAttachmentStates write SetCountColorBlendAttachmentStates;
+       property CountColorBlendAttachmentStates:TInt32 read fCountColorBlendAttachmentStates write SetCountColorBlendAttachmentStates;
      end;
 
      TVulkanPipelineDynamicState=class(TVulkanPipelineState)
@@ -2914,27 +2914,27 @@ type EVulkanException=class(Exception);
        fDynamicStateCreateInfo:TVkPipelineDynamicStateCreateInfo;
        fPointerToDynamicStateCreateInfo:PVkPipelineDynamicStateCreateInfo;
        fDynamicStates:TVkDynamicStateArray;
-       fCountDynamicStates:TVkInt32;
-       function GetDynamicState(const aIndex:TVkInt32):PVkDynamicState;
-       procedure SetCountDynamicStates(const aNewCount:TVkInt32);
+       fCountDynamicStates:TInt32;
+       function GetDynamicState(const aIndex:TInt32):PVkDynamicState;
+       procedure SetCountDynamicStates(const aNewCount:TInt32);
        procedure Initialize;
       public
        constructor Create;
        destructor Destroy; override;
        procedure Assign(const aFrom:TVulkanPipelineDynamicState);
-       function AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
-       function AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32;
+       function AddDynamicState(const aDynamicState:TVkDynamicState):TInt32;
+       function AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TInt32;
        property DynamicStateStateCreateInfo:PVkPipelineDynamicStateCreateInfo read fPointerToDynamicStateCreateInfo;
-       property DynamicStates[const aIndex:TVkInt32]:PVkDynamicState read GetDynamicState;
+       property DynamicStates[const aIndex:TInt32]:PVkDynamicState read GetDynamicState;
       published
-       property CountDynamicStates:TVkInt32 read fCountDynamicStates write SetCountDynamicStates;
+       property CountDynamicStates:TInt32 read fCountDynamicStates write SetCountDynamicStates;
      end;
 
      TVulkanGraphicsPipelineConstructor=class(TVulkanPipeline)
       private
        fGraphicsPipelineCreateInfo:TVkGraphicsPipelineCreateInfo;
        fStages:TVkPipelineShaderStageCreateInfoArray;
-       fCountStages:TVkInt32;
+       fCountStages:TInt32;
        fVertexInputState:TVulkanPipelineVertexInputState;
        fInputAssemblyState:TVulkanPipelineInputAssemblyState;
        fTessellationState:TVulkanPipelineTessellationState;
@@ -2952,40 +2952,40 @@ type EVulkanException=class(Exception);
                           const aStages:array of TVulkanPipelineShaderStage;
                           const aLayout:TVulkanPipelineLayout;
                           const aRenderPass:TVulkanRenderPass;
-                          const aSubPass:TVkUInt32;
+                          const aSubPass:TUInt32;
                           const aBasePipelineHandle:TVulkanPipeline;
-                          const aBasePipelineIndex:TVkInt32); reintroduce;
+                          const aBasePipelineIndex:TInt32); reintroduce;
        destructor Destroy; override;
        procedure Assign(const aFrom:TVulkanGraphicsPipelineConstructor);
-       function AddStage(const aStage:TVulkanPipelineShaderStage):TVkInt32;
-       function AddStages(const aStages:array of TVulkanPipelineShaderStage):TVkInt32;
-       function AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
-       function AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32; overload;
-       function AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
-       function AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32; overload;
-       function AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32; overload;
-       function AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+       function AddStage(const aStage:TVulkanPipelineShaderStage):TInt32;
+       function AddStages(const aStages:array of TVulkanPipelineShaderStage):TInt32;
+       function AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TInt32; overload;
+       function AddVertexInputBindingDescription(const aBinding,aStride:TUInt32;const aInputRate:TVkVertexInputRate):TInt32; overload;
+       function AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TInt32;
+       function AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TInt32; overload;
+       function AddVertexInputAttributeDescription(const aLocation,aBinding:TUInt32;const aFormat:TVkFormat;const aOffset:TUInt32):TInt32; overload;
+       function AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TInt32;
        procedure SetInputAssemblyState(const aTopology:TVkPrimitiveTopology;const aPrimitiveRestartEnable:boolean);
-       procedure SetTessellationState(const aPatchControlPoints:TVkUInt32);
-       function AddViewPort(const aViewPort:TVkViewport):TVkInt32; overload;
-       function AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32; overload;
-       function AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32; overload;
-       function AddScissor(const aScissor:TVkRect2D):TVkInt32; overload;
-       function AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32; overload;
-       function AddScissors(const aScissors:array of TVkRect2D):TVkInt32; overload;
+       procedure SetTessellationState(const aPatchControlPoints:TUInt32);
+       function AddViewPort(const aViewPort:TVkViewport):TInt32; overload;
+       function AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TFloat):TInt32; overload;
+       function AddViewPorts(const aViewPorts:array of TVkViewport):TInt32; overload;
+       function AddScissor(const aScissor:TVkRect2D):TInt32; overload;
+       function AddScissor(const pX,pY:TInt32;const aWidth,aHeight:TUInt32):TInt32; overload;
+       function AddScissors(const aScissors:array of TVkRect2D):TInt32; overload;
        procedure SetRasterizationState(const aDepthClampEnable:boolean;
                                        const aRasterizerDiscardEnable:boolean;
                                        const aPolygonMode:TVkPolygonMode;
                                        const aCullMode:TVkCullModeFlags;
                                        const aFrontFace:TVkFrontFace;
                                        const aDepthBiasEnable:boolean;
-                                       const aDepthBiasConstantFactor:TVkFloat;
-                                       const aDepthBiasClamp:TVkFloat;
-                                       const aDepthBiasSlopeFactor:TVkFloat;
-                                       const aLineWidth:TVkFloat);
+                                       const aDepthBiasConstantFactor:TFloat;
+                                       const aDepthBiasClamp:TFloat;
+                                       const aDepthBiasSlopeFactor:TFloat;
+                                       const aLineWidth:TFloat);
        procedure SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
                                      const aSampleShadingEnable:boolean;
-                                     const aMinSampleShading:TVkFloat;
+                                     const aMinSampleShading:TFloat;
                                      const aSampleMask:array of TVkSampleMask;
                                      const aAlphaToCoverageEnable:boolean;
                                      const aAlphaToOneEnable:boolean);
@@ -2996,12 +2996,12 @@ type EVulkanException=class(Exception);
                                       const aStencilTestEnable:boolean;
                                       const aFront:TVkStencilOpState;
                                       const aBack:TVkStencilOpState;
-                                      const aMinDepthBounds:TVkFloat;
-                                      const aMaxDepthBounds:TVkFloat);
+                                      const aMinDepthBounds:TFloat;
+                                      const aMaxDepthBounds:TFloat);
        procedure SetColorBlendState(const aLogicOpEnable:boolean;
                                     const aLogicOp:TVkLogicOp;
-                                    const aBlendConstants:array of TVkFloat);
-       function AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32; overload;
+                                    const aBlendConstants:array of TFloat);
+       function AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TInt32; overload;
        function AddColorBlendAttachmentState(const aBlendEnable:boolean;
                                              const aSrcColorBlendFactor:TVkBlendFactor;
                                              const aDstColorBlendFactor:TVkBlendFactor;
@@ -3009,14 +3009,14 @@ type EVulkanException=class(Exception);
                                              const aSrcAlphaBlendFactor:TVkBlendFactor;
                                              const aDstAlphaBlendFactor:TVkBlendFactor;
                                              const aAlphaBlendOp:TVkBlendOp;
-                                             const aColorWriteMask:TVkColorComponentFlags):TVkInt32; overload;
-       function AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
-       function AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
-       function AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32;
+                                             const aColorWriteMask:TVkColorComponentFlags):TInt32; overload;
+       function AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TInt32;
+       function AddDynamicState(const aDynamicState:TVkDynamicState):TInt32;
+       function AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TInt32;
        procedure Initialize;
        property Stages:TVkPipelineShaderStageCreateInfoArray read fStages;
       published
-       property CountStages:TVkInt32 read fCountStages;
+       property CountStages:TInt32 read fCountStages;
        property VertexInputState:TVulkanPipelineVertexInputState read fVertexInputState;
        property InputAssemblyState:TVulkanPipelineInputAssemblyState read fInputAssemblyState;
        property TessellationState:TVulkanPipelineTessellationState read fTessellationState;
@@ -3031,7 +3031,7 @@ type EVulkanException=class(Exception);
      TVulkanGraphicsPipeline=class(TVulkanPipeline)
       private
        fGraphicsPipelineConstructor:TVulkanGraphicsPipelineConstructor;
-       function GetCountStages:TVkInt32;
+       function GetCountStages:TInt32;
        function GetVertexInputState:TVulkanPipelineVertexInputState;
        function GetInputAssemblyState:TVulkanPipelineInputAssemblyState;
        function GetTessellationState:TVulkanPipelineTessellationState;
@@ -3048,40 +3048,40 @@ type EVulkanException=class(Exception);
                           const aStages:array of TVulkanPipelineShaderStage;
                           const aLayout:TVulkanPipelineLayout;
                           const aRenderPass:TVulkanRenderPass;
-                          const aSubPass:TVkUInt32;
+                          const aSubPass:TUInt32;
                           const aBasePipelineHandle:TVulkanPipeline;
-                          const aBasePipelineIndex:TVkInt32); reintroduce;
+                          const aBasePipelineIndex:TInt32); reintroduce;
        destructor Destroy; override;
        procedure Assign(const aFrom:TVulkanGraphicsPipeline);
-       function AddStage(const aStage:TVulkanPipelineShaderStage):TVkInt32;
-       function AddStages(const aStages:array of TVulkanPipelineShaderStage):TVkInt32;
-       function AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32; overload;
-       function AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32; overload;
-       function AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
-       function AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32; overload;
-       function AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32; overload;
-       function AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+       function AddStage(const aStage:TVulkanPipelineShaderStage):TInt32;
+       function AddStages(const aStages:array of TVulkanPipelineShaderStage):TInt32;
+       function AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TInt32; overload;
+       function AddVertexInputBindingDescription(const aBinding,aStride:TUInt32;const aInputRate:TVkVertexInputRate):TInt32; overload;
+       function AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TInt32;
+       function AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TInt32; overload;
+       function AddVertexInputAttributeDescription(const aLocation,aBinding:TUInt32;const aFormat:TVkFormat;const aOffset:TUInt32):TInt32; overload;
+       function AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TInt32;
        procedure SetInputAssemblyState(const aTopology:TVkPrimitiveTopology;const aPrimitiveRestartEnable:boolean);
-       procedure SetTessellationState(const aPatchControlPoints:TVkUInt32);
-       function AddViewPort(const aViewPort:TVkViewport):TVkInt32; overload;
-       function AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32; overload;
-       function AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32; overload;
-       function AddScissor(const aScissor:TVkRect2D):TVkInt32; overload;
-       function AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32; overload;
-       function AddScissors(const aScissors:array of TVkRect2D):TVkInt32; overload;
+       procedure SetTessellationState(const aPatchControlPoints:TUInt32);
+       function AddViewPort(const aViewPort:TVkViewport):TInt32; overload;
+       function AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TFloat):TInt32; overload;
+       function AddViewPorts(const aViewPorts:array of TVkViewport):TInt32; overload;
+       function AddScissor(const aScissor:TVkRect2D):TInt32; overload;
+       function AddScissor(const pX,pY:TInt32;const aWidth,aHeight:TUInt32):TInt32; overload;
+       function AddScissors(const aScissors:array of TVkRect2D):TInt32; overload;
        procedure SetRasterizationState(const aDepthClampEnable:boolean;
                                        const aRasterizerDiscardEnable:boolean;
                                        const aPolygonMode:TVkPolygonMode;
                                        const aCullMode:TVkCullModeFlags;
                                        const aFrontFace:TVkFrontFace;
                                        const aDepthBiasEnable:boolean;
-                                       const aDepthBiasConstantFactor:TVkFloat;
-                                       const aDepthBiasClamp:TVkFloat;
-                                       const aDepthBiasSlopeFactor:TVkFloat;
-                                       const aLineWidth:TVkFloat);
+                                       const aDepthBiasConstantFactor:TFloat;
+                                       const aDepthBiasClamp:TFloat;
+                                       const aDepthBiasSlopeFactor:TFloat;
+                                       const aLineWidth:TFloat);
        procedure SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
                                      const aSampleShadingEnable:boolean;
-                                     const aMinSampleShading:TVkFloat;
+                                     const aMinSampleShading:TFloat;
                                      const aSampleMask:array of TVkSampleMask;
                                      const aAlphaToCoverageEnable:boolean;
                                      const aAlphaToOneEnable:boolean);
@@ -3092,12 +3092,12 @@ type EVulkanException=class(Exception);
                                       const aStencilTestEnable:boolean;
                                       const aFront:TVkStencilOpState;
                                       const aBack:TVkStencilOpState;
-                                      const aMinDepthBounds:TVkFloat;
-                                      const aMaxDepthBounds:TVkFloat);
+                                      const aMinDepthBounds:TFloat;
+                                      const aMaxDepthBounds:TFloat);
        procedure SetColorBlendState(const aLogicOpEnable:boolean;
                                     const aLogicOp:TVkLogicOp;
-                                    const aBlendConstants:array of TVkFloat);
-       function AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32; overload;
+                                    const aBlendConstants:array of TFloat);
+       function AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TInt32; overload;
        function AddColorBlendAttachmentState(const aBlendEnable:boolean;
                                              const aSrcColorBlendFactor:TVkBlendFactor;
                                              const aDstColorBlendFactor:TVkBlendFactor;
@@ -3105,14 +3105,14 @@ type EVulkanException=class(Exception);
                                              const aSrcAlphaBlendFactor:TVkBlendFactor;
                                              const aDstAlphaBlendFactor:TVkBlendFactor;
                                              const aAlphaBlendOp:TVkBlendOp;
-                                             const aColorWriteMask:TVkColorComponentFlags):TVkInt32; overload;
-       function AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
-       function AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
-       function AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32;
+                                             const aColorWriteMask:TVkColorComponentFlags):TInt32; overload;
+       function AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TInt32;
+       function AddDynamicState(const aDynamicState:TVkDynamicState):TInt32;
+       function AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TInt32;
        procedure Initialize;
        procedure FreeMemory;
       published
-       property CountStages:TVkInt32 read GetCountStages;
+       property CountStages:TInt32 read GetCountStages;
        property VertexInputState:TVulkanPipelineVertexInputState read GetVertexInputState;
        property InputAssemblyState:TVulkanPipelineInputAssemblyState read GetInputAssemblyState;
        property TessellationState:TVulkanPipelineTessellationState read GetTessellationState;
@@ -3169,11 +3169,11 @@ type EVulkanException=class(Exception);
        fSampler:TVulkanSampler;
        fDescriptorImageInfo:TVkDescriptorImageInfo;
        fMemoryBlock:TVulkanDeviceMemoryBlock;
-       fWidth:TVkInt32;
-       fHeight:TVkInt32;
-       fDepth:TVkInt32;
-       fCountArrayLayers:TVkInt32;
-       fCountMipMaps:TVkInt32;
+       fWidth:TInt32;
+       fHeight:TInt32;
+       fDepth:TInt32;
+       fCountArrayLayers:TInt32;
+       fCountMipMaps:TInt32;
        fSampleCount:TVkSampleCountFlagBits;
        fUsage:TVulkanTextureUsageFlag;
        fUsageFlags:TVulkanTextureUsageFlags;
@@ -3194,18 +3194,18 @@ type EVulkanException=class(Exception);
                                     const aTransferFence:TVulkanFence;
                                     const aFormat:TVkFormat;
                                     const aSampleCount:TVkSampleCountFlagBits;
-                                    const aWidth:TVkInt32;
-                                    const aHeight:TVkInt32;
-                                    const aDepth:TVkInt32;
-                                    const aCountArrayLayers:TVkInt32;
-                                    const aCountFaces:TVkInt32;
-                                    const aCountMipMaps:TVkInt32;
+                                    const aWidth:TInt32;
+                                    const aHeight:TInt32;
+                                    const aDepth:TInt32;
+                                    const aCountArrayLayers:TInt32;
+                                    const aCountFaces:TInt32;
+                                    const aCountMipMaps:TInt32;
                                     const aUsageFlags:TVulkanTextureUsageFlags;
-                                    const aData:TVkPointer;
+                                    const aData:TPointer;
                                     const aDataSize:TVkSizeInt;
                                     const aMipMapSizeStored:boolean;
                                     const aSwapEndianness:boolean;
-                                    const aSwapEndiannessTexels:TVkInt32;
+                                    const aSwapEndiannessTexels:TInt32;
                                     const aFromDDS:boolean=false);
        constructor CreateFromStream(const aDevice:TVulkanDevice;
                                     const aGraphicsQueue:TVulkanQueue;
@@ -3216,17 +3216,17 @@ type EVulkanException=class(Exception);
                                     const aTransferFence:TVulkanFence;
                                     const aFormat:TVkFormat;
                                     const aSampleCount:TVkSampleCountFlagBits;
-                                    const aWidth:TVkInt32;
-                                    const aHeight:TVkInt32;
-                                    const aDepth:TVkInt32;
-                                    const aCountArrayLayers:TVkInt32;
-                                    const aCountFaces:TVkInt32;
-                                    const aCountMipMaps:TVkInt32;
+                                    const aWidth:TInt32;
+                                    const aHeight:TInt32;
+                                    const aDepth:TInt32;
+                                    const aCountArrayLayers:TInt32;
+                                    const aCountFaces:TInt32;
+                                    const aCountMipMaps:TInt32;
                                     const aUsageFlags:TVulkanTextureUsageFlags;
                                     const aStream:TStream;
                                     const aMipMapSizeStored:boolean;
                                     const aSwapEndianness:boolean;
-                                    const aSwapEndiannessTexels:TVkInt32;
+                                    const aSwapEndiannessTexels:TInt32;
                                     const aFromDDS:boolean=false);
        constructor CreateFromKTX(const aDevice:TVulkanDevice;
                                  const aGraphicsQueue:TVulkanQueue;
@@ -3306,11 +3306,11 @@ type EVulkanException=class(Exception);
                                  const aTransferCommandBuffer:TVulkanCommandBuffer;
                                  const aTransferFence:TVulkanFence;
                                  const aDefaultType:TVulkanTextureDefaultType;
-                                 const aWidth:TVkInt32;
-                                 const aHeight:TVkInt32;
-                                 const aDepth:TVkInt32;
-                                 const aCountArrayLayers:TVkInt32;
-                                 const aCountFaces:TVkInt32;
+                                 const aWidth:TInt32;
+                                 const aHeight:TInt32;
+                                 const aDepth:TInt32;
+                                 const aCountArrayLayers:TInt32;
+                                 const aCountFaces:TInt32;
                                  const aMipmaps:boolean;
                                  const aBorder:boolean);
        destructor Destroy; override;
@@ -3324,11 +3324,11 @@ type EVulkanException=class(Exception);
        property ImageView:TVulkanImageView read fImageView;
        property Sampler:TVulkanSampler read fSampler;
        property MemoryBlock:TVulkanDeviceMemoryBlock read fMemoryBlock;
-       property Width:TVkInt32 read fWidth;
-       property Height:TVkInt32 read fHeight;
-       property Depth:TVkInt32 read fDepth;
-       property CountArrayLayers:TVkInt32 read fCountArrayLayers;
-       property CountMipMaps:TVkInt32 read fCountMipMaps;
+       property Width:TInt32 read fWidth;
+       property Height:TInt32 read fHeight;
+       property Depth:TInt32 read fDepth;
+       property CountArrayLayers:TInt32 read fCountArrayLayers;
+       property CountMipMaps:TInt32 read fCountMipMaps;
        property SampleCount:TVkSampleCountFlagBits read fSampleCount;
        property Usage:TVulkanTextureUsageFlag read fUsage;
        property UsageFlags:TVulkanTextureUsageFlags read fUsageFlags;
@@ -3342,24 +3342,24 @@ type EVulkanException=class(Exception);
 
      PVulkanSpritePoint=^TVulkanSpritePoint;
      TVulkanSpritePoint=record
-      x:TVkFloat;
-      y:TVkFloat;
+      x:TFloat;
+      y:TFloat;
      end;
 
      PVulkanSpriteRect=^TVulkanSpriteRect;
      TVulkanSpriteRect=packed record
-      Left:TVkFloat;
-      Top:TVkFloat;
-      Right:TVkFloat;
-      Bottom:TVkFloat;
+      Left:TFloat;
+      Top:TFloat;
+      Right:TFloat;
+      Bottom:TFloat;
      end;
 
      PVulkanSpriteColor=^TVulkanSpriteColor;
      TVulkanSpriteColor=record
-      r:TVkFloat;
-      g:TVkFloat;
-      b:TVkFloat;
-      a:TVkFloat;
+      r:TFloat;
+      g:TFloat;
+      b:TFloat;
+      a:TFloat;
      end;
 
      PVulkanSpriteVertexPoint=^TVulkanSpriteVertexPoint;
@@ -3367,9 +3367,9 @@ type EVulkanException=class(Exception);
 
      PVulkanSpriteVertexTextureCoord=^TVulkanSpriteVertexTextureCoord;
      TVulkanSpriteVertexTextureCoord=packed record
-      x:TVkFloat;
-      y:TVkFloat;
-      Layer:TVkFloat;
+      x:TFloat;
+      y:TFloat;
+      Layer:TFloat;
      end;
 
      PVulkanSpriteVertexColor=^TVulkanSpriteVertexColor;
@@ -3388,18 +3388,18 @@ type EVulkanException=class(Exception);
 
      PVulkanSpriteVertexClipRect=^TVulkanSpriteVertexClipRect;
      TVulkanSpriteVertexClipRect=record
-      x0:TVkFloat;
-      y0:TVkFloat;
-      x1:TVkFloat;
-      y1:TVkFloat;
+      x0:TFloat;
+      y0:TFloat;
+      x1:TFloat;
+      y1:TFloat;
      end;
 
      PVulkanSpriteTextureTexel=^TVulkanSpriteTextureTexel;
      TVulkanSpriteTextureTexel=packed record
-      r:TVkUInt8;
-      g:TVkUInt8;
-      b:TVkUInt8;
-      a:TVkUInt8;
+      r:TUInt8;
+      g:TUInt8;
+      b:TUInt8;
+      a:TUInt8;
      end;
 
      PVulkanSpriteTextureTexels=^TVulkanSpriteTextureTexels;
@@ -3408,13 +3408,13 @@ type EVulkanException=class(Exception);
      TVulkanSpriteTexture=class
       private
        fTexture:TVulkanTexture;
-       fWidth:TVkInt32;
-       fHeight:TVkInt32;
+       fWidth:TInt32;
+       fHeight:TInt32;
        fUploaded:boolean;
        fDirty:boolean;
        fPixels:PVulkanSpriteTextureTexels;
       public
-       constructor Create(const aPixels:PVulkanSpriteTextureTexels;const aWidth,aHeight:TVkInt32); reintroduce;
+       constructor Create(const aPixels:PVulkanSpriteTextureTexels;const aWidth,aHeight:TInt32); reintroduce;
        destructor Destroy; override;
        procedure Upload(const aDevice:TVulkanDevice;
                         const aGraphicsQueue:TVulkanQueue;
@@ -3427,8 +3427,8 @@ type EVulkanException=class(Exception);
        procedure Unload;
       published
        property Texture:TVulkanTexture read fTexture;
-       property Width:TVkInt32 read fWidth;
-       property Height:TVkInt32 read fHeight;
+       property Width:TInt32 read fWidth;
+       property Height:TInt32 read fHeight;
        property Uploaded:boolean read fUploaded;
        property Dirty:boolean read fDirty write fDirty;
      end;
@@ -3444,13 +3444,13 @@ type EVulkanException=class(Exception);
      TVulkanSpriteAtlasArrayTextureLayerRectNode=record
       Left:PVulkanSpriteAtlasArrayTextureLayerRectNode;
       Right:PVulkanSpriteAtlasArrayTextureLayerRectNode;
-      x:TVkInt32;
-      y:TVkInt32;
-      Width:TVkInt32;
-      Height:TVkInt32;
-      FreeArea:TVkInt32;
-      ContentWidth:TVkInt32;
-      ContentHeight:TVkInt32;
+      x:TInt32;
+      y:TInt32;
+      Width:TInt32;
+      Height:TInt32;
+      FreeArea:TInt32;
+      ContentWidth:TInt32;
+      ContentHeight:TInt32;
      end;
 
      TPVulkanSpriteAtlasArrayTextureLayerRectNodes=array of PVulkanSpriteAtlasArrayTextureLayerRectNode;
@@ -3466,10 +3466,10 @@ type EVulkanException=class(Exception);
       private
        fTexels:TVulkanSpriteAtlasArrayTextureTexels;
        fTexture:TVulkanTexture;
-       fWidth:TVkInt32;
-       fHeight:TVkInt32;
-       fLayers:TVkInt32;
-       fCountTexels:TVkInt64;
+       fWidth:TInt32;
+       fHeight:TInt32;
+       fLayers:TInt32;
+       fCountTexels:TInt64;
        fUploaded:boolean;
        fDirty:boolean;
        fSpecialSizedArrayTexture:boolean;
@@ -3477,9 +3477,9 @@ type EVulkanException=class(Exception);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure Resize(const aWidth,aHeight,aLayers:TVkInt32);
-       procedure CopyIn(const aData;const aSrcWidth,aSrcHeight,aDestX,aDestY,aDestLayer:TVkInt32);
-       function GetTexelPointer(const aX,aY,aLayer:TVkInt32):PVulkanSpriteTextureTexel;
+       procedure Resize(const aWidth,aHeight,aLayers:TInt32);
+       procedure CopyIn(const aData;const aSrcWidth,aSrcHeight,aDestX,aDestY,aDestLayer:TInt32);
+       function GetTexelPointer(const aX,aY,aLayer:TInt32):PVulkanSpriteTextureTexel;
        procedure Upload(const aDevice:TVulkanDevice;
                         const aGraphicsQueue:TVulkanQueue;
                         const aGraphicsCommandBuffer:TVulkanCommandBuffer;
@@ -3491,10 +3491,10 @@ type EVulkanException=class(Exception);
        procedure Unload;
       published
        property Texture:TVulkanTexture read fTexture;
-       property Width:TVkInt32 read fWidth;
-       property Height:TVkInt32 read fHeight;
-       property Layers:TVkInt32 read fLayers;
-       property CountTexels:TVkInt64 read fCountTexels;
+       property Width:TInt32 read fWidth;
+       property Height:TInt32 read fHeight;
+       property Layers:TInt32 read fLayers;
+       property CountTexels:TInt64 read fCountTexels;
        property Uploaded:boolean read fUploaded;
        property Dirty:boolean read fDirty write fDirty;
      end;
@@ -3505,15 +3505,15 @@ type EVulkanException=class(Exception);
       public
        Name:TVulkanRawByteString;
        ArrayTexture:TVulkanSpriteAtlasArrayTexture;
-       x:TVkInt32;
-       y:TVkInt32;
-       Layer:TVkInt32;
-       Width:TVkInt32;
-       Height:TVkInt32;
-       TrimmedX:TVkInt32;
-       TrimmedY:TVkInt32;
-       TrimmedWidth:TVkInt32;
-       TrimmedHeight:TVkInt32;
+       x:TInt32;
+       y:TInt32;
+       Layer:TInt32;
+       Width:TInt32;
+       Height:TInt32;
+       TrimmedX:TInt32;
+       TrimmedY:TInt32;
+       TrimmedWidth:TInt32;
+       TrimmedHeight:TInt32;
        Rotated:boolean;
        constructor Create;
        destructor Destroy; override;
@@ -3523,19 +3523,19 @@ type EVulkanException=class(Exception);
 
      TVulkanCanvasColor=class(TPersistent)
       private
-       fRed:TVkFloat;
-       fGreen:TVkFloat;
-       fBlue:TVkFloat;
-       fAlpha:TVkFloat;
+       fRed:TFloat;
+       fGreen:TFloat;
+       fBlue:TFloat;
+       fAlpha:TFloat;
       public
        constructor Create;
        destructor Destroy; override;
        procedure Assign(Source:TPersistent); override;
       published
-       property Red:TVkFloat read fRed write fRed;
-       property Green:TVkFloat read fGreen write fGreen;
-       property Blue:TVkFloat read fBlue write fBlue;
-       property Alpha:TVkFloat read fAlpha write fAlpha;
+       property Red:TFloat read fRed write fRed;
+       property Green:TFloat read fGreen write fGreen;
+       property Blue:TFloat read fBlue write fBlue;
+       property Alpha:TFloat read fAlpha write fAlpha;
      end;
 
      TVulkanCanvasPenStyle=(vcpsClear,vcpsSolid);
@@ -3547,9 +3547,9 @@ type EVulkanException=class(Exception);
      TVulkanCanvasPen=class(TPersistent)
       private
        fColor:TVulkanCanvasColor;
-       fWidth:TVkFloat;
-       fAntialiasingWidth:TVkFloat;
-       fMiterLimit:TVkFloat;
+       fWidth:TFloat;
+       fAntialiasingWidth:TFloat;
+       fMiterLimit:TFloat;
        fStyle:TVulkanCanvasPenStyle;
        fLineJoin:TVulkanCanvasPenLineJoin;
        fLineCap:TVulkanCanvasPenLineCap;
@@ -3559,9 +3559,9 @@ type EVulkanException=class(Exception);
        procedure Assign(Source:TPersistent); override;
       published
        property Color:TVulkanCanvasColor read fColor;
-       property Width:TVkFloat read fWidth write fWidth;
-       property AntialiasingWidth:TVkFloat read fAntialiasingWidth write fAntialiasingWidth;
-       property MiterLimit:TVkFloat read fMiterLimit write fMiterLimit;
+       property Width:TFloat read fWidth write fWidth;
+       property AntialiasingWidth:TFloat read fAntialiasingWidth write fAntialiasingWidth;
+       property MiterLimit:TFloat read fMiterLimit write fMiterLimit;
        property Style:TVulkanCanvasPenStyle read fStyle write fStyle default vcpsSolid;
        property LineJoin:TVulkanCanvasPenLineJoin read fLineJoin write fLineJoin default vcpljRound;
        property LineCap:TVulkanCanvasPenLineCap read fLineCap write fLineCap default vcplcRound;
@@ -3588,7 +3588,7 @@ type EVulkanException=class(Exception);
      TVulkanCanvasVertexBufferSizes=array of TVkSizeInt;
 
      PVulkanCanvasIndexBuffer=^TVulkanCanvasIndexBuffer;
-     TVulkanCanvasIndexBuffer=array[0..((SizeOf(TVulkanCanvasVertexBuffer) div (SizeOf(TVulkanCanvasVertex)*4))*6)-1] of TVkUInt32;
+     TVulkanCanvasIndexBuffer=array[0..((SizeOf(TVulkanCanvasVertexBuffer) div (SizeOf(TVulkanCanvasVertex)*4))*6)-1] of TUInt32;
 
      TVulkanCanvasIndexBuffers=array of TVulkanCanvasIndexBuffer;
 
@@ -3609,7 +3609,7 @@ type EVulkanException=class(Exception);
        vsbbmAdditiveBlending
       );
 
-     TVulkanCanvasHook=procedure(const aData:TVkPointer) of object;
+     TVulkanCanvasHook=procedure(const aData:TPointer) of object;
 
      TVulkanCanvasQueueItemKind=
       (
@@ -3622,17 +3622,17 @@ type EVulkanException=class(Exception);
      PVulkanCanvasQueueItem=^TVulkanCanvasQueueItem;
      TVulkanCanvasQueueItem=record
       Kind:TVulkanCanvasQueueItemKind;
-      BufferIndex:TVkInt32;
-      DescriptorSetIndex:TVkInt32;
-      StartVertexIndex:TVkInt32;
-      StartIndexIndex:TVkInt32;
-      CountVertices:TVkInt32;
-      CountIndices:TVkInt32;
+      BufferIndex:TInt32;
+      DescriptorSetIndex:TInt32;
+      StartVertexIndex:TInt32;
+      StartIndexIndex:TInt32;
+      CountVertices:TInt32;
+      CountIndices:TInt32;
       RenderingMode:TVulkanCanvasRenderingMode;
       BlendingMode:TVulkanCanvasBlendingMode;
       Scissor:TVkRect2D;
       Hook:TVulkanCanvasHook;
-      HookData:pointer;
+      HookData:TVkPointer;
      end;
 
      TVulkanCanvasQueueItems=array of TVulkanCanvasQueueItem;
@@ -3641,17 +3641,17 @@ type EVulkanException=class(Exception);
 
      PVulkanCanvasBuffer=^TVulkanCanvasBuffer;
      TVulkanCanvasBuffer=record
-      fSpinLock:TVkInt32;
+      fSpinLock:TInt32;
       fVulkanVertexBuffers:TVulkanCanvasVulkanBuffers;
       fVulkanIndexBuffers:TVulkanCanvasVulkanBuffers;
       fVertexBuffers:TVulkanCanvasVertexBuffers;
       fVertexBufferSizes:TVulkanCanvasVertexBufferSizes;
       fIndexBuffers:TVulkanCanvasIndexBuffers;
       fIndexBufferSizes:TVulkanCanvasIndexBufferSizes;
-      fCountAllocatedBuffers:TVkInt32;
-      fCountUsedBuffers:TVkInt32;
+      fCountAllocatedBuffers:TInt32;
+      fCountUsedBuffers:TInt32;
       fQueueItems:TVulkanCanvasQueueItems;
-      fCountQueueItems:TVkInt32;
+      fCountQueueItems:TInt32;
      end;
 
      TVulkanCanvasBuffers=array of TVulkanCanvasBuffer;
@@ -3673,44 +3673,44 @@ type EVulkanException=class(Exception);
        fVulkanDescriptorPool:TVulkanDescriptorPool;
        fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:TVulkanCanvasDescriptorSets;
-       fCountVulkanDescriptorSets:TVkInt32;
+       fCountVulkanDescriptorSets:TInt32;
        fVulkanTextureDescriptorSetHashMap:TVulkanPointerHashMap;
        fVulkanRenderPass:TVulkanRenderPass;
        fVulkanPipelineLayout:TVulkanPipelineLayout;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
        fVulkanCanvasBuffers:TVulkanCanvasBuffers;
-       fCountBuffers:TVkInt32;
+       fCountBuffers:TInt32;
        fCurrentFillBuffer:PVulkanCanvasBuffer;
-       fWidth:TVkInt32;
-       fHeight:TVkInt32;
+       fWidth:TInt32;
+       fHeight:TInt32;
        fViewPort:TVkViewport;
        fPointerToViewport:PVkViewport;
-       fCurrentVulkanBufferIndex:TVkInt32;
-       fCurrentVulkanVertexBufferOffset:TVkInt32;
-       fCurrentVulkanIndexBufferOffset:TVkInt32;
+       fCurrentVulkanBufferIndex:TInt32;
+       fCurrentVulkanVertexBufferOffset:TInt32;
+       fCurrentVulkanIndexBufferOffset:TInt32;
        fState:TVulkanSpriteVertexState;
        fClipRect:TVulkanSpriteVertexClipRect;
        fUnscaledClipRect:TVulkanSpriteVertexClipRect;
        fRenderingMode:TVulkanCanvasRenderingMode;
        fBlendingMode:TVulkanCanvasBlendingMode;
        fLastArrayTexture:TVulkanSpriteAtlasArrayTexture;
-       fInverseWidth:TVkFloat;
-       fInverseHeight:TVkFloat;
-       fInverseTextureWidth:TVkFloat;
-       fInverseTextureHeight:TVkFloat;
+       fInverseWidth:TFloat;
+       fInverseHeight:TFloat;
+       fInverseTextureWidth:TFloat;
+       fInverseTextureHeight:TFloat;
        fCurrentCountVertices:TVkSizeInt;
        fCurrentCountIndices:TVkSizeInt;
        fCurrentDestinationVertexBufferPointer:PVulkanCanvasVertexBuffer;
        fCurrentDestinationIndexBufferPointer:PVulkanCanvasIndexBuffer;
        fScissor:TVkRect2D;
        fPen:TVulkanCanvasPen;
-       function RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:TVkFloat):TVulkanSpritePoint;
+       function RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:TFloat):TVulkanSpritePoint;
        procedure SetArrayTexture(const ArrayTexture:TVulkanSpriteAtlasArrayTexture);
        procedure SetRenderingMode(aRenderingMode:TVulkanCanvasRenderingMode);
        procedure SetBlendingMode(aBlendingMode:TVulkanCanvasBlendingMode);
        procedure GetNextDestinationVertexBuffer;
-       procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TVkInt32);
-       function ClipCheck(const aX0,aY0,aX1,aY1:TVkFloat):boolean;
+       procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TInt32);
+       function ClipCheck(const aX0,aY0,aX1,aY1:TFloat):boolean;
       public
        constructor Create(const aDevice:TVulkanDevice;
                           const aGraphicsQueue:TVulkanQueue;
@@ -3721,29 +3721,29 @@ type EVulkanException=class(Exception);
                           const aTransferFence:TVulkanFence;
                           const aPipelineCache:TVulkanPipelineCache;
                           const aRenderPass:TVulkanRenderPass;
-                          const aCountBuffers:TVkInt32); reintroduce;
+                          const aCountBuffers:TInt32); reintroduce;
        destructor Destroy; override;
-       procedure Start(const aBufferIndex:TVkInt32);
+       procedure Start(const aBufferIndex:TInt32);
        procedure Stop;
        procedure Flush;
        procedure SetScissor(const aScissor:TVkRect2D); overload;
-       procedure SetScissor(const aLeft,aTop,aWidth,aHeight:TVkInt32); overload;
+       procedure SetScissor(const aLeft,aTop,aWidth,aHeight:TInt32); overload;
        procedure SetClipRect(const aClipRect:TVkRect2D); overload;
-       procedure SetClipRect(const aLeft,aTop,aWidth,aHeight:TVkInt32); overload;
-       procedure Hook(const aHook:TVulkanCanvasHook;const aData:TVkPointer); overload;
+       procedure SetClipRect(const aLeft,aTop,aWidth,aHeight:TInt32); overload;
+       procedure Hook(const aHook:TVulkanCanvasHook;const aData:TPointer); overload;
        procedure DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor); overload;
-       procedure DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:TVkFloat;const Color:TVulkanSpriteColor); overload;
-       procedure DrawSprite(const Sprite:TVulkanSprite;const x,y:TVkFloat;const Color:TVulkanSpriteColor); overload;
-       procedure DrawSprite(const Sprite:TVulkanSprite;const x,y:TVkFloat); overload;
-       procedure DrawSprite(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TVkFloat); overload;
-       procedure ExecuteUpload(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
-       procedure ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
+       procedure DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:TFloat;const Color:TVulkanSpriteColor); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const x,y:TFloat;const Color:TVulkanSpriteColor); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const x,y:TFloat); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TFloat); overload;
+       procedure ExecuteUpload(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TInt32);
+       procedure ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TInt32);
       public
        property Viewport:PVkViewport read fPointerToViewport;
       published
        property Device:TVulkanDevice read fDevice;
-       property Width:TVkInt32 read fWidth write fWidth;
-       property Height:TVkInt32 read fHeight write fHeight;
+       property Width:TInt32 read fWidth write fWidth;
+       property Height:TInt32 read fHeight write fHeight;
        property RenderingMode:TVulkanCanvasRenderingMode read fRenderingMode write SetRenderingMode;
        property BlendingMode:TVulkanCanvasBlendingMode read fBlendingMode write SetBlendingMode;
        property Pen:TVulkanCanvasPen read fPen;
@@ -3753,23 +3753,23 @@ type EVulkanException=class(Exception);
       private
        fDevice:TVulkanDevice;
        fArrayTextures:TVulkanSpriteAtlasArrayTextures;
-       fCountArrayTextures:TVkInt32;
+       fCountArrayTextures:TInt32;
        fList:TList;
        fHashMap:TVulkanStringHashMap;
        fIsUploaded:boolean;
        fMipMaps:boolean;
-       fWidth:TVkInt32;
-       fHeight:TVkInt32;
-       fMaximumCountArrayLayers:TVkInt32;
-       function GetCount:TVkInt32;
-       function GetItem(Index:TVkInt32):TVulkanSprite;
-       procedure SetItem(Index:TVkInt32;Item:TVulkanSprite);
+       fWidth:TInt32;
+       fHeight:TInt32;
+       fMaximumCountArrayLayers:TInt32;
+       function GetCount:TInt32;
+       function GetItem(Index:TInt32):TVulkanSprite;
+       procedure SetItem(Index:TInt32;Item:TVulkanSprite);
        function GetSprite(const Name:TVulkanRawByteString):TVulkanSprite;
        procedure AddSprite(Sprite:TVulkanSprite);
-       function LoadImage(const aDataPointer:TVkPointer;
+       function LoadImage(const aDataPointer:TPointer;
                           const aDataSize:TVkSizeInt;
-                          var aImageData:TVkPointer;
-                          var aImageWidth,aImageHeight:TVkInt32):boolean;
+                          var aImageData:TPointer;
+                          var aImageWidth,aImageHeight:TInt32):boolean;
       public
        constructor Create(const aDevice:TVulkanDevice); reintroduce;
        destructor Destroy; override;
@@ -3783,18 +3783,18 @@ type EVulkanException=class(Exception);
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
        function LoadXML(const aTextureStream:TStream;const aStream:TStream;const aAutomaticTrim:boolean=true):boolean; virtual;
-       function LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32;const aAutomaticTrim:boolean=true):TVulkanSprite; virtual;
+       function LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TPointer;ImageWidth,ImageHeight:TInt32;const aAutomaticTrim:boolean=true):TVulkanSprite; virtual;
        function LoadSprite(const Name:TVulkanRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TVulkanSprite; virtual;
-       function LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64;const aAutomaticTrim:boolean=true):TVulkanSprites; virtual;
+       function LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;SpriteWidth:TInt32=64;SpriteHeight:TInt32=64;const aAutomaticTrim:boolean=true):TVulkanSprites; virtual;
        property Device:TVulkanDevice read fDevice;
-       property Count:TVkInt32 read GetCount;
-       property Items[Index:TVkInt32]:TVulkanSprite read GetItem write SetItem;
+       property Count:TInt32 read GetCount;
+       property Items[Index:TInt32]:TVulkanSprite read GetItem write SetItem;
        property Sprites[const Name:TVulkanRawByteString]:TVulkanSprite read GetSprite; default;
       published
        property MipMaps:boolean read fMipMaps write fMipMaps;
-       property Width:TVkInt32 read fWidth write fWidth;
-       property Height:TVkInt32 read fHeight write fHeight;
-       property MaximumCountArrayLayers:TVkInt32 read fMaximumCountArrayLayers write fMaximumCountArrayLayers;
+       property Width:TInt32 read fWidth write fWidth;
+       property Height:TInt32 read fHeight write fHeight;
+       property MaximumCountArrayLayers:TInt32 read fMaximumCountArrayLayers write fMaximumCountArrayLayers;
      end;
 
      EVulkanTrueTypeFont=class(Exception);
@@ -3803,43 +3803,43 @@ type EVulkanException=class(Exception);
 
      TVulkanTrueTypeFontRasterizer=class
       protected
-       fLastX:TVkInt32;
-       fLastY:TVkInt32;
-       function GetCanvas:TVkPointer; virtual;
-       procedure SetCanvas(NewCanvas:TVkPointer); virtual;
-       function GetWidth:TVkInt32; virtual;
-       procedure SetWidth(NewWidth:TVkInt32); virtual;
-       function GetHeight:TVkInt32; virtual;
-       procedure SetHeight(NewHeight:TVkInt32); virtual;
-       function GetWindingRule:TVkInt32; virtual;
-       procedure SetWindingRule(NewWindingRule:TVkInt32); virtual;
+       fLastX:TInt32;
+       fLastY:TInt32;
+       function GetCanvas:TPointer; virtual;
+       procedure SetCanvas(NewCanvas:TPointer); virtual;
+       function GetWidth:TInt32; virtual;
+       procedure SetWidth(NewWidth:TInt32); virtual;
+       function GetHeight:TInt32; virtual;
+       procedure SetHeight(NewHeight:TInt32); virtual;
+       function GetWindingRule:TInt32; virtual;
+       procedure SetWindingRule(NewWindingRule:TInt32); virtual;
       public
        constructor Create; virtual;
        destructor Destroy; override;
        procedure Clear; virtual;
        procedure Reset; virtual;
-       procedure Resize(NewWidth,NewHeight:TVkInt32); virtual;
-       procedure MoveTo(ToX,ToY:TVkInt32); virtual;
-       procedure LineTo(ToX,ToY:TVkInt32); virtual;
-       procedure QuadraticCurveTo(const ControlX,ControlY,AnchorX,AnchorY:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32); virtual;
-       procedure CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32); virtual;
+       procedure Resize(NewWidth,NewHeight:TInt32); virtual;
+       procedure MoveTo(ToX,ToY:TInt32); virtual;
+       procedure LineTo(ToX,ToY:TInt32); virtual;
+       procedure QuadraticCurveTo(const ControlX,ControlY,AnchorX,AnchorY:TInt32;const Tolerance:TInt32=2;const MaxLevel:TInt32=32); virtual;
+       procedure CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TInt32;const Tolerance:TInt32=2;const MaxLevel:TInt32=32); virtual;
        procedure Close; virtual;
        procedure Render; virtual;
-       property Canvas:TVkPointer read GetCanvas write SetCanvas;
-       property Width:TVkInt32 read GetWidth write SetWidth;
-       property Height:TVkInt32 read GetHeight write SetHeight;
-       property WindingRule:TVkInt32 read GetWindingRule write SetWindingRule;
+       property Canvas:TPointer read GetCanvas write SetCanvas;
+       property Width:TInt32 read GetWidth write SetWidth;
+       property Height:TInt32 read GetHeight write SetHeight;
+       property WindingRule:TInt32 read GetWindingRule write SetWindingRule;
      end;
 
-     TVulkanTrueTypeFontPolygonRasterizerGammaLookUpTable=array[TVkUInt8] of TVkUInt8;
+     TVulkanTrueTypeFontPolygonRasterizerGammaLookUpTable=array[TUInt8] of TUInt8;
 
      PVulkanTrueTypeFontPolygonRasterizerCell=^TVulkanTrueTypeFontPolygonRasterizerCell;
      TVulkanTrueTypeFontPolygonRasterizerCell=record
       Previous:PVulkanTrueTypeFontPolygonRasterizerCell;
       Next:PVulkanTrueTypeFontPolygonRasterizerCell;
-      x:TVkInt32;
-      Area:TVkInt32;
-      Cover:TVkInt32;
+      x:TInt32;
+      Area:TInt32;
+      Cover:TInt32;
      end;
 
      TVulkanTrueTypeFontPolygonRasterizerCells=array of PVulkanTrueTypeFontPolygonRasterizerCell;
@@ -3852,65 +3852,65 @@ type EVulkanException=class(Exception);
 
      TVulkanTrueTypeFontPolygonRasterizer=class(TVulkanTrueTypeFontRasterizer)
       protected
-       fCurrentWidth:TVkInt32;
-       fCurrentHeight:TVkInt32;
-       fCurrentGamma:TVkDouble;
-       fCurrentWindingRule:TVkInt32;
+       fCurrentWidth:TInt32;
+       fCurrentHeight:TInt32;
+       fCurrentGamma:TDouble;
+       fCurrentWindingRule:TInt32;
        fCurrentGammaLookUpTable:TVulkanTrueTypeFontPolygonRasterizerGammaLookUpTable;
-       fCellX:TVkInt32;
-       fCellY:TVkInt32;
-       fArea:TVkInt32;
-       fCover:TVkInt32;
+       fCellX:TInt32;
+       fCellY:TInt32;
+       fArea:TInt32;
+       fCover:TInt32;
        fCells:TVulkanTrueTypeFontPolygonRasterizerCells;
-       fNumCells:TVkInt32;
-       fX:TVkInt32;
-       fY:TVkInt32;
-       fMoveToX:TVkInt32;
-       fMoveToY:TVkInt32;
+       fNumCells:TInt32;
+       fX:TInt32;
+       fY:TInt32;
+       fMoveToX:TInt32;
+       fMoveToY:TInt32;
        fScanlines:TVulkanTrueTypeFontPolygonRasterizerScanlines;
-       fRenderMinY:TVkInt32;
-       fRenderMaxY:TVkInt32;
+       fRenderMinY:TInt32;
+       fRenderMaxY:TInt32;
        fNeedToClose:boolean;
-       fCanvas:TVkPointer;
+       fCanvas:TPointer;
        fAntialiasing:boolean;
        fForceNonAntialiasing:boolean;
-       function GetCanvas:TVkPointer; override;
-       procedure SetCanvas(NewCanvas:TVkPointer); override;
-       function GetWidth:TVkInt32; override;
-       procedure SetWidth(NewWidth:TVkInt32); override;
-       function GetHeight:TVkInt32; override;
-       procedure SetHeight(NewHeight:TVkInt32); override;
-       function GetWindingRule:TVkInt32; override;
-       procedure SetWindingRule(NewWindingRule:TVkInt32); override;
+       function GetCanvas:TPointer; override;
+       procedure SetCanvas(NewCanvas:TPointer); override;
+       function GetWidth:TInt32; override;
+       procedure SetWidth(NewWidth:TInt32); override;
+       function GetHeight:TInt32; override;
+       procedure SetHeight(NewHeight:TInt32); override;
+       function GetWindingRule:TInt32; override;
+       procedure SetWindingRule(NewWindingRule:TInt32); override;
        function NewCell:PVulkanTrueTypeFontPolygonRasterizerCell;
        procedure RecordCell;
-       procedure SetCell(NewX,NewY:TVkInt32;Force:boolean=false);
-       procedure StartCell(NewX,NewY:TVkInt32);
-       procedure RenderScanLine(NewY,x1,y1,x2,y2:TVkInt32);
-       procedure RenderLine(ToX,ToY:TVkInt32);
-       procedure ProcessSpan(x,y,Area,Len:TVkInt32);
+       procedure SetCell(NewX,NewY:TInt32;Force:boolean=false);
+       procedure StartCell(NewX,NewY:TInt32);
+       procedure RenderScanLine(NewY,x1,y1,x2,y2:TInt32);
+       procedure RenderLine(ToX,ToY:TInt32);
+       procedure ProcessSpan(x,y,Area,Len:TInt32);
        procedure MakeScanLineSpansAndRenderThese;
-       procedure SetGamma(AGamma:TVkDouble);
-       procedure RenderSpanCoverage(y,x,Len,Coverage:TVkInt32); virtual;
+       procedure SetGamma(AGamma:TDouble);
+       procedure RenderSpanCoverage(y,x,Len,Coverage:TInt32); virtual;
       public
        constructor Create; override;
        destructor Destroy; override;
        procedure Clear; override;
        procedure Reset; override;
-       procedure Resize(NewWidth,NewHeight:TVkInt32); override;
-       procedure MoveTo(ToX,ToY:TVkInt32); override;
-       procedure LineTo(ToX,ToY:TVkInt32); override;
+       procedure Resize(NewWidth,NewHeight:TInt32); override;
+       procedure MoveTo(ToX,ToY:TInt32); override;
+       procedure LineTo(ToX,ToY:TInt32); override;
        procedure Close; override;
        procedure Render; override;
-       property Gamma:TVkDouble read fCurrentGamma write SetGamma;
+       property Gamma:TDouble read fCurrentGamma write SetGamma;
        property GammaLookUpTable:TVulkanTrueTypeFontPolygonRasterizerGammaLookUpTable read fCurrentGammaLookUpTable write fCurrentGammaLookUpTable;
        property Antialiasing:boolean read fAntialiasing write fAntialiasing;
      end;
 
      TVulkanTrueTypeFontStrokeRasterizerPoint=record
-      x:TVkInt32;
-      y:TVkInt32;
-      d:TVkInt32;
+      x:TInt32;
+      y:TInt32;
+      d:TInt32;
      end;
 
      TVulkanTrueTypeFontStrokeRasterizerPoints=array of TVulkanTrueTypeFontStrokeRasterizerPoint;
@@ -3918,52 +3918,52 @@ type EVulkanException=class(Exception);
      TVulkanTrueTypeFontStrokeRasterizer=class(TVulkanTrueTypeFontRasterizer)
       private
        fLinePoints:TVulkanTrueTypeFontStrokeRasterizerPoints;
-       fNumLinePoints:TVkInt32;
-       fLineWidth:TVkDouble;
-       fLineCapMode:TVkInt32;
-       fLineJoinMode:TVkInt32;
-       fLineInnerJoinMode:TVkInt32;
+       fNumLinePoints:TInt32;
+       fLineWidth:TDouble;
+       fLineCapMode:TInt32;
+       fLineJoinMode:TInt32;
+       fLineInnerJoinMode:TInt32;
        fLineStrokePattern:TVulkanRawByteString;
-       fLineStrokePatternStepSize:TVkDouble;
-       fStartLineX:TVkInt32;
-       fStartLineY:TVkInt32;
+       fLineStrokePatternStepSize:TDouble;
+       fStartLineX:TInt32;
+       fStartLineY:TInt32;
        fFlushLineOnWork:boolean;
        fRasterizer:TVulkanTrueTypeFontRasterizer;
-       procedure AddLinePoint(const x,y:TVkInt32);
+       procedure AddLinePoint(const x,y:TInt32);
        procedure ConvertLineStorkeToPolygon;
        procedure FlushLine;
       protected
-       function GetCanvas:TVkPointer; override;
-       procedure SetCanvas(NewCanvas:TVkPointer); override;
-       function GetWidth:TVkInt32; override;
-       procedure SetWidth(NewWidth:TVkInt32); override;
-       function GetHeight:TVkInt32; override;
-       procedure SetHeight(NewHeight:TVkInt32); override;
-       function GetWindingRule:TVkInt32; override;
-       procedure SetWindingRule(NewWindingRule:TVkInt32); override;
+       function GetCanvas:TPointer; override;
+       procedure SetCanvas(NewCanvas:TPointer); override;
+       function GetWidth:TInt32; override;
+       procedure SetWidth(NewWidth:TInt32); override;
+       function GetHeight:TInt32; override;
+       procedure SetHeight(NewHeight:TInt32); override;
+       function GetWindingRule:TInt32; override;
+       procedure SetWindingRule(NewWindingRule:TInt32); override;
       public
        constructor Create(Rasterizer:TVulkanTrueTypeFontRasterizer); reintroduce;
        destructor Destroy; override;
        procedure Clear; override;
        procedure Reset; override;
-       procedure Resize(NewWidth,NewHeight:TVkInt32); override;
-       procedure MoveTo(ToX,ToY:TVkInt32); override;
-       procedure LineTo(ToX,ToY:TVkInt32); override;
+       procedure Resize(NewWidth,NewHeight:TInt32); override;
+       procedure MoveTo(ToX,ToY:TInt32); override;
+       procedure LineTo(ToX,ToY:TInt32); override;
        procedure Close; override;
        procedure Render; override;
-       property LineWidth:TVkDouble read fLineWidth write fLineWidth;
-       property LineCapMode:TVkInt32 read fLineCapMode write fLineCapMode;
-       property LineJoinMode:TVkInt32 read fLineJoinMode write fLineJoinMode;
-       property LineInnerJoinMode:TVkInt32 read fLineInnerJoinMode write fLineInnerJoinMode;
+       property LineWidth:TDouble read fLineWidth write fLineWidth;
+       property LineCapMode:TInt32 read fLineCapMode write fLineCapMode;
+       property LineJoinMode:TInt32 read fLineJoinMode write fLineJoinMode;
+       property LineInnerJoinMode:TInt32 read fLineInnerJoinMode write fLineInnerJoinMode;
        property LineStrokePattern:TVulkanRawByteString read fLineStrokePattern write fLineStrokePattern;
-       property LineStrokePatternStepSize:TVkDouble read fLineStrokePatternStepSize write fLineStrokePatternStepSize;
+       property LineStrokePatternStepSize:TDouble read fLineStrokePatternStepSize write fLineStrokePatternStepSize;
      end;
 
      PVulkanTrueTypeFontKerningPair=^TVulkanTrueTypeFontKerningPair;
      TVulkanTrueTypeFontKerningPair=record
-      Left:TVkUInt32;
-      Right:TVkUInt32;
-      Value:TVkInt32;
+      Left:TUInt32;
+      Right:TUInt32;
+      Value:TInt32;
      end;
 
      TVulkanTrueTypeFontKerningPairs=array of TVulkanTrueTypeFontKerningPair;
@@ -3976,16 +3976,16 @@ type EVulkanException=class(Exception);
       ValueOverride:longbool;
       BinarySearch:longbool;
       KerningPairs:TVulkanTrueTypeFontKerningPairs;
-      CountKerningPairs:TVkInt32;
+      CountKerningPairs:TInt32;
      end;
 
      TVulkanTrueTypeFontKerningTables=array of TVulkanTrueTypeFontKerningTable;
 
      PVulkanTrueTypeFontGlyphPoint=^TVulkanTrueTypeFontGlyphPoint;
      TVulkanTrueTypeFontGlyphPoint=record
-      x:TVkInt32;
-      y:TVkInt32;
-      Flags:TVkUInt32;
+      x:TInt32;
+      y:TInt32;
+      Flags:TUInt32;
      end;
      TVulkanTrueTypeFontGlyphPoints=array of TVulkanTrueTypeFontGlyphPoint;
 
@@ -3996,27 +3996,27 @@ type EVulkanException=class(Exception);
 
      PVulkanTrueTypeFontGlyphCompositeSubGlyph=^TVulkanTrueTypeFontGlyphCompositeSubGlyph;
      TVulkanTrueTypeFontGlyphCompositeSubGlyph=record
-      Glyph:TVkUInt32;
-      Flags:TVkUInt32;
-      Arg1:TVkInt32;
-      Arg2:TVkInt32;
-      xx:TVkInt32;
-      yx:TVkInt32;
-      xy:TVkInt32;
-      yy:TVkInt32;
+      Glyph:TUInt32;
+      Flags:TUInt32;
+      Arg1:TInt32;
+      Arg2:TInt32;
+      xx:TInt32;
+      yx:TInt32;
+      xy:TInt32;
+      yy:TInt32;
      end;
 
      TVulkanTrueTypeFontGlyphCompositeSubGlyphs=array of TVulkanTrueTypeFontGlyphCompositeSubGlyph;
 
      PVulkanTrueTypeFontGlyphBounds=^TVulkanTrueTypeFontGlyphBounds;
      TVulkanTrueTypeFontGlyphBounds=record
-      XMin:TVkInt16;
-      YMin:TVkInt16;
-      XMax:TVkInt16;
-      YMax:TVkInt16;
+      XMin:TInt16;
+      YMin:TInt16;
+      XMax:TInt16;
+      YMax:TInt16;
      end;
 
-     TVulkanTrueTypeFontGlyphEndPointIndices=array of TVkInt32;
+     TVulkanTrueTypeFontGlyphEndPointIndices=array of TInt32;
 
      PVulkanTrueTypeFontGlyphBuffer=^TVulkanTrueTypeFontGlyphBuffer;
      TVulkanTrueTypeFontGlyphBuffer=record
@@ -4025,17 +4025,17 @@ type EVulkanException=class(Exception);
       UnhintedPoints:TVulkanTrueTypeFontGlyphPoints;
       InFontUnitsPoints:TVulkanTrueTypeFontGlyphPoints;
       EndPointIndices:TVulkanTrueTypeFontGlyphEndPointIndices;
-      CountPoints:TVkInt32;
-      CountIndices:TVkInt32;
+      CountPoints:TInt32;
+      CountIndices:TInt32;
      end;
 
      PVulkanTrueTypeFontByteArray=^TVulkanTrueTypeFontByteArray;
-     TVulkanTrueTypeFontByteArray=array[0..65535] of TVkUInt8;
+     TVulkanTrueTypeFontByteArray=array[0..65535] of TUInt8;
 
      PVulkanTrueTypeFontByteCodeInterpreterProgramBytes=^TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
      TVulkanTrueTypeFontByteCodeInterpreterProgramBytes=record
       Data:PVulkanTrueTypeFontByteArray;
-      Size:TVkInt32;
+      Size:TInt32;
      end;
 
      TVulkanTrueTypeFontPolygonCommandType=
@@ -4048,8 +4048,8 @@ type EVulkanException=class(Exception);
       );
 
      TVulkanTrueTypeFontPolygonCommandPoint=packed record
-      x:TVkDouble;
-      y:TVkDouble;
+      x:TDouble;
+      y:TDouble;
      end;
 
      TVulkanTrueTypeFontPolygonCommandPoints=array[0..2] of TVulkanTrueTypeFontPolygonCommandPoint;
@@ -4070,7 +4070,7 @@ type EVulkanException=class(Exception);
      PVulkanTrueTypeFontPolygonBuffer=^TVulkanTrueTypeFontPolygonBuffer;
      TVulkanTrueTypeFontPolygonBuffer=record
       Commands:TVulkanTrueTypeFontPolygonCommands;
-      CountCommands:TVkInt32;
+      CountCommands:TInt32;
      end;
 
      TVulkanTrueTypeFontPolygonBuffers=array of TVulkanTrueTypeFontPolygonBuffer;
@@ -4080,44 +4080,44 @@ type EVulkanException=class(Exception);
       Points:TVulkanTrueTypeFontGlyphPoints;
       EndPointIndices:TVulkanTrueTypeFontGlyphEndPointIndices;
       CompositeSubGlyphs:TVulkanTrueTypeFontGlyphCompositeSubGlyphs;
-      UseMetricsFrom:TVkInt32;
+      UseMetricsFrom:TInt32;
       PostScriptPolygon:TVulkanTrueTypeFontPolygonBuffer;
       Instructions:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
       Locked:longbool;
-      AdvanceWidth:TVkInt32;
-      AdvanceHeight:TVkInt32;
-      LeftSideBearing:TVkInt32;
-      TopSideBearing:TVkInt32;
+      AdvanceWidth:TInt32;
+      AdvanceHeight:TInt32;
+      LeftSideBearing:TInt32;
+      TopSideBearing:TInt32;
      end;
 
      TVulkanTrueTypeFontGlyphs=array of TVulkanTrueTypeFontGlyph;
 
-     TVulkanTrueTypeFontCVTTable=array of TVkInt32;
+     TVulkanTrueTypeFontCVTTable=array of TInt32;
 
-     TVulkanTrueTypeFontBytes=array of TVkUInt8;
+     TVulkanTrueTypeFontBytes=array of TUInt8;
 
-     TVulkanTrueTypeFontLongWords=array of TVkUInt32;
+     TVulkanTrueTypeFontLongWords=array of TUInt32;
 
-     TVulkanCFFCodePointToGlyphIndexTable=array of TVkInt32;
+     TVulkanCFFCodePointToGlyphIndexTable=array of TInt32;
 
-     TVulkanTrueTypeFontGlyphIndexSubHeaderKeys=array[0..255] of TVkUInt16;
+     TVulkanTrueTypeFontGlyphIndexSubHeaderKeys=array[0..255] of TUInt16;
 
      PVulkanTrueTypeFontGASPRange=^TVulkanTrueTypeFontGASPRange;
      TVulkanTrueTypeFontGASPRange=record
-      LowerPPEM:TVkInt32;
-      UpperPPEM:TVkInt32;
-      Flags:TVkUInt32;
+      LowerPPEM:TInt32;
+      UpperPPEM:TInt32;
+      Flags:TUInt32;
      end;
 
      TVulkanTrueTypeFontGASPRanges=array of TVulkanTrueTypeFontGASPRange;
 
-     TVulkanTrueTypeFontGlyphFlagBitmap=array of TVkUInt32;
+     TVulkanTrueTypeFontGlyphFlagBitmap=array of TUInt32;
 
      PVulkanTrueTypeFont2d14=^TVulkanTrueTypeFontVector2d14;
-     TVulkanTrueTypeFont2d14=TVkInt16;
+     TVulkanTrueTypeFont2d14=TInt16;
 
      PVulkanTrueTypeFont26d6=^TVulkanTrueTypeFontVector26d6;
-     TVulkanTrueTypeFont26d6=TVkInt32;
+     TVulkanTrueTypeFont26d6=TInt32;
 
      PVulkanTrueTypeFontVector2d14=^TVulkanTrueTypeFontVector2d14;
      TVulkanTrueTypeFontVector2d14=array[0..1] of TVulkanTrueTypeFont2d14;
@@ -4126,7 +4126,7 @@ type EVulkanException=class(Exception);
      TVulkanTrueTypeFontVector26d6=array[0..1] of TVulkanTrueTypeFont26d6;
 
      PVulkanTrueTypeFontVectorThreeInt32=^TVulkanTrueTypeFontVectorThreeInt32;
-     TVulkanTrueTypeFontVectorThreeInt32=array[0..2] of TVkInt32;
+     TVulkanTrueTypeFontVectorThreeInt32=array[0..2] of TInt32;
 
      PVulkanTrueTypeFontGraphicsState=^TVulkanTrueTypeFontGraphicsState;
      TVulkanTrueTypeFontGraphicsState=record
@@ -4138,27 +4138,27 @@ type EVulkanException=class(Exception);
       ControlValueCutIn:TVulkanTrueTypeFont26d6;
       SingleWidthCutIn:TVulkanTrueTypeFont26d6;
       SingleWidth:TVulkanTrueTypeFont26d6;
-      DeltaBase:TVkInt32;
-      DeltaShift:TVkInt32;
+      DeltaBase:TInt32;
+      DeltaShift:TInt32;
       MinDist:TVulkanTrueTypeFont26d6;
-      Loop:TVkInt32;
+      Loop:TInt32;
       RoundPeriod:TVulkanTrueTypeFont26d6;
       RoundPhase:TVulkanTrueTypeFont26d6;
       RoundThreshold:TVulkanTrueTypeFont26d6;
       RoundSuper45:boolean;
       AutoFlip:boolean;
-      InstructionControl:TVkInt32;
+      InstructionControl:TInt32;
      end;
 
-     TVulkanTrueTypeFontByteCodeInterpreterInt32Array=array of TVkInt32;
+     TVulkanTrueTypeFontByteCodeInterpreterInt32Array=array of TInt32;
 
      TVulkanTrueTypeFontByteCodeInterpreterPoints=array[0..VkTTF_Zone_Count-1,0..VkTTF_PointType_Count-1] of TVulkanTrueTypeFontGlyphPoints;
 
      PVulkanTrueTypeFontByteCodeInterpreterCallStackEntry=^TVulkanTrueTypeFontByteCodeInterpreterCallStackEntry;
      TVulkanTrueTypeFontByteCodeInterpreterCallStackEntry=record
        ProgramBytes:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
-       PC:TVkInt32;
-       LoopCount:TVkInt32;
+       PC:TInt32;
+       LoopCount:TInt32;
      end;
 
      PVulkanTrueTypeFontByteCodeInterpreterCallStackEntries=^TVulkanTrueTypeFontByteCodeInterpreterCallStackEntries;
@@ -4188,7 +4188,7 @@ type EVulkanException=class(Exception);
        fStack:TVulkanTrueTypeFontByteCodeInterpreterInt32Array;
        fStorage:TVulkanTrueTypeFontByteCodeInterpreterInt32Array;
        fFunctions:TVulkanTrueTypeFontByteCodeInterpreterFunctions;
-       fScale:TVkInt32;
+       fScale:TInt32;
        fForceReinitialize:longbool;
        fGraphicsState:TVulkanTrueTypeFontGraphicsState;
        fDefaultGraphicsState:TVulkanTrueTypeFontGraphicsState;
@@ -4198,22 +4198,22 @@ type EVulkanException=class(Exception);
        constructor Create(AFont:TVulkanTrueTypeFont);
        destructor Destroy; override;
        procedure Reinitialize;
-       function SkipInstructionPayload(const ProgramBytes:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;var PC:TVkInt32):boolean;
-       function MulDiv(a,b,c:TVkInt32;DoRound:boolean):TVkInt32;
-       procedure MovePoint(var p:TVulkanTrueTypeFontGlyphPoint;Distance:TVkInt32;Touch:boolean);
+       function SkipInstructionPayload(const ProgramBytes:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;var PC:TInt32):boolean;
+       function MulDiv(a,b,c:TInt32;DoRound:boolean):TInt32;
+       procedure MovePoint(var p:TVulkanTrueTypeFontGlyphPoint;Distance:TInt32;Touch:boolean);
        function DotProduct(x,y:TVulkanTrueTypeFont26d6;const q:TVulkanTrueTypeFontVector2d14):TVulkanTrueTypeFont26d6;
        function Div18d14(a,b:TVulkanTrueTypeFont26d6):TVulkanTrueTypeFont26d6;
        function Mul18d14(a,b:TVulkanTrueTypeFont26d6):TVulkanTrueTypeFont26d6;
        function Div26d6(a,b:TVulkanTrueTypeFont26d6):TVulkanTrueTypeFont26d6;
        function Mul26d6(a,b:TVulkanTrueTypeFont26d6):TVulkanTrueTypeFont26d6;
        function RoundValue(Value:TVulkanTrueTypeFont26d6):TVulkanTrueTypeFont26d6;
-       procedure IUPInterpolate(IUPY:boolean;p1,p2,ref1,ref2:TVkInt32);
-       procedure IUPShift(IUPY:boolean;p1,p2,p:TVkInt32);
-       function GetPoint(ZonePointer,PointType,Index:TVkInt32):PVulkanTrueTypeFontGlyphPoint;
+       procedure IUPInterpolate(IUPY:boolean;p1,p2,ref1,ref2:TInt32);
+       procedure IUPShift(IUPY:boolean;p1,p2,p:TInt32);
+       function GetPoint(ZonePointer,PointType,Index:TInt32):PVulkanTrueTypeFontGlyphPoint;
        procedure Normalize(var x,y:TVulkanTrueTypeFont26d6);
-       function GetCVT(Index:TVkInt32):TVkInt32;
-       procedure SetCVT(Index,Value:TVkInt32);
-       procedure ComputePointDisplacement(Flag:boolean;var Zone,Ref:TVkInt32;var dx,dy:TVulkanTrueTypeFont26d6);
+       function GetCVT(Index:TInt32):TInt32;
+       procedure SetCVT(Index,Value:TInt32);
+       procedure ComputePointDisplacement(Flag:boolean;var Zone,Ref:TInt32;var dx,dy:TVulkanTrueTypeFont26d6);
        procedure Run(ProgramBytes:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;Parameters:PVulkanTrueTypeFontByteCodeInterpreterParameters=nil);
        property Font:TVulkanTrueTypeFont read fFont;
      end;
@@ -4226,19 +4226,19 @@ type EVulkanException=class(Exception);
        fGlyphLoadedBitmap:TVulkanTrueTypeFontGlyphFlagBitmap;
        fGlyphs:TVulkanTrueTypeFontGlyphs;
        fCMaps:array[0..1] of PVulkanTrueTypeFontByteArray;
-       fCMapLengths:array[0..1] of TVkInt32;
+       fCMapLengths:array[0..1] of TInt32;
        fGlyphOffsetArray:TVulkanTrueTypeFontLongWords;
        fKerningTables:TVulkanTrueTypeFontKerningTables;
        fSubHeaderKeys:TVulkanTrueTypeFontGlyphIndexSubHeaderKeys;
-       fFontDataSize:TVkInt32;
-       fGlyfOffset:TVkUInt32;
-       fNumfHMetrics:TVkUInt16;
-       fNumfVMetrics:TVkUInt16;
-       fNumTables:TVkUInt16;
-       fCMapFormat:TVkUInt16;
-       fLastError:TVkUInt16;
+       fFontDataSize:TInt32;
+       fGlyfOffset:TUInt32;
+       fNumfHMetrics:TUInt16;
+       fNumfVMetrics:TUInt16;
+       fNumTables:TUInt16;
+       fCMapFormat:TUInt16;
+       fLastError:TUInt16;
        fPostScriptFlavored:boolean;
-       fIndexToLocationFormat:TVkInt16;
+       fIndexToLocationFormat:TInt16;
        fStringCopyright:TVulkanRawByteString;
        fStringFamily:TVulkanRawByteString;
        fStringSubFamily:TVulkanRawByteString;
@@ -4247,33 +4247,33 @@ type EVulkanException=class(Exception);
        fStringVersion:TVulkanRawByteString;
        fStringPostScript:TVulkanRawByteString;
        fStringTrademark:TVulkanRawByteString;
-       fMinX:TVkInt16;
-       fMinY:TVkInt16;
-       fMaxX:TVkInt16;
-       fMaxY:TVkInt16;
-       fUnitsPerEm:TVkUInt16;
-       fUnitsPerPixel:TVkUInt16;
-       fThinBoldStrength:TVkInt32;
-       fAscender:TVkUInt16;
-       fDescender:TVkUInt16;
-       fLineGap:TVkUInt16;
-       fAdvanceWidthMax:TVkUInt16;
-       fAdvanceHeightMax:TVkUInt16;
-       fPlatformID:TVkUInt16;
-       fSpecificID:TVkUInt16;
-       fLanguageID:TVkUInt16;
-       fSize:TVkInt32;
-       fLetterSpacingX:TVkInt32;
-       fLetterSpacingY:TVkInt32;
-       fStyleIndex:TVkInt32;
-       fTargetPPI:TVkInt32;
+       fMinX:TInt16;
+       fMinY:TInt16;
+       fMaxX:TInt16;
+       fMaxY:TInt16;
+       fUnitsPerEm:TUInt16;
+       fUnitsPerPixel:TUInt16;
+       fThinBoldStrength:TInt32;
+       fAscender:TUInt16;
+       fDescender:TUInt16;
+       fLineGap:TUInt16;
+       fAdvanceWidthMax:TUInt16;
+       fAdvanceHeightMax:TUInt16;
+       fPlatformID:TUInt16;
+       fSpecificID:TUInt16;
+       fLanguageID:TUInt16;
+       fSize:TInt32;
+       fLetterSpacingX:TInt32;
+       fLetterSpacingY:TInt32;
+       fStyleIndex:TInt32;
+       fTargetPPI:TInt32;
        fHinting:boolean;
        fForceSelector:boolean;
-       fCountGlyphs:TVkInt32;
-       fMaxTwilightPoints:TVkInt32;
-       fMaxStorage:TVkInt32;
-       fMaxFunctionDefs:TVkInt32;
-       fMaxStackElements:TVkInt32;
+       fCountGlyphs:TInt32;
+       fMaxTwilightPoints:TInt32;
+       fMaxStorage:TInt32;
+       fMaxFunctionDefs:TInt32;
+       fMaxStackElements:TInt32;
        fCVT:TVulkanTrueTypeFontCVTTable;
        fFPGM:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
        fPREP:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
@@ -4282,74 +4282,74 @@ type EVulkanException=class(Exception);
        fIgnoreByteCodeInterpreter:boolean;
        fGASPRanges:TVulkanTrueTypeFontGASPRanges;
        fCFFCodePointToGlyphIndexTable:TVulkanCFFCodePointToGlyphIndexTable;
-       function ReadFontData(Stream:TStream;CollectionIndex:TVkInt32):TVkInt32;
-       function GetTableDirEntry(Tag:TVkUInt32;var CheckSum,Offset,Size:TVkUInt32):TVkInt32;
-       function LoadOS2:TVkInt32;
-       function LoadHEAD:TVkInt32;
-       function LoadMAXP:TVkInt32;
-       function LoadNAME:TVkInt32;
-       function LoadCFF:TVkInt32;
-       function LoadLOCA:TVkInt32;
-       function LoadGLYF:TVkInt32;
-       function LoadHHEA:TVkInt32;
-       function LoadHMTX:TVkInt32;
-       function LoadVHEA:TVkInt32;
-       function LoadVMTX:TVkInt32;
-       function LoadGPOS:TVkInt32;
-       function LoadKERN:TVkInt32;
-       function LoadCMAP:TVkInt32;
-       function LoadCVT:TVkInt32;
-       function LoadFPGM:TVkInt32;
-       function LoadPREP:TVkInt32;
-       function LoadGASP:TVkInt32;
-       function LoadGlyphData(GlyphIndex:TVkInt32):TVkInt32;
-       procedure SetSize(NewSize:TVkInt32);
+       function ReadFontData(Stream:TStream;CollectionIndex:TInt32):TInt32;
+       function GetTableDirEntry(Tag:TUInt32;var CheckSum,Offset,Size:TUInt32):TInt32;
+       function LoadOS2:TInt32;
+       function LoadHEAD:TInt32;
+       function LoadMAXP:TInt32;
+       function LoadNAME:TInt32;
+       function LoadCFF:TInt32;
+       function LoadLOCA:TInt32;
+       function LoadGLYF:TInt32;
+       function LoadHHEA:TInt32;
+       function LoadHMTX:TInt32;
+       function LoadVHEA:TInt32;
+       function LoadVMTX:TInt32;
+       function LoadGPOS:TInt32;
+       function LoadKERN:TInt32;
+       function LoadCMAP:TInt32;
+       function LoadCVT:TInt32;
+       function LoadFPGM:TInt32;
+       function LoadPREP:TInt32;
+       function LoadGASP:TInt32;
+       function LoadGlyphData(GlyphIndex:TInt32):TInt32;
+       procedure SetSize(NewSize:TInt32);
       public
-       constructor Create(const Stream:TStream;const TargetPPI:TVkInt32=96;const ForceSelector:boolean=false;const PlatformID:TVkUInt16=VkTTF_PID_Microsoft;const SpecificID:TVkUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TVkUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TVkInt32=0);
+       constructor Create(const Stream:TStream;const TargetPPI:TInt32=96;const ForceSelector:boolean=false;const PlatformID:TUInt16=VkTTF_PID_Microsoft;const SpecificID:TUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TInt32=0);
        destructor Destroy; override;
        function GetGASPRange:PVulkanTrueTypeFontGASPRange;
-       function GetGlyphIndex(CodePointCode:TVkUInt32;CMapIndex:TVkInt32=0):TVkUInt32;
-       function GetGlyphAdvanceWidth(GlyphIndex:TVkInt32):TVkInt32;
-       function GetGlyphAdvanceHeight(GlyphIndex:TVkInt32):TVkInt32;
-       function GetGlyphLeftSideBearing(GlyphIndex:TVkInt32):TVkInt32;
-       function GetGlyphRightSideBearing(GlyphIndex:TVkInt32):TVkInt32;
-       function GetGlyphTopSideBearing(GlyphIndex:TVkInt32):TVkInt32;
-       function GetGlyphBottomSideBearing(GlyphIndex:TVkInt32):TVkInt32;
-       function GetKerning(Left,Right:TVkUInt32;Horizontal:boolean):TVkInt32;
-       function GetStyleIndex(Thin,Bold,Italic:boolean):TVkInt32;
-       function TextWidth(const aText:TVulkanUTF8String):TVkInt32;
-       function TextHeight(const aText:TVulkanUTF8String):TVkInt32;
-       procedure TextSize(const aText:TVulkanUTF8String;out aWidth,aHeight:TVkInt32);
-       function RowHeight(const Percent:TVkInt32):TVkInt32;
-       function GetUnitsPerEm:TVkInt32;
-       function GetScaleFactor:TVkDouble;
-       function GetScaleFactorFixed:TVkInt32;
-       function Scale(Value:TVkInt32):TVkInt32;
-       function FloatScale(Value:TVkDouble):TVkDouble;
-       function GetScale:TVkInt32;
-       function ScaleRound(Value:TVkInt32):TVkInt32;
-       function IsPostScriptGlyph(const GlyphIndex:TVkInt32):boolean;
+       function GetGlyphIndex(CodePointCode:TUInt32;CMapIndex:TInt32=0):TUInt32;
+       function GetGlyphAdvanceWidth(GlyphIndex:TInt32):TInt32;
+       function GetGlyphAdvanceHeight(GlyphIndex:TInt32):TInt32;
+       function GetGlyphLeftSideBearing(GlyphIndex:TInt32):TInt32;
+       function GetGlyphRightSideBearing(GlyphIndex:TInt32):TInt32;
+       function GetGlyphTopSideBearing(GlyphIndex:TInt32):TInt32;
+       function GetGlyphBottomSideBearing(GlyphIndex:TInt32):TInt32;
+       function GetKerning(Left,Right:TUInt32;Horizontal:boolean):TInt32;
+       function GetStyleIndex(Thin,Bold,Italic:boolean):TInt32;
+       function TextWidth(const aText:TVulkanUTF8String):TInt32;
+       function TextHeight(const aText:TVulkanUTF8String):TInt32;
+       procedure TextSize(const aText:TVulkanUTF8String;out aWidth,aHeight:TInt32);
+       function RowHeight(const Percent:TInt32):TInt32;
+       function GetUnitsPerEm:TInt32;
+       function GetScaleFactor:TDouble;
+       function GetScaleFactorFixed:TInt32;
+       function Scale(Value:TInt32):TInt32;
+       function FloatScale(Value:TDouble):TDouble;
+       function GetScale:TInt32;
+       function ScaleRound(Value:TInt32):TInt32;
+       function IsPostScriptGlyph(const GlyphIndex:TInt32):boolean;
        procedure ResetGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer);
-       procedure TransformGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;GlyphStartPointIndex,StartIndex,EndIndex:TVkInt32);
-       procedure FillGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;const GlyphIndex:TVkInt32);
+       procedure TransformGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;GlyphStartPointIndex,StartIndex,EndIndex:TInt32);
+       procedure FillGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;const GlyphIndex:TInt32);
        procedure ResetPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer);
        procedure FillPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer);
-       procedure FillPostScriptPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphIndex:TVkInt32);
-       procedure FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:TVulkanUTF8String;const StartX:TVkInt32=0;const StartY:TVkInt32=0);
-       procedure GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TVkDouble;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
-       procedure DrawPolygonBuffer(Rasterizer:TVulkanTrueTypeFontRasterizer;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;x,y:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
+       procedure FillPostScriptPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphIndex:TInt32);
+       procedure FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:TVulkanUTF8String;const StartX:TInt32=0;const StartY:TInt32=0);
+       procedure GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TDouble;const Tolerance:TInt32=2;const MaxLevel:TInt32=32);
+       procedure DrawPolygonBuffer(Rasterizer:TVulkanTrueTypeFontRasterizer;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;x,y:TInt32;Tolerance:TInt32=2;MaxLevel:TInt32=32);
        property Glyphs:TVulkanTrueTypeFontGlyphs read fGlyphs;
-       property CountGlyphs:TVkInt32 read fCountGlyphs;
-       property Size:TVkInt32 read fSize write SetSize;
-       property LetterSpacingX:TVkInt32 read fLetterSpacingX write fLetterSpacingX;
-       property LetterSpacingY:TVkInt32 read fLetterSpacingY write fLetterSpacingY;
-       property StyleIndex:TVkInt32 read fStyleIndex write fStyleIndex;
+       property CountGlyphs:TInt32 read fCountGlyphs;
+       property Size:TInt32 read fSize write SetSize;
+       property LetterSpacingX:TInt32 read fLetterSpacingX write fLetterSpacingX;
+       property LetterSpacingY:TInt32 read fLetterSpacingY write fLetterSpacingY;
+       property StyleIndex:TInt32 read fStyleIndex write fStyleIndex;
        property Hinting:boolean read fHinting write fHinting;
        property GASPRanges:TVulkanTrueTypeFontGASPRanges read fGASPRanges;
-       property MinX:TVkInt16 read fMinX;
-       property MinY:TVkInt16 read fMinY;
-       property MaxX:TVkInt16 read fMaxX;
-       property MaxY:TVkInt16 read fMaxY;
+       property MinX:TInt16 read fMinX;
+       property MinY:TInt16 read fMinY;
+       property MaxX:TInt16 read fMaxX;
+       property MaxY:TInt16 read fMaxY;
        property Copyright:TVulkanRawByteString read fStringCopyright;
        property Family:TVulkanRawByteString read fStringFamily;
        property SubFamily:TVulkanRawByteString read fStringSubFamily;
@@ -4360,35 +4360,35 @@ type EVulkanException=class(Exception);
        property Trademark:TVulkanRawByteString read fStringTrademark;
      end;
 
-     TVulkanFontCodePointBitmap=array of TVkUInt32;
+     TVulkanFontCodePointBitmap=array of TUInt32;
 
      PVulkanFontCharacterRange=^TVulkanFontCharacterRange;
      TVulkanFontCharacterRange=set of AnsiChar;
 
      PVulkanFontCodePointRange=^TVulkanFontCodePointRange;
      TVulkanFontCodePointRange=record
-      FromCodePoint:TVkUInt32;
-      ToCodePoint:TVkUInt32;
+      FromCodePoint:TUInt32;
+      ToCodePoint:TUInt32;
      end;
 
      TVulkanFontCodePointRanges=array of TVulkanFontCodePointRange;
 
      PVulkanFontGlyph=^TVulkanFontGlyph;
      TVulkanFontGlyph=record
-      AdvanceWidth:TVkFloat;
-      AdvanceHeight:TVkFloat;
-      LeftSideBearing:TVkFloat;
-      RightSideBearing:TVkFloat;
-      TopSideBearing:TVkFloat;
-      BottomSideBearing:TVkFloat;
-      BoundsMinX:TVkFloat;
-      BoundsMinY:TVkFloat;
-      BoundsMaxX:TVkFloat;
-      BoundsMaxY:TVkFloat;
-      OffsetX:TVkFloat;
-      OffsetY:TVkFloat;
-      Width:TVkInt32;
-      Height:TVkInt32;
+      AdvanceWidth:TFloat;
+      AdvanceHeight:TFloat;
+      LeftSideBearing:TFloat;
+      RightSideBearing:TFloat;
+      TopSideBearing:TFloat;
+      BottomSideBearing:TFloat;
+      BoundsMinX:TFloat;
+      BoundsMinY:TFloat;
+      BoundsMaxX:TFloat;
+      BoundsMaxY:TFloat;
+      OffsetX:TFloat;
+      OffsetY:TFloat;
+      Width:TInt32;
+      Height:TInt32;
       Sprite:TVulkanSprite;
      end;
 
@@ -4398,18 +4398,18 @@ type EVulkanException=class(Exception);
 
      PVulkanFontCodePointGlyphPair=^TVulkanFontCodePointGlyphPair;
      TVulkanFontCodePointGlyphPair=record
-      CodePoint:TVkUInt32;
-      Glyph:TVkInt32;
+      CodePoint:TUInt32;
+      Glyph:TInt32;
      end;
 
      TVulkanFontCodePointGlyphPairs=array of TVulkanFontCodePointGlyphPair;
 
      PVulkanFontKerningPair=^TVulkanFontKerningPair;
      TVulkanFontKerningPair=record
-      Left:TVkUInt32;
-      Right:TVkUInt32;
-      Horizontal:TVkInt32;
-      Vertical:TVkInt32;
+      Left:TUInt32;
+      Right:TUInt32;
+      Horizontal:TInt32;
+      Vertical:TInt32;
      end;
 
      TVulkanFontKerningPairs=array of TVulkanFontKerningPair;
@@ -4423,10 +4423,10 @@ type EVulkanException=class(Exception);
 
      PVulkanFontDistanceField=^TVulkanFontDistanceField;
      TVulkanFontDistanceField=record
-      OffsetX:TVkDouble;
-      OffsetY:TVkDouble;
-      Width:TVkInt32;
-      Height:TVkInt32;
+      OffsetX:TDouble;
+      OffsetY:TDouble;
+      Width:TInt32;
+      Height:TInt32;
       Pixels:TVulkanFontDistanceFieldPixels;
      end;
 
@@ -4445,16 +4445,16 @@ type EVulkanException=class(Exception);
       private
        fDevice:TVulkanDevice;
        fSpriteAtlas:TVulkanSpriteAtlas;
-       fTargetPPI:TVkInt32;
-       fUnitsPerEm:TVkInt32;
-       fBaseScaleFactor:TVkFloat;
-       fInverseBaseScaleFactor:TVkFloat;
-       fMinX:TVkFloat;
-       fMinY:TVkFloat;
-       fMaxX:TVkFloat;
-       fMaxY:TVkFloat;
-       fMinimumCodePoint:TVkUInt32;
-       fMaximumCodePoint:TVkUInt32;
+       fTargetPPI:TInt32;
+       fUnitsPerEm:TInt32;
+       fBaseScaleFactor:TFloat;
+       fInverseBaseScaleFactor:TFloat;
+       fMinX:TFloat;
+       fMinY:TFloat;
+       fMaxX:TFloat;
+       fMaxY:TFloat;
+       fMinimumCodePoint:TUInt32;
+       fMaximumCodePoint:TUInt32;
        fCodePointBitmap:TVulkanFontCodePointBitmap;
        fGlyphs:TVulkanFontGlyphs;
        fCodePointGlyphPairs:TVulkanFontCodePointGlyphPairs;
@@ -4464,23 +4464,23 @@ type EVulkanException=class(Exception);
 {$ifdef PasVulkanPasMP}
        fDistanceFieldJobs:TVulkanFontDistanceFieldJobs;
 {$endif}
-       procedure GenerateSignedDistanceField(var DistanceField:TVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const FillRule:TVkInt32);
+       procedure GenerateSignedDistanceField(var DistanceField:TVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const FillRule:TInt32);
 {$ifdef PasVulkanPasMP}
-       procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:pointer;const FromIndex,ToIndex:TPasMPNativeInt);
+       procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
 {$endif}
       public
-       constructor Create(const aDevice:TVulkanDevice;const aSpriteAtlas:TVulkanSpriteAtlas;const aTargetPPI:TVkInt32=72); reintroduce;
+       constructor Create(const aDevice:TVulkanDevice;const aSpriteAtlas:TVulkanSpriteAtlas;const aTargetPPI:TInt32=72); reintroduce;
        constructor CreateFromTrueTypeFont(const aDevice:TVulkanDevice;const aSpriteAtlas:TVulkanSpriteAtlas;const aTrueTypeFont:TVulkanTrueTypeFont;const aCodePointRanges:array of TVulkanFontCodePointRange);
        destructor Destroy; override;
-       class function CodePointRange(const aFromCodePoint,aToCodePoint:TVkUInt32):TVulkanFontCodePointRange; overload;
+       class function CodePointRange(const aFromCodePoint,aToCodePoint:TUInt32):TVulkanFontCodePointRange; overload;
        class function CodePointRange(const aFromCodePoint,aToCodePoint:WideChar):TVulkanFontCodePointRange; overload;
        class function CodePointRange(const aCharacterRange:TVulkanFontCharacterRange):TVulkanFontCodePointRange; overload;
-       function GetScaleFactor(const aSize:TVkFloat):TVkFloat;
-       function TextWidth(const aText:TVulkanUTF8String;const aSize:TVkFloat):TVkFloat;
-       function TextHeight(const aText:TVulkanUTF8String;const aSize:TVkFloat):TVkFloat;
-       procedure TextSize(const aText:TVulkanUTF8String;const aSize:TVkFloat;out aWidth,aHeight:TVkFloat);
-       function RowHeight(const Percent:TVkFloat):TVkFloat;
-       procedure Draw(const aCanvas:TVulkanCanvas;const aText:TVulkanUTF8String;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
+       function GetScaleFactor(const aSize:TFloat):TFloat;
+       function TextWidth(const aText:TVulkanUTF8String;const aSize:TFloat):TFloat;
+       function TextHeight(const aText:TVulkanUTF8String;const aSize:TFloat):TFloat;
+       procedure TextSize(const aText:TVulkanUTF8String;const aSize:TFloat;out aWidth,aHeight:TFloat);
+       function RowHeight(const Percent:TFloat):TFloat;
+       procedure Draw(const aCanvas:TVulkanCanvas;const aText:TVulkanUTF8String;const aX,aY,aSize:TFloat;const aColorRed:TFloat=1.0;const aColorGreen:TFloat=1.0;const aColorBlue:TFloat=1.0;const aColorAlpha:TFloat=1.0);
      end;
 
 {$ifdef PasVulkanPasMP}
@@ -4503,9 +4503,9 @@ const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling
 function GetVulkanPasMP:TPasMP;
 {$endif}
 
-function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TVkUInt32):TVkFormat;
-function VulkanGetFormatFromOpenGLType(const aType,aNumComponents:TVkUInt32;const aNormalized:boolean):TVkFormat;
-function VulkanGetFormatFromOpenGLInternalFormat(const aInternalFormat:TVkUInt32):TVkFormat;
+function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TUInt32):TVkFormat;
+function VulkanGetFormatFromOpenGLType(const aType,aNumComponents:TUInt32;const aNormalized:boolean):TVkFormat;
+function VulkanGetFormatFromOpenGLInternalFormat(const aInternalFormat:TUInt32):TVkFormat;
 
 function VulkanGetFormatSize(const aFormat:TVkFormat):TVulkanFormatSize;
 
@@ -4529,9 +4529,9 @@ procedure VulkanSetImageLayout(const aImage:TVkImage;
 
 procedure VulkanDisableFloatingPointExceptions;
 
-function VulkanSpritePoint(const x,y:TVkFloat):TVulkanSpritePoint;
-function VulkanSpriteRect(const Left,Top,Right,Bottom:TVkFloat):TVulkanSpriteRect;
-function VulkanSpriteColor(const r,g,b,a:TVkFloat):TVulkanSpriteColor;
+function VulkanSpritePoint(const x,y:TFloat):TVulkanSpritePoint;
+function VulkanSpriteRect(const Left,Top,Right,Bottom:TFloat):TVulkanSpriteRect;
+function VulkanSpriteColor(const r,g,b,a:TFloat):TVulkanSpriteColor;
 
 implementation
 
@@ -4543,7 +4543,7 @@ const suDONOTKNOW=-1;
       ucACCEPT=0;
       ucERROR=16;
 
-      VulkanUTF8DFACharClasses:array[TVulkanRawByteChar] of TVkUInt8=
+      VulkanUTF8DFACharClasses:array[TVulkanRawByteChar] of TUInt8=
        (
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -4563,7 +4563,7 @@ const suDONOTKNOW=-1;
         5,5,5,5,5,5,5,5,6,6,6,6,7,7,8,8
        );
 
-     VulkanUTF8DFATransitions:array[TVkUInt8] of TVkUInt8=
+     VulkanUTF8DFATransitions:array[TUInt8] of TUInt8=
       (
        0,16,16,32,48,64,80,96,16,16,16,16,16,16,16,16,
        16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
@@ -4585,7 +4585,7 @@ const suDONOTKNOW=-1;
 
       BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
 
-      MipMapLevels:array[boolean] of TVkInt32=(1,-1);
+      MipMapLevels:array[boolean] of TInt32=(1,-1);
 
       CELL_EMPTY=-1;
       CELL_DELETED=-2;
@@ -4916,19 +4916,19 @@ const suDONOTKNOW=-1;
 {$i PasVulkanAssets.inc}
 
 type PUInt32Array=^TUInt32Array;
-     TUInt32Array=array[0..65535] of TVkUInt32;
+     TUInt32Array=array[0..65535] of TUInt32;
 
 {$ifdef PasVulkanPasMP}
 function GetVulkanPasMP:TPasMP;
 begin
- result:=TVkPointer(TPasMPInterlocked.Read(TVkPointer(VulkanPasMP)));
+ result:=TPointer(TPasMPInterlocked.Read(TPointer(VulkanPasMP)));
  if not assigned(result) then begin
   VulkanPasMPLock.Acquire;
   try
-   result:=TVkPointer(TPasMPInterlocked.Read(TVkPointer(VulkanPasMP)));
+   result:=TPointer(TPasMPInterlocked.Read(TPointer(VulkanPasMP)));
    if not assigned(result) then begin
     result:=TPasMP.GetGlobalInstance;
-    TPasMPInterlocked.Write(TVkPointer(VulkanPasMP),TVkPointer(result));
+    TPasMPInterlocked.Write(TPointer(VulkanPasMP),TPointer(result));
    end;
   finally
    VulkanPasMPLock.Release;
@@ -4937,7 +4937,7 @@ begin
 end;
 {$endif}
 
-function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TVkUInt32):TVkFormat;
+function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TUInt32):TVkFormat;
 begin
  case aType of
   GL_UNSIGNED_BYTE:begin
@@ -5676,7 +5676,7 @@ begin
  end;
 end;
 
-function VulkanGetFormatFromOpenGLType(const aType,aNumComponents:TVkUInt32;const aNormalized:boolean):TVkFormat;
+function VulkanGetFormatFromOpenGLType(const aType,aNumComponents:TUInt32;const aNormalized:boolean):TVkFormat;
 begin
  case aType of
   GL_UNSIGNED_BYTE:begin
@@ -6022,7 +6022,7 @@ begin
  end;
 end;
 
-function VulkanGetFormatFromOpenGLInternalFormat(const aInternalFormat:TVkUInt32):TVkFormat;
+function VulkanGetFormatFromOpenGLInternalFormat(const aInternalFormat:TUInt32):TVkFormat;
 begin
  case aInternalFormat of
   GL_R8:begin
@@ -6960,12 +6960,12 @@ begin
  end;
 end;
 
-function HashData(const Data:TVkPointer;const DataLength:TVkUInt32):TVkUInt32;
-const m=TVkUInt32($57559429);
-      n=TVkUInt32($5052acdb);
-var b:PVkUInt8;
-    h,k,len:TVkUInt32;
-    p:TVkUInt64;
+function HashData(const Data:TPointer;const DataLength:TUInt32):TUInt32;
+const m=TUInt32($57559429);
+      n=TUInt32($5052acdb);
+var b:PUInt8;
+    h,k,len:TUInt32;
+    p:TUInt64;
 begin
  Len:=DataLength;
  h:=len;
@@ -6974,52 +6974,52 @@ begin
   b:=Data;
   while len>7 do begin
    begin
-    p:=TVkUInt32(TVkPointer(b)^)*UInt64(n);
-    h:=h xor TVkUInt32(p and $ffffffff);
-    k:=k xor TVkUInt32(p shr 32);
+    p:=TUInt32(TPointer(b)^)*UInt64(n);
+    h:=h xor TUInt32(p and $ffffffff);
+    k:=k xor TUInt32(p shr 32);
     inc(b,4);
    end;
    begin
-    p:=TVkUInt32(TVkPointer(b)^)*UInt64(m);
-    k:=k xor TVkUInt32(p and $ffffffff);
-    h:=h xor TVkUInt32(p shr 32);
+    p:=TUInt32(TPointer(b)^)*UInt64(m);
+    k:=k xor TUInt32(p and $ffffffff);
+    h:=h xor TUInt32(p shr 32);
     inc(b,4);
    end;
    dec(len,8);
   end;
   if len>3 then begin
-   p:=TVkUInt32(TVkPointer(b)^)*UInt64(n);
-   h:=h xor TVkUInt32(p and $ffffffff);
-   k:=k xor TVkUInt32(p shr 32);
+   p:=TUInt32(TPointer(b)^)*UInt64(n);
+   h:=h xor TUInt32(p and $ffffffff);
+   k:=k xor TUInt32(p shr 32);
    inc(b,4);
    dec(len,4);
   end;
   if len>0 then begin
    if len>1 then begin
-    p:=word(TVkPointer(b)^);
+    p:=word(TPointer(b)^);
     inc(b,2);
     dec(len,2);
    end else begin
     p:=0;
    end;
    if len>0 then begin
-    p:=p or (TVkUInt8(b^) shl 16);
+    p:=p or (TUInt8(b^) shl 16);
    end;
-   p:=p*TVkUInt64(m);
-   k:=k xor TVkUInt32(p and $ffffffff);
-   h:=h xor TVkUInt32(p shr 32);
+   p:=p*TUInt64(m);
+   k:=k xor TUInt32(p and $ffffffff);
+   h:=h xor TUInt32(p shr 32);
   end;
  end;
  begin
-  p:=(h xor (k+n))*TVkUInt64(n);
-  h:=h xor TVkUInt32(p and $ffffffff);
-  k:=k xor TVkUInt32(p shr 32);
+  p:=(h xor (k+n))*TUInt64(n);
+  h:=h xor TUInt32(p and $ffffffff);
+  k:=k xor TUInt32(p shr 32);
  end;
  result:=k xor h;
 end;
 
 {$ifndef HasSAR}
-function SARLongint(Value,Shift:TVkInt32):TVkInt32;
+function SARLongint(Value,Shift:TInt32):TInt32;
 {$ifdef cpu386}
 {$ifdef fpc} assembler; register; //inline;
 asm
@@ -7040,21 +7040,21 @@ end;// ['r0','R1'];
 {$else}{$ifdef CAN_INLINE}inline;{$endif}
 begin
  Shift:=Shift and 31;
- result:=(TVkUInt32(Value) shr Shift) or (TVkUInt32(TVkInt32(TVkUInt32(0-TVkUInt32(TVkUInt32(Value) shr 31)) and TVkUInt32(0-TVkUInt32(ord(Shift<>0) and 1)))) shl (32-Shift));
+ result:=(TUInt32(Value) shr Shift) or (TUInt32(TInt32(TUInt32(0-TUInt32(TUInt32(Value) shr 31)) and TUInt32(0-TUInt32(ord(Shift<>0) and 1)))) shl (32-Shift));
 end;
 {$endif}
 {$endif}
 {$endif}
 
 {$ifndef HasSAR}
-function SARInt64(Value:TVkInt64;Shift:TVkInt32):TVkInt64;{$ifdef UseRegister}register;{$endif}{$ifdef CAN_INLINE}inline;{$endif}
+function SARInt64(Value:TInt64;Shift:TInt32):TInt64;{$ifdef UseRegister}register;{$endif}{$ifdef CAN_INLINE}inline;{$endif}
 begin
  Shift:=Shift and 63;
- result:=TVkInt64(TVkUInt64(TVkUInt64(TVkUInt64(Value) shr Shift) or (TVkUInt64(TVkInt64(TVkUInt64(0-TVkUInt64(TVkUInt64(Value) shr 63)) and TVkUInt64(TVkInt64(0-(ord(Shift<>0) and 1))))) shl (64-Shift))));
+ result:=TInt64(TUInt64(TUInt64(TUInt64(Value) shr Shift) or (TUInt64(TInt64(TUInt64(0-TUInt64(TUInt64(Value) shr 63)) and TUInt64(TInt64(0-(ord(Shift<>0) and 1))))) shl (64-Shift))));
 end;
 {$endif}
 
-function RoundUpToPowerOfTwo(x:TVkUInt32):TVkUInt32;
+function RoundUpToPowerOfTwo(x:TUInt32):TUInt32;
 begin
  dec(x);
  x:=x or (x shr 1);
@@ -7065,8 +7065,8 @@ begin
  result:=x+1;
 end;
 
-function MulFix(a,b:TVkInt32):TVkInt32;
-var s:TVkInt32;
+function MulFix(a,b:TInt32):TInt32;
+var s:TInt32;
 begin
  s:=1;
  if a<0 then begin
@@ -7077,15 +7077,15 @@ begin
   b:=-b;
   s:=-s;
  end;
- result:=((TVkInt64(a)*TVkInt64(b))+$8000) div 65536;
+ result:=((TInt64(a)*TInt64(b))+$8000) div 65536;
  if s<0 then begin
   result:=-result;
  end;
 end;
 
-function SQRTFixed(x:TVkInt32):TVkInt32;
-var rh,rl,td:TVkUInt32;
-    c:TVkInt32;
+function SQRTFixed(x:TInt32):TInt32;
+var rh,rl,td:TUInt32;
+    c:TInt32;
 begin
  result:=0;
  if x>0 then begin
@@ -7106,7 +7106,7 @@ begin
  end;
 end;
 
-function MSB(v:TVkUInt32):TVkInt32;
+function MSB(v:TUInt32):TInt32;
 begin
  result:=0;
  if (v and $ffff0000)<>0 then begin
@@ -7130,8 +7130,8 @@ begin
  end;
 end;
 
-procedure Transform(var x,y:TVkInt32;xx,yx,xy,yy:TVkInt32);
-var xz,yz:TVkInt32;
+procedure Transform(var x,y:TInt32;xx,yx,xy,yy:TInt32);
+var xz,yz:TInt32;
 begin
  xz:=MulFix(x,xx)+MulFix(y,xy);
  yz:=MulFix(x,yx)+MulFix(y,yy);
@@ -7139,8 +7139,8 @@ begin
  y:=yz;
 end;
 
-function isqrt(x:TVkUInt32):TVkUInt32;
-const isqrtLookUpTable:array[0..1023] of TVkUInt32=(
+function isqrt(x:TUInt32):TUInt32;
+const isqrtLookUpTable:array[0..1023] of TUInt32=(
        0,2048,2896,3547,4096,4579,5017,5418,5793,6144,6476,6792,7094,7384,7663,7932,8192,8444,
        8689,8927,9159,9385,9606,9822,10033,10240,10443,10642,10837,11029,11217,11403,11585,
        11765,11942,12116,12288,12457,12625,12790,12953,13114,13273,13430,13585,13738,13890,
@@ -7214,7 +7214,7 @@ const isqrtLookUpTable:array[0..1023] of TVkUInt32=(
        64276,64309,64341,64374,64406,64439,64471,64504,64536,64569,64601,64634,64666,64699,
        64731,64763,64796,64828,64861,64893,64925,64957,64990,65022,65054,65086,65119,65151,
        65183,65215,65247,65279,65312,65344,65376,65408,65440,65472,65504);
-      isqrtBitSliderLookUpTable:array[TVkUInt8] of TVkUInt8=(
+      isqrtBitSliderLookUpTable:array[TUInt8] of TUInt8=(
        0,0,1,1,2,2,2,2,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
        5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
        6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
@@ -7223,8 +7223,8 @@ const isqrtLookUpTable:array[0..1023] of TVkUInt32=(
        7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
        7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
        7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7);
-var bit:TVkInt32;
-    t,shift:TVkUInt32;
+var bit:TInt32;
+    t,shift:TUInt32;
 begin
  t:=x;
  shift:=11;
@@ -7253,7 +7253,7 @@ begin
  result:=isqrtLookUpTable[x] shr shift;
 end;
 
-function VulkanIntLog2(aValue:TVkUInt32):TVkUInt32;{$ifdef fpc}{$ifdef caninline}inline;{$endif}
+function VulkanIntLog2(aValue:TUInt32):TUInt32;{$ifdef fpc}{$ifdef caninline}inline;{$endif}
 begin
  if aValue<>0 then begin
   result:=BSRWord(aValue);
@@ -7326,7 +7326,7 @@ begin
 end;
 
 {$if defined(fpc)}
-function CTZDWord(Value:TVkUInt32):TVkUInt8; inline;
+function CTZDWord(Value:TUInt32):TUInt8; inline;
 begin
  if Value=0 then begin
   result:=32;
@@ -7336,7 +7336,7 @@ begin
 end;
 {$elseif defined(cpu386)}
 {$ifndef fpc}
-function CTZDWord(Value:TVkUInt32):TVkUInt8; assembler; register; {$ifdef fpc}nostackframe;{$endif}
+function CTZDWord(Value:TUInt32):TUInt8; assembler; register; {$ifdef fpc}nostackframe;{$endif}
 asm
  bsf eax,eax
  jnz @Done
@@ -7346,7 +7346,7 @@ end;
 {$endif}
 {$elseif defined(cpux86_64)}
 {$ifndef fpc}
-function CTZDWord(Value:TVkUInt32):TVkUInt8; assembler; register; {$ifdef fpc}nostackframe;{$endif}
+function CTZDWord(Value:TUInt32):TUInt8; assembler; register; {$ifdef fpc}nostackframe;{$endif}
 asm
 {$ifndef fpc}
  .NOFRAME
@@ -7362,51 +7362,51 @@ asm
 end;
 {$endif}
 {$elseif not defined(fpc)}
-function CTZDWord(Value:TVkUInt32):TVkUInt8;
-const CTZDebruijn32Multiplicator=TVkUInt32($077cb531);
+function CTZDWord(Value:TUInt32):TUInt8;
+const CTZDebruijn32Multiplicator=TUInt32($077cb531);
       CTZDebruijn32Shift=27;
       CTZDebruijn32Mask=31;
-      CTZDebruijn32Table:array[0..31] of TVkUInt8=(0,1,28,2,29,14,24,3,30,22,20,15,25,17,4,8,31,27,13,23,21,19,16,7,26,12,18,6,11,5,10,9);
+      CTZDebruijn32Table:array[0..31] of TUInt8=(0,1,28,2,29,14,24,3,30,22,20,15,25,17,4,8,31,27,13,23,21,19,16,7,26,12,18,6,11,5,10,9);
 begin
  if Value=0 then begin
   result:=32;
  end else begin
-  result:=CTZDebruijn32Table[((TVkUInt32(Value and (-Value))*CTZDebruijn32Multiplicator) shr CTZDebruijn32Shift) and CTZDebruijn32Mask];
+  result:=CTZDebruijn32Table[((TUInt32(Value and (-Value))*CTZDebruijn32Multiplicator) shr CTZDebruijn32Shift) and CTZDebruijn32Mask];
  end;
 end;
 {$ifend}
 
-type TSortCompareFunction=function(const a,b:TVkPointer):TVkInt32;
+type TSortCompareFunction=function(const a,b:TPointer):TInt32;
 
-procedure MemorySwap(pA,pB:TVkPointer;pSize:TVkInt32);
-var Temp:TVkInt32;
+procedure MemorySwap(pA,pB:TPointer;pSize:TInt32);
+var Temp:TInt32;
 begin
- while pSize>=SizeOf(TVkInt32) do begin
-  Temp:=TVkUInt32(pA^);
-  TVkUInt32(pA^):=TVkUInt32(pB^);
-  TVkUInt32(pB^):=Temp;
-  inc(TVkPtrUInt(pA),SizeOf(TVkUInt32));
-  inc(TVkPtrUInt(pB),SizeOf(TVkUInt32));
-  dec(pSize,SizeOf(TVkUInt32));
+ while pSize>=SizeOf(TInt32) do begin
+  Temp:=TUInt32(pA^);
+  TUInt32(pA^):=TUInt32(pB^);
+  TUInt32(pB^):=Temp;
+  inc(TPtrUInt(pA),SizeOf(TUInt32));
+  inc(TPtrUInt(pB),SizeOf(TUInt32));
+  dec(pSize,SizeOf(TUInt32));
  end;
- while pSize>=SizeOf(TVkUInt8) do begin
-  Temp:=TVkUInt8(pA^);
-  TVkUInt8(pA^):=TVkUInt8(pB^);
-  TVkUInt8(pB^):=Temp;
-  inc(TVkPtrUInt(pA),SizeOf(TVkUInt8));
-  inc(TVkPtrUInt(pB),SizeOf(TVkUInt8));
-  dec(pSize,SizeOf(TVkUInt8));
+ while pSize>=SizeOf(TUInt8) do begin
+  Temp:=TUInt8(pA^);
+  TUInt8(pA^):=TUInt8(pB^);
+  TUInt8(pB^):=Temp;
+  inc(TPtrUInt(pA),SizeOf(TUInt8));
+  inc(TPtrUInt(pB),SizeOf(TUInt8));
+  dec(pSize,SizeOf(TUInt8));
  end;
 end;
 
-procedure DirectIntroSort(const pItems:TVkPointer;const pLeft,pRight,pElementSize:TVkInt32;const pCompareFunc:TSortCompareFunction);
+procedure DirectIntroSort(const pItems:TPointer;const pLeft,pRight,pElementSize:TInt32;const pCompareFunc:TSortCompareFunction);
 type PByteArray=^TByteArray;
-     TByteArray=array[0..$3fffffff] of TVkUInt8;
+     TByteArray=array[0..$3fffffff] of TUInt8;
      PStackItem=^TStackItem;
      TStackItem=record
-      Left,Right,Depth:TVkInt32;
+      Left,Right,Depth:TInt32;
      end;
-var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TVkInt32;
+var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TInt32;
     StackItem:PStackItem;
     Stack:array[0..31] of TStackItem;
 begin
@@ -7416,7 +7416,7 @@ begin
   StackItem^.Right:=pRight;
   StackItem^.Depth:=VulkanIntLog2((pRight-pLeft)+1) shl 1;
   inc(StackItem);
-  while TVkPtrUInt(TVkPointer(StackItem))>TVkPtrUInt(TVkPointer(@Stack[0])) do begin
+  while TPtrUInt(TPointer(StackItem))>TPtrUInt(TPointer(@Stack[0])) do begin
    dec(StackItem);
    Left:=StackItem^.Left;
    Right:=StackItem^.Right;
@@ -7430,7 +7430,7 @@ begin
      iC:=iB;
      while (iA>=Left) and
            (iC>=Left) and
-           (pCompareFunc(TVkPointer(@PByteArray(pItems)^[iA*pElementSize]),TVkPointer(@PByteArray(pItems)^[iC*pElementSize]))>0) do begin
+           (pCompareFunc(TPointer(@PByteArray(pItems)^[iA*pElementSize]),TPointer(@PByteArray(pItems)^[iC*pElementSize]))>0) do begin
       MemorySwap(@PByteArray(pItems)^[iA*pElementSize],@PByteArray(pItems)^[iC*pElementSize],pElementSize);
       dec(iA);
       dec(iC);
@@ -7439,7 +7439,7 @@ begin
      inc(iB);
     end;
    end else begin
-    if (Depth=0) or (TVkPtrUInt(TVkPointer(StackItem))>=TVkPtrUInt(TVkPointer(@Stack[high(Stack)-1]))) then begin
+    if (Depth=0) or (TPtrUInt(TPointer(StackItem))>=TPtrUInt(TPointer(@Stack[high(Stack)-1]))) then begin
      // Heap sort
      i:=Size div 2;
      repeat
@@ -7457,10 +7457,10 @@ begin
       repeat
        Child:=(Parent*2)+1;
        if Child<Size then begin
-        if (Child<(Size-1)) and (pCompareFunc(TVkPointer(@PByteArray(pItems)^[(Left+Child)*pElementSize]),TVkPointer(@PByteArray(pItems)^[(Left+Child+1)*pElementSize]))<0) then begin
+        if (Child<(Size-1)) and (pCompareFunc(TPointer(@PByteArray(pItems)^[(Left+Child)*pElementSize]),TPointer(@PByteArray(pItems)^[(Left+Child+1)*pElementSize]))<0) then begin
          inc(Child);
         end;
-        if pCompareFunc(TVkPointer(@PByteArray(pItems)^[(Left+Parent)*pElementSize]),TVkPointer(@PByteArray(pItems)^[(Left+Child)*pElementSize]))<0 then begin
+        if pCompareFunc(TPointer(@PByteArray(pItems)^[(Left+Parent)*pElementSize]),TPointer(@PByteArray(pItems)^[(Left+Child)*pElementSize]))<0 then begin
          MemorySwap(@PByteArray(pItems)^[(Left+Parent)*pElementSize],@PByteArray(pItems)^[(Left+Child)*pElementSize],pElementSize);
          Parent:=Child;
          continue;
@@ -7473,13 +7473,13 @@ begin
      // Quick sort width median-of-three optimization
      Middle:=Left+((Right-Left) shr 1);
      if (Right-Left)>3 then begin
-      if pCompareFunc(TVkPointer(@PByteArray(pItems)^[Left*pElementSize]),TVkPointer(@PByteArray(pItems)^[Middle*pElementSize]))>0 then begin
+      if pCompareFunc(TPointer(@PByteArray(pItems)^[Left*pElementSize]),TPointer(@PByteArray(pItems)^[Middle*pElementSize]))>0 then begin
        MemorySwap(@PByteArray(pItems)^[Left*pElementSize],@PByteArray(pItems)^[Middle*pElementSize],pElementSize);
       end;
-      if pCompareFunc(TVkPointer(@PByteArray(pItems)^[Left*pElementSize]),TVkPointer(@PByteArray(pItems)^[Right*pElementSize]))>0 then begin
+      if pCompareFunc(TPointer(@PByteArray(pItems)^[Left*pElementSize]),TPointer(@PByteArray(pItems)^[Right*pElementSize]))>0 then begin
        MemorySwap(@PByteArray(pItems)^[Left*pElementSize],@PByteArray(pItems)^[Right*pElementSize],pElementSize);
       end;
-      if pCompareFunc(TVkPointer(@PByteArray(pItems)^[Middle*pElementSize]),TVkPointer(@PByteArray(pItems)^[Right*pElementSize]))>0 then begin
+      if pCompareFunc(TPointer(@PByteArray(pItems)^[Middle*pElementSize]),TPointer(@PByteArray(pItems)^[Right*pElementSize]))>0 then begin
        MemorySwap(@PByteArray(pItems)^[Middle*pElementSize],@PByteArray(pItems)^[Right*pElementSize],pElementSize);
       end;
      end;
@@ -7487,10 +7487,10 @@ begin
      i:=Left;
      j:=Right;
      repeat
-      while (i<Right) and (pCompareFunc(TVkPointer(@PByteArray(pItems)^[i*pElementSize]),TVkPointer(@PByteArray(pItems)^[Pivot*pElementSize]))<0) do begin
+      while (i<Right) and (pCompareFunc(TPointer(@PByteArray(pItems)^[i*pElementSize]),TPointer(@PByteArray(pItems)^[Pivot*pElementSize]))<0) do begin
        inc(i);
       end;
-      while (j>=i) and (pCompareFunc(TVkPointer(@PByteArray(pItems)^[j*pElementSize]),TVkPointer(@PByteArray(pItems)^[Pivot*pElementSize]))>0) do begin
+      while (j>=i) and (pCompareFunc(TPointer(@PByteArray(pItems)^[j*pElementSize]),TPointer(@PByteArray(pItems)^[Pivot*pElementSize]))>0) do begin
        dec(j);
       end;
       if i>j then begin
@@ -7526,15 +7526,15 @@ begin
  end;
 end;
 
-procedure IndirectIntroSort(const pItems:TVkPointer;const pLeft,pRight:TVkInt32;const pCompareFunc:TSortCompareFunction);
+procedure IndirectIntroSort(const pItems:TPointer;const pLeft,pRight:TInt32;const pCompareFunc:TSortCompareFunction);
 type PPointers=^TPointers;
-     TPointers=array[0..$ffff] of TVkPointer;
+     TPointers=array[0..$ffff] of TPointer;
      PStackItem=^TStackItem;
      TStackItem=record
-      Left,Right,Depth:TVkInt32;
+      Left,Right,Depth:TInt32;
      end;
-var Left,Right,Depth,i,j,Middle,Size,Parent,Child:TVkInt32;
-    Pivot,Temp:TVkPointer;
+var Left,Right,Depth,i,j,Middle,Size,Parent,Child:TInt32;
+    Pivot,Temp:TPointer;
     StackItem:PStackItem;
     Stack:array[0..31] of TStackItem;
 begin
@@ -7544,7 +7544,7 @@ begin
   StackItem^.Right:=pRight;
   StackItem^.Depth:=VulkanIntLog2((pRight-pLeft)+1) shl 1;
   inc(StackItem);
-  while TVkPtrUInt(TVkPointer(StackItem))>TVkPtrUInt(TVkPointer(@Stack[0])) do begin
+  while TPtrUInt(TPointer(StackItem))>TPtrUInt(TPointer(@Stack[0])) do begin
    dec(StackItem);
    Left:=StackItem^.Left;
    Right:=StackItem^.Right;
@@ -7564,7 +7564,7 @@ begin
      end;
     end;
    end else begin
-    if (Depth=0) or (TVkPtrUInt(TVkPointer(StackItem))>=TVkPtrUInt(TVkPointer(@Stack[high(Stack)-1]))) then begin
+    if (Depth=0) or (TPtrUInt(TPointer(StackItem))>=TPtrUInt(TPointer(@Stack[high(Stack)-1]))) then begin
      // Heap sort
      i:=Size div 2;
      Temp:=nil;
@@ -7657,10 +7657,10 @@ begin
  end;
 end;
 
-function HashString(const Str:TVulkanRawByteString):TVkUInt32;
+function HashString(const Str:TVulkanRawByteString):TUInt32;
 {$ifdef cpuarm}
 var b:PVulkanRawByteChar;
-    len,h,i:TVkUInt32;
+    len,h,i:TUInt32;
 begin
  result:=2166136261;
  len:=length(Str);
@@ -7668,7 +7668,7 @@ begin
  if len>0 then begin
   b:=PVulkanRawByteChar(Str);
   while len>3 do begin
-   i:=TVkUInt32(TVkPointer(b)^);
+   i:=TUInt32(TPointer(b)^);
    h:=(h xor i) xor $2e63823a;
    inc(h,(h shl 15) or (h shr (32-15)));
    dec(h,(h shl 9) or (h shr (32-9)));
@@ -7681,7 +7681,7 @@ begin
    dec(len,4);
   end;
   if len>1 then begin
-   i:=word(TVkPointer(b)^);
+   i:=word(TPointer(b)^);
    h:=(h xor i) xor $2e63823a;
    inc(h,(h shl 15) or (h shr (32-15)));
    dec(h,(h shl 9) or (h shr (32-9)));
@@ -7694,7 +7694,7 @@ begin
    dec(len,2);
   end;
   if len>0 then begin
-   i:=TVkUInt8(b^);
+   i:=TUInt8(b^);
    h:=(h xor i) xor $2e63823a;
    inc(h,(h shl 15) or (h shr (32-15)));
    dec(h,(h shl 9) or (h shr (32-9)));
@@ -7711,11 +7711,11 @@ begin
  end;
 end;
 {$else}
-const m=TVkUInt32($57559429);
-      n=TVkUInt32($5052acdb);
+const m=TUInt32($57559429);
+      n=TUInt32($5052acdb);
 var b:PVulkanRawByteChar;
-    h,k,len:TVkUInt32;
-    p:TVkUInt64;
+    h,k,len:TUInt32;
+    p:TUInt64;
 begin
  len:=length(Str);
  h:=len;
@@ -7724,46 +7724,46 @@ begin
   b:=PVulkanRawByteChar(Str);
   while len>7 do begin
    begin
-    p:=TVkUInt32(TVkPointer(b)^)*TVkUInt64(n);
-    h:=h xor TVkUInt32(p and $ffffffff);
-    k:=k xor TVkUInt32(p shr 32);
+    p:=TUInt32(TPointer(b)^)*TUInt64(n);
+    h:=h xor TUInt32(p and $ffffffff);
+    k:=k xor TUInt32(p shr 32);
     inc(b,4);
    end;
    begin
-    p:=TVkUInt32(TVkPointer(b)^)*TVkUInt64(m);
-    k:=k xor TVkUInt32(p and $ffffffff);
-    h:=h xor TVkUInt32(p shr 32);
+    p:=TUInt32(TPointer(b)^)*TUInt64(m);
+    k:=k xor TUInt32(p and $ffffffff);
+    h:=h xor TUInt32(p shr 32);
     inc(b,4);
    end;
    dec(len,8);
   end;
   if len>3 then begin
-   p:=TVkUInt32(TVkPointer(b)^)*TVkUInt64(n);
-   h:=h xor TVkUInt32(p and $ffffffff);
-   k:=k xor TVkUInt32(p shr 32);
+   p:=TUInt32(TPointer(b)^)*TUInt64(n);
+   h:=h xor TUInt32(p and $ffffffff);
+   k:=k xor TUInt32(p shr 32);
    inc(b,4);
    dec(len,4);
   end;
   if len>0 then begin
    if len>1 then begin
-    p:=word(TVkPointer(b)^);
+    p:=word(TPointer(b)^);
     inc(b,2);
     dec(len,2);
    end else begin
     p:=0;
    end;
    if len>0 then begin
-    p:=p or (TVkUInt8(b^) shl 16);
+    p:=p or (TUInt8(b^) shl 16);
    end;
-   p:=p*TVkUInt64(m);
-   k:=k xor TVkUInt32(p and $ffffffff);
-   h:=h xor TVkUInt32(p shr 32);
+   p:=p*TUInt64(m);
+   k:=k xor TUInt32(p and $ffffffff);
+   h:=h xor TUInt32(p shr 32);
   end;
  end;
  begin
-  p:=(h xor (k+n))*TVkUInt64(n);
-  h:=h xor TVkUInt32(p and $ffffffff);
-  k:=k xor TVkUInt32(p shr 32);
+  p:=(h xor (k+n))*TUInt64(n);
+  h:=h xor TUInt32(p and $ffffffff);
+  k:=k xor TUInt32(p shr 32);
  end;
  result:=k xor h;
  if result=0 then begin
@@ -7772,24 +7772,24 @@ begin
 end;
 {$endif}
 
-function HashPointer(const p:TVkPointer):TVkUInt32; {$ifdef caninline}inline;{$endif}
+function HashPointer(const p:TPointer):TUInt32; {$ifdef caninline}inline;{$endif}
 {$ifdef cpu64}
-var r:TVkPtrUInt;
+var r:TPtrUInt;
 begin
- r:=TVkPtrUInt(p);
+ r:=TPtrUInt(p);
  r:=(not r)+(r shl 18); // r:=((r shl 18)-r-)1;
  r:=r xor (r shr 31);
  r:=r*21; // r:=(r+(r shl 2))+(r shl 4);
  r:=r xor (r shr 11);
  r:=r+(r shl 6);
- result:=TVkUInt32(TVkPtrUInt(r xor (r shr 22)));
+ result:=TUInt32(TPtrUInt(r xor (r shr 22)));
  if result=0 then begin
   result:=$ffffffff;
  end;
 end;
 {$else}
 begin
- result:=TVkPtrUInt(p);
+ result:=TPtrUInt(p);
  result:=(not result)+(result shl 15);
  result:=result xor (result shr 15);
  inc(result,result shl 2);
@@ -7801,9 +7801,9 @@ begin
 end;
 {$endif}
 
-function HashUInt32(const p:TVkUInt32):TVkUInt32; {$ifdef caninline}inline;{$endif}
+function HashUInt32(const p:TUInt32):TUInt32; {$ifdef caninline}inline;{$endif}
 begin
- result:=TVkUInt32(p);
+ result:=TUInt32(p);
  result:=(not result)+(result shl 15);
  result:=result xor (result shr 15);
  inc(result,result shl 2);
@@ -7814,34 +7814,34 @@ begin
  end;
 end;
 
-function HashUInt64(const p:TVkUInt64):TVkUInt32; {$ifdef caninline}inline;{$endif}
-var r:TVkUInt64;
+function HashUInt64(const p:TUInt64):TUInt32; {$ifdef caninline}inline;{$endif}
+var r:TUInt64;
 begin
- r:=TVkUInt64(p);
+ r:=TUInt64(p);
  r:=(not r)+(r shl 18); // r:=((r shl 18)-r-)1;
  r:=r xor (r shr 31);
  r:=r*21; // r:=(r+(r shl 2))+(r shl 4);
  r:=r xor (r shr 11);
  r:=r+(r shl 6);
- result:=TVkUInt32(TVkUInt64(r xor (r shr 22)));
+ result:=TUInt32(TUInt64(r xor (r shr 22)));
  if result=0 then begin
   result:=$ffffffff;
  end;
 end;
 
-function CombineTwoUInt32IntoOneUInt64(const a,b:TVkUInt32):TVkUInt64; {$ifdef caninline}inline;{$endif}
+function CombineTwoUInt32IntoOneUInt64(const a,b:TUInt32):TUInt64; {$ifdef caninline}inline;{$endif}
 begin
- result:=(TVkUInt64(a) shl 32) or b;
+ result:=(TUInt64(a) shl 32) or b;
 end;
 
-function CRC32(const aData:TVkPointer;const aLength:TVkUInt32):TVkUInt32;
-const CRC32Table:array[0..15] of TVkUInt32=($00000000,$1db71064,$3b6e20c8,$26d930ac,$76dc4190,
+function CRC32(const aData:TPointer;const aLength:TUInt32):TUInt32;
+const CRC32Table:array[0..15] of TUInt32=($00000000,$1db71064,$3b6e20c8,$26d930ac,$76dc4190,
                                             $6b6b51f4,$4db26158,$5005713c,$edb88320,$f00f9344,
                                             $d6d6a3e8,$cb61b38c,$9b64c2b0,$86d3d2d4,$a00ae278,
                                             $bdbdf21c);
 
-var Buf:PVkUInt8;
-    Index:TVkUInt32;
+var Buf:PUInt8;
+    Index:TUInt32;
 begin
  if aLength=0 then begin
   result:=0;
@@ -7868,7 +7868,7 @@ type PDeflateMode=^TDeflateMode;
        dmSlow
       );
 
-function DoDeflate(const aInData:TVkPointer;const aInLen:TVkUInt32;var aDestData:TVkPointer;var aDestLen:TVkUInt32;const aMode:TDeflateMode;const aWithHeader:boolean):boolean;
+function DoDeflate(const aInData:TPointer;const aInLen:TUInt32;var aDestData:TPointer;var aDestLen:TUInt32;const aMode:TDeflateMode;const aWithHeader:boolean):boolean;
 const HashBits=16;
       HashSize=1 shl HashBits;
       HashMask=HashSize-1;
@@ -7878,7 +7878,7 @@ const HashBits=16;
       MinMatch=3;
       MaxMatch=258;
       MaxOffset=32768;
-      MirrorBytes:array[TVkUInt8] of TVkUInt8=
+      MirrorBytes:array[TUInt8] of TUInt8=
        (
         $00,$80,$40,$c0,$20,$a0,$60,$e0,
         $10,$90,$50,$d0,$30,$b0,$70,$f0,
@@ -7913,7 +7913,7 @@ const HashBits=16;
         $0f,$8f,$4f,$cf,$2f,$af,$6f,$ef,
         $1f,$9f,$5f,$df,$3f,$bf,$7f,$ff
        );
-      LengthCodes:array[0..28,0..3] of TVkUInt32=
+      LengthCodes:array[0..28,0..3] of TUInt32=
        ( // Code, ExtraBits, Min, Max
         (257,0,3,3),
         (258,0,4,4),
@@ -7945,7 +7945,7 @@ const HashBits=16;
         (284,5,227,257),
         (285,0,258,258)
        );
-      DistanceCodes:array[0..29,0..3] of TVkUInt32=
+      DistanceCodes:array[0..29,0..3] of TUInt32=
        ( // Code, ExtraBits, Min, Max
         (0,0,1,1),
         (1,0,2,2),
@@ -7980,18 +7980,18 @@ const HashBits=16;
        );
        MultiplyDeBruijnBytePosition:array[0..31] of byte=(0,0,3,0,3,1,3,0,3,2,2,1,3,2,0,1,3,3,1,2,2,2,2,0,3,1,2,0,1,0,1,1);
 type PHashTable=^THashTable;
-     THashTable=array[0..HashSize-1] of PVkUInt8;
+     THashTable=array[0..HashSize-1] of PUInt8;
      PChainTable=^TChainTable;
-     TChainTable=array[0..WindowSize-1] of TVkPointer;
+     TChainTable=array[0..WindowSize-1] of TPointer;
      PThreeBytes=^TThreeBytes;
-     TThreeBytes=array[0..2] of TVkUInt8;
+     TThreeBytes=array[0..2] of TUInt8;
      PBytes=^TBytes;
-     TBytes=array[0..$7ffffffe] of TVkUInt8;
-var OutputBits,CountOutputBits:TVkUInt32;
-    AllocatedDestSize:TVkUInt64;
+     TBytes=array[0..$7ffffffe] of TUInt8;
+var OutputBits,CountOutputBits:TUInt32;
+    AllocatedDestSize:TUInt64;
     LengthCodesLookUpTable,DistanceCodesLookUpTable:TVkInt32Array;
  procedure InitializeLookUpTables;
- var Index,ValueIndex:TVkInt32;
+ var Index,ValueIndex:TInt32;
  begin
   SetLength(LengthCodesLookUpTable,LengthCodes[length(LengthCodes)-1,3]+1);
   SetLength(DistanceCodesLookUpTable,DistanceCodes[length(DistanceCodes)-1,3]+1);
@@ -8006,7 +8006,7 @@ var OutputBits,CountOutputBits:TVkUInt32;
    end;
   end;
  end;
- procedure DoOutputBits(const aBits,aCountBits:TVkUInt32);
+ procedure DoOutputBits(const aBits,aCountBits:TUInt32);
  begin
   Assert((CountOutputBits+aCountBits)<=32);
   OutputBits:=OutputBits or (aBits shl CountOutputBits);
@@ -8022,7 +8022,7 @@ var OutputBits,CountOutputBits:TVkUInt32;
    dec(CountOutputBits,8);
   end;
  end;
- procedure DoOutputLiteral(const aValue:TVkUInt8);
+ procedure DoOutputLiteral(const aValue:TUInt8);
  begin
   case aValue of
    0..143:begin
@@ -8033,8 +8033,8 @@ var OutputBits,CountOutputBits:TVkUInt32;
    end;
   end;
  end;
- procedure DoOutputCopy(const aDistance,aLength:TVkUInt32);
- var Remain,ToDo,Index:TVkUInt32;
+ procedure DoOutputCopy(const aDistance,aLength:TUInt32);
+ var Remain,ToDo,Index:TUInt32;
  begin
   Remain:=aLength;
   while Remain>0 do begin
@@ -8076,11 +8076,11 @@ var OutputBits,CountOutputBits:TVkUInt32;
   DoOutputBits(0,7); // Close block
   DoOutputBits(0,7); // Make sure all bits are flushed
  end;
- function Adler32(const aData:TVkPointer;const aLength:TVkUInt32):TVkUInt32;
+ function Adler32(const aData:TPointer;const aLength:TUInt32):TUInt32;
  const Base=65521;
        MaximumCountAtOnce=5552;
  var Buf:PVulkanRawByteChar;
-     Remain,s1,s2,ToDo,Index:TVkUInt32;
+     Remain,s1,s2,ToDo,Index:TUInt32;
  begin
   s1:=1;
   s2:=0;
@@ -8094,7 +8094,7 @@ var OutputBits,CountOutputBits:TVkUInt32;
    end;
    dec(Remain,ToDo);
    for Index:=1 to ToDo do begin
-    inc(s1,TVkUInt8(Buf^));
+    inc(s1,TUInt8(Buf^));
     inc(s2,s1);
     inc(Buf);
    end;
@@ -8103,16 +8103,16 @@ var OutputBits,CountOutputBits:TVkUInt32;
   end;
   result:=(s2 shl 16) or s1;
  end;
-var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PVkUInt8;
+var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PUInt8;
     BestMatchDistance,BestMatchLength,MatchLength,MaximumMatchLength,CheckSum,Step,MaxSteps,
-    Difference:TVkUInt32;
+    Difference:TUInt32;
     HashTable:PHashTable;
     ChainTable:PChainTable;
-    HashTableItem:PPVkUInt8;
+    HashTableItem:PPUInt8;
     DoCompression,Greedy:boolean;
 begin
  result:=false;
- AllocatedDestSize:=SizeOf(TVkUInt32);
+ AllocatedDestSize:=SizeOf(TUInt32);
  GetMem(aDestData,AllocatedDestSize);
  aDestLen:=0;
  LengthCodesLookUpTable:=nil;
@@ -8148,27 +8148,27 @@ begin
      try
       FillChar(ChainTable^,SizeOf(TChainTable),#0);
       CurrentPointer:=aInData;
-      EndPointer:={%H-}TVkPointer(TVkPtrUInt(TVkPtrUInt(CurrentPointer)+TVkPtrUInt(aInLen)));
-      EndSearchPointer:={%H-}TVkPointer(TVkPtrUInt((TVkPtrUInt(CurrentPointer)+TVkPtrUInt(aInLen))-TVkPtrUInt(TVkInt64(Max(TVkInt64(MinMatch),TVkInt64(SizeOf(TVkUInt32)))))));
-      while {%H-}TVkPtrUInt(CurrentPointer)<{%H-}TVkPtrUInt(EndSearchPointer) do begin
-       HashTableItem:=@HashTable[((((PVkUInt32(TVkPointer(CurrentPointer))^ and TVkUInt32({$if defined(FPC_BIG_ENDIAN)}$ffffff00{$else}$00ffffff{$ifend}){$if defined(FPC_BIG_ENDIAN)}shr 8{$ifend}))*TVkUInt32($1e35a7bd)) shr HashShift) and HashMask];
+      EndPointer:={%H-}TPointer(TPtrUInt(TPtrUInt(CurrentPointer)+TPtrUInt(aInLen)));
+      EndSearchPointer:={%H-}TPointer(TPtrUInt((TPtrUInt(CurrentPointer)+TPtrUInt(aInLen))-TPtrUInt(TInt64(Max(TInt64(MinMatch),TInt64(SizeOf(TUInt32)))))));
+      while {%H-}TPtrUInt(CurrentPointer)<{%H-}TPtrUInt(EndSearchPointer) do begin
+       HashTableItem:=@HashTable[((((PUInt32(TPointer(CurrentPointer))^ and TUInt32({$if defined(FPC_BIG_ENDIAN)}$ffffff00{$else}$00ffffff{$ifend}){$if defined(FPC_BIG_ENDIAN)}shr 8{$ifend}))*TUInt32($1e35a7bd)) shr HashShift) and HashMask];
        Head:=HashTableItem^;
        CurrentPossibleMatch:=Head;
        BestMatchDistance:=0;
        BestMatchLength:=1;
        Step:=0;
        while assigned(CurrentPossibleMatch) and
-             ({%H-}TVkPtrUInt(CurrentPointer)>{%H-}TVkPtrUInt(CurrentPossibleMatch)) and
-             (TVkPtrInt({%H-}TVkPtrUInt({%H-}TVkPtrUInt(CurrentPointer)-{%H-}TVkPtrUInt(CurrentPossibleMatch)))<TVkPtrInt(MaxOffset)) do begin
-        Difference:=PVkUInt32(TVkPointer(@PBytes(CurrentPointer)^[0]))^ xor PVkUInt32(TVkPointer(@PBytes(CurrentPossibleMatch)^[0]))^;
-        if (Difference and TVkUInt32({$if defined(FPC_BIG_ENDIAN)}$ffffff00{$else}$00ffffff{$ifend}))=0 then begin
-         if (BestMatchLength<=({%H-}TVkPtrUInt(EndPointer)-{%H-}TVkPtrUInt(CurrentPointer))) and
+             ({%H-}TPtrUInt(CurrentPointer)>{%H-}TPtrUInt(CurrentPossibleMatch)) and
+             (TPtrInt({%H-}TPtrUInt({%H-}TPtrUInt(CurrentPointer)-{%H-}TPtrUInt(CurrentPossibleMatch)))<TPtrInt(MaxOffset)) do begin
+        Difference:=PUInt32(TPointer(@PBytes(CurrentPointer)^[0]))^ xor PUInt32(TPointer(@PBytes(CurrentPossibleMatch)^[0]))^;
+        if (Difference and TUInt32({$if defined(FPC_BIG_ENDIAN)}$ffffff00{$else}$00ffffff{$ifend}))=0 then begin
+         if (BestMatchLength<=({%H-}TPtrUInt(EndPointer)-{%H-}TPtrUInt(CurrentPointer))) and
             (PBytes(CurrentPointer)^[BestMatchLength-1]=PBytes(CurrentPossibleMatch)^[BestMatchLength-1]) then begin
           MatchLength:=MinMatch;
-          while ({%H-}TVkPtrUInt(@PBytes(CurrentPointer)^[MatchLength+(SizeOf(TVkUInt32)-1)])<{%H-}TVkPtrUInt(EndPointer)) do begin
-           Difference:=PVkUInt32(TVkPointer(@PBytes(CurrentPointer)^[MatchLength]))^ xor PVkUInt32(TVkPointer(@PBytes(CurrentPossibleMatch)^[MatchLength]))^;
+          while ({%H-}TPtrUInt(@PBytes(CurrentPointer)^[MatchLength+(SizeOf(TUInt32)-1)])<{%H-}TPtrUInt(EndPointer)) do begin
+           Difference:=PUInt32(TPointer(@PBytes(CurrentPointer)^[MatchLength]))^ xor PUInt32(TPointer(@PBytes(CurrentPossibleMatch)^[MatchLength]))^;
            if Difference=0 then begin
-            inc(MatchLength,SizeOf(TVkUInt32));
+            inc(MatchLength,SizeOf(TUInt32));
            end else begin
 {$if defined(FPC_BIG_ENDIAN)}
             if (Difference shr 16)<>0 then begin
@@ -8177,20 +8177,20 @@ begin
              inc(MatchLength,2+(not (Difference shr 8)));
             end;
 {$else}
-            inc(MatchLength,MultiplyDeBruijnBytePosition[TVkUInt32(TVkUInt32(Difference and (-Difference))*TVkUInt32($077cb531)) shr 27]);
+            inc(MatchLength,MultiplyDeBruijnBytePosition[TUInt32(TUInt32(Difference and (-Difference))*TUInt32($077cb531)) shr 27]);
 {$ifend}
             break;
            end;
           end;
           if BestMatchLength<MatchLength then begin
-           BestMatchDistance:={%H-}TVkPtrUInt({%H-}TVkPtrUInt(CurrentPointer)-{%H-}TVkPtrUInt(CurrentPossibleMatch));
+           BestMatchDistance:={%H-}TPtrUInt({%H-}TPtrUInt(CurrentPointer)-{%H-}TPtrUInt(CurrentPossibleMatch));
            BestMatchLength:=MatchLength;
           end;
          end;
         end;
         inc(Step);
         if Step<MaxSteps then begin
-         CurrentPossibleMatch:=ChainTable^[({%H-}TVkPtrUInt(CurrentPossibleMatch)-{%H-}TVkPtrUInt(aInData)) and WindowMask];
+         CurrentPossibleMatch:=ChainTable^[({%H-}TPtrUInt(CurrentPossibleMatch)-{%H-}TPtrUInt(aInData)) and WindowMask];
         end else begin
          break;
         end;
@@ -8201,22 +8201,22 @@ begin
         DoOutputLiteral(CurrentPointer^);
        end;
        HashTableItem^:=CurrentPointer;
-       ChainTable^[({%H-}TVkPtrUInt(CurrentPointer)-{%H-}TVkPtrUInt(aInData)) and WindowMask]:=Head;
+       ChainTable^[({%H-}TPtrUInt(CurrentPointer)-{%H-}TPtrUInt(aInData)) and WindowMask]:=Head;
        if Greedy then begin
         inc(CurrentPointer);
         dec(BestMatchLength);
-        while (BestMatchLength>0) and ({%H-}TVkPtrUInt(CurrentPointer)<{%H-}TVkPtrUInt(EndSearchPointer)) do begin
-         HashTableItem:=@HashTable[((((PVkUInt32(TVkPointer(CurrentPointer))^ and TVkUInt32({$if defined(FPC_BIG_ENDIAN)}$ffffff00{$else}$00ffffff{$ifend}){$if defined(FPC_BIG_ENDIAN)}shr 8{$ifend}))*TVkUInt32($1e35a7bd)) shr HashShift) and HashMask];
+        while (BestMatchLength>0) and ({%H-}TPtrUInt(CurrentPointer)<{%H-}TPtrUInt(EndSearchPointer)) do begin
+         HashTableItem:=@HashTable[((((PUInt32(TPointer(CurrentPointer))^ and TUInt32({$if defined(FPC_BIG_ENDIAN)}$ffffff00{$else}$00ffffff{$ifend}){$if defined(FPC_BIG_ENDIAN)}shr 8{$ifend}))*TUInt32($1e35a7bd)) shr HashShift) and HashMask];
          Head:=HashTableItem^;
          HashTableItem^:=CurrentPointer;
-         ChainTable^[({%H-}TVkPtrUInt(CurrentPointer)-{%H-}TVkPtrUInt(aInData)) and WindowMask]:=Head;
+         ChainTable^[({%H-}TPtrUInt(CurrentPointer)-{%H-}TPtrUInt(aInData)) and WindowMask]:=Head;
          inc(CurrentPointer);
          dec(BestMatchLength);
         end;
        end;
        inc(CurrentPointer,BestMatchLength);
       end;
-      while {%H-}TVkPtrUInt(CurrentPointer)<{%H-}TVkPtrUInt(EndPointer) do begin
+      while {%H-}TPtrUInt(CurrentPointer)<{%H-}TPtrUInt(EndPointer) do begin
        DoOutputLiteral(CurrentPointer^);
        inc(CurrentPointer);
       end;
@@ -8273,32 +8273,32 @@ begin
  end;
 end;
 
-function DoInflate(InData:TVkPointer;InLen:TVkUInt32;var DestData:TVkPointer;var DestLen:TVkUInt32;ParseHeader:boolean):boolean;
-const CLCIndex:array[0..18] of TVkUInt8=(16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15);
-type pword=^TVkUInt16;
+function DoInflate(InData:TPointer;InLen:TUInt32;var DestData:TPointer;var DestLen:TUInt32;ParseHeader:boolean):boolean;
+const CLCIndex:array[0..18] of TUInt8=(16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15);
+type pword=^TUInt16;
      PTree=^TTree;
      TTree=packed record
-      Table:array[0..15] of TVkUInt16;
-      Translation:array[0..287] of TVkUInt16;
+      Table:array[0..15] of TUInt16;
+      Translation:array[0..287] of TUInt16;
      end;
      PBuffer=^TBuffer;
-     TBuffer=array[0..65535] of TVkUInt8;
+     TBuffer=array[0..65535] of TUInt8;
      PLengths=^TLengths;
-     TLengths=array[0..288+32-1] of TVkUInt8;
+     TLengths=array[0..288+32-1] of TUInt8;
      POffsets=^TOffsets;
-     TOffsets=array[0..15] of TVkUInt16;
+     TOffsets=array[0..15] of TUInt16;
      PBits=^TBits;
-     TBits=array[0..29] of TVkUInt8;
+     TBits=array[0..29] of TUInt8;
      PBase=^TBase;
-     TBase=array[0..29] of TVkUInt16;
-var Tag,BitCount,DestSize:TVkUInt32;
+     TBase=array[0..29] of TUInt16;
+var Tag,BitCount,DestSize:TUInt32;
     SymbolLengthTree,DistanceTree,FixedSymbolLengthTree,FixedDistanceTree:PTree;
     LengthBits,DistanceBits:PBits;
     LengthBase,DistanceBase:PBase;
     Source,SourceEnd:PVulkanRawByteChar;
     Dest:PVulkanRawByteChar;
- procedure IncSize(length:TVkUInt32);
- var j:TVkUInt32;
+ procedure IncSize(length:TUInt32);
+ var j:TUInt32;
  begin
   if (DestLen+length)>=DestSize then begin
    if DestSize=0 then begin
@@ -8307,16 +8307,16 @@ var Tag,BitCount,DestSize:TVkUInt32;
    while (DestLen+length)>=DestSize do begin
     inc(DestSize,DestSize);
    end;
-   j:=TVkPtrUInt(Dest)-TVkPtrUInt(DestData);
+   j:=TPtrUInt(Dest)-TPtrUInt(DestData);
    ReAllocMem(DestData,DestSize);
-   TVkPtrUInt(Dest):=TVkPtrUInt(DestData)+j;
+   TPtrUInt(Dest):=TPtrUInt(DestData)+j;
   end;
  end;           
- function Adler32(data:TVkPointer;length:TVkUInt32):TVkUInt32;
+ function Adler32(data:TPointer;length:TUInt32):TUInt32;
  const BASE=65521;
        NMAX=5552;
  var buf:PVulkanRawByteChar;
-     s1,s2,k,i:TVkUInt32;
+     s1,s2,k,i:TUInt32;
  begin
   s1:=1;
   s2:=0;
@@ -8329,7 +8329,7 @@ var Tag,BitCount,DestSize:TVkUInt32;
    end;
    dec(length,k);
    for i:=1 to k do begin
-    inc(s1,TVkUInt8(buf^));
+    inc(s1,TUInt8(buf^));
     inc(s2,s1);
     inc(buf);
    end;
@@ -8338,24 +8338,24 @@ var Tag,BitCount,DestSize:TVkUInt32;
   end;
   result:=(s2 shl 16) or s1;
  end;
- procedure BuildBitsBase(Bits:PVulkanRawByteChar;Base:pword;Delta,First:TVkInt32);
- var i,Sum:TVkInt32;
+ procedure BuildBitsBase(Bits:PVulkanRawByteChar;Base:pword;Delta,First:TInt32);
+ var i,Sum:TInt32;
  begin
   for i:=0 to Delta-1 do begin
    Bits[i]:=TVulkanRawByteChar(#0);
   end;
   for i:=0 to (30-Delta)-1 do begin
-   Bits[i+Delta]:=TVulkanRawByteChar(TVkUInt8(i div Delta));
+   Bits[i+Delta]:=TVulkanRawByteChar(TUInt8(i div Delta));
   end;
   Sum:=First;
   for i:=0 to 29 do begin
    Base^:=Sum;
    inc(Base);
-   inc(Sum,1 shl TVkUInt8(Bits[i]));
+   inc(Sum,1 shl TUInt8(Bits[i]));
   end;
  end;
  procedure BuildFixedTrees(var lt,dt:TTree);
- var i:TVkInt32;
+ var i:TInt32;
  begin
   for i:=0 to 6 do begin
    lt.Table[i]:=0;
@@ -8383,10 +8383,10 @@ var Tag,BitCount,DestSize:TVkUInt32;
    dt.Translation[i]:=i;
   end;
  end;
- procedure BuildTree(var t:TTree;Lengths:PVulkanRawByteChar;Num:TVkInt32);
+ procedure BuildTree(var t:TTree;Lengths:PVulkanRawByteChar;Num:TInt32);
  var Offsets:POffsets;
-     i:TVkInt32;
-     Sum:TVkUInt32;
+     i:TInt32;
+     Sum:TUInt32;
  begin
   New(Offsets);
   try
@@ -8394,7 +8394,7 @@ var Tag,BitCount,DestSize:TVkUInt32;
     t.Table[i]:=0;
    end;
    for i:=0 to Num-1 do begin
-    inc(t.Table[TVkUInt8(Lengths[i])]);
+    inc(t.Table[TUInt8(Lengths[i])]);
    end;
    t.Table[0]:=0;
    Sum:=0;
@@ -8404,18 +8404,18 @@ var Tag,BitCount,DestSize:TVkUInt32;
    end;
    for i:=0 to Num-1 do begin
     if lengths[i]<>TVulkanRawByteChar(#0) then begin
-     t.Translation[Offsets^[TVkUInt8(lengths[i])]]:=i;
-     inc(Offsets^[TVkUInt8(lengths[i])]);
+     t.Translation[Offsets^[TUInt8(lengths[i])]]:=i;
+     inc(Offsets^[TUInt8(lengths[i])]);
     end;
    end;
   finally
    Dispose(Offsets);
   end;
  end;
- function GetBit:TVkUInt32;
+ function GetBit:TUInt32;
  begin
   if BitCount=0 then begin
-   Tag:=TVkUInt8(Source^);
+   Tag:=TUInt8(Source^);
    inc(Source);
    BitCount:=7;
   end else begin
@@ -8424,8 +8424,8 @@ var Tag,BitCount,DestSize:TVkUInt32;
   result:=Tag and 1;
   Tag:=Tag shr 1;
  end;
- function ReadBits(Num,Base:TVkUInt32):TVkUInt32;
- var Limit,Mask:TVkUInt32;
+ function ReadBits(Num,Base:TUInt32):TUInt32;
+ var Limit,Mask:TUInt32;
  begin
   result:=0;
   if Num<>0 then begin
@@ -8440,14 +8440,14 @@ var Tag,BitCount,DestSize:TVkUInt32;
   end;
   inc(result,Base);
  end;
- function DecodeSymbol(var t:TTree):TVkUInt32;
- var Sum,c,l:TVkInt32;
+ function DecodeSymbol(var t:TTree):TUInt32;
+ var Sum,c,l:TInt32;
  begin
   Sum:=0;
   c:=0;
   l:=0;
   repeat
-   c:=(c*2)+TVkInt32(GetBit);
+   c:=(c*2)+TInt32(GetBit);
    inc(l);
    inc(Sum,t.Table[l]);
    dec(c,t.Table[l]);
@@ -8457,7 +8457,7 @@ var Tag,BitCount,DestSize:TVkUInt32;
  procedure DecodeTrees(var lt,dt:TTree);
  var CodeTree:PTree;
      Lengths:PLengths;
-     hlit,hdist,hclen,i,num,length,clen,Symbol,Prev:TVkUInt32;
+     hlit,hdist,hclen,i,num,length,clen,Symbol,Prev:TUInt32;
  begin
   New(CodeTree);
   New(Lengths);
@@ -8474,7 +8474,7 @@ var Tag,BitCount,DestSize:TVkUInt32;
     clen:=ReadBits(3,0);
     lengths^[CLCIndex[i-1]]:=clen;
    end;
-   BuildTree(CodeTree^,PVulkanRawByteChar(TVkPointer(@lengths^[0])),19);
+   BuildTree(CodeTree^,PVulkanRawByteChar(TPointer(@lengths^[0])),19);
    num:=0;
    while num<(hlit+hdist) do begin
     Symbol:=DecodeSymbol(CodeTree^);
@@ -8510,16 +8510,16 @@ var Tag,BitCount,DestSize:TVkUInt32;
      end;
     end;
    end;
-   BuildTree(lt,PVulkanRawByteChar(TVkPointer(@lengths^[0])),hlit);
-   BuildTree(dt,PVulkanRawByteChar(TVkPointer(@lengths^[hlit])),hdist);
+   BuildTree(lt,PVulkanRawByteChar(TPointer(@lengths^[0])),hlit);
+   BuildTree(dt,PVulkanRawByteChar(TPointer(@lengths^[hlit])),hdist);
   finally
    Dispose(CodeTree);
    Dispose(Lengths);
   end;
  end;
  function InflateBlockData(var lt,dt:TTree):boolean;
- var Symbol:TVkUInt32;
-     Length,Distance,Offset,i:TVkInt32;
+ var Symbol:TUInt32;
+     Length,Distance,Offset,i:TInt32;
  begin
   result:=false;
   while (Source<SourceEnd) or (BitCount>0) do begin
@@ -8530,7 +8530,7 @@ var Tag,BitCount,DestSize:TVkUInt32;
    end;
    if Symbol<256 then begin
     IncSize(1);
-    Dest^:=TVulkanRawByteChar(TVkUInt8(Symbol));
+    Dest^:=TVulkanRawByteChar(TUInt8(Symbol));
     inc(Dest);
     inc(DestLen);
    end else begin
@@ -8548,11 +8548,11 @@ var Tag,BitCount,DestSize:TVkUInt32;
   end;
  end;
  function InflateUncompressedBlock:boolean;
- var length,invlength:TVkUInt32;
+ var length,invlength:TUInt32;
  begin
   result:=false;
-  length:=(TVkUInt8(source[1]) shl 8) or TVkUInt8(source[0]);
-  invlength:=(TVkUInt8(source[3]) shl 8) or TVkUInt8(source[2]);
+  length:=(TUInt8(source[1]) shl 8) or TUInt8(source[0]);
+  invlength:=(TUInt8(source[3]) shl 8) or TUInt8(source[2]);
   if length<>((not invlength) and $ffff) then begin
    exit;
   end;
@@ -8578,7 +8578,7 @@ var Tag,BitCount,DestSize:TVkUInt32;
  end;
  function Uncompress:boolean;
  var Final,r:boolean;
-     BlockType:TVkUInt32;
+     BlockType:TUInt32;
  begin
   result:=false;
   BitCount:=0;
@@ -8607,17 +8607,17 @@ var Tag,BitCount,DestSize:TVkUInt32;
   result:=true;
  end;
  function UncompressZLIB:boolean;
- var cmf,flg:TVkUInt8;
-     a32:TVkUInt32;
+ var cmf,flg:TUInt8;
+     a32:TUInt32;
  begin
   result:=false;
   Source:=InData;
-  cmf:=TVkUInt8(Source[0]);
-  flg:=TVkUInt8(Source[1]);
+  cmf:=TUInt8(Source[0]);
+  flg:=TUInt8(Source[1]);
   if ((((cmf shl 8)+flg) mod 31)<>0) or ((cmf and $f)<>8) or ((cmf shr 4)>7) or ((flg and $20)<>0) then begin
    exit;
   end;
-  a32:=(TVkUInt8(Source[InLen-4]) shl 24) or (TVkUInt8(Source[InLen-3]) shl 16) or (TVkUInt8(Source[InLen-2]) shl 8) or (TVkUInt8(Source[InLen-1]) shl 0);
+  a32:=(TUInt8(Source[InLen-4]) shl 24) or (TUInt8(Source[InLen-3]) shl 16) or (TUInt8(Source[InLen-2]) shl 8) or (TUInt8(Source[InLen-1]) shl 0);
   inc(Source,2);
   dec(InLen,6);
   SourceEnd:=@Source[InLen];
@@ -8665,8 +8665,8 @@ begin
    end;
    begin
     BuildFixedTrees(FixedSymbolLengthTree^,FixedDistanceTree^);
-    BuildBitsBase(PVulkanRawByteChar(TVkPointer(@LengthBits^[0])),pword(TVkPointer(@LengthBase^[0])),4,3);
-    BuildBitsBase(PVulkanRawByteChar(TVkPointer(@DistanceBits^[0])),pword(TVkPointer(@DistanceBase^[0])),2,1);
+    BuildBitsBase(PVulkanRawByteChar(TPointer(@LengthBits^[0])),pword(TPointer(@LengthBase^[0])),4,3);
+    BuildBitsBase(PVulkanRawByteChar(TPointer(@DistanceBits^[0])),pword(TPointer(@DistanceBase^[0])),2,1);
     LengthBits^[28]:=0;
     LengthBase^[28]:=258;
    end;
@@ -8728,11 +8728,11 @@ type ELoadPNGImage=class(Exception);
        ppfR16G16B16A16
       );
 
-function LoadPNGImage(DataPointer:TVkPointer;DataSize:TVkUInt32;var ImageData:TVkPointer;var ImageWidth,ImageHeight:TVkInt32;const HeaderOnly:boolean;var PixelFormat:TPNGPixelFormat):boolean;
-type TBitsUsed=array[0..7] of TVkUInt32;
+function LoadPNGImage(DataPointer:TPointer;DataSize:TUInt32;var ImageData:TPointer;var ImageWidth,ImageHeight:TInt32;const HeaderOnly:boolean;var PixelFormat:TPNGPixelFormat):boolean;
+type TBitsUsed=array[0..7] of TUInt32;
      PByteArray=^TByteArray;
-     TByteArray=array[0..65535] of TVkUInt8;
-     TColorData=TVkUInt64;
+     TByteArray=array[0..65535] of TUInt8;
+     TColorData=TUInt64;
      TPixelColorType=
       (
        pctUnknown,
@@ -8754,77 +8754,77 @@ type TBitsUsed=array[0..7] of TVkUInt32;
       );
      PPNGPixelUI8=^TPNGPixelUI8;
      TPNGPixelUI8=packed record
-      r,g,b,a:TVkUInt8;
+      r,g,b,a:TUInt8;
      end;
      PPNGPixelUI16=^TPNGPixelUI16;
      TPNGPixelUI16=packed record
-      r,g,b,a:TVkUInt16;
+      r,g,b,a:TUInt16;
      end;
-const StartPoints:array[0..7,0..1] of TVkUInt16=((0,0),(0,0),(4,0),(0,4),(2,0),(0,2),(1,0),(0,1));
-      Delta:array[0..7,0..1] of TVkUInt16=((1,1),(8,8),(8,8),(4,8),(4,4),(2,4),(2,2),(1,2));
+const StartPoints:array[0..7,0..1] of TUInt16=((0,0),(0,0),(4,0),(0,4),(2,0),(0,2),(1,0),(0,1));
+      Delta:array[0..7,0..1] of TUInt16=((1,1),(8,8),(8,8),(4,8),(4,4),(2,4),(2,2),(1,2));
       BitsUsed1Depth:TBitsUsed=($80,$40,$20,$10,$08,$04,$02,$01);
       BitsUsed2Depth:TBitsUsed=($c0,$30,$0c,$03,0,0,0,0);
       BitsUsed4Depth:TBitsUsed=($f0,$0f,0,0,0,0,0,0);
-var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
+var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TPointer;
     PixelColorType:TPixelColorType;
-    ByteWidth:TVkInt32;
-    CountBitsUsed,BitShift:TVkUInt32;
-    BitDepth,StartX,StartY,DeltaX,DeltaY,OutputBitsPerPixel,WidthHeight:TVkInt32;
+    ByteWidth:TInt32;
+    CountBitsUsed,BitShift:TUInt32;
+    BitDepth,StartX,StartY,DeltaX,DeltaY,OutputBitsPerPixel,WidthHeight:TInt32;
     BitsUsed:TBitsUsed;
     SwitchLine,CurrentLine,PreviousLine:PByteArray;
-    CountScanlines,ScanLineLength:array[0..7] of TVkUInt32;
+    CountScanlines,ScanLineLength:array[0..7] of TUInt32;
     ChunkLength,ChunkType,Width,Height,ColorType,Comp,Filter,Interlace,CRC,
-    PalImgBytes,ImgBytes,PaletteSize,l,ml:TVkUInt32;
+    PalImgBytes,ImgBytes,PaletteSize,l,ml:TUInt32;
     First,HasTransparent,CgBI:boolean;
     Palette:array of TPNGPixelUI16;
-    TransparentColor:array of TVkUInt16;
-    i,rx,ry,y{,BitsPerPixel,ImageLineWidth,ImageSize},StartPass,EndPass,d:TVkInt32;
-    idata,DecompressPtr:TVkPointer;
-    idatasize,idatacapacity,idataexpandedsize,LineFilter:TVkUInt32;
-    idataexpanded:TVkPointer;
+    TransparentColor:array of TUInt16;
+    i,rx,ry,y{,BitsPerPixel,ImageLineWidth,ImageSize},StartPass,EndPass,d:TInt32;
+    idata,DecompressPtr:TPointer;
+    idatasize,idatacapacity,idataexpandedsize,LineFilter:TUInt32;
+    idataexpanded:TPointer;
  procedure RaiseError;
  begin
   raise ELoadPNGImage.Create('Invalid or corrupt PNG stream');
  end;
- function Swap16(x:TVkUInt16):TVkUInt16;
+ function Swap16(x:TUInt16):TUInt16;
  begin
   result:=((x and $ff) shl 8) or ((x and $ff00) shr 8);
  end;
- function Swap32(x:TVkUInt32):TVkUInt32;
+ function Swap32(x:TUInt32):TUInt32;
  begin
   result:=(Swap16(x and $ffff) shl 16) or Swap16((x and $ffff0000) shr 16);
  end;
- function Swap64(x:TVkUInt64):TVkUInt64;
+ function Swap64(x:TUInt64):TUInt64;
  begin
-  result:=(TVkUInt64(Swap32(x and TVkUInt64($ffffffff))) shl 32) or Swap32((x and TVkUInt64($ffffffff00000000)) shr 32);
+  result:=(TUInt64(Swap32(x and TUInt64($ffffffff))) shl 32) or Swap32((x and TUInt64($ffffffff00000000)) shr 32);
  end;
- function GetU8(var p:TVkPointer):TVkUInt8;
+ function GetU8(var p:TPointer):TUInt8;
  begin
-  result:=TVkUInt8(p^);
-  inc(PVulkanRawByteChar(p),sizeof(TVkUInt8));
+  result:=TUInt8(p^);
+  inc(PVulkanRawByteChar(p),sizeof(TUInt8));
  end;
- function GetU16(var p:TVkPointer):TVkUInt16;
+ function GetU16(var p:TPointer):TUInt16;
  begin
   result:=GetU8(p) shl 8;
   result:=result or GetU8(p);
  end;
- function GetU32(var p:TVkPointer):TVkUInt32;
+ function GetU32(var p:TPointer):TUInt32;
  begin
   result:=GetU16(p) shl 16;
   result:=result or GetU16(p);
  end;
- procedure HandleScanLine(const y,CurrentPass:TVkInt32;const ScanLine:PByteArray);
- var x,l,pc:TVkInt32;
-     UsingBitGroup,DataIndex:TVkUInt32;
+ procedure HandleScanLine(const y,CurrentPass:TInt32;const ScanLine:PByteArray);
+ var x,l,pc:TInt32;
+     UsingBitGroup,DataIndex:TUInt32;
      c:TColorData;
      pe:TPNGPixelUI16;
      pui8:PPNGPixelUI8;
      pui16:PPNGPixelUI16;
   function CalcColor:TColorData;
-  var i:TVkInt32;
-      p:TVkPointer;
-      w:PVkUInt16;
-      v:TVkUInt16;
+  var i:TInt32;
+      p:TPointer;
+      w:PUInt16;
+      v:TUInt16;
   begin
    if UsingBitGroup=0 then begin
 {$ifdef big_endian}
@@ -8834,16 +8834,16 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
     p:=@CurrentLine^[DataIndex];
     case ByteWidth of
      1:begin
-      result:=TVKUInt8(p^);
+      result:=TUInt8(p^);
      end;
      2:begin
-      result:=TVKUInt16(p^);
+      result:=TUInt16(p^);
      end;
      4:begin
-      result:=TVKUInt32(p^);
+      result:=TUInt32(p^);
      end;
      8:begin
-      result:=TVKUInt64(p^);
+      result:=TUInt64(p^);
      end;
      else begin
       result:=0;
@@ -8854,7 +8854,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
     if BitDepth=16 then begin
      p:=@result;
      w:=p;
-     for i:=1 to ByteWidth div SizeOf(TVkUInt16) do begin
+     for i:=1 to ByteWidth div SizeOf(TUInt16) do begin
       v:=w^;
       w^:=((v and $ff) shl 8) or ((v and $ff00) shr 8);
       inc(w);
@@ -8868,7 +8868,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
     result:=0;
    end;
    if ByteWidth=1 then begin
-    result:=(TVkUInt32(result and BitsUsed[UsingBitGroup]) and $ffffffff) shr (((CountBitsUsed-UsingBitGroup)-1)*BitShift);
+    result:=(TUInt32(result and BitsUsed[UsingBitGroup]) and $ffffffff) shr (((CountBitsUsed-UsingBitGroup)-1)*BitShift);
     inc(UsingBitgroup);
     if UsingBitGroup>=CountBitsUsed then begin
      UsingBitGroup:=0;
@@ -8948,14 +8948,14 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
      pe.a:=$ffff;
     end;
     pctGray8:begin
-     pe.r:=TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+0])^) or (TVkUInt16(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+0])^)) shl 8);
+     pe.r:=TUInt8(TPointer(@CurrentLine^[DataIndex+0])^) or (TUInt16(TUInt8(TPointer(@CurrentLine^[DataIndex+0])^)) shl 8);
      pe.g:=pe.r;
      pe.b:=pe.r;
      pe.a:=$ffff; 
      inc(DataIndex);
     end;
     pctGray16:begin
-     pe.r:=(TVkUInt16(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+0])^)) shl 8) or TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+1])^);
+     pe.r:=(TUInt16(TUInt8(TPointer(@CurrentLine^[DataIndex+0])^)) shl 8) or TUInt8(TPointer(@CurrentLine^[DataIndex+1])^);
      pe.g:=pe.r;
      pe.b:=pe.r;
      pe.a:=$ffff;
@@ -8976,38 +8976,38 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
      pe.a:=c and $ffff;
     end;
     pctColor8:begin
-     pe.r:=TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+0])^) or (TVkUInt16(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+0])^)) shl 8);
-     pe.g:=TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+1])^) or (TVkUInt16(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+1])^)) shl 8);
-     pe.b:=TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+2])^) or (TVkUInt16(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+2])^)) shl 8);
+     pe.r:=TUInt8(TPointer(@CurrentLine^[DataIndex+0])^) or (TUInt16(TUInt8(TPointer(@CurrentLine^[DataIndex+0])^)) shl 8);
+     pe.g:=TUInt8(TPointer(@CurrentLine^[DataIndex+1])^) or (TUInt16(TUInt8(TPointer(@CurrentLine^[DataIndex+1])^)) shl 8);
+     pe.b:=TUInt8(TPointer(@CurrentLine^[DataIndex+2])^) or (TUInt16(TUInt8(TPointer(@CurrentLine^[DataIndex+2])^)) shl 8);
      pe.a:=$ffff;
      inc(DataIndex,3);
     end;
     pctColor16:begin
-     pe.r:=(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+0])^) shl 8) or
-           (TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+1])^) shl 0);
-     pe.g:=(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+2])^) shl 8) or
-           (TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+3])^) shl 0);
-     pe.b:=(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+4])^) shl 8) or
-           (TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+5])^) shl 0);
+     pe.r:=(TUInt8(TPointer(@CurrentLine^[DataIndex+0])^) shl 8) or
+           (TUInt8(TPointer(@CurrentLine^[DataIndex+1])^) shl 0);
+     pe.g:=(TUInt8(TPointer(@CurrentLine^[DataIndex+2])^) shl 8) or
+           (TUInt8(TPointer(@CurrentLine^[DataIndex+3])^) shl 0);
+     pe.b:=(TUInt8(TPointer(@CurrentLine^[DataIndex+4])^) shl 8) or
+           (TUInt8(TPointer(@CurrentLine^[DataIndex+5])^) shl 0);
      pe.a:=$ffff;
      inc(DataIndex,6);
     end;
     pctColorAlpha8:begin
-     pe.r:=TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+0])^) or (TVkUInt16(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+0])^)) shl 8);
-     pe.g:=TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+1])^) or (TVkUInt16(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+1])^)) shl 8);
-     pe.b:=TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+2])^) or (TVkUInt16(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+2])^)) shl 8);
-     pe.a:=TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+3])^) or (TVkUInt16(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+3])^)) shl 8);
+     pe.r:=TUInt8(TPointer(@CurrentLine^[DataIndex+0])^) or (TUInt16(TUInt8(TPointer(@CurrentLine^[DataIndex+0])^)) shl 8);
+     pe.g:=TUInt8(TPointer(@CurrentLine^[DataIndex+1])^) or (TUInt16(TUInt8(TPointer(@CurrentLine^[DataIndex+1])^)) shl 8);
+     pe.b:=TUInt8(TPointer(@CurrentLine^[DataIndex+2])^) or (TUInt16(TUInt8(TPointer(@CurrentLine^[DataIndex+2])^)) shl 8);
+     pe.a:=TUInt8(TPointer(@CurrentLine^[DataIndex+3])^) or (TUInt16(TUInt8(TPointer(@CurrentLine^[DataIndex+3])^)) shl 8);
      inc(DataIndex,4);
     end;
     pctColorAlpha16:begin
-     pe.r:=(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+0])^) shl 8) or
-           (TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+1])^) shl 0);
-     pe.g:=(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+2])^) shl 8) or
-           (TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+3])^) shl 0);
-     pe.b:=(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+4])^) shl 8) or
-           (TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+5])^) shl 0);
-     pe.a:=(TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+6])^) shl 8) or
-           (TVkUInt8(TVkPointer(@CurrentLine^[DataIndex+7])^) shl 0);
+     pe.r:=(TUInt8(TPointer(@CurrentLine^[DataIndex+0])^) shl 8) or
+           (TUInt8(TPointer(@CurrentLine^[DataIndex+1])^) shl 0);
+     pe.g:=(TUInt8(TPointer(@CurrentLine^[DataIndex+2])^) shl 8) or
+           (TUInt8(TPointer(@CurrentLine^[DataIndex+3])^) shl 0);
+     pe.b:=(TUInt8(TPointer(@CurrentLine^[DataIndex+4])^) shl 8) or
+           (TUInt8(TPointer(@CurrentLine^[DataIndex+5])^) shl 0);
+     pe.a:=(TUInt8(TPointer(@CurrentLine^[DataIndex+6])^) shl 8) or
+           (TUInt8(TPointer(@CurrentLine^[DataIndex+7])^) shl 0);
      inc(DataIndex,8);
     end;
     else begin
@@ -9024,14 +9024,14 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
    end;
    case PixelFormat of
     ppfR8G8B8A8:begin
-     pui8:=PPNGPixelUI8(TVkPointer(@PVulkanRawByteChar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI8)]));
+     pui8:=PPNGPixelUI8(TPointer(@PVulkanRawByteChar(ImageData)[((y*TInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI8)]));
      pui8^.r:=pe.r shr 8;
      pui8^.g:=pe.g shr 8;
      pui8^.b:=pe.b shr 8;
      pui8^.a:=pe.a shr 8;
     end;
     ppfR16G16B16A16:begin
-     pui16:=PPNGPixelUI16(TVkPointer(@PVulkanRawByteChar(ImageData)[((y*TVkInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI16)]));
+     pui16:=PPNGPixelUI16(TPointer(@PVulkanRawByteChar(ImageData)[((y*TInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI16)]));
      pui16^.r:=pe.r;
      pui16^.g:=pe.g;
      pui16^.b:=pe.b;
@@ -9044,20 +9044,20 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
   end;
  end;
  procedure CgBISwapBGR2RGBandUnpremultiply;
- var i,b,a:TVkInt32;
+ var i,b,a:TInt32;
      pui8:PPNGPixelUI8;
      pui16:PPNGPixelUI16;
  begin
   case PixelFormat of
    ppfR8G8B8A8:begin
     a:=255;
-    pui8:=PPNGPixelUI8(TVkPointer(@PVulkanRawByteChar(ImageData)[0]));
+    pui8:=PPNGPixelUI8(TPointer(@PVulkanRawByteChar(ImageData)[0]));
     for i:=0 to WidthHeight-1 do begin
      a:=a and pui8^.a;
      inc(pui8);
     end;
     if ((ColorType and 4)<>0) or (a<>255) or HasTransparent then begin
-     pui8:=PPNGPixelUI8(TVkPointer(@PVulkanRawByteChar(ImageData)[0]));
+     pui8:=PPNGPixelUI8(TPointer(@PVulkanRawByteChar(ImageData)[0]));
      for i:=0 to WidthHeight-1 do begin
       a:=pui8^.a;
       if a<>0 then begin
@@ -9073,7 +9073,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
       inc(pui8);
      end;
     end else begin
-     pui8:=PPNGPixelUI8(TVkPointer(@PVulkanRawByteChar(ImageData)[0]));
+     pui8:=PPNGPixelUI8(TPointer(@PVulkanRawByteChar(ImageData)[0]));
      for i:=0 to WidthHeight-1 do begin
       b:=pui8^.b;
       pui8^.b:=pui8^.r;
@@ -9084,13 +9084,13 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
    end;
    ppfR16G16B16A16:begin
     a:=65535;
-    pui16:=PPNGPixelUI16(TVkPointer(@PVulkanRawByteChar(ImageData)[0]));
+    pui16:=PPNGPixelUI16(TPointer(@PVulkanRawByteChar(ImageData)[0]));
     for i:=0 to WidthHeight-1 do begin
      a:=a and pui16^.a;
      inc(pui16);
     end;
     if ((ColorType and 4)<>0) or (a<>65535) or HasTransparent then begin
-     pui16:=PPNGPixelUI16(TVkPointer(@PVulkanRawByteChar(ImageData)[0]));
+     pui16:=PPNGPixelUI16(TPointer(@PVulkanRawByteChar(ImageData)[0]));
      for i:=0 to WidthHeight-1 do begin
       a:=pui16^.a;
       if a<>0 then begin
@@ -9106,7 +9106,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
       inc(pui16);
      end;
     end else begin
-     pui16:=PPNGPixelUI16(TVkPointer(@PVulkanRawByteChar(ImageData)[0]));
+     pui16:=PPNGPixelUI16(TPointer(@PVulkanRawByteChar(ImageData)[0]));
      for i:=0 to WidthHeight-1 do begin
       b:=pui16^.b;
       pui16^.b:=pui16^.r;
@@ -9120,8 +9120,8 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TVkPointer;
    end;
   end;
  end;
- function Paeth(a,b,c:TVkInt32):TVkInt32;
- var p,pa,pb,pc:TVkInt32;
+ function Paeth(a,b,c:TInt32):TInt32;
+ var p,pa,pb,pc:TInt32;
  begin
   p:=(a+b)-c;
   pa:=abs(p-a);
@@ -9181,10 +9181,10 @@ begin
        break;
       end;
       case ChunkType of
-       TVkUInt32((ord('C') shl 24) or (ord('g') shl 16) or (ord('B') shl 8) or ord('I')):begin // CgBI
+       TUInt32((ord('C') shl 24) or (ord('g') shl 16) or (ord('B') shl 8) or ord('I')):begin // CgBI
         CgBI:=true;
        end;
-       TVkUInt32((ord('I') shl 24) or (ord('H') shl 16) or (ord('D') shl 8) or ord('R')):begin // IHDR
+       TUInt32((ord('I') shl 24) or (ord('H') shl 16) or (ord('D') shl 8) or ord('R')):begin // IHDR
         if ChunkLength=13 then begin
          if not First then begin
           result:=false;
@@ -9253,7 +9253,7 @@ begin
          break;
         end;
        end;
-       TVkUInt32((ord('P') shl 24) or (ord('L') shl 16) or (ord('T') shl 8) or ord('E')):begin // PLTE
+       TUInt32((ord('P') shl 24) or (ord('L') shl 16) or (ord('T') shl 8) or ord('E')):begin // PLTE
         if First then begin
          result:=false;
          break;
@@ -9300,13 +9300,13 @@ begin
          end;
         end;
        end;
-       TVkUInt32((ord('t') shl 24) or (ord('R') shl 16) or (ord('N') shl 8) or ord('S')):begin // tRNS
+       TUInt32((ord('t') shl 24) or (ord('R') shl 16) or (ord('N') shl 8) or ord('S')):begin // tRNS
         if First or assigned(idata) then begin
          result:=false;
          break;
         end;
         if PalImgBytes<>0 then begin
-         if (length(Palette)=0) or (TVkInt32(ChunkLength)>length(Palette)) then begin
+         if (length(Palette)=0) or (TInt32(ChunkLength)>length(Palette)) then begin
           result:=false;
           break;
          end;
@@ -9317,8 +9317,8 @@ begin
          end;
         end else begin
          if ChunkLength=ImgBytes then begin
-          SetLength(TransparentColor,TVkInt32(ImgBytes));
-          for i:=0 to TVkInt32(ImgBytes)-1 do begin
+          SetLength(TransparentColor,TInt32(ImgBytes));
+          for i:=0 to TInt32(ImgBytes)-1 do begin
            d:=GetU8(DataPtr);
            TransparentColor[i]:=d or (d shl 8);
           end;
@@ -9328,14 +9328,14 @@ begin
            break;
           end;
           HasTransparent:=true;
-          SetLength(TransparentColor,TVkInt32(ImgBytes));
-          for i:=0 to TVkInt32(ImgBytes)-1 do begin
+          SetLength(TransparentColor,TInt32(ImgBytes));
+          for i:=0 to TInt32(ImgBytes)-1 do begin
            TransparentColor[i]:=GetU16(DataPtr);
           end;
          end;
         end;
        end;
-       TVkUInt32((ord('I') shl 24) or (ord('D') shl 16) or (ord('A') shl 8) or ord('T')):begin // IDAT
+       TUInt32((ord('I') shl 24) or (ord('D') shl 16) or (ord('A') shl 8) or ord('T')):begin // IDAT
         if First or ((PalImgBytes<>0) and (length(Palette)=0)) then begin
          result:=false;
          break;
@@ -9359,7 +9359,7 @@ begin
          inc(idatasize,ChunkLength);
         end;
        end;
-       TVkUInt32((ord('I') shl 24) or (ord('E') shl 16) or (ord('N') shl 8) or ord('D')):begin // IEND
+       TUInt32((ord('I') shl 24) or (ord('E') shl 16) or (ord('N') shl 8) or ord('D')):begin // IEND
         if First or ((PalImgBytes<>0) and (length(Palette)=0)) or not assigned(idata) then begin
          result:=false;
          break;
@@ -9368,7 +9368,7 @@ begin
          result:=false;
          break;
         end;
-//      BitsPerPixel:=TVkInt32(ImgBytes)*BitDepth;
+//      BitsPerPixel:=TInt32(ImgBytes)*BitDepth;
         ImageWidth:=Width;
         ImageHeight:=Height;
         WidthHeight:=Width*Height;
@@ -9382,7 +9382,7 @@ begin
           PixelFormat:=ppfR8G8B8A8;
          end;
         end;
-//      ImageBytesPerPixel:=((TVkInt32(ImgBytes)*TVkInt32(BitDepth))+7) shr 3;
+//      ImageBytesPerPixel:=((TInt32(ImgBytes)*TInt32(BitDepth))+7) shr 3;
 //      ImageLineWidth:=((ImageWidth*BitsPerPixel)+7) shr 3;
 //      ImageSize:=(((ImageWidth*ImageHeight)*BitsPerPixel)+7) shr 3;
         GetMem(ImageData,(((ImageWidth*ImageHeight)*OutputBitsPerPixel)+7) shr 3);
@@ -9534,7 +9534,7 @@ begin
              inc(l);
             end;
            end else begin
-            l:=ScanLineLength[i]*TVkUInt32(ByteWidth);
+            l:=ScanLineLength[i]*TUInt32(ByteWidth);
            end;
            if ml=0 then begin
             GetMem(PreviousLine,l);
@@ -9637,40 +9637,40 @@ begin
  end;
 end;
 
-procedure SavePNGImage(const aImageData:TVkPointer;const aImageWidth,aImageHeight:TVkUInt32;out aDestData:TVkPointer;out aDestDataSize:TVkUInt32;const aImagePixelFormat:TPNGPixelFormat=ppfR8G8B8A8);
+procedure SavePNGImage(const aImageData:TPointer;const aImageWidth,aImageHeight:TUInt32;out aDestData:TPointer;out aDestDataSize:TUInt32;const aImagePixelFormat:TPNGPixelFormat=ppfR8G8B8A8);
 type PPNGHeader=^TPNGHeader;
      TPNGHeader=packed record
-      PNGSignature:array[0..7] of TVkUInt8;
-      IHDRChunkSize:array[0..3] of TVkUInt8;
-      IHDRChunkSignature:array[0..3] of TVkUInt8;
-      IHDRChunkWidth:array[0..3] of TVkUInt8;
-      IHDRChunkHeight:array[0..3] of TVkUInt8;
-      IHDRChunkBitDepth:TVkUInt8;
-      IHDRChunkColorType:TVkUInt8;
-      IHDRChunkCompressionMethod:TVkUInt8;
-      IHDRChunkFilterMethod:TVkUInt8;
-      IHDRChunkInterlaceMethod:TVkUInt8;
-      IHDRChunkCRC32Checksum:array[0..3] of TVkUInt8;
-      sRGBChunkSize:array[0..3] of TVkUInt8;
-      sRGBChunkSignature:array[0..3] of TVkUInt8;
-      sRGBChunkData:TVkUInt8;
-      sRGBChunkCRC32Checksum:array[0..3] of TVkUInt8;
-      gAMAChunkSize:array[0..3] of TVkUInt8;
-      gAMAChunkSignature:array[0..3] of TVkUInt8;
-      gAMAChunkData:array[0..3] of TVkUInt8;
-      gAMAChunkCRC32Checksum:array[0..3] of TVkUInt8;
-      IDATChunkSize:array[0..3] of TVkUInt8;
-      IDATChunkSignature:array[0..3] of TVkUInt8;
+      PNGSignature:array[0..7] of TUInt8;
+      IHDRChunkSize:array[0..3] of TUInt8;
+      IHDRChunkSignature:array[0..3] of TUInt8;
+      IHDRChunkWidth:array[0..3] of TUInt8;
+      IHDRChunkHeight:array[0..3] of TUInt8;
+      IHDRChunkBitDepth:TUInt8;
+      IHDRChunkColorType:TUInt8;
+      IHDRChunkCompressionMethod:TUInt8;
+      IHDRChunkFilterMethod:TUInt8;
+      IHDRChunkInterlaceMethod:TUInt8;
+      IHDRChunkCRC32Checksum:array[0..3] of TUInt8;
+      sRGBChunkSize:array[0..3] of TUInt8;
+      sRGBChunkSignature:array[0..3] of TUInt8;
+      sRGBChunkData:TUInt8;
+      sRGBChunkCRC32Checksum:array[0..3] of TUInt8;
+      gAMAChunkSize:array[0..3] of TUInt8;
+      gAMAChunkSignature:array[0..3] of TUInt8;
+      gAMAChunkData:array[0..3] of TUInt8;
+      gAMAChunkCRC32Checksum:array[0..3] of TUInt8;
+      IDATChunkSize:array[0..3] of TUInt8;
+      IDATChunkSignature:array[0..3] of TUInt8;
      end;
      PPNGFooter=^TPNGFooter;
      TPNGFooter=packed record
-      IDATChunkCRC32Checksum:array[0..3] of TVkUInt8;
-      IENDChunkSize:array[0..3] of TVkUInt8;
-      IENDChunkSignature:array[0..3] of TVkUInt8;
-      IENDChunkCRC32Checksum:array[0..3] of TVkUInt8;
+      IDATChunkCRC32Checksum:array[0..3] of TUInt8;
+      IENDChunkSize:array[0..3] of TUInt8;
+      IENDChunkSignature:array[0..3] of TUInt8;
+      IENDChunkCRC32Checksum:array[0..3] of TUInt8;
      end;
      PBytes=^TBytes;
-     TBytes=array[0..$7ffffffe] of TVkUInt8;
+     TBytes=array[0..$7ffffffe] of TUInt8;
 const PNGHeaderTemplate:TPNGHeader=
        (
         PNGSignature:($89,$50,$4e,$47,$0d,$0a,$1a,$0a);
@@ -9702,8 +9702,8 @@ const PNGHeaderTemplate:TPNGHeader=
         IENDChunkSignature:($49,$45,$4e,$44);
         IENDChunkCRC32Checksum:($ae,$42,$60,$82);
        );
- function Paeth(a,b,c:TVkInt32):TVkInt32;
- var p,pa,pb,pc:TVkInt32;
+ function Paeth(a,b,c:TInt32):TInt32;
+ var p,pa,pb,pc:TInt32;
  begin
   p:=(a+b)-c;
   pa:=abs(p-a);
@@ -9717,8 +9717,8 @@ const PNGHeaderTemplate:TPNGHeader=
    result:=c;
   end;
  end;
- procedure ProcessLineFilter(const aInput,aOutput:PBytes;const aRowSize,aByteWidth,aLineFilterIndex:TVkUInt32);
- var InByteIndex,OutByteIndex,Index:TVkUInt32;
+ procedure ProcessLineFilter(const aInput,aOutput:PBytes;const aRowSize,aByteWidth,aLineFilterIndex:TUInt32);
+ var InByteIndex,OutByteIndex,Index:TUInt32;
  begin
   InByteIndex:=0;
   OutByteIndex:=0;
@@ -9740,7 +9740,7 @@ const PNGHeaderTemplate:TPNGHeader=
    2:begin
     // Up
     for Index:=1 to aRowSize do begin
-     aOutput^[OutByteIndex]:=aInput^[InByteIndex]-aInput^[InByteIndex-TVkUInt32(aRowSize)];
+     aOutput^[OutByteIndex]:=aInput^[InByteIndex]-aInput^[InByteIndex-TUInt32(aRowSize)];
      inc(InByteIndex);
      inc(OutByteIndex);
     end;
@@ -9778,8 +9778,8 @@ const PNGHeaderTemplate:TPNGHeader=
 var PNGHeader:PPNGHeader;
     PNGFooter:PPNGFooter;
     CRC32ChecksumValue,ImageDataSize,RowSize,IDATDataSize,LineIndex,Index,ByteWidth,
-    InByteIndex,OutByteIndex,FakeEntropy,LineFilterIndex,BestFakeEntropy,BestLineFilterIndex:TVkUInt32;
-    ImageData,IDATData:TVkPointer;
+    InByteIndex,OutByteIndex,FakeEntropy,LineFilterIndex,BestFakeEntropy,BestLineFilterIndex:TUInt32;
+    ImageData,IDATData:TPointer;
 begin
  case aImagePixelFormat of
   ppfR8G8B8A8:begin
@@ -9828,9 +9828,9 @@ begin
      FreeMem(ImageData);
      ImageData:=nil;
     end;
-    aDestDataSize:=TVKUInt32(TVKUInt32(SizeOf(TPNGHeader)+SizeOf(TPNGFooter))+IDATDataSize);
+    aDestDataSize:=TUInt32(TUInt32(SizeOf(TPNGHeader)+SizeOf(TPNGFooter))+IDATDataSize);
     GetMem(aDestData,aDestDataSize);
-    PNGHeader:=TVkPointer(@PBytes(aDestData)^[0]);
+    PNGHeader:=TPointer(@PBytes(aDestData)^[0]);
     PNGHeader^:=PNGHeaderTemplate;
     case aImagePixelFormat of
      ppfR8G8B8A8:begin
@@ -9851,7 +9851,7 @@ begin
     PNGHeader^.IHDRChunkHeight[1]:=(aImageHeight shr 16) and $ff;
     PNGHeader^.IHDRChunkHeight[2]:=(aImageHeight shr 8) and $ff;
     PNGHeader^.IHDRChunkHeight[3]:=(aImageHeight shr 0) and $ff;
-    CRC32ChecksumValue:=CRC32(@PNGHeader^.IHDRChunkSignature,{%H-}TVkPtrUInt(TVkPointer(@PPNGHeader(nil)^.IHDRChunkCRC32Checksum))-{%H-}TVkPtrUInt(TVkPointer(@PPNGHeader(nil)^.IHDRChunkSignature)));
+    CRC32ChecksumValue:=CRC32(@PNGHeader^.IHDRChunkSignature,{%H-}TPtrUInt(TPointer(@PPNGHeader(nil)^.IHDRChunkCRC32Checksum))-{%H-}TPtrUInt(TPointer(@PPNGHeader(nil)^.IHDRChunkSignature)));
     PNGHeader^.IHDRChunkCRC32Checksum[0]:=(CRC32ChecksumValue shr 24) and $ff;
     PNGHeader^.IHDRChunkCRC32Checksum[1]:=(CRC32ChecksumValue shr 16) and $ff;
     PNGHeader^.IHDRChunkCRC32Checksum[2]:=(CRC32ChecksumValue shr 8) and $ff;
@@ -9861,7 +9861,7 @@ begin
     PNGHeader^.IDATChunkSize[2]:=(IDATDataSize shr 8) and $ff;
     PNGHeader^.IDATChunkSize[3]:=(IDATDataSize shr 0) and $ff;
     Move(IDATData^,PBytes(aDestData)^[SizeOf(TPNGHeader)],IDATDataSize);
-    PNGFooter:=TVkPointer(@PBytes(aDestData)^[TVkUInt32(SizeOf(TPNGHeader))+IDATDataSize]);
+    PNGFooter:=TPointer(@PBytes(aDestData)^[TUInt32(SizeOf(TPNGHeader))+IDATDataSize]);
     PNGFooter^:=PNGFooterTemplate;
     CRC32ChecksumValue:=CRC32(@PNGHeader^.IDATChunkSignature,IDATDataSize+SizeOf(PPNGHeader(nil)^.IDATChunkSignature));
     PNGFooter.IDATChunkCRC32Checksum[0]:=(CRC32ChecksumValue shr 24) and $ff;
@@ -9881,69 +9881,69 @@ end;
 
 type ELoadJPEGImage=class(Exception);
 
-function LoadJPEGImage(DataPointer:TVkPointer;DataSize:TVkUInt32;var ImageData:TVkPointer;var ImageWidth,ImageHeight:TVkInt32;const HeaderOnly:boolean):boolean;
+function LoadJPEGImage(DataPointer:TPointer;DataSize:TUInt32;var ImageData:TPointer;var ImageWidth,ImageHeight:TInt32;const HeaderOnly:boolean):boolean;
 type PIDCTInputBlock=^TIDCTInputBlock;
-     TIDCTInputBlock=array[0..63] of TVkInt32;
+     TIDCTInputBlock=array[0..63] of TInt32;
      PIDCTOutputBlock=^TIDCTOutputBlock;
-     TIDCTOutputBlock=array[0..65535] of TVkUInt8;
+     TIDCTOutputBlock=array[0..65535] of TUInt8;
      PByteArray=^TByteArray;
-     TByteArray=array[0..65535] of TVkUInt8;
-     TPixels=array of TVkUInt8;
+     TByteArray=array[0..65535] of TUInt8;
+     TPixels=array of TUInt8;
      PHuffmanCode=^THuffmanCode;
      THuffmanCode=record
-      Bits:TVkUInt8;
-      Code:TVkUInt8;
+      Bits:TUInt8;
+      Code:TUInt8;
      end;
      PHuffmanCodes=^THuffmanCodes;
      THuffmanCodes=array[0..65535] of THuffmanCode;
      PComponent=^TComponent;
      TComponent=record
-      Width:TVkInt32;
-      Height:TVkInt32;
-      Stride:TVkInt32;
+      Width:TInt32;
+      Height:TInt32;
+      Stride:TInt32;
       Pixels:TPixels;
-      ID:TVkInt32;
-      SSX:TVkInt32;
-      SSY:TVkInt32;
-      QTSel:TVkInt32;
-      ACTabSel:TVkInt32;
-      DCTabSel:TVkInt32;
-      DCPred:TVkInt32;
+      ID:TInt32;
+      SSX:TInt32;
+      SSY:TInt32;
+      QTSel:TInt32;
+      ACTabSel:TInt32;
+      DCTabSel:TInt32;
+      DCPred:TInt32;
      end;
      PContext=^TContext;
      TContext=record
       Valid:boolean;
       NoDecode:boolean;
       FastChroma:boolean;
-      Len:TVkInt32;
-      Size:TVkInt32;
-      Width:TVkInt32;
-      Height:TVkInt32;
-      MBWidth:TVkInt32;
-      MBHeight:TVkInt32;
-      MBSizeX:TVkInt32;
-      MBSizeY:TVkInt32;
+      Len:TInt32;
+      Size:TInt32;
+      Width:TInt32;
+      Height:TInt32;
+      MBWidth:TInt32;
+      MBHeight:TInt32;
+      MBSizeX:TInt32;
+      MBSizeY:TInt32;
       Components:array[0..2] of TComponent;
-      CountComponents:TVkInt32;
-      QTUsed:TVkInt32;
-      QTAvailable:TVkInt32;
-      QTable:array[0..3,0..63] of TVKUInt8;
+      CountComponents:TInt32;
+      QTUsed:TInt32;
+      QTAvailable:TInt32;
+      QTable:array[0..3,0..63] of TUInt8;
       HuffmanCodeTable:array[0..3] of THuffmanCodes;
-      Buf:TVkInt32;
-      BufBits:TVkInt32;
-      RSTInterval:TVkInt32;
+      Buf:TInt32;
+      BufBits:TInt32;
+      RSTInterval:TInt32;
       EXIFLE:boolean;
       CoSitedChroma:boolean;
       Block:TIDCTInputBlock;
      end;
-const ZigZagOrderToRasterOrderConversionTable:array[0..63] of TVkUInt8=
+const ZigZagOrderToRasterOrderConversionTable:array[0..63] of TUInt8=
        (
         0,1,8,16,9,2,3,10,17,24,32,25,18,11,4,5,
         12,19,26,33,40,48,41,34,27,20,13,6,7,14,21,28,
         35,42,49,56,57,50,43,36,29,22,15,23,30,37,44,51,
         58,59,52,45,38,31,39,46,53,60,61,54,47,55,62,63
        );
-      ClipTable:array[0..$3ff] of TVkUInt8=
+      ClipTable:array[0..$3ff] of TUInt8=
        (
         // 0..255
         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,
@@ -9995,19 +9995,19 @@ const ZigZagOrderToRasterOrderConversionTable:array[0..63] of TVkUInt8=
       CF2A=139;
       CF2B=-11;
 var Context:PContext;
-    DataPosition:TVkUInt32;
+    DataPosition:TUInt32;
  procedure RaiseError;
  begin
   raise ELoadJPEGImage.Create('Invalid or corrupt JPEG data stream');
  end;
- procedure ProcessIDCT(const aInputBlock:PIDCTInputBlock;const aOutputBlock:PIDCTOutputBlock;const aOutputStride:TVkInt32);
+ procedure ProcessIDCT(const aInputBlock:PIDCTInputBlock;const aOutputBlock:PIDCTOutputBlock;const aOutputStride:TInt32);
  const W1=2841;
        W2=2676;
        W3=2408;
        W5=1609;
        W6=1108;
        W7=565;
- var i,v0,v1,v2,v3,v4,v5,v6,v7,v8:TVkInt32;
+ var i,v0,v1,v2,v3,v4,v5,v6,v7,v8:TInt32;
      WorkBlock:PIDCTInputBlock;
      OutputBlock:PIDCTOutputBlock;
  begin
@@ -10120,8 +10120,8 @@ var Context:PContext;
    end;
   end;
  end;
- function PeekBits(Bits:TVkInt32):TVkInt32;
- var NewByte,Marker:TVkInt32;
+ function PeekBits(Bits:TInt32):TInt32;
+ var NewByte,Marker:TInt32;
  begin
   if Bits>0 then begin
    while Context^.BufBits<Bits do begin
@@ -10163,14 +10163,14 @@ var Context:PContext;
    result:=0;
   end;
  end;
- procedure SkipBits(Bits:TVkInt32);
+ procedure SkipBits(Bits:TInt32);
  begin
   if Context^.BufBits<Bits then begin
    PeekBits(Bits);
   end;
   dec(Context^.BufBits,Bits);
  end;
- function GetBits(Bits:TVkInt32):TVkInt32;
+ function GetBits(Bits:TInt32):TInt32;
  begin
   result:=PeekBits(Bits);
   if Context^.BufBits<Bits then begin
@@ -10178,8 +10178,8 @@ var Context:PContext;
   end;
   dec(Context^.BufBits,Bits);
  end;
- function GetHuffmanCode(const Huffman:PHuffmanCodes;const Code:PVkInt32):TVkInt32;
- var Bits:TVkInt32;
+ function GetHuffmanCode(const Huffman:PHuffmanCodes;const Code:PInt32):TInt32;
+ var Bits:TInt32;
  begin
   result:=PeekBits(16);
   Bits:=Huffman^[result].Bits;
@@ -10199,13 +10199,13 @@ var Context:PContext;
    end else begin
     result:=GetBits(Bits);
     if result<(1 shl (Bits-1)) then begin
-     inc(result,(TVkInt32(-1) shl Bits)+1);
+     inc(result,(TInt32(-1) shl Bits)+1);
     end;
    end;
   end;
  end;
  procedure UpsampleHCoSited(const Component:PComponent);
- var MaxX,x,y:TVkInt32;
+ var MaxX,x,y:TInt32;
      NewPixels:TPixels;
      ip,op:PByteArray;
  begin
@@ -10239,7 +10239,7 @@ var Context:PContext;
   end;
  end;
  procedure UpsampleHCentered(const Component:PComponent);
- var MaxX,x,y:TVkInt32;
+ var MaxX,x,y:TInt32;
      NewPixels:TPixels;
      ip,op:PByteArray;
  begin
@@ -10273,7 +10273,7 @@ var Context:PContext;
   end;
  end;
  procedure UpsampleVCoSited(const Component:PComponent);
- var w,h,s1,s2,x,y:TVkInt32;
+ var w,h,s1,s2,x,y:TInt32;
      NewPixels:TPixels;
      ip,op:PByteArray;
  begin
@@ -10314,7 +10314,7 @@ var Context:PContext;
   end;
  end;
  procedure UpsampleVCentered(const Component:PComponent);
- var w,h,s1,s2,x,y:TVkInt32;
+ var w,h,s1,s2,x,y:TInt32;
      NewPixels:TPixels;
      ip,op:PByteArray;
  begin
@@ -10356,12 +10356,12 @@ var Context:PContext;
   end;
  end;
 var Index,SubIndex,Len,MaxSSX,MaxSSY,Value,Remain,Spread,CodeLen,DHTCurrentCount,Code,Coef,
-    NextDataPosition,Count,v0,v1,v2,v3,mbx,mby,sbx,sby,RSTCount,NextRST,x,y,vY,vCb,vCr:TVkInt32;
-    ChunkTag:TVkUInt8;
+    NextDataPosition,Count,v0,v1,v2,v3,mbx,mby,sbx,sby,RSTCount,NextRST,x,y,vY,vCb,vCr:TInt32;
+    ChunkTag:TUInt8;
     Component:PComponent;
-    DHTCounts:array[0..15] of TVkUInt8;
+    DHTCounts:array[0..15] of TUInt8;
     Huffman:PHuffmanCode;
-    pY,aCb,aCr,oRGBX:PVkUInt8;
+    pY,aCb,aCr,oRGBX:PUInt8;
 begin
  result:=false;
  ImageData:=nil;
@@ -10382,9 +10382,9 @@ begin
         RaiseError;
        end;
 
-       Len:=(TVKUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
+       Len:=(TUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
 
-       if ((DataPosition+TVkUInt32(Len))>=DataSize) or
+       if ((DataPosition+TUInt32(Len))>=DataSize) or
           (Len<9) or
           (PByteArray(DataPointer)^[DataPosition+2]<>8) then begin
         RaiseError;
@@ -10393,8 +10393,8 @@ begin
        inc(DataPosition,2);
        dec(Len,2);
 
-       Context^.Width:=(TVKUInt16(PByteArray(DataPointer)^[DataPosition+1]) shl 8) or PByteArray(DataPointer)^[DataPosition+2];
-       Context^.Height:=(TVKUInt16(PByteArray(DataPointer)^[DataPosition+3]) shl 8) or PByteArray(DataPointer)^[DataPosition+4];
+       Context^.Width:=(TUInt16(PByteArray(DataPointer)^[DataPosition+1]) shl 8) or PByteArray(DataPointer)^[DataPosition+2];
+       Context^.Height:=(TUInt16(PByteArray(DataPointer)^[DataPosition+3]) shl 8) or PByteArray(DataPointer)^[DataPosition+4];
        Context^.CountComponents:=PByteArray(DataPointer)^[DataPosition+5];
 
        if (Context^.Width=0) or (Context^.Height=0) or not (Context^.CountComponents in [1,3]) then begin
@@ -10469,9 +10469,9 @@ begin
         RaiseError;
        end;
 
-       Len:=(TVKUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
+       Len:=(TUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
 
-       if (DataPosition+TVkUInt32(Len))>=DataSize then begin
+       if (DataPosition+TUInt32(Len))>=DataSize then begin
         RaiseError;
        end;
 
@@ -10487,7 +10487,7 @@ begin
 
         Value:=(Value or (Value shr 3)) and 3;
         for CodeLen:=1 to 16 do begin
-         DHTCounts[CodeLen-1]:=PByteArray(DataPointer)^[DataPosition+TVkUInt32(CodeLen)];
+         DHTCounts[CodeLen-1]:=PByteArray(DataPointer)^[DataPosition+TUInt32(CodeLen)];
         end;
         inc(DataPosition,17);
         dec(Len,17);
@@ -10505,7 +10505,7 @@ begin
            RaiseError;
           end;
           for Index:=0 to DHTCurrentCount-1 do begin
-           Code:=PByteArray(DataPointer)^[DataPosition+TVKUInt32(Index)];
+           Code:=PByteArray(DataPointer)^[DataPosition+TUInt32(Index)];
            for SubIndex:=0 to Spread-1 do begin
             Huffman^.Bits:=CodeLen;
             Huffman^.Code:=Code;
@@ -10536,9 +10536,9 @@ begin
         RaiseError;
        end;
 
-       Len:=(TVKUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
+       Len:=(TUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
 
-       if ((DataPosition+TVkUInt32(Len))>=DataSize) or (Len<2) then begin
+       if ((DataPosition+TUInt32(Len))>=DataSize) or (Len<2) then begin
         RaiseError;
        end;
 
@@ -10718,9 +10718,9 @@ begin
         RaiseError;
        end;
 
-       Len:=(TVKUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
+       Len:=(TUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
 
-       if (DataPosition+TVkUInt32(Len))>=DataSize then begin
+       if (DataPosition+TUInt32(Len))>=DataSize then begin
         RaiseError;
        end;
 
@@ -10751,9 +10751,9 @@ begin
         RaiseError;
        end;
 
-       Len:=(TVKUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
+       Len:=(TUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
 
-       if ((DataPosition+TVkUInt32(Len))>=DataSize) or
+       if ((DataPosition+TUInt32(Len))>=DataSize) or
           (Len<4) then begin
         RaiseError;
        end;
@@ -10761,7 +10761,7 @@ begin
        inc(DataPosition,2);
        dec(Len,2);
 
-       Context^.RSTInterval:=(TVKUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
+       Context^.RSTInterval:=(TUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
 
        inc(DataPosition,Len);
 
@@ -10772,9 +10772,9 @@ begin
         RaiseError;
        end;
 
-       Len:=(TVKUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
+       Len:=(TUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
 
-       if ((DataPosition+TVkUInt32(Len))>=DataSize) or
+       if ((DataPosition+TUInt32(Len))>=DataSize) or
           (Len<18) then begin
         RaiseError;
        end;
@@ -10782,44 +10782,44 @@ begin
        inc(DataPosition,2);
        dec(Len,2);
 
-       NextDataPosition:=DataPosition+TVkUInt32(Len);
+       NextDataPosition:=DataPosition+TUInt32(Len);
 
-       if (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+0]))='E') and
-          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+1]))='x') and
-          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+2]))='i') and
-          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+3]))='f') and
-          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+4]))=#0) and
-          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+5]))=#0) and
-          (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+6]))=TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+7]))) and
-          (((TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+6]))='I') and
-            (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+8]))='*') and
-            (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+9]))=#0)) or
-           ((TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+6]))='M') and
-            (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+8]))=#0) and
-            (TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+9]))='*'))) then begin
-        Context^.EXIFLE:=TVulkanRawByteChar(TVkUInt8(PByteArray(DataPointer)^[DataPosition+6]))='I';
+       if (TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+0]))='E') and
+          (TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+1]))='x') and
+          (TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+2]))='i') and
+          (TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+3]))='f') and
+          (TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+4]))=#0) and
+          (TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+5]))=#0) and
+          (TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+6]))=TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+7]))) and
+          (((TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+6]))='I') and
+            (TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+8]))='*') and
+            (TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+9]))=#0)) or
+           ((TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+6]))='M') and
+            (TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+8]))=#0) and
+            (TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+9]))='*'))) then begin
+        Context^.EXIFLE:=TVulkanRawByteChar(TUInt8(PByteArray(DataPointer)^[DataPosition+6]))='I';
         if Len>=14 then begin
          if Context^.EXIFLE then begin
-          Value:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+10]) shl 0) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+11]) shl 8) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+12]) shl 16) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+13]) shl 24);
+          Value:=(TInt32(PByteArray(DataPointer)^[DataPosition+10]) shl 0) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+11]) shl 8) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+12]) shl 16) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+13]) shl 24);
          end else begin
-          Value:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+10]) shl 24) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+11]) shl 16) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+12]) shl 8) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+13]) shl 0);
+          Value:=(TInt32(PByteArray(DataPointer)^[DataPosition+10]) shl 24) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+11]) shl 16) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+12]) shl 8) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+13]) shl 0);
          end;
          inc(Value,6);
          if (Value>=14) and ((Value+2)<Len) then begin
           inc(DataPosition,Value);
           dec(Len,Value);
           if Context^.EXIFLE then begin
-           Count:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+0]) shl 0) or
-                  (TVkInt32(PByteArray(DataPointer)^[DataPosition+1]) shl 8);
+           Count:=(TInt32(PByteArray(DataPointer)^[DataPosition+0]) shl 0) or
+                  (TInt32(PByteArray(DataPointer)^[DataPosition+1]) shl 8);
           end else begin
-           Count:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or
-                  (TVkInt32(PByteArray(DataPointer)^[DataPosition+1]) shl 0);
+           Count:=(TInt32(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or
+                  (TInt32(PByteArray(DataPointer)^[DataPosition+1]) shl 0);
           end;
           inc(DataPosition,2);
           dec(Len,2);
@@ -10827,27 +10827,27 @@ begin
            while Count>0 do begin
             dec(Count);
             if Context^.EXIFLE then begin
-             v0:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+0]) shl 0) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+1]) shl 8);
-             v1:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+2]) shl 0) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+3]) shl 8);
-             v2:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+4]) shl 0) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+5]) shl 8) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+6]) shl 16) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+7]) shl 24);
-             v3:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+8]) shl 0) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+9]) shl 8);
+             v0:=(TInt32(PByteArray(DataPointer)^[DataPosition+0]) shl 0) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+1]) shl 8);
+             v1:=(TInt32(PByteArray(DataPointer)^[DataPosition+2]) shl 0) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+3]) shl 8);
+             v2:=(TInt32(PByteArray(DataPointer)^[DataPosition+4]) shl 0) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+5]) shl 8) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+6]) shl 16) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+7]) shl 24);
+             v3:=(TInt32(PByteArray(DataPointer)^[DataPosition+8]) shl 0) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+9]) shl 8);
             end else begin
-             v0:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+1]) shl 0);
-             v1:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+2]) shl 8) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+3]) shl 0);
-             v2:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+4]) shl 24) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+5]) shl 16) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+6]) shl 8) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+7]) shl 0);
-             v3:=(TVkInt32(PByteArray(DataPointer)^[DataPosition+8]) shl 8) or
-                 (TVkInt32(PByteArray(DataPointer)^[DataPosition+9]) shl 0);
+             v0:=(TInt32(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+1]) shl 0);
+             v1:=(TInt32(PByteArray(DataPointer)^[DataPosition+2]) shl 8) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+3]) shl 0);
+             v2:=(TInt32(PByteArray(DataPointer)^[DataPosition+4]) shl 24) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+5]) shl 16) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+6]) shl 8) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+7]) shl 0);
+             v3:=(TInt32(PByteArray(DataPointer)^[DataPosition+8]) shl 8) or
+                 (TInt32(PByteArray(DataPointer)^[DataPosition+9]) shl 0);
             end;
             if (v0=$0213{YCbCrPositioning}) and (v1=$0003{SHORT}) and (v2=1{LENGTH}) then begin
              Context^.CoSitedChroma:=v3=2;
@@ -10868,8 +10868,8 @@ begin
        if (DataPosition+2)>=DataSize then begin
         RaiseError;
        end;
-       Len:=(TVKUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
-       if (DataPosition+TVkUInt32(Len))>=DataSize then begin
+       Len:=(TUInt16(PByteArray(DataPointer)^[DataPosition+0]) shl 8) or PByteArray(DataPointer)^[DataPosition+1];
+       if (DataPosition+TUInt32(Len))>=DataSize then begin
         RaiseError;
        end;
        inc(DataPosition,Len);
@@ -10898,59 +10898,59 @@ begin
  end;
 end;
 
-function LoadBMPImage(DataPointer:TVkPointer;DataSize:TVkUInt32;var ImageData:TVkPointer;var ImageWidth,ImageHeight:TVkInt32;const HeaderOnly:boolean):boolean;
+function LoadBMPImage(DataPointer:TPointer;DataSize:TUInt32;var ImageData:TPointer;var ImageWidth,ImageHeight:TInt32;const HeaderOnly:boolean):boolean;
 const BI_RGB=0;
       BI_RLE8=1;
       BI_RLE4=2;
       BI_BITFIELDS=3;
       BI_ALPHABITFIELDS=6;
 type PByteArray=^TByteArray;
-     TByteArray=array[0..65535] of TVkUInt8;
+     TByteArray=array[0..65535] of TUInt8;
      PBMPHeaderMagic=^TBMPHeaderMagic;
      TBMPHeaderMagic=array[0..1] of AnsiChar;
      PBMPHeader=^TBMPHeader;
      TBMPHeader=packed record
       Magic:TBMPHeaderMagic;
-      FileSize:TVkUInt32;
-      Unused:TVkUInt32;
-      DataOffset:TVkUInt32;
+      FileSize:TUInt32;
+      Unused:TUInt32;
+      DataOffset:TUInt32;
      end;
      PBMPInfo=^TBMPInfo;
      TBMPInfo=packed record
-      InfoSize:TVkUInt32;
-      Width:TVkInt32;
-      Height:TVkInt32;
-      Planes:TVkUInt16;
-      Bits:TVkUInt16;
-      Compression:TVkUInt32;
-      SizeImage:TVkUInt32;
-      XPelsPerMeter:TVkInt32;
-      YPelsPerMeter:TVkInt32;
-      ClrUsed:TVkUInt32;
-      ClrImportant:TVkUInt32;
+      InfoSize:TUInt32;
+      Width:TInt32;
+      Height:TInt32;
+      Planes:TUInt16;
+      Bits:TUInt16;
+      Compression:TUInt32;
+      SizeImage:TUInt32;
+      XPelsPerMeter:TInt32;
+      YPelsPerMeter:TInt32;
+      ClrUsed:TUInt32;
+      ClrImportant:TUInt32;
      end;
      PBMPPaletteEntry=^TBMPPaletteEntry;
      TBMPPaletteEntry=packed record
-      Blue:TVkUInt8;
-      Green:TVkUInt8;
-      Red:TVkUInt8;
-      Unused:TVkUInt8;
+      Blue:TUInt8;
+      Green:TUInt8;
+      Red:TUInt8;
+      Unused:TUInt8;
      end;
      TBMPPalette=array of TBMPPaletteEntry;
-     TDynamicByteArray=array of TVkUInt8;
+     TDynamicByteArray=array of TUInt8;
 var RawDataSize,LineSize,x,y,c,MaskSize,
     RedShiftLeft,RedShiftRight,
     GreenShiftLeft,GreenShiftRight,
     BlueShiftLeft,BlueShiftRight,
-    AlphaShiftLeft,AlphaShiftRight:TVkInt32;
+    AlphaShiftLeft,AlphaShiftRight:TInt32;
     BMPHeader:TBMPHeader;
     BMPInfo:TBMPInfo;
     BMPPalette:TBMPPalette;
-    RedMask,BlueMask,GreenMask,AlphaMask:TVKUInt32;
+    RedMask,BlueMask,GreenMask,AlphaMask:TUInt32;
     RawData,ip,op:PByteArray;
     VFlip:boolean;
     NewData:TDynamicByteArray;
- function Swap16IfBigEndian(const Value:TVkUInt16):TVkUInt16;
+ function Swap16IfBigEndian(const Value:TUInt16):TUInt16;
  begin
 {$ifdef big_endian}
   result:=(((Value shr 8) and $ff) shl 0) or
@@ -10959,7 +10959,7 @@ var RawDataSize,LineSize,x,y,c,MaskSize,
   result:=Value;
 {$endif}
  end;
- function Swap32IfBigEndian(const Value:TVkUInt32):TVkUInt32;
+ function Swap32IfBigEndian(const Value:TUInt32):TUInt32;
  begin
 {$ifdef big_endian}
   result:=(((Value shr 24) and $ff) shl 0) or
@@ -10970,17 +10970,17 @@ var RawDataSize,LineSize,x,y,c,MaskSize,
   result:=Value;
 {$endif}
  end;
- procedure DecompressRLE8(const Data:TVkPointer;const Size,Width,Height,Pitch:TVkInt32);
- var Line,Count:TVkInt32;
-     p,d,DestEnd:PVkUInt8;
-     Value:TVkUInt8;
+ procedure DecompressRLE8(const Data:TPointer;const Size,Width,Height,Pitch:TInt32);
+ var Line,Count:TInt32;
+     p,d,DestEnd:PUInt8;
+     Value:TUInt8;
  begin
   p:=Data;
   SetLength(NewData,(Width+Pitch)*Height);
   d:=@NewData[0];
   DestEnd:=@NewData[(Width+Pitch)*Height];
   Line:=0;
-  while (TVkPtrInt(TVkPtrUInt(Data)-TVkPtrUInt(p))<Size) and (TVkPtrUInt(d)<TVkPtrUInt(DestEnd)) do begin
+  while (TPtrInt(TPtrUInt(Data)-TPtrUInt(p))<Size) and (TPtrUInt(d)<TPtrUInt(DestEnd)) do begin
    if p^=0 then begin
     inc(p);
     case p^ of
@@ -11021,10 +11021,10 @@ var RawDataSize,LineSize,x,y,c,MaskSize,
    end;
   end;
  end;
- procedure DecompressRLE4(const Data:TVkPointer;const Size,Width,Height,Pitch:TVkInt32);
- var LineWidth,Line,Shift,Count,x,y,ReadAdditional,ReadShift,i,Mask:TVkInt32;
-     p,d,DestEnd:PVkUInt8;
-     Value,OtherValue:TVkUInt8;
+ procedure DecompressRLE4(const Data:TPointer;const Size,Width,Height,Pitch:TInt32);
+ var LineWidth,Line,Shift,Count,x,y,ReadAdditional,ReadShift,i,Mask:TInt32;
+     p,d,DestEnd:PUInt8;
+     Value,OtherValue:TUInt8;
  begin
   LineWidth:=((Width+1) shr 1)+Pitch;
   p:=Data;
@@ -11033,7 +11033,7 @@ var RawDataSize,LineSize,x,y,c,MaskSize,
   DestEnd:=@NewData[LineWidth*Height];
   Line:=0;
   Shift:=4;
-  while (TVkPtrInt(TVkPtrUInt(Data)-TVkPtrUInt(p))<Size) and (TVkPtrUInt(d)<TVkPtrUInt(DestEnd)) do begin
+  while (TPtrInt(TPtrUInt(Data)-TPtrUInt(p))<Size) and (TPtrUInt(d)<TPtrUInt(DestEnd)) do begin
    if p^=0 then begin
     inc(p);
     case p^ of
@@ -11121,7 +11121,7 @@ begin
    BMPHeader.FileSize:=Swap32IfBigEndian(BMPHeader.FileSize);
    BMPHeader.DataOffset:=Swap32IfBigEndian(BMPHeader.DataOffset);
 
-   BMPInfo:=PBMPInfo(TVkPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)]))^;
+   BMPInfo:=PBMPInfo(TPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)]))^;
    BMPInfo.InfoSize:=Swap32IfBigEndian(BMPInfo.InfoSize);
    BMPInfo.Width:=Swap32IfBigEndian(BMPInfo.Width);
    BMPInfo.Height:=Swap32IfBigEndian(BMPInfo.Height);
@@ -11150,10 +11150,10 @@ begin
      if not (BMPInfo.Bits in [16,32]) then begin
       exit;
      end;
-     MaskSize:=SizeOf(TVkUInt32)*3;
-     RedMask:=PVkUInt32(TVkPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*0)]))^;
-     BlueMask:=PVkUInt32(TVkPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*1)]))^;
-     GreenMask:=PVkUInt32(TVkPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*2)]))^;
+     MaskSize:=SizeOf(TUInt32)*3;
+     RedMask:=PUInt32(TPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TUInt32(SizeOf(TUInt32)*0)]))^;
+     BlueMask:=PUInt32(TPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TUInt32(SizeOf(TUInt32)*1)]))^;
+     GreenMask:=PUInt32(TPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TUInt32(SizeOf(TUInt32)*2)]))^;
      AlphaMask:=$ff000000;
      RedShiftRight:=CTZDWord(RedMask);
      GreenShiftRight:=CTZDWord(GreenMask);
@@ -11168,11 +11168,11 @@ begin
      if not (BMPInfo.Bits in [16,32]) then begin
       exit;
      end;
-     MaskSize:=SizeOf(TVkUInt32)*4;
-     RedMask:=PVkUInt32(TVkPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*0)]))^;
-     BlueMask:=PVkUInt32(TVkPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*1)]))^;
-     GreenMask:=PVkUInt32(TVkPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*2)]))^;
-     AlphaMask:=PVkUInt32(TVkPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt32(SizeOf(TVkUInt32)*3)]))^;
+     MaskSize:=SizeOf(TUInt32)*4;
+     RedMask:=PUInt32(TPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TUInt32(SizeOf(TUInt32)*0)]))^;
+     BlueMask:=PUInt32(TPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TUInt32(SizeOf(TUInt32)*1)]))^;
+     GreenMask:=PUInt32(TPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TUInt32(SizeOf(TUInt32)*2)]))^;
+     AlphaMask:=PUInt32(TPointer(@PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TUInt32(SizeOf(TUInt32)*3)]))^;
      RedShiftRight:=CTZDWord(RedMask);
      GreenShiftRight:=CTZDWord(GreenMask);
      BlueShiftRight:=CTZDWord(BlueMask);
@@ -11218,12 +11218,12 @@ begin
     end else if c>(1 shl BMPInfo.Bits) then begin
      exit;
     end;
-    if TVkUInt64(SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt64(MaskSize)+TVkUInt64((1 shl BMPInfo.Bits)*SizeOf(TBMPPaletteEntry)))>=BMPHeader.FileSize then begin
+    if TUInt64(SizeOf(TBMPHeader)+BMPInfo.InfoSize+TUInt64(MaskSize)+TUInt64((1 shl BMPInfo.Bits)*SizeOf(TBMPPaletteEntry)))>=BMPHeader.FileSize then begin
      exit;
     end;
     if not HeaderOnly then begin
      SetLength(BMPPalette,1 shl BMPInfo.Bits);
-     Move(PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TVkUInt64(MaskSize)],BMPPalette[0],length(BMPPalette)*SizeOf(TBMPPaletteEntry));
+     Move(PByteArray(DataPointer)^[SizeOf(TBMPHeader)+BMPInfo.InfoSize+TUInt64(MaskSize)],BMPPalette[0],length(BMPPalette)*SizeOf(TBMPPaletteEntry));
     end;
    end;
 
@@ -11236,9 +11236,9 @@ begin
     try
      case BMPInfo.Compression of
       BI_RGB:begin
-       LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TVKUInt32(31)) shr 3;
+       LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TUInt32(31)) shr 3;
        RawDataSize:=LineSize*BMPInfo.Height;
-       if TVkInt64(BMPHeader.DataOffset+TVkInt64(RawDataSize))>TVkInt64(BMPHeader.FileSize) then begin
+       if TInt64(BMPHeader.DataOffset+TInt64(RawDataSize))>TInt64(BMPHeader.FileSize) then begin
         exit;
        end;
        ImageWidth:=BMPInfo.Width;
@@ -11327,7 +11327,7 @@ begin
            op:=@PByteArray(ImageData)^[(ImageHeight-(y+1))*ImageWidth*4];
           end;
           for x:=0 to ImageWidth-1 do begin
-           c:=ip[0] or (TVkUInt16(TVkUInt8(ip^[1])) shl 8);
+           c:=ip[0] or (TUInt16(TUInt8(ip^[1])) shl 8);
            op^[0]:=(c and $f800) shr 11;
            op^[1]:=(c and $07e0) shr 5;
            op^[2]:=(c and $001f) shr 0;
@@ -11381,7 +11381,7 @@ begin
        GetMem(ImageData,ImageWidth*ImageHeight*4);
        NewData:=nil;
        try
-        LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TVKUInt32(31)) shr 3;
+        LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TUInt32(31)) shr 3;
         DecompressRLE8(@PByteArray(DataPointer)^[BMPHeader.DataOffset],BMPHeader.FileSize-BMPHeader.DataOffset,ImageWidth,ImageHeight,LineSize-ImageWidth);
         RawData:=@NewData[0];
         for y:=ImageHeight-1 downto 0 do begin
@@ -11410,7 +11410,7 @@ begin
        GetMem(ImageData,ImageWidth*ImageHeight*4);
        NewData:=nil;
        try
-        LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TVKUInt32(31)) shr 3;
+        LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TUInt32(31)) shr 3;
         DecompressRLE4(@PByteArray(DataPointer)^[BMPHeader.DataOffset],BMPHeader.FileSize-BMPHeader.DataOffset,ImageWidth,ImageHeight,LineSize-ImageWidth);
         RawData:=@NewData[0];
         case BMPInfo.Bits of
@@ -11474,9 +11474,9 @@ begin
        end;
       end;
       BI_BITFIELDS:begin
-       LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TVKUInt32(31)) shr 3;
+       LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TUInt32(31)) shr 3;
        RawDataSize:=LineSize*BMPInfo.Height;
-       if TVkInt64(BMPHeader.DataOffset+TVkInt64(RawDataSize))>TVkInt64(BMPHeader.FileSize) then begin
+       if TInt64(BMPHeader.DataOffset+TInt64(RawDataSize))>TInt64(BMPHeader.FileSize) then begin
         exit;
        end;
        ImageWidth:=BMPInfo.Width;
@@ -11493,7 +11493,7 @@ begin
            op:=@PByteArray(ImageData)^[(ImageHeight-(y+1))*ImageWidth*4];
           end;
           for x:=0 to ImageWidth-1 do begin
-           c:=ip[0] or (TVkUInt16(TVkUInt8(ip^[1])) shl 8);
+           c:=ip[0] or (TUInt16(TUInt8(ip^[1])) shl 8);
            op^[0]:=((c and RedMask) shr RedShiftRight) shl RedShiftLeft;
            op^[1]:=((c and GreenMask) shr GreenShiftRight) shl GreenShiftLeft;
            op^[2]:=((c and BlueMask) shr BlueShiftRight) shl BlueShiftLeft;
@@ -11512,7 +11512,7 @@ begin
            op:=@PByteArray(ImageData)^[(ImageHeight-(y+1))*ImageWidth*4];
           end;
           for x:=0 to ImageWidth-1 do begin
-           c:=ip[0] or (TVkUInt16(TVkUInt8(ip^[1])) shl 8) or (TVkUInt16(TVkUInt8(ip^[2])) shl 16) or (TVkUInt16(TVkUInt8(ip^[3])) shl 24);
+           c:=ip[0] or (TUInt16(TUInt8(ip^[1])) shl 8) or (TUInt16(TUInt8(ip^[2])) shl 16) or (TUInt16(TUInt8(ip^[3])) shl 24);
            op^[0]:=((c and RedMask) shr RedShiftRight) shl RedShiftLeft;
            op^[1]:=((c and GreenMask) shr GreenShiftRight) shl GreenShiftLeft;
            op^[2]:=((c and BlueMask) shr BlueShiftRight) shl BlueShiftLeft;
@@ -11525,9 +11525,9 @@ begin
        end;
       end;
       BI_ALPHABITFIELDS:begin
-       LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TVKUInt32(31)) shr 3;
+       LineSize:=(((BMPInfo.Width*BMPInfo.Bits)+31) and not TUInt32(31)) shr 3;
        RawDataSize:=LineSize*BMPInfo.Height;
-       if TVkInt64(BMPHeader.DataOffset+TVkInt64(RawDataSize))>TVkInt64(BMPHeader.FileSize) then begin
+       if TInt64(BMPHeader.DataOffset+TInt64(RawDataSize))>TInt64(BMPHeader.FileSize) then begin
         exit;
        end;
        ImageWidth:=BMPInfo.Width;
@@ -11544,7 +11544,7 @@ begin
            op:=@PByteArray(ImageData)^[(ImageHeight-(y+1))*ImageWidth*4];
           end;
           for x:=0 to ImageWidth-1 do begin
-           c:=ip[0] or (TVkUInt16(TVkUInt8(ip^[1])) shl 8);
+           c:=ip[0] or (TUInt16(TUInt8(ip^[1])) shl 8);
            op^[0]:=((c and RedMask) shr RedShiftRight) shl RedShiftLeft;
            op^[1]:=((c and GreenMask) shr GreenShiftRight) shl GreenShiftLeft;
            op^[2]:=((c and BlueMask) shr BlueShiftRight) shl BlueShiftLeft;
@@ -11563,7 +11563,7 @@ begin
            op:=@PByteArray(ImageData)^[(ImageHeight-(y+1))*ImageWidth*4];
           end;
           for x:=0 to ImageWidth-1 do begin
-           c:=ip[0] or (TVkUInt16(TVkUInt8(ip^[1])) shl 8) or (TVkUInt16(TVkUInt8(ip^[2])) shl 16) or (TVkUInt16(TVkUInt8(ip^[3])) shl 24);
+           c:=ip[0] or (TUInt16(TUInt8(ip^[1])) shl 8) or (TUInt16(TUInt8(ip^[2])) shl 16) or (TUInt16(TUInt8(ip^[3])) shl 24);
            op^[0]:=((c and RedMask) shr RedShiftRight) shl RedShiftLeft;
            op^[1]:=((c and GreenMask) shr GreenShiftRight) shl GreenShiftLeft;
            op^[2]:=((c and BlueMask) shr BlueShiftRight) shl BlueShiftLeft;
@@ -11603,45 +11603,45 @@ begin
  end;
 end;
 
-function LoadTGAImage(DataPointer:TVkPointer;DataSize:TVkUInt32;var ImageData:TVkPointer;var ImageWidth,ImageHeight:TVkInt32;const HeaderOnly:boolean):boolean;
+function LoadTGAImage(DataPointer:TPointer;DataSize:TUInt32;var ImageData:TPointer;var ImageWidth,ImageHeight:TInt32;const HeaderOnly:boolean):boolean;
 type PLongwords=^TLongwords;
-     TLongwords=array[0..65536] of TVkUInt32;
+     TLongwords=array[0..65536] of TUInt32;
      TTGAHeader=packed record
-      ImageID:TVkUInt8;
-      ColorMapType:TVkUInt8;
-      ImageType:TVkUInt8;
+      ImageID:TUInt8;
+      ColorMapType:TUInt8;
+      ImageType:TUInt8;
       CMapSpec:packed record
-       FirstEntryIndex:TVkUInt16;
-       Length:TVkUInt16;
-       EntrySize:TVkUInt8;
+       FirstEntryIndex:TUInt16;
+       Length:TUInt16;
+       EntrySize:TUInt8;
       end;
-      OrigX:array[0..1] of TVkUInt8;
-      OrigY:array[0..1] of TVkUInt8;
-      Width:array[0..1] of TVkUInt8;
-      Height:array[0..1] of TVkUInt8;
-      BPP:TVkUInt8;
-      ImageInfo:TVkUInt8;
+      OrigX:array[0..1] of TUInt8;
+      OrigY:array[0..1] of TUInt8;
+      Width:array[0..1] of TUInt8;
+      Height:array[0..1] of TUInt8;
+      BPP:TUInt8;
+      ImageInfo:TUInt8;
      end;
      TBGR=packed record
-      b,g,r:TVkUInt8;
+      b,g,r:TUInt8;
      end;
      TBGRA=packed record
-      b,g,r,a:TVkUInt8;
+      b,g,r,a:TUInt8;
      end;
      TRGBA=packed record
-      r,g,b,a:TVkUInt8;
+      r,g,b,a:TUInt8;
      end;
 var TGAHeader:TTGAHeader;
-    ImageSize,Width,Height:TVkUInt32;
-    ImagePointer,NewImagePointer,Pixel:PVkUInt32;
-    B8:TVkUInt8;
-    Palette:array of TVkUInt8;
+    ImageSize,Width,Height:TUInt32;
+    ImagePointer,NewImagePointer,Pixel:PUInt32;
+    B8:TUInt8;
+    Palette:array of TUInt8;
     Stream:TVulkanDataStream;
- function PaletteEncode(Index:TVkUInt32):TVkUInt32;
+ function PaletteEncode(Index:TUInt32):TUInt32;
  var r:TRGBA;
-     l:TVkUInt32 ABSOLUTE r;
-     Offset:TVkUInt32;
-     w:TVkUInt16;
+     l:TUInt32 ABSOLUTE r;
+     Offset:TUInt32;
+     w:TUInt16;
  begin
   l:=0;
   if (B8+TGAHeader.CMapSpec.FirstEntryIndex)<TGAHeader.CMapSpec.Length then begin
@@ -11675,16 +11675,16 @@ var TGAHeader:TTGAHeader;
   result:=(r.a shl 24) or (r.b shl 16) or (r.g shl 8) or r.r;
  end;
  procedure FlipAndCorrectImage;
- var x,y,o:TVkUInt32;
+ var x,y,o:TUInt32;
      Line,NewLine:PLongwords;
  begin
   if (Width<>0) and (Height<>0) then begin
    if (TGAHeader.ImageInfo and $10)<>0 then begin
     GetMem(NewImagePointer,ImageSize);
     for y:=0 to Height-1 do begin
-     o:=y*Width*SizeOf(TVkUInt32);
-     Line:=PLongwords(TVkPointer(@PVulkanRawByteChar(TVkPointer(ImagePointer))[o]));
-     NewLine:=PLongwords(TVkPointer(@PVulkanRawByteChar(TVkPointer(NewImagePointer))[o]));
+     o:=y*Width*SizeOf(TUInt32);
+     Line:=PLongwords(TPointer(@PVulkanRawByteChar(TPointer(ImagePointer))[o]));
+     NewLine:=PLongwords(TPointer(@PVulkanRawByteChar(TPointer(NewImagePointer))[o]));
      for x:=0 to Width-1 do begin
       NewLine^[Width-(x+1)]:=Line^[x];
      end;
@@ -11695,9 +11695,9 @@ var TGAHeader:TTGAHeader;
    if (TGAHeader.ImageInfo and $20)=0 then begin
     GetMem(NewImagePointer,ImageSize);
     for y:=0 to Height-1 do begin
-     Move(TVkPointer(@PVulkanRawByteChar(TVkPointer(ImagePointer))[y*Width*SizeOf(TVkUInt32)])^,
-          TVkPointer(@PVulkanRawByteChar(TVkPointer(NewImagePointer))[(Height-(y+1))*Width*SizeOf(TVkUInt32)])^,
-          Width*SizeOf(TVkUInt32));
+     Move(TPointer(@PVulkanRawByteChar(TPointer(ImagePointer))[y*Width*SizeOf(TUInt32)])^,
+          TPointer(@PVulkanRawByteChar(TPointer(NewImagePointer))[(Height-(y+1))*Width*SizeOf(TUInt32)])^,
+          Width*SizeOf(TUInt32));
     end;
     FreeMem(ImagePointer);
     ImagePointer:=NewImagePointer;
@@ -11705,11 +11705,11 @@ var TGAHeader:TTGAHeader;
   end;
  end;
  function DoIt:boolean;
- var PixelCounter,i,l,j:TVkUInt32;
+ var PixelCounter,i,l,j:TUInt32;
      BGR:TBGR;
      BGRA:TBGRA;
-     b,B1:TVkUInt8;
-     w:TVkUInt16;
+     b,B1:TUInt8;
+     w:TUInt16;
      HasPalette:BOOLEAN;
  begin
   result:=false;
@@ -11748,21 +11748,21 @@ var TGAHeader:TTGAHeader;
      case TGAHeader.ImageType of
       1:begin
        for i:=0 to (Width*Height)-1 do begin
-        Stream.Read(B8,SizeOf(TVkUInt8));
+        Stream.Read(B8,SizeOf(TUInt8));
         Pixel^:=PaletteEncode(B8);
         inc(Pixel);
        end;
       end;
       2:begin
        for i:=0 to (Width*Height)-1 do begin
-        Stream.Read(B8,SizeOf(TVkUInt8));
+        Stream.Read(B8,SizeOf(TUInt8));
         Pixel^:=B8;
         inc(Pixel);
        end;
       end;
       3:begin
        for i:=0 to (Width*Height)-1 do begin
-        Stream.Read(B8,SizeOf(TVkUInt8));
+        Stream.Read(B8,SizeOf(TUInt8));
         Pixel^:=(B8 shl 24) or (B8 shl 16) or (B8 shl 8) or B8;
         inc(Pixel);
        end;
@@ -11772,7 +11772,7 @@ var TGAHeader:TTGAHeader;
    end else if TGAHeader.BPP=16 then begin
     if (Width*Height)>0 then begin
      for i:=0 to (Width*Height)-1 do begin
-      Stream.Read(w,SizeOf(TVkUInt16));
+      Stream.Read(w,SizeOf(TUInt16));
       Pixel^:=(((w and $8000) shl 16) or ((w and $7C00) shl 9) or ((w and $3E0) shl 6) or ((w and $1F) shl 3)) or $0F0F0F0F;
       inc(Pixel);
      end;
@@ -11807,10 +11807,10 @@ var TGAHeader:TTGAHeader;
    j:=Width*Height;
    if TGAHeader.BPP=8 then begin
     while PixelCounter<j do begin
-     Stream.Read(B1,SizeOf(TVkUInt8));
+     Stream.Read(B1,SizeOf(TUInt8));
      b:=(B1 and $7f)+1;
      if (B1 and $80)<>0 then begin
-      Stream.Read(B8,SizeOf(TVkUInt8));
+      Stream.Read(B8,SizeOf(TUInt8));
       case TGAHeader.ImageType of
        9:begin
         l:=PaletteEncode(B8);
@@ -11838,7 +11838,7 @@ var TGAHeader:TTGAHeader;
      end else begin
       i:=0;
       while i<b do begin
-       Stream.Read(B8,SizeOf(TVkUInt8));
+       Stream.Read(B8,SizeOf(TUInt8));
        case TGAHeader.ImageType of
         9:begin
          l:=PaletteEncode(B8);
@@ -11865,10 +11865,10 @@ var TGAHeader:TTGAHeader;
     end;
    end else if TGAHeader.BPP=16 then begin
     while PixelCounter<j do begin
-     Stream.Read(B1,SizeOf(TVkUInt8));
+     Stream.Read(B1,SizeOf(TUInt8));
      b:=(B1 and $7f)+1;
      if (B1 and $80)<>0 then begin
-      Stream.Read(w,SizeOf(TVkUInt16));
+      Stream.Read(w,SizeOf(TUInt16));
       l:=(((w and $8000) shl 16) or ((w and $7C00) shl 9) or ((w and $3E0) shl 6) or ((w and $1F) shl 3)) or $0F0F0F0F;
       i:=0;
       while i<b do begin
@@ -11880,7 +11880,7 @@ var TGAHeader:TTGAHeader;
      end else begin
       i:=0;
       while i<b do begin
-       Stream.Read(w,SizeOf(TVkUInt16));
+       Stream.Read(w,SizeOf(TUInt16));
        Pixel^:=(((w and $8000) shl 16) or ((w and $7C00) shl 9) or ((w and $3E0) shl 6) or ((w and $1F) shl 3)) or $0F0F0F0F;
        inc(Pixel);
        inc(PixelCounter);
@@ -11890,7 +11890,7 @@ var TGAHeader:TTGAHeader;
     end;
    end else if TGAHeader.BPP=24 then begin
     while PixelCounter<j do begin
-     Stream.Read(B1,SizeOf(TVkUInt8));
+     Stream.Read(B1,SizeOf(TUInt8));
      b:=(B1 and $7f)+1;
      if (B1 and $80)<>0 then begin
       Stream.Read(BGR,SizeOf(TBGR));
@@ -11915,7 +11915,7 @@ var TGAHeader:TTGAHeader;
     end;
    end else if TGAHeader.BPP=32 then begin
     while PixelCounter<j do begin
-     Stream.Read(B1,SizeOf(TVkUInt8));
+     Stream.Read(B1,SizeOf(TUInt8));
      b:=(B1 and $7f)+1;
      if (B1 and $80)<>0 then begin
       Stream.Read(BGRA,SizeOf(TBGRA));
@@ -12035,13 +12035,13 @@ begin
    result:='VK_ERROR_INVALID_SHADER_NV';
   end;
   else begin
-   result:='Unknown error code detected ('+TVulkanCharString(IntToStr(TVkInt32(ErrorCode)))+')';
+   result:='Unknown error code detected ('+TVulkanCharString(IntToStr(TInt32(ErrorCode)))+')';
   end;
  end;
 end;
 
 function StringListToVulkanCharStringArray(const StringList:TStringList):TVulkanCharStringArray;
-var i:TVkInt32;
+var i:TInt32;
 begin
  result:=nil;
  SetLength(result,StringList.Count);
@@ -12194,13 +12194,13 @@ begin
 {$ifend}
 end;
 
-function VulkanSpritePoint(const x,y:TVkFloat):TVulkanSpritePoint;
+function VulkanSpritePoint(const x,y:TFloat):TVulkanSpritePoint;
 begin
  result.x:=x;
  result.y:=y;
 end;
 
-function VulkanSpriteRect(const Left,Top,Right,Bottom:TVkFloat):TVulkanSpriteRect;
+function VulkanSpriteRect(const Left,Top,Right,Bottom:TFloat):TVulkanSpriteRect;
 begin
  result.Left:=Left;
  result.Top:=Top;
@@ -12208,7 +12208,7 @@ begin
  result.Bottom:=Bottom;
 end;
 
-function VulkanSpriteColor(const r,g,b,a:TVkFloat):TVulkanSpriteColor;
+function VulkanSpriteColor(const r,g,b,a:TFloat):TVulkanSpriteColor;
 begin
  result.r:=r;
  result.g:=g;
@@ -12218,43 +12218,43 @@ end;
 
 function VulkanUTF32CharToUTF8(CharValue:TVulkanUTF32Char):TVulkanUTF8String;
 var Data:array[0..5] of TVulkanRawByteChar;
-    ResultLen:TVkInt32;
+    ResultLen:TInt32;
 begin
  if CharValue=0 then begin
   result:=#0;
  end else begin
   if CharValue<=$7f then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8(CharValue));
+   Data[0]:=TVulkanRawByteChar(TUInt8(CharValue));
    ResultLen:=1;
   end else if CharValue<=$7ff then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8($c0 or ((CharValue shr 6) and $1f)));
-   Data[1]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+   Data[0]:=TVulkanRawByteChar(TUInt8($c0 or ((CharValue shr 6) and $1f)));
+   Data[1]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
    ResultLen:=2;
   end else if CharValue<=$ffff then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8($e0 or ((CharValue shr 12) and $0f)));
-   Data[1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[2]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+   Data[0]:=TVulkanRawByteChar(TUInt8($e0 or ((CharValue shr 12) and $0f)));
+   Data[1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[2]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
    ResultLen:=3;
   end else if CharValue<=$1fffff then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8($f0 or ((CharValue shr 18) and $07)));
-   Data[1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[3]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+   Data[0]:=TVulkanRawByteChar(TUInt8($f0 or ((CharValue shr 18) and $07)));
+   Data[1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[2]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[3]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
    ResultLen:=4;
   end else if CharValue<=$3ffffff then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8($f8 or ((CharValue shr 24) and $03)));
-   Data[1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 18) and $3f)));
-   Data[2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[3]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[4]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+   Data[0]:=TVulkanRawByteChar(TUInt8($f8 or ((CharValue shr 24) and $03)));
+   Data[1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 18) and $3f)));
+   Data[2]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[3]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[4]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
    ResultLen:=5;
   end else if CharValue<=$7fffffff then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8($fc or ((CharValue shr 30) and $01)));
-   Data[1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 24) and $3f)));
-   Data[2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 18) and $3f)));
-   Data[3]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[4]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[5]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+   Data[0]:=TVulkanRawByteChar(TUInt8($fc or ((CharValue shr 30) and $01)));
+   Data[1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 24) and $3f)));
+   Data[2]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 18) and $3f)));
+   Data[3]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[4]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[5]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
    ResultLen:=6;
   end else begin
    Data[0]:=#$ef; // $fffd
@@ -12267,45 +12267,45 @@ begin
  end;
 end;
 
-function VulkanUTF32CharToUTF8At(CharValue:TVulkanUTF32Char;var s:TVulkanUTF8String;const Index:TVkInt32):TVkInt32;
+function VulkanUTF32CharToUTF8At(CharValue:TVulkanUTF32Char;var s:TVulkanUTF8String;const Index:TInt32):TInt32;
 var Data:array[0..5] of TVulkanRawByteChar;
-    ResultLen:TVkInt32;
+    ResultLen:TInt32;
 begin
  if CharValue=0 then begin
   result:=0;
  end else begin
   if CharValue<=$7f then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8(CharValue));
+   Data[0]:=TVulkanRawByteChar(TUInt8(CharValue));
    ResultLen:=1;
   end else if CharValue<=$7ff then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8($c0 or ((CharValue shr 6) and $1f)));
-   Data[1]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+   Data[0]:=TVulkanRawByteChar(TUInt8($c0 or ((CharValue shr 6) and $1f)));
+   Data[1]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
    ResultLen:=2;
   end else if CharValue<=$ffff then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8($e0 or ((CharValue shr 12) and $0f)));
-   Data[1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[2]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+   Data[0]:=TVulkanRawByteChar(TUInt8($e0 or ((CharValue shr 12) and $0f)));
+   Data[1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[2]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
    ResultLen:=3;
   end else if CharValue<=$1fffff then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8($f0 or ((CharValue shr 18) and $07)));
-   Data[1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[3]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+   Data[0]:=TVulkanRawByteChar(TUInt8($f0 or ((CharValue shr 18) and $07)));
+   Data[1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[2]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[3]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
    ResultLen:=4;
   end else if CharValue<=$3ffffff then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8($f8 or ((CharValue shr 24) and $03)));
-   Data[1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 18) and $3f)));
-   Data[2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[3]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[4]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+   Data[0]:=TVulkanRawByteChar(TUInt8($f8 or ((CharValue shr 24) and $03)));
+   Data[1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 18) and $3f)));
+   Data[2]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[3]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[4]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
    ResultLen:=5;
   end else if CharValue<=$7fffffff then begin
-   Data[0]:=TVulkanRawByteChar(TVkUInt8($fc or ((CharValue shr 30) and $01)));
-   Data[1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 24) and $3f)));
-   Data[2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 18) and $3f)));
-   Data[3]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[4]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[5]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+   Data[0]:=TVulkanRawByteChar(TUInt8($fc or ((CharValue shr 30) and $01)));
+   Data[1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 24) and $3f)));
+   Data[2]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 18) and $3f)));
+   Data[3]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 12) and $3f)));
+   Data[4]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+   Data[5]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
    ResultLen:=6;
   end else begin
    Data[0]:=#$ef; // $fffd
@@ -12322,8 +12322,8 @@ begin
 end;
 
 function VulkanUTF8Validate(const s:TVulkanRawByteString):boolean;
-var CodeUnit:TVkInt32;
-    State:TVkUInt32;
+var CodeUnit:TInt32;
+    State:TUInt32;
 begin
  State:=ucACCEPT;
  for CodeUnit:=1 to length(s) do begin
@@ -12337,8 +12337,8 @@ begin
 end;
 
 function VulkanUTF8Correct(const Str:TVulkanRawByteString):TVulkanUTF8String;
-var CodeUnit,Len,ResultLen:TVkInt32;
-    StartCodeUnit,Value,CharClass,State,CharValue:TVkUInt32;
+var CodeUnit,Len,ResultLen:TInt32;
+    StartCodeUnit,Value,CharClass,State,CharValue:TUInt32;
     Data:PVulkanRawByteChar;
 begin
  if (length(Str)=0) or VulkanUTF8Validate(Str) then begin
@@ -12355,7 +12355,7 @@ begin
    State:=ucACCEPT;
    CharValue:=0;
    while CodeUnit<=Len do begin
-    Value:=TVkUInt8(TVulkanRawByteChar(Str[CodeUnit]));
+    Value:=TUInt8(TVulkanRawByteChar(Str[CodeUnit]));
     inc(CodeUnit);
     CharClass:=VulkanUTF8DFACharClasses[TVulkanRawByteChar(Value)];
     if State=ucACCEPT then begin
@@ -12369,41 +12369,41 @@ begin
     end;
    end;
    if State<>ucACCEPT then begin
-    CharValue:=TVkUInt8(TVulkanRawByteChar(Str[StartCodeUnit]));
+    CharValue:=TUInt8(TVulkanRawByteChar(Str[StartCodeUnit]));
     CodeUnit:=StartCodeUnit+1;
    end;
    if CharValue<=$7f then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8(CharValue));
+    Data[ResultLen]:=TVulkanRawByteChar(TUInt8(CharValue));
     inc(ResultLen);
    end else if CharValue<=$7ff then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($c0 or ((CharValue shr 6) and $1f)));
-    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+    Data[ResultLen]:=TVulkanRawByteChar(TUInt8($c0 or ((CharValue shr 6) and $1f)));
+    Data[ResultLen+1]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
     inc(ResultLen,2);
    end else if CharValue<=$ffff then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($e0 or ((CharValue shr 12) and $0f)));
-    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+    Data[ResultLen]:=TVulkanRawByteChar(TUInt8($e0 or ((CharValue shr 12) and $0f)));
+    Data[ResultLen+1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+2]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
     inc(ResultLen,3);
    end else if CharValue<=$1fffff then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($f0 or ((CharValue shr 18) and $07)));
-    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+3]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+    Data[ResultLen]:=TVulkanRawByteChar(TUInt8($f0 or ((CharValue shr 18) and $07)));
+    Data[ResultLen+1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 12) and $3f)));
+    Data[ResultLen+2]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+3]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
     inc(ResultLen,4);
    end else if CharValue<=$3ffffff then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($f8 or ((CharValue shr 24) and $03)));
-    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 18) and $3f)));
-    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-    Data[ResultLen+3]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+4]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+    Data[ResultLen]:=TVulkanRawByteChar(TUInt8($f8 or ((CharValue shr 24) and $03)));
+    Data[ResultLen+1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 18) and $3f)));
+    Data[ResultLen+2]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 12) and $3f)));
+    Data[ResultLen+3]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+4]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
     inc(ResultLen,5);
    end else if CharValue<=$7fffffff then begin
-    Data[ResultLen]:=TVulkanRawByteChar(TVkUInt8($fc or ((CharValue shr 30) and $01)));
-    Data[ResultLen+1]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 24) and $3f)));
-    Data[ResultLen+2]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 18) and $3f)));
-    Data[ResultLen+3]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 12) and $3f)));
-    Data[ResultLen+4]:=TVulkanRawByteChar(TVkUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+5]:=TVulkanRawByteChar(TVkUInt8($80 or (CharValue and $3f)));
+    Data[ResultLen]:=TVulkanRawByteChar(TUInt8($fc or ((CharValue shr 30) and $01)));
+    Data[ResultLen+1]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 24) and $3f)));
+    Data[ResultLen+2]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 18) and $3f)));
+    Data[ResultLen+3]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 12) and $3f)));
+    Data[ResultLen+4]:=TVulkanRawByteChar(TUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+5]:=TVulkanRawByteChar(TUInt8($80 or (CharValue and $3f)));
     inc(ResultLen,6);
    end else begin
     Data[ResultLen]:=#$ef; // $fffd
@@ -12416,9 +12416,9 @@ begin
  end;
 end;
 
-function VulkanUTF8CodeUnitGetCharAndIncFallback(const s:TVulkanUTF8String;var CodeUnit:TVkInt32):TVkUInt32;
-var Len:TVkInt32;
-    StartCodeUnit,Value,CharClass,State:TVkUInt32;
+function VulkanUTF8CodeUnitGetCharAndIncFallback(const s:TVulkanUTF8String;var CodeUnit:TInt32):TUInt32;
+var Len:TInt32;
+    StartCodeUnit,Value,CharClass,State:TUInt32;
 begin
  result:=0;
  Len:=length(s);
@@ -12426,7 +12426,7 @@ begin
   StartCodeUnit:=CodeUnit;
   State:=ucACCEPT;
   while CodeUnit<=Len do begin
-   Value:=TVkUInt8(TVulkanRawByteChar(s[CodeUnit]));
+   Value:=TUInt8(TVulkanRawByteChar(s[CodeUnit]));
    inc(CodeUnit);
    CharClass:=VulkanUTF8DFACharClasses[TVulkanRawByteChar(Value)];
    if State=ucACCEPT then begin
@@ -12440,7 +12440,7 @@ begin
    end;
   end;
   if State<>ucACCEPT then begin
-   result:=TVkUInt8(TVulkanRawByteChar(s[StartCodeUnit]));
+   result:=TUInt8(TVulkanRawByteChar(s[StartCodeUnit]));
    CodeUnit:=StartCodeUnit+1;
   end;
  end;
@@ -12474,7 +12474,7 @@ end;
 
 procedure TVulkanBaseList.SetCount(const NewCount:TVkSizeInt);
 var Index,NewAllocated:TVkSizeInt;
-    Item:TVkPointer;
+    Item:TPointer;
 begin
  if fCount<NewCount then begin
   NewAllocated:=TVkSizeInt(VulkanRoundUpToPowerOfTwo(NewCount));
@@ -12484,27 +12484,27 @@ begin
    end else begin
     GetMem(fMemory,NewAllocated*fItemSize);
    end;
-   FillChar(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(fAllocated)*TVkPtrUInt(fItemSize))))^,(NewAllocated-fAllocated)*fItemSize,#0);
+   FillChar(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(fAllocated)*TPtrUInt(fItemSize))))^,(NewAllocated-fAllocated)*fItemSize,#0);
    fAllocated:=NewAllocated;
   end;
   Item:=fMemory;
   Index:=fCount;
-  inc(TVkPtrUInt(Item),Index*fItemSize);
+  inc(TPtrUInt(Item),Index*fItemSize);
   while Index<NewCount do begin
    FillChar(Item^,fItemSize,#0);
    InitializeItem(Item^);
-   inc(TVkPtrUInt(Item),fItemSize);
+   inc(TPtrUInt(Item),fItemSize);
    inc(Index);
   end;
   fCount:=NewCount;
  end else if fCount>NewCount then begin
   Item:=fMemory;
   Index:=NewCount;
-  inc(TVkPtrUInt(Item),Index*fItemSize);
+  inc(TPtrUInt(Item),Index*fItemSize);
   while Index<fCount do begin
    FinalizeItem(Item^);
    FillChar(Item^,fItemSize,#0);
-   inc(TVkPtrUInt(Item),fItemSize);
+   inc(TPtrUInt(Item),fItemSize);
    inc(Index);
   end;
   fCount:=NewCount;
@@ -12528,10 +12528,10 @@ begin
  end;
 end;
 
-function TVulkanBaseList.GetItem(const Index:TVkSizeInt):TVkPointer;
+function TVulkanBaseList.GetItem(const Index:TVkSizeInt):TPointer;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))));
+  result:=TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))));
  end else begin
   result:=nil;
  end;
@@ -12551,19 +12551,19 @@ begin
 end;
 
 procedure TVulkanBaseList.ExchangeItem(var Source,Destination);
-var a,b:PVkUInt8;
-    c8:TVkUInt8;
-    c32:TVkUInt32;
-    Index:TVkInt32;
+var a,b:PUInt8;
+    c8:TUInt8;
+    c32:TUInt32;
+    Index:TInt32;
 begin
  a:=@Source;
  b:=@Destination;
  for Index:=1 to fItemSize shr 2 do begin
-  c32:=PVkUInt32(a)^;
-  PVkUInt32(a)^:=PVkUInt32(b)^;
-  PVkUInt32(b)^:=c32;
-  inc(PVkUInt32(a));
-  inc(PVkUInt32(b));
+  c32:=PUInt32(a)^;
+  PUInt32(a)^:=PUInt32(b)^;
+  PUInt32(b)^:=c32;
+  inc(PUInt32(a));
+  inc(PUInt32(b));
  end;
  for Index:=1 to fItemSize and 3 do begin
   c8:=a^;
@@ -12574,9 +12574,9 @@ begin
  end;
 end;
 
-function TVulkanBaseList.CompareItem(const Source,Destination):TVkInt32;
-var a,b:PVkUInt8;
-    Index:TVkInt32;
+function TVulkanBaseList.CompareItem(const Source,Destination):TInt32;
+var a,b:PUInt8;
+    Index:TInt32;
 begin
  result:=0;
  a:=@Source;
@@ -12593,13 +12593,13 @@ end;
 
 procedure TVulkanBaseList.Clear;
 var Index:TVkSizeInt;
-    Item:TVkPointer;
+    Item:TPointer;
 begin
  Item:=fMemory;
  Index:=0;
  while Index<fCount do begin
   FinalizeItem(Item^);
-  inc(TVkPtrInt(Item),fItemSize);
+  inc(TPtrInt(Item),fItemSize);
   inc(Index);
  end;
  if assigned(fMemory) then begin
@@ -12612,7 +12612,7 @@ end;
 
 procedure TVulkanBaseList.FillWith(const SourceData;const SourceCount:TVkSizeInt);
 var Index:TVkSizeInt;
-    SourceItem,Item:TVkPointer;
+    SourceItem,Item:TPointer;
 begin
  SourceItem:=@SourceData;
  if assigned(SourceItem) and (SourceCount>0) then begin
@@ -12621,8 +12621,8 @@ begin
   Index:=0;
   while Index<fCount do begin
    CopyItem(SourceItem^,Item^);
-   inc(TVkPtrInt(SourceItem),fItemSize);
-   inc(TVkPtrInt(Item),fItemSize);
+   inc(TPtrInt(SourceItem),fItemSize);
+   inc(TPtrInt(Item),fItemSize);
    inc(Index);
   end;
  end else begin
@@ -12634,7 +12634,7 @@ function TVulkanBaseList.Add(const Item):TVkSizeInt;
 begin
  result:=fCount;
  SetCount(result+1);
- CopyItem(Item,TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(result)*TVkPtrUInt(fItemSize))))^);
+ CopyItem(Item,TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(result)*TPtrUInt(fItemSize))))^);
 end;
 
 function TVulkanBaseList.Find(const Item):TVkSizeInt;
@@ -12643,7 +12643,7 @@ begin
  result:=-1;
  Index:=0;
  while Index<fCount do begin
-  if CompareItem(Item,TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^)=0 then begin
+  if CompareItem(Item,TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^)=0 then begin
    result:=Index;
    break;
   end;
@@ -12656,21 +12656,21 @@ begin
  if Index>=0 then begin
   if Index<fCount then begin
    SetCount(fCount+1);
-   Move(TVkPointer(TVkPtrInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^,TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index+1)*TVkPtrUInt(fItemSize))))^,(fCount-Index)*fItemSize);
-   FillChar(TVkPointer(TVkPtrInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^,fItemSize,#0);
+   Move(TPointer(TPtrInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^,TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index+1)*TPtrUInt(fItemSize))))^,(fCount-Index)*fItemSize);
+   FillChar(TPointer(TPtrInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^,fItemSize,#0);
   end else begin
    SetCount(Index+1);
   end;
-  CopyItem(Item,TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  CopyItem(Item,TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
  end;
 end;
 
 procedure TVulkanBaseList.Delete(const Index:TVkSizeInt);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  FinalizeItem(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
-  Move(TVkPointer(TVkPtrUInt(TVkPtruInt(fMemory)+(TVkPtrUInt(Index+1)*TVkPtrUInt(fItemSize))))^,TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^,(fCount-Index)*fItemSize);
-  FillChar(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(fCount-1)*TVkPtrUInt(fItemSize))))^,fItemSize,#0);
+  FinalizeItem(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
+  Move(TPointer(TPtrUInt(TPtruInt(fMemory)+(TPtrUInt(Index+1)*TPtrUInt(fItemSize))))^,TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^,(fCount-Index)*fItemSize);
+  FillChar(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(fCount-1)*TPtrUInt(fItemSize))))^,fItemSize,#0);
   SetCount(fCount-1);
  end;
 end;
@@ -12691,7 +12691,7 @@ end;
 procedure TVulkanBaseList.Exchange(const Index,WithIndex:TVkSizeInt);
 begin
  if (Index>=0) and (Index<fCount) and (WithIndex>=0) and (WithIndex<fCount) then begin
-  ExchangeItem(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^,TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(WithIndex)*TVkPtrUInt(fItemSize))))^);
+  ExchangeItem(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^,TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(WithIndex)*TPtrUInt(fItemSize))))^);
  end;
 end;
 
@@ -12714,7 +12714,7 @@ end;
 function TVulkanObjectList.GetItem(const Index:TVkSizeInt):TVulkanObject;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVulkanObject(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  result:=TVulkanObject(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
  end else begin
   result:=nil;
  end;
@@ -12723,39 +12723,39 @@ end;
 procedure TVulkanObjectList.SetItem(const Index:TVkSizeInt;const Item:TVulkanObject);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVulkanObject(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
+  TVulkanObject(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
 procedure TVulkanObjectList.InitializeItem(var Item);
 begin
- TVulkanObject(TVkPointer(Item)):=nil;
+ TVulkanObject(TPointer(Item)):=nil;
 end;
 
 procedure TVulkanObjectList.FinalizeItem(var Item);
 begin
  if fOwnObjects then begin
-  TVulkanObject(TVkPointer(Item)).Free;
+  TVulkanObject(TPointer(Item)).Free;
  end;
- TVulkanObject(TVkPointer(Item)):=nil;
+ TVulkanObject(TPointer(Item)):=nil;
 end;
 
 procedure TVulkanObjectList.CopyItem(const Source;var Destination);
 begin
- TVulkanObject(TVkPointer(Destination)):=TVulkanObject(TVkPointer(Source));
+ TVulkanObject(TPointer(Destination)):=TVulkanObject(TPointer(Source));
 end;
 
 procedure TVulkanObjectList.ExchangeItem(var Source,Destination);
 var Temporary:TVulkanObject;
 begin
- Temporary:=TVulkanObject(TVkPointer(Source));
- TVulkanObject(TVkPointer(Source)):=TVulkanObject(TVkPointer(Destination));
- TVulkanObject(TVkPointer(Destination)):=Temporary;
+ Temporary:=TVulkanObject(TPointer(Source));
+ TVulkanObject(TPointer(Source)):=TVulkanObject(TPointer(Destination));
+ TVulkanObject(TPointer(Destination)):=Temporary;
 end;
 
-function TVulkanObjectList.CompareItem(const Source,Destination):TVkInt32;
+function TVulkanObjectList.CompareItem(const Source,Destination):TInt32;
 begin
- result:=TVkPtrDiff(Source)-TVkPtrDiff(Destination);
+ result:=TPtrDiff(Source)-TPtrDiff(Destination);
 end;
 
 function TVulkanObjectList.Add(const Item:TVulkanObject):TVkSizeInt;
@@ -12780,7 +12780,7 @@ end;
 
 constructor TVkUInt32List.Create;
 begin
- inherited Create(SizeOf(TVkUInt32));
+ inherited Create(SizeOf(TUInt32));
 end;
 
 destructor TVkUInt32List.Destroy;
@@ -12788,73 +12788,73 @@ begin
  inherited Destroy;
 end;
 
-function TVkUInt32List.GetItem(const Index:TVkSizeInt):TVkUInt32;
+function TVkUInt32List.GetItem(const Index:TVkSizeInt):TUInt32;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkUInt32(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  result:=TUInt32(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
 end;
 
-procedure TVkUInt32List.SetItem(const Index:TVkSizeInt;const Item:TVkUInt32);
+procedure TVkUInt32List.SetItem(const Index:TVkSizeInt;const Item:TUInt32);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkUInt32(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
+  TUInt32(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
 procedure TVkUInt32List.InitializeItem(var Item);
 begin
- TVkUInt32(Item):=0;
+ TUInt32(Item):=0;
 end;
 
 procedure TVkUInt32List.FinalizeItem(var Item);
 begin
- TVkUInt32(Item):=0;
+ TUInt32(Item):=0;
 end;
 
 procedure TVkUInt32List.CopyItem(const Source;var Destination);
 begin
- TVkUInt32(Destination):=TVkUInt32(Source);
+ TUInt32(Destination):=TUInt32(Source);
 end;
 
 procedure TVkUInt32List.ExchangeItem(var Source,Destination);
-var Temporary:TVkUInt32;
+var Temporary:TUInt32;
 begin
- Temporary:=TVkUInt32(Source);
- TVkUInt32(Source):=TVkUInt32(Destination);
- TVkUInt32(Destination):=Temporary;
+ Temporary:=TUInt32(Source);
+ TUInt32(Source):=TUInt32(Destination);
+ TUInt32(Destination):=Temporary;
 end;
 
-function TVkUInt32List.CompareItem(const Source,Destination):TVkInt32;
+function TVkUInt32List.CompareItem(const Source,Destination):TInt32;
 begin
- result:=TVkUInt32(Source)-TVkUInt32(Destination);
+ result:=TUInt32(Source)-TUInt32(Destination);
 end;
 
-function TVkUInt32List.Add(const Item:TVkUInt32):TVkSizeInt;
+function TVkUInt32List.Add(const Item:TUInt32):TVkSizeInt;
 begin
  result:=inherited Add(Item);
 end;
 
-function TVkUInt32List.Find(const Item:TVkUInt32):TVkSizeInt;
+function TVkUInt32List.Find(const Item:TUInt32):TVkSizeInt;
 begin
  result:=inherited Find(Item);
 end;
 
-procedure TVkUInt32List.Insert(const Index:TVkSizeInt;const Item:TVkUInt32);
+procedure TVkUInt32List.Insert(const Index:TVkSizeInt;const Item:TUInt32);
 begin
  inherited Insert(Index,Item);
 end;
 
-procedure TVkUInt32List.Remove(const Item:TVkUInt32);
+procedure TVkUInt32List.Remove(const Item:TUInt32);
 begin
  inherited Remove(Item);
 end;
 
 constructor TVkFloatList.Create;
 begin
- inherited Create(SizeOf(TVkFloat));
+ inherited Create(SizeOf(TFloat));
 end;
 
 destructor TVkFloatList.Destroy;
@@ -12862,66 +12862,66 @@ begin
  inherited Destroy;
 end;
 
-function TVkFloatList.GetItem(const Index:TVkSizeInt):TVkFloat;
+function TVkFloatList.GetItem(const Index:TVkSizeInt):TFloat;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkFloat(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  result:=TFloat(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
 end;
 
-procedure TVkFloatList.SetItem(const Index:TVkSizeInt;const Item:TVkFloat);
+procedure TVkFloatList.SetItem(const Index:TVkSizeInt;const Item:TFloat);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkFloat(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
+  TFloat(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
 procedure TVkFloatList.InitializeItem(var Item);
 begin
- TVkFloat(Item):=0;
+ TFloat(Item):=0;
 end;
 
 procedure TVkFloatList.FinalizeItem(var Item);
 begin
- TVkFloat(Item):=0;
+ TFloat(Item):=0;
 end;
 
 procedure TVkFloatList.CopyItem(const Source;var Destination);
 begin
- TVkFloat(Destination):=TVkFloat(Source);
+ TFloat(Destination):=TFloat(Source);
 end;
 
 procedure TVkFloatList.ExchangeItem(var Source,Destination);
-var Temporary:TVkFloat;
+var Temporary:TFloat;
 begin
- Temporary:=TVkFloat(Source);
- TVkFloat(Source):=TVkFloat(Destination);
- TVkFloat(Destination):=Temporary;
+ Temporary:=TFloat(Source);
+ TFloat(Source):=TFloat(Destination);
+ TFloat(Destination):=Temporary;
 end;
 
-function TVkFloatList.CompareItem(const Source,Destination):TVkInt32;
+function TVkFloatList.CompareItem(const Source,Destination):TInt32;
 begin
- result:=TVkInt32(Source)-TVkInt32(Destination);
+ result:=TInt32(Source)-TInt32(Destination);
 end;
 
-function TVkFloatList.Add(const Item:TVkFloat):TVkSizeInt;
+function TVkFloatList.Add(const Item:TFloat):TVkSizeInt;
 begin
  result:=inherited Add(Item);
 end;
 
-function TVkFloatList.Find(const Item:TVkFloat):TVkSizeInt;
+function TVkFloatList.Find(const Item:TFloat):TVkSizeInt;
 begin
  result:=inherited Find(Item);
 end;
 
-procedure TVkFloatList.Insert(const Index:TVkSizeInt;const Item:TVkFloat);
+procedure TVkFloatList.Insert(const Index:TVkSizeInt;const Item:TFloat);
 begin
  inherited Insert(Index,Item);
 end;
 
-procedure TVkFloatList.Remove(const Item:TVkFloat);
+procedure TVkFloatList.Remove(const Item:TFloat);
 begin
  inherited Remove(Item);
 end;
@@ -12939,7 +12939,7 @@ end;
 function TVkImageViewList.GetItem(const Index:TVkSizeInt):TVkImageView;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkImageView(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  result:=TVkImageView(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
@@ -12948,7 +12948,7 @@ end;
 procedure TVkImageViewList.SetItem(const Index:TVkSizeInt;const Item:TVkImageView);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkImageView(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
+  TVkImageView(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -12975,7 +12975,7 @@ begin
  TVkImageView(Destination):=Temporary;
 end;
 
-function TVkImageViewList.CompareItem(const Source,Destination):TVkInt32;
+function TVkImageViewList.CompareItem(const Source,Destination):TInt32;
 begin
  result:=TVkImageView(Source)-TVkImageView(Destination);
 end;
@@ -13013,7 +13013,7 @@ end;
 function TVkSamplerList.GetItem(const Index:TVkSizeInt):TVkSampler;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkSampler(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  result:=TVkSampler(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
@@ -13022,7 +13022,7 @@ end;
 procedure TVkSamplerList.SetItem(const Index:TVkSizeInt;const Item:TVkSampler);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkSampler(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
+  TVkSampler(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -13049,7 +13049,7 @@ begin
  TVkSampler(Destination):=Temporary;
 end;
 
-function TVkSamplerList.CompareItem(const Source,Destination):TVkInt32;
+function TVkSamplerList.CompareItem(const Source,Destination):TInt32;
 begin
  result:=TVkSampler(Source)-TVkSampler(Destination);
 end;
@@ -13087,7 +13087,7 @@ end;
 function TVkDescriptorSetLayoutList.GetItem(const Index:TVkSizeInt):TVkDescriptorSetLayout;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkDescriptorSetLayout(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  result:=TVkDescriptorSetLayout(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
@@ -13096,7 +13096,7 @@ end;
 procedure TVkDescriptorSetLayoutList.SetItem(const Index:TVkSizeInt;const Item:TVkDescriptorSetLayout);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkDescriptorSetLayout(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
+  TVkDescriptorSetLayout(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -13123,7 +13123,7 @@ begin
  TVkDescriptorSetLayout(Destination):=Temporary;
 end;
 
-function TVkDescriptorSetLayoutList.CompareItem(const Source,Destination):TVkInt32;
+function TVkDescriptorSetLayoutList.CompareItem(const Source,Destination):TInt32;
 begin
  result:=TVkDescriptorSetLayout(Source)-TVkDescriptorSetLayout(Destination);
 end;
@@ -13161,7 +13161,7 @@ end;
 function TVkSampleMaskList.GetItem(const Index:TVkSizeInt):TVkSampleMask;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkSampleMask(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  result:=TVkSampleMask(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
  end else begin
   result:=0;
  end;
@@ -13170,7 +13170,7 @@ end;
 procedure TVkSampleMaskList.SetItem(const Index:TVkSizeInt;const Item:TVkSampleMask);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkSampleMask(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
+  TVkSampleMask(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -13197,7 +13197,7 @@ begin
  TVkSampleMask(Destination):=Temporary;
 end;
 
-function TVkSampleMaskList.CompareItem(const Source,Destination):TVkInt32;
+function TVkSampleMaskList.CompareItem(const Source,Destination):TInt32;
 begin
  result:=TVkSampleMask(Source)-TVkSampleMask(Destination);
 end;
@@ -13235,7 +13235,7 @@ end;
 function TVkDynamicStateList.GetItem(const Index:TVkSizeInt):TVkDynamicState;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkDynamicState(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  result:=TVkDynamicState(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
  end else begin
   result:=TVkDynamicState(0);
  end;
@@ -13244,7 +13244,7 @@ end;
 procedure TVkDynamicStateList.SetItem(const Index:TVkSizeInt;const Item:TVkDynamicState);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkDynamicState(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
+  TVkDynamicState(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -13271,7 +13271,7 @@ begin
  TVkDynamicState(Destination):=Temporary;
 end;
 
-function TVkDynamicStateList.CompareItem(const Source,Destination):TVkInt32;
+function TVkDynamicStateList.CompareItem(const Source,Destination):TInt32;
 begin
  result:=TVkSize(TVkDynamicState(Source))-TVkSize(TVkDynamicState(Destination));
 end;
@@ -13309,7 +13309,7 @@ end;
 function TVkBufferViewList.GetItem(const Index:TVkSizeInt):TVkBufferView;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkBufferView(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  result:=TVkBufferView(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
  end else begin
   result:=TVkBufferView(0);
  end;
@@ -13318,7 +13318,7 @@ end;
 procedure TVkBufferViewList.SetItem(const Index:TVkSizeInt;const Item:TVkBufferView);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkBufferView(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
+  TVkBufferView(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -13345,7 +13345,7 @@ begin
  TVkBufferView(Destination):=Temporary;
 end;
 
-function TVkBufferViewList.CompareItem(const Source,Destination):TVkInt32;
+function TVkBufferViewList.CompareItem(const Source,Destination):TInt32;
 begin
  result:=TVkSize(TVkBufferView(Source))-TVkSize(TVkBufferView(Destination));
 end;
@@ -13383,7 +13383,7 @@ end;
 function TVkClearValueList.GetItem(const Index:TVkSizeInt):TVkClearValue;
 begin
  if (Index>=0) and (Index<fCount) then begin
-  result:=TVkClearValue(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^);
+  result:=TVkClearValue(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^);
  end else begin
   FillChar(result,SizeOf(TVkClearValue),#0);
  end;
@@ -13392,7 +13392,7 @@ end;
 procedure TVkClearValueList.SetItem(const Index:TVkSizeInt;const Item:TVkClearValue);
 begin
  if (Index>=0) and (Index<fCount) then begin
-  TVkClearValue(TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+(TVkPtrUInt(Index)*TVkPtrUInt(fItemSize))))^):=Item;
+  TVkClearValue(TPointer(TPtrUInt(TPtrUInt(fMemory)+(TPtrUInt(Index)*TPtrUInt(fItemSize))))^):=Item;
  end;
 end;
 
@@ -13419,7 +13419,7 @@ begin
  TVkClearValue(Destination):=Temporary;
 end;
 
-function TVkClearValueList.CompareItem(const Source,Destination):TVkInt32;
+function TVkClearValueList.CompareItem(const Source,Destination):TInt32;
 begin
  result:=inherited CompareItem(Source,Destination);
 end;
@@ -13444,7 +13444,7 @@ begin
  inherited Remove(Item);
 end;
 
-constructor TVulkanDataStream.Create(const AData:TVkPointer;const ASize:TVkInt64);
+constructor TVulkanDataStream.Create(const AData:TPointer;const ASize:TInt64);
 begin
  inherited Create;
  fData:=AData;
@@ -13457,7 +13457,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanDataStream.Read(var Buffer;Count:TVkInt32):TVkInt32;
+function TVulkanDataStream.Read(var Buffer;Count:TInt32):TInt32;
 begin
  if (fPosition+Count)>fSize then begin
   Count:=fSize-fPosition;
@@ -13471,7 +13471,7 @@ begin
  end;
 end;
 
-function TVulkanDataStream.Write(const Buffer;Count:TVkInt32):TVkInt32;
+function TVulkanDataStream.Write(const Buffer;Count:TInt32):TInt32;
 begin
  if (fPosition+Count)>fSize then begin
   Count:=fSize-fPosition;
@@ -13485,7 +13485,7 @@ begin
  end;
 end;
 
-function TVulkanDataStream.Seek(Offset:TVkInt32;Origin:TVkUInt16):TVkInt32;
+function TVulkanDataStream.Seek(Offset:TInt32;Origin:TUInt16):TInt32;
 begin
  case Origin of
   soFromBeginning:begin
@@ -13504,7 +13504,7 @@ begin
  result:=fPosition;
 end;
 
-function TVulkanDataStream.Seek(const Offset:TVkInt64;Origin:TSeekOrigin):TVkInt64;
+function TVulkanDataStream.Seek(const Offset:TInt64;Origin:TSeekOrigin):TInt64;
 begin
  case Origin of
   soBeginning:begin
@@ -13523,14 +13523,14 @@ begin
  result:=fPosition;
 end;
 
-procedure TVulkanDataStream.SetSize(NewSize:TVkInt32);
+procedure TVulkanDataStream.SetSize(NewSize:TInt32);
 begin
  if fSize<>NewSize then begin
   raise EVulkanDataStream.Create('Stream set size error');
  end;
 end;
 
-procedure TVulkanDataStream.SetSize(const NewSize:TVkInt64);
+procedure TVulkanDataStream.SetSize(const NewSize:TInt64);
 begin
  if fSize<>NewSize then begin
   raise EVulkanDataStream.Create('Stream set size error');
@@ -13550,7 +13550,7 @@ begin
 end;
 
 destructor TVulkanStringHashMap.Destroy;
-var Counter:TVkInt32;
+var Counter:TInt32;
 begin
  Clear;
  for Counter:=0 to length(Entities)-1 do begin
@@ -13563,7 +13563,7 @@ begin
 end;
 
 procedure TVulkanStringHashMap.Clear;
-var Counter:TVkInt32;
+var Counter:TInt32;
 begin
  for Counter:=0 to length(Entities)-1 do begin
   Entities[Counter].Key:='';
@@ -13577,9 +13577,9 @@ begin
  Resize;
 end;
 
-function TVulkanStringHashMap.FindCell(const Key:TVulkanRawByteString):TVkUInt32;
-var HashCode,Mask,Step:TVkUInt32;
-    Entity:TVkInt32;
+function TVulkanStringHashMap.FindCell(const Key:TVulkanRawByteString):TUInt32;
+var HashCode,Mask,Step:TUInt32;
+    Entity:TInt32;
 begin
  HashCode:=HashString(Key);
  Mask:=(2 shl LogSize)-1;
@@ -13599,7 +13599,7 @@ begin
 end;
 
 procedure TVulkanStringHashMap.Resize;
-var NewLogSize,NewSize,Cell,Entity,Counter:TVkInt32;
+var NewLogSize,NewSize,Cell,Entity,Counter:TInt32;
     OldEntities:TVulkanStringHashMapEntities;
     OldCellToEntityIndex:TVulkanStringHashMapEntityIndices;
     OldEntityToCellIndex:TVulkanStringHashMapEntityIndices;
@@ -13649,8 +13649,8 @@ begin
 end;
 
 function TVulkanStringHashMap.Add(const Key:TVulkanRawByteString;Value:TVulkanStringHashMapData):PVulkanStringHashMapEntity;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  result:=nil;
  while RealSize>=(1 shl LogSize) do begin
@@ -13677,8 +13677,8 @@ begin
 end;
 
 function TVulkanStringHashMap.Get(const Key:TVulkanRawByteString;CreateIfNotExist:boolean=false):PVulkanStringHashMapEntity;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  result:=nil;
  Cell:=FindCell(Key);
@@ -13691,8 +13691,8 @@ begin
 end;
 
 function TVulkanStringHashMap.TryGet(const Key:TVulkanRawByteString;out Value:TVulkanStringHashMapData):boolean;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  Cell:=FindCell(Key);
  Entity:=CellToEntityIndex[Cell];
@@ -13710,8 +13710,8 @@ begin
 end;
 
 function TVulkanStringHashMap.Delete(const Key:TVulkanRawByteString):boolean;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  result:=false;
  Cell:=FindCell(Key);
@@ -13726,8 +13726,8 @@ begin
 end;
 
 function TVulkanStringHashMap.GetValue(const Key:TVulkanRawByteString):TVulkanStringHashMapData;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  Cell:=FindCell(Key);
  Entity:=CellToEntityIndex[Cell];
@@ -13756,7 +13756,7 @@ begin
 end;
 
 destructor TVulkanPointerHashMap.Destroy;
-var Counter:TVkInt32;
+var Counter:TInt32;
 begin
  Clear;
  SetLength(Entities,0);
@@ -13766,7 +13766,7 @@ begin
 end;
 
 procedure TVulkanPointerHashMap.Clear;
-var Counter:TVkInt32;
+var Counter:TInt32;
 begin
  RealSize:=0;
  LogSize:=0;
@@ -13777,9 +13777,9 @@ begin
  Resize;
 end;
 
-function TVulkanPointerHashMap.FindCell(const Key:TVkPointer):TVkUInt32;
-var HashCode,Mask,Step:TVkUInt32;
-    Entity:TVkInt32;
+function TVulkanPointerHashMap.FindCell(const Key:TPointer):TUInt32;
+var HashCode,Mask,Step:TUInt32;
+    Entity:TInt32;
 begin
  HashCode:=HashPointer(Key);
  Mask:=(2 shl LogSize)-1;
@@ -13799,7 +13799,7 @@ begin
 end;
 
 procedure TVulkanPointerHashMap.Resize;
-var NewLogSize,NewSize,Cell,Entity,Counter:TVkInt32;
+var NewLogSize,NewSize,Cell,Entity,Counter:TInt32;
     OldEntities:TVulkanPointerHashMapEntities;
     OldCellToEntityIndex:TVulkanPointerHashMapEntityIndices;
     OldEntityToCellIndex:TVulkanPointerHashMapEntityIndices;
@@ -13845,9 +13845,9 @@ begin
  SetLength(OldEntityToCellIndex,0);
 end;
 
-function TVulkanPointerHashMap.Add(const Key:TVkPointer;Value:TVulkanPointerHashMapData):PVulkanPointerHashMapEntity;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+function TVulkanPointerHashMap.Add(const Key:TPointer;Value:TVulkanPointerHashMapData):PVulkanPointerHashMapEntity;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  result:=nil;
  while RealSize>=(1 shl LogSize) do begin
@@ -13873,9 +13873,9 @@ begin
  end;
 end;
 
-function TVulkanPointerHashMap.Get(const Key:TVkPointer;CreateIfNotExist:boolean=false):PVulkanPointerHashMapEntity;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+function TVulkanPointerHashMap.Get(const Key:TPointer;CreateIfNotExist:boolean=false):PVulkanPointerHashMapEntity;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  result:=nil;
  Cell:=FindCell(Key);
@@ -13887,9 +13887,9 @@ begin
  end;
 end;
 
-function TVulkanPointerHashMap.TryGet(const Key:TVkPointer;out Value:TVulkanPointerHashMapData):boolean;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+function TVulkanPointerHashMap.TryGet(const Key:TPointer;out Value:TVulkanPointerHashMapData):boolean;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  Cell:=FindCell(Key);
  Entity:=CellToEntityIndex[Cell];
@@ -13901,14 +13901,14 @@ begin
  end;
 end;
 
-function TVulkanPointerHashMap.ExistKey(const Key:TVkPointer):boolean;
+function TVulkanPointerHashMap.ExistKey(const Key:TPointer):boolean;
 begin
  result:=CellToEntityIndex[FindCell(Key)]>=0;
 end;
 
-function TVulkanPointerHashMap.Delete(const Key:TVkPointer):boolean;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+function TVulkanPointerHashMap.Delete(const Key:TPointer):boolean;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  result:=false;
  Cell:=FindCell(Key);
@@ -13922,9 +13922,9 @@ begin
  end;
 end;
 
-function TVulkanPointerHashMap.GetValue(const Key:TVkPointer):TVulkanPointerHashMapData;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+function TVulkanPointerHashMap.GetValue(const Key:TPointer):TVulkanPointerHashMapData;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  Cell:=FindCell(Key);
  Entity:=CellToEntityIndex[Cell];
@@ -13935,7 +13935,7 @@ begin
  end;
 end;
 
-procedure TVulkanPointerHashMap.SetValue(const Key:TVkPointer;const Value:TVulkanPointerHashMapData);
+procedure TVulkanPointerHashMap.SetValue(const Key:TPointer;const Value:TVulkanPointerHashMapData);
 begin
  Add(Key,Value);
 end;
@@ -13953,7 +13953,7 @@ begin
 end;
 
 destructor TVulkanInt64HashMap.Destroy;
-var Counter:TVkInt32;
+var Counter:TInt32;
 begin
  Clear;
  SetLength(Entities,0);
@@ -13963,7 +13963,7 @@ begin
 end;
 
 procedure TVulkanInt64HashMap.Clear;
-var Counter:TVkInt32;
+var Counter:TInt32;
 begin
  RealSize:=0;
  LogSize:=0;
@@ -13974,9 +13974,9 @@ begin
  Resize;
 end;
 
-function TVulkanInt64HashMap.FindCell(const Key:TVkInt64):TVkUInt32;
-var HashCode,Mask,Step:TVkUInt32;
-    Entity:TVkInt32;
+function TVulkanInt64HashMap.FindCell(const Key:TInt64):TUInt32;
+var HashCode,Mask,Step:TUInt32;
+    Entity:TInt32;
 begin
  HashCode:=HashUInt64(Key);
  Mask:=(2 shl LogSize)-1;
@@ -13996,7 +13996,7 @@ begin
 end;
 
 procedure TVulkanInt64HashMap.Resize;
-var NewLogSize,NewSize,Cell,Entity,Counter:TVkInt32;
+var NewLogSize,NewSize,Cell,Entity,Counter:TInt32;
     OldEntities:TVulkanInt64HashMapEntities;
     OldCellToEntityIndex:TVulkanInt64HashMapEntityIndices;
     OldEntityToCellIndex:TVulkanInt64HashMapEntityIndices;
@@ -14042,9 +14042,9 @@ begin
  SetLength(OldEntityToCellIndex,0);
 end;
 
-function TVulkanInt64HashMap.Add(const Key:TVkInt64;Value:TVulkanInt64HashMapData):PVulkanInt64HashMapEntity;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+function TVulkanInt64HashMap.Add(const Key:TInt64;Value:TVulkanInt64HashMapData):PVulkanInt64HashMapEntity;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  result:=nil;
  while RealSize>=(1 shl LogSize) do begin
@@ -14070,9 +14070,9 @@ begin
  end;
 end;
 
-function TVulkanInt64HashMap.Get(const Key:TVkInt64;CreateIfNotExist:boolean=false):PVulkanInt64HashMapEntity;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+function TVulkanInt64HashMap.Get(const Key:TInt64;CreateIfNotExist:boolean=false):PVulkanInt64HashMapEntity;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  result:=nil;
  Cell:=FindCell(Key);
@@ -14084,9 +14084,9 @@ begin
  end;
 end;
 
-function TVulkanInt64HashMap.TryGet(const Key:TVkInt64;out Value:TVulkanInt64HashMapData):boolean;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+function TVulkanInt64HashMap.TryGet(const Key:TInt64;out Value:TVulkanInt64HashMapData):boolean;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  Cell:=FindCell(Key);
  Entity:=CellToEntityIndex[Cell];
@@ -14098,14 +14098,14 @@ begin
  end;
 end;
 
-function TVulkanInt64HashMap.ExistKey(const Key:TVkInt64):boolean;
+function TVulkanInt64HashMap.ExistKey(const Key:TInt64):boolean;
 begin
  result:=CellToEntityIndex[FindCell(Key)]>=0;
 end;
 
-function TVulkanInt64HashMap.Delete(const Key:TVkInt64):boolean;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+function TVulkanInt64HashMap.Delete(const Key:TInt64):boolean;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  result:=false;
  Cell:=FindCell(Key);
@@ -14119,9 +14119,9 @@ begin
  end;
 end;
 
-function TVulkanInt64HashMap.GetValue(const Key:TVkInt64):TVulkanInt64HashMapData;
-var Entity:TVkInt32;
-    Cell:TVkUInt32;
+function TVulkanInt64HashMap.GetValue(const Key:TInt64):TVulkanInt64HashMapData;
+var Entity:TInt32;
+    Cell:TUInt32;
 begin
  Cell:=FindCell(Key);
  Entity:=CellToEntityIndex[Cell];
@@ -14132,7 +14132,7 @@ begin
  end;
 end;
 
-procedure TVulkanInt64HashMap.SetValue(const Key:TVkInt64;const Value:TVulkanInt64HashMapData);
+procedure TVulkanInt64HashMap.SetValue(const Key:TInt64;const Value:TVulkanInt64HashMapData);
 begin
  Add(Key,Value);
 end;
@@ -14210,7 +14210,7 @@ begin
 end;
 
 procedure TVulkanXMLClassList.ClearWithFree;
-var Counter:TVkUInt16;
+var Counter:TUInt16;
 begin
  for Counter:=0 to InternalCount-1 do begin
   if assigned(InternalList^[Counter]) then begin
@@ -14223,7 +14223,7 @@ begin
  SetCount(0);
 end;
 
-procedure TVulkanXMLClassList.SetCapacity(NewCapacity:TVkInt32);
+procedure TVulkanXMLClassList.SetCapacity(NewCapacity:TInt32);
 begin
  if (InternalCapacity<>NewCapacity) and
     ((NewCapacity>=0) and (NewCapacity<VulkanXMLMaxListSize)) then begin
@@ -14235,8 +14235,8 @@ begin
  end;
 end;
 
-procedure TVulkanXMLClassList.SetOptimalCapacity(TargetCapacity:TVkInt32);
-var CapacityMask:TVkInt32;
+procedure TVulkanXMLClassList.SetOptimalCapacity(TargetCapacity:TInt32);
+var CapacityMask:TInt32;
 begin
  if (TargetCapacity>=0) and (TargetCapacity<VulkanXMLMaxListSize) then begin
   if TargetCapacity<256 then begin
@@ -14256,7 +14256,7 @@ begin
  end;
 end;
 
-procedure TVulkanXMLClassList.SetCount(NewCount:TVkInt32);
+procedure TVulkanXMLClassList.SetCount(NewCount:TInt32);
 begin
  if (NewCount>=0) and (NewCount<VulkanXMLMaxListSize) then begin
   SetOptimalCapacity(NewCount);
@@ -14267,20 +14267,20 @@ begin
  end;
 end;
 
-function TVulkanXMLClassList.Add(Item:TVulkanXMLClass):TVkInt32;
+function TVulkanXMLClassList.Add(Item:TVulkanXMLClass):TInt32;
 begin
  result:=InternalCount;
  SetCount(result+1);
  InternalList^[result]:=Item;
 end;
 
-function TVulkanXMLClassList.Append(Item:TVulkanXMLClass):TVkInt32;
+function TVulkanXMLClassList.Append(Item:TVulkanXMLClass):TInt32;
 begin
  result:=Add(Item);
 end;
 
-function TVulkanXMLClassList.AddList(List:TVulkanXMLClassList):TVkInt32;
-var Counter,Index:TVkInt32;
+function TVulkanXMLClassList.AddList(List:TVulkanXMLClassList):TInt32;
+var Counter,Index:TInt32;
 begin
  result:=-1;
  for Counter:=0 to List.Count-1 do begin
@@ -14291,7 +14291,7 @@ begin
  end;
 end;
 
-function TVulkanXMLClassList.AppendList(List:TVulkanXMLClassList):TVkInt32;
+function TVulkanXMLClassList.AppendList(List:TVulkanXMLClassList):TInt32;
 begin
  result:=AddList(List);
 end;
@@ -14304,8 +14304,8 @@ begin
  result:=Item;
 end;
 
-procedure TVulkanXMLClassList.Insert(Index:TVkInt32;Item:TVulkanXMLClass);
-var Counter:TVkInt32;
+procedure TVulkanXMLClassList.Insert(Index:TInt32;Item:TVulkanXMLClass);
+var Counter:TInt32;
 begin
  if (Index>=0) and (Index<InternalCount) then begin
   SetCount(InternalCount+1);
@@ -14321,8 +14321,8 @@ begin
  end;
 end;
 
-procedure TVulkanXMLClassList.Delete(Index:TVkInt32);
-var i,j:TVkInt32;
+procedure TVulkanXMLClassList.Delete(Index:TInt32);
+var i,j:TInt32;
 begin
  if (Index>=0) and (Index<InternalCount) then begin
   j:=InternalCount-1;
@@ -14332,8 +14332,8 @@ begin
  end;
 end;
 
-procedure TVulkanXMLClassList.DeleteClass(Index:TVkInt32);
-var i,j:TVkInt32;
+procedure TVulkanXMLClassList.DeleteClass(Index:TInt32);
+var i,j:TInt32;
 begin
  if (Index>=0) and (Index<InternalCount) then begin
   j:=InternalCount-1;
@@ -14347,8 +14347,8 @@ begin
  end;
 end;
 
-function TVulkanXMLClassList.Remove(Item:TVulkanXMLClass):TVkInt32;
-var i,j,k:TVkInt32;
+function TVulkanXMLClassList.Remove(Item:TVulkanXMLClass):TInt32;
+var i,j,k:TInt32;
 begin
  result:=-1;
  k:=InternalCount;
@@ -14367,8 +14367,8 @@ begin
  end;
 end;
 
-function TVulkanXMLClassList.RemoveClass(Item:TVulkanXMLClass):TVkInt32;
-var i,j,k:TVkInt32;
+function TVulkanXMLClassList.RemoveClass(Item:TVulkanXMLClass):TInt32;
+var i,j,k:TInt32;
 begin
  result:=-1;
  k:=InternalCount;
@@ -14388,8 +14388,8 @@ begin
  end;
 end;
 
-function TVulkanXMLClassList.Find(Item:TVulkanXMLClass):TVkInt32;
-var i:TVkInt32;
+function TVulkanXMLClassList.Find(Item:TVulkanXMLClass):TInt32;
+var i:TInt32;
 begin
  result:=-1;
  for i:=0 to InternalCount-1 do begin
@@ -14400,8 +14400,8 @@ begin
  end;
 end;
 
-function TVulkanXMLClassList.IndexOf(Item:TVulkanXMLClass):TVkInt32;
-var i:TVkInt32;
+function TVulkanXMLClassList.IndexOf(Item:TVulkanXMLClass):TInt32;
+var i:TInt32;
 begin
  result:=-1;
  for i:=0 to InternalCount-1 do begin
@@ -14412,7 +14412,7 @@ begin
  end;
 end;
 
-procedure TVulkanXMLClassList.Exchange(Index1,Index2:TVkInt32);
+procedure TVulkanXMLClassList.Exchange(Index1,Index2:TInt32);
 var TempPointer:TVulkanXMLClass;
 begin
  if (Index1>=0) and (Index1<InternalCount) and (Index2>=0) and (Index2<InternalCount) then begin
@@ -14422,7 +14422,7 @@ begin
  end;
 end;
 
-function TVulkanXMLClassList.Push(Item:TVulkanXMLClass):TVkInt32;
+function TVulkanXMLClassList.Push(Item:TVulkanXMLClass):TInt32;
 begin
  result:=Add(Item);
 end;
@@ -14455,7 +14455,7 @@ begin
  end;
 end;
 
-function TVulkanXMLClassList.GetItem(Index:TVkInt32):TVulkanXMLClass;
+function TVulkanXMLClassList.GetItem(Index:TInt32):TVulkanXMLClass;
 begin
  if (Index>=0) and (Index<InternalCount) then begin
   result:=InternalList^[Index];
@@ -14464,14 +14464,14 @@ begin
  end;
 end;
 
-procedure TVulkanXMLClassList.SetItem(Index:TVkInt32;Value:TVulkanXMLClass);
+procedure TVulkanXMLClassList.SetItem(Index:TInt32;Value:TVulkanXMLClass);
 begin
  if (Index>=0) and (Index<InternalCount) then begin
   InternalList^[Index]:=Value;
  end;
 end;
 
-function TVulkanXMLClassList.GetItemPointer(Index:TVkInt32):TVulkanXMLClass;
+function TVulkanXMLClassList.GetItemPointer(Index:TInt32):TVulkanXMLClass;
 begin
  if (Index>=0) and (Index<InternalCount) then begin
   result:=@InternalList^[Index];
@@ -14610,7 +14610,7 @@ begin
  end;
 end;
 
-function TVulkanXMLClassLinkedList.Count:TVkInt32;
+function TVulkanXMLClassLinkedList.Count:TInt32;
 var Current:TVulkanXMLClass;
 begin
  result:=0;
@@ -14644,7 +14644,7 @@ begin
 end;
 
 procedure TVulkanXMLItem.Assign(From:TVulkanXMLItem);
-var i:TVkInt32;
+var i:TInt32;
     NewItem:TVulkanXMLItem;
 begin
  Items.ClearWithFree;
@@ -14701,18 +14701,18 @@ begin
  Add(result);
 end;
 
-function TVulkanXMLItemList.GetItem(Index:TVkInt32):TVulkanXMLItem;
+function TVulkanXMLItemList.GetItem(Index:TInt32):TVulkanXMLItem;
 begin
  result:=TVulkanXMLItem(inherited Items[Index]);
 end;
 
-procedure TVulkanXMLItemList.SetItem(Index:TVkInt32;Value:TVulkanXMLItem);
+procedure TVulkanXMLItemList.SetItem(Index:TInt32;Value:TVulkanXMLItem);
 begin
  inherited Items[Index]:=Value;
 end;
 
 function TVulkanXMLItemList.FindTag(const TagName:TVulkanRawByteString):TVulkanXMLTag;
-var i:TVkInt32;
+var i:TInt32;
     Item:TVulkanXMLItem;
 begin
  result:=nil;
@@ -14809,7 +14809,7 @@ begin
 end;
 
 procedure TVulkanXMLTag.Clear;
-var Counter:TVkInt32;
+var Counter:TInt32;
 begin
  inherited Clear;
  for Counter:=0 to length(Parameter)-1 do begin
@@ -14820,7 +14820,7 @@ begin
 end;
 
 procedure TVulkanXMLTag.Assign(From:TVulkanXMLItem);
-var Counter:TVkInt32;
+var Counter:TInt32;
 begin
  inherited Assign(From);
  if From is TVulkanXMLTag then begin
@@ -14836,7 +14836,7 @@ begin
 end;
 
 function TVulkanXMLTag.FindParameter(ParameterName:TVulkanRawByteString):TVulkanXMLParameter;
-var i:TVkInt32;
+var i:TInt32;
 begin
  for i:=0 to length(Parameter)-1 do begin
   if Parameter[i].Name=ParameterName then begin
@@ -14848,7 +14848,7 @@ begin
 end;
 
 function TVulkanXMLTag.GetParameter(ParameterName:TVulkanRawByteString;default:TVulkanRawByteString=''):TVulkanRawByteString;
-var i:TVkInt32;
+var i:TInt32;
 begin
  for i:=0 to length(Parameter)-1 do begin
   if Parameter[i].Name=ParameterName then begin
@@ -14860,7 +14860,7 @@ begin
 end;
 
 function TVulkanXMLTag.AddParameter(AParameter:TVulkanXMLParameter):boolean;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  try
   Index:=length(Parameter);
@@ -14882,7 +14882,7 @@ begin
 end;
 
 function TVulkanXMLTag.RemoveParameter(AParameter:TVulkanXMLParameter):boolean;
-var Found,Counter:TVkInt32;
+var Found,Counter:TInt32;
 begin
  result:=false;
  try
@@ -15065,14 +15065,14 @@ var EntitiesCharLookUp:TEntitiesCharLookUpTable;
 const EntityInitialized:boolean=false;
 
 procedure InitializeEntites;
-var EntityCounter:TVkInt32;
+var EntityCounter:TInt32;
 begin
  if not EntityInitialized then begin
   EntityInitialized:=true;
   EntityStringHashMap:=TVulkanStringHashMap.Create;
   FillChar(EntitiesCharLookUp,SizeOf(TEntitiesCharLookUpTable),#0);
   for EntityCounter:=low(EntityChars) to high(EntityChars) do begin
-   EntityStringHashMap.Add(EntityChars[EntityCounter,1],pointer(TVkPtrInt(EntityCounter)));
+   EntityStringHashMap.Add(EntityChars[EntityCounter,1],TVkPointer(TPtrInt(EntityCounter)));
    with EntitiesCharLookUp[ord(EntityChars[EntityCounter,2][1])] do begin
     IsEntity:=true;
     Entity:=EntityChars[EntityCounter,1];
@@ -15087,8 +15087,8 @@ begin
  EntityInitialized:=false;
 end;
 
-function ConvertToEntities(AString:TVulkanXMLString;IdentLevel:TVkInt32=0):TVulkanRawByteString;
-var Counter,IdentCounter:TVkInt32;
+function ConvertToEntities(AString:TVulkanXMLString;IdentLevel:TInt32=0):TVulkanRawByteString;
+var Counter,IdentCounter:TInt32;
     c:TVulkanXMLChar;
 begin
  result:='';
@@ -15117,7 +15117,7 @@ begin
     result:=result+'&#x'+TVulkanRawByteString(IntToHex(ord(c),4))+';';
    end;
 {$else}
-   result:=result+'&#'+TVulkanRawByteString(IntToStr(TVkUInt8(c)))+';';
+   result:=result+'&#'+TVulkanRawByteString(IntToStr(TUInt8(c)))+';';
 {$endif}
   end;
  end;
@@ -15185,7 +15185,7 @@ var Errors:boolean;
  end;
 
  function GetName:TVulkanRawByteString;
- var i:TVkInt32;
+ var i:TInt32;
  begin
   result:='';
   i:=0;
@@ -15203,7 +15203,7 @@ var Errors:boolean;
  end;
 
  function ExpectToken(const S:TVulkanRawByteString):boolean; overload;
- var i:TVkInt32;
+ var i:TInt32;
  begin
   result:=true;
   for i:=1 to length(S) do begin
@@ -15225,7 +15225,7 @@ var Errors:boolean;
  end;
 
  function GetUntil(var Content:TVulkanRawByteString;const TerminateToken:TVulkanRawByteString):boolean;
- var i,j,OldPosition:TVkInt32;
+ var i,j,OldPosition:TInt32;
      OldEOF:boolean;
      OldChar:TVulkanRawByteChar;
  begin
@@ -15264,7 +15264,7 @@ var Errors:boolean;
   SetLength(Content,j);
  end;
 
- function GetDecimalValue:TVkInt32;
+ function GetDecimalValue:TInt32;
  var Negitive:boolean;
  begin
   Negitive:=CurrentChar='-';
@@ -15283,9 +15283,9 @@ var Errors:boolean;
   end;
  end;
 
- function GetHeximalValue:TVkInt32;
+ function GetHeximalValue:TInt32;
  var Negitive:boolean;
-     Value:TVkInt32;
+     Value:TInt32;
  begin
   Negitive:=CurrentChar='-';
   if Negitive then begin
@@ -15298,13 +15298,13 @@ var Errors:boolean;
   while not IsEOFOrErrors do begin
    case CurrentChar of
     '0'..'9':begin
-     Value:=TVkUInt8(CurrentChar)-ord('0');
+     Value:=TUInt8(CurrentChar)-ord('0');
     end;
     'A'..'F':begin
-     Value:=TVkUInt8(CurrentChar)-ord('A')+$a;
+     Value:=TUInt8(CurrentChar)-ord('A')+$a;
     end;
     'a'..'f':begin
-     Value:=TVkUInt8(CurrentChar)-ord('a')+$a;
+     Value:=TUInt8(CurrentChar)-ord('a')+$a;
     end;
     else begin
      break;
@@ -15319,7 +15319,7 @@ var Errors:boolean;
  end;
 
  function GetEntity:TVulkanXMLString;
- var Value:TVkInt32;
+ var Value:TInt32;
      Entity:TVulkanRawByteString;
      c:TVulkanXMLChar;
      StringHashMapEntity:PVulkanStringHashMapEntity;
@@ -15344,7 +15344,7 @@ var Errors:boolean;
 {$ifdef VulkanXMLUnicode}
        c:=widechar(word(Value));
 {$else}
-       c:=TVulkanRawByteChar(TVkUInt8(Value));
+       c:=TVulkanRawByteChar(TUInt8(Value));
 {$endif}
        result:=c;
       end else begin
@@ -15362,7 +15362,7 @@ var Errors:boolean;
       NextChar;
       StringHashMapEntity:=EntityStringHashMap.Get(Entity,false);
       if assigned(StringHashMapEntity) then begin
-       result:=EntityChars[TVkPtrInt(TVkPtrUInt(pointer(StringHashMapEntity^.Value))),2];
+       result:=EntityChars[TPtrInt(TPtrUInt(TVkPointer(StringHashMapEntity^.Value))),2];
       end else begin
        result:=Entity;
       end;
@@ -15375,7 +15375,7 @@ var Errors:boolean;
  end;
 
  function ParseTagParameterValue(TerminateChar:TVulkanRawByteChar):TVulkanXMLString;
- var i,wc,c:TVkInt32;
+ var i,wc,c:TInt32;
  begin
   result:='';
   SkipBlank;
@@ -15417,7 +15417,7 @@ var Errors:boolean;
      SetLength(result,VulkanRoundUpToPowerOfTwo(i+1));
     end;
 {$ifdef VulkanXMLUnicode}
-    result[i]:=widechar(word(TVkUInt8(CurrentChar)+0));
+    result[i]:=widechar(word(TUInt8(CurrentChar)+0));
 {$else}
     result[i]:=CurrentChar;
 {$endif}
@@ -15474,7 +15474,7 @@ var Errors:boolean;
   procedure ParseText;
   var Text:TVulkanXMLString;
       XMLText:TVulkanXMLText;
-      i,wc,c:TVkInt32;
+      i,wc,c:TInt32;
 {$ifndef VulkanXMLUnicode}
       w:TVulkanRawByteString;
 {$endif}
@@ -15554,7 +15554,7 @@ var Errors:boolean;
       if (i+1)>length(Text) then begin
        SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
       end;
-      Text[i]:=TVulkanRawByteChar(TVkUInt8(wc));
+      Text[i]:=TVulkanRawByteChar(TUInt8(wc));
      end else begin
       w:=VulkanUTF32CharToUTF8(wc);
       if length(w)>0 then begin
@@ -15577,7 +15577,7 @@ var Errors:boolean;
      if (i+1)>length(Text) then begin
       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
      end;
-     Text[i]:=widechar(word(TVkUInt8(CurrentChar)+0));
+     Text[i]:=widechar(word(TUInt8(CurrentChar)+0));
 {$else}
      wc:=ord(CurrentChar);
      if wc<$80 then begin
@@ -15585,7 +15585,7 @@ var Errors:boolean;
       if (i+1)>length(Text) then begin
        SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
       end;
-      Text[i]:=TVulkanRawByteChar(TVkUInt8(wc));
+      Text[i]:=TVulkanRawByteChar(TUInt8(wc));
      end else begin
       w:=VulkanUTF32CharToUTF8(wc);
       if length(w)>0 then begin
@@ -15605,7 +15605,7 @@ var Errors:boolean;
      if (i+1)>length(Text) then begin
       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
      end;
-     Text[i]:=widechar(word(TVkUInt8(CurrentChar)+0));
+     Text[i]:=widechar(word(TUInt8(CurrentChar)+0));
 {$else}
      wc:=ord(CurrentChar);
      if wc<$80 then begin
@@ -15613,7 +15613,7 @@ var Errors:boolean;
       if (i+1)>length(Text) then begin
        SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
       end;
-      Text[i]:=TVulkanRawByteChar(TVkUInt8(wc));
+      Text[i]:=TVulkanRawByteChar(TUInt8(wc));
      end else begin
       w:=VulkanUTF32CharToUTF8(wc);
       if length(w)>0 then begin
@@ -15851,12 +15851,12 @@ begin
  result:=Parse(Stream);
 end;
 
-function TVulkanXML.Write(Stream:TStream;IdentSize:TVkInt32=2):boolean;
-var IdentLevel:TVkInt32;
+function TVulkanXML.Write(Stream:TStream;IdentSize:TInt32=2):boolean;
+var IdentLevel:TInt32;
     Errors:boolean;
  procedure Process(Item:TVulkanXMLItem;DoIndent:boolean);
  var Line:TVulkanRawByteString;
-     Counter:TVkInt32;
+     Counter:TInt32;
      TagWithSingleLineText,ItemsText:boolean;
   procedure WriteLineEx(Line:TVulkanRawByteString);
   begin
@@ -16086,14 +16086,14 @@ begin
 end;
 
 constructor TVulkanInstance.Create(const aApplicationName:TVulkanCharString='Vulkan application';
-                                   const aApplicationVersion:TVkUInt32=1;
+                                   const aApplicationVersion:TUInt32=1;
                                    const aEngineName:TVulkanCharString='Vulkan engine';
-                                   const aEngineVersion:TVkUInt32=1;
-                                   const pAPIVersion:TVkUInt32=VK_API_VERSION_1_0;
+                                   const aEngineVersion:TUInt32=1;
+                                   const pAPIVersion:TUInt32=VK_API_VERSION_1_0;
                                    const aValidation:boolean=false;
                                    const aAllocationManager:TVulkanAllocationManager=nil);
-var Index,SubIndex:TVkInt32;
-    Count,SubCount:TVkUInt32;
+var Index,SubIndex:TInt32;
+    Count,SubCount:TUInt32;
     LayerName:PVkChar;
     LayerProperties:TVkLayerPropertiesArray;
     LayerProperty:PVulkanAvailableLayer;
@@ -16190,13 +16190,13 @@ begin
    end;
    HandleResultCode(fVulkan.EnumerateInstanceExtensionProperties(LayerName,@SubCount,nil));
    if SubCount>0 then begin
-    if SubCount>TVkUInt32(length(ExtensionProperties)) then begin
+    if SubCount>TUInt32(length(ExtensionProperties)) then begin
      SetLength(ExtensionProperties,SubCount);
     end;
     SetLength(fAvailableExtensions,Count+SubCount);
     HandleResultCode(fVulkan.EnumerateInstanceExtensionProperties(LayerName,@SubCount,@ExtensionProperties[0]));
     for SubIndex:=0 to SubCount-1 do begin
-     ExtensionProperty:=@fAvailableExtensions[Count+TVkUInt32(SubIndex)];
+     ExtensionProperty:=@fAvailableExtensions[Count+TUInt32(SubIndex)];
      ExtensionProperty^.LayerIndex:=Index;
      ExtensionProperty^.ExtensionName:=ExtensionProperties[SubIndex].extensionName;
      ExtensionProperty^.SpecVersion:=ExtensionProperties[SubIndex].SpecVersion;
@@ -16267,12 +16267,12 @@ begin
  fApplicationInfo.pApplicationName:=PVkChar(fApplicationName);
 end;
 
-function TVulkanInstance.GetApplicationVersion:TVkUInt32;
+function TVulkanInstance.GetApplicationVersion:TUInt32;
 begin
  result:=fApplicationInfo.applicationVersion;
 end;
 
-procedure TVulkanInstance.SetApplicationVersion(const NewApplicationVersion:TVkUInt32);
+procedure TVulkanInstance.SetApplicationVersion(const NewApplicationVersion:TUInt32);
 begin
  fApplicationInfo.applicationVersion:=NewApplicationVersion;
 end;
@@ -16288,28 +16288,28 @@ begin
  fApplicationInfo.pEngineName:=PVkChar(fEngineName);
 end;
 
-function TVulkanInstance.GetEngineVersion:TVkUInt32;
+function TVulkanInstance.GetEngineVersion:TUInt32;
 begin
  result:=fApplicationInfo.engineVersion;
 end;
 
-procedure TVulkanInstance.SetEngineVersion(const NewEngineVersion:TVkUInt32);
+procedure TVulkanInstance.SetEngineVersion(const NewEngineVersion:TUInt32);
 begin
  fApplicationInfo.engineVersion:=NewEngineVersion;
 end;
 
-function TVulkanInstance.GetAPIVersion:TVkUInt32;
+function TVulkanInstance.GetAPIVersion:TUInt32;
 begin
  result:=fApplicationInfo.apiVersion;
 end;
 
-procedure TVulkanInstance.SetAPIVersion(const NewAPIVersion:TVkUInt32);
+procedure TVulkanInstance.SetAPIVersion(const NewAPIVersion:TUInt32);
 begin
  fApplicationInfo.apiVersion:=NewAPIVersion;
 end;
 
 procedure TVulkanInstance.Initialize;
-var i:TVkInt32;
+var i:TInt32;
     InstanceCommands:PVulkanCommands;
     InstanceCreateInfo:TVkInstanceCreateInfo;
 begin
@@ -16361,8 +16361,8 @@ begin
 end;
 
 procedure TVulkanInstance.EnumeratePhysicalDevices;
-var Index,SubIndex:TVkInt32;
-    Count:TVkUInt32;
+var Index,SubIndex:TInt32;
+    Count:TUInt32;
     PhysicalDevices:TVkPhysicalDeviceArray;
     PhysicalDevice:TVulkanPhysicalDevice;
     Found:boolean;
@@ -16405,12 +16405,12 @@ begin
  end;
 end;
 
-function TVulkanInstanceDebugReportCallbackFunction(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const aLayerPrefix:PVkChar;const aMessage:PVkChar;aUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+function TVulkanInstanceDebugReportCallbackFunction(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TInt32;const aLayerPrefix:PVkChar;const aMessage:PVkChar;aUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 begin
  result:=TVulkanInstance(aUserData).DebugReportCallback(flags,objectType,object_,location,messageCode,aLayerPrefix,aMessage);
 end;
 
-function TVulkanInstance.DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32;
+function TVulkanInstance.DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32;
 begin
  if assigned(fOnInstanceDebugReportCallback) then begin
   result:=fOnInstanceDebugReportCallback(flags,objectType,object_,location,messageCode,String(aLayerPrefix),String(aMessage));
@@ -16424,7 +16424,7 @@ begin
  if (fDebugReportCallbackEXT=VK_NULL_HANDLE) and assigned(fInstanceVulkan.Commands.CreateDebugReportCallbackEXT) then begin
   FillChar(fDebugReportCallbackCreateInfoEXT,SizeOf(TVkDebugReportCallbackCreateInfoEXT),#0);
   fDebugReportCallbackCreateInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-  fDebugReportCallbackCreateInfoEXT.flags:=TVkUInt32(VK_DEBUG_REPORT_ERROR_BIT_EXT) or TVkUInt32(VK_DEBUG_REPORT_WARNING_BIT_EXT) or TVkUInt32(VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT);
+  fDebugReportCallbackCreateInfoEXT.flags:=TUInt32(VK_DEBUG_REPORT_ERROR_BIT_EXT) or TUInt32(VK_DEBUG_REPORT_WARNING_BIT_EXT) or TUInt32(VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT);
   fDebugReportCallbackCreateInfoEXT.pfnCallback:=@TVulkanInstanceDebugReportCallbackFunction;
   fDebugReportCallbackCreateInfoEXT.pUserData:=self;
   HandleResultCode(fInstanceVulkan.CreateDebugReportCallbackEXT(fInstanceHandle,@fDebugReportCallbackCreateInfoEXT,fAllocationCallbacks,@fDebugReportCallbackEXT));
@@ -16432,8 +16432,8 @@ begin
 end;
 
 constructor TVulkanPhysicalDevice.Create(const aInstance:TVulkanInstance;const aPhysicalDevice:TVkPhysicalDevice);
-var Index,SubIndex:TVkInt32;
-    Count,SubCount:TVkUInt32;
+var Index,SubIndex:TInt32;
+    Count,SubCount:TUInt32;
     LayerName:PVkChar;
     LayerProperties:TVkLayerPropertiesArray;
     LayerProperty:PVulkanAvailableLayer;
@@ -16503,13 +16503,13 @@ begin
    end;
    HandleResultCode(fInstance.fVulkan.EnumerateDeviceExtensionProperties(fPhysicalDeviceHandle,LayerName,@SubCount,nil));
    if SubCount>0 then begin
-    if SubCount>TVkUInt32(length(ExtensionProperties)) then begin
+    if SubCount>TUInt32(length(ExtensionProperties)) then begin
      SetLength(ExtensionProperties,SubCount);
     end;
     SetLength(fAvailableExtensions,Count+SubCount);
     HandleResultCode(fInstance.fVulkan.EnumerateDeviceExtensionProperties(fPhysicalDeviceHandle,LayerName,@SubCount,@ExtensionProperties[0]));
     for SubIndex:=0 to SubCount-1 do begin
-     ExtensionProperty:=@fAvailableExtensions[Count+TVkUInt32(SubIndex)];
+     ExtensionProperty:=@fAvailableExtensions[Count+TUInt32(SubIndex)];
      ExtensionProperty^.LayerIndex:=Index;
      ExtensionProperty^.ExtensionName:=ExtensionProperties[SubIndex].extensionName;
      ExtensionProperty^.SpecVersion:=ExtensionProperties[SubIndex].SpecVersion;
@@ -16536,13 +16536,13 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanPhysicalDevice.HasQueueSupportForSparseBindings(const aQueueFamilyIndex:TVkUInt32):boolean;
+function TVulkanPhysicalDevice.HasQueueSupportForSparseBindings(const aQueueFamilyIndex:TUInt32):boolean;
 var QueueFamilyProperties:PVkQueueFamilyProperties;
 begin
  result:=false;
- if aQueueFamilyIndex<TVkUInt32(length(fQueueFamilyProperties)) then begin
+ if aQueueFamilyIndex<TUInt32(length(fQueueFamilyProperties)) then begin
   QueueFamilyProperties:=@fQueueFamilyProperties[aQueueFamilyIndex];
-  if (QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0 then begin
+  if (QueueFamilyProperties.queueFlags and TUInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0 then begin
    result:=true;
   end;
  end;
@@ -16567,7 +16567,7 @@ function TVulkanPhysicalDevice.GetSparseImageFormatProperties(const aFormat:TVkF
                                                               const aSamples:TVkSampleCountFlagBits;
                                                               const aUsageFlags:TVkImageUsageFlags;
                                                               const aTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
-var Count:TVkUInt32;
+var Count:TUInt32;
 begin
  result:=nil;
  Count:=0;
@@ -16578,7 +16578,7 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetSurfaceSupport(const aQueueFamilyIndex:TVkUInt32;const aSurface:TVulkanSurface):boolean;
+function TVulkanPhysicalDevice.GetSurfaceSupport(const aQueueFamilyIndex:TUInt32;const aSurface:TVulkanSurface):boolean;
 var Supported:TVkBool32;
 begin
  Supported:=0;
@@ -16592,7 +16592,7 @@ begin
 end;
 
 function TVulkanPhysicalDevice.GetSurfaceFormats(const aSurface:TVulkanSurface):TVkSurfaceFormatKHRArray;
-var Count:TVKUInt32;
+var Count:TUInt32;
 begin
  result:=nil;
  Count:=0;
@@ -16610,7 +16610,7 @@ begin
 end;
 
 function TVulkanPhysicalDevice.GetSurfacePresentModes(const aSurface:TVulkanSurface):TVkPresentModeKHRArray;
-var Count:TVKUInt32;
+var Count:TUInt32;
 begin
  result:=nil;
  Count:=0;
@@ -16628,7 +16628,7 @@ begin
 end;
 
 function TVulkanPhysicalDevice.GetDisplayProperties:TVkDisplayPropertiesKHRArray;
-var Count:TVKUInt32;
+var Count:TUInt32;
 begin
  result:=nil;
  Count:=0;
@@ -16646,7 +16646,7 @@ begin
 end;
 
 function TVulkanPhysicalDevice.GetDisplayPlaneProperties:TVkDisplayPlanePropertiesKHRArray;
-var Count:TVKUInt32;
+var Count:TUInt32;
 begin
  result:=nil;
  Count:=0;
@@ -16663,8 +16663,8 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetDisplayPlaneSupportedDisplays(const aPlaneIndex:TVkUInt32):TVkDisplayKHRArray;
-var Count:TVKUInt32;
+function TVulkanPhysicalDevice.GetDisplayPlaneSupportedDisplays(const aPlaneIndex:TUInt32):TVkDisplayKHRArray;
+var Count:TUInt32;
 begin
  result:=nil;
  Count:=0;
@@ -16682,7 +16682,7 @@ begin
 end;
 
 function TVulkanPhysicalDevice.GetDisplayModeProperties(const aDisplay:TVkDisplayKHR):TVkDisplayModePropertiesKHRArray;
-var Count:TVKUInt32;
+var Count:TUInt32;
 begin
  result:=nil;
  Count:=0;
@@ -16699,14 +16699,14 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetMemoryType(const aTypeBits:TVkUInt32;const aProperties:TVkFlags):TVkUInt32;
-var i:TVkUInt32;
+function TVulkanPhysicalDevice.GetMemoryType(const aTypeBits:TUInt32;const aProperties:TVkFlags):TUInt32;
+var i:TUInt32;
     DeviceMemoryProperties:TVkPhysicalDeviceMemoryProperties;
 begin
- result:=TVkUInt32(TVkInt32(-1));
+ result:=TUInt32(TInt32(-1));
  vkGetPhysicalDeviceMemoryProperties(fPhysicalDeviceHandle,@DeviceMemoryProperties);
  for i:=0 to 31 do begin
-  if (aTypeBits and (TVkUInt32(1) shl i))<>0 then begin
+  if (aTypeBits and (TUInt32(1) shl i))<>0 then begin
    if (DeviceMemoryProperties.MemoryTypes[i].PropertyFlags and aProperties)=aProperties then begin
     result:=i;
     exit;
@@ -16724,7 +16724,7 @@ const Formats:array[0..4] of TVkFormat=(VK_FORMAT_D32_SFLOAT_S8_UINT,
       WithStencilFormats:array[0..2] of TVkFormat=(VK_FORMAT_D32_SFLOAT_S8_UINT,
                                                    VK_FORMAT_D24_UNORM_S8_UINT,
                                                    VK_FORMAT_D16_UNORM_S8_UINT);
-var i:TVkInt32;
+var i:TInt32;
     Format:TVkFormat;
     FormatProperties:TVkFormatProperties;
 begin
@@ -16750,9 +16750,9 @@ begin
  end;
 end;
 
-function TVulkanPhysicalDevice.GetQueueNodeIndex(const aSurface:TVulkanSurface;const aQueueFlagBits:TVkQueueFlagBits):TVkInt32;
-var Index:TVkInt32;
-    QueueCount:TVkUInt32;
+function TVulkanPhysicalDevice.GetQueueNodeIndex(const aSurface:TVulkanSurface;const aQueueFlagBits:TVkQueueFlagBits):TInt32;
+var Index:TInt32;
+    QueueCount:TUInt32;
     QueueProperties:array of TVkQueueFamilyProperties;
     SupportsPresent:TVkBool32;
 begin
@@ -16775,7 +16775,7 @@ begin
 end;
 
 function TVulkanPhysicalDevice.GetSurfaceFormat(const aSurface:TVulkanSurface):TVkSurfaceFormatKHR;
-var FormatCount:TVkUInt32;
+var FormatCount:TUInt32;
     SurfaceFormats:TVkSurfaceFormatKHRArray;
 begin
  SurfaceFormats:=nil;
@@ -16992,7 +16992,7 @@ constructor TVulkanDevice.Create(const aInstance:TVulkanInstance;
                                  const aPhysicalDevice:TVulkanPhysicalDevice=nil;
                                  const aSurface:TVulkanSurface=nil;
                                  const aAllocationManager:TVulkanAllocationManager=nil);
-var Index,SubIndex:TVkInt32;
+var Index,SubIndex:TInt32;
     BestPhysicalDevice,CurrentPhysicalDevice:TVulkanPhysicalDevice;
     BestScore,CurrentScore,Temp:int64;
     OK:boolean;
@@ -17075,16 +17075,16 @@ begin
     end;
     OK:=true;
     Temp:=0;
-    if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TVkInt32(VK_QUEUE_GRAPHICS_BIT))<>0 then begin
+    if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TInt32(VK_QUEUE_GRAPHICS_BIT))<>0 then begin
      inc(Temp);
     end;
-    if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TVkInt32(VK_QUEUE_COMPUTE_BIT))<>0 then begin
+    if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TInt32(VK_QUEUE_COMPUTE_BIT))<>0 then begin
      inc(Temp);
     end;
-    if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TVkInt32(VK_QUEUE_TRANSFER_BIT))<>0 then begin
+    if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TInt32(VK_QUEUE_TRANSFER_BIT))<>0 then begin
      inc(Temp);
     end;
-    if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TVkInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0 then begin
+    if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0 then begin
      inc(Temp);
     end;
     CurrentScore:=CurrentScore or (int64(Temp) shl 55);
@@ -17116,7 +17116,7 @@ begin
 end;
 
 destructor TVulkanDevice.Destroy;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  for Index:=0 to length(fQueues)-1 do begin
   if assigned(fQueues[Index]) then begin
@@ -17142,29 +17142,29 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanDevice.AddQueue(const aQueueFamilyIndex:TVkUInt32;const aQueuePriorities:array of TVkFloat;const aSurface:TVulkanSurface=nil);
+procedure TVulkanDevice.AddQueue(const aQueueFamilyIndex:TUInt32;const aQueuePriorities:array of TFloat;const aSurface:TVulkanSurface=nil);
 var QueueFamilyProperties:PVkQueueFamilyProperties;
 begin
- if aQueueFamilyIndex<TVkUInt32(length(fPhysicalDevice.fQueueFamilyProperties)) then begin
+ if aQueueFamilyIndex<TUInt32(length(fPhysicalDevice.fQueueFamilyProperties)) then begin
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[aQueueFamilyIndex];
-  if (((QueueFamilyProperties.queueFlags and (TVKUInt32(VK_QUEUE_GRAPHICS_BIT) or
-                                              TVKUInt32(VK_QUEUE_COMPUTE_BIT) or
-                                              TVKUInt32(VK_QUEUE_TRANSFER_BIT)))=(TVKUInt32(VK_QUEUE_GRAPHICS_BIT) or
-                                                                                  TVKUInt32(VK_QUEUE_COMPUTE_BIT) or
-                                                                                  TVKUInt32(VK_QUEUE_TRANSFER_BIT))) and (fUniversalQueueFamilyIndex<0)) and
+  if (((QueueFamilyProperties.queueFlags and (TUInt32(VK_QUEUE_GRAPHICS_BIT) or
+                                              TUInt32(VK_QUEUE_COMPUTE_BIT) or
+                                              TUInt32(VK_QUEUE_TRANSFER_BIT)))=(TUInt32(VK_QUEUE_GRAPHICS_BIT) or
+                                                                                  TUInt32(VK_QUEUE_COMPUTE_BIT) or
+                                                                                  TUInt32(VK_QUEUE_TRANSFER_BIT))) and (fUniversalQueueFamilyIndex<0)) and
      ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(aQueueFamilyIndex,aSurface)) or not assigned(aSurface)) then begin
    fUniversalQueueFamilyIndex:=aQueueFamilyIndex;
   end;
   if (fPresentQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(aQueueFamilyIndex,aSurface)) or not assigned(aSurface)) then begin
    fPresentQueueFamilyIndex:=aQueueFamilyIndex;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
+  if ((QueueFamilyProperties.queueFlags and TUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
    fGraphicsQueueFamilyIndex:=aQueueFamilyIndex;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
+  if ((QueueFamilyProperties.queueFlags and TUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
    fComputeQueueFamilyIndex:=aQueueFamilyIndex;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
+  if ((QueueFamilyProperties.queueFlags and TUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
    fTransferQueueFamilyIndex:=aQueueFamilyIndex;
   end;
   fDeviceQueueCreateInfoList.Add(TVulkanDeviceQueueCreateInfo.Create(aQueueFamilyIndex,aQueuePriorities));
@@ -17180,18 +17180,18 @@ procedure TVulkanDevice.AddQueues(const aUniversal:boolean=true;
                                   const aTransfer:boolean=true;
                                   const aSparseBinding:boolean=false;
                                   const aSurface:TVulkanSurface=nil);
-var Index:TVkInt32;
+var Index:TInt32;
     DoAdd:boolean;
     QueueFamilyProperties:PVkQueueFamilyProperties;
 begin
  for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
   DoAdd:=false;
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
-  if (((QueueFamilyProperties.queueFlags and (TVKUInt32(VK_QUEUE_GRAPHICS_BIT) or
-                                              TVKUInt32(VK_QUEUE_COMPUTE_BIT) or
-                                              TVKUInt32(VK_QUEUE_TRANSFER_BIT)))=(TVKUInt32(VK_QUEUE_GRAPHICS_BIT) or
-                                                                                  TVKUInt32(VK_QUEUE_COMPUTE_BIT) or
-                                                                                  TVKUInt32(VK_QUEUE_TRANSFER_BIT))) and (fUniversalQueueFamilyIndex<0)) and
+  if (((QueueFamilyProperties.queueFlags and (TUInt32(VK_QUEUE_GRAPHICS_BIT) or
+                                              TUInt32(VK_QUEUE_COMPUTE_BIT) or
+                                              TUInt32(VK_QUEUE_TRANSFER_BIT)))=(TUInt32(VK_QUEUE_GRAPHICS_BIT) or
+                                                                                  TUInt32(VK_QUEUE_COMPUTE_BIT) or
+                                                                                  TUInt32(VK_QUEUE_TRANSFER_BIT))) and (fUniversalQueueFamilyIndex<0)) and
      ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or not assigned(aSurface)) then begin
    fUniversalQueueFamilyIndex:=Index;
    if aUniversal then begin
@@ -17204,25 +17204,25 @@ begin
     DoAdd:=true;
    end;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
+  if ((QueueFamilyProperties.queueFlags and TUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
    fGraphicsQueueFamilyIndex:=Index;
    if aGraphics then begin
     DoAdd:=true;
    end;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
+  if ((QueueFamilyProperties.queueFlags and TUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
    fComputeQueueFamilyIndex:=Index;
    if aCompute then begin
     DoAdd:=true;
    end;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
+  if ((QueueFamilyProperties.queueFlags and TUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
    fTransferQueueFamilyIndex:=Index;
    if aTransfer then begin
     DoAdd:=true;
    end;
   end;
-  if ((QueueFamilyProperties.queueFlags and TVKUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and aSparseBinding then begin
+  if ((QueueFamilyProperties.queueFlags and TUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and aSparseBinding then begin
    raise EVulkanException.Create('Only unsatisfactory device queue families available');
   end;
   if DoAdd then begin
@@ -17254,7 +17254,7 @@ begin
 end;
 
 procedure TVulkanDevice.Initialize;
-var Index:TVkInt32;
+var Index:TInt32;
     DeviceQueueCreateInfo:PVkDeviceQueueCreateInfo;
     SrcDeviceQueueCreateInfo:TVulkanDeviceQueueCreateInfo;
     DeviceCommands:PVulkanCommands;
@@ -17385,13 +17385,13 @@ begin
  fDeviceVulkan.DeviceWaitIdle(fDeviceHandle);
 end;
 
-constructor TVulkanDeviceQueueCreateInfo.Create(const aQueueFamilyIndex:TVkUInt32;const aQueuePriorities:array of TVkFloat);
+constructor TVulkanDeviceQueueCreateInfo.Create(const aQueueFamilyIndex:TUInt32;const aQueuePriorities:array of TFloat);
 begin
  inherited Create;
  fQueueFamilyIndex:=aQueueFamilyIndex;
  SetLength(fQueuePriorities,length(aQueuePriorities));
  if length(aQueuePriorities)>0 then begin
-  Move(aQueuePriorities[0],fQueuePriorities[0],length(aQueuePriorities)*SizeOf(TVkFloat));
+  Move(aQueuePriorities[0],fQueuePriorities[0],length(aQueuePriorities)*SizeOf(TFloat));
  end;
 end;
 
@@ -17429,7 +17429,7 @@ begin
  fOwnsResource:=false;
 end;
 
-constructor TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Create(const aKey:TVkUInt64=0;
+constructor TVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Create(const aKey:TUInt64=0;
                                                                  const aValue:TVulkanDeviceMemoryChunkBlockRedBlackTreeValue=nil;
                                                                  const aLeft:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
                                                                  const aRight:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
@@ -17856,7 +17856,7 @@ constructor TVulkanDeviceMemoryChunk.Create(const aMemoryManager:TVulkanDeviceMe
                                             const aMemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
                                             const aSize:TVkDeviceSize;
                                             const aSizeIsMinimumSize:boolean;
-                                            const aMemoryTypeBits:TVkUInt32;
+                                            const aMemoryTypeBits:TUInt32;
                                             const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
                                             const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
                                             const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
@@ -17864,8 +17864,8 @@ constructor TVulkanDeviceMemoryChunk.Create(const aMemoryManager:TVulkanDeviceMe
                                             const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                                             const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                             const aMemoryChunkList:PVulkanDeviceMemoryManagerChunkList);
-type TBlacklistedHeaps=array of TVkUInt32;
-var Index,HeapIndex,CurrentScore,BestScore,CountBlacklistedHeaps,BlacklistedHeapIndex:TVkInt32;
+type TBlacklistedHeaps=array of TUInt32;
+var Index,HeapIndex,CurrentScore,BestScore,CountBlacklistedHeaps,BlacklistedHeapIndex:TInt32;
     MemoryAllocateInfo:TVkMemoryAllocateInfo;
     PhysicalDevice:TVulkanPhysicalDevice;
     CurrentSize,BestSize,CurrentWantedChunkSize,BestWantedChunkSize:TVkDeviceSize;
@@ -17910,7 +17910,7 @@ begin
    BestWantedChunkSize:=aSize;
    Found:=false;
    for Index:=0 to length(PhysicalDevice.fMemoryProperties.memoryTypes)-1 do begin
-    if ((aMemoryTypeBits and (TVkUInt32(1) shl Index))<>0) and
+    if ((aMemoryTypeBits and (TUInt32(1) shl Index))<>0) and
        ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryRequiredPropertyFlags)=aMemoryRequiredPropertyFlags) and
        ((aMemoryAvoidPropertyFlags=0) or ((PhysicalDevice.fMemoryProperties.memoryTypes[Index].propertyFlags and aMemoryAvoidPropertyFlags)=0)) then begin
      HeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
@@ -17955,7 +17955,7 @@ begin
         BestSize:=CurrentSize;
         BestWantedChunkSize:=CurrentWantedChunkSize;
         fMemoryTypeIndex:=Index;
-        fMemoryTypeBits:=TVkUInt32(1) shl Index;
+        fMemoryTypeBits:=TUInt32(1) shl Index;
         fMemoryHeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
         Found:=true;
        end;
@@ -18101,7 +18101,7 @@ var Node,OtherNode,LastNode:TVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock:TVulkanDeviceMemoryChunkBlock;
     Alignment,Offset,MemoryChunkBlockBeginOffset,MemoryChunkBlockEndOffset,PayloadBeginOffset,PayloadEndOffset,
     BufferImageGranularity,BufferImageGranularityInvertedMask:TVkDeviceSize;
-    Direction:TVkInt32;
+    Direction:TInt32;
     TryAgain:boolean;
 begin
  result:=false;
@@ -18421,7 +18421,7 @@ begin
  if vdmcfPersistentMapped in fMemoryChunkFlags then begin
   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
    if assigned(fMemory) then begin
-    result:=TVkPointer(TVkPtrUInt(TVkPtrUInt(fMemory)+TVkPtrUInt(aOffset)));
+    result:=TPointer(TPtrUInt(TPtrUInt(fMemory)+TPtrUInt(aOffset)));
    end else begin
     raise EVulkanException.Create('Persistent mapped memory is not mapped?');
    end;
@@ -18495,18 +18495,18 @@ begin
  end;
 end;
 
-procedure TVulkanDeviceMemoryChunk.FlushMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
+procedure TVulkanDeviceMemoryChunk.FlushMappedMemoryRange(const aBase:TPointer;const aSize:TVkDeviceSize);
 var MappedMemoryRange:TVkMappedMemoryRange;
     Offset,Size:TVkDeviceSize;
 begin
  fLock.Acquire;
  try
   if assigned(fMemory) then begin
-   Offset:=fMappedOffset+TVkDeviceSize(TVkPtrUInt(aBase)-TVkPtrUInt(fMemory));
+   Offset:=fMappedOffset+TVkDeviceSize(TPtrUInt(aBase)-TPtrUInt(fMemory));
    if aSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
-    Size:=TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset)));
+    Size:=TInt64(Max(0,TInt64((fMappedOffset+fMappedSize)-Offset)));
    end else begin
-    Size:=Min(TVkInt64(Max(TVkInt64(aSize),0)),TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset))));
+    Size:=Min(TInt64(Max(TInt64(aSize),0)),TInt64(Max(0,TInt64((fMappedOffset+fMappedSize)-Offset))));
    end;
    FillChar(MappedMemoryRange,SizeOf(TVkMappedMemoryRange),#0);
    MappedMemoryRange.sType:=VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -18544,18 +18544,18 @@ begin
  end;
 end;
 
-procedure TVulkanDeviceMemoryChunk.InvalidateMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
+procedure TVulkanDeviceMemoryChunk.InvalidateMappedMemoryRange(const aBase:TPointer;const aSize:TVkDeviceSize);
 var MappedMemoryRange:TVkMappedMemoryRange;
     Offset,Size:TVkDeviceSize;
 begin
  fLock.Acquire;
  try
   if assigned(fMemory) then begin
-   Offset:=fMappedOffset+TVkDeviceSize(TVkPtrUInt(aBase)-TVkPtrUInt(fMemory));
+   Offset:=fMappedOffset+TVkDeviceSize(TPtrUInt(aBase)-TPtrUInt(fMemory));
    if aSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
-    Size:=TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset)));
+    Size:=TInt64(Max(0,TInt64((fMappedOffset+fMappedSize)-Offset)));
    end else begin
-    Size:=Min(TVkInt64(Max(TVkInt64(aSize),0)),TVkInt64(Max(0,TVkInt64((fMappedOffset+fMappedSize)-Offset))));
+    Size:=Min(TInt64(Max(TInt64(aSize),0)),TInt64(Max(0,TInt64((fMappedOffset+fMappedSize)-Offset))));
    end;
    FillChar(MappedMemoryRange,SizeOf(TVkMappedMemoryRange),#0);
    MappedMemoryRange.sType:=VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -18620,9 +18620,9 @@ var Offset,Size:TVkDeviceSize;
 begin
  Offset:=fOffset+aOffset;
  if aSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
-  Size:=TVkInt64(Max(0,TVkInt64((fOffset+fSize)-Offset)));
+  Size:=TInt64(Max(0,TInt64((fOffset+fSize)-Offset)));
  end else begin
-  Size:=Min(TVkInt64(Max(TVkInt64(aSize),0)),TVkInt64(Max(0,TVkInt64((fOffset+fSize)-Offset))));
+  Size:=Min(TInt64(Max(TInt64(aSize),0)),TInt64(Max(0,TInt64((fOffset+fSize)-Offset))));
  end;
  result:=fMemoryChunk.MapMemory(Offset,Size);
 end;
@@ -18637,7 +18637,7 @@ begin
  fMemoryChunk.FlushMappedMemory;
 end;
 
-procedure TVulkanDeviceMemoryBlock.FlushMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
+procedure TVulkanDeviceMemoryBlock.FlushMappedMemoryRange(const aBase:TPointer;const aSize:TVkDeviceSize);
 begin
  fMemoryChunk.FlushMappedMemoryRange(aBase,aSize);
 end;
@@ -18647,7 +18647,7 @@ begin
  fMemoryChunk.InvalidateMappedMemory;
 end;
 
-procedure TVulkanDeviceMemoryBlock.InvalidateMappedMemoryRange(const aBase:TVkPointer;const aSize:TVkDeviceSize);
+procedure TVulkanDeviceMemoryBlock.InvalidateMappedMemoryRange(const aBase:TPointer;const aSize:TVkDeviceSize);
 begin
  fMemoryChunk.InvalidateMappedMemoryRange(aBase,aSize);
 end;
@@ -18686,7 +18686,7 @@ begin
 end;
 
 destructor TVulkanDeviceMemoryManager.Destroy;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  while assigned(fFirstMemoryBlock) do begin
   fFirstMemoryBlock.Free;
@@ -18701,7 +18701,7 @@ end;
 function TVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlags:TVulkanDeviceMemoryBlockFlags;
                                                         const aMemoryBlockSize:TVkDeviceSize;
                                                         const aMemoryBlockAlignment:TVkDeviceSize;
-                                                        const aMemoryTypeBits:TVkUInt32;
+                                                        const aMemoryTypeBits:TUInt32;
                                                         const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
                                                         const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
                                                         const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
@@ -18709,7 +18709,7 @@ function TVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlags:
                                                         const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                                                         const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                                         const aMemoryAllocationType:TVulkanDeviceMemoryAllocationType):TVulkanDeviceMemoryBlock;
-var TryIteration:TVkInt32;
+var TryIteration:TInt32;
     MemoryChunk:TVulkanDeviceMemoryChunk;
     Offset,Alignment:TVkDeviceSize;
     MemoryChunkFlags:TVulkanDeviceMemoryChunkFlags;
@@ -18819,7 +18819,7 @@ begin
 
     MemoryChunk:=TVulkanDeviceMemoryChunk.Create(self,
                                                  MemoryChunkFlags,
-                                                 VulkanDeviceSizeRoundUpToPowerOfTwo(Max(TVkInt64(VulkanMinimumMemoryChunkSize),TVkInt64(aMemoryBlockSize shl 1))),
+                                                 VulkanDeviceSizeRoundUpToPowerOfTwo(Max(TInt64(VulkanMinimumMemoryChunkSize),TInt64(aMemoryBlockSize shl 1))),
                                                  true,
                                                  aMemoryTypeBits,
                                                  aMemoryRequiredPropertyFlags,
@@ -18882,7 +18882,7 @@ constructor TVulkanBuffer.Create(const aDevice:TVulkanDevice;
                                  const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                  const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
                                  const aBufferFlags:TVulkanBufferFlags=[]);
-var Index:TVkInt32;
+var Index:TInt32;
     BufferCreateInfo:TVkBufferCreateInfo;
     MemoryBlockFlags:TVulkanDeviceMemoryBlockFlags;
 begin
@@ -19000,7 +19000,7 @@ procedure TVulkanBuffer.UploadData(const aTransferQueue:TVulkanQueue;
                                    const aDataSize:TVkDeviceSize;
                                    const aUseTemporaryStagingBufferMode:TVulkanBufferUseTemporaryStagingBufferMode=vbutsbmAutomatic);
 var StagingBuffer:TVulkanBuffer;
-    p:TVkPointer;
+    p:TPointer;
     VkBufferCopy:TVkBufferCopy;
 begin
 
@@ -19074,7 +19074,7 @@ end;
 procedure TVulkanBuffer.UpdateData(const aData;
                                    const aDataOffset:TVkDeviceSize;
                                    const aDataSize:TVkDeviceSize);
-var p:TVkPointer;
+var p:TPointer;
 begin
  if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
   p:=Memory.MapMemory(aDataOffset,aDataSize);
@@ -19240,7 +19240,7 @@ begin
 end;
 
 class function TVulkanFence.Reset(const aFences:array of TVulkanFence):TVkResult;
-var Index:TVkInt32;
+var Index:TInt32;
     Handles:array of TVkFence;
 begin
  Handles:=nil;
@@ -19261,7 +19261,7 @@ begin
  end;
 end;
 
-function TVulkanFence.WaitFor(const aTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult;
+function TVulkanFence.WaitFor(const aTimeOut:TUInt64=TUInt64(TInt64(-1))):TVkResult;
 begin
  result:=fDevice.fDeviceVulkan.WaitForFences(fDevice.fDeviceHandle,1,@fFenceHandle,VK_TRUE,aTimeOut);
  if result<VK_SUCCESS then begin
@@ -19269,8 +19269,8 @@ begin
  end;
 end;
 
-class function TVulkanFence.WaitFor(const aFences:array of TVulkanFence;const aWaitAll:boolean=true;const aTimeOut:TVkUInt64=TVKUInt64(TVKInt64(-1))):TVkResult;
-var Index:TVkInt32;
+class function TVulkanFence.WaitFor(const aFences:array of TVulkanFence;const aWaitAll:boolean=true;const aTimeOut:TUInt64=TUInt64(TInt64(-1))):TVkResult;
+var Index:TInt32;
     Handles:array of TVkFence;
 begin
  Handles:=nil;
@@ -19325,7 +19325,7 @@ end;
 
 constructor TVulkanQueue.Create(const aDevice:TVulkanDevice;
                                 const aQueue:TVkQueue;
-                                const aQueueFamilyIndex:TVKUInt32);
+                                const aQueueFamilyIndex:TUInt32);
 begin
  inherited Create;
 
@@ -19344,7 +19344,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanQueue.Submit(const aSubmitCount:TVkUInt32;const aSubmits:PVkSubmitInfo;const aFence:TVulkanFence=nil);
+procedure TVulkanQueue.Submit(const aSubmitCount:TUInt32;const aSubmits:PVkSubmitInfo;const aFence:TVulkanFence=nil);
 begin
  if assigned(aFence) then begin
   HandleResultCode(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,aFence.fFenceHandle));
@@ -19353,7 +19353,7 @@ begin
  end;
 end;
 
-procedure TVulkanQueue.BindSparse(const aBindInfoCount:TVkUInt32;const aBindInfo:PVkBindSparseInfo;const aFence:TVulkanFence=nil);
+procedure TVulkanQueue.BindSparse(const aBindInfoCount:TUInt32;const aBindInfo:PVkBindSparseInfo;const aFence:TVulkanFence=nil);
 begin
  if assigned(aFence) then begin
   HandleResultCode(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,aFence.fFenceHandle));
@@ -19368,7 +19368,7 @@ begin
 end;
 
 constructor TVulkanCommandPool.Create(const aDevice:TVulkanDevice;
-                                      const aQueueFamilyIndex:TVkUInt32;
+                                      const aQueueFamilyIndex:TUInt32;
                                       const aFlags:TVkCommandPoolCreateFlags=TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 var CommandPoolCreateInfo:TVkCommandPoolCreateInfo;
 begin
@@ -19462,8 +19462,8 @@ end;
 
 class function TVulkanCommandBuffer.Allocate(const aCommandPool:TVulkanCommandPool;
                                              const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                                             const aCommandBufferCount:TVkUInt32=1):TVulkanObjectList;
-var Index:TVkInt32;
+                                             const aCommandBufferCount:TUInt32=1):TVulkanObjectList;
+var Index:TInt32;
     CommandBufferHandles:array of TVkCommandBuffer;
     CommandBufferAllocateInfo:TVkCommandBufferAllocateInfo;
 begin
@@ -19516,7 +19516,7 @@ begin
  end;
 end;
 
-procedure TVulkanCommandBuffer.BeginRecordingSecondary(const aRenderPass:TVkRenderPass;const aSubPass:TVkUInt32;const aFrameBuffer:TVkFramebuffer;const aOcclusionQueryEnable:boolean;const aQueryFlags:TVkQueryControlFlags;const aPipelineStatistics:TVkQueryPipelineStatisticFlags;const aFlags:TVkCommandBufferUsageFlags=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
+procedure TVulkanCommandBuffer.BeginRecordingSecondary(const aRenderPass:TVkRenderPass;const aSubPass:TUInt32;const aFrameBuffer:TVkFramebuffer;const aOcclusionQueryEnable:boolean;const aQueryFlags:TVkQueryControlFlags;const aPipelineStatistics:TVkQueryPipelineStatisticFlags;const aFlags:TVkCommandBufferUsageFlags=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
 var CommandBufferBeginInfo:TVkCommandBufferBeginInfo;
     InheritanceInfo:TVkCommandBufferInheritanceInfo;
 begin
@@ -19560,54 +19560,54 @@ begin
  fDevice.fDeviceVulkan.CmdBindPipeline(fCommandBufferHandle,pipelineBindPoint,pipeline);
 end;
 
-procedure TVulkanCommandBuffer.CmdSetViewport(firstViewport:TVkUInt32;viewportCount:TVkUInt32;const aViewports:PVkViewport);
+procedure TVulkanCommandBuffer.CmdSetViewport(firstViewport:TUInt32;viewportCount:TUInt32;const aViewports:PVkViewport);
 begin
  fDevice.fDeviceVulkan.CmdSetViewport(fCommandBufferHandle,firstViewport,viewportCount,aViewports);
 end;
 
-procedure TVulkanCommandBuffer.CmdSetScissor(firstScissor:TVkUInt32;scissorCount:TVkUInt32;const aScissors:PVkRect2D);
+procedure TVulkanCommandBuffer.CmdSetScissor(firstScissor:TUInt32;scissorCount:TUInt32;const aScissors:PVkRect2D);
 begin
  fDevice.fDeviceVulkan.CmdSetScissor(fCommandBufferHandle,firstScissor,scissorCount,aScissors);
 end;
 
-procedure TVulkanCommandBuffer.CmdSetLineWidth(lineWidth:TVkFloat);
+procedure TVulkanCommandBuffer.CmdSetLineWidth(lineWidth:TFloat);
 begin
  fDevice.fDeviceVulkan.CmdSetLineWidth(fCommandBufferHandle,lineWidth);
 end;
 
-procedure TVulkanCommandBuffer.CmdSetDepthBias(depthBiasConstantFactor:TVkFloat;depthBiasClamp:TVkFloat;depthBiasSlopeFactor:TVkFloat);
+procedure TVulkanCommandBuffer.CmdSetDepthBias(depthBiasConstantFactor:TFloat;depthBiasClamp:TFloat;depthBiasSlopeFactor:TFloat);
 begin
  fDevice.fDeviceVulkan.CmdSetDepthBias(fCommandBufferHandle,depthBiasConstantFactor,depthBiasClamp,depthBiasSlopeFactor);
 end;
 
-procedure TVulkanCommandBuffer.CmdSetBlendConstants(const blendConstants:TVkFloat);
+procedure TVulkanCommandBuffer.CmdSetBlendConstants(const blendConstants:TFloat);
 begin
  fDevice.fDeviceVulkan.CmdSetBlendConstants(fCommandBufferHandle,blendConstants);
 end;
 
-procedure TVulkanCommandBuffer.CmdSetDepthBounds(minDepthBounds:TVkFloat;maxDepthBounds:TVkFloat);
+procedure TVulkanCommandBuffer.CmdSetDepthBounds(minDepthBounds:TFloat;maxDepthBounds:TFloat);
 begin
  fDevice.fDeviceVulkan.CmdSetDepthBounds(fCommandBufferHandle,minDepthBounds,maxDepthBounds);
 end;
 
-procedure TVulkanCommandBuffer.CmdSetStencilCompareMask(faceMask:TVkStencilFaceFlags;compareMask:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdSetStencilCompareMask(faceMask:TVkStencilFaceFlags;compareMask:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdSetStencilCompareMask(fCommandBufferHandle,faceMask,compareMask);
 end;
 
-procedure TVulkanCommandBuffer.CmdSetStencilWriteMask(faceMask:TVkStencilFaceFlags;writeMask:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdSetStencilWriteMask(faceMask:TVkStencilFaceFlags;writeMask:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdSetStencilWriteMask(fCommandBufferHandle,faceMask,writeMask);
 end;
 
-procedure TVulkanCommandBuffer.CmdSetStencilReference(faceMask:TVkStencilFaceFlags;reference:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdSetStencilReference(faceMask:TVkStencilFaceFlags;reference:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdSetStencilReference(fCommandBufferHandle,faceMask,reference);
 end;
 
-procedure TVulkanCommandBuffer.CmdBindDescriptorSets(pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const aDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const aDynamicOffsets:PVkUInt32);
+procedure TVulkanCommandBuffer.CmdBindDescriptorSets(pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TUInt32;descriptorSetCount:TUInt32;const aDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TUInt32;const aDynamicOffsets:PUInt32);
 begin
- fDevice.fDeviceVulkan.CmdBindDescriptorSets(fCommandBufferHandle,pipelineBindPoint,layout,firstSet,descriptorSetCount,aDescriptorSets,dynamicOffsetCount,aDynamicOffsets);
+ fDevice.fDeviceVulkan.CmdBindDescriptorSets(fCommandBufferHandle,pipelineBindPoint,layout,firstSet,descriptorSetCount,aDescriptorSets,dynamicOffsetCount,TVkPointer(aDynamicOffsets));
 end;
 
 procedure TVulkanCommandBuffer.CmdBindIndexBuffer(buffer:TVkBuffer;offset:TVkDeviceSize;indexType:TVkIndexType);
@@ -19615,32 +19615,32 @@ begin
  fDevice.fDeviceVulkan.CmdBindIndexBuffer(fCommandBufferHandle,buffer,offset,indexType);
 end;
 
-procedure TVulkanCommandBuffer.CmdBindVertexBuffers(firstBinding:TVkUInt32;bindingCount:TVkUInt32;const aBuffers:PVkBuffer;const aOffsets:PVkDeviceSize);
+procedure TVulkanCommandBuffer.CmdBindVertexBuffers(firstBinding:TUInt32;bindingCount:TUInt32;const aBuffers:PVkBuffer;const aOffsets:PVkDeviceSize);
 begin
  fDevice.fDeviceVulkan.CmdBindVertexBuffers(fCommandBufferHandle,firstBinding,bindingCount,aBuffers,aOffsets);
 end;
 
-procedure TVulkanCommandBuffer.CmdDraw(vertexCount:TVkUInt32;instanceCount:TVkUInt32;firstVertex:TVkUInt32;firstInstance:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdDraw(vertexCount:TUInt32;instanceCount:TUInt32;firstVertex:TUInt32;firstInstance:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdDraw(fCommandBufferHandle,vertexCount,instanceCount,firstVertex,firstInstance);
 end;
 
-procedure TVulkanCommandBuffer.CmdDrawIndexed(indexCount:TVkUInt32;instanceCount:TVkUInt32;firstIndex:TVkUInt32;vertexOffset:TVkInt32;firstInstance:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdDrawIndexed(indexCount:TUInt32;instanceCount:TUInt32;firstIndex:TUInt32;vertexOffset:TInt32;firstInstance:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdDrawIndexed(fCommandBufferHandle,indexCount,instanceCount,firstIndex,vertexOffset,firstInstance);
 end;
 
-procedure TVulkanCommandBuffer.CmdDrawIndirect(buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdDrawIndirect(buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TUInt32;stride:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdDrawIndirect(fCommandBufferHandle,buffer,offset,drawCount,stride);
 end;
 
-procedure TVulkanCommandBuffer.CmdDrawIndexedIndirect(buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdDrawIndexedIndirect(buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TUInt32;stride:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdDrawIndexedIndirect(fCommandBufferHandle,buffer,offset,drawCount,stride);
 end;
 
-procedure TVulkanCommandBuffer.CmdDispatch(x:TVkUInt32;y:TVkUInt32;z:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdDispatch(x:TUInt32;y:TUInt32;z:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdDispatch(fCommandBufferHandle,x,y,z);
 end;
@@ -19650,27 +19650,27 @@ begin
  fDevice.fDeviceVulkan.CmdDispatchIndirect(fCommandBufferHandle,buffer,offset);
 end;
 
-procedure TVulkanCommandBuffer.CmdCopyBuffer(srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const aRegions:PVkBufferCopy);
+procedure TVulkanCommandBuffer.CmdCopyBuffer(srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TUInt32;const aRegions:PVkBufferCopy);
 begin
  fDevice.fDeviceVulkan.CmdCopyBuffer(fCommandBufferHandle,srcBuffer,dstBuffer,regionCount,aRegions);
 end;
 
-procedure TVulkanCommandBuffer.CmdCopyImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageCopy);
+procedure TVulkanCommandBuffer.CmdCopyImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TUInt32;const aRegions:PVkImageCopy);
 begin
  fDevice.fDeviceVulkan.CmdCopyImage(fCommandBufferHandle,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,aRegions);
 end;
 
-procedure TVulkanCommandBuffer.CmdBlitImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageBlit;filter:TVkFilter);
+procedure TVulkanCommandBuffer.CmdBlitImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TUInt32;const aRegions:PVkImageBlit;filter:TVkFilter);
 begin
  fDevice.fDeviceVulkan.CmdBlitImage(fCommandBufferHandle,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,aRegions,filter);
 end;
 
-procedure TVulkanCommandBuffer.CmdCopyBufferToImage(srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkBufferImageCopy);
+procedure TVulkanCommandBuffer.CmdCopyBufferToImage(srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TUInt32;const aRegions:PVkBufferImageCopy);
 begin
  fDevice.fDeviceVulkan.CmdCopyBufferToImage(fCommandBufferHandle,srcBuffer,dstImage,dstImageLayout,regionCount,aRegions);
 end;
 
-procedure TVulkanCommandBuffer.CmdCopyImageToBuffer(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const aRegions:PVkBufferImageCopy);
+procedure TVulkanCommandBuffer.CmdCopyImageToBuffer(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TUInt32;const aRegions:PVkBufferImageCopy);
 begin
  fDevice.fDeviceVulkan.CmdCopyImageToBuffer(fCommandBufferHandle,srcImage,srcImageLayout,dstBuffer,regionCount,aRegions);
 end;                                                                                             
@@ -19680,27 +19680,27 @@ begin
  fDevice.fDeviceVulkan.CmdUpdateBuffer(fCommandBufferHandle,dstBuffer,dstOffset,dataSize,aData);
 end;
 
-procedure TVulkanCommandBuffer.CmdFillBuffer(dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdFillBuffer(dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdFillBuffer(fCommandBufferHandle,dstBuffer,dstOffset,size,data);
 end;
 
-procedure TVulkanCommandBuffer.CmdClearColorImage(image:TVkImage;imageLayout:TVkImageLayout;const aColor:PVkClearColorValue;rangeCount:TVkUInt32;const aRanges:PVkImageSubresourceRange);
+procedure TVulkanCommandBuffer.CmdClearColorImage(image:TVkImage;imageLayout:TVkImageLayout;const aColor:PVkClearColorValue;rangeCount:TUInt32;const aRanges:PVkImageSubresourceRange);
 begin
  fDevice.fDeviceVulkan.CmdClearColorImage(fCommandBufferHandle,image,imageLayout,aColor,rangeCount,aRanges);
 end;
 
-procedure TVulkanCommandBuffer.CmdClearDepthStencilImage(image:TVkImage;imageLayout:TVkImageLayout;const aDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const aRanges:PVkImageSubresourceRange);
+procedure TVulkanCommandBuffer.CmdClearDepthStencilImage(image:TVkImage;imageLayout:TVkImageLayout;const aDepthStencil:PVkClearDepthStencilValue;rangeCount:TUInt32;const aRanges:PVkImageSubresourceRange);
 begin
  fDevice.fDeviceVulkan.CmdClearDepthStencilImage(fCommandBufferHandle,image,imageLayout,aDepthStencil,rangeCount,aRanges);
 end;
 
-procedure TVulkanCommandBuffer.CmdClearAttachments(attachmentCount:TVkUInt32;const aAttachments:PVkClearAttachment;rectCount:TVkUInt32;const aRects:PVkClearRect);
+procedure TVulkanCommandBuffer.CmdClearAttachments(attachmentCount:TUInt32;const aAttachments:PVkClearAttachment;rectCount:TUInt32;const aRects:PVkClearRect);
 begin
  fDevice.fDeviceVulkan.CmdClearAttachments(fCommandBufferHandle,attachmentCount,aAttachments,rectCount,aRects);
 end;
 
-procedure TVulkanCommandBuffer.CmdResolveImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const aRegions:PVkImageResolve);
+procedure TVulkanCommandBuffer.CmdResolveImage(srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TUInt32;const aRegions:PVkImageResolve);
 begin
  fDevice.fDeviceVulkan.CmdResolveImage(fCommandBufferHandle,srcImage,srcImageLayout,dstImage,dstImageLayout,regionCount,aRegions);
 end;
@@ -19715,42 +19715,42 @@ begin
  fDevice.fDeviceVulkan.CmdResetEvent(fCommandBufferHandle,event,stageMask);
 end;
 
-procedure TVulkanCommandBuffer.CmdWaitEvents(eventCount:TVkUInt32;const aEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
+procedure TVulkanCommandBuffer.CmdWaitEvents(eventCount:TUInt32;const aEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
 begin
  fDevice.fDeviceVulkan.CmdWaitEvents(fCommandBufferHandle,eventCount,aEvents,srcStageMask,dstStageMask,memoryBarrierCount,aMemoryBarriers,bufferMemoryBarrierCount,aBufferMemoryBarriers,imageMemoryBarrierCount,aImageMemoryBarriers);
 end;
 
-procedure TVulkanCommandBuffer.CmdPipelineBarrier(srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
+procedure TVulkanCommandBuffer.CmdPipelineBarrier(srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TUInt32;const aMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TUInt32;const aBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TUInt32;const aImageMemoryBarriers:PVkImageMemoryBarrier);
 begin
  fDevice.fDeviceVulkan.CmdPipelineBarrier(fCommandBufferHandle,srcStageMask,dstStageMask,dependencyFlags,memoryBarrierCount,aMemoryBarriers,bufferMemoryBarrierCount,aBufferMemoryBarriers,imageMemoryBarrierCount,aImageMemoryBarriers);
 end;
 
-procedure TVulkanCommandBuffer.CmdBeginQuery(queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags);
+procedure TVulkanCommandBuffer.CmdBeginQuery(queryPool:TVkQueryPool;query:TUInt32;flags:TVkQueryControlFlags);
 begin
  fDevice.fDeviceVulkan.CmdBeginQuery(fCommandBufferHandle,queryPool,query,flags);
 end;
 
-procedure TVulkanCommandBuffer.CmdEndQuery(queryPool:TVkQueryPool;query:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdEndQuery(queryPool:TVkQueryPool;query:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdEndQuery(fCommandBufferHandle,queryPool,query);
 end;
 
-procedure TVulkanCommandBuffer.CmdResetQueryPool(queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdResetQueryPool(queryPool:TVkQueryPool;firstQuery:TUInt32;queryCount:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdResetQueryPool(fCommandBufferHandle,queryPool,firstQuery,queryCount);
 end;
 
-procedure TVulkanCommandBuffer.CmdWriteTimestamp(pipelineStage:TVkPipelineStageFlagBits;queryPool:TVkQueryPool;query:TVkUInt32);
+procedure TVulkanCommandBuffer.CmdWriteTimestamp(pipelineStage:TVkPipelineStageFlagBits;queryPool:TVkQueryPool;query:TUInt32);
 begin
  fDevice.fDeviceVulkan.CmdWriteTimestamp(fCommandBufferHandle,pipelineStage,queryPool,query);
 end;
 
-procedure TVulkanCommandBuffer.CmdCopyQueryPoolResults(queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags);
+procedure TVulkanCommandBuffer.CmdCopyQueryPoolResults(queryPool:TVkQueryPool;firstQuery:TUInt32;queryCount:TUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags);
 begin
  fDevice.fDeviceVulkan.CmdCopyQueryPoolResults(fCommandBufferHandle,queryPool,firstQuery,queryCount,dstBuffer,dstOffset,stride,flags);
 end;
 
-procedure TVulkanCommandBuffer.CmdPushConstants(layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const aValues:PVkVoid);
+procedure TVulkanCommandBuffer.CmdPushConstants(layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TUInt32;size:TUInt32;const aValues:PVkVoid);
 begin
  fDevice.fDeviceVulkan.CmdPushConstants(fCommandBufferHandle,layout,stageFlags,offset,size,aValues);
 end;
@@ -19770,7 +19770,7 @@ begin
  fDevice.fDeviceVulkan.CmdEndRenderPass(fCommandBufferHandle);
 end;
 
-procedure TVulkanCommandBuffer.CmdExecuteCommands(commandBufferCount:TVkUInt32;const aCommandBuffers:PVkCommandBuffer);
+procedure TVulkanCommandBuffer.CmdExecuteCommands(commandBufferCount:TUInt32;const aCommandBuffers:PVkCommandBuffer);
 begin
  fDevice.fDeviceVulkan.CmdExecuteCommands(fCommandBufferHandle,commandBufferCount,aCommandBuffers);
 end;
@@ -19946,7 +19946,7 @@ begin
 end;
                                                  
 procedure TVulkanCommandBufferSubmitQueue.QueueSubmit(const aCommandBuffer:TVulkanCommandBuffer;const aWaitDstStageFlags:TVkPipelineStageFlags;const aWaitSemaphore:TVulkanSemaphore=nil;const aSignalSemaphore:TVulkanSemaphore=nil);
-var Index:TVkInt32;
+var Index:TInt32;
     SubmitInfo:PVkSubmitInfo;
 begin
  if aCommandBuffer.fLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
@@ -19992,7 +19992,7 @@ begin
 end;
 
 procedure TVulkanCommandBufferSubmitQueue.SubmitQueued(const aFence:TVulkanFence=nil;const aDoWaitAndResetFence:boolean=true);
-var Index:TVkInt32;
+var Index:TInt32;
     SubmitInfo:PVkSubmitInfo;
 begin
 
@@ -20079,7 +20079,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanRenderPass.GetClearValue(const Index:TVkUInt32):PVkClearValue;
+function TVulkanRenderPass.GetClearValue(const Index:TUInt32):PVkClearValue;
 begin
  result:=@fClearValues[Index];
 end;
@@ -20092,7 +20092,7 @@ function TVulkanRenderPass.AddAttachmentDescription(const aFlags:TVkAttachmentDe
                                                     const aStencilLoadOp:TVkAttachmentLoadOp;
                                                     const aStencilStoreOp:TVkAttachmentStoreOp;
                                                     const aInitialLayout:TVkImageLayout;
-                                                    const aFinalLayout:TVkImageLayout):TVkUInt32;
+                                                    const aFinalLayout:TVkImageLayout):TUInt32;
 var AttachmentDescription:PVkAttachmentDescription;
 begin
  result:=fCountAttachmentDescriptions;
@@ -20112,8 +20112,8 @@ begin
  AttachmentDescription^.finalLayout:=aFinalLayout;
 end;
 
-function TVulkanRenderPass.AddAttachmentReference(const aAttachment:TVkUInt32;
-                                                  const aLayout:TVkImageLayout):TVkUInt32;
+function TVulkanRenderPass.AddAttachmentReference(const aAttachment:TUInt32;
+                                                  const aLayout:TVkImageLayout):TUInt32;
 var AttachmentReference:PVkAttachmentReference;
 begin
  result:=fCountAttachmentReferences;
@@ -20128,11 +20128,11 @@ end;
 
 function TVulkanRenderPass.AddSubpassDescription(const aFlags:TVkSubpassDescriptionFlags;
                                                  const aPipelineBindPoint:TVkPipelineBindPoint;
-                                                 const aInputAttachments:array of TVkInt32;
-                                                 const aColorAttachments:array of TVkInt32;
-                                                 const aResolveAttachments:array of TVkInt32;
-                                                 const aDepthStencilAttachment:TVkInt32;
-                                                 const aPreserveAttachments:array of TVkUInt32):TVkUInt32;
+                                                 const aInputAttachments:array of TInt32;
+                                                 const aColorAttachments:array of TInt32;
+                                                 const aResolveAttachments:array of TInt32;
+                                                 const aDepthStencilAttachment:TInt32;
+                                                 const aPreserveAttachments:array of TUInt32):TUInt32;
 var RenderPassSubpassDescription:PVulkanRenderPassSubpassDescription;
 begin
  result:=fCountSubpassDescriptions;
@@ -20146,37 +20146,37 @@ begin
  begin
   SetLength(RenderPassSubpassDescription^.InputAttachments,length(aInputAttachments));
   if length(aInputAttachments)>0 then begin
-   Move(aInputAttachments[0],RenderPassSubpassDescription^.InputAttachments[0],length(aInputAttachments)*SizeOf(TVkInt32));
+   Move(aInputAttachments[0],RenderPassSubpassDescription^.InputAttachments[0],length(aInputAttachments)*SizeOf(TInt32));
   end;
  end;
  begin
   SetLength(RenderPassSubpassDescription^.ColorAttachments,length(aColorAttachments));
   if length(aColorAttachments)>0 then begin
-   Move(aColorAttachments[0],RenderPassSubpassDescription^.ColorAttachments[0],length(aColorAttachments)*SizeOf(TVkInt32));
+   Move(aColorAttachments[0],RenderPassSubpassDescription^.ColorAttachments[0],length(aColorAttachments)*SizeOf(TInt32));
   end;
  end;
  begin
   SetLength(RenderPassSubpassDescription^.ResolveAttachments,length(aResolveAttachments));
   if length(aResolveAttachments)>0 then begin
-   Move(aResolveAttachments[0],RenderPassSubpassDescription^.ResolveAttachments[0],length(aResolveAttachments)*SizeOf(TVkInt32));
+   Move(aResolveAttachments[0],RenderPassSubpassDescription^.ResolveAttachments[0],length(aResolveAttachments)*SizeOf(TInt32));
   end;
  end;
  RenderPassSubpassDescription^.DepthStencilAttachment:=aDepthStencilAttachment;
  begin
   SetLength(RenderPassSubpassDescription^.PreserveAttachments,length(aPreserveAttachments));
   if length(aPreserveAttachments)>0 then begin
-   Move(aPreserveAttachments[0],RenderPassSubpassDescription^.PreserveAttachments[0],length(aPreserveAttachments)*SizeOf(TVkUInt32));
+   Move(aPreserveAttachments[0],RenderPassSubpassDescription^.PreserveAttachments[0],length(aPreserveAttachments)*SizeOf(TUInt32));
   end;
  end;
 end;
 
-function TVulkanRenderPass.AddSubpassDependency(const aSrcSubpass:TVkUInt32;
-                                                const aDstSubpass:TVkUInt32;
+function TVulkanRenderPass.AddSubpassDependency(const aSrcSubpass:TUInt32;
+                                                const aDstSubpass:TUInt32;
                                                 const aSrcStageMask:TVkPipelineStageFlags;
                                                 const aDstStageMask:TVkPipelineStageFlags;
                                                 const aSrcAccessMask:TVkAccessFlags;
                                                 const aDstAccessMask:TVkAccessFlags;
-                                                const aDependencyFlags:TVkDependencyFlags):TVkUInt32;
+                                                const aDependencyFlags:TVkDependencyFlags):TUInt32;
 var SubpassDependency:PVkSubpassDependency;
 begin
  result:=fCountSubpassDependencies;
@@ -20195,7 +20195,7 @@ begin
 end;
 
 procedure TVulkanRenderPass.Initialize;
-var Index,SubIndex,fCountClearValues:TVkInt32;
+var Index,SubIndex,fCountClearValues:TInt32;
     AttachmentDescription:PVkAttachmentDescription;
     SubpassDescription:PVkSubpassDescription;
     RenderPassSubpassDescription:PVulkanRenderPassSubpassDescription;
@@ -20275,7 +20275,7 @@ begin
    end;
    begin
     if (SubpassDescription^.ColorAttachmentCount>0) and
-       (SubpassDescription^.ColorAttachmentCount=TVkUInt32(length(RenderPassSubpassDescription^.ResolveAttachments))) then begin
+       (SubpassDescription^.ColorAttachmentCount=TUInt32(length(RenderPassSubpassDescription^.ResolveAttachments))) then begin
      SetLength(RenderPassSubpassDescription^.aResolveAttachments,SubpassDescription^.ColorAttachmentCount);
      for SubIndex:=0 to length(RenderPassSubpassDescription^.ResolveAttachments)-1 do begin
       RenderPassSubpassDescription^.aResolveAttachments[SubIndex]:=fAttachmentReferences[RenderPassSubpassDescription^.ResolveAttachments[SubIndex]];
@@ -20309,7 +20309,7 @@ end;
 procedure TVulkanRenderPass.BeginRenderPass(const aCommandBuffer:TVulkanCommandBuffer;
                                             const aFrameBuffer:TVulkanFrameBuffer;
                                             const aSubpassContents:TVkSubpassContents;
-                                            const aOffsetX,aOffsetY,aWidth,aHeight:TVkUInt32);
+                                            const aOffsetX,aOffsetY,aWidth,aHeight:TUInt32);
 var RenderPassBeginInfo:TVkRenderPassBeginInfo;
 begin
  FillChar(RenderPassBeginInfo,SizeOf(TVkRenderPassBeginInfo),#0);
@@ -20354,13 +20354,13 @@ constructor TVulkanSampler.Create(const aDevice:TVulkanDevice;
                                   const aAddressModeU:TVkSamplerAddressMode;
                                   const aAddressModeV:TVkSamplerAddressMode;
                                   const aAddressModeW:TVkSamplerAddressMode;
-                                  const aMipLodBias:TVkFloat;
+                                  const aMipLodBias:TFloat;
                                   const aAnisotropyEnable:boolean;
-                                  const aMaxAnisotropy:TVkFloat;
+                                  const aMaxAnisotropy:TFloat;
                                   const aCompareEnable:boolean;
                                   const aCompareOp:TVkCompareOp;
-                                  const aMinLod:TVkFloat;
-                                  const aMaxLod:TVkFloat;
+                                  const aMinLod:TFloat;
+                                  const aMaxLod:TFloat;
                                   const aBorderColor:TVkBorderColor;
                                   const aUnnormalizedCoordinates:boolean);
 var SamplerCreateInfo:TVkSamplerCreateInfo;
@@ -20443,17 +20443,17 @@ constructor TVulkanImage.Create(const aDevice:TVulkanDevice;
                                 const aFlags:TVkImageCreateFlags;
                                 const aImageType:TVkImageType;
                                 const aFormat:TVkFormat;
-                                const aExtentWidth:TVkUInt32;
-                                const aExtentHeight:TVkUInt32;
-                                const aExtentDepth:TVkUInt32;
-                                const aMipLevels:TVkUInt32;
-                                const aArrayLayers:TVkUInt32;
+                                const aExtentWidth:TUInt32;
+                                const aExtentHeight:TUInt32;
+                                const aExtentDepth:TUInt32;
+                                const aMipLevels:TUInt32;
+                                const aArrayLayers:TUInt32;
                                 const aSamples:TVkSampleCountFlagBits;
                                 const aTiling:TVkImageTiling;
                                 const aUsage:TVkImageUsageFlags;
                                 const aSharingMode:TVkSharingMode;
-                                const aQueueFamilyIndexCount:TVkUInt32;
-                                const aQueueFamilyIndices:PVkUInt32;
+                                const aQueueFamilyIndexCount:TUInt32;
+                                const aQueueFamilyIndices:PUInt32;
                                 const aInitialLayout:TVkImageLayout);
 var ImageCreateInfo:TVkImageCreateInfo;
 begin
@@ -20484,7 +20484,7 @@ begin
  ImageCreateInfo.usage:=aUsage;
  ImageCreateInfo.sharingMode:=aSharingMode;
  ImageCreateInfo.queueFamilyIndexCount:=aQueueFamilyIndexCount;
- ImageCreateInfo.pQueueFamilyIndices:=aQueueFamilyIndices;
+ ImageCreateInfo.pQueueFamilyIndices:=TPointer(aQueueFamilyIndices);
  ImageCreateInfo.initialLayout:=aInitialLayout;
 
  HandleResultCode(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@ImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
@@ -20495,16 +20495,16 @@ constructor TVulkanImage.Create(const aDevice:TVulkanDevice;
                                 const aFlags:TVkImageCreateFlags;
                                 const aImageType:TVkImageType;
                                 const aFormat:TVkFormat;
-                                const aExtentWidth:TVkUInt32;
-                                const aExtentHeight:TVkUInt32;
-                                const aExtentDepth:TVkUInt32;
-                                const aMipLevels:TVkUInt32;
-                                const aArrayLayers:TVkUInt32;
+                                const aExtentWidth:TUInt32;
+                                const aExtentHeight:TUInt32;
+                                const aExtentDepth:TUInt32;
+                                const aMipLevels:TUInt32;
+                                const aArrayLayers:TUInt32;
                                 const aSamples:TVkSampleCountFlagBits;
                                 const aTiling:TVkImageTiling;
                                 const aUsage:TVkImageUsageFlags;
                                 const aSharingMode:TVkSharingMode;
-                                const aQueueFamilyIndices:array of TVkUInt32;
+                                const aQueueFamilyIndices:array of TUInt32;
                                 const aInitialLayout:TVkImageLayout);
 var ImageCreateInfo:TVkImageCreateInfo;
 begin
@@ -20611,10 +20611,10 @@ constructor TVulkanImageView.Create(const aDevice:TVulkanDevice;
                                     const aComponentBlue:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
                                     const aComponentAlpha:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
                                     const aImageAspectFlags:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-                                    const aBaseMipLevel:TVkUInt32=0;
-                                    const aCountMipMapLevels:TVkUInt32=1;
-                                    const aBaseArrayLayer:TVkUInt32=1;
-                                    const aCountArrayLayers:TVkUInt32=0);
+                                    const aBaseMipLevel:TUInt32=0;
+                                    const aCountMipMapLevels:TUInt32=1;
+                                    const aBaseArrayLayer:TUInt32=1;
+                                    const aCountArrayLayers:TUInt32=0);
 var ImageViewCreateInfo:TVkImageViewCreateInfo;
 begin
 
@@ -20666,8 +20666,8 @@ constructor TVulkanFrameBufferAttachment.Create(const aDevice:TVulkanDevice;
                                                 const aGraphicsQueue:TVulkanQueue;
                                                 const aGraphicsCommandBuffer:TVulkanCommandBuffer;
                                                 const aGraphicsCommandBufferFence:TVulkanFence;
-                                                const aWidth:TVkUInt32;
-                                                const aHeight:TVkUInt32;
+                                                const aWidth:TUInt32;
+                                                const aHeight:TUInt32;
                                                 const aFormat:TVkFormat;
                                                 const aUsage:TVkBufferUsageFlags);
 var MemoryRequirements:TVkMemoryRequirements;
@@ -20798,8 +20798,8 @@ end;
 constructor TVulkanFrameBufferAttachment.Create(const aDevice:TVulkanDevice;
                                                 const aImage:TVulkanImage;
                                                 const aImageView:TVulkanImageView;
-                                                const aWidth:TVkUInt32;
-                                                const aHeight:TVkUInt32;
+                                                const aWidth:TUInt32;
+                                                const aHeight:TUInt32;
                                                 const aFormat:TVkFormat;
                                                 const aDoDestroy:boolean=true);
 begin
@@ -20854,9 +20854,9 @@ end;
 
 constructor TVulkanFrameBuffer.Create(const aDevice:TVulkanDevice;
                                       const aRenderPass:TVulkanRenderPass;
-                                      const aWidth:TVkUInt32;
-                                      const aHeight:TVkUInt32;
-                                      const aLayers:TVkUInt32);
+                                      const aWidth:TUInt32;
+                                      const aHeight:TUInt32;
+                                      const aLayers:TUInt32);
 begin
 
  inherited Create;
@@ -20885,9 +20885,9 @@ end;
 
 constructor TVulkanFrameBuffer.Create(const aDevice:TVulkanDevice;
                                       const aRenderPass:TVulkanRenderPass;
-                                      const aWidth:TVkUInt32;
-                                      const aHeight:TVkUInt32;
-                                      const aLayers:TVkUInt32;
+                                      const aWidth:TUInt32;
+                                      const aHeight:TUInt32;
+                                      const aLayers:TUInt32;
                                       const aFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
                                       const aDoDestroyAttachments:boolean=true);
 begin
@@ -20928,9 +20928,9 @@ end;
 
 constructor TVulkanFrameBuffer.Create(const aDevice:TVulkanDevice;
                                       const aRenderPass:TVulkanRenderPass;
-                                      const aWidth:TVkUInt32;
-                                      const aHeight:TVkUInt32;
-                                      const aLayers:TVkUInt32;
+                                      const aWidth:TUInt32;
+                                      const aHeight:TUInt32;
+                                      const aLayers:TUInt32;
                                       const aFrameBufferHandle:TVkFrameBuffer;
                                       const aFrameBufferAttachments:array of TVulkanFrameBufferAttachment;
                                       const aDoDestroy:boolean=true;
@@ -20970,7 +20970,7 @@ begin
 end;
 
 destructor TVulkanFrameBuffer.Destroy;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
 
  if fFrameBufferHandle<>VK_NULL_HANDLE then begin
@@ -20995,12 +20995,12 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanFrameBuffer.GetFrameBufferAttachment(const aIndex:TVkInt32):TVulkanFrameBufferAttachment;
+function TVulkanFrameBuffer.GetFrameBufferAttachment(const aIndex:TInt32):TVulkanFrameBufferAttachment;
 begin
  result:=fFrameBufferAttachments[aIndex];
 end;
 
-function TVulkanFrameBuffer.AddAttachment(const aFrameBufferAttachment:TVulkanFrameBufferAttachment):TVkInt32;
+function TVulkanFrameBuffer.AddAttachment(const aFrameBufferAttachment:TVulkanFrameBufferAttachment):TInt32;
 begin
  result:=fCountFrameBufferAttachments;
  inc(fCountFrameBufferAttachments);
@@ -21011,7 +21011,7 @@ begin
 end;
 
 procedure TVulkanFrameBuffer.Initialize;
-var Index:TVkInt32;
+var Index:TInt32;
     FrameBufferCreateInfo:TVkFramebufferCreateInfo;
 begin
  if fFrameBufferHandle=VK_NULL_HANDLE then begin
@@ -21043,10 +21043,10 @@ end;
 constructor TVulkanSwapChain.Create(const aDevice:TVulkanDevice;
                                     const aSurface:TVulkanSurface;
                                     const aOldSwapChain:TVulkanSwapChain=nil;
-                                    const aDesiredImageWidth:TVkUInt32=0;
-                                    const aDesiredImageHeight:TVkUInt32=0;
-                                    const aDesiredImageCount:TVkUInt32=2;
-                                    const aImageArrayLayers:TVkUInt32=1;
+                                    const aDesiredImageWidth:TUInt32=0;
+                                    const aDesiredImageHeight:TUInt32=0;
+                                    const aDesiredImageCount:TUInt32=2;
+                                    const aImageArrayLayers:TUInt32=1;
                                     const aImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
                                     const aImageColorSpace:TVkColorSpaceKHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
                                     const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
@@ -21062,7 +21062,7 @@ const PresentModeTryOrder:array[TPresentModes,0..3] of TVkPresentModeKHR=
         (VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_IMMEDIATE_KHR,VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_FIFO_KHR),
         (VK_PRESENT_MODE_FIFO_KHR,VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_IMMEDIATE_KHR),
         (VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_FIFO_KHR,VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_IMMEDIATE_KHR));
-var Index,TryIterationIndex:TVkInt32;
+var Index,TryIterationIndex:TInt32;
     SurfaceCapabilities:TVkSurfaceCapabilitiesKHR;
     SurfacePresentModes:TVkPresentModeKHRArray;
     SurfaceFormat:TVkSurfaceFormatKHR;
@@ -21146,7 +21146,7 @@ begin
   end;
 
   if ((aDesiredImageWidth<>0) and (aDesiredImageHeight<>0)) or
-     ((TVkInt32(SurfaceCapabilities.CurrentExtent.Width)<0) or (TVkInt32(SurfaceCapabilities.CurrentExtent.Height)<0)) then begin
+     ((TInt32(SurfaceCapabilities.CurrentExtent.Width)<0) or (TInt32(SurfaceCapabilities.CurrentExtent.Height)<0)) then begin
    SwapChainCreateInfo.imageExtent.width:=Min(Max(aDesiredImageWidth,SurfaceCapabilities.minImageExtent.width),SurfaceCapabilities.maxImageExtent.width);
    SwapChainCreateInfo.imageExtent.height:=Min(Max(aDesiredImageHeight,SurfaceCapabilities.minImageExtent.height),SurfaceCapabilities.maxImageExtent.height);
   end else begin
@@ -21303,7 +21303,7 @@ begin
 end;
 
 destructor TVulkanSwapChain.Destroy;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
 
  for Index:=0 to length(fImages)-1 do begin
@@ -21340,7 +21340,7 @@ begin
  end;
 end;
 
-function TVulkanSwapChain.AcquireNextImage(const aSemaphore:TVulkanSemaphore=nil;const aFence:TVulkanFence=nil;const aTimeOut:TVkUInt64=TVkUInt64(high(TVkUInt64))):TVkResult;
+function TVulkanSwapChain.AcquireNextImage(const aSemaphore:TVulkanSemaphore=nil;const aFence:TVulkanFence=nil;const aTimeOut:TUInt64=TUInt64(high(TUInt64))):TVkResult;
 var SemaphoreHandle:TVkFence;
     FenceHandle:TVkFence;
 begin
@@ -21361,7 +21361,7 @@ begin
  end;
 end;
 
-function TVulkanSwapChain.GetImage(const aImageIndex:TVkInt32):TVulkanImage;
+function TVulkanSwapChain.GetImage(const aImageIndex:TInt32):TVulkanImage;
 begin
  result:=fImages[aImageIndex];
 end;
@@ -21378,8 +21378,8 @@ end;
 
 procedure TVulkanSwapChain.GetScreenshot(out aScreenshot:TVulkanSwapChainScreenshot;const aSwapChainImage:TVulkanImage=nil);
 type PBytes=^TBytes;
-     TBytes=array[0..$7ffffffe] of TVkUInt8;
-var x,y:TVkInt32;
+     TBytes=array[0..$7ffffffe] of TUInt8;
+var x,y:TInt32;
     NeedTwoSteps,CopyOnly,BlitSupported,NeedColorSwizzle:boolean;
     SrcColorFormatProperties,
     DstColorFormatProperties:TVkFormatProperties;
@@ -21392,9 +21392,9 @@ var x,y:TVkInt32;
     ImageCopy:TVkImageCopy;
     ImageSubresource:TVkImageSubresource;
     SubresourceLayout:TVkSubresourceLayout;
-    ImageData,p,pr,pp:PVkUInt8;
-    PNGData:TVkPointer;
-    PNGDataSize:TVkUInt32;
+    ImageData,p,pr,pp:PUInt8;
+    PNGData:TPointer;
+    PNGDataSize:TUInt32;
     DestColorFormat:TVkFormat;
     SwapChainImageHandle:TVkImage;
     Queue:TVulkanQueue;
@@ -21411,7 +21411,7 @@ begin
 
  aScreenshot.Width:=fWidth;
  aScreenshot.Height:=fHeight;
- SetLength(aScreenshot.Data,fWidth*fHeight*SizeOf(TVkUInt8)*4);
+ SetLength(aScreenshot.Data,fWidth*fHeight*SizeOf(TUInt8)*4);
 
  fDevice.GraphicsQueue.WaitIdle;
 
@@ -21443,9 +21443,9 @@ begin
                                  1,
                                  1,
                                  VK_SAMPLE_COUNT_1_BIT,
-                                 TVkImageTiling(TVkInt32(IfThen(NeedTwoSteps,
-                                                                TVkInt32(VK_IMAGE_TILING_OPTIMAL),
-                                                                TVkInt32(VK_IMAGE_TILING_LINEAR)))),
+                                 TVkImageTiling(TInt32(IfThen(NeedTwoSteps,
+                                                                TInt32(VK_IMAGE_TILING_OPTIMAL),
+                                                                TInt32(VK_IMAGE_TILING_LINEAR)))),
                                  IfThen(NeedTwoSteps,
                                         TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
                                         TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)),
@@ -21772,15 +21772,15 @@ begin
          pr:=p;
          for x:=0 to fWidth-1 do begin
           if NeedColorSwizzle then begin
-           PBytes(TVkPointer(pp))^[0]:=PBytes(TVkPointer(pr))^[2];
-           PBytes(TVkPointer(pp))^[1]:=PBytes(TVkPointer(pr))^[1];
-           PBytes(TVkPointer(pp))^[2]:=PBytes(TVkPointer(pr))^[0];
-           PBytes(TVkPointer(pp))^[3]:=$ff;//PBytes(TVkPointer(pr))^[3];
+           PBytes(TPointer(pp))^[0]:=PBytes(TPointer(pr))^[2];
+           PBytes(TPointer(pp))^[1]:=PBytes(TPointer(pr))^[1];
+           PBytes(TPointer(pp))^[2]:=PBytes(TPointer(pr))^[0];
+           PBytes(TPointer(pp))^[3]:=$ff;//PBytes(TPointer(pr))^[3];
           end else begin
-           PBytes(TVkPointer(pp))^[0]:=PBytes(TVkPointer(pr))^[0];
-           PBytes(TVkPointer(pp))^[1]:=PBytes(TVkPointer(pr))^[1];
-           PBytes(TVkPointer(pp))^[2]:=PBytes(TVkPointer(pr))^[2];
-           PBytes(TVkPointer(pp))^[3]:=$ff;//PBytes(TVkPointer(pr))^[3];
+           PBytes(TPointer(pp))^[0]:=PBytes(TPointer(pr))^[0];
+           PBytes(TPointer(pp))^[1]:=PBytes(TPointer(pr))^[1];
+           PBytes(TPointer(pp))^[2]:=PBytes(TPointer(pr))^[2];
+           PBytes(TPointer(pp))^[3]:=$ff;//PBytes(TPointer(pr))^[3];
           end;
           inc(pp,4);
           inc(pr,4);
@@ -21820,8 +21820,8 @@ end;
 
 procedure TVulkanSwapChain.SaveScreenshotAsPNGToStream(const aStream:TStream;const aSwapChainImage:TVulkanImage=nil);
 var SwapChainScreenshot:TVulkanSwapChainScreenshot;
-    PNGData:TVkPointer;
-    PNGDataSize:TVkUInt32;
+    PNGData:TPointer;
+    PNGDataSize:TUInt32;
 begin
  Initialize(SwapChainScreenshot);
  try
@@ -21855,7 +21855,7 @@ constructor TVulkanSwapChainSimpleDirectRenderTarget.Create(const aDevice:TVulka
                                                             const aDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
                                                             const aDepthImageFormatWithStencil:boolean=false;
                                                             const aClear:boolean=true);
-var Index:TVkInt32;
+var Index:TInt32;
     FormatProperties:TVkFormatProperties;
     ColorAttachmentImage:TVulkanImage;
     ColorAttachmentImageView:TVulkanImageView;
@@ -22091,7 +22091,7 @@ begin
 end;
 
 destructor TVulkanSwapChainSimpleDirectRenderTarget.Destroy;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
 
  for Index:=0 to length(fFramebuffers)-1 do begin
@@ -22122,7 +22122,7 @@ begin
  result:=fFrameBuffers[fSwapChain.CurrentImageIndex];
 end;
 
-function TVulkanSwapChainSimpleDirectRenderTarget.GetFrameBufferAtIndex(const aIndex:TVkInt32):TVulkanFrameBuffer;
+function TVulkanSwapChainSimpleDirectRenderTarget.GetFrameBufferAtIndex(const aIndex:TInt32):TVulkanFrameBuffer;
 begin
  result:=fFrameBuffers[aIndex];
 end;
@@ -22147,8 +22147,8 @@ begin
 
  GetMem(fData,fDataSize+4);
  fDataAligned:=fData;
- if (TVkPtrUInt(fDataAligned) and 3)<>0 then begin
-  inc(TVkPtrUInt(fDataAligned),4-(TVkPtrUInt(fDataAligned) and 3));
+ if (TPtrUInt(fDataAligned) and 3)<>0 then begin
+  inc(TPtrUInt(fDataAligned),4-(TPtrUInt(fDataAligned) and 3));
  end;
 
  Load;
@@ -22175,8 +22175,8 @@ begin
 
  GetMem(fData,fDataSize+4);
  fDataAligned:=fData;
- if (TVkPtrUInt(fDataAligned) and 3)<>0 then begin
-  inc(TVkPtrUInt(fDataAligned),4-(TVkPtrUInt(fDataAligned) and 3));
+ if (TPtrUInt(fDataAligned) and 3)<>0 then begin
+  inc(TPtrUInt(fDataAligned),4-(TPtrUInt(fDataAligned) and 3));
  end;
 
  if aStream.Seek(0,soBeginning)<>0 then begin
@@ -22229,16 +22229,16 @@ end;
 
 function TVulkanShaderModule.GetVariables:TVulkanShaderModuleVariables;
 // https://www.khronos.org/registry/spir-v/specs/1.1/SPIRV.html
-type PVkUInt32Array=^TVkUInt32Array;
-     TVkUInt32Array=array[0..65535] of TVkUInt32;
-var Position,Size:TVkInt32;
-    Opcode,Index,NameIndex,Count,CountIDs,CountNames:TVkUInt32;
-    Opcodes:PVkUInt32Array;
+type PUInt32Array=^TUInt32Array;
+     TUInt32Array=array[0..65535] of TUInt32;
+var Position,Size:TInt32;
+    Opcode,Index,NameIndex,Count,CountIDs,CountNames:TUInt32;
+    Opcodes:PUInt32Array;
     Endian:boolean;
     Variable:PVulkanShaderModuleVariable;
-    Bindings,Locations,DescriptorSets:array of TVkUInt32;
+    Bindings,Locations,DescriptorSets:array of TUInt32;
     DebugNames:array of TVkCharString;
- function SwapEndian(const Value:TVkUInt32):TVkUInt32;
+ function SwapEndian(const Value:TUInt32):TUInt32;
  begin
   if Endian then begin
    result:=(((Value shr 0) and $ff) shl 24) or
@@ -22258,11 +22258,11 @@ begin
  Count:=0;
  try
   Opcodes:=fData;
-  if assigned(Opcodes) and (fDataSize>=(6*SizeOf(TVkUInt32))) and ((Opcodes^[0]=$07230203) or (Opcodes^[0]=$03022307)) then begin
+  if assigned(Opcodes) and (fDataSize>=(6*SizeOf(TUInt32))) and ((Opcodes^[0]=$07230203) or (Opcodes^[0]=$03022307)) then begin
 
    Endian:=Opcodes[0]=$03022307;
 
-   Opcodes:=TVkPointer(@Opcodes[5]);
+   Opcodes:=TPointer(@Opcodes[5]);
 
    Size:=(fDataSize shr 2)-5;
 
@@ -22302,7 +22302,7 @@ begin
       $0005{OpName}:begin
        Index:=SwapEndian(Opcodes^[Position+1]);
        if Index<CountNames then begin
-        DebugNames[Index]:=PVkChar(TVkPointer(@Opcodes^[Position+2]));
+        DebugNames[Index]:=PVkChar(TPointer(@Opcodes^[Position+2]));
        end;
       end;
       $0047{OpDecorate}:begin
@@ -22372,7 +22372,7 @@ end;
 
 constructor TVulkanDescriptorPool.Create(const aDevice:TVulkanDevice;
                                          const aFlags:TVkDescriptorPoolCreateFlags;
-                                         const aMaxSets:TVkUInt32);
+                                         const aMaxSets:TUInt32);
 begin
  inherited Create;
 
@@ -22398,7 +22398,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanDescriptorPool.AddDescriptorPoolSize(const aType:TVkDescriptorType;const aDescriptorCount:TVkUInt32):TVkInt32;
+function TVulkanDescriptorPool.AddDescriptorPoolSize(const aType:TVkDescriptorType;const aDescriptorCount:TUInt32):TInt32;
 var DescriptorPoolSize:PVkDescriptorPoolSize;
 begin
  result:=fCountDescriptorPoolSizes;
@@ -22428,9 +22428,9 @@ begin
  end;
 end;
 
-constructor TVulkanDescriptorSetLayoutBinding.Create(const aBinding:TVkUInt32;
+constructor TVulkanDescriptorSetLayoutBinding.Create(const aBinding:TUInt32;
                                                      const aDescriptorType:TVkDescriptorType;
-                                                     const aDescriptorCount:TVkUInt32;
+                                                     const aDescriptorCount:TUInt32;
                                                      const aStageFlags:TVkShaderStageFlags);
 begin
  inherited Create;
@@ -22452,12 +22452,12 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanDescriptorSetLayoutBinding.GetBinding:TVkUInt32;
+function TVulkanDescriptorSetLayoutBinding.GetBinding:TUInt32;
 begin
  result:=fDescriptorSetLayoutBinding.binding;
 end;
 
-procedure TVulkanDescriptorSetLayoutBinding.SetBinding(const aBinding:TVkUInt32);
+procedure TVulkanDescriptorSetLayoutBinding.SetBinding(const aBinding:TUInt32);
 begin
  fDescriptorSetLayoutBinding.binding:=aBinding;
 end;
@@ -22472,12 +22472,12 @@ begin
  fDescriptorSetLayoutBinding.descriptorType:=aDescriptorType;
 end;
 
-function TVulkanDescriptorSetLayoutBinding.GetDescriptorCount:TVkUInt32;
+function TVulkanDescriptorSetLayoutBinding.GetDescriptorCount:TUInt32;
 begin
  result:=fDescriptorSetLayoutBinding.DescriptorCount;
 end;
 
-procedure TVulkanDescriptorSetLayoutBinding.SetDescriptorCount(const aDescriptorCount:TVkUInt32);
+procedure TVulkanDescriptorSetLayoutBinding.SetDescriptorCount(const aDescriptorCount:TUInt32);
 begin
  fDescriptorSetLayoutBinding.descriptorCount:=aDescriptorCount;
 end;
@@ -22493,7 +22493,7 @@ begin
 end;
 
 procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSampler(const aImmutableSampler:TVulkanSampler);
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  Index:=fCountImmutableSamplers;
  inc(fCountImmutableSamplers);
@@ -22504,7 +22504,7 @@ begin
 end;
 
 procedure TVulkanDescriptorSetLayoutBinding.AddImmutableSamplers(const aImmutableSamplers:array of TVulkanSampler);
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  for Index:=0 to length(aImmutableSamplers)-1 do begin
   AddImmutableSampler(aImmutableSamplers[Index]);
@@ -22543,9 +22543,9 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanDescriptorSetLayout.AddBinding(const aBinding:TVkUInt32;
+procedure TVulkanDescriptorSetLayout.AddBinding(const aBinding:TUInt32;
                                                 const aDescriptorType:TVkDescriptorType;
-                                                const aDescriptorCount:TVkUInt32;
+                                                const aDescriptorCount:TUInt32;
                                                 const aStageFlags:TVkShaderStageFlags;
                                                 const aImmutableSamplers:array of TVulkanSampler);
 var DescriptorSetLayoutBinding:TVulkanDescriptorSetLayoutBinding;
@@ -22557,7 +22557,7 @@ begin
 end;
 
 procedure TVulkanDescriptorSetLayout.Initialize;
-var Index:TVkInt32;
+var Index:TInt32;
     DescriptorSetLayoutCreateInfo:TVkDescriptorSetLayoutCreateInfo;
 begin
  if fDescriptorSetLayoutHandle=VK_NULL_HANDLE then begin
@@ -22620,7 +22620,7 @@ end;
 class function TVulkanDescriptorSet.Allocate(const aDescriptorPool:TVulkanDescriptorPool;
                                              const aDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVulkanObjectList;
 
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  result:=TVulkanObjectList.Create;
  try
@@ -22634,11 +22634,11 @@ begin
 end;
 
 procedure TVulkanDescriptorSet.CopyFromDescriptorSet(const aSourceDescriptorSet:TVulkanDescriptorSet;
-                                                     const aSourceBinding:TVkUInt32;
-                                                     const aSourceArrayElement:TVkUInt32;
-                                                     const aDestinationBinding:TVkUInt32;
-                                                     const aDestinationArrayElement:TVkUInt32;
-                                                     const aDescriptorCount:TVkUInt32;
+                                                     const aSourceBinding:TUInt32;
+                                                     const aSourceArrayElement:TUInt32;
+                                                     const aDestinationBinding:TUInt32;
+                                                     const aDestinationArrayElement:TUInt32;
+                                                     const aDescriptorCount:TUInt32;
                                                      const aDoInstant:boolean=false);
  procedure InstantCopyFromDescriptorSet;
  var CopyDescriptorSet:TVkCopyDescriptorSet;
@@ -22653,7 +22653,7 @@ procedure TVulkanDescriptorSet.CopyFromDescriptorSet(const aSourceDescriptorSet:
   CopyDescriptorSet.descriptorCount:=aDescriptorCount;
   fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,0,nil,1,@CopyDescriptorSet);
  end;
-var Index:TVkInt32;
+var Index:TInt32;
     CopyDescriptorSet:PVkCopyDescriptorSet;
 begin
  if aDoInstant then begin
@@ -22676,9 +22676,9 @@ begin
  end;
 end;
 
-procedure TVulkanDescriptorSet.WriteToDescriptorSet(const aDestinationBinding:TVkUInt32;
-                                                    const aDestinationArrayElement:TVkUInt32;
-                                                    const aDescriptorCount:TVkUInt32;
+procedure TVulkanDescriptorSet.WriteToDescriptorSet(const aDestinationBinding:TUInt32;
+                                                    const aDestinationArrayElement:TUInt32;
+                                                    const aDescriptorCount:TUInt32;
                                                     const aDescriptorType:TVkDescriptorType;
                                                     const aImageInfo:array of TVkDescriptorImageInfo;
                                                     const aBufferInfo:array of TVkDescriptorBufferInfo;
@@ -22711,7 +22711,7 @@ procedure TVulkanDescriptorSet.WriteToDescriptorSet(const aDestinationBinding:TV
   end;
   fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,1,@WriteDescriptorSet,0,nil);
  end;
-var Index:TVkInt32;
+var Index:TInt32;
     WriteDescriptorSet:PVkWriteDescriptorSet;
     WriteDescriptorSetMetaData:PVulkanDescriptorSetWriteDescriptorSetMetaData;
 begin
@@ -22757,7 +22757,7 @@ begin
 end;
 
 procedure TVulkanDescriptorSet.Flush;
-var Index:TVkInt32;
+var Index:TInt32;
     WriteDescriptorSet:PVkWriteDescriptorSet;
     WriteDescriptorSetMetaData:PVulkanDescriptorSetWriteDescriptorSetMetaData;
 begin
@@ -22821,7 +22821,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanPipelineLayout.AddDescriptorSetLayout(const aDescriptorSetLayout:TVkDescriptorSetLayout):TVkInt32;
+function TVulkanPipelineLayout.AddDescriptorSetLayout(const aDescriptorSetLayout:TVkDescriptorSetLayout):TInt32;
 begin
  result:=fCountDescriptorSetLayouts;
  inc(fCountDescriptorSetLayouts);
@@ -22831,7 +22831,7 @@ begin
  fDescriptorSetLayouts[result]:=aDescriptorSetLayout;
 end;
 
-function TVulkanPipelineLayout.AddDescriptorSetLayout(const aDescriptorSetLayout:TVulkanDescriptorSetLayout):TVkInt32;
+function TVulkanPipelineLayout.AddDescriptorSetLayout(const aDescriptorSetLayout:TVulkanDescriptorSetLayout):TInt32;
 begin
  result:=fCountDescriptorSetLayouts;
  inc(fCountDescriptorSetLayouts);
@@ -22841,7 +22841,7 @@ begin
  fDescriptorSetLayouts[result]:=aDescriptorSetLayout.fDescriptorSetLayoutHandle;
 end;
 
-function TVulkanPipelineLayout.AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVkDescriptorSetLayout):TVkInt32;
+function TVulkanPipelineLayout.AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVkDescriptorSetLayout):TInt32;
 begin
  if length(aDescriptorSetLayouts)>0 then begin
   result:=fCountDescriptorSetLayouts;
@@ -22855,8 +22855,8 @@ begin
  end;
 end;
 
-function TVulkanPipelineLayout.AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TVkInt32;
-var Index:TVkInt32;
+function TVulkanPipelineLayout.AddDescriptorSetLayouts(const aDescriptorSetLayouts:array of TVulkanDescriptorSetLayout):TInt32;
+var Index:TInt32;
 begin
  if length(aDescriptorSetLayouts)>0 then begin
   result:=fCountDescriptorSetLayouts;
@@ -22872,7 +22872,7 @@ begin
  end;
 end;
 
-function TVulkanPipelineLayout.AddPushConstantRange(const aPushConstantRange:TVkPushConstantRange):TVkInt32;
+function TVulkanPipelineLayout.AddPushConstantRange(const aPushConstantRange:TVkPushConstantRange):TInt32;
 begin
  result:=fCountPushConstantRanges;
  inc(fCountPushConstantRanges);
@@ -22882,7 +22882,7 @@ begin
  fPushConstantRanges[result]:=aPushConstantRange;
 end;
 
-function TVulkanPipelineLayout.AddPushConstantRange(const aStageFlags:TVkShaderStageFlags;const aOffset,aSize:TVkUInt32):TVkInt32;
+function TVulkanPipelineLayout.AddPushConstantRange(const aStageFlags:TVkShaderStageFlags;const aOffset,aSize:TUInt32):TInt32;
 var PushConstantRange:PVkPushConstantRange;
 begin
  result:=fCountPushConstantRanges;
@@ -22896,7 +22896,7 @@ begin
  PushConstantRange^.size:=aSize;
 end;
 
-function TVulkanPipelineLayout.AddPushConstantRanges(const aPushConstantRanges:array of TVkPushConstantRange):TVkInt32;
+function TVulkanPipelineLayout.AddPushConstantRanges(const aPushConstantRanges:array of TVkPushConstantRange):TInt32;
 begin
  if length(aPushConstantRanges)>0 then begin
   result:=fCountPushConstantRanges;
@@ -23003,7 +23003,7 @@ begin
  end;
 end;
 
-procedure TVulkanPipelineShaderStage.AddSpecializationDataFromMemory(const aData:TVkPointer;const aDataSize:TVkSize;const aDoCopyAndDoFree:boolean=true);
+procedure TVulkanPipelineShaderStage.AddSpecializationDataFromMemory(const aData:TPointer;const aDataSize:TVkSize;const aDoCopyAndDoFree:boolean=true);
 begin
  if assigned(fSpecializationInfo) and assigned(fSpecializationInfo.pData) and fDoCopyAndDoFree then begin
   FreeMem(fSpecializationInfo.pData);
@@ -23055,7 +23055,7 @@ begin
  end;
 end;
 
-function TVulkanPipelineShaderStage.AddSpecializationMapEntry(const aSpecializationMapEntry:TVkSpecializationMapEntry):TVkInt32;
+function TVulkanPipelineShaderStage.AddSpecializationMapEntry(const aSpecializationMapEntry:TVkSpecializationMapEntry):TInt32;
 begin
  result:=fCountSpecializationMapEntries;
  inc(fCountSpecializationMapEntries);
@@ -23065,7 +23065,7 @@ begin
  fSpecializationMapEntries[result]:=aSpecializationMapEntry;
 end;
 
-function TVulkanPipelineShaderStage.AddSpecializationMapEntry(const aConstantID,aOffset:TVkUInt32;const aSize:TVkSize):TVkInt32;
+function TVulkanPipelineShaderStage.AddSpecializationMapEntry(const aConstantID,aOffset:TUInt32;const aSize:TVkSize):TInt32;
 var SpecializationMapEntry:PVkSpecializationMapEntry;
 begin
  result:=fCountSpecializationMapEntries;
@@ -23079,7 +23079,7 @@ begin
  SpecializationMapEntry^.size:=aSize;
 end;
 
-function TVulkanPipelineShaderStage.AddSpecializationMapEntries(const aSpecializationMapEntries:array of TVkSpecializationMapEntry):TVkInt32;
+function TVulkanPipelineShaderStage.AddSpecializationMapEntries(const aSpecializationMapEntries:array of TVkSpecializationMapEntry):TInt32;
 begin
  if length(aSpecializationMapEntries)>0 then begin
   result:=fCountSpecializationMapEntries;
@@ -23106,7 +23106,7 @@ begin
  end;
 end;
 
-constructor TVulkanPipelineCache.Create(const aDevice:TVulkanDevice;const aInitialData:TVkPointer=nil;const aInitialDataSize:TVkSize=0);
+constructor TVulkanPipelineCache.Create(const aDevice:TVulkanDevice;const aInitialData:TPointer=nil;const aInitialDataSize:TVkSize=0);
 var PipelineCacheCreateInfo:TVkPipelineCacheCreateInfo;
 begin
  inherited Create;
@@ -23126,10 +23126,10 @@ begin
 
 end;
 
-constructor TVulkanPipelineCache.CreateFromMemory(const aDevice:TVulkanDevice;const aInitialData:TVkPointer;const aInitialDataSize:TVkSize);
+constructor TVulkanPipelineCache.CreateFromMemory(const aDevice:TVulkanDevice;const aInitialData:TPointer;const aInitialDataSize:TVkSize);
 type PByteArray=^TByteArray;
-     TByteArray=array[0..65535] of TVkUInt8;
-var Index:TVkInt32;
+     TByteArray=array[0..65535] of TUInt8;
+var Index:TInt32;
 begin
  if not assigned(aInitialData) then begin
   raise EInOutError.Create('aInitialData is null');
@@ -23143,7 +23143,7 @@ begin
 end;
 
 constructor TVulkanPipelineCache.CreateFromStream(const aDevice:TVulkanDevice;const aStream:TStream);
-var Data:TVkPointer;
+var Data:TPointer;
     DataSize:TVkSize;
 begin
  fPipelineCacheHandle:=VK_NULL_HANDLE;
@@ -23186,7 +23186,7 @@ begin
 end;
 
 procedure TVulkanPipelineCache.SaveToStream(const aStream:TStream);
-var Data:TVkPointer;
+var Data:TPointer;
     DataSize:TVKSize;
 begin
  HandleResultCode(fDevice.fDeviceVulkan.GetPipelineCacheData(fDevice.fDeviceHandle,fPipelineCacheHandle,@DataSize,nil));
@@ -23197,7 +23197,7 @@ begin
    if aStream.Write(fDevice.fPhysicalDevice.fProperties.pipelineCacheUUID,SizeOf(TVulkanUUID))<>SizeOf(TVulkanUUID) then begin
     raise EInOutError.Create('Stream write error');
    end;
-   if aStream.Write(Data^,DataSize)<>TVkPtrInt(DataSize) then begin
+   if aStream.Write(Data^,DataSize)<>TPtrInt(DataSize) then begin
     raise EInOutError.Create('Stream write error');
    end;
   finally
@@ -23223,7 +23223,7 @@ begin
 end;
 
 procedure TVulkanPipelineCache.Merge(const aSourcePipelineCaches:array of TVulkanPipelineCache);
-var Index:TVkInt32;
+var Index:TInt32;
     SourcePipelineCaches:TVkPipelineCacheArray;
 begin
  if length(aSourcePipelineCaches)>0 then begin
@@ -23262,7 +23262,7 @@ constructor TVulkanComputePipeline.Create(const aDevice:TVulkanDevice;
                                           const aStage:TVulkanPipelineShaderStage;
                                           const aLayout:TVulkanPipelineLayout;
                                           const aBasePipelineHandle:TVulkanPipeline;
-                                          const aBasePipelineIndex:TVkInt32);
+                                          const aBasePipelineIndex:TInt32);
 var PipelineCache:TVkPipelineCache;
     ComputePipelineCreateInfo:TVkComputePipelineCreateInfo;
 begin
@@ -23338,17 +23338,17 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanPipelineVertexInputState.GetVertexInputBindingDescription(const aIndex:TVkInt32):PVkVertexInputBindingDescription;
+function TVulkanPipelineVertexInputState.GetVertexInputBindingDescription(const aIndex:TInt32):PVkVertexInputBindingDescription;
 begin
  result:=@fVertexInputBindingDescriptions[aIndex];
 end;
 
-function TVulkanPipelineVertexInputState.GetVertexInputAttributeDescription(const aIndex:TVkInt32):PVkVertexInputAttributeDescription;
+function TVulkanPipelineVertexInputState.GetVertexInputAttributeDescription(const aIndex:TInt32):PVkVertexInputAttributeDescription;
 begin
  result:=@fVertexInputAttributeDescriptions[aIndex];
 end;
 
-procedure TVulkanPipelineVertexInputState.SetCountVertexInputBindingDescriptions(const aNewCount:TVkInt32);
+procedure TVulkanPipelineVertexInputState.SetCountVertexInputBindingDescriptions(const aNewCount:TInt32);
 begin
  fCountVertexInputBindingDescriptions:=aNewCount;
  if length(fVertexInputBindingDescriptions)<fCountVertexInputBindingDescriptions then begin
@@ -23356,7 +23356,7 @@ begin
  end;
 end;
 
-procedure TVulkanPipelineVertexInputState.SetCountVertexInputAttributeDescriptions(const aNewCount:TVkInt32);
+procedure TVulkanPipelineVertexInputState.SetCountVertexInputAttributeDescriptions(const aNewCount:TInt32);
 begin
  fCountVertexInputAttributeDescriptions:=aNewCount;
  if length(fVertexInputAttributeDescriptions)<fCountVertexInputAttributeDescriptions then begin
@@ -23372,7 +23372,7 @@ begin
  fCountVertexInputAttributeDescriptions:=aFrom.fCountVertexInputAttributeDescriptions;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TInt32;
 begin
  result:=fCountVertexInputBindingDescriptions;
  inc(fCountVertexInputBindingDescriptions);
@@ -23382,7 +23382,7 @@ begin
  fVertexInputBindingDescriptions[result]:=aVertexInputBindingDescription;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputBindingDescription(const aBinding,aStride:TUInt32;const aInputRate:TVkVertexInputRate):TInt32;
 var VertexInputBindingDescription:PVkVertexInputBindingDescription;
 begin
  result:=fCountVertexInputBindingDescriptions;
@@ -23396,7 +23396,7 @@ begin
  VertexInputBindingDescription^.inputRate:=aInputRate;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TInt32;
 begin
  if length(aVertexInputBindingDescriptions)>0 then begin
   result:=fCountVertexInputBindingDescriptions;
@@ -23410,7 +23410,7 @@ begin
  end;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TInt32;
 begin
  result:=fCountVertexInputAttributeDescriptions;
  inc(fCountVertexInputAttributeDescriptions);
@@ -23420,7 +23420,7 @@ begin
  fVertexInputAttributeDescriptions[result]:=aVertexInputAttributeDescription;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescription(const aLocation,aBinding:TUInt32;const aFormat:TVkFormat;const aOffset:TUInt32):TInt32;
 var VertexInputAttributeDescription:PVkVertexInputAttributeDescription;
 begin
  result:=fCountVertexInputAttributeDescriptions;
@@ -23435,7 +23435,7 @@ begin
  VertexInputAttributeDescription^.offset:=aOffset;
 end;
 
-function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanPipelineVertexInputState.AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TInt32;
 begin
  if length(aVertexInputAttributeDescriptions)>0 then begin
   result:=fCountVertexInputAttributeDescriptions;
@@ -23540,17 +23540,17 @@ begin
  fTessellationStateCreateInfo:=aFrom.fTessellationStateCreateInfo;
 end;
 
-function TVulkanPipelineTessellationState.GetPatchControlPoints:TVkUInt32;
+function TVulkanPipelineTessellationState.GetPatchControlPoints:TUInt32;
 begin
  result:=fTessellationStateCreateInfo.patchControlPoints;
 end;
 
-procedure TVulkanPipelineTessellationState.SetPatchControlPoints(const aNewValue:TVkUInt32);
+procedure TVulkanPipelineTessellationState.SetPatchControlPoints(const aNewValue:TUInt32);
 begin
  fTessellationStateCreateInfo.patchControlPoints:=aNewValue;
 end;
 
-procedure TVulkanPipelineTessellationState.SetTessellationState(const aPatchControlPoints:TVkUInt32);
+procedure TVulkanPipelineTessellationState.SetTessellationState(const aPatchControlPoints:TUInt32);
 begin
  fTessellationStateCreateInfo.patchControlPoints:=aPatchControlPoints;
 end;
@@ -23596,17 +23596,17 @@ begin
  fCountScissors:=aFrom.fCountScissors;
 end;
 
-function TVulkanPipelineViewPortState.GetViewPort(const aIndex:TVkInt32):PVkViewport;
+function TVulkanPipelineViewPortState.GetViewPort(const aIndex:TInt32):PVkViewport;
 begin
  result:=@fViewPorts[aIndex];
 end;
 
-function TVulkanPipelineViewPortState.GetScissor(const aIndex:TVkInt32):PVkRect2D;
+function TVulkanPipelineViewPortState.GetScissor(const aIndex:TInt32):PVkRect2D;
 begin
  result:=@fScissors[aIndex];
 end;
 
-procedure TVulkanPipelineViewPortState.SetCountViewPorts(const aNewCount:TVkInt32);
+procedure TVulkanPipelineViewPortState.SetCountViewPorts(const aNewCount:TInt32);
 begin
  fCountViewPorts:=aNewCount;
  if length(fViewPorts)<fCountViewPorts then begin
@@ -23614,7 +23614,7 @@ begin
  end;
 end;
 
-procedure TVulkanPipelineViewPortState.SetCountScissors(const aNewCount:TVkInt32);
+procedure TVulkanPipelineViewPortState.SetCountScissors(const aNewCount:TInt32);
 begin
  fCountScissors:=aNewCount;
  if length(fScissors)<fCountScissors then begin
@@ -23622,7 +23622,7 @@ begin
  end;
 end;
 
-function TVulkanPipelineViewPortState.AddViewPort(const aViewPort:TVkViewport):TVkInt32;
+function TVulkanPipelineViewPortState.AddViewPort(const aViewPort:TVkViewport):TInt32;
 begin
  result:=fCountViewPorts;
  inc(fCountViewPorts);
@@ -23632,7 +23632,7 @@ begin
  fViewPorts[result]:=aViewPort;
 end;
 
-function TVulkanPipelineViewPortState.AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32;
+function TVulkanPipelineViewPortState.AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TFloat):TInt32;
 var Viewport:PVkViewport;
 begin
  result:=fCountViewPorts;
@@ -23649,7 +23649,7 @@ begin
  Viewport^.maxDepth:=aMaxDepth;
 end;
 
-function TVulkanPipelineViewPortState.AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32;
+function TVulkanPipelineViewPortState.AddViewPorts(const aViewPorts:array of TVkViewport):TInt32;
 begin
  if length(aViewPorts)>0 then begin
   result:=fCountViewPorts;
@@ -23663,7 +23663,7 @@ begin
  end;
 end;
 
-function TVulkanPipelineViewPortState.AddScissor(const aScissor:TVkRect2D):TVkInt32;
+function TVulkanPipelineViewPortState.AddScissor(const aScissor:TVkRect2D):TInt32;
 begin
  result:=fCountScissors;
  inc(fCountScissors);
@@ -23673,7 +23673,7 @@ begin
  fScissors[result]:=aScissor;
 end;
 
-function TVulkanPipelineViewPortState.AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32;
+function TVulkanPipelineViewPortState.AddScissor(const pX,pY:TInt32;const aWidth,aHeight:TUInt32):TInt32;
 var Scissor:PVkRect2D;
 begin
  result:=fCountScissors;
@@ -23688,7 +23688,7 @@ begin
  Scissor^.extent.height:=aHeight;
 end;
 
-function TVulkanPipelineViewPortState.AddScissors(const aScissors:array of TVkRect2D):TVkInt32;
+function TVulkanPipelineViewPortState.AddScissors(const aScissors:array of TVkRect2D):TInt32;
 begin
  if length(aScissors)>0 then begin
   result:=fCountScissors;
@@ -23816,42 +23816,42 @@ begin
  fRasterizationStateCreateInfo.depthBiasEnable:=BooleanToVkBool[aNewValue];
 end;
 
-function TVulkanPipelineRasterizationState.GetDepthBiasConstantFactor:TVkFloat;
+function TVulkanPipelineRasterizationState.GetDepthBiasConstantFactor:TFloat;
 begin
  result:=fRasterizationStateCreateInfo.depthBiasConstantFactor;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetDepthBiasConstantFactor(const aNewValue:TVkFloat);
+procedure TVulkanPipelineRasterizationState.SetDepthBiasConstantFactor(const aNewValue:TFloat);
 begin
  fRasterizationStateCreateInfo.depthBiasConstantFactor:=aNewValue;
 end;
 
-function TVulkanPipelineRasterizationState.GetDepthBiasClamp:TVkFloat;
+function TVulkanPipelineRasterizationState.GetDepthBiasClamp:TFloat;
 begin
  result:=fRasterizationStateCreateInfo.depthBiasClamp;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetDepthBiasClamp(const aNewValue:TVkFloat);
+procedure TVulkanPipelineRasterizationState.SetDepthBiasClamp(const aNewValue:TFloat);
 begin
  fRasterizationStateCreateInfo.depthBiasClamp:=aNewValue;
 end;
 
-function TVulkanPipelineRasterizationState.GetDepthBiasSlopeFactor:TVkFloat;
+function TVulkanPipelineRasterizationState.GetDepthBiasSlopeFactor:TFloat;
 begin
  result:=fRasterizationStateCreateInfo.depthBiasSlopeFactor;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetDepthBiasSlopeFactor(const aNewValue:TVkFloat);
+procedure TVulkanPipelineRasterizationState.SetDepthBiasSlopeFactor(const aNewValue:TFloat);
 begin
  fRasterizationStateCreateInfo.depthBiasSlopeFactor:=aNewValue;
 end;
 
-function TVulkanPipelineRasterizationState.GetLineWidth:TVkFloat;
+function TVulkanPipelineRasterizationState.GetLineWidth:TFloat;
 begin
  result:=fRasterizationStateCreateInfo.lineWidth;
 end;
 
-procedure TVulkanPipelineRasterizationState.SetLineWidth(const aNewValue:TVkFloat);
+procedure TVulkanPipelineRasterizationState.SetLineWidth(const aNewValue:TFloat);
 begin
  fRasterizationStateCreateInfo.lineWidth:=aNewValue;
 end;
@@ -23862,10 +23862,10 @@ procedure TVulkanPipelineRasterizationState.SetRasterizationState(const aDepthCl
                                                                   const aCullMode:TVkCullModeFlags;
                                                                   const aFrontFace:TVkFrontFace;
                                                                   const aDepthBiasEnable:boolean;
-                                                                  const aDepthBiasConstantFactor:TVkFloat;
-                                                                  const aDepthBiasClamp:TVkFloat;
-                                                                  const aDepthBiasSlopeFactor:TVkFloat;
-                                                                  const aLineWidth:TVkFloat);
+                                                                  const aDepthBiasConstantFactor:TFloat;
+                                                                  const aDepthBiasClamp:TFloat;
+                                                                  const aDepthBiasSlopeFactor:TFloat;
+                                                                  const aLineWidth:TFloat);
 begin
  fRasterizationStateCreateInfo.depthClampEnable:=BooleanToVkBool[aDepthClampEnable];
  fRasterizationStateCreateInfo.rasterizerDiscardEnable:=BooleanToVkBool[aRasterizerDiscardEnable];
@@ -23916,7 +23916,7 @@ begin
  fCountSampleMasks:=aFrom.fCountSampleMasks;
 end;
 
-function TVulkanPipelineMultisampleState.AddSampleMask(const aSampleMask:TVkSampleMask):TVkInt32;
+function TVulkanPipelineMultisampleState.AddSampleMask(const aSampleMask:TVkSampleMask):TInt32;
 begin
  result:=fCountSampleMasks;
  inc(fCountSampleMasks);
@@ -23926,7 +23926,7 @@ begin
  fSampleMasks[result]:=aSampleMask;
 end;
 
-function TVulkanPipelineMultisampleState.AddSampleMasks(const aSampleMasks:array of TVkSampleMask):TVkInt32;
+function TVulkanPipelineMultisampleState.AddSampleMasks(const aSampleMasks:array of TVkSampleMask):TInt32;
 begin
  if length(aSampleMasks)>0 then begin
   result:=fCountSampleMasks;
@@ -23960,17 +23960,17 @@ begin
  fMultisampleStateCreateInfo.sampleShadingEnable:=BooleanToVkBool[aNewValue];
 end;
 
-function TVulkanPipelineMultisampleState.GetSampleMask(const aIndex:TVkInt32):TVkSampleMask;
+function TVulkanPipelineMultisampleState.GetSampleMask(const aIndex:TInt32):TVkSampleMask;
 begin
  result:=fSampleMasks[aIndex];
 end;
 
-procedure TVulkanPipelineMultisampleState.SetSampleMask(const aIndex:TVkInt32;const aNewValue:TVkSampleMask);
+procedure TVulkanPipelineMultisampleState.SetSampleMask(const aIndex:TInt32;const aNewValue:TVkSampleMask);
 begin
  fSampleMasks[aIndex]:=aNewValue;                                                          
 end;
 
-procedure TVulkanPipelineMultisampleState.SetCountSampleMasks(const aNewCount:TVkInt32);
+procedure TVulkanPipelineMultisampleState.SetCountSampleMasks(const aNewCount:TInt32);
 begin
  fCountSampleMasks:=aNewCount;
  if length(fSampleMasks)<fCountSampleMasks then begin
@@ -23978,12 +23978,12 @@ begin
  end;
 end;
 
-function TVulkanPipelineMultisampleState.GetMinSampleShading:TVkFloat;
+function TVulkanPipelineMultisampleState.GetMinSampleShading:TFloat;
 begin
  result:=fMultisampleStateCreateInfo.minSampleShading;
 end;
 
-procedure TVulkanPipelineMultisampleState.SetMinSampleShading(const aNewValue:TVkFloat);
+procedure TVulkanPipelineMultisampleState.SetMinSampleShading(const aNewValue:TFloat);
 begin
  fMultisampleStateCreateInfo.minSampleShading:=aNewValue;
 end;
@@ -24010,7 +24010,7 @@ end;
 
 procedure TVulkanPipelineMultisampleState.SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
                                                               const aSampleShadingEnable:boolean;
-                                                              const aMinSampleShading:TVkFloat;
+                                                              const aMinSampleShading:TFloat;
                                                               const aSampleMask:array of TVkSampleMask;
                                                               const aAlphaToCoverageEnable:boolean;
                                                               const aAlphaToOneEnable:boolean);
@@ -24093,32 +24093,32 @@ begin
  fStencilOpState^.compareOp:=aNewValue;
 end;
 
-function TVulkanStencilOpState.GetCompareMask:TVkUInt32;
+function TVulkanStencilOpState.GetCompareMask:TUInt32;
 begin
  result:=fStencilOpState^.compareMask;
 end;
 
-procedure TVulkanStencilOpState.SetCompareMask(const aNewValue:TVkUInt32);
+procedure TVulkanStencilOpState.SetCompareMask(const aNewValue:TUInt32);
 begin
  fStencilOpState^.compareMask:=aNewValue;
 end;
 
-function TVulkanStencilOpState.GetWriteMask:TVkUInt32;
+function TVulkanStencilOpState.GetWriteMask:TUInt32;
 begin
  result:=fStencilOpState^.writeMask;
 end;
 
-procedure TVulkanStencilOpState.SetWriteMask(const aNewValue:TVkUInt32);
+procedure TVulkanStencilOpState.SetWriteMask(const aNewValue:TUInt32);
 begin
  fStencilOpState^.writeMask:=aNewValue;
 end;
 
-function TVulkanStencilOpState.GetReference:TVkUInt32;
+function TVulkanStencilOpState.GetReference:TUInt32;
 begin
  result:=fStencilOpState^.reference;
 end;
 
-procedure TVulkanStencilOpState.SetReference(const aNewValue:TVkUInt32);
+procedure TVulkanStencilOpState.SetReference(const aNewValue:TUInt32);
 begin
  fStencilOpState^.reference:=aNewValue;
 end;
@@ -24222,22 +24222,22 @@ begin
  fDepthStencilStateCreateInfo.stencilTestEnable:=BooleanToVkBool[aNewValue];
 end;
 
-function TVulkanPipelineDepthStencilState.GetMinDepthBounds:TVkFloat;
+function TVulkanPipelineDepthStencilState.GetMinDepthBounds:TFloat;
 begin
  result:=fDepthStencilStateCreateInfo.minDepthBounds;
 end;
 
-procedure TVulkanPipelineDepthStencilState.SetMinDepthBounds(const aNewValue:TVkFloat);
+procedure TVulkanPipelineDepthStencilState.SetMinDepthBounds(const aNewValue:TFloat);
 begin
  fDepthStencilStateCreateInfo.minDepthBounds:=aNewValue;
 end;
 
-function TVulkanPipelineDepthStencilState.GetMaxDepthBounds:TVkFloat;
+function TVulkanPipelineDepthStencilState.GetMaxDepthBounds:TFloat;
 begin
  result:=fDepthStencilStateCreateInfo.maxDepthBounds;
 end;
 
-procedure TVulkanPipelineDepthStencilState.SetMaxDepthBounds(const aNewValue:TVkFloat);
+procedure TVulkanPipelineDepthStencilState.SetMaxDepthBounds(const aNewValue:TFloat);
 begin
  fDepthStencilStateCreateInfo.maxDepthBounds:=aNewValue;
 end;
@@ -24249,8 +24249,8 @@ procedure TVulkanPipelineDepthStencilState.SetDepthStencilState(const aDepthTest
                                                                 const aStencilTestEnable:boolean;
                                                                 const aFront:TVkStencilOpState;
                                                                 const aBack:TVkStencilOpState;
-                                                                const aMinDepthBounds:TVkFloat;
-                                                                const aMaxDepthBounds:TVkFloat);
+                                                                const aMinDepthBounds:TFloat;
+                                                                const aMaxDepthBounds:TFloat);
 begin
  fDepthStencilStateCreateInfo.depthTestEnable:=BooleanToVkBool[aDepthTestEnable];
  fDepthStencilStateCreateInfo.depthWriteEnable:=BooleanToVkBool[aDepthWriteEnable];
@@ -24319,7 +24319,7 @@ begin
  fColorBlendStateCreateInfo.logicOp:=aNewValue;
 end;
 
-procedure TVulkanPipelineColorBlendState.SetCountColorBlendAttachmentStates(const aNewCount:TVkInt32);
+procedure TVulkanPipelineColorBlendState.SetCountColorBlendAttachmentStates(const aNewCount:TInt32);
 begin
  fCountColorBlendAttachmentStates:=aNewCount;
  if length(fColorBlendAttachmentStates)<fCountColorBlendAttachmentStates then begin
@@ -24327,25 +24327,25 @@ begin
  end;
 end;
 
-function TVulkanPipelineColorBlendState.GetColorBlendAttachmentState(const aIndex:TVkInt32):PVkPipelineColorBlendAttachmentState;
+function TVulkanPipelineColorBlendState.GetColorBlendAttachmentState(const aIndex:TInt32):PVkPipelineColorBlendAttachmentState;
 begin
  result:=@fColorBlendAttachmentStates[aIndex];
 end;
 
-function TVulkanPipelineColorBlendState.GetBlendConstant(const aIndex:TVkInt32):TVkFloat;
+function TVulkanPipelineColorBlendState.GetBlendConstant(const aIndex:TInt32):TFloat;
 begin
  result:=fColorBlendStateCreateInfo.blendConstants[aIndex];
 end;
 
-procedure TVulkanPipelineColorBlendState.SetBlendConstant(const aIndex:TVkInt32;const aNewValue:TVkFloat);
+procedure TVulkanPipelineColorBlendState.SetBlendConstant(const aIndex:TInt32;const aNewValue:TFloat);
 begin
  fColorBlendStateCreateInfo.blendConstants[aIndex]:=aNewValue;
 end;
 
 procedure TVulkanPipelineColorBlendState.SetColorBlendState(const aLogicOpEnable:boolean;
                                                             const aLogicOp:TVkLogicOp;
-                                                            const aBlendConstants:array of TVkFloat);
-var ArrayItemCount:TVkInt32;
+                                                            const aBlendConstants:array of TFloat);
+var ArrayItemCount:TInt32;
 begin
  fColorBlendStateCreateInfo.logicOpEnable:=BooleanToVkBool[aLogicOpEnable];
  fColorBlendStateCreateInfo.logicOp:=aLogicOp;
@@ -24354,11 +24354,11 @@ begin
   ArrayItemCount:=length(fColorBlendStateCreateInfo.blendConstants);
  end;
  if ArrayItemCount>0 then begin
-  Move(aBlendConstants[0],fColorBlendStateCreateInfo.blendConstants[0],ArrayItemCount*SizeOf(TVkFloat));
+  Move(aBlendConstants[0],fColorBlendStateCreateInfo.blendConstants[0],ArrayItemCount*SizeOf(TFloat));
  end;
 end;
 
-function TVulkanPipelineColorBlendState.AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanPipelineColorBlendState.AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TInt32;
 begin
  result:=fCountColorBlendAttachmentStates;
  inc(fCountColorBlendAttachmentStates);
@@ -24375,7 +24375,7 @@ function TVulkanPipelineColorBlendState.AddColorBlendAttachmentState(const aBlen
                                                                      const aSrcAlphaBlendFactor:TVkBlendFactor;
                                                                      const aDstAlphaBlendFactor:TVkBlendFactor;
                                                                      const aAlphaBlendOp:TVkBlendOp;
-                                                                     const aColorWriteMask:TVkColorComponentFlags):TVkInt32;
+                                                                     const aColorWriteMask:TVkColorComponentFlags):TInt32;
 var ColorBlendAttachmentState:PVkPipelineColorBlendAttachmentState;
 begin
  result:=fCountColorBlendAttachmentStates;
@@ -24398,7 +24398,7 @@ begin
  ColorBlendAttachmentState^.colorWriteMask:=aColorWriteMask;
 end;
 
-function TVulkanPipelineColorBlendState.AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanPipelineColorBlendState.AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TInt32;
 begin
  if length(aColorBlendAttachmentStates)>0 then begin
   result:=fCountColorBlendAttachmentStates;
@@ -24452,12 +24452,12 @@ begin
  fCountDynamicStates:=aFrom.fCountDynamicStates;
 end;
 
-function TVulkanPipelineDynamicState.GetDynamicState(const aIndex:TVkInt32):PVkDynamicState;
+function TVulkanPipelineDynamicState.GetDynamicState(const aIndex:TInt32):PVkDynamicState;
 begin
  result:=@fDynamicStates[aIndex];
 end;
 
-procedure TVulkanPipelineDynamicState.SetCountDynamicStates(const aNewCount:TVkInt32);
+procedure TVulkanPipelineDynamicState.SetCountDynamicStates(const aNewCount:TInt32);
 begin
  fCountDynamicStates:=aNewCount;
  if length(fDynamicStates)<fCountDynamicStates then begin
@@ -24465,7 +24465,7 @@ begin
  end;
 end;
 
-function TVulkanPipelineDynamicState.AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
+function TVulkanPipelineDynamicState.AddDynamicState(const aDynamicState:TVkDynamicState):TInt32;
 begin
  result:=fCountDynamicStates;
  inc(fCountDynamicStates);
@@ -24475,7 +24475,7 @@ begin
  fDynamicStates[result]:=aDynamicState;
 end;
 
-function TVulkanPipelineDynamicState.AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32;
+function TVulkanPipelineDynamicState.AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TInt32;
 begin
  if length(aDynamicStates)>0 then begin
   result:=fCountDynamicStates;
@@ -24504,10 +24504,10 @@ constructor TVulkanGraphicsPipelineConstructor.Create(const aDevice:TVulkanDevic
                                                       const aStages:array of TVulkanPipelineShaderStage;
                                                       const aLayout:TVulkanPipelineLayout;
                                                       const aRenderPass:TVulkanRenderPass;
-                                                      const aSubPass:TVkUInt32;
+                                                      const aSubPass:TUInt32;
                                                       const aBasePipelineHandle:TVulkanPipeline;
-                                                      const aBasePipelineIndex:TVkInt32);
-var Index:TVkInt32;
+                                                      const aBasePipelineIndex:TInt32);
+var Index:TInt32;
 begin
  fStages:=nil;
  fCountStages:=0;
@@ -24613,7 +24613,7 @@ begin
  fDynamicState.Assign(aFrom.fDynamicState);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddStage(const aStage:TVulkanPipelineShaderStage):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddStage(const aStage:TVulkanPipelineShaderStage):TInt32;
 begin
  result:=fCountStages;
  inc(fCountStages);
@@ -24624,8 +24624,8 @@ begin
  fStages[result]:=aStage.fPipelineShaderStageCreateInfo;
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddStages(const aStages:array of TVulkanPipelineShaderStage):TVkInt32;
-var Index:TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddStages(const aStages:array of TVulkanPipelineShaderStage):TInt32;
+var Index:TInt32;
 begin
  if length(aStages)>0 then begin
   result:=AddStage(aStages[0]);
@@ -24637,37 +24637,37 @@ begin
  end;
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TInt32;
 begin
  Assert(assigned(fVertexInputState));
  result:=fVertexInputState.AddVertexInputBindingDescription(aVertexInputBindingDescription);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescription(const aBinding,aStride:TUInt32;const aInputRate:TVkVertexInputRate):TInt32;
 begin
  Assert(assigned(fVertexInputState));
  result:=fVertexInputState.AddVertexInputBindingDescription(aBinding,aStride,aInputRate);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TInt32;
 begin
  Assert(assigned(fVertexInputState));
  result:=fVertexInputState.AddVertexInputBindingDescriptions(aVertexInputBindingDescriptions);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TInt32;
 begin
  Assert(assigned(fVertexInputState));
  result:=fVertexInputState.AddVertexInputAttributeDescription(aVertexInputAttributeDescription);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescription(const aLocation,aBinding:TUInt32;const aFormat:TVkFormat;const aOffset:TUInt32):TInt32;
 begin
  Assert(assigned(fVertexInputState));
  result:=fVertexInputState.AddVertexInputAttributeDescription(aLocation,aBinding,aFormat,aOffset);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TInt32;
 begin
  Assert(assigned(fVertexInputState));
  result:=fVertexInputState.AddVertexInputAttributeDescriptions(aVertexInputAttributeDescriptions);
@@ -24679,43 +24679,43 @@ begin
  fInputAssemblyState.SetInputAssemblyState(aTopology,aPrimitiveRestartEnable);
 end;
 
-procedure TVulkanGraphicsPipelineConstructor.SetTessellationState(const aPatchControlPoints:TVkUInt32);
+procedure TVulkanGraphicsPipelineConstructor.SetTessellationState(const aPatchControlPoints:TUInt32);
 begin
  Assert(assigned(fTessellationState));
  fTessellationState.SetTessellationState(aPatchControlPoints);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddViewPort(const aViewPort:TVkViewport):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddViewPort(const aViewPort:TVkViewport):TInt32;
 begin
  Assert(assigned(fViewPortState));
  result:=fViewPortState.AddViewPort(aViewPort);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TFloat):TInt32;
 begin
  Assert(assigned(fViewPortState));
  result:=fViewPortState.AddViewPort(pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddViewPorts(const aViewPorts:array of TVkViewport):TInt32;
 begin
  Assert(assigned(fViewPortState));
  result:=fViewPortState.AddViewPorts(aViewPorts);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddScissor(const aScissor:TVkRect2D):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddScissor(const aScissor:TVkRect2D):TInt32;
 begin
  Assert(assigned(fViewPortState));
  result:=fViewPortState.AddScissor(aScissor);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddScissor(const pX,pY:TInt32;const aWidth,aHeight:TUInt32):TInt32;
 begin
  Assert(assigned(fViewPortState));
  result:=fViewPortState.AddScissor(pX,pY,aWidth,aHeight);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddScissors(const aScissors:array of TVkRect2D):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddScissors(const aScissors:array of TVkRect2D):TInt32;
 begin
  Assert(assigned(fViewPortState));
  result:=fViewPortState.AddScissors(aScissors);
@@ -24727,10 +24727,10 @@ procedure TVulkanGraphicsPipelineConstructor.SetRasterizationState(const aDepthC
                                                                    const aCullMode:TVkCullModeFlags;
                                                                    const aFrontFace:TVkFrontFace;
                                                                    const aDepthBiasEnable:boolean;
-                                                                   const aDepthBiasConstantFactor:TVkFloat;
-                                                                   const aDepthBiasClamp:TVkFloat;
-                                                                   const aDepthBiasSlopeFactor:TVkFloat;
-                                                                   const aLineWidth:TVkFloat);
+                                                                   const aDepthBiasConstantFactor:TFloat;
+                                                                   const aDepthBiasClamp:TFloat;
+                                                                   const aDepthBiasSlopeFactor:TFloat;
+                                                                   const aLineWidth:TFloat);
 begin
  Assert(assigned(fRasterizationState));
  fRasterizationState.SetRasterizationState(aDepthClampEnable,
@@ -24747,7 +24747,7 @@ end;
 
 procedure TVulkanGraphicsPipelineConstructor.SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
                                                                  const aSampleShadingEnable:boolean;
-                                                                 const aMinSampleShading:TVkFloat;
+                                                                 const aMinSampleShading:TFloat;
                                                                  const aSampleMask:array of TVkSampleMask;
                                                                  const aAlphaToCoverageEnable:boolean;
                                                                  const aAlphaToOneEnable:boolean);
@@ -24768,8 +24768,8 @@ procedure TVulkanGraphicsPipelineConstructor.SetDepthStencilState(const aDepthTe
                                                                   const aStencilTestEnable:boolean;
                                                                   const aFront:TVkStencilOpState;
                                                                   const aBack:TVkStencilOpState;
-                                                                  const aMinDepthBounds:TVkFloat;
-                                                                  const aMaxDepthBounds:TVkFloat);
+                                                                  const aMinDepthBounds:TFloat;
+                                                                  const aMaxDepthBounds:TFloat);
 begin
  Assert(assigned(fDepthStencilState));
  fDepthStencilState.SetDepthStencilState(aDepthTestEnable,
@@ -24785,7 +24785,7 @@ end;
 
 procedure TVulkanGraphicsPipelineConstructor.SetColorBlendState(const aLogicOpEnable:boolean;
                                                                 const aLogicOp:TVkLogicOp;
-                                                                const aBlendConstants:array of TVkFloat);
+                                                                const aBlendConstants:array of TFloat);
 begin
  Assert(assigned(fColorBlendState));
  fColorBlendState.SetColorBlendState(aLogicOpEnable,
@@ -24793,7 +24793,7 @@ begin
                                      aBlendConstants);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TInt32;
 begin
  Assert(assigned(fColorBlendState));
  result:=fColorBlendState.AddColorBlendAttachmentState(aColorBlendAttachmentState);
@@ -24806,7 +24806,7 @@ function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const a
                                                                          const aSrcAlphaBlendFactor:TVkBlendFactor;
                                                                          const aDstAlphaBlendFactor:TVkBlendFactor;
                                                                          const aAlphaBlendOp:TVkBlendOp;
-                                                                         const aColorWriteMask:TVkColorComponentFlags):TVkInt32;
+                                                                         const aColorWriteMask:TVkColorComponentFlags):TInt32;
 begin
  Assert(assigned(fColorBlendState));
  result:=fColorBlendState.AddColorBlendAttachmentState(aBlendEnable,
@@ -24819,19 +24819,19 @@ begin
                                                        aColorWriteMask);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TInt32;
 begin
  Assert(assigned(fColorBlendState));
  result:=fColorBlendState.AddColorBlendAttachmentStates(aColorBlendAttachmentStates);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddDynamicState(const aDynamicState:TVkDynamicState):TInt32;
 begin
  Assert(assigned(fDynamicState));
  result:=fDynamicState.AddDynamicState(aDynamicState);
 end;
 
-function TVulkanGraphicsPipelineConstructor.AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32;
+function TVulkanGraphicsPipelineConstructor.AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TInt32;
 begin
  Assert(assigned(fDynamicState));
  result:=fDynamicState.AddDynamicStates(aDynamicStates);
@@ -24879,9 +24879,9 @@ constructor TVulkanGraphicsPipeline.Create(const aDevice:TVulkanDevice;
                                            const aStages:array of TVulkanPipelineShaderStage;
                                            const aLayout:TVulkanPipelineLayout;
                                            const aRenderPass:TVulkanRenderPass;
-                                           const aSubPass:TVkUInt32;
+                                           const aSubPass:TUInt32;
                                            const aBasePipelineHandle:TVulkanPipeline;
-                                           const aBasePipelineIndex:TVkInt32);
+                                           const aBasePipelineIndex:TInt32);
 begin
  inherited Create(aDevice);
  fGraphicsPipelineConstructor:=TVulkanGraphicsPipelineConstructor.Create(fDevice,
@@ -24906,7 +24906,7 @@ begin
  fGraphicsPipelineConstructor.Assign(aFrom.fGraphicsPipelineConstructor);
 end;
 
-function TVulkanGraphicsPipeline.GetCountStages:TVkInt32;
+function TVulkanGraphicsPipeline.GetCountStages:TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.fCountStages;
@@ -24966,49 +24966,49 @@ begin
  result:=fGraphicsPipelineConstructor.fDynamicState;
 end;
 
-function TVulkanGraphicsPipeline.AddStage(const aStage:TVulkanPipelineShaderStage):TVkInt32;
+function TVulkanGraphicsPipeline.AddStage(const aStage:TVulkanPipelineShaderStage):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddStage(aStage);
 end;
 
-function TVulkanGraphicsPipeline.AddStages(const aStages:array of TVulkanPipelineShaderStage):TVkInt32;
+function TVulkanGraphicsPipeline.AddStages(const aStages:array of TVulkanPipelineShaderStage):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddStages(aStages);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const aVertexInputBindingDescription:TVkVertexInputBindingDescription):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddVertexInputBindingDescription(aVertexInputBindingDescription);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const aBinding,aStride:TVkUInt32;const aInputRate:TVkVertexInputRate):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputBindingDescription(const aBinding,aStride:TUInt32;const aInputRate:TVkVertexInputRate):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddVertexInputBindingDescription(aBinding,aStride,aInputRate);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputBindingDescriptions(const aVertexInputBindingDescriptions:array of TVkVertexInputBindingDescription):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddVertexInputBindingDescriptions(aVertexInputBindingDescriptions);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputAttributeDescription(const aVertexInputAttributeDescription:TVkVertexInputAttributeDescription):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddVertexInputAttributeDescription(aVertexInputAttributeDescription);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputAttributeDescription(const aLocation,aBinding:TVkUInt32;const aFormat:TVkFormat;const aOffset:TVkUInt32):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputAttributeDescription(const aLocation,aBinding:TUInt32;const aFormat:TVkFormat;const aOffset:TUInt32):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddVertexInputAttributeDescription(aLocation,aBinding,aFormat,aOffset);
 end;
 
-function TVulkanGraphicsPipeline.AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TVkInt32;
+function TVulkanGraphicsPipeline.AddVertexInputAttributeDescriptions(const aVertexInputAttributeDescriptions:array of TVkVertexInputAttributeDescription):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddVertexInputAttributeDescriptions(aVertexInputAttributeDescriptions);
@@ -25020,43 +25020,43 @@ begin
  fGraphicsPipelineConstructor.SetInputAssemblyState(aTopology,aPrimitiveRestartEnable);
 end;
 
-procedure TVulkanGraphicsPipeline.SetTessellationState(const aPatchControlPoints:TVkUInt32);
+procedure TVulkanGraphicsPipeline.SetTessellationState(const aPatchControlPoints:TUInt32);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  fGraphicsPipelineConstructor.SetTessellationState(aPatchControlPoints);
 end;
 
-function TVulkanGraphicsPipeline.AddViewPort(const aViewPort:TVkViewport):TVkInt32;
+function TVulkanGraphicsPipeline.AddViewPort(const aViewPort:TVkViewport):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddViewPort(aViewPort);
 end;
 
-function TVulkanGraphicsPipeline.AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TVkFloat):TVkInt32;
+function TVulkanGraphicsPipeline.AddViewPort(const pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth:TFloat):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddViewPort(pX,pY,aWidth,aHeight,aMinDepth,aMaxDepth);
 end;
 
-function TVulkanGraphicsPipeline.AddViewPorts(const aViewPorts:array of TVkViewport):TVkInt32;
+function TVulkanGraphicsPipeline.AddViewPorts(const aViewPorts:array of TVkViewport):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddViewPorts(aViewPorts);
 end;
 
-function TVulkanGraphicsPipeline.AddScissor(const aScissor:TVkRect2D):TVkInt32;
+function TVulkanGraphicsPipeline.AddScissor(const aScissor:TVkRect2D):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddScissor(aScissor);
 end;
 
-function TVulkanGraphicsPipeline.AddScissor(const pX,pY:TVkInt32;const aWidth,aHeight:TVkUInt32):TVkInt32;
+function TVulkanGraphicsPipeline.AddScissor(const pX,pY:TInt32;const aWidth,aHeight:TUInt32):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddScissor(pX,pY,aWidth,aHeight);
 end;
 
-function TVulkanGraphicsPipeline.AddScissors(const aScissors:array of TVkRect2D):TVkInt32;
+function TVulkanGraphicsPipeline.AddScissors(const aScissors:array of TVkRect2D):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddScissors(aScissors);
@@ -25068,10 +25068,10 @@ procedure TVulkanGraphicsPipeline.SetRasterizationState(const aDepthClampEnable:
                                                         const aCullMode:TVkCullModeFlags;
                                                         const aFrontFace:TVkFrontFace;
                                                         const aDepthBiasEnable:boolean;
-                                                        const aDepthBiasConstantFactor:TVkFloat;
-                                                        const aDepthBiasClamp:TVkFloat;
-                                                        const aDepthBiasSlopeFactor:TVkFloat;
-                                                        const aLineWidth:TVkFloat);
+                                                        const aDepthBiasConstantFactor:TFloat;
+                                                        const aDepthBiasClamp:TFloat;
+                                                        const aDepthBiasSlopeFactor:TFloat;
+                                                        const aLineWidth:TFloat);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  fGraphicsPipelineConstructor.SetRasterizationState(aDepthClampEnable,
@@ -25088,7 +25088,7 @@ end;
 
 procedure TVulkanGraphicsPipeline.SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
                                                       const aSampleShadingEnable:boolean;
-                                                      const aMinSampleShading:TVkFloat;
+                                                      const aMinSampleShading:TFloat;
                                                       const aSampleMask:array of TVkSampleMask;
                                                       const aAlphaToCoverageEnable:boolean;
                                                       const aAlphaToOneEnable:boolean);
@@ -25109,8 +25109,8 @@ procedure TVulkanGraphicsPipeline.SetDepthStencilState(const aDepthTestEnable:bo
                                                        const aStencilTestEnable:boolean;
                                                        const aFront:TVkStencilOpState;
                                                        const aBack:TVkStencilOpState;
-                                                       const aMinDepthBounds:TVkFloat;
-                                                       const aMaxDepthBounds:TVkFloat);
+                                                       const aMinDepthBounds:TFloat;
+                                                       const aMaxDepthBounds:TFloat);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  fGraphicsPipelineConstructor.SetDepthStencilState(aDepthTestEnable,
@@ -25126,7 +25126,7 @@ end;
 
 procedure TVulkanGraphicsPipeline.SetColorBlendState(const aLogicOpEnable:boolean;
                                                      const aLogicOp:TVkLogicOp;
-                                                     const aBlendConstants:array of TVkFloat);
+                                                     const aBlendConstants:array of TFloat);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  fGraphicsPipelineConstructor.SetColorBlendState(aLogicOpEnable,
@@ -25134,7 +25134,7 @@ begin
                                                  aBlendConstants);
 end;
 
-function TVulkanGraphicsPipeline.AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanGraphicsPipeline.AddColorBlendAttachmentState(const aColorBlendAttachmentState:TVkPipelineColorBlendAttachmentState):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddColorBlendAttachmentState(aColorBlendAttachmentState);
@@ -25147,7 +25147,7 @@ function TVulkanGraphicsPipeline.AddColorBlendAttachmentState(const aBlendEnable
                                                               const aSrcAlphaBlendFactor:TVkBlendFactor;
                                                               const aDstAlphaBlendFactor:TVkBlendFactor;
                                                               const aAlphaBlendOp:TVkBlendOp;
-                                                              const aColorWriteMask:TVkColorComponentFlags):TVkInt32;
+                                                              const aColorWriteMask:TVkColorComponentFlags):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddColorBlendAttachmentState(aBlendEnable,
@@ -25160,19 +25160,19 @@ begin
                                                                    aColorWriteMask);
 end;
 
-function TVulkanGraphicsPipeline.AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TVkInt32;
+function TVulkanGraphicsPipeline.AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddColorBlendAttachmentStates(aColorBlendAttachmentStates);
 end;
 
-function TVulkanGraphicsPipeline.AddDynamicState(const aDynamicState:TVkDynamicState):TVkInt32;
+function TVulkanGraphicsPipeline.AddDynamicState(const aDynamicState:TVkDynamicState):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddDynamicState(aDynamicState);
 end;
 
-function TVulkanGraphicsPipeline.AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TVkInt32;
+function TVulkanGraphicsPipeline.AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddDynamicStates(aDynamicStates);
@@ -25207,40 +25207,40 @@ constructor TVulkanTexture.CreateFromMemory(const aDevice:TVulkanDevice;
                                             const aTransferFence:TVulkanFence;
                                             const aFormat:TVkFormat;
                                             const aSampleCount:TVkSampleCountFlagBits;
-                                            const aWidth:TVkInt32;
-                                            const aHeight:TVkInt32;
-                                            const aDepth:TVkInt32;
-                                            const aCountArrayLayers:TVkInt32;
-                                            const aCountFaces:TVkInt32;
-                                            const aCountMipMaps:TVkInt32;
+                                            const aWidth:TInt32;
+                                            const aHeight:TInt32;
+                                            const aDepth:TInt32;
+                                            const aCountArrayLayers:TInt32;
+                                            const aCountFaces:TInt32;
+                                            const aCountMipMaps:TInt32;
                                             const aUsageFlags:TVulkanTextureUsageFlags;
-                                            const aData:TVkPointer;
+                                            const aData:TPointer;
                                             const aDataSize:TVkSizeInt;
                                             const aMipMapSizeStored:boolean;
                                             const aSwapEndianness:boolean;
-                                            const aSwapEndiannessTexels:TVkInt32;
+                                            const aSwapEndiannessTexels:TInt32;
                                             const aFromDDS:boolean=false);
 type PUInt8Array=^TUInt8Array;
-     TUInt8Array=array[0..65535] of TVkUInt8;
- function Swap16(x:TVkUInt16):TVkUInt16;
+     TUInt8Array=array[0..65535] of TUInt8;
+ function Swap16(x:TUInt16):TUInt16;
  begin
   result:=((x and $ff) shl 8) or ((x and $ff00) shr 8);
  end;
- function Swap32(x:TVkUInt32):TVkUInt32;
+ function Swap32(x:TUInt32):TUInt32;
  begin
   result:=(Swap16(x and $ffff) shl 16) or Swap16((x and $ffff0000) shr 16);
  end;
- function Swap64(x:TVkUInt64):TVkUInt64;
+ function Swap64(x:TInt64):TUInt64;
  begin
-  result:=(TVkUInt64(Swap32(x and TVkUInt64($ffffffff))) shl 32) or Swap32((x and TVkUInt64($ffffffff00000000)) shr 32);
+  result:=(TUInt64(Swap32(x and TUInt64($ffffffff))) shl 32) or Swap32((x and TUInt64($ffffffff00000000)) shr 32);
  end;
 var MaxDimension,MaxMipMapLevels,CountStorageLevels,CountArrayLayers,CountDataLevels,
     BufferImageCopyArraySize,MipMapLevelIndex,MipMapWidth,MipMapHeight,MipMapDepth,
-    LayerIndex,DepthIndex,PreviousMipMapLevelIndex:TVkInt32;
-    DataOffset,TotalMipMapSize,StoredMipMapSize,MipMapSize,Index:TVkUInt32;
-    v16:PVkUInt16;
-    v32:PVkUInt32;
-    v64:PVkUInt64;
+    LayerIndex,DepthIndex,PreviousMipMapLevelIndex:TInt32;
+    DataOffset,TotalMipMapSize,StoredMipMapSize,MipMapSize,Index:TUInt32;
+    v16:PUInt16;
+    v32:PUInt32;
+    v64:PUInt64;
     Compressed:boolean;
     FormatProperties:TVkFormatProperties;
     Usage:TVkImageUsageFlags;
@@ -25258,112 +25258,112 @@ var MaxDimension,MaxMipMapLevels,CountStorageLevels,CountArrayLayers,CountDataLe
  begin
   case fFormat of
    VK_FORMAT_R8_UNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TUInt8);
    end;
    VK_FORMAT_R8G8_UNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TUInt8);
    end;
    VK_FORMAT_R8G8B8A8_UNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TUInt8);
    end;
    VK_FORMAT_R8_SNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TInt8);
    end;
    VK_FORMAT_R8G8_SNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TInt8);
    end;
    VK_FORMAT_R8G8B8_SNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TInt8);
    end;
    VK_FORMAT_R8_UINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TUInt8);
    end;
    VK_FORMAT_R8G8_UINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TUInt8);
    end;
    VK_FORMAT_R8G8B8_UINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TUInt8);
    end;
    VK_FORMAT_R8_SINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TInt8);
    end;
    VK_FORMAT_R8G8_SINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TInt8);
    end;
    VK_FORMAT_R8G8B8_SINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TInt8);
    end;
    VK_FORMAT_R8_SRGB:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TUInt8);
    end;
    VK_FORMAT_R8G8_SRGB:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TUInt8);
    end;
    VK_FORMAT_R8G8B8A8_SRGB:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt8);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TUInt8);
    end;
    VK_FORMAT_R16_UNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TUInt16);
    end;
    VK_FORMAT_R16G16_UNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TUInt16);
    end;
    VK_FORMAT_R16G16B16A16_UNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TUInt16);
    end;
    VK_FORMAT_R16_SNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TInt16);
    end;
    VK_FORMAT_R16G16_SNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TInt16);
    end;
    VK_FORMAT_R16G16B16A16_SNORM:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TInt16);
    end;
    VK_FORMAT_R16_UINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TUInt16);
    end;
    VK_FORMAT_R16G16_UINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TUInt16);
    end;
    VK_FORMAT_R16G16B16A16_UINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TUInt16);
    end;
    VK_FORMAT_R16_SINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TInt16);
    end;
    VK_FORMAT_R16G16_SINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TInt16);
    end;
    VK_FORMAT_R16G16B16A16_SINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TInt16);
    end;
    VK_FORMAT_R16_SFLOAT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TUInt16);
    end;
    VK_FORMAT_R16G16_SFLOAT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TUInt16);
    end;
    VK_FORMAT_R16G16B16A16_SFLOAT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt16);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TUInt16);
    end;
    VK_FORMAT_R32_UINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkUInt32);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TUInt32);
    end;
    VK_FORMAT_R32G32_UINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkUInt32);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TUInt32);
    end;
    VK_FORMAT_R32G32B32A32_UINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkUInt32);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TUInt32);
    end;
    VK_FORMAT_R32_SINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TVkInt32);
+    MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(TInt32);
    end;
    VK_FORMAT_R32G32_SINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TVkInt32);
+    MipMapSize:=MipMapHeight*MipMapWidth*2*SizeOf(TInt32);
    end;
    VK_FORMAT_R32G32B32A32_SINT:begin
-    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TVkInt32);
+    MipMapSize:=MipMapHeight*MipMapWidth*4*SizeOf(TInt32);
    end;
    VK_FORMAT_R32_SFLOAT:begin
     MipMapSize:=MipMapHeight*MipMapWidth*1*SizeOf(single);
@@ -25575,7 +25575,7 @@ var MaxDimension,MaxMipMapLevels,CountStorageLevels,CountArrayLayers,CountDataLe
     Compressed:=true;
    end;
    else begin
-    raise EVulkanTextureException.Create('Non-supported texture image format ('+IntToStr(TVkInt32(fFormat))+')');
+    raise EVulkanTextureException.Create('Non-supported texture image format ('+IntToStr(TInt32(fFormat))+')');
    end;
   end;
  end;
@@ -25650,15 +25650,15 @@ begin
  FormatProperties:=fDevice.fPhysicalDevice.GetFormatProperties(aFormat);
 
  if (vtufSampled in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))=0) then begin
-  raise EVulkanTextureException.Create('Texture format '+IntToStr(TVkInt32(aFormat))+' can''t be sampled');
+  raise EVulkanTextureException.Create('Texture format '+IntToStr(TInt32(aFormat))+' can''t be sampled');
  end;
 
  if (vtufColorAttachment in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))=0) then begin
-  raise EVulkanTextureException.Create('Texture format '+IntToStr(TVkInt32(aFormat))+' can''t be rendered to');
+  raise EVulkanTextureException.Create('Texture format '+IntToStr(TInt32(aFormat))+' can''t be rendered to');
  end;
 
  if (vtufStorage in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))=0) then begin
-  raise EVulkanTextureException.Create('Texture format '+IntToStr(TVkInt32(aFormat))+' can''t be used for storage');
+  raise EVulkanTextureException.Create('Texture format '+IntToStr(TInt32(aFormat))+' can''t be used for storage');
  end;
 
  if aCountMipMaps>=1 then begin
@@ -25774,7 +25774,7 @@ begin
   StagingBuffer:=TVulkanBuffer.Create(fDevice,
                                       aDataSize,
                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
-                                      TVkSharingMode(TVkInt32(IfThen(aGraphicsQueue=aTransferQueue,TVkInt32(VK_SHARING_MODE_EXCLUSIVE),TVkInt32(VK_SHARING_MODE_CONCURRENT)))),
+                                      TVkSharingMode(TInt32(IfThen(aGraphicsQueue=aTransferQueue,TInt32(VK_SHARING_MODE_EXCLUSIVE),TInt32(VK_SHARING_MODE_CONCURRENT)))),
                                       nil,
                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
@@ -25794,9 +25794,9 @@ begin
      TotalMipMapSize:=0;
      StoredMipMapSize:=0;
      if aMipMapSizeStored then begin
-      Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(aDataSize));
-      StoredMipMapSize:=TVkUInt32(TVkPointer(@TUInt8Array(TVkPointer(aData)^)[DataOffset])^);
-      inc(DataOffset,SizeOf(TVkUInt32));
+      Assert(TVkSizeInt(DataOffset+SizeOf(TUInt32))<=TVkSizeInt(aDataSize));
+      StoredMipMapSize:=TUInt32(TPointer(@TUInt8Array(TPointer(aData)^)[DataOffset])^);
+      inc(DataOffset,SizeOf(TUInt32));
       if aSwapEndianness then begin
        StoredMipMapSize:=Swap32(StoredMipMapSize);
       end;
@@ -25810,21 +25810,21 @@ begin
        Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(aDataSize));
        case aSwapEndiannessTexels of
         2:begin
-         v16:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(aData))+TVkPtrUInt(DataOffset)));
+         v16:=TPointer(TPtrUInt(TPtrUInt(TPointer(aData))+TPtrUInt(DataOffset)));
          for Index:=1 to MipMapSize shr 1 do begin
           v16^:=Swap16(v16^);
           inc(v16);
          end;
         end;
         4:begin
-         v32:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(aData))+TVkPtrUInt(DataOffset)));
+         v32:=TPointer(TPtrUInt(TPtrUInt(TPointer(aData))+TPtrUInt(DataOffset)));
          for Index:=1 to MipMapSize shr 2 do begin
           v32^:=Swap32(v32^);
           inc(v32);
          end;
         end;
         8:begin
-         v64:=TVkPointer(TVkPtrUInt(TVkPtrUInt(TVkPointer(aData))+TVkPtrUInt(DataOffset)));
+         v64:=TPointer(TPtrUInt(TPtrUInt(TPointer(aData))+TPtrUInt(DataOffset)));
          for Index:=1 to MipMapSize shr 3 do begin
           v64^:=Swap64(v64^);
           inc(v64);
@@ -25950,9 +25950,9 @@ begin
        TotalMipMapSize:=0;
        StoredMipMapSize:=0;
        if aMipMapSizeStored then begin
-        Assert(TVkSizeInt(DataOffset+SizeOf(TVkUInt32))<=TVkSizeInt(aDataSize));
-        StoredMipMapSize:=TVkUInt32(TVkPointer(@TUInt8Array(TVkPointer(aData)^)[DataOffset])^);
-        inc(DataOffset,SizeOf(TVkUInt32));
+        Assert(TVkSizeInt(DataOffset+SizeOf(TUInt32))<=TVkSizeInt(aDataSize));
+        StoredMipMapSize:=TUInt32(TPointer(@TUInt8Array(TPointer(aData)^)[DataOffset])^);
+        inc(DataOffset,SizeOf(TUInt32));
         if aSwapEndianness then begin
          StoredMipMapSize:=Swap32(StoredMipMapSize);
         end;
@@ -26205,25 +26205,25 @@ constructor TVulkanTexture.CreateFromStream(const aDevice:TVulkanDevice;
                                             const aTransferFence:TVulkanFence;
                                             const aFormat:TVkFormat;
                                             const aSampleCount:TVkSampleCountFlagBits;
-                                            const aWidth:TVkInt32;
-                                            const aHeight:TVkInt32;
-                                            const aDepth:TVkInt32;
-                                            const aCountArrayLayers:TVkInt32;
-                                            const aCountFaces:TVkInt32;
-                                            const aCountMipMaps:TVkInt32;
+                                            const aWidth:TInt32;
+                                            const aHeight:TInt32;
+                                            const aDepth:TInt32;
+                                            const aCountArrayLayers:TInt32;
+                                            const aCountFaces:TInt32;
+                                            const aCountMipMaps:TInt32;
                                             const aUsageFlags:TVulkanTextureUsageFlags;
                                             const aStream:TStream;
                                             const aMipMapSizeStored:boolean;
                                             const aSwapEndianness:boolean;
-                                            const aSwapEndiannessTexels:TVkInt32;
+                                            const aSwapEndiannessTexels:TInt32;
                                             const aFromDDS:boolean=false);
-var Data:TVkPointer;
-    DataSize:TVkUInt32;
+var Data:TPointer;
+    DataSize:TUInt32;
 begin
  DataSize:=aStream.Size;
  GetMem(Data,DataSize);
  try
-  if TVkInt64(aStream.Read(Data^,DataSize))<>TVkInt64(DataSize) then begin
+  if TInt64(aStream.Read(Data^,DataSize))<>TInt64(DataSize) then begin
    raise EVulkanTextureException.Create('Stream read error');
   end;
   CreateFromMemory(aDevice,
@@ -26262,40 +26262,40 @@ constructor TVulkanTexture.CreateFromKTX(const aDevice:TVulkanDevice;
                                          const aTransferFence:TVulkanFence;
                                          const aStream:TStream);
 type PKTXIdentifier=^TKTXIdentifier;
-     TKTXIdentifier=array[0..11] of TVkUInt8;
+     TKTXIdentifier=array[0..11] of TUInt8;
      PKTXHeader=^TKTXHeader;
      TKTXHeader=packed record
       Identifier:TKTXIdentifier;
-      Endianness:TVkUInt32;
-      GLType:TVkUInt32;
-      GLTypeSize:TVkUInt32;
-      GLFormat:TVkUInt32;
-      GLInternalFormat:TVkUInt32;
-      GLBaseInternalFormat:TVkUInt32;
-      PixelWidth:TVkUInt32;
-      PixelHeight:TVkUInt32;
-      PixelDepth:TVkUInt32;
-      NumberOfArrayElements:TVkUInt32;
-      NumberOfFaces:TVkUInt32;
-      NumberOfMipMapLevels:TVkUInt32;
-      BytesOfKeyValueData:TVkUInt32;
+      Endianness:TUInt32;
+      GLType:TUInt32;
+      GLTypeSize:TUInt32;
+      GLFormat:TUInt32;
+      GLInternalFormat:TUInt32;
+      GLBaseInternalFormat:TUInt32;
+      PixelWidth:TUInt32;
+      PixelHeight:TUInt32;
+      PixelDepth:TUInt32;
+      NumberOfArrayElements:TUInt32;
+      NumberOfFaces:TUInt32;
+      NumberOfMipMapLevels:TUInt32;
+      BytesOfKeyValueData:TUInt32;
      end;
- function Swap16(x:TVkUInt16):TVkUInt16;
+ function Swap16(x:TUInt16):TUInt16;
  begin
   result:=((x and $ff) shl 8) or ((x and $ff00) shr 8);
  end;
- function Swap32(x:TVkUInt32):TVkUInt32;
+ function Swap32(x:TUInt32):TUInt32;
  begin
   result:=(Swap16(x and $ffff) shl 16) or Swap16((x and $ffff0000) shr 16);
  end;
 var KTXHeader:TKTXHeader;
     MustSwap:boolean;
-    NumberOfArrayElements:TVkUInt32;
-    NumberOfFaces:TVkUInt32;
-    NumberOfMipMapLevels:TVkUInt32;
-    Data:TVkPointer;
+    NumberOfArrayElements:TUInt32;
+    NumberOfFaces:TUInt32;
+    NumberOfMipMapLevels:TUInt32;
+    Data:TPointer;
     DataSize:TVkSizeInt;
-    NewPosition:TVkInt64;
+    NewPosition:TInt64;
 begin
 
  if aStream.Read(KTXHeader,SizeOf(TKTXHeader))<>SizeOf(TKTXHeader) then begin
@@ -26572,52 +26572,52 @@ const DDS_MAGIC=$20534444;
       DXGI_FORMAT_B4G4R4A4_UNORM=115;
 type PDDSPixelFormat=^TDDSPixelFormat;
      TDDSPixelFormat=packed record
-      dwSize:TVkUInt32;
-      dwFlags:TVkUInt32;
-      dwFourCC:TVkUInt32;
-      dwRGBBitCount:TVkUInt32;
-      dwRBitMask:TVkUInt32;
-      dwGBitMask:TVkUInt32;
-      dwBBitMask:TVkUInt32;
-      dwABitMask:TVkUInt32;
+      dwSize:TUInt32;
+      dwFlags:TUInt32;
+      dwFourCC:TUInt32;
+      dwRGBBitCount:TUInt32;
+      dwRBitMask:TUInt32;
+      dwGBitMask:TUInt32;
+      dwBBitMask:TUInt32;
+      dwABitMask:TUInt32;
      end;
      PDDSCaps=^TDDSCaps;
      TDDSCaps=packed record
-      dwCaps1:TVkUInt32;
-      dwCaps2:TVkUInt32;
-      dwDDSX:TVkUInt32;
-      dwReserved:TVkUInt32;
+      dwCaps1:TUInt32;
+      dwCaps2:TUInt32;
+      dwDDSX:TUInt32;
+      dwReserved:TUInt32;
      end;
      PDDSHeader=^TDDSHeader;
      TDDSHeader=packed record
-      dwMagic:TVkUInt32;
-      dwSize:TVkUInt32;
-      dwFlags:TVkUInt32;
-      dwHeight:TVkUInt32;
-      dwWidth:TVkUInt32;
-      dwPitchOrLinearSize:TVkUInt32;
-      dwDepth:TVkUInt32;
-      dwMipMapCount:TVkUInt32;
-      dwReserved:array[0..10] of TVkUInt32;
+      dwMagic:TUInt32;
+      dwSize:TUInt32;
+      dwFlags:TUInt32;
+      dwHeight:TUInt32;
+      dwWidth:TUInt32;
+      dwPitchOrLinearSize:TUInt32;
+      dwDepth:TUInt32;
+      dwMipMapCount:TUInt32;
+      dwReserved:array[0..10] of TUInt32;
       PixelFormat:TDDSPixelFormat;
       Caps:TDDSCaps;
-      dwReserved2:TVkUInt32;
+      dwReserved2:TUInt32;
      end;
      PDDSHeaderDX10=^TDDSHeaderDX10;
      TDDSHeaderDX10=packed record
-      dxgiFormat:TVkUInt32;
-      ResourceDimension:TVkUInt32;
-      MiscFlag:TVkUInt32;
-      ArraySize:TVkUInt32;
-      Reserved:TVkUInt32;
+      dxgiFormat:TUInt32;
+      ResourceDimension:TUInt32;
+      MiscFlag:TUInt32;
+      ArraySize:TUInt32;
+      Reserved:TUInt32;
      end;
 var Header:TDDSHeader;
     HeaderDX10:TDDSHeaderDX10;
-    ImageWidth,ImageHeight,ImageDepth,ImageMipMaps,ImageFaces,ImageArrayElements:TVkUInt32;
+    ImageWidth,ImageHeight,ImageDepth,ImageMipMaps,ImageFaces,ImageArrayElements:TUInt32;
     ImageFormat:TVkFormat;
     IsVolume:boolean;
     DataSize:TVkSizeInt;
-    Data:TVkPointer;
+    Data:TPointer;
 begin
  if aStream.Read(Header,SizeOf(TDDSHeader))<>SizeOf(TDDSHeader) then begin
   raise EVulkanTextureException.Create('Invalid DDS stream');
@@ -27221,8 +27221,8 @@ const RGBE_DATA_RED=0;
       RGBE_DATA_GREEN=1;
       RGBE_DATA_BLUE=2;
       RGBE_DATA_SIZE=3;
- procedure rgbe2float(const r,g,b,e:TVkUInt8;out red,green,blue,alpha:TVkFloat);
- var f:TVkFloat;
+ procedure rgbe2float(const r,g,b,e:TUInt8;out red,green,blue,alpha:TFloat);
+ var f:TFloat;
  begin
   if e<>0 then begin
    f:=ldexp(1.0,e-(128+8));
@@ -27238,17 +27238,17 @@ const RGBE_DATA_RED=0;
    alpha:=0.0;
   end;
  end;
- function LoadHDRImage(var ImageData:TVkPointer;var ImageWidth,ImageHeight:TVkInt32):boolean;
+ function LoadHDRImage(var ImageData:TPointer;var ImageWidth,ImageHeight:TInt32):boolean;
  label NonRLE,DoFail;
- var i,j,k,CountPixels,y,x:TVkInt32;
+ var i,j,k,CountPixels,y,x:TInt32;
      programtype,line:shortstring;
-     gamma,exposure,r,g,b,a:TVkFloat;
-     scanlinebuffer:array of array[0..3] of TVkUInt8;
+     gamma,exposure,r,g,b,a:TFloat;
+     scanlinebuffer:array of array[0..3] of TUInt8;
      c:TVulkanRawByteChar;
      OK:longbool;
      buf:array[0..3] of TVulkanRawByteChar;
-     rgbe:array[0..3] of TVkUInt8;
-     Len,Val:TVkUInt8;
+     rgbe:array[0..3] of TUInt8;
+     Len,Val:TUInt8;
      p:PVkFloat;
  begin
   result:=false;
@@ -27274,7 +27274,7 @@ const RGBE_DATA_RED=0;
       programtype[i]:=c;
      end;
     end;
-    programtype[0]:=TVulkanRawByteChar(TVkUInt8(i));
+    programtype[0]:=TVulkanRawByteChar(TUInt8(i));
     while aStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
      if c in [#0,#10,#13] then begin
       break;
@@ -27295,7 +27295,7 @@ const RGBE_DATA_RED=0;
       line[i]:=c;
      end;
     end;
-    line[0]:=TVulkanRawByteChar(TVkUInt8(i));
+    line[0]:=TVulkanRawByteChar(TUInt8(i));
     line:=ShortString(Trim(String(line)));
     if line='FORMAT=32-bit_rle_rgbe' then begin
      OK:=true;
@@ -27333,7 +27333,7 @@ const RGBE_DATA_RED=0;
       line[i]:=c;
      end;
     end;
-    line[0]:=TVulkanRawByteChar(TVkUInt8(i));
+    line[0]:=TVulkanRawByteChar(TUInt8(i));
     line:=ShortString(Trim(String(line)));
     if (pos('-Y',String(line))=1) and (pos('+X',String(line))>2) then begin
      Delete(line,1,2);
@@ -27342,7 +27342,7 @@ const RGBE_DATA_RED=0;
      i:=0;
      while ((i+1)<=length(line)) and (line[i+1] in ['0'..'9']) do begin
       inc(i);
-      ImageWidth:=(ImageWidth*10)+(TVkUInt8(TVulkanRawByteChar(line[i]))-TVkUInt8(TVulkanRawByteChar('0')));
+      ImageWidth:=(ImageWidth*10)+(TUInt8(TVulkanRawByteChar(line[i]))-TUInt8(TVulkanRawByteChar('0')));
      end;
      Delete(line,1,i);
      line:=ShortString(Trim(String(line)));
@@ -27353,7 +27353,7 @@ const RGBE_DATA_RED=0;
       i:=0;
       while ((i+1)<=length(line)) and (line[i+1] in ['0'..'9']) do begin
        inc(i);
-       ImageHeight:=(ImageHeight*10)+(TVkUInt8(TVulkanRawByteChar(line[i]))-TVkUInt8(TVulkanRawByteChar('0')));
+       ImageHeight:=(ImageHeight*10)+(TUInt8(TVulkanRawByteChar(line[i]))-TUInt8(TVulkanRawByteChar('0')));
       end;
       OK:=true;
      end;
@@ -27365,11 +27365,11 @@ const RGBE_DATA_RED=0;
    end;
    begin
     CountPixels:=ImageWidth*ImageHeight;
-    GetMem(ImageData,CountPixels*(SizeOf(TVkFloat)*4));
+    GetMem(ImageData,CountPixels*(SizeOf(TFloat)*4));
     p:=ImageData;
     if (ImageWidth<8) or (ImageWidth>$7fff) then begin
      NonRLE:
-     while (CountPixels>0) and (aStream.Read(rgbe,SizeOf(TVkUInt8)*4)=(SizeOf(TVkUInt8)*4)) do begin
+     while (CountPixels>0) and (aStream.Read(rgbe,SizeOf(TUInt8)*4)=(SizeOf(TUInt8)*4)) do begin
       dec(CountPixels);
       rgbe2float(rgbe[0],rgbe[1],rgbe[2],rgbe[3],r,g,b,a);
       p^:=r;
@@ -27385,12 +27385,12 @@ const RGBE_DATA_RED=0;
      y:=ImageHeight;
      while (CountPixels>0) and (y>0) do begin
       dec(y);
-      if aStream.Read(rgbe,SizeOf(TVkUInt8)*4)=(SizeOf(TVkUInt8)*4) then begin
+      if aStream.Read(rgbe,SizeOf(TUInt8)*4)=(SizeOf(TUInt8)*4) then begin
        if (rgbe[0]<>2) or (rgbe[1]<>2) or ((rgbe[2] and $80)<>0) then begin
-        aStream.Seek(-(SizeOf(TVkUInt8)*4),soCurrent);
+        aStream.Seek(-(SizeOf(TUInt8)*4),soCurrent);
         goto NonRLE;
        end else begin
-        if TVkInt32((TVkInt32(rgbe[2]) shl 8) or TVkInt32(rgbe[3]))<>ImageWidth then begin
+        if TInt32((TInt32(rgbe[2]) shl 8) or TInt32(rgbe[3]))<>ImageWidth then begin
          goto DoFail;
         end;
         if length(scanlinebuffer)<>ImageWidth then begin
@@ -27399,13 +27399,13 @@ const RGBE_DATA_RED=0;
         for i:=0 to 3 do begin
          x:=0;
          while x<ImageWidth do begin
-          if aStream.Read(Len,SizeOf(TVkUInt8))=SizeOf(TVkUInt8) then begin
+          if aStream.Read(Len,SizeOf(TUInt8))=SizeOf(TUInt8) then begin
            if Len>128 then begin
             k:=Len-128;
             if (x+k)>ImageWidth then begin
              goto DoFail;
             end;
-            if aStream.Read(Val,SizeOf(TVkUInt8))=SizeOf(TVkUInt8) then begin
+            if aStream.Read(Val,SizeOf(TUInt8))=SizeOf(TUInt8) then begin
              for j:=1 to k do begin
               scanlinebuffer[x,i]:=Val;
               inc(x);
@@ -27419,7 +27419,7 @@ const RGBE_DATA_RED=0;
              goto DoFail;
             end;
             for j:=1 to k do begin
-             if aStream.Read(scanlinebuffer[x,i],SizeOf(TVkUInt8))<>SizeOf(TVkUInt8) then begin
+             if aStream.Read(scanlinebuffer[x,i],SizeOf(TUInt8))<>SizeOf(TUInt8) then begin
               goto DoFail;
              end;
              inc(x);
@@ -27472,8 +27472,8 @@ const RGBE_DATA_RED=0;
    SetLength(scanlinebuffer,0);
   end;
  end;
-var ImageData:TVkPointer;
-    ImageWidth,ImageHeight:TVkInt32;
+var ImageData:TPointer;
+    ImageWidth,ImageHeight:TInt32;
 begin
  ImageData:=nil;
  ImageWidth:=0;
@@ -27497,7 +27497,7 @@ begin
                     MipMapLevels[aMipMaps],
                     [vtufTransferDst,vtufSampled],
                     ImageData,
-                    ImageWidth*ImageHeight*SizeOf(TVkFloat)*4,
+                    ImageWidth*ImageHeight*SizeOf(TFloat)*4,
                     false,
                     false,
                     1,
@@ -27521,8 +27521,8 @@ constructor TVulkanTexture.CreateFromTGA(const aDevice:TVulkanDevice;
                                          const aTransferFence:TVulkanFence;
                                          const aStream:TStream;
                                          const aMipMaps:boolean);
-var Data,ImageData:TVkPointer;
-    DataSize,ImageWidth,ImageHeight:TVkInt32;
+var Data,ImageData:TPointer;
+    DataSize,ImageWidth,ImageHeight:TInt32;
 begin
  DataSize:=aStream.Size;
  GetMem(Data,DataSize);
@@ -27552,7 +27552,7 @@ begin
                      MipMapLevels[aMipMaps],
                      [vtufTransferDst,vtufSampled],
                      ImageData,
-                     ImageWidth*ImageHeight*SizeOf(TVkUInt8)*4,
+                     ImageWidth*ImageHeight*SizeOf(TUInt8)*4,
                      false,
                      false,
                      1,
@@ -27579,8 +27579,8 @@ constructor TVulkanTexture.CreateFromPNG(const aDevice:TVulkanDevice;
                                          const aTransferFence:TVulkanFence;
                                          const aStream:TStream;
                                          const aMipMaps:boolean);
-var Data,ImageData:TVkPointer;
-    DataSize,ImageWidth,ImageHeight,VulkanBytesPerPixel:TVkInt32;
+var Data,ImageData:TPointer;
+    DataSize,ImageWidth,ImageHeight,VulkanBytesPerPixel:TInt32;
     PNGPixelFormat:TPNGPixelFormat;
     VulkanPixelFormat:TVkFormat;
 begin
@@ -27655,8 +27655,8 @@ constructor TVulkanTexture.CreateFromJPEG(const aDevice:TVulkanDevice;
                                           const aTransferFence:TVulkanFence;
                                           const aStream:TStream;
                                           const aMipMaps:boolean);
-var Data,ImageData:TVkPointer;
-    DataSize,ImageWidth,ImageHeight:TVkInt32;
+var Data,ImageData:TPointer;
+    DataSize,ImageWidth,ImageHeight:TInt32;
 begin
  DataSize:=aStream.Size;
  GetMem(Data,DataSize);
@@ -27686,7 +27686,7 @@ begin
                      MipMapLevels[aMipMaps],
                      [vtufTransferDst,vtufSampled],
                      ImageData,
-                     ImageWidth*ImageHeight*SizeOf(TVkUInt8)*4,
+                     ImageWidth*ImageHeight*SizeOf(TUInt8)*4,
                      false,
                      false,
                      1,
@@ -27713,8 +27713,8 @@ constructor TVulkanTexture.CreateFromBMP(const aDevice:TVulkanDevice;
                                          const aTransferFence:TVulkanFence;
                                          const aStream:TStream;
                                          const aMipMaps:boolean);
-var Data,ImageData:TVkPointer;
-    DataSize,ImageWidth,ImageHeight:TVkInt32;
+var Data,ImageData:TPointer;
+    DataSize,ImageWidth,ImageHeight:TInt32;
 begin
  DataSize:=aStream.Size;
  GetMem(Data,DataSize);
@@ -27744,7 +27744,7 @@ begin
                      MipMapLevels[aMipMaps],
                      [vtufTransferDst,vtufSampled],
                      ImageData,
-                     ImageWidth*ImageHeight*SizeOf(TVkUInt8)*4,
+                     ImageWidth*ImageHeight*SizeOf(TUInt8)*4,
                      false,
                      false,
                      1,
@@ -27775,17 +27775,17 @@ const DDS_MAGIC=$20534444;
       DDSD_CAPS=$00000001;
       DDSD_PIXELFORMAT=$00001000;
 type PFirstBytes=^TFirstBytes;
-     TFirstBytes=array[0..63] of TVkUInt8;
+     TFirstBytes=array[0..63] of TUInt8;
      PDDSHeader=^TDDSHeader;
      TDDSHeader=packed record
-      dwMagic:TVkUInt32;
-      dwSize:TVkUInt32;
-      dwFlags:TVkUInt32;
-      dwHeight:TVkUInt32;
-      dwWidth:TVkUInt32;
-      dwPitchOrLinearSize:TVkUInt32;
-      dwDepth:TVkUInt32;
-      dwMipMapCount:TVkUInt32;
+      dwMagic:TUInt32;
+      dwSize:TUInt32;
+      dwFlags:TUInt32;
+      dwHeight:TUInt32;
+      dwWidth:TUInt32;
+      dwPitchOrLinearSize:TUInt32;
+      dwDepth:TUInt32;
+      dwMipMapCount:TUInt32;
      end;
 var FirstBytes:TFirstBytes;
 begin
@@ -27812,7 +27812,7 @@ begin
                 aTransferFence,
                 aStream,
                 aMipMaps);
- end else if ((PDDSHeader(TVkPointer(@FirstBytes))^.dwMagic=DDS_MAGIC) and (PDDSHeader(TVkPointer(@FirstBytes))^.dwSize=124) and not (((PDDSHeader(TVkPointer(@FirstBytes))^.dwFlags and DDSD_PIXELFORMAT)=0) or ((PDDSHeader(TVkPointer(@FirstBytes))^.dwFlags and DDSD_CAPS)=0))) then begin
+ end else if ((PDDSHeader(TPointer(@FirstBytes))^.dwMagic=DDS_MAGIC) and (PDDSHeader(TPointer(@FirstBytes))^.dwSize=124) and not (((PDDSHeader(TPointer(@FirstBytes))^.dwFlags and DDSD_PIXELFORMAT)=0) or ((PDDSHeader(TPointer(@FirstBytes))^.dwFlags and DDSD_CAPS)=0))) then begin
   CreateFromDDS(aDevice,
                 aGraphicsQueue,
                 aGraphicsCommandBuffer,
@@ -27821,7 +27821,7 @@ begin
                 aTransferCommandBuffer,
                 aTransferFence,
                 aStream);
- end else if (FirstBytes[0]=TVkUInt8(AnsiChar('B'))) and (FirstBytes[1]=TVkUInt8(AnsiChar('M'))) then begin
+ end else if (FirstBytes[0]=TUInt8(AnsiChar('B'))) and (FirstBytes[1]=TUInt8(AnsiChar('M'))) then begin
   CreateFromBMP(aDevice,
                 aGraphicsQueue,
                 aGraphicsCommandBuffer,
@@ -27831,7 +27831,7 @@ begin
                 aTransferFence,
                 aStream,
                 aMipMaps);
- end else if (FirstBytes[0]=TVkUInt8(AnsiChar('#'))) and (FirstBytes[1]=TVkUInt8(AnsiChar('?'))) then begin
+ end else if (FirstBytes[0]=TUInt8(AnsiChar('#'))) and (FirstBytes[1]=TUInt8(AnsiChar('?'))) then begin
   CreateFromHDR(aDevice,
                 aGraphicsQueue,
                 aGraphicsCommandBuffer,
@@ -27872,11 +27872,11 @@ constructor TVulkanTexture.CreateDefault(const aDevice:TVulkanDevice;
                                          const aTransferCommandBuffer:TVulkanCommandBuffer;
                                          const aTransferFence:TVulkanFence;
                                          const aDefaultType:TVulkanTextureDefaultType;
-                                         const aWidth:TVkInt32;
-                                         const aHeight:TVkInt32;
-                                         const aDepth:TVkInt32;
-                                         const aCountArrayLayers:TVkInt32;
-                                         const aCountFaces:TVkInt32;
+                                         const aWidth:TInt32;
+                                         const aHeight:TInt32;
+                                         const aDepth:TInt32;
+                                         const aCountArrayLayers:TInt32;
+                                         const aCountFaces:TInt32;
                                          const aMipmaps:boolean;
                                          const aBorder:boolean);
 const TexelSize=4;
@@ -27884,12 +27884,12 @@ const TexelSize=4;
       BlockSize=1 shl BlockShift;
       BlockMask=BlockSize-1;
       Radius=10;
-      Colors:array[0..3,0..3] of TVkUInt8=
+      Colors:array[0..3,0..3] of TUInt8=
        (($ff,$00,$00,$ff),
         ($00,$ff,$00,$ff),
         ($00,$00,$ff,$ff),
         ($ff,$ff,$00,$ff));
-var LayerSize,DataSize,LayerIndex,x,y,Offset,lx,ly,rx,ry,cx,cy,m,Index,dx,dy,ds,Scale,CountMipMaps:TVkInt32;
+var LayerSize,DataSize,LayerIndex,x,y,Offset,lx,ly,rx,ry,cx,cy,m,Index,dx,dy,ds,Scale,CountMipMaps:TInt32;
     Data:TVkUInt8Array;
 begin
 
@@ -28181,8 +28181,8 @@ begin
  end;
 end;
 
-function InsertTextureRectNode(const Node:PVulkanSpriteAtlasArrayTextureLayerRectNode;const Width,Height,Area:TVkInt32):PVulkanSpriteAtlasArrayTextureLayerRectNode;
-var RemainWidth,RemainHeight:TVkInt32;
+function InsertTextureRectNode(const Node:PVulkanSpriteAtlasArrayTextureLayerRectNode;const Width,Height,Area:TInt32):PVulkanSpriteAtlasArrayTextureLayerRectNode;
+var RemainWidth,RemainHeight:TInt32;
 begin
  result:=nil;
  if (Width<=Node^.Width) and (Height<=Node^.Height) and (Area<=Node^.FreeArea) then begin
@@ -28243,7 +28243,7 @@ begin
  end;
 end;
 
-constructor TVulkanSpriteTexture.Create(const aPixels:PVulkanSpriteTextureTexels;const aWidth,aHeight:TVkInt32);
+constructor TVulkanSpriteTexture.Create(const aPixels:PVulkanSpriteTextureTexels;const aWidth,aHeight:TInt32);
 begin
  inherited Create;
 
@@ -28303,7 +28303,7 @@ begin
                                             MipMapLevels[aMipMaps],
                                             [vtufTransferDst,vtufSampled],
                                             fPixels,
-                                            fWidth*fHeight*SizeOf(TVkUInt8)*4,
+                                            fWidth*fHeight*SizeOf(TUInt8)*4,
                                             false,
                                             false,
                                             1,
@@ -28366,7 +28366,7 @@ begin
 end;
 
 destructor TVulkanSpriteAtlasArrayTexture.Destroy;
-var LayerIndex:TVkInt32;
+var LayerIndex:TInt32;
 begin
  Unload;
  FreeAndNil(fTexture);
@@ -28381,8 +28381,8 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanSpriteAtlasArrayTexture.Resize(const aWidth,aHeight,aLayers:TVkInt32);
-var y,LayerIndex,OldWidth,OldHeight,OldLayers:TVkInt32;
+procedure TVulkanSpriteAtlasArrayTexture.Resize(const aWidth,aHeight,aLayers:TInt32);
+var y,LayerIndex,OldWidth,OldHeight,OldLayers:TInt32;
     OldTexels:TVulkanSpriteAtlasArrayTextureTexels;
 begin
  if (fWidth<>aWidth) or
@@ -28397,13 +28397,13 @@ begin
    fWidth:=aWidth;
    fHeight:=aHeight;
    fLayers:=aLayers;
-   fCountTexels:=TVkInt64(fWidth)*TVkInt64(fHeight)*TVkInt64(fLayers);
+   fCountTexels:=TInt64(fWidth)*TInt64(fHeight)*TInt64(fLayers);
    if fCountTexels>0 then begin
     SetLength(fTexels,fCountTexels);
     FillChar(fTexels[0],fCountTexels*SizeOf(TVulkanSpriteTextureTexel),#0);
     for LayerIndex:=0 to Min(fLayers,OldLayers)-1 do begin
      for y:=0 to Min(fHeight,OldHeight)-1 do begin
-      Move(OldTexels[((TVkInt64(LayerIndex)*OldHeight)+y)*OldWidth],fTexels[((TVkInt64(LayerIndex)*fHeight)+y)*fWidth],Min(fWidth,OldWidth)*SizeOf(TVulkanSpriteTextureTexel));
+      Move(OldTexels[((TInt64(LayerIndex)*OldHeight)+y)*OldWidth],fTexels[((TInt64(LayerIndex)*fHeight)+y)*fWidth],Min(fWidth,OldWidth)*SizeOf(TVulkanSpriteTextureTexel));
      end;
     end;
    end;
@@ -28428,22 +28428,22 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteAtlasArrayTexture.CopyIn(const aData;const aSrcWidth,aSrcHeight,aDestX,aDestY,aDestLayer:TVkInt32);
-var dy,sx,dw:TVkInt32;
+procedure TVulkanSpriteAtlasArrayTexture.CopyIn(const aData;const aSrcWidth,aSrcHeight,aDestX,aDestY,aDestLayer:TInt32);
+var dy,sx,dw:TInt32;
     Src,Dst:PVulkanSpriteTextureTexel;
 begin
  sx:=Min(0,-aDestX);
  dw:=Min(Max(aSrcWidth-sx,0),fWidth-aDestX);
  if dw>0 then begin
   for dy:=Min(Max(aDestY,0),fHeight-1) to Min(Max(aDestY+(aSrcHeight-1),0),fHeight-1) do begin
-   Move(PVulkanSpriteTextureTexels(TVkPointer(@aData))^[((dy-aDestY)*aSrcWidth)+sx],fTexels[(((TVkInt64(aDestLayer)*fHeight)+dy)*fWidth)+aDestX],dw*SizeOf(TVulkanSpriteTextureTexel));
+   Move(PVulkanSpriteTextureTexels(TPointer(@aData))^[((dy-aDestY)*aSrcWidth)+sx],fTexels[(((TInt64(aDestLayer)*fHeight)+dy)*fWidth)+aDestX],dw*SizeOf(TVulkanSpriteTextureTexel));
   end;
  end;
 end;
 
-function TVulkanSpriteAtlasArrayTexture.GetTexelPointer(const aX,aY,aLayer:TVkInt32):PVulkanSpriteTextureTexel;
+function TVulkanSpriteAtlasArrayTexture.GetTexelPointer(const aX,aY,aLayer:TInt32):PVulkanSpriteTextureTexel;
 begin
- result:=@fTexels[(((TVkInt64(aLayer)*fHeight)+aY)*fWidth)+aX];
+ result:=@fTexels[(((TInt64(aLayer)*fHeight)+aY)*fWidth)+aX];
 end;
 
 procedure TVulkanSpriteAtlasArrayTexture.Upload(const aDevice:TVulkanDevice;
@@ -28594,8 +28594,8 @@ constructor TVulkanCanvas.Create(const aDevice:TVulkanDevice;
                                       const aTransferFence:TVulkanFence;
                                       const aPipelineCache:TVulkanPipelineCache;
                                       const aRenderPass:TVulkanRenderPass;
-                                      const aCountBuffers:TVkInt32);
-var Index:TVkInt32;
+                                      const aCountBuffers:TInt32);
+var Index:TInt32;
     RenderingModeIndex:TVulkanCanvasRenderingMode;
     BlendingModeIndex:TVulkanCanvasBlendingMode;
     VulkanGraphicsPipeline:TVulkanGraphicsPipeline;
@@ -28727,11 +28727,11 @@ begin
  VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
  VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVulkanCanvasVertex),VK_VERTEX_INPUT_RATE_VERTEX);
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanCanvasVertex(nil)^.Position)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(Pointer(@PVulkanCanvasVertex(nil)^.Color)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanCanvasVertex(nil)^.TextureCoord)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16_SFLOAT,TVkPtrUInt(Pointer(@PVulkanCanvasVertex(nil)^.State)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32A32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanCanvasVertex(nil)^.ClipRect)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TPtrUInt(TPointer(@PVulkanCanvasVertex(nil)^.Position)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TPtrUInt(TPointer(@PVulkanCanvasVertex(nil)^.Color)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TPtrUInt(TPointer(@PVulkanCanvasVertex(nil)^.TextureCoord)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16_SFLOAT,TPtrUInt(TPointer(@PVulkanCanvasVertex(nil)^.State)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32A32_SFLOAT,TPtrUInt(TPointer(@PVulkanCanvasVertex(nil)^.ClipRect)));
 
  VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
  VulkanGraphicsPipeline.ViewPortState.DynamicViewPorts:=true;
@@ -28794,7 +28794,7 @@ begin
 end;
 
 destructor TVulkanCanvas.Destroy;
-var Index,SubIndex:TVkInt32;
+var Index,SubIndex:TInt32;
     RenderingModeIndex:TVulkanCanvasRenderingMode;
     BlendingModeIndex:TVulkanCanvasBlendingMode;
     VulkanCanvasBuffer:PVulkanCanvasBuffer;
@@ -28849,8 +28849,8 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanCanvas.RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:TVkFloat):TVulkanSpritePoint;
-var x,y:TVkFloat;
+function TVulkanCanvas.RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:TFloat):TVulkanSpritePoint;
+var x,y:TFloat;
 begin
  x:=PointToRotate.x-AroundPoint.x;
  y:=PointToRotate.y-AroundPoint.y;
@@ -28891,7 +28891,7 @@ begin
  end;
 end;
 
-procedure TVulkanCanvas.Start(const aBufferIndex:TVkInt32);
+procedure TVulkanCanvas.Start(const aBufferIndex:TInt32);
 begin
 
  fInverseWidth:=1.0/fWidth;
@@ -28945,7 +28945,7 @@ begin
 end;
 
 procedure TVulkanCanvas.Flush;
-var CurrentVulkanBufferIndex,OldCount,NewCount,QueueItemIndex,DescriptorSetIndex:TVkInt32;
+var CurrentVulkanBufferIndex,OldCount,NewCount,QueueItemIndex,DescriptorSetIndex:TInt32;
     QueueItem:PVulkanCanvasQueueItem;
     PointerHashMapEntity:PVulkanPointerHashMapEntity;
     VulkanDescriptorSet:TVulkanDescriptorSet;
@@ -28978,11 +28978,11 @@ begin
 
    inc(fCurrentFillBuffer^.fVertexBufferSizes[CurrentVulkanBufferIndex],fCurrentCountVertices*SizeOf(TVulkanCanvasVertex));
 
-   inc(fCurrentFillBuffer^.fIndexBufferSizes[CurrentVulkanBufferIndex],fCurrentCountIndices*SizeOf(TVkUInt32));
+   inc(fCurrentFillBuffer^.fIndexBufferSizes[CurrentVulkanBufferIndex],fCurrentCountIndices*SizeOf(TUInt32));
 
    PointerHashMapEntity:=fVulkanTextureDescriptorSetHashMap.Get(fLastArrayTexture,false);
    if assigned(PointerHashMapEntity) then begin
-    DescriptorSetIndex:=TVkPtrUInt(PointerHashMapEntity^.Value);
+    DescriptorSetIndex:=TPtrUInt(PointerHashMapEntity^.Value);
    end else begin
     DescriptorSetIndex:=fCountVulkanDescriptorSets;
     inc(fCountVulkanDescriptorSets);
@@ -29002,7 +29002,7 @@ begin
                                             );
     VulkanDescriptorSet.Flush;
     fVulkanDescriptorSets[DescriptorSetIndex]:=VulkanDescriptorSet;
-    fVulkanTextureDescriptorSetHashMap.Add(fLastArrayTexture,TVkPointer(TVkPtrUInt(DescriptorSetIndex)));
+    fVulkanTextureDescriptorSetHashMap.Add(fLastArrayTexture,TPointer(TPtrUInt(DescriptorSetIndex)));
    end;
 
    QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
@@ -29039,7 +29039,7 @@ begin
 end;
 
 procedure TVulkanCanvas.GetNextDestinationVertexBuffer;
-var OldCount,NewCount:TVkInt32;
+var OldCount,NewCount:TInt32;
 begin
 
  inc(fCurrentVulkanBufferIndex);
@@ -29073,9 +29073,9 @@ begin
 
 end;
 
-procedure TVulkanCanvas.FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TVkInt32);
+procedure TVulkanCanvas.FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TInt32);
 const UntilCountVertices=SizeOf(TVulkanCanvasVertexBuffer) div SizeOf(TVulkanCanvasVertex);
-      UntilCountIndices=SizeOf(TVulkanCanvasIndexBuffer) div SizeOf(TVkUInt32);
+      UntilCountIndices=SizeOf(TVulkanCanvasIndexBuffer) div SizeOf(TUInt32);
 begin
  if ((fCurrentVulkanVertexBufferOffset+fCurrentCountVertices+aCountVerticesToCheck)>=UntilCountVertices) or
     ((fCurrentVulkanIndexBufferOffset+fCurrentCountIndices+aCountIndicesToCheck)>=UntilCountIndices) then begin
@@ -29084,7 +29084,7 @@ begin
  end;
 end;
 
-function TVulkanCanvas.ClipCheck(const aX0,aY0,aX1,aY1:TVkFloat):boolean;
+function TVulkanCanvas.ClipCheck(const aX0,aY0,aX1,aY1:TFloat):boolean;
 const Threshold=1e-6;
 begin
  result:=(fUnscaledClipRect.x0<=(aX1+Threshold)) and
@@ -29114,7 +29114,7 @@ begin
  end;
 end;
 
-procedure TVulkanCanvas.SetScissor(const aLeft,aTop,aWidth,aHeight:TVkInt32);
+procedure TVulkanCanvas.SetScissor(const aLeft,aTop,aWidth,aHeight:TInt32);
 var NewScissor:TVkRect2D;
 begin
  NewScissor.offset.x:=aLeft;
@@ -29136,7 +29136,7 @@ begin
  fClipRect.y1:=(((aClipRect.offset.y+(aClipRect.extent.height+0.0))*fInverseHeight)-0.5)*2.0;
 end;
 
-procedure TVulkanCanvas.SetClipRect(const aLeft,aTop,aWidth,aHeight:TVkInt32);
+procedure TVulkanCanvas.SetClipRect(const aLeft,aTop,aWidth,aHeight:TInt32);
 begin
  fUnscaledClipRect.x0:=aLeft;
  fUnscaledClipRect.y0:=aTop;
@@ -29148,8 +29148,8 @@ begin
  fClipRect.y1:=(((aTop+aHeight)*fInverseHeight)-0.5)*2.0;
 end;
 
-procedure TVulkanCanvas.Hook(const aHook:TVulkanCanvasHook;const aData:TVkPointer);
-var QueueItemIndex:TVkInt32;
+procedure TVulkanCanvas.Hook(const aHook:TVulkanCanvasHook;const aData:TPointer);
+var QueueItemIndex:TInt32;
     QueueItem:PVulkanCanvasQueueItem;
 begin
  if assigned(aHook) then begin
@@ -29171,7 +29171,7 @@ end;
 
 procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor);
 const MinA=1.0/1024.0;
-var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TVkFloat;
+var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TFloat;
     TempDest,TempSrc:TVulkanSpriteRect;
     VertexColor:TVulkanSpriteVertexColor;
 begin
@@ -29360,9 +29360,9 @@ begin
  end;
 end;
 
-procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:TVkFloat;const Color:TVulkanSpriteColor);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:TFloat;const Color:TVulkanSpriteColor);
 const MinA=1.0/1024.0;
-var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TVkFloat;
+var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TFloat;
     AroundPoint:TVulkanSpritePoint;
     Points:array[0..3] of TVulkanSpritePoint;
     TempDest,TempSrc:TVulkanSpriteRect;
@@ -29540,7 +29540,7 @@ begin
  end;
 end;
 
-procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const x,y:TVkFloat;const Color:TVulkanSpriteColor);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const x,y:TFloat;const Color:TVulkanSpriteColor);
 var Src,Dest:TVulkanSpriteRect;
 begin
  Src.Left:=0;
@@ -29554,7 +29554,7 @@ begin
  DrawSprite(Sprite,Src,Dest,Color);
 end;
 
-procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const x,y:TVkFloat);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const x,y:TFloat);
 var Color:TVulkanSpriteColor;
 begin
  Color.r:=1;
@@ -29564,7 +29564,7 @@ begin
  DrawSprite(Sprite,x,y,Color);
 end;
 
-procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TVkFloat);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TFloat);
 var Src,Dest:TVulkanSpriteRect;
     Color:TVulkanSpriteColor;
 begin
@@ -29583,8 +29583,8 @@ begin
  DrawSprite(Sprite,Src,Dest,Color);
 end;
 
-procedure TVulkanCanvas.ExecuteUpload(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
-var Index:TVkInt32;
+procedure TVulkanCanvas.ExecuteUpload(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TInt32);
+var Index:TInt32;
     CurrentDrawSpriteBatchBuffer:PVulkanCanvasBuffer;
     VulkanBuffer:TVulkanBuffer;
 begin
@@ -29661,8 +29661,8 @@ begin
  end;
 end;
 
-procedure TVulkanCanvas.ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
-var Index,DescriptorSetIndex,StartVertexIndex:TVkInt32;
+procedure TVulkanCanvas.ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TInt32);
+var Index,DescriptorSetIndex,StartVertexIndex:TInt32;
     QueueItem:PVulkanCanvasQueueItem;
     OldQueueItemKind:TVulkanCanvasQueueItemKind;
     CurrentDrawSpriteBatchBuffer:PVulkanCanvasBuffer;
@@ -29731,7 +29731,7 @@ begin
      Offsets[0]:=QueueItem^.StartVertexIndex*SizeOf(TVulkanCanvasVertex);
      aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
 
-     aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,QueueItem^.StartIndexIndex*SizeOf(TVkUInt32),VK_INDEX_TYPE_UINT32);
+     aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,QueueItem^.StartIndexIndex*SizeOf(TUInt32),VK_INDEX_TYPE_UINT32);
      aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
 
      ForceUpdate:=false;
@@ -29775,7 +29775,7 @@ begin
 end;
 
 destructor TVulkanSpriteAtlas.Destroy;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  Unload;
  for Index:=0 to fCountArrayTextures-1 do begin
@@ -29789,7 +29789,7 @@ begin
 end;
 
 procedure TVulkanSpriteAtlas.ClearAll;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  for Index:=0 to fList.Count-1 do begin
   TVulkanSprite(Items[Index]).Free;
@@ -29805,7 +29805,7 @@ procedure TVulkanSpriteAtlas.Upload(const aGraphicsQueue:TVulkanQueue;
                                     const aTransferQueue:TVulkanQueue;
                                     const aTransferCommandBuffer:TVulkanCommandBuffer;
                                     const aTransferFence:TVulkanFence);
-var Index:TVkInt32;
+var Index:TInt32;
     ArrayTexture:TVulkanSpriteAtlasArrayTexture;
 begin
  if not fIsUploaded then begin
@@ -29828,7 +29828,7 @@ begin
 end;
 
 procedure TVulkanSpriteAtlas.Unload;
-var Index:TVkInt32;
+var Index:TInt32;
     ArrayTexture:TVulkanSpriteAtlasArrayTexture;
 begin
  if fIsUploaded then begin
@@ -29847,19 +29847,19 @@ begin
  result:=fIsUploaded;
 end;
 
-function TVulkanSpriteAtlas.GetCount:TVkInt32;
+function TVulkanSpriteAtlas.GetCount:TInt32;
 begin
  result:=fList.Count;
 end;
 
-function TVulkanSpriteAtlas.GetItem(Index:TVkInt32):TVulkanSprite;
+function TVulkanSpriteAtlas.GetItem(Index:TInt32):TVulkanSprite;
 begin
  result:=TVulkanSprite(fList.Items[Index]);
 end;
 
-procedure TVulkanSpriteAtlas.SetItem(Index:TVkInt32;Item:TVulkanSprite);
+procedure TVulkanSpriteAtlas.SetItem(Index:TInt32;Item:TVulkanSprite);
 begin
- fList.Items[Index]:=TVkPointer(Item);
+ fList.Items[Index]:=TPointer(Item);
 end;
 
 function TVulkanSpriteAtlas.GetSprite(const Name:TVulkanRawByteString):TVulkanSprite;
@@ -29873,26 +29873,26 @@ begin
  fList.Add(Sprite);
 end;
 
-function TVulkanSpriteAtlas.LoadImage(const aDataPointer:TVkPointer;
+function TVulkanSpriteAtlas.LoadImage(const aDataPointer:TPointer;
                                       const aDataSize:TVkSizeInt;
-                                      var aImageData:TVkPointer;
-                                      var aImageWidth,aImageHeight:TVkInt32):boolean;
+                                      var aImageData:TPointer;
+                                      var aImageWidth,aImageHeight:TInt32):boolean;
 type PFirstBytes=^TFirstBytes;
-     TFirstBytes=array[0..63] of TVkUInt8;
+     TFirstBytes=array[0..63] of TUInt8;
      PDDSHeader=^TDDSHeader;
      TDDSHeader=packed record
-      dwMagic:TVkUInt32;
-      dwSize:TVkUInt32;
-      dwFlags:TVkUInt32;
-      dwHeight:TVkUInt32;
-      dwWidth:TVkUInt32;
-      dwPitchOrLinearSize:TVkUInt32;
-      dwDepth:TVkUInt32;
-      dwMipMapCount:TVkUInt32;
+      dwMagic:TUInt32;
+      dwSize:TUInt32;
+      dwFlags:TUInt32;
+      dwHeight:TUInt32;
+      dwWidth:TUInt32;
+      dwPitchOrLinearSize:TUInt32;
+      dwDepth:TUInt32;
+      dwMipMapCount:TUInt32;
      end;
-var Index:TVkInt32;
-    p8:PVkUInt8;
-    p16:PVkUInt16;
+var Index:TInt32;
+    p8:PUInt8;
+    p16:PUInt16;
     PNGPixelFormat:TPNGPixelFormat;
 begin
  result:=false;
@@ -29911,7 +29911,7 @@ begin
     end;
    end;
   end;
- end else if (aDataSize>2) and (PFirstBytes(aDataPointer)^[0]=TVkUInt8(AnsiChar('B'))) and (PFirstBytes(aDataPointer)^[1]=TVkUInt8(AnsiChar('M'))) then begin
+ end else if (aDataSize>2) and (PFirstBytes(aDataPointer)^[0]=TUInt8(AnsiChar('B'))) and (PFirstBytes(aDataPointer)^[1]=TUInt8(AnsiChar('M'))) then begin
   result:=LoadBMPImage(aDataPointer,aDataSize,aImageData,aImageWidth,aImageHeight,false);
  end else if (aDataSize>2) and (((PFirstBytes(aDataPointer)^[0] xor $ff) or (PFirstBytes(aDataPointer)^[1] xor $d8))=0) then begin
   result:=LoadJPEGImage(aDataPointer,aDataSize,aImageData,aImageWidth,aImageHeight,false);
@@ -29923,14 +29923,14 @@ end;
 function TVulkanSpriteAtlas.LoadXML(const aTextureStream:TStream;const aStream:TStream;const aAutomaticTrim:boolean=true):boolean;
 var XML:TVulkanXML;
     MemoryStream:TMemoryStream;
-    i,j:TVkInt32;
+    i,j:TInt32;
     XMLItem,XMLChildrenItem:TVulkanXMLItem;
     XMLTag,XMLChildrenTag:TVulkanXMLTag;
     SpriteName:TVulkanRawByteString;
     Sprite:TVulkanSprite;
     SpriteAtlasArrayTexture:TVulkanSpriteAtlasArrayTexture;
-    ImageData:TVkPointer;
-    ImageWidth,ImageHeight:TVkInt32;
+    ImageData:TPointer;
+    ImageWidth,ImageHeight:TInt32;
 begin
  result:=false;
  if assigned(aTextureStream) and assigned(aStream) then begin
@@ -30019,17 +30019,16 @@ begin
  end;
 end;
 
-function TVulkanSpriteAtlas.LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TVkPointer;ImageWidth,ImageHeight:TVkInt32;const aAutomaticTrim:boolean=true):TVulkanSprite;
-type PVkUInt32=^TVkUInt32;
-var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer:TVkInt32;
+function TVulkanSpriteAtlas.LoadRawSprite(const Name:TVulkanRawByteString;ImageData:TPointer;ImageWidth,ImageHeight:TInt32;const aAutomaticTrim:boolean=true):TVulkanSprite;
+var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer:TInt32;
     ArrayTexture:TVulkanSpriteAtlasArrayTexture;
     Node:PVulkanSpriteAtlasArrayTextureLayerRectNode;
     Sprite:TVulkanSprite;
-    sp,dp:PVkUInt32;
+    sp,dp:PUInt32;
     OK,SpecialSizedArrayTexture:boolean;
-    TrimmedImageData:TVkPointer;
-    TrimmedImageWidth:TVkInt32;
-    TrimmedImageHeight:TVkInt32;
+    TrimmedImageData:TPointer;
+    TrimmedImageWidth:TInt32;
+    TrimmedImageHeight:TInt32;
 begin
 
  result:=nil;
@@ -30131,7 +30130,7 @@ begin
     if (x0<x1) and (y0<y1) and not ((x0=0) and (y0=0) and (x1=ImageWidth) and (y1=ImageHeight)) then begin
      TrimmedImageWidth:=x1-x0;
      TrimmedImageHeight:=y1-y0;
-     GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TVkUInt32));
+     GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TUInt32));
      dp:=TrimmedImageData;
      for y:=y0 to y1-1 do begin
       sp:=ImageData;
@@ -30145,8 +30144,8 @@ begin
     end else begin
      TrimmedImageWidth:=ImageWidth;
      TrimmedImageHeight:=ImageHeight;
-     GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TVkUInt32));
-     Move(ImageData^,TrimmedImageData^,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TVkUInt32));
+     GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TUInt32));
+     Move(ImageData^,TrimmedImageData^,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TUInt32));
      x0:=0;
      y0:=0;
     end;
@@ -30237,8 +30236,8 @@ begin
       for y:=0 to TrimmedImageHeight-1 do begin
        sp:=TrimmedImageData;
        inc(sp,y*TrimmedImageWidth);
-       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+y,Layer));
-       Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
+       dp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+y,Layer));
+       Move(sp^,dp^,TrimmedImageWidth*SizeOf(TUInt32));
       end;
      end else begin
       Sprite.x:=Node^.x+2;
@@ -30254,36 +30253,36 @@ begin
       for y:=0 to TrimmedImageHeight-1 do begin
        sp:=TrimmedImageData;
        inc(sp,y*TrimmedImageWidth);
-       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+y,Layer));
-       Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
+       dp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+y,Layer));
+       Move(sp^,dp^,TrimmedImageWidth*SizeOf(TUInt32));
       end;
       begin
        begin
         sp:=TrimmedImageData;
-        dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y-1,Layer));
-        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
-        dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y-2,Layer));
-        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
+        dp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y-1,Layer));
+        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TUInt32));
+        dp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y-2,Layer));
+        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TUInt32));
        end;
        begin
         sp:=TrimmedImageData;
         inc(sp,(TrimmedImageHeight-1)*TrimmedImageWidth);
-        dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+TrimmedImageHeight,Layer));
-        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
-        dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+TrimmedImageHeight+1,Layer));
-        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TVkUInt32));
+        dp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+TrimmedImageHeight,Layer));
+        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TUInt32));
+        dp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+TrimmedImageHeight+1,Layer));
+        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TUInt32));
        end;
       end;
       for y:=-1 to TrimmedImageHeight do begin
-       sp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y,Layer));
-       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x-1,Sprite.y,Layer));
+       sp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y,Layer));
+       dp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x-1,Sprite.y,Layer));
        dp^:=sp^;
-       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x-2,Sprite.y,Layer));
+       dp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x-2,Sprite.y,Layer));
        dp^:=sp^;
-       sp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x+(TrimmedImageWidth-1),Sprite.y,Layer));
-       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x+TrimmedImageWidth,Sprite.y,Layer));
+       sp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x+(TrimmedImageWidth-1),Sprite.y,Layer));
+       dp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x+TrimmedImageWidth,Sprite.y,Layer));
        dp^:=sp^;
-       dp:=TVkPointer(ArrayTexture.GetTexelPointer(Sprite.x+TrimmedImageWidth+1,Sprite.y,Layer));
+       dp:=TPointer(ArrayTexture.GetTexelPointer(Sprite.x+TrimmedImageWidth+1,Sprite.y,Layer));
        dp^:=sp^;
       end;
      end;
@@ -30313,8 +30312,8 @@ begin
 end;
 
 function TVulkanSpriteAtlas.LoadSprite(const Name:TVulkanRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TVulkanSprite;
-var InputImageData,ImageData:TVkPointer;
-    InputImageDataSize,ImageWidth,ImageHeight:TVkInt32;
+var InputImageData,ImageData:TPointer;
+    InputImageDataSize,ImageWidth,ImageHeight:TInt32;
 begin
 
  result:=nil;
@@ -30368,11 +30367,10 @@ begin
 
 end;
 
-function TVulkanSpriteAtlas.LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;SpriteWidth:TVkInt32=64;SpriteHeight:TVkInt32=64;const aAutomaticTrim:boolean=true):TVulkanSprites;
-type PVkUInt32=^TVkUInt32;
-var InputImageData,ImageData,SpriteData:TVkPointer;
-    InputImageDataSize,ImageWidth,ImageHeight,Count,x,y,sy,sw,sh:TVkInt32;
-    sp,dp:PVkUInt32;
+function TVulkanSpriteAtlas.LoadSprites(const Name:TVulkanRawByteString;Stream:TStream;SpriteWidth:TInt32=64;SpriteHeight:TInt32=64;const aAutomaticTrim:boolean=true):TVulkanSprites;
+var InputImageData,ImageData,SpriteData:TPointer;
+    InputImageDataSize,ImageWidth,ImageHeight,Count,x,y,sy,sw,sh:TInt32;
+    sp,dp:PUInt32;
 begin
  result:=nil;
 
@@ -30391,7 +30389,7 @@ begin
 
      if LoadImage(InputImageData,InputImageDataSize,ImageData,ImageWidth,ImageHeight) then begin
 
-      GetMem(SpriteData,(SpriteWidth*SpriteHeight)*SizeOf(TVkUInt32));
+      GetMem(SpriteData,(SpriteWidth*SpriteHeight)*SizeOf(TUInt32));
       try
 
        Count:=((ImageWidth+(SpriteWidth-1)) div SpriteWidth)*((ImageHeight+(SpriteHeight-1)) div SpriteHeight);
@@ -30414,7 +30412,7 @@ begin
          x:=0;
          while x<ImageWidth do begin
 
-          FillChar(SpriteData^,(SpriteWidth*SpriteHeight)*SizeOf(TVkUInt32),AnsiChar(#0));
+          FillChar(SpriteData^,(SpriteWidth*SpriteHeight)*SizeOf(TUInt32),AnsiChar(#0));
 
           sw:=ImageWidth-x;
           if sw<0 then begin
@@ -30431,7 +30429,7 @@ begin
            dp:=SpriteData;
 
            for sy:=0 to sh-1 do begin
-            Move(sp^,dp^,sw*SizeOf(TVkUInt32));
+            Move(sp^,dp^,sw*SizeOf(TUInt32));
             inc(sp,ImageWidth);
             inc(dp,SpriteWidth);
            end;
@@ -30545,9 +30543,9 @@ const PixelBits=8;
       opSRP0=$10;      // Set Reference Point 0
       opSRP1=$11;      // Set Reference Point 1
       opSRP2=$12;      // Set Reference Point 2
-      opSZP0=$13;      // Set Zone TVkPointer 0
-      opSZP1=$14;      // Set Zone TVkPointer 1
-      opSZP2=$15;      // Set Zone TVkPointer 2
+      opSZP0=$13;      // Set Zone TPointer 0
+      opSZP1=$14;      // Set Zone TPointer 1
+      opSZP2=$15;      // Set Zone TPointer 2
       opSZPS=$16;      // Set Zone PointerS
       opSLOOP=$17;     // Set LOOP variable
       opRTG=$18;       // Round To Grid
@@ -30587,7 +30585,7 @@ const PixelBits=8;
       opMSIRP0=$3a;    // Move Stack Indirect Relative Point
       opMSIRP1=$3b;    // .
       opALIGNRP=$3c;   // ALIGN to Reference Point
-      opRTDG=$3d;      // Round To TVkDouble Grid
+      opRTDG=$3d;      // Round To TDouble Grid
       opMIAP0=$3e;     // Move Indirect Absolute Point
       opMIAP1=$3f;     // .
       opNPUSHB=$40;    // PUSH N Bytes
@@ -30785,7 +30783,7 @@ const PixelBits=8;
 
       x=255;
 
-      OpcodePopCount:array[0..255] of TVkUInt8=
+      OpcodePopCount:array[0..255] of TUInt8=
        (
      // 0,1,2,3,4,5,6,7,8,9,a,b,c,d,e,f
         0,0,0,0,0,0,2,2,2,2,2,2,0,0,0,5, // 0
@@ -30866,7 +30864,7 @@ const PixelBits=8;
         'MIRP[pmG]','MIRP[pmB]','MIRP[pmW]','MIRP[pm?]','MIRP[pmrG]','MIRP[pmrB]','MIRP[pmrW]','MIRP[pmr?]'
        );
 
-function CompareKerningPairs(const a,b:TVkPointer):TVkInt32;
+function CompareKerningPairs(const a,b:TPointer):TInt32;
 begin
  result:=PVulkanTrueTypeFontKerningPair(a)^.Left-PVulkanTrueTypeFontKerningPair(b)^.Left;
  if result=0 then begin
@@ -30884,39 +30882,39 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanTrueTypeFontRasterizer.GetCanvas:TVkPointer;
+function TVulkanTrueTypeFontRasterizer.GetCanvas:TPointer;
 begin
  result:=nil;
 end;
 
-procedure TVulkanTrueTypeFontRasterizer.SetCanvas(NewCanvas:TVkPointer);
+procedure TVulkanTrueTypeFontRasterizer.SetCanvas(NewCanvas:TPointer);
 begin
 end;
 
-function TVulkanTrueTypeFontRasterizer.GetWidth:TVkInt32;
-begin
- result:=0;
-end;
-
-procedure TVulkanTrueTypeFontRasterizer.SetWidth(NewWidth:TVkInt32);
-begin
-end;
-
-function TVulkanTrueTypeFontRasterizer.GetHeight:TVkInt32;
+function TVulkanTrueTypeFontRasterizer.GetWidth:TInt32;
 begin
  result:=0;
 end;
 
-procedure TVulkanTrueTypeFontRasterizer.SetHeight(NewHeight:TVkInt32);
+procedure TVulkanTrueTypeFontRasterizer.SetWidth(NewWidth:TInt32);
 begin
 end;
 
-function TVulkanTrueTypeFontRasterizer.GetWindingRule:TVkInt32;
+function TVulkanTrueTypeFontRasterizer.GetHeight:TInt32;
 begin
  result:=0;
 end;
 
-procedure TVulkanTrueTypeFontRasterizer.SetWindingRule(NewWindingRule:TVkInt32);
+procedure TVulkanTrueTypeFontRasterizer.SetHeight(NewHeight:TInt32);
+begin
+end;
+
+function TVulkanTrueTypeFontRasterizer.GetWindingRule:TInt32;
+begin
+ result:=0;
+end;
+
+procedure TVulkanTrueTypeFontRasterizer.SetWindingRule(NewWindingRule:TInt32);
 begin
 end;
 
@@ -30928,25 +30926,25 @@ procedure TVulkanTrueTypeFontRasterizer.Reset;
 begin
 end;
 
-procedure TVulkanTrueTypeFontRasterizer.Resize(NewWidth,NewHeight:TVkInt32);
+procedure TVulkanTrueTypeFontRasterizer.Resize(NewWidth,NewHeight:TInt32);
 begin
 end;
 
-procedure TVulkanTrueTypeFontRasterizer.MoveTo(ToX,ToY:TVkInt32);
-begin
- fLastX:=ToX;
- fLastY:=ToY;
-end;
-
-procedure TVulkanTrueTypeFontRasterizer.LineTo(ToX,ToY:TVkInt32);
+procedure TVulkanTrueTypeFontRasterizer.MoveTo(ToX,ToY:TInt32);
 begin
  fLastX:=ToX;
  fLastY:=ToY;
 end;
 
-procedure TVulkanTrueTypeFontRasterizer.QuadraticCurveTo(const ControlX,ControlY,AnchorX,AnchorY:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
- procedure Recursive(const x1,y1,x2,y2,x3,y3,Level:TVkInt32);
- var x12,y12,x23,y23,x123,y123,MiddleX,MiddleY,Delta:TVkInt32;
+procedure TVulkanTrueTypeFontRasterizer.LineTo(ToX,ToY:TInt32);
+begin
+ fLastX:=ToX;
+ fLastY:=ToY;
+end;
+
+procedure TVulkanTrueTypeFontRasterizer.QuadraticCurveTo(const ControlX,ControlY,AnchorX,AnchorY:TInt32;const Tolerance:TInt32=2;const MaxLevel:TInt32=32);
+ procedure Recursive(const x1,y1,x2,y2,x3,y3,Level:TInt32);
+ var x12,y12,x23,y23,x123,y123,MiddleX,MiddleY,Delta:TInt32;
  begin
   x12:=SARLongint(x1+x2,1);
   y12:=SARLongint(y1+y2,1);
@@ -30969,9 +30967,9 @@ begin
  LineTo(AnchorX,AnchorY);
 end;
 
-procedure TVulkanTrueTypeFontRasterizer.CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TVkInt32;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
- procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4,Level:TVkInt32);
- var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,d:TVkInt32;
+procedure TVulkanTrueTypeFontRasterizer.CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TInt32;const Tolerance:TInt32=2;const MaxLevel:TInt32=32);
+ procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4,Level:TInt32);
+ var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,d:TInt32;
  begin
   x12:=SARLongint(x1+x2,1);
   y12:=SARLongint(y1+y2,1);
@@ -31024,7 +31022,7 @@ begin
 end;
 
 destructor TVulkanTrueTypeFontPolygonRasterizer.Destroy;
-var i:TVkInt32;
+var i:TInt32;
 begin
  for i:=0 to length(fCells)-1 do begin
   if assigned(fCells[i]) then begin
@@ -31037,42 +31035,42 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanTrueTypeFontPolygonRasterizer.GetCanvas:TVkPointer;
+function TVulkanTrueTypeFontPolygonRasterizer.GetCanvas:TPointer;
 begin
  result:=fCanvas;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.SetCanvas(NewCanvas:TVkPointer);
+procedure TVulkanTrueTypeFontPolygonRasterizer.SetCanvas(NewCanvas:TPointer);
 begin
  fCanvas:=NewCanvas;
 end;
 
-function TVulkanTrueTypeFontPolygonRasterizer.GetWidth:TVkInt32;
+function TVulkanTrueTypeFontPolygonRasterizer.GetWidth:TInt32;
 begin
  result:=fCurrentWidth;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.SetWidth(NewWidth:TVkInt32);
+procedure TVulkanTrueTypeFontPolygonRasterizer.SetWidth(NewWidth:TInt32);
 begin
  Resize(NewWidth,fCurrentHeight);
 end;
 
-function TVulkanTrueTypeFontPolygonRasterizer.GetHeight:TVkInt32;
+function TVulkanTrueTypeFontPolygonRasterizer.GetHeight:TInt32;
 begin
  result:=fCurrentHeight;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.SetHeight(NewHeight:TVkInt32);
+procedure TVulkanTrueTypeFontPolygonRasterizer.SetHeight(NewHeight:TInt32);
 begin
  Resize(fCurrentWidth,NewHeight);
 end;
 
-function TVulkanTrueTypeFontPolygonRasterizer.GetWindingRule:TVkInt32;
+function TVulkanTrueTypeFontPolygonRasterizer.GetWindingRule:TInt32;
 begin
  result:=fCurrentWindingRule;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.SetWindingRule(NewWindingRule:TVkInt32);
+procedure TVulkanTrueTypeFontPolygonRasterizer.SetWindingRule(NewWindingRule:TInt32);
 begin
  fCurrentWindingRule:=NewWindingRule;
 end;
@@ -31080,12 +31078,12 @@ end;
 procedure TVulkanTrueTypeFontPolygonRasterizer.Clear;
 begin
  if assigned(Canvas) then begin
-  FillChar(Canvas^,fCurrentWidth*fCurrentHeight*SizeOf(TVkUInt8),AnsiChar(#0));
+  FillChar(Canvas^,fCurrentWidth*fCurrentHeight*SizeOf(TUInt8),AnsiChar(#0));
  end;
 end;
 
 procedure TVulkanTrueTypeFontPolygonRasterizer.Reset;
-var i:TVkInt32;
+var i:TInt32;
 begin
  fNumCells:=0;
  fArea:=0;
@@ -31105,8 +31103,8 @@ begin
  fLastY:=0;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.Resize(NewWidth,NewHeight:TVkInt32);
-var i:TVkInt32;
+procedure TVulkanTrueTypeFontPolygonRasterizer.Resize(NewWidth,NewHeight:TInt32);
+var i:TInt32;
 begin
  fCurrentWidth:=NewWidth;
  fCurrentHeight:=NewHeight;
@@ -31145,7 +31143,7 @@ function TVulkanTrueTypeFontPolygonRasterizer.NewCell:PVulkanTrueTypeFontPolygon
   end;
  end;
  function GetCell:PVulkanTrueTypeFontPolygonRasterizerCell;
- var i,OldCount,NewCount:TVkInt32;
+ var i,OldCount,NewCount:TInt32;
  begin
   if fNumCells>=length(fCells) then begin
    OldCount:=length(fCells);
@@ -31222,7 +31220,7 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.SetCell(NewX,NewY:TVkInt32;Force:boolean=false);
+procedure TVulkanTrueTypeFontPolygonRasterizer.SetCell(NewX,NewY:TInt32;Force:boolean=false);
 begin
  if (fCellX<>NewX) or (fCellY<>NewY) or Force then begin
   RecordCell;
@@ -31233,15 +31231,15 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.StartCell(NewX,NewY:TVkInt32);
+procedure TVulkanTrueTypeFontPolygonRasterizer.StartCell(NewX,NewY:TInt32);
 begin
  fArea:=0;
  fCover:=0;
  SetCell(NewX,NewY,true);
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.RenderScanLine(NewY,x1,y1,x2,y2:TVkInt32);
-var ex1,ex2,fx1,fx2,Delta,Temp,First,DeltaX,Increment,Lift,Modulo,Remainder:TVkInt32;
+procedure TVulkanTrueTypeFontPolygonRasterizer.RenderScanLine(NewY,x1,y1,x2,y2:TInt32);
+var ex1,ex2,fx1,fx2,Delta,Temp,First,DeltaX,Increment,Lift,Modulo,Remainder:TInt32;
 begin
  DeltaX:=x2-x1;
  ex1:=SARLongint(x1,PixelBits);
@@ -31317,8 +31315,8 @@ begin
  inc(fCover,Delta);
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.RenderLine(ToX,ToY:TVkInt32);
-var ey1,ey2,fy1,fy2,DeltaX,DeltaY,NewX,NextX,Temp,First,Delta,Remainder,Modulo,Lift,Increment,MinValue,MaxValue,NewCellX,TwoFracX,Area:TVkInt32;
+procedure TVulkanTrueTypeFontPolygonRasterizer.RenderLine(ToX,ToY:TInt32);
+var ey1,ey2,fy1,fy2,DeltaX,DeltaY,NewX,NextX,Temp,First,Delta,Remainder,Modulo,Lift,Increment,MinValue,MaxValue,NewCellX,TwoFracX,Area:TInt32;
 begin
  ey1:=SARLongint(fY,PixelBits);
  ey2:=SARLongint(ToY,PixelBits);
@@ -31440,10 +31438,10 @@ begin
  fY:=ToY;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.ProcessSpan(x,y,Area,Len:TVkInt32);
+procedure TVulkanTrueTypeFontPolygonRasterizer.ProcessSpan(x,y,Area,Len:TInt32);
 const Bits=((PixelBits*2)+1)-8;
       Half=1 shl (Bits-1);
-var Coverage:TVkInt32;
+var Coverage:TInt32;
 begin
  Coverage:=abs(SARLongint(Area+Half,Bits));
  case fCurrentWindingRule of
@@ -31467,7 +31465,7 @@ begin
 end;
 
 procedure TVulkanTrueTypeFontPolygonRasterizer.MakeScanLineSpansAndRenderThese;
-var Cover,x,Area,i:TVkInt32;
+var Cover,x,Area,i:TInt32;
     c:PVulkanTrueTypeFontPolygonRasterizerCell;
 begin
  if fNumCells<>0 then begin
@@ -31491,9 +31489,9 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.SetGamma(AGamma:TVkDouble);
+procedure TVulkanTrueTypeFontPolygonRasterizer.SetGamma(AGamma:TDouble);
 const div255=1/255;
-var i,j:TVkInt32;
+var i,j:TInt32;
 begin
  if fCurrentGamma<>AGamma then begin
   fCurrentGamma:=AGamma;
@@ -31516,7 +31514,7 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.MoveTo(ToX,ToY:TVkInt32);
+procedure TVulkanTrueTypeFontPolygonRasterizer.MoveTo(ToX,ToY:TInt32);
 begin
  Close;
  fNeedToClose:=true;
@@ -31529,7 +31527,7 @@ begin
  fLastY:=ToY;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.LineTo(ToX,ToY:TVkInt32);
+procedure TVulkanTrueTypeFontPolygonRasterizer.LineTo(ToX,ToY:TInt32);
 begin
  RenderLine(ToX,ToY);
  fLastX:=ToX;
@@ -31556,10 +31554,10 @@ begin
  Reset;
 end;
 
-procedure TVulkanTrueTypeFontPolygonRasterizer.RenderSpanCoverage(y,x,Len,Coverage:TVkInt32);
-var p:PVkUInt8;
-    Alpha:TVkUInt32;
-    i:TVkInt32;
+procedure TVulkanTrueTypeFontPolygonRasterizer.RenderSpanCoverage(y,x,Len,Coverage:TInt32);
+var p:PUInt8;
+    Alpha:TUInt32;
+    i:TInt32;
 begin
  if (Coverage<>0) and (((x+Len)>0) and (x<fCurrentWidth)) then begin
   if x<0 then begin
@@ -31590,8 +31588,8 @@ begin
      end; 
      else begin
       for i:=1 to Len shr 2 do begin
-       PVkUInt32(TVkPointer(p))^:=$ffffffff;
-       inc(p,SizeOf(TVkUInt32));
+       PUInt32(TPointer(p))^:=$ffffffff;
+       inc(p,SizeOf(TUInt32));
       end;
       for i:=1 to Len and 3 do begin
        p^:=$ff;
@@ -31602,8 +31600,8 @@ begin
    end else begin
     if Coverage>=128 then begin
      for i:=1 to Len shr 2 do begin
-      PVkUInt32(TVkPointer(p))^:=$ffffffff;
-      inc(p,SizeOf(TVkUInt32));
+      PUInt32(TPointer(p))^:=$ffffffff;
+      inc(p,SizeOf(TUInt32));
      end;
      for i:=1 to Len and 3 do begin
       p^:=$ff;
@@ -31636,7 +31634,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanTrueTypeFontStrokeRasterizer.AddLinePoint(const x,y:TVkInt32);
+procedure TVulkanTrueTypeFontStrokeRasterizer.AddLinePoint(const x,y:TInt32);
 begin
  if fNumLinePoints>=length(fLinePoints) then begin
   SetLength(fLinePoints,(fNumLinePoints+1)*2);
@@ -31647,10 +31645,10 @@ begin
 end;
 
 procedure TVulkanTrueTypeFontStrokeRasterizer.ConvertLineStorkeToPolygon;
-var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
+var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TInt32;
     First,Closed:boolean;
-    lhw:TVkFloat;
- procedure Point(x,y:TVkInt32);
+    lhw:TFloat;
+ procedure Point(x,y:TInt32);
  begin
   if First then begin
    First:=false;
@@ -31673,8 +31671,8 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
    Point(fx,fy);
   end;
  end;
- function CalcIntersection(ax,ay,bx,by,cx,cy,dx,dy:TVkFloat;out x,y:TVkFloat):boolean;
- var r,num,den:TVkFloat;
+ function CalcIntersection(ax,ay,bx,by,cx,cy,dx,dy:TFloat;out x,y:TFloat):boolean;
+ var r,num,den:TFloat;
  begin
   num:=((ay-cy)*(dx-cx))-((ax-cx)*(dy-cy));
   den:=((bx-ax)*(dy-cy))-((by-ay)*(dx-cx));
@@ -31687,8 +31685,8 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
    result:=true;
   end;
  end;
- procedure DoArc(x,y,dx1,dy1,dx2,dy2:TVkInt32);
- var a1,a2,da:TVkFloat;
+ procedure DoArc(x,y,dx1,dy1,dx2,dy2:TInt32);
+ var a1,a2,da:TFloat;
      ccw:boolean;
  begin
   a1:=arctan2(dy1,dx1);
@@ -31720,8 +31718,8 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
   end;
   Point(x+dx2,y+dy2);
  end;
- procedure DoMiter(p1x,p1y,p2x,p2y,p3x,p3y,dx1,dy1,dx2,dy2,CurrentLineJoinMode,miterlimit:TVkInt32);
- var xi,yi,d1,lim,x2,y2:TVkFloat;
+ procedure DoMiter(p1x,p1y,p2x,p2y,p3x,p3y,dx1,dy1,dx2,dy2,CurrentLineJoinMode,miterlimit:TInt32);
+ var xi,yi,d1,lim,x2,y2:TFloat;
      miterlimitexceeded:boolean;
  begin
   xi:=p2x;
@@ -31758,12 +31756,12 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
    end;
   end;
  end;
- procedure Join(i1,i2,i3,di1,di2:TVkInt32);
-  function calc_point_location(x1,y1,x2,y2,x3,y3:TVkInt32):TVkInt32;
+ procedure Join(i1,i2,i3,di1,di2:TInt32);
+  function calc_point_location(x1,y1,x2,y2,x3,y3:TInt32):TInt32;
   begin
    result:=((x3-x2)*(y2-y1))-((y3-y2)*(x2-x1));
   end;
- var x1,y1,x2,y2,x3,y3,dx1,dy1,dx2,dy2,d1,d2,d:TVkInt32;
+ var x1,y1,x2,y2,x3,y3,dx1,dy1,dx2,dy2,d1,d2,d:TInt32;
  begin
   x1:=fLinePoints[i1].x;
   y1:=fLinePoints[i1].y;
@@ -31824,9 +31822,9 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
    end;
   end;
  end;
- procedure Cap(i1,i2,di:TVkInt32);
- var x1,y1,x2,y2,dx1,dy1,dx2,dy2,d:TVkInt32;
-     a1,a2,da:TVkFloat;
+ procedure Cap(i1,i2,di:TInt32);
+ var x1,y1,x2,y2,dx1,dy1,dx2,dy2,d:TInt32;
+     a1,a2,da:TFloat;
  begin
   x1:=fLinePoints[i1].x;
   y1:=fLinePoints[i1].y;
@@ -31868,7 +31866,7 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
    end;
   end;
  end;
- function VectorLength(x,y:TVkInt32):TVkInt32;
+ function VectorLength(x,y:TInt32):TInt32;
  const Inv256=1/256;
  begin
   if (abs(x)+abs(y))<32768 then begin
@@ -31927,11 +31925,11 @@ end;
 
 procedure TVulkanTrueTypeFontStrokeRasterizer.FlushLine;
 var StepCounter,StepIndex,
-    StepEndX,StepEndY:TVkInt32;
+    StepEndX,StepEndY:TInt32;
     NewLine,LastStepBool,StepBool,DoFlushStepLine,DoConvertLineStorkeToPolygon:boolean;
     LinePointsBuf:TVulkanTrueTypeFontStrokeRasterizerPoints;
-    i:TVkInt32;
- procedure AddLinePointEx(x,y:TVkInt32);
+    i:TInt32;
+ procedure AddLinePointEx(x,y:TInt32);
  begin
   if (fNumLinePoints=0) or ((fNumLinePoints>0) and ((fLinePoints[fNumLinePoints-1].x<>x) or (fLinePoints[fNumLinePoints-1].y<>y))) then begin
    AddLinePoint(x,y);
@@ -31949,7 +31947,7 @@ var StepCounter,StepIndex,
    end;
   end;
  end;
- procedure StepPoint(x,y:TVkInt32);
+ procedure StepPoint(x,y:TInt32);
  begin
   if StepCounter=0 then begin
    if StepIndex>length(fLineStrokePattern) then begin
@@ -31989,7 +31987,7 @@ var StepCounter,StepIndex,
   end;
   NewLine:=false;
  end;
- function Scale(ps,pc,pe,vs,ve:TVkInt32):TVkInt32;
+ function Scale(ps,pc,pe,vs,ve:TInt32):TInt32;
  begin
   if ps=pe then begin
    result:=vs;
@@ -32001,8 +31999,8 @@ var StepCounter,StepIndex,
    end;
   end;
  end;
- procedure StepLine(x0,y0,x1,y1:TVkInt32);
- var stepx,stepy{,xs,ys},dx,dy,fraction:TVkInt32;
+ procedure StepLine(x0,y0,x1,y1:TInt32);
+ var stepx,stepy{,xs,ys},dx,dy,fraction:TInt32;
  begin
   NewLine:=false;
   dx:=x1-x0;
@@ -32092,7 +32090,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFontStrokeRasterizer.GetCanvas:TVkPointer;
+function TVulkanTrueTypeFontStrokeRasterizer.GetCanvas:TPointer;
 begin
  if assigned(fRasterizer) then begin
   result:=fRasterizer.GetCanvas;
@@ -32101,14 +32099,14 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontStrokeRasterizer.SetCanvas(NewCanvas:TVkPointer);
+procedure TVulkanTrueTypeFontStrokeRasterizer.SetCanvas(NewCanvas:TPointer);
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.SetCanvas(NewCanvas);
  end;
 end;
 
-function TVulkanTrueTypeFontStrokeRasterizer.GetWidth:TVkInt32;
+function TVulkanTrueTypeFontStrokeRasterizer.GetWidth:TInt32;
 begin
  if assigned(fRasterizer) then begin
   result:=fRasterizer.GetWidth;
@@ -32117,14 +32115,14 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontStrokeRasterizer.SetWidth(NewWidth:TVkInt32);
+procedure TVulkanTrueTypeFontStrokeRasterizer.SetWidth(NewWidth:TInt32);
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.SetWidth(NewWidth);
  end;
 end;
 
-function TVulkanTrueTypeFontStrokeRasterizer.GetHeight:TVkInt32;
+function TVulkanTrueTypeFontStrokeRasterizer.GetHeight:TInt32;
 begin
  if assigned(fRasterizer) then begin
   result:=fRasterizer.GetHeight;
@@ -32133,14 +32131,14 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontStrokeRasterizer.SetHeight(NewHeight:TVkInt32);
+procedure TVulkanTrueTypeFontStrokeRasterizer.SetHeight(NewHeight:TInt32);
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.SetHeight(NewHeight);
  end;
 end;
 
-function TVulkanTrueTypeFontStrokeRasterizer.GetWindingRule:TVkInt32;
+function TVulkanTrueTypeFontStrokeRasterizer.GetWindingRule:TInt32;
 begin
  if assigned(fRasterizer) then begin
   result:=fRasterizer.GetWindingRule;
@@ -32149,7 +32147,7 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontStrokeRasterizer.SetWindingRule(NewWindingRule:TVkInt32);
+procedure TVulkanTrueTypeFontStrokeRasterizer.SetWindingRule(NewWindingRule:TInt32);
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.SetWindingRule(NewWindingRule);
@@ -32170,14 +32168,14 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontStrokeRasterizer.Resize(NewWidth,NewHeight:TVkInt32);
+procedure TVulkanTrueTypeFontStrokeRasterizer.Resize(NewWidth,NewHeight:TInt32);
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.Resize(NewWidth,NewHeight);
  end;
 end;
 
-procedure TVulkanTrueTypeFontStrokeRasterizer.MoveTo(ToX,ToY:TVkInt32);
+procedure TVulkanTrueTypeFontStrokeRasterizer.MoveTo(ToX,ToY:TInt32);
 begin
  FlushLine;
  fStartLineX:=ToX;
@@ -32187,7 +32185,7 @@ begin
  fLastY:=ToY;
 end;
 
-procedure TVulkanTrueTypeFontStrokeRasterizer.LineTo(ToX,ToY:TVkInt32);
+procedure TVulkanTrueTypeFontStrokeRasterizer.LineTo(ToX,ToY:TInt32);
 begin
  AddLinePoint(ToX,ToY);
  fLastX:=ToX;
@@ -32212,22 +32210,22 @@ type TMatrix=array[0..5] of single;
 const MatrixIdentity:TMatrix=(1,0,0,1,0,0);
       MatrixNull:TMatrix=(0,0,0,0,0,0);
 
-function MatrixTranslate(tx,ty:TVkFloat):TMatrix;
+function MatrixTranslate(tx,ty:TFloat):TMatrix;
 begin
  result:=MatrixIdentity;
  result[4]:=tx;
  result[5]:=ty;
 end;
 
-function MatrixScale(sx,sy:TVkFloat):TMatrix;
+function MatrixScale(sx,sy:TFloat):TMatrix;
 begin
  result:=MatrixIdentity;
  result[0]:=sx;
  result[3]:=sy;
 end;
 
-function MatrixRotate(degress:TVkFloat):TMatrix;
-var rad,c,s:TVkFloat;
+function MatrixRotate(degress:TFloat):TMatrix;
+var rad,c,s:TFloat;
 begin
  rad:=degress*deg2rad;
  c:=cos(rad);
@@ -32239,13 +32237,13 @@ begin
  result[3]:=c;
 end;
 
-function MatrixSkewX(x:TVkFloat):TMatrix;
+function MatrixSkewX(x:TFloat):TMatrix;
 begin
  result:=MatrixIdentity;
  result[1]:=tan(x*deg2rad);
 end;
 
-function MatrixSkewY(y:TVkFloat):TMatrix;
+function MatrixSkewY(y:TFloat):TMatrix;
 begin
  result:=MatrixIdentity;
  result[2]:=tan(y*deg2rad);
@@ -32262,7 +32260,7 @@ begin
 end;
 
 function MatrixInverse(const a:TMatrix):TMatrix;
-var det,idet:TVkFloat;
+var det,idet:TFloat;
 begin
  det:=(a[0]*a[3])-(a[1]*a[2]);
  if abs(det)<1E-14 then begin
@@ -32278,25 +32276,25 @@ begin
  end;
 end;
 
-procedure ApplyMatrixToXY(const m:TMatrix;var x,y:TVkInt32); overload;
-var tx:TVkInt32;
+procedure ApplyMatrixToXY(const m:TMatrix;var x,y:TInt32); overload;
+var tx:TInt32;
 begin
  tx:=x;
  x:=trunc((tx*m[0])+(y*m[2])+m[4]);
  y:=trunc((tx*m[1])+(y*m[3])+m[5]);
 end;
 
-procedure ApplyMatrixToXY(const m:TMatrix;var x,y:TVkFloat); overload;
-var tx:TVkFloat;
+procedure ApplyMatrixToXY(const m:TMatrix;var x,y:TFloat); overload;
+var tx:TFloat;
 begin
  tx:=x;
  x:=(tx*m[0])+(y*m[2])+m[4];
  y:=(tx*m[1])+(y*m[3])+m[5];
 end;
 
-function ToDOUBLE(const x:TVkUInt32):TVkDouble;
-var a:TVkInt16;
-    aw:TVkUInt16 absolute a;
+function ToDOUBLE(const x:TUInt32):TDouble;
+var a:TInt16;
+    aw:TUInt16 absolute a;
 begin
  aw:=x shr 16;
  if a>0 then begin
@@ -32306,38 +32304,38 @@ begin
  end;
 end;
 
-function ToWORD(const b1,b2:TVkUInt8):TVkUInt16;
+function ToWORD(const b1,b2:TUInt8):TUInt16;
 begin
  result:=(b1 shl 8) or b2;
 end;
 
-function ToSMALLINT(const b1,b2:TVkUInt8):TVkInt16;
+function ToSMALLINT(const b1,b2:TUInt8):TInt16;
 begin
- result:=TVkInt16(TVkUInt16(ToWORD(b1,b2)));
+ result:=TInt16(TUInt16(ToWORD(b1,b2)));
 end;
 
-function ToLONGWORD(const b1,b2,b3,b4:TVkUInt8):TVkUInt32;
+function ToLONGWORD(const b1,b2,b3,b4:TUInt8):TUInt32;
 begin
  result:=(b1 shl 24) or (b2 shl 16) or (b3 shl 8) or b4;
 end;
 
-function ToLONGINT(const b1,b2,b3,b4:TVkUInt8):TVkInt32;
+function ToLONGINT(const b1,b2,b3,b4:TUInt8):TInt32;
 begin
- result:=TVkInt32(TVkUInt32((b1 shl 24) or (b2 shl 16) or (b3 shl 8) or b4));
+ result:=TInt32(TUInt32((b1 shl 24) or (b2 shl 16) or (b3 shl 8) or b4));
 end;
 
-function ToUINT24(const b1,b2,b3:TVkUInt8):TVkUInt32;
+function ToUINT24(const b1,b2,b3:TUInt8):TUInt32;
 begin
  result:=(b1 shl 16) or (b2 shl 8) or b3;
 end;
 
-function IsBitSet(const ByteValue,Bit:TVkUInt8):boolean;
+function IsBitSet(const ByteValue,Bit:TUInt8):boolean;
 begin
  result:=(ByteValue and (1 shl Bit))<>0;
 end;
 
 constructor TVulkanTrueTypeFontByteCodeInterpreter.Create(AFont:TVulkanTrueTypeFont);
-var i:TVkInt32;
+var i:TInt32;
 begin
  inherited Create;
  fFont:=AFont;
@@ -32423,7 +32421,7 @@ begin
 end;
 
 procedure TVulkanTrueTypeFontByteCodeInterpreter.Reinitialize;
-var i:TVkInt32;              
+var i:TInt32;
 begin
  if (fScale<>fFont.Size) or fForceReinitialize then begin
   fScale:=fFont.Size;
@@ -32477,7 +32475,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFontByteCodeInterpreter.SkipInstructionPayload(const ProgramBytes:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;var PC:TVkInt32):boolean;
+function TVulkanTrueTypeFontByteCodeInterpreter.SkipInstructionPayload(const ProgramBytes:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;var PC:TInt32):boolean;
 begin
  case ProgramBytes.Data^[PC] of
   opNPUSHB:begin
@@ -32514,8 +32512,8 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFontByteCodeInterpreter.MulDiv(a,b,c:TVkInt32;DoRound:boolean):TVkInt32;
-var s:TVkInt32;
+function TVulkanTrueTypeFontByteCodeInterpreter.MulDiv(a,b,c:TInt32;DoRound:boolean):TInt32;
+var s:TInt32;
 begin
  if (a=0) or (b=c) then begin
   result:=a;
@@ -32545,9 +32543,9 @@ begin
      end;
     end else begin
      if DoRound then begin
-      result:=((TVkInt64(a)*b)+SARLongint(c,1)) div c;
+      result:=((TInt64(a)*b)+SARLongint(c,1)) div c;
      end else begin
-      result:=(TVkInt64(a)*b) div c;
+      result:=(TInt64(a)*b) div c;
      end;
     end;
    end;
@@ -32560,8 +32558,8 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontByteCodeInterpreter.MovePoint(var p:TVulkanTrueTypeFontGlyphPoint;Distance:TVkInt32;Touch:boolean);
-var FVdotPV:TVkInt64;
+procedure TVulkanTrueTypeFontByteCodeInterpreter.MovePoint(var p:TVulkanTrueTypeFontGlyphPoint;Distance:TInt32;Touch:boolean);
+var FVdotPV:TInt64;
 begin
  if (fGraphicsState.fv[0]=$4000) and (fGraphicsState.pv[0]=$4000) and (fGraphicsState.fv[1]=0) and (fGraphicsState.pv[1]=0) then begin
   inc(p.x,Distance);
@@ -32574,7 +32572,7 @@ begin
    p.Flags:=p.Flags or VkTTF_PathFlag_TouchedY;
   end;
  end else begin
-  FVdotPV:=SARInt64((TVkInt64(fGraphicsState.fv[0])*fGraphicsState.pv[0])+(TVkInt64(fGraphicsState.fv[1])*fGraphicsState.pv[1]),14);
+  FVdotPV:=SARInt64((TInt64(fGraphicsState.fv[0])*fGraphicsState.pv[0])+(TInt64(fGraphicsState.fv[1])*fGraphicsState.pv[1]),14);
   if fGraphicsState.fv[0]<>0 then begin
    inc(p.x,MulDiv(Distance,fGraphicsState.fv[0],FVdotPV,true));
    if Touch then begin
@@ -32592,33 +32590,33 @@ end;
 
 function TVulkanTrueTypeFontByteCodeInterpreter.DotProduct(x,y:TVulkanTrueTypeFont26d6;const q:TVulkanTrueTypeFontVector2d14):TVulkanTrueTypeFont26d6;
 {$ifdef TTFCompactDotProduct}
-var v:TVkInt64;
+var v:TInt64;
 {$else}
-var l,lo1,lo2,lo:TVkUInt32;
-    m,hi1,hi2,hi,s:TVkInt32;
+var l,lo1,lo2,lo:TUInt32;
+    m,hi1,hi2,hi,s:TInt32;
 {$endif}
 begin
 {$ifdef TTFCompactDotProduct}
- v:=(TVkInt64(x)*q[0])+(TVkInt64(y)*q[1]);
+ v:=(TInt64(x)*q[0])+(TInt64(y)*q[1]);
  if v<0 then begin
   result:=-(((-v)+$2000) shr 14);
  end else begin
   result:=(v+$2000) shr 14;
  end;
 {$else}
- l:=TVkUInt32(TVkInt32(TVkInt32(x and $ffff)*TVkInt32(q[0])));
- m:=SARLongint(x,16)*TVkInt32(q[0]);
+ l:=TUInt32(TInt32(TInt32(x and $ffff)*TInt32(q[0])));
+ m:=SARLongint(x,16)*TInt32(q[0]);
 
- lo1:=l+(TVkUInt32(m) shl 16);
+ lo1:=l+(TUInt32(m) shl 16);
  hi1:=SARLongint(m,16)+SARLongint(l,31);
  if lo1<l then begin
   inc(hi1);
  end;
 
- l:=TVkUInt32(TVkInt32(TVkInt32(y and $ffff)*TVkInt32(q[1])));
- m:=SARLongint(y,16)*TVkInt32(q[1]);
+ l:=TUInt32(TInt32(TInt32(y and $ffff)*TInt32(q[1])));
+ m:=SARLongint(y,16)*TInt32(q[1]);
 
- lo2:=l+(TVkUInt32(m) shl 16);
+ lo2:=l+(TUInt32(m) shl 16);
  hi2:=SARLongint(m,16)+SARLongint(l,31);
  if lo2<l then begin
   inc(hi2);
@@ -32631,7 +32629,7 @@ begin
  end;
 
  s:=SARLongint(hi,31);
- l:=lo+TVkUInt32(s);
+ l:=lo+TUInt32(s);
  inc(hi,s);     
  if l<lo then begin
   inc(hi);
@@ -32643,12 +32641,12 @@ begin
   inc(hi);
  end;
 
- result:=TVkUInt32((TVkUInt32(hi) shl 18) or (TVkUInt32(l) shr 14));
+ result:=TUInt32((TUInt32(hi) shl 18) or (TUInt32(l) shr 14));
 {$endif}
 end;
 
 function TVulkanTrueTypeFontByteCodeInterpreter.Div18d14(a,b:TVulkanTrueTypeFont26d6):TVulkanTrueTypeFont26d6;
-var s:TVkInt32;
+var s:TInt32;
 begin
  s:=1;
  if a<0 then begin
@@ -32663,7 +32661,7 @@ begin
   if (a<$20000) and (b<$3fff) then begin
    result:=((a shl 14)+SARLongint(b,1)) div b;
   end else begin
-   result:=((TVkInt64(a) shl 14)+SARLongint(b,1)) div b;
+   result:=((TInt64(a) shl 14)+SARLongint(b,1)) div b;
   end;
  end else begin
   result:=$7fffffff;
@@ -32674,7 +32672,7 @@ begin
 end;
 
 function TVulkanTrueTypeFontByteCodeInterpreter.Mul18d14(a,b:TVulkanTrueTypeFont26d6):TVulkanTrueTypeFont26d6;
-var s:TVkInt32;
+var s:TInt32;
 begin
  s:=1;
  if a<0 then begin
@@ -32688,7 +32686,7 @@ begin
  if (a<46341) and (b<46341) then begin
   result:=SARLongint((a*b)+$2000,14);
  end else begin
-  result:=SARInt64((TVkInt64(a)*b)+$2000,14);
+  result:=SARInt64((TInt64(a)*b)+$2000,14);
  end;
  if s<0 then begin
   result:=-result;
@@ -32696,7 +32694,7 @@ begin
 end;
 
 function TVulkanTrueTypeFontByteCodeInterpreter.Div26d6(a,b:TVulkanTrueTypeFont26d6):TVulkanTrueTypeFont26d6;
-var s:TVkInt32;
+var s:TInt32;
 begin
  s:=1;
  if a<0 then begin
@@ -32711,7 +32709,7 @@ begin
   if a<$1ffffff then begin
    result:=(a shl 6) div b;
   end else begin
-   result:=(TVkInt64(a) shl 6) div b;
+   result:=(TInt64(a) shl 6) div b;
   end;
  end else begin
   result:=$7fffffff;
@@ -32722,7 +32720,7 @@ begin
 end;
 
 function TVulkanTrueTypeFontByteCodeInterpreter.Mul26d6(a,b:TVulkanTrueTypeFont26d6):TVulkanTrueTypeFont26d6;
-var s:TVkInt32;
+var s:TInt32;
 begin
  s:=1;
  if a<0 then begin
@@ -32736,7 +32734,7 @@ begin
  if (a<46341) and (b<46341) then begin
   result:=SARLongint((a*b)+32,6);
  end else begin
-  result:=SARInt64((TVkInt64(a)*b)+32,6);
+  result:=SARInt64((TInt64(a)*b)+32,6);
  end;
  if s<0 then begin
   result:=-result;
@@ -32774,9 +32772,9 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontByteCodeInterpreter.IUPInterpolate(IUPY:boolean;p1,p2,ref1,ref2:TVkInt32);
-var ifu1,ifu2,t,unh1,unh2,delta1,delta2,xy,ifuXY,i:TVkInt32;
-    Scale:TVkInt64;
+procedure TVulkanTrueTypeFontByteCodeInterpreter.IUPInterpolate(IUPY:boolean;p1,p2,ref1,ref2:TInt32);
+var ifu1,ifu2,t,unh1,unh2,delta1,delta2,xy,ifuXY,i:TInt32;
+    Scale:TInt64;
     ScaleOK:boolean;
 begin
  if (p1<=p2) and ((ref1<length(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current])) and (ref2<length(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current]))) then begin
@@ -32856,8 +32854,8 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontByteCodeInterpreter.IUPShift(IUPY:boolean;p1,p2,p:TVkInt32);
-var Delta,i:TVkInt32;
+procedure TVulkanTrueTypeFontByteCodeInterpreter.IUPShift(IUPY:boolean;p1,p2,p:TInt32);
+var Delta,i:TInt32;
 begin
  if IUPY then begin
   Delta:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,p].y-fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,p].y;
@@ -32877,7 +32875,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFontByteCodeInterpreter.GetPoint(ZonePointer,PointType,Index:TVkInt32):PVulkanTrueTypeFontGlyphPoint;
+function TVulkanTrueTypeFontByteCodeInterpreter.GetPoint(ZonePointer,PointType,Index:TInt32):PVulkanTrueTypeFontGlyphPoint;
 begin
  if ((ZonePointer>=0) and (ZonePointer<3)) and
     ((fGraphicsState.zp[ZonePointer]>=0) and (fGraphicsState.zp[ZonePointer]<VkTTF_Zone_Count)) and
@@ -32889,7 +32887,7 @@ begin
 end;
 
 procedure TVulkanTrueTypeFontByteCodeInterpreter.Normalize(var x,y:TVulkanTrueTypeFont26d6);
-var l:TVkInt32;
+var l:TInt32;
 begin
  if (x<>0) or (y<>0) then begin
   if (abs(x)<$4000) and (abs(y)<$4000) then begin
@@ -32908,7 +32906,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFontByteCodeInterpreter.GetCVT(Index:TVkInt32):TVkInt32;
+function TVulkanTrueTypeFontByteCodeInterpreter.GetCVT(Index:TInt32):TInt32;
 begin
  if (Index>=0) and (Index<length(fCVT)) then begin
   result:=fCVT[Index];
@@ -32917,15 +32915,15 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFontByteCodeInterpreter.SetCVT(Index,Value:TVkInt32);
+procedure TVulkanTrueTypeFontByteCodeInterpreter.SetCVT(Index,Value:TInt32);
 begin
  if (Index>=0) and (Index<length(fCVT)) then begin
   fCVT[Index]:=Value;
  end;
 end;
 
-procedure TVulkanTrueTypeFontByteCodeInterpreter.ComputePointDisplacement(Flag:boolean;var Zone,Ref:TVkInt32;var dx,dy:TVulkanTrueTypeFont26d6);
-var Distance,FVdotPV:TVkInt64;
+procedure TVulkanTrueTypeFontByteCodeInterpreter.ComputePointDisplacement(Flag:boolean;var Zone,Ref:TInt32;var dx,dy:TVulkanTrueTypeFont26d6);
+var Distance,FVdotPV:TInt64;
     p1,p2:PVulkanTrueTypeFontGlyphPoint;
 begin
  if Flag then begin
@@ -32946,7 +32944,7 @@ begin
    dx:=0;
    dy:=Distance;
   end else begin
-   FVdotPV:=SARInt64((TVkInt64(fGraphicsState.fv[0])*fGraphicsState.pv[0])+(TVkInt64(fGraphicsState.fv[1])*fGraphicsState.pv[1]),14);
+   FVdotPV:=SARInt64((TInt64(fGraphicsState.fv[0])*fGraphicsState.pv[0])+(TInt64(fGraphicsState.fv[1])*fGraphicsState.pv[1]),14);
    if FVdotPV<>0 then begin
     dx:=MulDiv(fGraphicsState.fv[0],Distance,FVdotPV,true);
     dy:=MulDiv(fGraphicsState.fv[1],Distance,FVdotPV,true);
@@ -32963,18 +32961,18 @@ end;
 procedure TVulkanTrueTypeFontByteCodeInterpreter.Run(ProgramBytes:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;Parameters:PVulkanTrueTypeFontByteCodeInterpreterParameters=nil);
 var Steps,PC,Top,CallStackTop,PopCount,Depth,Temp,x,StartPC,i,Distance,PrevEnd,j,k,FirstTouched,CurrentTouched,PointType,
     FirstPoint,EndPoint,CurrentPoint,OldDist,CurrentDist,NewDist,t1,t2,t3,CVTDist,d1,d2,dx,dy,d,ZonePointer,RefIndex,
-    Base,Count,a0,a1,b0,b1:TVkInt32;
-    Mask:TVkUInt32;
-    Opcode:TVkUInt8;
+    Base,Count,a0,a1,b0,b1:TInt32;
+    Mask:TUInt32;
+    Opcode:TUInt8;
     CallStack:TVulkanTrueTypeFontByteCodeInterpreterCallStackEntries;
     OK,Twilight:boolean;
     f:TVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
     p,OldP,CurrentP,Ref,q,p0,p1,p2:PVulkanTrueTypeFontGlyphPoint;
     OldRange,CurrentRange,ax0,ay0,ax1,ay1,bx0,by0,bx1,by1:TVulkanTrueTypeFont26d6;
-    dxa,dya,dxb,dyb,det,v:TVkInt64;
+    dxa,dya,dxb,dyb,det,v:TInt64;
 {$ifdef ttfdebug}
  procedure StoreState;
- var i:TVkInt32;
+ var i:TInt32;
  begin
   for i:=0 to length(fCVT)-1 do begin
    fLastCVT[i]:=fCVT[i];
@@ -32994,7 +32992,7 @@ var Steps,PC,Top,CallStackTop,PopCount,Depth,Temp,x,StartPC,i,Distance,PrevEnd,j
   fLastGraphicsState:=fGraphicsState;
  end;
  procedure DumpState;
- var i:TVkInt32;
+ var i:TInt32;
      p1,p2:PVulkanTrueTypeFontGlyphPoint;
  begin
   if (fLastGraphicsState.pv[0]<>fGraphicsState.pv[0]) or (fLastGraphicsState.pv[1]<>fGraphicsState.pv[1]) then begin
@@ -33191,8 +33189,8 @@ begin
       end;
       opSPVFS:begin
        dec(Top,2);
-       dx:=TVkInt16(TVkUInt16(fStack[Top] and $ffff));
-       dy:=TVkInt16(TVkUInt16(fStack[Top+1] and $ffff));
+       dx:=TInt16(TUInt16(fStack[Top] and $ffff));
+       dy:=TInt16(TUInt16(fStack[Top+1] and $ffff));
        Normalize(dx,dy);
        fGraphicsState.pv[0]:=dx;
        fGraphicsState.pv[1]:=dy;
@@ -33200,8 +33198,8 @@ begin
       end;
       opSFVFS:begin
        dec(Top,2);
-       dx:=TVkInt16(TVkUInt16(fStack[Top] and $ffff));
-       dy:=TVkInt16(TVkUInt16(fStack[Top+1] and $ffff));
+       dx:=TInt16(TUInt16(fStack[Top] and $ffff));
+       dy:=TInt16(TUInt16(fStack[Top+1] and $ffff));
        Normalize(dx,dy);
        fGraphicsState.fv[0]:=dx;
        fGraphicsState.fv[1]:=dy;
@@ -33501,7 +33499,7 @@ begin
           end;
           opENDF:begin
            dec(Top);
-           fFunctions[fStack[Top]].Data:=TVkPointer(@ProgramBytes.Data^[StartPC]);
+           fFunctions[fStack[Top]].Data:=TPointer(@ProgramBytes.Data^[StartPC]);
            fFunctions[fStack[Top]].Size:=(PC-StartPC)+2;
            break;
           end;
@@ -33677,8 +33675,8 @@ begin
        end else begin
         dec(Top);
         Distance:=fStack[Top];
-        dx:=SARInt64(TVkInt64(Distance)*fGraphicsState.fv[0],14);
-        dy:=SARInt64(TVkInt64(Distance)*fGraphicsState.fv[1],14);
+        dx:=SARInt64(TInt64(Distance)*fGraphicsState.fv[0],14);
+        dy:=SARInt64(TInt64(Distance)*fGraphicsState.fv[1],14);
         while fGraphicsState.Loop<>0 do begin
          dec(Top);
          i:=fStack[Top];
@@ -33820,8 +33818,8 @@ begin
         p:=GetPoint(0,VkTTF_PointType_Unhinted,i);
         q:=GetPoint(0,VkTTF_PointType_Current,i);
         if assigned(p) and assigned(q) then begin
-         p^.x:=SARInt64(TVkInt64(Distance)*fGraphicsState.fv[0],14);
-         p^.y:=SARInt64(TVkInt64(Distance)*fGraphicsState.fv[1],14);
+         p^.x:=SARInt64(TInt64(Distance)*fGraphicsState.fv[0],14);
+         p^.y:=SARInt64(TInt64(Distance)*fGraphicsState.fv[1],14);
          q^:=p^;
         end;
        end;
@@ -33841,8 +33839,8 @@ begin
         p:=GetPoint(0,VkTTF_PointType_Unhinted,i);
         q:=GetPoint(0,VkTTF_PointType_Current,i);
         if assigned(p) and assigned(q) then begin
-         p^.x:=SARInt64(TVkInt64(Distance)*fGraphicsState.fv[0],14);
-         p^.y:=SARInt64(TVkInt64(Distance)*fGraphicsState.fv[1],14);
+         p^.x:=SARInt64(TInt64(Distance)*fGraphicsState.fv[0],14);
+         p^.y:=SARInt64(TInt64(Distance)*fGraphicsState.fv[1],14);
          q^:=p^;
         end;
        end;
@@ -33893,7 +33891,7 @@ begin
          raise EVulkanTrueTypeFont.Create('Insufficient data');
         end else begin
          while Opcode>0 do begin
-          fStack[Top]:=TVkInt16(TVkUInt16((ProgramBytes.Data^[PC] shl 8) or ProgramBytes.Data^[PC+1]));
+          fStack[Top]:=TInt16(TUInt16((ProgramBytes.Data^[PC] shl 8) or ProgramBytes.Data^[PC+1]));
           inc(Top);
           inc(PC,2);
           dec(Opcode);
@@ -34487,7 +34485,7 @@ begin
         raise EVulkanTrueTypeFont.Create('Insufficient data');
        end else begin
         while Opcode>0 do begin
-         fStack[Top]:=TVkInt16(TVkUInt16((ProgramBytes.Data^[PC] shl 8) or ProgramBytes.Data^[PC+1]));
+         fStack[Top]:=TInt16(TUInt16((ProgramBytes.Data^[PC] shl 8) or ProgramBytes.Data^[PC+1]));
          inc(Top);
          inc(PC,2);
          dec(Opcode);
@@ -34583,7 +34581,7 @@ begin
         p:=GetPoint(1,VkTTF_PointType_Current,i);   
         if assigned(Ref) and assigned(p) then begin
          CurrentDist:=DotProduct(p^.x-Ref^.x,p^.y-Ref^.y,fGraphicsState.pv);
-         if fGraphicsState.AutoFlip and (TVkInt32(OldDist xor CVTDist)<0) then begin
+         if fGraphicsState.AutoFlip and (TInt32(OldDist xor CVTDist)<0) then begin
           CVTDist:=-CVTDist;
          end;
          if (Opcode and 4)<>0 then begin
@@ -34633,7 +34631,7 @@ begin
 {$endif}
 end;
 
-constructor TVulkanTrueTypeFont.Create(const Stream:TStream;const TargetPPI:TVkInt32=96;const ForceSelector:boolean=false;const PlatformID:TVkUInt16=VkTTF_PID_Microsoft;const SpecificID:TVkUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TVkUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TVkInt32=0);
+constructor TVulkanTrueTypeFont.Create(const Stream:TStream;const TargetPPI:TInt32=96;const ForceSelector:boolean=false;const PlatformID:TUInt16=VkTTF_PID_Microsoft;const SpecificID:TUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TInt32=0);
 begin
  inherited Create;
  fTargetPPI:=TargetPPI;
@@ -34854,7 +34852,7 @@ begin
 end;
 
 destructor TVulkanTrueTypeFont.Destroy;
-var i:TVkInt32;
+var i:TInt32;
 begin
  SetLength(fByteCodeInterpreterParameters.pCurrent,0);
  SetLength(fByteCodeInterpreterParameters.pUnhinted,0);
@@ -34887,7 +34885,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanTrueTypeFont.SetSize(NewSize:TVkInt32);
+procedure TVulkanTrueTypeFont.SetSize(NewSize:TInt32);
 begin
  if fSize<>NewSize then begin
   fSize:=NewSize;
@@ -34902,11 +34900,11 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.ReadFontData(Stream:TStream;CollectionIndex:TVkInt32):TVkInt32;
-var i,tablelength,tabledirsize,tabledatasize:TVkInt32;
-    tfd:array[0..VkTTF_OFFSET_TABLE_SIZE-1] of TVkUInt8;
-    TableDirectory:array of TVkUInt8;
-    i64:TVkInt64;
+function TVulkanTrueTypeFont.ReadFontData(Stream:TStream;CollectionIndex:TInt32):TInt32;
+var i,tablelength,tabledirsize,tabledatasize:TInt32;
+    tfd:array[0..VkTTF_OFFSET_TABLE_SIZE-1] of TUInt8;
+    TableDirectory:array of TUInt8;
+    i64:TInt64;
 begin
  if (not assigned(Stream)) or (Stream.Seek(0,soBeginning)<>0) then begin
   result:=VkTTF_TT_ERR_UnableToOpenFile;
@@ -34921,7 +34919,7 @@ begin
  if ((tfd[0]=ord('t')) and (tfd[1]=ord('t')) and (tfd[2]=ord('c')) and (tfd[3]=ord('f'))) and
     ((tfd[4]=$00) or (tfd[5] in [$01,$02]) or (tfd[6]=$00) or (tfd[7]=$00)) then begin
   i:=CollectionIndex;
-  if TVkUInt32(i+0)>=ToLONGWORD(tfd[8],tfd[9],tfd[10],tfd[11]) then begin
+  if TUInt32(i+0)>=ToLONGWORD(tfd[8],tfd[9],tfd[10],tfd[11]) then begin
    result:=VkTTF_TT_ERR_InvalidFile;
    exit;
   end;
@@ -34951,7 +34949,7 @@ begin
     ((tfd[0]=ord('O')) and (tfd[1]=ord('T')) and (tfd[2]=ord('T')) and (tfd[3]=ord('O'))) then begin  // OTTO             - OpenType with CFF
 
   fNumTables:=ToWORD(tfd[4],tfd[5]); // Get the number of Tables in this font
-  tabledirsize:=sizeof(TVkUInt32)*4*fNumTables; // Calculate Size of Table Directory
+  tabledirsize:=sizeof(TUInt32)*4*fNumTables; // Calculate Size of Table Directory
   TableDirectory:=nil;
   SetLength(TableDirectory,tabledirsize);              // Allocate storage for Table Directory
   if length(TableDirectory)<>tabledirsize then begin
@@ -35006,9 +35004,9 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.GetTableDirEntry(Tag:TVkUInt32;var CheckSum,Offset,Size:TVkUInt32):TVkInt32;
-var i:TVkInt32;
-    Position,CurrentTag:TVkUInt32;
+function TVulkanTrueTypeFont.GetTableDirEntry(Tag:TUInt32;var CheckSum,Offset,Size:TUInt32):TInt32;
+var i:TInt32;
+    Position,CurrentTag:TUInt32;
     Found:boolean;
 begin
  Position:=VkTTF_OFFSET_TABLE_SIZE;
@@ -35031,53 +35029,53 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadOS2:TVkInt32;
-var Position,Tag,CheckSum,Offset,Size,Version:TVkUInt32;
+function TVulkanTrueTypeFont.LoadOS2:TInt32;
+var Position,Tag,CheckSum,Offset,Size,Version:TUInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('O'),TVkUInt8('S'),TVkUInt8('/'),TVkUInt8('2'));
+ Tag:=ToLONGWORD(TUInt8('O'),TUInt8('S'),TUInt8('/'),TUInt8('2'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
   Position:=Offset;
   Version:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
   if Version<6 then begin
-   inc(Position,sizeof(TVkUInt16)); // avg char width
-   inc(Position,sizeof(TVkUInt16)); // weight class
-   inc(Position,sizeof(TVkUInt16)); // width class
-   inc(Position,sizeof(TVkUInt16)); // fs type
-   inc(Position,sizeof(TVkUInt16)); // subscript x size
-   inc(Position,sizeof(TVkUInt16)); // subscript y size
-   inc(Position,sizeof(TVkUInt16)); // subscript x offset
-   inc(Position,sizeof(TVkUInt16)); // subscript y offset
-   inc(Position,sizeof(TVkUInt16)); // superscript x size
-   inc(Position,sizeof(TVkUInt16)); // superscript y size
-   inc(Position,sizeof(TVkUInt16)); // superscript x offset
-   inc(Position,sizeof(TVkUInt16)); // superscript y offset
-   inc(Position,sizeof(TVkUInt16)); // strikeout size
-   inc(Position,sizeof(TVkUInt16)); // strikeout offset
-   inc(Position,sizeof(TVkUInt16)); // family class
+   inc(Position,sizeof(TUInt16)); // avg char width
+   inc(Position,sizeof(TUInt16)); // weight class
+   inc(Position,sizeof(TUInt16)); // width class
+   inc(Position,sizeof(TUInt16)); // fs type
+   inc(Position,sizeof(TUInt16)); // subscript x size
+   inc(Position,sizeof(TUInt16)); // subscript y size
+   inc(Position,sizeof(TUInt16)); // subscript x offset
+   inc(Position,sizeof(TUInt16)); // subscript y offset
+   inc(Position,sizeof(TUInt16)); // superscript x size
+   inc(Position,sizeof(TUInt16)); // superscript y size
+   inc(Position,sizeof(TUInt16)); // superscript x offset
+   inc(Position,sizeof(TUInt16)); // superscript y offset
+   inc(Position,sizeof(TUInt16)); // strikeout size
+   inc(Position,sizeof(TUInt16)); // strikeout offset
+   inc(Position,sizeof(TUInt16)); // family class
    inc(Position,10); // panose
-   inc(Position,sizeof(TVkUInt32)); // unicode range 1
-   inc(Position,sizeof(TVkUInt32)); // unicode range 2
-   inc(Position,sizeof(TVkUInt32)); // unicode range 3
-   inc(Position,sizeof(TVkUInt32)); // unicode range 4
-   inc(Position,sizeof(TVkUInt16)); // fs selection
-   inc(Position,sizeof(TVkUInt16)); // first char index
-   inc(Position,sizeof(TVkUInt16)); // last char index
-   inc(Position,sizeof(TVkUInt16)); // typo ascender
-   inc(Position,sizeof(TVkUInt16)); // typo descender
-   inc(Position,sizeof(TVkUInt16)); // typo line gap
-   inc(Position,sizeof(TVkUInt16)); // win ascent
-   inc(Position,sizeof(TVkUInt16)); // win descent
+   inc(Position,sizeof(TUInt32)); // unicode range 1
+   inc(Position,sizeof(TUInt32)); // unicode range 2
+   inc(Position,sizeof(TUInt32)); // unicode range 3
+   inc(Position,sizeof(TUInt32)); // unicode range 4
+   inc(Position,sizeof(TUInt16)); // fs selection
+   inc(Position,sizeof(TUInt16)); // first char index
+   inc(Position,sizeof(TUInt16)); // last char index
+   inc(Position,sizeof(TUInt16)); // typo ascender
+   inc(Position,sizeof(TUInt16)); // typo descender
+   inc(Position,sizeof(TUInt16)); // typo line gap
+   inc(Position,sizeof(TUInt16)); // win ascent
+   inc(Position,sizeof(TUInt16)); // win descent
    if Version>0 then begin
-    inc(Position,sizeof(TVkUInt32)); // ulCodePageRange1
-    inc(Position,sizeof(TVkUInt32)); // ulCodePageRange2
+    inc(Position,sizeof(TUInt32)); // ulCodePageRange1
+    inc(Position,sizeof(TUInt32)); // ulCodePageRange2
     if Version>1 then begin
-     inc(Position,sizeof(TVkUInt16)); // x height
-     inc(Position,sizeof(TVkUInt16)); // cap height
-     inc(Position,sizeof(TVkUInt16)); // default char
-     inc(Position,sizeof(TVkUInt16)); // break char
-     inc(Position,sizeof(TVkUInt16)); // max context
+     inc(Position,sizeof(TUInt16)); // x height
+     inc(Position,sizeof(TUInt16)); // cap height
+     inc(Position,sizeof(TUInt16)); // default char
+     inc(Position,sizeof(TUInt16)); // break char
+     inc(Position,sizeof(TUInt16)); // max context
     end;
    end;
    if Position<>0 then begin
@@ -35089,40 +35087,40 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadHEAD:TVkInt32;
-var Position,Tag,CheckSum,Offset,Size,MagicNumber:TVkUInt32;
+function TVulkanTrueTypeFont.LoadHEAD:TInt32;
+var Position,Tag,CheckSum,Offset,Size,MagicNumber:TUInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('h'),TVkUInt8('e'),TVkUInt8('a'),TVkUInt8('d'));
+ Tag:=ToLONGWORD(TUInt8('h'),TUInt8('e'),TUInt8('a'),TUInt8('d'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
   Position:=Offset;
-  inc(Position,sizeof(TVkUInt32)); // Table version number
-  inc(Position,sizeof(TVkUInt32)); // Font revision number
-  inc(Position,sizeof(TVkUInt32)); // CheckSum adjustment
+  inc(Position,sizeof(TUInt32)); // Table version number
+  inc(Position,sizeof(TUInt32)); // Font revision number
+  inc(Position,sizeof(TUInt32)); // CheckSum adjustment
   MagicNumber:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
-  inc(Position,sizeof(TVkUInt32)); // Magic number
+  inc(Position,sizeof(TUInt32)); // Magic number
   if MagicNumber<>$5f0f3cf5 then begin
    result:=VkTTF_TT_ERR_InvalidFile;
    exit;
   end;
-  inc(Position,sizeof(TVkUInt16)); // Flags
+  inc(Position,sizeof(TUInt16)); // Flags
   fUnitsPerEm:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
   inc(Position,8); // Date created
   inc(Position,8); // Date modified
   fMinX:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkInt16));
+  inc(Position,sizeof(TInt16));
   fMinY:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkInt16));
+  inc(Position,sizeof(TInt16));
   fMaxX:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkInt16));
+  inc(Position,sizeof(TInt16));
   fMaxY:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkInt16));
-  inc(Position,sizeof(TVkUInt16)); // Mac-style
-  inc(Position,sizeof(TVkUInt16)); // Lowest rec pen
-  inc(Position,sizeof(TVkInt16)); // Font direction hint
+  inc(Position,sizeof(TInt16));
+  inc(Position,sizeof(TUInt16)); // Mac-style
+  inc(Position,sizeof(TUInt16)); // Lowest rec pen
+  inc(Position,sizeof(TInt16)); // Font direction hint
   fIndexToLocationFormat:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-//inc(Position,sizeof(TVkInt16));
+//inc(Position,sizeof(TInt16));
   if fUnitsPerEm=0 then begin
    fUnitsPerEm:=1;
   end;
@@ -35136,11 +35134,11 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadMAXP:TVkInt32;
-var Tag,CheckSum,Offset,Size:TVkUInt32;
-    i:TVkInt32;
+function TVulkanTrueTypeFont.LoadMAXP:TInt32;
+var Tag,CheckSum,Offset,Size:TUInt32;
+    i:TInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('m'),TVkUInt8('a'),TVkUInt8('x'),TVkUInt8('p'));
+ Tag:=ToLONGWORD(TUInt8('m'),TUInt8('a'),TUInt8('x'),TUInt8('p'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
   fCountGlyphs:=ToWORD(fFontData[Offset+4],fFontData[Offset+5]);
@@ -35168,37 +35166,37 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadNAME:TVkInt32;
+function TVulkanTrueTypeFont.LoadNAME:TInt32;
 type PVulkanRawByteString=^TVulkanRawByteString;
-var Position,Tag,CheckSum,Offset,Size,NumNameRecords,StringStorageOffset,i,j,c,c2,o:TVkUInt32;
-    ThisPlatformID,ThisSpecificID,ThisLanguageID,ThisNameID,ThisStringLength,ThisStringOffset:TVkUInt16;
+var Position,Tag,CheckSum,Offset,Size,NumNameRecords,StringStorageOffset,i,j,c,c2,o:TUInt32;
+    ThisPlatformID,ThisSpecificID,ThisLanguageID,ThisNameID,ThisStringLength,ThisStringOffset:TUInt16;
     NameFound:boolean;
     u8s:PVulkanUTF8String;
     s:TVulkanUTF8String;
-    si,sl:TVkInt32;
+    si,sl:TInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('n'),TVkUInt8('a'),TVkUInt8('m'),TVkUInt8('e'));
+ Tag:=ToLONGWORD(TUInt8('n'),TUInt8('a'),TUInt8('m'),TUInt8('e'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
   Position:=Offset;
-  inc(Position,sizeof(TVkUInt16)); // Format Selector
+  inc(Position,sizeof(TUInt16)); // Format Selector
   NumNameRecords:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
   StringStorageOffset:=ToWORD(fFontData[Position],fFontData[Position+1])+Offset;
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
   for i:=1 to NumNameRecords do begin
    ThisPlatformID:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
    ThisSpecificID:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
    ThisLanguageID:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
    ThisNameID:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
    ThisStringLength:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
    ThisStringOffset:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
    if (ThisPlatformID=fPlatformID) and (ThisSpecificID=fSpecificID) and (ThisLanguageID=fLanguageID) then begin
     NameFound:=false;
     u8s:=nil;
@@ -35286,7 +35284,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadCFF:TVkInt32;
+function TVulkanTrueTypeFont.LoadCFF:TInt32;
 const CFFScaleFactor=4.0;
       TopDictVersionOp=0;
       TopDictNoticeOp=1;
@@ -35409,8 +35407,8 @@ const CFFScaleFactor=4.0;
            );
 type PIndexDataItem=^TIndexDataItem;
      TIndexDataItem=record
-      Position:TVkInt32;
-      Size:TVkInt32;
+      Position:TInt32;
+      Size:TInt32;
      end;
      TIndexData=array of TIndexDataItem;
      PNumberKind=^TNumberKind;
@@ -35423,29 +35421,29 @@ type PIndexDataItem=^TIndexDataItem;
      TNumber=record
       case Kind:TNumberKind of
        nkFLOAT:(
-        FloatValue:TVkDouble;
+        FloatValue:TDouble;
        );
        nkINT:(
-        IntegerValue:TVkInt64;
+        IntegerValue:TInt64;
        );
      end;
      TNumberArray=array of TNumber;
      PDictEntry=^TDictEntry;
      TDictEntry=record
-      Op:TVkInt32;
+      Op:TInt32;
       Operands:TNumberArray;
      end;
      TDictEntryArray=array of TDictEntry;
-var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
+var Position,Tag,CheckSum,Offset,Size,EndOffset:TUInt32;
     HeaderFormatMajor,HeaderFormatMinor,HeaderSize,HeaderOffsetSize,
     HeaderStartOffset,HeaderEndOffset,i,j,Count,UntilExcludingPosition,
     TopDictCharStringType,TopDictCharset,TopDictEncoding,TopDictCharStrings,
     PrivateDictSubRoutine,PrivateDictDefaultWidthX,PrivateDictNominalWidthX,
     CharsetFormat,SID,EncodingFormat,CountCodes,Code,CountRanges,First,
-    CountSubCodes:TVkInt32;
-    TopDictFontBBox:array[0..3] of TVkInt32;
-    TopDictPrivate:array[0..1] of TVkInt32;
-    TopDictFontMatrix:array[0..5] of TVkDouble;
+    CountSubCodes:TInt32;
+    TopDictFontBBox:array[0..3] of TInt32;
+    TopDictPrivate:array[0..1] of TInt32;
+    TopDictFontMatrix:array[0..5] of TDouble;
     NameIndexData,TopDictIndexData,StringIndexData,
     GlobalSubroutineIndexData,SubroutineIndexData,
     TopDictCharStringsIndexData:TIndexData;
@@ -35454,9 +35452,9 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     CurrentRawByteString:TVulkanRawByteString;
     CharsetTableHashMap:TVulkanStringHashMap;
     CharsetTableHashMapData:TVulkanStringHashMapData;
-    CFFGlobalSubroutineBias:TVkInt32;
-    CFFSubroutineBias:TVkInt32;
- function GetCFFSubroutineBias(const SubroutineIndexData:TIndexData):TVkInt32;
+    CFFGlobalSubroutineBias:TInt32;
+    CFFSubroutineBias:TInt32;
+ function GetCFFSubroutineBias(const SubroutineIndexData:TIndexData):TInt32;
  begin
   // http://download.microsoft.com/download/8/0/1/801a191c-029d-4af3-9642-555f6fe514ee/type2.pdf
   // Chapter 4.7 "Subroutine operators"
@@ -35472,8 +35470,8 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    end;
   end;
  end;
- function LoadIndex(out IndexData:TIndexData):TVkInt32;
- var BaseOffset,Count,OffsetSize,OffsetValue,i,j:TVkInt32;
+ function LoadIndex(out IndexData:TIndexData):TInt32;
+ var BaseOffset,Count,OffsetSize,OffsetValue,i,j:TInt32;
      IndexDataItem:PIndexDataItem;
  begin
 
@@ -35481,33 +35479,33 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
 
   BaseOffset:=Position;
 
-  if ((Position+SizeOf(TVkUInt16))-1)>=(Offset+Size) then begin
+  if ((Position+SizeOf(TUInt16))-1)>=(Offset+Size) then begin
    result:=VkTTF_TT_ERR_CorruptFile;
    exit;
   end;
   Count:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,SizeOf(TVkUInt16));
+  inc(Position,SizeOf(TUInt16));
 
   if Count>0 then begin
 
-   if ((Position+SizeOf(TVkUInt8))-1)>=(Offset+Size) then begin
+   if ((Position+SizeOf(TUInt8))-1)>=(Offset+Size) then begin
     result:=VkTTF_TT_ERR_CorruptFile;
     exit;
    end;
    OffsetSize:=fFontData[Position];
-   inc(Position,SizeOf(TVkUInt8));
+   inc(Position,SizeOf(TUInt8));
 
    SetLength(IndexData,Count+1);
    try
     for i:=0 to Count do begin
      OffsetValue:=0;
      for j:=0 to OffsetSize-1 do begin
-      if ((Position+SizeOf(TVkUInt8))-1)>=(Offset+Size) then begin
+      if ((Position+SizeOf(TUInt8))-1)>=(Offset+Size) then begin
        result:=VkTTF_TT_ERR_CorruptFile;
        exit;
       end;
       OffsetValue:=(OffsetValue shl 8) or fFontData[Position];
-      inc(Position,SizeOf(TVkUInt8));
+      inc(Position,SizeOf(TUInt8));
      end;
      IndexDataItem:=@IndexData[i];
      IndexDataItem^.Position:=OffsetValue;
@@ -35529,9 +35527,9 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   result:=VkTTF_TT_ERR_NoError;
 
  end;
- function LoadDict(const DictPosition,DictSize:TVkInt32;out DictEntryArray:TDictEntryArray):TVkInt32;
+ function LoadDict(const DictPosition,DictSize:TInt32;out DictEntryArray:TDictEntryArray):TInt32;
  const FloatStrings:array[0..15] of string=('0','1','2','3','4','5','6','7','8','9','.','e','e-','','-','');
- var Position,UntilExcludingPosition,Op,CountOperands,CountDictEntries,Value,Code:TVkInt32;
+ var Position,UntilExcludingPosition,Op,CountOperands,CountDictEntries,Value,Code:TInt32;
      Operands:TNumberArray;
      DictEntry:PDictEntry;
      FloatString:string;
@@ -35552,22 +35550,22 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
 
     while Position<UntilExcludingPosition do begin
 
-     if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+     if ((Position+SizeOf(TUInt8))-1)>=UntilExcludingPosition then begin
       result:=VkTTF_TT_ERR_CorruptFile;
       exit;
      end;
      Op:=fFontData[Position];
-     inc(Position,SizeOf(TVkUInt8));
+     inc(Position,SizeOf(TUInt8));
 
      case Op of
       12:begin
        SetLength(Operands,CountOperands);
-       if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+       if ((Position+SizeOf(TUInt8))-1)>=UntilExcludingPosition then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Op:=1200+fFontData[Position];
-       inc(Position,SizeOf(TVkUInt8));
+       inc(Position,SizeOf(TUInt8));
        if length(DictEntryArray)<(CountDictEntries+1) then begin
         SetLength(DictEntryArray,(CountDictEntries+1)*2);
        end;
@@ -35591,7 +35589,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        CountOperands:=0;
       end;
       28:begin
-       if ((Position+SizeOf(TVkUInt16))-1)>=UntilExcludingPosition then begin
+       if ((Position+SizeOf(TUInt16))-1)>=UntilExcludingPosition then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
@@ -35601,10 +35599,10 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        Operands[CountOperands].Kind:=nkINT;
        Operands[CountOperands].IntegerValue:=ToWORD(fFontData[Position],fFontData[Position+1]);
        inc(CountOperands);
-       inc(Position,SizeOf(TVkUInt16));
+       inc(Position,SizeOf(TUInt16));
       end;
       29:begin
-       if ((Position+SizeOf(TVkUInt32))-1)>=UntilExcludingPosition then begin
+       if ((Position+SizeOf(TUInt32))-1)>=UntilExcludingPosition then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
@@ -35614,17 +35612,17 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        Operands[CountOperands].Kind:=nkINT;
        Operands[CountOperands].IntegerValue:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
        inc(CountOperands);
-       inc(Position,SizeOf(TVkUInt32));
+       inc(Position,SizeOf(TUInt32));
       end;
       30:begin
        FloatString:='';
        repeat
-        if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+        if ((Position+SizeOf(TUInt8))-1)>=UntilExcludingPosition then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         Value:=fFontData[Position];
-        inc(Position,SizeOf(TVkUInt8));
+        inc(Position,SizeOf(TUInt8));
         if (Value and $f0)=$f0 then begin
          break;
         end else begin
@@ -35652,7 +35650,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        inc(CountOperands);
       end;
       247..250:begin
-       if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+       if ((Position+SizeOf(TUInt8))-1)>=UntilExcludingPosition then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
@@ -35662,10 +35660,10 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        Operands[CountOperands].Kind:=nkINT;
        Operands[CountOperands].IntegerValue:=(((Op-247) shl 8)+fFontData[Position])+108;
        inc(CountOperands);
-       inc(Position,SizeOf(TVkUInt8));
+       inc(Position,SizeOf(TUInt8));
       end;
       251..254:begin
-       if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+       if ((Position+SizeOf(TUInt8))-1)>=UntilExcludingPosition then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
@@ -35675,7 +35673,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
        Operands[CountOperands].Kind:=nkINT;
        Operands[CountOperands].IntegerValue:=((-((Op-251)*256))-fFontData[Position])-108;
        inc(CountOperands);
-       inc(Position,SizeOf(TVkUInt8));
+       inc(Position,SizeOf(TUInt8));
       end;
       else begin
        result:=VkTTF_TT_ERR_CorruptFile;
@@ -35696,8 +35694,8 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   result:=VkTTF_TT_ERR_NoError;
 
  end;
-{function ConvertDict(const DictEntryArray:TDictEntryArray;var Dict:TDict):TVkInt32;
- var i,j:TVkInt32;
+{function ConvertDict(const DictEntryArray:TDictEntryArray;var Dict:TDict):TInt32;
+ var i,j:TInt32;
      DictEntry:PDictEntry;
  begin
   for i:=0 to length(DictEntryArray)-1 do begin
@@ -35717,7 +35715,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
   end;
   result:=VkTTF_TT_ERR_NoError;
  end;}
- function GetCFFString(const SID:TVkInt32):TVulkanRawByteString;
+ function GetCFFString(const SID:TInt32):TVulkanRawByteString;
  begin
   case SID of
    0..390:begin
@@ -35728,25 +35726,25 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    end;
   end;
  end;
- function LoadCFFGlyph(var Glyph:TVulkanTrueTypeFontGlyph;const GlyphPosition,GlyphSize:TVkInt32):TVkInt32;
- type TStack=array of TVkDouble;
- var i,v,StackSize,CountStems:TVkInt32;
-     Width,x,y,c0x,c0y,c1x,c1y,GlyphMinX,GlyphMinY,GlyphMaxX,GlyphMaxY:TVkDouble;
+ function LoadCFFGlyph(var Glyph:TVulkanTrueTypeFontGlyph;const GlyphPosition,GlyphSize:TInt32):TInt32;
+ type TStack=array of TDouble;
+ var i,v,StackSize,CountStems:TInt32;
+     Width,x,y,c0x,c0y,c1x,c1y,GlyphMinX,GlyphMinY,GlyphMaxX,GlyphMaxY:TDouble;
      Stack:TStack;
      HaveWidth:boolean;
-  function StackShift:TVkDouble;
+  function StackShift:TDouble;
   begin
    if StackSize>0 then begin
     result:=Stack[0];
     dec(StackSize);
     if StackSize>0 then begin
-     Move(Stack[1],Stack[0],StackSize*SizeOf(TVkDouble));
+     Move(Stack[1],Stack[0],StackSize*SizeOf(TDouble));
     end;
    end else begin
     result:=0;
    end;
   end;
-  function StackPop:TVkDouble;
+  function StackPop:TDouble;
   begin
    if StackSize>0 then begin
     dec(StackSize);
@@ -35755,7 +35753,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
     result:=0;
    end;
   end;
-  procedure StackPush(const Value:TVkDouble);
+  procedure StackPush(const Value:TDouble);
   begin
    if length(Stack)<(StackSize+1) then begin
     SetLength(Stack,(StackSize+1)*2);
@@ -35774,8 +35772,8 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    StackSize:=0;
    HaveWidth:=true;
   end;
-  procedure MoveTo(aX,aY:TVkDouble);
-  var CommandIndex:TVkInt32;
+  procedure MoveTo(aX,aY:TDouble);
+  var CommandIndex:TInt32;
       Command:PVulkanTrueTypeFontPolygonCommand;
   begin
    aY:=fMaxY-aY;
@@ -35793,8 +35791,8 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    GlyphMaxX:=Max(GlyphMaxX,aX);
    GlyphMaxY:=Max(GlyphMaxY,aY);
   end;
-  procedure LineTo(aX,aY:TVkDouble);
-  var CommandIndex:TVkInt32;
+  procedure LineTo(aX,aY:TDouble);
+  var CommandIndex:TInt32;
       Command:PVulkanTrueTypeFontPolygonCommand;
   begin
    aY:=fMaxY-aY;
@@ -35812,8 +35810,8 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    GlyphMaxX:=Max(GlyphMaxX,aX);
    GlyphMaxY:=Max(GlyphMaxY,aY);
   end;
-  procedure CubicCurveTo(aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TVkDouble);
-  var CommandIndex:TVkInt32;
+  procedure CubicCurveTo(aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TDouble);
+  var CommandIndex:TInt32;
       Command:PVulkanTrueTypeFontPolygonCommand;
   begin
    aC0Y:=fMaxY-aC0Y;
@@ -35846,7 +35844,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    GlyphMaxY:=Max(GlyphMaxY,aAY);
   end;
   procedure ClosePath;
-  var CommandIndex:TVkInt32;
+  var CommandIndex:TInt32;
       Command:PVulkanTrueTypeFontPolygonCommand;
   begin
    CommandIndex:=Glyph.PostScriptPolygon.CountCommands;
@@ -35857,19 +35855,19 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
    Command^.CommandType:=VkTTF_PolygonCommandType_CLOSE;
   end;
-  function Execute(const CodePosition,CodeSize:TVkInt32):TVkInt32;
-  var Position,UntilExcludingPosition,CodeIndex:TVkInt32;
-      dx1,dy1,dx2,dy2,dx3,dy3,dx4,dy4,dx5,dy5,dx6,dy6,dx,dy:TVkDouble;
+  function Execute(const CodePosition,CodeSize:TInt32):TInt32;
+  var Position,UntilExcludingPosition,CodeIndex:TInt32;
+      dx1,dy1,dx2,dy2,dx3,dy3,dx4,dy4,dx5,dy5,dx6,dy6,dx,dy:TDouble;
   begin
    Position:=CodePosition;
    UntilExcludingPosition:=CodePosition+CodeSize;
    while Position<UntilExcludingPosition do begin
-    if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+    if ((Position+SizeOf(TUInt8))-1)>=UntilExcludingPosition then begin
      result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     v:=fFontData[Position];
-    inc(Position,SizeOf(TVkUInt8));
+    inc(Position,SizeOf(TUInt8));
     case v of
      1:begin
       // hstem
@@ -35951,12 +35949,12 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
      end;
      12:begin
       // escape
-      if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+      if ((Position+SizeOf(TUInt8))-1)>=UntilExcludingPosition then begin
        result:=VkTTF_TT_ERR_CorruptFile;
        exit;
       end;
       v:=fFontData[Position];
-      inc(Position,SizeOf(TVkUInt8));
+      inc(Position,SizeOf(TUInt8));
       case v of
        34:begin
         // hflex
@@ -36187,12 +36185,12 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
      end;
      28:begin
       // smallint
-      if ((Position+SizeOf(TVkUInt16))-1)>=UntilExcludingPosition then begin
+      if ((Position+SizeOf(TUInt16))-1)>=UntilExcludingPosition then begin
        result:=VkTTF_TT_ERR_CorruptFile;
        exit;
       end;
       StackPush(ToSMALLINT(fFontData[Position],fFontData[Position+1]));
-      inc(Position,SizeOf(TVkUInt16));
+      inc(Position,SizeOf(TUInt16));
      end;
      29:begin
       // callgsubnr
@@ -36270,28 +36268,28 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
       StackPush(v-139);
      end;
      247..250:begin
-      if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+      if ((Position+SizeOf(TUInt8))-1)>=UntilExcludingPosition then begin
        result:=VkTTF_TT_ERR_CorruptFile;
        exit;
       end;
       StackPush((((v-247) shl 8)+fFontData[Position])+108);
-      inc(Position,SizeOf(TVkUInt8));
+      inc(Position,SizeOf(TUInt8));
      end;
      251..254:begin
-      if ((Position+SizeOf(TVkUInt8))-1)>=UntilExcludingPosition then begin
+      if ((Position+SizeOf(TUInt8))-1)>=UntilExcludingPosition then begin
        result:=VkTTF_TT_ERR_CorruptFile;
        exit;
       end;
       StackPush(((-((v-251)*256))-fFontData[Position])-108);
-      inc(Position,SizeOf(TVkUInt8));
+      inc(Position,SizeOf(TUInt8));
      end;
      255:begin
-      if ((Position+SizeOf(TVkUInt32))-1)>=UntilExcludingPosition then begin
+      if ((Position+SizeOf(TUInt32))-1)>=UntilExcludingPosition then begin
        result:=VkTTF_TT_ERR_CorruptFile;
        exit;
       end;
       StackPush(ToLONGINT(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3])/65536.0);
-      inc(Position,SizeOf(TVkUInt32));
+      inc(Position,SizeOf(TUInt32));
      end
      else begin
       result:=VkTTF_TT_ERR_CorruptFile;
@@ -36334,7 +36332,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TVkUInt32;
 var TopDictEntryArray,PrivateDictEntryArray:TDictEntryArray;
     IndexDataItem:PIndexDataItem;
 begin
- Tag:=ToLONGWORD(TVkUInt8('C'),TVkUInt8('F'),TVkUInt8('F'),TVkUInt8(32));
+ Tag:=ToLONGWORD(TUInt8('C'),TUInt8('F'),TUInt8('F'),TUInt8(32));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
 
@@ -36372,35 +36370,35 @@ begin
 
     EndOffset:=Offset+Size;
 
-    if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+    if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
      result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     HeaderFormatMajor:=fFontData[Position];
-    inc(Position,SizeOf(TVkUInt8));
+    inc(Position,SizeOf(TUInt8));
 
-    if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+    if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
      result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     HeaderFormatMinor:=fFontData[Position];
-    inc(Position,SizeOf(TVkUInt8));
+    inc(Position,SizeOf(TUInt8));
 
-    if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+    if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
      result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     HeaderSize:=fFontData[Position];
-    inc(Position,SizeOf(TVkUInt8));
+    inc(Position,SizeOf(TUInt8));
 
-    if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+    if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
      result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     HeaderOffsetSize:=fFontData[Position];
-    inc(Position,SizeOf(TVkUInt8));
+    inc(Position,SizeOf(TUInt8));
 
-    Position:=Offset+TVKUInt32(HeaderSize);
+    Position:=Offset+TUInt32(HeaderSize);
 
     result:=LoadIndex(NameIndexData);
     if result<>VkTTF_TT_ERR_NoError then begin
@@ -36534,7 +36532,7 @@ begin
 
     if (TopDictPrivate[0]>0) and (TopDictPrivate[1]>0) then begin
 
-     result:=LoadDict(TVkInt32(Offset)+TopDictPrivate[1],TopDictPrivate[0],PrivateDictEntryArray);
+     result:=LoadDict(TInt32(Offset)+TopDictPrivate[1],TopDictPrivate[0],PrivateDictEntryArray);
      if result<>VkTTF_TT_ERR_NoError then begin
       exit;
      end;
@@ -36595,7 +36593,7 @@ begin
       for i:=0 to length(StringIndexData)-1 do begin
        IndexDataItem:=@StringIndexData[i];
        SetLength(CurrentRawByteString,IndexDataItem^.Size);
-       if TVkUInt32(IndexDataItem^.Position+(IndexDataItem^.Size-1))<EndOffset then begin
+       if TUInt32(IndexDataItem^.Position+(IndexDataItem^.Size-1))<EndOffset then begin
         Move(fFontData[IndexDataItem^.Position],CurrentRawByteString[1],IndexDataItem^.Size);
         StringTable[i]:=CurrentRawByteString;
        end else begin
@@ -36611,7 +36609,7 @@ begin
      end;
      if length(GlobalSubroutineIndexData)>0 then begin
       for i:=0 to length(GlobalSubroutineIndexData)-1 do begin
-       if ((GlobalSubroutineIndexData[i].Position+GlobalSubroutineIndexData[i].Size)-1)>=TVkInt32(EndOffset) then begin
+       if ((GlobalSubroutineIndexData[i].Position+GlobalSubroutineIndexData[i].Size)-1)>=TInt32(EndOffset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
@@ -36620,14 +36618,14 @@ begin
      CFFGlobalSubroutineBias:=GetCFFSubroutineBias(GlobalSubroutineIndexData);
 
      if (TopDictPrivate[0]>0) and (TopDictPrivate[1]>0) and (PrivateDictSubRoutine<>0) then begin
-      Position:=TVkInt32(Offset)+TopDictPrivate[1]+PrivateDictSubRoutine;
+      Position:=TInt32(Offset)+TopDictPrivate[1]+PrivateDictSubRoutine;
       result:=LoadIndex(SubroutineIndexData);
       if result<>VkTTF_TT_ERR_NoError then begin
        exit;
       end;
       if length(SubroutineIndexData)>0 then begin
        for i:=0 to length(SubroutineIndexData)-1 do begin
-        if ((SubroutineIndexData[i].Position+SubroutineIndexData[i].Size)-1)>=TVkInt32(EndOffset) then begin
+        if ((SubroutineIndexData[i].Position+SubroutineIndexData[i].Size)-1)>=TInt32(EndOffset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
@@ -36637,7 +36635,7 @@ begin
      end;
 
      if TopDictCharStrings>0 then begin
-      Position:=TVkInt32(TVkInt32(Offset)+TopDictCharStrings);
+      Position:=TInt32(TInt32(Offset)+TopDictCharStrings);
       result:=LoadIndex(TopDictCharStringsIndexData);
       if result<>VkTTF_TT_ERR_NoError then begin
        exit;
@@ -36659,50 +36657,50 @@ begin
      try
 
       if TopDictCharset>0 then begin
-       Position:=TVkInt32(TVkInt32(Offset)+TopDictCharset);
-       if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+       Position:=TInt32(TInt32(Offset)+TopDictCharset);
+       if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        CharsetFormat:=fFontData[Position];
-       inc(Position,SizeOf(TVkUInt8));
+       inc(Position,SizeOf(TUInt8));
        SetLength(CharsetTable,fCountGlyphs);
        CharsetTable[0]:='.notdef';
        case CharsetFormat of
         0:begin
          for i:=0 to fCountGlyphs-2 do begin
-          if ((Position+SizeOf(TVkUInt16))-1)>=EndOffset then begin
+          if ((Position+SizeOf(TUInt16))-1)>=EndOffset then begin
            result:=VkTTF_TT_ERR_CorruptFile;
            exit;
           end;
           SID:=ToWORD(fFontData[Position],fFontData[Position+1]);
-          inc(Position,SizeOf(TVkUInt16));
+          inc(Position,SizeOf(TUInt16));
           CharsetTable[i+1]:=GetCFFString(SID);
          end;
         end;
         1,2:begin
          i:=1;
          while i<fCountGlyphs do begin
-          if ((Position+SizeOf(TVkUInt16))-1)>=EndOffset then begin
+          if ((Position+SizeOf(TUInt16))-1)>=EndOffset then begin
            result:=VkTTF_TT_ERR_CorruptFile;
            exit;
           end;
           SID:=ToWORD(fFontData[Position],fFontData[Position+1]);
-          inc(Position,SizeOf(TVkUInt16));
+          inc(Position,SizeOf(TUInt16));
           if CharsetFormat=1 then begin
-           if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+           if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
             result:=VkTTF_TT_ERR_CorruptFile;
             exit;
            end;
            Count:=fFontData[Position];
-           inc(Position,SizeOf(TVkUInt8));
+           inc(Position,SizeOf(TUInt8));
           end else begin
-           if ((Position+SizeOf(TVkUInt16))-1)>=EndOffset then begin
+           if ((Position+SizeOf(TUInt16))-1)>=EndOffset then begin
             result:=VkTTF_TT_ERR_CorruptFile;
             exit;
            end;
            Count:=ToWORD(fFontData[Position],fFontData[Position+1]);
-           inc(Position,SizeOf(TVkUInt16));
+           inc(Position,SizeOf(TUInt16));
           end;
           if Count=0 then begin
            result:=VkTTF_TT_ERR_CorruptFile;
@@ -36742,55 +36740,55 @@ begin
          end;
         end;
         else begin
-         Position:=TVkInt32(TVkInt32(Offset)+TopDictEncoding);
-         if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+         Position:=TInt32(TInt32(Offset)+TopDictEncoding);
+         if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
           result:=VkTTF_TT_ERR_CorruptFile;
           exit;
          end;
          EncodingFormat:=fFontData[Position];
-         inc(Position,SizeOf(TVkUInt8));
+         inc(Position,SizeOf(TUInt8));
          case EncodingFormat of
           0:begin
-           if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+           if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
             result:=VkTTF_TT_ERR_CorruptFile;
             exit;
            end;
            CountCodes:=fFontData[Position];
-           inc(Position,SizeOf(TVkUInt8));
+           inc(Position,SizeOf(TUInt8));
            SetLength(EncodingTable,CountCodes);
            for i:=0 to CountCodes-1 do begin
-            if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+            if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
              result:=VkTTF_TT_ERR_CorruptFile;
              exit;
             end;
             Code:=fFontData[Position];
-            inc(Position,SizeOf(TVkUInt8));
+            inc(Position,SizeOf(TUInt8));
             EncodingTable[i]:=TVulkanRawByteString(IntToStr(Code));
            end;
           end;
           1:begin
            CountCodes:=0;
            try
-            if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+            if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
              result:=VkTTF_TT_ERR_CorruptFile;
              exit;
             end;
             CountRanges:=fFontData[Position];
-            inc(Position,SizeOf(TVkUInt8));
+            inc(Position,SizeOf(TUInt8));
             Code:=1;
             for i:=0 to CountRanges-1 do begin
-             if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+             if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
               result:=VkTTF_TT_ERR_CorruptFile;
               exit;
              end;
              First:=fFontData[Position];
-             inc(Position,SizeOf(TVkUInt8));
-             if ((Position+SizeOf(TVkUInt8))-1)>=EndOffset then begin
+             inc(Position,SizeOf(TUInt8));
+             if ((Position+SizeOf(TUInt8))-1)>=EndOffset then begin
               result:=VkTTF_TT_ERR_CorruptFile;
               exit;
              end;
              CountSubCodes:=fFontData[Position];
-             inc(Position,SizeOf(TVkUInt8));
+             inc(Position,SizeOf(TUInt8));
              for j:=First to First+CountSubCodes do begin
               if length(EncodingTable)<(j+1) then begin
                SetLength(EncodingTable,(j+1)*2);
@@ -36817,7 +36815,7 @@ begin
 
         for i:=0 to length(CharsetTable)-1 do begin
          if not CharsetTableHashMap.ExistKey(CharsetTable[i]) then begin
-          CharsetTableHashMap.Add(CharsetTable[i],{%H-}TVkPointer(TVkPtrUInt(i)));
+          CharsetTableHashMap.Add(CharsetTable[i],{%H-}TPointer(TPtrUInt(i)));
          end;
         end;
 
@@ -36825,7 +36823,7 @@ begin
 
         for i:=0 to length(EncodingTable)-1 do begin
          if CharsetTableHashMap.TryGet(EncodingTable[i],CharsetTableHashMapData) then begin
-          fCFFCodePointToGlyphIndexTable[i]:={%H-}TVkPtrUInt(TVkPointer(CharsetTableHashMapData));
+          fCFFCodePointToGlyphIndexTable[i]:={%H-}TPtrUInt(TPointer(CharsetTableHashMapData));
          end else begin
           fCFFCodePointToGlyphIndexTable[i]:=-1;
          end;
@@ -36860,11 +36858,11 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadLOCA:TVkInt32;
-var Position,Tag,CheckSum,Offset,Size,thisOffset:TVkUInt32;
-    i:TVkInt32;
+function TVulkanTrueTypeFont.LoadLOCA:TInt32;
+var Position,Tag,CheckSum,Offset,Size,thisOffset:TUInt32;
+    i:TInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('l'),TVkUInt8('o'),TVkUInt8('c'),TVkUInt8('a'));
+ Tag:=ToLONGWORD(TUInt8('l'),TUInt8('o'),TUInt8('c'),TUInt8('a'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
   Position:=Offset;
@@ -36878,11 +36876,11 @@ begin
    case fIndexToLocationFormat of
     0:begin
      thisOffset:=ToWORD(fFontData[Position],fFontData[Position+1])*2;
-     inc(Position,sizeof(TVkUInt16));
+     inc(Position,sizeof(TUInt16));
     end;
     1:begin
      thisOffset:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
-     inc(Position,sizeof(TVkUInt32));
+     inc(Position,sizeof(TUInt32));
     end;
     else begin
      result:=VkTTF_TT_ERR_CorruptFile;
@@ -36895,10 +36893,10 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadGLYF:TVkInt32;
-var Tag,CheckSum,Offset,Size:TVkUInt32;
+function TVulkanTrueTypeFont.LoadGLYF:TInt32;
+var Tag,CheckSum,Offset,Size:TUInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('g'),TVkUInt8('l'),TVkUInt8('y'),TVkUInt8('f'));
+ Tag:=ToLONGWORD(TUInt8('g'),TUInt8('l'),TUInt8('y'),TUInt8('f'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
   fGlyfOffset:=Offset;
@@ -36906,54 +36904,54 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadHHEA:TVkInt32;
-var Position,Tag,CheckSum,Offset,Size:TVkUInt32;
+function TVulkanTrueTypeFont.LoadHHEA:TInt32;
+var Position,Tag,CheckSum,Offset,Size:TUInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('h'),TVkUInt8('h'),TVkUInt8('e'),TVkUInt8('a'));
+ Tag:=ToLONGWORD(TUInt8('h'),TUInt8('h'),TUInt8('e'),TUInt8('a'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result<>VkTTF_TT_Err_NoError then begin
-  Tag:=ToLONGWORD(TVkUInt8('v'),TVkUInt8('h'),TVkUInt8('e'),TVkUInt8('a'));
+  Tag:=ToLONGWORD(TUInt8('v'),TUInt8('h'),TUInt8('e'),TUInt8('a'));
   result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  end else begin
   Position:=Offset;
-  inc(Position,sizeof(TVkUInt32)); // Table Version number
+  inc(Position,sizeof(TUInt32)); // Table Version number
   fAscender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkInt16));
+  inc(Position,sizeof(TInt16));
   fDescender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkInt16));
+  inc(Position,sizeof(TInt16));
   fLineGap:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkInt16));
+  inc(Position,sizeof(TInt16));
   fAdvanceWidthMax:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
-  inc(Position,sizeof(TVkInt16)); // MinLeftSideBearing
-  inc(Position,sizeof(TVkInt16)); // MinRightSideBearing
-  inc(Position,sizeof(TVkInt16)); // XMaxExtent
-  inc(Position,sizeof(TVkInt16)); // CaretSlopeRise
-  inc(Position,sizeof(TVkInt16)); // CaretSlopeRun
-  inc(Position,sizeof(TVkUInt16)*5); // 5 reserved words
-  inc(Position,sizeof(TVkInt16)); // MetricDataFormat
+  inc(Position,sizeof(TUInt16));
+  inc(Position,sizeof(TInt16)); // MinLeftSideBearing
+  inc(Position,sizeof(TInt16)); // MinRightSideBearing
+  inc(Position,sizeof(TInt16)); // XMaxExtent
+  inc(Position,sizeof(TInt16)); // CaretSlopeRise
+  inc(Position,sizeof(TInt16)); // CaretSlopeRun
+  inc(Position,sizeof(TUInt16)*5); // 5 reserved words
+  inc(Position,sizeof(TInt16)); // MetricDataFormat
   fNumfHMetrics:=ToWORD(fFontData[Position],fFontData[Position+1]);
   result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadHMTX:TVkInt32;
-var Position,Tag,CheckSum,Offset,Size:TVkUInt32;
-    i,j:TVkInt32;
+function TVulkanTrueTypeFont.LoadHMTX:TInt32;
+var Position,Tag,CheckSum,Offset,Size:TUInt32;
+    i,j:TInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('h'),TVkUInt8('m'),TVkUInt8('t'),TVkUInt8('x'));
+ Tag:=ToLONGWORD(TUInt8('h'),TUInt8('m'),TUInt8('t'),TUInt8('x'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result<>VkTTF_TT_Err_NoError then begin
-  Tag:=ToLONGWORD(TVkUInt8('v'),TVkUInt8('m'),TVkUInt8('t'),TVkUInt8('x'));
+  Tag:=ToLONGWORD(TUInt8('v'),TUInt8('m'),TUInt8('t'),TUInt8('x'));
   result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  end else begin
   Position:=Offset;
   i:=0;
   while i<fNumfHMetrics do begin
    fGlyphs[i].AdvanceWidth:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
    fGlyphs[i].LeftSideBearing:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkInt16));
+   inc(Position,sizeof(TInt16));
    inc(i);
   end;
   if fNumfHMetrics<>fCountGlyphs then begin
@@ -36961,7 +36959,7 @@ begin
    while i<fCountGlyphs do begin
     fGlyphs[i].AdvanceWidth:=j;
     fGlyphs[i].LeftSideBearing:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-    inc(Position,sizeof(TVkInt16));
+    inc(Position,sizeof(TInt16));
     inc(i);
    end;
   end;
@@ -36969,54 +36967,54 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadVHEA:TVkInt32;
-var Position,Tag,CheckSum,Offset,Size:TVkUInt32;
+function TVulkanTrueTypeFont.LoadVHEA:TInt32;
+var Position,Tag,CheckSum,Offset,Size:TUInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('v'),TVkUInt8('h'),TVkUInt8('e'),TVkUInt8('a'));
+ Tag:=ToLONGWORD(TUInt8('v'),TUInt8('h'),TUInt8('e'),TUInt8('a'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result<>VkTTF_TT_Err_NoError then begin
-  Tag:=ToLONGWORD(TVkUInt8('h'),TVkUInt8('h'),TVkUInt8('e'),TVkUInt8('a'));
+  Tag:=ToLONGWORD(TUInt8('h'),TUInt8('h'),TUInt8('e'),TUInt8('a'));
   result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  end else begin
   Position:=Offset;
-  inc(Position,sizeof(TVkUInt32)); // Table Version number
+  inc(Position,sizeof(TUInt32)); // Table Version number
   fAscender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkInt16));
+  inc(Position,sizeof(TInt16));
   fDescender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkInt16));
+  inc(Position,sizeof(TInt16));
   fLineGap:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkInt16));
+  inc(Position,sizeof(TInt16));
   fAdvanceHeightMax:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
-  inc(Position,sizeof(TVkInt16)); // MinTopSideBearing
-  inc(Position,sizeof(TVkInt16)); // MinBottomSideBearing
-  inc(Position,sizeof(TVkInt16)); // YMaxExtent
-  inc(Position,sizeof(TVkInt16)); // CaretSlopeRise
-  inc(Position,sizeof(TVkInt16)); // CaretSlopeRun
-  inc(Position,sizeof(TVkUInt16)*5); // 5 reserved words
-  inc(Position,sizeof(TVkInt16)); // MetricDataFormat
+  inc(Position,sizeof(TUInt16));
+  inc(Position,sizeof(TInt16)); // MinTopSideBearing
+  inc(Position,sizeof(TInt16)); // MinBottomSideBearing
+  inc(Position,sizeof(TInt16)); // YMaxExtent
+  inc(Position,sizeof(TInt16)); // CaretSlopeRise
+  inc(Position,sizeof(TInt16)); // CaretSlopeRun
+  inc(Position,sizeof(TUInt16)*5); // 5 reserved words
+  inc(Position,sizeof(TInt16)); // MetricDataFormat
   fNumfVMetrics:=ToWORD(fFontData[Position],fFontData[Position+1]);
   result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadVMTX:TVkInt32;
-var Position,Tag,CheckSum,Offset,Size:TVkUInt32;
-    i,j:TVkInt32;
+function TVulkanTrueTypeFont.LoadVMTX:TInt32;
+var Position,Tag,CheckSum,Offset,Size:TUInt32;
+    i,j:TInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('v'),TVkUInt8('m'),TVkUInt8('t'),TVkUInt8('x'));
+ Tag:=ToLONGWORD(TUInt8('v'),TUInt8('m'),TUInt8('t'),TUInt8('x'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result<>VkTTF_TT_Err_NoError then begin
-  Tag:=ToLONGWORD(TVkUInt8('h'),TVkUInt8('m'),TVkUInt8('t'),TVkUInt8('x'));
+  Tag:=ToLONGWORD(TUInt8('h'),TUInt8('m'),TUInt8('t'),TUInt8('x'));
   result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  end else begin
   Position:=Offset;
   i:=0;
   while i<fNumfVMetrics do begin
    fGlyphs[i].AdvanceHeight:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
    fGlyphs[i].TopSideBearing:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkInt16));
+   inc(Position,sizeof(TInt16));
    inc(i);
   end;
   if fNumfVMetrics<>fCountGlyphs then begin
@@ -37024,7 +37022,7 @@ begin
    while i<fCountGlyphs do begin
     fGlyphs[i].AdvanceWidth:=j;
     fGlyphs[i].TopSideBearing:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-    inc(Position,sizeof(TVkInt16));
+    inc(Position,sizeof(TInt16));
     inc(i);
    end;
   end;
@@ -37032,24 +37030,24 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadGPOS:TVkInt32;
+function TVulkanTrueTypeFont.LoadGPOS:TInt32;
 type PGlyphs=^TGlyphs;
      TGlyphs=record
-      Count:TVkInt32;
-      Items:array of TVkInt32;
+      Count:TInt32;
+      Items:array of TInt32;
      end;
      TGlyphsByClass=array of TGlyphs;
-var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
+var Position,Tag,CheckSum,Offset,Size,Next:TUInt32;
     MajorVersion,MinorVersion,
     FeatureVariations,LookupType,LookupFlags,
     i,j,k,h,BaseOffset,ScriptListOffset,
     FeatureListOffset,LookupListOffset,LookupListCount,
-    LookupTableOffset,SubTableCount,SubTableOffset:TVkInt32;
- function LoadSubTable(const LookupType,SubTableOffset:TVkInt32):TVkInt32;
- var GlyphArray:array of TVkUInt32;
-  function LoadCoverageTable(const CoverageOffset:TVkInt32):TVkInt32;
-  var CoverageFormat,CurrentPosition:TVkUInt32;
-      k,h,GlyphCount,RangeCount,StartIndex,EndIndex:TVkInt32;
+    LookupTableOffset,SubTableCount,SubTableOffset:TInt32;
+ function LoadSubTable(const LookupType,SubTableOffset:TInt32):TInt32;
+ var GlyphArray:array of TUInt32;
+  function LoadCoverageTable(const CoverageOffset:TInt32):TInt32;
+  var CoverageFormat,CurrentPosition:TUInt32;
+      k,h,GlyphCount,RangeCount,StartIndex,EndIndex:TInt32;
       GlyphInt64HashMap:TVulkanInt64HashMap;
   begin
 
@@ -37102,8 +37100,8 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
    result:=VkTTF_TT_Err_NoError;
 
   end;
-  function LoadClassDefinition(Offset:TVkInt32;const ClassCount:TVkInt32;var GlyphsByClass:TGlyphsByClass):TVkInt32;
-  var ClassFormat,StartGlyph,GlyphCount,i,Glyph,GlyphClass,ClassRangeCount,StartIndex,EndIndex:TVkInt32;
+  function LoadClassDefinition(Offset:TInt32;const ClassCount:TInt32;var GlyphsByClass:TGlyphsByClass):TInt32;
+  var ClassFormat,StartGlyph,GlyphCount,i,Glyph,GlyphClass,ClassRangeCount,StartIndex,EndIndex:TInt32;
       Glyphs:PGlyphs;
   begin
    GlyphsByClass:=nil;
@@ -37162,8 +37160,8 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
    end;
    result:=VkTTF_TT_Err_NoError;
   end;
-  function ReadValueFromValueRecord(var Offset:TVkInt32;const ValueFormat,TargetMask:TVkInt32):TVkInt32;
-  var Mask,Value:TVkInt32;
+  function ReadValueFromValueRecord(var Offset:TInt32;const ValueFormat,TargetMask:TInt32):TInt32;
+  var Mask,Value:TInt32;
   begin
    result:=0;
    Mask:=1;
@@ -37176,8 +37174,8 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
     Mask:=Mask shl 1;
    end;
   end;
-  procedure AddKerningPair(const FirstGlyph,SecondGlyph,Value:TVkInt32;const Horizontal:boolean);
-  var i:TVkInt32;
+  procedure AddKerningPair(const FirstGlyph,SecondGlyph,Value:TInt32;const Horizontal:boolean);
+  var i:TInt32;
       KerningTable:PVulkanTrueTypeFontKerningTable;
       KerningPair:PVulkanTrueTypeFontKerningPair;
   begin
@@ -37213,7 +37211,7 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
  var i,j,k,h,SubTableType,CoverageOffset,ValueFormat1,ValueFormat2,PairSetCount,
      PairSetTableOffset,FirstGlyph,SecondGlyph,CurrentPosition,
      x,ClassDefOffset1,ClassDefOffset2,Class1Count,Class2Count,
-     PairValueCount,NewLookupType,Glyph:TVkInt32;
+     PairValueCount,NewLookupType,Glyph:TInt32;
      GlyphsByClass1,GlyphsByClass2:TGlyphsByClass;
      Found:boolean;
      Glyphs1,Glyphs2:PGlyphs;
@@ -37375,7 +37373,7 @@ var Position,Tag,CheckSum,Offset,Size,Next:TVkUInt32;
       // Format 1
 
       NewLookupType:=ToWORD(fFontData[SubTableOffset+2],fFontData[SubTableOffset+3]);
-      CurrentPosition:=SubTableOffset+TVkInt32(ToLONGWORD(fFontData[SubTableOffset+4],fFontData[SubTableOffset+5],fFontData[SubTableOffset+6],fFontData[SubTableOffset+7]));
+      CurrentPosition:=SubTableOffset+TInt32(ToLONGWORD(fFontData[SubTableOffset+4],fFontData[SubTableOffset+5],fFontData[SubTableOffset+6],fFontData[SubTableOffset+7]));
 
       result:=LoadSubTable(NewLookupType,CurrentPosition);
       if result<>VkTTF_TT_Err_NoError then begin
@@ -37395,7 +37393,7 @@ var KerningTable:PVulkanTrueTypeFontKerningTable;
     DoNeedSort:boolean;
 begin
 
- Tag:=ToLONGWORD(TVkUInt8('G'),TVkUInt8('P'),TVkUInt8('O'),TVkUInt8('S'));
+ Tag:=ToLONGWORD(TUInt8('G'),TUInt8('P'),TUInt8('O'),TUInt8('S'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
 
@@ -37404,25 +37402,25 @@ begin
   BaseOffset:=Position;
 
   MajorVersion:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
 
   MinorVersion:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
 
   ScriptListOffset:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
 
   FeatureListOffset:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
 
   LookupListOffset:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
 
   if (MajorVersion=1) and (MinorVersion=0) then begin
    FeatureVariations:=0;
   end else if (MajorVersion=1) and (MinorVersion=1) then begin
    FeatureVariations:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
-   inc(Position,sizeof(TVkUInt32));
+   inc(Position,sizeof(TUInt32));
   end else begin
    result:=VkTTF_TT_ERR_UnknownGPOSFormat;
    exit;
@@ -37492,23 +37490,23 @@ begin
 
 end;
 
-function TVulkanTrueTypeFont.LoadKERN:TVkInt32;
-var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
-    CountSubTables,i,j:TVkInt32;
-    CoverageFormat,CoverageFlags:TVkUInt8;
+function TVulkanTrueTypeFont.LoadKERN:TInt32;
+var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TUInt32;
+    CountSubTables,i,j:TInt32;
+    CoverageFormat,CoverageFlags:TUInt8;
     DoNeedSort,Minimum,XStream:boolean;
     KerningTable:PVulkanTrueTypeFontKerningTable;
- function LoadKerningTableFormat0:TVkInt32;
- var i,j:TVkInt32;
+ function LoadKerningTableFormat0:TInt32;
+ var i,j:TInt32;
      DoNeedSort:boolean;
      KerningPair:PVulkanTrueTypeFontKerningPair;
  begin
 
   KerningTable^.CountKerningPairs:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
-  inc(Position,sizeof(TVkUInt16)); // Search range
-  inc(Position,sizeof(TVkUInt16)); // Entry selector
-  inc(Position,sizeof(TVkUInt16)); // Range shift
+  inc(Position,sizeof(TUInt16));
+  inc(Position,sizeof(TUInt16)); // Search range
+  inc(Position,sizeof(TUInt16)); // Entry selector
+  inc(Position,sizeof(TUInt16)); // Range shift
 
   KerningTable^.KerningPairs:=nil;
   SetLength(KerningTable^.KerningPairs,KerningTable^.CountKerningPairs);
@@ -37525,11 +37523,11 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
   for j:=0 to length(KerningTable^.KerningPairs)-1 do begin
    KerningPair:=@KerningTable^.KerningPairs[j];
    KerningPair^.Left:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
    KerningPair^.Right:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
    KerningPair^.Value:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkInt16));
+   inc(Position,sizeof(TInt16));
   end;
 
   KerningTable^.BinarySearch:=false;
@@ -37556,11 +37554,11 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
   result:=VkTTF_TT_ERR_NoError;
 
  end;
- function LoadKerningTableFormat2:TVkInt32;
+ function LoadKerningTableFormat2:TInt32;
  var i,j,Offset,RowWidth,LeftOffsetTable,RightOffsetTable,KernArray,
      LeftClassOffset,RightClassOffset,LeftFirstGlyph,LeftCountGlyphs,
      RightFirstGlyph,RightCountGlyphs,LeftGlyphCounter,RightGlyphCounter,
-     KerningPairIndex:TVkInt32;
+     KerningPairIndex:TInt32;
      DoNeedSort:boolean;
      KerningPair:PVulkanTrueTypeFontKerningPair;
  begin
@@ -37568,16 +37566,16 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
   Offset:=Position;
 
   RowWidth:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
 
   LeftOffsetTable:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
 
   RightOffsetTable:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
 
   KernArray:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
 
   LeftFirstGlyph:=ToWORD(fFontData[Offset+LeftOffsetTable+0],fFontData[Offset+LeftOffsetTable+1]);
   LeftCountGlyphs:=ToWORD(fFontData[Offset+LeftOffsetTable+2],fFontData[Offset+LeftOffsetTable+3]);
@@ -37638,19 +37636,19 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TVkUInt32;
  end;
 
 begin
- Tag:=ToLONGWORD(TVkUInt8('k'),TVkUInt8('e'),TVkUInt8('r'),TVkUInt8('n'));
+ Tag:=ToLONGWORD(TUInt8('k'),TUInt8('e'),TUInt8('r'),TUInt8('n'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
   Position:=Offset;
 
   Version:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16)); // Table Version number
+  inc(Position,sizeof(TUInt16)); // Table Version number
 
   case Version of
    0:begin
 
     CountSubTables:=ToWORD(fFontData[Position],fFontData[Position+1]);
-    inc(Position,sizeof(TVkUInt16));
+    inc(Position,sizeof(TUInt16));
 
     SetLength(fKerningTables,CountSubTables);
     if length(fKerningTables)<>CountSubTables then begin
@@ -37662,9 +37660,9 @@ begin
 
      KerningTable:=@fKerningTables[i];
 
-     inc(Position,sizeof(TVkUInt16)); // Subtable version number
+     inc(Position,sizeof(TUInt16)); // Subtable version number
      SubTableSize:=ToWORD(fFontData[Position],fFontData[Position+1]);
-     inc(Position,sizeof(TVkUInt16)); // Subtable Size
+     inc(Position,sizeof(TUInt16)); // Subtable Size
      CoverageFormat:=fFontData[Position];
      CoverageFlags:=fFontData[Position+1];
      inc(Position,2);
@@ -37698,10 +37696,10 @@ begin
    end;
    1:begin
 
-    inc(Position,sizeof(TVkUInt16)); // Version-Lo
+    inc(Position,sizeof(TUInt16)); // Version-Lo
 
     CountSubTables:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
-    inc(Position,sizeof(TVkUInt32));
+    inc(Position,sizeof(TUInt32));
 
     SetLength(fKerningTables,CountSubTables);
     if length(fKerningTables)<>CountSubTables then begin
@@ -37714,11 +37712,11 @@ begin
      KerningTable:=@fKerningTables[i];
 
      SubTableSize:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
-     inc(Position,sizeof(TVkUInt32)); // Subtable Size
+     inc(Position,sizeof(TUInt32)); // Subtable Size
      CoverageFormat:=fFontData[Position];
      CoverageFlags:=fFontData[Position+1];
      inc(Position,2);
-     inc(Position,sizeof(TVkUInt16)); // Tuple Index
+     inc(Position,sizeof(TUInt16)); // Tuple Index
      Next:=(Position+SubTableSize)-8;
 
      if (CoverageFlags and 2)<>0 then begin
@@ -37764,11 +37762,11 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadCMAP:TVkInt32;
+function TVulkanTrueTypeFont.LoadCMAP:TInt32;
 type PTryEntry=^TTryEntry;
      TTryEntry=record
-      PlatformID:TVkUInt32;
-      SpecificID:TVkUInt32;
+      PlatformID:TUInt32;
+      SpecificID:TUInt32;
      end;
 const TryEntries:array[0..9] of TTryEntry=
        ((PlatformID:VkTTF_PID_Microsoft;SpecificID:VkTTF_SID_MS_UCS_4),
@@ -37783,12 +37781,12 @@ const TryEntries:array[0..9] of TTryEntry=
         (PlatformID:VkTTF_PID_ISO;SpecificID:VkTTF_SID_ISO_ASCII)
        );
 var Position,Tag,CheckSum,Offset,Size,NumSubTables,ThisPlatformID,ThisSpecificID,ThisSubtableOffset,SubtableOffset,
-    SubtablePosition,i,j:TVkUInt32;
-    SubtableLength,CMapIndex:TVkInt32;
+    SubtablePosition,i,j:TUInt32;
+    SubtableLength,CMapIndex:TInt32;
     SubtableFound:boolean;
     TryEntry:PTryEntry;
 begin
- Tag:=ToLONGWORD(TVkUInt8('c'),TVkUInt8('m'),TVkUInt8('a'),TVkUInt8('p'));
+ Tag:=ToLONGWORD(TUInt8('c'),TUInt8('m'),TUInt8('a'),TUInt8('p'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
 
@@ -37800,9 +37798,9 @@ begin
   for CMapIndex:=0 to 1 do begin
 
    Position:=Offset;
-   inc(Position,sizeof(TVkUInt16)); // Table Version number
+   inc(Position,sizeof(TUInt16)); // Table Version number
    NumSubTables:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
 
    SubtableFound:=false;
    SubtableOffset:=0;
@@ -37811,11 +37809,11 @@ begin
     SubtablePosition:=Position;
     for i:=1 to NumSubTables do begin
      ThisPlatformID:=ToWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1]);
-     inc(SubtablePosition,sizeof(TVkUInt16));
+     inc(SubtablePosition,sizeof(TUInt16));
      ThisSpecificID:=ToWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1]);
-     inc(SubtablePosition,sizeof(TVkUInt16));
+     inc(SubtablePosition,sizeof(TUInt16));
      ThisSubtableOffset:=ToLONGWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1],fFontData[SubtablePosition+2],fFontData[SubtablePosition+3]);
-     inc(SubtablePosition,sizeof(TVkUInt32));
+     inc(SubtablePosition,sizeof(TUInt32));
      if (ThisPlatformID=fPlatformID) and (ThisSpecificID=fSpecificID) then begin
       SubtableFound:=true;
       SubtableOffset:=ThisSubtableOffset;
@@ -37829,11 +37827,11 @@ begin
     SubtablePosition:=Position;
     for i:=1 to NumSubTables do begin
      ThisPlatformID:=ToWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1]);
-     inc(SubtablePosition,sizeof(TVkUInt16));
+     inc(SubtablePosition,sizeof(TUInt16));
      ThisSpecificID:=ToWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1]);
-     inc(SubtablePosition,sizeof(TVkUInt16));
+     inc(SubtablePosition,sizeof(TUInt16));
      ThisSubtableOffset:=ToLONGWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1],fFontData[SubtablePosition+2],fFontData[SubtablePosition+3]);
-     inc(SubtablePosition,sizeof(TVkUInt32));
+     inc(SubtablePosition,sizeof(TUInt32));
      if (ThisPlatformID=VkTTF_PID_Apple) and (ThisSpecificID=VkTTF_SID_APPLE_VARIANT_SELECTOR) then begin
       SubtableFound:=true;
       SubtableOffset:=ThisSubtableOffset;
@@ -37850,11 +37848,11 @@ begin
      SubtablePosition:=Position;
      for j:=1 to NumSubTables do begin
       ThisPlatformID:=ToWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1]);
-      inc(SubtablePosition,sizeof(TVkUInt16));
+      inc(SubtablePosition,sizeof(TUInt16));
       ThisSpecificID:=ToWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1]);
-      inc(SubtablePosition,sizeof(TVkUInt16));
+      inc(SubtablePosition,sizeof(TUInt16));
       ThisSubtableOffset:=ToLONGWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1],fFontData[SubtablePosition+2],fFontData[SubtablePosition+3]);
-      inc(SubtablePosition,sizeof(TVkUInt32));
+      inc(SubtablePosition,sizeof(TUInt32));
       if (ThisPlatformID=TryEntry^.PlatformID) and (ThisSpecificID=TryEntry^.SpecificID) then begin
        SubtableFound:=true;
        SubtableOffset:=ThisSubtableOffset;
@@ -37871,11 +37869,11 @@ begin
      SubtablePosition:=Position;
      for i:=1 to NumSubTables do begin
       ThisPlatformID:=ToWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1]);
-      inc(SubtablePosition,sizeof(TVkUInt16));
+      inc(SubtablePosition,sizeof(TUInt16));
       ThisSpecificID:=ToWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1]);
-      inc(SubtablePosition,sizeof(TVkUInt16));
+      inc(SubtablePosition,sizeof(TUInt16));
       ThisSubtableOffset:=ToLONGWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1],fFontData[SubtablePosition+2],fFontData[SubtablePosition+3]);
-      inc(SubtablePosition,sizeof(TVkUInt32));
+      inc(SubtablePosition,sizeof(TUInt32));
       if (ThisPlatformID<>VkTTF_PID_Apple) and (ThisSpecificID<>VkTTF_SID_APPLE_VARIANT_SELECTOR) then begin
        SubtableFound:=true;
        SubtableOffset:=ThisSubtableOffset;
@@ -37930,60 +37928,60 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadCVT:TVkInt32;
-var Position,Tag,CheckSum,Offset,Size:TVkUInt32;
-    Index:TVkInt32;
+function TVulkanTrueTypeFont.LoadCVT:TInt32;
+var Position,Tag,CheckSum,Offset,Size:TUInt32;
+    Index:TInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('c'),TVkUInt8('v'),TVkUInt8('t'),TVkUInt8(' '));
+ Tag:=ToLONGWORD(TUInt8('c'),TUInt8('v'),TUInt8('t'),TUInt8(' '));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
   SetLength(fCVT,(Size+1) shr 1);
   Position:=Offset;
   for Index:=0 to length(fCVT)-1 do begin
-   fCVT[Index]:=TVkInt16(TVkUInt16(ToWORD(fFontData[Position],fFontData[Position+1])));
-   inc(Position,SizeOf(TVkUInt16));
+   fCVT[Index]:=TInt16(TUInt16(ToWORD(fFontData[Position],fFontData[Position+1])));
+   inc(Position,SizeOf(TUInt16));
   end;
   result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadFPGM:TVkInt32;
-var Tag,CheckSum,Offset,Size:TVkUInt32;
+function TVulkanTrueTypeFont.LoadFPGM:TInt32;
+var Tag,CheckSum,Offset,Size:TUInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('f'),TVkUInt8('p'),TVkUInt8('g'),TVkUInt8('m'));
+ Tag:=ToLONGWORD(TUInt8('f'),TUInt8('p'),TUInt8('g'),TUInt8('m'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
-  fFPGM.Data:=TVkPointer(@fFontData[Offset]);
+  fFPGM.Data:=TPointer(@fFontData[Offset]);
   fFPGM.Size:=Size;
   result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadPREP:TVkInt32;
-var Tag,CheckSum,Offset,Size:TVkUInt32;
+function TVulkanTrueTypeFont.LoadPREP:TInt32;
+var Tag,CheckSum,Offset,Size:TUInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('p'),TVkUInt8('r'),TVkUInt8('e'),TVkUInt8('p'));
+ Tag:=ToLONGWORD(TUInt8('p'),TUInt8('r'),TUInt8('e'),TUInt8('p'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
-  fPREP.Data:=TVkPointer(@fFontData[Offset]);
+  fPREP.Data:=TPointer(@fFontData[Offset]);
   fPREP.Size:=Size;
   result:=VkTTF_TT_ERR_NoError;
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadGASP:TVkInt32;
-var Position,Tag,CheckSum,Offset,Size,{Version,}NumRanges,Index:TVkUInt32;
-    LowerRange:TVkInt32;
+function TVulkanTrueTypeFont.LoadGASP:TInt32;
+var Position,Tag,CheckSum,Offset,Size,{Version,}NumRanges,Index:TUInt32;
+    LowerRange:TInt32;
 begin
- Tag:=ToLONGWORD(TVkUInt8('g'),TVkUInt8('a'),TVkUInt8('s'),TVkUInt8('p'));
+ Tag:=ToLONGWORD(TUInt8('g'),TUInt8('a'),TUInt8('s'),TUInt8('p'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=VkTTF_TT_Err_NoError then begin
   Position:=Offset;
   {Version:=}ToWORD(fFontData[Position],fFontData[Position+1]);
-  inc(Position,sizeof(TVkUInt16));
+  inc(Position,sizeof(TUInt16));
   begin
    NumRanges:=ToWORD(fFontData[Position],fFontData[Position+1]);
-   inc(Position,sizeof(TVkUInt16));
+   inc(Position,sizeof(TUInt16));
    if NumRanges>0 then begin
     SetLength(fGASPRanges,NumRanges);
     LowerRange:=0;
@@ -37991,9 +37989,9 @@ begin
     while Index<NumRanges do begin
      fGASPRanges[Index].LowerPPEM:=LowerRange;
      fGASPRanges[Index].UpperPPEM:=ToWORD(fFontData[Position],fFontData[Position+1]);
-     inc(Position,sizeof(TVkUInt16));
+     inc(Position,sizeof(TUInt16));
      fGASPRanges[Index].Flags:=ToWORD(fFontData[Position],fFontData[Position+1]);
-     inc(Position,sizeof(TVkUInt16));
+     inc(Position,sizeof(TUInt16));
      LowerRange:=fGASPRanges[Index].UpperPPEM+1;
      inc(Index);
     end;
@@ -38007,7 +38005,7 @@ begin
 end;
 
 function TVulkanTrueTypeFont.GetGASPRange:PVulkanTrueTypeFontGASPRange;
-var l,h,m,v:TVkInt32;
+var l,h,m,v:TInt32;
 begin
  l:=0;
  h:=length(fGASPRanges);
@@ -38026,17 +38024,17 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.LoadGlyphData(GlyphIndex:TVkInt32):TVkInt32;
+function TVulkanTrueTypeFont.LoadGlyphData(GlyphIndex:TInt32):TInt32;
 var Offset,Size,CurrentGlyphOffset,NextGlyphOffset,CurrentGlyphLength,Position,OldPosition,CurrentFlags,CurrentIndex,
-    InstructionLength,RepeatCount,CurrentFlag:TVkUInt32;
-    SubGlyphIndex,NumContours,Index,NumAllPoints,Last,Current:TVkInt32;
-    carg1,carg2,cxx,cyx,cxy,cyy:TVkInt32;
+    InstructionLength,RepeatCount,CurrentFlag:TUInt32;
+    SubGlyphIndex,NumContours,Index,NumAllPoints,Last,Current:TInt32;
+    carg1,carg2,cxx,cyx,cxy,cyy:TInt32;
 begin
  if (fGlyfOffset<>0) and ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) then begin
 
-  if (fGlyphLoadedBitmap[GlyphIndex shr 3] and (TVkUInt32(1) shl TVkUInt32(GlyphIndex and 31)))=0 then begin
+  if (fGlyphLoadedBitmap[GlyphIndex shr 3] and (TUInt32(1) shl TUInt32(GlyphIndex and 31)))=0 then begin
 
-   fGlyphLoadedBitmap[GlyphIndex shr 3]:=fGlyphLoadedBitmap[GlyphIndex shr 3] or (TVkUInt32(1) shl TVkUInt32(GlyphIndex and 31));
+   fGlyphLoadedBitmap[GlyphIndex shr 3]:=fGlyphLoadedBitmap[GlyphIndex shr 3] or (TUInt32(1) shl TUInt32(GlyphIndex and 31));
 
    Offset:=fGlyfOffset;
 
@@ -38065,40 +38063,40 @@ begin
 
     Position:=Offset+CurrentGlyphOffset;
 
-    if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+    if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
      result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     NumContours:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-    inc(Position,sizeof(TVkInt16));
+    inc(Position,sizeof(TInt16));
 
-    if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+    if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
      result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.XMin:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-    inc(Position,sizeof(TVkInt16));
+    inc(Position,sizeof(TInt16));
 
-    if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+    if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
      result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.YMin:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-    inc(Position,sizeof(TVkInt16));
+    inc(Position,sizeof(TInt16));
 
-    if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+    if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
      result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.XMax:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-    inc(Position,sizeof(TVkInt16));
+    inc(Position,sizeof(TInt16));
 
-    if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+    if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
      result:=VkTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.YMax:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-    inc(Position,sizeof(TVkInt16));
+    inc(Position,sizeof(TInt16));
 
     if NumContours<=0 then begin
 
@@ -38110,31 +38108,31 @@ begin
 
       repeat
 
-       if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
+       if (Position+sizeof(TUInt16))>(NextGlyphOffset+Offset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        CurrentFlags:=ToWORD(fFontData[Position],fFontData[Position+1]);
-       inc(Position,sizeof(TVkUInt16));
+       inc(Position,sizeof(TUInt16));
 
-       if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
+       if (Position+sizeof(TUInt16))>(NextGlyphOffset+Offset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
-       inc(Position,sizeof(TVkUInt16));
+       inc(Position,sizeof(TUInt16));
 
        if (CurrentFlags and ARGS_ARE_WORDS)<>0 then begin
-        if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TUInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
 
-        if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TUInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
        end else begin
         if (Position+sizeof(shortint))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
@@ -38150,47 +38148,47 @@ begin
        end;
 
        if (CurrentFlags and WE_HAVE_A_SCALE)<>0 then begin
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
        end else if (CurrentFlags and WE_HAVE_AN_XY_SCALE)<>0 then begin
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
 
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
        end else if (CurrentFlags and WE_HAVE_A_2X2)<>0 then begin
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
 
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
 
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
 
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
        end;
 
        inc(SubGlyphIndex);
@@ -38204,38 +38202,38 @@ begin
       SubGlyphIndex:=0;
       repeat
 
-       if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
+       if (Position+sizeof(TUInt16))>(NextGlyphOffset+Offset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        CurrentFlags:=ToWORD(fFontData[Position],fFontData[Position+1]);
-       inc(Position,sizeof(TVkUInt16));
+       inc(Position,sizeof(TUInt16));
 
-       if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
+       if (Position+sizeof(TUInt16))>(NextGlyphOffset+Offset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        CurrentIndex:=ToWORD(fFontData[Position],fFontData[Position+1]);
-       inc(Position,sizeof(TVkUInt16));
+       inc(Position,sizeof(TUInt16));
 
        if (CurrentFlags and USE_MY_METRICS)<>0 then begin
         fGlyphs[GlyphIndex].UseMetricsFrom:=CurrentIndex;
        end;
 
        if (CurrentFlags and ARGS_ARE_WORDS)<>0 then begin
-        if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TUInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         carg1:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
 
-        if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TUInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         carg2:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
        end else begin
         if (Position+sizeof(shortint))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
@@ -38258,55 +38256,55 @@ begin
        cyx:=0;
 
        if (CurrentFlags and WE_HAVE_A_SCALE)<>0 then begin
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
         cyy:=cxx;
        end else if (CurrentFlags and WE_HAVE_AN_XY_SCALE)<>0 then begin
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
 
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cyy:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
        end else if (CurrentFlags and WE_HAVE_A_2X2)<>0 then begin
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
 
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cyx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
 
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxy:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
 
-        if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+        if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
          result:=VkTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cyy:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
-        inc(Position,sizeof(TVkInt16));
+        inc(Position,sizeof(TInt16));
        end;
 
        fGlyphs[GlyphIndex].CompositeSubGlyphs[SubGlyphIndex].Flags:=CurrentFlags;
@@ -38323,20 +38321,20 @@ begin
 
       if (CurrentFlags and WE_HAVE_INSTR)<>0 then begin
 
-       // TVkUInt8 code instruction Data
-       if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
+       // TUInt8 code instruction Data
+       if (Position+sizeof(TUInt16))>(NextGlyphOffset+Offset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        InstructionLength:=ToWORD(fFontData[Position],fFontData[Position+1]);
-       inc(Position,sizeof(TVkUInt16));
+       inc(Position,sizeof(TUInt16));
        if (Position+InstructionLength)>(NextGlyphOffset+Offset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
 
        if InstructionLength>0 then begin
-        fGlyphs[GlyphIndex].Instructions.Data:=TVkPointer(@fFontData[Position]);
+        fGlyphs[GlyphIndex].Instructions.Data:=TPointer(@fFontData[Position]);
         fGlyphs[GlyphIndex].Instructions.Size:=InstructionLength;
        end else begin
         fGlyphs[GlyphIndex].Instructions.Data:=nil;
@@ -38357,29 +38355,29 @@ begin
 
      // End point indices
      for Index:=0 to NumContours-1 do begin
-      if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
+      if (Position+sizeof(TUInt16))>(NextGlyphOffset+Offset) then begin
        result:=VkTTF_TT_ERR_CorruptFile;
        exit;
       end;
       fGlyphs[GlyphIndex].EndPointIndices[Index]:=ToWORD(fFontData[Position],fFontData[Position+1]);
-      inc(Position,sizeof(TVkUInt16));
+      inc(Position,sizeof(TUInt16));
      end;
      NumAllPoints:=fGlyphs[GlyphIndex].EndPointIndices[length(fGlyphs[GlyphIndex].EndPointIndices)-1]+1;
 
-     // TVkUInt8 code instruction Data
-     if (Position+sizeof(TVkUInt16))>(NextGlyphOffset+Offset) then begin
+     // TUInt8 code instruction Data
+     if (Position+sizeof(TUInt16))>(NextGlyphOffset+Offset) then begin
       result:=VkTTF_TT_ERR_CorruptFile;
       exit;
      end;
      InstructionLength:=ToWORD(fFontData[Position],fFontData[Position+1]);
-     inc(Position,sizeof(TVkUInt16));
+     inc(Position,sizeof(TUInt16));
      if (Position+InstructionLength)>(NextGlyphOffset+Offset) then begin
       result:=VkTTF_TT_ERR_CorruptFile;
       exit;
      end;
 
      if InstructionLength>0 then begin
-      fGlyphs[GlyphIndex].Instructions.Data:=TVkPointer(@fFontData[Position]);
+      fGlyphs[GlyphIndex].Instructions.Data:=TPointer(@fFontData[Position]);
       fGlyphs[GlyphIndex].Instructions.Size:=InstructionLength;
      end else begin
       fGlyphs[GlyphIndex].Instructions.Data:=nil;
@@ -38396,7 +38394,7 @@ begin
      // Flags
      Index:=0;
      while Index<NumAllPoints do begin
-      if (Position+sizeof(TVkUInt8))>(NextGlyphOffset+Offset) then begin
+      if (Position+sizeof(TUInt8))>(NextGlyphOffset+Offset) then begin
        result:=VkTTF_TT_ERR_CorruptFile;
        exit;
       end;
@@ -38419,7 +38417,7 @@ begin
      for Index:=0 to NumAllPoints-1 do begin
       CurrentFlag:=fGlyphs[GlyphIndex].Points[Index].Flags;
       if (CurrentFlag and VkTTF_PathFlag_OnXShortVector)<>0 then begin
-       if (Position+sizeof(TVkUInt8))>(NextGlyphOffset+Offset) then begin
+       if (Position+sizeof(TUInt8))>(NextGlyphOffset+Offset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
@@ -38431,12 +38429,12 @@ begin
       end else if (CurrentFlag and VkTTF_PathFlag_ThisXIsSame)<>0 then begin
        Current:=0;
       end else begin
-       if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+       if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Current:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-       inc(Position,sizeof(TVkInt16));
+       inc(Position,sizeof(TInt16));
       end;
       Last:=Last+Current;
       fGlyphs[GlyphIndex].Points[Index].x:=Last;
@@ -38447,7 +38445,7 @@ begin
      for Index:=0 to NumAllPoints-1 do begin
       CurrentFlag:=fGlyphs[GlyphIndex].Points[Index].Flags;
       if (CurrentFlag and VkTTF_PathFlag_OnYShortVector)<>0 then begin
-       if (Position+sizeof(TVkUInt8))>(NextGlyphOffset+Offset) then begin
+       if (Position+sizeof(TUInt8))>(NextGlyphOffset+Offset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
@@ -38459,12 +38457,12 @@ begin
       end else if (CurrentFlag and VkTTF_PathFlag_ThisYIsSame)<>0 then begin
        Current:=0;
       end else begin
-       if (Position+sizeof(TVkInt16))>(NextGlyphOffset+Offset) then begin
+       if (Position+sizeof(TInt16))>(NextGlyphOffset+Offset) then begin
         result:=VkTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Current:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
-       inc(Position,sizeof(TVkInt16));
+       inc(Position,sizeof(TInt16));
       end;
       Last:=Last+Current;
       fGlyphs[GlyphIndex].Points[Index].y:=Last;
@@ -38496,14 +38494,14 @@ begin
 
 end;
 
-function TVulkanTrueTypeFont.GetGlyphIndex(CodePointCode:TVkUInt32;CMapIndex:TVkInt32=0):TVkUInt32;
+function TVulkanTrueTypeFont.GetGlyphIndex(CodePointCode:TUInt32;CMapIndex:TInt32=0):TUInt32;
 var CMap:PVulkanTrueTypeFontByteArray;
-    SegCount,u:TVkUInt16;
+    SegCount,u:TUInt16;
     EndCount,StartCount,IDDelta,IDRangeOffset,Data,SubHeaderKeysData:PVulkanTrueTypeFontByteArray;
     CMapLength,EndV,Start,Delta,Range,Index,Seg,i,NumSH,NumGlyphID,index1,Idx,IDDeltaValue,
     IDRangeOffsetValue,Offset,FirstCode,EntryCount,l,h,m,CharHi,CharLo,
     NumSelectors,SelectorIndex,LastVarSelector,VarSelector,DefaultOffset,
-    NonDefaultOffset,NumMappings,Unicode:TVkUInt32;
+    NonDefaultOffset,NumMappings,Unicode:TUInt32;
 begin
  if (CMapIndex>=0) and (CMapIndex<length(fCMaps)) then begin
   CMap:=fCMaps[CMapIndex];
@@ -38520,7 +38518,7 @@ begin
   case fCMapFormat of
    VkTTF_CMAP_FORMAT0:begin
     Offset:=CodePointCode+6;
-    if Offset<TVkUInt32(CMapLength) then begin
+    if Offset<TUInt32(CMapLength) then begin
      result:=CMap^[Offset];
     end else begin
      result:=0;
@@ -38544,7 +38542,7 @@ begin
        NumSH:=u;
       end;
      end;
-     NumGlyphID:=((TVkUInt32(CMapLength)-(2*(256+3))-(NumSH*8)) and $ffff) shr 1;
+     NumGlyphID:=((TUInt32(CMapLength)-(2*(256+3))-(NumSH*8)) and $ffff) shr 1;
      index1:=fSubHeaderKeys[Index];
      if index1=0 then begin
       if CodePointCode<256 then begin
@@ -38608,12 +38606,12 @@ begin
       result:=0;
      end else begin
       if Range=0 then begin
-       Index:=(TVkUInt16(CodePointCode)+TVkUInt16(Delta)) and $ffff;
+       Index:=(TUInt16(CodePointCode)+TUInt16(Delta)) and $ffff;
       end else begin
        Index:=Range+((CodePointCode-Start)*2)+((16+(6*SegCount))+(seg*2));
        Index:=ToWORD(CMap^[Index],CMap^[Index+1]);
        if Index<>0 then begin
-        Index:=(TVkUInt16(Index)+TVkUInt16(Delta)) and $ffff;
+        Index:=(TUInt16(Index)+TUInt16(Delta)) and $ffff;
        end;
       end;
       result:=Index;
@@ -38624,7 +38622,7 @@ begin
     FirstCode:=ToWORD(CMap^[6],CMap^[7]);
     EntryCount:=ToWORD(CMap^[8],CMap^[9]);
     if (CodePointCode>=FirstCode) and (CodePointCode<(FirstCode+EntryCount)) then begin
-     Offset:=(TVkUInt32(CodePointCode-FirstCode)*2)+10;
+     Offset:=(TUInt32(CodePointCode-FirstCode)*2)+10;
      result:=ToWORD(CMap^[Offset],CMap^[Offset+1]);
     end else begin
      result:=0;
@@ -38666,7 +38664,7 @@ begin
     FirstCode:=ToLONGWORD(CMap^[12],CMap^[13],CMap^[14],CMap^[15]);
     EntryCount:=ToLONGWORD(CMap^[16],CMap^[17],CMap^[18],CMap^[19]);
     if (CodePointCode>=FirstCode) and (CodePointCode<(FirstCode+EntryCount)) then begin
-     Offset:=(TVkUInt32(CodePointCode-FirstCode)*2)+20;
+     Offset:=(TUInt32(CodePointCode-FirstCode)*2)+20;
      result:=ToWORD(CMap^[Offset],CMap^[Offset+1]);
     end else begin
      result:=0;
@@ -38738,9 +38736,9 @@ begin
        break;
       end;
      end;
-     if (DefaultOffset>0) and (DefaultOffset<TVkUInt32(CMapLength)) then begin
+     if (DefaultOffset>0) and (DefaultOffset<TUInt32(CMapLength)) then begin
       NumMappings:=ToLONGWORD(CMap^[NonDefaultOffset],CMap^[NonDefaultOffset+1],CMap^[NonDefaultOffset+2],CMap^[NonDefaultOffset+3]);
-      if ((NonDefaultOffset+4)+(NumMappings*4))<TVkUInt32(CMapLength) then begin
+      if ((NonDefaultOffset+4)+(NumMappings*4))<TUInt32(CMapLength) then begin
        l:=0;
        h:=NumMappings;
        while l<h do begin
@@ -38758,9 +38756,9 @@ begin
        end;
       end;
      end;
-     if (NonDefaultOffset>0) and (NonDefaultOffset<TVkUInt32(CMapLength)) then begin
+     if (NonDefaultOffset>0) and (NonDefaultOffset<TUInt32(CMapLength)) then begin
       NumMappings:=ToLONGWORD(CMap^[NonDefaultOffset],CMap^[NonDefaultOffset+1],CMap^[NonDefaultOffset+2],CMap^[NonDefaultOffset+3]);
-      if ((NonDefaultOffset+4)+(NumMappings*5))<TVkUInt32(CMapLength) then begin
+      if ((NonDefaultOffset+4)+(NumMappings*5))<TUInt32(CMapLength) then begin
        l:=0;
        h:=NumMappings;
        while l<h do begin
@@ -38786,16 +38784,16 @@ begin
   end;
  end;
  if fLastError=VkTTF_TT_ERR_CharacterMapNotPresent then begin
-  if (TVkInt32(CodePointCode)<length(fCFFCodePointToGlyphIndexTable)) and
-     ((fCFFCodePointToGlyphIndexTable[TVkInt32(CodePointCode)]>=0) and
-      (fCFFCodePointToGlyphIndexTable[TVkInt32(CodePointCode)]<fCountGlyphs)) then begin
+  if (TInt32(CodePointCode)<length(fCFFCodePointToGlyphIndexTable)) and
+     ((fCFFCodePointToGlyphIndexTable[TInt32(CodePointCode)]>=0) and
+      (fCFFCodePointToGlyphIndexTable[TInt32(CodePointCode)]<fCountGlyphs)) then begin
    fLastError:=VkTTF_TT_ERR_NoError;
-   result:=fCFFCodePointToGlyphIndexTable[TVkInt32(CodePointCode)];
+   result:=fCFFCodePointToGlyphIndexTable[TInt32(CodePointCode)];
   end;
  end;
 end;
 
-function TVulkanTrueTypeFont.GetGlyphAdvanceWidth(GlyphIndex:TVkInt32):TVkInt32;
+function TVulkanTrueTypeFont.GetGlyphAdvanceWidth(GlyphIndex:TInt32):TInt32;
 begin
  if (GlyphIndex>=0) and (GlyphIndex<fCountGlyphs) then begin
   result:=fGlyphs[GlyphIndex].AdvanceWidth;
@@ -38814,7 +38812,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.GetGlyphAdvanceHeight(GlyphIndex:TVkInt32):TVkInt32;
+function TVulkanTrueTypeFont.GetGlyphAdvanceHeight(GlyphIndex:TInt32):TInt32;
 begin
  if (GlyphIndex>=0) and (GlyphIndex<fCountGlyphs) then begin
   result:=fGlyphs[GlyphIndex].AdvanceHeight;
@@ -38823,7 +38821,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.GetGlyphLeftSideBearing(GlyphIndex:TVkInt32):TVkInt32;
+function TVulkanTrueTypeFont.GetGlyphLeftSideBearing(GlyphIndex:TInt32):TInt32;
 begin
  if (GlyphIndex>=0) and (GlyphIndex<fCountGlyphs) then begin
   result:=fGlyphs[GlyphIndex].LeftSideBearing;
@@ -38842,7 +38840,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.GetGlyphRightSideBearing(GlyphIndex:TVkInt32):TVkInt32;
+function TVulkanTrueTypeFont.GetGlyphRightSideBearing(GlyphIndex:TInt32):TInt32;
 begin
  if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and (LoadGlyphData(GlyphIndex)=VkTTF_TT_ERR_NoError) then begin
   result:=fGlyphs[GlyphIndex].LeftSideBearing;
@@ -38862,7 +38860,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.GetGlyphTopSideBearing(GlyphIndex:TVkInt32):TVkInt32;
+function TVulkanTrueTypeFont.GetGlyphTopSideBearing(GlyphIndex:TInt32):TInt32;
 begin
  if (GlyphIndex>=0) and (GlyphIndex<fCountGlyphs) then begin
   result:=fGlyphs[GlyphIndex].TopSideBearing;
@@ -38871,7 +38869,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.GetGlyphBottomSideBearing(GlyphIndex:TVkInt32):TVkInt32;
+function TVulkanTrueTypeFont.GetGlyphBottomSideBearing(GlyphIndex:TInt32):TInt32;
 begin
  if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and (LoadGlyphData(GlyphIndex)=VkTTF_TT_ERR_NoError) then begin
   result:=fGlyphs[GlyphIndex].AdvanceHeight-(fGlyphs[GlyphIndex].TopSideBearing+(fGlyphs[GlyphIndex].Bounds.YMax-fGlyphs[GlyphIndex].Bounds.YMin));
@@ -38880,8 +38878,8 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.GetKerning(Left,Right:TVkUInt32;Horizontal:boolean):TVkInt32;
-var KerningIndex,KerningPairIndex,LeftIndex,RightIndex,MiddleIndex,Index:TVkInt32;
+function TVulkanTrueTypeFont.GetKerning(Left,Right:TUInt32;Horizontal:boolean):TInt32;
+var KerningIndex,KerningPairIndex,LeftIndex,RightIndex,MiddleIndex,Index:TInt32;
     KerningTable:PVulkanTrueTypeFontKerningTable;
     KerningPair:PVulkanTrueTypeFontKerningPair;
 begin
@@ -38937,7 +38935,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.GetScaleFactor:TVkDouble;
+function TVulkanTrueTypeFont.GetScaleFactor:TDouble;
 begin
  if fSize<0 then begin
   result:=(-fSize)/fUnitsPerEm;
@@ -38946,42 +38944,42 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.GetScaleFactorFixed:TVkInt32;
+function TVulkanTrueTypeFont.GetScaleFactorFixed:TInt32;
 begin
  if fSize<0 then begin
-  result:=(TVkInt64(-fSize)*$10000) div fUnitsPerEm;
+  result:=(TInt64(-fSize)*$10000) div fUnitsPerEm;
  end else begin
-  result:=((TVkInt64(fSize*fTargetPPI)*$10000)+(fUnitsPerEm*36)) div (fUnitsPerEm*72);
+  result:=((TInt64(fSize*fTargetPPI)*$10000)+(fUnitsPerEm*36)) div (fUnitsPerEm*72);
  end;
 end;
 
-function TVulkanTrueTypeFont.Scale(Value:TVkInt32):TVkInt32;
+function TVulkanTrueTypeFont.Scale(Value:TInt32):TInt32;
 begin
  if fSize<0 then begin
   if Value>=0 then begin
-   result:=((Value*TVkInt64((-fSize)*64))+SARLongint(fUnitsPerEm+1,1)) div fUnitsPerEm;
+   result:=((Value*TInt64((-fSize)*64))+SARLongint(fUnitsPerEm+1,1)) div fUnitsPerEm;
   end else begin
-   result:=((Value*TVkInt64((-fSize)*64))-SARLongint(fUnitsPerEm+1,1)) div fUnitsPerEm;
+   result:=((Value*TInt64((-fSize)*64))-SARLongint(fUnitsPerEm+1,1)) div fUnitsPerEm;
   end;
  end else begin
   if Value>=0 then begin
-   result:=((Value*TVkInt64(fSize*64*fTargetPPI))+SARLongint((fUnitsPerEm*72)+1,1)) div (fUnitsPerEm*72);
+   result:=((Value*TInt64(fSize*64*fTargetPPI))+SARLongint((fUnitsPerEm*72)+1,1)) div (fUnitsPerEm*72);
   end else begin
-   result:=((Value*TVkInt64(fSize*64*fTargetPPI))-SARLongint((fUnitsPerEm*72)+1,1)) div (fUnitsPerEm*72);
+   result:=((Value*TInt64(fSize*64*fTargetPPI))-SARLongint((fUnitsPerEm*72)+1,1)) div (fUnitsPerEm*72);
   end;
  end;
 end;
 
-function TVulkanTrueTypeFont.FloatScale(Value:TVkDouble):TVkDouble;
+function TVulkanTrueTypeFont.FloatScale(Value:TDouble):TDouble;
 begin
  if fSize<0 then begin
-  result:=(Value*TVkInt64((-fSize)*64))/fUnitsPerEm;
+  result:=(Value*TInt64((-fSize)*64))/fUnitsPerEm;
  end else begin
-  result:=(Value*TVkInt64(fSize*64*fTargetPPI))/(fUnitsPerEm*72);
+  result:=(Value*TInt64(fSize*64*fTargetPPI))/(fUnitsPerEm*72);
  end;
 end;
 
-function TVulkanTrueTypeFont.GetScale:TVkInt32;
+function TVulkanTrueTypeFont.GetScale:TInt32;
 begin
  if fSize<0 then begin
   result:=(-fSize)*64;
@@ -38990,7 +38988,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.ScaleRound(Value:TVkInt32):TVkInt32;
+function TVulkanTrueTypeFont.ScaleRound(Value:TInt32):TInt32;
 begin
  if fSize<0 then begin
   if Value>=0 then begin
@@ -39007,7 +39005,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.IsPostScriptGlyph(const GlyphIndex:TVkInt32):boolean;
+function TVulkanTrueTypeFont.IsPostScriptGlyph(const GlyphIndex:TInt32):boolean;
 begin
  if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and not fGlyphs[GlyphIndex].Locked then begin
   fGlyphs[GlyphIndex].Locked:=true;
@@ -39027,10 +39025,10 @@ begin
  GlyphBuffer.CountIndices:=0;
 end;
 
-procedure TVulkanTrueTypeFont.TransformGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;GlyphStartPointIndex,StartIndex,EndIndex:TVkInt32);
-var Sum,Direction,StartPointIndex,i,j,x,y,xs,ys:TVkInt32;
+procedure TVulkanTrueTypeFont.TransformGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;GlyphStartPointIndex,StartIndex,EndIndex:TInt32);
+var Sum,Direction,StartPointIndex,i,j,x,y,xs,ys:TInt32;
     pprev,pfirst,pnext,pcur,pin,pout:TVulkanTrueTypeFontGlyphPoint;
-    ain,aout,ad,s:TVkDouble;
+    ain,aout,ad,s:TDouble;
     Matrix:TMatrix;
 begin
  Sum:=0;
@@ -39116,9 +39114,9 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFont.FillGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;const GlyphIndex:TVkInt32);
+procedure TVulkanTrueTypeFont.FillGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;const GlyphIndex:TInt32);
 const fi65536=1.0/65536;
-var CountSubGlyphs,SubGlyphArrayIndex,PointIndex,cx,cy,OriginalCount,DstCount,SrcCount,l,Offset,Count,EndOffset:TVkInt32;
+var CountSubGlyphs,SubGlyphArrayIndex,PointIndex,cx,cy,OriginalCount,DstCount,SrcCount,l,Offset,Count,EndOffset:TInt32;
     SubGlyph:PVulkanTrueTypeFontGlyphCompositeSubGlyph;
     HaveScale:boolean;
     p:TVulkanTrueTypeFontGlyphPoint;
@@ -39153,7 +39151,7 @@ begin
 
       FillGlyphBuffer(GlyphBuffer,SubGlyph^.Glyph);
 
-      if ((SubGlyph^.Flags and USE_MY_METRICS)<>0) and (SubGlyph^.Glyph<TVkUInt32(fCountGlyphs)) then begin
+      if ((SubGlyph^.Flags and USE_MY_METRICS)<>0) and (SubGlyph^.Glyph<TUInt32(fCountGlyphs)) then begin
        GlyphBuffer.Bounds:=fGlyphs[SubGlyph^.Glyph].Bounds;
        GlyphBuffer.Bounds.XMin:=Scale(GlyphBuffer.Bounds.XMin);
        GlyphBuffer.Bounds.YMin:=Scale(GlyphBuffer.Bounds.YMin);
@@ -39328,7 +39326,7 @@ begin
       if (l+1)>=length(GlyphBuffer.EndPointIndices) then begin
        SetLength(GlyphBuffer.EndPointIndices,RoundUpToPowerOfTwo(l+1));
       end;
-      Move(fGlyphs[GlyphIndex].EndPointIndices[0],GlyphBuffer.EndPointIndices[DstCount],SrcCount*SizeOf(TVkInt32));
+      Move(fGlyphs[GlyphIndex].EndPointIndices[0],GlyphBuffer.EndPointIndices[DstCount],SrcCount*SizeOf(TInt32));
       GlyphBuffer.CountIndices:=l;
       for l:=0 to SrcCount-1 do begin
        inc(GlyphBuffer.EndPointIndices[l+DstCount],Offset);
@@ -39438,7 +39436,7 @@ begin
 end;
 
 procedure TVulkanTrueTypeFont.FillPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer);
-var StartPointIndex,CommandIndex,CommandCount,i,j,fx,fy,lx,ly,cx,cy,x,y,MiddleX,MiddleY,MaxY:TVkInt32;
+var StartPointIndex,CommandIndex,CommandCount,i,j,fx,fy,lx,ly,cx,cy,x,y,MiddleX,MiddleY,MaxY:TInt32;
     OnCurve:boolean;
 begin
  CommandCount:=PolygonBuffer.CountCommands;
@@ -39559,8 +39557,8 @@ begin
  PolygonBuffer.CountCommands:=CommandCount;
 end;
 
-procedure TVulkanTrueTypeFont.FillPostScriptPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphIndex:TVkInt32);
-var CommandIndex,BaseIndex:TVkInt32;
+procedure TVulkanTrueTypeFont.FillPostScriptPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const GlyphIndex:TInt32);
+var CommandIndex,BaseIndex:TInt32;
     Glyph:PVulkanTrueTypeFontGlyph;
     Command:PVulkanTrueTypeFontPolygonCommand;
 begin
@@ -39619,9 +39617,9 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFont.FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:TVulkanUTF8String;const StartX:TVkInt32=0;const StartY:TVkInt32=0);
+procedure TVulkanTrueTypeFont.FillTextPolygonBuffer(var PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const Text:TVulkanUTF8String;const StartX:TInt32=0;const StartY:TInt32=0);
 var TextIndex,CurrentGlyph,LastGlyph,CurrentX,CurrentY,OffsetX,OffsetY,
-    CommandCount,CommandIndex,CommandBaseIndex:TVkInt32;
+    CommandCount,CommandIndex,CommandBaseIndex:TInt32;
     GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;
     GlyphPolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;
     Command:PVulkanTrueTypeFontPolygonCommand;
@@ -39706,7 +39704,7 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.GetStyleIndex(Thin,Bold,Italic:boolean):TVkInt32;
+function TVulkanTrueTypeFont.GetStyleIndex(Thin,Bold,Italic:boolean):TInt32;
 begin
  if Bold then begin
   if Italic then begin
@@ -39729,8 +39727,8 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.TextWidth(const aText:TVulkanUTF8String):TVkInt32;
-var TextIndex,CurrentGlyph,LastGlyph,Width,NewWidth:TVkInt32;
+function TVulkanTrueTypeFont.TextWidth(const aText:TVulkanUTF8String):TInt32;
+var TextIndex,CurrentGlyph,LastGlyph,Width,NewWidth:TInt32;
 begin
  result:=0;
  Width:=0;
@@ -39763,8 +39761,8 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.TextHeight(const aText:TVulkanUTF8String):TVkInt32;
-var TextIndex,CurrentGlyph,LastGlyph,Height,NewHeight:TVkInt32;
+function TVulkanTrueTypeFont.TextHeight(const aText:TVulkanUTF8String):TInt32;
+var TextIndex,CurrentGlyph,LastGlyph,Height,NewHeight:TInt32;
 begin
  result:=0;
  Height:=0;
@@ -39797,8 +39795,8 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFont.TextSize(const aText:TVulkanUTF8String;out aWidth,aHeight:TVkInt32);
-var TextIndex,CurrentGlyph,LastGlyph,Width,NewWidth,Height,NewHeight:TVkInt32;
+procedure TVulkanTrueTypeFont.TextSize(const aText:TVulkanUTF8String;out aWidth,aHeight:TInt32);
+var TextIndex,CurrentGlyph,LastGlyph,Width,NewWidth,Height,NewHeight:TInt32;
 begin
  aWidth:=0;
  aHeight:=0;
@@ -39846,20 +39844,20 @@ begin
  end;
 end;
 
-function TVulkanTrueTypeFont.RowHeight(const Percent:TVkInt32):TVkInt32;
+function TVulkanTrueTypeFont.RowHeight(const Percent:TInt32):TInt32;
 begin
  result:=((fUnitsPerEm*Percent)+50) div 100;
 end;
 
-function TVulkanTrueTypeFont.GetUnitsPerEm:TVkInt32;
+function TVulkanTrueTypeFont.GetUnitsPerEm:TInt32;
 begin
  result:=fUnitsPerEm;
 end;
 
-procedure TVulkanTrueTypeFont.GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TVkDouble;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
-var lastcx,lastcy:TVkDouble;
+procedure TVulkanTrueTypeFont.GetPolygonBufferBounds(const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TDouble;const Tolerance:TInt32=2;const MaxLevel:TInt32=32);
+var lastcx,lastcy:TDouble;
     First:boolean;
- procedure PointAt(x,y:TVkDouble);
+ procedure PointAt(x,y:TDouble);
  begin
   lastcx:=x;
   lastcy:=y;
@@ -39884,9 +39882,9 @@ var lastcx,lastcy:TVkDouble;
    end;
   end;
  end;
- procedure QuadraticCurveTo(const cx,cy,ax,ay:TVkDouble;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
-  procedure Recursive(const x1,y1,x2,y2,x3,y3:TVkDouble;const Level:TVkInt32);
-  var x12,y12,x23,y23,x123,y123,mx,my,d:TVkDouble;
+ procedure QuadraticCurveTo(const cx,cy,ax,ay:TDouble;const Tolerance:TInt32=2;const MaxLevel:TInt32=32);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3:TDouble;const Level:TInt32);
+  var x12,y12,x23,y23,x123,y123,mx,my,d:TDouble;
   begin
    x12:=(x1+x2)*0.5;
    y12:=(y1+y2)*0.5;
@@ -39908,9 +39906,9 @@ var lastcx,lastcy:TVkDouble;
   Recursive(lastcx,lastcy,cx,cy,ax,ay,0);
   PointAt(ax,ay);
  end;
- procedure CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TVkDouble;const Tolerance:TVkInt32=2;const MaxLevel:TVkInt32=32);
-  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TVkDouble;Level:TVkInt32);
-  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,d:TVkDouble;
+ procedure CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TDouble;const Tolerance:TInt32=2;const MaxLevel:TInt32=32);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TDouble;Level:TInt32);
+  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,d:TDouble;
   begin
    x12:=(x1+x2)*0.5;
    y12:=(y1+y2)*0.5;
@@ -39937,7 +39935,7 @@ var lastcx,lastcy:TVkDouble;
   Recursive(lastcx,lastcy,c1x,c1y,c2x,c2y,ax,ay,0);
   PointAt(ax,ay);
  end;
-var CommandIndex:TVkInt32;
+var CommandIndex:TInt32;
 begin
  x0:=0;
  y0:=0;
@@ -39967,8 +39965,8 @@ begin
  end;
 end;
 
-procedure TVulkanTrueTypeFont.DrawPolygonBuffer(Rasterizer:TVulkanTrueTypeFontRasterizer;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;x,y:TVkInt32;Tolerance:TVkInt32=2;MaxLevel:TVkInt32=32);
-var CommandIndex:TVkInt32;
+procedure TVulkanTrueTypeFont.DrawPolygonBuffer(Rasterizer:TVulkanTrueTypeFontRasterizer;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;x,y:TInt32;Tolerance:TInt32=2;MaxLevel:TInt32=32);
+var CommandIndex:TInt32;
 begin
  if assigned(Rasterizer) then begin
   fPolygonBuffer.CountCommands:=0;
@@ -40006,16 +40004,16 @@ begin
  end;
 end;
 
-function CompareVulkanFontGlyphsByArea(const a,b:TVkPointer):TVkInt32;
+function CompareVulkanFontGlyphsByArea(const a,b:TPointer):TInt32;
 begin
  result:=(PVulkanFontGlyph(b)^.Width*PVulkanFontGlyph(b)^.Height)-(PVulkanFontGlyph(a)^.Width*PVulkanFontGlyph(a)^.Height);
 end;
 
-function CompareVulkanFontKerningPairs(const a,b:TVkPointer):TVkInt32;
+function CompareVulkanFontKerningPairs(const a,b:TPointer):TInt32;
 begin
- result:=TVkInt64(PVulkanFontKerningPair(a)^.Left)-TVkInt64(PVulkanFontKerningPair(b)^.Left);
+ result:=TInt64(PVulkanFontKerningPair(a)^.Left)-TInt64(PVulkanFontKerningPair(b)^.Left);
  if result=0 then begin
-  result:=TVkInt64(PVulkanFontKerningPair(a)^.Right)-TVkInt64(PVulkanFontKerningPair(b)^.Right);
+  result:=TInt64(PVulkanFontKerningPair(a)^.Right)-TInt64(PVulkanFontKerningPair(b)^.Right);
  end;
 end;
 
@@ -40039,26 +40037,26 @@ type PVulkanFontPathSegmentSide=^TVulkanFontPathSegmentSide;
 
      PVulkanFontDistanceFieldDataItem=^TVulkanFontDistanceFieldDataItem;
      TVulkanFontDistanceFieldDataItem=record
-      SquaredDistance:TVkFloat;
-      SquaredDistanceR:TVkFloat;
-      SquaredDistanceG:TVkFloat;
-      SquaredDistanceB:TVkFloat;
-      PseudoSquaredDistanceR:TVkFloat;
-      PseudoSquaredDistanceG:TVkFloat;
-      PseudoSquaredDistanceB:TVkFloat;
-      DeltaWindingScore:TVkInt32;
+      SquaredDistance:TFloat;
+      SquaredDistanceR:TFloat;
+      SquaredDistanceG:TFloat;
+      SquaredDistanceB:TFloat;
+      PseudoSquaredDistanceR:TFloat;
+      PseudoSquaredDistanceG:TFloat;
+      PseudoSquaredDistanceB:TFloat;
+      DeltaWindingScore:TInt32;
      end;
 
      TVulkanFontDistanceFieldData=array of TVulkanFontDistanceFieldDataItem;
 
      PVulkanFontDoublePrecisionPoint=^TVulkanFontDoublePrecisionPoint;
      TVulkanFontDoublePrecisionPoint=record
-      x:TVkDouble;
-      y:TVkDouble;
+      x:TDouble;
+      y:TDouble;
      end;
 
      PVulkanFontDoublePrecisionAffineMatrix=^TVulkanFontDoublePrecisionAffineMatrix;
-     TVulkanFontDoublePrecisionAffineMatrix=array[0..5] of TVkDouble;
+     TVulkanFontDoublePrecisionAffineMatrix=array[0..5] of TDouble;
 
      PVulkanFontPathSegmentType=^TVulkanFontPathSegmentType;
      TVulkanFontPathSegmentType=
@@ -40096,10 +40094,10 @@ type PVulkanFontPathSegmentSide=^TVulkanFontPathSegmentSide;
       Points:TVulkanFontPathSegmentPoints;
       P0T,P2T:TVulkanFontDoublePrecisionPoint;
       XFormMatrix:TVulkanFontDoublePrecisionAffineMatrix;
-      ScalingFactor:TVkDouble;
-      SquaredScalingFactor:TVkDouble;
-      NearlyZeroScaled:TVkDouble;
-      SquaredTangentToleranceScaled:TVkDouble;
+      ScalingFactor:TDouble;
+      SquaredScalingFactor:TDouble;
+      NearlyZeroScaled:TDouble;
+      SquaredTangentToleranceScaled:TDouble;
       BoundingBox:TVulkanFontBoundingBox;
      end;
 
@@ -40108,7 +40106,7 @@ type PVulkanFontPathSegmentSide=^TVulkanFontPathSegmentSide;
      PVulkanFontPathContour=^TVulkanFontPathContour;
      TVulkanFontPathContour=record
       PathSegments:TVulkanFontPathSegments;
-      CountPathSegments:TVkInt32;
+      CountPathSegments:TInt32;
      end;
 
      TVulkanFontPathContours=array of TVulkanFontPathContour;
@@ -40116,7 +40114,7 @@ type PVulkanFontPathSegmentSide=^TVulkanFontPathSegmentSide;
      PVulkanFontShape=^TVulkanFontShape;
      TVulkanFontShape=record
       Contours:TVulkanFontPathContours;
-      CountContours:TVkInt32;
+      CountContours:TInt32;
      end;
 
      PVulkanFontRowDataIntersectionType=^TVulkanFontRowDataIntersectionType;
@@ -40131,10 +40129,10 @@ type PVulkanFontPathSegmentSide=^TVulkanFontPathSegmentSide;
      PVulkanFontRowData=^TVulkanFontRowData;
      TVulkanFontRowData=record
       IntersectionType:TVulkanFontRowDataIntersectionType;
-      QuadraticXDirection:TVkInt32;
-      ScanlineXDirection:TVkInt32;
-      YAtIntersection:TVkFloat;
-      XAtIntersection:array[0..1] of TVkFloat;
+      QuadraticXDirection:TInt32;
+      ScanlineXDirection:TInt32;
+      YAtIntersection:TFloat;
+      XAtIntersection:array[0..1] of TFloat;
      end;
 
      PVulkanFontPointInPolygonPathSegment=^TVulkanFontPointInPolygonPathSegment;
@@ -40150,63 +40148,63 @@ type PVulkanFontPathSegmentSide=^TVulkanFontPathSegmentSide;
        PolygonBuffer:PVulkanTrueTypeFontPolygonBuffer;
        DistanceField:PVulkanFontDistanceField;
        MultiChannel:boolean;
-       FillRule:TVkInt32;
+       FillRule:TInt32;
        Shape:TVulkanFontShape;
        DistanceFieldData:TVulkanFontDistanceFieldData;
       protected
-       function Clamp(const Value,MinValue,MaxValue:TVkInt64):TVkInt64; overload;
-       function Clamp(const Value,MinValue,MaxValue:TVkDouble):TVkDouble; overload;
+       function Clamp(const Value,MinValue,MaxValue:TInt64):TInt64; overload;
+       function Clamp(const Value,MinValue,MaxValue:TDouble):TDouble; overload;
        function DoublePrecisionPointAdd(const a,b:TVulkanFontDoublePrecisionPoint):TVulkanFontDoublePrecisionPoint;
        function DoublePrecisionPointSub(const a,b:TVulkanFontDoublePrecisionPoint):TVulkanFontDoublePrecisionPoint;
-       function DoublePrecisionPointLength(const p:TVulkanFontDoublePrecisionPoint):TVkDouble;
-       function DoublePrecisionPointDistance(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
-       function DoublePrecisionPointLengthSquared(const v:TVulkanFontDoublePrecisionPoint):TVkDouble;
-       function DoublePrecisionPointDistanceSquared(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
-       function DoublePrecisionPointCrossProduct(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
-       function DoublePrecisionPointIsLeft(const a,b,c:TVulkanFontDoublePrecisionPoint):TVkDouble;
-       function DoublePrecisionPointDotProduct(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
+       function DoublePrecisionPointLength(const p:TVulkanFontDoublePrecisionPoint):TDouble;
+       function DoublePrecisionPointDistance(const a,b:TVulkanFontDoublePrecisionPoint):TDouble;
+       function DoublePrecisionPointLengthSquared(const v:TVulkanFontDoublePrecisionPoint):TDouble;
+       function DoublePrecisionPointDistanceSquared(const a,b:TVulkanFontDoublePrecisionPoint):TDouble;
+       function DoublePrecisionPointCrossProduct(const a,b:TVulkanFontDoublePrecisionPoint):TDouble;
+       function DoublePrecisionPointIsLeft(const a,b,c:TVulkanFontDoublePrecisionPoint):TDouble;
+       function DoublePrecisionPointDotProduct(const a,b:TVulkanFontDoublePrecisionPoint):TDouble;
        function DoublePrecisionPointNormalize(const v:TVulkanFontDoublePrecisionPoint):TVulkanFontDoublePrecisionPoint;
-       function DoublePrecisionPointLerp(const a,b:TVulkanFontDoublePrecisionPoint;const t:TVkDouble):TVulkanFontDoublePrecisionPoint;
+       function DoublePrecisionPointLerp(const a,b:TVulkanFontDoublePrecisionPoint;const t:TDouble):TVulkanFontDoublePrecisionPoint;
        function DoublePrecisionPointMap(const p:TVulkanFontDoublePrecisionPoint;const m:TVulkanFontDoublePrecisionAffineMatrix):TVulkanFontDoublePrecisionPoint;
-       function BetweenClosedOpen(const a,b,c:TVkDouble;const Tolerance:TVkDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
-       function BetweenClosed(const a,b,c:TVkDouble;const Tolerance:TVkDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
-       function NearlyZero(const Value:TVkDouble;const Tolerance:TVkDouble=VulkanFontNearlyZeroValue):boolean;
-       function NearlyEqual(const x,y:TVkDouble;const Tolerance:TVkDouble=VulkanFontNearlyZeroValue;const XFormToleranceToX:boolean=false):boolean;
-       function SignOf(const Value:TVkDouble):TVkInt32;
+       function BetweenClosedOpen(const a,b,c:TDouble;const Tolerance:TDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
+       function BetweenClosed(const a,b,c:TDouble;const Tolerance:TDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
+       function NearlyZero(const Value:TDouble;const Tolerance:TDouble=VulkanFontNearlyZeroValue):boolean;
+       function NearlyEqual(const x,y:TDouble;const Tolerance:TDouble=VulkanFontNearlyZeroValue;const XFormToleranceToX:boolean=false):boolean;
+       function SignOf(const Value:TDouble):TInt32;
        function IsColinear(const Points:array of TVulkanFontDoublePrecisionPoint):boolean;
-       function PathSegmentDirection(const PathSegment:TVulkanFontPathSegment;const Which:TVkInt32):TVulkanFontDoublePrecisionPoint;
-       function PathSegmentCountPoints(const PathSegment:TVulkanFontPathSegment):TVkInt32;
+       function PathSegmentDirection(const PathSegment:TVulkanFontPathSegment;const Which:TInt32):TVulkanFontDoublePrecisionPoint;
+       function PathSegmentCountPoints(const PathSegment:TVulkanFontPathSegment):TInt32;
        function PathSegmentEndPoint(const PathSegment:TVulkanFontPathSegment):PVulkanFontDoublePrecisionPoint;
-       function PathSegmentCornerPoint(const PathSegment:TVulkanFontPathSegment;const WhichA,WhichB:TVkInt32):PVulkanFontDoublePrecisionPoint;
+       function PathSegmentCornerPoint(const PathSegment:TVulkanFontPathSegment;const WhichA,WhichB:TInt32):PVulkanFontDoublePrecisionPoint;
        procedure InitializePathSegment(var PathSegment:TVulkanFontPathSegment);
        procedure InitializeDistances;
-       function AddLineToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TVkInt32;
-       function AddQuadraticBezierCurveToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TVkInt32;
-       function AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint;const Tolerance:TVkDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
-       function AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TVkInt32;
-       function AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint;const Tolerance:TVkDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
-       function CubeRoot(Value:TVkDouble):TVkDouble;
-       function CalculateNearestPointForQuadraticBezierCurve(const PathSegment:TVulkanFontPathSegment;const XFormPoint:TVulkanFontDoublePrecisionPoint):TVkDouble;
+       function AddLineToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TInt32;
+       function AddQuadraticBezierCurveToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TInt32;
+       function AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint;const Tolerance:TDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TInt32=32):TInt32;
+       function AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TInt32;
+       function AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint;const Tolerance:TDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TInt32=32):TInt32;
+       function CubeRoot(Value:TDouble):TDouble;
+       function CalculateNearestPointForQuadraticBezierCurve(const PathSegment:TVulkanFontPathSegment;const XFormPoint:TVulkanFontDoublePrecisionPoint):TDouble;
        procedure PrecomputationForRow(out RowData:TVulkanFontRowData;const PathSegment:TVulkanFontPathSegment;const PointLeft,PointRight:TVulkanFontDoublePrecisionPoint);
        function CalculateSideOfQuadraticBezierCurve(const PathSegment:TVulkanFontPathSegment;const Point,XFormPoint:TVulkanFontDoublePrecisionPoint;const RowData:TVulkanFontRowData):TVulkanFontPathSegmentSide;
-       function DistanceToPathSegment(const Point:TVulkanFontDoublePrecisionPoint;const PathSegment:TVulkanFontPathSegment;const RowData:TVulkanFontRowData;out PathSegmentSide:TVulkanFontPathSegmentSide):TVkDouble;
+       function DistanceToPathSegment(const Point:TVulkanFontDoublePrecisionPoint;const PathSegment:TVulkanFontPathSegment;const RowData:TVulkanFontRowData;out PathSegmentSide:TVulkanFontPathSegmentSide):TDouble;
        procedure ConvertShape(const DoSubdivideCurvesIntoLines:boolean);
-       procedure SplitPathSegmentIntoThreePartsInsideContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TVkInt32);
-       procedure SplitPathSegmentIntoThreePartsToContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TVkInt32;const BasePathSegment:TVulkanFontPathSegment);
+       procedure SplitPathSegmentIntoThreePartsInsideContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TInt32);
+       procedure SplitPathSegmentIntoThreePartsToContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TInt32;const BasePathSegment:TVulkanFontPathSegment);
        procedure NormalizeShape;
        procedure PathSegmentColorizeShape;
-       function GetLineNonClippedTime(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TVkDouble;
-       function GetQuadraticBezierCurveNonClippedTime(const p,p0,p1,p2:TVulkanFontDoublePrecisionPoint):TVkDouble;
-       function GetNonClampedSignedLineDistance(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TVkDouble;
-       procedure CalculateDistanceFieldDataLineRange(const FromY,ToY:TVkInt32);
+       function GetLineNonClippedTime(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TDouble;
+       function GetQuadraticBezierCurveNonClippedTime(const p,p0,p1,p2:TVulkanFontDoublePrecisionPoint):TDouble;
+       function GetNonClampedSignedLineDistance(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TDouble;
+       procedure CalculateDistanceFieldDataLineRange(const FromY,ToY:TInt32);
 {$ifdef PasVulkanPasMP}
-       procedure CalculateDistanceFieldDataLineRangeParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:pointer;const FromIndex,ToIndex:TPasMPNativeInt);
+       procedure CalculateDistanceFieldDataLineRangeParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TPointer;const FromIndex,ToIndex:TPasMPNativeInt);
 {$endif}
-       function PackDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
-       function PackPseudoDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
+       function PackDistanceFieldValue(Distance:TDouble):TUInt8;
+       function PackPseudoDistanceFieldValue(Distance:TDouble):TUInt8;
        procedure ConvertToPointInPolygonPathSegments;
-       function GetWindingNumberAtPointInPolygon(const Point:TVulkanFontDoublePrecisionPoint):TVkInt32;
-       function GenerateDistanceFieldPicture(const DistanceFieldData:TVulkanFontDistanceFieldData;const Width,Height,TryIteration:TVkInt32):boolean;
+       function GetWindingNumberAtPointInPolygon(const Point:TVulkanFontDoublePrecisionPoint):TInt32;
+       function GenerateDistanceFieldPicture(const DistanceFieldData:TVulkanFontDistanceFieldData;const Width,Height,TryIteration:TInt32):boolean;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -40233,7 +40231,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanFontDataGenerator.Clamp(const Value,MinValue,MaxValue:TVkInt64):TVkInt64;
+function TVulkanFontDataGenerator.Clamp(const Value,MinValue,MaxValue:TInt64):TInt64;
 begin
  if Value<=MinValue then begin
   result:=MinValue;
@@ -40244,7 +40242,7 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.Clamp(const Value,MinValue,MaxValue:TVkDouble):TVkDouble;
+function TVulkanFontDataGenerator.Clamp(const Value,MinValue,MaxValue:TDouble):TDouble;
 begin
  if Value<=MinValue then begin
   result:=MinValue;
@@ -40267,43 +40265,43 @@ begin
  result.y:=a.y-b.y;
 end;
 
-function TVulkanFontDataGenerator.DoublePrecisionPointLength(const p:TVulkanFontDoublePrecisionPoint):TVkDouble;
+function TVulkanFontDataGenerator.DoublePrecisionPointLength(const p:TVulkanFontDoublePrecisionPoint):TDouble;
 begin
  result:=sqrt(sqr(p.x)+sqr(p.y));
 end;
 
-function TVulkanFontDataGenerator.DoublePrecisionPointDistance(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
+function TVulkanFontDataGenerator.DoublePrecisionPointDistance(const a,b:TVulkanFontDoublePrecisionPoint):TDouble;
 begin
  result:=sqrt(sqr(a.x-b.x)+sqr(a.y-b.y));
 end;
 
-function TVulkanFontDataGenerator.DoublePrecisionPointLengthSquared(const v:TVulkanFontDoublePrecisionPoint):TVkDouble;
+function TVulkanFontDataGenerator.DoublePrecisionPointLengthSquared(const v:TVulkanFontDoublePrecisionPoint):TDouble;
 begin
  result:=sqr(v.x)+sqr(v.y);
 end;
 
-function TVulkanFontDataGenerator.DoublePrecisionPointDistanceSquared(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
+function TVulkanFontDataGenerator.DoublePrecisionPointDistanceSquared(const a,b:TVulkanFontDoublePrecisionPoint):TDouble;
 begin
  result:=sqr(a.x-b.x)+sqr(a.y-b.y);
 end;
 
-function TVulkanFontDataGenerator.DoublePrecisionPointCrossProduct(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
+function TVulkanFontDataGenerator.DoublePrecisionPointCrossProduct(const a,b:TVulkanFontDoublePrecisionPoint):TDouble;
 begin
  result:=(a.x*b.y)-(a.y*b.x);
 end;
 
-function TVulkanFontDataGenerator.DoublePrecisionPointIsLeft(const a,b,c:TVulkanFontDoublePrecisionPoint):TVkDouble;
+function TVulkanFontDataGenerator.DoublePrecisionPointIsLeft(const a,b,c:TVulkanFontDoublePrecisionPoint):TDouble;
 begin
  result:=((b.x*a.x)*(c.y*a.y))-((c.x*a.x)*(b.y*a.y));
 end;
 
-function TVulkanFontDataGenerator.DoublePrecisionPointDotProduct(const a,b:TVulkanFontDoublePrecisionPoint):TVkDouble;
+function TVulkanFontDataGenerator.DoublePrecisionPointDotProduct(const a,b:TVulkanFontDoublePrecisionPoint):TDouble;
 begin
  result:=(a.x*b.x)+(a.y*b.y);
 end;
 
 function TVulkanFontDataGenerator.DoublePrecisionPointNormalize(const v:TVulkanFontDoublePrecisionPoint):TVulkanFontDoublePrecisionPoint;
-var f:TVkDouble;
+var f:TDouble;
 begin
  f:=sqr(v.x)+sqr(v.y);
  if IsZero(f) then begin
@@ -40315,7 +40313,7 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.DoublePrecisionPointLerp(const a,b:TVulkanFontDoublePrecisionPoint;const t:TVkDouble):TVulkanFontDoublePrecisionPoint;
+function TVulkanFontDataGenerator.DoublePrecisionPointLerp(const a,b:TVulkanFontDoublePrecisionPoint;const t:TDouble):TVulkanFontDoublePrecisionPoint;
 begin
  if t<=0.0 then begin
   result:=a;
@@ -40333,8 +40331,8 @@ begin
  result.y:=(p.x*m[3])+(p.y*m[4])+m[5];
 end;
 
-function TVulkanFontDataGenerator.BetweenClosedOpen(const a,b,c:TVkDouble;const Tolerance:TVkDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
-var ToleranceB,ToleranceC:TVkDouble;
+function TVulkanFontDataGenerator.BetweenClosedOpen(const a,b,c:TDouble;const Tolerance:TDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
+var ToleranceB,ToleranceC:TDouble;
 begin
  Assert(Tolerance>=0.0);
  if XFormToleranceToX then begin
@@ -40351,8 +40349,8 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.BetweenClosed(const a,b,c:TVkDouble;const Tolerance:TVkDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
-var ToleranceB,ToleranceC:TVkDouble;
+function TVulkanFontDataGenerator.BetweenClosed(const a,b,c:TDouble;const Tolerance:TDouble=0.0;const XFormToleranceToX:boolean=false):boolean;
+var ToleranceB,ToleranceC:TDouble;
 begin
  Assert(Tolerance>=0.0);
  if XFormToleranceToX then begin
@@ -40369,13 +40367,13 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.NearlyZero(const Value:TVkDouble;const Tolerance:TVkDouble=VulkanFontNearlyZeroValue):boolean;
+function TVulkanFontDataGenerator.NearlyZero(const Value:TDouble;const Tolerance:TDouble=VulkanFontNearlyZeroValue):boolean;
 begin
  Assert(Tolerance>=0.0);
  result:=abs(Value)<=Tolerance;
 end;
 
-function TVulkanFontDataGenerator.NearlyEqual(const x,y:TVkDouble;const Tolerance:TVkDouble=VulkanFontNearlyZeroValue;const XFormToleranceToX:boolean=false):boolean;
+function TVulkanFontDataGenerator.NearlyEqual(const x,y:TDouble;const Tolerance:TDouble=VulkanFontNearlyZeroValue;const XFormToleranceToX:boolean=false):boolean;
 begin
  Assert(Tolerance>=0.0);
  if XFormToleranceToX then begin
@@ -40385,7 +40383,7 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.SignOf(const Value:TVkDouble):TVkInt32;
+function TVulkanFontDataGenerator.SignOf(const Value:TDouble):TInt32;
 begin
  if Value<0.0 then begin
   result:=-1;
@@ -40401,7 +40399,7 @@ begin
              ((Points[1].y-Points[2].y)*(Points[1].x-Points[0].x)))<=VulkanFontCloseSquaredValue;
 end;
 
-function TVulkanFontDataGenerator.PathSegmentDirection(const PathSegment:TVulkanFontPathSegment;const Which:TVkInt32):TVulkanFontDoublePrecisionPoint;
+function TVulkanFontDataGenerator.PathSegmentDirection(const PathSegment:TVulkanFontPathSegment;const Which:TInt32):TVulkanFontDoublePrecisionPoint;
 begin
  case PathSegment.Type_ of
   pstLine:begin
@@ -40433,7 +40431,7 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.PathSegmentCountPoints(const PathSegment:TVulkanFontPathSegment):TVkInt32;
+function TVulkanFontDataGenerator.PathSegmentCountPoints(const PathSegment:TVulkanFontPathSegment):TInt32;
 begin
  case PathSegment.Type_ of
   pstLine:begin
@@ -40465,7 +40463,7 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.PathSegmentCornerPoint(const PathSegment:TVulkanFontPathSegment;const WhichA,WhichB:TVkInt32):PVulkanFontDoublePrecisionPoint;
+function TVulkanFontDataGenerator.PathSegmentCornerPoint(const PathSegment:TVulkanFontPathSegment;const WhichA,WhichB:TInt32):PVulkanFontDoublePrecisionPoint;
 begin
  case PathSegment.Type_ of
   pstLine:begin
@@ -40483,7 +40481,7 @@ end;
 
 procedure TVulkanFontDataGenerator.InitializePathSegment(var PathSegment:TVulkanFontPathSegment);
 var p0,p1,p2,p1mp0,d,t,sp0,sp1,sp2,p01p,p02p,p12p:TVulkanFontDoublePrecisionPoint;
-    Hypotenuse,CosTheta,SinTheta,a,b,h,c,g,f,gd,fd,x,y,Lambda:TVkDouble;
+    Hypotenuse,CosTheta,SinTheta,a,b,h,c,g,f,gd,fd,x,y,Lambda:TDouble;
 begin
  case PathSegment.Type_ of
   pstLine:begin
@@ -40575,7 +40573,7 @@ begin
 end;
 
 procedure TVulkanFontDataGenerator.InitializeDistances;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  for Index:=0 to length(DistanceFieldData)-1 do begin
   DistanceFieldData[Index].SquaredDistance:=sqr(VulkanFontDistanceFieldMagnitudeValue);
@@ -40589,7 +40587,7 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.AddLineToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TVkInt32;
+function TVulkanFontDataGenerator.AddLineToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TInt32;
 var PathSegment:PVulkanFontPathSegment;
 begin
  Assert(length(Points)=2);
@@ -40606,7 +40604,7 @@ begin
  InitializePathSegment(PathSegment^);
 end;
 
-function TVulkanFontDataGenerator.AddQuadraticBezierCurveToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TVkInt32;
+function TVulkanFontDataGenerator.AddQuadraticBezierCurveToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TInt32;
 var PathSegment:PVulkanFontPathSegment;
 begin
  Assert(length(Points)=3);
@@ -40641,15 +40639,15 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint;const Tolerance:TVkDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
+function TVulkanFontDataGenerator.AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint;const Tolerance:TDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TInt32=32):TInt32;
 var LastPoint:TVulkanFontDoublePrecisionPoint;
  procedure LineToPointAt(const Point:TVulkanFontDoublePrecisionPoint);
  begin
   AddLineToPathSegmentArray(Contour,[LastPoint,Point]);
   LastPoint:=Point;
  end;
- procedure Recursive(const x1,y1,x2,y2,x3,y3:TVkDouble;const Level:TVkInt32);
- var x12,y12,x23,y23,x123,y123,mx,my,d:TVkDouble;
+ procedure Recursive(const x1,y1,x2,y2,x3,y3:TDouble;const Level:TInt32);
+ var x12,y12,x23,y23,x123,y123,mx,my,d:TDouble;
      Point:TVulkanFontDoublePrecisionPoint;
  begin
   x12:=(x1+x2)*0.5;
@@ -40678,9 +40676,9 @@ begin
  LineToPointAt(Points[2]);
 end;
 
-function TVulkanFontDataGenerator.AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TVkInt32;
+function TVulkanFontDataGenerator.AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint):TInt32;
 type TLine=record
-      a,b,c:TVkDouble;
+      a,b,c:TDouble;
       Exist,Vertical:boolean;
      end;
      TPointLine=record
@@ -40738,7 +40736,7 @@ var LastPoint:TVulkanFontDoublePrecisionPoint;
   end;
  end;
  function GetLineCross(const l0,l1:TLine;var b:boolean):TVulkanFontDoublePrecisionPoint;
- var u:TVkDouble;
+ var u:TDouble;
  begin
 
   result.x:=0.0;
@@ -40784,8 +40782,8 @@ var LastPoint:TVulkanFontDoublePrecisionPoint;
   // We're done!
   b:=true;
  end;
- function GetCubicPoint(const c0,c1,c2,c3,t:TVkDouble):TVkDouble;
- var ts,g,b,a:TVkDouble;
+ function GetCubicPoint(const c0,c1,c2,c3,t:TDouble):TDouble;
+ var ts,g,b,a:TDouble;
  begin
   ts:=t*t;
   g:=3*(c1-c0);
@@ -40793,15 +40791,15 @@ var LastPoint:TVulkanFontDoublePrecisionPoint;
   a:=((c3-c0)-b)-g;
   result:=(a*ts*t)+(b*ts)+(g*t)+c0;
  end;
- function GetCubicDerivative(const c0,c1,c2,c3,t:TVkDouble):TVkDouble;
- var g,b,a:TVkDouble;
+ function GetCubicDerivative(const c0,c1,c2,c3,t:TDouble):TDouble;
+ var g,b,a:TDouble;
  begin
   g:=3*(c1-c0);
   b:=(3*(c2-c1))-g;
   a:=((c3-c0)-b)-g;
   result:=(3*a*t*t)+(2*b*t)+g;
  end;
- function GetCubicTangent(const P0,P1,P2,P3:TVulkanFontDoublePrecisionPoint;t:TVkDouble):TPointLine;
+ function GetCubicTangent(const P0,P1,P2,P3:TVulkanFontDoublePrecisionPoint;t:TDouble):TPointLine;
  var P,V:TVulkanFontDoublePrecisionPoint;
      l:TLine;
  begin
@@ -40824,10 +40822,10 @@ var LastPoint:TVulkanFontDoublePrecisionPoint;
  end;
  procedure CubicCurveToTangent(const P0,P1,P2,P3:TVulkanFontDoublePrecisionPoint);
  const NumberOfSegments=8;
-  function SliceCubicBezierSegment(const p0,p1,p2,p3:TVulkanFontDoublePrecisionPoint;const u1,u2:TVkDouble;const Tu1,Tu2:TPointLine;Recursion:TVkInt32):TVkInt32;
+  function SliceCubicBezierSegment(const p0,p1,p2,p3:TVulkanFontDoublePrecisionPoint;const u1,u2:TDouble;const Tu1,Tu2:TPointLine;Recursion:TInt32):TInt32;
   var P,ControlPoint:TVulkanFontDoublePrecisionPoint;
       b:boolean;
-      d,uMid:TVkDouble;
+      d,uMid:TDouble;
       TuMid:TPointLine;
   begin
 
@@ -40866,8 +40864,8 @@ var LastPoint:TVulkanFontDoublePrecisionPoint;
    end;
   end;
  var CurrentTime,NextTime:TPointLine;
-     TimeStep:TVkDouble;
-     i:TVkInt32;
+     TimeStep:TDouble;
+     i:TInt32;
  begin
 
   // Get the time step from number of output segments
@@ -40900,15 +40898,15 @@ begin
  CubicCurveToTangent(Points[0],Points[1],Points[2],Points[3]);
 end;
 
-function TVulkanFontDataGenerator.AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint;const Tolerance:TVkDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TVkInt32=32):TVkInt32;
+function TVulkanFontDataGenerator.AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TVulkanFontPathContour;const Points:array of TVulkanFontDoublePrecisionPoint;const Tolerance:TDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TInt32=32):TInt32;
 var LastPoint:TVulkanFontDoublePrecisionPoint;
  procedure LineToPointAt(const Point:TVulkanFontDoublePrecisionPoint);
  begin
   AddLineToPathSegmentArray(Contour,[LastPoint,Point]);
   LastPoint:=Point;
  end;
- procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TVkDouble;const Level:TVkInt32);
- var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,mx,my,d:TVkDouble;
+ procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TDouble;const Level:TInt32);
+ var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,mx,my,d:TDouble;
      Point:TVulkanFontDoublePrecisionPoint;
  begin
   x12:=(x1+x2)*0.5;
@@ -40943,7 +40941,7 @@ begin
  LineToPointAt(Points[3]);
 end;
 
-function TVulkanFontDataGenerator.CubeRoot(Value:TVkDouble):TVkDouble;
+function TVulkanFontDataGenerator.CubeRoot(Value:TDouble):TDouble;
 begin
  if IsZero(Value) then begin
   result:=0.0;
@@ -40955,10 +40953,10 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.CalculateNearestPointForQuadraticBezierCurve(const PathSegment:TVulkanFontPathSegment;const XFormPoint:TVulkanFontDoublePrecisionPoint):TVkDouble;
+function TVulkanFontDataGenerator.CalculateNearestPointForQuadraticBezierCurve(const PathSegment:TVulkanFontPathSegment;const XFormPoint:TVulkanFontDoublePrecisionPoint):TDouble;
 const OneDiv3=1.0/3.0;
       OneDiv27=1.0/27.0;
-var a,b,a3,b2,c,SqrtC,CosPhi,Phi:TVkDouble;
+var a,b,a3,b2,c,SqrtC,CosPhi,Phi:TDouble;
 begin
  a:=0.5-XFormPoint.y;
  b:=(-0.5)*XFormPoint.x;
@@ -40991,7 +40989,7 @@ end;
 
 procedure TVulkanFontDataGenerator.PrecomputationForRow(out RowData:TVulkanFontRowData;const PathSegment:TVulkanFontPathSegment;const PointLeft,PointRight:TVulkanFontDoublePrecisionPoint);
 var XFormPointLeft,XFormPointRight:TVulkanFontDoublePrecisionPoint;
-    x0,y0,x1,y1,m,b,m2,c,Tolerance,d:TVkDouble;
+    x0,y0,x1,y1,m,b,m2,c,Tolerance,d:TDouble;
 begin
  if PathSegment.Type_=pstQuadraticBezierCurve then begin
   XFormPointLeft:=DoublePrecisionPointMap(PointLeft,PathSegment.XFormMatrix);
@@ -41032,13 +41030,13 @@ begin
 end;
 
 function TVulkanFontDataGenerator.CalculateSideOfQuadraticBezierCurve(const PathSegment:TVulkanFontPathSegment;const Point,XFormPoint:TVulkanFontDoublePrecisionPoint;const RowData:TVulkanFontRowData):TVulkanFontPathSegmentSide;
-var p0,p1:TVkDouble;
-    sp0,sp1:TVkInt32;
+var p0,p1:TDouble;
+    sp0,sp1:TInt32;
     ip0,ip1:boolean;
 begin
  case RowData.IntersectionType of
   rditVerticalLine:begin
-   result:=TVulkanFontPathSegmentSide(TVkInt32(SignOf(XFormPoint.y-RowData.YAtIntersection)*RowData.QuadraticXDirection));
+   result:=TVulkanFontPathSegmentSide(TInt32(SignOf(XFormPoint.y-RowData.YAtIntersection)*RowData.QuadraticXDirection));
   end;
   rditTwoPointsIntersect:begin
    result:=pssNone;
@@ -41066,12 +41064,12 @@ begin
     end;
    end;
    if ip0 and BetweenClosed(p0,PathSegment.P0T.x,PathSegment.P2T.x,PathSegment.NearlyZeroScaled,true) then begin
-    result:=TVulkanFontPathSegmentSide(TVkInt32(sp0*RowData.QuadraticXDirection));
+    result:=TVulkanFontPathSegmentSide(TInt32(sp0*RowData.QuadraticXDirection));
    end;
    if ip1 and BetweenClosed(p1,PathSegment.P0T.x,PathSegment.P2T.x,PathSegment.NearlyZeroScaled,true) then begin
     sp1:=SignOf(p1-XFormPoint.x);
     if (result=pssNone) or (sp1=1) then begin
-     result:=TVulkanFontPathSegmentSide(TVkInt32(-sp1*RowData.QuadraticXDirection));
+     result:=TVulkanFontPathSegmentSide(TInt32(-sp1*RowData.QuadraticXDirection));
     end;
    end;
   end;
@@ -41079,9 +41077,9 @@ begin
    result:=pssNone;
    if RowData.ScanlineXDirection=1 then begin
     if SameValue(PathSegment.Points[0].y,Point.y) then begin
-     result:=TVulkanFontPathSegmentSide(TVkInt32(SignOf(RowData.XAtIntersection[0]-XFormPoint.x)));
+     result:=TVulkanFontPathSegmentSide(TInt32(SignOf(RowData.XAtIntersection[0]-XFormPoint.x)));
     end else if SameValue(PathSegment.Points[2].y,Point.y) then begin
-     result:=TVulkanFontPathSegmentSide(TVkInt32(SignOf(XFormPoint.x-RowData.XAtIntersection[0])));
+     result:=TVulkanFontPathSegmentSide(TInt32(SignOf(XFormPoint.x-RowData.XAtIntersection[0])));
     end;
    end;
   end;
@@ -41091,9 +41089,9 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.DistanceToPathSegment(const Point:TVulkanFontDoublePrecisionPoint;const PathSegment:TVulkanFontPathSegment;const RowData:TVulkanFontRowData;out PathSegmentSide:TVulkanFontPathSegmentSide):TVkDouble;
+function TVulkanFontDataGenerator.DistanceToPathSegment(const Point:TVulkanFontDoublePrecisionPoint;const PathSegment:TVulkanFontPathSegment;const RowData:TVulkanFontRowData;out PathSegmentSide:TVulkanFontPathSegmentSide):TDouble;
 var XFormPoint,x:TVulkanFontDoublePrecisionPoint;
-    NearestPoint:TVkDouble;
+    NearestPoint:TDouble;
 begin
  XFormPoint:=DoublePrecisionPointMap(Point,PathSegment.XFormMatrix);
  case PathSegment.Type_ of
@@ -41106,7 +41104,7 @@ begin
     result:=sqr(XFormPoint.x-PathSegment.P2T.x)+sqr(XFormPoint.y);
    end;
    if BetweenClosedOpen(Point.y,PathSegment.BoundingBox.Min.y,PathSegment.BoundingBox.Max.y) then begin
-    PathSegmentSide:=TVulkanFontPathSegmentSide(TVkInt32(SignOf(XFormPoint.y)));
+    PathSegmentSide:=TVulkanFontPathSegmentSide(TInt32(SignOf(XFormPoint.y)));
    end else begin
     PathSegmentSide:=pssNone;
    end;
@@ -41135,7 +41133,7 @@ begin
 end;
 
 procedure TVulkanFontDataGenerator.ConvertShape(const DoSubdivideCurvesIntoLines:boolean);
-var CommandIndex:TVkInt32;
+var CommandIndex:TInt32;
     Contour:PVulkanFontPathContour;
     StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TVulkanFontDoublePrecisionPoint;
 begin
@@ -41226,7 +41224,7 @@ begin
  end;
 end;
 
-procedure TVulkanFontDataGenerator.SplitPathSegmentIntoThreePartsInsideContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TVkInt32);
+procedure TVulkanFontDataGenerator.SplitPathSegmentIntoThreePartsInsideContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TInt32);
 var BasePathSegment:TVulkanFontPathSegment;
 begin
  if (BasePathSegmentIndex>=0) and (BasePathSegmentIndex<Contour.CountPathSegments) then begin
@@ -41283,7 +41281,7 @@ begin
  end;
 end;
 
-procedure TVulkanFontDataGenerator.SplitPathSegmentIntoThreePartsToContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TVkInt32;const BasePathSegment:TVulkanFontPathSegment);
+procedure TVulkanFontDataGenerator.SplitPathSegmentIntoThreePartsToContour(var Contour:TVulkanFontPathContour;const BasePathSegmentIndex:TInt32;const BasePathSegment:TVulkanFontPathSegment);
 begin
  if (BasePathSegmentIndex>=0) and (BasePathSegmentIndex<Contour.CountPathSegments) then begin
   case BasePathSegment.Type_ of
@@ -41329,7 +41327,7 @@ begin
 end;
 
 procedure TVulkanFontDataGenerator.NormalizeShape;
-var ContourIndex:TVkInt32;
+var ContourIndex:TInt32;
     Contour:PVulkanFontPathContour;
 begin
  for ContourIndex:=0 to Shape.CountContours-1 do begin
@@ -41348,33 +41346,33 @@ procedure TVulkanFontDataGenerator.PathSegmentColorizeShape;
 const AngleThreshold=3.0;
       EdgeThreshold=1.00000001;
 type PCorner=^TCorner;
-     TCorner=TVkInt32;
+     TCorner=TInt32;
      TCorners=array of TCorner;
 var ContourIndex,PathSegmentIndex,CountCorners,CornerIndex,SplineIndex,StartIndex,
-    OtherPathSegmentIndex:TVkInt32;
-    Seed:TVkUInt64;
+    OtherPathSegmentIndex:TInt32;
+    Seed:TUInt64;
     Contour:PVulkanFontPathContour;
     PathSegment:PVulkanFontPathSegment;
     Corners:TCorners;
     CurrentDirection,PreviousDirection,a,b:TVulkanFontDoublePrecisionPoint;
-    CrossThreshold:TVkDouble;
+    CrossThreshold:TDouble;
     Color,InitialColor:TVulkanFontPathSegmentColor;
     Colors:array[0..2] of TVulkanFontPathSegmentColor;
     PathSegments:TVulkanFontPathSegments;
  procedure SwitchColor(var Color:TVulkanFontPathSegmentColor;const BannedColor:TVulkanFontPathSegmentColor=pscBlack);
  const StartColors:array[0..2] of TVulkanFontPathSegmentColor=(pscCyan,pscMagenta,pscYellow);
  var CombinedColor:TVulkanFontPathSegmentColor;
-     Shifted:TVkUInt64;
+     Shifted:TUInt64;
  begin
-  CombinedColor:=TVulkanFontPathSegmentColor(TVkInt32(TVkInt32(Color) and TVkInt32(BannedColor)));
+  CombinedColor:=TVulkanFontPathSegmentColor(TInt32(TInt32(Color) and TInt32(BannedColor)));
   if CombinedColor in [pscRed,pscGreen,pscBlue] then begin
-   Color:=TVulkanFontPathSegmentColor(TVkInt32(TVkInt32(CombinedColor) xor TVkInt32(TVulkanFontPathSegmentColor(pscWhite))));
+   Color:=TVulkanFontPathSegmentColor(TInt32(TInt32(CombinedColor) xor TInt32(TVulkanFontPathSegmentColor(pscWhite))));
   end else if CombinedColor in [pscBlack,pscWhite] then begin
    Color:=StartColors[Seed mod 3];
    Seed:=Seed div 3;
   end else begin
-   Shifted:=TVkInt32(Color) shl (1+(Seed and 1));
-   Color:=TVulkanFontPathSegmentColor(TVkInt32((Shifted or (Shifted shr 3)) and TVkInt32(TVulkanFontPathSegmentColor(pscWhite))));
+   Shifted:=TInt32(Color) shl (1+(Seed and 1));
+   Color:=TVulkanFontPathSegmentColor(TInt32((Shifted or (Shifted shr 3)) and TInt32(TVulkanFontPathSegmentColor(pscWhite))));
    Seed:=Seed shr 1;
   end;
  end;
@@ -41496,7 +41494,7 @@ begin
        end;
        if ((SplineIndex+1)<CountCorners) and (Corners[SplineIndex+1]=OtherPathSegmentIndex) then begin
         inc(SplineIndex);
-        SwitchColor(Color,TVulkanFontPathSegmentColor(TVkInt32(IfThen(SplineIndex=(CountCorners-1),TVkInt32(InitialColor),TVkInt32(TVulkanFontPathSegmentColor(pscBlack))))));
+        SwitchColor(Color,TVulkanFontPathSegmentColor(TInt32(IfThen(SplineIndex=(CountCorners-1),TInt32(InitialColor),TInt32(TVulkanFontPathSegmentColor(pscBlack))))));
        end;
        Contour^.PathSegments[OtherPathSegmentIndex].Color:=Color;
       end;
@@ -41515,7 +41513,7 @@ begin
 
 end;
 
-function TVulkanFontDataGenerator.GetLineNonClippedTime(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TVkDouble;
+function TVulkanFontDataGenerator.GetLineNonClippedTime(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TDouble;
 var pAP,pAB:TVulkanFontDoublePrecisionPoint;
 begin
  pAP.x:=p.x-p0.x;
@@ -41525,9 +41523,9 @@ begin
  result:=((pAP.x*pAB.x)+(pAP.y*pAB.y))/(sqr(pAB.x)+sqr(pAB.y));
 end;
 
-function TVulkanFontDataGenerator.GetQuadraticBezierCurveNonClippedTime(const p,p0,p1,p2:TVulkanFontDoublePrecisionPoint):TVkDouble;
+function TVulkanFontDataGenerator.GetQuadraticBezierCurveNonClippedTime(const p,p0,p1,p2:TVulkanFontDoublePrecisionPoint):TDouble;
 var b0,b1,b2,d21,d10,d20,gf,pp,d0p:TVulkanFontDoublePrecisionPoint;
-    a,b,d,f,ap,bp,v,c:TVkDouble;
+    a,b,d,f,ap,bp,v,c:TDouble;
 begin
  b0.x:=p0.x-p.x;
  b0.y:=p0.y-p.y;
@@ -41562,13 +41560,13 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.GetNonClampedSignedLineDistance(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TVkDouble;
+function TVulkanFontDataGenerator.GetNonClampedSignedLineDistance(const p,p0,p1:TVulkanFontDoublePrecisionPoint):TDouble;
 begin
  result:=((p.x*(p0.y-p1.y))+(p0.x*(p1.y-p.y))+(p1.x*(p.y-p0.y)))/sqrt(sqr(p1.x-p0.x)+sqr(p1.y-p0.y));
 end;
 
-procedure TVulkanFontDataGenerator.CalculateDistanceFieldDataLineRange(const FromY,ToY:TVkInt32);
-var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TVkInt32;
+procedure TVulkanFontDataGenerator.CalculateDistanceFieldDataLineRange(const FromY,ToY:TInt32);
+var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindingScore:TInt32;
     Contour:PVulkanFontPathContour;
     PathSegment:PVulkanFontPathSegment;
     PathSegmentBoundingBox:TVulkanFontBoundingBox;
@@ -41576,7 +41574,7 @@ var ContourIndex,PathSegmentIndex,x0,y0,x1,y1,x,y,PixelIndex,Dilation,DeltaWindi
     RowData:TVulkanFontRowData;
     DistanceFieldDataItem:PVulkanFontDistanceFieldDataItem;
     PointLeft,PointRight,Point,p0,p1,Direction,OriginPointDifference:TVulkanFontDoublePrecisionPoint;
-    pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time,Value:TvkDouble;
+    pX,pY,CurrentSquaredDistance,CurrentSquaredPseudoDistance,Time,Value:TDouble;
 begin
  RowData.QuadraticXDirection:=0;
  for ContourIndex:=0 to Shape.CountContours-1 do begin
@@ -41688,17 +41686,17 @@ begin
        DistanceFieldDataItem^.SquaredDistance:=CurrentSquaredDistance;
       end;
       if MultiChannel then begin
-       if (((TVKInt32(PathSegment^.Color) and TVkInt32(TVulkanFontPathSegmentColor(pscRed)))<>0)) and
+       if (((TInt32(PathSegment^.Color) and TInt32(TVulkanFontPathSegmentColor(pscRed)))<>0)) and
           (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceR) then begin
         DistanceFieldDataItem^.SquaredDistanceR:=CurrentSquaredDistance;
         DistanceFieldDataItem^.PseudoSquaredDistanceR:=CurrentSquaredPseudoDistance;
        end;
-       if (((TVKInt32(PathSegment^.Color) and TVkInt32(TVulkanFontPathSegmentColor(pscGreen)))<>0)) and
+       if (((TInt32(PathSegment^.Color) and TInt32(TVulkanFontPathSegmentColor(pscGreen)))<>0)) and
           (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceG) then begin
         DistanceFieldDataItem^.SquaredDistanceG:=CurrentSquaredDistance;
         DistanceFieldDataItem^.PseudoSquaredDistanceG:=CurrentSquaredPseudoDistance;
        end;
-       if (((TVKInt32(PathSegment^.Color) and TVkInt32(TVulkanFontPathSegmentColor(pscBlue)))<>0)) and
+       if (((TInt32(PathSegment^.Color) and TInt32(TVulkanFontPathSegmentColor(pscBlue)))<>0)) and
           (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceB) then begin
         DistanceFieldDataItem^.SquaredDistanceB:=CurrentSquaredDistance;
         DistanceFieldDataItem^.PseudoSquaredDistanceB:=CurrentSquaredPseudoDistance;
@@ -41713,29 +41711,29 @@ begin
 end;
 
 {$ifdef PasVulkanPasMP}
-procedure TVulkanFontDataGenerator.CalculateDistanceFieldDataLineRangeParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:pointer;const FromIndex,ToIndex:TPasMPNativeInt);
+procedure TVulkanFontDataGenerator.CalculateDistanceFieldDataLineRangeParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TPointer;const FromIndex,ToIndex:TPasMPNativeInt);
 begin
  CalculateDistanceFieldDataLineRange(FromIndex,ToIndex);
 end;
 {$endif}
 
-function TVulkanFontDataGenerator.PackDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
+function TVulkanFontDataGenerator.PackDistanceFieldValue(Distance:TDouble):TUInt8;
 begin
  result:=Clamp(Round((Distance*(128.0/VulkanFontDistanceFieldMagnitudeValue))+128.0),0,255);
 end;
 
-function TVulkanFontDataGenerator.PackPseudoDistanceFieldValue(Distance:TVkDouble):TVkUInt8;
+function TVulkanFontDataGenerator.PackPseudoDistanceFieldValue(Distance:TDouble):TUInt8;
 begin
  result:=Clamp(Round((Distance*(128.0/VulkanFontDistanceFieldMagnitudeValue))+128.0),0,255);
 end;
 
 procedure TVulkanFontDataGenerator.ConvertToPointInPolygonPathSegments;
-var ContourIndex,PathSegmentIndex,CountPathSegments:TVkInt32;
+var ContourIndex,PathSegmentIndex,CountPathSegments:TInt32;
     Contour:PVulkanFontPathContour;
     PathSegment:PVulkanFontPathSegment;
     StartPoint,LastPoint:TVulkanFontDoublePrecisionPoint;
  procedure AddPathSegment(const p0,p1:TVulkanFontDoublePrecisionPoint);
- var Index:TVkInt32;
+ var Index:TInt32;
      PointInPolygonPathSegment:PVulkanFontPointInPolygonPathSegment;
  begin
   Index:=CountPathSegments;
@@ -41747,15 +41745,15 @@ var ContourIndex,PathSegmentIndex,CountPathSegments:TVkInt32;
   PointInPolygonPathSegment^.Points[0]:=p0;
   PointInPolygonPathSegment^.Points[1]:=p1;
  end;
- procedure AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(const p0,p1,p2:TVulkanFontDoublePrecisionPoint;const Tolerance:TVkDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TVkInt32=32);
+ procedure AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(const p0,p1,p2:TVulkanFontDoublePrecisionPoint;const Tolerance:TDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TInt32=32);
  var LastPoint:TVulkanFontDoublePrecisionPoint;
   procedure LineToPointAt(const Point:TVulkanFontDoublePrecisionPoint);
   begin
    AddPathSegment(LastPoint,Point);
    LastPoint:=Point;
   end;
-  procedure Recursive(const x1,y1,x2,y2,x3,y3:TVkDouble;const Level:TVkInt32);
-  var x12,y12,x23,y23,x123,y123,mx,my,d:TVkDouble;
+  procedure Recursive(const x1,y1,x2,y2,x3,y3:TDouble;const Level:TInt32);
+  var x12,y12,x23,y23,x123,y123,mx,my,d:TDouble;
       Point:TVulkanFontDoublePrecisionPoint;
   begin
    x12:=(x1+x2)*0.5;
@@ -41821,10 +41819,10 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.GetWindingNumberAtPointInPolygon(const Point:TVulkanFontDoublePrecisionPoint):TVkInt32;
-var Index,CaseIndex:TVkInt32;
+function TVulkanFontDataGenerator.GetWindingNumberAtPointInPolygon(const Point:TVulkanFontDoublePrecisionPoint):TInt32;
+var Index,CaseIndex:TInt32;
     PointInPolygonPathSegment:PVulkanFontPointInPolygonPathSegment;
-    x0,y0,x1,y1:TVkDouble;
+    x0,y0,x1,y1:TDouble;
 begin
  result:=0;
  for Index:=0 to length(PointInPolygonPathSegments)-1 do begin
@@ -41859,8 +41857,8 @@ begin
  end;
 end;
 
-function TVulkanFontDataGenerator.GenerateDistanceFieldPicture(const DistanceFieldData:TVulkanFontDistanceFieldData;const Width,Height,TryIteration:TVkInt32):boolean;
-var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TVkInt32;
+function TVulkanFontDataGenerator.GenerateDistanceFieldPicture(const DistanceFieldData:TVulkanFontDistanceFieldData;const Width,Height,TryIteration:TInt32):boolean;
+var x,y,PixelIndex,DistanceFieldSign,WindingNumber,Value:TInt32;
     DistanceFieldDataItem:PVulkanFontDistanceFieldDataItem;
     DistanceFieldPixel:PVulkanFontDistanceFieldPixel;
     p:TVulkanFontDoublePrecisionPoint;
@@ -41923,7 +41921,7 @@ begin
 end;
 
 procedure TVulkanFontDataGenerator.DoIt;
-var TryIteration:TVkInt32;
+var TryIteration:TInt32;
 {$ifdef PasVulkanPasMP}
     PasMPInstance:TPasMP;
 {$endif}
@@ -41985,7 +41983,7 @@ begin
 
 end;
 
-constructor TVulkanFont.Create(const aDevice:TVulkanDevice;const aSpriteAtlas:TVulkanSpriteAtlas;const aTargetPPI:TVkInt32=72);
+constructor TVulkanFont.Create(const aDevice:TVulkanDevice;const aSpriteAtlas:TVulkanSpriteAtlas;const aTargetPPI:TInt32=72);
 begin
 
  inherited Create;
@@ -42007,8 +42005,8 @@ begin
  fMaxX:=0.0;
  fMaxY:=0.0;
 
- fMinimumCodePoint:=High(TVkUInt32);
- fMaximumCodePoint:=Low(TVkUInt32);
+ fMinimumCodePoint:=High(TUInt32);
+ fMaximumCodePoint:=Low(TUInt32);
 
  fCodePointBitmap:=nil;
 
@@ -42034,11 +42032,11 @@ const GlyphMetaDataScaleFactor=1.0;
 var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     CodePointGlyphPairIndex,CountCodePointGlyphPairs,
     TrueTypeFontKerningIndex,TrueTypeFontKerningPairIndex,
-    KerningPairIndex,CountKerningPairs:TVkInt32;
-    x0,y0,x1,y1:TVkDouble;
-    KerningPairDoubleIndex:TVkUInt64;
+    KerningPairIndex,CountKerningPairs:TInt32;
+    x0,y0,x1,y1:TDouble;
+    KerningPairDoubleIndex:TUInt64;
     CodePointRange:PVulkanFontCodePointRange;
-    CodePointIndex,BitmapCodePointIndex:TVkUInt32;
+    CodePointIndex,BitmapCodePointIndex:TUInt32;
     CodePointBitmap:TVulkanFontCodePointBitmap;
     CodePointToTTFGlyphHashMap:TVulkanInt64HashMap;
     TTFGlyphToGlyphHashMap:TVulkanInt64HashMap;
@@ -42089,13 +42087,13 @@ begin
 
   SetLength(CodePointBitmap,((fMaximumCodePoint-fMinimumCodePoint)+32) shr 5);
 
-  FillChar(CodePointBitmap[0],length(CodePointBitmap)*SizeOf(TVkUInt32),#0);
+  FillChar(CodePointBitmap[0],length(CodePointBitmap)*SizeOf(TUInt32),#0);
 
   for Index:=low(aCodePointRanges) to high(aCodePointRanges) do begin
    CodePointRange:=@aCodePointRanges[Index];
    for CodePointIndex:=Min(CodePointRange^.FromCodePoint,CodePointRange^.ToCodePoint) to Max(CodePointRange^.FromCodePoint,CodePointRange^.ToCodePoint) do begin
     BitmapCodePointIndex:=CodePointIndex-fMinimumCodePoint;
-    CodePointBitmap[BitmapCodePointIndex shr 5]:=CodePointBitmap[BitmapCodePointIndex shr 5] or (TVkUInt32(1) shl (BitmapCodePointIndex and 31));
+    CodePointBitmap[BitmapCodePointIndex shr 5]:=CodePointBitmap[BitmapCodePointIndex shr 5] or (TUInt32(1) shl (BitmapCodePointIndex and 31));
    end;
   end;
 
@@ -42113,20 +42111,20 @@ begin
      try
       for CodePointIndex:=fMinimumCodePoint to fMaximumCodePoint do begin
        BitmapCodePointIndex:=CodePointIndex-fMinimumCodePoint;
-       if (CodePointBitmap[BitmapCodePointIndex shr 5] and (TVkUInt32(1) shl (BitmapCodePointIndex and 31)))<>0 then begin
+       if (CodePointBitmap[BitmapCodePointIndex shr 5] and (TUInt32(1) shl (BitmapCodePointIndex and 31)))<>0 then begin
         TTFGlyphIndex:=aTrueTypeFont.GetGlyphIndex(CodePointIndex);
         if (TTFGlyphIndex>=0) and (TTFGlyphIndex<aTrueTypeFont.CountGlyphs) then begin
          if not CodePointToTTFGlyphHashMap.ExistKey(CodePointIndex) then begin
-          CodePointToTTFGlyphHashMap.Add(CodePointIndex,{%H-}TVkPointer(TVkPtrUInt(TTFGlyphIndex)));
+          CodePointToTTFGlyphHashMap.Add(CodePointIndex,{%H-}TPointer(TPtrUInt(TTFGlyphIndex)));
           if TTFGlyphToGlyphHashMap.TryGet(TTFGlyphIndex,Int64HashMapData) then begin
-           GlyphIndex:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+           GlyphIndex:={%H-}TPtrUInt(TPointer(Int64HashMapData));
           end else begin
            GlyphIndex:=CountGlyphs;
            inc(CountGlyphs);
-           TTFGlyphToGlyphHashMap.Add(TTFGlyphIndex,{%H-}TVkPointer(TVkPtrUInt(GlyphIndex)));
-           GlyphToTTFGlyphHashMap.Add(GlyphIndex,{%H-}TVkPointer(TVkPtrUInt(TTFGlyphIndex)));
+           TTFGlyphToGlyphHashMap.Add(TTFGlyphIndex,{%H-}TPointer(TPtrUInt(GlyphIndex)));
+           GlyphToTTFGlyphHashMap.Add(GlyphIndex,{%H-}TPointer(TPtrUInt(TTFGlyphIndex)));
           end;
-          fCodePointToGlyphHashMap.Add(CodePointIndex,{%H-}TVkPointer(TVkPtrUInt(GlyphIndex)));
+          fCodePointToGlyphHashMap.Add(CodePointIndex,{%H-}TPointer(TPtrUInt(GlyphIndex)));
           CodePointGlyphPairIndex:=CountCodePointGlyphPairs;
           inc(CountCodePointGlyphPairs);
           if length(fCodePointGlyphPairs)<CountCodePointGlyphPairs then begin
@@ -42161,7 +42159,7 @@ begin
 
       if GlyphToTTFGlyphHashMap.TryGet(GlyphIndex,Int64HashMapData) then begin
 
-       TTFGlyphIndex:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+       TTFGlyphIndex:={%H-}TPtrUInt(TPointer(Int64HashMapData));
 
        Glyph^.AdvanceWidth:=aTrueTypeFont.GetGlyphAdvanceWidth(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
        Glyph^.AdvanceHeight:=aTrueTypeFont.GetGlyphAdvanceHeight(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
@@ -42266,7 +42264,7 @@ begin
        for GlyphIndex:=0 to length(SortedGlyphs)-1 do begin
         Glyph:=SortedGlyphs[GlyphIndex];
         if (Glyph^.Width>0) and (Glyph^.Height>0) then begin
-         OtherGlyphIndex:={%H-}((TVkPtrUInt(TVkPointer(Glyph))-TVkPtrUInt(TVkPointer(@fGlyphs[0])))) div SizeOf(TVulkanFontGlyph);
+         OtherGlyphIndex:={%H-}((TPtrUInt(TPointer(Glyph))-TPtrUInt(TPointer(@fGlyphs[0])))) div SizeOf(TVulkanFontGlyph);
          Glyph^.Sprite:=aSpriteAtlas.LoadRawSprite(TVulkanRawByteString(String('glyph'+IntToStr(OtherGlyphIndex))),
                                                    @GlyphDistanceFields[OtherGlyphIndex].Pixels[0],
                                                    Glyph^.Width,
@@ -42302,9 +42300,9 @@ begin
       for TrueTypeFontKerningPairIndex:=0 to length(TrueTypeFontKerningTable^.KerningPairs)-1 do begin
        TrueTypeFontKerningPair:=@TrueTypeFontKerningTable^.KerningPairs[TrueTypeFontKerningPairIndex];
        if TTFGlyphToGlyphHashMap.TryGet(TrueTypeFontKerningPair^.Left,Int64HashMapData) then begin
-        GlyphIndex:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+        GlyphIndex:={%H-}TPtrUInt(TPointer(Int64HashMapData));
         if TTFGlyphToGlyphHashMap.TryGet(TrueTypeFontKerningPair^.Right,Int64HashMapData) then begin
-         OtherGlyphIndex:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+         OtherGlyphIndex:={%H-}TPtrUInt(TPointer(Int64HashMapData));
          KerningPairDoubleIndex:=CombineTwoUInt32IntoOneUInt64(GlyphIndex,OtherGlyphIndex);
          if not KerningPairHashMap.ExistKey(KerningPairDoubleIndex) then begin
           KerningPairIndex:=CountKerningPairs;
@@ -42312,7 +42310,7 @@ begin
           if length(fKerningPairs)<CountKerningPairs then begin
            SetLength(fKerningPairs,CountKerningPairs*2);
           end;
-          KerningPairHashMap.Add(KerningPairDoubleIndex,{%H-}TVkPointer(TVkPtrUInt(KerningPairIndex)));
+          KerningPairHashMap.Add(KerningPairDoubleIndex,{%H-}TPointer(TPtrUInt(KerningPairIndex)));
           KerningPair:=@fKerningPairs[KerningPairIndex];
           KerningPair^.Left:=TrueTypeFontKerningPair^.Left;
           KerningPair^.Right:=TrueTypeFontKerningPair^.Right;
@@ -42334,7 +42332,7 @@ begin
     for KerningPairIndex:=0 to length(fKerningPairs)-1 do begin
      KerningPair:=@fKerningPairs[KerningPairIndex];
      KerningPairDoubleIndex:=CombineTwoUInt32IntoOneUInt64(KerningPair^.Left,KerningPair^.Right);
-     fKerningPairHashMap.Add(KerningPairDoubleIndex,{%H-}TVkPointer(TVkPtrUInt(KerningPairIndex)));
+     fKerningPairHashMap.Add(KerningPairDoubleIndex,{%H-}TPointer(TPtrUInt(KerningPairIndex)));
     end;
    end;
                
@@ -42368,7 +42366,7 @@ begin
  inherited Destroy;
 end;
 
-class function TVulkanFont.CodePointRange(const aFromCodePoint,aToCodePoint:TVkUInt32): TVulkanFontCodePointRange;
+class function TVulkanFont.CodePointRange(const aFromCodePoint,aToCodePoint:TUInt32): TVulkanFontCodePointRange;
 begin
  result.FromCodePoint:=Min(aFromCodePoint,aToCodePoint);
  result.ToCodePoint:=Max(aFromCodePoint,aToCodePoint);
@@ -42376,30 +42374,30 @@ end;
 
 class function TVulkanFont.CodePointRange(const aFromCodePoint,aToCodePoint:WideChar):TVulkanFontCodePointRange;
 begin
- result.FromCodePoint:=Min(TVkUInt16(WideChar(aFromCodePoint)),TVkUInt16(WideChar(aToCodePoint)));
- result.ToCodePoint:=Max(TVkUInt16(WideChar(aFromCodePoint)),TVkUInt16(WideChar(aToCodePoint)));
+ result.FromCodePoint:=Min(TUInt16(WideChar(aFromCodePoint)),TUInt16(WideChar(aToCodePoint)));
+ result.ToCodePoint:=Max(TUInt16(WideChar(aFromCodePoint)),TUInt16(WideChar(aToCodePoint)));
 end;
 
 class function TVulkanFont.CodePointRange(const aCharacterRange:TVulkanFontCharacterRange):TVulkanFontCodePointRange;
 var Index:AnsiChar;
 begin
- result.FromCodePoint:=High(TVkUInt32);
- result.ToCodePoint:=Low(TVkUInt32);
+ result.FromCodePoint:=High(TUInt32);
+ result.ToCodePoint:=Low(TUInt32);
  for Index:=Low(AnsiChar) to High(AnsiChar) do begin
   if Index in aCharacterRange then begin
-   result.FromCodePoint:=TVkUInt8(AnsiChar(Index));
+   result.FromCodePoint:=TUInt8(AnsiChar(Index));
    break;
   end;
  end;
  for Index:=High(AnsiChar) downto Low(AnsiChar) do begin
   if Index in aCharacterRange then begin
-   result.ToCodePoint:=TVkUInt8(AnsiChar(Index));
+   result.ToCodePoint:=TUInt8(AnsiChar(Index));
    break;
   end;
  end;
 end;
 
-function TVulkanFont.GetScaleFactor(const aSize:TVkFloat):TVkFloat;
+function TVulkanFont.GetScaleFactor(const aSize:TFloat):TFloat;
 begin
  if aSize<0.0 then begin
   result:=(-aSize)/fUnitsPerEm;
@@ -42408,7 +42406,7 @@ begin
  end;
 end;
 
-procedure TVulkanFont.GenerateSignedDistanceField(var DistanceField:TVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const FillRule:TVkInt32);
+procedure TVulkanFont.GenerateSignedDistanceField(var DistanceField:TVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TVulkanTrueTypeFontPolygonBuffer;const FillRule:TInt32);
 var DataGenerator:TVulkanFontDataGenerator;
 begin
  DataGenerator:=TVulkanFontDataGenerator.Create;
@@ -42425,7 +42423,7 @@ begin
 end;
 
 {$ifdef PasVulkanPasMP}
-procedure TVulkanFont.GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:pointer;const FromIndex,ToIndex:TPasMPNativeInt);
+procedure TVulkanFont.GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TPointer;const FromIndex,ToIndex:TPasMPNativeInt);
 var Index:TPasMPNativeInt;
     JobData:PVulkanFontDistanceFieldJob;
 begin
@@ -42438,10 +42436,10 @@ begin
 end;
 {$endif}
 
-function TVulkanFont.TextWidth(const aText:TVulkanUTF8String;const aSize:TVkFloat):TVkFloat;
-var TextIndex,CurrentGlyph,LastGlyph:TVkInt32;
-    CurrentCodePoint:TVkUInt32;
-    Width,NewWidth:TVkFloat;
+function TVulkanFont.TextWidth(const aText:TVulkanUTF8String;const aSize:TFloat):TFloat;
+var TextIndex,CurrentGlyph,LastGlyph:TInt32;
+    CurrentCodePoint:TUInt32;
+    Width,NewWidth:TFloat;
     Int64HashMapData:TVulkanInt64HashMapData;
     Glyph:PVulkanFontGlyph;
 begin
@@ -42452,11 +42450,11 @@ begin
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
   if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
-   CurrentGlyph:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+   CurrentGlyph:={%H-}TPtrUInt(TPointer(Int64HashMapData));
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
-     result:=result+fKerningPairs[TVkPtrUInt(TVkPointer(Int64HashMapData))].Horizontal;
+     result:=result+fKerningPairs[TPtrUInt(TPointer(Int64HashMapData))].Horizontal;
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
     if LastGlyph<0 then begin
@@ -42482,10 +42480,10 @@ begin
  result:=result*GetScaleFactor(aSize);
 end;
 
-function TVulkanFont.TextHeight(const aText:TVulkanUTF8String;const aSize:TVkFloat):TVkFloat;
-var TextIndex,CurrentGlyph,LastGlyph:TVkInt32;
-    CurrentCodePoint:TVkUInt32;
-    Height,NewHeight:TVkFloat;
+function TVulkanFont.TextHeight(const aText:TVulkanUTF8String;const aSize:TFloat):TFloat;
+var TextIndex,CurrentGlyph,LastGlyph:TInt32;
+    CurrentCodePoint:TUInt32;
+    Height,NewHeight:TFloat;
     Int64HashMapData:TVulkanInt64HashMapData;
     Glyph:PVulkanFontGlyph;
 begin
@@ -42496,11 +42494,11 @@ begin
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
   if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
-   CurrentGlyph:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+   CurrentGlyph:={%H-}TPtrUInt(TPointer(Int64HashMapData));
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
-     result:=result+fKerningPairs[TVkPtrUInt(TVkPointer(Int64HashMapData))].Vertical;
+     result:=result+fKerningPairs[TPtrUInt(TPointer(Int64HashMapData))].Vertical;
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
     if LastGlyph<0 then begin
@@ -42526,10 +42524,10 @@ begin
  result:=result*GetScaleFactor(aSize);
 end;
 
-procedure TVulkanFont.TextSize(const aText:TVulkanUTF8String;const aSize:TVkFloat;out aWidth,aHeight:TVkFloat);
-var TextIndex,CurrentGlyph,LastGlyph:TVkInt32;
-    CurrentCodePoint:TVkUInt32;
-    Width,NewWidth,Height,NewHeight,ScaleFactor:TVkFloat;
+procedure TVulkanFont.TextSize(const aText:TVulkanUTF8String;const aSize:TFloat;out aWidth,aHeight:TFloat);
+var TextIndex,CurrentGlyph,LastGlyph:TInt32;
+    CurrentCodePoint:TUInt32;
+    Width,NewWidth,Height,NewHeight,ScaleFactor:TFloat;
     Int64HashMapData:TVulkanInt64HashMapData;
     Glyph:PVulkanFontGlyph;
     KerningPair:PVulkanFontKerningPair;
@@ -42543,11 +42541,11 @@ begin
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
   if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
-   CurrentGlyph:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+   CurrentGlyph:={%H-}TPtrUInt(TPointer(Int64HashMapData));
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
-     KerningPair:=@fKerningPairs[TVkPtrUInt(TVkPointer(Int64HashMapData))];
+     KerningPair:=@fKerningPairs[TPtrUInt(TPointer(Int64HashMapData))];
      aWidth:=aWidth+KerningPair^.Horizontal;
      aHeight:=aHeight+KerningPair^.Vertical;
     end;
@@ -42589,14 +42587,14 @@ begin
  aHeight:=aHeight*ScaleFactor;
 end;
 
-function TVulkanFont.RowHeight(const Percent:TVkFloat):TVkFloat;
+function TVulkanFont.RowHeight(const Percent:TFloat):TFloat;
 begin
  result:=fUnitsPerEm*(Percent*0.01);
 end;
 
-procedure TVulkanFont.Draw(const aCanvas:TVulkanCanvas;const aText:TVulkanUTF8String;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
-var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TVkInt32;
-    x,y,ScaleFactor,RescaleFactor:TVkFloat;
+procedure TVulkanFont.Draw(const aCanvas:TVulkanCanvas;const aText:TVulkanUTF8String;const aX,aY,aSize:TFloat;const aColorRed:TFloat=1.0;const aColorGreen:TFloat=1.0;const aColorBlue:TFloat=1.0;const aColorAlpha:TFloat=1.0);
+var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TInt32;
+    x,y,ScaleFactor,RescaleFactor:TFloat;
     Int64HashMapData:TVulkanInt64HashMapData;
     KerningPair:PVulkanFontKerningPair;
     Glyph:PVulkanFontGlyph;
@@ -42616,11 +42614,11 @@ begin
  while TextIndex<=length(aText) do begin                 
   CurrentCodePoint:=VulkanUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
   if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
-   CurrentGlyph:={%H-}TVkPtrUInt(TVkPointer(Int64HashMapData));
+   CurrentGlyph:={%H-}TPtrUInt(TPointer(Int64HashMapData));
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
-     KerningPair:=@fKerningPairs[TVkPtrUInt(TVkPointer(Int64HashMapData))];
+     KerningPair:=@fKerningPairs[TPtrUInt(TPointer(Int64HashMapData))];
      x:=x+KerningPair^.Horizontal;
      y:=y+KerningPair^.Vertical;
     end;

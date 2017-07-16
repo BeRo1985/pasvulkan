@@ -17,19 +17,28 @@ unit UnitTextOverlay;
 {$if defined(Win32) or defined(Win64)}
  {$define Windows}
 {$ifend}
+{$m+}
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application;
+uses SysUtils,
+     Classes,
+     UnitRegisteredExamplesList,
+     Vulkan,
+     PasVulkan.Types.Standard,
+     PasVulkan.Types.HalfFloat,
+     PasVulkan.Math,
+     PasVulkan.Framework,
+     PasVulkan.Application;
 
 const TextOverlayBufferCharSize=65536;
 
 type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      TTextOverlayBufferCharVertex=packed record
-      x,y:single;
-      u,v,w:single;
-      br,bg,bb,ba:single;
-      fr,fg,fb,fa:single;
+      x,y:TFloat;
+      u,v,w:TFloat;
+      br,bg,bb,ba:TFloat;
+      fr,fg,fb,fa:TFloat;
      end;
 
      PTextOverlayBufferCharVertices=^TTextOverlayBufferCharVertices;
@@ -47,7 +56,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
      TTextOverlayBufferCharsBuffers=array[0..MaxSwapChainImages-1] of TTextOverlayBufferChars;
 
      PTextOverlayIndices=^TTextOverlayIndices;
-     TTextOverlayIndices=array[0..(TextOverlayBufferCharSize*6)-1] of TVkInt32;
+     TTextOverlayIndices=array[0..(TextOverlayBufferCharSize*6)-1] of TInt32;
 
      TTextOverlayAlignment=
       (
@@ -58,17 +67,17 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
 
      PTextOverlayUniformBuffer=^TTextOverlayUniformBuffer;
      TTextOverlayUniformBuffer=record
-      uThreshold:single;
+      uThreshold:TFloat;
      end;
 
      TTextOverlay=class
       private
        fLoaded:boolean;
-       fUpdateBufferIndex:TVkInt32;
+       fUpdateBufferIndex:TInt32;
        fBufferChars:PTextOverlayBufferChars;
        fBufferCharsBuffers:TTextOverlayBufferCharsBuffers;
-       fCountBufferChars:TVkInt32;
-       fCountBufferCharsBuffers:array[0..MaxSwapChainImages-1] of TVkInt32;
+       fCountBufferChars:TInt32;
+       fCountBufferCharsBuffers:array[0..MaxSwapChainImages-1] of TInt32;
        fIndices:TTextOverlayIndices;
        fTextOverlayVertexShaderModule:TVulkanShaderModule;
        fTextOverlayFragmentShaderModule:TVulkanShaderModule;
@@ -88,10 +97,10 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
        fUniformBuffer:TTextOverlayUniformBuffer;
        fFontTexture:TVulkanTexture;
-       fFontCharWidth:single;
-       fFontCharHeight:single;
-       fInvWidth:single;
-       fInvHeight:single;
+       fFontCharWidth:TFloat;
+       fFontCharHeight:TFloat;
+       fInvWidth:TFloat;
+       fInvHeight:TFloat;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -100,13 +109,13 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
        procedure AfterCreateSwapChain;
        procedure BeforeDestroySwapChain;
        procedure Reset;
-       procedure AddText(const pX,pY,aSize:single;const aAlignment:TTextOverlayAlignment;const aText:TVulkanApplicationRawByteString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
+       procedure AddText(const pX,pY,aSize:TFloat;const aAlignment:TTextOverlayAlignment;const aText:TVulkanApplicationRawByteString;const pBR:TFloat=1.0;const pBG:TFloat=1.0;const pBB:TFloat=1.0;const pBA:TFloat=0.0;const pFR:TFloat=1.0;const pFG:TFloat=1.0;const pFB:TFloat=1.0;const pFA:TFloat=1.0);
        procedure PreUpdate(const aDeltaTime:double);
        procedure PostUpdate(const aDeltaTime:double);
-       procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+       procedure Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
       published
-       property FontCharWidth:single read fFontCharWidth;
-       property FontCharHeight:single read fFontCharHeight;
+       property FontCharWidth:TFloat read fFontCharWidth;
+       property FontCharHeight:TFloat read fFontCharHeight;
      end;
 
 implementation
@@ -114,7 +123,7 @@ implementation
 uses UnitSDFFont;
 
 constructor TTextOverlay.Create;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  inherited Create;
 
@@ -144,7 +153,7 @@ end;
 
 procedure TTextOverlay.Load;
 var Stream:TStream;
-    Index:TVkInt32;
+    Index:TInt32;
 begin
 
  if not fLoaded then begin
@@ -314,7 +323,7 @@ begin
 end;
 
 procedure TTextOverlay.Unload;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
 
  if fLoaded then begin
@@ -502,11 +511,11 @@ begin
  fCountBufferChars:=0;
 end;
 
-procedure TTextOverlay.AddText(const pX,pY,aSize:single;const aAlignment:TTextOverlayAlignment;const aText:TVulkanApplicationRawByteString;const pBR:single=1.0;const pBG:single=1.0;const pBB:single=1.0;const pBA:single=0.0;const pFR:single=1.0;const pFG:single=1.0;const pFB:single=1.0;const pFA:single=1.0);
-var Index,EdgeIndex:TVkInt32;
+procedure TTextOverlay.AddText(const pX,pY,aSize:TFloat;const aAlignment:TTextOverlayAlignment;const aText:TVulkanApplicationRawByteString;const pBR:TFloat=1.0;const pBG:TFloat=1.0;const pBB:TFloat=1.0;const pBA:TFloat=0.0;const pFR:TFloat=1.0;const pFG:TFloat=1.0;const pFB:TFloat=1.0;const pFA:TFloat=1.0);
+var Index,EdgeIndex:TInt32;
     BufferChar:PTextOverlayBufferChar;
-    CurrentChar:byte;
-    cX:single;
+    CurrentChar:TUInt8;
+    cX:TFloat;
 begin
  if (pBA>0.0) or (pFA>0.0) then begin
   case aAlignment of
@@ -521,7 +530,7 @@ begin
    end;
   end;
   for Index:=1 to length(aText) do begin
-   CurrentChar:=Byte(AnsiChar(aText[Index]));
+   CurrentChar:=TUInt8(AnsiChar(aText[Index]));
    if (CurrentChar<>32) or (pBA>0.0) then begin
     if fCountBufferChars<TextOverlayBufferCharSize then begin
      BufferChar:=@fBufferChars^[fCountBufferChars];
@@ -569,13 +578,13 @@ begin
  fCountBufferCharsBuffers[fUpdateBufferIndex]:=fCountBufferChars;
 end;
 
-procedure TTextOverlay.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TTextOverlay.Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
-var BufferIndex,Size:TVkInt32;
+var BufferIndex,Size:TInt32;
     VulkanVertexBuffer:TVulkanBuffer;
     VulkanCommandBuffer:TVulkanCommandBuffer;
     VulkanSwapChain:TVulkanSwapChain;
-    p:pointer;
+    p:TPointer;
 begin
 
  BufferIndex:=VulkanApplication.DrawSwapChainImageIndex;

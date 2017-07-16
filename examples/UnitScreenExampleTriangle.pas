@@ -20,7 +20,15 @@ unit UnitScreenExampleTriangle;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application,UnitRegisteredExamplesList;
+uses SysUtils,
+     Classes,
+     UnitRegisteredExamplesList,
+     Vulkan,
+     PasVulkan.Types.Standard,
+     PasVulkan.Types.HalfFloat,
+     PasVulkan.Math,
+     PasVulkan.Framework,
+     PasVulkan.Application;
 
 type TScreenExampleTriangle=class(TVulkanApplicationScreen)
       private
@@ -41,8 +49,8 @@ type TScreenExampleTriangle=class(TVulkanApplicationScreen)
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
        fReady:boolean;
-       fSelectedIndex:TVkInt32;
-       fStartY:single;
+       fSelectedIndex:TInt32;
+       fStartY:TFloat;
       public
 
        constructor Create; override;
@@ -57,31 +65,31 @@ type TScreenExampleTriangle=class(TVulkanApplicationScreen)
 
        procedure Pause; override;
 
-       procedure Resize(const aWidth,aHeight:TVkInt32); override;
+       procedure Resize(const aWidth,aHeight:TInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
 
-       function KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
+       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; override;
 
-       function KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean; override;
 
-       function KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean; override;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean; override;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean; override;
 
-       function MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean; override;
+       function MouseMoved(const aScreenX,aScreenY:TInt32):boolean; override;
 
-       function Scrolled(const aAmount:TVkInt32):boolean; override;
+       function Scrolled(const aAmount:TInt32):boolean; override;
 
-       procedure Update(const aDeltaTime:double); override;
+       procedure Update(const aDeltaTime:TDouble); override;
 
-       procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
 
      end;
 
@@ -89,14 +97,14 @@ implementation
 
 uses UnitExampleVulkanApplication,UnitTextOverlay,UnitScreenMainMenu;
 
-const TriangleVertices:array[0..2,0..1,0..2] of TVkFloat=
+const TriangleVertices:array[0..2,0..1,0..2] of TFloat=
        (((0.5,0.5,0.0),(1.0,0.0,0.0)),
         ((-0.5,0.5,0.0),(0.0,1.0,0.0)),
         ((0.0,-0.5,0.0),(0.0,0.0,1.0)));
 
-      TriangleIndices:array[0..2] of TVkInt32=(0,1,2);
+      TriangleIndices:array[0..2] of TInt32=(0,1,2);
 
-      UniformBuffer:array[0..2,0..3,0..3] of TVkFloat=
+      UniformBuffer:array[0..2,0..3,0..3] of TFloat=
        (((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)),  // Projection matrix
         ((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)),  // Model matrix
         ((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0))); // View matrix
@@ -119,7 +127,7 @@ end;
 
 procedure TScreenExampleTriangle.Show;
 var Stream:TStream;
-    Index:TVkInt32;
+    Index:TInt32;
 begin
  inherited Show;
 
@@ -233,7 +241,7 @@ begin
 end;
 
 procedure TScreenExampleTriangle.Hide;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  FreeAndNil(fVulkanPipelineLayout);
  FreeAndNil(fVulkanDescriptorSet);
@@ -266,13 +274,13 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenExampleTriangle.Resize(const aWidth,aHeight:TVkInt32);
+procedure TScreenExampleTriangle.Resize(const aWidth,aHeight:TInt32);
 begin
  inherited Resize(aWidth,aHeight);
 end;
 
 procedure TScreenExampleTriangle.AfterCreateSwapChain;
-var SwapChainImageIndex:TVkInt32;
+var SwapChainImageIndex:TInt32;
     VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
  inherited AfterCreateSwapChain;
@@ -348,9 +356,9 @@ begin
  fVulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  fVulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
- fVulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVkFloat)*6,VK_VERTEX_INPUT_RATE_VERTEX);
- fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TVkFloat)*0);
- fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TVkFloat)*3);
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TFloat)*6,VK_VERTEX_INPUT_RATE_VERTEX);
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TFloat)*0);
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TFloat)*3);
 
  fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,VulkanApplication.VulkanSwapChain.Width,VulkanApplication.VulkanSwapChain.Height,0.0,1.0);
  fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,VulkanApplication.VulkanSwapChain.Width,VulkanApplication.VulkanSwapChain.Height);
@@ -442,7 +450,7 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-function TScreenExampleTriangle.KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TScreenExampleTriangle.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
  if fReady then begin
@@ -489,19 +497,19 @@ begin
  end;
 end;
 
-function TScreenExampleTriangle.KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TScreenExampleTriangle.KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleTriangle.KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TScreenExampleTriangle.KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleTriangle.TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
-var Index:TVkInt32;
-    cy:single;
+function TScreenExampleTriangle.TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
+var Index:TInt32;
+    cy:TFloat;
 begin
  result:=false;
  if fReady then begin
@@ -519,31 +527,14 @@ begin
  end;
 end;
 
-function TScreenExampleTriangle.TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
+function TScreenExampleTriangle.TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleTriangle.TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean;
-var Index:TVkInt32;
-    cy:single;
-begin
- result:=false;
- if fReady then begin
-  fSelectedIndex:=-1;
-  cy:=fStartY;
-  for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
-    fSelectedIndex:=Index;
-   end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
-  end;
- end;
-end;
-
-function TScreenExampleTriangle.MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean;
-var Index:TVkInt32;
-    cy:single;
+function TScreenExampleTriangle.TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean;
+var Index:TInt32;
+    cy:TFloat;
 begin
  result:=false;
  if fReady then begin
@@ -558,16 +549,33 @@ begin
  end;
 end;
 
-function TScreenExampleTriangle.Scrolled(const aAmount:TVkInt32):boolean;
+function TScreenExampleTriangle.MouseMoved(const aScreenX,aScreenY:TInt32):boolean;
+var Index:TInt32;
+    cy:TFloat;
+begin
+ result:=false;
+ if fReady then begin
+  fSelectedIndex:=-1;
+  cy:=fStartY;
+  for Index:=0 to 0 do begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+    fSelectedIndex:=Index;
+   end;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+  end;
+ end;
+end;
+
+function TScreenExampleTriangle.Scrolled(const aAmount:TInt32):boolean;
 begin
  result:=false;
 end;
 
-procedure TScreenExampleTriangle.Update(const aDeltaTime:double);
-const BoolToInt:array[boolean] of TVkInt32=(0,1);
+procedure TScreenExampleTriangle.Update(const aDeltaTime:TDouble);
+const BoolToInt:array[boolean] of TInt32=(0,1);
       Options:array[0..0] of string=('Back');
-var Index:TVkInt32;
-    cy:single;
+var Index:TInt32;
+    cy:TFloat;
     s:string;
     IsSelected:boolean;
 begin
@@ -587,7 +595,7 @@ begin
  fReady:=true;
 end;
 
-procedure TScreenExampleTriangle.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TScreenExampleTriangle.Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVulkanGraphicsPipeline) then begin

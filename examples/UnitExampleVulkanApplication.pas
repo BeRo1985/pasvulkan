@@ -20,9 +20,18 @@ unit UnitExampleVulkanApplication;
 
 interface
 
-uses SysUtils,Classes,UnitRegisteredExamplesList,Vulkan,PasVulkan.Framework,PasVulkan.Application,UnitTextOverlay;
+uses SysUtils,
+     Classes,
+     UnitRegisteredExamplesList,
+     Vulkan,
+     PasVulkan.Types.Standard,
+     PasVulkan.Types.HalfFloat,
+     PasVulkan.Math,
+     PasVulkan.Framework,
+     PasVulkan.Application,
+     UnitTextOverlay;
 
-const MenuColors:array[boolean,0..1,0..3] of single=
+const MenuColors:array[boolean,0..1,0..3] of TFloat=
        (((0.0625,0.125,0.5,0.95),(1.0,1.0,1.0,0.95)),
         ((1.0,1.0,1.0,0.95),(0.0625,0.125,0.5,0.95)));
 
@@ -41,9 +50,9 @@ type TExampleVulkanApplication=class(TVulkanApplication)
        procedure BeforeDestroySwapChain; override;
        procedure Resume; override;
        procedure Pause; override;
-       function KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
-       procedure Update(const aDeltaTime:double); override;
-       procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
+       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       procedure Update(const aDeltaTime:TDouble); override;
+       procedure Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
        class procedure Main; override;
       published
        property TextOverlay:TTextOverlay read fTextOverlay;
@@ -117,7 +126,7 @@ begin
  inherited Pause;
 end;
 
-function TExampleVulkanApplication.KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TExampleVulkanApplication.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=inherited KeyDown(aKeyCode,aKeyModifier);
  case aKeyCode of
@@ -127,14 +136,14 @@ begin
  end;
 end;
 
-procedure TExampleVulkanApplication.Update(const aDeltaTime:double);
+procedure TExampleVulkanApplication.Update(const aDeltaTime:TDouble);
 begin
  fTextOverlay.PreUpdate(aDeltaTime);
  inherited Update(aDeltaTime);
  fTextOverlay.PostUpdate(aDeltaTime);
 end;
 
-procedure TExampleVulkanApplication.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TExampleVulkanApplication.Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 var Stream:TMemoryStream;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);

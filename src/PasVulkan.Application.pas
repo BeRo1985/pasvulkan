@@ -486,13 +486,13 @@ const MaxSwapChainImages=3;
 type EVulkanApplication=class(Exception)
       private
        fTag:string;
-       fLogLevel:TVkInt32;
+       fLogLevel:TInt32;
       public
-       constructor Create(const aTag,aMessage:string;const aLogLevel:TVkInt32=LOG_NONE); reintroduce; virtual;
+       constructor Create(const aTag,aMessage:string;const aLogLevel:TInt32=LOG_NONE); reintroduce; virtual;
        destructor Destroy; override;
       published
        property Tag:string read fTag write fTag;
-       property LogLevel:TVkInt32 read fLogLevel write fLogLevel;
+       property LogLevel:TInt32 read fLogLevel write fLogLevel;
      end;
 
      EVulkanApplicationClass=class of EVulkanApplication;
@@ -515,12 +515,12 @@ type EVulkanApplication=class(Exception)
 
      PPVulkanApplicationHighResolutionTime=^PVulkanApplicationHighResolutionTime;
      PVulkanApplicationHighResolutionTime=^TVulkanApplicationHighResolutionTime;
-     TVulkanApplicationHighResolutionTime=TVkInt64;
+     TVulkanApplicationHighResolutionTime=TInt64;
 
      TVulkanApplicationHighResolutionTimer=class
       private
-       fFrequency:TVkInt64;
-       fFrequencyShift:TVkInt32;
+       fFrequency:TInt64;
+       fFrequencyShift:TInt32;
        fMillisecondInterval:TVulkanApplicationHighResolutionTime;
        fTwoMillisecondsInterval:TVulkanApplicationHighResolutionTime;
        fFourMillisecondsInterval:TVulkanApplicationHighResolutionTime;
@@ -530,17 +530,17 @@ type EVulkanApplication=class(Exception)
       public
        constructor Create;
        destructor Destroy; override;
-       function GetTime:TVkInt64;
+       function GetTime:TInt64;
        procedure Sleep(const aDelay:TVulkanApplicationHighResolutionTime);
-       function ToFloatSeconds(const aTime:TVulkanApplicationHighResolutionTime):double;
-       function FromFloatSeconds(const aTime:double):TVulkanApplicationHighResolutionTime;
-       function ToMilliseconds(const aTime:TVulkanApplicationHighResolutionTime):TVkInt64;
-       function FromMilliseconds(const aTime:TVkInt64):TVulkanApplicationHighResolutionTime;
-       function ToMicroseconds(const aTime:TVulkanApplicationHighResolutionTime):TVkInt64;
-       function FromMicroseconds(const aTime:TVkInt64):TVulkanApplicationHighResolutionTime;
-       function ToNanoseconds(const aTime:TVulkanApplicationHighResolutionTime):TVkInt64;
-       function FromNanoseconds(const aTime:TVkInt64):TVulkanApplicationHighResolutionTime;
-       property Frequency:TVkInt64 read fFrequency;
+       function ToFloatSeconds(const aTime:TVulkanApplicationHighResolutionTime):TDouble;
+       function FromFloatSeconds(const aTime:TDouble):TVulkanApplicationHighResolutionTime;
+       function ToMilliseconds(const aTime:TVulkanApplicationHighResolutionTime):TInt64;
+       function FromMilliseconds(const aTime:TInt64):TVulkanApplicationHighResolutionTime;
+       function ToMicroseconds(const aTime:TVulkanApplicationHighResolutionTime):TInt64;
+       function FromMicroseconds(const aTime:TInt64):TVulkanApplicationHighResolutionTime;
+       function ToNanoseconds(const aTime:TVulkanApplicationHighResolutionTime):TInt64;
+       function FromNanoseconds(const aTime:TInt64):TVulkanApplicationHighResolutionTime;
+       property Frequency:TInt64 read fFrequency;
        property MillisecondInterval:TVulkanApplicationHighResolutionTime read fMillisecondInterval;
        property TwoMillisecondsInterval:TVulkanApplicationHighResolutionTime read fTwoMillisecondsInterval;
        property FourMillisecondsInterval:TVulkanApplicationHighResolutionTime read fFourMillisecondsInterval;
@@ -554,38 +554,38 @@ type EVulkanApplication=class(Exception)
       public
        constructor Create; virtual;
        destructor Destroy; override;
-       function KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean; virtual;
-       function KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean; virtual;
-       function KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean; virtual;
-       function TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; virtual;
-       function TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; virtual;
-       function TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean; virtual;
-       function MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean; virtual;
-       function Scrolled(const aAmount:TVkInt32):boolean; virtual;
+       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; virtual;
+       function KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean; virtual;
+       function KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean; virtual;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; virtual;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; virtual;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean; virtual;
+       function MouseMoved(const aScreenX,aScreenY:TInt32):boolean; virtual;
+       function Scrolled(const aAmount:TInt32):boolean; virtual;
      end;
 
      PVulkanApplicationInputProcessorQueueEvent=^TVulkanApplicationInputProcessorQueueEvent;
      TVulkanApplicationInputProcessorQueueEvent=record
       Next:PVulkanApplicationInputProcessorQueueEvent;
-      Time:TVkInt64;
-      case Event:TVkInt32 of
+      Time:TInt64;
+      case Event:TInt32 of
        EVENT_KEY_DOWN,EVENT_KEY_UP,EVENT_KEY_TYPED:(
-        KeyCode:TVkInt32;
-        KeyModifier:TVkInt32;
+        KeyCode:TInt32;
+        KeyModifier:TInt32;
        );
        EVENT_TOUCH_DOWN,EVENT_TOUCH_UP,EVENT_TOUCH_DRAGGED:(
-        ScreenX:single;
-        ScreenY:single;
-        Pressure:single;
-        PointerID:TVkInt32;
-        Button:TVkInt32;
+        ScreenX:TFloat;
+        ScreenY:TFloat;
+        Pressure:TFloat;
+        PointerID:TInt32;
+        Button:TInt32;
        );
        EVENT_MOUSE_MOVED:(
-        MouseScreenX:TVkInt32;
-        MouseScreenY:TVkInt32;
+        MouseScreenX:TInt32;
+        MouseScreenY:TInt32;
        );
        EVENT_SCROLLED:(
-        Amount:TVkInt32;
+        Amount:TInt32;
        );
      end;
 
@@ -596,7 +596,7 @@ type EVulkanApplication=class(Exception)
        fQueuedEvents:PVulkanApplicationInputProcessorQueueEvent;
        fLastQueuedEvent:PVulkanApplicationInputProcessorQueueEvent;
        fFreeEvents:PVulkanApplicationInputProcessorQueueEvent;
-       fCurrentEventTime:TVkInt64;
+       fCurrentEventTime:TInt64;
        function NewEvent:PVulkanApplicationInputProcessorQueueEvent;
        procedure PushEvent(Event:PVulkanApplicationInputProcessorQueueEvent);
       public
@@ -605,15 +605,15 @@ type EVulkanApplication=class(Exception)
        procedure SetProcessor(aProcessor:TVulkanApplicationInputProcessor);
        function GetProcessor:TVulkanApplicationInputProcessor;
        procedure Drain;
-       function GetCurrentEventTime:TVkInt64;
-       function KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
-       function KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
-       function KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
-       function TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
-       function TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
-       function TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean; override;
-       function MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean; override;
-       function Scrolled(const aAmount:TVkInt32):boolean; override;
+       function GetCurrentEventTime:TInt64;
+       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean; override;
+       function MouseMoved(const aScreenX,aScreenY:TInt32):boolean; override;
+       function Scrolled(const aAmount:TInt32):boolean; override;
      end;
 
      TVulkanApplicationInputMultiplexer=class(TVulkanApplicationInputProcessor)
@@ -624,19 +624,19 @@ type EVulkanApplication=class(Exception)
        destructor Destroy; override;
        procedure AddProcessor(const aProcessor:TVulkanApplicationInputProcessor);
        procedure AddProcessors(const aProcessors:array of TVulkanApplicationInputProcessor);
-       procedure InsertProcessor(const aIndex:TVkInt32;const aProcessor:TVulkanApplicationInputProcessor);
+       procedure InsertProcessor(const aIndex:TInt32;const aProcessor:TVulkanApplicationInputProcessor);
        procedure RemoveProcessor(const aProcessor:TVulkanApplicationInputProcessor); overload;
-       procedure RemoveProcessor(const aIndex:TVkInt32); overload;
+       procedure RemoveProcessor(const aIndex:TInt32); overload;
        procedure ClearProcessors;
-       function CountProcessors:TVkInt32;
-       function KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
-       function KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
-       function KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean; override;
-       function TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
-       function TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; override;
-       function TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean; override;
-       function MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean; override;
-       function Scrolled(const aAmount:TVkInt32):boolean; override;
+       function CountProcessors:TInt32;
+       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean; override;
+       function MouseMoved(const aScreenX,aScreenY:TInt32):boolean; override;
+       function Scrolled(const aAmount:TInt32):boolean; override;
      end;
 
      TVulkanApplicationInputTextInputCallback=procedure(aSuccessful:boolean;const aText:TVulkanApplicationRawByteString) of object;
@@ -645,36 +645,36 @@ type EVulkanApplication=class(Exception)
 
      TVulkanApplicationJoystick=class
       private
-       fIndex:TVkInt32;
-       fID:TVkInt32;
+       fIndex:TInt32;
+       fID:TInt32;
        fJoystick:PSDL_Joystick;
        fGameController:PSDL_GameController;
-       fCountAxes:TVkInt32;
-       fCountBalls:TVkInt32;
-       fCountHats:TVkInt32;
-       fCountButtons:TVkInt32;
+       fCountAxes:TInt32;
+       fCountBalls:TInt32;
+       fCountHats:TInt32;
+       fCountButtons:TInt32;
        procedure Initialize;
       public
-       constructor Create(const aIndex:TVkInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController); reintroduce;
+       constructor Create(const aIndex:TInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController); reintroduce;
        destructor Destroy; override;
        function IsGameController:boolean;
-       function Index:TVkInt32;
-       function ID:TVkInt32;
+       function Index:TInt32;
+       function ID:TInt32;
        function Name:TVulkanApplicationRawByteString;
        function GUID:TGUID;
        function DeviceGUID:TGUID;
-       function CountAxes:TVkInt32;
-       function CountBalls:TVkInt32;
-       function CountHats:TVkInt32;
-       function CountButtons:TVkInt32;
+       function CountAxes:TInt32;
+       function CountBalls:TInt32;
+       function CountHats:TInt32;
+       function CountButtons:TInt32;
        procedure Update;
-       function GetAxis(const aAxisIndex:TVkInt32):TVkInt32;
-       function GetBall(const aBallIndex:TVkInt32;out aDeltaX,aDeltaY:TVkInt32):boolean;
-       function GetHat(const aHatIndex:TVkInt32):TVkInt32;
-       function GetButton(const aButtonIndex:TVkInt32):boolean;
+       function GetAxis(const aAxisIndex:TInt32):TInt32;
+       function GetBall(const aBallIndex:TInt32;out aDeltaX,aDeltaY:TInt32):boolean;
+       function GetHat(const aHatIndex:TInt32):TInt32;
+       function GetButton(const aButtonIndex:TInt32):boolean;
        function IsGameControllerAttached:boolean;
-       function GetGameControllerAxis(const aAxis:TVkInt32):TVkInt32;
-       function GetGameControllerButton(const aButton:TVkInt32):boolean;
+       function GetGameControllerAxis(const aAxis:TInt32):TInt32;
+       function GetGameControllerButton(const aButton:TInt32):boolean;
        function GetGameControllerName:TVulkanApplicationRawByteString;
        function GetGameControllerMapping:TVulkanApplicationRawByteString;
      end;
@@ -687,75 +687,75 @@ type EVulkanApplication=class(Exception)
        fProcessor:TVulkanApplicationInputProcessor;
        fEvents:array of TSDL_Event;
        fEventTimes:array of int64;
-       fEventCount:TVkInt32;
+       fEventCount:TInt32;
        fCurrentEventTime:int64;
        fKeyDown:array[0..$ffff] of boolean;
-       fKeyDownCount:TVkInt32;
+       fKeyDownCount:TInt32;
        fJustKeyDown:array[0..$ffff] of boolean;
-       fPointerX:array[0..$ffff] of single;
-       fPointerY:array[0..$ffff] of single;
+       fPointerX:array[0..$ffff] of TFloat;
+       fPointerY:array[0..$ffff] of TFloat;
        fPointerDown:array[0..$ffff] of boolean;
        fPointerJustDown:array[0..$ffff] of boolean;
-       fPointerPressure:array[0..$ffff] of single;
-       fPointerDeltaX:array[0..$ffff] of single;
-       fPointerDeltaY:array[0..$ffff] of single;
-       fPointerDownCount:TVkInt32;
-       fMouseX:TVkInt32;
-       fMouseY:TVkInt32;
-       fMouseDown:TVkInt32;
-       fMouseJustDown:TVkInt32;
-       fMouseDeltaX:TVkInt32;
-       fMouseDeltaY:TVkInt32;
+       fPointerPressure:array[0..$ffff] of TFloat;
+       fPointerDeltaX:array[0..$ffff] of TFloat;
+       fPointerDeltaY:array[0..$ffff] of TFloat;
+       fPointerDownCount:TInt32;
+       fMouseX:TInt32;
+       fMouseY:TInt32;
+       fMouseDown:TInt32;
+       fMouseJustDown:TInt32;
+       fMouseDeltaX:TInt32;
+       fMouseDeltaY:TInt32;
        fJustTouched:longbool;
-       fMaxPointerID:TVkInt32;
+       fMaxPointerID:TInt32;
        fJoysticks:TList;
        fMainJoystick:TVulkanApplicationJoystick;
-       function TranslateSDLKeyCode(const aKeyCode,aScanCode:TVkInt32):TVkInt32;
-       function TranslateSDLKeyModifier(const aKeyModifier:TVkInt32):TVkInt32;
+       function TranslateSDLKeyCode(const aKeyCode,aScanCode:TInt32):TInt32;
+       function TranslateSDLKeyModifier(const aKeyModifier:TInt32):TInt32;
        procedure AddEvent(const aEvent:TSDL_Event);
        procedure ProcessEvents;
       public
        constructor Create(const aVulkanApplication:TVulkanApplication); reintroduce;
        destructor Destroy; override;
-       function GetAccelerometerX:single;
-       function GetAccelerometerY:single;
-       function GetAccelerometerZ:single;
-       function GetOrientationAzimuth:single;
-       function GetOrientationPitch:single;
-       function GetOrientationRoll:single;
-       function GetMaxPointerID:TVkInt32;
-       function GetPointerX(const aPointerID:TVkInt32=0):single;
-       function GetPointerDeltaX(const aPointerID:TVkInt32=0):single;
-       function GetPointerY(const aPointerID:TVkInt32=0):single;
-       function GetPointerDeltaY(const aPointerID:TVkInt32=0):single;
-       function GetPointerPressure(const aPointerID:TVkInt32=0):single;
-       function IsPointerTouched(const aPointerID:TVkInt32=0):boolean;
-       function IsPointerJustTouched(const aPointerID:TVkInt32=0):boolean;
+       function GetAccelerometerX:TFloat;
+       function GetAccelerometerY:TFloat;
+       function GetAccelerometerZ:TFloat;
+       function GetOrientationAzimuth:TFloat;
+       function GetOrientationPitch:TFloat;
+       function GetOrientationRoll:TFloat;
+       function GetMaxPointerID:TInt32;
+       function GetPointerX(const aPointerID:TInt32=0):TFloat;
+       function GetPointerDeltaX(const aPointerID:TInt32=0):TFloat;
+       function GetPointerY(const aPointerID:TInt32=0):TFloat;
+       function GetPointerDeltaY(const aPointerID:TInt32=0):TFloat;
+       function GetPointerPressure(const aPointerID:TInt32=0):TFloat;
+       function IsPointerTouched(const aPointerID:TInt32=0):boolean;
+       function IsPointerJustTouched(const aPointerID:TInt32=0):boolean;
        function IsTouched:boolean;
        function JustTouched:boolean;
-       function IsButtonPressed(const aButton:TVkInt32):boolean;
-       function IsKeyPressed(const aKeyCode:TVkInt32):boolean;
-       function IsKeyJustPressed(const aKeyCode:TVkInt32):boolean;
-       function GetKeyName(const aKeyCode:TVkInt32):TVulkanApplicationRawByteString;
-       function GetKeyModifier:TVkInt32;
+       function IsButtonPressed(const aButton:TInt32):boolean;
+       function IsKeyPressed(const aKeyCode:TInt32):boolean;
+       function IsKeyJustPressed(const aKeyCode:TInt32):boolean;
+       function GetKeyName(const aKeyCode:TInt32):TVulkanApplicationRawByteString;
+       function GetKeyModifier:TInt32;
        procedure GetTextInput(const aCallback:TVulkanApplicationInputTextInputCallback;const aTitle,aText:TVulkanApplicationRawByteString;const aPlaceholder:TVulkanApplicationRawByteString='');
        procedure SetOnscreenKeyboardVisible(const aVisible:boolean);
-       procedure Vibrate(const aMilliseconds:TVkInt32); overload;
-       procedure Vibrate(const aPattern:array of TVkInt32;const aRepeats:TVkInt32); overload;
+       procedure Vibrate(const aMilliseconds:TInt32); overload;
+       procedure Vibrate(const aPattern:array of TInt32;const aRepeats:TInt32); overload;
        procedure CancelVibrate;
        procedure GetRotationMatrix(const aMatrix3x3:pointer);
-       function GetCurrentEventTime:TVkInt64;
+       function GetCurrentEventTime:TInt64;
        procedure SetCatchBackKey(const aCatchBack:boolean);
        procedure SetCatchMenuKey(const aCatchMenu:boolean);
        procedure SetInputProcessor(const aProcessor:TVulkanApplicationInputProcessor);
        function GetInputProcessor:TVulkanApplicationInputProcessor;
-       function IsPeripheralAvailable(const aPeripheral:TVkInt32):boolean;
-       function GetNativeOrientation:TVkInt32;
+       function IsPeripheralAvailable(const aPeripheral:TInt32):boolean;
+       function GetNativeOrientation:TInt32;
        procedure SetCursorCatched(const aCatched:boolean);
        function IsCursorCatched:boolean;
-       procedure SetCursorPosition(const pX,pY:TVkInt32);
-       function GetJoystickCount:TVkInt32;
-       function GetJoystick(const aIndex:TVkInt32=-1):TVulkanApplicationJoystick;
+       procedure SetCursorPosition(const pX,pY:TInt32);
+       function GetJoystickCount:TInt32;
+       function GetJoystick(const aIndex:TInt32=-1):TVulkanApplicationJoystick;
      end;
 
      TVulkanApplicationLifecycleListener=class
@@ -785,7 +785,7 @@ type EVulkanApplication=class(Exception)
 
        procedure LowMemory; virtual;
 
-       procedure Resize(const aWidth,aHeight:TVkInt32); virtual;
+       procedure Resize(const aWidth,aHeight:TInt32); virtual;
 
        procedure AfterCreateSwapChain; virtual;
 
@@ -793,27 +793,27 @@ type EVulkanApplication=class(Exception)
 
        function HandleEvent(const aEvent:TSDL_Event):boolean; virtual;
 
-       function KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean; virtual;
+       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; virtual;
 
-       function KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean; virtual;
+       function KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean; virtual;
 
-       function KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean; virtual;
+       function KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean; virtual;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; virtual;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; virtual;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; virtual;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; virtual;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean; virtual;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean; virtual;
 
-       function MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean; virtual;
+       function MouseMoved(const aScreenX,aScreenY:TInt32):boolean; virtual;
 
-       function Scrolled(const aAmount:TVkInt32):boolean; virtual;
+       function Scrolled(const aAmount:TInt32):boolean; virtual;
 
        function CanBeParallelProcessed:boolean; virtual;
 
-       procedure Update(const aDeltaTime:double); virtual;
+       procedure Update(const aDeltaTime:TDouble); virtual;
 
-       procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); virtual;
+       procedure Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); virtual;
 
      end;
 
@@ -878,7 +878,7 @@ type EVulkanApplication=class(Exception)
       private
 
        fTitle:string;
-       fVersion:TVkUInt32;
+       fVersion:TUInt32;
 
        fPathName:string;
 
@@ -899,23 +899,23 @@ type EVulkanApplication=class(Exception)
        fClipboard:TVulkanApplicationClipboard;
 
        fRunnableList:TVulkanApplicationRunnableList;
-       fRunnableListCount:TVkInt32;
+       fRunnableListCount:TInt32;
        fRunnableListCriticalSection:TPasMPCriticalSection;
 
        fLifecycleListenerList:TList;
        fLifecycleListenerListCriticalSection:TPasMPCriticalSection;
 
-       fCurrentWidth:TVkInt32;
-       fCurrentHeight:TVkInt32;
-       fCurrentFullscreen:TVkInt32;
-       fCurrentVSync:TVkInt32;
-       fCurrentVisibleMouseCursor:TVkInt32;
-       fCurrentCatchMouse:TVkInt32;
-       fCurrentHideSystemBars:TVkInt32;
-       fCurrentBlocking:TVkInt32;
+       fCurrentWidth:TInt32;
+       fCurrentHeight:TInt32;
+       fCurrentFullscreen:TInt32;
+       fCurrentVSync:TInt32;
+       fCurrentVisibleMouseCursor:TInt32;
+       fCurrentCatchMouse:TInt32;
+       fCurrentHideSystemBars:TInt32;
+       fCurrentBlocking:TInt32;
 
-       fWidth:TVkInt32;
-       fHeight:TVkInt32;
+       fWidth:TInt32;
+       fHeight:TInt32;
        fFullscreen:boolean;
        fVSync:boolean;
        fResizable:boolean;
@@ -943,8 +943,8 @@ type EVulkanApplication=class(Exception)
        fKeyRepeatInterval:TVulkanApplicationHighResolutionTime;
        fKeyRepeatInitialInterval:TVulkanApplicationHighResolutionTime;
 
-       fScreenWidth:TVkInt32;
-       fScreenHeight:TVkInt32;
+       fScreenWidth:TInt32;
+       fScreenHeight:TInt32;
 
        fVideoFlags:TSDLUInt32;
 
@@ -964,11 +964,11 @@ type EVulkanApplication=class(Exception)
 
        fVulkanPipelineCacheFileName:string;
        
-       fCountCPUThreads:TVkInt32;
+       fCountCPUThreads:TInt32;
 
        fAvailableCPUCores:TPasMPAvailableCPUCores;
 
-       fVulkanCountCommandQueues:TVkInt32;
+       fVulkanCountCommandQueues:TInt32;
 
        fVulkanCommandPools:array of TVulkanApplicationCommandPools;
        fVulkanCommandBuffers:array of TVulkanApplicationCommandBuffers;
@@ -1021,28 +1021,28 @@ type EVulkanApplication=class(Exception)
        fLastTime:TVulkanApplicationHighResolutionTime;
        fNowTime:TVulkanApplicationHighResolutionTime;
        fDeltaTime:TVulkanApplicationHighResolutionTime;
-       fFloatDeltaTime:double;
+       fFloatDeltaTime:TDouble;
 
-       fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of double;
+       fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of TDouble;
        fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TVulkanApplicationHighResolutionTime;
        fFrameTimesHistoryReadIndex:TPasMPInt32;
        fFrameTimesHistoryWriteIndex:TPasMPInt32;
 
-       fFramesPerSecond:double;
+       fFramesPerSecond:TDouble;
 
-       fFrameCounter:TVkInt64;
+       fFrameCounter:TInt64;
 
-       fUpdateFrameCounter:TVkInt64;
+       fUpdateFrameCounter:TInt64;
        
-       fDrawFrameCounter:TVkInt64;
+       fDrawFrameCounter:TInt64;
 
-       fCountSwapChainImages:TVkInt32;
+       fCountSwapChainImages:TInt32;
 
-       fUpdateSwapChainImageIndex:TVkInt32;
+       fUpdateSwapChainImageIndex:TInt32;
 
-       fDrawSwapChainImageIndex:TVkInt32;
+       fDrawSwapChainImageIndex:TInt32;
 
-       fRealUsedDrawSwapChainImageIndex:TVkInt32;
+       fRealUsedDrawSwapChainImageIndex:TInt32;
 
        fVulkanRecreationKind:TVulkanApplicationVulkanRecreationKind;
 
@@ -1095,7 +1095,7 @@ type EVulkanApplication=class(Exception)
 
        procedure VulkanDebugLn(const What:string);
 
-       function VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TVkUInt64;const aLocation:TVkSize;aMessageCode:TVkInt32;const aLayerPrefix,aMessage:string):TVkBool32;
+       function VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TUInt64;const aLocation:TVkSize;aMessageCode:TInt32;const aLayerPrefix,aMessage:string):TVkBool32;
 
        procedure VulkanWaitIdle;
 
@@ -1170,7 +1170,7 @@ type EVulkanApplication=class(Exception)
 
        procedure LowMemory; virtual;
 
-       procedure Resize(const aWidth,aHeight:TVkInt32); virtual;
+       procedure Resize(const aWidth,aHeight:TInt32); virtual;
 
        procedure AfterCreateSwapChain; virtual;
 
@@ -1178,27 +1178,27 @@ type EVulkanApplication=class(Exception)
 
        function HandleEvent(const aEvent:TSDL_Event):boolean; virtual;
 
-       function KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean; virtual;
+       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; virtual;
 
-       function KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean; virtual;
+       function KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean; virtual;
 
-       function KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean; virtual;
+       function KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean; virtual;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; virtual;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; virtual;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean; virtual;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; virtual;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean; virtual;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean; virtual;
 
-       function MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean; virtual;
+       function MouseMoved(const aScreenX,aScreenY:TInt32):boolean; virtual;
 
-       function Scrolled(const aAmount:TVkInt32):boolean; virtual;
+       function Scrolled(const aAmount:TInt32):boolean; virtual;
 
        function CanBeParallelProcessed:boolean; virtual;
 
-       procedure Update(const aDeltaTime:double); virtual;
+       procedure Update(const aDeltaTime:TDouble); virtual;
 
-       procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); virtual;
+       procedure Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); virtual;
 
        class procedure Main; virtual;
 
@@ -1219,12 +1219,12 @@ type EVulkanApplication=class(Exception)
        property Clipboard:TVulkanApplicationClipboard read fClipboard;
 
        property Title:string read fTitle write fTitle;
-       property Version:TVkUInt32 read fVersion write fVersion;
+       property Version:TUInt32 read fVersion write fVersion;
 
        property PathName:string read fPathName write fPathName;
 
-       property Width:TVkInt32 read fWidth write fWidth;
-       property Height:TVkInt32 read fHeight write fHeight;
+       property Width:TInt32 read fWidth write fWidth;
+       property Height:TInt32 read fHeight write fHeight;
 
        property Fullscreen:boolean read fFullscreen write fFullscreen;
 
@@ -1248,7 +1248,7 @@ type EVulkanApplication=class(Exception)
 
        property Terminated:boolean read fTerminated;
 
-       property CountCPUThreads:TVkInt32 read fCountCPUThreads;
+       property CountCPUThreads:TInt32 read fCountCPUThreads;
 
        property OnEvent:TVulkanApplicationOnEvent read fOnEvent write fOnEvent;
        property OnStep:TVulkanApplicationOnStep read fOnStep write fOnStep;
@@ -1301,23 +1301,23 @@ type EVulkanApplication=class(Exception)
 
        property NextScreenClass:TVulkanApplicationScreenClass read fNextScreenClass write SetNextScreenClass;
 
-       property DeltaTime:double read fFloatDeltaTime;
+       property DeltaTime:TDouble read fFloatDeltaTime;
 
-       property FramesPerSecond:double read fFramesPerSecond;
+       property FramesPerSecond:TDouble read fFramesPerSecond;
 
-       property FrameCounter:TVkInt64 read fFrameCounter;
+       property FrameCounter:TInt64 read fFrameCounter;
 
-       property UpdateFrameCounter:TVkInt64 read fUpdateFrameCounter;
+       property UpdateFrameCounter:TInt64 read fUpdateFrameCounter;
 
-       property DrawFrameCounter:TVkInt64 read fDrawFrameCounter;
+       property DrawFrameCounter:TInt64 read fDrawFrameCounter;
 
-       property CountSwapChainImages:TVkInt32 read fCountSwapChainImages;
+       property CountSwapChainImages:TInt32 read fCountSwapChainImages;
 
-       property UpdateSwapChainImageIndex:TVkInt32 read fUpdateSwapChainImageIndex;
+       property UpdateSwapChainImageIndex:TInt32 read fUpdateSwapChainImageIndex;
 
-       property DrawSwapChainImageIndex:TVkInt32 read fDrawSwapChainImageIndex;
+       property DrawSwapChainImageIndex:TInt32 read fDrawSwapChainImageIndex;
 
-       property RealUsedDrawSwapChainImageIndex:TVkInt32 read fRealUsedDrawSwapChainImageIndex;
+       property RealUsedDrawSwapChainImageIndex:TInt32 read fRealUsedDrawSwapChainImageIndex;
 
      end;
 
@@ -1347,7 +1347,7 @@ procedure ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointe
 
 implementation
 
-const BoolToInt:array[boolean] of TVkInt32=(0,1);
+const BoolToInt:array[boolean] of TInt32=(0,1);
 
       BoolToLongBool:array[boolean] of longbool=(false,true);
 
@@ -1511,7 +1511,7 @@ begin
 end;
 {$else}
 function ExpandEnvironmentStrings(const s:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
-var i:TVkInt32;
+var i:TInt32;
 begin
  i:=ExpandEnvironmentStringsA(pansichar(s),nil,0);
  if i>0 then begin
@@ -1524,7 +1524,7 @@ begin
 end;
 
 function GetEnvironmentVariable(const s:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
-var i:TVkInt32;
+var i:TInt32;
 begin
  i:=GetEnvironmentVariableA(pansichar(s),nil,0);
  if i>0 then begin
@@ -1537,7 +1537,7 @@ begin
 end;
 
 function GetAppDataLocalPath(Postfix:string):string;
-type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TVkInt32;nToken:Windows.THandle;dwFlags:TVkInt32;lpszPath:PWideChar):hresult; stdcall;
+type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TInt32;nToken:Windows.THandle;dwFlags:TInt32;lpszPath:PWideChar):hresult; stdcall;
 const CSIDL_LOCALAPPDATA=$001c;
 var SHGetFolderPath:TSHGetFolderPath;
     FilePath:PWideChar;
@@ -1626,7 +1626,7 @@ begin
 end;
 
 function GetAppDataRoamingPath(Postfix:string):string;
-type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TVkInt32;nToken:Windows.THandle;dwFlags:TVkInt32;lpszPath:PWideChar):hresult; stdcall;
+type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TInt32;nToken:Windows.THandle;dwFlags:TInt32;lpszPath:PWideChar):hresult; stdcall;
 const CSIDL_APPDATA=$001a;
 var SHGetFolderPath:TSHGetFolderPath;
     FilePath:PWideChar;
@@ -1712,7 +1712,7 @@ begin
 end;
 {$endif}
 
-constructor EVulkanApplication.Create(const aTag,aMessage:string;const aLogLevel:TVkInt32=LOG_NONE);
+constructor EVulkanApplication.Create(const aTag,aMessage:string;const aLogLevel:TInt32=LOG_NONE);
 begin
  inherited Create(aMessage);
  fTag:=aTag;
@@ -1762,15 +1762,15 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanApplicationHighResolutionTimer.GetTime:TVkInt64;
+function TVulkanApplicationHighResolutionTimer.GetTime:TInt64;
 {$ifdef linux}
 var NowTimeSpec:TimeSpec;
-    ia,ib:TVkInt64;
+    ia,ib:TInt64;
 {$else}
 {$ifdef unix}
 var tv:timeval;
     tz:timezone;
-    ia,ib:TVkInt64;
+    ia,ib:TInt64;
 {$endif}
 {$endif}
 begin
@@ -1781,7 +1781,7 @@ begin
 {$else}
 {$ifdef linux}
  clock_gettime(CLOCK_MONOTONIC,@NowTimeSpec);
- ia:=TVkInt64(NowTimeSpec.tv_sec)*TVkInt64(1000000000);
+ ia:=TInt64(NowTimeSpec.tv_sec)*TInt64(1000000000);
  ib:=NowTimeSpec.tv_nsec;
  result:=ia+ib;
 {$else}
@@ -1789,7 +1789,7 @@ begin
   tz.tz_minuteswest:=0;
   tz.tz_dsttime:=0;
   fpgettimeofday(@tv,@tz);
-  ia:=TVkInt64(tv.tv_sec)*TVkInt64(1000000);
+  ia:=TInt64(tv.tv_sec)*TInt64(1000000);
   ib:=tv.tv_usec;
   result:=ia+ib;
 {$else}
@@ -1800,8 +1800,8 @@ begin
  result:=result shr fFrequencyShift;
 end;
 
-procedure TVulkanApplicationHighResolutionTimer.Sleep(const aDelay:TVkInt64);
-var EndTime,NowTime{$ifdef unix},SleepTime{$endif}:TVkInt64;
+procedure TVulkanApplicationHighResolutionTimer.Sleep(const aDelay:TInt64);
+var EndTime,NowTime{$ifdef unix},SleepTime{$endif}:TInt64;
 {$ifdef unix}
     req,rem:timespec;
 {$endif}
@@ -1891,7 +1891,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.ToFloatSeconds(const aTime:TVulkanApplicationHighResolutionTime):double;
+function TVulkanApplicationHighResolutionTimer.ToFloatSeconds(const aTime:TVulkanApplicationHighResolutionTime):TDouble;
 begin
  if fFrequency<>0 then begin
   result:=aTime/fFrequency;
@@ -1900,7 +1900,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.FromFloatSeconds(const aTime:double):TVulkanApplicationHighResolutionTime;
+function TVulkanApplicationHighResolutionTimer.FromFloatSeconds(const aTime:TDouble):TVulkanApplicationHighResolutionTime;
 begin
  if fFrequency<>0 then begin
   result:=trunc(aTime*fFrequency);
@@ -1909,7 +1909,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.ToMilliseconds(const aTime:TVulkanApplicationHighResolutionTime):TVkInt64;
+function TVulkanApplicationHighResolutionTimer.ToMilliseconds(const aTime:TVulkanApplicationHighResolutionTime):TInt64;
 begin
  result:=aTime;
  if fFrequency<>1000 then begin
@@ -1917,7 +1917,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.FromMilliseconds(const aTime:TVkInt64):TVulkanApplicationHighResolutionTime;
+function TVulkanApplicationHighResolutionTimer.FromMilliseconds(const aTime:TInt64):TVulkanApplicationHighResolutionTime;
 begin
  result:=aTime;
  if fFrequency<>1000 then begin
@@ -1925,7 +1925,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.ToMicroseconds(const aTime:TVulkanApplicationHighResolutionTime):TVkInt64;
+function TVulkanApplicationHighResolutionTimer.ToMicroseconds(const aTime:TVulkanApplicationHighResolutionTime):TInt64;
 begin
  result:=aTime;
  if fFrequency<>1000000 then begin
@@ -1933,7 +1933,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.FromMicroseconds(const aTime:TVkInt64):TVulkanApplicationHighResolutionTime;
+function TVulkanApplicationHighResolutionTimer.FromMicroseconds(const aTime:TInt64):TVulkanApplicationHighResolutionTime;
 begin
  result:=aTime;
  if fFrequency<>1000000 then begin
@@ -1941,7 +1941,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.ToNanoseconds(const aTime:TVulkanApplicationHighResolutionTime):TVkInt64;
+function TVulkanApplicationHighResolutionTimer.ToNanoseconds(const aTime:TVulkanApplicationHighResolutionTime):TInt64;
 begin
  result:=aTime;
  if fFrequency<>1000000000 then begin
@@ -1949,7 +1949,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.FromNanoseconds(const aTime:TVkInt64):TVulkanApplicationHighResolutionTime;
+function TVulkanApplicationHighResolutionTimer.FromNanoseconds(const aTime:TInt64):TVulkanApplicationHighResolutionTime;
 begin
  result:=aTime;
  if fFrequency<>1000000000 then begin
@@ -1965,42 +1965,42 @@ destructor TVulkanApplicationInputProcessor.Destroy;
 begin
 end;
 
-function TVulkanApplicationInputProcessor.KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationInputProcessor.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationInputProcessor.KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationInputProcessor.KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
+function TVulkanApplicationInputProcessor.TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
+function TVulkanApplicationInputProcessor.TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean;
+function TVulkanApplicationInputProcessor.TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean;
+function TVulkanApplicationInputProcessor.MouseMoved(const aScreenX,aScreenY:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.Scrolled(const aAmount:TVkInt32):boolean;
+function TVulkanApplicationInputProcessor.Scrolled(const aAmount:TInt32):boolean;
 begin
  result:=false;
 end;
@@ -2129,12 +2129,12 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.GetCurrentEventTime:TVkInt64;
+function TVulkanApplicationInputProcessorQueue.GetCurrentEventTime:TInt64;
 begin
  result:=fCurrentEventTime;
 end;
 
-function TVulkanApplicationInputProcessorQueue.KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationInputProcessorQueue.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
 var Event:PVulkanApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2152,7 +2152,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationInputProcessorQueue.KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean;
 var Event:PVulkanApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2170,7 +2170,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationInputProcessorQueue.KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean;
 var Event:PVulkanApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2188,7 +2188,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
+function TVulkanApplicationInputProcessorQueue.TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
 var Event:PVulkanApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2209,7 +2209,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
+function TVulkanApplicationInputProcessorQueue.TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
 var Event:PVulkanApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2230,7 +2230,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean;
+function TVulkanApplicationInputProcessorQueue.TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean;
 var Event:PVulkanApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2249,7 +2249,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean;
+function TVulkanApplicationInputProcessorQueue.MouseMoved(const aScreenX,aScreenY:TInt32):boolean;
 var Event:PVulkanApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2267,7 +2267,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.Scrolled(const aAmount:TVkInt32):boolean;
+function TVulkanApplicationInputProcessorQueue.Scrolled(const aAmount:TInt32):boolean;
 var Event:PVulkanApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2302,14 +2302,14 @@ begin
 end;
 
 procedure TVulkanApplicationInputMultiplexer.AddProcessors(const aProcessors:array of TVulkanApplicationInputProcessor);
-var i:TVkInt32;
+var i:TInt32;
 begin
  for i:=0 to length(aProcessors)-1 do begin
   fProcessors.Add(aProcessors[i]);
  end;
 end;
 
-procedure TVulkanApplicationInputMultiplexer.InsertProcessor(const aIndex:TVkInt32;const aProcessor:TVulkanApplicationInputProcessor);
+procedure TVulkanApplicationInputMultiplexer.InsertProcessor(const aIndex:TInt32;const aProcessor:TVulkanApplicationInputProcessor);
 begin
  fProcessors.Insert(aIndex,aProcessor);
 end;
@@ -2319,7 +2319,7 @@ begin
  fProcessors.Remove(aProcessor);
 end;
 
-procedure TVulkanApplicationInputMultiplexer.RemoveProcessor(const aIndex:TVkInt32);
+procedure TVulkanApplicationInputMultiplexer.RemoveProcessor(const aIndex:TInt32);
 begin
  fProcessors.Delete(aIndex);
 end;
@@ -2329,13 +2329,13 @@ begin
  fProcessors.Clear;
 end;
 
-function TVulkanApplicationInputMultiplexer.CountProcessors:TVkInt32;
+function TVulkanApplicationInputMultiplexer.CountProcessors:TInt32;
 begin
  result:=fProcessors.Count;
 end;
 
-function TVulkanApplicationInputMultiplexer.KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean;
-var i:TVkInt32;
+function TVulkanApplicationInputMultiplexer.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
+var i:TInt32;
     p:TVulkanApplicationInputProcessor;
 begin
  result:=false;
@@ -2350,8 +2350,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean;
-var i:TVkInt32;
+function TVulkanApplicationInputMultiplexer.KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean;
+var i:TInt32;
     p:TVulkanApplicationInputProcessor;
 begin
  result:=false;
@@ -2366,8 +2366,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean;
-var i:TVkInt32;
+function TVulkanApplicationInputMultiplexer.KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean;
+var i:TInt32;
     p:TVulkanApplicationInputProcessor;
 begin
  result:=false;
@@ -2382,8 +2382,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
-var i:TVkInt32;
+function TVulkanApplicationInputMultiplexer.TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
+var i:TInt32;
     p:TVulkanApplicationInputProcessor;
 begin
  result:=false;
@@ -2398,8 +2398,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
-var i:TVkInt32;
+function TVulkanApplicationInputMultiplexer.TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
+var i:TInt32;
     p:TVulkanApplicationInputProcessor;
 begin
  result:=false;
@@ -2414,8 +2414,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean;
-var i:TVkInt32;
+function TVulkanApplicationInputMultiplexer.TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean;
+var i:TInt32;
     p:TVulkanApplicationInputProcessor;
 begin
  result:=false;
@@ -2430,8 +2430,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean;
-var i:TVkInt32;
+function TVulkanApplicationInputMultiplexer.MouseMoved(const aScreenX,aScreenY:TInt32):boolean;
+var i:TInt32;
     p:TVulkanApplicationInputProcessor;
 begin
  result:=false;
@@ -2446,8 +2446,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.Scrolled(const aAmount:TVkInt32):boolean;
-var i:TVkInt32;
+function TVulkanApplicationInputMultiplexer.Scrolled(const aAmount:TInt32):boolean;
+var i:TInt32;
     p:TVulkanApplicationInputProcessor;
 begin
  result:=false;
@@ -2462,7 +2462,7 @@ begin
  end;
 end;
 
-constructor TVulkanApplicationJoystick.Create(const aIndex:TVkInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController);
+constructor TVulkanApplicationJoystick.Create(const aIndex:TInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController);
 begin
  inherited Create;
  fIndex:=aIndex;
@@ -2498,12 +2498,12 @@ begin
  result:=assigned(fGameController);
 end;
 
-function TVulkanApplicationJoystick.Index:TVkInt32;
+function TVulkanApplicationJoystick.Index:TInt32;
 begin
  result:=fIndex;
 end;
 
-function TVulkanApplicationJoystick.ID:TVkInt32;
+function TVulkanApplicationJoystick.ID:TInt32;
 begin
  result:=SDL_JoystickInstanceID(fJoystick);
 end;
@@ -2523,22 +2523,22 @@ begin
  result:=SDL_JoystickGetDeviceGUID(fJoystick);
 end;
 
-function TVulkanApplicationJoystick.CountAxes:TVkInt32;
+function TVulkanApplicationJoystick.CountAxes:TInt32;
 begin
  result:=fCountAxes;
 end;
 
-function TVulkanApplicationJoystick.CountBalls:TVkInt32;
+function TVulkanApplicationJoystick.CountBalls:TInt32;
 begin
  result:=fCountBalls;
 end;
 
-function TVulkanApplicationJoystick.CountHats:TVkInt32;
+function TVulkanApplicationJoystick.CountHats:TInt32;
 begin
  result:=fCountHats;
 end;
 
-function TVulkanApplicationJoystick.CountButtons:TVkInt32;
+function TVulkanApplicationJoystick.CountButtons:TInt32;
 begin
  result:=fCountButtons;
 end;
@@ -2548,17 +2548,17 @@ begin
  SDL_JoystickUpdate;
 end;
 
-function TVulkanApplicationJoystick.GetAxis(const aAxisIndex:TVkInt32):TVkInt32;
+function TVulkanApplicationJoystick.GetAxis(const aAxisIndex:TInt32):TInt32;
 begin
  result:=SDL_JoystickGetAxis(fJoystick,aAxisIndex);
 end;
 
-function TVulkanApplicationJoystick.GetBall(const aBallIndex:TVkInt32;out aDeltaX,aDeltaY:TVkInt32):boolean;
+function TVulkanApplicationJoystick.GetBall(const aBallIndex:TInt32;out aDeltaX,aDeltaY:TInt32):boolean;
 begin
  result:=SDL_JoystickGetBall(fJoystick,aBallIndex,@aDeltaX,@aDeltaY)<>0;
 end;
 
-function TVulkanApplicationJoystick.GetHat(const aHatIndex:TVkInt32):TVkInt32;
+function TVulkanApplicationJoystick.GetHat(const aHatIndex:TInt32):TInt32;
 begin
  case SDL_JoystickGetHat(fJoystick,aHatIndex) of
   SDL_HAT_LEFTUP:begin
@@ -2594,7 +2594,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationJoystick.GetButton(const aButtonIndex:TVkInt32):boolean;
+function TVulkanApplicationJoystick.GetButton(const aButtonIndex:TInt32):boolean;
 begin
  result:=SDL_JoystickGetButton(fJoystick,aButtonIndex)<>0;
 end;
@@ -2608,7 +2608,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationJoystick.GetGameControllerAxis(const aAxis:TVkInt32):TVkInt32;
+function TVulkanApplicationJoystick.GetGameControllerAxis(const aAxis:TInt32):TInt32;
 begin
  if assigned(fGameController) then begin
   case aAxis of
@@ -2642,7 +2642,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationJoystick.GetGameControllerButton(const aButton:TVkInt32):boolean;
+function TVulkanApplicationJoystick.GetGameControllerButton(const aButton:TInt32):boolean;
 begin
  if assigned(fGameController) then begin
   case aButton of
@@ -3061,7 +3061,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanApplicationInput.TranslateSDLKeyCode(const aKeyCode,aScanCode:TVkInt32):TVkInt32;
+function TVulkanApplicationInput.TranslateSDLKeyCode(const aKeyCode,aScanCode:TInt32):TInt32;
 begin
  case aKeyCode of
   SDLK_BACKSPACE:begin
@@ -3839,7 +3839,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.TranslateSDLKeyModifier(const aKeyModifier:TVkInt32):TVkInt32;
+function TVulkanApplicationInput.TranslateSDLKeyModifier(const aKeyModifier:TInt32):TInt32;
 begin
  result:=0;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_LSHIFT)<>0 then begin
@@ -3894,7 +3894,7 @@ begin
 end;
 
 procedure TVulkanApplicationInput.ProcessEvents;
-var Index,PointerID,KeyCode,KeyModifier:TVkInt32;
+var Index,PointerID,KeyCode,KeyModifier:TInt32;
     Event:PSDL_Event;
     OK:boolean;
 begin
@@ -4075,37 +4075,37 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetAccelerometerX:single;
+function TVulkanApplicationInput.GetAccelerometerX:TFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetAccelerometerY:single;
+function TVulkanApplicationInput.GetAccelerometerY:TFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetAccelerometerZ:single;
+function TVulkanApplicationInput.GetAccelerometerZ:TFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetOrientationAzimuth:single;
+function TVulkanApplicationInput.GetOrientationAzimuth:TFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetOrientationPitch:single;
+function TVulkanApplicationInput.GetOrientationPitch:TFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetOrientationRoll:single;
+function TVulkanApplicationInput.GetOrientationRoll:TFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetMaxPointerID:TVkInt32;
+function TVulkanApplicationInput.GetMaxPointerID:TInt32;
 begin
  fCriticalSection.Acquire;
  try
@@ -4115,7 +4115,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetPointerX(const aPointerID:TVkInt32=0):single;
+function TVulkanApplicationInput.GetPointerX(const aPointerID:TInt32=0):TFloat;
 begin
  fCriticalSection.Acquire;
  try
@@ -4131,7 +4131,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetPointerDeltaX(const aPointerID:TVkInt32=0):single;
+function TVulkanApplicationInput.GetPointerDeltaX(const aPointerID:TInt32=0):TFloat;
 begin
  fCriticalSection.Acquire;
  try
@@ -4147,7 +4147,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetPointerY(const aPointerID:TVkInt32=0):single;
+function TVulkanApplicationInput.GetPointerY(const aPointerID:TInt32=0):TFloat;
 begin
  fCriticalSection.Acquire;
  try
@@ -4163,7 +4163,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetPointerDeltaY(const aPointerID:TVkInt32=0):single;
+function TVulkanApplicationInput.GetPointerDeltaY(const aPointerID:TInt32=0):TFloat;
 begin
  fCriticalSection.Acquire;
  try
@@ -4179,7 +4179,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetPointerPressure(const aPointerID:TVkInt32=0):single;
+function TVulkanApplicationInput.GetPointerPressure(const aPointerID:TInt32=0):TFloat;
 begin
  fCriticalSection.Acquire;
  try
@@ -4195,7 +4195,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsPointerTouched(const aPointerID:TVkInt32=0):boolean;
+function TVulkanApplicationInput.IsPointerTouched(const aPointerID:TInt32=0):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4211,7 +4211,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsPointerJustTouched(const aPointerID:TVkInt32=0):boolean;
+function TVulkanApplicationInput.IsPointerJustTouched(const aPointerID:TInt32=0):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4249,7 +4249,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsButtonPressed(const aButton:TVkInt32):boolean;
+function TVulkanApplicationInput.IsButtonPressed(const aButton:TInt32):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4272,7 +4272,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsKeyPressed(const aKeyCode:TVkInt32):boolean;
+function TVulkanApplicationInput.IsKeyPressed(const aKeyCode:TInt32):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4292,7 +4292,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsKeyJustPressed(const aKeyCode:TVkInt32):boolean;
+function TVulkanApplicationInput.IsKeyJustPressed(const aKeyCode:TInt32):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4310,7 +4310,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetKeyName(const aKeyCode:TVkInt32):TVulkanApplicationRawByteString;
+function TVulkanApplicationInput.GetKeyName(const aKeyCode:TInt32):TVulkanApplicationRawByteString;
 begin
  if (aKeyCode>=low(fKeyCodeNames)) and (aKeyCode<=high(fKeyCodeNames)) then begin
   result:=fKeyCodeNames[aKeyCode];
@@ -4319,7 +4319,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetKeyModifier:TVkInt32;
+function TVulkanApplicationInput.GetKeyModifier:TInt32;
 begin
  result:=TranslateSDLKeyModifier(SDL_GetModState);
 end;
@@ -4332,11 +4332,11 @@ procedure TVulkanApplicationInput.SetOnscreenKeyboardVisible(const aVisible:bool
 begin
 end;
 
-procedure TVulkanApplicationInput.Vibrate(const aMilliseconds:TVkInt32);
+procedure TVulkanApplicationInput.Vibrate(const aMilliseconds:TInt32);
 begin
 end;
 
-procedure TVulkanApplicationInput.Vibrate(const aPattern:array of TVkInt32;const aRepeats:TVkInt32);
+procedure TVulkanApplicationInput.Vibrate(const aPattern:array of TInt32;const aRepeats:TInt32);
 begin
 end;
 
@@ -4381,7 +4381,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsPeripheralAvailable(const aPeripheral:TVkInt32):boolean;
+function TVulkanApplicationInput.IsPeripheralAvailable(const aPeripheral:TInt32):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4401,7 +4401,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetNativeOrientation:TVkInt32;
+function TVulkanApplicationInput.GetNativeOrientation:TInt32;
 var SDLDisplayMode:TSDL_DisplayMode;
 begin
  if SDL_GetDesktopDisplayMode(SDL_GetWindowDisplayIndex(VulkanApplication.fSurfaceWindow),@SDLDisplayMode)=0 then begin
@@ -4435,7 +4435,7 @@ begin
  end;
 end;
 
-procedure TVulkanApplicationInput.SetCursorPosition(const pX,pY:TVkInt32);
+procedure TVulkanApplicationInput.SetCursorPosition(const pX,pY:TInt32);
 begin
  fCriticalSection.Acquire;
  try
@@ -4445,13 +4445,13 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetJoystickCount:TVkInt32;
+function TVulkanApplicationInput.GetJoystickCount:TInt32;
 begin
  result:=SDL_NumJoysticks;
 end;
 
-function TVulkanApplicationInput.GetJoystick(const aIndex:TVkInt32=-1):TVulkanApplicationJoystick;
-var ListIndex:TVkInt32;
+function TVulkanApplicationInput.GetJoystick(const aIndex:TInt32=-1):TVulkanApplicationJoystick;
+var ListIndex:TInt32;
 begin
  if (aIndex>=0) and (aIndex<SDL_NumJoysticks) then begin
   result:=nil;
@@ -4526,7 +4526,7 @@ procedure TVulkanApplicationScreen.LowMemory;
 begin
 end;
 
-procedure TVulkanApplicationScreen.Resize(const aWidth,aHeight:TVkInt32);
+procedure TVulkanApplicationScreen.Resize(const aWidth,aHeight:TInt32);
 begin
 end;
 
@@ -4543,42 +4543,42 @@ begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationScreen.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationScreen.KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplicationScreen.KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
+function TVulkanApplicationScreen.TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
+function TVulkanApplicationScreen.TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean;
+function TVulkanApplicationScreen.TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean;
+function TVulkanApplicationScreen.MouseMoved(const aScreenX,aScreenY:TInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.Scrolled(const aAmount:TVkInt32):boolean;
+function TVulkanApplicationScreen.Scrolled(const aAmount:TInt32):boolean;
 begin
  result:=false;
 end;
@@ -4588,11 +4588,11 @@ begin
  result:=false;
 end;
 
-procedure TVulkanApplicationScreen.Update(const aDeltaTime:double);
+procedure TVulkanApplicationScreen.Update(const aDeltaTime:TDouble);
 begin
 end;
 
-procedure TVulkanApplicationScreen.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TVulkanApplicationScreen.Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 begin
 end;
 
@@ -4776,7 +4776,7 @@ end;
 
 function TVulkanApplicationClipboard.GetText:TVulkanApplicationUTF8String;
 var p:PAnsiChar;
-    l:TVkInt32;
+    l:TInt32;
 begin
  result:='';
  p:=SDL_GetClipboardText;
@@ -5010,7 +5010,7 @@ begin
 end;
 {$ifend}
 
-function TVulkanApplication.VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TVkUInt64;const aLocation:TVkSize;aMessageCode:TVkInt32;const aLayerPrefix,aMessage:string):TVkBool32;
+function TVulkanApplication.VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TUInt64;const aLocation:TVkSize;aMessageCode:TInt32;const aLayerPrefix,aMessage:string):TVkBool32;
 var Prefix:string;
 begin
  try
@@ -5037,7 +5037,7 @@ begin
 end;
 
 procedure TVulkanApplication.VulkanWaitIdle;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  if assigned(fVulkanDevice) then begin
   fVulkanDevice.WaitIdle;
@@ -5063,7 +5063,7 @@ begin
 end;
 
 procedure TVulkanApplication.CreateVulkanDevice(const aSurface:TVulkanSurface=nil);
-var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex:TVkInt32;
+var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex:TInt32;
     FormatProperties:TVkFormatProperties;
 begin
  if not assigned(VulkanDevice) then begin
@@ -5166,7 +5166,7 @@ begin
 end;
 
 procedure TVulkanApplication.CreateVulkanInstance;
-var i:TVkInt32;
+var i:TInt32;
     SDL_SysWMinfo:TSDL_SysWMinfo;
 begin
  if not assigned(fVulkanInstance) then begin
@@ -5259,7 +5259,7 @@ begin
 end;
 
 procedure TVulkanApplication.DestroyVulkanInstance;
-var Index,SubIndex,SubSubIndex:TVkInt32;
+var Index,SubIndex,SubSubIndex:TInt32;
 begin
 
  if length(fVulkanPipelineCacheFileName)>0 then begin
@@ -5403,7 +5403,7 @@ begin
 end;
 
 procedure TVulkanApplication.CreateVulkanSwapChain;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  DestroyVulkanSwapChain;
 
@@ -5441,7 +5441,7 @@ begin
 end;
 
 procedure TVulkanApplication.DestroyVulkanSwapChain;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  for Index:=0 to fCountSwapChainImages-1 do begin
   fVulkanWaitFencesReady[Index]:=false;
@@ -5518,7 +5518,7 @@ begin
 end;
 
 procedure TVulkanApplication.CreateVulkanFrameBuffers;
-var Index:TVkInt32;
+var Index:TInt32;
     ColorAttachmentImage:TVulkanImage;
     ColorAttachmentImageView:TVulkanImageView;
 begin
@@ -5610,7 +5610,7 @@ begin
 end;
 
 procedure TVulkanApplication.DestroyVulkanFrameBuffers;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  for Index:=0 to length(fVulkanFrameBufferColorAttachments)-1 do begin
   FreeAndNil(fVulkanFrameBufferColorAttachments[Index]);
@@ -5624,7 +5624,7 @@ begin
 end;
 
 procedure TVulkanApplication.CreateVulkanCommandBuffers;
-var Index:TVkInt32;
+var Index:TInt32;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
  DestroyVulkanCommandBuffers;
@@ -5713,7 +5713,7 @@ begin
 end;
 
 procedure TVulkanApplication.DestroyVulkanCommandBuffers;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  for Index:=0 to CountSwapChainImages-1 do begin
   FreeAndNil(fVulkanBlankCommandBuffers[Index]);
@@ -5758,7 +5758,7 @@ begin
     end;
    end;
    if CanBeParallelProcessed then begin
-    // At parallel processing, skip the next first screen frame, due to double buffering at the parallel processing approach
+    // At parallel processing, skip the next first screen frame, due to TDouble buffering at the parallel processing approach
     fSkipNextDrawFrame:=true;
    end;
   end;
@@ -5766,8 +5766,8 @@ begin
 end;
 
 function TVulkanApplication.AcquireVulkanBackBuffer:boolean;
-var ImageIndex:TVkInt32;
-    TimeOut:TVkUInt64;
+var ImageIndex:TInt32;
+    TimeOut:TUInt64;
 begin
  result:=false;
 
@@ -5812,7 +5812,7 @@ begin
   end else begin
    try
     if fBlocking then begin
-     TimeOut:=TVkUInt64(high(TVkUInt64));
+     TimeOut:=TUInt64(high(TUInt64));
     end else begin
      TimeOut:=0;
     end;
@@ -6040,7 +6040,7 @@ begin
 end;
 
 procedure TVulkanApplication.PostRunnable(const aRunnable:TVulkanApplicationRunnable);
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  fRunnableListCriticalSection.Acquire;
  try
@@ -6068,7 +6068,7 @@ begin
 end;
 
 procedure TVulkanApplication.RemoveLifecycleListener(const aLifecycleListener:TVulkanApplicationLifecycleListener);
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  fLifecycleListenerListCriticalSection.Acquire;
  try
@@ -6124,8 +6124,8 @@ begin
 end;
 
 procedure TVulkanApplication.UpdateFrameTimesHistory;
-var Index,Count:TVkInt32;
-    SumOfFrameTimes:double;
+var Index,Count:TInt32;
+    SumOfFrameTimes:TDouble;
 begin
 
  if fFloatDeltaTime>0.0 then begin
@@ -6178,7 +6178,7 @@ begin
 end;
 
 procedure TVulkanApplication.ProcessRunnables;
-var Index,Count:TVkInt32;
+var Index,Count:TInt32;
 begin
  fRunnableListCriticalSection.Acquire;
  try
@@ -6223,7 +6223,7 @@ begin
 end;
 
 procedure TVulkanApplication.ProcessMessages;
-var Index,Counter:TVkInt32;
+var Index,Counter:TInt32;
     Joystick:TVulkanApplicationJoystick;
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
@@ -6628,7 +6628,7 @@ begin
 end;
 
 procedure TVulkanApplication.Run;
-var Index:TVKInt32;
+var Index:TInt32;
 begin
  VulkanDisableFloatingPointExceptions;
 
@@ -6862,7 +6862,7 @@ begin
 end;
 
 procedure TVulkanApplication.Resume;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
 
  fLifecycleListenerListCriticalSection.Acquire;
@@ -6883,7 +6883,7 @@ begin
 end;
 
 procedure TVulkanApplication.Pause;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
 
  if assigned(fScreen) then begin
@@ -6904,7 +6904,7 @@ begin
 end;
 
 procedure TVulkanApplication.LowMemory;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
 
  fLifecycleListenerListCriticalSection.Acquire;
@@ -6924,7 +6924,7 @@ begin
 
 end;
 
-procedure TVulkanApplication.Resize(const aWidth,aHeight:TVkInt32);
+procedure TVulkanApplication.Resize(const aWidth,aHeight:TInt32);
 begin
  if assigned(fScreen) then begin
   fScreen.Resize(aWidth,aHeight);
@@ -6956,7 +6956,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.KeyDown(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplication.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.KeyDown(aKeyCode,aKeyModifier);
@@ -6965,7 +6965,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.KeyUp(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplication.KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.KeyUp(aKeyCode,aKeyModifier);
@@ -6974,7 +6974,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.KeyTyped(const aKeyCode,aKeyModifier:TVkInt32):boolean;
+function TVulkanApplication.KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.KeyTyped(aKeyCode,aKeyModifier);
@@ -6983,7 +6983,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.TouchDown(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
+function TVulkanApplication.TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.TouchDown(aScreenX,aScreenY,aPressure,aPointerID,aButton);
@@ -6992,7 +6992,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.TouchUp(const aScreenX,aScreenY,aPressure:single;const aPointerID,aButton:TVkInt32):boolean;
+function TVulkanApplication.TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.TouchUp(aScreenX,aScreenY,aPressure,aPointerID,aButton);
@@ -7001,7 +7001,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.TouchDragged(const aScreenX,aScreenY,aPressure:single;const aPointerID:TVkInt32):boolean;
+function TVulkanApplication.TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.TouchDragged(aScreenX,aScreenY,aPressure,aPointerID);
@@ -7010,7 +7010,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.MouseMoved(const aScreenX,aScreenY:TVkInt32):boolean;
+function TVulkanApplication.MouseMoved(const aScreenX,aScreenY:TInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.MouseMoved(aScreenX,aScreenY);
@@ -7019,7 +7019,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.Scrolled(const aAmount:TVkInt32):boolean;
+function TVulkanApplication.Scrolled(const aAmount:TInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.Scrolled(aAmount);
@@ -7037,14 +7037,14 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.Update(const aDeltaTime:double);
+procedure TVulkanApplication.Update(const aDeltaTime:TDouble);
 begin
  if assigned(fScreen) then begin
   fScreen.Update(aDeltaTime);
  end;
 end;
 
-procedure TVulkanApplication.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TVulkanApplication.Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 var VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
  if assigned(fScreen) then begin

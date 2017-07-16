@@ -20,7 +20,15 @@ unit UnitScreenBlank;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application;
+uses SysUtils,
+     Classes,
+     UnitRegisteredExamplesList,
+     Vulkan,
+     PasVulkan.Types.Standard,
+     PasVulkan.Types.HalfFloat,
+     PasVulkan.Math,
+     PasVulkan.Framework,
+     PasVulkan.Application;
 
 type TScreenBlank=class(TVulkanApplicationScreen)
       private
@@ -46,15 +54,15 @@ type TScreenBlank=class(TVulkanApplicationScreen)
 
        procedure Pause; override;
 
-       procedure Resize(const aWidth,aHeight:TVkInt32); override;
+       procedure Resize(const aWidth,aHeight:TInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
 
-       procedure Update(const aDeltaTime:double); override;
+       procedure Update(const aDeltaTime:TDouble); override;
 
-       procedure Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
 
      end;
 
@@ -72,7 +80,7 @@ end;
 
 procedure TScreenBlank.Show;
 var Stream:TStream;
-    Index:TVkInt32;
+    Index:TInt32;
 begin
  inherited Show;
 
@@ -107,7 +115,7 @@ begin
 end;
 
 procedure TScreenBlank.Hide;
-var Index:TVkInt32;
+var Index:TInt32;
 begin
  FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
@@ -132,13 +140,13 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenBlank.Resize(const aWidth,aHeight:TVkInt32);
+procedure TScreenBlank.Resize(const aWidth,aHeight:TInt32);
 begin
  inherited Resize(aWidth,aHeight);
 end;
 
 procedure TScreenBlank.AfterCreateSwapChain;
-var SwapChainImageIndex:TVkInt32;
+var SwapChainImageIndex:TInt32;
     VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
  inherited AfterCreateSwapChain;
@@ -231,12 +239,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TScreenBlank.Update(const aDeltaTime:double);
+procedure TScreenBlank.Update(const aDeltaTime:TDouble);
 begin
  inherited Update(aDeltaTime);
 end;
 
-procedure TScreenBlank.Draw(const aSwapChainImageIndex:TVkInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TScreenBlank.Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVulkanRenderPass) then begin
