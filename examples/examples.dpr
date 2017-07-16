@@ -19,8 +19,7 @@ uses
   kraft in '..\externals\kraft\src\kraft.pas',
   Vulkan in '..\src\Vulkan.pas',
   PasVulkan.Math in '..\src\PasVulkan.Math.pas',
-  PasVulkan.Types.HalfFloat in '..\src\PasVulkan.Types.HalfFloat.pas',
-  PasVulkan.Types.Standard in '..\src\PasVulkan.Types.Standard.pas',
+  PasVulkan.Types in '..\src\PasVulkan.Types.pas',
   PasVulkan.Framework in '..\src\PasVulkan.Framework.pas',
   PasVulkan.Android in '..\src\PasVulkan.Android.pas',
   PasVulkan.SDL2 in '..\src\PasVulkan.SDL2.pas',
@@ -42,7 +41,8 @@ uses
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
   UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
   UnitScreenExampleSprites in 'UnitScreenExampleSprites.pas',
-  UnitScreenExampleFont in 'UnitScreenExampleFont.pas';
+  UnitScreenExampleFont in 'UnitScreenExampleFont.pas',
+  PasVulkan.Collections in '..\src\PasVulkan.Collections.pas';
 
 // {$if defined(fpc) and defined(android)}
 

@@ -208,8 +208,7 @@
         <DCCReference Include="..\externals\kraft\src\kraft.pas"/>
         <DCCReference Include="..\src\Vulkan.pas"/>
         <DCCReference Include="..\src\PasVulkan.Math.pas"/>
-        <DCCReference Include="..\src\PasVulkan.Types.HalfFloat.pas"/>
-        <DCCReference Include="..\src\PasVulkan.Types.Standard.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Types.pas"/>
         <DCCReference Include="..\src\PasVulkan.Framework.pas"/>
         <DCCReference Include="..\src\PasVulkan.Android.pas"/>
         <DCCReference Include="..\src\PasVulkan.SDL2.pas"/>
@@ -232,6 +231,7 @@
         <DCCReference Include="UnitScreenExampleDragon.pas"/>
         <DCCReference Include="UnitScreenExampleSprites.pas"/>
         <DCCReference Include="UnitScreenExampleFont.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Collections.pas"/>
         <None Include="..\src\PasVulkan.inc"/>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_2</Key>

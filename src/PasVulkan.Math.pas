@@ -84,7 +84,10 @@ unit PasVulkan.Math;
 
 interface
 
-uses SysUtils,Classes,Math,PasVulkan.Types.Standard;
+uses SysUtils,
+     Classes,
+     Math,
+     PasVulkan.Types;
 
 const EPSILON={$ifdef UseDouble}1e-14{$else}1e-5{$endif}; // actually {$ifdef UseDouble}1e-16{$else}1e-7{$endif}; but we are conservative here
 

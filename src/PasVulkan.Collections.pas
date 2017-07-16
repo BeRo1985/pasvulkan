@@ -1,0 +1,1728 @@
+unit PasVulkan.Collections;
+{$i PasVulkan.inc}
+
+interface
+
+uses SysUtils,
+     Classes,
+     SyncObjs,
+     TypInfo,
+     PasMP,
+     PasVulkan.Types,
+     System.Generics.Collections;
+
+type TpvDynamicArray<T>=class
+      private
+       fItems:array of T;
+       fCount:TpvSizeInt;
+       fAllocated:TpvSizeInt;
+       procedure SetCount(const pNewCount:TpvSizeInt);
+       function GetItem(const pIndex:TpvSizeInt):T; inline;
+       procedure SetItem(const pIndex:TpvSizeInt;const pItem:T); inline;
+      protected
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Clear;
+       function Add(const pItem:T):TpvSizeInt;
+       procedure Insert(const pIndex:TpvSizeInt;const pItem:T);
+       procedure Delete(const pIndex:TpvSizeInt);
+       procedure Exchange(const pIndex,pWithIndex:TpvSizeInt); inline;
+       function Memory:pointer; inline;
+       property Count:TpvSizeInt read fCount write SetCount;
+       property Allocated:TpvSizeInt read fAllocated;
+       property Items[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
+     end;
+
+     TpvBaseList=class
+      private
+       procedure SetCount(const pNewCount:TpvSizeInt);
+       function GetItem(const pIndex:TpvSizeInt):pointer;
+      protected
+       fItemSize:TpvSizeInt;
+       fCount:TpvSizeInt;
+       fAllocated:TpvSizeInt;
+       fMemory:pointer;
+       fSorted:boolean;
+       procedure InitializeItem(var pItem); virtual;
+       procedure FinalizeItem(var pItem); virtual;
+       procedure CopyItem(const pSource;var pDestination); virtual;
+       procedure ExchangeItem(var pSource,pDestination); virtual;
+       function CompareItem(const pSource,pDestination):TpvInt32; virtual;
+      public
+       constructor Create(const pItemSize:TpvSizeInt);
+       destructor Destroy; override;
+       procedure Clear; virtual;
+       procedure FillWith(const pSourceData;const pSourceCount:TpvSizeInt); virtual;
+       function IndexOf(const pItem):TpvSizeInt; virtual;
+       function Add(const pItem):TpvSizeInt; virtual;
+       procedure Insert(const pIndex:TpvSizeInt;const pItem); virtual;
+       procedure Delete(const pIndex:TpvSizeInt); virtual;
+       procedure Remove(const pItem); virtual;
+       procedure Exchange(const pIndex,pWithIndex:TpvSizeInt); virtual;
+       procedure Sort; virtual;
+       property Count:TpvSizeInt read fCount write SetCount;
+       property Allocated:TpvSizeInt read fAllocated;
+       property Memory:pointer read fMemory;
+       property ItemPointers[const pIndex:TpvSizeInt]:pointer read GetItem; default;
+       property Sorted:boolean read fSorted;
+     end;
+
+     TpvObjectGenericList<T:class>=class(TpvBaseList)
+      private
+       fOwnObjects:boolean;
+       function GetItem(const pIndex:TpvSizeInt):T;
+       procedure SetItem(const pIndex:TpvSizeInt;const pItem:T);
+      protected
+       procedure InitializeItem(var pItem); override;
+       procedure FinalizeItem(var pItem); override;
+       procedure CopyItem(const pSource;var pDestination); override;
+       procedure ExchangeItem(var pSource,pDestination); override;
+       function CompareItem(const pSource,pDestination):TpvInt32; override;
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Clear; override;
+       function IndexOf(const pItem:T):TpvSizeInt; reintroduce;
+       function Add(const pItem:T):TpvSizeInt; reintroduce;
+       procedure Insert(const pIndex:TpvSizeInt;const pItem:T); reintroduce;
+       procedure Remove(const pItem:T); reintroduce;
+       property Items[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
+       property OwnObjects:boolean read fOwnObjects write fOwnObjects;
+     end;
+
+     TpvObjectList=class(TpvObjectGenericList<TObject>);
+
+     TpvGenericList<T>=class(TList<T>);
+
+     EpvHandleMap=class(Exception);
+
+     TpvCustomHandleMap=class
+      public
+       type TpvUInt8Array=array of TpvUInt8;
+            TpvUInt32Array=array of TpvUInt32;
+      private
+       fMultipleReaderSingleWriterLock:TPasMPMultipleReaderSingleWriterLock;
+       fDataSize:TpvSizeUInt;
+       fSize:TpvSizeUInt;
+       fIndexCounter:TpvUInt32;
+       fDenseIndex:TpvUInt32;
+       fFreeIndex:TpvUInt32;
+       fFreeArray:TpvUInt32Array;
+{$ifdef Debug}
+       fGenerationArray:TpvUInt32Array;
+{$endif}
+       fSparseToDenseArray:TpvUInt32Array;
+       fDenseToSparseArray:TpvUInt32Array;
+       fDataArray:TpvUInt8Array;
+      protected
+       procedure InitializeHandleData(var pData); virtual;
+       procedure FinalizeHandleData(var pData); virtual;
+       procedure CopyHandleData(const pSource;out pDestination); virtual;
+      public
+       constructor Create(const pDataSize:TpvSizeUInt); reintroduce;
+       destructor Destroy; override;
+       procedure Lock; inline;
+       procedure Unlock; inline;
+       procedure Clear;
+       procedure Defragment;
+       function AllocateHandle:TpvHandle;
+       procedure FreeHandle(const ppvHandle:TpvHandle);
+       procedure GetHandleData(const ppvHandle:TpvHandle;out pData);
+       procedure SetHandleData(const ppvHandle:TpvHandle;const pData);
+       function GetHandleDataPointer(const ppvHandle:TpvHandle):pointer; inline;
+       property DataSize:TpvSizeUInt read fDataSize;
+       property Size:TpvSizeUInt read fSize;
+       property IndexCounter:TpvUInt32 read fIndexCounter;
+     end;
+     
+     TpvHashMapEntityIndices=array of TpvInt32;
+
+     TpvHashMapUInt128=array[0..1] of TpvUInt64;
+
+     TpvHashMap<TpvHashMapKey,TpvHashMapValue>=class
+      public
+       const CELL_EMPTY=-1;
+             CELL_DELETED=-2;
+             ENT_EMPTY=-1;
+             ENT_DELETED=-2;
+       type PHashMapEntity=^THashMapEntity;
+            THashMapEntity=record
+             Key:TpvHashMapKey;
+             Value:TpvHashMapValue;
+            end;
+            THashMapEntities=array of THashMapEntity;
+      private
+       fRealSize:TpvInt32;
+       fLogSize:TpvInt32;
+       fSize:TpvInt32;
+       fEntities:THashMapEntities;
+       fEntityToCellIndex:TpvHashMapEntityIndices;
+       fCellToEntityIndex:TpvHashMapEntityIndices;
+       fDefaultValue:TpvHashMapValue;
+       function HashData(const Data:pointer;const DataLength:TpvUInt32):TpvUInt32;
+       function HashKey(const Key:TpvHashMapKey):TpvUInt32;
+       function CompareKey(const KeyA,KeyB:TpvHashMapKey):boolean;
+       function FindCell(const Key:TpvHashMapKey):TpvUInt32;
+       procedure Resize;
+      protected
+       function GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
+       procedure SetValue(const Key:TpvHashMapKey;const Value:TpvHashMapValue);
+      public
+       constructor Create(const DefaultValue:TpvHashMapValue);
+       destructor Destroy; override;
+       procedure Clear;
+       function Add(const Key:TpvHashMapKey;Value:TpvHashMapValue):PHashMapEntity;
+       function Get(const Key:TpvHashMapKey;CreateIfNotExist:boolean=false):PHashMapEntity;
+       function Delete(const Key:TpvHashMapKey):boolean;
+       property Values[const Key:TpvHashMapKey]:TpvHashMapValue read GetValue write SetValue; default;
+     end;
+
+{$ifdef ExtraStringHashMap}
+     TpvStringHashMap<TpvHashMapValue>=class
+      private
+       const CELL_EMPTY=-1;
+             CELL_DELETED=-2;
+             ENT_EMPTY=-1;
+             ENT_DELETED=-2;
+       type TpvHashMapKey=RawByteString;
+            PHashMapEntity=^THashMapEntity;
+            THashMapEntity=record
+             Key:TpvHashMapKey;
+             Value:TpvHashMapValue;
+            end;
+            THashMapEntities=array of THashMapEntity;
+      private
+       fRealSize:TpvInt32;
+       fLogSize:TpvInt32;
+       fSize:TpvInt32;
+       fEntities:THashMapEntities;
+       fEntityToCellIndex:TpvHashMapEntityIndices;
+       fCellToEntityIndex:TpvHashMapEntityIndices;
+       fDefaultValue:TpvHashMapValue;
+      private
+       function HashKey(const Key:TpvHashMapKey):TpvUInt32;
+       function FindCell(const Key:TpvHashMapKey):TpvUInt32;
+       procedure Resize;
+      protected
+       function GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
+       procedure SetValue(const Key:TpvHashMapKey;const Value:TpvHashMapValue);
+      public
+       constructor Create(const DefaultValue:TpvHashMapValue);
+       destructor Destroy; override;
+       procedure Clear;
+       function Add(const Key:TpvHashMapKey;Value:TpvHashMapValue):PHashMapEntity;
+       function Get(const Key:TpvHashMapKey;CreateIfNotExist:boolean=false):PHashMapEntity;
+       function Delete(const Key:TpvHashMapKey):boolean;
+       property Values[const Key:TpvHashMapKey]:TpvHashMapValue read GetValue write SetValue; default;
+     end;
+{$else}
+     TpvStringHashMap<TpvHashMapValue>=class(TpvHashMap<RawByteString,TpvHashMapValue>);
+{$endif}
+     
+implementation
+
+uses PasVulkan.Math;
+
+function RoundUpToPowerOfTwo(Value:TpvSizeInt):TpvSizeInt;
+begin
+ dec(Value);
+ Value:=Value or (Value shr 1);
+ Value:=Value or (Value shr 2);
+ Value:=Value or (Value shr 4);
+ Value:=Value or (Value shr 8);
+ Value:=Value or (Value shr 16);
+{$ifdef CPU64}
+ Value:=Value or (Value shr 32);
+{$endif}
+ result:=Value+1;
+end;
+
+constructor TpvDynamicArray<T>.Create;
+begin
+ fItems:=nil;
+ fCount:=0;
+ fAllocated:=0;
+ inherited Create;
+end;
+
+destructor TpvDynamicArray<T>.Destroy;
+begin
+ SetLength(fItems,0);
+ fCount:=0;
+ fAllocated:=0;
+ inherited Destroy;
+end;
+
+procedure TpvDynamicArray<T>.Clear;
+begin
+ SetLength(fItems,0);
+ fCount:=0;
+ fAllocated:=0;
+end;
+
+procedure TpvDynamicArray<T>.SetCount(const pNewCount:TpvSizeInt);
+begin
+ if pNewCount<=0 then begin
+  SetLength(fItems,0);
+  fCount:=0;
+  fAllocated:=0;
+ end else begin
+  if pNewCount<fCount then begin
+   fCount:=pNewCount;
+   if (fCount+fCount)<fAllocated then begin
+    fAllocated:=fCount+fCount;
+    SetLength(fItems,fAllocated);
+   end;
+  end else begin
+   fCount:=pNewCount;
+   if fAllocated<fCount then begin
+    fAllocated:=fCount+fCount;
+    SetLength(fItems,fAllocated);
+   end;
+  end;
+ end;
+end;
+
+function TpvDynamicArray<T>.GetItem(const pIndex:TpvSizeInt):T;
+begin
+ result:=fItems[pIndex];
+end;
+
+procedure TpvDynamicArray<T>.SetItem(const pIndex:TpvSizeInt;const pItem:T);
+begin
+ fItems[pIndex]:=pItem;
+end;
+
+function TpvDynamicArray<T>.Add(const pItem:T):TpvSizeInt;
+begin
+ result:=fCount;
+ inc(fCount);
+ if fAllocated<fCount then begin
+  fAllocated:=fCount+fCount;
+  SetLength(fItems,fAllocated);
+ end;
+ fItems[result]:=pItem;
+end;
+
+procedure TpvDynamicArray<T>.Insert(const pIndex:TpvSizeInt;const pItem:T);
+begin
+ if pIndex>=0 then begin
+  if pIndex<fCount then begin
+   inc(fCount);
+   if fCount<fAllocated then begin
+    fAllocated:=fCount shl 1;
+    SetLength(fItems,fAllocated);
+   end;
+   Move(fItems[pIndex],fItems[pIndex+1],(fCount-pIndex)*SizeOf(T));
+   FillChar(fItems[pIndex],SizeOf(T),#0);
+  end else begin
+   fCount:=pIndex+1;
+   if fCount<fAllocated then begin
+    fAllocated:=fCount shl 1;
+    SetLength(fItems,fAllocated);
+   end;
+  end;
+  fItems[pIndex]:=pItem;
+ end;
+end;
+
+procedure TpvDynamicArray<T>.Delete(const pIndex:TpvSizeInt);
+begin
+ Finalize(fItems[pIndex]);
+ Move(fItems[pIndex+1],fItems[pIndex],(fCount-pIndex)*SizeOf(T));
+ dec(fCount);
+ FillChar(fItems[fCount],SizeOf(T),#0);
+ if fCount<(fAllocated shr 1) then begin
+  fAllocated:=fAllocated shr 1;
+  SetLength(fItems,fAllocated);
+ end;
+end;
+
+procedure TpvDynamicArray<T>.Exchange(const pIndex,pWithIndex:TpvSizeInt);
+var Temporary:T;
+begin
+ Temporary:=fItems[pIndex];
+ fItems[pIndex]:=fItems[pWithIndex];
+ fItems[pWithIndex]:=Temporary;
+end;
+
+function TpvDynamicArray<T>.Memory:pointer;
+begin
+ result:=@fItems[0];
+end;
+
+constructor TpvBaseList.Create(const pItemSize:TpvSizeInt);
+begin
+ inherited Create;
+ fItemSize:=pItemSize;
+ fCount:=0;
+ fAllocated:=0;
+ fMemory:=nil;
+ fSorted:=false;
+end;
+
+destructor TpvBaseList.Destroy;
+begin
+ Clear;
+ inherited Destroy;
+end;
+
+procedure TpvBaseList.SetCount(const pNewCount:TpvSizeInt);
+var Index,NewAllocated:TpvSizeInt;
+    Item:pointer;
+begin
+ if fCount<pNewCount then begin
+  NewAllocated:=RoundUpToPowerOfTwo(pNewCount);
+  if fAllocated<NewAllocated then begin
+   if assigned(fMemory) then begin
+    ReallocMem(fMemory,NewAllocated*fItemSize);
+   end else begin
+    GetMem(fMemory,NewAllocated*fItemSize);
+   end;
+   FillChar(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(fAllocated)*TpvPtrUInt(fItemSize))))^,(NewAllocated-fAllocated)*fItemSize,#0);
+   fAllocated:=NewAllocated;
+  end;
+  Item:=fMemory;
+  Index:=fCount;
+  inc(TpvPtrUInt(Item),Index*fItemSize);
+  while Index<pNewCount do begin
+   FillChar(Item^,fItemSize,#0);
+   InitializeItem(Item^);
+   inc(TpvPtrUInt(Item),fItemSize);
+   inc(Index);
+  end;
+  fCount:=pNewCount;
+ end else if fCount>pNewCount then begin
+  Item:=fMemory;
+  Index:=pNewCount;
+  inc(TpvPtrUInt(Item),Index*fItemSize);
+  while Index<fCount do begin
+   FinalizeItem(Item^);
+   FillChar(Item^,fItemSize,#0);
+   inc(TpvPtrUInt(Item),fItemSize);
+   inc(Index);
+  end;
+  fCount:=pNewCount;
+  if pNewCount<(fAllocated shr 2) then begin
+   if pNewCount=0 then begin
+    if assigned(fMemory) then begin
+     FreeMem(fMemory);
+     fMemory:=nil;
+    end;
+    fAllocated:=0;
+   end else begin
+    NewAllocated:=fAllocated shr 1;
+    if assigned(fMemory) then begin
+     ReallocMem(fMemory,NewAllocated*fItemSize);
+    end else begin
+     GetMem(fMemory,NewAllocated*fItemSize);
+    end;
+    fAllocated:=NewAllocated;
+   end;
+  end;
+ end;
+ fSorted:=false;
+end;
+
+function TpvBaseList.GetItem(const pIndex:TpvSizeInt):pointer;
+begin
+ if (pIndex>=0) and (pIndex<fCount) then begin
+  result:=pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(pIndex)*TpvPtrUInt(fItemSize))));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvBaseList.InitializeItem(var pItem);
+begin
+end;
+
+procedure TpvBaseList.FinalizeItem(var pItem);
+begin
+end;
+
+procedure TpvBaseList.CopyItem(const pSource;var pDestination);
+begin
+ Move(pSource,pDestination,fItemSize);
+end;
+
+procedure TpvBaseList.ExchangeItem(var pSource,pDestination);
+var a,b:PpvUInt8;
+    c8:TpvUInt8;
+    c32:TpvUInt32;
+    Index:TpvInt32;
+begin
+ a:=@pSource;
+ b:=@pDestination;
+ for Index:=1 to fItemSize shr 2 do begin
+  c32:=PpvUInt32(a)^;
+  PpvUInt32(a)^:=PpvUInt32(b)^;
+  PpvUInt32(b)^:=c32;
+  inc(PpvUInt32(a));
+  inc(PpvUInt32(b));
+ end;
+ for Index:=1 to fItemSize and 3 do begin
+  c8:=a^;
+  a^:=b^;
+  b^:=c8;
+  inc(a);
+  inc(b);
+ end;
+end;
+
+function TpvBaseList.CompareItem(const pSource,pDestination):TpvInt32;
+var a,b:PpvUInt8;
+    Index:TpvInt32;
+begin
+ result:=0;
+ a:=@pSource;
+ b:=@pDestination;
+ for Index:=1 to fItemSize do begin
+  result:=a^-b^;
+  if result<>0 then begin
+   exit;
+  end;
+  inc(a);
+  inc(b);
+ end;
+end;
+
+procedure TpvBaseList.Clear;
+var Index:TpvSizeInt;
+    Item:pointer;
+begin
+ Item:=fMemory;
+ Index:=0;
+ while Index<fCount do begin
+  FinalizeItem(Item^);
+  inc(TpvPtrInt(Item),fItemSize);
+  inc(Index);
+ end;
+ if assigned(fMemory) then begin
+  FreeMem(fMemory);
+  fMemory:=nil;
+ end;
+ fCount:=0;
+ fAllocated:=0;
+ fSorted:=false;
+end;
+
+procedure TpvBaseList.FillWith(const pSourceData;const pSourceCount:TpvSizeInt);
+var Index:TpvSizeInt;
+    SourceItem,Item:pointer;
+begin
+ SourceItem:=@pSourceData;
+ if assigned(SourceItem) and (pSourceCount>0) then begin
+  SetCount(pSourceCount);
+  Item:=fMemory;
+  Index:=0;
+  while Index<fCount do begin
+   CopyItem(SourceItem^,Item^);
+   inc(TpvPtrInt(SourceItem),fItemSize);
+   inc(TpvPtrInt(Item),fItemSize);
+   inc(Index);
+  end;
+ end else begin
+  SetCount(0);
+ end;
+ fSorted:=false;
+end;
+
+function TpvBaseList.IndexOf(const pItem):TpvSizeInt;
+var Index,LowerIndexBound,UpperIndexBound,Difference:TpvInt32;
+begin
+ result:=-1;
+ if fSorted then begin
+  LowerIndexBound:=0;
+  UpperIndexBound:=fCount-1;
+  while LowerIndexBound<=UpperIndexBound do begin
+   Index:=LowerIndexBound+((UpperIndexBound-LowerIndexBound) shr 1);
+   Difference:=CompareItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Index)*TpvPtrUInt(fItemSize))))^,pItem);
+   if Difference=0 then begin
+    result:=Index;
+    exit;
+   end else if Difference<0 then begin
+    LowerIndexBound:=Index+1;
+   end else begin
+    UpperIndexBound:=Index-1;
+   end;
+  end;
+ end else begin
+  Index:=0;
+  while Index<fCount do begin
+   if CompareItem(pItem,pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Index)*TpvPtrUInt(fItemSize))))^)=0 then begin
+    result:=Index;
+    break;
+   end;
+   inc(Index);
+  end;
+ end;
+end;
+
+function TpvBaseList.Add(const pItem):TpvSizeInt;
+var Index,LowerIndexBound,UpperIndexBound,Difference:TpvInt32;
+begin
+ if fSorted and (fCount>0) then begin
+  if CompareItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(fCount-1)*TpvPtrUInt(fItemSize))))^,pItem)<0 then begin
+   result:=fCount;
+  end else if CompareItem(pItem,pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(0)*TpvPtrUInt(fItemSize))))^)<0 then begin
+   result:=0;
+  end else begin
+   LowerIndexBound:=0;
+   UpperIndexBound:=fCount-1;
+   while LowerIndexBound<=UpperIndexBound do begin
+    Index:=LowerIndexBound+((UpperIndexBound-LowerIndexBound) shr 1);
+    Difference:=CompareItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Index)*TpvPtrUInt(fItemSize))))^,pItem);
+    if Difference=0 then begin
+     LowerIndexBound:=Index;
+     break;
+    end else if Difference<0 then begin
+     LowerIndexBound:=Index+1;
+    end else begin
+     UpperIndexBound:=Index-1;
+    end;
+   end;
+   result:=LowerIndexBound;
+  end;
+  if result>=0 then begin
+   Insert(result,pItem);
+   fSorted:=true;
+  end;
+ end else begin
+  result:=fCount;
+  SetCount(result+1);
+  CopyItem(pItem,pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(result)*TpvPtrUInt(fItemSize))))^);
+  fSorted:=false;
+ end;
+end;
+
+procedure TpvBaseList.Insert(const pIndex:TpvSizeInt;const pItem);
+begin
+ if pIndex>=0 then begin
+  if pIndex<fCount then begin
+   SetCount(fCount+1);
+   Move(pointer(TpvPtrInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(pIndex)*TpvPtrUInt(fItemSize))))^,pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(pIndex+1)*TpvPtrUInt(fItemSize))))^,(fCount-(pIndex+1))*fItemSize);
+   FillChar(pointer(TpvPtrInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(pIndex)*TpvPtrUInt(fItemSize))))^,fItemSize,#0);
+  end else begin
+   SetCount(pIndex+1);
+  end;
+  CopyItem(pItem,pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(pIndex)*TpvPtrUInt(fItemSize))))^);
+ end;
+ fSorted:=false;
+end;
+
+procedure TpvBaseList.Delete(const pIndex:TpvSizeInt);
+var OldSorted:boolean;
+begin
+ if (pIndex>=0) and (pIndex<fCount) then begin
+  OldSorted:=fSorted;
+  FinalizeItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(pIndex)*TpvPtrUInt(fItemSize))))^);
+  Move(pointer(TpvPtrUInt(TpvPtruInt(fMemory)+(TpvPtrUInt(pIndex+1)*TpvPtrUInt(fItemSize))))^,pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(pIndex)*TpvPtrUInt(fItemSize))))^,(fCount-pIndex)*fItemSize);
+  FillChar(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(fCount-1)*TpvPtrUInt(fItemSize))))^,fItemSize,#0);
+  SetCount(fCount-1);
+  fSorted:=OldSorted;
+ end;
+end;
+
+procedure TpvBaseList.Remove(const pItem);
+var Index:TpvSizeInt;
+begin
+ repeat
+  Index:=IndexOf(pItem);
+  if Index>=0 then begin
+   Delete(Index);
+  end else begin
+   break;
+  end;
+ until false;
+end;
+
+procedure TpvBaseList.Exchange(const pIndex,pWithIndex:TpvSizeInt);
+begin
+ if (pIndex>=0) and (pIndex<fCount) and (pWithIndex>=0) and (pWithIndex<fCount) then begin
+  ExchangeItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(pIndex)*TpvPtrUInt(fItemSize))))^,pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(pWithIndex)*TpvPtrUInt(fItemSize))))^);
+  fSorted:=false;
+ end;
+end;
+
+procedure TpvBaseList.Sort;
+type PByteArray=^TByteArray;
+     TByteArray=array[0..$3fffffff] of TpvUInt8;
+     PStackItem=^TStackItem;
+     TStackItem=record
+      Left,Right,Depth:TpvInt32;
+     end;
+var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvInt32;
+    StackItem:PStackItem;
+    Stack:array[0..31] of TStackItem;
+begin
+ if not fSorted then begin
+  if fCount>1 then begin
+   StackItem:=@Stack[0];
+   StackItem^.Left:=0;
+   StackItem^.Right:=fCount-1;
+   StackItem^.Depth:=IntLog2(fCount) shl 1;
+   inc(StackItem);
+   while TpvPtrUInt(pointer(StackItem))>TpvPtrUInt(pointer(@Stack[0])) do begin
+    dec(StackItem);
+    Left:=StackItem^.Left;
+    Right:=StackItem^.Right;
+    Depth:=StackItem^.Depth;
+    Size:=(Right-Left)+1;
+    if Size<16 then begin
+     // Insertion sort
+     iA:=Left;
+     iB:=iA+1;
+     while iB<=Right do begin
+      iC:=iB;
+      while (iA>=Left) and
+            (iC>=Left) and
+            (CompareItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(iA)*TpvPtrUInt(fItemSize))))^,
+                         pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(iC)*TpvPtrUInt(fItemSize))))^)>0) do begin
+       Exchange(iA,iC);
+       dec(iA);
+       dec(iC);
+      end;
+      iA:=iB;
+      inc(iB);
+     end;
+    end else begin
+     if (Depth=0) or (TpvPtrUInt(pointer(StackItem))>=TpvPtrUInt(pointer(@Stack[high(Stack)-1]))) then begin
+      // Heap sort
+      i:=Size div 2;
+      repeat
+       if i>0 then begin
+        dec(i);
+       end else begin
+        dec(Size);
+        if Size>0 then begin
+         Exchange(Left+Size,Left);
+        end else begin
+         break;
+        end;
+       end;
+       Parent:=i;
+       repeat
+        Child:=(Parent*2)+1;
+        if Child<Size then begin
+         if (Child<(Size-1)) and (CompareItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Left+Child)*TpvPtrUInt(fItemSize))))^,
+                                              pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Left+Child+1)*TpvPtrUInt(fItemSize))))^)<0) then begin
+          inc(Child);
+         end;
+         if CompareItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Left+Parent)*TpvPtrUInt(fItemSize))))^,
+                        pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Left+Child)*TpvPtrUInt(fItemSize))))^)<0 then begin
+          Exchange(Left+Parent,Left+Child);
+          Parent:=Child;
+          continue;
+         end;
+        end;
+        break;
+       until false;
+      until false;
+     end else begin
+      // Quick sort width median-of-three optimization
+      Middle:=Left+((Right-Left) shr 1);
+      if (Right-Left)>3 then begin
+       if CompareItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Left)*TpvPtrUInt(fItemSize))))^,
+                      pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Middle)*TpvPtrUInt(fItemSize))))^)>0 then begin
+        Exchange(Left,Middle);
+       end;
+       if CompareItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Left)*TpvPtrUInt(fItemSize))))^,
+                      pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Right)*TpvPtrUInt(fItemSize))))^)>0 then begin
+        Exchange(Left,Right);
+       end;
+       if CompareItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Middle)*TpvPtrUInt(fItemSize))))^,
+                      pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Right)*TpvPtrUInt(fItemSize))))^)>0 then begin
+        Exchange(Middle,Right);
+       end;
+      end;
+      Pivot:=Middle;
+      i:=Left;
+      j:=Right;
+      repeat
+       while (i<Right) and (CompareItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(i)*TpvPtrUInt(fItemSize))))^,
+                                        pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Pivot)*TpvPtrUInt(fItemSize))))^)<0) do begin
+        inc(i);
+       end;
+       while (j>=i) and (CompareItem(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(j)*TpvPtrUInt(fItemSize))))^,
+                                     pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Pivot)*TpvPtrUInt(fItemSize))))^)>0) do begin
+        dec(j);
+       end;
+       if i>j then begin
+        break;
+       end else begin
+        if i<>j then begin
+         Exchange(i,j);
+         if Pivot=i then begin
+          Pivot:=j;
+         end else if Pivot=j then begin
+          Pivot:=i;
+         end;
+        end;
+        inc(i);
+        dec(j);
+       end;
+      until false;
+      if i<Right then begin
+       StackItem^.Left:=i;
+       StackItem^.Right:=Right;
+       StackItem^.Depth:=Depth-1;
+       inc(StackItem);
+      end;
+      if Left<j then begin
+       StackItem^.Left:=Left;
+       StackItem^.Right:=j;
+       StackItem^.Depth:=Depth-1;
+       inc(StackItem);
+      end;
+     end;
+    end;
+   end;
+  end;
+  fSorted:=true;
+ end;
+end;
+
+constructor TpvObjectGenericList<T>.Create;
+begin
+ fOwnObjects:=true;
+ inherited Create(SizeOf(T));
+end;
+
+destructor TpvObjectGenericList<T>.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvObjectGenericList<T>.Clear;
+begin
+ inherited Clear;
+end;
+
+function TpvObjectGenericList<T>.GetItem(const pIndex:TpvSizeInt):T;
+begin
+ if (pIndex>=0) and (pIndex<fCount) then begin
+  result:=T(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(pIndex)*TpvPtrUInt(fItemSize))))^);
+ end else begin
+  TObject(TpvPointer(@result)^):=nil;
+ end;
+end;
+
+procedure TpvObjectGenericList<T>.SetItem(const pIndex:TpvSizeInt;const pItem:T);
+begin
+ if (pIndex>=0) and (pIndex<fCount) then begin
+  T(pointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(pIndex)*TpvPtrUInt(fItemSize))))^):=pItem;
+ end;
+end;
+
+procedure TpvObjectGenericList<T>.InitializeItem(var pItem);
+begin
+ TObject(TpvPointer(@pItem)^):=nil;
+end;
+
+procedure TpvObjectGenericList<T>.FinalizeItem(var pItem);
+begin
+ if fOwnObjects then begin
+  TObject(TpvPointer(@pItem)^).Free;
+ end;
+ TObject(TpvPointer(@pItem)^):=nil;
+end;
+
+procedure TpvObjectGenericList<T>.CopyItem(const pSource;var pDestination);
+begin
+ TObject(TpvPointer(@pDestination)^):=TObject(TpvPointer(@pSource)^);
+end;
+
+procedure TpvObjectGenericList<T>.ExchangeItem(var pSource,pDestination);
+var Temporary:T;
+begin
+ TObject(TpvPointer(@Temporary)^):=TObject(TpvPointer(@pSource)^);
+ TObject(TpvPointer(@pSource)^):=TObject(TpvPointer(@pDestination)^);
+ TObject(TpvPointer(@pDestination)^):=TObject(TpvPointer(@Temporary)^);
+end;
+
+function TpvObjectGenericList<T>.CompareItem(const pSource,pDestination):TpvInt32;
+begin
+ result:=TpvPtrDiff(pSource)-TpvPtrDiff(pDestination);
+end;
+
+function TpvObjectGenericList<T>.IndexOf(const pItem:T):TpvSizeInt;
+begin
+ result:=inherited IndexOf(pItem);
+end;
+
+function TpvObjectGenericList<T>.Add(const pItem:T):TpvSizeInt;
+begin
+ result:=inherited Add(pItem);
+end;
+
+procedure TpvObjectGenericList<T>.Insert(const pIndex:TpvSizeInt;const pItem:T);
+begin
+ inherited Insert(pIndex,pItem);
+end;
+
+procedure TpvObjectGenericList<T>.Remove(const pItem:T);
+begin
+ inherited Remove(pItem);
+end;
+
+constructor TpvCustomHandleMap.Create(const pDataSize:TpvSizeUInt);
+begin
+ inherited Create;
+ fMultipleReaderSingleWriterLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+ fDataSize:=pDataSize;
+ fSize:=0;
+ fIndexCounter:=0;
+ fDenseIndex:=0;
+ fFreeIndex:=0;
+ fFreeArray:=nil;
+{$ifdef Debug}
+ fGenerationArray:=nil;
+{$endif}
+ fSparseToDenseArray:=nil;
+ fDenseToSparseArray:=nil;
+ fDataArray:=nil;
+end;
+
+destructor TpvCustomHandleMap.Destroy;
+begin
+ Clear;
+ fMultipleReaderSingleWriterLock.Free;
+ inherited Destroy;
+end;
+
+procedure TpvCustomHandleMap.Lock;
+begin
+ fMultipleReaderSingleWriterLock.AcquireWrite;
+end;
+
+procedure TpvCustomHandleMap.Unlock;
+begin
+ fMultipleReaderSingleWriterLock.ReleaseWrite;
+end;
+
+procedure TpvCustomHandleMap.Clear;
+var Index:TpvSizeUInt;
+begin
+ fMultipleReaderSingleWriterLock.AcquireWrite;
+ try
+  Index:=0;
+  while Index<fSize do begin
+   FinalizeHandleData(pointer(@fDataArray[Index*TpvSizeUInt(fDataSize)])^);
+   inc(Index);
+  end;
+  fSize:=0;
+  fIndexCounter:=0;
+  fDenseIndex:=0;
+  fFreeIndex:=0;
+  fFreeArray:=nil;
+{$ifdef Debug}
+  fGenerationArray:=nil;
+{$endif}
+  fSparseToDenseArray:=nil;
+  fDenseToSparseArray:=nil;
+  fDataArray:=nil;
+ finally
+  fMultipleReaderSingleWriterLock.ReleaseWrite;
+ end;
+end;
+
+procedure TpvCustomHandleMap.InitializeHandleData(var pData);
+begin
+end;
+
+procedure TpvCustomHandleMap.FinalizeHandleData(var pData);
+begin
+ FillChar(pData,fDataSize,#$00);
+end;
+
+procedure TpvCustomHandleMap.CopyHandleData(const pSource;out pDestination);
+begin
+ Move(pSource,pDestination,fDataSize);
+end;
+
+procedure TpvCustomHandleMap.Defragment;
+begin
+
+end;
+
+function TpvCustomHandleMap.AllocateHandle:TpvHandle;
+var OldSize,NewSize:TpvSizeUInt;
+begin
+ fMultipleReaderSingleWriterLock.AcquireWrite;
+ try
+  if fFreeIndex>0 then begin
+   dec(fFreeIndex);
+   result.Index:=fFreeArray[fFreeIndex];
+{$ifdef Debug}
+   result.Generation:=fGenerationArray[result.Index] and $7fffffff;
+{$endif}
+  end else begin
+   result.Index:=TPasMPInterlocked.Increment(fIndexCounter);
+   result.Generation:=0;
+   NewSize:=TpvSizeUInt(result.Index)+1;
+{$ifdef Debug}
+   begin
+    OldSize:=length(fGenerationArray);
+    if OldSize<NewSize then begin
+     SetLength(fGenerationArray,NewSize*2);
+     FillChar(fGenerationArray[OldSize],TpvSizeUInt(NewSize-OldSize)*TpvSizeUInt(SizeOf(TpvUInt32)),#$ff);
+    end;
+   end;
+{$endif}
+   begin
+    OldSize:=fSize;
+    if OldSize<NewSize then begin
+     fSize:=NewSize*2;
+     SetLength(fSparseToDenseArray,fSize);
+     SetLength(fDenseToSparseArray,fSize);
+     SetLength(fDataArray,fSize*fDataSize);
+     FillChar(fSparseToDenseArray[OldSize],TpvSizeUInt(NewSize-OldSize)*TpvSizeUInt(SizeOf(TpvUInt32)),#$ff);
+     FillChar(fDenseToSparseArray[OldSize],TpvSizeUInt(NewSize-OldSize)*TpvSizeUInt(SizeOf(TpvUInt32)),#$ff);
+     FillChar(fDataArray[OldSize*fDataSize],TpvSizeUInt(NewSize-OldSize)*TpvSizeUInt(fDataSize),#$00);
+    end;
+   end;
+  end;
+{$ifdef Debug}
+  fGenerationArray[result.Index]:=result.Generation;
+{$endif}
+  fSparseToDenseArray[result.Index]:=fDenseIndex;
+  fDenseToSparseArray[fDenseIndex]:=result.Index;
+  InitializeHandleData(pointer(@fDataArray[fDenseIndex*TpvSizeUInt(fDataSize)])^);
+  inc(fDenseIndex);
+ finally
+  fMultipleReaderSingleWriterLock.ReleaseWrite;
+ end;
+end;
+
+procedure TpvCustomHandleMap.FreeHandle(const ppvHandle:TpvHandle);
+var DenseIndex:TpvUInt32;
+begin
+ fMultipleReaderSingleWriterLock.AcquireWrite;
+ try
+{$ifdef Debug}
+  if (ppvHandle.Index<TpvInt64(length(fGenerationArray))) and
+     (ppvHandle.Generation=fGenerationArray[ppvHandle.Index]) then begin
+   fGenerationArray[ppvHandle.Index]:=(fGenerationArray[ppvHandle.Index]+1) or $80000000;
+{$endif}
+   if TpvSizeUInt(length(fFreeArray))<=TpvSizeUInt(fFreeIndex) then begin
+    SetLength(fFreeArray,(TpvSizeUInt(fFreeIndex)+1)*2);
+   end;
+   fFreeArray[fFreeIndex]:=ppvHandle.Index;
+   inc(fFreeIndex);
+   dec(fDenseIndex);
+   DenseIndex:=fSparseToDenseArray[ppvHandle.Index];
+   if fDenseIndex<>DenseIndex then begin
+    Move(fDataArray[fDenseIndex*TpvSizeUInt(fDataSize)],fDataArray[DenseIndex*TpvSizeUInt(fDataSize)],fDataSize);
+   end;
+   FinalizeHandleData(pointer(@fDataArray[fDenseIndex*TpvSizeUInt(fDataSize)])^);
+   fSparseToDenseArray[fDenseToSparseArray[DenseIndex]]:=DenseIndex;
+{$ifdef Debug}
+  end else begin
+   raise EpvHandleMap.Create('Freeing non-used or already-freed handle');
+  end;
+{$endif}
+ finally
+  fMultipleReaderSingleWriterLock.ReleaseWrite;
+ end;
+end;
+
+procedure TpvCustomHandleMap.GetHandleData(const ppvHandle:TpvHandle;out pData);
+begin
+ fMultipleReaderSingleWriterLock.AcquireRead;
+ try
+{$ifdef Debug}
+  if (ppvHandle.Index<TpvInt64(length(fGenerationArray))) and
+     (ppvHandle.Generation=fGenerationArray[ppvHandle.Index]) then begin
+{$endif}
+   CopyHandleData(fDataArray[fSparseToDenseArray[ppvHandle.Index]*TpvSizeUInt(fDataSize)],pData);
+{$ifdef Debug}
+  end else begin
+   raise EpvHandleMap.Create('Accessing non-used or already-freed handle');
+  end;
+{$endif}
+ finally
+  fMultipleReaderSingleWriterLock.ReleaseRead;
+ end;
+end;
+
+procedure TpvCustomHandleMap.SetHandleData(const ppvHandle:TpvHandle;const pData);
+begin
+ fMultipleReaderSingleWriterLock.AcquireRead;
+ try
+{$ifdef Debug}
+  if (ppvHandle.Index<TpvInt64(length(fGenerationArray))) and
+     (ppvHandle.Generation=fGenerationArray[ppvHandle.Index]) then begin
+{$endif}
+   CopyHandleData(pData,fDataArray[fSparseToDenseArray[ppvHandle.Index]*TpvSizeUInt(fDataSize)]);
+{$ifdef Debug}
+  end else begin
+   raise EpvHandleMap.Create('Accessing non-used or already-freed handle');
+  end;
+{$endif}
+ finally
+  fMultipleReaderSingleWriterLock.ReleaseRead;
+ end;
+end;
+
+function TpvCustomHandleMap.GetHandleDataPointer(const ppvHandle:TpvHandle):pointer;
+begin
+{$ifdef Debug}
+ if (ppvHandle.Index<TpvInt64(length(fGenerationArray))) and
+    (ppvHandle.Generation=fGenerationArray[ppvHandle.Index]) then begin
+{$endif}
+  result:=@fDataArray[fSparseToDenseArray[ppvHandle.Index]*TpvSizeUInt(fDataSize)];
+{$ifdef Debug}
+ end else begin
+  result:=nil;
+  raise EpvHandleMap.Create('Accessing non-used or already-freed handle');
+ end;
+{$endif}
+end;
+
+{$warnings off}
+{$hints off}
+
+constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Create(const DefaultValue:TpvHashMapValue);
+begin
+ inherited Create;
+ fRealSize:=0;
+ fLogSize:=0;
+ fSize:=0;
+ fEntities:=nil;
+ fEntityToCellIndex:=nil;
+ fCellToEntityIndex:=nil;
+ fDefaultValue:=DefaultValue;
+ Resize;
+end;
+
+destructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Destroy;
+var Counter:TpvInt32;
+begin
+ Clear;
+ for Counter:=0 to length(fEntities)-1 do begin
+  Finalize(fEntities[Counter].Key);
+  Finalize(fEntities[Counter].Value);
+ end;
+ SetLength(fEntities,0);
+ SetLength(fEntityToCellIndex,0);
+ SetLength(fCellToEntityIndex,0);
+ inherited Destroy;
+end;
+
+procedure TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Clear;
+var Counter:TpvInt32;
+begin
+ for Counter:=0 to length(fEntities)-1 do begin
+  Finalize(fEntities[Counter].Key);
+  Finalize(fEntities[Counter].Value);
+ end;
+ fRealSize:=0;
+ fLogSize:=0;
+ fSize:=0;
+ SetLength(fEntities,0);
+ SetLength(fEntityToCellIndex,0);
+ SetLength(fCellToEntityIndex,0);
+ Resize;
+end;
+
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.HashData(const Data:pointer;const DataLength:TpvUInt32):TpvUInt32;
+const m=TpvUInt32($57559429);
+      n=TpvUInt32($5052acdb);
+var b:PByte;
+    h,k,len:TpvUInt32;
+    p:TpvUInt64;
+begin
+ Len:=DataLength;
+ h:=len;
+ k:=h+n+1;
+ if len>0 then begin
+  b:=Data;
+  while len>7 do begin
+   begin
+    p:=TpvUInt32(pointer(b)^)*TpvUInt64(n);
+    h:=h xor TpvUInt32(p and $ffffffff);
+    k:=k xor TpvUInt32(p shr 32);
+    inc(b,4);
+   end;
+   begin
+    p:=TpvUInt32(pointer(b)^)*TpvUInt64(m);
+    k:=k xor TpvUInt32(p and $ffffffff);
+    h:=h xor TpvUInt32(p shr 32);
+    inc(b,4);
+   end;
+   dec(len,8);
+  end;
+  if len>3 then begin
+   p:=TpvUInt32(pointer(b)^)*TpvUInt64(n);
+   h:=h xor TpvUInt32(p and $ffffffff);
+   k:=k xor TpvUInt32(p shr 32);
+   inc(b,4);
+   dec(len,4);
+  end;
+  if len>0 then begin
+   if len>1 then begin
+    p:=word(pointer(b)^);
+    inc(b,2);
+    dec(len,2);
+   end else begin
+    p:=0;
+   end;
+   if len>0 then begin
+    p:=p or (byte(b^) shl 16);
+   end;
+   p:=p*TpvUInt64(m);
+   k:=k xor TpvUInt32(p and $ffffffff);
+   h:=h xor TpvUInt32(p shr 32);
+  end;
+ end;
+ begin
+  p:=(h xor (k+n))*TpvUInt64(n);
+  h:=h xor TpvUInt32(p and $ffffffff);
+  k:=k xor TpvUInt32(p shr 32);
+ end;
+ result:=k xor h;
+end;
+
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.HashKey(const Key:TpvHashMapKey):TpvUInt32;
+{$ifdef ReleaseBuild}
+var p:TpvUInt64;
+{$endif}
+begin
+{$ifdef ReleaseBuild}
+ // We're hoping here that the compiler is here so smart, so that the compiler optimizes the
+ // unused if-branches away
+{$ifndef ExtraStringHashMap}
+ if (SizeOf(TpvHashMapKey)=SizeOf(AnsiString)) and
+    (TypeInfo(TpvHashMapKey)=TypeInfo(AnsiString)) then begin
+  result:=HashData(PByte(@AnsiString(pointer(@Key)^)[1]),length(AnsiString(pointer(@Key)^))*SizeOf(AnsiChar));
+ end else if (SizeOf(TpvHashMapKey)=SizeOf(UTF8String)) and
+             (TypeInfo(TpvHashMapKey)=TypeInfo(UTF8String)) then begin
+  result:=HashData(PByte(@UTF8String(pointer(@Key)^)[1]),length(UTF8String(pointer(@Key)^))*SizeOf(AnsiChar));
+ end else if (SizeOf(TpvHashMapKey)=SizeOf(RawByteString)) and
+             (TypeInfo(TpvHashMapKey)=TypeInfo(RawByteString)) then begin
+  result:=HashData(PByte(@RawByteString(pointer(@Key)^)[1]),length(RawByteString(pointer(@Key)^))*SizeOf(AnsiChar));
+ end else if (SizeOf(TpvHashMapKey)=SizeOf(WideString)) and
+             (TypeInfo(TpvHashMapKey)=TypeInfo(WideString)) then begin
+  result:=HashData(PByte(@WideString(pointer(@Key)^)[1]),length(WideString(pointer(@Key)^))*SizeOf(WideChar));
+ end else if (SizeOf(TpvHashMapKey)=SizeOf(UnicodeString)) and
+             (TypeInfo(TpvHashMapKey)=TypeInfo(UnicodeString)) then begin
+  result:=HashData(PByte(@UnicodeString(pointer(@Key)^)[1]),length(UnicodeString(pointer(@Key)^))*SizeOf(UnicodeChar));
+ end else if (SizeOf(TpvHashMapKey)=SizeOf(String)) and
+             (TypeInfo(TpvHashMapKey)=TypeInfo(String)) then begin
+  result:=HashData(PByte(@String(pointer(@Key)^)[1]),length(String(pointer(@Key)^))*SizeOf(Char));
+ end else if TypeInfo(TpvHashMapKey)=TypeInfo(TpvUUID) then begin
+  result:=(TpvUUID(pointer(@Key)^).DoubleWords[0]*73856093) xor
+          (TpvUUID(pointer(@Key)^).DoubleWords[1]*19349669) xor
+          (TpvUUID(pointer(@Key)^).DoubleWords[2]*83492791) xor
+          (TpvUUID(pointer(@Key)^).DoubleWords[3]*50331653);
+ end else{$endif}if SizeOf(TpvHashMapKey)=SizeOf(UInt16) then begin
+  // 16-bit big => use 16-bit integer-rehashing
+  result:=UInt16(pointer(@Key)^);
+  result:=(result or (((not result) and $ffff) shl 16));
+  dec(result,result shl 6);
+  result:=result xor (result shr 17);
+  dec(result,result shl 9);
+  result:=result xor (result shl 4);
+  dec(result,result shl 3);
+  result:=result xor (result shl 10);
+  result:=result xor (result shr 15);
+ end else if SizeOf(TpvHashMapKey)=SizeOf(TpvUInt32) then begin
+  // 32-bit big => use 32-bit integer-rehashing
+  result:=TpvUInt32(pointer(@Key)^);
+  dec(result,result shl 6);
+  result:=result xor (result shr 17);
+  dec(result,result shl 9);
+  result:=result xor (result shl 4);
+  dec(result,result shl 3);
+  result:=result xor (result shl 10);
+  result:=result xor (result shr 15);
+ end else if SizeOf(TpvHashMapKey)=SizeOf(TpvUInt64) then begin
+  // 64-bit big => use 64-bit integer-rehashing
+  p:=TpvUInt64(pointer(@Key)^);
+  p:=(not p)+(p shl 18); // p:=((p shl 18)-p-)1;
+  p:=p xor (p shr 31);
+  p:=p*21; // p:=(p+(p shl 2))+(p shl 4);
+  p:=p xor (p shr 11);
+  p:=p+(p shl 6);
+  result:=longword(TpvPtrUInt(p xor (p shr 22)));
+ end else{$else} begin
+  result:=HashData(PByte(pointer(@Key)),SizeOf(TpvHashMapKey));
+ end;
+{$endif}
+ if result=0 then begin
+  result:=$ffffffff;
+ end;
+end;
+
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.CompareKey(const KeyA,KeyB:TpvHashMapKey):boolean;
+var Index:TpvInt32;
+    pA,pB:PByte;
+begin
+{$ifdef ReleaseBuild}
+ // We're hoping also here that the compiler is here so smart, so that the compiler optimizes the
+ // unused if-branches away
+{$ifndef ExtraStringHashMap}
+ if (SizeOf(TpvHashMapKey)=SizeOf(AnsiString)) and
+    (TypeInfo(TpvHashMapKey)=TypeInfo(AnsiString)) then begin
+  result:=AnsiString(pointer(@KeyA)^)=AnsiString(pointer(@KeyB)^);
+ end else if (SizeOf(TpvHashMapKey)=SizeOf(UTF8String)) and
+             (TypeInfo(TpvHashMapKey)=TypeInfo(UTF8String)) then begin
+  result:=UTF8String(pointer(@KeyA)^)=UTF8String(pointer(@KeyB)^);
+ end else if (SizeOf(TpvHashMapKey)=SizeOf(RawByteString)) and
+             (TypeInfo(TpvHashMapKey)=TypeInfo(RawByteString)) then begin
+  result:=RawByteString(pointer(@KeyA)^)=RawByteString(pointer(@KeyB)^);
+ end else if (SizeOf(TpvHashMapKey)=SizeOf(WideString)) and
+             (TypeInfo(TpvHashMapKey)=TypeInfo(WideString)) then begin
+  result:=WideString(pointer(@KeyA)^)=WideString(pointer(@KeyB)^);
+ end else if (SizeOf(TpvHashMapKey)=SizeOf(UnicodeString)) and
+             (TypeInfo(TpvHashMapKey)=TypeInfo(UnicodeString)) then begin
+  result:=UnicodeString(pointer(@KeyA)^)=UnicodeString(pointer(@KeyB)^);
+ end else if (SizeOf(TpvHashMapKey)=SizeOf(String)) and
+             (TypeInfo(TpvHashMapKey)=TypeInfo(String)) then begin
+  result:=String(pointer(@KeyA)^)=String(pointer(@KeyB)^);
+ end else{$endif}if SizeOf(TpvHashMapKey)=SizeOf(UInt8) then begin
+  result:=UInt8(pointer(@KeyA)^)=UInt8(pointer(@KeyB)^);
+ end else if SizeOf(TpvHashMapKey)=SizeOf(UInt16) then begin
+  result:=UInt16(pointer(@KeyA)^)=UInt16(pointer(@KeyB)^);
+ end else if SizeOf(TpvHashMapKey)=SizeOf(TpvUInt32) then begin
+  result:=TpvUInt32(pointer(@KeyA)^)=TpvUInt32(pointer(@KeyB)^);
+ end else if SizeOf(TpvHashMapKey)=SizeOf(TpvUInt64) then begin
+  result:=TpvUInt64(pointer(@KeyA)^)=TpvUInt64(pointer(@KeyB)^);
+{$ifdef fpc}
+ end else if SizeOf(TpvHashMapKey)=SizeOf(TpvHashMapUInt128) then begin
+  result:=(TpvHashMapUInt128(pointer(@KeyA)^)[0]=TpvHashMapUInt128(pointer(@KeyB)^)[0]) and
+          (TpvHashMapUInt128(pointer(@KeyA)^)[1]=TpvHashMapUInt128(pointer(@KeyB)^)[1]);
+{$endif}
+ end else{$else}begin
+  Index:=0;
+  pA:=@KeyA;
+  pB:=@KeyB;
+  while (Index+SizeOf(TpvUInt32))<SizeOf(TpvHashMapKey) do begin
+   if TpvUInt32(pointer(@pA[Index])^)<>TpvUInt32(pointer(@pB[Index])^) then begin
+    result:=false;
+    exit;
+   end;
+   inc(Index,SizeOf(TpvUInt32));
+  end;
+  while (Index+SizeOf(UInt8))<SizeOf(TpvHashMapKey) do begin
+   if UInt8(pointer(@pA[Index])^)<>UInt8(pointer(@pB[Index])^) then begin
+    result:=false;
+    exit;
+   end;
+   inc(Index,SizeOf(UInt8));
+  end;
+  result:=true;
+ end;
+{$endif}
+end;
+
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.FindCell(const Key:TpvHashMapKey):TpvUInt32;
+var HashCode,Mask,Step:TpvUInt32;
+    Entity:TpvInt32;
+begin
+ HashCode:=HashKey(Key);
+ Mask:=(2 shl fLogSize)-1;
+ Step:=((HashCode shl 1)+1) and Mask;
+ if fLogSize<>0 then begin
+  result:=HashCode shr (32-fLogSize);
+ end else begin
+  result:=0;
+ end;
+ repeat
+  Entity:=fCellToEntityIndex[result];
+  if (Entity=ENT_EMPTY) or ((Entity<>ENT_DELETED) and CompareKey(fEntities[Entity].Key,Key)) then begin
+   exit;
+  end;
+  result:=(result+Step) and Mask;
+ until false;
+end;
+
+procedure TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Resize;
+var NewLogSize,NewSize,Cell,Entity,Counter:TpvInt32;
+    OldEntities:THashMapEntities;
+    OldCellToEntityIndex:TpvHashMapEntityIndices;
+    OldEntityToCellIndex:TpvHashMapEntityIndices;
+begin
+ NewLogSize:=0;
+ NewSize:=fRealSize;
+ while NewSize<>0 do begin
+  NewSize:=NewSize shr 1;
+  inc(NewLogSize);
+ end;
+ if NewLogSize<1 then begin
+  NewLogSize:=1;
+ end;
+ fSize:=0;
+ fRealSize:=0;
+ fLogSize:=NewLogSize;
+ OldEntities:=fEntities;
+ OldCellToEntityIndex:=fCellToEntityIndex;
+ OldEntityToCellIndex:=fEntityToCellIndex;
+ fEntities:=nil;
+ fCellToEntityIndex:=nil;
+ fEntityToCellIndex:=nil;
+ SetLength(fEntities,2 shl fLogSize);
+ SetLength(fCellToEntityIndex,2 shl fLogSize);
+ SetLength(fEntityToCellIndex,2 shl fLogSize);
+ for Counter:=0 to length(fCellToEntityIndex)-1 do begin
+  fCellToEntityIndex[Counter]:=ENT_EMPTY;
+ end;
+ for Counter:=0 to length(fEntityToCellIndex)-1 do begin
+  fEntityToCellIndex[Counter]:=CELL_EMPTY;
+ end;
+ for Counter:=0 to length(OldEntityToCellIndex)-1 do begin
+  Cell:=OldEntityToCellIndex[Counter];
+  if Cell>=0 then begin
+   Entity:=OldCellToEntityIndex[Cell];
+   if Entity>=0 then begin
+    Add(OldEntities[Counter].Key,OldEntities[Counter].Value);
+   end;
+  end;
+ end;
+ for Counter:=0 to length(OldEntities)-1 do begin
+  Finalize(OldEntities[Counter].Key);
+  Finalize(OldEntities[Counter].Value);
+ end;
+ SetLength(OldEntities,0);
+ SetLength(OldCellToEntityIndex,0);
+ SetLength(OldEntityToCellIndex,0);
+end;
+
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Add(const Key:TpvHashMapKey;Value:TpvHashMapValue):PHashMapEntity;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+begin
+ result:=nil;
+ while fRealSize>=(1 shl fLogSize) do begin
+  Resize;
+ end;
+ Cell:=FindCell(Key);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=@fEntities[Entity];
+  result^.Key:=Key;
+  result^.Value:=Value;
+  exit;
+ end;
+ Entity:=fSize;
+ inc(fSize);
+ if Entity<(2 shl fLogSize) then begin
+  fCellToEntityIndex[Cell]:=Entity;
+  fEntityToCellIndex[Entity]:=Cell;
+  inc(fRealSize);
+  result:=@fEntities[Entity];
+  result^.Key:=Key;
+  result^.Value:=Value;
+ end;
+end;
+
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Get(const Key:TpvHashMapKey;CreateIfNotExist:boolean=false):PHashMapEntity;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+    Value:TpvHashMapValue;
+begin
+ result:=nil;
+ Cell:=FindCell(Key);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=@fEntities[Entity];
+ end else if CreateIfNotExist then begin
+  Initialize(Value);
+  result:=Add(Key,Value);
+ end;
+end;
+
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Delete(const Key:TpvHashMapKey):boolean;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+begin
+ result:=false;
+ Cell:=FindCell(Key);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  Finalize(fEntities[Entity].Key);
+  Finalize(fEntities[Entity].Value);
+  fEntityToCellIndex[Entity]:=CELL_DELETED;
+  fCellToEntityIndex[Cell]:=ENT_DELETED;
+  result:=true;
+ end;
+end;
+
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+begin
+ Cell:=FindCell(Key);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=fEntities[Entity].Value;
+ end else begin
+  result:=fDefaultValue;
+ end;
+end;
+
+procedure TpvHashMap<TpvHashMapKey,TpvHashMapValue>.SetValue(const Key:TpvHashMapKey;const Value:TpvHashMapValue);
+begin
+ Add(Key,Value);
+end;
+
+{$ifdef ExtraStringHashMap}
+constructor TpvStringHashMap<TpvHashMapValue>.Create(const DefaultValue:TpvHashMapValue);
+begin
+ inherited Create;
+ fRealSize:=0;
+ fLogSize:=0;
+ fSize:=0;
+ fEntities:=nil;
+ fEntityToCellIndex:=nil;
+ fCellToEntityIndex:=nil;
+ fDefaultValue:=DefaultValue;
+ Resize;
+end;
+
+destructor TpvStringHashMap<TpvHashMapValue>.Destroy;
+var Counter:TpvInt32;
+begin
+ Clear;
+ for Counter:=0 to length(fEntities)-1 do begin
+  Finalize(fEntities[Counter].Key);
+  Finalize(fEntities[Counter].Value);
+ end;
+ SetLength(fEntities,0);
+ SetLength(fEntityToCellIndex,0);
+ SetLength(fCellToEntityIndex,0);
+ inherited Destroy;
+end;
+
+procedure TpvStringHashMap<TpvHashMapValue>.Clear;
+var Counter:TpvInt32;
+begin
+ for Counter:=0 to length(fEntities)-1 do begin
+  Finalize(fEntities[Counter].Key);
+  Finalize(fEntities[Counter].Value);
+ end;
+ fRealSize:=0;
+ fLogSize:=0;
+ fSize:=0;
+ SetLength(fEntities,0);
+ SetLength(fEntityToCellIndex,0);
+ SetLength(fCellToEntityIndex,0);
+ Resize;
+end;
+
+function TpvStringHashMap<TpvHashMapValue>.HashKey(const Key:TpvHashMapKey):TpvUInt32;
+const m=TpvUInt32($57559429);
+      n=TpvUInt32($5052acdb);
+var b:PByte;
+    h,k,len:TpvUInt32;
+    p:TpvUInt64;
+begin
+ len:=length(Key)*SizeOf(Key[1]);
+ h:=len;
+ k:=h+n+1;
+ if len>0 then begin
+  b:=PByte(@Key[1]);
+  while len>7 do begin
+   begin
+    p:=TpvUInt32(pointer(b)^)*TpvUInt64(n);
+    h:=h xor TpvUInt32(p and $ffffffff);
+    k:=k xor TpvUInt32(p shr 32);
+    inc(b,4);
+   end;
+   begin
+    p:=TpvUInt32(pointer(b)^)*TpvUInt64(m);
+    k:=k xor TpvUInt32(p and $ffffffff);
+    h:=h xor TpvUInt32(p shr 32);
+    inc(b,4);
+   end;
+   dec(len,8);
+  end;
+  if len>3 then begin
+   p:=TpvUInt32(pointer(b)^)*TpvUInt64(n);
+   h:=h xor TpvUInt32(p and $ffffffff);
+   k:=k xor TpvUInt32(p shr 32);
+   inc(b,4);
+   dec(len,4);
+  end;
+  if len>0 then begin
+   if len>1 then begin
+    p:=word(pointer(b)^);
+    inc(b,2);
+    dec(len,2);
+   end else begin
+    p:=0;
+   end;
+   if len>0 then begin
+    p:=p or (byte(b^) shl 16);
+   end;
+   p:=p*TpvUInt64(m);
+   k:=k xor TpvUInt32(p and $ffffffff);
+   h:=h xor TpvUInt32(p shr 32);
+  end;
+ end;
+ begin
+  p:=(h xor (k+n))*TpvUInt64(n);
+  h:=h xor TpvUInt32(p and $ffffffff);
+  k:=k xor TpvUInt32(p shr 32);
+ end;
+ result:=k xor h;
+ if result=0 then begin
+  result:=$ffffffff;
+ end;
+end;
+
+function TpvStringHashMap<TpvHashMapValue>.FindCell(const Key:TpvHashMapKey):TpvUInt32;
+var HashCode,Mask,Step:TpvUInt32;
+    Entity:TpvInt32;
+begin
+ HashCode:=HashKey(Key);
+ Mask:=(2 shl fLogSize)-1;
+ Step:=((HashCode shl 1)+1) and Mask;
+ if fLogSize<>0 then begin
+  result:=HashCode shr (32-fLogSize);
+ end else begin
+  result:=0;
+ end;
+ repeat
+  Entity:=fCellToEntityIndex[result];
+  if (Entity=ENT_EMPTY) or ((Entity<>ENT_DELETED) and (fEntities[Entity].Key=Key)) then begin
+   exit;
+  end;
+  result:=(result+Step) and Mask;
+ until false;
+end;
+
+procedure TpvStringHashMap<TpvHashMapValue>.Resize;
+var NewLogSize,NewSize,Cell,Entity,Counter:TpvInt32;
+    OldEntities:THashMapEntities;
+    OldCellToEntityIndex:TpvHashMapEntityIndices;
+    OldEntityToCellIndex:TpvHashMapEntityIndices;
+begin
+ NewLogSize:=0;
+ NewSize:=fRealSize;
+ while NewSize<>0 do begin
+  NewSize:=NewSize shr 1;
+  inc(NewLogSize);
+ end;
+ if NewLogSize<1 then begin
+  NewLogSize:=1;
+ end;
+ fSize:=0;
+ fRealSize:=0;
+ fLogSize:=NewLogSize;
+ OldEntities:=fEntities;
+ OldCellToEntityIndex:=fCellToEntityIndex;
+ OldEntityToCellIndex:=fEntityToCellIndex;
+ fEntities:=nil;
+ fCellToEntityIndex:=nil;
+ fEntityToCellIndex:=nil;
+ SetLength(fEntities,2 shl fLogSize);
+ SetLength(fCellToEntityIndex,2 shl fLogSize);
+ SetLength(fEntityToCellIndex,2 shl fLogSize);
+ for Counter:=0 to length(fCellToEntityIndex)-1 do begin
+  fCellToEntityIndex[Counter]:=ENT_EMPTY;
+ end;
+ for Counter:=0 to length(fEntityToCellIndex)-1 do begin
+  fEntityToCellIndex[Counter]:=CELL_EMPTY;
+ end;
+ for Counter:=0 to length(OldEntityToCellIndex)-1 do begin
+  Cell:=OldEntityToCellIndex[Counter];
+  if Cell>=0 then begin
+   Entity:=OldCellToEntityIndex[Cell];
+   if Entity>=0 then begin
+    Add(OldEntities[Counter].Key,OldEntities[Counter].Value);
+   end;
+  end;
+ end;
+ for Counter:=0 to length(OldEntities)-1 do begin
+  Finalize(OldEntities[Counter].Key);
+  Finalize(OldEntities[Counter].Value);
+ end;
+ SetLength(OldEntities,0);
+ SetLength(OldCellToEntityIndex,0);
+ SetLength(OldEntityToCellIndex,0);
+end;
+
+function TpvStringHashMap<TpvHashMapValue>.Add(const Key:TpvHashMapKey;Value:TpvHashMapValue):PHashMapEntity;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+begin
+ result:=nil;
+ while fRealSize>=(1 shl fLogSize) do begin
+  Resize;
+ end;
+ Cell:=FindCell(Key);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=@fEntities[Entity];
+  result^.Key:=Key;
+  result^.Value:=Value;
+  exit;
+ end;
+ Entity:=fSize;
+ inc(fSize);
+ if Entity<(2 shl fLogSize) then begin
+  fCellToEntityIndex[Cell]:=Entity;
+  fEntityToCellIndex[Entity]:=Cell;
+  inc(fRealSize);
+  result:=@fEntities[Entity];
+  result^.Key:=Key;
+  result^.Value:=Value;
+ end;
+end;
+
+function TpvStringHashMap<TpvHashMapValue>.Get(const Key:TpvHashMapKey;CreateIfNotExist:boolean=false):PHashMapEntity;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+    Value:TpvHashMapValue;
+begin
+ result:=nil;
+ Cell:=FindCell(Key);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=@fEntities[Entity];
+ end else if CreateIfNotExist then begin
+  Initialize(Value);
+  result:=Add(Key,Value);
+ end;
+end;
+
+function TpvStringHashMap<TpvHashMapValue>.Delete(const Key:TpvHashMapKey):boolean;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+begin
+ result:=false;
+ Cell:=FindCell(Key);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  Finalize(fEntities[Entity].Key);
+  Finalize(fEntities[Entity].Value);
+  fEntityToCellIndex[Entity]:=CELL_DELETED;
+  fCellToEntityIndex[Cell]:=ENT_DELETED;
+  result:=true;
+ end;
+end;
+
+function TpvStringHashMap<TpvHashMapValue>.GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+begin
+ Cell:=FindCell(Key);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=fEntities[Entity].Value;
+ end else begin
+  result:=fDefaultValue;
+ end;
+end;
+
+procedure TpvStringHashMap<TpvHashMapValue>.SetValue(const Key:TpvHashMapKey;const Value:TpvHashMapValue);
+begin
+ Add(Key,Value);
+end;
+{$endif}
+
+end.
+

@@ -75,8 +75,7 @@ uses {$if defined(Windows)}
       PasMP,
      {$endif}
      Vulkan,
-     PasVulkan.Types.Standard,
-     PasVulkan.Types.HalfFloat,
+     PasVulkan.Types,
      PasVulkan.Math;
 
 var VulkanMinimumMemoryChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 24; // 16 MB minimum memory chunk size
