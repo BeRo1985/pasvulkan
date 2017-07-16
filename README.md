@@ -1,6 +1,6 @@
 # pasvulkan
 
-Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (FreePascal >= 3.0.2 (and FreePascal >= 3.1.1 for the Android target for the hardfloat calling convention keyword) and Delphi >= 2006)
+Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (FreePascal >= 3.0.2 (and FreePascal >= 3.1.1 for the Android target for the hardfloat calling convention keyword) and Delphi >= 2009)
 
 ## Features
 
@@ -16,7 +16,7 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
         - MoltenVK wrapper (untested)
             - iOS
             - MacOS
-- OOP-based Vulkan Framework (PasVulkan.pas)
+- OOP-based Vulkan Framework (PasVulkan.Framework.pas)
     - Object oriented Vulkan API abstraction
     - Best-fit red-black-tree based memory manager for the Vulkan memory management, for to manage the sub-allocations in the allocated buffers and for to keep the total count of simultaneous live allocations as much low as possible and less than TVkPhysicalDeviceLimits.maxMemoryAllocationCount.
     - Texture loaders with own ObjectPascal-native loader implementations, so it is independent of external third-party image loaders, even independent of the VCL, LCL and FCL.  
@@ -49,7 +49,7 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
         - MoltenVK wrapper (untested)
             - iOS
             - MacOS
-- OOP-style Vulkan-optimized Application framework (PasVulkanApplication.pas PasVulkanAndroid.pas PasVulkanSDL2.pas PasVulkanStarticLinking.pas)
+- OOP-style Vulkan-optimized Application framework (PasVulkan.Application.pas PasVulkan.Android.pas PasVulkan.SDL2.pas PasVulkan.StarticLinking.pas)
     - The overall design of this Vulkan-optimized Application framework is mixture between the VCL/LCL/FCL and libGDX design concepts (and some of my own design ideas, of course).
     - It uses SDL 2.x as OS-API abstraction layer API
     - Single-window-only, so it is cross-platform-friendly to the maximum, as far as it is possible.

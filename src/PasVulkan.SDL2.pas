@@ -108,10 +108,10 @@ uses {$if defined(Windows)}
       {$ifend}
      {$ifend}
      {$ifdef staticlink}
-      PasVulkanStaticLinking,
+      PasVulkan.StaticLinking,
      {$endif}
      {$ifdef Android}
-      PasVulkanAndroid,
+      PasVulkan.Android,
      {$endif}
      SysUtils,Classes;
 
