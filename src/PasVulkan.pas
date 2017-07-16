@@ -3339,16 +3339,16 @@ type EVulkanException=class(Exception);
 
      PVulkanSpritePoint=^TVulkanSpritePoint;
      TVulkanSpritePoint=record
-      x:single;
-      y:single;
+      x:TVkFloat;
+      y:TVkFloat;
      end;
 
      PVulkanSpriteRect=^TVulkanSpriteRect;
      TVulkanSpriteRect=packed record
-      Left:single;
-      Top:single;
-      Right:single;
-      Bottom:single;
+      Left:TVkFloat;
+      Top:TVkFloat;
+      Right:TVkFloat;
+      Bottom:TVkFloat;
      end;
 
      PVulkanSpriteColor=^TVulkanSpriteColor;
@@ -3691,16 +3691,17 @@ type EVulkanException=class(Exception);
        fRenderingMode:TVulkanCanvasRenderingMode;
        fBlendingMode:TVulkanCanvasBlendingMode;
        fLastArrayTexture:TVulkanSpriteAtlasArrayTexture;
-       fInverseWidth:single;
-       fInverseHeight:single;
-       fInverseTextureWidth:single;
-       fInverseTextureHeight:single;
+       fInverseWidth:TVkFloat;
+       fInverseHeight:TVkFloat;
+       fInverseTextureWidth:TVkFloat;
+       fInverseTextureHeight:TVkFloat;
        fCurrentCountVertices:TVkSizeInt;
        fCurrentCountIndices:TVkSizeInt;
        fCurrentDestinationVertexBufferPointer:PVulkanCanvasVertexBuffer;
        fCurrentDestinationIndexBufferPointer:PVulkanCanvasIndexBuffer;
        fScissor:TVkRect2D;
-       function RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:single):TVulkanSpritePoint;
+       fPen:TVulkanCanvasPen;
+       function RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:TVkFloat):TVulkanSpritePoint;
        procedure SetArrayTexture(const ArrayTexture:TVulkanSpriteAtlasArrayTexture);
        procedure SetRenderingMode(aRenderingMode:TVulkanCanvasRenderingMode);
        procedure SetBlendingMode(aBlendingMode:TVulkanCanvasBlendingMode);
@@ -3728,10 +3729,10 @@ type EVulkanException=class(Exception);
        procedure SetClipRect(const aLeft,aTop,aWidth,aHeight:TVkInt32); overload;
        procedure Hook(const aHook:TVulkanCanvasHook;const aData:TVkPointer); overload;
        procedure DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor); overload;
-       procedure DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:single;const Color:TVulkanSpriteColor); overload;
-       procedure DrawSprite(const Sprite:TVulkanSprite;const x,y:single;const Color:TVulkanSpriteColor); overload;
-       procedure DrawSprite(const Sprite:TVulkanSprite;const x,y:single); overload;
-       procedure DrawSprite(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:TVkFloat;const Color:TVulkanSpriteColor); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const x,y:TVkFloat;const Color:TVulkanSpriteColor); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const x,y:TVkFloat); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TVkFloat); overload;
        procedure ExecuteUpload(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
       public
@@ -3742,6 +3743,7 @@ type EVulkanException=class(Exception);
        property Height:TVkInt32 read fHeight write fHeight;
        property RenderingMode:TVulkanCanvasRenderingMode read fRenderingMode write SetRenderingMode;
        property BlendingMode:TVulkanCanvasBlendingMode read fBlendingMode write SetBlendingMode;
+       property Pen:TVulkanCanvasPen read fPen;
      end;
 
      TVulkanSpriteAtlas=class
@@ -4536,9 +4538,9 @@ procedure VulkanSetImageLayout(const aImage:TVkImage;
 
 procedure VulkanDisableFloatingPointExceptions;
 
-function VulkanSpritePoint(const x,y:single):TVulkanSpritePoint;
-function VulkanSpriteRect(const Left,Top,Right,Bottom:single):TVulkanSpriteRect;
-function VulkanSpriteColor(const r,g,b,a:single):TVulkanSpriteColor;
+function VulkanSpritePoint(const x,y:TVkFloat):TVulkanSpritePoint;
+function VulkanSpriteRect(const Left,Top,Right,Bottom:TVkFloat):TVulkanSpriteRect;
+function VulkanSpriteColor(const r,g,b,a:TVkFloat):TVulkanSpriteColor;
 
 implementation
 
@@ -12304,13 +12306,13 @@ begin
 {$ifend}
 end;
 
-function VulkanSpritePoint(const x,y:single):TVulkanSpritePoint;
+function VulkanSpritePoint(const x,y:TVkFloat):TVulkanSpritePoint;
 begin
  result.x:=x;
  result.y:=y;
 end;
 
-function VulkanSpriteRect(const Left,Top,Right,Bottom:single):TVulkanSpriteRect;
+function VulkanSpriteRect(const Left,Top,Right,Bottom:TVkFloat):TVulkanSpriteRect;
 begin
  result.Left:=Left;
  result.Top:=Top;
@@ -12318,7 +12320,7 @@ begin
  result.Bottom:=Bottom;
 end;
 
-function VulkanSpriteColor(const r,g,b,a:single):TVulkanSpriteColor;
+function VulkanSpriteColor(const r,g,b,a:TVkFloat):TVulkanSpriteColor;
 begin
  result.r:=r;
  result.g:=g;
@@ -28899,6 +28901,8 @@ begin
 
  fCurrentFillBuffer:=nil;
 
+ fPen:=TVulkanCanvasPen.Create;
+
 end;
 
 destructor TVulkanCanvas.Destroy;
@@ -28907,6 +28911,8 @@ var Index,SubIndex:TVkInt32;
     BlendingModeIndex:TVulkanCanvasBlendingMode;
     VulkanCanvasBuffer:PVulkanCanvasBuffer;
 begin
+
+ FreeAndNil(fPen);
 
  FreeAndNil(fVulkanGraphicsPipeline);
 
@@ -28955,8 +28961,8 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanCanvas.RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:single):TVulkanSpritePoint;
-var x,y:single;
+function TVulkanCanvas.RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:TVkFloat):TVulkanSpritePoint;
+var x,y:TVkFloat;
 begin
  x:=PointToRotate.x-AroundPoint.x;
  y:=PointToRotate.y-AroundPoint.y;
@@ -29277,7 +29283,7 @@ end;
 
 procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor);
 const MinA=1.0/1024.0;
-var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:single;
+var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TVkFloat;
     TempDest,TempSrc:TVulkanSpriteRect;
     VertexColor:TVulkanSpriteVertexColor;
 begin
@@ -29466,9 +29472,9 @@ begin
  end;
 end;
 
-procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:single;const Color:TVulkanSpriteColor);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:TVkFloat;const Color:TVulkanSpriteColor);
 const MinA=1.0/1024.0;
-var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:single;
+var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TVkFloat;
     AroundPoint:TVulkanSpritePoint;
     Points:array[0..3] of TVulkanSpritePoint;
     TempDest,TempSrc:TVulkanSpriteRect;
@@ -29646,7 +29652,7 @@ begin
  end;
 end;
 
-procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const x,y:single;const Color:TVulkanSpriteColor);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const x,y:TVkFloat;const Color:TVulkanSpriteColor);
 var Src,Dest:TVulkanSpriteRect;
 begin
  Src.Left:=0;
@@ -29660,7 +29666,7 @@ begin
  DrawSprite(Sprite,Src,Dest,Color);
 end;
 
-procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const x,y:single);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const x,y:TVkFloat);
 var Color:TVulkanSpriteColor;
 begin
  Color.r:=1;
@@ -29670,7 +29676,7 @@ begin
  DrawSprite(Sprite,x,y,Color);
 end;
 
-procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TVkFloat);
 var Src,Dest:TVulkanSpriteRect;
     Color:TVulkanSpriteColor;
 begin
@@ -31755,7 +31761,7 @@ end;
 procedure TVulkanTrueTypeFontStrokeRasterizer.ConvertLineStorkeToPolygon;
 var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
     First,Closed:boolean;
-    lhw:single;
+    lhw:TVkFloat;
  procedure Point(x,y:TVkInt32);
  begin
   if First then begin
@@ -31779,8 +31785,8 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
    Point(fx,fy);
   end;
  end;
- function CalcIntersection(ax,ay,bx,by,cx,cy,dx,dy:single;out x,y:single):boolean;
- var r,num,den:single;
+ function CalcIntersection(ax,ay,bx,by,cx,cy,dx,dy:TVkFloat;out x,y:TVkFloat):boolean;
+ var r,num,den:TVkFloat;
  begin
   num:=((ay-cy)*(dx-cx))-((ax-cx)*(dy-cy));
   den:=((bx-ax)*(dy-cy))-((by-ay)*(dx-cx));
@@ -31794,7 +31800,7 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
   end;
  end;
  procedure DoArc(x,y,dx1,dy1,dx2,dy2:TVkInt32);
- var a1,a2,da:single;
+ var a1,a2,da:TVkFloat;
      ccw:boolean;
  begin
   a1:=arctan2(dy1,dx1);
@@ -31827,7 +31833,7 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
   Point(x+dx2,y+dy2);
  end;
  procedure DoMiter(p1x,p1y,p2x,p2y,p3x,p3y,dx1,dy1,dx2,dy2,CurrentLineJoinMode,miterlimit:TVkInt32);
- var xi,yi,d1,lim,x2,y2:single;
+ var xi,yi,d1,lim,x2,y2:TVkFloat;
      miterlimitexceeded:boolean;
  begin
   xi:=p2x;
@@ -31932,7 +31938,7 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TVkInt32;
  end;
  procedure Cap(i1,i2,di:TVkInt32);
  var x1,y1,x2,y2,dx1,dy1,dx2,dy2,d:TVkInt32;
-     a1,a2,da:single;
+     a1,a2,da:TVkFloat;
  begin
   x1:=fLinePoints[i1].x;
   y1:=fLinePoints[i1].y;
@@ -32318,22 +32324,22 @@ type TMatrix=array[0..5] of single;
 const MatrixIdentity:TMatrix=(1,0,0,1,0,0);
       MatrixNull:TMatrix=(0,0,0,0,0,0);
 
-function MatrixTranslate(tx,ty:single):TMatrix;
+function MatrixTranslate(tx,ty:TVkFloat):TMatrix;
 begin
  result:=MatrixIdentity;
  result[4]:=tx;
  result[5]:=ty;
 end;
 
-function MatrixScale(sx,sy:single):TMatrix;
+function MatrixScale(sx,sy:TVkFloat):TMatrix;
 begin
  result:=MatrixIdentity;
  result[0]:=sx;
  result[3]:=sy;
 end;
 
-function MatrixRotate(degress:single):TMatrix;
-var rad,c,s:single;
+function MatrixRotate(degress:TVkFloat):TMatrix;
+var rad,c,s:TVkFloat;
 begin
  rad:=degress*deg2rad;
  c:=cos(rad);
@@ -32345,13 +32351,13 @@ begin
  result[3]:=c;
 end;
 
-function MatrixSkewX(x:single):TMatrix;
+function MatrixSkewX(x:TVkFloat):TMatrix;
 begin
  result:=MatrixIdentity;
  result[1]:=tan(x*deg2rad);
 end;
 
-function MatrixSkewY(y:single):TMatrix;
+function MatrixSkewY(y:TVkFloat):TMatrix;
 begin
  result:=MatrixIdentity;
  result[2]:=tan(y*deg2rad);
@@ -32368,7 +32374,7 @@ begin
 end;
 
 function MatrixInverse(const a:TMatrix):TMatrix;
-var det,idet:single;
+var det,idet:TVkFloat;
 begin
  det:=(a[0]*a[3])-(a[1]*a[2]);
  if abs(det)<1E-14 then begin
@@ -32392,8 +32398,8 @@ begin
  y:=trunc((tx*m[1])+(y*m[3])+m[5]);
 end;
 
-procedure ApplyMatrixToXY(const m:TMatrix;var x,y:single); overload;
-var tx:single;
+procedure ApplyMatrixToXY(const m:TMatrix;var x,y:TVkFloat); overload;
+var tx:TVkFloat;
 begin
  tx:=x;
  x:=(tx*m[0])+(y*m[2])+m[4];
@@ -39136,7 +39142,7 @@ end;
 procedure TVulkanTrueTypeFont.TransformGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;GlyphStartPointIndex,StartIndex,EndIndex:TVkInt32);
 var Sum,Direction,StartPointIndex,i,j,x,y,xs,ys:TVkInt32;
     pprev,pfirst,pnext,pcur,pin,pout:TVulkanTrueTypeFontGlyphPoint;
-    ain,aout,ad,s:single;
+    ain,aout,ad,s:TVkFloat;
     Matrix:TMatrix;
 begin
  Sum:=0;
