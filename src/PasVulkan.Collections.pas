@@ -248,8 +248,10 @@ type TpvDynamicArray<T>=class
        constructor Create(const DefaultValue:TpvHashMapValue);
        destructor Destroy; override;
        procedure Clear;
-       function Add(const Key:TpvHashMapKey;Value:TpvHashMapValue):PHashMapEntity;
-       function Get(const Key:TpvHashMapKey;CreateIfNotExist:boolean=false):PHashMapEntity;
+       function Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PHashMapEntity;
+       function Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PHashMapEntity;
+       function TryGet(const Key:TpvHashMapKey;out Value:TpvHashMapValue):boolean;
+       function ExistKey(const Key:TpvHashMapKey):boolean;
        function Delete(const Key:TpvHashMapKey):boolean;
        property Values[const Key:TpvHashMapKey]:TpvHashMapValue read GetValue write SetValue; default;
      end;
@@ -287,15 +289,17 @@ type TpvDynamicArray<T>=class
        constructor Create(const DefaultValue:TpvHashMapValue);
        destructor Destroy; override;
        procedure Clear;
-       function Add(const Key:TpvHashMapKey;Value:TpvHashMapValue):PHashMapEntity;
-       function Get(const Key:TpvHashMapKey;CreateIfNotExist:boolean=false):PHashMapEntity;
+       function Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PHashMapEntity;
+       function Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PHashMapEntity;
+       function TryGet(const Key:TpvHashMapKey;out Value:TpvHashMapValue):boolean;
+       function ExistKey(const Key:TpvHashMapKey):boolean;
        function Delete(const Key:TpvHashMapKey):boolean;
        property Values[const Key:TpvHashMapKey]:TpvHashMapValue read GetValue write SetValue; default;
      end;
 {$else}
      TpvStringHashMap<TpvHashMapValue>=class(TpvHashMap<RawByteString,TpvHashMapValue>);
 {$endif}
-     
+
 implementation
 
 uses Generics.Defaults,
@@ -1672,7 +1676,7 @@ begin
  SetLength(OldEntityToCellIndex,0);
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Add(const Key:TpvHashMapKey;Value:TpvHashMapValue):PHashMapEntity;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PHashMapEntity;
 var Entity:TpvInt32;
     Cell:TpvUInt32;
 begin
@@ -1700,7 +1704,7 @@ begin
  end;
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Get(const Key:TpvHashMapKey;CreateIfNotExist:boolean=false):PHashMapEntity;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PHashMapEntity;
 var Entity:TpvInt32;
     Cell:TpvUInt32;
     Value:TpvHashMapValue;
@@ -1714,6 +1718,23 @@ begin
   Initialize(Value);
   result:=Add(Key,Value);
  end;
+end;
+
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TryGet(const Key:TpvHashMapKey;out Value:TpvHashMapValue):boolean;
+var Entity:TpvInt32;
+begin
+ Entity:=fCellToEntityIndex[FindCell(Key)];
+ result:=Entity>=0;
+ if result then begin
+  Value:=fEntities[Entity].Value;
+ end else begin
+  Initialize(Value);
+ end;
+end;
+
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.ExistKey(const Key:TpvHashMapKey):boolean;
+begin
+ result:=fCellToEntityIndex[FindCell(Key)]>=0;
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Delete(const Key:TpvHashMapKey):boolean;
@@ -1969,6 +1990,23 @@ begin
   Initialize(Value);
   result:=Add(Key,Value);
  end;
+end;
+
+function TpvStringHashMap<TpvHashMapValue>.TryGet(const Key:TpvHashMapKey;out Value:TpvHashMapValue):boolean;
+var Entity:TpvInt32;
+begin
+ Entity:=fCellToEntityIndex[FindCell(Key)];
+ result:=Entity>=0;
+ if result then begin
+  Value:=fEntities[Entity].Value;
+ end else begin
+  Initialize(Value);
+ end;
+end;
+
+function TpvStringHashMap<TpvHashMapValue>.ExistKey(const Key:TpvHashMapKey):boolean;
+begin
+ result:=fCellToEntityIndex[FindCell(Key)]>=0;
 end;
 
 function TpvStringHashMap<TpvHashMapValue>.Delete(const Key:TpvHashMapKey):boolean;
