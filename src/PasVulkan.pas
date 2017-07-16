@@ -3518,6 +3518,52 @@ type EVulkanException=class(Exception);
 
      TVulkanSprites=array of TVulkanSprite;
 
+     TVulkanCanvasColor=class(TPersistent)
+      private
+       fRed:TVkFloat;
+       fGreen:TVkFloat;
+       fBlue:TVkFloat;
+       fAlpha:TVkFloat;
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Assign(Source:TPersistent); override;
+      published
+       property Red:TVkFloat read fRed write fRed;
+       property Green:TVkFloat read fGreen write fGreen;
+       property Blue:TVkFloat read fBlue write fBlue;
+       property Alpha:TVkFloat read fAlpha write fAlpha;
+     end;
+
+     TVulkanCanvasPenStyle=(vcpsClear,vcpsSolid);
+
+     TVulkanCanvasPenLineJoin=(vcpljBevel,vcpljMiter,vcpljRound);
+
+     TVulkanCanvasPenLineCap=(vcplcButt,vcplcSquare,vcplcRound);
+
+     TVulkanCanvasPen=class(TPersistent)
+      private
+       fColor:TVulkanCanvasColor;
+       fWidth:TVkFloat;
+       fAntialiasingWidth:TVkFloat;
+       fMiterLimit:TVkFloat;
+       fStyle:TVulkanCanvasPenStyle;
+       fLineJoin:TVulkanCanvasPenLineJoin;
+       fLineCap:TVulkanCanvasPenLineCap;
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Assign(Source:TPersistent); override;
+      published
+       property Color:TVulkanCanvasColor read fColor;
+       property Width:TVkFloat read fWidth write fWidth;
+       property AntialiasingWidth:TVkFloat read fAntialiasingWidth write fAntialiasingWidth;
+       property MiterLimit:TVkFloat read fMiterLimit write fMiterLimit;
+       property Style:TVulkanCanvasPenStyle read fStyle write fStyle default vcpsSolid;
+       property LineJoin:TVulkanCanvasPenLineJoin read fLineJoin write fLineJoin default vcpljRound;
+       property LineCap:TVulkanCanvasPenLineCap read fLineCap write fLineCap default vcplcRound;
+     end;
+
      PVulkanCanvasVertex=^TVulkanCanvasVertex;
      TVulkanCanvasVertex=packed record
       Position:TVulkanSpriteVertexPoint;             // +  8 (2x 32-bit floats)       = 0
@@ -28594,6 +28640,59 @@ destructor TVulkanSprite.Destroy;
 begin
  Name:='';
  inherited Destroy;
+end;
+
+constructor TVulkanCanvasColor.Create;
+begin
+ inherited Create;
+ fRed:=1.0;
+ fGreen:=1.0;
+ fBlue:=1.0;
+ fAlpha:=1.0;
+end;
+
+destructor TVulkanCanvasColor.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TVulkanCanvasColor.Assign(Source:TPersistent);
+begin
+ Assert(Source is TVulkanCanvasColor);
+ fRed:=TVulkanCanvasColor(Source).fRed;
+ fGreen:=TVulkanCanvasColor(Source).fGreen;
+ fBlue:=TVulkanCanvasColor(Source).fBlue;
+ fAlpha:=TVulkanCanvasColor(Source).fAlpha;
+end;
+
+constructor TVulkanCanvasPen.Create;
+begin
+ inherited Create;
+ fColor:=TVulkanCanvasColor.Create;
+ fWidth:=1.0;
+ fAntialiasingWidth:=2.0;
+ fMiterLimit:=3.0;
+ fStyle:=vcpsSolid;
+ fLineJoin:=vcpljRound;
+ fLineCap:=vcplcRound;
+end;
+
+destructor TVulkanCanvasPen.Destroy;
+begin
+ FreeAndNil(fColor);
+ inherited Destroy;
+end;
+
+procedure TVulkanCanvasPen.Assign(Source:TPersistent);
+begin
+ Assert(Source is TVulkanCanvasPen);
+ fColor.Assign(TVulkanCanvasPen(Source).fColor);
+ fWidth:=TVulkanCanvasPen(Source).fWidth;
+ fAntialiasingWidth:=TVulkanCanvasPen(Source).fAntialiasingWidth;
+ fMiterLimit:=TVulkanCanvasPen(Source).fMiterLimit;
+ fStyle:=TVulkanCanvasPen(Source).fStyle;
+ fLineJoin:=TVulkanCanvasPen(Source).fLineJoin;
+ fLineCap:=TVulkanCanvasPen(Source).fLineCap;
 end;
 
 constructor TVulkanCanvas.Create(const aDevice:TVulkanDevice;
