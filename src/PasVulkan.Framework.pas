@@ -77,7 +77,10 @@ uses {$if defined(Windows)}
      {$ifdef PasVulkanPasMP}
       PasMP,
      {$endif}
-     Vulkan;
+     Vulkan,
+     PasVulkan.Types.Standard,
+     PasVulkan.Types.HalfFloat,
+     PasVulkan.Math;
 
 var VulkanMinimumMemoryChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 24; // 16 MB minimum memory chunk size
 
@@ -1047,7 +1050,7 @@ type EVulkanException=class(Exception);
 
      TVulkanPhysicalDeviceList=class;
 
-     TVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32 of object;
+     TVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const aLayerPrefix,aMessage:string):TVkBool32 of object;
 
      TVulkanInstance=class(TVulkanObject)
       private    
@@ -1265,7 +1268,7 @@ type EVulkanException=class(Exception);
        constructor CreateWayland(const aInstance:TVulkanInstance;const aDisplay:PVkWaylandDisplay;const aSurface:PVkWaylandSurface);
 {$ifend}
 {$if defined(Windows)}
-       constructor CreateWin32(const aInstance:TVulkanInstance;const aInstanceHandle,aWindowHandle:THandle);
+       constructor CreateWin32(const aInstance:TVulkanInstance;const aInstanceHandle,aWindowHandle:Windows.THandle);
 {$ifend}
 {$if defined(XCB) and defined(Unix)}
        constructor CreateXCB(const aInstance:TVulkanInstance;const aConnection:PVkXCBConnection;const aWindow:TVkXCBWindow);
@@ -3371,16 +3374,16 @@ type EVulkanException=class(Exception);
 
      PVulkanSpriteVertexColor=^TVulkanSpriteVertexColor;
      TVulkanSpriteVertexColor=packed record
-      r:TVkHalfFloat;
-      g:TVkHalfFloat;
-      b:TVkHalfFloat;
-      a:TVkHalfFloat;
+      r:THalfFloat;
+      g:THalfFloat;
+      b:THalfFloat;
+      a:THalfFloat;
      end;
 
      PVulkanSpriteVertexState=^TVulkanSpriteVertexState;
      TVulkanSpriteVertexState=record
-      BlendingMode:TVkHalfFloat;
-      RenderingMode:TVkHalfFloat;
+      BlendingMode:THalfFloat;
+      RenderingMode:THalfFloat;
      end;
 
      PVulkanSpriteVertexClipRect=^TVulkanSpriteVertexClipRect;
@@ -4480,17 +4483,8 @@ type EVulkanException=class(Exception);
        procedure Draw(const aCanvas:TVulkanCanvas;const aText:TVulkanUTF8String;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
      end;
 
-var VulkanFloatToHalfFloatBaseTable:array[0..511] of TVkUInt16;
-    VulkanFloatToHalfFloatShiftTable:array[0..511] of TVkUInt8;
-
-    VulkanHalfFloatToFloatMantissaTable:array[0..2047] of TVkUInt32;
-    VulkanHalfFloatToFloatExponentTable:array[0..63] of TVkUInt32;
-    VulkanHalfFloatToFloatOffsetTable:array[0..63] of TVkUInt32;
-
-    VulkanHalfFloatLookUpTablesInitialized:boolean=false;
-
 {$ifdef PasVulkanPasMP}
-    VulkanPasMP:TPasMP=nil;
+var VulkanPasMP:TPasMP=nil;
     VulkanPasMPLock:TPasMPSpinLock=nil;
 {$endif}
 
@@ -4508,9 +4502,6 @@ const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling
 {$ifdef PasVulkanPasMP}
 function GetVulkanPasMP:TPasMP;
 {$endif}
-
-function VulkanConvertFloatToHalfFloat(const aValue:TVkFloat):TVkHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
-function VulkanConvertHalfFloatToFloat(const aValue:TVkHalfFloat):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
 
 function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TVkUInt32):TVkFormat;
 function VulkanGetFormatFromOpenGLType(const aType,aNumComponents:TVkUInt32;const aNormalized:boolean):TVkFormat;
@@ -4945,109 +4936,6 @@ begin
  end;
 end;
 {$endif}
-
-procedure GenerateHalfFloatLookUpTables;
-var i,e:TVkInt32;
-    Mantissa,Exponent:TVkUInt32;
-begin
- if not VulkanHalfFloatLookUpTablesInitialized then begin
-  VulkanHalfFloatLookUpTablesInitialized:=true;
-  for i:=0 to 255 do begin
-   e:=i-127;
-   case e of
-    -127..-25:begin
-     // Very small numbers maps to zero
-     VulkanFloatToHalfFloatBaseTable[i or $000]:=$0000;
-     VulkanFloatToHalfFloatBaseTable[i or $100]:=$8000;
-     VulkanFloatToHalfFloatShiftTable[i or $000]:=24;
-     VulkanFloatToHalfFloatShiftTable[i or $100]:=24;
-    end;
-    -24..-15:begin
-     // Small numbers maps to denormals
-     VulkanFloatToHalfFloatBaseTable[i or $000]:=($0400 shr ((-e)-14)) or $0000;
-     VulkanFloatToHalfFloatBaseTable[i or $100]:=($0400 shr ((-e)-14)) or $8000;
-     VulkanFloatToHalfFloatShiftTable[i or $000]:=(-e)-1;
-     VulkanFloatToHalfFloatShiftTable[i or $100]:=(-e)-1;
-    end;
-    -14..15:begin
-     // Normal numbers just loses precision
-     VulkanFloatToHalfFloatBaseTable[i or $000]:=((e+15) shl 10) or $0000;
-     VulkanFloatToHalfFloatBaseTable[i or $100]:=((e+15) shl 10) or $8000;
-     VulkanFloatToHalfFloatShiftTable[i or $000]:=13;
-     VulkanFloatToHalfFloatShiftTable[i or $100]:=13;
-    end;
-    16..127:begin
-     // Large numbers maps to infinity
-     VulkanFloatToHalfFloatBaseTable[i or $000]:=$7c00;
-     VulkanFloatToHalfFloatBaseTable[i or $100]:=$fc00;
-     VulkanFloatToHalfFloatShiftTable[i or $000]:=24;
-     VulkanFloatToHalfFloatShiftTable[i or $100]:=24;
-    end;
-    else begin
-     // Infinity and NaN's stay infinity and NaN's
-     VulkanFloatToHalfFloatBaseTable[i or $000]:=$7c00;
-     VulkanFloatToHalfFloatBaseTable[i or $100]:=$fc00;
-     VulkanFloatToHalfFloatShiftTable[i or $000]:=13;
-     VulkanFloatToHalfFloatShiftTable[i or $100]:=13;
-    end;
-   end;
-  end;
-  begin
-   begin
-    VulkanHalfFloatToFloatMantissaTable[0]:=0;
-    for i:=1 to 1023 do begin
-     Mantissa:=i shl 13;
-     Exponent:=0;
-     while (Mantissa and $00800000)=0 do begin // While not normalized
-      dec(Exponent,$00800000);                 // Decrement exponent by 1 shl 23
-      Mantissa:=Mantissa shl 1;                // Shift mantissa
-     end;
-     Mantissa:=Mantissa and not $00800000;     // Clear leading 1 bit
-     inc(Exponent,$38800000);                  // Adjust bias by (127-14) shl 23
-     VulkanHalfFloatToFloatMantissaTable[i]:=Mantissa or Exponent;
-    end;
-    for i:=1024 to 2047 do begin
-     VulkanHalfFloatToFloatMantissaTable[i]:=$38000000+((i-1024) shl 13);
-    end;
-   end;
-   begin
-    VulkanHalfFloatToFloatExponentTable[0]:=0;
-    for i:=1 to 30 do begin
-     VulkanHalfFloatToFloatExponentTable[i]:=i shl 23;
-    end;
-    VulkanHalfFloatToFloatExponentTable[31]:=$47800000;
-    VulkanHalfFloatToFloatExponentTable[32]:=0;
-    for i:=33 to 62 do begin
-     VulkanHalfFloatToFloatExponentTable[i]:=TVkUInt32(TVkUInt32(i-32) shl 23) or $80000000;
-    end;
-    VulkanHalfFloatToFloatExponentTable[63]:=$c7800000;
-   end;
-   begin
-    VulkanHalfFloatToFloatOffsetTable[0]:=0;
-    for i:=1 to 31 do begin
-     VulkanHalfFloatToFloatOffsetTable[i]:=1024;
-    end;
-    VulkanHalfFloatToFloatOffsetTable[32]:=0;
-    for i:=33 to 63 do begin
-     VulkanHalfFloatToFloatOffsetTable[i]:=1024;
-    end;
-   end;
-  end;
- end;
-end;
-
-function VulkanConvertFloatToHalfFloat(const aValue:TVkFloat):TVkHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
-var CastedValue:TVkUInt32 absolute aValue;
-begin
- result:=VulkanFloatToHalfFloatBaseTable[CastedValue shr 23]+TVkUInt16((CastedValue and $007fffff) shr VulkanFloatToHalfFloatShiftTable[CastedValue shr 23]);
-end;
-
-function VulkanConvertHalfFloatToFloat(const aValue:TVkHalfFloat):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
-var f:TVkUInt32;
-begin
- f:=VulkanHalfFloatToFloatMantissaTable[VulkanHalfFloatToFloatOffsetTable[aValue shr 10]+(aValue and $3ff)]+VulkanHalfFloatToFloatExponentTable[aValue shr 10];
- result:=TVkFloat(TVkPointer(@f)^);
-end;
 
 function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TVkUInt32):TVkFormat;
 begin
@@ -16198,12 +16086,12 @@ begin
 end;
 
 constructor TVulkanInstance.Create(const aApplicationName:TVulkanCharString='Vulkan application';
-                                      const aApplicationVersion:TVkUInt32=1;
-                                      const aEngineName:TVulkanCharString='Vulkan engine';
-                                      const aEngineVersion:TVkUInt32=1;
-                                      const pAPIVersion:TVkUInt32=VK_API_VERSION_1_0;
-                                      const aValidation:boolean=false;
-                                      const aAllocationManager:TVulkanAllocationManager=nil);
+                                   const aApplicationVersion:TVkUInt32=1;
+                                   const aEngineName:TVulkanCharString='Vulkan engine';
+                                   const aEngineVersion:TVkUInt32=1;
+                                   const pAPIVersion:TVkUInt32=VK_API_VERSION_1_0;
+                                   const aValidation:boolean=false;
+                                   const aAllocationManager:TVulkanAllocationManager=nil);
 var Index,SubIndex:TVkInt32;
     Count,SubCount:TVkUInt32;
     LayerName:PVkChar;
@@ -16525,7 +16413,7 @@ end;
 function TVulkanInstance.DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TVkInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32;
 begin
  if assigned(fOnInstanceDebugReportCallback) then begin
-  result:=fOnInstanceDebugReportCallback(flags,objectType,object_,location,messageCode,aLayerPrefix,aMessage);
+  result:=fOnInstanceDebugReportCallback(flags,objectType,object_,location,messageCode,String(aLayerPrefix),String(aMessage));
  end else begin
   result:=VK_FALSE;
  end;
@@ -16932,7 +16820,7 @@ end;
 {$elseif defined(Wayland)}
                                   const aDisplay:Pwl_display;const aSurface:Pwl_surface
 {$elseif defined(Windows)}
-                                  const aInstanceHandle,aWindowHandle:THandle
+                                  const aInstanceHandle,aWindowHandle:Windows.THandle
 {$elseif defined(XLIB)}
                                   const aDisplay:PDisplay;const aWindow:TWindow
 {$elseif defined(XCB)}
@@ -17034,7 +16922,7 @@ end;
 {$ifend}
 
 {$if defined(Windows)}
-constructor TVulkanSurface.CreateWin32(const aInstance:TVulkanInstance;const aInstanceHandle,aWindowHandle:THandle);
+constructor TVulkanSurface.CreateWin32(const aInstance:TVulkanInstance;const aInstanceHandle,aWindowHandle:Windows.THandle);
 var SurfaceCreateInfo:TVulkanSurfaceCreateInfo;
 begin
  FillChar(SurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
@@ -28976,10 +28864,10 @@ begin
   fRenderingMode:=aRenderingMode;
   case aRenderingMode of
    vsbrmNormal:begin
-    fState.RenderingMode:=VulkanConvertFloatToHalfFloat(0.0);
+    fState.RenderingMode:=0.0;
    end;
    else {vsbrmFont:}begin
-    fState.RenderingMode:=VulkanConvertFloatToHalfFloat(1.0);
+    fState.RenderingMode:=1.0;
    end;
   end;
  end;
@@ -28991,13 +28879,13 @@ begin
   fBlendingMode:=aBlendingMode;
   case fBlendingMode of
    vsbbmNone:begin
-    fState.BlendingMode:=VulkanConvertFloatToHalfFloat(-1.0);
+    fState.BlendingMode:=-1.0;
    end;
    vsbbmAlphaBlending:begin
-    fState.BlendingMode:=VulkanConvertFloatToHalfFloat(1.0);
+    fState.BlendingMode:=1.0;
    end;
    else{vsbbmAdditiveBlending:}begin
-    fState.BlendingMode:=VulkanConvertFloatToHalfFloat(0.0);
+    fState.BlendingMode:=0.0;
    end;
   end;
  end;
@@ -29032,8 +28920,8 @@ begin
  fCurrentVulkanIndexBufferOffset:=0;
  GetNextDestinationVertexBuffer;
 
- fState.BlendingMode:=VulkanConvertFloatToHalfFloat(1.0);
- fState.RenderingMode:=VulkanConvertFloatToHalfFloat(0.0);
+ fState.BlendingMode:=1.0;
+ fState.RenderingMode:=0.0;
 
  fClipRect.x0:=-1.0;
  fClipRect.y0:=-1.0;
@@ -29292,10 +29180,10 @@ begin
     (((Src.Right>=Sprite.TrimmedX) and (Src.Bottom>=Sprite.TrimmedY)) and
     (((not Sprite.Rotated) and (((Sprite.TrimmedX+Sprite.TrimmedWidth)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedHeight)>=Src.Top))) or
      (Sprite.Rotated and (((Sprite.TrimmedX+Sprite.TrimmedHeight)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedWidth)>=Src.Top))))) then begin
-  VertexColor.r:=VulkanConvertFloatToHalfFloat(Color.r);
-  VertexColor.g:=VulkanConvertFloatToHalfFloat(Color.g);
-  VertexColor.b:=VulkanConvertFloatToHalfFloat(Color.b);
-  VertexColor.a:=VulkanConvertFloatToHalfFloat(Color.a);
+  VertexColor.r:=Color.r;
+  VertexColor.g:=Color.g;
+  VertexColor.b:=Color.b;
+  VertexColor.a:=Color.a;
   SetArrayTexture(Sprite.ArrayTexture);
   FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
   if Sprite.Rotated then begin
@@ -29484,10 +29372,10 @@ begin
     (((Src.Right>=Sprite.TrimmedX) and (Src.Bottom>=Sprite.TrimmedY)) and
     (((not Sprite.Rotated) and (((Sprite.TrimmedX+Sprite.TrimmedWidth)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedHeight)>=Src.Top))) or
      (Sprite.Rotated and (((Sprite.TrimmedX+Sprite.TrimmedHeight)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedWidth)>=Src.Top))))) then begin
-  VertexColor.r:=VulkanConvertFloatToHalfFloat(Color.r);
-  VertexColor.g:=VulkanConvertFloatToHalfFloat(Color.g);
-  VertexColor.b:=VulkanConvertFloatToHalfFloat(Color.b);
-  VertexColor.a:=VulkanConvertFloatToHalfFloat(Color.a);
+  VertexColor.r:=Color.r;
+  VertexColor.g:=Color.g;
+  VertexColor.b:=Color.b;
+  VertexColor.a:=Color.a;
   Cosinus:=cos(Rotation);
   Sinus:=sin(Rotation);
   SetArrayTexture(Sprite.ArrayTexture);
@@ -42761,7 +42649,6 @@ begin
 end;
 
 initialization
- GenerateHalfFloatLookUpTables;
 {$ifdef PasVulkanPasMP}
  VulkanPasMP:=nil;
  VulkanPasMPLock:=TPasMPSpinLock.Create;

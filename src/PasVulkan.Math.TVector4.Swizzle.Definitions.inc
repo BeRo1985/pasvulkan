@@ -1,1192 +1,1192 @@
 private
-function GetAA:TVector2; {$ifdef caninline}inline;{$endif}
-function GetAAA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetAAAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAAAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAAAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAAAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAAB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetAABA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAABB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAABG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAABR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAAG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetAAGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAAGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAAGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAAGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAAR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetAARA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAARB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAARG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAARR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAB:TVector2; {$ifdef caninline}inline;{$endif}
-function GetABA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetABAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetABBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetABGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetABRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetABRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAG:TVector2; {$ifdef caninline}inline;{$endif}
-function GetAGA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetAGAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetAGBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetAGGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetAGRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAGRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetAR:TVector2; {$ifdef caninline}inline;{$endif}
-function GetARA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetARAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetARBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetARGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetARRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetARRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBA:TVector2; {$ifdef caninline}inline;{$endif}
-function GetBAA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBAAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBAAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBAAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBAAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBAB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBABA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBABB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBABG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBABR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBAG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBAGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBAGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBAGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBAGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBAR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBARA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBARB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBARG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBARR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBB:TVector2; {$ifdef caninline}inline;{$endif}
-function GetBBA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBBAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBBBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBBGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBBRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBBRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBG:TVector2; {$ifdef caninline}inline;{$endif}
-function GetBGA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBGAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBGBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBGGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBGRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBGRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBR:TVector2; {$ifdef caninline}inline;{$endif}
-function GetBRA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBRAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBRBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBRGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBRRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetBRRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGA:TVector2; {$ifdef caninline}inline;{$endif}
-function GetGAA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGAAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGAAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGAAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGAAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGAB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGABA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGABB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGABG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGABR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGAG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGAGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGAGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGAGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGAGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGAR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGARA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGARB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGARG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGARR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGB:TVector2; {$ifdef caninline}inline;{$endif}
-function GetGBA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGBAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGBBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGBGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGBRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGBRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGG:TVector2; {$ifdef caninline}inline;{$endif}
-function GetGGA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGGAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGGBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGGGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGGRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGGRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGR:TVector2; {$ifdef caninline}inline;{$endif}
-function GetGRA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGRAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGRBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGRGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGRRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetGRRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPP:TVector2; {$ifdef caninline}inline;{$endif}
-function GetPPP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPPPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPPQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPPSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPPTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPPTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQ:TVector2; {$ifdef caninline}inline;{$endif}
-function GetPQP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPQPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPQQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPQSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPQTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPQTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPS:TVector2; {$ifdef caninline}inline;{$endif}
-function GetPSP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPSPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPSQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPSSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPST:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPSTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPSTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPT:TVector2; {$ifdef caninline}inline;{$endif}
-function GetPTP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPTPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPTQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPTSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPTTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetPTTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQP:TVector2; {$ifdef caninline}inline;{$endif}
-function GetQPP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQPPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQPQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQPSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQPTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQPTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQ:TVector2; {$ifdef caninline}inline;{$endif}
-function GetQQP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQQPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQQQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQQSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQQTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQQTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQS:TVector2; {$ifdef caninline}inline;{$endif}
-function GetQSP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQSPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQSQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQSSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQST:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQSTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQSTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQT:TVector2; {$ifdef caninline}inline;{$endif}
-function GetQTP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQTPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQTQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQTSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetQTTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetQTTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRA:TVector2; {$ifdef caninline}inline;{$endif}
-function GetRAA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRAAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRAAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRAAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRAAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRAB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRABA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRABB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRABG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRABR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRAG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRAGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRAGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRAGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRAGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRAR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRARA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRARB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRARG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRARR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRB:TVector2; {$ifdef caninline}inline;{$endif}
-function GetRBA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRBAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRBBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRBGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRBRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRBRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRG:TVector2; {$ifdef caninline}inline;{$endif}
-function GetRGA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRGAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRGBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRGGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRGRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRGRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRR:TVector2; {$ifdef caninline}inline;{$endif}
-function GetRRA:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRRAA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRAB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRAG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRAR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRRBA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRBB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRBG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRBR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRRGA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRGB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRGG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRGR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRRRA:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRRB:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRRG:TVector4; {$ifdef caninline}inline;{$endif}
-function GetRRRR:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSP:TVector2; {$ifdef caninline}inline;{$endif}
-function GetSPP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSPPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSPQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSPSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSPTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSPTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQ:TVector2; {$ifdef caninline}inline;{$endif}
-function GetSQP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSQPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSQQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSQSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSQTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSQTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSS:TVector2; {$ifdef caninline}inline;{$endif}
-function GetSSP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSSPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSSQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSSSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSST:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSSTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSSTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetST:TVector2; {$ifdef caninline}inline;{$endif}
-function GetSTP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSTPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSTQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSTSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSTTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetSTTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTP:TVector2; {$ifdef caninline}inline;{$endif}
-function GetTPP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTPPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTPQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTPSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTPTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTPTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQ:TVector2; {$ifdef caninline}inline;{$endif}
-function GetTQP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTQPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTQQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTQSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTQTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTQTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTS:TVector2; {$ifdef caninline}inline;{$endif}
-function GetTSP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTSPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTSQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTSSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTST:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTSTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTSTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTT:TVector2; {$ifdef caninline}inline;{$endif}
-function GetTTP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTTPP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTPQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTPS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTPT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTQ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTTQP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTQQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTQS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTQT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTTSP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTSQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTSS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTST:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTTTP:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTTQ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTTS:TVector4; {$ifdef caninline}inline;{$endif}
-function GetTTTT:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWW:TVector2; {$ifdef caninline}inline;{$endif}
-function GetWWW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWWWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWWXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWWYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWWZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWWZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWX:TVector2; {$ifdef caninline}inline;{$endif}
-function GetWXW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWXWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWXXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWXYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWXZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWXZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWY:TVector2; {$ifdef caninline}inline;{$endif}
-function GetWYW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWYWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWYXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWYYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWYZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWYZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZ:TVector2; {$ifdef caninline}inline;{$endif}
-function GetWZW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWZWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWZXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWZYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetWZZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetWZZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXW:TVector2; {$ifdef caninline}inline;{$endif}
-function GetXWW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXWWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXWXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXWYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXWZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXWZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXX:TVector2; {$ifdef caninline}inline;{$endif}
-function GetXXW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXXWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXXXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXXYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXXZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXXZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXY:TVector2; {$ifdef caninline}inline;{$endif}
-function GetXYW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXYWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXYXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXYYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXYZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXYZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZ:TVector2; {$ifdef caninline}inline;{$endif}
-function GetXZW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXZWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXZXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXZYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXZZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetXZZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYW:TVector2; {$ifdef caninline}inline;{$endif}
-function GetYWW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYWWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYWXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYWYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYWZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYWZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYX:TVector2; {$ifdef caninline}inline;{$endif}
-function GetYXW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYXWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYXXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYXYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYXZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYXZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYY:TVector2; {$ifdef caninline}inline;{$endif}
-function GetYYW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYYWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYYXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYYYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYYZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYYZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZ:TVector2; {$ifdef caninline}inline;{$endif}
-function GetYZW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYZWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYZXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYZYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYZZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetYZZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZW:TVector2; {$ifdef caninline}inline;{$endif}
-function GetZWW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZWWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZWXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZWYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZWZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZWZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZX:TVector2; {$ifdef caninline}inline;{$endif}
-function GetZXW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZXWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZXXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZXYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZXZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZXZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZY:TVector2; {$ifdef caninline}inline;{$endif}
-function GetZYW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZYWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZYXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZYYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZYZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZYZZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZ:TVector2; {$ifdef caninline}inline;{$endif}
-function GetZZW:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZZWW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZWX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZWY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZWZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZZXW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZXX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZXY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZXZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZZYW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZYX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZYY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZYZ:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZZZW:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZZX:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZZY:TVector4; {$ifdef caninline}inline;{$endif}
-function GetZZZZ:TVector4; {$ifdef caninline}inline;{$endif}
-procedure SetAB(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetABG(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetABGR(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetABR(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetABRG(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetAG(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetAGB(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetAGBR(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetAGR(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetAGRB(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetAR(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetARB(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetARBG(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetARG(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetARGB(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetBA(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetBAG(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetBAGR(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetBAR(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetBARG(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetBG(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetBGA(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetBGAR(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetBGR(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetBGRA(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetBR(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetBRA(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetBRAG(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetBRG(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetBRGA(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetGA(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetGAB(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetGABR(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetGAR(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetGARB(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetGB(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetGBA(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetGBAR(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetGBR(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetGBRA(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetGR(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetGRA(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetGRAB(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetGRB(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetGRBA(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetPQ(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetPQS(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetPQST(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetPQT(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetPQTS(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetPS(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetPSQ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetPSQT(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetPST(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetPSTQ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetPT(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetPTQ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetPTQS(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetPTS(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetPTSQ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetQP(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetQPS(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetQPST(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetQPT(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetQPTS(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetQS(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetQSP(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetQSPT(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetQST(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetQSTP(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetQT(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetQTP(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetQTPS(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetQTS(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetQTSP(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetRA(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetRAB(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetRABG(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetRAG(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetRAGB(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetRB(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetRBA(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetRBAG(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetRBG(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetRBGA(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetRG(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetRGA(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetRGAB(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetRGB(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetRGBA(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetSP(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetSPQ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetSPQT(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetSPT(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetSPTQ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetSQ(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetSQP(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetSQPT(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetSQT(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetSQTP(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetST(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetSTP(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetSTPQ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetSTQ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetSTQP(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetTP(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetTPQ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetTPQS(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetTPS(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetTPSQ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetTQ(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetTQP(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetTQPS(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetTQS(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetTQSP(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetTS(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetTSP(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetTSPQ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetTSQ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetTSQP(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetWX(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetWXY(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetWXYZ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetWXZ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetWXZY(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetWY(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetWYX(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetWYXZ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetWYZ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetWYZX(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetWZ(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetWZX(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetWZXY(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetWZY(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetWZYX(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetXW(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetXWY(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetXWYZ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetXWZ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetXWZY(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetXY(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetXYW(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetXYWZ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetXYZ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetXYZW(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetXZ(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetXZW(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetXZWY(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetXZY(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetXZYW(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetYW(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetYWX(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetYWXZ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetYWZ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetYWZX(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetYX(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetYXW(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetYXWZ(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetYXZ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetYXZW(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetYZ(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetYZW(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetYZWX(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetYZX(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetYZXW(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetZW(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetZWX(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetZWXY(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetZWY(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetZWYX(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetZX(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetZXW(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetZXWY(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetZXY(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetZXYW(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetZY(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetZYW(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetZYWX(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-procedure SetZYX(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetZYXW(const pValue:TVector4); {$ifdef caninline}inline;{$endif}
+function GetAA:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAABA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAABB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAABG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAABR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAAR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAARA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAARB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAARG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAARR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAB:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetABRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAG:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAGRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetAR:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetARRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBA:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBABA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBABB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBABG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBABR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBAR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBARA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBARB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBARG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBARR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBB:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBG:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBR:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGA:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGABA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGABB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGABG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGABR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGAR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGARA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGARB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGARG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGARR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGB:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGG:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGR:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPP:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQ:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPQTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPS:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPST:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPT:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQP:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQPTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQ:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQQTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQS:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQST:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQSTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQT:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetQTTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRA:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRABA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRABB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRABG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRABR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRAR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRARA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRARB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRARG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRARR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRB:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRG:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRR:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRA:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRAA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRAB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRAG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRAR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRBA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRBB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRBG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRBR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRGA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRGB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRGG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRGR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRRA:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRRB:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRRG:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRRR:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSP:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQ:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSQTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSS:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSST:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetST:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTP:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQ:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTQTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTS:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTST:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTT:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTPP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTPQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTPS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTPT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTQ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTQP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTQQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTQS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTQT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTSP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTSQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTSS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTST:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTTP:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTTQ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTTS:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTTT:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWW:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWWZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWX:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWXZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWY:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWYZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZ:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetWZZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXW:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXWZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXX:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXY:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZ:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYW:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYWZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYX:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYY:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZ:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZW:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZWZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZX:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZY:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZ:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZW:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZWW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZWX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZWY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZWZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZXW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZXX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZXY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZXZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZYW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZYX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZYY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZYZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZZW:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZZX:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZZY:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZZZ:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetAB(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetABG(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetABGR(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetABR(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetABRG(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetAG(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetAGB(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetAGBR(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetAGR(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetAGRB(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetAR(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetARB(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetARBG(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetARG(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetARGB(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBA(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBAG(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBAGR(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBAR(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBARG(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBG(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBGA(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBGAR(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBGR(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBGRA(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBR(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBRA(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBRAG(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBRG(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBRGA(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGA(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGAB(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGABR(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGAR(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGARB(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGB(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGBA(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGBAR(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGBR(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGBRA(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGR(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGRA(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGRAB(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGRB(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGRBA(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPQ(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPQS(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPQST(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPQT(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPQTS(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPS(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPSQ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPSQT(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPST(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPSTQ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPT(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPTQ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPTQS(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPTS(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPTSQ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQP(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQPS(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQPST(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQPT(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQPTS(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQS(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQSP(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQSPT(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQST(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQSTP(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQT(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQTP(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQTPS(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQTS(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetQTSP(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRA(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRAB(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRABG(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRAG(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRAGB(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRB(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRBA(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRBAG(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRBG(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRBGA(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRG(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRGA(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRGAB(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRGB(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRGBA(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSP(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSPQ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSPQT(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSPT(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSPTQ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSQ(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSQP(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSQPT(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSQT(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSQTP(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetST(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSTP(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSTPQ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSTQ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSTQP(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTP(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTPQ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTPQS(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTPS(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTPSQ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTQ(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTQP(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTQPS(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTQS(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTQSP(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTS(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTSP(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTSPQ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTSQ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTSQP(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWX(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWXY(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWXYZ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWXZ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWXZY(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWY(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWYX(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWYXZ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWYZ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWYZX(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWZ(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWZX(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWZXY(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWZY(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetWZYX(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXW(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXWY(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXWYZ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXWZ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXWZY(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXY(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXYW(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXYWZ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXYZ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXYZW(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXZ(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXZW(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXZWY(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXZY(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXZYW(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYW(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYWX(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYWXZ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYWZ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYWZX(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYX(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYXW(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYXWZ(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYXZ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYXZW(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYZ(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYZW(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYZWX(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYZX(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYZXW(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZW(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZWX(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZWXY(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZWY(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZWYX(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZX(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZXW(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZXWY(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZXY(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZXYW(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZY(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZYW(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZYWX(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZYX(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZYXW(const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
 public
 property aa:TVector2 read GetAA;
 property aaa:TVector3 read GetAAA;

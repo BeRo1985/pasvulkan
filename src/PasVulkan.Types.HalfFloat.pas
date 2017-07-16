@@ -71,52 +71,52 @@ type PPHalfFloat=^PHalfFloat;
       public
        Value:TUInt16;
        constructor Create(const pValue:TFloat);
-       class function FromFloat(const pValue:TFloat):THalfFloat; static; {$ifdef caninline}inline;{$endif}
-       function ToFloat:TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Implicit(const a:TFloat):THalfFloat; {$ifdef caninline}inline;{$endif}
-       class operator Implicit(const a:THalfFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Explicit(const a:TFloat):THalfFloat; {$ifdef caninline}inline;{$endif}
-       class operator Explicit(const a:THalfFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Equal(const a,b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator Equal(const a:THalfFloat;const b:TFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator Equal(const a:TFloat;const b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator NotEqual(const a,b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator NotEqual(const a:THalfFloat;const b:TFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator NotEqual(const a:TFloat;const b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator GreaterThan(const a,b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator GreaterThan(const a:THalfFloat;const b:TFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator GreaterThan(const a:TFloat;const b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator GreaterThanOrEqual(const a,b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator GreaterThanOrEqual(const a:THalfFloat;const b:TFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator GreaterThanOrEqual(const a:TFloat;const b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator LessThan(const a,b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator LessThan(const a:THalfFloat;const b:TFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator LessThan(const a:TFloat;const b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator LessThanOrEqual(const a,b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator LessThanOrEqual(const a:THalfFloat;const b:TFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator LessThanOrEqual(const a:TFloat;const b:THalfFloat):boolean; {$ifdef caninline}inline;{$endif}
-       class operator Inc(const a:THalfFloat):THalfFloat; {$ifdef caninline}inline;{$endif}
-       class operator Dec(const a:THalfFloat):THalfFloat; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a,b:THalfFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a,b:THalfFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a,b:THalfFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a,b:THalfFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a,b:THalfFloat):TFloat; {$ifdef caninline}inline;{$endif}
-       class operator Negative(const a:THalfFloat):THalfFloat; {$ifdef caninline}inline;{$endif}
-       class operator Positive(const a:THalfFloat):THalfFloat; {$ifdef caninline}inline;{$endif}
-       function Abs:THalfFloat; {$ifdef caninline}inline;{$endif}
-       function IsNaN:boolean; {$ifdef caninline}inline;{$endif}
-       function IsInfinity:boolean; {$ifdef caninline}inline;{$endif}
-       function IsNegativeInfinity:boolean; {$ifdef caninline}inline;{$endif}
-       function IsPositiveInfinity:boolean; {$ifdef caninline}inline;{$endif}
+       class function FromFloat(const pValue:TFloat):THalfFloat; static; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToFloat:TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Implicit(const a:TFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Implicit(const a:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThan(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThan(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThan(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThanOrEqual(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThanOrEqual(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThanOrEqual(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThan(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThan(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThan(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThanOrEqual(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThanOrEqual(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThanOrEqual(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc(const a:THalfFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Dec(const a:THalfFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a,b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a,b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a,b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a,b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative(const a:THalfFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Positive(const a:THalfFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       function Abs:THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       function IsNaN:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function IsInfinity:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function IsNegativeInfinity:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function IsPositiveInfinity:boolean; {$ifdef CAN_INLINE}inline;{$endif}
      end;
 
 var FloatToHalfFloatBaseTable:array[0..511] of TUInt16;
@@ -189,7 +189,7 @@ begin
     HalfFloatToFloatMantissaTable[i]:=Mantissa or Exponent;
    end;
    for i:=1024 to 2047 do begin
-    HalfFloatToFloatMantissaTable[i]:=$38000000+((i-1024) shl 13);
+    HalfFloatToFloatMantissaTable[i]:=TUInt32($38000000)+TUInt32(TUInt32(i-1024) shl 13);
    end;
   end;
   begin
@@ -200,7 +200,7 @@ begin
    HalfFloatToFloatExponentTable[31]:=$47800000;
    HalfFloatToFloatExponentTable[32]:=0;
    for i:=33 to 62 do begin
-    HalfFloatToFloatExponentTable[i]:=((i-32) shl 23) or $80000000;
+    HalfFloatToFloatExponentTable[i]:=TUInt32(TUInt32(i-32) shl 23) or TUInt32($80000000);
    end;
    HalfFloatToFloatExponentTable[63]:=$c7800000;
   end;

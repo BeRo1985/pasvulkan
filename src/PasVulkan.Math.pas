@@ -127,49 +127,49 @@ type PScalar=^TScalar;
       public
        constructor Create(const pX:TScalar); overload;
        constructor Create(const pX,pY:TScalar); overload;
-       class operator Implicit(const a:TScalar):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Explicit(const a:TScalar):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Equal(const a,b:TVector2):boolean; {$ifdef caninline}inline;{$endif}
-       class operator NotEqual(const a,b:TVector2):boolean; {$ifdef caninline}inline;{$endif}
-       class operator Inc(const a:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Dec(const a:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a,b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a:TVector2;const b:TScalar):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a,b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a:TVector2;const b:TScalar):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TVector2): TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a,b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TVector2;const b:TScalar):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a,b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:TVector2;const b:TScalar):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a,b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a:TVector2;const b:TScalar):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a,b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TVector2;const b:TScalar):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Negative(const a:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Positive(const a:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
+       class operator Implicit(const a:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc(const a:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Dec(const a:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TScalar;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TScalar;const b:TVector2): TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TScalar;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TScalar;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TScalar;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TScalar;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative(const a:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Positive(const a:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
       private
        {$i PasVulkan.Math.TVector2.Swizzle.Definitions.inc}
       private
-       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef caninline}inline;{$endif}
-       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef caninline}inline;{$endif}
+       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Perpendicular:TVector2; {$ifdef caninline}inline;{$endif}
-       function Length:TScalar; {$ifdef caninline}inline;{$endif}
-       function SquaredLength:TScalar; {$ifdef caninline}inline;{$endif}
-       function Normalize:TVector2; {$ifdef caninline}inline;{$endif}
-       function DistanceTo(const b:TVector2):TScalar; {$ifdef caninline}inline;{$endif}
-       function Dot(const b:TVector2):TScalar; {$ifdef caninline}inline;{$endif}
-       function Cross(const b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       function Lerp(const b:TVector2;const t:TScalar):TVector2; {$ifdef caninline}inline;{$endif}
-       function Angle(const b,c:TVector2):TScalar; {$ifdef caninline}inline;{$endif}
-       function Rotate(const Angle:TScalar):TVector2; overload; {$ifdef caninline}inline;{$endif}
-       function Rotate(const Center:TVector2;const Angle:TScalar):TVector2; overload; {$ifdef caninline}inline;{$endif}
+       function Perpendicular:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Length:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function SquaredLength:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Normalize:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const b:TVector2):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Dot(const b:TVector2):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Cross(const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Lerp(const b:TVector2;const t:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Angle(const b,c:TVector2):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rotate(const Angle:TScalar):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rotate(const Center:TVector2;const Angle:TScalar):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
        property Components[const pIndex:TInt32]:TScalar read GetComponent write SetComponent; default;
        case TUInt8 of
         0:(RawComponents:array[0..1] of TScalar);
@@ -185,54 +185,54 @@ type PScalar=^TScalar;
        constructor Create(const pX:TScalar); overload;
        constructor Create(const pX,pY,pZ:TScalar); overload;
        constructor Create(const pXY:TVector2;const pZ:TScalar=0.0); overload;
-       class operator Implicit(const a:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Explicit(const a:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Equal(const a,b:TVector3):boolean; {$ifdef caninline}inline;{$endif}
-       class operator NotEqual(const a,b:TVector3):boolean; {$ifdef caninline}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Add(const a:TVector3;const b:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TVector3):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Subtract(const a:TVector3;const b:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TVector3):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector3;const b:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TVector3):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Divide(const a:TVector3;const b:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TVector3):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator IntDivide(const a:TVector3;const b:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TVector3):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a,b:TVector3):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TVector3;const b:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TVector3):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Positive(const a:TVector3):TVector3; {$ifdef caninline}inline;{$endif}
+       class operator Implicit(const a:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Positive(const a:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
       private
        {$i PasVulkan.Math.TVector3.Swizzle.Definitions.inc}
       private
-       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef caninline}inline;{$endif}
-       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef caninline}inline;{$endif}
+       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Flip:TVector3; {$ifdef caninline}inline;{$endif}
-       function Perpendicular:TVector3; {$ifdef caninline}inline;{$endif}
+       function Flip:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Perpendicular:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function OneUnitOrthogonalVector:TVector3;
-       function Length:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function SquaredLength:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Normalize:TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Abs:TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function AngleTo(const b:TVector3):TScalar; {$ifdef caninline}inline;{$endif}
-       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Lerp(const b:TVector3;const t:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
-       function Angle(const b,c:TVector3):TScalar; {$ifdef caninline}inline;{$endif}
-       function RotateX(const Angle:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
-       function RotateY(const Angle:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
-       function RotateZ(const Angle:TScalar):TVector3; {$ifdef caninline}inline;{$endif}
+       function Length:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function SquaredLength:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Normalize:TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Abs:TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function AngleTo(const b:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Lerp(const b:TVector3;const t:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Angle(const b,c:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateX(const Angle:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateY(const Angle:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateZ(const Angle:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function ProjectToBounds(const MinVector,MaxVector:TVector3):TScalar;
        property Components[const pIndex:TInt32]:TScalar read GetComponent write SetComponent; default;
        case TUInt8 of
@@ -251,54 +251,54 @@ type PScalar=^TScalar;
        constructor Create(const pX,pY,pZ,pW:TScalar); overload;
        constructor Create(const pXY:TVector2;const pZ:TScalar=0.0;const pW:TScalar=1.0); overload;
        constructor Create(const pXYZ:TVector3;const pW:TScalar=1.0); overload;
-       class operator Implicit(const a:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Explicit(const a:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Equal(const a,b:TVector4):boolean; {$ifdef caninline}inline;{$endif}
-       class operator NotEqual(const a,b:TVector4):boolean; {$ifdef caninline}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Add(const a:TVector4;const b:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TVector4):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Subtract(const a:TVector4;const b:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TVector4): TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector4;const b:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TVector4):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Divide(const a:TVector4;const b:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TVector4):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator IntDivide(const a:TVector4;const b:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TVector4):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a,b:TVector4):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TVector4;const b:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TVector4):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Positive(const a:TVector4):TVector4; {$ifdef caninline}inline;{$endif}
+       class operator Implicit(const a:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TScalar;const b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TScalar;const b:TVector4): TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TScalar;const b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TScalar;const b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TScalar;const b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TScalar;const b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Positive(const a:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
       private
        {$i PasVulkan.Math.TVector4.Swizzle.Definitions.inc}
       private
-       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef caninline}inline;{$endif}
-       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef caninline}inline;{$endif}
+       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Flip:TVector4; {$ifdef caninline}inline;{$endif}
-       function Perpendicular:TVector4; {$ifdef caninline}inline;{$endif}
-       function Length:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function SquaredLength:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Normalize:TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Abs:TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function AngleTo(const b:TVector4):TScalar; {$ifdef caninline}inline;{$endif}
-       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Lerp(const b:TVector4;const t:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       function Angle(const b,c:TVector4):TScalar; {$ifdef caninline}inline;{$endif}
-       function RotateX(const Angle:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       function RotateY(const Angle:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       function RotateZ(const Angle:TScalar):TVector4; {$ifdef caninline}inline;{$endif}
-       function Rotate(const Angle:TScalar;const Axis:TVector3):TVector4; {$ifdef caninline}inline;{$endif}
+       function Flip:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Perpendicular:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Length:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function SquaredLength:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Normalize:TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Abs:TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function AngleTo(const b:TVector4):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Lerp(const b:TVector4;const t:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Angle(const b,c:TVector4):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateX(const Angle:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateY(const Angle:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateZ(const Angle:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rotate(const Angle:TScalar;const Axis:TVector3):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function ProjectToBounds(const MinVector,MaxVector:TVector4):TScalar;
       public
        property Components[const pIndex:TInt32]:TScalar read GetComponent write SetComponent; default;
@@ -350,10 +350,10 @@ type PScalar=^TScalar;
        constructor Create(const pA,pB,pC:TVector3); overload;
        constructor Create(const pA,pB,pC:TVector4); overload;
        constructor Create(const Vector:TVector4); overload;
-       function ToVector:TVector4; {$ifdef caninline}inline;{$endif}
-       function Normalize:TPlane; {$ifdef caninline}inline;{$endif}
-       function DistanceTo(const Point:TVector3):TScalar; overload; {$ifdef caninline}inline;{$endif}
-       function DistanceTo(const Point:TVector4):TScalar; overload; {$ifdef caninline}inline;{$endif}
+       function ToVector:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Normalize:TPlane; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const Point:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const Point:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
        procedure ClipSegment(const p0,p1:TVector3;out Clipped:TVector3); overload;
        function ClipSegmentClosest(const p0,p1:TVector3;out Clipped0,Clipped1:TVector3):TInt32; overload;
        function ClipSegmentLine(var p0,p1:TVector3):boolean;
@@ -381,63 +381,63 @@ type PScalar=^TScalar;
        constructor CreateFromEuler(const Angles:TVector3); overload;
        constructor CreateFromNormalizedSphericalCoordinates(const NormalizedSphericalCoordinates:TNormalizedSphericalCoordinates);
        constructor CreateFromToRotation(const FromDirection,ToDirection:TVector3);
-       class operator Implicit(const a:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Explicit(const a:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Equal(const a,b:TQuaternion):boolean; {$ifdef caninline}inline;{$endif}
-       class operator NotEqual(const a,b:TQuaternion):boolean; {$ifdef caninline}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Add(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Subtract(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TQuaternion): TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector3;const b:TQuaternion):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector4;const b:TQuaternion):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Divide(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator IntDivide(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a,b:TQuaternion):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Positive(const a:TQuaternion):TQuaternion; {$ifdef caninline}inline;{$endif}
+       class operator Implicit(const a:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TScalar;const b:TQuaternion): TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TVector3;const b:TQuaternion):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TVector4;const b:TQuaternion):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Positive(const a:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef caninline}inline;{$endif}
-       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef caninline}inline;{$endif}
+       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function ToNormalizedSphericalCoordinates:TNormalizedSphericalCoordinates; {$ifdef caninline}inline;{$endif}
-       function ToEuler:TVector3; {$ifdef caninline}inline;{$endif}
-       function ToPitch:TScalar; {$ifdef caninline}inline;{$endif}
-       function ToYaw:TScalar; {$ifdef caninline}inline;{$endif}
-       function ToRoll:TScalar; {$ifdef caninline}inline;{$endif}
-       procedure ToAngleAxis(out Angle:TScalar;out Axis:TVector3); {$ifdef caninline}inline;{$endif}
-       function Generator:TVector3; {$ifdef caninline}inline;{$endif}
-       function Flip:TQuaternion; {$ifdef caninline}inline;{$endif}
-       function Perpendicular:TQuaternion; {$ifdef caninline}inline;{$endif}
-       function Conjugate:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Inverse:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Length:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function SquaredLength:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Normalize:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TQuaternion):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Abs:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TQuaternion):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Lerp(const b:TQuaternion;const t:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       function Nlerp(const b:TQuaternion;const t:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       function Slerp(const b:TQuaternion;const t:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       function RotateAroundAxis(const b:TQuaternion):TQuaternion; {$ifdef caninline}inline;{$endif}
-       function Integrate(const Omega:TVector3;const DeltaTime:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
-       function Spin(const Omega:TVector3;const DeltaTime:TScalar):TQuaternion; {$ifdef caninline}inline;{$endif}
+       function ToNormalizedSphericalCoordinates:TNormalizedSphericalCoordinates; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToEuler:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToPitch:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToYaw:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToRoll:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure ToAngleAxis(out Angle:TScalar;out Axis:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+       function Generator:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Flip:TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Perpendicular:TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Conjugate:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Inverse:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Length:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function SquaredLength:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Normalize:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TQuaternion):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Abs:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TQuaternion):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Lerp(const b:TQuaternion;const t:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TQuaternion;const t:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TQuaternion;const t:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateAroundAxis(const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Integrate(const Omega:TVector3;const DeltaTime:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Spin(const Omega:TVector3;const DeltaTime:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        property Components[const pIndex:TInt32]:TScalar read GetComponent write SetComponent; default;
        case TUInt8 of
         0:(RawComponents:array[0..3] of TScalar);
@@ -452,45 +452,45 @@ type PScalar=^TScalar;
        constructor Create(const pX:TScalar); overload;
        constructor Create(const pXX,pXY,pYX,pYY:TScalar); overload;
        constructor Create(const pX,pY:TVector2); overload;
-       class operator Implicit(const a:TScalar):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Explicit(const a:TScalar):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Equal(const a,b:TMatrix2x2):boolean; {$ifdef caninline}inline;{$endif}
-       class operator NotEqual(const a,b:TMatrix2x2):boolean; {$ifdef caninline}inline;{$endif}
-       class operator Inc(const a:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Dec(const a:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TMatrix2x2): TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TMatrix2x2;const b:TVector2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TVector2;const b:TMatrix2x2):TVector2; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Negative(const a:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       class operator Positive(const a:TMatrix2x2):TMatrix2x2; {$ifdef caninline}inline;{$endif}
+       class operator Implicit(const a:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TMatrix2x2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TMatrix2x2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc(const a:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Dec(const a:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TScalar;const b:TMatrix2x2): TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TMatrix2x2;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TVector2;const b:TMatrix2x2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative(const a:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Positive(const a:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       function GetComponent(const pIndexA,pIndexB:TInt32):TScalar; {$ifdef caninline}inline;{$endif}
-       procedure SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar); {$ifdef caninline}inline;{$endif}
-       function GetColumn(const pIndex:TInt32):TVector2; {$ifdef caninline}inline;{$endif}
-       procedure SetColumn(const pIndex:TInt32;const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-       function GetRow(const pIndex:TInt32):TVector2; {$ifdef caninline}inline;{$endif}
-       procedure SetRow(const pIndex:TInt32;const pValue:TVector2); {$ifdef caninline}inline;{$endif}
+       function GetComponent(const pIndexA,pIndexB:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetColumn(const pIndex:TInt32):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetColumn(const pIndex:TInt32;const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetRow(const pIndex:TInt32):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetRow(const pIndex:TInt32;const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Determinant:TScalar; {$ifdef caninline}inline;{$endif}
-       function Inverse:TMatrix2x2; {$ifdef caninline}inline;{$endif}
-       function Transpose:TMatrix2x2; {$ifdef caninline}inline;{$endif}
+       function Determinant:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Inverse:TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Transpose:TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
        property Components[const pIndexA,pIndexB:TInt32]:TScalar read GetComponent write SetComponent; default;
        property Columns[const pIndex:TInt32]:TVector2 read GetColumn write SetColumn;
        property Rows[const pIndex:TInt32]:TVector2 read GetRow write SetRow;
@@ -505,9 +505,9 @@ type PScalar=^TScalar;
        Scale:TVector3;
        Skew:TVector3; // XY XZ YZ
        Rotation:TQuaternion;
-       function Lerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function Nlerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function Slerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3; {$ifdef caninline}inline;{$endif}
+       function Lerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
      end;
 
      PMatrix3x3=^TMatrix3x3;
@@ -529,63 +529,63 @@ type PScalar=^TScalar;
        constructor CreateFromQuaternion(pQuaternion:TQuaternion);
        constructor CreateFromQTangent(pQTangent:TQuaternion);
        constructor CreateRecomposed(const DecomposedMatrix3x3:TDecomposedMatrix3x3);
-       class operator Implicit(const a:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Explicit(const a:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Equal(const a,b:TMatrix3x3):boolean; {$ifdef caninline}inline;{$endif}
-       class operator NotEqual(const a,b:TMatrix3x3):boolean; {$ifdef caninline}inline;{$endif}
-       class operator Inc(const a:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Dec(const a:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TMatrix3x3): TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TMatrix3x3;const b:TVector3):TVector3;  {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TVector3;const b:TMatrix3x3):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TMatrix3x3;const b:TVector4):TVector4;  {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TVector4;const b:TMatrix3x3):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TMatrix3x3;const b:TPlane):TPlane; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TPlane;const b:TMatrix3x3):TPlane; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Negative(const a:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       class operator Positive(const a:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
+       class operator Implicit(const a:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TMatrix3x3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TMatrix3x3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc(const a:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Dec(const a:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TScalar;const b:TMatrix3x3): TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TMatrix3x3;const b:TVector3):TVector3;  {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TVector3;const b:TMatrix3x3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TMatrix3x3;const b:TVector4):TVector4;  {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TVector4;const b:TMatrix3x3):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TMatrix3x3;const b:TPlane):TPlane; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TPlane;const b:TMatrix3x3):TPlane; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative(const a:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Positive(const a:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       function GetComponent(const pIndexA,pIndexB:TInt32):TScalar; {$ifdef caninline}inline;{$endif}
-       procedure SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar); {$ifdef caninline}inline;{$endif}
-       function GetColumn(const pIndex:TInt32):TVector3; {$ifdef caninline}inline;{$endif}
-       procedure SetColumn(const pIndex:TInt32;const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-       function GetRow(const pIndex:TInt32):TVector3; {$ifdef caninline}inline;{$endif}
-       procedure SetRow(const pIndex:TInt32;const pValue:TVector3); {$ifdef caninline}inline;{$endif}
+       function GetComponent(const pIndexA,pIndexB:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetColumn(const pIndex:TInt32):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetColumn(const pIndex:TInt32;const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetRow(const pIndex:TInt32):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetRow(const pIndex:TInt32;const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Determinant:TScalar; {$ifdef caninline}inline;{$endif}
-       function Inverse:TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function Transpose:TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function EulerAngles:TVector3; {$ifdef caninline}inline;{$endif}
-       function Normalize:TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function OrthoNormalize:TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function RobustOrthoNormalize(const Tolerance:TScalar=1e-3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
+       function Determinant:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Inverse:TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Transpose:TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function EulerAngles:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Normalize:TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function OrthoNormalize:TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function RobustOrthoNormalize(const Tolerance:TScalar=1e-3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function ToQuaternion:TQuaternion;
        function ToQTangent:TQuaternion;
-       function SimpleLerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function SimpleNlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function SimpleSlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function Lerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function Nlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function Slerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function MulInverse(const a:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-       function MulInverse(const a:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+       function SimpleLerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleNlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleSlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Lerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverse(const a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverse(const a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Decompose:TDecomposedMatrix3x3;
        property Components[const pIndexA,pIndexB:TInt32]:TScalar read GetComponent write SetComponent; default;
        property Columns[const pIndex:TInt32]:TVector3 read GetColumn write SetColumn;
@@ -606,9 +606,9 @@ type PScalar=^TScalar;
        Scale:TVector3;
        Skew:TVector3; // XY XZ YZ
        Rotation:TQuaternion;
-       function Lerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function Nlerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function Slerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4; {$ifdef caninline}inline;{$endif}
+       function Lerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
      end;
 
      PMatrix4x4=^TMatrix4x4;
@@ -654,74 +654,74 @@ type PScalar=^TScalar;
        constructor CreateConstructZ(const zAxis:TVector3);
        constructor CreateProjectionMatrixClip(const ProjectionMatrix:TMatrix4x4;const ClipPlane:TPlane);
        constructor CreateRecomposed(const DecomposedMatrix4x4:TDecomposedMatrix4x4);
-       class operator Implicit({$ifdef fpc}constref{$else}const{$endif} a:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Explicit({$ifdef fpc}constref{$else}const{$endif} a:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):boolean; {$ifdef caninline}inline;{$endif}
-       class operator NotEqual({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):boolean; {$ifdef caninline}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4): TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TVector3;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TVector4;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TPlane):TPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TPlane;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Positive(const a:TMatrix4x4):TMatrix4x4; {$ifdef caninline}inline;{$endif}
+       class operator Implicit({$ifdef fpc}constref{$else}const{$endif} a:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Explicit({$ifdef fpc}constref{$else}const{$endif} a:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4): TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TVector3;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TVector4;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TPlane):TPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TPlane;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Positive(const a:TMatrix4x4):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       function GetComponent(const pIndexA,pIndexB:TInt32):TScalar; {$ifdef caninline}inline;{$endif}
-       procedure SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar); {$ifdef caninline}inline;{$endif}
-       function GetColumn(const pIndex:TInt32):TVector4; {$ifdef caninline}inline;{$endif}
-       procedure SetColumn(const pIndex:TInt32;const pValue:TVector4); {$ifdef caninline}inline;{$endif}
-       function GetRow(const pIndex:TInt32):TVector4; {$ifdef caninline}inline;{$endif}
-       procedure SetRow(const pIndex:TInt32;const pValue:TVector4); {$ifdef caninline}inline;{$endif}
+       function GetComponent(const pIndexA,pIndexB:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetColumn(const pIndex:TInt32):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetColumn(const pIndex:TInt32;const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetRow(const pIndex:TInt32):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetRow(const pIndex:TInt32;const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Determinant:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function SimpleInverse:TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function Inverse:TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Transpose:TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function EulerAngles:TVector3; {$ifdef caninline}inline;{$endif}
-       function Normalize:TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function OrthoNormalize:TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function RobustOrthoNormalize(const Tolerance:TScalar=1e-3):TMatrix4x4; {$ifdef caninline}inline;{$endif}
+       function Determinant:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function SimpleInverse:TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Inverse:TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Transpose:TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function EulerAngles:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Normalize:TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function OrthoNormalize:TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function RobustOrthoNormalize(const Tolerance:TScalar=1e-3):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function ToQuaternion:TQuaternion;
        function ToQTangent:TQuaternion;
-       function ToMatrix3x3:TMatrix3x3; {$ifdef caninline}inline;{$endif}
-       function ToRotation:TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function SimpleLerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function SimpleNlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function SimpleSlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function Lerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function Nlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function Slerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-       function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
-       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
-       function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-       function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
-       function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-       function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
-       function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-       function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+       function ToMatrix3x3:TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToRotation:TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleLerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleNlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleSlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Lerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Decompose:TDecomposedMatrix4x4;
        property Components[const pIndexA,pIndexB:TInt32]:TScalar read GetComponent write SetComponent; default;
        property Columns[const pIndex:TInt32]:TVector4 read GetColumn write SetColumn;
@@ -740,36 +740,36 @@ type PScalar=^TScalar;
        constructor Create(const pQ0,PQ1:TQuaternion); overload;
        constructor CreateFromRotationTranslationScale(const pRotation:TQuaternion;const pTranslation:TVector3;const pScale:TScalar); overload;
        constructor CreateFromMatrix(const pMatrix:TMatrix4x4); overload;
-       class operator Implicit(const a:TMatrix4x4):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Explicit(const a:TMatrix4x4):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Implicit(const a:TDualQuaternion):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       class operator Explicit(const a:TDualQuaternion):TMatrix4x4; {$ifdef caninline}inline;{$endif}
-       class operator Equal(const a,b:TDualQuaternion):boolean; {$ifdef caninline}inline;{$endif}
-       class operator NotEqual(const a,b:TDualQuaternion):boolean; {$ifdef caninline}inline;{$endif}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector3;const b:TDualQuaternion):TVector3; {$ifdef caninline}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector4;const b:TDualQuaternion):TVector4; {$ifdef caninline}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Divide(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator IntDivide(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a,b:TDualQuaternion):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       class operator Positive(const a:TDualQuaternion):TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       function Flip:TDualQuaternion; {$ifdef caninline}inline;{$endif}
-       function Conjugate:TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Inverse:TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
-       function Normalize:TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Implicit(const a:TMatrix4x4):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TMatrix4x4):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Implicit(const a:TDualQuaternion):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TDualQuaternion):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TDualQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TDualQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TVector3;const b:TDualQuaternion):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TVector4;const b:TDualQuaternion):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Positive(const a:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Flip:TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Conjugate:TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Inverse:TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Normalize:TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        case TUInt8 of
         0:(RawQuaternions:array[0..1] of TQuaternion);
         1:(QuaternionR,QuaternionD:TQuaternion);
@@ -783,7 +783,7 @@ type PScalar=^TScalar;
        function SquaredDistanceTo(const p:TVector3):TScalar; overload;
        function SquaredDistanceTo(const p:TVector3;out Nearest:TVector3):TScalar; overload;
        procedure ClosestPointTo(const p:TVector3;out Time:TScalar;out ClosestPoint:TVector3);
-       function Transform(const Transform:TMatrix4x4):TSegment; {$ifdef caninline}inline;{$endif}
+       function Transform(const Transform:TMatrix4x4):TSegment; {$ifdef CAN_INLINE}inline;{$endif}
        procedure ClosestPoints(const SegmentB:TSegment;out TimeA:TScalar;out ClosestPointA:TVector3;out TimeB:TScalar;out ClosestPointB:TVector3);
        function Intersect(const SegmentB:TSegment;out TimeA,TimeB:TScalar;out IntersectionPoint:TVector3):boolean;
      end;
@@ -852,34 +852,34 @@ type PScalar=^TScalar;
       public
        constructor Create(const pMin,pMax:TVector3);
        constructor CreateFromOBB(const OBB:TOBB);
-       function Cost:TScalar; {$ifdef caninline}inline;{$endif}
-       function Volume:TScalar; {$ifdef caninline}inline;{$endif}
-       function Area:TScalar; {$ifdef caninline}inline;{$endif}
+       function Cost:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Volume:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Area:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Flip:TAABB;
-       function SquareMagnitude:TScalar; {$ifdef caninline}inline;{$endif}
-       function Resize(const f:TScalar):TAABB; {$ifdef caninline}inline;{$endif}
-       function Combine(const WithAABB:TAABB):TAABB; {$ifdef caninline}inline;{$endif}
-       function CombineVector3(v:TVector3):TAABB; {$ifdef caninline}inline;{$endif}
-       function DistanceTo(const ToAABB:TAABB):TScalar; {$ifdef caninline}inline;{$endif}
-       function Radius:TScalar; {$ifdef caninline}inline;{$endif}
-       function Compare(const WithAABB:TAABB):boolean; {$ifdef caninline}inline;{$endif}
-       function Intersect(const WithAABB:TAABB;Threshold:TScalar=EPSILON):boolean; overload; {$ifdef caninline}inline;{$endif}
-       function Contains(const AABB:TAABB):boolean; overload; {$ifdef caninline}inline;{$endif}
-       function Contains(const Vector:TVector3):boolean; overload; {$ifdef caninline}inline;{$endif}
-       function Touched(const Vector:TVector3;const Threshold:TScalar=1e-5):boolean; {$ifdef caninline}inline;{$endif}
-       function GetIntersection(const WithAABB:TAABB):TAABB; {$ifdef caninline}inline;{$endif}
-       function FastRayIntersection(const Origin,Direction:TVector3):boolean; {$ifdef caninline}inline;{$endif}
-       function RayIntersectionHitDistance(const Origin,Direction:TVector3;var HitDist:TScalar):boolean; {$ifdef caninline}inline;{$endif}
-       function RayIntersectionHitPoint(const Origin,Direction:TVector3;var HitPoint:TVector3):boolean; {$ifdef caninline}inline;{$endif}
-       function RayIntersection(const Origin,Direction:TVector3;var Time:TScalar):boolean; overload; {$ifdef caninline}inline;{$endif}
-       function LineIntersection(const StartPoint,EndPoint:TVector3):boolean; {$ifdef caninline}inline;{$endif}
+       function SquareMagnitude:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Resize(const f:TScalar):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function Combine(const WithAABB:TAABB):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function CombineVector3(v:TVector3):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const ToAABB:TAABB):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Radius:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Compare(const WithAABB:TAABB):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function Intersect(const WithAABB:TAABB;Threshold:TScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const AABB:TAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const Vector:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Touched(const Vector:TVector3;const Threshold:TScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetIntersection(const WithAABB:TAABB):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function FastRayIntersection(const Origin,Direction:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersectionHitDistance(const Origin,Direction:TVector3;var HitDist:TScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersectionHitPoint(const Origin,Direction:TVector3;var HitPoint:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersection(const Origin,Direction:TVector3;var Time:TScalar):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function LineIntersection(const StartPoint,EndPoint:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function TriangleIntersection(const Triangle:TTriangle):boolean;
-       function Transform(const Transform:TMatrix4x4):TAABB; {$ifdef caninline}inline;{$endif}
-       function MatrixMul(const Transform:TMatrix4x4):TAABB; {$ifdef caninline}inline;{$endif}
-       function ScissorRect(var Scissor:TClipRect;const mvp:TMatrix4x4;const vp:TClipRect;zcull:boolean):boolean; overload; {$ifdef caninline}inline;{$endif}
-       function ScissorRect(var Scissor:TFloatClipRect;const mvp:TMatrix4x4;const vp:TFloatClipRect;zcull:boolean):boolean; overload; {$ifdef caninline}inline;{$endif}
+       function Transform(const Transform:TMatrix4x4):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function MatrixMul(const Transform:TMatrix4x4):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function ScissorRect(var Scissor:TClipRect;const mvp:TMatrix4x4;const vp:TClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function ScissorRect(var Scissor:TFloatClipRect;const mvp:TMatrix4x4;const vp:TFloatClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function MovingTest(const aAABBTo,bAABBFrom,bAABBTo:TAABB;var t:TScalar):boolean;
-       function SweepTest(const bAABB:TAABB;const aV,bV:TVector3;var FirstTime,LastTime:TScalar):boolean; {$ifdef caninline}inline;{$endif}
+       function SweepTest(const bAABB:TAABB;const aV,bV:TVector3;var FirstTime,LastTime:TScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        case boolean of
         false:(
          Min,Max:TVector3;
@@ -902,18 +902,18 @@ type PScalar=^TScalar;
        constructor CreateFromFrustum(const zNear,zFar,FOV,AspectRatio:TScalar;const Position,Direction:TVector3);
        function ToAABB(const pScale:TScalar=1.0):TAABB;
        function Cull(const p:array of TPlane):boolean;
-       function Contains(const b:TSphere):boolean; overload; {$ifdef caninline}inline;{$endif}
-       function Contains(const v:TVector3):boolean; overload; {$ifdef caninline}inline;{$endif}
-       function DistanceTo(const b:TSphere):TScalar; overload; {$ifdef caninline}inline;{$endif}
-       function DistanceTo(const b:TVector3):TScalar; overload; {$ifdef caninline}inline;{$endif}
-       function Intersect(const b:TSphere):boolean; overload; {$ifdef caninline}inline;{$endif}
-       function Intersect(const b:TAABB):boolean; overload; {$ifdef caninline}inline;{$endif}
-       function RayIntersection(const Origin,Direction:TVector3):boolean; {$ifdef caninline}inline;{$endif}
-       function Extends(const WithSphere:TSphere):TSphere; {$ifdef caninline}inline;{$endif}
-       function Transform(const Transform:TMatrix4x4):TSphere; {$ifdef caninline}inline;{$endif}
+       function Contains(const b:TSphere):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const v:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const b:TSphere):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const b:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Intersect(const b:TSphere):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Intersect(const b:TAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersection(const Origin,Direction:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function Extends(const WithSphere:TSphere):TSphere; {$ifdef CAN_INLINE}inline;{$endif}
+       function Transform(const Transform:TMatrix4x4):TSphere; {$ifdef CAN_INLINE}inline;{$endif}
        function TriangleIntersection(const Triangle:TTriangle;out Position,Normal:TVector3;out Depth:TScalar):boolean; overload;
        function TriangleIntersection(const SegmentTriangle:TSegmentTriangle;const TriangleNormal:TVector3;out Position,Normal:TVector3;out Depth:TScalar):boolean; overload;
-       function SweptIntersection(const SphereB:TSphere;const VelocityA,VelocityB:TVector3;out TimeFirst,TimeLast:TScalar):boolean; {$ifdef caninline}inline;{$endif}
+       function SweptIntersection(const SphereB:TSphere;const VelocityA,VelocityB:TVector3;out TimeFirst,TimeLast:TScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
      end;
 
      PSpheres=^TSpheres;
@@ -1173,114 +1173,114 @@ const Vector2Origin:TVector2=(x:0.0;y:0.0);
 
       QuaternionIdentity:TQuaternion=(x:0.0;y:0.0;z:0.0;w:1.0);
 
-function IntLog2(x:TUInt32):TUInt32; {$ifdef fpc}{$ifdef caninline}inline;{$endif}{$endif}
+function IntLog2(x:TUInt32):TUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
-function Modulo(x,y:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
-function ModuloPos(x,y:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
-function IEEERemainder(x,y:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
-function Modulus(x,y:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function Modulo(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ModuloPos(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function IEEERemainder(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function Modulus(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Determinant4x4(const v0,v1,v2,v3:TVector4):TScalar; {$ifdef caninline}inline;{$endif}
-function SolveQuadraticRoots(const a,b,c:TScalar;out t1,t2:TScalar):boolean; {$ifdef caninline}inline;{$endif}
-function LinearPolynomialRoot(const a,b:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
-function QuadraticPolynomialRoot(const a,b,c:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function Determinant4x4(const v0,v1,v2,v3:TVector4):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function SolveQuadraticRoots(const a,b,c:TScalar;out t1,t2:TScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearPolynomialRoot(const a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function QuadraticPolynomialRoot(const a,b,c:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function CubicPolynomialRoot(const a,b,c,d:TScalar):TScalar;
 
-function FloatLerp(const v1,v2,w:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function FloatLerp(const v1,v2,w:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Cross(const a,b:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function Cross(const a,b:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function Cross(const a,b:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Cross(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Cross(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Cross(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Dot(const a,b:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Dot(const a,b:TVector2):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Dot(const a,b:TVector3):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Dot(const a,b:TVector4):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Dot(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Dot(const a,b:TVector2):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Dot(const a,b:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Dot(const a,b:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Len(const a:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Len(const a:TVector2):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Len(const a:TVector3):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Len(const a:TVector4):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Len(const a:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Len(const a:TVector2):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Len(const a:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Len(const a:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Normalize(const a:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Normalize(const a:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function Normalize(const a:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function Normalize(const a:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Normalize(const a:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Normalize(const a:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Normalize(const a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Normalize(const a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Minimum(const a,b:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Minimum(const a,b:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function Minimum(const a,b:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function Minimum(const a,b:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Minimum(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Minimum(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Minimum(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Minimum(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Maximum(const a,b:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Maximum(const a,b:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function Maximum(const a,b:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function Maximum(const a,b:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Maximum(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Maximum(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Maximum(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Maximum(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function FaceForward(const N,I:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function FaceForward(const N,I:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function FaceForward(const N,I:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function FaceForward(const N,I:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function FaceForward(const N,I:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function FaceForward(const N,I,Nref:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function FaceForward(const N,I,Nref:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function FaceForward(const N,I,Nref:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function FaceForward(const N,I,Nref:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function FaceForward(const N,I,Nref:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I,Nref:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I,Nref:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I,Nref:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Reflect(const I,N:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Reflect(const I,N:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function Reflect(const I,N:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function Reflect(const I,N:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Reflect(const I,N:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Reflect(const I,N:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Reflect(const I,N:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Reflect(const I,N:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Refract(const I,N:TScalar;const Eta:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Refract(const I,N:TVector2;const Eta:TScalar):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function Refract(const I,N:TVector3;const Eta:TScalar):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function Refract(const I,N:TVector4;const Eta:TScalar):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Refract(const I,N:TScalar;const Eta:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Refract(const I,N:TVector2;const Eta:TScalar):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Refract(const I,N:TVector3;const Eta:TScalar):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Refract(const I,N:TVector4;const Eta:TScalar):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Clamp(const Value,MinValue,MaxValue:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Clamp(const Value,MinValue,MaxValue:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function Clamp(const Value,MinValue,MaxValue:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function Clamp(const Value,MinValue,MaxValue:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Mix(const a,b,t:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Mix(const a,b,t:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function Mix(const a,b,t:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function Mix(const a,b,t:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Mix(const a,b,t:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Mix(const a,b,t:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Mix(const a,b,t:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Mix(const a,b,t:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Step(const Edge,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function Step(const Edge,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function Step(const Edge,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function Step(const Edge,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Step(const Edge,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Step(const Edge,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Step(const Edge,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Step(const Edge,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function NearestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function NearestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function NearestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function NearestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function LinearStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function LinearStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function LinearStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function LinearStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function SmoothStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function SmoothStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function SmoothStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function SmoothStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function SmootherStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function SmootherStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function SmootherStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function SmootherStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function SmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function SmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function SmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function SmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function SuperSmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
 procedure DoCalculateInterval(const Vertices:PVector3s;const Count:TInt32;const Axis:TVector3;out OutMin,OutMax:TScalar);
 function DoSpanIntersect(const Vertices1:PVector3s;const Count1:TInt32;const Vertices2:PVector3s;const Count2:TInt32;const AxisTest:TVector3;out AxisPenetration:TVector3):TScalar;
@@ -1293,44 +1293,44 @@ procedure ClosestLineSegmentPoints(const a0,a1,b0,b1:TVector3;var cp0,cp1:TVecto
 function LineSegmentIntersection(const a0,a1,b0,b1:TVector3;const p:PVector3=nil):boolean;
 function LineLineIntersection(const a0,a1,b0,b1:TVector3;const pa:PVector3=nil;const pb:PVector3=nil;const ta:PScalar=nil;const tb:PScalar=nil):boolean;
 
-function IsPointsSameSide(const p0,p1,Origin,Direction:TVector3):boolean; overload; {$ifdef caninline}inline;{$endif}
+function IsPointsSameSide(const p0,p1,Origin,Direction:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function PointInTriangle(const p0,p1,p2,Normal,p:TVector3):boolean; overload; {$ifdef caninline}inline;{$endif}
-function PointInTriangle(const p0,p1,p2,p:TVector3):boolean; overload; {$ifdef caninline}inline;{$endif}
+function PointInTriangle(const p0,p1,p2,Normal,p:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function PointInTriangle(const p0,p1,p2,p:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function GetOverlap(const MinA,MaxA,MinB,MaxB:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function GetOverlap(const MinA,MaxA,MinB,MaxB:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
 function OldTriangleTriangleIntersection(const a0,a1,a2,b0,b1,b2:TVector3):boolean;
 function TriangleTriangleIntersection(const v0,v1,v2,u0,u1,u2:TVector3):boolean;
 
 function ClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TVector3;const ClosestPointOnLine:PVector3=nil;const Time:PScalar=nil):TScalar;
-function ClosestPointToAABB(const AABB:TAABB;const Point:TVector3;const ClosestPointOnAABB:PVector3=nil):TScalar; {$ifdef caninline}inline;{$endif}
-function ClosestPointToOBB(const OBB:TOBB;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef caninline}inline;{$endif}
-function ClosestPointToSphere(const Sphere:TSphere;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef caninline}inline;{$endif}
-function ClosestPointToCapsule(const Capsule:TCapsule;const Point:TVector3;out ClosestPoint:TVector3;const Time:PScalar=nil):TScalar; {$ifdef caninline}inline;{$endif}
+function ClosestPointToAABB(const AABB:TAABB;const Point:TVector3;const ClosestPointOnAABB:PVector3=nil):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToOBB(const OBB:TOBB;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToSphere(const Sphere:TSphere;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToCapsule(const Capsule:TCapsule;const Point:TVector3;out ClosestPoint:TVector3;const Time:PScalar=nil):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function ClosestPointToTriangle(const a,b,c,p:TVector3;out ClosestPoint:TVector3):TScalar;
 
-function SquaredDistanceFromPointToAABB(const AABB:TAABB;const Point:TVector3):TScalar; {$ifdef caninline}inline;{$endif}
+function SquaredDistanceFromPointToAABB(const AABB:TAABB;const Point:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
 function SquaredDistanceFromPointToTriangle(const p,a,b,c:TVector3):TScalar;
 
-function IsParallel(const a,b:TVector3;const Tolerance:TScalar=1e-5):boolean; {$ifdef caninline}inline;{$endif}
+function IsParallel(const a,b:TVector3;const Tolerance:TScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
 
 function Vector3ToAnglesLDX(v:TVector3):TVector3;
 
 procedure AnglesToVector3LDX(const Angles:TVector3;var ForwardVector,RightVector,UpVector:TVector3);
 
-function UnsignedAngle(const v0,v1:TVector3):TScalar; {$ifdef caninline}inline;{$endif}
+function UnsignedAngle(const v0,v1:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function AngleDegClamp(a:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
-function AngleDegDiff(a,b:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function AngleDegClamp(a:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleDegDiff(a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function AngleClamp(a:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
-function AngleDiff(a,b:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
-function AngleLerp(a,b,x:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function AngleClamp(a:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleDiff(a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleLerp(a,b,x:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function InertiaTensorTransform(const Inertia,Transform:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
-function InertiaTensorParallelAxisTheorem(const Center:TVector3;const Mass:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
+function InertiaTensorTransform(const Inertia,Transform:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+function InertiaTensorParallelAxisTheorem(const Center:TVector3;const Mass:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
 
 procedure OrthoNormalize(var Tangent,Bitangent,Normal:TVector3);
 
@@ -1344,14 +1344,14 @@ function Float32ToFloat11(const pValue:TFloat):TUInt32;
 function Float32ToFloat10(const pValue:TFloat):TUInt32;
 
 function ConvertRGB32FToRGB9E5(r,g,b:TFloat):TUInt32;
-function ConvertRGB32FToR11FG11FB10F(const r,g,b:TFloat):TUInt32; {$ifdef caninline}inline;{$endif}
+function ConvertRGB32FToR11FG11FB10F(const r,g,b:TFloat):TUInt32; {$ifdef CAN_INLINE}inline;{$endif}
 
 function PackTangentSpace(const Tangent,Bitangent,Normal:TVector3):TPackedTangentSpace;
 procedure UnpackTangentSpace(var PackedTangentSpace:TPackedTangentSpace;var Tangent,Bitangent,Normal:TVector3);
 
 implementation
 
-function IntLog2(x:TUInt32):TUInt32; {$ifdef fpc}{$ifdef caninline}inline;{$endif}
+function IntLog2(x:TUInt32):TUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}
 begin
  if x<>0 then begin
   result:=BSRWord(x);
@@ -1397,12 +1397,12 @@ end;
 {$endif}
 {$endif}
 
-function Modulo(x,y:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function Modulo(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=x-(floor(x/y)*y);
 end;
 
-function ModuloPos(x,y:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function ModuloPos(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if y>0.0 then begin
   result:=Modulo(x,y);
@@ -1417,17 +1417,17 @@ begin
  end;
 end;
 
-function IEEERemainder(x,y:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function IEEERemainder(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=x-(round(x/y)*y);
 end;
 
-function Modulus(x,y:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function Modulus(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(abs(x)-(abs(y)*(floor(abs(x)/abs(y)))))*sign(x);
 end;
 
-function Determinant4x4(const v0,v1,v2,v3:TVector4):TScalar; {$ifdef caninline}inline;{$endif}
+function Determinant4x4(const v0,v1,v2,v3:TVector4):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(v0.w*v1.z*v2.y*v3.x)-(v0.z*v1.w*v2.y*v3.x)-
          (v0.w*v1.y*v2.z*v3.x)+(v0.y*v1.w*v2.z*v3.x)+
@@ -1443,7 +1443,7 @@ begin
          (v0.y*v1.x*v2.z*v3.w)+(v0.x*v1.y*v2.z*v3.w);
 end;
 
-function SolveQuadraticRoots(const a,b,c:TScalar;out t1,t2:TScalar):boolean; {$ifdef caninline}inline;{$endif}
+function SolveQuadraticRoots(const a,b,c:TScalar;out t1,t2:TScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
 var d,InverseDenominator:TScalar;
 begin
  result:=false;
@@ -1462,7 +1462,7 @@ begin
  end;
 end;
 
-function LinearPolynomialRoot(const a,b:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function LinearPolynomialRoot(const a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if abs(a)>EPSILON then begin
   result:=-(b/a);
@@ -1471,7 +1471,7 @@ begin
  end;
 end;
 
-function QuadraticPolynomialRoot(const a,b,c:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function QuadraticPolynomialRoot(const a,b,c:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 var d,InverseDenominator,t0,t1:TScalar;
 begin
  if abs(a)>EPSILON then begin
@@ -1619,7 +1619,7 @@ begin
  end;
 end;
 
-function FloatLerp(const v1,v2,w:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function FloatLerp(const v1,v2,w:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if w<0.0 then begin
   result:=v1;
@@ -3487,7 +3487,7 @@ begin
 end;
 {$ifend}
 
-function TVector4.Dot({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+function TVector4.Dot({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -4952,7 +4952,7 @@ begin
 end;
 {$ifend}
 
-function TQuaternion.Dot({$ifdef fpc}constref{$else}const{$endif} b:TQuaternion):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+function TQuaternion.Dot({$ifdef fpc}constref{$else}const{$endif} b:TQuaternion):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -12040,7 +12040,7 @@ begin
 end;
 
 function TAABB.TriangleIntersection(const Triangle:TTriangle):boolean;
- function FindMin(const a,b,c:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+ function FindMin(const a,b,c:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
  begin
   result:=a;
   if result>b then begin
@@ -12050,7 +12050,7 @@ function TAABB.TriangleIntersection(const Triangle:TTriangle):boolean;
    result:=c;
   end;
  end;
- function FindMax(const a,b,c:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+ function FindMax(const a,b,c:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
  begin
   result:=a;
   if result<b then begin
@@ -12060,7 +12060,7 @@ function TAABB.TriangleIntersection(const Triangle:TTriangle):boolean;
    result:=c;
   end;
  end;
- function PlaneBoxOverlap(const Normal:TVector3;d:TFloat;MaxBox:TVector3):boolean; {$ifdef caninline}inline;{$endif}
+ function PlaneBoxOverlap(const Normal:TVector3;d:TFloat;MaxBox:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
  var vmin,vmax:TVector3;
  begin
   if Normal.x>0 then begin
@@ -12800,120 +12800,120 @@ begin
  result.z:=Radius*cos(Theta);
 end;
 
-function Cross(const a,b:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function Cross(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Cross(b);
 end;
 
-function Cross(const a,b:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function Cross(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Cross(b);
 end;
 
-function Cross(const a,b:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Cross(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Cross(b);
 end;
 
-function Dot(const a,b:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Dot(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a*b;
 end;
 
-function Dot(const a,b:TVector2):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Dot(const a,b:TVector2):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Dot(b);
 end;
 
-function Dot(const a,b:TVector3):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Dot(const a,b:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Dot(b);
 end;
 
-function Dot(const a,b:TVector4):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Dot(const a,b:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Dot(b);
 end;
 
-function Distance(const a,b:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Distance(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=abs(a-b);
 end;
 
-function Distance(const a,b:TVector2):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Distance(const a,b:TVector2):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.DistanceTo(b);
 end;
 
-function Distance(const a,b:TVector3):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Distance(const a,b:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.DistanceTo(b);
 end;
 
-function Distance(const a,b:TVector4):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Distance(const a,b:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.DistanceTo(b);
 end;
 
-function Len(const a:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Len(const a:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=abs(a);
 end;
 
-function Len(const a:TVector2):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Len(const a:TVector2):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Length;
 end;
 
-function Len(const a:TVector3):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Len(const a:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Length;
 end;
 
-function Len(const a:TVector4):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Len(const a:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Length;
 end;
 
-function Normalize(const a:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Normalize(const a:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a;
 end;
 
-function Normalize(const a:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function Normalize(const a:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Normalize;
 end;
 
-function Normalize(const a:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function Normalize(const a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Normalize;
 end;
 
-function Normalize(const a:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Normalize(const a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Normalize;
 end;
 
-function Minimum(const a,b:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Minimum(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=Min(a,b);
 end;
 
-function Minimum(const a,b:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function Minimum(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(a.x,b.x);
  result.y:=Min(a.y,b.y);
 end;
 
-function Minimum(const a,b:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function Minimum(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(a.x,b.x);
  result.y:=Min(a.y,b.y);
  result.z:=Min(a.z,b.z);
 end;
 
-function Minimum(const a,b:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Minimum(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(a.x,b.x);
  result.y:=Min(a.y,b.y);
@@ -12921,25 +12921,25 @@ begin
  result.w:=Min(a.w,b.w);
 end;
 
-function Maximum(const a,b:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Maximum(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=Max(a,b);
 end;
 
-function Maximum(const a,b:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function Maximum(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Max(a.x,b.x);
  result.y:=Max(a.y,b.y);
 end;
 
-function Maximum(const a,b:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function Maximum(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Max(a.x,b.x);
  result.y:=Max(a.y,b.y);
  result.z:=Max(a.z,b.z);
 end;
 
-function Maximum(const a,b:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Maximum(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Max(a.x,b.x);
  result.y:=Max(a.y,b.y);
@@ -12947,7 +12947,7 @@ begin
  result.w:=Max(a.w,b.w);
 end;
 
-function FaceForward(const N,I:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function FaceForward(const N,I:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if (N*I)>0.0 then begin
   result:=-N;
@@ -12956,7 +12956,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function FaceForward(const N,I:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if N.Dot(I)>0.0 then begin
   result:=-N;
@@ -12965,7 +12965,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function FaceForward(const N,I:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if N.Dot(I)>0.0 then begin
   result:=-N;
@@ -12974,7 +12974,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function FaceForward(const N,I:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if N.Dot(I)>0.0 then begin
   result:=-N;
@@ -12983,7 +12983,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I,Nref:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function FaceForward(const N,I,Nref:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if (I*Nref)>0.0 then begin
   result:=-N;
@@ -12992,7 +12992,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I,Nref:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function FaceForward(const N,I,Nref:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if I.Dot(Nref)>0.0 then begin
   result:=-N;
@@ -13001,7 +13001,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I,Nref:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function FaceForward(const N,I,Nref:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if I.Dot(Nref)>0.0 then begin
   result:=-N;
@@ -13010,7 +13010,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I,Nref:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function FaceForward(const N,I,Nref:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if I.Dot(Nref)>0.0 then begin
   result:=-N;
@@ -13019,27 +13019,27 @@ begin
  end;
 end;
 
-function Reflect(const I,N:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Reflect(const I,N:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=I-((2.0*(N*I))*N);
 end;
 
-function Reflect(const I,N:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function Reflect(const I,N:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=I-((2.0*N.Dot(I))*N);
 end;
 
-function Reflect(const I,N:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function Reflect(const I,N:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=I-((2.0*N.Dot(I))*N);
 end;
 
-function Reflect(const I,N:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Reflect(const I,N:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=I-((2.0*N.Dot(I))*N);
 end;
 
-function Refract(const I,N:TScalar;const Eta:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Refract(const I,N:TScalar;const Eta:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 var NdotI,k:TScalar;
 begin
  NdotI:=N*I;
@@ -13051,7 +13051,7 @@ begin
  end;
 end;
 
-function Refract(const I,N:TVector2;const Eta:TScalar):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function Refract(const I,N:TVector2;const Eta:TScalar):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 var NdotI,k:TScalar;
 begin
  NdotI:=N.Dot(I);
@@ -13063,7 +13063,7 @@ begin
  end;
 end;
 
-function Refract(const I,N:TVector3;const Eta:TScalar):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function Refract(const I,N:TVector3;const Eta:TScalar):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 var NdotI,k:TScalar;
 begin
  NdotI:=N.Dot(I);
@@ -13075,7 +13075,7 @@ begin
  end;
 end;
 
-function Refract(const I,N:TVector4;const Eta:TScalar):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Refract(const I,N:TVector4;const Eta:TScalar):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 var NdotI,k:TScalar;
 begin
  NdotI:=N.Dot(I);
@@ -13087,25 +13087,25 @@ begin
  end;
 end;
 
-function Clamp(const Value,MinValue,MaxValue:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=Min(Max(Value,MinValue),MaxValue);
 end;
 
-function Clamp(const Value,MinValue,MaxValue:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(Max(Value.x,MinValue.x),MaxValue.x);
  result.y:=Min(Max(Value.y,MinValue.y),MaxValue.y);
 end;
 
-function Clamp(const Value,MinValue,MaxValue:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(Max(Value.x,MinValue.x),MaxValue.x);
  result.y:=Min(Max(Value.y,MinValue.y),MaxValue.y);
  result.z:=Min(Max(Value.z,MinValue.z),MaxValue.z);
 end;
 
-function Clamp(const Value,MinValue,MaxValue:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(Max(Value.x,MinValue.x),MaxValue.x);
  result.y:=Min(Max(Value.y,MinValue.y),MaxValue.y);
@@ -13113,7 +13113,7 @@ begin
  result.w:=Min(Max(Value.w,MinValue.w),MaxValue.w);
 end;
 
-function Mix(const a,b,t:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Mix(const a,b,t:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if t<=0.0 then begin
   result:=a;
@@ -13124,20 +13124,20 @@ begin
  end;
 end;
 
-function Mix(const a,b,t:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function Mix(const a,b,t:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Mix(a.x,b.x,t.x);
  result.y:=Mix(a.y,b.y,t.y);
 end;
 
-function Mix(const a,b,t:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function Mix(const a,b,t:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Mix(a.x,b.x,t.x);
  result.y:=Mix(a.y,b.y,t.y);
  result.z:=Mix(a.z,b.z,t.z);
 end;
 
-function Mix(const a,b,t:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Mix(const a,b,t:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Mix(a.x,b.x,t.x);
  result.y:=Mix(a.y,b.y,t.y);
@@ -13145,7 +13145,7 @@ begin
  result.w:=Mix(a.w,b.w,t.w);
 end;
 
-function Step(const Edge,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function Step(const Edge,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if Value<Edge then begin
   result:=0.0;
@@ -13154,20 +13154,20 @@ begin
  end;
 end;
 
-function Step(const Edge,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function Step(const Edge,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Step(Edge.x,Value.x);
  result.y:=Step(Edge.y,Value.y);
 end;
 
-function Step(const Edge,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function Step(const Edge,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Step(Edge.x,Value.x);
  result.y:=Step(Edge.y,Value.y);
  result.z:=Step(Edge.z,Value.z);
 end;
 
-function Step(const Edge,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function Step(const Edge,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Step(Edge.x,Value.x);
  result.y:=Step(Edge.y,Value.y);
@@ -13175,7 +13175,7 @@ begin
  result.w:=Step(Edge.w,Value.w);
 end;
 
-function NearestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<0.5 then begin
@@ -13185,20 +13185,20 @@ begin
  end;
 end;
 
-function NearestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=NearestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=NearestStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function NearestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=NearestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=NearestStep(Edge0.y,Edge1.y,Value.y);
  result.z:=NearestStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function NearestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=NearestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=NearestStep(Edge0.y,Edge1.y,Value.y);
@@ -13206,7 +13206,7 @@ begin
  result.w:=NearestStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-function LinearStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<=0.0 then begin
@@ -13216,20 +13216,20 @@ begin
  end;
 end;
 
-function LinearStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=LinearStep(Edge0.x,Edge1.x,Value.x);
  result.y:=LinearStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function LinearStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=LinearStep(Edge0.x,Edge1.x,Value.x);
  result.y:=LinearStep(Edge0.y,Edge1.y,Value.y);
  result.z:=LinearStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function LinearStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=LinearStep(Edge0.x,Edge1.x,Value.x);
  result.y:=LinearStep(Edge0.y,Edge1.y,Value.y);
@@ -13237,7 +13237,7 @@ begin
  result.w:=LinearStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-function SmoothStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<=0.0 then begin
@@ -13249,20 +13249,20 @@ begin
  end;
 end;
 
-function SmoothStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function SmoothStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothStep(Edge0.y,Edge1.y,Value.y);
  result.z:=SmoothStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function SmoothStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothStep(Edge0.y,Edge1.y,Value.y);
@@ -13270,7 +13270,7 @@ begin
  result.w:=SmoothStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-function SmootherStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<=0.0 then begin
@@ -13282,20 +13282,20 @@ begin
  end;
 end;
 
-function SmootherStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmootherStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmootherStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function SmootherStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmootherStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmootherStep(Edge0.y,Edge1.y,Value.y);
  result.z:=SmootherStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function SmootherStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmootherStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmootherStep(Edge0.y,Edge1.y,Value.y);
@@ -13303,7 +13303,7 @@ begin
  result.w:=SmootherStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-function SmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<=0.0 then begin
@@ -13315,20 +13315,20 @@ begin
  end;
 end;
 
-function SmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothestStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function SmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothestStep(Edge0.y,Edge1.y,Value.y);
  result.z:=SmoothestStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function SmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothestStep(Edge0.y,Edge1.y,Value.y);
@@ -13336,7 +13336,7 @@ begin
  result.w:=SmoothestStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-function SuperSmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef caninline}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<=0.0 then begin
@@ -13348,20 +13348,20 @@ begin
  end;
 end;
 
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef caninline}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SuperSmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SuperSmoothestStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef caninline}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SuperSmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SuperSmoothestStep(Edge0.y,Edge1.y,Value.y);
  result.z:=SuperSmoothestStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef caninline}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SuperSmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SuperSmoothestStep(Edge0.y,Edge1.y,Value.y);
@@ -13741,12 +13741,12 @@ begin
  result:=true;
 end;
 
-function IsPointsSameSide(const p0,p1,Origin,Direction:TVector3):boolean; overload; {$ifdef caninline}inline;{$endif}
+function IsPointsSameSide(const p0,p1,Origin,Direction:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=Direction.Cross(p0-Origin).Dot(Direction.Cross(p1-Origin))>=0.0;
 end;
 
-function PointInTriangle(const p0,p1,p2,Normal,p:TVector3):boolean; overload; {$ifdef caninline}inline;{$endif}
+function PointInTriangle(const p0,p1,p2,Normal,p:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
 var r0,r1,r2:TScalar;
 begin
  r0:=(p1-p0).Cross(Normal).Dot(p-p0);
@@ -13755,14 +13755,14 @@ begin
  result:=((r0>0.0) and (r1>0.0) and (r2>0.0)) or ((r0<=0.0) and (r1<=0.0) and (r2<=0.0));
 end;
 
-function PointInTriangle(const p0,p1,p2,p:TVector3):boolean; overload; {$ifdef caninline}inline;{$endif}
+function PointInTriangle(const p0,p1,p2,p:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=IsPointsSameSide(p,p0,p1,p2-p1) and
          IsPointsSameSide(p,p1,p0,p2-p0) and
          IsPointsSameSide(p,p2,p0,p1-p0);
 end;
 
-function GetOverlap(const MinA,MaxA,MinB,MaxB:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function GetOverlap(const MinA,MaxA,MinB,MaxB:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 var Mins,Maxs:TScalar;
 begin
  if (MinA>MaxB) or (MaxA<MinB) then begin
@@ -13869,7 +13869,7 @@ end;
 
 function TriangleTriangleIntersection(const v0,v1,v2,u0,u1,u2:TVector3):boolean;
 const EPSILON=1e-6;
- procedure SORT(var a,b:TScalar); {$ifdef caninline}inline;{$endif}
+ procedure SORT(var a,b:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
  var c:TScalar;
  begin
   if a>b then begin
@@ -13878,12 +13878,12 @@ const EPSILON=1e-6;
    b:=c;
   end;
  end;
- procedure ISECT(const VV0,VV1,VV2,D0,D1,D2:TScalar;var isect0,isect1:TScalar); {$ifdef caninline}inline;{$endif}
+ procedure ISECT(const VV0,VV1,VV2,D0,D1,D2:TScalar;var isect0,isect1:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
  begin
   isect0:=VV0+(((VV1-VV0)*D0)/(D0-D1));
   isect1:=VV0+(((VV2-VV0)*D0)/(D0-D2));
  end;
- function EDGE_EDGE_TEST(const v0,u0,u1:TVector3;const Ax,Ay:TScalar;const i0,i1:TInt32):boolean; {$ifdef caninline}inline;{$endif}
+ function EDGE_EDGE_TEST(const v0,u0,u1:TVector3;const Ax,Ay:TScalar;const i0,i1:TInt32):boolean; {$ifdef CAN_INLINE}inline;{$endif}
  var Bx,By,Cx,Cy,e,f,d:TScalar;
  begin
   result:=false;
@@ -14136,7 +14136,7 @@ begin
  result:=Point.DistanceTo(ClosestPoint);
 end;
 
-function ClosestPointToAABB(const AABB:TAABB;const Point:TVector3;const ClosestPointOnAABB:PVector3=nil):TScalar; {$ifdef caninline}inline;{$endif}
+function ClosestPointToAABB(const AABB:TAABB;const Point:TVector3;const ClosestPointOnAABB:PVector3=nil):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 var ClosestPoint:TVector3;
 begin
  ClosestPoint.x:=Min(Max(Point.x,AABB.Min.x),AABB.Max.x);
@@ -14148,7 +14148,7 @@ begin
  result:=ClosestPoint.DistanceTo(Point);
 end;
 
-function ClosestPointToOBB(const OBB:TOBB;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef caninline}inline;{$endif}
+function ClosestPointToOBB(const OBB:TOBB;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 var DistanceVector:TVector3;
 begin
  DistanceVector:=Point-OBB.Center;
@@ -14159,13 +14159,13 @@ begin
  result:=ClosestPoint.DistanceTo(Point);
 end;
 
-function ClosestPointToSphere(const Sphere:TSphere;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef caninline}inline;{$endif}
+function ClosestPointToSphere(const Sphere:TSphere;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=Max(0.0,Sphere.Center.DistanceTo(Point)-Sphere.Radius);
  ClosestPoint:=Point+((Sphere.Center-Point).Normalize*result);
 end;
 
-function ClosestPointToCapsule(const Capsule:TCapsule;const Point:TVector3;out ClosestPoint:TVector3;const Time:PScalar=nil):TScalar; {$ifdef caninline}inline;{$endif}
+function ClosestPointToCapsule(const Capsule:TCapsule;const Point:TVector3;out ClosestPoint:TVector3;const Time:PScalar=nil):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 var LineSegmentPointsDifference,LineClosestPoint:TVector3;
     LineSegmentLengthSquared,PointOnLineSegmentTime:TScalar;
 begin
@@ -14314,7 +14314,7 @@ begin
  result:=sqrt(sqr(ClosestPoint.x-p.x)+sqr(ClosestPoint.y-p.y)+sqr(ClosestPoint.z-p.z));
 end;
 
-function SquaredDistanceFromPointToAABB(const AABB:TAABB;const Point:TVector3):TScalar; {$ifdef caninline}inline;{$endif}
+function SquaredDistanceFromPointToAABB(const AABB:TAABB;const Point:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 var ClosestPoint:TVector3;
 begin
  ClosestPoint.x:=Min(Max(Point.x,AABB.Min.x),AABB.Max.x);
@@ -14429,7 +14429,7 @@ begin
 
 end;
 
-function IsParallel(const a,b:TVector3;const Tolerance:TScalar=1e-5):boolean; {$ifdef caninline}inline;{$endif}
+function IsParallel(const a,b:TVector3;const Tolerance:TScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
 var t:TVector3;
 begin
  t:=a-(b*(a.Length/b.Length));
@@ -14481,7 +14481,7 @@ begin
  UpVector:=TVector3.Create((cr*sp*cy)+((-sr)*(-sy)),(cr*sp*sy)+((-sr)*cy),cr*cp).Normalize;
 end;
 
-function UnsignedAngle(const v0,v1:TVector3):TScalar; {$ifdef caninline}inline;{$endif}
+function UnsignedAngle(const v0,v1:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
 //result:=ArcCos(v0.Normalize.Dot(v1)));
  result:=ArcTan2(v0.Cross(v1).Length,v0.Dot(v1));
@@ -14492,7 +14492,7 @@ begin
  end;
 end;
 
-function AngleDegClamp(a:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function AngleDegClamp(a:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  a:=ModuloPos(ModuloPos(a+180.0,360.0)+360.0,360.0)-180.0;
  while a<-180.0 do begin
@@ -14504,12 +14504,12 @@ begin
  result:=a;
 end;
 
-function AngleDegDiff(a,b:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function AngleDegDiff(a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=AngleDegClamp(AngleDegClamp(b)-AngleDegClamp(a));
 end;
 
-function AngleClamp(a:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function AngleClamp(a:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  a:=ModuloPos(ModuloPos(a+pi,pi*2.0)+(pi*2.0),pi*2.0)-pi;
  while a<(-pi) do begin
@@ -14521,12 +14521,12 @@ begin
  result:=a;
 end;
 
-function AngleDiff(a,b:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function AngleDiff(a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=AngleClamp(AngleClamp(b)-AngleClamp(a));
 end;
 
-function AngleLerp(a,b,x:TScalar):TScalar; {$ifdef caninline}inline;{$endif}
+function AngleLerp(a,b,x:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
 {if (b-a)>pi then begin
   b:=b-(pi*2);
@@ -14538,12 +14538,12 @@ begin
  result:=a+(AngleDiff(a,b)*x);
 end;
 
-function InertiaTensorTransform(const Inertia,Transform:TMatrix3x3):TMatrix3x3; {$ifdef caninline}inline;{$endif}
+function InertiaTensorTransform(const Inertia,Transform:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Transform*Inertia)*Transform.Transpose;
 end;
 
-function InertiaTensorParallelAxisTheorem(const Center:TVector3;const Mass:TScalar):TMatrix3x3; {$ifdef caninline}inline;{$endif}
+function InertiaTensorParallelAxisTheorem(const Center:TVector3;const Mass:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
 var CenterDotCenter:TScalar;
 begin
  CenterDotCenter:=sqr(Center.x)+sqr(Center.y)+sqr(Center.z);
@@ -14961,7 +14961,7 @@ begin
  end;
 end;
 
-function ConvertRGB32FToR11FG11FB10F(const r,g,b:TFloat):TUInt32; {$ifdef caninline}inline;{$endif}
+function ConvertRGB32FToR11FG11FB10F(const r,g,b:TFloat):TUInt32; {$ifdef CAN_INLINE}inline;{$endif}
 begin
 //result:=(PackFP32FloatToM6E5Float(r) and $7ff) or ((PackFP32FloatToM6E5Float(g) and $7ff) shl 11) or ((PackFP32FloatToM6E5Float(b) and $3ff) shl 22);
  result:=(Float32ToFloat11(r) and $7ff) or ((Float32ToFloat11(g) and $7ff) shl 11) or ((Float32ToFloat10(b) and $3ff) shl 22);

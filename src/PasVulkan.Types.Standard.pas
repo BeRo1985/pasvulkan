@@ -177,6 +177,10 @@ type PPInt8=^PInt8;
      PUTF8String=^TUTF8String;
      TUTF8String=UTF8String;
 
+     PPUnicodeString=^PUnicodeString;
+     PUnicodeString=^TUnicodeString;
+     TUnicodeString=UnicodeString;
+
      PPFileName=^PFileName;
      PFileName=^TFileName;
      TFileName=String;

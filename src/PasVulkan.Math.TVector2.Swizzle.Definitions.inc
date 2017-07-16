@@ -1,22 +1,22 @@
 private
-function GetGG:TVector2; {$ifdef caninline}inline;{$endif}
-function GetGR:TVector2; {$ifdef caninline}inline;{$endif}
-function GetRG:TVector2; {$ifdef caninline}inline;{$endif}
-function GetRR:TVector2; {$ifdef caninline}inline;{$endif}
-function GetSS:TVector2; {$ifdef caninline}inline;{$endif}
-function GetST:TVector2; {$ifdef caninline}inline;{$endif}
-function GetTS:TVector2; {$ifdef caninline}inline;{$endif}
-function GetTT:TVector2; {$ifdef caninline}inline;{$endif}
-function GetXX:TVector2; {$ifdef caninline}inline;{$endif}
-function GetXY:TVector2; {$ifdef caninline}inline;{$endif}
-function GetYX:TVector2; {$ifdef caninline}inline;{$endif}
-function GetYY:TVector2; {$ifdef caninline}inline;{$endif}
-procedure SetGR(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetRG(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetST(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetTS(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetXY(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetYX(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
+function GetGG:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGR:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRG:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRR:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSS:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetST:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTS:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTT:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXX:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXY:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYX:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYY:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGR(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRG(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetST(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTS(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXY(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYX(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
 public
 property gg:TVector2 read GetGG;
 property gr:TVector2 read GetGR write SetGR;

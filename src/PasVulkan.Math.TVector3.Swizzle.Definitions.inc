@@ -1,148 +1,148 @@
 private
-function GetBB:TVector2; {$ifdef caninline}inline;{$endif}
-function GetBBB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBBG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBBR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBG:TVector2; {$ifdef caninline}inline;{$endif}
-function GetBGB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBGG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBGR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBR:TVector2; {$ifdef caninline}inline;{$endif}
-function GetBRB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBRG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetBRR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGB:TVector2; {$ifdef caninline}inline;{$endif}
-function GetGBB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGBG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGBR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGG:TVector2; {$ifdef caninline}inline;{$endif}
-function GetGGB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGGG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGGR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGR:TVector2; {$ifdef caninline}inline;{$endif}
-function GetGRB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGRG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetGRR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPP:TVector2; {$ifdef caninline}inline;{$endif}
-function GetPPP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPPS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPPT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPS:TVector2; {$ifdef caninline}inline;{$endif}
-function GetPSP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPSS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPST:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPT:TVector2; {$ifdef caninline}inline;{$endif}
-function GetPTP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPTS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetPTT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRB:TVector2; {$ifdef caninline}inline;{$endif}
-function GetRBB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRBG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRBR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRG:TVector2; {$ifdef caninline}inline;{$endif}
-function GetRGB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRGG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRGR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRR:TVector2; {$ifdef caninline}inline;{$endif}
-function GetRRB:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRRG:TVector3; {$ifdef caninline}inline;{$endif}
-function GetRRR:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSP:TVector2; {$ifdef caninline}inline;{$endif}
-function GetSPP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSPS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSPT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSS:TVector2; {$ifdef caninline}inline;{$endif}
-function GetSSP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSSS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSST:TVector3; {$ifdef caninline}inline;{$endif}
-function GetST:TVector2; {$ifdef caninline}inline;{$endif}
-function GetSTP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSTS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetSTT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTP:TVector2; {$ifdef caninline}inline;{$endif}
-function GetTPP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTPS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTPT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTS:TVector2; {$ifdef caninline}inline;{$endif}
-function GetTSP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTSS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTST:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTT:TVector2; {$ifdef caninline}inline;{$endif}
-function GetTTP:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTTS:TVector3; {$ifdef caninline}inline;{$endif}
-function GetTTT:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXX:TVector2; {$ifdef caninline}inline;{$endif}
-function GetXXX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXXY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXXZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXY:TVector2; {$ifdef caninline}inline;{$endif}
-function GetXYX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXYY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXYZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXZ:TVector2; {$ifdef caninline}inline;{$endif}
-function GetXZX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXZY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetXZZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYX:TVector2; {$ifdef caninline}inline;{$endif}
-function GetYXX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYXY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYXZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYY:TVector2; {$ifdef caninline}inline;{$endif}
-function GetYYX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYYY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYYZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYZ:TVector2; {$ifdef caninline}inline;{$endif}
-function GetYZX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYZY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetYZZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZX:TVector2; {$ifdef caninline}inline;{$endif}
-function GetZXX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZXY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZXZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZY:TVector2; {$ifdef caninline}inline;{$endif}
-function GetZYX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZYY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZYZ:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZZ:TVector2; {$ifdef caninline}inline;{$endif}
-function GetZZX:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZZY:TVector3; {$ifdef caninline}inline;{$endif}
-function GetZZZ:TVector3; {$ifdef caninline}inline;{$endif}
-procedure SetBG(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetBGR(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetBR(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetBRG(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetGB(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetGBR(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetGR(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetGRB(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetPS(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetPST(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetPT(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetPTS(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetRB(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetRBG(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetRG(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetRGB(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetSP(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetSPT(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetST(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetSTP(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetTP(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetTPS(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetTS(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetTSP(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetXY(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetXYZ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetXZ(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetXZY(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetYX(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetYXZ(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetYZ(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetYZX(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetZX(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetZXY(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
-procedure SetZY(const pValue:TVector2); {$ifdef caninline}inline;{$endif}
-procedure SetZYX(const pValue:TVector3); {$ifdef caninline}inline;{$endif}
+function GetBB:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBBR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBG:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBGR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBR:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetBRR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGB:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGBR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGG:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGGR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGR:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetGRR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPP:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPPT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPS:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPSS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPST:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPT:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetPTT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRB:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRBR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRG:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRGR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRR:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRB:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRG:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetRRR:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSP:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSPT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSS:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSSS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSST:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetST:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetSTT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTP:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTPT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTS:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTSS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTST:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTT:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTP:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTS:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetTTT:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXX:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXXZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXY:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXYZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZ:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetXZZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYX:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYXZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYY:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYYZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZ:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetYZZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZX:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZXZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZY:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZYZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZ:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZX:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZY:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+function GetZZZ:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBG(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBGR(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBR(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetBRG(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGB(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGBR(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGR(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetGRB(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPS(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPST(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPT(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetPTS(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRB(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRBG(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRG(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetRGB(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSP(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSPT(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetST(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetSTP(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTP(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTPS(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTS(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetTSP(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXY(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXYZ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXZ(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetXZY(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYX(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYXZ(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYZ(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetYZX(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZX(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZXY(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZY(const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+procedure SetZYX(const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
 public
 property bb:TVector2 read GetBB;
 property bbb:TVector3 read GetBBB;

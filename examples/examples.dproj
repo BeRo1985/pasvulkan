@@ -207,6 +207,9 @@
         <DCCReference Include="..\externals\pasmp\src\PasMP.pas"/>
         <DCCReference Include="..\externals\kraft\src\kraft.pas"/>
         <DCCReference Include="..\src\Vulkan.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Math.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Types.HalfFloat.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Types.Standard.pas"/>
         <DCCReference Include="..\src\PasVulkan.Framework.pas"/>
         <DCCReference Include="..\src\PasVulkan.Android.pas"/>
         <DCCReference Include="..\src\PasVulkan.SDL2.pas"/>

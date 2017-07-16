@@ -18,6 +18,9 @@ uses
   PasMP in '..\externals\pasmp\src\PasMP.pas',
   kraft in '..\externals\kraft\src\kraft.pas',
   Vulkan in '..\src\Vulkan.pas',
+  PasVulkan.Math in '..\src\PasVulkan.Math.pas',
+  PasVulkan.Types.HalfFloat in '..\src\PasVulkan.Types.HalfFloat.pas',
+  PasVulkan.Types.Standard in '..\src\PasVulkan.Types.Standard.pas',
   PasVulkan.Framework in '..\src\PasVulkan.Framework.pas',
   PasVulkan.Android in '..\src\PasVulkan.Android.pas',
   PasVulkan.SDL2 in '..\src\PasVulkan.SDL2.pas',
@@ -41,6 +44,8 @@ uses
   UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
   UnitScreenExampleSprites in 'UnitScreenExampleSprites.pas',
   UnitScreenExampleFont in 'UnitScreenExampleFont.pas';
+
+// {$if defined(fpc) and defined(android)}
 
 {$if defined(fpc) and defined(android)}
 function DumpExceptionCallStack(e:Exception):string;

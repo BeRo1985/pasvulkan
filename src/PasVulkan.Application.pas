@@ -82,6 +82,9 @@ uses {$if defined(Unix)}
      Math,
      PasMP,
      Vulkan,
+     PasVulkan.Types.Standard,
+     PasVulkan.Types.HalfFloat,
+     PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.SDL2,
      PasVulkan.Android;
@@ -1090,9 +1093,9 @@ type EVulkanApplication=class(Exception)
 
       protected
 
-       procedure VulkanDebugLn(const What:TVkCharString);
+       procedure VulkanDebugLn(const What:string);
 
-       function VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TVkUInt64;const aLocation:TVkSize;aMessageCode:TVkInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32;
+       function VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TVkUInt64;const aLocation:TVkSize;aMessageCode:TVkInt32;const aLayerPrefix,aMessage:string):TVkBool32;
 
        procedure VulkanWaitIdle;
 
@@ -1533,11 +1536,11 @@ begin
  end;
 end;
 
-function GetAppDataLocalPath(Postfix:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
-type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TVkInt32;nToken:Windows.THandle;dwFlags:TVkInt32;lpszPath:PAnsiChar):hresult; stdcall;
+function GetAppDataLocalPath(Postfix:string):string;
+type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TVkInt32;nToken:Windows.THandle;dwFlags:TVkInt32;lpszPath:PWideChar):hresult; stdcall;
 const CSIDL_LOCALAPPDATA=$001c;
 var SHGetFolderPath:TSHGetFolderPath;
-    FilePath:PAnsiChar;
+    FilePath:PWideChar;
     LibHandle:Windows.THandle;
     Reg:TRegistry;
 begin
@@ -1547,12 +1550,12 @@ begin
   LibHandle:=LoadLibrary('SHFOLDER.DLL');
   if LibHandle<>0 then begin
    try
-    SHGetFolderPath:=GetProcAddress(LibHandle,'SHGetFolderPathA');
-    GetMem(FilePath,4096);
-    FillChar(FilePath^,4096,ansichar(#0));
+    SHGetFolderPath:=GetProcAddress(LibHandle,'SHGetFolderPathW');
+    GetMem(FilePath,4096*2);
+    FillChar(FilePath^,4096*2,ansichar(#0));
     try
      if SHGetFolderPath(0,CSIDL_LOCALAPPDATA,0,0,FilePath)=0 then begin
-      result:=FilePath;
+      result:=String(WideString(FilePath));
      end;
     finally
      FreeMem(FilePath);
@@ -1566,7 +1569,7 @@ begin
  end;
  if length(result)=0 then begin
    // Other try over the %localappdata% enviroment variable
-  result:=GetEnvironmentVariable('localappdata');
+  result:=String(GetEnvironmentVariable('localappdata'));
   if length(result)=0 then begin
    try
     // Again ather try over the windows registry
@@ -1592,17 +1595,17 @@ begin
    end;
    if length(result)=0 then begin
     // Fallback for Win9x without SHFOLDER.DLL from MSIE >= 5.0
-    result:=GetEnvironmentVariable('windir');
+    result:=String(GetEnvironmentVariable('windir'));
     if length(result)>0 then begin
      // For german Win9x installations
-     result:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(result)+'Lokale Einstellungen')+'Anwendungsdaten';
-     if not DirectoryExists(result) then begin
+     result:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(String(result))+'Lokale Einstellungen')+'Anwendungsdaten';
+     if not DirectoryExists(String(result)) then begin
       // For all other language Win9x installations
-      result:=IncludeTrailingPathDelimiter(result)+'Local Settings';
-      if not DirectoryExists(result) then begin
-       result:=IncludeTrailingPathDelimiter(result)+'Engine Data';
-       if not DirectoryExists(result) then begin
-        CreateDir(result);
+      result:=IncludeTrailingPathDelimiter(String(result))+'Local Settings';
+      if not DirectoryExists(String(result)) then begin
+       result:=IncludeTrailingPathDelimiter(String(result))+'Engine Data';
+       if not DirectoryExists(String(result)) then begin
+        CreateDir(String(result));
        end;
       end;
      end;
@@ -1614,19 +1617,19 @@ begin
   end;
  end;
  if length(Postfix)>0 then begin
-  result:=IncludeTrailingPathDelimiter(result)+Postfix;
-  if not DirectoryExists(result) then begin
-   CreateDir(result);
+  result:=String(IncludeTrailingPathDelimiter(String(result))+String(Postfix));
+  if not DirectoryExists(String(result)) then begin
+   CreateDir(String(result));
   end;
  end;
- result:=IncludeTrailingPathDelimiter(result);
+ result:=IncludeTrailingPathDelimiter(String(result));
 end;
 
-function GetAppDataRoamingPath(Postfix:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
-type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TVkInt32;nToken:Windows.THandle;dwFlags:TVkInt32;lpszPath:PAnsiChar):hresult; stdcall;
+function GetAppDataRoamingPath(Postfix:string):string;
+type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TVkInt32;nToken:Windows.THandle;dwFlags:TVkInt32;lpszPath:PWideChar):hresult; stdcall;
 const CSIDL_APPDATA=$001a;
 var SHGetFolderPath:TSHGetFolderPath;
-    FilePath:PAnsiChar;
+    FilePath:PWideChar;
     LibHandle:Windows.THandle;
     Reg:TRegistry;
 begin
@@ -1636,12 +1639,12 @@ begin
   LibHandle:=LoadLibrary('SHFOLDER.DLL');
   if LibHandle<>0 then begin
    try
-    SHGetFolderPath:=GetProcAddress(LibHandle,'SHGetFolderPathA');
-    GetMem(FilePath,4096);
-    FillChar(FilePath^,4096,ansichar(#0));
+    SHGetFolderPath:=GetProcAddress(LibHandle,'SHGetFolderPathW');
+    GetMem(FilePath,4096*2);
+    FillChar(FilePath^,4096*2,ansichar(#0));
     try
      if SHGetFolderPath(0,CSIDL_APPDATA,0,0,FilePath)=0 then begin
-      result:=FilePath;
+      result:=String(WideString(FilePath));
      end;
     finally
      FreeMem(FilePath);
@@ -1655,7 +1658,7 @@ begin
  end;
  if length(result)=0 then begin
    // Other try over the %appdata% enviroment variable
-  result:=GetEnvironmentVariable('appdata');
+  result:=String(GetEnvironmentVariable('appdata'));
   if length(result)=0 then begin
    try
     // Again ather try over the windows registry
@@ -1681,15 +1684,15 @@ begin
    end;
    if length(result)=0 then begin
     // Fallback for Win9x without SHFOLDER.DLL from MSIE >= 5.0
-    result:=GetEnvironmentVariable('windir');
+    result:=String(GetEnvironmentVariable('windir'));
     if length(result)>0 then begin
      // For german Win9x installations
-     result:=IncludeTrailingPathDelimiter(result)+'Anwendungsdaten';
-     if not DirectoryExists(result) then begin
+     result:=IncludeTrailingPathDelimiter(String(result))+'Anwendungsdaten';
+     if not DirectoryExists(String(result)) then begin
       // For all other language Win9x installations
-      result:=IncludeTrailingPathDelimiter(result)+'Engine Data';
-      if not DirectoryExists(result) then begin
-       CreateDir(result);
+      result:=IncludeTrailingPathDelimiter(String(result))+'Engine Data';
+      if not DirectoryExists(String(result)) then begin
+       CreateDir(String(result));
       end;
      end;
     end else begin
@@ -1700,12 +1703,12 @@ begin
   end;
  end;
  if length(Postfix)>0 then begin
-  result:=IncludeTrailingPathDelimiter(result)+Postfix;
-  if not DirectoryExists(result) then begin
-   CreateDir(result);
+  result:=String(IncludeTrailingPathDelimiter(String(result))+String(Postfix));
+  if not DirectoryExists(String(result)) then begin
+   CreateDir(String(result));
   end;
  end;
- result:=IncludeTrailingPathDelimiter(result);
+ result:=IncludeTrailingPathDelimiter(String(result));
 end;
 {$endif}
 
@@ -4987,9 +4990,9 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanApplication.VulkanDebugLn(const What:TVkCharString);
+procedure TVulkanApplication.VulkanDebugLn(const What:string);
 {$if defined(Windows)}
-var StdOut:THandle;
+var StdOut:Windows.THandle;
 begin
  StdOut:=GetStdHandle(Std_Output_Handle);
  Win32Check(StdOut<>Invalid_Handle_Value);
@@ -4999,7 +5002,7 @@ begin
 end;
 {$elseif (defined(fpc) and defined(android)) and not defined(Release)}
 begin
- __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar(What));
+ __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar(TUTF8String(What)));
 end;
 {$else}
 begin
@@ -5007,8 +5010,8 @@ begin
 end;
 {$ifend}
 
-function TVulkanApplication.VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TVkUInt64;const aLocation:TVkSize;aMessageCode:TVkInt32;const aLayerPrefix:TVulkaNCharString;const aMessage:TVulkanCharString):TVkBool32;
-var Prefix:TVulkanCharString;
+function TVulkanApplication.VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TVkUInt64;const aLocation:TVkSize;aMessageCode:TVkInt32;const aLayerPrefix,aMessage:string):TVkBool32;
+var Prefix:string;
 begin
  try
   Prefix:='';
@@ -5027,7 +5030,7 @@ begin
   if (aFlags and TVkDebugReportFlagsEXT(VK_DEBUG_REPORT_DEBUG_BIT_EXT))<>0 then begin
    Prefix:=Prefix+'DEBUG: ';
   end;
-  VulkanDebugLn('[Debug] '+Prefix+'['+aLayerPrefix+'] Code '+TVulkanCharString(IntToStr(aMessageCode))+' : '+aMessage);
+  VulkanDebugLn('[Debug] '+Prefix+'['+aLayerPrefix+'] Code '+IntToStr(aMessageCode)+' : '+aMessage);
  finally
   result:=VK_FALSE;
  end;
@@ -5169,7 +5172,7 @@ begin
  if not assigned(fVulkanInstance) then begin
   SDL_VERSION(SDL_SysWMinfo.version);
   if SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0 then begin
-   fVulkanInstance:=TVulkanInstance.Create(Title,Version,
+   fVulkanInstance:=TVulkanInstance.Create(TVulkanCharString(Title),Version,
                                            'PasVulkanApplication',$0100,
                                            VK_API_VERSION_1_0,false,nil);
    for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
@@ -6400,6 +6403,8 @@ begin
        SDLGameController:=SDL_GameControllerOpen(Index);
        if assigned(SDLGameController) then begin
         SDLJoystick:=SDL_GameControllerGetJoystick(SDLGameController);
+       end else begin
+        SDLJoystick:=nil;
        end;
       end else begin
        SDLGameController:=nil;

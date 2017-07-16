@@ -59,11 +59,11 @@ var slMainDefinitions,slMainPropertyDefinitions,slMainImplementations,
      slImplementations.Add(' '+c[i]+':=pValue.'+Chars2[i]+';');
     end;
     slImplementations.Add('end;');
-    slDefinitions.Add('function Get'+UpperCase(c)+':'+TargetDataType+'; {$ifdef caninline}inline;{$endif}');
-    slDefinitions.Add('procedure Set'+UpperCase(c)+'(const pValue:'+TargetDataType+'); {$ifdef caninline}inline;{$endif}');
+    slDefinitions.Add('function Get'+UpperCase(c)+':'+TargetDataType+'; {$ifdef CAN_INLINE}inline;{$endif}');
+    slDefinitions.Add('procedure Set'+UpperCase(c)+'(const pValue:'+TargetDataType+'); {$ifdef CAN_INLINE}inline;{$endif}');
     slPropertyDefinitions.Add('property '+c+':'+TargetDataType+' read Get'+UpperCase(c)+' write Set'+UpperCase(c)+';');
    end else begin
-    slDefinitions.Add('function Get'+UpperCase(c)+':'+TargetDataType+'; {$ifdef caninline}inline;{$endif}');
+    slDefinitions.Add('function Get'+UpperCase(c)+':'+TargetDataType+'; {$ifdef CAN_INLINE}inline;{$endif}');
     slPropertyDefinitions.Add('property '+c+':'+TargetDataType+' read Get'+UpperCase(c)+';');
    end;
   end;
