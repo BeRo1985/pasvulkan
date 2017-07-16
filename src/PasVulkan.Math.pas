@@ -1092,7 +1092,7 @@ type PpvScalar=^TpvScalar;
        property Roll:TpvScalar read GetRoll write SetRoll;
      end;
 
-     TPropertyColorRGB=class(TpvPooledObject)
+     TpvPropertyColorRGB=class(TpvPooledObject)
       private
        fVector:PpvVector3;
        function GetR:TpvScalar;
@@ -1113,7 +1113,7 @@ type PpvScalar=^TpvScalar;
        property b:TpvScalar read GetB write SetB;
      end;
 
-     TPropertyColorRGBA=class(TpvPooledObject)
+     TpvPropertyColorRGBA=class(TpvPooledObject)
       private
        fVector:PpvVector4;
        function GetR:TpvScalar;
@@ -15360,114 +15360,114 @@ begin
  fQuaternion^:=NewQuaternion;
 end;
 
-constructor TPropertyColorRGB.Create(AVector:PpvVector3);
+constructor TpvPropertyColorRGB.Create(AVector:PpvVector3);
 begin
  inherited Create;
  fVector:=AVector;
 end;
 
-destructor TPropertyColorRGB.Destroy;
+destructor TpvPropertyColorRGB.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TPropertyColorRGB.GetR:TpvScalar;
+function TpvPropertyColorRGB.GetR:TpvScalar;
 begin
  result:=fVector^.r;
 end;
 
-function TPropertyColorRGB.GetG:TpvScalar;
+function TpvPropertyColorRGB.GetG:TpvScalar;
 begin
  result:=fVector^.g;
 end;
 
-function TPropertyColorRGB.GetB:TpvScalar;
+function TpvPropertyColorRGB.GetB:TpvScalar;
 begin
  result:=fVector^.b;
 end;
 
-function TPropertyColorRGB.GetVector:TpvVector3;
+function TpvPropertyColorRGB.GetVector:TpvVector3;
 begin
  result:=fVector^;
 end;
 
-procedure TPropertyColorRGB.SetR(const pNewValue:TpvScalar);
+procedure TpvPropertyColorRGB.SetR(const pNewValue:TpvScalar);
 begin
  fVector^.r:=pNewValue;
 end;
 
-procedure TPropertyColorRGB.SetG(const pNewValue:TpvScalar);
+procedure TpvPropertyColorRGB.SetG(const pNewValue:TpvScalar);
 begin
  fVector^.g:=pNewValue;
 end;
 
-procedure TPropertyColorRGB.SetB(const pNewValue:TpvScalar);
+procedure TpvPropertyColorRGB.SetB(const pNewValue:TpvScalar);
 begin
  fVector^.b:=pNewValue;
 end;
 
-procedure TPropertyColorRGB.SetVector(const pNewVector:TpvVector3);
+procedure TpvPropertyColorRGB.SetVector(const pNewVector:TpvVector3);
 begin
  fVector^:=pNewVector;
 end;
 
-constructor TPropertyColorRGBA.Create(AVector:PpvVector4);
+constructor TpvPropertyColorRGBA.Create(AVector:PpvVector4);
 begin
  inherited Create;
  fVector:=AVector;
 end;
 
-destructor TPropertyColorRGBA.Destroy;
+destructor TpvPropertyColorRGBA.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TPropertyColorRGBA.GetR:TpvScalar;
+function TpvPropertyColorRGBA.GetR:TpvScalar;
 begin
  result:=fVector^.r;
 end;
 
-function TPropertyColorRGBA.GetG:TpvScalar;
+function TpvPropertyColorRGBA.GetG:TpvScalar;
 begin
  result:=fVector^.g;
 end;
 
-function TPropertyColorRGBA.GetB:TpvScalar;
+function TpvPropertyColorRGBA.GetB:TpvScalar;
 begin
  result:=fVector^.b;
 end;
 
-function TPropertyColorRGBA.GetA:TpvScalar;
+function TpvPropertyColorRGBA.GetA:TpvScalar;
 begin
  result:=fVector^.a;
 end;
 
-function TPropertyColorRGBA.GetVector:TpvVector4;
+function TpvPropertyColorRGBA.GetVector:TpvVector4;
 begin
  result:=fVector^;
 end;
 
-procedure TPropertyColorRGBA.SetR(const pNewValue:TpvScalar);
+procedure TpvPropertyColorRGBA.SetR(const pNewValue:TpvScalar);
 begin
  fVector^.r:=pNewValue;
 end;
 
-procedure TPropertyColorRGBA.SetG(const pNewValue:TpvScalar);
+procedure TpvPropertyColorRGBA.SetG(const pNewValue:TpvScalar);
 begin
  fVector^.g:=pNewValue;
 end;
 
-procedure TPropertyColorRGBA.SetB(const pNewValue:TpvScalar);
+procedure TpvPropertyColorRGBA.SetB(const pNewValue:TpvScalar);
 begin
  fVector^.b:=pNewValue;
 end;
 
-procedure TPropertyColorRGBA.SetA(const pNewValue:TpvScalar);
+procedure TpvPropertyColorRGBA.SetA(const pNewValue:TpvScalar);
 begin
  fVector^.a:=pNewValue;
 end;
 
-procedure TPropertyColorRGBA.SetVector(const pNewVector:TpvVector4);
+procedure TpvPropertyColorRGBA.SetVector(const pNewVector:TpvVector4);
 begin
  fVector^:=pNewVector;
 end;
