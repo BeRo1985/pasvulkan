@@ -3562,24 +3562,28 @@ type EVulkanException=class(Exception);
 
      TVulkanCanvasHook=procedure(const aData:TVkPointer) of object;
 
+     TVulkanCanvasQueueItemKind=
+      (
+       vcqikNone,
+       vcqikNormal,
+       vcqikVector,
+       vcqikHook
+      );
+
      PVulkanCanvasQueueItem=^TVulkanCanvasQueueItem;
      TVulkanCanvasQueueItem=record
+      Kind:TVulkanCanvasQueueItemKind;
       BufferIndex:TVkInt32;
-      case TVkInt32 of
-       0:(
-        DescriptorSetIndex:TVkInt32;
-        StartVertexIndex:TVkInt32;
-        StartIndexIndex:TVkInt32;
-        CountVertices:TVkInt32;
-        CountIndices:TVkInt32;
-        RenderingMode:TVulkanCanvasRenderingMode;
-        BlendingMode:TVulkanCanvasBlendingMode;
-        Scissor:TVkRect2D;
-       );
-       1:(
-        Hook:TVulkanCanvasHook;
-        HookData:pointer;
-       );
+      DescriptorSetIndex:TVkInt32;
+      StartVertexIndex:TVkInt32;
+      StartIndexIndex:TVkInt32;
+      CountVertices:TVkInt32;
+      CountIndices:TVkInt32;
+      RenderingMode:TVulkanCanvasRenderingMode;
+      BlendingMode:TVulkanCanvasBlendingMode;
+      Scissor:TVkRect2D;
+      Hook:TVulkanCanvasHook;
+      HookData:pointer;
      end;
 
      TVulkanCanvasQueueItems=array of TVulkanCanvasQueueItem;
@@ -29014,6 +29018,7 @@ begin
     SetLength(fCurrentFillBuffer^.fQueueItems,fCurrentFillBuffer^.fCountQueueItems*2);
    end;
    QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
+   QueueItem^.Kind:=vcqikNormal;
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
    QueueItem^.DescriptorSetIndex:=DescriptorSetIndex;
    QueueItem^.StartVertexIndex:=fCurrentVulkanVertexBufferOffset;
@@ -29164,7 +29169,7 @@ begin
    SetLength(fCurrentFillBuffer^.fQueueItems,fCurrentFillBuffer^.fCountQueueItems*2);
   end;
   QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
-  QueueItem^.BufferIndex:=-1;
+  QueueItem^.Kind:=vcqikHook;
   QueueItem^.Hook:=aHook;
   QueueItem^.HookData:=aData;
 
@@ -29666,6 +29671,7 @@ end;
 procedure TVulkanCanvas.ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
 var Index,DescriptorSetIndex,StartVertexIndex:TVkInt32;
     QueueItem:PVulkanCanvasQueueItem;
+    OldQueueItemKind:TVulkanCanvasQueueItemKind;
     CurrentDrawSpriteBatchBuffer:PVulkanCanvasBuffer;
     VulkanVertexBuffer,VulkanIndexBuffer:TVulkanBuffer;
     OldScissor:TVkRect2D;
@@ -29682,74 +29688,74 @@ begin
 
   DescriptorSetIndex:=-1;
 
+  OldQueueItemKind:=vcqikNone;
+
   ForceUpdate:=true;
 
   for Index:=0 to CurrentDrawSpriteBatchBuffer^.fCountQueueItems-1 do begin
 
    QueueItem:=@CurrentDrawSpriteBatchBuffer^.fQueueItems[Index];
 
-   if QueueItem^.BufferIndex<0 then begin
-
-    if assigned(QueueItem^.Hook) then begin
-     QueueItem^.Hook(QueueItem^.HookData);
-    end;
-
+   if OldQueueItemKind<>QueueItem^.Kind then begin
+    OldQueueItemKind:=QueueItem^.Kind;
     ForceUpdate:=true;
+   end;
 
-   end else begin
+   case QueueItem^.Kind of
+    vcqikNormal:begin
 
-    VulkanVertexBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
+     VulkanVertexBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
 
-    VulkanIndexBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
+     VulkanIndexBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
 
-    if ForceUpdate then begin
+     if ForceUpdate then begin
+      aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
+     end;
 
-     aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
+     if ForceUpdate or
+        (DescriptorSetIndex<>QueueItem^.DescriptorSetIndex) then begin
+      DescriptorSetIndex:=QueueItem^.DescriptorSetIndex;
+      aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorSetIndex].Handle,0,nil);
+     end;
+
+     if ForceUpdate then begin
+      aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+      OldScissor.offset.x:=-$7fffffff;
+      OldScissor.offset.y:=-$7fffffff;
+      OldScissor.extent.Width:=$7fffffff;
+      OldScissor.extent.Height:=$7fffffff;
+     end;
+
+     if ForceUpdate or
+        (OldScissor.offset.x<>QueueItem^.Scissor.offset.x) or
+        (OldScissor.offset.y<>QueueItem^.Scissor.offset.y) or
+        (OldScissor.extent.Width<>QueueItem^.Scissor.extent.Width) or
+        (OldScissor.extent.Height<>QueueItem^.Scissor.extent.Height) then begin
+      OldScissor:=QueueItem^.Scissor;
+      aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
+     end;
+
+     Offsets[0]:=QueueItem^.StartVertexIndex*SizeOf(TVulkanCanvasVertex);
+     aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+
+     aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,QueueItem^.StartIndexIndex*SizeOf(TVkUInt32),VK_INDEX_TYPE_UINT32);
+     aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
+
+     ForceUpdate:=false;
 
     end;
-
-    if ForceUpdate or
-       (DescriptorSetIndex<>QueueItem^.DescriptorSetIndex) then begin
-
-     DescriptorSetIndex:=QueueItem^.DescriptorSetIndex;
-
-     aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorSetIndex].Handle,0,nil);
-
+    vcqikVector:begin
+     // TODO
     end;
-
-    if ForceUpdate then begin
-
-     aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
-
-     OldScissor.offset.x:=-$7fffffff;
-     OldScissor.offset.y:=-$7fffffff;
-     OldScissor.extent.Width:=$7fffffff;
-     OldScissor.extent.Height:=$7fffffff;
-
+    vcqikHook:begin
+     if assigned(QueueItem^.Hook) then begin
+      QueueItem^.Hook(QueueItem^.HookData);
+     end;
+     ForceUpdate:=true;
     end;
-
-    if ForceUpdate or
-       (OldScissor.offset.x<>QueueItem^.Scissor.offset.x) or
-       (OldScissor.offset.y<>QueueItem^.Scissor.offset.y) or
-       (OldScissor.extent.Width<>QueueItem^.Scissor.extent.Width) or
-       (OldScissor.extent.Height<>QueueItem^.Scissor.extent.Height) then begin
-
-     OldScissor:=QueueItem^.Scissor;
-
-     aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
-
+    else {vcqikNone:}begin
+     ForceUpdate:=true;
     end;
-
-    Offsets[0]:=QueueItem^.StartVertexIndex*SizeOf(TVulkanCanvasVertex);
-
-    aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
-
-    aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,QueueItem^.StartIndexIndex*SizeOf(TVkUInt32),VK_INDEX_TYPE_UINT32);
-
-    aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
-
-    ForceUpdate:=false;
-
    end;
 
   end;
