@@ -3518,8 +3518,8 @@ type EVulkanException=class(Exception);
 
      TVulkanSprites=array of TVulkanSprite;
 
-     PVulkanSpriteBatchVertex=^TVulkanSpriteBatchVertex;
-     TVulkanSpriteBatchVertex=packed record
+     PVulkanCanvasVertex=^TVulkanCanvasVertex;
+     TVulkanCanvasVertex=packed record
       Position:TVulkanSpriteVertexPoint;             // +  8 (2x 32-bit floats)       = 0
       Color:TVulkanSpriteVertexColor;                // +  8 (4x 16-bit half-floats)  = 8  (=> 8 byte aligned)
       TextureCoord:TVulkanSpriteVertexTextureCoord;  // + 12 (3x 32-bit floats)       = 16 (=> 16 byte aligned)
@@ -3527,39 +3527,39 @@ type EVulkanException=class(Exception);
       ClipRect:TVulkanSpriteVertexClipRect;          // + 16 (4x 32-bit floats)       = 32 (=> 32 byte aligned)
      end;                                            // = 48 per vertex
 
-     TVulkanSpriteBatchVertices=array of TVulkanSpriteBatchVertex;
+     TVulkanCanvasVertices=array of TVulkanCanvasVertex;
 
-     TVulkanSpriteBatchVulkanVertexBuffers=array of TVulkanBuffer;
+     TVulkanCanvasVulkanVertexBuffers=array of TVulkanBuffer;
 
-     PVulkanSpriteBatchVertexBuffer=^TVulkanSpriteBatchVertexBuffer;
-     TVulkanSpriteBatchVertexBuffer=array[0..(32768*4)-1] of TVulkanSpriteBatchVertex;
+     PVulkanCanvasVertexBuffer=^TVulkanCanvasVertexBuffer;
+     TVulkanCanvasVertexBuffer=array[0..(32768*4)-1] of TVulkanCanvasVertex;
 
-     TVulkanSpriteBatchVertexBuffers=array of TVulkanSpriteBatchVertexBuffer;
+     TVulkanCanvasVertexBuffers=array of TVulkanCanvasVertexBuffer;
 
-     TVulkanSpriteBatchVertexBufferSizes=array of TVkSizeInt;
+     TVulkanCanvasVertexBufferSizes=array of TVkSizeInt;
 
-     PVulkanSpriteBatchIndexBuffer=^TVulkanSpriteBatchIndexBuffer;
-     TVulkanSpriteBatchIndexBuffer=array[0..((SizeOf(TVulkanSpriteBatchVertexBuffer) div (SizeOf(TVulkanSpriteBatchVertex)*4))*6)-1] of TVkUInt32;
+     PVulkanCanvasIndexBuffer=^TVulkanCanvasIndexBuffer;
+     TVulkanCanvasIndexBuffer=array[0..((SizeOf(TVulkanCanvasVertexBuffer) div (SizeOf(TVulkanCanvasVertex)*4))*6)-1] of TVkUInt32;
 
-     PVulkanSpriteBatchRenderingMode=^TVulkanSpriteBatchRenderingMode;
-     TVulkanSpriteBatchRenderingMode=
+     PVulkanCanvasRenderingMode=^TVulkanCanvasRenderingMode;
+     TVulkanCanvasRenderingMode=
       (
        vsbrmNormal,
        vsbrmFont
       );
 
-     PVulkanSpriteBatchBlendingMode=^TVulkanSpriteBatchBlendingMode;
-     TVulkanSpriteBatchBlendingMode=
+     PVulkanCanvasBlendingMode=^TVulkanCanvasBlendingMode;
+     TVulkanCanvasBlendingMode=
       (
        vsbbmNone,
        vsbbmAlphaBlending,
        vsbbmAdditiveBlending
       );
 
-     TVulkanSpriteBatchHook=procedure(const aData:TVkPointer) of object;
+     TVulkanCanvasHook=procedure(const aData:TVkPointer) of object;
 
-     PVulkanSpriteBatchQueueItem=^TVulkanSpriteBatchQueueItem;
-     TVulkanSpriteBatchQueueItem=record
+     PVulkanCanvasQueueItem=^TVulkanCanvasQueueItem;
+     TVulkanCanvasQueueItem=record
       BufferIndex:TVkInt32;
       case TVkInt32 of
        0:(
@@ -3567,35 +3567,35 @@ type EVulkanException=class(Exception);
         StartVertexIndex:TVkInt32;
         CountVertices:TVkInt32;
         CountIndices:TVkInt32;
-        RenderingMode:TVulkanSpriteBatchRenderingMode;
-        BlendingMode:TVulkanSpriteBatchBlendingMode;
+        RenderingMode:TVulkanCanvasRenderingMode;
+        BlendingMode:TVulkanCanvasBlendingMode;
         Scissor:TVkRect2D;
        );
        1:(
-        Hook:TVulkanSpriteBatchHook;
+        Hook:TVulkanCanvasHook;
         HookData:pointer;
        );
      end;
 
-     TVulkanSpriteBatchQueueItems=array of TVulkanSpriteBatchQueueItem;
+     TVulkanCanvasQueueItems=array of TVulkanCanvasQueueItem;
 
-     TVulkanSpriteBatchDescriptorSets=array of TVulkanDescriptorSet;
+     TVulkanCanvasDescriptorSets=array of TVulkanDescriptorSet;
 
-     PVulkanSpriteBatchBuffer=^TVulkanSpriteBatchBuffer;
-     TVulkanSpriteBatchBuffer=record
+     PVulkanCanvasBuffer=^TVulkanCanvasBuffer;
+     TVulkanCanvasBuffer=record
       fSpinLock:TVkInt32;
-      fVulkanVertexBuffers:TVulkanSpriteBatchVulkanVertexBuffers;
-      fVertexBuffers:TVulkanSpriteBatchVertexBuffers;
-      fVertexBufferSizes:TVulkanSpriteBatchVertexBufferSizes;
+      fVulkanVertexBuffers:TVulkanCanvasVulkanVertexBuffers;
+      fVertexBuffers:TVulkanCanvasVertexBuffers;
+      fVertexBufferSizes:TVulkanCanvasVertexBufferSizes;
       fCountAllocatedVertexBuffers:TVkInt32;
       fCountUsedVertexBuffers:TVkInt32;
-      fQueueItems:TVulkanSpriteBatchQueueItems;
+      fQueueItems:TVulkanCanvasQueueItems;
       fCountQueueItems:TVkInt32;
      end;
 
-     TVulkanSpriteBatchBuffers=array of TVulkanSpriteBatchBuffer;
+     TVulkanCanvasBuffers=array of TVulkanCanvasBuffer;
 
-     TVulkanSpriteBatch=class
+     TVulkanCanvas=class
       private
        fDevice:TVulkanDevice;
        fGraphicsQueue:TVulkanQueue;
@@ -3611,16 +3611,16 @@ type EVulkanException=class(Exception);
        fVulkanPipelineSpriteBatchShaderStageFragment:TVulkanPipelineShaderStage;
        fVulkanDescriptorPool:TVulkanDescriptorPool;
        fVulkanDescriptorSetLayout:TVulkanDescriptorSetLayout;
-       fVulkanDescriptorSets:TVulkanSpriteBatchDescriptorSets;
+       fVulkanDescriptorSets:TVulkanCanvasDescriptorSets;
        fCountVulkanDescriptorSets:TVkInt32;
        fVulkanTextureDescriptorSetHashMap:TVulkanPointerHashMap;
        fVulkanRenderPass:TVulkanRenderPass;
        fVulkanPipelineLayout:TVulkanPipelineLayout;
        fVulkanGraphicsPipeline:TVulkanGraphicsPipeline;
        fVulkanIndexBuffer:TVulkanBuffer;
-       fVulkanSpriteBatchBuffers:TVulkanSpriteBatchBuffers;
+       fVulkanCanvasBuffers:TVulkanCanvasBuffers;
        fCountBuffers:TVkInt32;
-       fCurrentFillSpriteBatchBuffer:PVulkanSpriteBatchBuffer;
+       fCurrentFillBuffer:PVulkanCanvasBuffer;
        fWidth:TVkInt32;
        fHeight:TVkInt32;
        fViewPort:TVkViewport;
@@ -3630,8 +3630,8 @@ type EVulkanException=class(Exception);
        fState:TVulkanSpriteVertexState;
        fClipRect:TVulkanSpriteVertexClipRect;
        fUnscaledClipRect:TVulkanSpriteVertexClipRect;
-       fRenderingMode:TVulkanSpriteBatchRenderingMode;
-       fBlendingMode:TVulkanSpriteBatchBlendingMode;
+       fRenderingMode:TVulkanCanvasRenderingMode;
+       fBlendingMode:TVulkanCanvasBlendingMode;
        fLastArrayTexture:TVulkanSpriteAtlasArrayTexture;
        fInverseWidth:single;
        fInverseHeight:single;
@@ -3639,12 +3639,12 @@ type EVulkanException=class(Exception);
        fInverseTextureHeight:single;
        fCurrentCountVertices:TVkSizeInt;
        fCurrentCountIndices:TVkSizeInt;
-       fCurrentDestinationVertexBufferPointer:PVulkanSpriteBatchVertexBuffer;
+       fCurrentDestinationVertexBufferPointer:PVulkanCanvasVertexBuffer;
        fScissor:TVkRect2D;
        function RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:single):TVulkanSpritePoint;
        procedure SetArrayTexture(const ArrayTexture:TVulkanSpriteAtlasArrayTexture);
-       procedure SetRenderingMode(aRenderingMode:TVulkanSpriteBatchRenderingMode);
-       procedure SetBlendingMode(aBlendingMode:TVulkanSpriteBatchBlendingMode);
+       procedure SetRenderingMode(aRenderingMode:TVulkanCanvasRenderingMode);
+       procedure SetBlendingMode(aBlendingMode:TVulkanCanvasBlendingMode);
        procedure GetNextDestinationVertexBuffer;
        procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TVkInt32);
        function ClipCheck(const aX0,aY0,aX1,aY1:TVkFloat):boolean;
@@ -3667,12 +3667,12 @@ type EVulkanException=class(Exception);
        procedure SetScissor(const aLeft,aTop,aWidth,aHeight:TVkInt32); overload;
        procedure SetClipRect(const aClipRect:TVkRect2D); overload;
        procedure SetClipRect(const aLeft,aTop,aWidth,aHeight:TVkInt32); overload;
-       procedure Hook(const aHook:TVulkanSpriteBatchHook;const aData:TVkPointer); overload;
-       procedure Draw(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor); overload;
-       procedure Draw(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:single;const Color:TVulkanSpriteColor); overload;
-       procedure Draw(const Sprite:TVulkanSprite;const x,y:single;const Color:TVulkanSpriteColor); overload;
-       procedure Draw(const Sprite:TVulkanSprite;const x,y:single); overload;
-       procedure Draw(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single); overload;
+       procedure Hook(const aHook:TVulkanCanvasHook;const aData:TVkPointer); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:single;const Color:TVulkanSpriteColor); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const x,y:single;const Color:TVulkanSpriteColor); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const x,y:single); overload;
+       procedure DrawSprite(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single); overload;
        procedure ExecuteUpload(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
       public
@@ -3681,8 +3681,8 @@ type EVulkanException=class(Exception);
        property Device:TVulkanDevice read fDevice;
        property Width:TVkInt32 read fWidth write fWidth;
        property Height:TVkInt32 read fHeight write fHeight;
-       property RenderingMode:TVulkanSpriteBatchRenderingMode read fRenderingMode write SetRenderingMode;
-       property BlendingMode:TVulkanSpriteBatchBlendingMode read fBlendingMode write SetBlendingMode;
+       property RenderingMode:TVulkanCanvasRenderingMode read fRenderingMode write SetRenderingMode;
+       property BlendingMode:TVulkanCanvasBlendingMode read fBlendingMode write SetBlendingMode;
      end;
 
      TVulkanSpriteAtlas=class
@@ -4416,7 +4416,7 @@ type EVulkanException=class(Exception);
        function TextHeight(const aText:TVulkanUTF8String;const aSize:TVkFloat):TVkFloat;
        procedure TextSize(const aText:TVulkanUTF8String;const aSize:TVkFloat;out aWidth,aHeight:TVkFloat);
        function RowHeight(const Percent:TVkFloat):TVkFloat;
-       procedure Draw(const aSpriteBatch:TVulkanSpriteBatch;const aText:TVulkanUTF8String;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
+       procedure Draw(const aCanvas:TVulkanCanvas;const aText:TVulkanUTF8String;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
      end;
 
 var VulkanFloatToHalfFloatBaseTable:array[0..511] of TVkUInt16;
@@ -28583,7 +28583,7 @@ begin
  inherited Destroy;
 end;
 
-constructor TVulkanSpriteBatch.Create(const aDevice:TVulkanDevice;
+constructor TVulkanCanvas.Create(const aDevice:TVulkanDevice;
                                       const aGraphicsQueue:TVulkanQueue;
                                       const aGraphicsCommandBuffer:TVulkanCommandBuffer;
                                       const aGraphicsFence:TVulkanFence;
@@ -28594,12 +28594,12 @@ constructor TVulkanSpriteBatch.Create(const aDevice:TVulkanDevice;
                                       const aRenderPass:TVulkanRenderPass;
                                       const aCountBuffers:TVkInt32);
 var Index:TVkInt32;
-    RenderingModeIndex:TVulkanSpriteBatchRenderingMode;
-    BlendingModeIndex:TVulkanSpriteBatchBlendingMode;
+    RenderingModeIndex:TVulkanCanvasRenderingMode;
+    BlendingModeIndex:TVulkanCanvasBlendingMode;
     VulkanGraphicsPipeline:TVulkanGraphicsPipeline;
-    VulkanSpriteBatchBuffer:PVulkanSpriteBatchBuffer;
+    VulkanCanvasBuffer:PVulkanCanvasBuffer;
     Stream:TStream;
-    IndexBuffer:PVulkanSpriteBatchIndexBuffer;
+    IndexBuffer:PVulkanCanvasIndexBuffer;
 begin
  inherited Create;
 
@@ -28617,9 +28617,9 @@ begin
 
  fCountBuffers:=aCountBuffers;
 
- fVulkanSpriteBatchBuffers:=nil;
+ fVulkanCanvasBuffers:=nil;
 
- SetLength(fVulkanSpriteBatchBuffers,aCountBuffers);
+ SetLength(fVulkanCanvasBuffers,aCountBuffers);
 
  fLastArrayTexture:=nil;
 
@@ -28644,10 +28644,10 @@ begin
 
  fCurrentDestinationVertexBufferPointer:=nil;
 
- GetMem(IndexBuffer,SizeOf(TVulkanSpriteBatchIndexBuffer));
+ GetMem(IndexBuffer,SizeOf(TVulkanCanvasIndexBuffer));
  try
 
-  for Index:=0 to (SizeOf(TVulkanSpriteBatchIndexBuffer) div (SizeOf(TVkUInt32)*6))-1 do begin
+  for Index:=0 to (SizeOf(TVulkanCanvasIndexBuffer) div (SizeOf(TVkUInt32)*6))-1 do begin
    IndexBuffer^[(Index*6)+0]:=(Index shl 2) or 0;
    IndexBuffer^[(Index*6)+1]:=(Index shl 2) or 1;
    IndexBuffer^[(Index*6)+2]:=(Index shl 2) or 2;
@@ -28657,7 +28657,7 @@ begin
   end;
 
   fVulkanIndexBuffer:=TVulkanBuffer.Create(fDevice,
-                                           SizeOf(TVulkanSpriteBatchIndexBuffer),
+                                           SizeOf(TVulkanCanvasIndexBuffer),
                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                            nil,
@@ -28668,23 +28668,23 @@ begin
                                 fTransferFence,
                                 IndexBuffer^,
                                 0,
-                                SizeOf(TVulkanSpriteBatchIndexBuffer),
+                                SizeOf(TVulkanCanvasIndexBuffer),
                                 vbutsbmYes);
 
  finally
   FreeMem(IndexBuffer);
  end;
 
- for Index:=0 to length(fVulkanSpriteBatchBuffers)-1 do begin
-  VulkanSpriteBatchBuffer:=@fVulkanSpriteBatchBuffers[Index];
-  VulkanSpriteBatchBuffer^.fSpinLock:=0;
-  VulkanSpriteBatchBuffer^.fVulkanVertexBuffers:=nil;
-  VulkanSpriteBatchBuffer^.fVertexBuffers:=nil;
-  VulkanSpriteBatchBuffer^.fVertexBufferSizes:=nil;
-  VulkanSpriteBatchBuffer^.fCountAllocatedVertexBuffers:=0;
-  VulkanSpriteBatchBuffer^.fCountUsedVertexBuffers:=0;
-  VulkanSpriteBatchBuffer^.fQueueItems:=nil;
-  VulkanSpriteBatchBuffer^.fCountQueueItems:=0;
+ for Index:=0 to length(fVulkanCanvasBuffers)-1 do begin
+  VulkanCanvasBuffer:=@fVulkanCanvasBuffers[Index];
+  VulkanCanvasBuffer^.fSpinLock:=0;
+  VulkanCanvasBuffer^.fVulkanVertexBuffers:=nil;
+  VulkanCanvasBuffer^.fVertexBuffers:=nil;
+  VulkanCanvasBuffer^.fVertexBufferSizes:=nil;
+  VulkanCanvasBuffer^.fCountAllocatedVertexBuffers:=0;
+  VulkanCanvasBuffer^.fCountUsedVertexBuffers:=0;
+  VulkanCanvasBuffer^.fQueueItems:=nil;
+  VulkanCanvasBuffer^.fCountQueueItems:=0;
  end;
 
  fCurrentVulkanVertexBufferIndex:=0;
@@ -28751,12 +28751,12 @@ begin
  VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVulkanSpriteBatchVertex),VK_VERTEX_INPUT_RATE_VERTEX);
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.Position)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.Color)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.TextureCoord)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.State)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32A32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanSpriteBatchVertex(nil)^.ClipRect)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVulkanCanvasVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanCanvasVertex(nil)^.Position)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(Pointer(@PVulkanCanvasVertex(nil)^.Color)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanCanvasVertex(nil)^.TextureCoord)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16_SFLOAT,TVkPtrUInt(Pointer(@PVulkanCanvasVertex(nil)^.State)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32A32_SFLOAT,TVkPtrUInt(Pointer(@PVulkanCanvasVertex(nil)^.ClipRect)));
 
  VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
  VulkanGraphicsPipeline.ViewPortState.DynamicViewPorts:=true;
@@ -28812,15 +28812,15 @@ begin
 
  VulkanGraphicsPipeline.FreeMemory;
 
- fCurrentFillSpriteBatchBuffer:=nil;
+ fCurrentFillBuffer:=nil;
 
 end;
 
-destructor TVulkanSpriteBatch.Destroy;
+destructor TVulkanCanvas.Destroy;
 var Index,SubIndex:TVkInt32;
-    RenderingModeIndex:TVulkanSpriteBatchRenderingMode;
-    BlendingModeIndex:TVulkanSpriteBatchBlendingMode;
-    VulkanSpriteBatchBuffer:PVulkanSpriteBatchBuffer;
+    RenderingModeIndex:TVulkanCanvasRenderingMode;
+    BlendingModeIndex:TVulkanCanvasBlendingMode;
+    VulkanCanvasBuffer:PVulkanCanvasBuffer;
 begin
 
  FreeAndNil(fVulkanGraphicsPipeline);
@@ -28849,15 +28849,15 @@ begin
 
  FreeAndNil(fSpriteBatchFragmentShaderModule);
 
- for Index:=0 to length(fVulkanSpriteBatchBuffers)-1 do begin
-  VulkanSpriteBatchBuffer:=@fVulkanSpriteBatchBuffers[Index];
-  for SubIndex:=0 to VulkanSpriteBatchBuffer^.fCountAllocatedVertexBuffers-1 do begin
-   FreeAndNil(VulkanSpriteBatchBuffer^.fVulkanVertexBuffers[SubIndex]);
+ for Index:=0 to length(fVulkanCanvasBuffers)-1 do begin
+  VulkanCanvasBuffer:=@fVulkanCanvasBuffers[Index];
+  for SubIndex:=0 to VulkanCanvasBuffer^.fCountAllocatedVertexBuffers-1 do begin
+   FreeAndNil(VulkanCanvasBuffer^.fVulkanVertexBuffers[SubIndex]);
   end;
-  VulkanSpriteBatchBuffer^.fVulkanVertexBuffers:=nil;
-  VulkanSpriteBatchBuffer^.fVertexBuffers:=nil;
-  VulkanSpriteBatchBuffer^.fVertexBufferSizes:=nil;
-  VulkanSpriteBatchBuffer^.fQueueItems:=nil;
+  VulkanCanvasBuffer^.fVulkanVertexBuffers:=nil;
+  VulkanCanvasBuffer^.fVertexBuffers:=nil;
+  VulkanCanvasBuffer^.fVertexBufferSizes:=nil;
+  VulkanCanvasBuffer^.fQueueItems:=nil;
  end;
 
  FreeAndNil(fVulkanIndexBuffer);
@@ -28867,7 +28867,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanSpriteBatch.RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:single):TVulkanSpritePoint;
+function TVulkanCanvas.RotatePoint(const PointToRotate,AroundPoint:TVulkanSpritePoint;Cosinus,Sinus:single):TVulkanSpritePoint;
 var x,y:single;
 begin
  x:=PointToRotate.x-AroundPoint.x;
@@ -28876,7 +28876,7 @@ begin
  result.y:=(((((x*Sinus)+(y*Cosinus))+AroundPoint.y)*fInverseHeight)-0.5)*2;
 end;
 
-procedure TVulkanSpriteBatch.SetRenderingMode(aRenderingMode:TVulkanSpriteBatchRenderingMode);
+procedure TVulkanCanvas.SetRenderingMode(aRenderingMode:TVulkanCanvasRenderingMode);
 begin
  if fRenderingMode<>aRenderingMode then begin
   fRenderingMode:=aRenderingMode;
@@ -28891,7 +28891,7 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteBatch.SetBlendingMode(aBlendingMode:TVulkanSpriteBatchBlendingMode);
+procedure TVulkanCanvas.SetBlendingMode(aBlendingMode:TVulkanCanvasBlendingMode);
 begin
  if fBlendingMode<>aBlendingMode then begin
   fBlendingMode:=aBlendingMode;
@@ -28909,7 +28909,7 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteBatch.Start(const aBufferIndex:TVkInt32);
+procedure TVulkanCanvas.Start(const aBufferIndex:TVkInt32);
 begin
 
  fInverseWidth:=1.0/fWidth;
@@ -28924,9 +28924,9 @@ begin
 
  fBlendingMode:=vsbbmAlphaBlending;
 
- fCurrentFillSpriteBatchBuffer:=@fVulkanSpriteBatchBuffers[aBufferIndex];
- fCurrentFillSpriteBatchBuffer^.fCountQueueItems:=0;
- fCurrentFillSpriteBatchBuffer^.fCountUsedVertexBuffers:=0;
+ fCurrentFillBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
+ fCurrentFillBuffer^.fCountQueueItems:=0;
+ fCurrentFillBuffer^.fCountUsedVertexBuffers:=0;
 
  fScissor.offset.x:=trunc(floor(fViewport.x));
  fScissor.offset.y:=trunc(floor(fViewport.y));
@@ -28952,43 +28952,43 @@ begin
 
 end;
 
-procedure TVulkanSpriteBatch.Stop;
+procedure TVulkanCanvas.Stop;
 begin
 
  Flush;
 
- fCurrentFillSpriteBatchBuffer:=nil;
+ fCurrentFillBuffer:=nil;
 
 end;
 
-procedure TVulkanSpriteBatch.Flush;
+procedure TVulkanCanvas.Flush;
 var CurrentVulkanVertexBufferIndex,OldCount,NewCount,QueueItemIndex,DescriptorSetIndex:TVkInt32;
-    QueueItem:PVulkanSpriteBatchQueueItem;
+    QueueItem:PVulkanCanvasQueueItem;
     PointerHashMapEntity:PVulkanPointerHashMapEntity;
     VulkanDescriptorSet:TVulkanDescriptorSet;
 begin
- if assigned(fCurrentFillSpriteBatchBuffer) and (fCurrentCountVertices>0) then begin
+ if assigned(fCurrentFillBuffer) and (fCurrentCountVertices>0) then begin
 
-  while InterlockedCompareExchange(fCurrentFillSpriteBatchBuffer^.fSpinLock,-1,0)<>0 do begin
+  while InterlockedCompareExchange(fCurrentFillBuffer^.fSpinLock,-1,0)<>0 do begin
   end;
   try
 
    CurrentVulkanVertexBufferIndex:=fCurrentVulkanVertexBufferIndex;
 
-   fCurrentFillSpriteBatchBuffer^.fCountUsedVertexBuffers:=Max(fCurrentFillSpriteBatchBuffer^.fCountUsedVertexBuffers,CurrentVulkanVertexBufferIndex+1);
+   fCurrentFillBuffer^.fCountUsedVertexBuffers:=Max(fCurrentFillBuffer^.fCountUsedVertexBuffers,CurrentVulkanVertexBufferIndex+1);
 
-   OldCount:=fCurrentFillSpriteBatchBuffer^.fCountAllocatedVertexBuffers;
+   OldCount:=fCurrentFillBuffer^.fCountAllocatedVertexBuffers;
    if OldCount<=CurrentVulkanVertexBufferIndex then begin
     NewCount:=(CurrentVulkanVertexBufferIndex+1)*2;
-    SetLength(fCurrentFillSpriteBatchBuffer^.fVulkanVertexBuffers,NewCount);
-    SetLength(fCurrentFillSpriteBatchBuffer^.fVertexBuffers,NewCount);
-    SetLength(fCurrentFillSpriteBatchBuffer^.fVertexBufferSizes,NewCount);
-    FillChar(fCurrentFillSpriteBatchBuffer^.fVulkanVertexBuffers[OldCount],(NewCount-OldCount)*SizeOf(TVulkanBuffer),#0);
-    FillChar(fCurrentFillSpriteBatchBuffer^.fVertexBufferSizes[OldCount],(NewCount-OldCount)*SizeOf(TVkSizeInt),#0);
-    fCurrentFillSpriteBatchBuffer^.fCountAllocatedVertexBuffers:=NewCount;
+    SetLength(fCurrentFillBuffer^.fVulkanVertexBuffers,NewCount);
+    SetLength(fCurrentFillBuffer^.fVertexBuffers,NewCount);
+    SetLength(fCurrentFillBuffer^.fVertexBufferSizes,NewCount);
+    FillChar(fCurrentFillBuffer^.fVulkanVertexBuffers[OldCount],(NewCount-OldCount)*SizeOf(TVulkanBuffer),#0);
+    FillChar(fCurrentFillBuffer^.fVertexBufferSizes[OldCount],(NewCount-OldCount)*SizeOf(TVkSizeInt),#0);
+    fCurrentFillBuffer^.fCountAllocatedVertexBuffers:=NewCount;
    end;
 
-   inc(fCurrentFillSpriteBatchBuffer^.fVertexBufferSizes[CurrentVulkanVertexBufferIndex],fCurrentCountVertices*SizeOf(TVulkanSpriteBatchVertex));
+   inc(fCurrentFillBuffer^.fVertexBufferSizes[CurrentVulkanVertexBufferIndex],fCurrentCountVertices*SizeOf(TVulkanCanvasVertex));
 
    PointerHashMapEntity:=fVulkanTextureDescriptorSetHashMap.Get(fLastArrayTexture,false);
    if assigned(PointerHashMapEntity) then begin
@@ -29015,12 +29015,12 @@ begin
     fVulkanTextureDescriptorSetHashMap.Add(fLastArrayTexture,TVkPointer(TVkPtrUInt(DescriptorSetIndex)));
    end;
 
-   QueueItemIndex:=fCurrentFillSpriteBatchBuffer^.fCountQueueItems;
-   inc(fCurrentFillSpriteBatchBuffer^.fCountQueueItems);
-   if length(fCurrentFillSpriteBatchBuffer^.fQueueItems)<fCurrentFillSpriteBatchBuffer^.fCountQueueItems then begin
-    SetLength(fCurrentFillSpriteBatchBuffer^.fQueueItems,fCurrentFillSpriteBatchBuffer^.fCountQueueItems*2);
+   QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
+   inc(fCurrentFillBuffer^.fCountQueueItems);
+   if length(fCurrentFillBuffer^.fQueueItems)<fCurrentFillBuffer^.fCountQueueItems then begin
+    SetLength(fCurrentFillBuffer^.fQueueItems,fCurrentFillBuffer^.fCountQueueItems*2);
    end;
-   QueueItem:=@fCurrentFillSpriteBatchBuffer^.fQueueItems[QueueItemIndex];
+   QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
    QueueItem^.BufferIndex:=CurrentVulkanVertexBufferIndex;
    QueueItem^.DescriptorSetIndex:=DescriptorSetIndex;
    QueueItem^.StartVertexIndex:=fCurrentVulkanVertexBufferOffset;
@@ -29031,7 +29031,7 @@ begin
    QueueItem^.Scissor:=fScissor;
 
   finally
-   InterlockedExchange(fCurrentFillSpriteBatchBuffer^.fSpinLock,0);
+   InterlockedExchange(fCurrentFillBuffer^.fSpinLock,0);
   end;
 
   inc(fCurrentVulkanVertexBufferOffset,fCurrentCountVertices);
@@ -29039,12 +29039,12 @@ begin
   fCurrentCountVertices:=0;
   fCurrentCountIndices:=0;
 
-  fCurrentDestinationVertexBufferPointer:=@fCurrentFillSpriteBatchBuffer^.fVertexBuffers[fCurrentVulkanVertexBufferIndex][fCurrentVulkanVertexBufferOffset];
+  fCurrentDestinationVertexBufferPointer:=@fCurrentFillBuffer^.fVertexBuffers[fCurrentVulkanVertexBufferIndex][fCurrentVulkanVertexBufferOffset];
 
  end;
 end;
 
-procedure TVulkanSpriteBatch.GetNextDestinationVertexBuffer;
+procedure TVulkanCanvas.GetNextDestinationVertexBuffer;
 var OldCount,NewCount:TVkInt32;
 begin
 
@@ -29052,26 +29052,26 @@ begin
 
  fCurrentVulkanVertexBufferOffset:=0;
 
- OldCount:=fCurrentFillSpriteBatchBuffer^.fCountAllocatedVertexBuffers;
+ OldCount:=fCurrentFillBuffer^.fCountAllocatedVertexBuffers;
  if OldCount<=fCurrentVulkanVertexBufferIndex then begin
   NewCount:=RoundUpToPowerOfTwo(fCurrentVulkanVertexBufferIndex+1);
-  SetLength(fCurrentFillSpriteBatchBuffer^.fVulkanVertexBuffers,NewCount);
-  SetLength(fCurrentFillSpriteBatchBuffer^.fVertexBuffers,NewCount);
-  SetLength(fCurrentFillSpriteBatchBuffer^.fVertexBufferSizes,NewCount);
-  FillChar(fCurrentFillSpriteBatchBuffer^.fVulkanVertexBuffers[OldCount],(NewCount-OldCount)*SizeOf(TVulkanBuffer),#0);
-  FillChar(fCurrentFillSpriteBatchBuffer^.fVertexBufferSizes[OldCount],(NewCount-OldCount)*SizeOf(TVkSizeInt),#0);
-  fCurrentFillSpriteBatchBuffer^.fCountAllocatedVertexBuffers:=NewCount;
+  SetLength(fCurrentFillBuffer^.fVulkanVertexBuffers,NewCount);
+  SetLength(fCurrentFillBuffer^.fVertexBuffers,NewCount);
+  SetLength(fCurrentFillBuffer^.fVertexBufferSizes,NewCount);
+  FillChar(fCurrentFillBuffer^.fVulkanVertexBuffers[OldCount],(NewCount-OldCount)*SizeOf(TVulkanBuffer),#0);
+  FillChar(fCurrentFillBuffer^.fVertexBufferSizes[OldCount],(NewCount-OldCount)*SizeOf(TVkSizeInt),#0);
+  fCurrentFillBuffer^.fCountAllocatedVertexBuffers:=NewCount;
  end;
 
- fCurrentDestinationVertexBufferPointer:=@fCurrentFillSpriteBatchBuffer^.fVertexBuffers[fCurrentVulkanVertexBufferIndex][0];
+ fCurrentDestinationVertexBufferPointer:=@fCurrentFillBuffer^.fVertexBuffers[fCurrentVulkanVertexBufferIndex][0];
 
- fCurrentFillSpriteBatchBuffer^.fVertexBufferSizes[fCurrentVulkanVertexBufferIndex]:=0;
+ fCurrentFillBuffer^.fVertexBufferSizes[fCurrentVulkanVertexBufferIndex]:=0;
 
 end;
 
-procedure TVulkanSpriteBatch.FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TVkInt32);
-const UntilCountVertices=SizeOf(TVulkanSpriteBatchVertexBuffer) div SizeOf(TVulkanSpriteBatchVertex);
-      UntilCountIndices=SizeOf(TVulkanSpriteBatchIndexBuffer) div SizeOf(TVkUInt32);
+procedure TVulkanCanvas.FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TVkInt32);
+const UntilCountVertices=SizeOf(TVulkanCanvasVertexBuffer) div SizeOf(TVulkanCanvasVertex);
+      UntilCountIndices=SizeOf(TVulkanCanvasIndexBuffer) div SizeOf(TVkUInt32);
 begin
  if ((fCurrentVulkanVertexBufferOffset+fCurrentCountVertices+aCountVerticesToCheck)>=UntilCountVertices) or
     ((fCurrentCountIndices+aCountIndicesToCheck)>=UntilCountIndices) then begin
@@ -29080,7 +29080,7 @@ begin
  end;
 end;
 
-function TVulkanSpriteBatch.ClipCheck(const aX0,aY0,aX1,aY1:TVkFloat):boolean;
+function TVulkanCanvas.ClipCheck(const aX0,aY0,aX1,aY1:TVkFloat):boolean;
 const Threshold=1e-6;
 begin
  result:=(fUnscaledClipRect.x0<=(aX1+Threshold)) and
@@ -29089,7 +29089,7 @@ begin
          (aY0<=(fUnscaledClipRect.y1+Threshold));
 end;
 
-procedure TVulkanSpriteBatch.SetArrayTexture(const ArrayTexture:TVulkanSpriteAtlasArrayTexture);
+procedure TVulkanCanvas.SetArrayTexture(const ArrayTexture:TVulkanSpriteAtlasArrayTexture);
 begin
  if fLastArrayTexture<>ArrayTexture then begin
   Flush;
@@ -29099,7 +29099,7 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteBatch.SetScissor(const aScissor:TVkRect2D);
+procedure TVulkanCanvas.SetScissor(const aScissor:TVkRect2D);
 begin
  if (fScissor.offset.x<>aScissor.offset.x) or
     (fScissor.offset.y<>aScissor.offset.y) or
@@ -29110,7 +29110,7 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteBatch.SetScissor(const aLeft,aTop,aWidth,aHeight:TVkInt32);
+procedure TVulkanCanvas.SetScissor(const aLeft,aTop,aWidth,aHeight:TVkInt32);
 var NewScissor:TVkRect2D;
 begin
  NewScissor.offset.x:=aLeft;
@@ -29120,7 +29120,7 @@ begin
  SetScissor(NewScissor);
 end;
 
-procedure TVulkanSpriteBatch.SetClipRect(const aClipRect:TVkRect2D);
+procedure TVulkanCanvas.SetClipRect(const aClipRect:TVkRect2D);
 begin
  fUnscaledClipRect.x0:=aClipRect.offset.x;
  fUnscaledClipRect.y0:=aClipRect.offset.y;
@@ -29132,7 +29132,7 @@ begin
  fClipRect.y1:=(((aClipRect.offset.y+(aClipRect.extent.height+0.0))*fInverseHeight)-0.5)*2.0;
 end;
 
-procedure TVulkanSpriteBatch.SetClipRect(const aLeft,aTop,aWidth,aHeight:TVkInt32);
+procedure TVulkanCanvas.SetClipRect(const aLeft,aTop,aWidth,aHeight:TVkInt32);
 begin
  fUnscaledClipRect.x0:=aLeft;
  fUnscaledClipRect.y0:=aTop;
@@ -29144,20 +29144,20 @@ begin
  fClipRect.y1:=(((aTop+aHeight)*fInverseHeight)-0.5)*2.0;
 end;
 
-procedure TVulkanSpriteBatch.Hook(const aHook:TVulkanSpriteBatchHook;const aData:TVkPointer);
+procedure TVulkanCanvas.Hook(const aHook:TVulkanCanvasHook;const aData:TVkPointer);
 var QueueItemIndex:TVkInt32;
-    QueueItem:PVulkanSpriteBatchQueueItem;
+    QueueItem:PVulkanCanvasQueueItem;
 begin
  if assigned(aHook) then begin
 
   Flush;
                             
-  QueueItemIndex:=fCurrentFillSpriteBatchBuffer^.fCountQueueItems;
-  inc(fCurrentFillSpriteBatchBuffer^.fCountQueueItems);
-  if length(fCurrentFillSpriteBatchBuffer^.fQueueItems)<fCurrentFillSpriteBatchBuffer^.fCountQueueItems then begin
-   SetLength(fCurrentFillSpriteBatchBuffer^.fQueueItems,fCurrentFillSpriteBatchBuffer^.fCountQueueItems*2);
+  QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
+  inc(fCurrentFillBuffer^.fCountQueueItems);
+  if length(fCurrentFillBuffer^.fQueueItems)<fCurrentFillBuffer^.fCountQueueItems then begin
+   SetLength(fCurrentFillBuffer^.fQueueItems,fCurrentFillBuffer^.fCountQueueItems*2);
   end;
-  QueueItem:=@fCurrentFillSpriteBatchBuffer^.fQueueItems[QueueItemIndex];
+  QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
   QueueItem^.BufferIndex:=-1;
   QueueItem^.Hook:=aHook;
   QueueItem^.HookData:=aData;
@@ -29165,7 +29165,7 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteBatch.Draw(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Color:TVulkanSpriteColor);
 const MinA=1.0/1024.0;
 var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:single;
     TempDest,TempSrc:TVulkanSpriteRect;
@@ -29342,7 +29342,7 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteBatch.Draw(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:single;const Color:TVulkanSpriteColor);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const Src,Dest:TVulkanSpriteRect;const Origin:TVulkanSpritePoint;Rotation:single;const Color:TVulkanSpriteColor);
 const MinA=1.0/1024.0;
 var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:single;
     AroundPoint:TVulkanSpritePoint;
@@ -29508,7 +29508,7 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteBatch.Draw(const Sprite:TVulkanSprite;const x,y:single;const Color:TVulkanSpriteColor);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const x,y:single;const Color:TVulkanSpriteColor);
 var Src,Dest:TVulkanSpriteRect;
 begin
  Src.Left:=0;
@@ -29519,20 +29519,20 @@ begin
  Dest.Top:=y;
  Dest.Right:=x+Sprite.Width;
  Dest.Bottom:=y+Sprite.Height;
- Draw(Sprite,Src,Dest,Color);
+ DrawSprite(Sprite,Src,Dest,Color);
 end;
 
-procedure TVulkanSpriteBatch.Draw(const Sprite:TVulkanSprite;const x,y:single);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const x,y:single);
 var Color:TVulkanSpriteColor;
 begin
  Color.r:=1;
  Color.g:=1;
  Color.b:=1;
  Color.a:=1;
- Draw(Sprite,x,y,Color);
+ DrawSprite(Sprite,x,y,Color);
 end;
 
-procedure TVulkanSpriteBatch.Draw(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single);
+procedure TVulkanCanvas.DrawSprite(const Sprite:TVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:single);
 var Src,Dest:TVulkanSpriteRect;
     Color:TVulkanSpriteColor;
 begin
@@ -29548,15 +29548,15 @@ begin
  Color.g:=1;
  Color.b:=1;
  Color.a:=Alpha;
- Draw(Sprite,Src,Dest,Color);
+ DrawSprite(Sprite,Src,Dest,Color);
 end;
 
-procedure TVulkanSpriteBatch.ExecuteUpload(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
+procedure TVulkanCanvas.ExecuteUpload(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
 var Index:TVkInt32;
-    CurrentDrawSpriteBatchBuffer:PVulkanSpriteBatchBuffer;
+    CurrentDrawSpriteBatchBuffer:PVulkanCanvasBuffer;
     VulkanVertexBuffer:TVulkanBuffer;
 begin
- CurrentDrawSpriteBatchBuffer:=@fVulkanSpriteBatchBuffers[aBufferIndex];
+ CurrentDrawSpriteBatchBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
  if assigned(CurrentDrawSpriteBatchBuffer) and (CurrentDrawSpriteBatchBuffer^.fCountUsedVertexBuffers>0) then begin
   while InterlockedCompareExchange(CurrentDrawSpriteBatchBuffer^.fSpinLock,-1,0)<>0 do begin
   end;
@@ -29566,7 +29566,7 @@ begin
      VulkanVertexBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanVertexBuffers[Index];
      if not assigned(VulkanVertexBuffer) then begin
       VulkanVertexBuffer:=TVulkanBuffer.Create(fDevice,
-                                               SizeOf(TVulkanSpriteBatchVertexBuffer),
+                                               SizeOf(TVulkanCanvasVertexBuffer),
                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                nil,
@@ -29601,16 +29601,16 @@ begin
  end;
 end;
 
-procedure TVulkanSpriteBatch.ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
+procedure TVulkanCanvas.ExecuteDraw(const aVulkanCommandBuffer:TVulkanCommandBuffer;const aBufferIndex:TVkInt32);
 var Index,DescriptorSetIndex,StartVertexIndex:TVkInt32;
-    QueueItem:PVulkanSpriteBatchQueueItem;
-    CurrentDrawSpriteBatchBuffer:PVulkanSpriteBatchBuffer;
+    QueueItem:PVulkanCanvasQueueItem;
+    CurrentDrawSpriteBatchBuffer:PVulkanCanvasBuffer;
     VulkanVertexBuffer:TVulkanBuffer;
     OldScissor:TVkRect2D;
     ForceUpdate:boolean;
     Offsets:array[0..0] of TVkDeviceSize;
 begin
- CurrentDrawSpriteBatchBuffer:=@fVulkanSpriteBatchBuffers[aBufferIndex];
+ CurrentDrawSpriteBatchBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
  if assigned(CurrentDrawSpriteBatchBuffer) and (CurrentDrawSpriteBatchBuffer^.fCountQueueItems>0) then begin
 
   OldScissor.offset.x:=-$7fffffff;
@@ -29678,7 +29678,7 @@ begin
 
     end;
 
-    Offsets[0]:=QueueItem^.StartVertexIndex*SizeOf(TVulkanSpriteBatchVertex);
+    Offsets[0]:=QueueItem^.StartVertexIndex*SizeOf(TVulkanCanvasVertex);
 
     aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
     aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
@@ -42530,7 +42530,7 @@ begin
  result:=fUnitsPerEm*(Percent*0.01);
 end;
 
-procedure TVulkanFont.Draw(const aSpriteBatch:TVulkanSpriteBatch;const aText:TVulkanUTF8String;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
+procedure TVulkanFont.Draw(const aCanvas:TVulkanCanvas;const aText:TVulkanUTF8String;const aX,aY,aSize:TVkFloat;const aColorRed:TVkFloat=1.0;const aColorGreen:TVkFloat=1.0;const aColorBlue:TVkFloat=1.0;const aColorAlpha:TVkFloat=1.0);
 var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TVkInt32;
     x,y,ScaleFactor,RescaleFactor:TVkFloat;
     Int64HashMapData:TVulkanInt64HashMapData;
@@ -42573,7 +42573,7 @@ begin
     Dest.Top:=aY+(y*ScaleFactor)+(Glyph^.OffsetY*RescaleFactor);
     Dest.Right:=aX+(x*ScaleFactor)+((Glyph^.OffsetX+Glyph^.Width)*RescaleFactor);
     Dest.Bottom:=aY+(y*ScaleFactor)+((Glyph^.OffsetY+Glyph^.Height)*RescaleFactor);
-    aSpriteBatch.Draw(Glyph^.Sprite,Src,Dest,Color);
+    aCanvas.DrawSprite(Glyph^.Sprite,Src,Dest,Color);
     x:=x+Glyph^.AdvanceWidth;
     y:=y+Glyph^.AdvanceHeight;
    end;

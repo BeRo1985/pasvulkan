@@ -928,6 +928,8 @@ type EVulkanApplication=class(Exception)
 
        fTerminated:boolean;
 
+       fSDLWaveFormat:TSDL_AudioSpec;
+
        fSDLDisplayMode:TSDL_DisplayMode;
        fSurfaceWindow:PSDL_Window;
 

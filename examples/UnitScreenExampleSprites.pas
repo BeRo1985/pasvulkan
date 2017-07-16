@@ -29,7 +29,7 @@ type TScreenExampleSprites=class(TVulkanApplicationScreen)
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
        fVulkanSpriteAtlas:TVulkanSpriteAtlas;
-       fVulkanSpriteBatch:TVulkanSpriteBatch;
+       fVulkanCanvas:TVulkanCanvas;
        fVulkanSpriteTest:TVulkanSprite;
        fVulkanSpriteSmiley0:TVulkanSprite;
        fVulkanSpriteAppIcon:TVulkanSprite;
@@ -273,27 +273,27 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
- fVulkanSpriteBatch:=TVulkanSpriteBatch.Create(VulkanApplication.VulkanDevice,
-                                               VulkanApplication.VulkanDevice.GraphicsQueue,
-                                               VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
-                                               VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
-                                               VulkanApplication.VulkanDevice.TransferQueue,
-                                               VulkanApplication.VulkanTransferCommandBuffers[0,0],
-                                               VulkanApplication.VulkanTransferCommandBufferFences[0,0],
-                                               VulkanApplication.VulkanPipelineCache,
-                                               fVulkanRenderPass,
-                                               VulkanApplication.CountSwapChainImages);
+ fVulkanCanvas:=TVulkanCanvas.Create(VulkanApplication.VulkanDevice,
+                                     VulkanApplication.VulkanDevice.GraphicsQueue,
+                                     VulkanApplication.VulkanGraphicsCommandBuffers[0,0],
+                                     VulkanApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                     VulkanApplication.VulkanDevice.TransferQueue,
+                                     VulkanApplication.VulkanTransferCommandBuffers[0,0],
+                                     VulkanApplication.VulkanTransferCommandBufferFences[0,0],
+                                     VulkanApplication.VulkanPipelineCache,
+                                     fVulkanRenderPass,
+                                     VulkanApplication.CountSwapChainImages);
  if VulkanApplication.Width<VulkanApplication.Height then begin
-  fVulkanSpriteBatch.Width:=(720*VulkanApplication.Width) div VulkanApplication.Height;
-  fVulkanSpriteBatch.Height:=720;
+  fVulkanCanvas.Width:=(720*VulkanApplication.Width) div VulkanApplication.Height;
+  fVulkanCanvas.Height:=720;
  end else begin
-  fVulkanSpriteBatch.Width:=1280;
-  fVulkanSpriteBatch.Height:=(1280*VulkanApplication.Height) div VulkanApplication.Width;
+  fVulkanCanvas.Width:=1280;
+  fVulkanCanvas.Height:=(1280*VulkanApplication.Height) div VulkanApplication.Width;
  end;
- fVulkanSpriteBatch.Viewport.x:=0;
- fVulkanSpriteBatch.Viewport.y:=0;
- fVulkanSpriteBatch.Viewport.width:=VulkanApplication.Width;
- fVulkanSpriteBatch.Viewport.height:=VulkanApplication.Height;
+ fVulkanCanvas.Viewport.x:=0;
+ fVulkanCanvas.Viewport.y:=0;
+ fVulkanCanvas.Viewport.width:=VulkanApplication.Width;
+ fVulkanCanvas.Viewport.height:=VulkanApplication.Height;
 
  for SwapChainImageIndex:=0 to length(fVulkanRenderCommandBuffers)-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[SwapChainImageIndex]);
@@ -304,7 +304,7 @@ end;
 
 procedure TScreenExampleSprites.BeforeDestroySwapChain;
 begin
- FreeAndNil(fVulkanSpriteBatch);
+ FreeAndNil(fVulkanCanvas);
  FreeAndNil(fVulkanRenderPass);
  inherited BeforeDestroySwapChain;
 end;
@@ -442,52 +442,52 @@ var Index:TVkInt32;
 begin
  inherited Update(aDeltaTime);
 
- fVulkanSpriteBatch.Start(VulkanApplication.UpdateSwapChainImageIndex);
+ fVulkanCanvas.Start(VulkanApplication.UpdateSwapChainImageIndex);
 
- fVulkanSpriteBatch.BlendingMode:=vsbbmNone;
+ fVulkanCanvas.BlendingMode:=vsbbmNone;
 
  SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
- DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteTest.Width)*0.5)+(cos(fTime*pi*2.0*0.1)*128.0);
- DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteTest.Height)*0.5)+(sin(fTime*pi*3.0*0.1)*128.0);
+ DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteTest.Width)*0.5)+(cos(fTime*pi*2.0*0.1)*128.0);
+ DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteTest.Height)*0.5)+(sin(fTime*pi*3.0*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteTest.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteTest.Height;
- fVulkanSpriteBatch.Draw(fVulkanSpriteTest,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
+ fVulkanCanvas.DrawSprite(fVulkanSpriteTest,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
 
- fVulkanSpriteBatch.BlendingMode:=vsbbmAlphaBlending;
+ fVulkanCanvas.BlendingMode:=vsbbmAlphaBlending;
 
  SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteAppIcon.Width,fVulkanSpriteAppIcon.Height);
- DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteAppIcon.Width)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0);
- DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteAppIcon.Height)*0.5)+(cos(fTime*pi*3.0*0.1)*128.0);
+ DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteAppIcon.Width)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0);
+ DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteAppIcon.Height)*0.5)+(cos(fTime*pi*3.0*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteAppIcon.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteAppIcon.Height;
- fVulkanSpriteBatch.Draw(fVulkanSpriteAppIcon,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteAppIcon.Width*0.5,fVulkanSpriteAppIcon.Height*0.5),cos(fTime*pi*1.7*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
+ fVulkanCanvas.DrawSprite(fVulkanSpriteAppIcon,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteAppIcon.Width*0.5,fVulkanSpriteAppIcon.Height*0.5),cos(fTime*pi*1.7*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
  {
  SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
- DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
- DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteSmiley0.Height)*0.5)+(cos(fTime*pi*2.3*0.1)*128.0);
+ DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
+ DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteSmiley0.Height)*0.5)+(cos(fTime*pi*2.3*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteSmiley0.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
- fVulkanSpriteBatch.Draw(fVulkanSpriteSmiley0,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,0.9));
+ fVulkanCanvas.DrawSprite(fVulkanSpriteSmiley0,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,0.9));
 }
- fVulkanSpriteBatch.BlendingMode:=vsbbmAdditiveBlending;
+ fVulkanCanvas.BlendingMode:=vsbbmAdditiveBlending;
 
  SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteDancer0.Width,fVulkanSpriteDancer0.Height);
- DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteDancer0.Width)*0.5)+(cos(fTime*pi*1.7*0.1)*128.0);
- DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteDancer0.Height)*0.5)+(sin(fTime*pi*2.3*0.1)*128.0);
+ DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteDancer0.Width)*0.5)+(cos(fTime*pi*1.7*0.1)*128.0);
+ DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteDancer0.Height)*0.5)+(sin(fTime*pi*2.3*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteDancer0.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteDancer0.Height;
- fVulkanSpriteBatch.Draw(fVulkanSpriteDancer0,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteDancer0.Width*0.5,fVulkanSpriteDancer0.Height*0.5),cos(fTime*pi*1.5*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,0.5));
+ fVulkanCanvas.DrawSprite(fVulkanSpriteDancer0,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteDancer0.Width*0.5,fVulkanSpriteDancer0.Height*0.5),cos(fTime*pi*1.5*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,0.5));
 
- fVulkanSpriteBatch.BlendingMode:=vsbbmAlphaBlending;
+ fVulkanCanvas.BlendingMode:=vsbbmAlphaBlending;
 
  SrcRect:=VulkanSpriteRect(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
- DstRect.Left:=((fVulkanSpriteBatch.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
- DstRect.Top:=((fVulkanSpriteBatch.Height-fVulkanSpriteSmiley0.Height)*0.5)+(cos(fTime*pi*2.3*0.1)*128.0);
+ DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
+ DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteSmiley0.Height)*0.5)+(cos(fTime*pi*2.3*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteSmiley0.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
- fVulkanSpriteBatch.Draw(fVulkanSpriteSmiley0,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
+ fVulkanCanvas.DrawSprite(fVulkanSpriteSmiley0,SrcRect,DstRect,VulkanSpritePoint(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,VulkanSpriteColor(1.0,1.0,1.0,1.0));
 
- fVulkanSpriteBatch.Stop;
+ fVulkanCanvas.Stop;
 
  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Sprites');
  fStartY:=VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*1.25)-(4*FontSize));
@@ -527,8 +527,8 @@ begin
 
    VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
-   fVulkanSpriteBatch.ExecuteUpload(VulkanCommandBuffer,
-                                    VulkanApplication.DrawSwapChainImageIndex);
+   fVulkanCanvas.ExecuteUpload(VulkanCommandBuffer,
+                               VulkanApplication.DrawSwapChainImageIndex);
 
    fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
                                      VulkanApplication.VulkanFrameBuffers[aSwapChainImageIndex],
@@ -538,8 +538,8 @@ begin
                                      VulkanSwapChain.Width,
                                      VulkanSwapChain.Height);
 
-   fVulkanSpriteBatch.ExecuteDraw(VulkanCommandBuffer,
-                                  VulkanApplication.DrawSwapChainImageIndex);
+   fVulkanCanvas.ExecuteDraw(VulkanCommandBuffer,
+                             VulkanApplication.DrawSwapChainImageIndex);
 
    fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 
