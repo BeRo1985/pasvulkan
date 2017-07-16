@@ -51,7 +51,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.GUI;
+unit PasVulkan.Types.Standard;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -63,100 +63,144 @@ unit PasVulkan.GUI;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application;
+type PPInt8=^PInt8;
+     PInt8=^TInt8;
+     TInt8={$ifdef fpc}Int8{$else}shortint{$endif};
 
-type TPasVulkanGUIObject=class;
+     PPUInt8=^PUInt8;
+     PUInt8=^TUInt8;
+     TUInt8={$ifdef fpc}UInt8{$else}byte{$endif};
 
-     TPasVulkanGUIObjectList=class(TList)
-      private
-       function GetItem(const aIndex:TVkInt32):TPasVulkanGUIObject;
-       procedure SetItem(const aIndex:TVkInt32;const aItem:TPasVulkanGUIObject);
-      public
-       procedure ClearObjects;
-       property Items[const aIndex:TVkInt32]:TPasVulkanGUIObject read GetItem write SetItem; default;
+     PPInt16=^PInt16;
+     PInt16=^TInt16;
+     TInt16={$ifdef fpc}Int16{$else}smallint{$endif};
+
+     PPUInt16=^PUInt16;
+     PUInt16=^TUInt16;
+     TUInt16={$ifdef fpc}UInt16{$else}word{$endif};
+
+     PPInt32=^PInt32;
+     PInt32=^TInt32;
+     TInt32={$ifdef fpc}Int32{$else}longint{$endif};
+
+     PPUInt32=^PUInt32;
+     PUInt32=^TUInt32;
+     TUInt32={$ifdef fpc}UInt32{$else}longword{$endif};
+
+     PPInt64=^PInt64;
+     PInt64=^TInt64;
+     TInt64=Int64;
+
+     PPUInt64=^PUInt64;
+     PUInt64=^TUInt64;
+     TUInt64=UInt64;
+
+     PPChar=^PChar;
+     PChar=PAnsiChar;
+     TChar=AnsiChar;
+
+     PPPointer=^PPointer;
+     PPointer=^TPointer;
+     TPointer=Pointer;
+
+     PPPointers=^PPointers;
+     PPointers=^TPointers;
+     TPointers=array[0..65535] of pointer;
+
+     PPVoid=^PVoid;
+     PVoid=Pointer;
+
+     PPFloat=^PFloat;
+     PFloat=^TFloat;
+     TFloat=Single;
+
+     PPDouble=^PDouble;
+     PDouble=^TDouble;
+     TDouble=Double;
+
+{    PPTime=^PTime;
+     PTime=^TTime;
+     TTime=TInt64;}
+
+     PPPtrUInt=^PPtrUInt;
+     PPPtrInt=^PPtrInt;
+     PPtrUInt=^TPtrUInt;
+     PPtrInt=^TPtrInt;
+{$ifdef fpc}
+     TPtrUInt=PtrUInt;
+     TPtrInt=PtrInt;
+ {$undef OldDelphi}
+{$else}
+ {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=23.0}
+   {$undef OldDelphi}
+     TPtrUInt=NativeUInt;
+     TPtrInt=NativeInt;
+  {$else}
+   {$define OldDelphi}
+  {$ifend}
+ {$else}
+  {$define OldDelphi}
+ {$endif}
+{$endif}
+{$ifdef OldDelphi}
+{$ifdef cpu64}
+     TPtrUInt=uint64;
+     TPtrInt=int64;
+{$else}
+     TPtrUInt=longword;
+     TPtrInt=longint;
+{$endif}
+{$endif}
+
+     PPSizeUInt=^PSizeUInt;
+     PSizeUInt=^TSizeUInt;
+     TSizeUInt=TPtrUInt;
+
+     PPSizeInt=^PSizeInt;
+     PSizeInt=^TSizeInt;
+     TSizeInt=TPtrInt;
+
+     PPSize=^PSizeUInt;
+     PSize=^TSizeUInt;
+     TSize=TPtrUInt;
+
+     PPPtrDiff=^PPtrDiff;
+     PPtrDiff=^TPtrDiff;
+     TPtrDiff=TPtrInt;
+
+     PPRawByteString=^PRawByteString;
+     PRawByteString=^TRawByteString;
+     TRawByteString=RawByteString;
+
+     PPUTF8String=^PUTF8String;
+     PUTF8String=^TUTF8String;
+     TUTF8String=UTF8String;
+
+     PPFileName=^PFileName;
+     PFileName=^TFileName;
+     TFileName=String;
+
+     PHandle=^THandle;
+     THandle={$ifdef fpc}bitpacked{$endif} record
+      Index:TUInt32;
+      Generation:TUInt32;
      end;
 
-     TPasVulkanGUIObject=class
-      private
-       fParent:TPasVulkanGUIObject;
-       fChildren:TPasVulkanGUIObjectList;
-      public
-       constructor Create(const aParent:TPasVulkanGUIObject=nil); reintroduce;
-       destructor Destroy; override;
-       procedure AfterConstruction; override;
-       procedure BeforeDestruction; override;
-      published
-       property Parent:TPasVulkanGUIObject read fParent write fParent;
-       property Children:TPasVulkanGUIObjectList read fChildren;
+     PID=^TID;
+     TID={$ifdef fpc}bitpacked{$endif} record
+      Index:TUInt32;
+      Generation:TUInt32;
      end;
 
-     TPasVulkanGUIInstance=class(TPasVulkanGUIObject)
-      public
-     end;
+{const TimeToSeconds=1.0/TTime($100000000);
+      TimeFromSeconds=TTime($100000000);
+      TimeSeconds=TTime($100000000);}
 
 implementation
 
-function TPasVulkanGUIObjectList.GetItem(const aIndex:TVkInt32):TPasVulkanGUIObject;
-begin
- result:=inherited Items[aIndex];
-end;
+uses SysUtils,
+     Classes;
 
-procedure TPasVulkanGUIObjectList.SetItem(const aIndex:TVkInt32;const aItem:TPasVulkanGUIObject);
-begin
- inherited Items[aIndex]:=aItem;
-end;
-
-procedure TPasVulkanGUIObjectList.ClearObjects;
-var CurrentObject:TPasVulkanGUIObject;
-begin
- while Count>0 do begin
-  CurrentObject:=Items[Count-1];
-  Delete(Count-1);
-  CurrentObject.Free;
- end;
-end;
-
-constructor TPasVulkanGUIObject.Create(const aParent:TPasVulkanGUIObject=nil);
-begin
-
- inherited Create;
-
- fParent:=aParent;
-
- fChildren:=TPasVulkanGUIObjectList.Create;
-
-end;
-
-destructor TPasVulkanGUIObject.Destroy;
-begin
-
- fChildren.ClearObjects;
- FreeAndNil(fChildren);
-
- inherited Destroy;
-
-end;
-
-procedure TPasVulkanGUIObject.AfterConstruction;
-begin
-
- inherited AfterConstruction;
-
- if assigned(fParent) then begin
-  fParent.fChildren.Add(self);
- end;
-
-end;
-
-procedure TPasVulkanGUIObject.BeforeDestruction;
-begin
-
- if assigned(fParent) then begin
-  fParent.fChildren.Remove(self);
- end;
-
- inherited BeforeDestruction;
-
-end;
-
+initialization
 end.

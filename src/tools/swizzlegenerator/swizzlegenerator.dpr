@@ -28,10 +28,10 @@ var slMainDefinitions,slMainPropertyDefinitions,slMainImplementations,
     slImplementations:=slHelperImplementations;
     NameSuffix:='Helper';
    end;
-{  if ((DataType='TVulkanVector3') or (DataType='TVulkanVector4')) and (c='xy') then begin
+{  if ((DataType='TVector3') or (DataType='TVector4')) and (c='xy') then begin
     exit;
    end;
-   if (DataType='TVulkanVector4') and (c='xyz') then begin
+   if (DataType='TVector4') and (c='xyz') then begin
     exit;
    end;{}
    CanWrite:=true;
@@ -71,11 +71,11 @@ var slMainDefinitions,slMainPropertyDefinitions,slMainImplementations,
  begin
   for a:=1 to length(Chars) do begin
    for b:=1 to length(Chars) do begin
-    OutputIt(Chars[a]+Chars[b],'TVulkanVector2');
+    OutputIt(Chars[a]+Chars[b],'TVector2');
     for c:=1 to length(Chars) do begin
-     OutputIt(Chars[a]+Chars[b]+Chars[c],'TVulkanVector3');
+     OutputIt(Chars[a]+Chars[b]+Chars[c],'TVector3');
      for d:=1 to length(Chars) do begin
-      OutputIt(Chars[a]+Chars[b]+Chars[c]+Chars[d],'TVulkanVector4');
+      OutputIt(Chars[a]+Chars[b]+Chars[c]+Chars[d],'TVector4');
      end;
     end;
    end;
@@ -135,7 +135,7 @@ begin
 end;
 
 begin
- DoItFor(2,'TVulkanVector2');
- DoItFor(3,'TVulkanVector3');
- DoItFor(4,'TVulkanVector4');
+ DoItFor(2,'TVector2');
+ DoItFor(3,'TVector3');
+ DoItFor(4,'TVector4');
 end.
