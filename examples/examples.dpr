@@ -27,7 +27,6 @@ uses
   PasVulkan.StaticLinking in '..\src\PasVulkan.StaticLinking.pas',
   PasVulkan.Application in '..\src\PasVulkan.Application.pas',
   PasVulkan.GUI in '..\src\PasVulkan.GUI.pas',
-  UnitMath3D in 'UnitMath3D.pas',
   UnitBufferedStream in 'UnitBufferedStream.pas',
   UnitChunkStream in 'UnitChunkStream.pas',
   UnitRegisteredExamplesList in 'UnitRegisteredExamplesList.pas',
