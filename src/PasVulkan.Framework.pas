@@ -3341,36 +3341,31 @@ type EVulkanException=class(Exception);
      end;
 
      PVulkanSpritePoint=^TVulkanSpritePoint;
-     TVulkanSpritePoint=record
-      x:TFloat;
-      y:TFloat;
-     end;
+     TVulkanSpritePoint=TVector2;
 
      PVulkanSpriteRect=^TVulkanSpriteRect;
      TVulkanSpriteRect=packed record
-      Left:TFloat;
-      Top:TFloat;
-      Right:TFloat;
-      Bottom:TFloat;
+      case TInt32 of
+       0:(
+        Left:TFloat;
+        Top:TFloat;
+        Right:TFloat;
+        Bottom:TFloat;
+       );
+       1:(
+        LeftTop:TVulkanSpritePoint;
+        RightBottom:TVulkanSpritePoint;
+       );
      end;
 
      PVulkanSpriteColor=^TVulkanSpriteColor;
-     TVulkanSpriteColor=record
-      r:TFloat;
-      g:TFloat;
-      b:TFloat;
-      a:TFloat;
-     end;
+     TVulkanSpriteColor=TVector4;
 
      PVulkanSpriteVertexPoint=^TVulkanSpriteVertexPoint;
      TVulkanSpriteVertexPoint=TVulkanSpritePoint;
 
      PVulkanSpriteVertexTextureCoord=^TVulkanSpriteVertexTextureCoord;
-     TVulkanSpriteVertexTextureCoord=packed record
-      x:TFloat;
-      y:TFloat;
-      Layer:TFloat;
-     end;
+     TVulkanSpriteVertexTextureCoord=TVector3;
 
      PVulkanSpriteVertexColor=^TVulkanSpriteVertexColor;
      TVulkanSpriteVertexColor=packed record
@@ -29230,7 +29225,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29239,7 +29234,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29248,7 +29243,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29257,7 +29252,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29323,7 +29318,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29332,7 +29327,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29341,7 +29336,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29350,7 +29345,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29419,7 +29414,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29427,7 +29422,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29435,7 +29430,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29443,7 +29438,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29506,7 +29501,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29514,7 +29509,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29522,7 +29517,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -29530,7 +29525,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.Layer:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
