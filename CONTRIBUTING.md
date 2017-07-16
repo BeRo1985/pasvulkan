@@ -5,7 +5,7 @@
 2. The zlib license header goes at the top of each source file, with appropriate copyright notice.
 3. This PasVulkan wrapper may be used only with the PasVulkan-own Vulkan Pascal header.
 4. After a pull request, check the status of your pull request on http://github.com/BeRo1985/pasvulkan
-5. Write code which's compatible with Delphi >= 2009 and FreePascal >= 3.0
+5. Write code which's compatible with Delphi >= 2009 and FreePascal >= 3.1.1
 6. Don't use Delphi-only, FreePascal-only or Lazarus-only libraries/units, but if needed, make it out-ifdef-able.
 7. No use of third-party libraries/units as possible, but if needed, make it out-ifdef-able.
 8. Try to use const when possible.
