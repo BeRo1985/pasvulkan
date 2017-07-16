@@ -953,11 +953,7 @@ type PpvScalar=^TpvScalar;
 
      Mat4=TpvMatrix4x4;
 
-{$ifndef InSupraEngine}
-     TpvPooledObject=class(TPersistent);
-{$endif}
-
-     TpvPropertyVector2=class(TpvPooledObject)
+     TpvPropertyVector2=class(TPersistent)
       private
        fVector:PpvVector2;
        function GetX:TpvScalar;
@@ -975,7 +971,7 @@ type PpvScalar=^TpvScalar;
        property y:TpvScalar read GetY write SetY;
      end;
 
-     TpvPropertyVector3=class(TpvPooledObject)
+     TpvPropertyVector3=class(TPersistent)
       private
        fVector:PpvVector3;
        function GetX:TpvScalar;
@@ -996,7 +992,7 @@ type PpvScalar=^TpvScalar;
        property z:TpvScalar read GetZ write SetZ;
      end;
 
-     TpvPropertyVector4=class(TpvPooledObject)
+     TpvPropertyVector4=class(TPersistent)
       private
        fVector:PpvVector4;
        function GetX:TpvScalar;
@@ -1020,7 +1016,7 @@ type PpvScalar=^TpvScalar;
        property w:TpvScalar read GetW write SetW;
      end;
 
-     TpvPropertyQuaternion=class(TpvPooledObject)
+     TpvPropertyQuaternion=class(TPersistent)
       private
        fQuaternion:PpvQuaternion;
        function GetX:TpvScalar;
@@ -1044,7 +1040,7 @@ type PpvScalar=^TpvScalar;
        property w:TpvScalar read GetW write SetW;
      end;
 
-     TpvPropertyAngle=class(TpvPooledObject)
+     TpvPropertyAngle=class(TPersistent)
       private
        fRadianAngle:PpvScalar;
        function GetAngle:TpvScalar;
@@ -1059,7 +1055,7 @@ type PpvScalar=^TpvScalar;
        property Angle:TpvScalar read GetAngle write SetAngle;
      end;
 
-     TpvPropertyRotation3D=class(TpvPooledObject)
+     TpvPropertyRotation3D=class(TPersistent)
       private
        fQuaternion:PpvQuaternion;
        function GetX:TpvScalar;
@@ -1092,7 +1088,7 @@ type PpvScalar=^TpvScalar;
        property Roll:TpvScalar read GetRoll write SetRoll;
      end;
 
-     TpvPropertyColorRGB=class(TpvPooledObject)
+     TpvPropertyColorRGB=class(TPersistent)
       private
        fVector:PpvVector3;
        function GetR:TpvScalar;
@@ -1113,7 +1109,7 @@ type PpvScalar=^TpvScalar;
        property b:TpvScalar read GetB write SetB;
      end;
 
-     TpvPropertyColorRGBA=class(TpvPooledObject)
+     TpvPropertyColorRGBA=class(TPersistent)
       private
        fVector:PpvVector4;
        function GetR:TpvScalar;
