@@ -103,1252 +103,1252 @@ const EPSILON={$ifdef UseDouble}1e-14{$else}1e-5{$endif}; // actually {$ifdef Us
 
       SupraEngineFPUExceptionMask:TFPUExceptionMask=[exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision];
 
-type PScalar=^TScalar;
-     TScalar={$ifdef UseDouble}TDouble{$else}TFloat{$endif};
+type PpvScalar=^TpvScalar;
+     TpvScalar={$ifdef UseDouble}TpvDouble{$else}TpvFloat{$endif};
 
-     PClipRect=^TClipRect;
-     TClipRect=array[0..3] of TInt32;
+     PpvClipRect=^TpvClipRect;
+     TpvClipRect=array[0..3] of TpvInt32;
 
-     PFloatClipRect=^TFloatClipRect;
-     TFloatClipRect=array[0..3] of TFloat;
+     PpvFloatClipRect=^TpvFloatClipRect;
+     TpvFloatClipRect=array[0..3] of TpvFloat;
 
-     PPIntPoint=^PIntPoint;
-     PIntPoint=^TIntPoint;
-     TIntPoint=record
+     PPpvIntPoint=^PpvIntPoint;
+     PpvIntPoint=^TpvIntPoint;
+     TpvIntPoint=record
       public
-       x,y:TInt32;
+       x,y:TpvInt32;
      end;
 
-     PVector2=^TVector2;
-     TVector2=record
+     PpvVector2=^TpvVector2;
+     TpvVector2=record
       public
-       constructor Create(const pX:TScalar); overload;
-       constructor Create(const pX,pY:TScalar); overload;
-       class operator Implicit(const a:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a,b:TVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a,b:TVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc(const a:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Dec(const a:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TVector2): TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a,b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TVector2;const b:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative(const a:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Positive(const a:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       constructor Create(const pX:TpvScalar); overload;
+       constructor Create(const pX,pY:TpvScalar); overload;
+       class operator Implicit(const a:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc(const a:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Dec(const a:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a,b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TpvVector2;const b:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TpvScalar;const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a,b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TpvVector2;const b:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TpvScalar;const b:TpvVector2): TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a,b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvVector2;const b:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvScalar;const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a,b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvVector2;const b:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvScalar;const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a,b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TpvVector2;const b:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TpvScalar;const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvVector2;const b:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvScalar;const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative(const a:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Positive(const a:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       {$i PasVulkan.Math.TVector2.Swizzle.Definitions.inc}
+       {$i PasVulkan.Math.TpvVector2.Swizzle.Definitions.inc}
       private
-       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetComponent(const pIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Perpendicular:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function Length:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function SquaredLength:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Normalize:TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function DistanceTo(const b:TVector2):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Dot(const b:TVector2):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Cross(const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function Lerp(const b:TVector2;const t:TScalar):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function Angle(const b,c:TVector2):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Rotate(const Angle:TScalar):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Rotate(const Center:TVector2;const Angle:TScalar):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       property Components[const pIndex:TInt32]:TScalar read GetComponent write SetComponent; default;
-       case TUInt8 of
-        0:(RawComponents:array[0..1] of TScalar);
-        1:(x,y:TScalar);
-        2:(u,v:TScalar);
-        3:(s,t:TScalar);
-        4:(r,g:TScalar);
+       function Perpendicular:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Length:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function SquaredLength:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Normalize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const b:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Dot(const b:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Cross(const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Lerp(const b:TpvVector2;const t:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Angle(const b,c:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rotate(const Angle:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rotate(const Center:TpvVector2;const Angle:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       property Components[const pIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
+       case TpvUInt8 of
+        0:(RawComponents:array[0..1] of TpvScalar);
+        1:(x,y:TpvScalar);
+        2:(u,v:TpvScalar);
+        3:(s,t:TpvScalar);
+        4:(r,g:TpvScalar);
      end;
 
-     PVector3=^TVector3;
-     TVector3=record
+     PpvVector3=^TpvVector3;
+     TpvVector3=record
       public
-       constructor Create(const pX:TScalar); overload;
-       constructor Create(const pX,pY,pZ:TScalar); overload;
-       constructor Create(const pXY:TVector2;const pZ:TScalar=0.0); overload;
-       class operator Implicit(const a:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a,b:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a,b:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Divide(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator IntDivide(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a,b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TVector3;const b:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Positive(const a:TVector3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       constructor Create(const pX:TpvScalar); overload;
+       constructor Create(const pX,pY,pZ:TpvScalar); overload;
+       constructor Create(const pXY:TpvVector2;const pZ:TpvScalar=0.0); overload;
+       class operator Implicit(const a:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Positive(const a:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       {$i PasVulkan.Math.TVector3.Swizzle.Definitions.inc}
+       {$i PasVulkan.Math.TpvVector3.Swizzle.Definitions.inc}
       private
-       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetComponent(const pIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Flip:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Perpendicular:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function OneUnitOrthogonalVector:TVector3;
-       function Length:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function SquaredLength:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Abs:TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function AngleTo(const b:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Lerp(const b:TVector3;const t:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Angle(const b,c:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateX(const Angle:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateY(const Angle:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateZ(const Angle:TScalar):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function ProjectToBounds(const MinVector,MaxVector:TVector3):TScalar;
-       property Components[const pIndex:TInt32]:TScalar read GetComponent write SetComponent; default;
-       case TUInt8 of
-        0:(RawComponents:array[0..2] of TScalar);
-        1:(x,y,z:TScalar);
-        2:(r,g,b:TScalar);
-        3:(s,t,p:TScalar);
-        4:(Pitch,Yaw,Roll:TScalar);
-        6:(Vector2:TVector2);
+       function Flip:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Perpendicular:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function OneUnitOrthogonalVector:TpvVector3;
+       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Normalize:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Abs:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function AngleTo(const b:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Lerp(const b:TpvVector3;const t:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Angle(const b,c:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateX(const Angle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateY(const Angle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateZ(const Angle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function ProjectToBounds(const MinVector,MaxVector:TpvVector3):TpvScalar;
+       property Components[const pIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
+       case TpvUInt8 of
+        0:(RawComponents:array[0..2] of TpvScalar);
+        1:(x,y,z:TpvScalar);
+        2:(r,g,b:TpvScalar);
+        3:(s,t,p:TpvScalar);
+        4:(Pitch,Yaw,Roll:TpvScalar);
+        6:(Vector2:TpvVector2);
      end;
 
-     PVector4=^TVector4;
-     TVector4=record
+     PpvVector4=^TpvVector4;
+     TpvVector4=record
       public
-       constructor Create(const pX:TScalar); overload;
-       constructor Create(const pX,pY,pZ,pW:TScalar); overload;
-       constructor Create(const pXY:TVector2;const pZ:TScalar=0.0;const pW:TScalar=1.0); overload;
-       constructor Create(const pXYZ:TVector3;const pW:TScalar=1.0); overload;
-       class operator Implicit(const a:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a,b:TVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a,b:TVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TVector4): TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Divide(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator IntDivide(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a,b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TVector4;const b:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Positive(const a:TVector4):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       constructor Create(const pX:TpvScalar); overload;
+       constructor Create(const pX,pY,pZ,pW:TpvScalar); overload;
+       constructor Create(const pXY:TpvVector2;const pZ:TpvScalar=0.0;const pW:TpvScalar=1.0); overload;
+       constructor Create(const pXYZ:TpvVector3;const pW:TpvScalar=1.0); overload;
+       class operator Implicit(const a:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TpvVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TpvScalar;const b:TpvVector4): TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Positive(const a:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       {$i PasVulkan.Math.TVector4.Swizzle.Definitions.inc}
+       {$i PasVulkan.Math.TpvVector4.Swizzle.Definitions.inc}
       private
-       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetComponent(const pIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Flip:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Perpendicular:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Length:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function SquaredLength:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Abs:TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function AngleTo(const b:TVector4):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Lerp(const b:TVector4;const t:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Angle(const b,c:TVector4):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateX(const Angle:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateY(const Angle:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateZ(const Angle:TScalar):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Rotate(const Angle:TScalar;const Axis:TVector3):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function ProjectToBounds(const MinVector,MaxVector:TVector4):TScalar;
+       function Flip:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Perpendicular:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Normalize:TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Abs:TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function AngleTo(const b:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Lerp(const b:TpvVector4;const t:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Angle(const b,c:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateX(const Angle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateY(const Angle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateZ(const Angle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rotate(const Angle:TpvScalar;const Axis:TpvVector3):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function ProjectToBounds(const MinVector,MaxVector:TpvVector4):TpvScalar;
       public
-       property Components[const pIndex:TInt32]:TScalar read GetComponent write SetComponent; default;
-       case TUInt8 of
-        0:(RawComponents:array[0..3] of TScalar);
-        1:(x,y,z,w:TScalar);
-        2:(r,g,b,a:TScalar);
-        3:(s,t,p,q:TScalar);
-        5:(Vector2:TVector2);
-        6:(Vector3:TVector3);
+       property Components[const pIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
+       case TpvUInt8 of
+        0:(RawComponents:array[0..3] of TpvScalar);
+        1:(x,y,z,w:TpvScalar);
+        2:(r,g,b,a:TpvScalar);
+        3:(s,t,p,q:TpvScalar);
+        5:(Vector2:TpvVector2);
+        6:(Vector3:TpvVector3);
      end;
 
-     TVector2Helper=record helper for TVector2
-      {$i PasVulkan.Math.TVector2Helper.Swizzle.Definitions.inc}
+     TpvVector2Helper=record helper for TpvVector2
+      {$i PasVulkan.Math.TpvVector2Helper.Swizzle.Definitions.inc}
      end;
 
-     TVector3Helper=record helper for TVector3
-      {$i PasVulkan.Math.TVector3Helper.Swizzle.Definitions.inc}
+     TpvVector3Helper=record helper for TpvVector3
+      {$i PasVulkan.Math.TpvVector3Helper.Swizzle.Definitions.inc}
      end;
 
-     TVector4Helper=record helper for TVector4
-      {$i PasVulkan.Math.TVector4Helper.Swizzle.Definitions.inc}
+     TpvVector4Helper=record helper for TpvVector4
+      {$i PasVulkan.Math.TpvVector4Helper.Swizzle.Definitions.inc}
      end;
 
-     PPackedTangentSpace=^TPackedTangentSpace;
-     TPackedTangentSpace=record
-      x,y,z,w:TUInt8;
+     PpvPackedTangentSpace=^TpvPackedTangentSpace;
+     TpvPackedTangentSpace=record
+      x,y,z,w:TpvUInt8;
      end;
 
-     PNormalizedSphericalCoordinates=^TNormalizedSphericalCoordinates;
-     TNormalizedSphericalCoordinates=record
-      Longitude:TScalar;
-      Latitude:TScalar;
+     PpvNormalizedSphericalCoordinates=^TpvNormalizedSphericalCoordinates;
+     TpvNormalizedSphericalCoordinates=record
+      Longitude:TpvScalar;
+      Latitude:TpvScalar;
      end;
 
-     TVector3Array=array of TVector3;
+     TVector3Array=array of TpvVector3;
 
      PVector3s=^TVector3s;
-     TVector3s=array[0..$ff] of TVector3;
+     TVector3s=array[0..$ff] of TpvVector3;
 
      PPVector3s=^TPVector3s;
-     TPVector3s=array[0..$ff] of PVector3;
+     TPVector3s=array[0..$ff] of PpvVector3;
 
      PPlane=^TPlane;
      TPlane=record
       public
-       constructor Create(const pNormal:TVector3;const pDistance:TScalar); overload;
-       constructor Create(const x,y,z,pDistance:TScalar); overload;
-       constructor Create(const pA,pB,pC:TVector3); overload;
-       constructor Create(const pA,pB,pC:TVector4); overload;
-       constructor Create(const Vector:TVector4); overload;
-       function ToVector:TVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       constructor Create(const pNormal:TpvVector3;const pDistance:TpvScalar); overload;
+       constructor Create(const x,y,z,pDistance:TpvScalar); overload;
+       constructor Create(const pA,pB,pC:TpvVector3); overload;
+       constructor Create(const pA,pB,pC:TpvVector4); overload;
+       constructor Create(const Vector:TpvVector4); overload;
+       function ToVector:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TPlane; {$ifdef CAN_INLINE}inline;{$endif}
-       function DistanceTo(const Point:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function DistanceTo(const Point:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure ClipSegment(const p0,p1:TVector3;out Clipped:TVector3); overload;
-       function ClipSegmentClosest(const p0,p1:TVector3;out Clipped0,Clipped1:TVector3):TInt32; overload;
-       function ClipSegmentLine(var p0,p1:TVector3):boolean;
-       case TUInt8 of
+       function DistanceTo(const Point:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const Point:TpvVector4):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure ClipSegment(const p0,p1:TpvVector3;out Clipped:TpvVector3); overload;
+       function ClipSegmentClosest(const p0,p1:TpvVector3;out Clipped0,Clipped1:TpvVector3):TpvInt32; overload;
+       function ClipSegmentLine(var p0,p1:TpvVector3):boolean;
+       case TpvUInt8 of
         0:(
-         RawComponents:array[0..3] of TScalar;
+         RawComponents:array[0..3] of TpvScalar;
         );
         1:(
-         x,y,z,w:TScalar;
+         x,y,z,w:TpvScalar;
         );
         2:(
-         Normal:TVector3;
-         Distance:TScalar;
+         Normal:TpvVector3;
+         Distance:TpvScalar;
         );
      end;
 
-     PQuaternion=^TQuaternion;
-     TQuaternion=record
+     PpvQuaternion=^TpvQuaternion;
+     TpvQuaternion=record
       public
-       constructor Create(const pX:TScalar); overload;
-       constructor Create(const pX,pY,pZ,pW:TScalar); overload;
-       constructor Create(const pVector:TVector4); overload;
-       constructor CreateFromAngleAxis(const Angle:TScalar;const Axis:TVector3);
-       constructor CreateFromEuler(const Pitch,Yaw,Roll:TScalar); overload;
-       constructor CreateFromEuler(const Angles:TVector3); overload;
-       constructor CreateFromNormalizedSphericalCoordinates(const NormalizedSphericalCoordinates:TNormalizedSphericalCoordinates);
-       constructor CreateFromToRotation(const FromDirection,ToDirection:TVector3);
-       class operator Implicit(const a:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a,b:TQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a,b:TQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TQuaternion): TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector3;const b:TQuaternion):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector4;const b:TQuaternion):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Divide(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator IntDivide(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a,b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TQuaternion;const b:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Positive(const a:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       constructor Create(const pX:TpvScalar); overload;
+       constructor Create(const pX,pY,pZ,pW:TpvScalar); overload;
+       constructor Create(const pVector:TpvVector4); overload;
+       constructor CreateFromAngleAxis(const Angle:TpvScalar;const Axis:TpvVector3);
+       constructor CreateFromEuler(const Pitch,Yaw,Roll:TpvScalar); overload;
+       constructor CreateFromEuler(const Angles:TpvVector3); overload;
+       constructor CreateFromNormalizedSphericalCoordinates(const NormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates);
+       constructor CreateFromToRotation(const FromDirection,ToDirection:TpvVector3);
+       class operator Implicit(const a:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TpvQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TpvScalar;const b:TpvQuaternion): TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TpvVector3;const b:TpvQuaternion):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TpvVector4;const b:TpvQuaternion):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Positive(const a:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       function GetComponent(const pIndex:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetComponent(const pIndex:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetComponent(const pIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function ToNormalizedSphericalCoordinates:TNormalizedSphericalCoordinates; {$ifdef CAN_INLINE}inline;{$endif}
-       function ToEuler:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function ToPitch:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function ToYaw:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function ToRoll:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure ToAngleAxis(out Angle:TScalar;out Axis:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
-       function Generator:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Flip:TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Perpendicular:TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Conjugate:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Inverse:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Length:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function SquaredLength:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TQuaternion):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Abs:TQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TQuaternion):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Lerp(const b:TQuaternion;const t:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Nlerp(const b:TQuaternion;const t:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TQuaternion;const t:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateAroundAxis(const b:TQuaternion):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Integrate(const Omega:TVector3;const DeltaTime:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Spin(const Omega:TVector3;const DeltaTime:TScalar):TQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       property Components[const pIndex:TInt32]:TScalar read GetComponent write SetComponent; default;
-       case TUInt8 of
-        0:(RawComponents:array[0..3] of TScalar);
-        1:(x,y,z,w:TScalar);
-        2:(Vector:TVector4);
+       function ToNormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToEuler:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToPitch:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToYaw:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToRoll:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure ToAngleAxis(out Angle:TpvScalar;out Axis:TpvVector3); {$ifdef CAN_INLINE}inline;{$endif}
+       function Generator:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Flip:TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Perpendicular:TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Conjugate:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Inverse:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Normalize:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Abs:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Lerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateAroundAxis(const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Integrate(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Spin(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       property Components[const pIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
+       case TpvUInt8 of
+        0:(RawComponents:array[0..3] of TpvScalar);
+        1:(x,y,z,w:TpvScalar);
+        2:(Vector:TpvVector4);
      end;
 
-     PMatrix2x2=^TMatrix2x2;
-     TMatrix2x2=record
+     PpvMatrix2x2=^TpvMatrix2x2;
+     TpvMatrix2x2=record
       public
 //     constructor Create; overload;
-       constructor Create(const pX:TScalar); overload;
-       constructor Create(const pXX,pXY,pYX,pYY:TScalar); overload;
-       constructor Create(const pX,pY:TVector2); overload;
-       class operator Implicit(const a:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a,b:TMatrix2x2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a,b:TMatrix2x2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc(const a:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Dec(const a:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TMatrix2x2): TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TMatrix2x2;const b:TVector2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TVector2;const b:TMatrix2x2):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a,b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TMatrix2x2;const b:TScalar):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative(const a:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Positive(const a:TMatrix2x2):TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       constructor Create(const pX:TpvScalar); overload;
+       constructor Create(const pXX,pXY,pYX,pYY:TpvScalar); overload;
+       constructor Create(const pX,pY:TpvVector2); overload;
+       class operator Implicit(const a:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TpvMatrix2x2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvMatrix2x2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc(const a:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Dec(const a:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a,b:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TpvScalar;const b:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a,b:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TpvScalar;const b:TpvMatrix2x2): TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a,b:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvScalar;const b:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvMatrix2x2;const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvVector2;const b:TpvMatrix2x2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a,b:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvScalar;const b:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a,b:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TpvScalar;const b:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvScalar;const b:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative(const a:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Positive(const a:TpvMatrix2x2):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       function GetComponent(const pIndexA,pIndexB:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetColumn(const pIndex:TInt32):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetColumn(const pIndex:TInt32;const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetRow(const pIndex:TInt32):TVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetRow(const pIndex:TInt32;const pValue:TVector2); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetComponent(const pIndexA,pIndexB:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndexA,pIndexB:TpvInt32;const pValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetColumn(const pIndex:TpvInt32):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetColumn(const pIndex:TpvInt32;const pValue:TpvVector2); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetRow(const pIndex:TpvInt32):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetRow(const pIndex:TpvInt32;const pValue:TpvVector2); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Determinant:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Inverse:TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       function Transpose:TMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
-       property Components[const pIndexA,pIndexB:TInt32]:TScalar read GetComponent write SetComponent; default;
-       property Columns[const pIndex:TInt32]:TVector2 read GetColumn write SetColumn;
-       property Rows[const pIndex:TInt32]:TVector2 read GetRow write SetRow;
-       case TInt32 of
-        0:(RawComponents:array[0..1,0..1] of TScalar);
+       function Determinant:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Inverse:TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Transpose:TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
+       property Components[const pIndexA,pIndexB:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
+       property Columns[const pIndex:TpvInt32]:TpvVector2 read GetColumn write SetColumn;
+       property Rows[const pIndex:TpvInt32]:TpvVector2 read GetRow write SetRow;
+       case TpvInt32 of
+        0:(RawComponents:array[0..1,0..1] of TpvScalar);
      end;
 
-     PDecomposedMatrix3x3=^TDecomposedMatrix3x3;
-     TDecomposedMatrix3x3=record
+     PpvDecomposedMatrix3x3=^TpvDecomposedMatrix3x3;
+     TpvDecomposedMatrix3x3=record
       public
        Valid:boolean;
-       Scale:TVector3;
-       Skew:TVector3; // XY XZ YZ
-       Rotation:TQuaternion;
-       function Lerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Nlerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       Scale:TpvVector3;
+       Skew:TpvVector3; // XY XZ YZ
+       Rotation:TpvQuaternion;
+       function Lerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
      end;
 
-     PMatrix3x3=^TMatrix3x3;
-     TMatrix3x3=record
+     PpvMatrix3x3=^TpvMatrix3x3;
+     TpvMatrix3x3=record
       public
 //     constructor Create; overload;
-       constructor Create(const pX:TScalar); overload;
-       constructor Create(const pXX,pXY,pXZ,pYX,pYY,pYZ,pZX,pZY,pZZ:TScalar); overload;
-       constructor Create(const pX,pY,pZ:TVector3); overload;
-       constructor CreateRotateX(const Angle:TScalar);
-       constructor CreateRotateY(const Angle:TScalar);
-       constructor CreateRotateZ(const Angle:TScalar);
-       constructor CreateRotate(const Angle:TScalar;const Axis:TVector3);
-       constructor CreateScale(const sx,sy,sz:TScalar); overload;
-       constructor CreateScale(const pScale:TVector3); overload;
-       constructor CreateFromToRotation(const FromDirection,ToDirection:TVector3);
-       constructor CreateConstruct(const pForwards,pUp:TVector3);
-       constructor CreateOuterProduct(const u,v:TVector3);
-       constructor CreateFromQuaternion(pQuaternion:TQuaternion);
-       constructor CreateFromQTangent(pQTangent:TQuaternion);
-       constructor CreateRecomposed(const DecomposedMatrix3x3:TDecomposedMatrix3x3);
-       class operator Implicit(const a:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a,b:TMatrix3x3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a,b:TMatrix3x3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc(const a:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Dec(const a:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a:TScalar;const b:TMatrix3x3): TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TMatrix3x3;const b:TVector3):TVector3;  {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TVector3;const b:TMatrix3x3):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TMatrix3x3;const b:TVector4):TVector4;  {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TVector4;const b:TMatrix3x3):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TMatrix3x3;const b:TPlane):TPlane; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TPlane;const b:TMatrix3x3):TPlane; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a,b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TMatrix3x3;const b:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative(const a:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Positive(const a:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       constructor Create(const pX:TpvScalar); overload;
+       constructor Create(const pXX,pXY,pXZ,pYX,pYY,pYZ,pZX,pZY,pZZ:TpvScalar); overload;
+       constructor Create(const pX,pY,pZ:TpvVector3); overload;
+       constructor CreateRotateX(const Angle:TpvScalar);
+       constructor CreateRotateY(const Angle:TpvScalar);
+       constructor CreateRotateZ(const Angle:TpvScalar);
+       constructor CreateRotate(const Angle:TpvScalar;const Axis:TpvVector3);
+       constructor CreateScale(const sx,sy,sz:TpvScalar); overload;
+       constructor CreateScale(const pScale:TpvVector3); overload;
+       constructor CreateFromToRotation(const FromDirection,ToDirection:TpvVector3);
+       constructor CreateConstruct(const pForwards,pUp:TpvVector3);
+       constructor CreateOuterProduct(const u,v:TpvVector3);
+       constructor CreateFromQuaternion(ppvQuaternion:TpvQuaternion);
+       constructor CreateFromQTangent(pQTangent:TpvQuaternion);
+       constructor CreateRecomposed(const DecomposedMatrix3x3:TpvDecomposedMatrix3x3);
+       class operator Implicit(const a:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TpvMatrix3x3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvMatrix3x3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc(const a:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Dec(const a:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a,b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a,b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TpvScalar;const b:TpvMatrix3x3): TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a,b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvMatrix3x3;const b:TpvVector3):TpvVector3;  {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvVector3;const b:TpvMatrix3x3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvMatrix3x3;const b:TpvVector4):TpvVector4;  {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvVector4;const b:TpvMatrix3x3):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvMatrix3x3;const b:TPlane):TPlane; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TPlane;const b:TpvMatrix3x3):TPlane; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a,b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a,b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative(const a:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Positive(const a:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       function GetComponent(const pIndexA,pIndexB:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetColumn(const pIndex:TInt32):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetColumn(const pIndex:TInt32;const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetRow(const pIndex:TInt32):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetRow(const pIndex:TInt32;const pValue:TVector3); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetComponent(const pIndexA,pIndexB:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndexA,pIndexB:TpvInt32;const pValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetColumn(const pIndex:TpvInt32):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetColumn(const pIndex:TpvInt32;const pValue:TpvVector3); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetRow(const pIndex:TpvInt32):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetRow(const pIndex:TpvInt32;const pValue:TpvVector3); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Determinant:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Inverse:TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Transpose:TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function EulerAngles:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Normalize:TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function OrthoNormalize:TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function RobustOrthoNormalize(const Tolerance:TScalar=1e-3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function ToQuaternion:TQuaternion;
-       function ToQTangent:TQuaternion;
-       function SimpleLerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function SimpleNlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function SimpleSlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Lerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Nlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulInverse(const a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulInverse(const a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Decompose:TDecomposedMatrix3x3;
-       property Components[const pIndexA,pIndexB:TInt32]:TScalar read GetComponent write SetComponent; default;
-       property Columns[const pIndex:TInt32]:TVector3 read GetColumn write SetColumn;
-       property Rows[const pIndex:TInt32]:TVector3 read GetRow write SetRow;
-       case TInt32 of
-        0:(RawComponents:array[0..2,0..2] of TScalar);
-        1:(m00,m01,m02,m10,m11,m12,m20,m21,m22:TScalar);
-        2:(Tangent,Bitangent,Normal:TVector3);
-        3:(Right,Up,Forwards:TVector3);
+       function Determinant:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Inverse:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Transpose:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function EulerAngles:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Normalize:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function OrthoNormalize:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function RobustOrthoNormalize(const Tolerance:TpvScalar=1e-3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToQuaternion:TpvQuaternion;
+       function ToQTangent:TpvQuaternion;
+       function SimpleLerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleNlerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleSlerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Lerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverse(const a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverse(const a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Decompose:TpvDecomposedMatrix3x3;
+       property Components[const pIndexA,pIndexB:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
+       property Columns[const pIndex:TpvInt32]:TpvVector3 read GetColumn write SetColumn;
+       property Rows[const pIndex:TpvInt32]:TpvVector3 read GetRow write SetRow;
+       case TpvInt32 of
+        0:(RawComponents:array[0..2,0..2] of TpvScalar);
+        1:(m00,m01,m02,m10,m11,m12,m20,m21,m22:TpvScalar);
+        2:(Tangent,Bitangent,Normal:TpvVector3);
+        3:(Right,Up,Forwards:TpvVector3);
        end;
 
-     PDecomposedMatrix4x4=^TDecomposedMatrix4x4;
-     TDecomposedMatrix4x4=record
+     PpvDecomposedMatrix4x4=^TpvDecomposedMatrix4x4;
+     TpvDecomposedMatrix4x4=record
       public
        Valid:boolean;
-       Perspective:TVector4;
-       Translation:TVector3;
-       Scale:TVector3;
-       Skew:TVector3; // XY XZ YZ
-       Rotation:TQuaternion;
-       function Lerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Nlerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       Perspective:TpvVector4;
+       Translation:TpvVector3;
+       Scale:TpvVector3;
+       Skew:TpvVector3; // XY XZ YZ
+       Rotation:TpvQuaternion;
+       function Lerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
      end;
 
-     PMatrix4x4=^TMatrix4x4;
-     TMatrix4x4=record
+     PpvMatrix4x4=^TpvMatrix4x4;
+     TpvMatrix4x4=record
       public
 //     constructor Create; overload;
-       constructor Create(const pX:TScalar); overload;
-       constructor Create(const pXX,pXY,pXZ,pXW,pYX,pYY,pYZ,pYW,pZX,pZY,pZZ,pZW,pWX,pWY,pWZ,pWW:TScalar); overload;
-       constructor Create(const pX,pY,pZ,pW:TVector4); overload;
-       constructor Create(const pMatrix:TMatrix3x3); overload;
-       constructor CreateRotateX(const Angle:TScalar);
-       constructor CreateRotateY(const Angle:TScalar);
-       constructor CreateRotateZ(const Angle:TScalar);
-       constructor CreateRotate(const Angle:TScalar;const Axis:TVector3);
-       constructor CreateRotation(const pMatrix:TMatrix4x4); overload;
-       constructor CreateScale(const sx,sy,sz:TScalar); overload;
-       constructor CreateScale(const pScale:TVector3); overload;
-       constructor CreateScale(const sx,sy,sz,sw:TScalar); overload;
-       constructor CreateScale(const pScale:TVector4); overload;
-       constructor CreateTranslation(const tx,ty,tz:TScalar); overload;
-       constructor CreateTranslation(const pTranslation:TVector3); overload;
-       constructor CreateTranslation(const tx,ty,tz,tw:TScalar); overload;
-       constructor CreateTranslation(const pTranslation:TVector4); overload;
-       constructor CreateTranslated(const pMatrix:TMatrix4x4;pTranslation:TVector3); overload;
-       constructor CreateTranslated(const pMatrix:TMatrix4x4;pTranslation:TVector4); overload;
-       constructor CreateFromToRotation(const FromDirection,ToDirection:TVector3);
-       constructor CreateConstruct(const pForwards,pUp:TVector3);
-       constructor CreateOuterProduct(const u,v:TVector3);
-       constructor CreateFromQuaternion(pQuaternion:TQuaternion);
-       constructor CreateFromQTangent(pQTangent:TQuaternion);
+       constructor Create(const pX:TpvScalar); overload;
+       constructor Create(const pXX,pXY,pXZ,pXW,pYX,pYY,pYZ,pYW,pZX,pZY,pZZ,pZW,pWX,pWY,pWZ,pWW:TpvScalar); overload;
+       constructor Create(const pX,pY,pZ,pW:TpvVector4); overload;
+       constructor Create(const pMatrix:TpvMatrix3x3); overload;
+       constructor CreateRotateX(const Angle:TpvScalar);
+       constructor CreateRotateY(const Angle:TpvScalar);
+       constructor CreateRotateZ(const Angle:TpvScalar);
+       constructor CreateRotate(const Angle:TpvScalar;const Axis:TpvVector3);
+       constructor CreateRotation(const pMatrix:TpvMatrix4x4); overload;
+       constructor CreateScale(const sx,sy,sz:TpvScalar); overload;
+       constructor CreateScale(const pScale:TpvVector3); overload;
+       constructor CreateScale(const sx,sy,sz,sw:TpvScalar); overload;
+       constructor CreateScale(const pScale:TpvVector4); overload;
+       constructor CreateTranslation(const tx,ty,tz:TpvScalar); overload;
+       constructor CreateTranslation(const pTranslation:TpvVector3); overload;
+       constructor CreateTranslation(const tx,ty,tz,tw:TpvScalar); overload;
+       constructor CreateTranslation(const pTranslation:TpvVector4); overload;
+       constructor CreateTranslated(const pMatrix:TpvMatrix4x4;pTranslation:TpvVector3); overload;
+       constructor CreateTranslated(const pMatrix:TpvMatrix4x4;pTranslation:TpvVector4); overload;
+       constructor CreateFromToRotation(const FromDirection,ToDirection:TpvVector3);
+       constructor CreateConstruct(const pForwards,pUp:TpvVector3);
+       constructor CreateOuterProduct(const u,v:TpvVector3);
+       constructor CreateFromQuaternion(ppvQuaternion:TpvQuaternion);
+       constructor CreateFromQTangent(pQTangent:TpvQuaternion);
        constructor CreateReflect(const pPlane:TPlane);
-       constructor CreateFrustum(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-       constructor CreateOrtho(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-       constructor CreateOrthoLH(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-       constructor CreateOrthoRH(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-       constructor CreateOrthoOffCenterLH(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-       constructor CreateOrthoOffCenterRH(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-       constructor CreatePerspective(const fovy,Aspect,zNear,zFar:TScalar);
-       constructor CreateLookAt(const Eye,Center,Up:TVector3);
-       constructor CreateFill(const Eye,RightVector,UpVector,ForwardVector:TVector3);
-       constructor CreateConstructX(const xAxis:TVector3);
-       constructor CreateConstructY(const yAxis:TVector3);
-       constructor CreateConstructZ(const zAxis:TVector3);
-       constructor CreateProjectionMatrixClip(const ProjectionMatrix:TMatrix4x4;const ClipPlane:TPlane);
-       constructor CreateRecomposed(const DecomposedMatrix4x4:TDecomposedMatrix4x4);
-       class operator Implicit({$ifdef fpc}constref{$else}const{$endif} a:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Explicit({$ifdef fpc}constref{$else}const{$endif} a:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4): TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TVector3;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TVector4;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TPlane):TPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TPlane;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Positive(const a:TMatrix4x4):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       constructor CreateFrustum(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+       constructor CreateOrtho(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+       constructor CreateOrthoLH(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+       constructor CreateOrthoRH(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+       constructor CreateOrthoOffCenterLH(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+       constructor CreateOrthoOffCenterRH(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+       constructor CreatePerspective(const fovy,Aspect,zNear,zFar:TpvScalar);
+       constructor CreateLookAt(const Eye,Center,Up:TpvVector3);
+       constructor CreateFill(const Eye,RightVector,UpVector,ForwardVector:TpvVector3);
+       constructor CreateConstructX(const xAxis:TpvVector3);
+       constructor CreateConstructY(const yAxis:TpvVector3);
+       constructor CreateConstructZ(const zAxis:TpvVector3);
+       constructor CreateProjectionMatrixClip(const ProjectionMatrix:TpvMatrix4x4;const ClipPlane:TPlane);
+       constructor CreateRecomposed(const DecomposedMatrix4x4:TpvDecomposedMatrix4x4);
+       class operator Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Explicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4): TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TPlane):TPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TPlane;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Positive(const a:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       function GetComponent(const pIndexA,pIndexB:TInt32):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetColumn(const pIndex:TInt32):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetColumn(const pIndex:TInt32;const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetRow(const pIndex:TInt32):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetRow(const pIndex:TInt32;const pValue:TVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetComponent(const pIndexA,pIndexB:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const pIndexA,pIndexB:TpvInt32;const pValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetColumn(const pIndex:TpvInt32):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetColumn(const pIndex:TpvInt32;const pValue:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetRow(const pIndex:TpvInt32):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetRow(const pIndex:TpvInt32;const pValue:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Determinant:TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function SimpleInverse:TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Inverse:TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Transpose:TMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function EulerAngles:TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Normalize:TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function OrthoNormalize:TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function RobustOrthoNormalize(const Tolerance:TScalar=1e-3):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function ToQuaternion:TQuaternion;
-       function ToQTangent:TQuaternion;
-       function ToMatrix3x3:TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function ToRotation:TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function SimpleLerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function SimpleNlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function SimpleSlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Lerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Nlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Decompose:TDecomposedMatrix4x4;
-       property Components[const pIndexA,pIndexB:TInt32]:TScalar read GetComponent write SetComponent; default;
-       property Columns[const pIndex:TInt32]:TVector4 read GetColumn write SetColumn;
-       property Rows[const pIndex:TInt32]:TVector4 read GetRow write SetRow;
-       case TInt32 of
-        0:(RawComponents:array[0..3,0..3] of TScalar);
-        1:(m00,m01,m02,m03,m10,m11,m12,m13,m20,m21,m22,m23,m30,m31,m32,m33:TScalar);
-        2:(Tangent,Bitangent,Normal,Translation:TVector4);
-        3:(Right,Up,Forwards,Offset:TVector4);
+       function Determinant:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function SimpleInverse:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Inverse:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Transpose:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function EulerAngles:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Normalize:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function OrthoNormalize:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function RobustOrthoNormalize(const Tolerance:TpvScalar=1e-3):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToQuaternion:TpvQuaternion;
+       function ToQTangent:TpvQuaternion;
+       function ToMatrix3x3:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToRotation:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleLerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleNlerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function SimpleSlerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Lerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Decompose:TpvDecomposedMatrix4x4;
+       property Components[const pIndexA,pIndexB:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
+       property Columns[const pIndex:TpvInt32]:TpvVector4 read GetColumn write SetColumn;
+       property Rows[const pIndex:TpvInt32]:TpvVector4 read GetRow write SetRow;
+       case TpvInt32 of
+        0:(RawComponents:array[0..3,0..3] of TpvScalar);
+        1:(m00,m01,m02,m03,m10,m11,m12,m13,m20,m21,m22,m23,m30,m31,m32,m33:TpvScalar);
+        2:(Tangent,Bitangent,Normal,Translation:TpvVector4);
+        3:(Right,Up,Forwards,Offset:TpvVector4);
      end;
 
      // Dual quaternion with uniform scaling support
-     PDualQuaternion=^TDualQuaternion;
-     TDualQuaternion=record
+     PpvDualQuaternion=^TpvDualQuaternion;
+     TpvDualQuaternion=record
       public
-       constructor Create(const pQ0,PQ1:TQuaternion); overload;
-       constructor CreateFromRotationTranslationScale(const pRotation:TQuaternion;const pTranslation:TVector3;const pScale:TScalar); overload;
-       constructor CreateFromMatrix(const pMatrix:TMatrix4x4); overload;
-       class operator Implicit(const a:TMatrix4x4):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TMatrix4x4):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Implicit(const a:TDualQuaternion):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TDualQuaternion):TMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a,b:TDualQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a,b:TDualQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector3;const b:TDualQuaternion):TVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply(const a:TVector4;const b:TDualQuaternion):TVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Divide(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator IntDivide(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a,b:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TDualQuaternion;const b:TScalar):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a:TScalar;const b:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion):TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Positive(const a:TDualQuaternion):TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Flip:TDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Conjugate:TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Inverse:TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       case TUInt8 of
-        0:(RawQuaternions:array[0..1] of TQuaternion);
-        1:(QuaternionR,QuaternionD:TQuaternion);
+       constructor Create(const pQ0,PQ1:TpvQuaternion); overload;
+       constructor CreateFromRotationTranslationScale(const pRotation:TpvQuaternion;const pTranslation:TpvVector3;const pScale:TpvScalar); overload;
+       constructor CreateFromMatrix(const pMatrix:TpvMatrix4x4); overload;
+       class operator Implicit(const a:TpvMatrix4x4):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvMatrix4x4):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Implicit(const a:TpvDualQuaternion):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvDualQuaternion):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TpvDualQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvDualQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvDualQuaternion):TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvDualQuaternion):TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvDualQuaternion):TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TpvDualQuaternion;const b:TpvScalar):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvScalar;const b:TpvDualQuaternion):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TpvVector3;const b:TpvDualQuaternion):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TpvVector4;const b:TpvDualQuaternion):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvDualQuaternion):TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide(const a:TpvDualQuaternion;const b:TpvScalar):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvScalar;const b:TpvDualQuaternion):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvDualQuaternion):TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide(const a:TpvDualQuaternion;const b:TpvScalar):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator IntDivide(const a:TpvScalar;const b:TpvDualQuaternion):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TpvDualQuaternion):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvDualQuaternion;const b:TpvScalar):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a:TpvScalar;const b:TpvDualQuaternion):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvDualQuaternion):TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Positive(const a:TpvDualQuaternion):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Flip:TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Conjugate:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Inverse:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Normalize:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       case TpvUInt8 of
+        0:(RawQuaternions:array[0..1] of TpvQuaternion);
+        1:(QuaternionR,QuaternionD:TpvQuaternion);
      end;
 
-     PSegment=^TSegment;
-     TSegment=record
+     PpvSegment=^TpvSegment;
+     TpvSegment=record
       public
-       Points:array[0..1] of TVector3;
-       constructor Create(const p0,p1:TVector3);
-       function SquaredDistanceTo(const p:TVector3):TScalar; overload;
-       function SquaredDistanceTo(const p:TVector3;out Nearest:TVector3):TScalar; overload;
-       procedure ClosestPointTo(const p:TVector3;out Time:TScalar;out ClosestPoint:TVector3);
-       function Transform(const Transform:TMatrix4x4):TSegment; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure ClosestPoints(const SegmentB:TSegment;out TimeA:TScalar;out ClosestPointA:TVector3;out TimeB:TScalar;out ClosestPointB:TVector3);
-       function Intersect(const SegmentB:TSegment;out TimeA,TimeB:TScalar;out IntersectionPoint:TVector3):boolean;
+       Points:array[0..1] of TpvVector3;
+       constructor Create(const p0,p1:TpvVector3);
+       function SquaredDistanceTo(const p:TpvVector3):TpvScalar; overload;
+       function SquaredDistanceTo(const p:TpvVector3;out Nearest:TpvVector3):TpvScalar; overload;
+       procedure ClosestPointTo(const p:TpvVector3;out Time:TpvScalar;out ClosestPoint:TpvVector3);
+       function Transform(const Transform:TpvMatrix4x4):TpvSegment; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure ClosestPoints(const SegmentB:TpvSegment;out TimeA:TpvScalar;out ClosestPointA:TpvVector3;out TimeB:TpvScalar;out ClosestPointB:TpvVector3);
+       function Intersect(const SegmentB:TpvSegment;out TimeA,TimeB:TpvScalar;out IntersectionPoint:TpvVector3):boolean;
      end;
 
-     PRelativeSegment=^TRelativeSegment;
-     TRelativeSegment=record
+     PpvRelativeSegment=^TpvRelativeSegment;
+     TpvRelativeSegment=record
       public
-       Origin:TVector3;
-       Delta:TVector3;
-       function SquaredSegmentDistanceTo(const pOtherRelativeSegment:TRelativeSegment;out t0,t1:TScalar):TScalar;
+       Origin:TpvVector3;
+       Delta:TpvVector3;
+       function SquaredSegmentDistanceTo(const pOtherRelativeSegment:TpvRelativeSegment;out t0,t1:TpvScalar):TpvScalar;
      end;
 
-     PTriangle=^TTriangle;
-     TTriangle=record
+     PpvTriangle=^TpvTriangle;
+     TpvTriangle=record
       public
-       Points:array[0..2] of TVector3;
-       Normal:TVector3;
-       constructor Create(const pA,pB,pC:TVector3);
-       function Contains(const p:TVector3):boolean;
-       procedure ProjectToVector(const Vector:TVector3;out TriangleMin,TriangleMax:TScalar);
-       function ProjectToPoint(var pPoint:TVector3;out s,t:TScalar):TScalar;
-       function SegmentIntersect(const Segment:TSegment;out Time:TScalar;out IntersectionPoint:TVector3):boolean;
-       function ClosestPointTo(const Point:TVector3;out ClosestPoint:TVector3):boolean; overload;
-       function ClosestPointTo(const Segment:TSegment;out Time:TScalar;out pClosestPointOnSegment,pClosestPointOnTriangle:TVector3):boolean; overload;
-       function GetClosestPointTo(const pPoint:TVector3;out ClosestPoint:TVector3):TScalar;
-       function DistanceTo(const Point:TVector3):TScalar;
-       function SquaredDistanceTo(const Point:TVector3):TScalar;
-       function RayIntersection(const RayOrigin,RayDirection:TVector3;var Time,u,v:TScalar):boolean;
+       Points:array[0..2] of TpvVector3;
+       Normal:TpvVector3;
+       constructor Create(const pA,pB,pC:TpvVector3);
+       function Contains(const p:TpvVector3):boolean;
+       procedure ProjectToVector(const Vector:TpvVector3;out TriangleMin,TriangleMax:TpvScalar);
+       function ProjectToPoint(var pPoint:TpvVector3;out s,t:TpvScalar):TpvScalar;
+       function SegmentIntersect(const Segment:TpvSegment;out Time:TpvScalar;out IntersectionPoint:TpvVector3):boolean;
+       function ClosestPointTo(const Point:TpvVector3;out ClosestPoint:TpvVector3):boolean; overload;
+       function ClosestPointTo(const Segment:TpvSegment;out Time:TpvScalar;out pClosestPointOnSegment,pClosestPointOnTriangle:TpvVector3):boolean; overload;
+       function GetClosestPointTo(const pPoint:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar;
+       function DistanceTo(const Point:TpvVector3):TpvScalar;
+       function SquaredDistanceTo(const Point:TpvVector3):TpvScalar;
+       function RayIntersection(const RayOrigin,RayDirection:TpvVector3;var Time,u,v:TpvScalar):boolean;
      end;
 
-     PSegmentTriangle=^TSegmentTriangle;
-     TSegmentTriangle=record
+     PpvSegmentTriangle=^TpvSegmentTriangle;
+     TpvSegmentTriangle=record
       public
-       Origin:TVector3;
-       Edge0:TVector3;
-       Edge1:TVector3;
-       Edge2:TVector3;
-       function RelativeSegmentIntersection(const pSegment:TRelativeSegment;out tS,tT0,tT1:TScalar):boolean;
-       function SquaredPointTriangleDistance(const pPoint:TVector3;out pfSParam,pfTParam:TScalar):TScalar;
-       function SquaredDistanceTo(const pRelativeSegment:TRelativeSegment;out segT,triT0,triT1:TScalar):TScalar;
+       Origin:TpvVector3;
+       Edge0:TpvVector3;
+       Edge1:TpvVector3;
+       Edge2:TpvVector3;
+       function RelativeSegmentIntersection(const ppvSegment:TpvRelativeSegment;out tS,tT0,tT1:TpvScalar):boolean;
+       function SquaredPointTriangleDistance(const pPoint:TpvVector3;out pfSParam,pfTParam:TpvScalar):TpvScalar;
+       function SquaredDistanceTo(const ppvRelativeSegment:TpvRelativeSegment;out segT,triT0,triT1:TpvScalar):TpvScalar;
      end;
 
-     POBB=^TOBB;
-     TOBB=packed record
+     PpvOBB=^TpvOBB;
+     TpvOBB=packed record
       public
-       Center:TVector3;
-       Extents:TVector3;
-       procedure ProjectToVector(const Vector:TVector3;out OBBMin,OBBMax:TScalar);
-       function RelativeSegmentIntersection(const pRelativeSegment:TRelativeSegment;out fracOut:TScalar;out posOut,NormalOut:TVector3):boolean;
-       function TriangleIntersection(const Triangle:TTriangle;out Position,Normal:TVector3;out Penetration:TScalar):boolean; overload;
-       function TriangleIntersection(const pTriangle:TTriangle;const MTV:PVector3=nil):boolean; overload;
-       case TInt32 of
+       Center:TpvVector3;
+       Extents:TpvVector3;
+       procedure ProjectToVector(const Vector:TpvVector3;out OBBMin,OBBMax:TpvScalar);
+       function RelativeSegmentIntersection(const ppvRelativeSegment:TpvRelativeSegment;out fracOut:TpvScalar;out posOut,NormalOut:TpvVector3):boolean;
+       function TriangleIntersection(const Triangle:TpvTriangle;out Position,Normal:TpvVector3;out Penetration:TpvScalar):boolean; overload;
+       function TriangleIntersection(const ppvTriangle:TpvTriangle;const MTV:PpvVector3=nil):boolean; overload;
+       case TpvInt32 of
         0:(
-         Axis:array[0..2] of TVector3;
+         Axis:array[0..2] of TpvVector3;
         );
         1:(
-         Matrix:TMatrix3x3;
+         Matrix:TpvMatrix3x3;
         );
      end;
 
-     POBBs=^TOBBs;
-     TOBBs=array[0..65535] of TOBB;
+     PpvOBBs=^TpvOBBs;
+     TpvOBBs=array[0..65535] of TpvOBB;
 
-     PAABB=^TAABB;
-     TAABB=record
+     PpvAABB=^TpvAABB;
+     TpvAABB=record
       public
-       constructor Create(const pMin,pMax:TVector3);
-       constructor CreateFromOBB(const OBB:TOBB);
-       function Cost:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Volume:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Area:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Flip:TAABB;
-       function SquareMagnitude:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Resize(const f:TScalar):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
-       function Combine(const WithAABB:TAABB):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
-       function CombineVector3(v:TVector3):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
-       function DistanceTo(const ToAABB:TAABB):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Radius:TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Compare(const WithAABB:TAABB):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function Intersect(const WithAABB:TAABB;Threshold:TScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Contains(const AABB:TAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Contains(const Vector:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Touched(const Vector:TVector3;const Threshold:TScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function GetIntersection(const WithAABB:TAABB):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
-       function FastRayIntersection(const Origin,Direction:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersectionHitDistance(const Origin,Direction:TVector3;var HitDist:TScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersectionHitPoint(const Origin,Direction:TVector3;var HitPoint:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersection(const Origin,Direction:TVector3;var Time:TScalar):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function LineIntersection(const StartPoint,EndPoint:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function TriangleIntersection(const Triangle:TTriangle):boolean;
-       function Transform(const Transform:TMatrix4x4):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
-       function MatrixMul(const Transform:TMatrix4x4):TAABB; {$ifdef CAN_INLINE}inline;{$endif}
-       function ScissorRect(var Scissor:TClipRect;const mvp:TMatrix4x4;const vp:TClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function ScissorRect(var Scissor:TFloatClipRect;const mvp:TMatrix4x4;const vp:TFloatClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function MovingTest(const aAABBTo,bAABBFrom,bAABBTo:TAABB;var t:TScalar):boolean;
-       function SweepTest(const bAABB:TAABB;const aV,bV:TVector3;var FirstTime,LastTime:TScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       constructor Create(const pMin,pMax:TpvVector3);
+       constructor CreateFromOBB(const OBB:TpvOBB);
+       function Cost:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Volume:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Area:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Flip:TpvAABB;
+       function SquareMagnitude:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Resize(const f:TpvScalar):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function Combine(const WithAABB:TpvAABB):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function CombineVector3(v:TpvVector3):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const ToAABB:TpvAABB):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Radius:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Compare(const WithAABB:TpvAABB):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const AABB:TpvAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const Vector:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Touched(const Vector:TpvVector3;const Threshold:TpvScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetIntersection(const WithAABB:TpvAABB):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function FastRayIntersection(const Origin,Direction:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersectionHitDistance(const Origin,Direction:TpvVector3;var HitDist:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersectionHitPoint(const Origin,Direction:TpvVector3;var HitPoint:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersection(const Origin,Direction:TpvVector3;var Time:TpvScalar):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function LineIntersection(const StartPoint,EndPoint:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function TriangleIntersection(const Triangle:TpvTriangle):boolean;
+       function Transform(const Transform:TpvMatrix4x4):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function MatrixMul(const Transform:TpvMatrix4x4):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function ScissorRect(var Scissor:TpvClipRect;const mvp:TpvMatrix4x4;const vp:TpvClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function ScissorRect(var Scissor:TpvFloatClipRect;const mvp:TpvMatrix4x4;const vp:TpvFloatClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MovingTest(const aAABBTo,bAABBFrom,bAABBTo:TpvAABB;var t:TpvScalar):boolean;
+       function SweepTest(const bAABB:TpvAABB;const aV,bV:TpvVector3;var FirstTime,LastTime:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        case boolean of
         false:(
-         Min,Max:TVector3;
+         Min,Max:TpvVector3;
         );
         true:(
-         MinMax:array[0..1] of TVector3;
+         MinMax:array[0..1] of TpvVector3;
         );
      end;
 
-     PAABBs=^TAABBs;
-     TAABBs=array[0..65535] of TAABB;
+     PpvAABBs=^TpvAABBs;
+     TpvAABBs=array[0..65535] of TpvAABB;
 
-     PSphere=^TSphere;
-     TSphere=record
+     PpvSphere=^TpvSphere;
+     TpvSphere=record
       public
-       Center:TVector3;
-       Radius:TScalar;
-       constructor Create(const pCenter:TVector3;const pRadius:TScalar);
-       constructor CreateFromAABB(const pAABB:TAABB);
-       constructor CreateFromFrustum(const zNear,zFar,FOV,AspectRatio:TScalar;const Position,Direction:TVector3);
-       function ToAABB(const pScale:TScalar=1.0):TAABB;
+       Center:TpvVector3;
+       Radius:TpvScalar;
+       constructor Create(const pCenter:TpvVector3;const pRadius:TpvScalar);
+       constructor CreateFromAABB(const ppvAABB:TpvAABB);
+       constructor CreateFromFrustum(const zNear,zFar,FOV,AspectRatio:TpvScalar;const Position,Direction:TpvVector3);
+       function ToAABB(const pScale:TpvScalar=1.0):TpvAABB;
        function Cull(const p:array of TPlane):boolean;
-       function Contains(const b:TSphere):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Contains(const v:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function DistanceTo(const b:TSphere):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function DistanceTo(const b:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Intersect(const b:TSphere):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Intersect(const b:TAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersection(const Origin,Direction:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function Extends(const WithSphere:TSphere):TSphere; {$ifdef CAN_INLINE}inline;{$endif}
-       function Transform(const Transform:TMatrix4x4):TSphere; {$ifdef CAN_INLINE}inline;{$endif}
-       function TriangleIntersection(const Triangle:TTriangle;out Position,Normal:TVector3;out Depth:TScalar):boolean; overload;
-       function TriangleIntersection(const SegmentTriangle:TSegmentTriangle;const TriangleNormal:TVector3;out Position,Normal:TVector3;out Depth:TScalar):boolean; overload;
-       function SweptIntersection(const SphereB:TSphere;const VelocityA,VelocityB:TVector3;out TimeFirst,TimeLast:TScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const b:TpvSphere):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const v:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const b:TpvSphere):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const b:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Intersect(const b:TpvSphere):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Intersect(const b:TpvAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersection(const Origin,Direction:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function Extends(const WithSphere:TpvSphere):TpvSphere; {$ifdef CAN_INLINE}inline;{$endif}
+       function Transform(const Transform:TpvMatrix4x4):TpvSphere; {$ifdef CAN_INLINE}inline;{$endif}
+       function TriangleIntersection(const Triangle:TpvTriangle;out Position,Normal:TpvVector3;out Depth:TpvScalar):boolean; overload;
+       function TriangleIntersection(const SegmentTriangle:TpvSegmentTriangle;const TriangleNormal:TpvVector3;out Position,Normal:TpvVector3;out Depth:TpvScalar):boolean; overload;
+       function SweptIntersection(const SphereB:TpvSphere;const VelocityA,VelocityB:TpvVector3;out TimeFirst,TimeLast:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
      end;
 
-     PSpheres=^TSpheres;
-     TSpheres=array[0..65535] of TSphere;
+     PpvSpheres=^TpvSpheres;
+     TpvSpheres=array[0..65535] of TpvSphere;
 
-     PCapsule=^TCapsule;
-     TCapsule=packed record
-      LineStartPoint:TVector3;
-      LineEndPoint:TVector3;
-      Radius:TScalar;
+     PpvCapsule=^TpvCapsule;
+     TpvCapsule=packed record
+      LineStartPoint:TpvVector3;
+      LineEndPoint:TpvVector3;
+      Radius:TpvScalar;
      end;
 
-     PMinkowskiDescription=^TMinkowskiDescription;
-     TMinkowskiDescription=record
+     PpvMinkowskiDescription=^TpvMinkowskiDescription;
+     TpvMinkowskiDescription=record
       public
-       HalfAxis:TVector4;
-       Position_LM:TVector3;
+       HalfAxis:TpvVector4;
+       Position_LM:TpvVector3;
      end;
 
-     PSphereCoords=^TSphereCoords;
-     TSphereCoords=record
+     PpvSphereCoords=^TpvSphereCoords;
+     TpvSphereCoords=record
       public
-       Radius:TScalar;
-       Theta:TScalar;
-       Phi:TScalar;
-       constructor CreateFromCartesianVector(const v:TVector3); overload;
-       constructor CreateFromCartesianVector(const v:TVector4); overload;
-       function ToCartesianVector:TVector3;
+       Radius:TpvScalar;
+       Theta:TpvScalar;
+       Phi:TpvScalar;
+       constructor CreateFromCartesianVector(const v:TpvVector3); overload;
+       constructor CreateFromCartesianVector(const v:TpvVector4); overload;
+       function ToCartesianVector:TpvVector3;
      end;
 
-     Vec2=TVector2;
+     Vec2=TpvVector2;
 
-     Vec3=TVector3;
+     Vec3=TpvVector3;
 
-     Vec4=TVector4;
+     Vec4=TpvVector4;
 
-     Mat2=TMatrix2x2;
+     Mat2=TpvMatrix2x2;
 
-     Mat3=TMatrix3x3;
+     Mat3=TpvMatrix3x3;
 
-     Mat4=TMatrix4x4;
+     Mat4=TpvMatrix4x4;
 
 {$ifndef InSupraEngine}
-     TPooledObject=class(TPersistent);
+     TpvPooledObject=class(TPersistent);
 {$endif}
 
-     TPropertyVector2=class(TPooledObject)
+     TpvPropertyVector2=class(TpvPooledObject)
       private
-       fVector:PVector2;
-       function GetX:TScalar;
-       function GetY:TScalar;
-       function GetVector:TVector2;
-       procedure SetX(const pNewValue:TScalar);
-       procedure SetY(const pNewValue:TScalar);
-       procedure SetVector(const pNewVector:TVector2);
+       fVector:PpvVector2;
+       function GetX:TpvScalar;
+       function GetY:TpvScalar;
+       function GetVector:TpvVector2;
+       procedure SetX(const pNewValue:TpvScalar);
+       procedure SetY(const pNewValue:TpvScalar);
+       procedure SetVector(const pNewVector:TpvVector2);
       public
-       constructor Create(AVector:PVector2);
+       constructor Create(AVector:PpvVector2);
        destructor Destroy; override;
-       property Vector:TVector2 read GetVector write SetVector;
+       property Vector:TpvVector2 read GetVector write SetVector;
       published
-       property x:TScalar read GetX write SetX;
-       property y:TScalar read GetY write SetY;
+       property x:TpvScalar read GetX write SetX;
+       property y:TpvScalar read GetY write SetY;
      end;
 
-     TPropertyVector3=class(TPooledObject)
+     TpvPropertyVector3=class(TpvPooledObject)
       private
-       fVector:PVector3;
-       function GetX:TScalar;
-       function GetY:TScalar;
-       function GetZ:TScalar;
-       function GetVector:TVector3;
-       procedure SetX(const pNewValue:TScalar);
-       procedure SetY(const pNewValue:TScalar);
-       procedure SetZ(const pNewValue:TScalar);
-       procedure SetVector(const pNewVector:TVector3);
+       fVector:PpvVector3;
+       function GetX:TpvScalar;
+       function GetY:TpvScalar;
+       function GetZ:TpvScalar;
+       function GetVector:TpvVector3;
+       procedure SetX(const pNewValue:TpvScalar);
+       procedure SetY(const pNewValue:TpvScalar);
+       procedure SetZ(const pNewValue:TpvScalar);
+       procedure SetVector(const pNewVector:TpvVector3);
       public
-       constructor Create(AVector:PVector3);
+       constructor Create(AVector:PpvVector3);
        destructor Destroy; override;
-       property Vector:TVector3 read GetVector write SetVector;
+       property Vector:TpvVector3 read GetVector write SetVector;
       published
-       property x:TScalar read GetX write SetX;
-       property y:TScalar read GetY write SetY;
-       property z:TScalar read GetZ write SetZ;
+       property x:TpvScalar read GetX write SetX;
+       property y:TpvScalar read GetY write SetY;
+       property z:TpvScalar read GetZ write SetZ;
      end;
 
-     TPropertyVector4=class(TPooledObject)
+     TpvPropertyVector4=class(TpvPooledObject)
       private
-       fVector:PVector4;
-       function GetX:TScalar;
-       function GetY:TScalar;
-       function GetZ:TScalar;
-       function GetW:TScalar;
-       function GetVector:TVector4;
-       procedure SetX(const pNewValue:TScalar);
-       procedure SetY(const pNewValue:TScalar);
-       procedure SetZ(const pNewValue:TScalar);
-       procedure SetW(const pNewValue:TScalar);
-       procedure SetVector(const pNewVector:TVector4);
+       fVector:PpvVector4;
+       function GetX:TpvScalar;
+       function GetY:TpvScalar;
+       function GetZ:TpvScalar;
+       function GetW:TpvScalar;
+       function GetVector:TpvVector4;
+       procedure SetX(const pNewValue:TpvScalar);
+       procedure SetY(const pNewValue:TpvScalar);
+       procedure SetZ(const pNewValue:TpvScalar);
+       procedure SetW(const pNewValue:TpvScalar);
+       procedure SetVector(const pNewVector:TpvVector4);
       public
-       constructor Create(AVector:PVector4);
+       constructor Create(AVector:PpvVector4);
        destructor Destroy; override;
-       property Vector:TVector4 read GetVector write SetVector;
+       property Vector:TpvVector4 read GetVector write SetVector;
       published
-       property x:TScalar read GetX write SetX;
-       property y:TScalar read GetY write SetY;
-       property z:TScalar read GetZ write SetZ;
-       property w:TScalar read GetW write SetW;
+       property x:TpvScalar read GetX write SetX;
+       property y:TpvScalar read GetY write SetY;
+       property z:TpvScalar read GetZ write SetZ;
+       property w:TpvScalar read GetW write SetW;
      end;
 
-     TPropertyQuaternion=class(TPooledObject)
+     TpvPropertyQuaternion=class(TpvPooledObject)
       private
-       fQuaternion:PQuaternion;
-       function GetX:TScalar;
-       function GetY:TScalar;
-       function GetZ:TScalar;
-       function GetW:TScalar;
-       function GetQuaternion:TQuaternion;
-       procedure SetX(const pNewValue:TScalar);
-       procedure SetY(const pNewValue:TScalar);
-       procedure SetZ(const pNewValue:TScalar);
-       procedure SetW(const pNewValue:TScalar);
-       procedure SetQuaternion(const NewQuaternion:TQuaternion);
+       fQuaternion:PpvQuaternion;
+       function GetX:TpvScalar;
+       function GetY:TpvScalar;
+       function GetZ:TpvScalar;
+       function GetW:TpvScalar;
+       function GetQuaternion:TpvQuaternion;
+       procedure SetX(const pNewValue:TpvScalar);
+       procedure SetY(const pNewValue:TpvScalar);
+       procedure SetZ(const pNewValue:TpvScalar);
+       procedure SetW(const pNewValue:TpvScalar);
+       procedure SetQuaternion(const NewQuaternion:TpvQuaternion);
       public
-       constructor Create(AQuaternion:PQuaternion);
+       constructor Create(AQuaternion:PpvQuaternion);
        destructor Destroy; override;
-       property Quaternion:TQuaternion read GetQuaternion write SetQuaternion;
+       property Quaternion:TpvQuaternion read GetQuaternion write SetQuaternion;
       published
-       property x:TScalar read GetX write SetX;
-       property y:TScalar read GetY write SetY;
-       property z:TScalar read GetZ write SetZ;
-       property w:TScalar read GetW write SetW;
+       property x:TpvScalar read GetX write SetX;
+       property y:TpvScalar read GetY write SetY;
+       property z:TpvScalar read GetZ write SetZ;
+       property w:TpvScalar read GetW write SetW;
      end;
 
-     TPropertyAngle=class(TPooledObject)
+     TpvPropertyAngle=class(TpvPooledObject)
       private
-       fRadianAngle:PScalar;
-       function GetAngle:TScalar;
-       function GetRadianAngle:TScalar;
-       procedure SetAngle(const pNewValue:TScalar);
-       procedure SetRadianAngle(const pNewValue:TScalar);
+       fRadianAngle:PpvScalar;
+       function GetAngle:TpvScalar;
+       function GetRadianAngle:TpvScalar;
+       procedure SetAngle(const pNewValue:TpvScalar);
+       procedure SetRadianAngle(const pNewValue:TpvScalar);
       public
-       constructor Create(ARadianAngle:PScalar);
+       constructor Create(ARadianAngle:PpvScalar);
        destructor Destroy; override;
-       property RadianAngle:TScalar read GetRadianAngle write SetRadianAngle;
+       property RadianAngle:TpvScalar read GetRadianAngle write SetRadianAngle;
       published
-       property Angle:TScalar read GetAngle write SetAngle;
+       property Angle:TpvScalar read GetAngle write SetAngle;
      end;
 
-     TPropertyRotation3D=class(TPooledObject)
+     TpvPropertyRotation3D=class(TpvPooledObject)
       private
-       fQuaternion:PQuaternion;
-       function GetX:TScalar;
-       function GetY:TScalar;
-       function GetZ:TScalar;
-       function GetW:TScalar;
-       function GetPitch:TScalar;
-       function GetYaw:TScalar;
-       function GetRoll:TScalar;
-       function GetQuaternion:TQuaternion;
-       procedure SetX(const pNewValue:TScalar);
-       procedure SetY(const pNewValue:TScalar);
-       procedure SetZ(const pNewValue:TScalar);
-       procedure SetW(const pNewValue:TScalar);
-       procedure SetPitch(const pNewValue:TScalar);
-       procedure SetYaw(const pNewValue:TScalar);
-       procedure SetRoll(const pNewValue:TScalar);
-       procedure SetQuaternion(const NewQuaternion:TQuaternion);
+       fQuaternion:PpvQuaternion;
+       function GetX:TpvScalar;
+       function GetY:TpvScalar;
+       function GetZ:TpvScalar;
+       function GetW:TpvScalar;
+       function GetPitch:TpvScalar;
+       function GetYaw:TpvScalar;
+       function GetRoll:TpvScalar;
+       function GetQuaternion:TpvQuaternion;
+       procedure SetX(const pNewValue:TpvScalar);
+       procedure SetY(const pNewValue:TpvScalar);
+       procedure SetZ(const pNewValue:TpvScalar);
+       procedure SetW(const pNewValue:TpvScalar);
+       procedure SetPitch(const pNewValue:TpvScalar);
+       procedure SetYaw(const pNewValue:TpvScalar);
+       procedure SetRoll(const pNewValue:TpvScalar);
+       procedure SetQuaternion(const NewQuaternion:TpvQuaternion);
       public
-       constructor Create(AQuaternion:PQuaternion);
+       constructor Create(AQuaternion:PpvQuaternion);
        destructor Destroy; override;
-       property x:TScalar read GetX write SetX;
-       property y:TScalar read GetY write SetY;
-       property z:TScalar read GetZ write SetZ;
-       property w:TScalar read GetW write SetW;
-       property Quaternion:TQuaternion read GetQuaternion write SetQuaternion;
+       property x:TpvScalar read GetX write SetX;
+       property y:TpvScalar read GetY write SetY;
+       property z:TpvScalar read GetZ write SetZ;
+       property w:TpvScalar read GetW write SetW;
+       property Quaternion:TpvQuaternion read GetQuaternion write SetQuaternion;
       published
-       property Pitch:TScalar read GetPitch write SetPitch;
-       property Yaw:TScalar read GetYaw write SetYaw;
-       property Roll:TScalar read GetRoll write SetRoll;
+       property Pitch:TpvScalar read GetPitch write SetPitch;
+       property Yaw:TpvScalar read GetYaw write SetYaw;
+       property Roll:TpvScalar read GetRoll write SetRoll;
      end;
 
-     TPropertyColorRGB=class(TPooledObject)
+     TPropertyColorRGB=class(TpvPooledObject)
       private
-       fVector:PVector3;
-       function GetR:TScalar;
-       function GetG:TScalar;
-       function GetB:TScalar;
-       function GetVector:TVector3;
-       procedure SetR(const pNewValue:TScalar);
-       procedure SetG(const pNewValue:TScalar);
-       procedure SetB(const pNewValue:TScalar);
-       procedure SetVector(const pNewVector:TVector3);
+       fVector:PpvVector3;
+       function GetR:TpvScalar;
+       function GetG:TpvScalar;
+       function GetB:TpvScalar;
+       function GetVector:TpvVector3;
+       procedure SetR(const pNewValue:TpvScalar);
+       procedure SetG(const pNewValue:TpvScalar);
+       procedure SetB(const pNewValue:TpvScalar);
+       procedure SetVector(const pNewVector:TpvVector3);
       public
-       constructor Create(AVector:PVector3);
+       constructor Create(AVector:PpvVector3);
        destructor Destroy; override;
-       property Vector:TVector3 read GetVector write SetVector;
+       property Vector:TpvVector3 read GetVector write SetVector;
       published
-       property r:TScalar read GetR write SetR;
-       property g:TScalar read GetG write SetG;
-       property b:TScalar read GetB write SetB;
+       property r:TpvScalar read GetR write SetR;
+       property g:TpvScalar read GetG write SetG;
+       property b:TpvScalar read GetB write SetB;
      end;
 
-     TPropertyColorRGBA=class(TPooledObject)
+     TPropertyColorRGBA=class(TpvPooledObject)
       private
-       fVector:PVector4;
-       function GetR:TScalar;
-       function GetG:TScalar;
-       function GetB:TScalar;
-       function GetA:TScalar;
-       function GetVector:TVector4;
-       procedure SetR(const pNewValue:TScalar);
-       procedure SetG(const pNewValue:TScalar);
-       procedure SetB(const pNewValue:TScalar);
-       procedure SetA(const pNewValue:TScalar);
-       procedure SetVector(const pNewVector:TVector4);
+       fVector:PpvVector4;
+       function GetR:TpvScalar;
+       function GetG:TpvScalar;
+       function GetB:TpvScalar;
+       function GetA:TpvScalar;
+       function GetVector:TpvVector4;
+       procedure SetR(const pNewValue:TpvScalar);
+       procedure SetG(const pNewValue:TpvScalar);
+       procedure SetB(const pNewValue:TpvScalar);
+       procedure SetA(const pNewValue:TpvScalar);
+       procedure SetVector(const pNewVector:TpvVector4);
       public
-       constructor Create(AVector:PVector4);
+       constructor Create(AVector:PpvVector4);
        destructor Destroy; override;
-       property Vector:TVector4 read GetVector write SetVector;
+       property Vector:TpvVector4 read GetVector write SetVector;
       published
-       property r:TScalar read GetR write SetR;
-       property g:TScalar read GetG write SetG;
-       property b:TScalar read GetB write SetB;
-       property a:TScalar read GetA write SetA;
+       property r:TpvScalar read GetR write SetR;
+       property g:TpvScalar read GetG write SetG;
+       property b:TpvScalar read GetB write SetB;
+       property a:TpvScalar read GetA write SetA;
      end;
 
-const Vector2Origin:TVector2=(x:0.0;y:0.0);
-      Vector2XAxis:TVector2=(x:1.0;y:0.0);
-      Vector2YAxis:TVector2=(x:0.0;y:1.0);
-      Vector2ZAxis:TVector2=(x:0.0;y:0.0);
+const Vector2Origin:TpvVector2=(x:0.0;y:0.0);
+      Vector2XAxis:TpvVector2=(x:1.0;y:0.0);
+      Vector2YAxis:TpvVector2=(x:0.0;y:1.0);
+      Vector2ZAxis:TpvVector2=(x:0.0;y:0.0);
 
-      Vector3Origin:TVector3=(x:0.0;y:0.0;z:0.0);
-      Vector3XAxis:TVector3=(x:1.0;y:0.0;z:0.0);
-      Vector3YAxis:TVector3=(x:0.0;y:1.0;z:0.0);
-      Vector3ZAxis:TVector3=(x:0.0;y:0.0;z:1.0);
-      Vector3All:TVector3=(x:1.0;y:1.0;z:1.0);
+      Vector3Origin:TpvVector3=(x:0.0;y:0.0;z:0.0);
+      Vector3XAxis:TpvVector3=(x:1.0;y:0.0;z:0.0);
+      Vector3YAxis:TpvVector3=(x:0.0;y:1.0;z:0.0);
+      Vector3ZAxis:TpvVector3=(x:0.0;y:0.0;z:1.0);
+      Vector3All:TpvVector3=(x:1.0;y:1.0;z:1.0);
 
-      Vector4Origin:TVector4=(x:0.0;y:0.0;z:0.0;w:1.0);
-      Vector4XAxis:TVector4=(x:1.0;y:0.0;z:0.0;w:1.0);
-      Vector4YAxis:TVector4=(x:0.0;y:1.0;z:0.0;w:1.0);
-      Vector4ZAxis:TVector4=(x:0.0;y:0.0;z:1.0;w:1.0);
+      Vector4Origin:TpvVector4=(x:0.0;y:0.0;z:0.0;w:1.0);
+      Vector4XAxis:TpvVector4=(x:1.0;y:0.0;z:0.0;w:1.0);
+      Vector4YAxis:TpvVector4=(x:0.0;y:1.0;z:0.0;w:1.0);
+      Vector4ZAxis:TpvVector4=(x:0.0;y:0.0;z:1.0;w:1.0);
 
-      Matrix2x2Identity:TMatrix2x2=(RawComponents:((1.0,0.0),(0.0,1.0)));
-      Matrix2x2Null:TMatrix2x2=(RawComponents:((0.0,0.0),(0.0,0.0)));
+      Matrix2x2Identity:TpvMatrix2x2=(RawComponents:((1.0,0.0),(0.0,1.0)));
+      Matrix2x2Null:TpvMatrix2x2=(RawComponents:((0.0,0.0),(0.0,0.0)));
 
-      Matrix3x3Identity:TMatrix3x3=(RawComponents:((1.0,0.0,0.0),(0.0,1.0,0.0),(0.0,0.0,1.0)));
-      Matrix3x3Null:TMatrix3x3=(RawComponents:((0.0,0.0,0.0),(0.0,0.0,0.0),(0.0,0.0,0.0)));
+      Matrix3x3Identity:TpvMatrix3x3=(RawComponents:((1.0,0.0,0.0),(0.0,1.0,0.0),(0.0,0.0,1.0)));
+      Matrix3x3Null:TpvMatrix3x3=(RawComponents:((0.0,0.0,0.0),(0.0,0.0,0.0),(0.0,0.0,0.0)));
 
-      Matrix4x4Identity:TMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4RightToLeftHanded:TMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4Flip:TMatrix4x4=(RawComponents:((0.0,0.0,-1.0,0.0),(-1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4InverseFlip:TMatrix4x4=(RawComponents:((0.0,-1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(-1.0,0.0,0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4FlipYZ:TMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4InverseFlipYZ:TMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4Null:TMatrix4x4=(RawComponents:((0.0,0.0,0,0.0),(0.0,0.0,0,0.0),(0.0,0.0,0,0.0),(0.0,0.0,0,0.0)));
-      Matrix4x4NormalizedSpace:TMatrix4x4=(RawComponents:((2.0,0.0,0,0.0),(0.0,2.0,0.0,0.0),(0.0,0.0,2.0,0.0),(-1.0,-1.0,-1.0,1.0)));
+      Matrix4x4Identity:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0)));
+      Matrix4x4RightToLeftHanded:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0,1.0)));
+      Matrix4x4Flip:TpvMatrix4x4=(RawComponents:((0.0,0.0,-1.0,0.0),(-1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0,1.0)));
+      Matrix4x4InverseFlip:TpvMatrix4x4=(RawComponents:((0.0,-1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(-1.0,0.0,0,0.0),(0.0,0.0,0,1.0)));
+      Matrix4x4FlipYZ:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0,1.0)));
+      Matrix4x4InverseFlipYZ:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0,1.0)));
+      Matrix4x4Null:TpvMatrix4x4=(RawComponents:((0.0,0.0,0,0.0),(0.0,0.0,0,0.0),(0.0,0.0,0,0.0),(0.0,0.0,0,0.0)));
+      Matrix4x4NormalizedSpace:TpvMatrix4x4=(RawComponents:((2.0,0.0,0,0.0),(0.0,2.0,0.0,0.0),(0.0,0.0,2.0,0.0),(-1.0,-1.0,-1.0,1.0)));
 
-      QuaternionIdentity:TQuaternion=(x:0.0;y:0.0;z:0.0;w:1.0);
+      QuaternionIdentity:TpvQuaternion=(x:0.0;y:0.0;z:0.0;w:1.0);
 
-function IntLog2(x:TUInt32):TUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function IntLog2(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
-function Modulo(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function ModuloPos(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function IEEERemainder(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function Modulus(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function Modulo(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ModuloPos(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function IEEERemainder(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function Modulus(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Determinant4x4(const v0,v1,v2,v3:TVector4):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function SolveQuadraticRoots(const a,b,c:TScalar;out t1,t2:TScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-function LinearPolynomialRoot(const a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function QuadraticPolynomialRoot(const a,b,c:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function CubicPolynomialRoot(const a,b,c,d:TScalar):TScalar;
+function Determinant4x4(const v0,v1,v2,v3:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearPolynomialRoot(const a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function QuadraticPolynomialRoot(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function CubicPolynomialRoot(const a,b,c,d:TpvScalar):TpvScalar;
 
-function FloatLerp(const v1,v2,w:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function FloatLerp(const v1,v2,w:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Cross(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Cross(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Cross(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Cross(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Cross(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Cross(const a,b:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Dot(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Dot(const a,b:TVector2):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Dot(const a,b:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Dot(const a,b:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Dot(const a,b:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Dot(const a,b:TpvVector2):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Dot(const a,b:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Dot(const a,b:TpvVector4):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Len(const a:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Len(const a:TVector2):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Len(const a:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Len(const a:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Len(const a:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Len(const a:TpvVector2):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Len(const a:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Len(const a:TpvVector4):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Normalize(const a:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Normalize(const a:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Normalize(const a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Normalize(const a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Normalize(const a:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Normalize(const a:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Normalize(const a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Normalize(const a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Minimum(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Minimum(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Minimum(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Minimum(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Minimum(const a,b:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Minimum(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Minimum(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Minimum(const a,b:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Maximum(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Maximum(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Maximum(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Maximum(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Maximum(const a,b:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Maximum(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Maximum(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Maximum(const a,b:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function FaceForward(const N,I:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function FaceForward(const N,I:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function FaceForward(const N,I:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function FaceForward(const N,I:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function FaceForward(const N,I,Nref:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function FaceForward(const N,I,Nref:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function FaceForward(const N,I,Nref:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function FaceForward(const N,I,Nref:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I,Nref:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I,Nref:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I,Nref:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I,Nref:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Reflect(const I,N:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Reflect(const I,N:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Reflect(const I,N:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Reflect(const I,N:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Reflect(const I,N:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Reflect(const I,N:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Reflect(const I,N:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Reflect(const I,N:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Refract(const I,N:TScalar;const Eta:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Refract(const I,N:TVector2;const Eta:TScalar):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Refract(const I,N:TVector3;const Eta:TScalar):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Refract(const I,N:TVector4;const Eta:TScalar):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Refract(const I,N:TpvScalar;const Eta:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Refract(const I,N:TpvVector2;const Eta:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Refract(const I,N:TpvVector3;const Eta:TpvScalar):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Refract(const I,N:TpvVector4;const Eta:TpvScalar):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Clamp(const Value,MinValue,MaxValue:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Clamp(const Value,MinValue,MaxValue:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Clamp(const Value,MinValue,MaxValue:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Clamp(const Value,MinValue,MaxValue:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Mix(const a,b,t:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Mix(const a,b,t:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Mix(const a,b,t:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Mix(const a,b,t:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Mix(const a,b,t:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Mix(const a,b,t:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Mix(const a,b,t:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Mix(const a,b,t:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Step(const Edge,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Step(const Edge,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Step(const Edge,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function Step(const Edge,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Step(const Edge,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Step(const Edge,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Step(const Edge,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Step(const Edge,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function NearestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function NearestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function NearestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function NearestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function LinearStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function LinearStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function LinearStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function LinearStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function SmoothStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SmoothStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SmoothStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SmoothStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function SmootherStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SmootherStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SmootherStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SmootherStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function SmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function SuperSmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-procedure DoCalculateInterval(const Vertices:PVector3s;const Count:TInt32;const Axis:TVector3;out OutMin,OutMax:TScalar);
-function DoSpanIntersect(const Vertices1:PVector3s;const Count1:TInt32;const Vertices2:PVector3s;const Count2:TInt32;const AxisTest:TVector3;out AxisPenetration:TVector3):TScalar;
+procedure DoCalculateInterval(const Vertices:PVector3s;const Count:TpvInt32;const Axis:TpvVector3;out OutMin,OutMax:TpvScalar);
+function DoSpanIntersect(const Vertices1:PVector3s;const Count1:TpvInt32;const Vertices2:PVector3s;const Count2:TpvInt32;const AxisTest:TpvVector3;out AxisPenetration:TpvVector3):TpvScalar;
 
-function BoxGetDistanceToPoint(Point:TVector3;const Center,Size:TVector3;const InvTransformMatrix,TransformMatrix:TMatrix4x4;var ClosestBoxPoint:TVector3):TScalar;
-function GetDistanceFromLine(const p0,p1,p:TVector3;var Projected:TVector3;const Time:PScalar=nil):TScalar;
-procedure LineClosestApproach(const pa,ua,pb,ub:TVector3;var Alpha,Beta:TScalar);
-procedure ClosestLineBoxPoints(const p1,p2,c:TVector3;const ir,r:TMatrix4x4;const side:TVector3;var lret,bret:TVector3);
-procedure ClosestLineSegmentPoints(const a0,a1,b0,b1:TVector3;var cp0,cp1:TVector3);
-function LineSegmentIntersection(const a0,a1,b0,b1:TVector3;const p:PVector3=nil):boolean;
-function LineLineIntersection(const a0,a1,b0,b1:TVector3;const pa:PVector3=nil;const pb:PVector3=nil;const ta:PScalar=nil;const tb:PScalar=nil):boolean;
+function BoxGetDistanceToPoint(Point:TpvVector3;const Center,Size:TpvVector3;const InvTransformMatrix,TransformMatrix:TpvMatrix4x4;var ClosestBoxPoint:TpvVector3):TpvScalar;
+function GetDistanceFromLine(const p0,p1,p:TpvVector3;var Projected:TpvVector3;const Time:PpvScalar=nil):TpvScalar;
+procedure LineClosestApproach(const pa,ua,pb,ub:TpvVector3;var Alpha,Beta:TpvScalar);
+procedure ClosestLineBoxPoints(const p1,p2,c:TpvVector3;const ir,r:TpvMatrix4x4;const side:TpvVector3;var lret,bret:TpvVector3);
+procedure ClosestLineSegmentPoints(const a0,a1,b0,b1:TpvVector3;var cp0,cp1:TpvVector3);
+function LineSegmentIntersection(const a0,a1,b0,b1:TpvVector3;const p:PpvVector3=nil):boolean;
+function LineLineIntersection(const a0,a1,b0,b1:TpvVector3;const pa:PpvVector3=nil;const pb:PpvVector3=nil;const ta:PpvScalar=nil;const tb:PpvScalar=nil):boolean;
 
-function IsPointsSameSide(const p0,p1,Origin,Direction:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function IsPointsSameSide(const p0,p1,Origin,Direction:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function PointInTriangle(const p0,p1,p2,Normal,p:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-function PointInTriangle(const p0,p1,p2,p:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function PointInTriangle(const p0,p1,p2,Normal,p:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function PointInTriangle(const p0,p1,p2,p:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-function GetOverlap(const MinA,MaxA,MinB,MaxB:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function GetOverlap(const MinA,MaxA,MinB,MaxB:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function OldTriangleTriangleIntersection(const a0,a1,a2,b0,b1,b2:TVector3):boolean;
-function TriangleTriangleIntersection(const v0,v1,v2,u0,u1,u2:TVector3):boolean;
+function OldTriangleTriangleIntersection(const a0,a1,a2,b0,b1,b2:TpvVector3):boolean;
+function TriangleTriangleIntersection(const v0,v1,v2,u0,u1,u2:TpvVector3):boolean;
 
-function ClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TVector3;const ClosestPointOnLine:PVector3=nil;const Time:PScalar=nil):TScalar;
-function ClosestPointToAABB(const AABB:TAABB;const Point:TVector3;const ClosestPointOnAABB:PVector3=nil):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function ClosestPointToOBB(const OBB:TOBB;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function ClosestPointToSphere(const Sphere:TSphere;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function ClosestPointToCapsule(const Capsule:TCapsule;const Point:TVector3;out ClosestPoint:TVector3;const Time:PScalar=nil):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function ClosestPointToTriangle(const a,b,c,p:TVector3;out ClosestPoint:TVector3):TScalar;
+function ClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TpvVector3;const ClosestPointOnLine:PpvVector3=nil;const Time:PpvScalar=nil):TpvScalar;
+function ClosestPointToAABB(const AABB:TpvAABB;const Point:TpvVector3;const ClosestPointOnAABB:PpvVector3=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToOBB(const OBB:TpvOBB;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToSphere(const Sphere:TpvSphere;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToCapsule(const Capsule:TpvCapsule;const Point:TpvVector3;out ClosestPoint:TpvVector3;const Time:PpvScalar=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToTriangle(const a,b,c,p:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar;
 
-function SquaredDistanceFromPointToAABB(const AABB:TAABB;const Point:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function SquaredDistanceFromPointToAABB(const AABB:TpvAABB;const Point:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function SquaredDistanceFromPointToTriangle(const p,a,b,c:TVector3):TScalar;
+function SquaredDistanceFromPointToTriangle(const p,a,b,c:TpvVector3):TpvScalar;
 
-function IsParallel(const a,b:TVector3;const Tolerance:TScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+function IsParallel(const a,b:TpvVector3;const Tolerance:TpvScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
 
-function Vector3ToAnglesLDX(v:TVector3):TVector3;
+function Vector3ToAnglesLDX(v:TpvVector3):TpvVector3;
 
-procedure AnglesToVector3LDX(const Angles:TVector3;var ForwardVector,RightVector,UpVector:TVector3);
+procedure AnglesToVector3LDX(const Angles:TpvVector3;var ForwardVector,RightVector,UpVector:TpvVector3);
 
-function UnsignedAngle(const v0,v1:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function UnsignedAngle(const v0,v1:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function AngleDegClamp(a:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function AngleDegDiff(a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleDegClamp(a:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleDegDiff(a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function AngleClamp(a:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function AngleDiff(a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function AngleLerp(a,b,x:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleClamp(a:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleDiff(a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleLerp(a,b,x:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
-function InertiaTensorTransform(const Inertia,Transform:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-function InertiaTensorParallelAxisTheorem(const Center:TVector3;const Mass:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+function InertiaTensorTransform(const Inertia,Transform:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+function InertiaTensorParallelAxisTheorem(const Center:TpvVector3;const Mass:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
 
-procedure OrthoNormalize(var Tangent,Bitangent,Normal:TVector3);
+procedure OrthoNormalize(var Tangent,Bitangent,Normal:TpvVector3);
 
-procedure RobustOrthoNormalize(var Tangent,Bitangent,Normal:TVector3;const Tolerance:TScalar=1e-3);
+procedure RobustOrthoNormalize(var Tangent,Bitangent,Normal:TpvVector3;const Tolerance:TpvScalar=1e-3);
 
-function MaxOverlaps(const Min1,Max1,Min2,Max2:TScalar;var LowerLim,UpperLim:TScalar):boolean;
+function MaxOverlaps(const Min1,Max1,Min2,Max2:TpvScalar;var LowerLim,UpperLim:TpvScalar):boolean;
 
-function PackFP32FloatToM6E5Float(const pValue:TFloat):TUInt32;
-function PackFP32FloatToM5E5Float(const pValue:TFloat):TUInt32;
-function Float32ToFloat11(const pValue:TFloat):TUInt32;
-function Float32ToFloat10(const pValue:TFloat):TUInt32;
+function PackFP32FloatToM6E5Float(const pValue:TpvFloat):TpvUInt32;
+function PackFP32FloatToM5E5Float(const pValue:TpvFloat):TpvUInt32;
+function Float32ToFloat11(const pValue:TpvFloat):TpvUInt32;
+function Float32ToFloat10(const pValue:TpvFloat):TpvUInt32;
 
-function ConvertRGB32FToRGB9E5(r,g,b:TFloat):TUInt32;
-function ConvertRGB32FToR11FG11FB10F(const r,g,b:TFloat):TUInt32; {$ifdef CAN_INLINE}inline;{$endif}
+function ConvertRGB32FToRGB9E5(r,g,b:TpvFloat):TpvUInt32;
+function ConvertRGB32FToR11FG11FB10F(const r,g,b:TpvFloat):TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
 
-function PackTangentSpace(const Tangent,Bitangent,Normal:TVector3):TPackedTangentSpace;
-procedure UnpackTangentSpace(var PackedTangentSpace:TPackedTangentSpace;var Tangent,Bitangent,Normal:TVector3);
+function PackTangentSpace(const Tangent,Bitangent,Normal:TpvVector3):TpvPackedTangentSpace;
+procedure UnpackTangentSpace(var PackedTangentSpace:TpvPackedTangentSpace;var Tangent,Bitangent,Normal:TpvVector3);
 
 implementation
 
-function IntLog2(x:TUInt32):TUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}
+function IntLog2(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}
 begin
  if x<>0 then begin
   result:=BSRWord(x);
@@ -1394,12 +1394,12 @@ end;
 {$endif}
 {$endif}
 
-function Modulo(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function Modulo(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=x-(floor(x/y)*y);
 end;
 
-function ModuloPos(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ModuloPos(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if y>0.0 then begin
   result:=Modulo(x,y);
@@ -1414,17 +1414,17 @@ begin
  end;
 end;
 
-function IEEERemainder(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function IEEERemainder(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=x-(round(x/y)*y);
 end;
 
-function Modulus(x,y:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function Modulus(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(abs(x)-(abs(y)*(floor(abs(x)/abs(y)))))*sign(x);
 end;
 
-function Determinant4x4(const v0,v1,v2,v3:TVector4):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function Determinant4x4(const v0,v1,v2,v3:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(v0.w*v1.z*v2.y*v3.x)-(v0.z*v1.w*v2.y*v3.x)-
          (v0.w*v1.y*v2.z*v3.x)+(v0.y*v1.w*v2.z*v3.x)+
@@ -1440,8 +1440,8 @@ begin
          (v0.y*v1.x*v2.z*v3.w)+(v0.x*v1.y*v2.z*v3.w);
 end;
 
-function SolveQuadraticRoots(const a,b,c:TScalar;out t1,t2:TScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-var d,InverseDenominator:TScalar;
+function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+var d,InverseDenominator:TpvScalar;
 begin
  result:=false;
  d:=sqr(b)-(4.0*(a*c));
@@ -1459,7 +1459,7 @@ begin
  end;
 end;
 
-function LinearPolynomialRoot(const a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearPolynomialRoot(const a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if abs(a)>EPSILON then begin
   result:=-(b/a);
@@ -1468,8 +1468,8 @@ begin
  end;
 end;
 
-function QuadraticPolynomialRoot(const a,b,c:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-var d,InverseDenominator,t0,t1:TScalar;
+function QuadraticPolynomialRoot(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+var d,InverseDenominator,t0,t1:TpvScalar;
 begin
  if abs(a)>EPSILON then begin
   d:=sqr(b)-(4.0*(a*c));
@@ -1496,8 +1496,8 @@ begin
  end;
 end;
 
-function CubicPolynomialRoot(const a,b,c,d:TScalar):TScalar;
-var f,g,h,hs,r,s,t,u,i,j,k,l,m,n,p,t0,t1,t2:TScalar;
+function CubicPolynomialRoot(const a,b,c,d:TpvScalar):TpvScalar;
+var f,g,h,hs,r,s,t,u,i,j,k,l,m,n,p,t0,t1,t2:TpvScalar;
 begin
  if abs(a)>EPSILON then begin
   if abs(1.0-a)<EPSILON then begin
@@ -1616,7 +1616,7 @@ begin
  end;
 end;
 
-function FloatLerp(const v1,v2,w:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function FloatLerp(const v1,v2,w:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if w<0.0 then begin
   result:=v1;
@@ -1627,201 +1627,201 @@ begin
  end;
 end;
 
-constructor TVector2.Create(const pX:TScalar);
+constructor TpvVector2.Create(const pX:TpvScalar);
 begin
  x:=pX;
  y:=pX;
 end;
 
-constructor TVector2.Create(const pX,pY:TScalar);
+constructor TpvVector2.Create(const pX,pY:TpvScalar);
 begin
  x:=pX;
  y:=pY;
 end;
 
-class operator TVector2.Implicit(const a:TScalar):TVector2;
+class operator TpvVector2.Implicit(const a:TpvScalar):TpvVector2;
 begin
  result.x:=a;
  result.y:=a;
 end;
 
-class operator TVector2.Explicit(const a:TScalar):TVector2;
+class operator TpvVector2.Explicit(const a:TpvScalar):TpvVector2;
 begin
  result.x:=a;
  result.y:=a;
 end;
 
-class operator TVector2.Equal(const a,b:TVector2):boolean;
+class operator TpvVector2.Equal(const a,b:TpvVector2):boolean;
 begin
  result:=SameValue(a.x,b.x) and SameValue(a.y,b.y);
 end;
 
-class operator TVector2.NotEqual(const a,b:TVector2):boolean;
+class operator TpvVector2.NotEqual(const a,b:TpvVector2):boolean;
 begin
  result:=(not SameValue(a.x,b.x)) or (not SameValue(a.y,b.y));
 end;
 
-class operator TVector2.Inc(const a:TVector2):TVector2;
+class operator TpvVector2.Inc(const a:TpvVector2):TpvVector2;
 begin
  result.x:=a.x+1.0;
  result.y:=a.y+1.0;
 end;
 
-class operator TVector2.Dec(const a:TVector2):TVector2;
+class operator TpvVector2.Dec(const a:TpvVector2):TpvVector2;
 begin
  result.x:=a.x-1.0;
  result.y:=a.y-1.0;
 end;
 
-class operator TVector2.Add(const a,b:TVector2):TVector2;
+class operator TpvVector2.Add(const a,b:TpvVector2):TpvVector2;
 begin
  result.x:=a.x+b.x;
  result.y:=a.y+b.y;
 end;
 
-class operator TVector2.Add(const a:TVector2;const b:TScalar):TVector2;
+class operator TpvVector2.Add(const a:TpvVector2;const b:TpvScalar):TpvVector2;
 begin
  result.x:=a.x+b;
  result.y:=a.y+b;
 end;
 
-class operator TVector2.Add(const a:TScalar;const b:TVector2):TVector2;
+class operator TpvVector2.Add(const a:TpvScalar;const b:TpvVector2):TpvVector2;
 begin
  result.x:=a+b.x;
  result.y:=a+b.y;
 end;
 
-class operator TVector2.Subtract(const a,b:TVector2):TVector2;
+class operator TpvVector2.Subtract(const a,b:TpvVector2):TpvVector2;
 begin
  result.x:=a.x-b.x;
  result.y:=a.y-b.y;
 end;
 
-class operator TVector2.Subtract(const a:TVector2;const b:TScalar):TVector2;
+class operator TpvVector2.Subtract(const a:TpvVector2;const b:TpvScalar):TpvVector2;
 begin
  result.x:=a.x-b;
  result.y:=a.y-b;
 end;
 
-class operator TVector2.Subtract(const a:TScalar;const b:TVector2): TVector2;
+class operator TpvVector2.Subtract(const a:TpvScalar;const b:TpvVector2): TpvVector2;
 begin
  result.x:=a-b.x;
  result.y:=a-b.y;
 end;
 
-class operator TVector2.Multiply(const a,b:TVector2):TVector2;
+class operator TpvVector2.Multiply(const a,b:TpvVector2):TpvVector2;
 begin
  result.x:=a.x*b.x;
  result.y:=a.y*b.y;
 end;
 
-class operator TVector2.Multiply(const a:TVector2;const b:TScalar):TVector2;
+class operator TpvVector2.Multiply(const a:TpvVector2;const b:TpvScalar):TpvVector2;
 begin
  result.x:=a.x*b;
  result.y:=a.y*b;
 end;
 
-class operator TVector2.Multiply(const a:TScalar;const b:TVector2):TVector2;
+class operator TpvVector2.Multiply(const a:TpvScalar;const b:TpvVector2):TpvVector2;
 begin
  result.x:=a*b.x;
  result.y:=a*b.y;
 end;
 
-class operator TVector2.Divide(const a,b:TVector2):TVector2;
+class operator TpvVector2.Divide(const a,b:TpvVector2):TpvVector2;
 begin
  result.x:=a.x/b.x;
  result.y:=a.y/b.y;
 end;
 
-class operator TVector2.Divide(const a:TVector2;const b:TScalar):TVector2;
+class operator TpvVector2.Divide(const a:TpvVector2;const b:TpvScalar):TpvVector2;
 begin
  result.x:=a.x/b;
  result.y:=a.y/b;
 end;
 
-class operator TVector2.Divide(const a:TScalar;const b:TVector2):TVector2;
+class operator TpvVector2.Divide(const a:TpvScalar;const b:TpvVector2):TpvVector2;
 begin
  result.x:=a/b.x;
  result.y:=a/b.y;
 end;
 
-class operator TVector2.IntDivide(const a,b:TVector2):TVector2;
+class operator TpvVector2.IntDivide(const a,b:TpvVector2):TpvVector2;
 begin
  result.x:=a.x/b.x;
  result.y:=a.y/b.y;
 end;
 
-class operator TVector2.IntDivide(const a:TVector2;const b:TScalar):TVector2;
+class operator TpvVector2.IntDivide(const a:TpvVector2;const b:TpvScalar):TpvVector2;
 begin
  result.x:=a.x/b;
  result.y:=a.y/b;
 end;
 
-class operator TVector2.IntDivide(const a:TScalar;const b:TVector2):TVector2;
+class operator TpvVector2.IntDivide(const a:TpvScalar;const b:TpvVector2):TpvVector2;
 begin
  result.x:=a/b.x;
  result.y:=a/b.y;
 end;
 
-class operator TVector2.Modulus(const a,b:TVector2):TVector2;
+class operator TpvVector2.Modulus(const a,b:TpvVector2):TpvVector2;
 begin
  result.x:=Modulus(a.x,b.x);
  result.y:=Modulus(a.y,b.y);
 end;
 
-class operator TVector2.Modulus(const a:TVector2;const b:TScalar):TVector2;
+class operator TpvVector2.Modulus(const a:TpvVector2;const b:TpvScalar):TpvVector2;
 begin
  result.x:=Modulus(a.x,b);
  result.y:=Modulus(a.y,b);
 end;
 
-class operator TVector2.Modulus(const a:TScalar;const b:TVector2):TVector2;
+class operator TpvVector2.Modulus(const a:TpvScalar;const b:TpvVector2):TpvVector2;
 begin
  result.x:=Modulus(a,b.x);
  result.y:=Modulus(a,b.y);
 end;
 
-class operator TVector2.Negative(const a:TVector2):TVector2;
+class operator TpvVector2.Negative(const a:TpvVector2):TpvVector2;
 begin
  result.x:=-a.x;
  result.y:=-a.y;
 end;
 
-class operator TVector2.Positive(const a:TVector2):TVector2;
+class operator TpvVector2.Positive(const a:TpvVector2):TpvVector2;
 begin
  result:=a;
 end;
 
-{$i PasVulkan.Math.TVector2.Swizzle.Implementations.inc}
+{$i PasVulkan.Math.TpvVector2.Swizzle.Implementations.inc}
 
-function TVector2.GetComponent(const pIndex:TInt32):TScalar;
+function TpvVector2.GetComponent(const pIndex:TpvInt32):TpvScalar;
 begin
  result:=RawComponents[pIndex];
 end;
 
-procedure TVector2.SetComponent(const pIndex:TInt32;const pValue:TScalar);
+procedure TpvVector2.SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar);
 begin
  RawComponents[pIndex]:=pValue;
 end;
 
-function TVector2.Perpendicular:TVector2;
+function TpvVector2.Perpendicular:TpvVector2;
 begin
  result.x:=-y;
  result.y:=x;
 end;
 
-function TVector2.Length:TScalar;
+function TpvVector2.Length:TpvScalar;
 begin
  result:=sqrt(sqr(x)+sqr(y));
 end;
 
-function TVector2.SquaredLength:TScalar;
+function TpvVector2.SquaredLength:TpvScalar;
 begin
  result:=sqr(x)+sqr(y);
 end;
 
-function TVector2.Normalize:TVector2;
-var Factor:TScalar;
+function TpvVector2.Normalize:TpvVector2;
+var Factor:TpvScalar;
 begin
  Factor:=sqrt(sqr(x)+sqr(y));
  if Factor<>0.0 then begin
@@ -1834,24 +1834,24 @@ begin
  end;
 end;
 
-function TVector2.DistanceTo(const b:TVector2):TScalar;
+function TpvVector2.DistanceTo(const b:TpvVector2):TpvScalar;
 begin
  result:=sqrt(sqr(x-b.x)+sqr(y-b.y));
 end;
 
-function TVector2.Dot(const b:TVector2):TScalar;
+function TpvVector2.Dot(const b:TpvVector2):TpvScalar;
 begin
  result:=(x*b.x)+(y*b.y);
 end;
 
-function TVector2.Cross(const b:TVector2):TVector2;
+function TpvVector2.Cross(const b:TpvVector2):TpvVector2;
 begin
  result.x:=(y*b.x)-(x*b.y);
  result.y:=(x*b.y)-(y*b.x);
 end;
 
-function TVector2.Lerp(const b:TVector2;const t:TScalar):TVector2;
-var InvT:TScalar;
+function TpvVector2.Lerp(const b:TpvVector2;const t:TpvScalar):TpvVector2;
+var InvT:TpvScalar;
 begin
  if t<=0.0 then begin
   result:=self;
@@ -1864,9 +1864,9 @@ begin
  end;
 end;
 
-function TVector2.Angle(const b,c:TVector2):TScalar;
-var DeltaAB,DeltaCB:TVector2;
-    LengthAB,LengthCB:TScalar;
+function TpvVector2.Angle(const b,c:TpvVector2):TpvScalar;
+var DeltaAB,DeltaCB:TpvVector2;
+    LengthAB,LengthCB:TpvScalar;
 begin
  DeltaAB:=self-b;
  DeltaCB:=c-b;
@@ -1879,8 +1879,8 @@ begin
  end;
 end;
 
-function TVector2.Rotate(const Angle:TScalar):TVector2;
-var Sinus,Cosinus:TScalar;
+function TpvVector2.Rotate(const Angle:TpvScalar):TpvVector2;
+var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
@@ -1889,8 +1889,8 @@ begin
  result.y:=(y*Cosinus)+(x*Sinus);
 end;
 
-function TVector2.Rotate(const Center:TVector2;const Angle:TScalar):TVector2;
-var Sinus,Cosinus:TScalar;
+function TpvVector2.Rotate(const Center:TpvVector2;const Angle:TpvScalar):TpvVector2;
+var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
@@ -1899,54 +1899,54 @@ begin
  result.y:=(((y-Center.y)*Cosinus)+((x-Center.x)*Sinus))+Center.y;
 end;
 
-constructor TVector3.Create(const pX:TScalar);
+constructor TpvVector3.Create(const pX:TpvScalar);
 begin
  x:=pX;
  y:=pX;
  z:=pX;
 end;
 
-constructor TVector3.Create(const pX,pY,pZ:TScalar);
+constructor TpvVector3.Create(const pX,pY,pZ:TpvScalar);
 begin
  x:=pX;
  y:=pY;
  z:=pZ;
 end;
 
-constructor TVector3.Create(const pXY:TVector2;const pZ:TScalar=0.0);
+constructor TpvVector3.Create(const pXY:TpvVector2;const pZ:TpvScalar=0.0);
 begin
  x:=pXY.x;
  y:=pXY.y;
  z:=pZ;
 end;
 
-class operator TVector3.Implicit(const a:TScalar):TVector3;
+class operator TpvVector3.Implicit(const a:TpvScalar):TpvVector3;
 begin
  result.x:=a;
  result.y:=a;
  result.z:=a;
 end;
 
-class operator TVector3.Explicit(const a:TScalar):TVector3;
+class operator TpvVector3.Explicit(const a:TpvScalar):TpvVector3;
 begin
  result.x:=a;
  result.y:=a;
  result.z:=a;
 end;
 
-class operator TVector3.Equal(const a,b:TVector3):boolean;
+class operator TpvVector3.Equal(const a,b:TpvVector3):boolean;
 begin
  result:=SameValue(a.x,b.x) and SameValue(a.y,b.y) and SameValue(a.z,b.z);
 end;
 
-class operator TVector3.NotEqual(const a,b:TVector3):boolean;
+class operator TpvVector3.NotEqual(const a,b:TpvVector3):boolean;
 begin
  result:=(not SameValue(a.x,b.x)) or (not SameValue(a.y,b.y)) or (not SameValue(a.z,b.z));
 end;
 
-class operator TVector3.Inc({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3;
+class operator TpvVector3.Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
-const One:TFloat=1.0;
+const One:TpvFloat=1.0;
 asm
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
@@ -1973,9 +1973,9 @@ begin
 end;
 {$ifend}
 
-class operator TVector3.Dec({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3;
+class operator TpvVector3.Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
-const One:TFloat=1.0;
+const One:TpvFloat=1.0;
 asm
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
@@ -2002,7 +2002,7 @@ begin
 end;
 {$ifend}
 
-class operator TVector3.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3;
+class operator TpvVector3.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movss xmm0,dword ptr [a+0]
@@ -2023,21 +2023,21 @@ begin
 end;
 {$ifend}
 
-class operator TVector3.Add(const a:TVector3;const b:TScalar):TVector3;
+class operator TpvVector3.Add(const a:TpvVector3;const b:TpvScalar):TpvVector3;
 begin
  result.x:=a.x+b;
  result.y:=a.y+b;
  result.z:=a.z+b;
 end;
 
-class operator TVector3.Add(const a:TScalar;const b:TVector3):TVector3;
+class operator TpvVector3.Add(const a:TpvScalar;const b:TpvVector3):TpvVector3;
 begin
  result.x:=a+b.x;
  result.y:=a+b.y;
  result.z:=a+b.z;
 end;
 
-class operator TVector3.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3;
+class operator TpvVector3.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movss xmm0,dword ptr [a+0]
@@ -2058,21 +2058,21 @@ begin
 end;
 {$ifend}
 
-class operator TVector3.Subtract(const a:TVector3;const b:TScalar):TVector3;
+class operator TpvVector3.Subtract(const a:TpvVector3;const b:TpvScalar):TpvVector3;
 begin
  result.x:=a.x-b;
  result.y:=a.y-b;
  result.z:=a.z-b;
 end;
 
-class operator TVector3.Subtract(const a:TScalar;const b:TVector3): TVector3;
+class operator TpvVector3.Subtract(const a:TpvScalar;const b:TpvVector3): TpvVector3;
 begin
  result.x:=a-b.x;
  result.y:=a-b.y;
  result.z:=a-b.z;
 end;
 
-class operator TVector3.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3;
+class operator TpvVector3.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movss xmm0,dword ptr [a]
@@ -2093,21 +2093,21 @@ begin
 end;
 {$ifend}
 
-class operator TVector3.Multiply(const a:TVector3;const b:TScalar):TVector3;
+class operator TpvVector3.Multiply(const a:TpvVector3;const b:TpvScalar):TpvVector3;
 begin
  result.x:=a.x*b;
  result.y:=a.y*b;
  result.z:=a.z*b;
 end;
 
-class operator TVector3.Multiply(const a:TScalar;const b:TVector3):TVector3;
+class operator TpvVector3.Multiply(const a:TpvScalar;const b:TpvVector3):TpvVector3;
 begin
  result.x:=a*b.x;
  result.y:=a*b.y;
  result.z:=a*b.z;
 end;
 
-class operator TVector3.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3;
+class operator TpvVector3.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movss xmm0,dword ptr [a]
@@ -2128,21 +2128,21 @@ begin
 end;
 {$ifend}
 
-class operator TVector3.Divide(const a:TVector3;const b:TScalar):TVector3;
+class operator TpvVector3.Divide(const a:TpvVector3;const b:TpvScalar):TpvVector3;
 begin
  result.x:=a.x/b;
  result.y:=a.y/b;
  result.z:=a.z/b;
 end;
 
-class operator TVector3.Divide(const a:TScalar;const b:TVector3):TVector3;
+class operator TpvVector3.Divide(const a:TpvScalar;const b:TpvVector3):TpvVector3;
 begin
  result.x:=a/b.x;
  result.y:=a/b.y;
  result.z:=a/b.z;
 end;
 
-class operator TVector3.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector3):TVector3;
+class operator TpvVector3.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movss xmm0,dword ptr [a]
@@ -2163,42 +2163,42 @@ begin
 end;
 {$ifend}
 
-class operator TVector3.IntDivide(const a:TVector3;const b:TScalar):TVector3;
+class operator TpvVector3.IntDivide(const a:TpvVector3;const b:TpvScalar):TpvVector3;
 begin
  result.x:=a.x/b;
  result.y:=a.y/b;
  result.z:=a.z/b;
 end;
 
-class operator TVector3.IntDivide(const a:TScalar;const b:TVector3):TVector3;
+class operator TpvVector3.IntDivide(const a:TpvScalar;const b:TpvVector3):TpvVector3;
 begin
  result.x:=a/b.x;
  result.y:=a/b.y;
  result.z:=a/b.z;
 end;
 
-class operator TVector3.Modulus(const a,b:TVector3):TVector3;
+class operator TpvVector3.Modulus(const a,b:TpvVector3):TpvVector3;
 begin
  result.x:=Modulus(a.x,b.x);
  result.y:=Modulus(a.y,b.y);
  result.z:=Modulus(a.z,b.z);
 end;
 
-class operator TVector3.Modulus(const a:TVector3;const b:TScalar):TVector3;
+class operator TpvVector3.Modulus(const a:TpvVector3;const b:TpvScalar):TpvVector3;
 begin
  result.x:=Modulus(a.x,b);
  result.y:=Modulus(a.y,b);
  result.z:=Modulus(a.z,b);
 end;
 
-class operator TVector3.Modulus(const a:TScalar;const b:TVector3):TVector3;
+class operator TpvVector3.Modulus(const a:TpvScalar;const b:TpvVector3):TpvVector3;
 begin
  result.x:=Modulus(a,b.x);
  result.y:=Modulus(a,b.y);
  result.z:=Modulus(a,b.z);
 end;
 
-class operator TVector3.Negative({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3;
+class operator TpvVector3.Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  xorps xmm0,xmm0
@@ -2219,32 +2219,32 @@ begin
 end;
 {$ifend}
 
-class operator TVector3.Positive(const a:TVector3):TVector3;
+class operator TpvVector3.Positive(const a:TpvVector3):TpvVector3;
 begin
  result:=a;
 end;
 
-{$i PasVulkan.Math.TVector3.Swizzle.Implementations.inc}
+{$i PasVulkan.Math.TpvVector3.Swizzle.Implementations.inc}
 
-function TVector3.GetComponent(const pIndex:TInt32):TScalar;
+function TpvVector3.GetComponent(const pIndex:TpvInt32):TpvScalar;
 begin
  result:=RawComponents[pIndex];
 end;
 
-procedure TVector3.SetComponent(const pIndex:TInt32;const pValue:TScalar);
+procedure TpvVector3.SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar);
 begin
  RawComponents[pIndex]:=pValue;
 end;
 
-function TVector3.Flip:TVector3;
+function TpvVector3.Flip:TpvVector3;
 begin
  result.x:=x;
  result.y:=z;
  result.z:=-y;
 end;
 
-function TVector3.Perpendicular:TVector3;
-var v,p:TVector3;
+function TpvVector3.Perpendicular:TpvVector3;
+var v,p:TpvVector3;
 begin
  v:=p.Normalize;
  p.x:=System.abs(v.x);
@@ -2266,9 +2266,9 @@ begin
  result:=p-(v*v.Dot(p));
 end;
 
-function TVector3.OneUnitOrthogonalVector:TVector3;
-var MinimumAxis:TInt32;
-    l:TScalar;
+function TpvVector3.OneUnitOrthogonalVector:TpvVector3;
+var MinimumAxis:TpvInt32;
+    l:TpvScalar;
 begin
  if System.abs(x)<System.abs(y) then begin
   if System.abs(x)<System.abs(z) then begin
@@ -2305,7 +2305,7 @@ begin
  end;
 end;
 
-function TVector3.Length:TScalar;
+function TpvVector3.Length:TpvScalar;
 {$if defined(cpu386)}
 asm
  xorps xmm2,xmm2
@@ -2350,7 +2350,7 @@ begin
 end;
 {$ifend}
 
-function TVector3.SquaredLength:TScalar;
+function TpvVector3.SquaredLength:TpvScalar;
 {$if defined(cpu386)}
 asm
  xorps xmm2,xmm2
@@ -2393,7 +2393,7 @@ begin
 end;
 {$ifend}
 
-function TVector3.Normalize:TVector3;
+function TpvVector3.Normalize:TpvVector3;
 {$if defined(cpu386)}
 asm
  xorps xmm2,xmm2
@@ -2459,7 +2459,7 @@ asm
  movss dword ptr [result+8],xmm2
 end;
 {$else}
-var Factor:TScalar;
+var Factor:TpvScalar;
 begin
  Factor:=sqrt(sqr(x)+sqr(y)+sqr(z));
  if Factor<>0.0 then begin
@@ -2475,7 +2475,7 @@ begin
 end;
 {$ifend}
 
-function TVector3.DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TScalar;
+function TpvVector3.DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvScalar;
 {$if defined(cpu386)}
 asm
  xorps xmm2,xmm2
@@ -2529,7 +2529,7 @@ begin
 end;
 {$ifend}
 
-function TVector3.Abs:TVector3;
+function TpvVector3.Abs:TpvVector3;
 {$if defined(cpu386)}
 asm
  movss xmm0,dword ptr [eax+0]
@@ -2580,7 +2580,7 @@ begin
 end;
 {$ifend}
 
-function TVector3.Dot({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TScalar;
+function TpvVector3.Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvScalar;
 {$if defined(cpu386)}
 asm
  movss xmm0,dword ptr [eax+0]
@@ -2621,7 +2621,7 @@ end;
 {$ifend}
 
 
-function TVector3.AngleTo(const b:TVector3):TScalar;
+function TpvVector3.AngleTo(const b:TpvVector3):TpvScalar;
 var d:single;
 begin
  d:=sqrt(SquaredLength*b.SquaredLength);
@@ -2632,7 +2632,7 @@ begin
  end
 end;
 
-function TVector3.Cross({$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3;
+function TpvVector3.Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3;
 {$if defined(cpu386)}
 asm
 {$ifdef SSEVector3CrossOtherVariant}
@@ -2807,8 +2807,8 @@ begin
 end;
 {$ifend}
 
-function TVector3.Lerp(const b:TVector3;const t:TScalar):TVector3;
-var InvT:TScalar;
+function TpvVector3.Lerp(const b:TpvVector3;const t:TpvScalar):TpvVector3;
+var InvT:TpvScalar;
 begin
  if t<=0.0 then begin
   result:=self;
@@ -2820,9 +2820,9 @@ begin
  end;
 end;
 
-function TVector3.Angle(const b,c:TVector3):TScalar;
-var DeltaAB,DeltaCB:TVector3;
-    LengthAB,LengthCB:TScalar;
+function TpvVector3.Angle(const b,c:TpvVector3):TpvScalar;
+var DeltaAB,DeltaCB:TpvVector3;
+    LengthAB,LengthCB:TpvScalar;
 begin
  DeltaAB:=self-b;
  DeltaCB:=c-b;
@@ -2835,8 +2835,8 @@ begin
  end;
 end;
 
-function TVector3.RotateX(const Angle:TScalar):TVector3;
-var Sinus,Cosinus:TScalar;
+function TpvVector3.RotateX(const Angle:TpvScalar):TpvVector3;
+var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
@@ -2846,8 +2846,8 @@ begin
  result.z:=(y*Sinus)+(z*Cosinus);
 end;
 
-function TVector3.RotateY(const Angle:TScalar):TVector3;
-var Sinus,Cosinus:TScalar;
+function TpvVector3.RotateY(const Angle:TpvScalar):TpvVector3;
+var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
@@ -2857,8 +2857,8 @@ begin
  result.z:=(z*Cosinus)-(x*Sinus);
 end;
 
-function TVector3.RotateZ(const Angle:TScalar):TVector3;
-var Sinus,Cosinus:TScalar;
+function TpvVector3.RotateZ(const Angle:TpvScalar):TpvVector3;
+var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
@@ -2868,7 +2868,7 @@ begin
  result.z:=z;
 end;
 
-function TVector3.ProjectToBounds(const MinVector,MaxVector:TVector3):TScalar;
+function TpvVector3.ProjectToBounds(const MinVector,MaxVector:TpvVector3):TpvScalar;
 begin
  if x<0.0 then begin
   result:=x*MaxVector.x;
@@ -2887,7 +2887,7 @@ begin
  end;
 end;
 
-constructor TVector4.Create(const pX:TScalar);
+constructor TpvVector4.Create(const pX:TpvScalar);
 begin
  x:=pX;
  y:=pX;
@@ -2895,7 +2895,7 @@ begin
  w:=pX;
 end;
 
-constructor TVector4.Create(const pX,pY,pZ,pW:TScalar);
+constructor TpvVector4.Create(const pX,pY,pZ,pW:TpvScalar);
 begin
  x:=pX;
  y:=pY;
@@ -2903,7 +2903,7 @@ begin
  w:=pW;
 end;
 
-constructor TVector4.Create(const pXY:TVector2;const pZ:TScalar=0.0;const pW:TScalar=1.0);
+constructor TpvVector4.Create(const pXY:TpvVector2;const pZ:TpvScalar=0.0;const pW:TpvScalar=1.0);
 begin
  x:=pXY.x;
  y:=pXY.y;
@@ -2911,7 +2911,7 @@ begin
  w:=pW;
 end;
 
-constructor TVector4.Create(const pXYZ:TVector3;const pW:TScalar=1.0);
+constructor TpvVector4.Create(const pXYZ:TpvVector3;const pW:TpvScalar=1.0);
 begin
  x:=pXYZ.x;
  y:=pXYZ.y;
@@ -2919,7 +2919,7 @@ begin
  w:=pW;
 end;
 
-class operator TVector4.Implicit(const a:TScalar):TVector4;
+class operator TpvVector4.Implicit(const a:TpvScalar):TpvVector4;
 begin
  result.x:=a;
  result.y:=a;
@@ -2927,7 +2927,7 @@ begin
  result.w:=a;
 end;
 
-class operator TVector4.Explicit(const a:TScalar):TVector4;
+class operator TpvVector4.Explicit(const a:TpvScalar):TpvVector4;
 begin
  result.x:=a;
  result.y:=a;
@@ -2935,19 +2935,19 @@ begin
  result.w:=a;
 end;
 
-class operator TVector4.Equal(const a,b:TVector4):boolean;
+class operator TpvVector4.Equal(const a,b:TpvVector4):boolean;
 begin
  result:=SameValue(a.x,b.x) and SameValue(a.y,b.y) and SameValue(a.z,b.z) and SameValue(a.w,b.w);
 end;
 
-class operator TVector4.NotEqual(const a,b:TVector4):boolean;
+class operator TpvVector4.NotEqual(const a,b:TpvVector4):boolean;
 begin
  result:=(not SameValue(a.x,b.x)) or (not SameValue(a.y,b.y)) or (not SameValue(a.z,b.z)) or (not SameValue(a.w,b.w));
 end;
 
-class operator TVector4.Inc({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4;
+class operator TpvVector4.Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4;
 {$if defined(cpu386)}
-const One:TVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
+const One:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [One]
@@ -2955,7 +2955,7 @@ asm
  movups dqword ptr [result],xmm0
 end;
 {$elseif defined(cpux64)}
-const One:TVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
+const One:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
  movups xmm0,dqword ptr [a]
 {$ifdef fpc}
@@ -2975,9 +2975,9 @@ begin
 end;
 {$ifend}
 
-class operator TVector4.Dec({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4;
+class operator TpvVector4.Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4;
 {$if defined(cpu386)}
-const One:TVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
+const One:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [One]
@@ -2985,7 +2985,7 @@ asm
  movups dqword ptr [result],xmm0
 end;
 {$elseif defined(cpux64)}
-const One:TVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
+const One:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
  movups xmm0,dqword ptr [a]
 {$ifdef fpc}
@@ -3005,7 +3005,7 @@ begin
 end;
 {$ifend}
 
-class operator TVector4.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4;
+class operator TpvVector4.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a]
@@ -3022,7 +3022,7 @@ begin
 end;
 {$ifend}
 
-class operator TVector4.Add(const a:TVector4;const b:TScalar):TVector4;
+class operator TpvVector4.Add(const a:TpvVector4;const b:TpvScalar):TpvVector4;
 begin
  result.x:=a.x+b;
  result.y:=a.y+b;
@@ -3030,7 +3030,7 @@ begin
  result.w:=a.w+b;
 end;
 
-class operator TVector4.Add(const a:TScalar;const b:TVector4):TVector4;
+class operator TpvVector4.Add(const a:TpvScalar;const b:TpvVector4):TpvVector4;
 begin
  result.x:=a+b.x;
  result.y:=a+b.y;
@@ -3038,7 +3038,7 @@ begin
  result.w:=a+b.w;
 end;
 
-class operator TVector4.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4;
+class operator TpvVector4.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a]
@@ -3055,7 +3055,7 @@ begin
 end;
 {$ifend}
 
-class operator TVector4.Subtract(const a:TVector4;const b:TScalar):TVector4;
+class operator TpvVector4.Subtract(const a:TpvVector4;const b:TpvScalar):TpvVector4;
 begin
  result.x:=a.x-b;
  result.y:=a.y-b;
@@ -3063,7 +3063,7 @@ begin
  result.w:=a.w-b;
 end;
 
-class operator TVector4.Subtract(const a:TScalar;const b:TVector4): TVector4;
+class operator TpvVector4.Subtract(const a:TpvScalar;const b:TpvVector4): TpvVector4;
 begin
  result.x:=a-b.x;
  result.y:=a-b.y;
@@ -3071,7 +3071,7 @@ begin
  result.w:=a-b.w;
 end;
 
-class operator TVector4.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4;
+class operator TpvVector4.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a]
@@ -3088,7 +3088,7 @@ begin
 end;
 {$ifend}
 
-class operator TVector4.Multiply(const a:TVector4;const b:TScalar):TVector4;
+class operator TpvVector4.Multiply(const a:TpvVector4;const b:TpvScalar):TpvVector4;
 begin
  result.x:=a.x*b;
  result.y:=a.y*b;
@@ -3096,7 +3096,7 @@ begin
  result.w:=a.w*b;
 end;
 
-class operator TVector4.Multiply(const a:TScalar;const b:TVector4):TVector4;
+class operator TpvVector4.Multiply(const a:TpvScalar;const b:TpvVector4):TpvVector4;
 begin
  result.x:=a*b.x;
  result.y:=a*b.y;
@@ -3104,7 +3104,7 @@ begin
  result.w:=a*b.w;
 end;
 
-class operator TVector4.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4;
+class operator TpvVector4.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a]
@@ -3121,7 +3121,7 @@ begin
 end;
 {$ifend}
 
-class operator TVector4.Divide(const a:TVector4;const b:TScalar):TVector4;
+class operator TpvVector4.Divide(const a:TpvVector4;const b:TpvScalar):TpvVector4;
 begin
  result.x:=a.x/b;
  result.y:=a.y/b;
@@ -3129,7 +3129,7 @@ begin
  result.w:=a.w/b;
 end;
 
-class operator TVector4.Divide(const a:TScalar;const b:TVector4):TVector4;
+class operator TpvVector4.Divide(const a:TpvScalar;const b:TpvVector4):TpvVector4;
 begin
  result.x:=a/b.x;
  result.y:=a/b.y;
@@ -3137,7 +3137,7 @@ begin
  result.w:=a/b.z;
 end;
 
-class operator TVector4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TVector4):TVector4;
+class operator TpvVector4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a]
@@ -3154,7 +3154,7 @@ begin
 end;
 {$ifend}
 
-class operator TVector4.IntDivide(const a:TVector4;const b:TScalar):TVector4;
+class operator TpvVector4.IntDivide(const a:TpvVector4;const b:TpvScalar):TpvVector4;
 begin
  result.x:=a.x/b;
  result.y:=a.y/b;
@@ -3162,7 +3162,7 @@ begin
  result.w:=a.w/b;
 end;
 
-class operator TVector4.IntDivide(const a:TScalar;const b:TVector4):TVector4;
+class operator TpvVector4.IntDivide(const a:TpvScalar;const b:TpvVector4):TpvVector4;
 begin
  result.x:=a/b.x;
  result.y:=a/b.y;
@@ -3170,7 +3170,7 @@ begin
  result.w:=a/b.w;
 end;
 
-class operator TVector4.Modulus(const a,b:TVector4):TVector4;
+class operator TpvVector4.Modulus(const a,b:TpvVector4):TpvVector4;
 begin
  result.x:=Modulus(a.x,b.x);
  result.y:=Modulus(a.y,b.y);
@@ -3178,7 +3178,7 @@ begin
  result.w:=Modulus(a.w,b.w);
 end;
 
-class operator TVector4.Modulus(const a:TVector4;const b:TScalar):TVector4;
+class operator TpvVector4.Modulus(const a:TpvVector4;const b:TpvScalar):TpvVector4;
 begin
  result.x:=Modulus(a.x,b);
  result.y:=Modulus(a.y,b);
@@ -3186,7 +3186,7 @@ begin
  result.w:=Modulus(a.w,b);
 end;
 
-class operator TVector4.Modulus(const a:TScalar;const b:TVector4):TVector4;
+class operator TpvVector4.Modulus(const a:TpvScalar;const b:TpvVector4):TpvVector4;
 begin
  result.x:=Modulus(a,b.x);
  result.y:=Modulus(a,b.y);
@@ -3194,7 +3194,7 @@ begin
  result.w:=Modulus(a,b.w);
 end;
 
-class operator TVector4.Negative({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4;
+class operator TpvVector4.Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  xorps xmm0,xmm0
@@ -3211,24 +3211,24 @@ begin
 end;
 {$ifend}
 
-class operator TVector4.Positive(const a:TVector4):TVector4;
+class operator TpvVector4.Positive(const a:TpvVector4):TpvVector4;
 begin
  result:=a;
 end;
 
-{$i PasVulkan.Math.TVector4.Swizzle.Implementations.inc}
+{$i PasVulkan.Math.TpvVector4.Swizzle.Implementations.inc}
 
-function TVector4.GetComponent(const pIndex:TInt32):TScalar;
+function TpvVector4.GetComponent(const pIndex:TpvInt32):TpvScalar;
 begin
  result:=RawComponents[pIndex];
 end;
 
-procedure TVector4.SetComponent(const pIndex:TInt32;const pValue:TScalar);
+procedure TpvVector4.SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar);
 begin
  RawComponents[pIndex]:=pValue;
 end;
 
-function TVector4.Flip:TVector4;
+function TpvVector4.Flip:TpvVector4;
 begin
  result.x:=x;
  result.y:=z;
@@ -3236,8 +3236,8 @@ begin
  result.w:=w;
 end;
 
-function TVector4.Perpendicular:TVector4;
-var v,p:TVector4;
+function TpvVector4.Perpendicular:TpvVector4;
+var v,p:TpvVector4;
 begin
  v:=p.Normalize;
  p.x:=System.abs(v.x);
@@ -3268,7 +3268,7 @@ begin
  result:=p-(v*v.Dot(p));
 end;
 
-function TVector4.Length:TScalar;
+function TpvVector4.Length:TpvScalar;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -3305,7 +3305,7 @@ begin
 end;
 {$ifend}
 
-function TVector4.SquaredLength:TScalar;
+function TpvVector4.SquaredLength:TpvScalar;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -3340,7 +3340,7 @@ begin
 end;
 {$ifend}
 
-function TVector4.Normalize:TVector4;
+function TpvVector4.Normalize:TpvVector4;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -3390,7 +3390,7 @@ asm
 {$endif}
 end;
 {$else}
-var Factor:TScalar;
+var Factor:TpvScalar;
 begin
  Factor:=sqrt(sqr(x)+sqr(y)+sqr(z)+sqr(w));
  if Factor<>0.0 then begin
@@ -3408,7 +3408,7 @@ begin
 end;
 {$ifend}
 
-function TVector4.DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TScalar;
+function TpvVector4.DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -3450,7 +3450,7 @@ begin
 end;
 {$ifend}
 
-function TVector4.Abs:TVector4;
+function TpvVector4.Abs:TpvVector4;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -3484,7 +3484,7 @@ begin
 end;
 {$ifend}
 
-function TVector4.Dot({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+function TpvVector4.Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -3520,7 +3520,7 @@ begin
 end;
 {$ifend}
 
-function TVector4.AngleTo(const b:TVector4):TScalar;
+function TpvVector4.AngleTo(const b:TpvVector4):TpvScalar;
 var d:single;
 begin
  d:=sqrt(SquaredLength*b.SquaredLength);
@@ -3531,10 +3531,10 @@ begin
  end
 end;
 
-function TVector4.Cross({$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4;
+function TpvVector4.Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4;
 {$if defined(cpu386)}
-const AndMask:array[0..3] of TUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
-      OrMask:array[0..3] of TUInt32=($00000000,$00000000,$00000000,$3f800000);
+const AndMask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
+      OrMask:array[0..3] of TpvUInt32=($00000000,$00000000,$00000000,$3f800000);
 asm
 {$ifdef SSEVector3CrossOtherVariant}
  movups xmm0,dqword ptr [eax]
@@ -3577,8 +3577,8 @@ asm
 {$endif}
 end;
 {$elseif defined(cpux64)}
-const AndMask:array[0..3] of TUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
-      OrMask:array[0..3] of TUInt32=($00000000,$00000000,$00000000,$3f800000);
+const AndMask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
+      OrMask:array[0..3] of TpvUInt32=($00000000,$00000000,$00000000,$3f800000);
 asm
 {$ifdef SSEVector3CrossOtherVariant}
 {$ifdef Windows}
@@ -3657,8 +3657,8 @@ begin
 end;
 {$ifend}
 
-function TVector4.Lerp(const b:TVector4;const t:TScalar):TVector4;
-var InvT:TScalar;
+function TpvVector4.Lerp(const b:TpvVector4;const t:TpvScalar):TpvVector4;
+var InvT:TpvScalar;
 begin
  if t<=0.0 then begin
   result:=self;
@@ -3673,9 +3673,9 @@ begin
  end;
 end;
 
-function TVector4.Angle(const b,c:TVector4):TScalar;
-var DeltaAB,DeltaCB:TVector4;
-    LengthAB,LengthCB:TScalar;
+function TpvVector4.Angle(const b,c:TpvVector4):TpvScalar;
+var DeltaAB,DeltaCB:TpvVector4;
+    LengthAB,LengthCB:TpvScalar;
 begin
  DeltaAB:=self-b;
  DeltaCB:=c-b;
@@ -3688,8 +3688,8 @@ begin
  end;
 end;
 
-function TVector4.RotateX(const Angle:TScalar):TVector4;
-var Sinus,Cosinus:TScalar;
+function TpvVector4.RotateX(const Angle:TpvScalar):TpvVector4;
+var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
@@ -3700,8 +3700,8 @@ begin
  result.w:=w;
 end;
 
-function TVector4.RotateY(const Angle:TScalar):TVector4;
-var Sinus,Cosinus:TScalar;
+function TpvVector4.RotateY(const Angle:TpvScalar):TpvVector4;
+var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
@@ -3712,8 +3712,8 @@ begin
  result.w:=w;
 end;
 
-function TVector4.RotateZ(const Angle:TScalar):TVector4;
-var Sinus,Cosinus:TScalar;
+function TpvVector4.RotateZ(const Angle:TpvScalar):TpvVector4;
+var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
@@ -3724,12 +3724,12 @@ begin
  result.w:=w;
 end;
 
-function TVector4.Rotate(const Angle:TScalar;const Axis:TVector3):TVector4;
+function TpvVector4.Rotate(const Angle:TpvScalar;const Axis:TpvVector3):TpvVector4;
 begin
- result:=TMatrix4x4.CreateRotate(Angle,Axis)*self;
+ result:=TpvMatrix4x4.CreateRotate(Angle,Axis)*self;
 end;
 
-function TVector4.ProjectToBounds(const MinVector,MaxVector:TVector4):TScalar;
+function TpvVector4.ProjectToBounds(const MinVector,MaxVector:TpvVector4):TpvScalar;
 begin
  if x<0.0 then begin
   result:=x*MaxVector.x;
@@ -3753,17 +3753,17 @@ begin
  end;
 end;
 
-{$i PasVulkan.Math.TVector2Helper.Swizzle.Implementations.inc}
-{$i PasVulkan.Math.TVector3Helper.Swizzle.Implementations.inc}
-{$i PasVulkan.Math.TVector4Helper.Swizzle.Implementations.inc}
+{$i PasVulkan.Math.TpvVector2Helper.Swizzle.Implementations.inc}
+{$i PasVulkan.Math.TpvVector3Helper.Swizzle.Implementations.inc}
+{$i PasVulkan.Math.TpvVector4Helper.Swizzle.Implementations.inc}
 
-constructor TPlane.Create(const pNormal:TVector3;const pDistance:TScalar);
+constructor TPlane.Create(const pNormal:TpvVector3;const pDistance:TpvScalar);
 begin
  Normal:=pNormal;
  Distance:=pDistance;
 end;
 
-constructor TPlane.Create(const x,y,z,pDistance:TScalar);
+constructor TPlane.Create(const x,y,z,pDistance:TpvScalar);
 begin
  Normal.x:=x;
  Normal.y:=y;
@@ -3771,19 +3771,19 @@ begin
  Distance:=pDistance;
 end;
 
-constructor TPlane.Create(const pA,pB,pC:TVector3);
+constructor TPlane.Create(const pA,pB,pC:TpvVector3);
 begin
  Normal:=((pB-pA).Cross(pC-pA)).Normalize;
  Distance:=-((Normal.x*pA.x)+(Normal.y*pA.y)+(Normal.z*pA.z));
 end;
 
-constructor TPlane.Create(const pA,pB,pC:TVector4);
+constructor TPlane.Create(const pA,pB,pC:TpvVector4);
 begin
  Normal:=((pB.xyz-pA.xyz).Cross(pC.xyz-pA.xyz)).Normalize;
  Distance:=-((Normal.x*pA.x)+(Normal.y*pA.y)+(Normal.z*pA.z));
 end;
 
-constructor TPlane.Create(const Vector:TVector4);
+constructor TPlane.Create(const Vector:TpvVector4);
 begin
  Normal.x:=Vector.x;
  Normal.y:=Vector.y;
@@ -3791,7 +3791,7 @@ begin
  Distance:=Vector.w;
 end;
 
-function TPlane.ToVector:TVector4;
+function TPlane.ToVector:TpvVector4;
 begin
  result.x:=Normal.x;
  result.y:=Normal.y;
@@ -3800,7 +3800,7 @@ begin
 end;
 
 function TPlane.Normalize:TPlane;
-var l:TScalar;
+var l:TpvScalar;
 begin
  l:=Normal.Length;
  if l>0.0 then begin
@@ -3813,24 +3813,24 @@ begin
  end;
 end;
 
-function TPlane.DistanceTo(const Point:TVector3):TScalar;
+function TPlane.DistanceTo(const Point:TpvVector3):TpvScalar;
 begin
  result:=Normal.Dot(Point)+Distance;
 end;
 
-function TPlane.DistanceTo(const Point:TVector4):TScalar;
+function TPlane.DistanceTo(const Point:TpvVector4):TpvScalar;
 begin
  result:=Normal.Dot(Point.xyz)+(Point.w*Distance);
 end;
 
-procedure TPlane.ClipSegment(const p0,p1:TVector3;out Clipped:TVector3);
+procedure TPlane.ClipSegment(const p0,p1:TpvVector3;out Clipped:TpvVector3);
 begin
  Clipped:=p0+((p1-p0).Normalize*(-DistanceTo(p0)));
 //Clipped:=p0+((p1-p0)*((-DistanceTo(p0))/Normal.Dot(p1-p0)));
 end;
 
-function TPlane.ClipSegmentClosest(const p0,p1:TVector3;out Clipped0,Clipped1:TVector3):TInt32;
-var d0,d1:TScalar;
+function TPlane.ClipSegmentClosest(const p0,p1:TpvVector3;out Clipped0,Clipped1:TpvVector3):TpvInt32;
+var d0,d1:TpvScalar;
 begin
  d0:=-DistanceTo(p0);
  d1:=-DistanceTo(p1);
@@ -3867,8 +3867,8 @@ begin
  end;
 end;
 
-function TPlane.ClipSegmentLine(var p0,p1:TVector3):boolean;
-var d0,d1:TScalar;
+function TPlane.ClipSegmentLine(var p0,p1:TpvVector3):boolean;
+var d0,d1:TpvScalar;
     o0,o1:boolean;
 begin
  d0:=DistanceTo(p0);
@@ -3895,7 +3895,7 @@ begin
  end;
 end;
 
-constructor TQuaternion.Create(const pX:TScalar);
+constructor TpvQuaternion.Create(const pX:TpvScalar);
 begin
  x:=pX;
  y:=pX;
@@ -3903,7 +3903,7 @@ begin
  w:=pX;
 end;
 
-constructor TQuaternion.Create(const pX,pY,pZ,pW:TScalar);
+constructor TpvQuaternion.Create(const pX,pY,pZ,pW:TpvScalar);
 begin
  x:=pX;
  y:=pY;
@@ -3911,13 +3911,13 @@ begin
  w:=pW;
 end;
 
-constructor TQuaternion.Create(const pVector:TVector4);
+constructor TpvQuaternion.Create(const pVector:TpvVector4);
 begin
  Vector:=pVector;
 end;
 
-constructor TQuaternion.CreateFromAngleAxis(const Angle:TScalar;const Axis:TVector3);
-var s:TScalar;
+constructor TpvQuaternion.CreateFromAngleAxis(const Angle:TpvScalar;const Axis:TpvVector3);
+var s:TpvScalar;
 begin
 {s:=sin(Angle*0.5);
  w:=cos(Angle*0.5);}
@@ -3928,8 +3928,8 @@ begin
  self:=self.Normalize;
 end;
 
-constructor TQuaternion.CreateFromEuler(const Pitch,Yaw,Roll:TScalar);
-var sp,sy,sr,cp,cy,cr:TScalar;
+constructor TpvQuaternion.CreateFromEuler(const Pitch,Yaw,Roll:TpvScalar);
+var sp,sy,sr,cp,cy,cr:TpvScalar;
 begin
  // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
  SinCos(Pitch*0.5,sp,cp);
@@ -3941,15 +3941,15 @@ begin
  cp:=cos(Pitch*0.5);
  cy:=cos(Yaw*0.5);
  cr:=cos(Roll*0.5);}
- Vector:=TVector4.Create((sp*cy*cr)+(cp*sy*sr),
+ Vector:=TpvVector4.Create((sp*cy*cr)+(cp*sy*sr),
                               (cp*sy*cr)-(sp*cy*sr),
                               (cp*cy*sr)-(sp*sy*cr),
                               (cp*cy*cr)+(sp*sy*sr)
                              ).Normalize;
 end;
 
-constructor TQuaternion.CreateFromEuler(const Angles:TVector3);
-var sp,sy,sr,cp,cy,cr:TScalar;
+constructor TpvQuaternion.CreateFromEuler(const Angles:TpvVector3);
+var sp,sy,sr,cp,cy,cr:TpvScalar;
 begin
  // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
  SinCos(Angles.Pitch*0.5,sp,cp);
@@ -3961,14 +3961,14 @@ begin
  cp:=cos(Angles.Pitch*0.5);
  cy:=cos(Angles.Yaw*0.5);
  cr:=cos(Angles.Roll*0.5);{}
- Vector:=TVector4.Create((sp*cy*cr)+(cp*sy*sr),
+ Vector:=TpvVector4.Create((sp*cy*cr)+(cp*sy*sr),
                               (cp*sy*cr)-(sp*cy*sr),
                               (cp*cy*sr)-(sp*sy*cr),
                               (cp*cy*cr)+(sp*sy*sr)
                              ).Normalize;
 end;
 
-constructor TQuaternion.CreateFromNormalizedSphericalCoordinates(const NormalizedSphericalCoordinates:TNormalizedSphericalCoordinates);
+constructor TpvQuaternion.CreateFromNormalizedSphericalCoordinates(const NormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates);
 begin
  x:=cos(NormalizedSphericalCoordinates.Latitude)*sin(NormalizedSphericalCoordinates.Longitude);
  y:=sin(NormalizedSphericalCoordinates.Latitude);
@@ -3976,7 +3976,7 @@ begin
  w:=0.0;
 end;
 
-constructor TQuaternion.CreateFromToRotation(const FromDirection,ToDirection:TVector3);
+constructor TpvQuaternion.CreateFromToRotation(const FromDirection,ToDirection:TpvVector3);
 begin
  Vector.xyz:=FromDirection.Normalize.Cross(ToDirection.Normalize);
  Vector.w:=sqrt((sqr(FromDirection.x)+sqr(FromDirection.y)+sqr(FromDirection.z))*
@@ -3984,7 +3984,7 @@ begin
                 ((FromDirection.x*ToDirection.x)+(FromDirection.y*ToDirection.y)+(FromDirection.z*ToDirection.z));
 end;
 
-class operator TQuaternion.Implicit(const a:TScalar):TQuaternion;
+class operator TpvQuaternion.Implicit(const a:TpvScalar):TpvQuaternion;
 begin
  result.x:=a;
  result.y:=a;
@@ -3992,7 +3992,7 @@ begin
  result.w:=a;
 end;
 
-class operator TQuaternion.Explicit(const a:TScalar):TQuaternion;
+class operator TpvQuaternion.Explicit(const a:TpvScalar):TpvQuaternion;
 begin
  result.x:=a;
  result.y:=a;
@@ -4000,19 +4000,19 @@ begin
  result.w:=a;
 end;
 
-class operator TQuaternion.Equal(const a,b:TQuaternion):boolean;
+class operator TpvQuaternion.Equal(const a,b:TpvQuaternion):boolean;
 begin
  result:=SameValue(a.x,b.x) and SameValue(a.y,b.y) and SameValue(a.z,b.z) and SameValue(a.w,b.w);
 end;
 
-class operator TQuaternion.NotEqual(const a,b:TQuaternion):boolean;
+class operator TpvQuaternion.NotEqual(const a,b:TpvQuaternion):boolean;
 begin
  result:=(not SameValue(a.x,b.x)) or (not SameValue(a.y,b.y)) or (not SameValue(a.z,b.z)) or (not SameValue(a.w,b.w));
 end;
 
-class operator TQuaternion.Inc({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion;
 {$if defined(cpu386)}
-const One:TQuaternion=(x:1.0;y:1.0;z:1.0;w:1.0);
+const One:TpvQuaternion=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [One]
@@ -4020,7 +4020,7 @@ asm
  movups dqword ptr [result],xmm0
 end;
 {$elseif defined(cpux64)}
-const One:TQuaternion=(x:1.0;y:1.0;z:1.0;w:1.0);
+const One:TpvQuaternion=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
  movups xmm0,dqword ptr [a]
 {$ifdef fpc}
@@ -4040,9 +4040,9 @@ begin
 end;
 {$ifend}
 
-class operator TQuaternion.Dec({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion;
 {$if defined(cpu386)}
-const One:TQuaternion=(x:1.0;y:1.0;z:1.0;w:1.0);
+const One:TpvQuaternion=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [One]
@@ -4050,7 +4050,7 @@ asm
  movups dqword ptr [result],xmm0
 end;
 {$elseif defined(cpux64)}
-const One:TQuaternion=(x:1.0;y:1.0;z:1.0;w:1.0);
+const One:TpvQuaternion=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
  movups xmm0,dqword ptr [a]
 {$ifdef fpc}
@@ -4070,7 +4070,7 @@ begin
 end;
 {$ifend}
 
-class operator TQuaternion.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a]
@@ -4087,7 +4087,7 @@ begin
 end;
 {$ifend}
 
-class operator TQuaternion.Add(const a:TQuaternion;const b:TScalar):TQuaternion;
+class operator TpvQuaternion.Add(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion;
 begin
  result.x:=a.x+b;
  result.y:=a.y+b;
@@ -4095,7 +4095,7 @@ begin
  result.w:=a.w+b;
 end;
 
-class operator TQuaternion.Add(const a:TScalar;const b:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Add(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion;
 begin
  result.x:=a+b.x;
  result.y:=a+b.y;
@@ -4103,7 +4103,7 @@ begin
  result.w:=a+b.w;
 end;
 
-class operator TQuaternion.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a]
@@ -4120,7 +4120,7 @@ begin
 end;
 {$ifend}
 
-class operator TQuaternion.Subtract(const a:TQuaternion;const b:TScalar):TQuaternion;
+class operator TpvQuaternion.Subtract(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion;
 begin
  result.x:=a.x-b;
  result.y:=a.y-b;
@@ -4128,7 +4128,7 @@ begin
  result.w:=a.w-b;
 end;
 
-class operator TQuaternion.Subtract(const a:TScalar;const b:TQuaternion): TQuaternion;
+class operator TpvQuaternion.Subtract(const a:TpvScalar;const b:TpvQuaternion): TpvQuaternion;
 begin
  result.x:=a-b.x;
  result.y:=a-b.y;
@@ -4136,9 +4136,9 @@ begin
  result.w:=a-b.w;
 end;
 
-class operator TQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion;
 {$if defined(cpu386) or defined(cpux64)}
-const XORMaskW:array[0..3] of TUInt32=($00000000,$00000000,$00000000,$80000000);
+const XORMaskW:array[0..3] of TpvUInt32=($00000000,$00000000,$00000000,$80000000);
 asm
  movups xmm4,dqword ptr [a]
  movaps xmm0,xmm4
@@ -4183,7 +4183,7 @@ begin
 end;
 {$ifend}
 
-class operator TQuaternion.Multiply(const a:TQuaternion;const b:TScalar):TQuaternion;
+class operator TpvQuaternion.Multiply(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion;
 begin
  result.x:=a.x*b;
  result.y:=a.y*b;
@@ -4191,7 +4191,7 @@ begin
  result.w:=a.w*b;
 end;
 
-class operator TQuaternion.Multiply(const a:TScalar;const b:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Multiply(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion;
 begin
  result.x:=a*b.x;
  result.y:=a*b.y;
@@ -4199,9 +4199,9 @@ begin
  result.w:=a*b.w;
 end;
 
-class operator TQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3;
+class operator TpvQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
-const Mask:array[0..3] of TUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
+const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
 asm
 
  // q = a
@@ -4277,7 +4277,7 @@ asm
 
 end;
 {$else}
-var t:TVector3;
+var t:TpvVector3;
 begin
  // q = a
  // v = b
@@ -4288,15 +4288,15 @@ begin
 end;
 {$ifend}
 
-class operator TQuaternion.Multiply(const a:TVector3;const b:TQuaternion):TVector3;
+class operator TpvQuaternion.Multiply(const a:TpvVector3;const b:TpvQuaternion):TpvVector3;
 begin
  result:=b.Inverse*a;
 end;
 
-class operator TQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4;
+class operator TpvQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4;
 {$if defined(cpu386) or defined(cpux64)}
-const AndMask:array[0..3] of TUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
-      OrMask:array[0..3] of TUInt32=($00000000,$00000000,$00000000,$3f800000);
+const AndMask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
+      OrMask:array[0..3] of TpvUInt32=($00000000,$00000000,$00000000,$3f800000);
 asm
 
  // q = a
@@ -4372,7 +4372,7 @@ asm
 
 end;
 {$else}
-var t:TVector3;
+var t:TpvVector3;
 begin
  // q = a
  // v = b
@@ -4384,12 +4384,12 @@ begin
 end;
 {$ifend}
 
-class operator TQuaternion.Multiply(const a:TVector4;const b:TQuaternion):TVector4;
+class operator TpvQuaternion.Multiply(const a:TpvVector4;const b:TpvQuaternion):TpvVector4;
 begin
  result:=b.Inverse*a;
 end;
 
-class operator TQuaternion.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a]
@@ -4406,7 +4406,7 @@ begin
 end;
 {$ifend}
 
-class operator TQuaternion.Divide(const a:TQuaternion;const b:TScalar):TQuaternion;
+class operator TpvQuaternion.Divide(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion;
 begin
  result.x:=a.x/b;
  result.y:=a.y/b;
@@ -4414,7 +4414,7 @@ begin
  result.w:=a.w/b;
 end;
 
-class operator TQuaternion.Divide(const a:TScalar;const b:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Divide(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion;
 begin
  result.x:=a/b.x;
  result.y:=a/b.y;
@@ -4422,7 +4422,7 @@ begin
  result.w:=a/b.z;
 end;
 
-class operator TQuaternion.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TQuaternion):TQuaternion;
+class operator TpvQuaternion.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a]
@@ -4439,7 +4439,7 @@ begin
 end;
 {$ifend}
 
-class operator TQuaternion.IntDivide(const a:TQuaternion;const b:TScalar):TQuaternion;
+class operator TpvQuaternion.IntDivide(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion;
 begin
  result.x:=a.x/b;
  result.y:=a.y/b;
@@ -4447,7 +4447,7 @@ begin
  result.w:=a.w/b;
 end;
 
-class operator TQuaternion.IntDivide(const a:TScalar;const b:TQuaternion):TQuaternion;
+class operator TpvQuaternion.IntDivide(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion;
 begin
  result.x:=a/b.x;
  result.y:=a/b.y;
@@ -4455,7 +4455,7 @@ begin
  result.w:=a/b.w;
 end;
 
-class operator TQuaternion.Modulus(const a,b:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Modulus(const a,b:TpvQuaternion):TpvQuaternion;
 begin
  result.x:=Modulus(a.x,b.x);
  result.y:=Modulus(a.y,b.y);
@@ -4463,7 +4463,7 @@ begin
  result.w:=Modulus(a.w,b.w);
 end;
 
-class operator TQuaternion.Modulus(const a:TQuaternion;const b:TScalar):TQuaternion;
+class operator TpvQuaternion.Modulus(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion;
 begin
  result.x:=Modulus(a.x,b);
  result.y:=Modulus(a.y,b);
@@ -4471,7 +4471,7 @@ begin
  result.w:=Modulus(a.w,b);
 end;
 
-class operator TQuaternion.Modulus(const a:TScalar;const b:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Modulus(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion;
 begin
  result.x:=Modulus(a,b.x);
  result.y:=Modulus(a,b.y);
@@ -4479,7 +4479,7 @@ begin
  result.w:=Modulus(a,b.w);
 end;
 
-class operator TQuaternion.Negative({$ifdef fpc}constref{$else}const{$endif} a:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  xorps xmm0,xmm0
@@ -4496,23 +4496,23 @@ begin
 end;
 {$ifend}
 
-class operator TQuaternion.Positive(const a:TQuaternion):TQuaternion;
+class operator TpvQuaternion.Positive(const a:TpvQuaternion):TpvQuaternion;
 begin
  result:=a;
 end;
 
-function TQuaternion.GetComponent(const pIndex:TInt32):TScalar;
+function TpvQuaternion.GetComponent(const pIndex:TpvInt32):TpvScalar;
 begin
  result:=RawComponents[pIndex];
 end;
 
-procedure TQuaternion.SetComponent(const pIndex:TInt32;const pValue:TScalar);
+procedure TpvQuaternion.SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar);
 begin
  RawComponents[pIndex]:=pValue;
 end;
 
-function TQuaternion.ToNormalizedSphericalCoordinates:TNormalizedSphericalCoordinates;
-var ty:TScalar;
+function TpvQuaternion.ToNormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates;
+var ty:TpvScalar;
 begin
  ty:=y;
  if ty<-1.0 then begin
@@ -4528,8 +4528,8 @@ begin
  end;
 end;
 
-function TQuaternion.ToEuler:TVector3;
-var t:TScalar;
+function TpvQuaternion.ToEuler:TpvVector3;
+var t:TpvScalar;
 begin
  // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
  t:=2.0*((x*w)-(y*z));
@@ -4548,8 +4548,8 @@ begin
  end;
 end;
 
-function TQuaternion.ToPitch:TScalar;
-var t:TScalar;
+function TpvQuaternion.ToPitch:TpvScalar;
+var t:TpvScalar;
 begin
  // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
  t:=2.0*((x*w)-(y*z));
@@ -4562,8 +4562,8 @@ begin
  end;
 end;
 
-function TQuaternion.ToYaw:TScalar;
-var t:TScalar;
+function TpvQuaternion.ToYaw:TpvScalar;
+var t:TpvScalar;
 begin
  // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
  t:=2.0*((x*w)-(y*z));
@@ -4574,8 +4574,8 @@ begin
  end;
 end;
 
-function TQuaternion.ToRoll:TScalar;
-var t:TScalar;
+function TpvQuaternion.ToRoll:TpvScalar;
+var t:TpvScalar;
 begin
  // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
  t:=2.0*((x*w)-(y*z));
@@ -4588,9 +4588,9 @@ begin
  end;
 end;
 
-procedure TQuaternion.ToAngleAxis(out Angle:TScalar;out Axis:TVector3);
-var SinAngle:TScalar;
-    Quaternion:TQuaternion;
+procedure TpvQuaternion.ToAngleAxis(out Angle:TpvScalar;out Axis:TpvVector3);
+var SinAngle:TpvScalar;
+    Quaternion:TpvQuaternion;
 begin
  Quaternion:=Normalize;
  SinAngle:=sqrt(1.0-sqr(Quaternion.w));
@@ -4603,8 +4603,8 @@ begin
  Axis.z:=Quaternion.z/SinAngle;
 end;
 
-function TQuaternion.Generator:TVector3;
-var s:TScalar;
+function TpvQuaternion.Generator:TpvVector3;
+var s:TpvScalar;
 begin
  s:=sqrt(1.0-sqr(w));
  result.x:=x;
@@ -4616,7 +4616,7 @@ begin
  result:=result*(2.0*ArcTan2(s,w));
 end;
 
-function TQuaternion.Flip:TQuaternion;
+function TpvQuaternion.Flip:TpvQuaternion;
 begin
  result.x:=x;
  result.y:=z;
@@ -4624,8 +4624,8 @@ begin
  result.w:=w;
 end;
 
-function TQuaternion.Perpendicular:TQuaternion;
-var v,p:TQuaternion;
+function TpvQuaternion.Perpendicular:TpvQuaternion;
+var v,p:TpvQuaternion;
 begin
  v:=p.Normalize;
  p.x:=System.abs(v.x);
@@ -4656,9 +4656,9 @@ begin
  result:=p-(v*v.Dot(p));
 end;
 
-function TQuaternion.Conjugate:TQuaternion;
+function TpvQuaternion.Conjugate:TpvQuaternion;
 {$if defined(cpu386)}
-const XORMask:array[0..3] of TUInt32=($80000000,$80000000,$80000000,$00000000);
+const XORMask:array[0..3] of TpvUInt32=($80000000,$80000000,$80000000,$00000000);
 asm
  movups xmm0,dqword ptr [eax]
  movups xmm1,dqword ptr [XORMask]
@@ -4666,7 +4666,7 @@ asm
  movups dqword ptr [result],xmm0
 end;
 {$elseif defined(cpux64)}
-const XORMask:array[0..3] of TUInt32=($80000000,$80000000,$80000000,$00000000);
+const XORMask:array[0..3] of TpvUInt32=($80000000,$80000000,$80000000,$00000000);
 asm
 {$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
@@ -4690,9 +4690,9 @@ begin
 end;
 {$ifend}
 
-function TQuaternion.Inverse:TQuaternion;
+function TpvQuaternion.Inverse:TpvQuaternion;
 {$if defined(cpu386)}
-const XORMask:array[0..3] of TUInt32=($80000000,$80000000,$80000000,$00000000);
+const XORMask:array[0..3] of TpvUInt32=($80000000,$80000000,$80000000,$00000000);
 asm
  movups xmm2,dqword ptr [eax]
  movups xmm3,dqword ptr [XORMask]
@@ -4709,7 +4709,7 @@ asm
  movups dqword ptr [result],xmm2
 end;
 {$elseif defined(cpux64)}
-const XORMask:array[0..3] of TUInt32=($80000000,$80000000,$80000000,$00000000);
+const XORMask:array[0..3] of TpvUInt32=($80000000,$80000000,$80000000,$00000000);
 asm
 {$ifdef Windows}
  movups xmm2,dqword ptr [rcx]
@@ -4734,7 +4734,7 @@ asm
  movups dqword ptr [result],xmm2
 end;
 {$else}
-var Normal:TScalar;
+var Normal:TpvScalar;
 begin
  Normal:=sqrt(sqr(x)+sqr(y)+sqr(z)+sqr(w));
  if Normal>0.0 then begin
@@ -4747,7 +4747,7 @@ begin
 end;
 {$ifend}
 
-function TQuaternion.Length:TScalar;
+function TpvQuaternion.Length:TpvScalar;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -4780,7 +4780,7 @@ begin
 end;
 {$ifend}
 
-function TQuaternion.SquaredLength:TScalar;
+function TpvQuaternion.SquaredLength:TpvScalar;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -4811,7 +4811,7 @@ begin
 end;
 {$ifend}
 
-function TQuaternion.Normalize:TQuaternion;
+function TpvQuaternion.Normalize:TpvQuaternion;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -4855,7 +4855,7 @@ asm
 {$endif}
 end;
 {$else}
-var Factor:TScalar;
+var Factor:TpvScalar;
 begin
  Factor:=sqrt(sqr(x)+sqr(y)+sqr(z)+sqr(w));
  if Factor<>0.0 then begin
@@ -4873,7 +4873,7 @@ begin
 end;
 {$ifend}
 
-function TQuaternion.DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TQuaternion):TScalar;
+function TpvQuaternion.DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -4915,7 +4915,7 @@ begin
 end;
 {$ifend}
 
-function TQuaternion.Abs:TQuaternion;
+function TpvQuaternion.Abs:TpvQuaternion;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -4949,7 +4949,7 @@ begin
 end;
 {$ifend}
 
-function TQuaternion.Dot({$ifdef fpc}constref{$else}const{$endif} b:TQuaternion):TScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+function TpvQuaternion.Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -4985,8 +4985,8 @@ begin
 end;
 {$ifend}
 
-function TQuaternion.Lerp(const b:TQuaternion;const t:TScalar):TQuaternion;
-var SignFactor:TScalar;
+function TpvQuaternion.Lerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
+var SignFactor:TpvScalar;
 begin
  if Dot(b)<0.0 then begin
   SignFactor:=-1.0;
@@ -5002,13 +5002,13 @@ begin
  end;
 end;
 
-function TQuaternion.Nlerp(const b:TQuaternion;const t:TScalar):TQuaternion;
+function TpvQuaternion.Nlerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
 begin
  result:=Lerp(b,t).Normalize;
 end;
 
-function TQuaternion.Slerp(const b:TQuaternion;const t:TScalar):TQuaternion;
-var Omega,co,so,s0,s1,s2:TScalar;
+function TpvQuaternion.Slerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
+var Omega,co,so,s0,s1,s2:TpvScalar;
 begin
  co:=Dot(b);
  if co<0.0 then begin
@@ -5029,7 +5029,7 @@ begin
  result:=(s0*self)+(b*(s1*s2));
 end;
 
-function TQuaternion.RotateAroundAxis(const b:TQuaternion):TQuaternion;
+function TpvQuaternion.RotateAroundAxis(const b:TpvQuaternion):TpvQuaternion;
 begin
  result.x:=((x*b.w)+(z*b.y))-(y*b.z);
  result.y:=((x*b.z)+(y*b.w))-(z*b.x);
@@ -5037,9 +5037,9 @@ begin
  result.w:=((x*b.x)+(y*b.y))+(z*b.z);
 end;
 
-function TQuaternion.Integrate(const Omega:TVector3;const DeltaTime:TScalar):TQuaternion;
-var ThetaLenSquared,ThetaLen,s,w:TScalar;
-    Theta:TVector3;
+function TpvQuaternion.Integrate(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion;
+var ThetaLenSquared,ThetaLen,s,w:TpvScalar;
+    Theta:TpvVector3;
 begin
  Theta:=Omega*(DeltaTime*0.5);
  ThetaLenSquared:=Theta.SquaredLength;
@@ -5056,8 +5056,8 @@ begin
  result:=result*self;
 end;
 
-function TQuaternion.Spin(const Omega:TVector3;const DeltaTime:TScalar):TQuaternion;
-var wq:TQuaternion;
+function TpvQuaternion.Spin(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion;
+var wq:TpvQuaternion;
 begin
  wq.x:=Omega.x*DeltaTime;
  wq.y:=Omega.y*DeltaTime;
@@ -5066,7 +5066,7 @@ begin
  result:=(self+((wq*self)*0.5)).Normalize;
 end;
 
-{constructor TMatrix2x2.Create;
+{constructor TpvMatrix2x2.Create;
 begin
  RawComponents[0,0]:=1.0;
  RawComponents[0,1]:=0.0;
@@ -5074,7 +5074,7 @@ begin
  RawComponents[1,1]:=1.0;
 end;{}
 
-constructor TMatrix2x2.Create(const pX:TScalar);
+constructor TpvMatrix2x2.Create(const pX:TpvScalar);
 begin
  RawComponents[0,0]:=pX;
  RawComponents[0,1]:=pX;
@@ -5082,7 +5082,7 @@ begin
  RawComponents[1,1]:=pX;
 end;
 
-constructor TMatrix2x2.Create(const pXX,pXY,pYX,pYY:TScalar);
+constructor TpvMatrix2x2.Create(const pXX,pXY,pYX,pYY:TpvScalar);
 begin
  RawComponents[0,0]:=pXX;
  RawComponents[0,1]:=pXY;
@@ -5090,7 +5090,7 @@ begin
  RawComponents[1,1]:=pYY;
 end;
 
-constructor TMatrix2x2.Create(const pX,pY:TVector2);
+constructor TpvMatrix2x2.Create(const pX,pY:TpvVector2);
 begin
  RawComponents[0,0]:=pX.x;
  RawComponents[0,1]:=pX.y;
@@ -5098,7 +5098,7 @@ begin
  RawComponents[1,1]:=pY.y;
 end;
 
-class operator TMatrix2x2.Implicit(const a:TScalar):TMatrix2x2;
+class operator TpvMatrix2x2.Implicit(const a:TpvScalar):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a;
  result.RawComponents[0,1]:=a;
@@ -5106,7 +5106,7 @@ begin
  result.RawComponents[1,1]:=a;
 end;
 
-class operator TMatrix2x2.Explicit(const a:TScalar):TMatrix2x2;
+class operator TpvMatrix2x2.Explicit(const a:TpvScalar):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a;
  result.RawComponents[0,1]:=a;
@@ -5114,7 +5114,7 @@ begin
  result.RawComponents[1,1]:=a;
 end;
 
-class operator TMatrix2x2.Equal(const a,b:TMatrix2x2):boolean;
+class operator TpvMatrix2x2.Equal(const a,b:TpvMatrix2x2):boolean;
 begin
  result:=SameValue(a.RawComponents[0,0],b.RawComponents[0,0]) and
          SameValue(a.RawComponents[0,1],b.RawComponents[0,1]) and
@@ -5122,7 +5122,7 @@ begin
          SameValue(a.RawComponents[1,1],b.RawComponents[1,1]);
 end;
 
-class operator TMatrix2x2.NotEqual(const a,b:TMatrix2x2):boolean;
+class operator TpvMatrix2x2.NotEqual(const a,b:TpvMatrix2x2):boolean;
 begin
  result:=(not SameValue(a.RawComponents[0,0],b.RawComponents[0,0])) or
          (not SameValue(a.RawComponents[0,1],b.RawComponents[0,1])) or
@@ -5130,7 +5130,7 @@ begin
          (not SameValue(a.RawComponents[1,1],b.RawComponents[1,1]));
 end;
 
-class operator TMatrix2x2.Inc(const a:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Inc(const a:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]+1.0;
  result.RawComponents[0,1]:=a.RawComponents[0,1]+1.0;
@@ -5138,7 +5138,7 @@ begin
  result.RawComponents[1,1]:=a.RawComponents[1,1]+1.0;
 end;
 
-class operator TMatrix2x2.Dec(const a:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Dec(const a:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]-1.0;
  result.RawComponents[0,1]:=a.RawComponents[0,1]-1.0;
@@ -5146,7 +5146,7 @@ begin
  result.RawComponents[1,1]:=a.RawComponents[1,1]-1.0;
 end;
 
-class operator TMatrix2x2.Add(const a,b:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Add(const a,b:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]+b.RawComponents[0,0];
  result.RawComponents[0,1]:=a.RawComponents[0,1]+b.RawComponents[0,1];
@@ -5154,7 +5154,7 @@ begin
  result.RawComponents[1,1]:=a.RawComponents[1,1]+b.RawComponents[1,1];
 end;
 
-class operator TMatrix2x2.Add(const a:TMatrix2x2;const b:TScalar):TMatrix2x2;
+class operator TpvMatrix2x2.Add(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]+b;
  result.RawComponents[0,1]:=a.RawComponents[0,1]+b;
@@ -5162,7 +5162,7 @@ begin
  result.RawComponents[1,1]:=a.RawComponents[1,1]+b;
 end;
 
-class operator TMatrix2x2.Add(const a:TScalar;const b:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Add(const a:TpvScalar;const b:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a+b.RawComponents[0,0];
  result.RawComponents[0,1]:=a+b.RawComponents[0,1];
@@ -5170,7 +5170,7 @@ begin
  result.RawComponents[1,1]:=a+b.RawComponents[1,1];
 end;
 
-class operator TMatrix2x2.Subtract(const a,b:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Subtract(const a,b:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]-b.RawComponents[0,0];
  result.RawComponents[0,1]:=a.RawComponents[0,1]-b.RawComponents[0,1];
@@ -5178,7 +5178,7 @@ begin
  result.RawComponents[1,1]:=a.RawComponents[1,1]-b.RawComponents[1,1];
 end;
 
-class operator TMatrix2x2.Subtract(const a:TMatrix2x2;const b:TScalar):TMatrix2x2;
+class operator TpvMatrix2x2.Subtract(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]-b;
  result.RawComponents[0,1]:=a.RawComponents[0,1]-b;
@@ -5186,7 +5186,7 @@ begin
  result.RawComponents[1,1]:=a.RawComponents[1,1]-b;
 end;
 
-class operator TMatrix2x2.Subtract(const a:TScalar;const b:TMatrix2x2): TMatrix2x2;
+class operator TpvMatrix2x2.Subtract(const a:TpvScalar;const b:TpvMatrix2x2): TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a-b.RawComponents[0,0];
  result.RawComponents[0,1]:=a-b.RawComponents[0,1];
@@ -5194,7 +5194,7 @@ begin
  result.RawComponents[1,1]:=a-b.RawComponents[1,1];
 end;
 
-class operator TMatrix2x2.Multiply(const a,b:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Multiply(const a,b:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=(a.RawComponents[0,0]*b.RawComponents[0,0])+(a.RawComponents[0,1]*b.RawComponents[1,0]);
  result.RawComponents[0,1]:=(a.RawComponents[0,0]*b.RawComponents[0,1])+(a.RawComponents[0,1]*b.RawComponents[1,1]);
@@ -5202,7 +5202,7 @@ begin
  result.RawComponents[1,1]:=(a.RawComponents[1,0]*b.RawComponents[0,1])+(a.RawComponents[1,1]*b.RawComponents[1,1]);
 end;
 
-class operator TMatrix2x2.Multiply(const a:TMatrix2x2;const b:TScalar):TMatrix2x2;
+class operator TpvMatrix2x2.Multiply(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]*b;
  result.RawComponents[0,1]:=a.RawComponents[0,1]*b;
@@ -5210,7 +5210,7 @@ begin
  result.RawComponents[1,1]:=a.RawComponents[1,1]*b;
 end;
 
-class operator TMatrix2x2.Multiply(const a:TScalar;const b:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Multiply(const a:TpvScalar;const b:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a*b.RawComponents[0,0];
  result.RawComponents[0,1]:=a*b.RawComponents[0,1];
@@ -5218,24 +5218,24 @@ begin
  result.RawComponents[1,1]:=a*b.RawComponents[1,1];
 end;
 
-class operator TMatrix2x2.Multiply(const a:TMatrix2x2;const b:TVector2):TVector2;
+class operator TpvMatrix2x2.Multiply(const a:TpvMatrix2x2;const b:TpvVector2):TpvVector2;
 begin
  result.x:=(a.RawComponents[0,0]*b.x)+(a.RawComponents[1,0]*b.y);
  result.y:=(a.RawComponents[0,1]*b.x)+(a.RawComponents[1,1]*b.y);
 end;
 
-class operator TMatrix2x2.Multiply(const a:TVector2;const b:TMatrix2x2):TVector2;
+class operator TpvMatrix2x2.Multiply(const a:TpvVector2;const b:TpvMatrix2x2):TpvVector2;
 begin
  result.x:=(a.x*b.RawComponents[0,0])+(a.y*b.RawComponents[0,1]);
  result.y:=(a.x*b.RawComponents[1,0])+(a.y*b.RawComponents[1,1]);
 end;
 
-class operator TMatrix2x2.Divide(const a,b:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Divide(const a,b:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result:=a*b.Inverse;
 end;
 
-class operator TMatrix2x2.Divide(const a:TMatrix2x2;const b:TScalar):TMatrix2x2;
+class operator TpvMatrix2x2.Divide(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]/b;
  result.RawComponents[0,1]:=a.RawComponents[0,1]/b;
@@ -5243,7 +5243,7 @@ begin
  result.RawComponents[1,1]:=a.RawComponents[1,1]/b;
 end;
 
-class operator TMatrix2x2.Divide(const a:TScalar;const b:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Divide(const a:TpvScalar;const b:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a/b.RawComponents[0,0];
  result.RawComponents[0,1]:=a/b.RawComponents[0,1];
@@ -5251,12 +5251,12 @@ begin
  result.RawComponents[1,1]:=a/b.RawComponents[1,1];
 end;
 
-class operator TMatrix2x2.IntDivide(const a,b:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.IntDivide(const a,b:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result:=a*b.Inverse;
 end;
 
-class operator TMatrix2x2.IntDivide(const a:TMatrix2x2;const b:TScalar):TMatrix2x2;
+class operator TpvMatrix2x2.IntDivide(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]/b;
  result.RawComponents[0,1]:=a.RawComponents[0,1]/b;
@@ -5264,7 +5264,7 @@ begin
  result.RawComponents[1,1]:=a.RawComponents[1,1]/b;
 end;
 
-class operator TMatrix2x2.IntDivide(const a:TScalar;const b:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.IntDivide(const a:TpvScalar;const b:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a/b.RawComponents[0,0];
  result.RawComponents[0,1]:=a/b.RawComponents[0,1];
@@ -5272,7 +5272,7 @@ begin
  result.RawComponents[1,1]:=a/b.RawComponents[1,1];
 end;
 
-class operator TMatrix2x2.Modulus(const a,b:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Modulus(const a,b:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=Modulo(a.RawComponents[0,0],b.RawComponents[0,0]);
  result.RawComponents[0,1]:=Modulo(a.RawComponents[0,1],b.RawComponents[0,1]);
@@ -5280,7 +5280,7 @@ begin
  result.RawComponents[1,1]:=Modulo(a.RawComponents[1,1],b.RawComponents[1,1]);
 end;
 
-class operator TMatrix2x2.Modulus(const a:TMatrix2x2;const b:TScalar):TMatrix2x2;
+class operator TpvMatrix2x2.Modulus(const a:TpvMatrix2x2;const b:TpvScalar):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=Modulo(a.RawComponents[0,0],b);
  result.RawComponents[0,1]:=Modulo(a.RawComponents[0,1],b);
@@ -5288,7 +5288,7 @@ begin
  result.RawComponents[1,1]:=Modulo(a.RawComponents[1,1],b);
 end;
 
-class operator TMatrix2x2.Modulus(const a:TScalar;const b:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Modulus(const a:TpvScalar;const b:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=Modulo(a,b.RawComponents[0,0]);
  result.RawComponents[0,1]:=Modulo(a,b.RawComponents[0,1]);
@@ -5296,7 +5296,7 @@ begin
  result.RawComponents[1,1]:=Modulo(a,b.RawComponents[1,1]);
 end;
 
-class operator TMatrix2x2.Negative(const a:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Negative(const a:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=-a.RawComponents[0,0];
  result.RawComponents[0,1]:=-a.RawComponents[0,1];
@@ -5304,52 +5304,52 @@ begin
  result.RawComponents[1,1]:=-a.RawComponents[1,1];
 end;
 
-class operator TMatrix2x2.Positive(const a:TMatrix2x2):TMatrix2x2;
+class operator TpvMatrix2x2.Positive(const a:TpvMatrix2x2):TpvMatrix2x2;
 begin
  result:=a;
 end;
 
-function TMatrix2x2.GetComponent(const pIndexA,pIndexB:TInt32):TScalar;
+function TpvMatrix2x2.GetComponent(const pIndexA,pIndexB:TpvInt32):TpvScalar;
 begin
  result:=RawComponents[pIndexA,pIndexB];
 end;
 
-procedure TMatrix2x2.SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar);
+procedure TpvMatrix2x2.SetComponent(const pIndexA,pIndexB:TpvInt32;const pValue:TpvScalar);
 begin
  RawComponents[pIndexA,pIndexB]:=pValue;
 end;
 
-function TMatrix2x2.GetColumn(const pIndex:TInt32):TVector2;
+function TpvMatrix2x2.GetColumn(const pIndex:TpvInt32):TpvVector2;
 begin
  result.x:=RawComponents[pIndex,0];
  result.y:=RawComponents[pIndex,1];
 end;
 
-procedure TMatrix2x2.SetColumn(const pIndex:TInt32;const pValue:TVector2);
+procedure TpvMatrix2x2.SetColumn(const pIndex:TpvInt32;const pValue:TpvVector2);
 begin
  RawComponents[pIndex,0]:=pValue.x;
  RawComponents[pIndex,1]:=pValue.y;
 end;
 
-function TMatrix2x2.GetRow(const pIndex:TInt32):TVector2;
+function TpvMatrix2x2.GetRow(const pIndex:TpvInt32):TpvVector2;
 begin
  result.x:=RawComponents[0,pIndex];
  result.y:=RawComponents[1,pIndex];
 end;
 
-procedure TMatrix2x2.SetRow(const pIndex:TInt32;const pValue:TVector2);
+procedure TpvMatrix2x2.SetRow(const pIndex:TpvInt32;const pValue:TpvVector2);
 begin
  RawComponents[0,pIndex]:=pValue.x;
  RawComponents[1,pIndex]:=pValue.y;
 end;
 
-function TMatrix2x2.Determinant:TScalar;
+function TpvMatrix2x2.Determinant:TpvScalar;
 begin
  result:=(RawComponents[0,0]*RawComponents[1,1])-(RawComponents[0,1]*RawComponents[1,0]);
 end;
 
-function TMatrix2x2.Inverse:TMatrix2x2;
-var d:TScalar;
+function TpvMatrix2x2.Inverse:TpvMatrix2x2;
+var d:TpvScalar;
 begin
  d:=(RawComponents[0,0]*RawComponents[1,1])-(RawComponents[0,1]*RawComponents[1,0]);
  if d<>0.0 then begin
@@ -5363,7 +5363,7 @@ begin
  end;
 end;
 
-function TMatrix2x2.Transpose:TMatrix2x2;
+function TpvMatrix2x2.Transpose:TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=RawComponents[0,0];
  result.RawComponents[0,1]:=RawComponents[1,0];
@@ -5371,7 +5371,7 @@ begin
  result.RawComponents[1,1]:=RawComponents[1,1];
 end;
 
-function TDecomposedMatrix3x3.Lerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3;
+function TpvDecomposedMatrix3x3.Lerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3;
 begin
  if t<=0.0 then begin
   result:=self;
@@ -5384,7 +5384,7 @@ begin
  end;
 end;
 
-function TDecomposedMatrix3x3.Nlerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3;
+function TpvDecomposedMatrix3x3.Nlerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3;
 begin
  if t<=0.0 then begin
   result:=self;
@@ -5397,7 +5397,7 @@ begin
  end;
 end;
 
-function TDecomposedMatrix3x3.Slerp(const b:TDecomposedMatrix3x3;const t:TScalar):TDecomposedMatrix3x3;
+function TpvDecomposedMatrix3x3.Slerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3;
 begin
  if t<=0.0 then begin
   result:=self;
@@ -5410,7 +5410,7 @@ begin
  end;
 end;
 
-{constructor TMatrix3x3.Create;
+{constructor TpvMatrix3x3.Create;
 begin
  RawComponents[0,0]:=1.0;
  RawComponents[0,1]:=0.0;
@@ -5423,7 +5423,7 @@ begin
  RawComponents[2,2]:=1.0;
 end;{}
 
-constructor TMatrix3x3.Create(const pX:TScalar);
+constructor TpvMatrix3x3.Create(const pX:TpvScalar);
 begin
  RawComponents[0,0]:=pX;
  RawComponents[0,1]:=pX;
@@ -5436,7 +5436,7 @@ begin
  RawComponents[2,2]:=pX;
 end;
 
-constructor TMatrix3x3.Create(const pXX,pXY,pXZ,pYX,pYY,pYZ,pZX,pZY,pZZ:TScalar);
+constructor TpvMatrix3x3.Create(const pXX,pXY,pXZ,pYX,pYY,pYZ,pZX,pZY,pZZ:TpvScalar);
 begin
  RawComponents[0,0]:=pXX;
  RawComponents[0,1]:=pXY;
@@ -5449,7 +5449,7 @@ begin
  RawComponents[2,2]:=pZZ;
 end;
 
-constructor TMatrix3x3.Create(const pX,pY,pZ:TVector3);
+constructor TpvMatrix3x3.Create(const pX,pY,pZ:TpvVector3);
 begin
  RawComponents[0,0]:=pX.x;
  RawComponents[0,1]:=pX.y;
@@ -5462,7 +5462,7 @@ begin
  RawComponents[2,2]:=pZ.z;
 end;
 
-constructor TMatrix3x3.CreateRotateX(const Angle:TScalar);
+constructor TpvMatrix3x3.CreateRotateX(const Angle:TpvScalar);
 begin
  RawComponents[0,0]:=1.0;
  RawComponents[0,1]:=0.0;
@@ -5474,7 +5474,7 @@ begin
  RawComponents[2,2]:=RawComponents[1,1];
 end;
 
-constructor TMatrix3x3.CreateRotateY(const Angle:TScalar);
+constructor TpvMatrix3x3.CreateRotateY(const Angle:TpvScalar);
 begin
  SinCos(Angle,RawComponents[2,0],RawComponents[0,0]);
  RawComponents[0,1]:=0.0;
@@ -5486,7 +5486,7 @@ begin
  RawComponents[2,2]:=RawComponents[0,0];
 end;
 
-constructor TMatrix3x3.CreateRotateZ(const Angle:TScalar);
+constructor TpvMatrix3x3.CreateRotateZ(const Angle:TpvScalar);
 begin
  SinCos(Angle,RawComponents[0,1],RawComponents[0,0]);
  RawComponents[0,2]:=0.0;
@@ -5498,8 +5498,8 @@ begin
  RawComponents[2,2]:=1.0;
 end;
 
-constructor TMatrix3x3.CreateRotate(const Angle:TScalar;const Axis:TVector3);
-var SinusAngle,CosinusAngle:TScalar;
+constructor TpvMatrix3x3.CreateRotate(const Angle:TpvScalar;const Axis:TpvVector3);
+var SinusAngle,CosinusAngle:TpvScalar;
 begin
  SinCos(Angle,SinusAngle,CosinusAngle);
  RawComponents[0,0]:=CosinusAngle+((1.0-CosinusAngle)*sqr(Axis.x));
@@ -5513,7 +5513,7 @@ begin
  RawComponents[2,2]:=CosinusAngle+((1.0-CosinusAngle)*sqr(Axis.z));
 end;
 
-constructor TMatrix3x3.CreateScale(const sx,sy,sz:TScalar);
+constructor TpvMatrix3x3.CreateScale(const sx,sy,sz:TpvScalar);
 begin
  RawComponents[0,0]:=sx;
  RawComponents[0,1]:=0.0;
@@ -5526,7 +5526,7 @@ begin
  RawComponents[2,2]:=sz;
 end;
 
-constructor TMatrix3x3.CreateScale(const pScale:TVector3);
+constructor TpvMatrix3x3.CreateScale(const pScale:TpvVector3);
 begin
  RawComponents[0,0]:=pScale.x;
  RawComponents[0,1]:=0.0;
@@ -5539,9 +5539,9 @@ begin
  RawComponents[2,2]:=pScale.z;
 end;
 
-constructor TMatrix3x3.CreateFromToRotation(const FromDirection,ToDirection:TVector3);
-var e,h,hvx,hvz,hvxy,hvxz,hvyz:TScalar;
-    x,u,v,c:TVector3;
+constructor TpvMatrix3x3.CreateFromToRotation(const FromDirection,ToDirection:TpvVector3);
+var e,h,hvx,hvz,hvxy,hvxz,hvyz:TpvScalar;
+    x,u,v,c:TpvVector3;
 begin
  e:=FromDirection.Dot(ToDirection);
  if abs(e)>(1.0-EPSILON) then begin
@@ -5601,8 +5601,8 @@ begin
  end;
 end;
 
-constructor TMatrix3x3.CreateConstruct(const pForwards,pUp:TVector3);
-var RightVector,UpVector,ForwardVector:TVector3;
+constructor TpvMatrix3x3.CreateConstruct(const pForwards,pUp:TpvVector3);
+var RightVector,UpVector,ForwardVector:TpvVector3;
 begin
  ForwardVector:=(-pForwards).Normalize;
  RightVector:=pUp.Cross(ForwardVector).Normalize;
@@ -5618,7 +5618,7 @@ begin
  RawComponents[2,2]:=ForwardVector.z;
 end;
 
-constructor TMatrix3x3.CreateOuterProduct(const u,v:TVector3);
+constructor TpvMatrix3x3.CreateOuterProduct(const u,v:TpvVector3);
 begin
  RawComponents[0,0]:=u.x*v.x;
  RawComponents[0,1]:=u.x*v.y;
@@ -5631,22 +5631,22 @@ begin
  RawComponents[2,2]:=u.z*v.z;
 end;
 
-constructor TMatrix3x3.CreateFromQuaternion(pQuaternion:TQuaternion);
-var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TScalar;
+constructor TpvMatrix3x3.CreateFromQuaternion(ppvQuaternion:TpvQuaternion);
+var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TpvScalar;
 begin
- pQuaternion:=pQuaternion.Normalize;
- qx2:=pQuaternion.x+pQuaternion.x;
- qy2:=pQuaternion.y+pQuaternion.y;
- qz2:=pQuaternion.z+pQuaternion.z;
- qxqx2:=pQuaternion.x*qx2;
- qxqy2:=pQuaternion.x*qy2;
- qxqz2:=pQuaternion.x*qz2;
- qxqw2:=pQuaternion.w*qx2;
- qyqy2:=pQuaternion.y*qy2;
- qyqz2:=pQuaternion.y*qz2;
- qyqw2:=pQuaternion.w*qy2;
- qzqz2:=pQuaternion.z*qz2;
- qzqw2:=pQuaternion.w*qz2;
+ ppvQuaternion:=ppvQuaternion.Normalize;
+ qx2:=ppvQuaternion.x+ppvQuaternion.x;
+ qy2:=ppvQuaternion.y+ppvQuaternion.y;
+ qz2:=ppvQuaternion.z+ppvQuaternion.z;
+ qxqx2:=ppvQuaternion.x*qx2;
+ qxqy2:=ppvQuaternion.x*qy2;
+ qxqz2:=ppvQuaternion.x*qz2;
+ qxqw2:=ppvQuaternion.w*qx2;
+ qyqy2:=ppvQuaternion.y*qy2;
+ qyqz2:=ppvQuaternion.y*qz2;
+ qyqw2:=ppvQuaternion.w*qy2;
+ qzqz2:=ppvQuaternion.z*qz2;
+ qzqw2:=ppvQuaternion.w*qz2;
  RawComponents[0,0]:=1.0-(qyqy2+qzqz2);
  RawComponents[0,1]:=qxqy2+qzqw2;
  RawComponents[0,2]:=qxqz2-qyqw2;
@@ -5658,8 +5658,8 @@ begin
  RawComponents[2,2]:=1.0-(qxqx2+qyqy2);
 end;
 
-constructor TMatrix3x3.CreateFromQTangent(pQTangent:TQuaternion);
-var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TScalar;
+constructor TpvMatrix3x3.CreateFromQTangent(pQTangent:TpvQuaternion);
+var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TpvScalar;
 begin
  pQTangent:=pQTangent.Normalize;
  qx2:=pQTangent.x+pQTangent.x;
@@ -5693,34 +5693,34 @@ begin
  end;
 end;
 
-constructor TMatrix3x3.CreateRecomposed(const DecomposedMatrix3x3:TDecomposedMatrix3x3);
+constructor TpvMatrix3x3.CreateRecomposed(const DecomposedMatrix3x3:TpvDecomposedMatrix3x3);
 begin
 
- self:=TMatrix3x3.CreateFromQuaternion(DecomposedMatrix3x3.Rotation);
+ self:=TpvMatrix3x3.CreateFromQuaternion(DecomposedMatrix3x3.Rotation);
 
  if DecomposedMatrix3x3.Skew.z<>0.0 then begin // YZ
-  self:=TMatrix3x3.Create(1.0,0.0,0.0,
+  self:=TpvMatrix3x3.Create(1.0,0.0,0.0,
                           0.0,1.0,0.0,
                           0.0,DecomposedMatrix3x3.Skew.z,1.0)*self;
  end;
 
  if DecomposedMatrix3x3.Skew.y<>0.0 then begin // XZ
-  self:=TMatrix3x3.Create(1.0,0.0,0.0,
+  self:=TpvMatrix3x3.Create(1.0,0.0,0.0,
                           0.0,1.0,0.0,
                           DecomposedMatrix3x3.Skew.y,0.0,1.0)*self;
  end;
 
  if DecomposedMatrix3x3.Skew.x<>0.0 then begin // XY
-  self:=TMatrix3x3.Create(1.0,0.0,0.0,
+  self:=TpvMatrix3x3.Create(1.0,0.0,0.0,
                           DecomposedMatrix3x3.Skew.x,1.0,0.0,
                           0.0,0.0,1.0)*self;
  end;
 
- self:=TMatrix3x3.CreateScale(DecomposedMatrix3x3.Scale)*self;
+ self:=TpvMatrix3x3.CreateScale(DecomposedMatrix3x3.Scale)*self;
 
 end;
 
-class operator TMatrix3x3.Implicit(const a:TScalar):TMatrix3x3;
+class operator TpvMatrix3x3.Implicit(const a:TpvScalar):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a;
  result.RawComponents[0,1]:=a;
@@ -5733,7 +5733,7 @@ begin
  result.RawComponents[2,2]:=a;
 end;
 
-class operator TMatrix3x3.Explicit(const a:TScalar):TMatrix3x3;
+class operator TpvMatrix3x3.Explicit(const a:TpvScalar):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a;
  result.RawComponents[0,1]:=a;
@@ -5746,7 +5746,7 @@ begin
  result.RawComponents[2,2]:=a;
 end;
 
-class operator TMatrix3x3.Equal(const a,b:TMatrix3x3):boolean;
+class operator TpvMatrix3x3.Equal(const a,b:TpvMatrix3x3):boolean;
 begin
  result:=SameValue(a.RawComponents[0,0],b.RawComponents[0,0]) and
          SameValue(a.RawComponents[0,1],b.RawComponents[0,1]) and
@@ -5759,7 +5759,7 @@ begin
          SameValue(a.RawComponents[2,2],b.RawComponents[2,2]);
 end;
 
-class operator TMatrix3x3.NotEqual(const a,b:TMatrix3x3):boolean;
+class operator TpvMatrix3x3.NotEqual(const a,b:TpvMatrix3x3):boolean;
 begin
  result:=(not SameValue(a.RawComponents[0,0],b.RawComponents[0,0])) or
          (not SameValue(a.RawComponents[0,1],b.RawComponents[0,1])) or
@@ -5772,7 +5772,7 @@ begin
          (not SameValue(a.RawComponents[2,2],b.RawComponents[2,2]));
 end;
 
-class operator TMatrix3x3.Inc(const a:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Inc(const a:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]+1.0;
  result.RawComponents[0,1]:=a.RawComponents[0,1]+1.0;
@@ -5785,7 +5785,7 @@ begin
  result.RawComponents[2,2]:=a.RawComponents[2,2]+1.0;
 end;
 
-class operator TMatrix3x3.Dec(const a:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Dec(const a:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]-1.0;
  result.RawComponents[0,1]:=a.RawComponents[0,1]-1.0;
@@ -5798,7 +5798,7 @@ begin
  result.RawComponents[2,2]:=a.RawComponents[2,2]-1.0;
 end;
 
-class operator TMatrix3x3.Add(const a,b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Add(const a,b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]+b.RawComponents[0,0];
  result.RawComponents[0,1]:=a.RawComponents[0,1]+b.RawComponents[0,1];
@@ -5811,7 +5811,7 @@ begin
  result.RawComponents[2,2]:=a.RawComponents[2,2]+b.RawComponents[2,2];
 end;
 
-class operator TMatrix3x3.Add(const a:TMatrix3x3;const b:TScalar):TMatrix3x3;
+class operator TpvMatrix3x3.Add(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]+b;
  result.RawComponents[0,1]:=a.RawComponents[0,1]+b;
@@ -5824,7 +5824,7 @@ begin
  result.RawComponents[2,2]:=a.RawComponents[2,2]+b;
 end;
 
-class operator TMatrix3x3.Add(const a:TScalar;const b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Add(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a+b.RawComponents[0,0];
  result.RawComponents[0,1]:=a+b.RawComponents[0,1];
@@ -5837,7 +5837,7 @@ begin
  result.RawComponents[2,2]:=a+b.RawComponents[2,2];
 end;
 
-class operator TMatrix3x3.Subtract(const a,b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Subtract(const a,b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]-b.RawComponents[0,0];
  result.RawComponents[0,1]:=a.RawComponents[0,1]-b.RawComponents[0,1];
@@ -5850,7 +5850,7 @@ begin
  result.RawComponents[2,2]:=a.RawComponents[2,2]-b.RawComponents[2,2];
 end;
 
-class operator TMatrix3x3.Subtract(const a:TMatrix3x3;const b:TScalar):TMatrix3x3;
+class operator TpvMatrix3x3.Subtract(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]-b;
  result.RawComponents[0,1]:=a.RawComponents[0,1]-b;
@@ -5863,7 +5863,7 @@ begin
  result.RawComponents[2,2]:=a.RawComponents[2,2]-b;
 end;
 
-class operator TMatrix3x3.Subtract(const a:TScalar;const b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Subtract(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a-b.RawComponents[0,0];
  result.RawComponents[0,1]:=a-b.RawComponents[0,1];
@@ -5876,7 +5876,7 @@ begin
  result.RawComponents[2,2]:=a-b.RawComponents[2,2];
 end;
 
-class operator TMatrix3x3.Multiply(const a,b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Multiply(const a,b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=(a.RawComponents[0,0]*b.RawComponents[0,0])+(a.RawComponents[0,1]*b.RawComponents[1,0])+(a.RawComponents[0,2]*b.RawComponents[2,0]);
  result.RawComponents[0,1]:=(a.RawComponents[0,0]*b.RawComponents[0,1])+(a.RawComponents[0,1]*b.RawComponents[1,1])+(a.RawComponents[0,2]*b.RawComponents[2,1]);
@@ -5889,7 +5889,7 @@ begin
  result.RawComponents[2,2]:=(a.RawComponents[2,0]*b.RawComponents[0,2])+(a.RawComponents[2,1]*b.RawComponents[1,2])+(a.RawComponents[2,2]*b.RawComponents[2,2]);
 end;
 
-class operator TMatrix3x3.Multiply(const a:TMatrix3x3;const b:TScalar):TMatrix3x3;
+class operator TpvMatrix3x3.Multiply(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]*b;
  result.RawComponents[0,1]:=a.RawComponents[0,1]*b;
@@ -5902,7 +5902,7 @@ begin
  result.RawComponents[2,2]:=a.RawComponents[2,2]*b;
 end;
 
-class operator TMatrix3x3.Multiply(const a:TScalar;const b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Multiply(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a*b.RawComponents[0,0];
  result.RawComponents[0,1]:=a*b.RawComponents[0,1];
@@ -5915,21 +5915,21 @@ begin
  result.RawComponents[2,2]:=a*b.RawComponents[2,2];
 end;
 
-class operator TMatrix3x3.Multiply(const a:TMatrix3x3;const b:TVector3):TVector3;
+class operator TpvMatrix3x3.Multiply(const a:TpvMatrix3x3;const b:TpvVector3):TpvVector3;
 begin
  result.x:=(a.RawComponents[0,0]*b.x)+(a.RawComponents[1,0]*b.y)+(a.RawComponents[2,0]*b.z);
  result.y:=(a.RawComponents[0,1]*b.x)+(a.RawComponents[1,1]*b.y)+(a.RawComponents[2,1]*b.z);
  result.z:=(a.RawComponents[0,2]*b.x)+(a.RawComponents[1,2]*b.y)+(a.RawComponents[2,2]*b.z);
 end;
 
-class operator TMatrix3x3.Multiply(const a:TVector3;const b:TMatrix3x3):TVector3;
+class operator TpvMatrix3x3.Multiply(const a:TpvVector3;const b:TpvMatrix3x3):TpvVector3;
 begin
  result.x:=(a.x*b.RawComponents[0,0])+(a.y*b.RawComponents[0,1])+(a.z*b.RawComponents[0,2]);
  result.y:=(a.x*b.RawComponents[1,0])+(a.y*b.RawComponents[1,1])+(a.z*b.RawComponents[1,2]);
  result.z:=(a.x*b.RawComponents[2,0])+(a.y*b.RawComponents[2,1])+(a.z*b.RawComponents[2,2]);
 end;
 
-class operator TMatrix3x3.Multiply(const a:TMatrix3x3;const b:TVector4):TVector4;
+class operator TpvMatrix3x3.Multiply(const a:TpvMatrix3x3;const b:TpvVector4):TpvVector4;
 begin
  result.x:=(a.RawComponents[0,0]*b.x)+(a.RawComponents[1,0]*b.y)+(a.RawComponents[2,0]*b.z);
  result.y:=(a.RawComponents[0,1]*b.x)+(a.RawComponents[1,1]*b.y)+(a.RawComponents[2,1]*b.z);
@@ -5937,7 +5937,7 @@ begin
  result.w:=b.w;
 end;
 
-class operator TMatrix3x3.Multiply(const a:TVector4;const b:TMatrix3x3):TVector4;
+class operator TpvMatrix3x3.Multiply(const a:TpvVector4;const b:TpvMatrix3x3):TpvVector4;
 begin
  result.x:=(a.x*b.RawComponents[0,0])+(a.y*b.RawComponents[0,1])+(a.z*b.RawComponents[0,2]);
  result.y:=(a.x*b.RawComponents[1,0])+(a.y*b.RawComponents[1,1])+(a.z*b.RawComponents[1,2]);
@@ -5945,23 +5945,23 @@ begin
  result.w:=a.w;
 end;
 
-class operator TMatrix3x3.Multiply(const a:TMatrix3x3;const b:TPlane):TPlane;
+class operator TpvMatrix3x3.Multiply(const a:TpvMatrix3x3;const b:TPlane):TPlane;
 begin
  result.Normal:=a.Inverse.Transpose*b.Normal;
  result.Distance:=result.Normal.Dot(a*((b.Normal*b.Distance)));
 end;
 
-class operator TMatrix3x3.Multiply(const a:TPlane;const b:TMatrix3x3):TPlane;
+class operator TpvMatrix3x3.Multiply(const a:TPlane;const b:TpvMatrix3x3):TPlane;
 begin
  result:=b.Transpose*a;
 end;
 
-class operator TMatrix3x3.Divide(const a,b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Divide(const a,b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result:=a*b.Inverse;
 end;
 
-class operator TMatrix3x3.Divide(const a:TMatrix3x3;const b:TScalar):TMatrix3x3;
+class operator TpvMatrix3x3.Divide(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]/b;
  result.RawComponents[0,1]:=a.RawComponents[0,1]/b;
@@ -5974,7 +5974,7 @@ begin
  result.RawComponents[2,2]:=a.RawComponents[2,2]/b;
 end;
 
-class operator TMatrix3x3.Divide(const a:TScalar;const b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Divide(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a/b.RawComponents[0,0];
  result.RawComponents[0,1]:=a/b.RawComponents[0,1];
@@ -5987,12 +5987,12 @@ begin
  result.RawComponents[2,2]:=a/b.RawComponents[2,2];
 end;
 
-class operator TMatrix3x3.IntDivide(const a,b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.IntDivide(const a,b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result:=a*b.Inverse;
 end;
 
-class operator TMatrix3x3.IntDivide(const a:TMatrix3x3;const b:TScalar):TMatrix3x3;
+class operator TpvMatrix3x3.IntDivide(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a.RawComponents[0,0]/b;
  result.RawComponents[0,1]:=a.RawComponents[0,1]/b;
@@ -6005,7 +6005,7 @@ begin
  result.RawComponents[2,2]:=a.RawComponents[2,2]/b;
 end;
 
-class operator TMatrix3x3.IntDivide(const a:TScalar;const b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.IntDivide(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a/b.RawComponents[0,0];
  result.RawComponents[0,1]:=a/b.RawComponents[0,1];
@@ -6018,7 +6018,7 @@ begin
  result.RawComponents[2,2]:=a/b.RawComponents[2,2];
 end;
 
-class operator TMatrix3x3.Modulus(const a,b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Modulus(const a,b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=Modulo(a.RawComponents[0,0],b.RawComponents[0,0]);
  result.RawComponents[0,1]:=Modulo(a.RawComponents[0,1],b.RawComponents[0,1]);
@@ -6031,7 +6031,7 @@ begin
  result.RawComponents[2,2]:=Modulo(a.RawComponents[2,2],b.RawComponents[2,2]);
 end;
 
-class operator TMatrix3x3.Modulus(const a:TMatrix3x3;const b:TScalar):TMatrix3x3;
+class operator TpvMatrix3x3.Modulus(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=Modulo(a.RawComponents[0,0],b);
  result.RawComponents[0,1]:=Modulo(a.RawComponents[0,1],b);
@@ -6044,7 +6044,7 @@ begin
  result.RawComponents[2,2]:=Modulo(a.RawComponents[2,2],b);
 end;
 
-class operator TMatrix3x3.Modulus(const a:TScalar;const b:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Modulus(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=Modulo(a,b.RawComponents[0,0]);
  result.RawComponents[0,1]:=Modulo(a,b.RawComponents[0,1]);
@@ -6057,7 +6057,7 @@ begin
  result.RawComponents[2,2]:=Modulo(a,b.RawComponents[2,2]);
 end;
 
-class operator TMatrix3x3.Negative(const a:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Negative(const a:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=-a.RawComponents[0,0];
  result.RawComponents[0,1]:=-a.RawComponents[0,1];
@@ -6070,58 +6070,58 @@ begin
  result.RawComponents[2,2]:=-a.RawComponents[2,2];
 end;
 
-class operator TMatrix3x3.Positive(const a:TMatrix3x3):TMatrix3x3;
+class operator TpvMatrix3x3.Positive(const a:TpvMatrix3x3):TpvMatrix3x3;
 begin
  result:=a;
 end;
 
-function TMatrix3x3.GetComponent(const pIndexA,pIndexB:TInt32):TScalar;
+function TpvMatrix3x3.GetComponent(const pIndexA,pIndexB:TpvInt32):TpvScalar;
 begin
  result:=RawComponents[pIndexA,pIndexB];
 end;
 
-procedure TMatrix3x3.SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar);
+procedure TpvMatrix3x3.SetComponent(const pIndexA,pIndexB:TpvInt32;const pValue:TpvScalar);
 begin
  RawComponents[pIndexA,pIndexB]:=pValue;
 end;
 
-function TMatrix3x3.GetColumn(const pIndex:TInt32):TVector3;
+function TpvMatrix3x3.GetColumn(const pIndex:TpvInt32):TpvVector3;
 begin
  result.x:=RawComponents[pIndex,0];
  result.y:=RawComponents[pIndex,1];
  result.z:=RawComponents[pIndex,2];
 end;
 
-procedure TMatrix3x3.SetColumn(const pIndex:TInt32;const pValue:TVector3);
+procedure TpvMatrix3x3.SetColumn(const pIndex:TpvInt32;const pValue:TpvVector3);
 begin
  RawComponents[pIndex,0]:=pValue.x;
  RawComponents[pIndex,1]:=pValue.y;
  RawComponents[pIndex,2]:=pValue.z;
 end;
 
-function TMatrix3x3.GetRow(const pIndex:TInt32):TVector3;
+function TpvMatrix3x3.GetRow(const pIndex:TpvInt32):TpvVector3;
 begin
  result.x:=RawComponents[0,pIndex];
  result.y:=RawComponents[1,pIndex];
  result.z:=RawComponents[2,pIndex];
 end;
 
-procedure TMatrix3x3.SetRow(const pIndex:TInt32;const pValue:TVector3);
+procedure TpvMatrix3x3.SetRow(const pIndex:TpvInt32;const pValue:TpvVector3);
 begin
  RawComponents[0,pIndex]:=pValue.x;
  RawComponents[1,pIndex]:=pValue.y;
  RawComponents[2,pIndex]:=pValue.z;
 end;
 
-function TMatrix3x3.Determinant:TScalar;
+function TpvMatrix3x3.Determinant:TpvScalar;
 begin
  result:=((RawComponents[0,0]*((RawComponents[1,1]*RawComponents[2,2])-(RawComponents[1,2]*RawComponents[2,1])))-
           (RawComponents[0,1]*((RawComponents[1,0]*RawComponents[2,2])-(RawComponents[1,2]*RawComponents[2,0]))))+
           (RawComponents[0,2]*((RawComponents[1,0]*RawComponents[2,1])-(RawComponents[1,1]*RawComponents[2,0])));
 end;
 
-function TMatrix3x3.Inverse:TMatrix3x3;
-var d:TScalar;
+function TpvMatrix3x3.Inverse:TpvMatrix3x3;
+var d:TpvScalar;
 begin
  d:=((RawComponents[0,0]*((RawComponents[1,1]*RawComponents[2,2])-(RawComponents[1,2]*RawComponents[2,1])))-
      (RawComponents[0,1]*((RawComponents[1,0]*RawComponents[2,2])-(RawComponents[1,2]*RawComponents[2,0]))))+
@@ -6142,7 +6142,7 @@ begin
  end;
 end;
 
-function TMatrix3x3.Transpose:TMatrix3x3;
+function TpvMatrix3x3.Transpose:TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=RawComponents[0,0];
  result.RawComponents[0,1]:=RawComponents[1,0];
@@ -6155,8 +6155,8 @@ begin
  result.RawComponents[2,2]:=RawComponents[2,2];
 end;
 
-function TMatrix3x3.EulerAngles:TVector3;
-var v0,v1:TVector3;
+function TpvMatrix3x3.EulerAngles:TpvVector3;
+var v0,v1:TpvVector3;
 begin
  if abs((-1.0)-RawComponents[0,2])<EPSILON then begin
   result.x:=0.0;
@@ -6181,14 +6181,14 @@ begin
  end;
 end;
 
-function TMatrix3x3.Normalize:TMatrix3x3;
+function TpvMatrix3x3.Normalize:TpvMatrix3x3;
 begin
  result.Right:=Right.Normalize;
  result.Up:=Up.Normalize;
  result.Forwards:=Forwards.Normalize;
 end;
 
-function TMatrix3x3.OrthoNormalize:TMatrix3x3;
+function TpvMatrix3x3.OrthoNormalize:TpvMatrix3x3;
 begin
  result.Normal:=Normal.Normalize;
  result.Tangent:=(Tangent-(result.Normal*Tangent.Dot(result.Normal))).Normalize;
@@ -6199,8 +6199,8 @@ begin
  result.Normal:=result.Tangent.Cross(result.Bitangent).Normalize;
 end;
 
-function TMatrix3x3.RobustOrthoNormalize(const Tolerance:TScalar=1e-3):TMatrix3x3;
-var Bisector,Axis:TVector3;
+function TpvMatrix3x3.RobustOrthoNormalize(const Tolerance:TpvScalar=1e-3):TpvMatrix3x3;
+var Bisector,Axis:TpvVector3;
 begin
  begin
   if Normal.Length<Tolerance then begin
@@ -6265,8 +6265,8 @@ begin
  result.Normal:=result.Tangent.Cross(result.Bitangent).Normalize;
 end;
 
-function TMatrix3x3.ToQuaternion:TQuaternion;
-var t,s:TScalar;
+function TpvMatrix3x3.ToQuaternion:TpvQuaternion;
+var t,s:TpvScalar;
 begin
  t:=RawComponents[0,0]+(RawComponents[1,1]+RawComponents[2,2]);
  if t>2.9999999 then begin
@@ -6302,9 +6302,9 @@ begin
  result:=result.Normalize;
 end;
 
-function TMatrix3x3.ToQTangent:TQuaternion;
+function TpvMatrix3x3.ToQTangent:TpvQuaternion;
 const Threshold=1.0/32767.0;
-var Scale,t,s,Renormalization:TScalar;
+var Scale,t,s,Renormalization:TpvScalar;
 begin
  if ((((((RawComponents[0,0]*RawComponents[1,1]*RawComponents[2,2])+
          (RawComponents[0,1]*RawComponents[1,2]*RawComponents[2,0])
@@ -6385,7 +6385,7 @@ begin
  end;
 end;
 
-function TMatrix3x3.SimpleLerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3;
+function TpvMatrix3x3.SimpleLerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3;
 begin
  if t<=0.0 then begin
   result:=self;
@@ -6396,83 +6396,83 @@ begin
  end;
 end;
 
-function TMatrix3x3.SimpleNlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3;
-var Scale:TVector3;
+function TpvMatrix3x3.SimpleNlerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3;
+var Scale:TpvVector3;
 begin
  if t<=0.0 then begin
   result:=self;
  end else if t>=1.0 then begin
   result:=b;
  end else begin
-  Scale:=TVector3.Create(Right.Length,
+  Scale:=TpvVector3.Create(Right.Length,
                          Up.Length,
-                         Forwards.Length).Lerp(TVector3.Create(b.Right.Length,
+                         Forwards.Length).Lerp(TpvVector3.Create(b.Right.Length,
                                                                b.Up.Length,
                                                                b.Forwards.Length),
                                                t);
-  result:=TMatrix3x3.CreateFromQuaternion(Normalize.ToQuaternion.Nlerp(b.Normalize.ToQuaternion,t));
+  result:=TpvMatrix3x3.CreateFromQuaternion(Normalize.ToQuaternion.Nlerp(b.Normalize.ToQuaternion,t));
   result.Right:=result.Right*Scale.x;
   result.Up:=result.Up*Scale.y;
   result.Forwards:=result.Forwards*Scale.z;
  end;
 end;
 
-function TMatrix3x3.SimpleSlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3;
-var Scale:TVector3;
+function TpvMatrix3x3.SimpleSlerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3;
+var Scale:TpvVector3;
 begin
  if t<=0.0 then begin
   result:=self;
  end else if t>=1.0 then begin
   result:=b;
  end else begin
-  Scale:=TVector3.Create(Right.Length,
+  Scale:=TpvVector3.Create(Right.Length,
                          Up.Length,
-                         Forwards.Length).Lerp(TVector3.Create(b.Right.Length,
+                         Forwards.Length).Lerp(TpvVector3.Create(b.Right.Length,
                                                                b.Up.Length,
                                                                b.Forwards.Length),
                                                t);
-  result:=TMatrix3x3.CreateFromQuaternion(Normalize.ToQuaternion.Slerp(b.Normalize.ToQuaternion,t));
+  result:=TpvMatrix3x3.CreateFromQuaternion(Normalize.ToQuaternion.Slerp(b.Normalize.ToQuaternion,t));
   result.Right:=result.Right*Scale.x;
   result.Up:=result.Up*Scale.y;
   result.Forwards:=result.Forwards*Scale.z;
  end;
 end;
 
-function TMatrix3x3.Lerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3;
+function TpvMatrix3x3.Lerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3;
 begin
  if t<=0.0 then begin
   result:=self;
  end else if t>=1.0 then begin
   result:=b;
  end else begin
-  result:=TMatrix3x3.CreateRecomposed(Decompose.Lerp(b.Decompose,t));
+  result:=TpvMatrix3x3.CreateRecomposed(Decompose.Lerp(b.Decompose,t));
  end;
 end;
 
-function TMatrix3x3.Nlerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3;
+function TpvMatrix3x3.Nlerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3;
 begin
  if t<=0.0 then begin
   result:=self;
  end else if t>=1.0 then begin
   result:=b;
  end else begin
-  result:=TMatrix3x3.CreateRecomposed(Decompose.Nlerp(b.Decompose,t));
+  result:=TpvMatrix3x3.CreateRecomposed(Decompose.Nlerp(b.Decompose,t));
  end;
 end;
 
-function TMatrix3x3.Slerp(const b:TMatrix3x3;const t:TScalar):TMatrix3x3;
+function TpvMatrix3x3.Slerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3;
 begin
  if t<=0.0 then begin
   result:=self;
  end else if t>=1.0 then begin
   result:=b;
  end else begin
-  result:=TMatrix3x3.CreateRecomposed(Decompose.Slerp(b.Decompose,t));
+  result:=TpvMatrix3x3.CreateRecomposed(Decompose.Slerp(b.Decompose,t));
  end;
 end;
 
-function TMatrix3x3.MulInverse(const a:TVector3):TVector3;
-var d:TScalar;
+function TpvMatrix3x3.MulInverse(const a:TpvVector3):TpvVector3;
+var d:TpvScalar;
 begin
  d:=((RawComponents[0,0]*((RawComponents[1,1]*RawComponents[2,2])-(RawComponents[2,1]*RawComponents[1,2])))-
      (RawComponents[0,1]*((RawComponents[1,0]*RawComponents[2,2])-(RawComponents[2,0]*RawComponents[1,2]))))+
@@ -6485,8 +6485,8 @@ begin
  result.z:=((RawComponents[0,0]*((RawComponents[1,1]*a.z)-(RawComponents[1,2]*a.y)))+(RawComponents[0,1]*((RawComponents[1,2]*a.x)-(RawComponents[1,0]*a.z)))+(RawComponents[0,2]*((RawComponents[1,0]*a.y)-(RawComponents[1,1]*a.x))))*d;
 end;
 
-function TMatrix3x3.MulInverse(const a:TVector4):TVector4;
-var d:TScalar;
+function TpvMatrix3x3.MulInverse(const a:TpvVector4):TpvVector4;
+var d:TpvScalar;
 begin
  d:=((RawComponents[0,0]*((RawComponents[1,1]*RawComponents[2,2])-(RawComponents[2,1]*RawComponents[1,2])))-
      (RawComponents[0,1]*((RawComponents[1,0]*RawComponents[2,2])-(RawComponents[2,0]*RawComponents[1,2]))))+
@@ -6500,8 +6500,8 @@ begin
  result.w:=a.w;
 end;
 
-function TMatrix3x3.Decompose:TDecomposedMatrix3x3;
-var LocalMatrix:TMatrix3x3;
+function TpvMatrix3x3.Decompose:TpvDecomposedMatrix3x3;
+var LocalMatrix:TpvMatrix3x3;
 begin
 
  if (RawComponents[0,0]=1.0) and
@@ -6514,9 +6514,9 @@ begin
     (RawComponents[2,1]=0.0) and
     (RawComponents[2,2]=1.0) then begin
 
-  result.Scale:=TVector3.Create(1.0,1.0,1.0);
-  result.Skew:=TVector3.Create(0.0,0.0,0.0);
-  result.Rotation:=TQuaternion.Create(0.0,0.0,0.0,1.0);
+  result.Scale:=TpvVector3.Create(1.0,1.0,1.0);
+  result.Skew:=TpvVector3.Create(0.0,0.0,0.0);
+  result.Rotation:=TpvQuaternion.Create(0.0,0.0,0.0,1.0);
 
   result.Valid:=true;
 
@@ -6562,7 +6562,7 @@ begin
 
 end;
 
-function TDecomposedMatrix4x4.Lerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4;
+function TpvDecomposedMatrix4x4.Lerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4;
 begin
  if t<=0.0 then begin
   result:=self;
@@ -6577,7 +6577,7 @@ begin
  end;
 end;
 
-function TDecomposedMatrix4x4.Nlerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4;
+function TpvDecomposedMatrix4x4.Nlerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4;
 begin
  if t<=0.0 then begin
   result:=self;
@@ -6592,7 +6592,7 @@ begin
  end;
 end;
 
-function TDecomposedMatrix4x4.Slerp(const b:TDecomposedMatrix4x4;const t:TScalar):TDecomposedMatrix4x4;
+function TpvDecomposedMatrix4x4.Slerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4;
 begin
  if t<=0.0 then begin
   result:=self;
@@ -6607,7 +6607,7 @@ begin
  end;
 end;
 
-{constructor TMatrix4x4.Create;
+{constructor TpvMatrix4x4.Create;
 begin
  RawComponents[0,0]:=1.0;
  RawComponents[0,1]:=0.0;
@@ -6627,7 +6627,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;{}
 
-constructor TMatrix4x4.Create(const pX:TScalar);
+constructor TpvMatrix4x4.Create(const pX:TpvScalar);
 begin
  RawComponents[0,0]:=pX;
  RawComponents[0,1]:=pX;
@@ -6647,7 +6647,7 @@ begin
  RawComponents[3,3]:=pX;
 end;
 
-constructor TMatrix4x4.Create(const pXX,pXY,pXZ,pXW,pYX,pYY,pYZ,pYW,pZX,pZY,pZZ,pZW,pWX,pWY,pWZ,pWW:TScalar);
+constructor TpvMatrix4x4.Create(const pXX,pXY,pXZ,pXW,pYX,pYY,pYZ,pYW,pZX,pZY,pZZ,pZW,pWX,pWY,pWZ,pWW:TpvScalar);
 begin
  RawComponents[0,0]:=pXX;
  RawComponents[0,1]:=pXY;
@@ -6667,7 +6667,7 @@ begin
  RawComponents[3,3]:=pWW;
 end;
 
-constructor TMatrix4x4.Create(const pX,pY,pZ,pW:TVector4);
+constructor TpvMatrix4x4.Create(const pX,pY,pZ,pW:TpvVector4);
 begin
  RawComponents[0,0]:=pX.x;
  RawComponents[0,1]:=pX.y;
@@ -6688,7 +6688,7 @@ begin
 end;
 
 
-constructor TMatrix4x4.Create(const pMatrix:TMatrix3x3);
+constructor TpvMatrix4x4.Create(const pMatrix:TpvMatrix3x3);
 begin
  RawComponents[0,0]:=pMatrix.RawComponents[0,0];
  RawComponents[0,1]:=pMatrix.RawComponents[0,1];
@@ -6708,7 +6708,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateRotateX(const Angle:TScalar);
+constructor TpvMatrix4x4.CreateRotateX(const Angle:TpvScalar);
 begin
  RawComponents[0,0]:=1.0;
  RawComponents[0,1]:=0.0;
@@ -6727,7 +6727,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateRotateY(const Angle:TScalar);
+constructor TpvMatrix4x4.CreateRotateY(const Angle:TpvScalar);
 begin
  SinCos(Angle,RawComponents[2,0],RawComponents[0,0]);
  RawComponents[0,1]:=0.0;
@@ -6746,7 +6746,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateRotateZ(const Angle:TScalar);
+constructor TpvMatrix4x4.CreateRotateZ(const Angle:TpvScalar);
 begin
  SinCos(Angle,RawComponents[0,1],RawComponents[0,0]);
  RawComponents[0,2]:=0.0;
@@ -6765,8 +6765,8 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateRotate(const Angle:TScalar;const Axis:TVector3);
-var SinusAngle,CosinusAngle:TScalar;
+constructor TpvMatrix4x4.CreateRotate(const Angle:TpvScalar;const Axis:TpvVector3);
+var SinusAngle,CosinusAngle:TpvScalar;
 begin
  SinCos(Angle,SinusAngle,CosinusAngle);
  RawComponents[0,0]:=CosinusAngle+((1.0-CosinusAngle)*sqr(Axis.x));
@@ -6787,7 +6787,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateRotation(const pMatrix:TMatrix4x4);
+constructor TpvMatrix4x4.CreateRotation(const pMatrix:TpvMatrix4x4);
 begin
  RawComponents[0,0]:=pMatrix.RawComponents[0,0];
  RawComponents[0,1]:=pMatrix.RawComponents[0,1];
@@ -6807,7 +6807,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateScale(const sx,sy,sz:TScalar);
+constructor TpvMatrix4x4.CreateScale(const sx,sy,sz:TpvScalar);
 begin
  RawComponents[0,0]:=sx;
  RawComponents[0,1]:=0.0;
@@ -6827,7 +6827,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateScale(const pScale:TVector3);
+constructor TpvMatrix4x4.CreateScale(const pScale:TpvVector3);
 begin
  RawComponents[0,0]:=pScale.x;
  RawComponents[0,1]:=0.0;
@@ -6847,7 +6847,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateScale(const sx,sy,sz,sw:TScalar);
+constructor TpvMatrix4x4.CreateScale(const sx,sy,sz,sw:TpvScalar);
 begin
  RawComponents[0,0]:=sx;
  RawComponents[0,1]:=0.0;
@@ -6867,7 +6867,7 @@ begin
  RawComponents[3,3]:=sw;
 end;
 
-constructor TMatrix4x4.CreateScale(const pScale:TVector4);
+constructor TpvMatrix4x4.CreateScale(const pScale:TpvVector4);
 begin
  RawComponents[0,0]:=pScale.x;
  RawComponents[0,1]:=0.0;
@@ -6887,7 +6887,7 @@ begin
  RawComponents[3,3]:=pScale.w;
 end;
 
-constructor TMatrix4x4.CreateTranslation(const tx,ty,tz:TScalar);
+constructor TpvMatrix4x4.CreateTranslation(const tx,ty,tz:TpvScalar);
 begin
  RawComponents[0,0]:=1.0;
  RawComponents[0,1]:=0.0;
@@ -6907,7 +6907,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateTranslation(const pTranslation:TVector3);
+constructor TpvMatrix4x4.CreateTranslation(const pTranslation:TpvVector3);
 begin
  RawComponents[0,0]:=1.0;
  RawComponents[0,1]:=0.0;
@@ -6927,7 +6927,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateTranslation(const tx,ty,tz,tw:TScalar);
+constructor TpvMatrix4x4.CreateTranslation(const tx,ty,tz,tw:TpvScalar);
 begin
  RawComponents[0,0]:=1.0;
  RawComponents[0,1]:=0.0;
@@ -6947,7 +6947,7 @@ begin
  RawComponents[3,3]:=tw;
 end;
 
-constructor TMatrix4x4.CreateTranslation(const pTranslation:TVector4);
+constructor TpvMatrix4x4.CreateTranslation(const pTranslation:TpvVector4);
 begin
  RawComponents[0,0]:=1.0;
  RawComponents[0,1]:=0.0;
@@ -6967,7 +6967,7 @@ begin
  RawComponents[3,3]:=pTranslation.w;
 end;
 
-constructor TMatrix4x4.CreateTranslated(const pMatrix:TMatrix4x4;pTranslation:TVector3);
+constructor TpvMatrix4x4.CreateTranslated(const pMatrix:TpvMatrix4x4;pTranslation:TpvVector3);
 begin
  RawComponents[0]:=pMatrix.RawComponents[0];
  RawComponents[1]:=pMatrix.RawComponents[1];
@@ -6978,7 +6978,7 @@ begin
  RawComponents[3,3]:=(pMatrix.RawComponents[0,3]*pTranslation.x)+(pMatrix.RawComponents[1,3]*pTranslation.y)+(pMatrix.RawComponents[2,3]*pTranslation.z)+pMatrix.RawComponents[3,3];
 end;
 
-constructor TMatrix4x4.CreateTranslated(const pMatrix:TMatrix4x4;pTranslation:TVector4);
+constructor TpvMatrix4x4.CreateTranslated(const pMatrix:TpvMatrix4x4;pTranslation:TpvVector4);
 begin
  RawComponents[0]:=pMatrix.RawComponents[0];
  RawComponents[1]:=pMatrix.RawComponents[1];
@@ -6989,9 +6989,9 @@ begin
  RawComponents[3,3]:=(pMatrix.RawComponents[0,3]*pTranslation.x)+(pMatrix.RawComponents[1,3]*pTranslation.y)+(pMatrix.RawComponents[2,3]*pTranslation.z)+(pMatrix.RawComponents[3,3]*pTranslation.w);
 end;
 
-constructor TMatrix4x4.CreateFromToRotation(const FromDirection,ToDirection:TVector3);
-var e,h,hvx,hvz,hvxy,hvxz,hvyz:TScalar;
-    x,u,v,c:TVector3;
+constructor TpvMatrix4x4.CreateFromToRotation(const FromDirection,ToDirection:TpvVector3);
+var e,h,hvx,hvz,hvxy,hvxz,hvyz:TpvScalar;
+    x,u,v,c:TpvVector3;
 begin
  e:=FromDirection.Dot(ToDirection);
  if abs(e)>(1.0-EPSILON) then begin
@@ -7065,8 +7065,8 @@ begin
  end;
 end;
 
-constructor TMatrix4x4.CreateConstruct(const pForwards,pUp:TVector3);
-var RightVector,UpVector,ForwardVector:TVector3;
+constructor TpvMatrix4x4.CreateConstruct(const pForwards,pUp:TpvVector3);
+var RightVector,UpVector,ForwardVector:TpvVector3;
 begin
  ForwardVector:=(-pForwards).Normalize;
  RightVector:=pUp.Cross(ForwardVector).Normalize;
@@ -7089,7 +7089,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateOuterProduct(const u,v:TVector3);
+constructor TpvMatrix4x4.CreateOuterProduct(const u,v:TpvVector3);
 begin
  RawComponents[0,0]:=u.x*v.x;
  RawComponents[0,1]:=u.x*v.y;
@@ -7109,22 +7109,22 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateFromQuaternion(pQuaternion:TQuaternion);
-var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TScalar;
+constructor TpvMatrix4x4.CreateFromQuaternion(ppvQuaternion:TpvQuaternion);
+var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TpvScalar;
 begin
- pQuaternion:=pQuaternion.Normalize;
- qx2:=pQuaternion.x+pQuaternion.x;
- qy2:=pQuaternion.y+pQuaternion.y;
- qz2:=pQuaternion.z+pQuaternion.z;
- qxqx2:=pQuaternion.x*qx2;
- qxqy2:=pQuaternion.x*qy2;
- qxqz2:=pQuaternion.x*qz2;
- qxqw2:=pQuaternion.w*qx2;
- qyqy2:=pQuaternion.y*qy2;
- qyqz2:=pQuaternion.y*qz2;
- qyqw2:=pQuaternion.w*qy2;
- qzqz2:=pQuaternion.z*qz2;
- qzqw2:=pQuaternion.w*qz2;
+ ppvQuaternion:=ppvQuaternion.Normalize;
+ qx2:=ppvQuaternion.x+ppvQuaternion.x;
+ qy2:=ppvQuaternion.y+ppvQuaternion.y;
+ qz2:=ppvQuaternion.z+ppvQuaternion.z;
+ qxqx2:=ppvQuaternion.x*qx2;
+ qxqy2:=ppvQuaternion.x*qy2;
+ qxqz2:=ppvQuaternion.x*qz2;
+ qxqw2:=ppvQuaternion.w*qx2;
+ qyqy2:=ppvQuaternion.y*qy2;
+ qyqz2:=ppvQuaternion.y*qz2;
+ qyqw2:=ppvQuaternion.w*qy2;
+ qzqz2:=ppvQuaternion.z*qz2;
+ qzqw2:=ppvQuaternion.w*qz2;
  RawComponents[0,0]:=1.0-(qyqy2+qzqz2);
  RawComponents[0,1]:=qxqy2+qzqw2;
  RawComponents[0,2]:=qxqz2-qyqw2;
@@ -7143,8 +7143,8 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateFromQTangent(pQTangent:TQuaternion);
-var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TScalar;
+constructor TpvMatrix4x4.CreateFromQTangent(pQTangent:TpvQuaternion);
+var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TpvScalar;
 begin
  pQTangent:=pQTangent.Normalize;
  qx2:=pQTangent.x+pQTangent.x;
@@ -7185,9 +7185,9 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateReflect(const pPlane:TPlane);
+constructor TpvMatrix4x4.CreateReflect(const pPlane:TPlane);
 var Plane:TPlane;
-    l:TScalar;
+    l:TpvScalar;
 begin
  Plane:=pPlane;
  l:=sqr(Plane.Normal.x)+sqr(Plane.Normal.y)+sqr(Plane.Normal.z);
@@ -7221,8 +7221,8 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateFrustum(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-var rml,tmb,fmn:TScalar;
+constructor TpvMatrix4x4.CreateFrustum(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+var rml,tmb,fmn:TpvScalar;
 begin
  rml:=Right-Left;
  tmb:=Top-Bottom;
@@ -7245,8 +7245,8 @@ begin
  RawComponents[3,3]:=0.0;
 end;
 
-constructor TMatrix4x4.CreateOrtho(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-var rml,tmb,fmn:TScalar;
+constructor TpvMatrix4x4.CreateOrtho(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+var rml,tmb,fmn:TpvScalar;
 begin
  rml:=Right-Left;
  tmb:=Top-Bottom;
@@ -7269,8 +7269,8 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateOrthoLH(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-var rml,tmb,fmn:TScalar;
+constructor TpvMatrix4x4.CreateOrthoLH(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+var rml,tmb,fmn:TpvScalar;
 begin
  rml:=Right-Left;
  tmb:=Top-Bottom;
@@ -7293,8 +7293,8 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateOrthoRH(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-var rml,tmb,fmn:TScalar;
+constructor TpvMatrix4x4.CreateOrthoRH(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+var rml,tmb,fmn:TpvScalar;
 begin
  rml:=Right-Left;
  tmb:=Top-Bottom;
@@ -7317,8 +7317,8 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateOrthoOffCenterLH(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-var rml,tmb,fmn:TScalar;
+constructor TpvMatrix4x4.CreateOrthoOffCenterLH(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+var rml,tmb,fmn:TpvScalar;
 begin
  rml:=Right-Left;
  tmb:=Top-Bottom;
@@ -7341,8 +7341,8 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateOrthoOffCenterRH(const Left,Right,Bottom,Top,zNear,zFar:TScalar);
-var rml,tmb,fmn:TScalar;
+constructor TpvMatrix4x4.CreateOrthoOffCenterRH(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
+var rml,tmb,fmn:TpvScalar;
 begin
  rml:=Right-Left;
  tmb:=Top-Bottom;
@@ -7365,8 +7365,8 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreatePerspective(const fovy,Aspect,zNear,zFar:TScalar);
-var Sine,Cotangent,ZDelta,Radians:TScalar;
+constructor TpvMatrix4x4.CreatePerspective(const fovy,Aspect,zNear,zFar:TpvScalar);
+var Sine,Cotangent,ZDelta,Radians:TpvScalar;
 begin
  Radians:=(fovy*0.5)*DEG2RAD;
  ZDelta:=zFar-zNear;
@@ -7383,8 +7383,8 @@ begin
  end;
 end;
 
-constructor TMatrix4x4.CreateLookAt(const Eye,Center,Up:TVector3);
-var RightVector,UpVector,ForwardVector:TVector3;
+constructor TpvMatrix4x4.CreateLookAt(const Eye,Center,Up:TpvVector3);
+var RightVector,UpVector,ForwardVector:TpvVector3;
 begin
  ForwardVector:=(Eye-Center).Normalize;
  RightVector:=(Up.Cross(ForwardVector)).Normalize;
@@ -7407,7 +7407,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateFill(const Eye,RightVector,UpVector,ForwardVector:TVector3);
+constructor TpvMatrix4x4.CreateFill(const Eye,RightVector,UpVector,ForwardVector:TpvVector3);
 begin
  RawComponents[0,0]:=RightVector.x;
  RawComponents[1,0]:=RightVector.y;
@@ -7427,15 +7427,15 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateConstructX(const xAxis:TVector3);
-var a,b,c:TVector3;
+constructor TpvMatrix4x4.CreateConstructX(const xAxis:TpvVector3);
+var a,b,c:TpvVector3;
 begin
  a:=xAxis.Normalize;
  RawComponents[0,0]:=a.x;
  RawComponents[0,1]:=a.y;
  RawComponents[0,2]:=a.z;
  RawComponents[0,3]:=0.0;
-//b:=TVector3.Create(0.0,0.0,1.0).Cross(a).Normalize;
+//b:=TpvVector3.Create(0.0,0.0,1.0).Cross(a).Normalize;
  b:=a.Perpendicular.Normalize;
  RawComponents[1,0]:=b.x;
  RawComponents[1,1]:=b.y;
@@ -7452,8 +7452,8 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateConstructY(const yAxis:TVector3);
-var a,b,c:TVector3;
+constructor TpvMatrix4x4.CreateConstructY(const yAxis:TpvVector3);
+var a,b,c:TpvVector3;
 begin
  a:=yAxis.Normalize;
  RawComponents[1,0]:=a.x;
@@ -7476,15 +7476,15 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateConstructZ(const zAxis:TVector3);
-var a,b,c:TVector3;
+constructor TpvMatrix4x4.CreateConstructZ(const zAxis:TpvVector3);
+var a,b,c:TpvVector3;
 begin
  a:=zAxis.Normalize;
  RawComponents[2,0]:=a.x;
  RawComponents[2,1]:=a.y;
  RawComponents[2,2]:=a.z;
  RawComponents[2,3]:=0.0;
-//b:=TVector3.Create(0.0,1.0,0.0).Cross(a).Normalize;
+//b:=TpvVector3.Create(0.0,1.0,0.0).Cross(a).Normalize;
  b:=a.Perpendicular.Normalize;
  RawComponents[1,0]:=b.x;
  RawComponents[1,1]:=b.y;
@@ -7501,8 +7501,8 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TMatrix4x4.CreateProjectionMatrixClip(const ProjectionMatrix:TMatrix4x4;const ClipPlane:TPlane);
-var q,c:TVector4;
+constructor TpvMatrix4x4.CreateProjectionMatrixClip(const ProjectionMatrix:TpvMatrix4x4;const ClipPlane:TPlane);
+var q,c:TpvVector4;
 begin
  RawComponents:=ProjectionMatrix.RawComponents;
  q.x:=(Sign(ClipPlane.Normal.x)+RawComponents[2,0])/RawComponents[0,0];
@@ -7520,7 +7520,7 @@ begin
  RawComponents[3,2]:=c.w;
 end;
 
-constructor TMatrix4x4.CreateRecomposed(const DecomposedMatrix4x4:TDecomposedMatrix4x4);
+constructor TpvMatrix4x4.CreateRecomposed(const DecomposedMatrix4x4:TpvDecomposedMatrix4x4);
 begin
 
  RawComponents[0,0]:=1.0;
@@ -7540,40 +7540,40 @@ begin
  RawComponents[3,2]:=0.0;
  RawComponents[3,3]:=DecomposedMatrix4x4.Perspective.w;
 
-//self:=TMatrix4x4.CreateTranslation(DecomposedMatrix4x4.Translation)*self;
+//self:=TpvMatrix4x4.CreateTranslation(DecomposedMatrix4x4.Translation)*self;
  Translation:=Translation+
               (Right*DecomposedMatrix4x4.Translation.x)+
               (Up*DecomposedMatrix4x4.Translation.y)+
               (Forwards*DecomposedMatrix4x4.Translation.z);
 
- self:=TMatrix4x4.CreateFromQuaternion(DecomposedMatrix4x4.Rotation)*self;
+ self:=TpvMatrix4x4.CreateFromQuaternion(DecomposedMatrix4x4.Rotation)*self;
 
  if DecomposedMatrix4x4.Skew.z<>0.0 then begin // YZ
-  self:=TMatrix4x4.Create(1.0,0.0,0.0,0.0,
+  self:=TpvMatrix4x4.Create(1.0,0.0,0.0,0.0,
                           0.0,1.0,0.0,0.0,
                           0.0,DecomposedMatrix4x4.Skew.z,1.0,0.0,
                           0.0,0.0,0.0,1.0)*self;
  end;
 
  if DecomposedMatrix4x4.Skew.y<>0.0 then begin // XZ
-  self:=TMatrix4x4.Create(1.0,0.0,0.0,0.0,
+  self:=TpvMatrix4x4.Create(1.0,0.0,0.0,0.0,
                           0.0,1.0,0.0,0.0,
                           DecomposedMatrix4x4.Skew.y,0.0,1.0,0.0,
                           0.0,0.0,0.0,1.0)*self;
  end;
 
  if DecomposedMatrix4x4.Skew.x<>0.0 then begin // XY
-  self:=TMatrix4x4.Create(1.0,0.0,0.0,0.0,
+  self:=TpvMatrix4x4.Create(1.0,0.0,0.0,0.0,
                           DecomposedMatrix4x4.Skew.x,1.0,0.0,0.0,
                           0.0,0.0,1.0,0.0,
                           0.0,0.0,0.0,1.0)*self;
  end;
 
- self:=TMatrix4x4.CreateScale(DecomposedMatrix4x4.Scale)*self;
+ self:=TpvMatrix4x4.CreateScale(DecomposedMatrix4x4.Scale)*self;
 
 end;
 
-class operator TMatrix4x4.Implicit({$ifdef fpc}constref{$else}const{$endif} a:TScalar):TMatrix4x4;
+class operator TpvMatrix4x4.Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4;
 begin
  result.RawComponents[0,0]:=a;
  result.RawComponents[0,1]:=a;
@@ -7593,7 +7593,7 @@ begin
  result.RawComponents[3,3]:=a;
 end;
 
-class operator TMatrix4x4.Explicit({$ifdef fpc}constref{$else}const{$endif} a:TScalar):TMatrix4x4;
+class operator TpvMatrix4x4.Explicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4;
 begin
  result.RawComponents[0,0]:=a;
  result.RawComponents[0,1]:=a;
@@ -7613,7 +7613,7 @@ begin
  result.RawComponents[3,3]:=a;
 end;
 
-class operator TMatrix4x4.Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):boolean;
+class operator TpvMatrix4x4.Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):boolean;
 begin
  result:=SameValue(a.RawComponents[0,0],b.RawComponents[0,0]) and
          SameValue(a.RawComponents[0,1],b.RawComponents[0,1]) and
@@ -7633,7 +7633,7 @@ begin
          SameValue(a.RawComponents[3,3],b.RawComponents[3,3]);
 end;
 
-class operator TMatrix4x4.NotEqual({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):boolean;
+class operator TpvMatrix4x4.NotEqual({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):boolean;
 begin
  result:=(not SameValue(a.RawComponents[0,0],b.RawComponents[0,0])) or
          (not SameValue(a.RawComponents[0,1],b.RawComponents[0,1])) or
@@ -7653,7 +7653,7 @@ begin
          (not SameValue(a.RawComponents[3,3],b.RawComponents[3,3]));
 end;
 
-class operator TMatrix4x4.Inc({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 const cOne:array[0..3] of single=(1.0,1.0,1.0,1.0);
 asm
@@ -7700,7 +7700,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Dec({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 const cOne:array[0..3] of single=(1.0,1.0,1.0,1.0);
 asm
@@ -7747,7 +7747,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a+0]
@@ -7788,7 +7788,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4;
+class operator TpvMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a+0]
@@ -7827,7 +7827,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movss xmm0,dword ptr [a]
@@ -7869,7 +7869,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a+0]
@@ -7910,7 +7910,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4;
+class operator TpvMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a+0]
@@ -7949,7 +7949,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4): TMatrix4x4;
+class operator TpvMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4): TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movss xmm0,dword ptr [a]
@@ -7991,7 +7991,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [b+0]
@@ -8077,7 +8077,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4;
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a+0]
@@ -8116,7 +8116,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movss xmm0,dword ptr [a]
@@ -8158,10 +8158,10 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3;
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
-const Mask:array[0..3] of TUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
-      cOne:array[0..3] of TScalar=(0.0,0.0,0.0,1.0);
+const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
+      cOne:array[0..3] of TpvScalar=(0.0,0.0,0.0,1.0);
 asm
  xorps xmm2,xmm2
  movss xmm0,dword ptr [b+0]
@@ -8219,10 +8219,10 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TVector3;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TVector3;
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
-const Mask:array[0..3] of TUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
-      cOne:array[0..3] of TScalar=(0.0,0.0,0.0,1.0);
+const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
+      cOne:array[0..3] of TpvScalar=(0.0,0.0,0.0,1.0);
 asm
  xorps xmm2,xmm2
  movss xmm0,dword ptr [a+0]
@@ -8276,7 +8276,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4;
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [b]     // d c b a
@@ -8309,7 +8309,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TVector4;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TVector4;
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a]     // d c b a
@@ -8338,23 +8338,23 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TPlane):TPlane;
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TPlane):TPlane;
 begin
  result.Normal:=a.Inverse.Transpose.MulBasis(b.Normal);
  result.Distance:=result.Normal.Dot(a*((b.Normal*b.Distance)));
 end;
 
-class operator TMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TPlane;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TPlane;
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TPlane;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TPlane;
 begin
  result:=b.Transpose*a;
 end;
 
-class operator TMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 begin
  result:=a*b.Inverse;
 end;
 
-class operator TMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4;
+class operator TpvMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a+0]
@@ -8393,7 +8393,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movss xmm0,dword ptr [a]
@@ -8435,12 +8435,12 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 begin
  result:=a*b.Inverse;
 end;
 
-class operator TMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4;
+class operator TpvMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movups xmm0,dqword ptr [a+0]
@@ -8479,7 +8479,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  movss xmm0,dword ptr [a]
@@ -8521,7 +8521,7 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Modulus({$ifdef fpc}constref{$else}const{$endif} a,b:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Modulus({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 begin
  result.RawComponents[0,0]:=Modulo(a.RawComponents[0,0],b.RawComponents[0,0]);
  result.RawComponents[0,1]:=Modulo(a.RawComponents[0,1],b.RawComponents[0,1]);
@@ -8541,7 +8541,7 @@ begin
  result.RawComponents[3,3]:=Modulo(a.RawComponents[3,3],b.RawComponents[3,3]);
 end;
 
-class operator TMatrix4x4.Modulus({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TScalar):TMatrix4x4;
+class operator TpvMatrix4x4.Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4;
 begin
  result.RawComponents[0,0]:=Modulo(a.RawComponents[0,0],b);
  result.RawComponents[0,1]:=Modulo(a.RawComponents[0,1],b);
@@ -8561,7 +8561,7 @@ begin
  result.RawComponents[3,3]:=Modulo(a.RawComponents[3,3],b);
 end;
 
-class operator TMatrix4x4.Modulus({$ifdef fpc}constref{$else}const{$endif} a:TScalar;{$ifdef fpc}constref{$else}const{$endif} b:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 begin
  result.RawComponents[0,0]:=Modulo(a,b.RawComponents[0,0]);
  result.RawComponents[0,1]:=Modulo(a,b.RawComponents[0,1]);
@@ -8581,7 +8581,7 @@ begin
  result.RawComponents[3,3]:=Modulo(a,b.RawComponents[3,3]);
 end;
 
-class operator TMatrix4x4.Negative({$ifdef fpc}constref{$else}const{$endif} a:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
 asm
  xorps xmm0,xmm0
@@ -8622,22 +8622,22 @@ begin
 end;
 {$ifend}
 
-class operator TMatrix4x4.Positive(const a:TMatrix4x4):TMatrix4x4;
+class operator TpvMatrix4x4.Positive(const a:TpvMatrix4x4):TpvMatrix4x4;
 begin
  result:=a;
 end;
 
-function TMatrix4x4.GetComponent(const pIndexA,pIndexB:TInt32):TScalar;
+function TpvMatrix4x4.GetComponent(const pIndexA,pIndexB:TpvInt32):TpvScalar;
 begin
  result:=RawComponents[pIndexA,pIndexB];
 end;
 
-procedure TMatrix4x4.SetComponent(const pIndexA,pIndexB:TInt32;const pValue:TScalar);
+procedure TpvMatrix4x4.SetComponent(const pIndexA,pIndexB:TpvInt32;const pValue:TpvScalar);
 begin
  RawComponents[pIndexA,pIndexB]:=pValue;
 end;
 
-function TMatrix4x4.GetColumn(const pIndex:TInt32):TVector4;
+function TpvMatrix4x4.GetColumn(const pIndex:TpvInt32):TpvVector4;
 begin
  result.x:=RawComponents[pIndex,0];
  result.y:=RawComponents[pIndex,1];
@@ -8645,7 +8645,7 @@ begin
  result.w:=RawComponents[pIndex,3];
 end;
 
-procedure TMatrix4x4.SetColumn(const pIndex:TInt32;const pValue:TVector4);
+procedure TpvMatrix4x4.SetColumn(const pIndex:TpvInt32;const pValue:TpvVector4);
 begin
  RawComponents[pIndex,0]:=pValue.x;
  RawComponents[pIndex,1]:=pValue.y;
@@ -8653,7 +8653,7 @@ begin
  RawComponents[pIndex,3]:=pValue.w;
 end;
 
-function TMatrix4x4.GetRow(const pIndex:TInt32):TVector4;
+function TpvMatrix4x4.GetRow(const pIndex:TpvInt32):TpvVector4;
 begin
  result.x:=RawComponents[0,pIndex];
  result.y:=RawComponents[1,pIndex];
@@ -8661,7 +8661,7 @@ begin
  result.w:=RawComponents[3,pIndex];
 end;
 
-procedure TMatrix4x4.SetRow(const pIndex:TInt32;const pValue:TVector4);
+procedure TpvMatrix4x4.SetRow(const pIndex:TpvInt32;const pValue:TpvVector4);
 begin
  RawComponents[0,pIndex]:=pValue.x;
  RawComponents[1,pIndex]:=pValue.y;
@@ -8669,7 +8669,7 @@ begin
  RawComponents[3,pIndex]:=pValue.w;
 end;
 
-function TMatrix4x4.Determinant:TScalar;
+function TpvMatrix4x4.Determinant:TpvScalar;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax+32]
@@ -8771,7 +8771,7 @@ begin
 end;
 {$ifend}
 
-function TMatrix4x4.SimpleInverse:TMatrix4x4;
+function TpvMatrix4x4.SimpleInverse:TpvMatrix4x4;
 begin
  result.RawComponents[0,0]:=RawComponents[0,0];
  result.RawComponents[0,1]:=RawComponents[1,0];
@@ -8785,13 +8785,13 @@ begin
  result.RawComponents[2,1]:=RawComponents[1,2];
  result.RawComponents[2,2]:=RawComponents[2,2];
  result.RawComponents[2,3]:=RawComponents[2,3];
- result.RawComponents[3,0]:=-PVector3(pointer(@RawComponents[3,0]))^.Dot(TVector3.Create(RawComponents[0,0],RawComponents[0,1],RawComponents[0,2]));
- result.RawComponents[3,1]:=-PVector3(pointer(@RawComponents[3,0]))^.Dot(TVector3.Create(RawComponents[1,0],RawComponents[1,1],RawComponents[1,2]));
- result.RawComponents[3,2]:=-PVector3(pointer(@RawComponents[3,0]))^.Dot(TVector3.Create(RawComponents[2,0],RawComponents[2,1],RawComponents[2,2]));
+ result.RawComponents[3,0]:=-PpvVector3(pointer(@RawComponents[3,0]))^.Dot(TpvVector3.Create(RawComponents[0,0],RawComponents[0,1],RawComponents[0,2]));
+ result.RawComponents[3,1]:=-PpvVector3(pointer(@RawComponents[3,0]))^.Dot(TpvVector3.Create(RawComponents[1,0],RawComponents[1,1],RawComponents[1,2]));
+ result.RawComponents[3,2]:=-PpvVector3(pointer(@RawComponents[3,0]))^.Dot(TpvVector3.Create(RawComponents[2,0],RawComponents[2,1],RawComponents[2,2]));
  result.RawComponents[3,3]:=RawComponents[3,3];
 end;
 
-function TMatrix4x4.Inverse:TMatrix4x4;
+function TpvMatrix4x4.Inverse:TpvMatrix4x4;
 {$if defined(cpu386)}
 asm
  mov ecx,esp
@@ -9145,7 +9145,7 @@ asm
  mov rsp,r9
 end;
 {$else}
-var t0,t4,t8,t12,d:TScalar;
+var t0,t4,t8,t12,d:TpvScalar;
 begin
  t0:=(((RawComponents[1,1]*RawComponents[2,2]*RawComponents[3,3])-(RawComponents[1,1]*RawComponents[2,3]*RawComponents[3,2]))-(RawComponents[2,1]*RawComponents[1,2]*RawComponents[3,3])+(RawComponents[2,1]*RawComponents[1,3]*RawComponents[3,2])+(RawComponents[3,1]*RawComponents[1,2]*RawComponents[2,3]))-(RawComponents[3,1]*RawComponents[1,3]*RawComponents[2,2]);
  t4:=((((-(RawComponents[1,0]*RawComponents[2,2]*RawComponents[3,3]))+(RawComponents[1,0]*RawComponents[2,3]*RawComponents[3,2])+(RawComponents[2,0]*RawComponents[1,2]*RawComponents[3,3]))-(RawComponents[2,0]*RawComponents[1,3]*RawComponents[3,2]))-(RawComponents[3,0]*RawComponents[1,2]*RawComponents[2,3]))+(RawComponents[3,0]*RawComponents[1,3]*RawComponents[2,2]);
@@ -9174,7 +9174,7 @@ begin
 end;
 {$ifend}
 
-function TMatrix4x4.Transpose:TMatrix4x4;
+function TpvMatrix4x4.Transpose:TpvMatrix4x4;
 {$if defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax+0]
@@ -9249,8 +9249,8 @@ begin
 end;
 {$ifend}
 
-function TMatrix4x4.EulerAngles:TVector3;
-var v0,v1:TVector3;
+function TpvMatrix4x4.EulerAngles:TpvVector3;
+var v0,v1:TpvVector3;
 begin
  if abs((-1.0)-RawComponents[0,2])<EPSILON then begin
   result.x:=0.0;
@@ -9275,7 +9275,7 @@ begin
  end;
 end;
 
-function TMatrix4x4.Normalize:TMatrix4x4;
+function TpvMatrix4x4.Normalize:TpvMatrix4x4;
 begin
  result.Right.xyz:=Right.xyz.Normalize;
  result.RawComponents[0,3]:=RawComponents[0,3];
@@ -9286,8 +9286,8 @@ begin
  result.Translation:=Translation;
 end;
 
-function TMatrix4x4.OrthoNormalize:TMatrix4x4;
-var Backup:TVector3;
+function TpvMatrix4x4.OrthoNormalize:TpvMatrix4x4;
+var Backup:TpvVector3;
 begin
  Backup.x:=RawComponents[0,3];
  Backup.y:=RawComponents[1,3];
@@ -9305,8 +9305,8 @@ begin
  result.RawComponents[2,3]:=Backup.z;
 end;
 
-function TMatrix4x4.RobustOrthoNormalize(const Tolerance:TScalar=1e-3):TMatrix4x4;
-var Backup,Bisector,Axis:TVector3;
+function TpvMatrix4x4.RobustOrthoNormalize(const Tolerance:TpvScalar=1e-3):TpvMatrix4x4;
+var Backup,Bisector,Axis:TpvVector3;
 begin
  Backup.x:=RawComponents[0,3];
  Backup.y:=RawComponents[1,3];
@@ -9381,8 +9381,8 @@ begin
  result.RawComponents[2,3]:=Backup.z;
 end;
 
-function TMatrix4x4.ToQuaternion:TQuaternion;
-var t,s:TScalar;
+function TpvMatrix4x4.ToQuaternion:TpvQuaternion;
+var t,s:TpvScalar;
 begin
  t:=RawComponents[0,0]+(RawComponents[1,1]+RawComponents[2,2]);
  if t>2.9999999 then begin
@@ -9418,9 +9418,9 @@ begin
  result:=result.Normalize;
 end;
 
-function TMatrix4x4.ToQTangent:TQuaternion;
+function TpvMatrix4x4.ToQTangent:TpvQuaternion;
 const Threshold=1.0/32767.0;
-var Scale,t,s,Renormalization:TScalar;
+var Scale,t,s,Renormalization:TpvScalar;
 begin
  if ((((((RawComponents[0,0]*RawComponents[1,1]*RawComponents[2,2])+
          (RawComponents[0,1]*RawComponents[1,2]*RawComponents[2,0])
@@ -9501,7 +9501,7 @@ begin
  end;
 end;
 
-function TMatrix4x4.ToMatrix3x3:TMatrix3x3;
+function TpvMatrix4x4.ToMatrix3x3:TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=RawComponents[0,0];
  result.RawComponents[0,1]:=RawComponents[0,1];
@@ -9514,7 +9514,7 @@ begin
  result.RawComponents[2,2]:=RawComponents[2,2];
 end;
 
-function TMatrix4x4.ToRotation:TMatrix4x4;
+function TpvMatrix4x4.ToRotation:TpvMatrix4x4;
 begin
  result.RawComponents[0,0]:=RawComponents[0,0];
  result.RawComponents[0,1]:=RawComponents[0,1];
@@ -9534,7 +9534,7 @@ begin
  result.RawComponents[3,3]:=1.0;
 end;
 
-function TMatrix4x4.SimpleLerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4;
+function TpvMatrix4x4.SimpleLerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4;
 begin
  if t<=0.0 then begin
   result:=self;
@@ -9545,22 +9545,22 @@ begin
  end;
 end;
 
-function TMatrix4x4.SimpleNlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4;
-var InvT:TScalar;
-    Scale:TVector3;
+function TpvMatrix4x4.SimpleNlerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4;
+var InvT:TpvScalar;
+    Scale:TpvVector3;
 begin
  if t<=0.0 then begin
   result:=self;
  end else if t>=1.0 then begin
   result:=b;
  end else begin
-  Scale:=TVector3.Create(Right.xyz.Length,
+  Scale:=TpvVector3.Create(Right.xyz.Length,
                          Up.xyz.Length,
-                         Forwards.xyz.Length).Lerp(TVector3.Create(b.Right.xyz.Length,
+                         Forwards.xyz.Length).Lerp(TpvVector3.Create(b.Right.xyz.Length,
                                                                    b.Up.xyz.Length,
                                                                    b.Forwards.xyz.Length),
                                                    t);
-  result:=TMatrix4x4.CreateFromQuaternion(Normalize.ToQuaternion.Nlerp(b.Normalize.ToQuaternion,t));
+  result:=TpvMatrix4x4.CreateFromQuaternion(Normalize.ToQuaternion.Nlerp(b.Normalize.ToQuaternion,t));
   result.Right.xyz:=result.Right.xyz*Scale.x;
   result.Up.xyz:=result.Up.xyz*Scale.y;
   result.Forwards.xyz:=result.Forwards.xyz*Scale.z;
@@ -9572,22 +9572,22 @@ begin
  end;
 end;
 
-function TMatrix4x4.SimpleSlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4;
-var InvT:TScalar;
-    Scale:TVector3;
+function TpvMatrix4x4.SimpleSlerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4;
+var InvT:TpvScalar;
+    Scale:TpvVector3;
 begin
  if t<=0.0 then begin
   result:=self;
  end else if t>=1.0 then begin
   result:=b;
  end else begin
-  Scale:=TVector3.Create(Right.xyz.Length,
+  Scale:=TpvVector3.Create(Right.xyz.Length,
                          Up.xyz.Length,
-                         Forwards.xyz.Length).Lerp(TVector3.Create(b.Right.xyz.Length,
+                         Forwards.xyz.Length).Lerp(TpvVector3.Create(b.Right.xyz.Length,
                                                                    b.Up.xyz.Length,
                                                                    b.Forwards.xyz.Length),
                                                    t);
-  result:=TMatrix4x4.CreateFromQuaternion(Normalize.ToQuaternion.Slerp(b.Normalize.ToQuaternion,t));
+  result:=TpvMatrix4x4.CreateFromQuaternion(Normalize.ToQuaternion.Slerp(b.Normalize.ToQuaternion,t));
   result.Right.xyz:=result.Right.xyz*Scale.x;
   result.Up.xyz:=result.Up.xyz*Scale.y;
   result.Forwards.xyz:=result.Forwards.xyz*Scale.z;
@@ -9599,41 +9599,41 @@ begin
  end;
 end;
 
-function TMatrix4x4.Lerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4;
+function TpvMatrix4x4.Lerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4;
 begin
  if t<=0.0 then begin
   result:=self;
  end else if t>=1.0 then begin
   result:=b;
  end else begin
-  result:=TMatrix4x4.CreateRecomposed(Decompose.Lerp(b.Decompose,t));
+  result:=TpvMatrix4x4.CreateRecomposed(Decompose.Lerp(b.Decompose,t));
  end;
 end;
 
-function TMatrix4x4.Nlerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4;
+function TpvMatrix4x4.Nlerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4;
 begin
  if t<=0.0 then begin
   result:=self;
  end else if t>=1.0 then begin
   result:=b;
  end else begin
-  result:=TMatrix4x4.CreateRecomposed(Decompose.Nlerp(b.Decompose,t));
+  result:=TpvMatrix4x4.CreateRecomposed(Decompose.Nlerp(b.Decompose,t));
  end;
 end;
 
-function TMatrix4x4.Slerp(const b:TMatrix4x4;const t:TScalar):TMatrix4x4;
+function TpvMatrix4x4.Slerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4;
 begin
  if t<=0.0 then begin
   result:=self;
  end else if t>=1.0 then begin
   result:=b;
  end else begin
-  result:=TMatrix4x4.CreateRecomposed(Decompose.Slerp(b.Decompose,t));
+  result:=TpvMatrix4x4.CreateRecomposed(Decompose.Slerp(b.Decompose,t));
  end;
 end;
 
-function TMatrix4x4.MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3;
-var d:TScalar;
+function TpvMatrix4x4.MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3;
+var d:TpvScalar;
 begin
  d:=((RawComponents[0,0]*((RawComponents[1,1]*RawComponents[2,2])-(RawComponents[2,1]*RawComponents[1,2])))-
      (RawComponents[0,1]*((RawComponents[1,0]*RawComponents[2,2])-(RawComponents[2,0]*RawComponents[1,2]))))+
@@ -9646,8 +9646,8 @@ begin
  result.z:=((RawComponents[0,0]*((RawComponents[1,1]*a.z)-(RawComponents[1,2]*a.y)))+(RawComponents[0,1]*((RawComponents[1,2]*a.x)-(RawComponents[1,0]*a.z)))+(RawComponents[0,2]*((RawComponents[1,0]*a.y)-(RawComponents[1,1]*a.x))))*d;
 end;
 
-function TMatrix4x4.MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4;
-var d:TScalar;
+function TpvMatrix4x4.MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4;
+var d:TpvScalar;
 begin
  d:=((RawComponents[0,0]*((RawComponents[1,1]*RawComponents[2,2])-(RawComponents[2,1]*RawComponents[1,2])))-
      (RawComponents[0,1]*((RawComponents[1,0]*RawComponents[2,2])-(RawComponents[2,0]*RawComponents[1,2]))))+
@@ -9661,8 +9661,8 @@ begin
  result.w:=a.w;
 end;
 
-function TMatrix4x4.MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3;
-var p:TVector3;
+function TpvMatrix4x4.MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3;
+var p:TpvVector3;
 begin
  p.x:=a.x-RawComponents[3,0];
  p.y:=a.y-RawComponents[3,1];
@@ -9672,8 +9672,8 @@ begin
  result.z:=(RawComponents[2,0]*p.x)+(RawComponents[2,1]*p.y)+(RawComponents[2,2]*p.z);
 end;
 
-function TMatrix4x4.MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4;
-var p:TVector3;
+function TpvMatrix4x4.MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4;
+var p:TpvVector3;
 begin
  p.x:=a.x-RawComponents[3,0];
  p.y:=a.y-RawComponents[3,1];
@@ -9684,14 +9684,14 @@ begin
  result.w:=a.w;
 end;
 
-function TMatrix4x4.MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3;
+function TpvMatrix4x4.MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3;
 begin
  result.x:=(RawComponents[0,0]*a.x)+(RawComponents[1,0]*a.y)+(RawComponents[2,0]*a.z);
  result.y:=(RawComponents[0,1]*a.x)+(RawComponents[1,1]*a.y)+(RawComponents[2,1]*a.z);
  result.z:=(RawComponents[0,2]*a.x)+(RawComponents[1,2]*a.y)+(RawComponents[2,2]*a.z);
 end;
 
-function TMatrix4x4.MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4;
+function TpvMatrix4x4.MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4;
 begin
  result.x:=(RawComponents[0,0]*a.x)+(RawComponents[1,0]*a.y)+(RawComponents[2,0]*a.z);
  result.y:=(RawComponents[0,1]*a.x)+(RawComponents[1,1]*a.y)+(RawComponents[2,1]*a.z);
@@ -9699,14 +9699,14 @@ begin
  result.w:=a.w;
 end;
 
-function TMatrix4x4.MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3;
+function TpvMatrix4x4.MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3;
 begin
  result.x:=(RawComponents[0,0]*a.x)+(RawComponents[0,1]*a.y)+(RawComponents[0,2]*a.z);
  result.y:=(RawComponents[1,0]*a.x)+(RawComponents[1,1]*a.y)+(RawComponents[1,2]*a.z);
  result.z:=(RawComponents[2,0]*a.x)+(RawComponents[2,1]*a.y)+(RawComponents[2,2]*a.z);
 end;
 
-function TMatrix4x4.MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4;
+function TpvMatrix4x4.MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4;
 begin
  result.x:=(RawComponents[0,0]*a.x)+(RawComponents[0,1]*a.y)+(RawComponents[0,2]*a.z);
  result.y:=(RawComponents[1,0]*a.x)+(RawComponents[1,1]*a.y)+(RawComponents[1,2]*a.z);
@@ -9714,23 +9714,23 @@ begin
  result.w:=a.w;
 end;
 
-function TMatrix4x4.MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TVector3):TVector3;
-var Temporary:TVector4;
+function TpvMatrix4x4.MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3;
+var Temporary:TpvVector4;
 begin
- Temporary:=self*TVector4.Create(a,1.0);
+ Temporary:=self*TpvVector4.Create(a,1.0);
  Temporary:=Temporary/Temporary.w;
  result:=Temporary.xyz;
 end;
 
-function TMatrix4x4.MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TVector4):TVector4;
+function TpvMatrix4x4.MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4;
 begin
  result:=self*a;
  result:=result/result.w;
 end;
 
-function TMatrix4x4.Decompose:TDecomposedMatrix4x4;
-var LocalMatrix,PerspectiveMatrix:TMatrix4x4;
-    BasisMatrix:TMatrix3x3;
+function TpvMatrix4x4.Decompose:TpvDecomposedMatrix4x4;
+var LocalMatrix,PerspectiveMatrix:TpvMatrix4x4;
+    BasisMatrix:TpvMatrix3x3;
 begin
 
  if RawComponents[3,3]=0.0 then begin
@@ -9754,11 +9754,11 @@ begin
              (RawComponents[3,2]=0.0) and
              (RawComponents[3,3]=1.0) then begin
 
-  result.Perspective:=TVector4.Create(0.0,0.0,0.0,1.0);
-  result.Translation:=TVector3.Create(0.0,0.0,0.0);
-  result.Scale:=TVector3.Create(1.0,1.0,1.0);
-  result.Skew:=TVector3.Create(0.0,0.0,0.0);
-  result.Rotation:=TQuaternion.Create(0.0,0.0,0.0,1.0);
+  result.Perspective:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+  result.Translation:=TpvVector3.Create(0.0,0.0,0.0);
+  result.Scale:=TpvVector3.Create(1.0,1.0,1.0);
+  result.Skew:=TpvVector3.Create(0.0,0.0,0.0);
+  result.Rotation:=TpvQuaternion.Create(0.0,0.0,0.0,1.0);
 
   result.Valid:=true;
 
@@ -9785,7 +9785,7 @@ begin
       (LocalMatrix.RawComponents[1,3]<>0.0) or
       (LocalMatrix.RawComponents[2,3]<>0.0) then begin
 
-    result.Perspective:=PerspectiveMatrix.Inverse.Transpose*TVector4.Create(LocalMatrix.RawComponents[0,3],
+    result.Perspective:=PerspectiveMatrix.Inverse.Transpose*TpvVector4.Create(LocalMatrix.RawComponents[0,3],
                                                                                          LocalMatrix.RawComponents[1,3],
                                                                                          LocalMatrix.RawComponents[2,3],
                                                                                          LocalMatrix.RawComponents[3,3]);
@@ -9803,7 +9803,7 @@ begin
    end;
 
    result.Translation:=LocalMatrix.Translation.xyz;
-   LocalMatrix.Translation.xyz:=TVector3.Create(0.0,0.0,0.0);
+   LocalMatrix.Translation.xyz:=TpvVector3.Create(0.0,0.0,0.0);
 
    BasisMatrix:=ToMatrix3x3;
 
@@ -9843,193 +9843,193 @@ begin
 
 end;
 
-constructor TDualQuaternion.Create(const pQ0,PQ1:TQuaternion);
+constructor TpvDualQuaternion.Create(const pQ0,PQ1:TpvQuaternion);
 begin
  RawQuaternions[0]:=pQ0;
  RawQuaternions[1]:=pQ1;
 end;
 
-constructor TDualQuaternion.CreateFromRotationTranslationScale(const pRotation:TQuaternion;const pTranslation:TVector3;const pScale:TScalar);
+constructor TpvDualQuaternion.CreateFromRotationTranslationScale(const pRotation:TpvQuaternion;const pTranslation:TpvVector3;const pScale:TpvScalar);
 begin
  RawQuaternions[0]:=pRotation.Normalize;
- RawQuaternions[1]:=((0.5/RawQuaternions[0].Length)*RawQuaternions[0])*TQuaternion.Create(pTranslation.x,pTranslation.y,pTranslation.z,0.0);
+ RawQuaternions[1]:=((0.5/RawQuaternions[0].Length)*RawQuaternions[0])*TpvQuaternion.Create(pTranslation.x,pTranslation.y,pTranslation.z,0.0);
  RawQuaternions[0]:=RawQuaternions[0]*pScale;
 end;
 
-constructor TDualQuaternion.CreateFromMatrix(const pMatrix:TMatrix4x4);
+constructor TpvDualQuaternion.CreateFromMatrix(const pMatrix:TpvMatrix4x4);
 begin
  RawQuaternions[0]:=pMatrix.ToQuaternion;
- RawQuaternions[1]:=((0.5/RawQuaternions[0].Length)*RawQuaternions[0])*TQuaternion.Create(pMatrix.Translation.x,pMatrix.Translation.y,pMatrix.Translation.z,0.0);
+ RawQuaternions[1]:=((0.5/RawQuaternions[0].Length)*RawQuaternions[0])*TpvQuaternion.Create(pMatrix.Translation.x,pMatrix.Translation.y,pMatrix.Translation.z,0.0);
  RawQuaternions[0]:=RawQuaternions[0]*((pMatrix.Right.xyz.Length+pMatrix.Up.xyz.Length+pMatrix.Forwards.xyz.Length)/3.0);
 end;
 
-class operator TDualQuaternion.Implicit(const a:TMatrix4x4):TDualQuaternion;
+class operator TpvDualQuaternion.Implicit(const a:TpvMatrix4x4):TpvDualQuaternion;
 begin
- result:=TDualQuaternion.CreateFromMatrix(a);
+ result:=TpvDualQuaternion.CreateFromMatrix(a);
 end;
 
-class operator TDualQuaternion.Explicit(const a:TMatrix4x4):TDualQuaternion;
+class operator TpvDualQuaternion.Explicit(const a:TpvMatrix4x4):TpvDualQuaternion;
 begin
- result:=TDualQuaternion.CreateFromMatrix(a);
+ result:=TpvDualQuaternion.CreateFromMatrix(a);
 end;
 
-class operator TDualQuaternion.Implicit(const a:TDualQuaternion):TMatrix4x4;
-var Scale:TScalar;
+class operator TpvDualQuaternion.Implicit(const a:TpvDualQuaternion):TpvMatrix4x4;
+var Scale:TpvScalar;
 begin
  Scale:=a.RawQuaternions[0].Length;
- result:=TMatrix4x4.CreateFromQuaternion(a.RawQuaternions[0].Normalize);
+ result:=TpvMatrix4x4.CreateFromQuaternion(a.RawQuaternions[0].Normalize);
  result.Right.xyz:=result.Right.xyz*Scale;
  result.Up.xyz:=result.Up.xyz*Scale;
  result.Forwards.xyz:=result.Forwards.xyz*Scale;
- result.Translation.xyz:=TQuaternion((2.0*a.RawQuaternions[0].Conjugate)*a.RawQuaternions[1]).Vector.xyz;
+ result.Translation.xyz:=TpvQuaternion((2.0*a.RawQuaternions[0].Conjugate)*a.RawQuaternions[1]).Vector.xyz;
 end;
 
-class operator TDualQuaternion.Explicit(const a:TDualQuaternion):TMatrix4x4;
-var Scale:TScalar;
+class operator TpvDualQuaternion.Explicit(const a:TpvDualQuaternion):TpvMatrix4x4;
+var Scale:TpvScalar;
 begin
  Scale:=a.RawQuaternions[0].Length;
- result:=TMatrix4x4.CreateFromQuaternion(a.RawQuaternions[0].Normalize);
+ result:=TpvMatrix4x4.CreateFromQuaternion(a.RawQuaternions[0].Normalize);
  result.Right.xyz:=result.Right.xyz*Scale;
  result.Up.xyz:=result.Up.xyz*Scale;
  result.Forwards.xyz:=result.Forwards.xyz*Scale;
- result.Translation.xyz:=TQuaternion((2.0*a.RawQuaternions[0].Conjugate)*a.RawQuaternions[1]).Vector.xyz;
+ result.Translation.xyz:=TpvQuaternion((2.0*a.RawQuaternions[0].Conjugate)*a.RawQuaternions[1]).Vector.xyz;
 end;
 
-class operator TDualQuaternion.Equal(const a,b:TDualQuaternion):boolean;
+class operator TpvDualQuaternion.Equal(const a,b:TpvDualQuaternion):boolean;
 begin
  result:=(a.RawQuaternions[0]=b.RawQuaternions[0]) and
          (a.RawQuaternions[1]=b.RawQuaternions[1]);
 end;
 
-class operator TDualQuaternion.NotEqual(const a,b:TDualQuaternion):boolean;
+class operator TpvDualQuaternion.NotEqual(const a,b:TpvDualQuaternion):boolean;
 begin
  result:=(a.RawQuaternions[0]<>b.RawQuaternions[0]) or
          (a.RawQuaternions[1]<>b.RawQuaternions[1]);
 end;
 
-class operator TDualQuaternion.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a.RawQuaternions[0]+b.RawQuaternions[0];
  result.RawQuaternions[1]:=a.RawQuaternions[1]+b.RawQuaternions[1];
 end;
 
-class operator TDualQuaternion.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a.RawQuaternions[0]-b.RawQuaternions[0];
  result.RawQuaternions[1]:=a.RawQuaternions[1]-b.RawQuaternions[1];
 end;
 
-class operator TDualQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a.RawQuaternions[0]*b.RawQuaternions[0];
  result.RawQuaternions[1]:=((a.RawQuaternions[0]*b.RawQuaternions[1])/a.RawQuaternions[0].Length)+(a.RawQuaternions[1]*b.RawQuaternions[1]);
 end;
 
-class operator TDualQuaternion.Multiply(const a:TDualQuaternion;const b:TScalar):TDualQuaternion;
+class operator TpvDualQuaternion.Multiply(const a:TpvDualQuaternion;const b:TpvScalar):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a.RawQuaternions[0]*b;
  result.RawQuaternions[1]:=a.RawQuaternions[1]*b;
 end;
 
-class operator TDualQuaternion.Multiply(const a:TScalar;const b:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.Multiply(const a:TpvScalar;const b:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a*b.RawQuaternions[0];
  result.RawQuaternions[1]:=a*b.RawQuaternions[1];
 end;
 
-class operator TDualQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector3):TVector3;
+class operator TpvDualQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3;
 begin
- result:=TQuaternion(a.RawQuaternions[0].Conjugate*((2.0*a.RawQuaternions[1])+(TQuaternion.Create(b.x,b.y,b.z,0.0)*a.RawQuaternions[0]))).Vector.xyz;
+ result:=TpvQuaternion(a.RawQuaternions[0].Conjugate*((2.0*a.RawQuaternions[1])+(TpvQuaternion.Create(b.x,b.y,b.z,0.0)*a.RawQuaternions[0]))).Vector.xyz;
 end;
 
-class operator TDualQuaternion.Multiply(const a:TVector3;const b:TDualQuaternion):TVector3;
+class operator TpvDualQuaternion.Multiply(const a:TpvVector3;const b:TpvDualQuaternion):TpvVector3;
 begin
  result:=b.Inverse*a;
 end;
 
-class operator TDualQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TVector4):TVector4;
+class operator TpvDualQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvDualQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4;
 begin
- result.xyz:=TQuaternion(a.RawQuaternions[0].Conjugate*((2.0*a.RawQuaternions[1])+(TQuaternion.Create(b.x,b.y,b.z,0.0)*a.RawQuaternions[0]))).Vector.xyz;
+ result.xyz:=TpvQuaternion(a.RawQuaternions[0].Conjugate*((2.0*a.RawQuaternions[1])+(TpvQuaternion.Create(b.x,b.y,b.z,0.0)*a.RawQuaternions[0]))).Vector.xyz;
  result.w:=1.0;
 end;
 
-class operator TDualQuaternion.Multiply(const a:TVector4;const b:TDualQuaternion):TVector4;
+class operator TpvDualQuaternion.Multiply(const a:TpvVector4;const b:TpvDualQuaternion):TpvVector4;
 begin
  result:=b.Inverse*a;
 end;
 
-class operator TDualQuaternion.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a.RawQuaternions[0]/b.RawQuaternions[0];
  result.RawQuaternions[1]:=a.RawQuaternions[1]/b.RawQuaternions[1];
 end;
 
-class operator TDualQuaternion.Divide(const a:TDualQuaternion;const b:TScalar):TDualQuaternion;
+class operator TpvDualQuaternion.Divide(const a:TpvDualQuaternion;const b:TpvScalar):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a.RawQuaternions[0]/b;
  result.RawQuaternions[1]:=a.RawQuaternions[1]/b;
 end;
 
-class operator TDualQuaternion.Divide(const a:TScalar;const b:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.Divide(const a:TpvScalar;const b:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a/b.RawQuaternions[0];
  result.RawQuaternions[1]:=a/b.RawQuaternions[1];
 end;
 
-class operator TDualQuaternion.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a.RawQuaternions[0]/b.RawQuaternions[0];
  result.RawQuaternions[1]:=a.RawQuaternions[1]/b.RawQuaternions[1];
 end;
 
-class operator TDualQuaternion.IntDivide(const a:TDualQuaternion;const b:TScalar):TDualQuaternion;
+class operator TpvDualQuaternion.IntDivide(const a:TpvDualQuaternion;const b:TpvScalar):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a.RawQuaternions[0]/b;
  result.RawQuaternions[1]:=a.RawQuaternions[1]/b;
 end;
 
-class operator TDualQuaternion.IntDivide(const a:TScalar;const b:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.IntDivide(const a:TpvScalar;const b:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a/b.RawQuaternions[0];
  result.RawQuaternions[1]:=a/b.RawQuaternions[1];
 end;
 
-class operator TDualQuaternion.Modulus(const a,b:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.Modulus(const a,b:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a.RawQuaternions[0] mod b.RawQuaternions[0];
  result.RawQuaternions[1]:=a.RawQuaternions[1] mod b.RawQuaternions[1];
 end;
 
-class operator TDualQuaternion.Modulus(const a:TDualQuaternion;const b:TScalar):TDualQuaternion;
+class operator TpvDualQuaternion.Modulus(const a:TpvDualQuaternion;const b:TpvScalar):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a.RawQuaternions[0] mod b;
  result.RawQuaternions[1]:=a.RawQuaternions[1] mod b;
 end;
 
-class operator TDualQuaternion.Modulus(const a:TScalar;const b:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.Modulus(const a:TpvScalar;const b:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=a mod b.RawQuaternions[0];
  result.RawQuaternions[1]:=a mod b.RawQuaternions[1];
 end;
 
-class operator TDualQuaternion.Negative({$ifdef fpc}constref{$else}const{$endif} a:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=-a.RawQuaternions[0];
  result.RawQuaternions[1]:=-a.RawQuaternions[1];
 end;
 
-class operator TDualQuaternion.Positive(const a:TDualQuaternion):TDualQuaternion;
+class operator TpvDualQuaternion.Positive(const a:TpvDualQuaternion):TpvDualQuaternion;
 begin
  result:=a;
 end;
 
-function TDualQuaternion.Flip:TDualQuaternion;
+function TpvDualQuaternion.Flip:TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=RawQuaternions[0].Flip;
  result.RawQuaternions[1]:=RawQuaternions[1].Flip;
 end;
 
-function TDualQuaternion.Conjugate:TDualQuaternion;
+function TpvDualQuaternion.Conjugate:TpvDualQuaternion;
 begin
  result.RawQuaternions[0].x:=-RawQuaternions[0].x;
  result.RawQuaternions[0].y:=-RawQuaternions[0].y;
@@ -10041,15 +10041,15 @@ begin
  result.RawQuaternions[1].w:=-RawQuaternions[1].w;
 end;
 
-function TDualQuaternion.Inverse:TDualQuaternion;
+function TpvDualQuaternion.Inverse:TpvDualQuaternion;
 begin
  result.RawQuaternions[0]:=RawQuaternions[0].Conjugate;
  result.RawQuaternions[1]:=((-result.RawQuaternions[0])*RawQuaternions[1])*result.RawQuaternions[0];
  result:=result/RawQuaternions[0].Length;
 end;
 
-function TDualQuaternion.Normalize:TDualQuaternion;
-var Scale:TScalar;
+function TpvDualQuaternion.Normalize:TpvDualQuaternion;
+var Scale:TpvScalar;
 begin
  Scale:=RawQuaternions[0].Length;
  result.RawQuaternions[0]:=RawQuaternions[0]/Scale;
@@ -10057,15 +10057,15 @@ begin
  result.RawQuaternions[1]:=result.RawQuaternions[1]-(result.RawQuaternions[0].Dot(result.RawQuaternions[1])*result.RawQuaternions[0]);
 end;
 
-constructor TSegment.Create(const p0,p1:TVector3);
+constructor TpvSegment.Create(const p0,p1:TpvVector3);
 begin
  Points[0]:=p0;
  Points[1]:=p1;
 end;
 
-function TSegment.SquaredDistanceTo(const p:TVector3):TScalar;
-var pq,pp:TVector3;
-    e,f:TScalar;
+function TpvSegment.SquaredDistanceTo(const p:TpvVector3):TpvScalar;
+var pq,pp:TpvVector3;
+    e,f:TpvScalar;
 begin
  pq:=Points[1]-Points[0];
  pp:=p-Points[0];
@@ -10082,9 +10082,9 @@ begin
  end;
 end;
 
-function TSegment.SquaredDistanceTo(const p:TVector3;out Nearest:TVector3):TScalar;
-var t,DotUV:TScalar;
-    Diff,v:TVector3;
+function TpvSegment.SquaredDistanceTo(const p:TpvVector3;out Nearest:TpvVector3):TpvScalar;
+var t,DotUV:TpvScalar;
+    Diff,v:TpvVector3;
 begin
  Diff:=p-Points[0];
  v:=Points[1]-Points[0];
@@ -10105,8 +10105,8 @@ begin
  result:=Diff.SquaredLength;
 end;
 
-procedure TSegment.ClosestPointTo(const p:TVector3;out Time:TScalar;out ClosestPoint:TVector3);
-var u,v:TVector3;
+procedure TpvSegment.ClosestPointTo(const p:TpvVector3;out Time:TpvScalar;out ClosestPoint:TpvVector3);
+var u,v:TpvVector3;
 begin
  u:=Points[1]-Points[0];
  v:=p-Points[0];
@@ -10120,15 +10120,15 @@ begin
  end;
 end;
 
-function TSegment.Transform(const Transform:TMatrix4x4):TSegment;
+function TpvSegment.Transform(const Transform:TpvMatrix4x4):TpvSegment;
 begin
  result.Points[0]:=Transform*Points[0];
  result.Points[1]:=Transform*Points[1];
 end;
 
-procedure TSegment.ClosestPoints(const SegmentB:TSegment;out TimeA:TScalar;out ClosestPointA:TVector3;out TimeB:TScalar;out ClosestPointB:TVector3);
-var dA,dB,r:TVector3;
-    a,b,c,{d,}e,f,Denominator,aA,aB,bA,bB:TScalar;
+procedure TpvSegment.ClosestPoints(const SegmentB:TpvSegment;out TimeA:TpvScalar;out ClosestPointA:TpvVector3;out TimeB:TpvScalar;out ClosestPointB:TpvVector3);
+var dA,dB,r:TpvVector3;
+    a,b,c,{d,}e,f,Denominator,aA,aB,bA,bB:TpvScalar;
 begin
  dA:=Points[1]-Points[0];
  dB:=SegmentB.Points[1]-SegmentB.Points[0];
@@ -10235,16 +10235,16 @@ begin
  end;
 end;
 
-function TSegment.Intersect(const SegmentB:TSegment;out TimeA,TimeB:TScalar;out IntersectionPoint:TVector3):boolean;
-var PointA:TVector3;
+function TpvSegment.Intersect(const SegmentB:TpvSegment;out TimeA,TimeB:TpvScalar;out IntersectionPoint:TpvVector3):boolean;
+var PointA:TpvVector3;
 begin
  ClosestPoints(SegmentB,TimeA,PointA,TimeB,IntersectionPoint);
  result:=(PointA-IntersectionPoint).SquaredLength<EPSILON;
 end;
 
-function TRelativeSegment.SquaredSegmentDistanceTo(const pOtherRelativeSegment:TRelativeSegment;out t0,t1:TScalar):TScalar;
-var kDiff:TVector3;
-    fA00,fA01,fA11,fB0,fC,fDet,fB1,fS,fT,fSqrDist,fTmp,fInvDet:TScalar;
+function TpvRelativeSegment.SquaredSegmentDistanceTo(const pOtherRelativeSegment:TpvRelativeSegment;out t0,t1:TpvScalar):TpvScalar;
+var kDiff:TpvVector3;
+    fA00,fA01,fA11,fB0,fC,fDet,fB1,fS,fT,fSqrDist,fTmp,fInvDet:TpvScalar;
 begin
  kDiff:=self.Origin-pOtherRelativeSegment.Origin;
  fA00:=self.Delta.SquaredLength;
@@ -10474,7 +10474,7 @@ begin
  result:=abs(fSqrDist);
 end;
 
-constructor TTriangle.Create(const pA,pB,pC:TVector3);
+constructor TpvTriangle.Create(const pA,pB,pC:TpvVector3);
 begin
  Points[0]:=pA;
  Points[1]:=pB;
@@ -10482,9 +10482,9 @@ begin
  Normal:=((pB-pA).Cross(pC-pA)).Normalize;
 end;
 
-function TTriangle.Contains(const p:TVector3):boolean;
-var vA,vB,vC:TVector3;
-    dAB,dAC,dBC:TScalar;
+function TpvTriangle.Contains(const p:TpvVector3):boolean;
+var vA,vB,vC:TpvVector3;
+    dAB,dAC,dBC:TpvScalar;
 begin
  vA:=Points[0]-p;
  vB:=Points[1]-p;
@@ -10499,8 +10499,8 @@ begin
  end;
 end;
 
-procedure TTriangle.ProjectToVector(const Vector:TVector3;out TriangleMin,TriangleMax:TScalar);
-var Projection:TScalar;
+procedure TpvTriangle.ProjectToVector(const Vector:TpvVector3;out TriangleMin,TriangleMax:TpvScalar);
+var Projection:TpvScalar;
 begin
  Projection:=Vector.Dot(Points[0]);
  TriangleMin:=Projection;
@@ -10513,9 +10513,9 @@ begin
  TriangleMax:=Max(TriangleMax,Projection);
 end;
 
-function TTriangle.ProjectToPoint(var pPoint:TVector3;out s,t:TScalar):TScalar;
-var Diff,Edge0,Edge1:TVector3;
-    A00,A01,A11,B0,C,Det,B1,SquaredDistance,InvDet,Tmp0,Tmp1,Numer,Denom:TScalar;
+function TpvTriangle.ProjectToPoint(var pPoint:TpvVector3;out s,t:TpvScalar):TpvScalar;
+var Diff,Edge0,Edge1:TpvVector3;
+    A00,A01,A11,B0,C,Det,B1,SquaredDistance,InvDet,Tmp0,Tmp1,Numer,Denom:TpvScalar;
 begin
  Diff:=Points[0]-pPoint;
  Edge0:=Points[1]-Points[0];
@@ -10669,11 +10669,11 @@ begin
  result:=abs(SquaredDistance);
 end;
 
-function TTriangle.SegmentIntersect(const Segment:TSegment;out Time:TScalar;out IntersectionPoint:TVector3):boolean;
+function TpvTriangle.SegmentIntersect(const Segment:TpvSegment;out Time:TpvScalar;out IntersectionPoint:TpvVector3):boolean;
 var Switched:boolean;
-    d,t,v,w:TScalar;
-    vAB,vAC,pBA,vApA,e,n:TVector3;
-    s:TSegment;
+    d,t,v,w:TpvScalar;
+    vAB,vAC,pBA,vApA,e,n:TpvVector3;
+    s:TpvSegment;
 begin
 
  result:=false;
@@ -10734,9 +10734,9 @@ begin
  result:=(Time>=0.0) and (Time<=1.0);
 end;
 
-function TTriangle.ClosestPointTo(const Point:TVector3;out ClosestPoint:TVector3):boolean;
-var u,v,w,d1,d2,d3,d4,d5,d6,Denominator:TScalar;
-    vAB,vAC,vAp,vBp,vCp:TVector3;
+function TpvTriangle.ClosestPointTo(const Point:TpvVector3;out ClosestPoint:TpvVector3):boolean;
+var u,v,w,d1,d2,d3,d4,d5,d6,Denominator:TpvScalar;
+    vAB,vAC,vAp,vBp,vCp:TpvVector3;
 begin
  result:=false;
 
@@ -10795,11 +10795,11 @@ begin
  result:=true;
 end;
 
-function TTriangle.ClosestPointTo(const Segment:TSegment;out Time:TScalar;out pClosestPointOnSegment,pClosestPointOnTriangle:TVector3):boolean;
-var MinDist,dtri,d1,d2,sa,sb,dist:TScalar;
+function TpvTriangle.ClosestPointTo(const Segment:TpvSegment;out Time:TpvScalar;out pClosestPointOnSegment,pClosestPointOnTriangle:TpvVector3):boolean;
+var MinDist,dtri,d1,d2,sa,sb,dist:TpvScalar;
     pAInside,pBInside:boolean;
-    pa,pb:TVector3;
-    Edge:TSegment;
+    pa,pb:TpvVector3;
+    Edge:TpvSegment;
 begin
 
  result:=SegmentIntersect(Segment,Time,pClosestPointOnTriangle);
@@ -10897,9 +10897,9 @@ begin
 
 end;
 
-function TTriangle.GetClosestPointTo(const pPoint:TVector3;out ClosestPoint:TVector3):TScalar;
-var Diff,Edge0,Edge1:TVector3;
-    A00,A01,A11,B0,C,Det,B1,s,t,SquaredDistance,InvDet,Tmp0,Tmp1,Numer,Denom:TScalar;
+function TpvTriangle.GetClosestPointTo(const pPoint:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar;
+var Diff,Edge0,Edge1:TpvVector3;
+    A00,A01,A11,B0,C,Det,B1,s,t,SquaredDistance,InvDet,Tmp0,Tmp1,Numer,Denom:TpvScalar;
 begin
  Diff:=Points[0]-pPoint;
  Edge0:=Points[1]-Points[0];
@@ -11053,9 +11053,9 @@ begin
  result:=abs(SquaredDistance);
 end;
 
-function TTriangle.DistanceTo(const Point:TVector3):TScalar;
-var SegmentTriangle:TSegmentTriangle;
-    s,t:TScalar;
+function TpvTriangle.DistanceTo(const Point:TpvVector3):TpvScalar;
+var SegmentTriangle:TpvSegmentTriangle;
+    s,t:TpvScalar;
 begin
  SegmentTriangle.Origin:=Points[0];
  SegmentTriangle.Edge0:=Points[1]-Points[0];
@@ -11072,9 +11072,9 @@ begin
  result:=Point.DistanceTo(SegmentTriangle.Origin+((SegmentTriangle.Edge0*s)+(SegmentTriangle.Edge1*t)));
 end;
 
-function TTriangle.SquaredDistanceTo(const Point:TVector3):TScalar;
-var SegmentTriangle:TSegmentTriangle;
-    s,t:TScalar;
+function TpvTriangle.SquaredDistanceTo(const Point:TpvVector3):TpvScalar;
+var SegmentTriangle:TpvSegmentTriangle;
+    s,t:TpvScalar;
 begin
  SegmentTriangle.Origin:=Points[0];
  SegmentTriangle.Edge0:=Points[1]-Points[0];
@@ -11083,9 +11083,9 @@ begin
  result:=SegmentTriangle.SquaredPointTriangleDistance(Point,s,t);
 end;
 
-function TTriangle.RayIntersection(const RayOrigin,RayDirection:TVector3;var Time,u,v:TScalar):boolean;
-var e0,e1,p,t,q:TVector3;
-    Determinant,InverseDeterminant:TScalar;
+function TpvTriangle.RayIntersection(const RayOrigin,RayDirection:TpvVector3;var Time,u,v:TpvScalar):boolean;
+var e0,e1,p,t,q:TpvVector3;
+    Determinant,InverseDeterminant:TpvScalar;
 begin
  result:=false;
 
@@ -11135,9 +11135,9 @@ begin
  result:=true;
 end;
 
-function TSegmentTriangle.RelativeSegmentIntersection(const pSegment:TRelativeSegment;out tS,tT0,tT1:TScalar):boolean;
-var u,v,t,a,f:TScalar;
-    e1,e2,p,s,q:TVector3;
+function TpvSegmentTriangle.RelativeSegmentIntersection(const ppvSegment:TpvRelativeSegment;out tS,tT0,tT1:TpvScalar):boolean;
+var u,v,t,a,f:TpvScalar;
+    e1,e2,p,s,q:TpvVector3;
 begin
  result:=false;
  tS:=0.0;
@@ -11147,7 +11147,7 @@ begin
  e1:=Edge0;
  e2:=Edge1;
 
- p:=pSegment.Delta.Cross(e2);
+ p:=ppvSegment.Delta.Cross(e2);
  a:=e1.Dot(p);
  if abs(a)<EPSILON then begin
   exit;
@@ -11155,14 +11155,14 @@ begin
 
  f:=1.0/a;
 
- s:=pSegment.Origin-Origin;
+ s:=ppvSegment.Origin-Origin;
  u:=f*s.Dot(p);
  if (u<0.0) or (u>1.0) then begin
   exit;
  end;
 
  q:=s.Cross(e1);
- v:=f*pSegment.Delta.Dot(q);
+ v:=f*ppvSegment.Delta.Dot(q);
  if (v<0.0) or ((u+v)>1.0) then begin
   exit;
  end;
@@ -11179,9 +11179,9 @@ begin
  result:=true;
 end;
 
-function TSegmentTriangle.SquaredPointTriangleDistance(const pPoint:TVector3;out pfSParam,pfTParam:TScalar):TScalar;
-var kDiff:TVector3;
-    fA00,fA01,fA11,fB0,fC,fDet,fB1,fS,fT,fSqrDist,fInvDet,fTmp0,fTmp1,fNumer,fDenom:TScalar;
+function TpvSegmentTriangle.SquaredPointTriangleDistance(const pPoint:TpvVector3;out pfSParam,pfTParam:TpvScalar):TpvScalar;
+var kDiff:TpvVector3;
+    fA00,fA01,fA11,fB0,fC,fDet,fB1,fS,fT,fSqrDist,fInvDet,fTmp0,fTmp1,fNumer,fDenom:TpvScalar;
 begin
  kDiff:=self.Origin-pPoint;
  fA00:=self.Edge0.SquaredLength;
@@ -11332,12 +11332,12 @@ begin
  result:=abs(fSqrDist);
 end;
 
-function TSegmentTriangle.SquaredDistanceTo(const pRelativeSegment:TRelativeSegment;out segT,triT0,triT1:TScalar):TScalar;
-var s,t,u,distEdgeSq,startTriSq,endTriSq:TScalar;
-    tseg:TRelativeSegment;
+function TpvSegmentTriangle.SquaredDistanceTo(const ppvRelativeSegment:TpvRelativeSegment;out segT,triT0,triT1:TpvScalar):TpvScalar;
+var s,t,u,distEdgeSq,startTriSq,endTriSq:TpvScalar;
+    tseg:TpvRelativeSegment;
 begin
  result:=INFINITY;
- if RelativeSegmentIntersection(pRelativeSegment,segT,triT0,triT1) then begin
+ if RelativeSegmentIntersection(ppvRelativeSegment,segT,triT0,triT1) then begin
   segT:=0.0;
   triT0:=0.0;
   triT1:=0.0;
@@ -11346,7 +11346,7 @@ begin
  end;
  tseg.Origin:=Origin;
  tseg.Delta:=Edge0;
- distEdgeSq:=pRelativeSegment.SquaredSegmentDistanceTo(tseg,s,t);
+ distEdgeSq:=ppvRelativeSegment.SquaredSegmentDistanceTo(tseg,s,t);
  if distEdgeSq<result then begin
   result:=distEdgeSq;
   segT:=s;
@@ -11354,7 +11354,7 @@ begin
   triT1:=0.0;
  end;
  tseg.Delta:=Edge1;
- distEdgeSq:=pRelativeSegment.SquaredSegmentDistanceTo(tseg,s,t);
+ distEdgeSq:=ppvRelativeSegment.SquaredSegmentDistanceTo(tseg,s,t);
  if distEdgeSq<result then begin
   result:=distEdgeSq;
   segT:=s;
@@ -11363,21 +11363,21 @@ begin
  end;
  tseg.Origin:=Origin+Edge1;
  tseg.Delta:=Edge2;
- distEdgeSq:=pRelativeSegment.SquaredSegmentDistanceTo(tseg,s,t);
+ distEdgeSq:=ppvRelativeSegment.SquaredSegmentDistanceTo(tseg,s,t);
  if distEdgeSq<result then begin
   result:=distEdgeSq;
   segT:=s;
   triT0:=1.0-t;
   triT1:=t;
  end;
- startTriSq:=SquaredPointTriangleDistance(pRelativeSegment.Origin,t,u);
+ startTriSq:=SquaredPointTriangleDistance(ppvRelativeSegment.Origin,t,u);
  if startTriSq<result then begin
   result:=startTriSq;
   segT:=0.0;
   triT0:=t;
   triT1:=u;
  end;
- endTriSq:=SquaredPointTriangleDistance(pRelativeSegment.Origin+pRelativeSegment.Delta,t,u);
+ endTriSq:=SquaredPointTriangleDistance(ppvRelativeSegment.Origin+ppvRelativeSegment.Delta,t,u);
  if endTriSq<result then begin
   result:=endTriSq;
   segT:=1.0;
@@ -11386,8 +11386,8 @@ begin
  end;
 end;
 
-procedure TOBB.ProjectToVector(const Vector:TVector3;out OBBMin,OBBMax:TScalar);
-var ProjectionCenter,ProjectionRadius:TScalar;
+procedure TpvOBB.ProjectToVector(const Vector:TpvVector3;out OBBMin,OBBMax:TpvScalar);
+var ProjectionCenter,ProjectionRadius:TpvScalar;
 begin
  ProjectionCenter:=Center.Dot(Vector);
  ProjectionRadius:=abs(Vector.Dot(Axis[0])*Extents.x)+
@@ -11397,10 +11397,10 @@ begin
  OBBMax:=ProjectionCenter+ProjectionRadius;
 end;
 
-function TOBB.RelativeSegmentIntersection(const pRelativeSegment:TRelativeSegment;out fracOut:TScalar;out posOut,NormalOut:TVector3):boolean;
-var min_,max_,e,f,t1,t2,t:TScalar;
-    p{,h}:TVector3;
-    dirMax,dirMin,dir:TInt32;
+function TpvOBB.RelativeSegmentIntersection(const ppvRelativeSegment:TpvRelativeSegment;out fracOut:TpvScalar;out posOut,NormalOut:TpvVector3):boolean;
+var min_,max_,e,f,t1,t2,t:TpvScalar;
+    p{,h}:TpvVector3;
+    dirMax,dirMin,dir:TpvInt32;
 begin
  result:=false;
 
@@ -11411,7 +11411,7 @@ begin
  min_:=-1e+34;
  max_:=1e+34;
 
- p:=Center-pRelativeSegment.Origin;
+ p:=Center-ppvRelativeSegment.Origin;
 //h:=Extents;
 
  dirMax:=0;
@@ -11419,7 +11419,7 @@ begin
 
  for dir:=0 to 2 do begin
   e:=Axis[Dir].Dot(p);
-  f:=Axis[Dir].Dot(pRelativeSegment.Delta);
+  f:=Axis[Dir].Dot(ppvRelativeSegment.Delta);
   if abs(f)>EPSILON then begin
    t1:=(e+Extents.RawComponents[dir])/f;
    t2:=(e-Extents.RawComponents[dir])/f;
@@ -11454,9 +11454,9 @@ begin
 
  fracOut:=Min(Max(fracOut,0.0),1.0);
 
- posOut:=pRelativeSegment.Origin+(pRelativeSegment.Delta*fracOut);
+ posOut:=ppvRelativeSegment.Origin+(ppvRelativeSegment.Delta*fracOut);
 
- if Axis[dir].Dot(pRelativeSegment.Delta)>0.0 then begin
+ if Axis[dir].Dot(ppvRelativeSegment.Delta)>0.0 then begin
   normalOut:=-Axis[dir];
  end else begin
   normalOut:=Axis[dir];
@@ -11465,8 +11465,8 @@ begin
  result:=true;
 end;
 
-function TOBB.TriangleIntersection(const Triangle:TTriangle;out Position,Normal:TVector3;out Penetration:TScalar):boolean;
-const OBBEdges:array[0..11,0..1] of TInt32=
+function TpvOBB.TriangleIntersection(const Triangle:TpvTriangle;out Position,Normal:TpvVector3;out Penetration:TpvScalar):boolean;
+const OBBEdges:array[0..11,0..1] of TpvInt32=
        ((0,1),
         (0,3),
         (0,4),
@@ -11479,14 +11479,14 @@ const OBBEdges:array[0..11,0..1] of TInt32=
         (4,7),
         (5,6),
         (6,7));
-      ModuloThree:array[0..5] of TInt32=(0,1,2,0,1,2);
-var OBBVertices:array[0..7] of TVector3;
-    TriangleVertices,TriangleEdges:array[0..2] of TVector3;
-    TriangleNormal,BestAxis,CurrentAxis,v,p,n,pt0,pt1:TVector3;
-    BestPenetration,CurrentPenetration,tS,tT0,tT1:TScalar;
-    BestAxisIndex,i,j:TInt32;
-    seg,s1,s2:TRelativeSegment;
-    SegmentTriangle:TSegmentTriangle;
+      ModuloThree:array[0..5] of TpvInt32=(0,1,2,0,1,2);
+var OBBVertices:array[0..7] of TpvVector3;
+    TriangleVertices,TriangleEdges:array[0..2] of TpvVector3;
+    TriangleNormal,BestAxis,CurrentAxis,v,p,n,pt0,pt1:TpvVector3;
+    BestPenetration,CurrentPenetration,tS,tT0,tT1:TpvScalar;
+    BestAxisIndex,i,j:TpvInt32;
+    seg,s1,s2:TpvRelativeSegment;
+    SegmentTriangle:TpvSegmentTriangle;
 begin
  result:=false;
 
@@ -11598,24 +11598,24 @@ begin
 
 end;
 
-function TOBB.TriangleIntersection(const pTriangle:TTriangle;const MTV:PVector3=nil):boolean;
-var TriangleEdges:array[0..2] of TVector3;
-    TriangleNormal{,d},ProjectionVector:TVector3;
-    TriangleMin,TriangleMax,OBBMin,OBBMax,Projection,BestOverlap,Overlap:TScalar;
-    OBBAxisIndex,TriangleEdgeIndex:TInt32;
-    BestAxis,TheAxis:TVector3;
+function TpvOBB.TriangleIntersection(const ppvTriangle:TpvTriangle;const MTV:PpvVector3=nil):boolean;
+var TriangleEdges:array[0..2] of TpvVector3;
+    TriangleNormal{,d},ProjectionVector:TpvVector3;
+    TriangleMin,TriangleMax,OBBMin,OBBMax,Projection,BestOverlap,Overlap:TpvScalar;
+    OBBAxisIndex,TriangleEdgeIndex:TpvInt32;
+    BestAxis,TheAxis:TpvVector3;
 begin
  result:=false;
 
- TriangleEdges[0]:=pTriangle.Points[1]-pTriangle.Points[0];
- TriangleEdges[1]:=pTriangle.Points[2]-pTriangle.Points[0];
- TriangleEdges[2]:=pTriangle.Points[2]-pTriangle.Points[1];
+ TriangleEdges[0]:=ppvTriangle.Points[1]-ppvTriangle.Points[0];
+ TriangleEdges[1]:=ppvTriangle.Points[2]-ppvTriangle.Points[0];
+ TriangleEdges[2]:=ppvTriangle.Points[2]-ppvTriangle.Points[1];
 
  TriangleNormal:=TriangleEdges[0].Cross(TriangleEdges[1]);
 
  //d:=TriangleEdges[0]-Center;
 
- TriangleMin:=TriangleNormal.Dot(pTriangle.Points[0]);
+ TriangleMin:=TriangleNormal.Dot(ppvTriangle.Points[0]);
  TriangleMax:=TriangleMin;
  ProjectToVector(TriangleNormal,OBBMin,OBBMax);
  if (TriangleMin>OBBMax) or (TriangleMax<OBBMin) then begin
@@ -11626,7 +11626,7 @@ begin
 
  for OBBAxisIndex:=0 to 2 do begin
   TheAxis:=self.Axis[OBBAxisIndex];
-  pTriangle.ProjectToVector(TheAxis,TriangleMin,TriangleMax);
+  ppvTriangle.ProjectToVector(TheAxis,TriangleMin,TriangleMax);
   Projection:=TheAxis.Dot(Center);
   OBBMin:=Projection-Extents.RawComponents[OBBAxisIndex];
   OBBMax:=Projection+Extents.RawComponents[OBBAxisIndex];
@@ -11644,7 +11644,7 @@ begin
   for TriangleEdgeIndex:=0 to 2 do begin
    ProjectionVector:=TriangleEdges[TriangleEdgeIndex].Cross(Axis[OBBAxisIndex]);
    ProjectToVector(ProjectionVector,OBBMin,OBBMax);
-   pTriangle.ProjectToVector(ProjectionVector,TriangleMin,TriangleMax);
+   ppvTriangle.ProjectToVector(ProjectionVector,TriangleMin,TriangleMax);
    if (TriangleMin>OBBMax) or (TriangleMax<OBBMin) then begin
     exit;
    end;
@@ -11663,14 +11663,14 @@ begin
  result:=true;
 end;
 
-constructor TAABB.Create(const pMin,pMax:TVector3);
+constructor TpvAABB.Create(const pMin,pMax:TpvVector3);
 begin
  Min:=pMin;
  Max:=pMax;
 end;
 
-constructor TAABB.CreateFromOBB(const OBB:TOBB);
-var t:TVector3;
+constructor TpvAABB.CreateFromOBB(const OBB:TpvOBB);
+var t:TpvVector3;
 begin
  t.x:=abs((OBB.Matrix[0,0]*OBB.Extents.x)+(OBB.Matrix[1,0]*OBB.Extents.y)+(OBB.Matrix[2,0]*OBB.Extents.z));
  t.y:=abs((OBB.Matrix[0,1]*OBB.Extents.x)+(OBB.Matrix[1,1]*OBB.Extents.y)+(OBB.Matrix[2,1]*OBB.Extents.z));
@@ -11683,25 +11683,25 @@ begin
  Max.z:=OBB.Center.z+t.z;
 end;
 
-function TAABB.Cost:TScalar;
+function TpvAABB.Cost:TpvScalar;
 begin
  result:=(Max.x-Min.x)+(Max.y-Min.y)+(Max.z-Min.z); // Manhattan distance
 end;
 
-function TAABB.Volume:TScalar;
+function TpvAABB.Volume:TpvScalar;
 begin
  result:=(Max.x-Min.x)*(Max.y-Min.y)*(Max.z-Min.z); // Volume
 end;
 
-function TAABB.Area:TScalar;
+function TpvAABB.Area:TpvScalar;
 begin
  result:=2.0*((abs(Max.x-Min.x)*abs(Max.y-Min.y))+
               (abs(Max.y-Min.y)*abs(Max.z-Min.z))+
               (abs(Max.x-Min.x)*abs(Max.z-Min.z)));
 end;
 
-function TAABB.Flip:TAABB;
-var a,b:TVector3;
+function TpvAABB.Flip:TpvAABB;
+var a,b:TpvVector3;
 begin
  a:=Min.Flip;
  b:=Max.Flip;
@@ -11713,20 +11713,20 @@ begin
  result.Max.z:=Math.Max(a.z,b.z);
 end;
 
-function TAABB.SquareMagnitude:TScalar;
+function TpvAABB.SquareMagnitude:TpvScalar;
 begin
  result:=sqr(Max.x-Min.x)+(Max.y-Min.y)+sqr(Max.z-Min.z);
 end;
 
-function TAABB.Resize(const f:TScalar):TAABB;
-var v:TVector3;
+function TpvAABB.Resize(const f:TpvScalar):TpvAABB;
+var v:TpvVector3;
 begin
  v:=(Max-Min)*f;
  result.Min:=Min-v;
  result.Max:=Max+v;
 end;
 
-function TAABB.Combine(const WithAABB:TAABB):TAABB;
+function TpvAABB.Combine(const WithAABB:TpvAABB):TpvAABB;
 begin
  result.Min.x:=Math.Min(Min.x,WithAABB.Min.x);
  result.Min.y:=Math.Min(Min.y,WithAABB.Min.y);
@@ -11736,7 +11736,7 @@ begin
  result.Max.z:=Math.Max(Max.z,WithAABB.Max.z);
 end;
 
-function TAABB.CombineVector3(v:TVector3):TAABB;
+function TpvAABB.CombineVector3(v:TpvVector3):TpvAABB;
 begin
  result.Min.x:=Math.Min(Min.x,v.x);
  result.Min.y:=Math.Min(Min.y,v.y);
@@ -11746,7 +11746,7 @@ begin
  result.Max.z:=Math.Max(Max.z,v.z);
 end;
 
-function TAABB.DistanceTo(const ToAABB:TAABB):TScalar;
+function TpvAABB.DistanceTo(const ToAABB:TpvAABB):TpvScalar;
 begin
  result:=0.0;
  if Min.x>ToAABB.Max.x then begin
@@ -11769,24 +11769,24 @@ begin
  end;
 end;
 
-function TAABB.Radius:TScalar;
+function TpvAABB.Radius:TpvScalar;
 begin
  result:=Math.Max(Min.DistanceTo((Min+Max)*0.5),Max.DistanceTo((Min+Max)*0.5));
 end;
 
-function TAABB.Compare(const WithAABB:TAABB):boolean;
+function TpvAABB.Compare(const WithAABB:TpvAABB):boolean;
 begin
  result:=(Min=WithAABB.Min) and (Max=WithAABB.Max);
 end;
 
-function TAABB.Intersect(const WithAABB:TAABB;Threshold:TScalar=EPSILON):boolean;
+function TpvAABB.Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean;
 begin
  result:=(((Max.x+Threshold)>=(WithAABB.Min.x-Threshold)) and ((Min.x-Threshold)<=(WithAABB.Max.x+Threshold))) and
          (((Max.y+Threshold)>=(WithAABB.Min.y-Threshold)) and ((Min.y-Threshold)<=(WithAABB.Max.y+Threshold))) and
          (((Max.z+Threshold)>=(WithAABB.Min.z-Threshold)) and ((Min.z-Threshold)<=(WithAABB.Max.z+Threshold)));
 end;
 
-function TAABB.Contains(const AABB:TAABB):boolean;
+function TpvAABB.Contains(const AABB:TpvAABB):boolean;
 begin
  result:=((Min.x-EPSILON)<=(AABB.Min.x+EPSILON)) and ((Min.y-EPSILON)<=(AABB.Min.y+EPSILON)) and ((Min.z-EPSILON)<=(AABB.Min.z+EPSILON)) and
          ((Max.x+EPSILON)>=(AABB.Min.x+EPSILON)) and ((Max.y+EPSILON)>=(AABB.Min.y+EPSILON)) and ((Max.z+EPSILON)>=(AABB.Min.z+EPSILON)) and
@@ -11794,21 +11794,21 @@ begin
          ((Max.x+EPSILON)>=(AABB.Max.x-EPSILON)) and ((Max.y+EPSILON)>=(AABB.Max.y-EPSILON)) and ((Max.z+EPSILON)>=(AABB.Max.z-EPSILON));
 end;
 
-function TAABB.Contains(const Vector:TVector3):boolean;
+function TpvAABB.Contains(const Vector:TpvVector3):boolean;
 begin
  result:=((Vector.x>=(Min.x-EPSILON)) and (Vector.x<=(Max.x+EPSILON))) and
          ((Vector.y>=(Min.y-EPSILON)) and (Vector.y<=(Max.y+EPSILON))) and
          ((Vector.z>=(Min.z-EPSILON)) and (Vector.z<=(Max.z+EPSILON)));
 end;
 
-function TAABB.Touched(const Vector:TVector3;const Threshold:TScalar=1e-5):boolean;
+function TpvAABB.Touched(const Vector:TpvVector3;const Threshold:TpvScalar=1e-5):boolean;
 begin
  result:=((Vector.x>=(Min.x-Threshold)) and (Vector.x<=(Max.x+Threshold))) and
          ((Vector.y>=(Min.y-Threshold)) and (Vector.y<=(Max.y+Threshold))) and
          ((Vector.z>=(Min.z-Threshold)) and (Vector.z<=(Max.z+Threshold)));
 end;
 
-function TAABB.GetIntersection(const WithAABB:TAABB):TAABB;
+function TpvAABB.GetIntersection(const WithAABB:TpvAABB):TpvAABB;
 begin
  result.Min.x:=Math.Max(Min.x,WithAABB.Min.x);
  result.Min.y:=Math.Max(Min.y,WithAABB.Min.y);
@@ -11818,8 +11818,8 @@ begin
  result.Max.z:=Math.Min(Max.z,WithAABB.Max.z);
 end;
 
-function TAABB.FastRayIntersection(const Origin,Direction:TVector3):boolean;
-var Center,BoxExtents,Diff:TVector3;
+function TpvAABB.FastRayIntersection(const Origin,Direction:TpvVector3):boolean;
+var Center,BoxExtents,Diff:TpvVector3;
 begin
  Center:=(Min+Max)*0.5;
  BoxExtents:=Center-Min;
@@ -11832,10 +11832,10 @@ begin
                (abs((Direction.x*Diff.y)-(Direction.y*Diff.x))>((BoxExtents.x*abs(Direction.y))+(BoxExtents.y*abs(Direction.x))))));
 end;
 
-function TAABB.RayIntersectionHitDistance(const Origin,Direction:TVector3;var HitDist:TScalar):boolean;
-var DirFrac:TVector3;
-    t:array[0..5] of TScalar;
-    tMin,tMax:TScalar;
+function TpvAABB.RayIntersectionHitDistance(const Origin,Direction:TpvVector3;var HitDist:TpvScalar):boolean;
+var DirFrac:TpvVector3;
+    t:array[0..5] of TpvScalar;
+    tMin,tMax:TpvScalar;
 begin
  DirFrac.x:=1.0/Direction.x;
  DirFrac.y:=1.0/Direction.y;
@@ -11857,14 +11857,14 @@ begin
  end;
 end;
 
-function TAABB.RayIntersectionHitPoint(const Origin,Direction:TVector3;var HitPoint:TVector3):boolean;
+function TpvAABB.RayIntersectionHitPoint(const Origin,Direction:TpvVector3;var HitPoint:TpvVector3):boolean;
 const RIGHT=0;
       LEFT=1;
       MIDDLE=2;
-var i,WhicHPlane:TInt32;
+var i,WhicHPlane:TpvInt32;
     Inside:longbool;
-    Quadrant:array[0..2] of TInt32;
-    MaxT,CandidatePlane:TVector3;
+    Quadrant:array[0..2] of TpvInt32;
+    MaxT,CandidatePlane:TpvVector3;
 begin
  Inside:=true;
  for i:=0 to 2 do begin
@@ -11916,9 +11916,9 @@ begin
  end;
 end;
 
-function TAABB.RayIntersection(const Origin,Direction:TVector3;var Time:TScalar):boolean;
-var InvDirection,a,b,AABBMin,AABBMax:TVector3;
-    TimeMin,TimeMax:TScalar;
+function TpvAABB.RayIntersection(const Origin,Direction:TpvVector3;var Time:TpvScalar):boolean;
+var InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
+    TimeMin,TimeMax:TpvScalar;
 begin
  if Direction.x<>0.0 then begin
   InvDirection.x:=1.0/Direction.x;
@@ -11997,9 +11997,9 @@ begin
  end;
 end;
 
-function TAABB.LineIntersection(const StartPoint,EndPoint:TVector3):boolean;
-var Direction,InvDirection,a,b:TVector3;
-    Len,TimeMin,TimeMax:TScalar;
+function TpvAABB.LineIntersection(const StartPoint,EndPoint:TpvVector3):boolean;
+var Direction,InvDirection,a,b:TpvVector3;
+    Len,TimeMin,TimeMax:TpvScalar;
 begin
  if Contains(StartPoint) or Contains(EndPoint) then begin
   result:=true;
@@ -12036,8 +12036,8 @@ begin
  end;
 end;
 
-function TAABB.TriangleIntersection(const Triangle:TTriangle):boolean;
- function FindMin(const a,b,c:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function TpvAABB.TriangleIntersection(const Triangle:TpvTriangle):boolean;
+ function FindMin(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
  begin
   result:=a;
   if result>b then begin
@@ -12047,7 +12047,7 @@ function TAABB.TriangleIntersection(const Triangle:TTriangle):boolean;
    result:=c;
   end;
  end;
- function FindMax(const a,b,c:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+ function FindMax(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
  begin
   result:=a;
   if result<b then begin
@@ -12057,8 +12057,8 @@ function TAABB.TriangleIntersection(const Triangle:TTriangle):boolean;
    result:=c;
   end;
  end;
- function PlaneBoxOverlap(const Normal:TVector3;d:TFloat;MaxBox:TVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
- var vmin,vmax:TVector3;
+ function PlaneBoxOverlap(const Normal:TpvVector3;d:TpvFloat;MaxBox:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+ var vmin,vmax:TpvVector3;
  begin
   if Normal.x>0 then begin
    vmin.x:=-MaxBox.x;
@@ -12089,10 +12089,10 @@ function TAABB.TriangleIntersection(const Triangle:TTriangle):boolean;
    result:=false;
   end;
  end;
-var BoxCenter,BoxHalfSize,Normal,v0,v1,v2,e0,e1,e2:TVector3;
-    fex,fey,fez:TFloat;
- function AxisTestX01(a,b,fa,fb:TFloat):boolean;
- var p0,p2,pmin,pmax,Radius:TFloat;
+var BoxCenter,BoxHalfSize,Normal,v0,v1,v2,e0,e1,e2:TpvVector3;
+    fex,fey,fez:TpvFloat;
+ function AxisTestX01(a,b,fa,fb:TpvFloat):boolean;
+ var p0,p2,pmin,pmax,Radius:TpvFloat;
  begin
   p0:=(a*v0.y)-(b*v0.z);
   p2:=(a*v2.y)-(b*v2.z);
@@ -12106,8 +12106,8 @@ var BoxCenter,BoxHalfSize,Normal,v0,v1,v2,e0,e1,e2:TVector3;
   Radius:=(fa*BoxHalfSize.y)+(fb*BoxHalfSize.z);
   result:=not ((pmin>Radius) or (pmax<(-radius)));
  end;
- function AxisTestX2(a,b,fa,fb:TFloat):boolean;
- var p0,p1,pmin,pmax,Radius:TFloat;
+ function AxisTestX2(a,b,fa,fb:TpvFloat):boolean;
+ var p0,p1,pmin,pmax,Radius:TpvFloat;
  begin
   p0:=(a*v0.y)-(b*v0.z);
   p1:=(a*v1.y)-(b*v1.z);
@@ -12121,8 +12121,8 @@ var BoxCenter,BoxHalfSize,Normal,v0,v1,v2,e0,e1,e2:TVector3;
   Radius:=(fa*BoxHalfSize.y)+(fb*BoxHalfSize.z);
   result:=not ((pmin>Radius) or (pmax<(-radius)));
  end;
- function AxisTestY02(a,b,fa,fb:TFloat):boolean;
- var p0,p2,pmin,pmax,Radius:TFloat;
+ function AxisTestY02(a,b,fa,fb:TpvFloat):boolean;
+ var p0,p2,pmin,pmax,Radius:TpvFloat;
  begin
   p0:=(-(a*v0.x))+(b*v0.z);
   p2:=(-(a*v2.x))+(b*v2.z);
@@ -12136,8 +12136,8 @@ var BoxCenter,BoxHalfSize,Normal,v0,v1,v2,e0,e1,e2:TVector3;
   Radius:=(fa*BoxHalfSize.x)+(fb*BoxHalfSize.z);
   result:=not ((pmin>Radius) or (pmax<(-radius)));
  end;
- function AxisTestY1(a,b,fa,fb:TFloat):boolean;
- var p0,p1,pmin,pmax,Radius:TFloat;
+ function AxisTestY1(a,b,fa,fb:TpvFloat):boolean;
+ var p0,p1,pmin,pmax,Radius:TpvFloat;
  begin
   p0:=(-(a*v0.x))+(b*v0.z);
   p1:=(-(a*v1.x))+(b*v1.z);
@@ -12151,8 +12151,8 @@ var BoxCenter,BoxHalfSize,Normal,v0,v1,v2,e0,e1,e2:TVector3;
   Radius:=(fa*BoxHalfSize.x)+(fb*BoxHalfSize.z);
   result:=not ((pmin>Radius) or (pmax<(-radius)));
  end;
- function AxisTestZ12(a,b,fa,fb:TFloat):boolean;
- var p1,p2,pmin,pmax,Radius:TFloat;
+ function AxisTestZ12(a,b,fa,fb:TpvFloat):boolean;
+ var p1,p2,pmin,pmax,Radius:TpvFloat;
  begin
   p1:=(a*v1.x)-(b*v1.y);
   p2:=(a*v2.x)-(b*v2.y);
@@ -12166,8 +12166,8 @@ var BoxCenter,BoxHalfSize,Normal,v0,v1,v2,e0,e1,e2:TVector3;
   Radius:=(fa*BoxHalfSize.x)+(fb*BoxHalfSize.y);
   result:=not ((pmin>Radius) or (pmax<(-radius)));
  end;
- function AxisTestZ0(a,b,fa,fb:TFloat):boolean;
- var p0,p1,pmin,pmax,Radius:TFloat;
+ function AxisTestZ0(a,b,fa,fb:TpvFloat):boolean;
+ var p0,p1,pmin,pmax,Radius:TpvFloat;
  begin
   p0:=(a*v0.x)-(b*v0.y);
   p1:=(a*v1.x)-(b*v1.y);
@@ -12181,7 +12181,7 @@ var BoxCenter,BoxHalfSize,Normal,v0,v1,v2,e0,e1,e2:TVector3;
   Radius:=(fa*BoxHalfSize.x)+(fb*BoxHalfSize.y);
   result:=not ((pmin>Radius) or (pmax<(-radius)));
  end;
- procedure FindMinMax(const a,b,c:TFloat;var omin,omax:TFloat);
+ procedure FindMinMax(const a,b,c:TpvFloat;var omin,omax:TpvFloat);
  begin
   omin:=a;
   if omin>b then begin
@@ -12238,9 +12238,9 @@ begin
  result:=PlaneBoxOverlap(Normal,-Normal.Dot(v0),BoxHalfSize);
 end;
 
-function TAABB.Transform(const Transform:TMatrix4x4):TAABB;
-var i,j:TInt32;
-    a,b:TScalar;
+function TpvAABB.Transform(const Transform:TpvMatrix4x4):TpvAABB;
+var i,j:TpvInt32;
+    a,b:TpvScalar;
 begin
  result.Min.x:=Transform[3,0];
  result.Min.y:=Transform[3,1];
@@ -12261,13 +12261,13 @@ begin
  end;
 end;
 
-function TAABB.MatrixMul(const Transform:TMatrix4x4):TAABB;
-var Rotation:TMatrix4x4;
-    v:array[0..7] of TVector3;
-    Center,NewCenter,MinVector,MaxVector:TVector3;
-    i:TInt32;
+function TpvAABB.MatrixMul(const Transform:TpvMatrix4x4):TpvAABB;
+var Rotation:TpvMatrix4x4;
+    v:array[0..7] of TpvVector3;
+    Center,NewCenter,MinVector,MaxVector:TpvVector3;
+    i:TpvInt32;
 begin
- Rotation:=TMatrix4x4.CreateRotation(Transform);
+ Rotation:=TpvMatrix4x4.CreateRotation(Transform);
 
  Center:=(Min+Max)*0.5;
 
@@ -12276,14 +12276,14 @@ begin
 
  NewCenter:=Center+(Transform*Vector3Origin);
 
- v[0]:=Rotation*TVector3.Create(MinVector.x,MinVector.y,MinVector.z);
- v[1]:=Rotation*TVector3.Create(MaxVector.x,MinVector.y,MinVector.z);
- v[2]:=Rotation*TVector3.Create(MaxVector.x,MaxVector.y,MinVector.z);
- v[3]:=Rotation*TVector3.Create(MaxVector.x,MaxVector.y,MaxVector.z);
- v[4]:=Rotation*TVector3.Create(MinVector.x,MaxVector.y,MaxVector.z);
- v[5]:=Rotation*TVector3.Create(MinVector.x,MinVector.y,MaxVector.z);
- v[6]:=Rotation*TVector3.Create(MaxVector.x,MinVector.y,MaxVector.z);
- v[7]:=Rotation*TVector3.Create(MinVector.x,MaxVector.y,MinVector.z);
+ v[0]:=Rotation*TpvVector3.Create(MinVector.x,MinVector.y,MinVector.z);
+ v[1]:=Rotation*TpvVector3.Create(MaxVector.x,MinVector.y,MinVector.z);
+ v[2]:=Rotation*TpvVector3.Create(MaxVector.x,MaxVector.y,MinVector.z);
+ v[3]:=Rotation*TpvVector3.Create(MaxVector.x,MaxVector.y,MaxVector.z);
+ v[4]:=Rotation*TpvVector3.Create(MinVector.x,MaxVector.y,MaxVector.z);
+ v[5]:=Rotation*TpvVector3.Create(MinVector.x,MinVector.y,MaxVector.z);
+ v[6]:=Rotation*TpvVector3.Create(MaxVector.x,MinVector.y,MaxVector.z);
+ v[7]:=Rotation*TpvVector3.Create(MinVector.x,MaxVector.y,MinVector.z);
 
  result.Min:=v[0];
  result.Max:=v[0];
@@ -12311,9 +12311,9 @@ begin
  result.Max:=result.Max+NewCenter;
 end;
 
-function TAABB.ScissorRect(var Scissor:TClipRect;const mvp:TMatrix4x4;const vp:TClipRect;zcull:boolean):boolean;
-var p:TVector4;
-    i,x,y,z_far,z_near:TInt32;
+function TpvAABB.ScissorRect(var Scissor:TpvClipRect;const mvp:TpvMatrix4x4;const vp:TpvClipRect;zcull:boolean):boolean;
+var p:TpvVector4;
+    i,x,y,z_far,z_near:TpvInt32;
 begin
  z_near:=0;
  z_far:=0;
@@ -12396,9 +12396,9 @@ begin
  end;
 end;
 
-function TAABB.ScissorRect(var Scissor:TFloatClipRect;const mvp:TMatrix4x4;const vp:TFloatClipRect;zcull:boolean):boolean;
-var p:TVector4;
-    i,z_far,z_near:TInt32;
+function TpvAABB.ScissorRect(var Scissor:TpvFloatClipRect;const mvp:TpvMatrix4x4;const vp:TpvFloatClipRect;zcull:boolean):boolean;
+var p:TpvVector4;
+    i,z_far,z_near:TpvInt32;
 begin
  z_near:=0;
  z_far:=0;
@@ -12477,10 +12477,10 @@ begin
  end;
 end;
 
-function TAABB.MovingTest(const aAABBTo,bAABBFrom,bAABBTo:TAABB;var t:TScalar):boolean;
-var Axis,AxisSamples,Samples,Sample,FirstSample:TInt32;
-    aAABB,bAABB:TAABB;
-    f{,MinRadius},Size,Distance,BestDistance:TScalar;
+function TpvAABB.MovingTest(const aAABBTo,bAABBFrom,bAABBTo:TpvAABB;var t:TpvScalar):boolean;
+var Axis,AxisSamples,Samples,Sample,FirstSample:TpvInt32;
+    aAABB,bAABB:TpvAABB;
+    f{,MinRadius},Size,Distance,BestDistance:TpvScalar;
     HasDistance:boolean;
 begin
  if Intersect(bAABBFrom) then begin
@@ -12547,9 +12547,9 @@ begin
  end;
 end;
 
-function TAABB.SweepTest(const bAABB:TAABB;const aV,bV:TVector3;var FirstTime,LastTime:TScalar):boolean;
-var Axis:TInt32;
-    v,tMin,tMax:TVector3;
+function TpvAABB.SweepTest(const bAABB:TpvAABB;const aV,bV:TpvVector3;var FirstTime,LastTime:TpvScalar):boolean;
+var Axis:TpvInt32;
+    v,tMin,tMax:TpvVector3;
 begin
  if Intersect(bAABB) then begin
   FirstTime:=0.0;
@@ -12578,29 +12578,29 @@ begin
  end;
 end;
 
-constructor TSphere.Create(const pCenter:TVector3;const pRadius:TScalar);
+constructor TpvSphere.Create(const pCenter:TpvVector3;const pRadius:TpvScalar);
 begin
  Center:=pCenter;
  Radius:=pRadius;
 end;
 
-constructor TSphere.CreateFromAABB(const pAABB:TAABB);
+constructor TpvSphere.CreateFromAABB(const ppvAABB:TpvAABB);
 begin
- Center:=(pAABB.Min+pAABB.Max)*0.5;
- Radius:=pAABB.Min.DistanceTo(pAABB.Max)*0.5;
+ Center:=(ppvAABB.Min+ppvAABB.Max)*0.5;
+ Radius:=ppvAABB.Min.DistanceTo(ppvAABB.Max)*0.5;
 end;
 
-constructor TSphere.CreateFromFrustum(const zNear,zFar,FOV,AspectRatio:TScalar;const Position,Direction:TVector3);
-var ViewLen,Width,Height:TScalar;
+constructor TpvSphere.CreateFromFrustum(const zNear,zFar,FOV,AspectRatio:TpvScalar;const Position,Direction:TpvVector3);
+var ViewLen,Width,Height:TpvScalar;
 begin
  ViewLen:=zFar-zNear;
  Height:=ViewLen*tan((FOV*0.5)*DEG2RAD);
  Width:=Height*AspectRatio;
- Radius:=TVector3.Create(Width,Height,ViewLen).DistanceTo(TVector3.Create(0.0,0.0,zNear+(ViewLen*0.5)));
+ Radius:=TpvVector3.Create(Width,Height,ViewLen).DistanceTo(TpvVector3.Create(0.0,0.0,zNear+(ViewLen*0.5)));
  Center:=Position+(Direction*((ViewLen*0.5)+zNear));
 end;
 
-function TSphere.ToAABB(const pScale:TScalar=1.0):TAABB;
+function TpvSphere.ToAABB(const pScale:TpvScalar=1.0):TpvAABB;
 begin
  result.Min.x:=Center.x-(Radius*pScale);
  result.Min.y:=Center.y-(Radius*pScale);
@@ -12610,8 +12610,8 @@ begin
  result.Max.z:=Center.z+(Radius*pScale);
 end;
 
-function TSphere.Cull(const p:array of TPlane):boolean;
-var i:TInt32;
+function TpvSphere.Cull(const p:array of TPlane):boolean;
+var i:TpvInt32;
 begin
  result:=true;
  for i:=0 to length(p)-1 do begin
@@ -12622,33 +12622,33 @@ begin
  end;
 end;
 
-function TSphere.Contains(const b:TSphere):boolean;
+function TpvSphere.Contains(const b:TpvSphere):boolean;
 begin
  result:=((Radius+EPSILON)>=(b.Radius-EPSILON)) and ((Center-b.Center).Length<=((Radius+EPSILON)-(b.Radius-EPSILON)));
 end;
 
-function TSphere.Contains(const v:TVector3):boolean;
+function TpvSphere.Contains(const v:TpvVector3):boolean;
 begin
  result:=Center.DistanceTo(v)<(Radius+EPSILON);
 end;
 
-function TSphere.DistanceTo(const b:TSphere):TScalar;
+function TpvSphere.DistanceTo(const b:TpvSphere):TpvScalar;
 begin
  result:=Max((Center-b.Center).Length-(Radius+b.Radius),0.0);
 end;
 
-function TSphere.DistanceTo(const b:TVector3):TScalar;
+function TpvSphere.DistanceTo(const b:TpvVector3):TpvScalar;
 begin
  result:=Max(Center.DistanceTo(b)-Radius,0.0);
 end;
 
-function TSphere.Intersect(const b:TSphere):boolean;
+function TpvSphere.Intersect(const b:TpvSphere):boolean;
 begin
  result:=(Center-b.Center).Length<=(Radius+b.Radius+(EPSILON*2.0));
 end;
 
-function TSphere.Intersect(const b:TAABB):boolean;
-var c:TVector3;
+function TpvSphere.Intersect(const b:TpvAABB):boolean;
+var c:TpvVector3;
 begin
  c.x:=Min(Max(Center.x,b.Min.x),b.Max.x);
  c.y:=Min(Max(Center.y,b.Min.y),b.Max.y);
@@ -12656,9 +12656,9 @@ begin
  result:=(c-Center).SquaredLength<sqr(Radius);
 end;
 
-function TSphere.RayIntersection(const Origin,Direction:TVector3):boolean;
-var m:TVector3;
-    p,d:TScalar;
+function TpvSphere.RayIntersection(const Origin,Direction:TpvVector3):boolean;
+var m:TpvVector3;
+    p,d:TpvScalar;
 begin
  m:=Origin-Center;
  p:=-m.Dot(Direction);
@@ -12666,8 +12666,8 @@ begin
  result:=(d>0.0) and ((p+sqrt(d))>0.0);
 end;
 
-function TSphere.Extends(const WithSphere:TSphere):TSphere;
-var x0,y0,z0,r0,x1,y1,z1,r1,xn,yn,zn,dn,t:TScalar;
+function TpvSphere.Extends(const WithSphere:TpvSphere):TpvSphere;
+var x0,y0,z0,r0,x1,y1,z1,r1,xn,yn,zn,dn,t:TpvScalar;
 begin
  x0:=Center.x;
  y0:=Center.y;
@@ -12700,15 +12700,15 @@ begin
  result.Center.z:=z0+(xn*t);
 end;
 
-function TSphere.Transform(const Transform:TMatrix4x4):TSphere;
+function TpvSphere.Transform(const Transform:TpvMatrix4x4):TpvSphere;
 begin
  result.Center:=Transform*Center;
- result.Radius:=result.Center.DistanceTo(Transform*TVector3.Create(Center.x,Center.y+Radius,Center.z));
+ result.Radius:=result.Center.DistanceTo(Transform*TpvVector3.Create(Center.x,Center.y+Radius,Center.z));
 end;
 
-function TSphere.TriangleIntersection(const Triangle:TTriangle;out Position,Normal:TVector3;out Depth:TScalar):boolean;
-var SegmentTriangle:TSegmentTriangle;
-    Dist,d2,s,t:TScalar;
+function TpvSphere.TriangleIntersection(const Triangle:TpvTriangle;out Position,Normal:TpvVector3;out Depth:TpvScalar):boolean;
+var SegmentTriangle:TpvSegmentTriangle;
+    Dist,d2,s,t:TpvScalar;
 begin
  result:=false;
  if ((Triangle.Normal.Dot(Center)-Triangle.Normal.Dot(Triangle.Points[0]))-Radius)<EPSILON then begin
@@ -12731,8 +12731,8 @@ begin
  end;
 end;
 
-function TSphere.TriangleIntersection(const SegmentTriangle:TSegmentTriangle;const TriangleNormal:TVector3;out Position,Normal:TVector3;out Depth:TScalar):boolean;
-var Dist,d2,s,t:TScalar;
+function TpvSphere.TriangleIntersection(const SegmentTriangle:TpvSegmentTriangle;const TriangleNormal:TpvVector3;out Position,Normal:TpvVector3;out Depth:TpvScalar):boolean;
+var Dist,d2,s,t:TpvScalar;
 begin
  result:=false;
  d2:=SegmentTriangle.SquaredPointTriangleDistance(Center,s,t);
@@ -12749,9 +12749,9 @@ begin
  end;
 end;
 
-function TSphere.SweptIntersection(const SphereB:TSphere;const VelocityA,VelocityB:TVector3;out TimeFirst,TimeLast:TScalar):boolean;
-var ab,vab:TVector3;
-    rab,a,b,c:TScalar;
+function TpvSphere.SweptIntersection(const SphereB:TpvSphere;const VelocityA,VelocityB:TpvVector3;out TimeFirst,TimeLast:TpvScalar):boolean;
+var ab,vab:TpvVector3;
+    rab,a,b,c:TpvScalar;
 begin
  result:=false;
  ab:=SphereB.Center-Center;
@@ -12776,141 +12776,141 @@ begin
  end;
 end;
 
-constructor TSphereCoords.CreateFromCartesianVector(const v:TVector3);
+constructor TpvSphereCoords.CreateFromCartesianVector(const v:TpvVector3);
 begin
  Radius:=v.Length;
  Theta:=ArcCos(v.z/Radius);
  Phi:=Sign(v.y)*ArcCos(v.x/sqrt(v.x*v.x+v.y*v.y));
 end;
 
-constructor TSphereCoords.CreateFromCartesianVector(const v:TVector4);
+constructor TpvSphereCoords.CreateFromCartesianVector(const v:TpvVector4);
 begin
  Radius:=v.Length;
  Theta:=ArcCos(v.z/Radius);
  Phi:=Sign(v.y)*ArcCos(v.x/sqrt(v.x*v.x+v.y*v.y));
 end;
 
-function TSphereCoords.ToCartesianVector:TVector3;
+function TpvSphereCoords.ToCartesianVector:TpvVector3;
 begin
  result.x:=Radius*sin(Theta)*cos(Phi);
  result.y:=Radius*sin(Theta)*sin(Phi);
  result.z:=Radius*cos(Theta);
 end;
 
-function Cross(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Cross(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Cross(b);
 end;
 
-function Cross(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Cross(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Cross(b);
 end;
 
-function Cross(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Cross(const a,b:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Cross(b);
 end;
 
-function Dot(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Dot(const a,b:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a*b;
 end;
 
-function Dot(const a,b:TVector2):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Dot(const a,b:TpvVector2):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Dot(b);
 end;
 
-function Dot(const a,b:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Dot(const a,b:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Dot(b);
 end;
 
-function Dot(const a,b:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Dot(const a,b:TpvVector4):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Dot(b);
 end;
 
-function Distance(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Distance(const a,b:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=abs(a-b);
 end;
 
-function Distance(const a,b:TVector2):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Distance(const a,b:TpvVector2):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.DistanceTo(b);
 end;
 
-function Distance(const a,b:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Distance(const a,b:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.DistanceTo(b);
 end;
 
-function Distance(const a,b:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Distance(const a,b:TpvVector4):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.DistanceTo(b);
 end;
 
-function Len(const a:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Len(const a:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=abs(a);
 end;
 
-function Len(const a:TVector2):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Len(const a:TpvVector2):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Length;
 end;
 
-function Len(const a:TVector3):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Len(const a:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Length;
 end;
 
-function Len(const a:TVector4):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Len(const a:TpvVector4):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Length;
 end;
 
-function Normalize(const a:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Normalize(const a:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a;
 end;
 
-function Normalize(const a:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Normalize(const a:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Normalize;
 end;
 
-function Normalize(const a:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Normalize(const a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Normalize;
 end;
 
-function Normalize(const a:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Normalize(const a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=a.Normalize;
 end;
 
-function Minimum(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Minimum(const a,b:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=Min(a,b);
 end;
 
-function Minimum(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Minimum(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(a.x,b.x);
  result.y:=Min(a.y,b.y);
 end;
 
-function Minimum(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Minimum(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(a.x,b.x);
  result.y:=Min(a.y,b.y);
  result.z:=Min(a.z,b.z);
 end;
 
-function Minimum(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Minimum(const a,b:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(a.x,b.x);
  result.y:=Min(a.y,b.y);
@@ -12918,25 +12918,25 @@ begin
  result.w:=Min(a.w,b.w);
 end;
 
-function Maximum(const a,b:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Maximum(const a,b:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=Max(a,b);
 end;
 
-function Maximum(const a,b:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Maximum(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Max(a.x,b.x);
  result.y:=Max(a.y,b.y);
 end;
 
-function Maximum(const a,b:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Maximum(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Max(a.x,b.x);
  result.y:=Max(a.y,b.y);
  result.z:=Max(a.z,b.z);
 end;
 
-function Maximum(const a,b:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Maximum(const a,b:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Max(a.x,b.x);
  result.y:=Max(a.y,b.y);
@@ -12944,7 +12944,7 @@ begin
  result.w:=Max(a.w,b.w);
 end;
 
-function FaceForward(const N,I:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if (N*I)>0.0 then begin
   result:=-N;
@@ -12953,7 +12953,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if N.Dot(I)>0.0 then begin
   result:=-N;
@@ -12962,7 +12962,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if N.Dot(I)>0.0 then begin
   result:=-N;
@@ -12971,7 +12971,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if N.Dot(I)>0.0 then begin
   result:=-N;
@@ -12980,7 +12980,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I,Nref:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I,Nref:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if (I*Nref)>0.0 then begin
   result:=-N;
@@ -12989,7 +12989,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I,Nref:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I,Nref:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if I.Dot(Nref)>0.0 then begin
   result:=-N;
@@ -12998,7 +12998,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I,Nref:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I,Nref:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if I.Dot(Nref)>0.0 then begin
   result:=-N;
@@ -13007,7 +13007,7 @@ begin
  end;
 end;
 
-function FaceForward(const N,I,Nref:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function FaceForward(const N,I,Nref:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if I.Dot(Nref)>0.0 then begin
   result:=-N;
@@ -13016,28 +13016,28 @@ begin
  end;
 end;
 
-function Reflect(const I,N:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Reflect(const I,N:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=I-((2.0*(N*I))*N);
 end;
 
-function Reflect(const I,N:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Reflect(const I,N:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=I-((2.0*N.Dot(I))*N);
 end;
 
-function Reflect(const I,N:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Reflect(const I,N:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=I-((2.0*N.Dot(I))*N);
 end;
 
-function Reflect(const I,N:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Reflect(const I,N:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=I-((2.0*N.Dot(I))*N);
 end;
 
-function Refract(const I,N:TScalar;const Eta:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-var NdotI,k:TScalar;
+function Refract(const I,N:TpvScalar;const Eta:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+var NdotI,k:TpvScalar;
 begin
  NdotI:=N*I;
  k:=1.0-(sqr(Eta)*(1.0-sqr(NdotI)));
@@ -13048,8 +13048,8 @@ begin
  end;
 end;
 
-function Refract(const I,N:TVector2;const Eta:TScalar):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-var NdotI,k:TScalar;
+function Refract(const I,N:TpvVector2;const Eta:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+var NdotI,k:TpvScalar;
 begin
  NdotI:=N.Dot(I);
  k:=1.0-(sqr(Eta)*(1.0-sqr(NdotI)));
@@ -13060,8 +13060,8 @@ begin
  end;
 end;
 
-function Refract(const I,N:TVector3;const Eta:TScalar):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
-var NdotI,k:TScalar;
+function Refract(const I,N:TpvVector3;const Eta:TpvScalar):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+var NdotI,k:TpvScalar;
 begin
  NdotI:=N.Dot(I);
  k:=1.0-(sqr(Eta)*(1.0-sqr(NdotI)));
@@ -13072,8 +13072,8 @@ begin
  end;
 end;
 
-function Refract(const I,N:TVector4;const Eta:TScalar):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
-var NdotI,k:TScalar;
+function Refract(const I,N:TpvVector4;const Eta:TpvScalar):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+var NdotI,k:TpvScalar;
 begin
  NdotI:=N.Dot(I);
  k:=1.0-(sqr(Eta)*(1.0-sqr(NdotI)));
@@ -13084,25 +13084,25 @@ begin
  end;
 end;
 
-function Clamp(const Value,MinValue,MaxValue:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=Min(Max(Value,MinValue),MaxValue);
 end;
 
-function Clamp(const Value,MinValue,MaxValue:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(Max(Value.x,MinValue.x),MaxValue.x);
  result.y:=Min(Max(Value.y,MinValue.y),MaxValue.y);
 end;
 
-function Clamp(const Value,MinValue,MaxValue:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(Max(Value.x,MinValue.x),MaxValue.x);
  result.y:=Min(Max(Value.y,MinValue.y),MaxValue.y);
  result.z:=Min(Max(Value.z,MinValue.z),MaxValue.z);
 end;
 
-function Clamp(const Value,MinValue,MaxValue:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Clamp(const Value,MinValue,MaxValue:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Min(Max(Value.x,MinValue.x),MaxValue.x);
  result.y:=Min(Max(Value.y,MinValue.y),MaxValue.y);
@@ -13110,7 +13110,7 @@ begin
  result.w:=Min(Max(Value.w,MinValue.w),MaxValue.w);
 end;
 
-function Mix(const a,b,t:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Mix(const a,b,t:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if t<=0.0 then begin
   result:=a;
@@ -13121,20 +13121,20 @@ begin
  end;
 end;
 
-function Mix(const a,b,t:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Mix(const a,b,t:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Mix(a.x,b.x,t.x);
  result.y:=Mix(a.y,b.y,t.y);
 end;
 
-function Mix(const a,b,t:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Mix(const a,b,t:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Mix(a.x,b.x,t.x);
  result.y:=Mix(a.y,b.y,t.y);
  result.z:=Mix(a.z,b.z,t.z);
 end;
 
-function Mix(const a,b,t:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Mix(const a,b,t:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Mix(a.x,b.x,t.x);
  result.y:=Mix(a.y,b.y,t.y);
@@ -13142,7 +13142,7 @@ begin
  result.w:=Mix(a.w,b.w,t.w);
 end;
 
-function Step(const Edge,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Step(const Edge,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  if Value<Edge then begin
   result:=0.0;
@@ -13151,20 +13151,20 @@ begin
  end;
 end;
 
-function Step(const Edge,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Step(const Edge,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Step(Edge.x,Value.x);
  result.y:=Step(Edge.y,Value.y);
 end;
 
-function Step(const Edge,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Step(const Edge,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Step(Edge.x,Value.x);
  result.y:=Step(Edge.y,Value.y);
  result.z:=Step(Edge.z,Value.z);
 end;
 
-function Step(const Edge,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Step(const Edge,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=Step(Edge.x,Value.x);
  result.y:=Step(Edge.y,Value.y);
@@ -13172,7 +13172,7 @@ begin
  result.w:=Step(Edge.w,Value.w);
 end;
 
-function NearestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<0.5 then begin
@@ -13182,20 +13182,20 @@ begin
  end;
 end;
 
-function NearestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=NearestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=NearestStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function NearestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=NearestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=NearestStep(Edge0.y,Edge1.y,Value.y);
  result.z:=NearestStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function NearestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function NearestStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=NearestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=NearestStep(Edge0.y,Edge1.y,Value.y);
@@ -13203,7 +13203,7 @@ begin
  result.w:=NearestStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-function LinearStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<=0.0 then begin
@@ -13213,20 +13213,20 @@ begin
  end;
 end;
 
-function LinearStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=LinearStep(Edge0.x,Edge1.x,Value.x);
  result.y:=LinearStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function LinearStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=LinearStep(Edge0.x,Edge1.x,Value.x);
  result.y:=LinearStep(Edge0.y,Edge1.y,Value.y);
  result.z:=LinearStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function LinearStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function LinearStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=LinearStep(Edge0.x,Edge1.x,Value.x);
  result.y:=LinearStep(Edge0.y,Edge1.y,Value.y);
@@ -13234,7 +13234,7 @@ begin
  result.w:=LinearStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-function SmoothStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<=0.0 then begin
@@ -13246,20 +13246,20 @@ begin
  end;
 end;
 
-function SmoothStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function SmoothStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothStep(Edge0.y,Edge1.y,Value.y);
  result.z:=SmoothStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function SmoothStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothStep(Edge0.y,Edge1.y,Value.y);
@@ -13267,7 +13267,7 @@ begin
  result.w:=SmoothStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-function SmootherStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<=0.0 then begin
@@ -13279,20 +13279,20 @@ begin
  end;
 end;
 
-function SmootherStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmootherStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmootherStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function SmootherStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmootherStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmootherStep(Edge0.y,Edge1.y,Value.y);
  result.z:=SmootherStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function SmootherStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmootherStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmootherStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmootherStep(Edge0.y,Edge1.y,Value.y);
@@ -13300,7 +13300,7 @@ begin
  result.w:=SmootherStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-function SmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<=0.0 then begin
@@ -13312,20 +13312,20 @@ begin
  end;
 end;
 
-function SmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothestStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function SmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothestStep(Edge0.y,Edge1.y,Value.y);
  result.z:=SmoothestStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function SmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SmoothestStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SmoothestStep(Edge0.y,Edge1.y,Value.y);
@@ -13333,7 +13333,7 @@ begin
  result.w:=SmoothestStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-function SuperSmoothestStep(const Edge0,Edge1,Value:TScalar):TScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Value-Edge0)/(Edge1-Edge0);
  if result<=0.0 then begin
@@ -13345,20 +13345,20 @@ begin
  end;
 end;
 
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector2):TVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SuperSmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SuperSmoothestStep(Edge0.y,Edge1.y,Value.y);
 end;
 
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector3):TVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SuperSmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SuperSmoothestStep(Edge0.y,Edge1.y,Value.y);
  result.z:=SuperSmoothestStep(Edge0.z,Edge1.z,Value.z);
 end;
 
-function SuperSmoothestStep(const Edge0,Edge1,Value:TVector4):TVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result.x:=SuperSmoothestStep(Edge0.x,Edge1.x,Value.x);
  result.y:=SuperSmoothestStep(Edge0.y,Edge1.y,Value.y);
@@ -13366,9 +13366,9 @@ begin
  result.w:=SuperSmoothestStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-procedure DoCalculateInterval(const Vertices:PVector3s;const Count:TInt32;const Axis:TVector3;out OutMin,OutMax:TScalar);
-var Distance:TScalar;
-    Index:TInt32;
+procedure DoCalculateInterval(const Vertices:PVector3s;const Count:TpvInt32;const Axis:TpvVector3;out OutMin,OutMax:TpvScalar);
+var Distance:TpvScalar;
+    Index:TpvInt32;
 begin
  Distance:=Vertices^[0].Dot(Axis);
  OutMin:=Distance;
@@ -13384,8 +13384,8 @@ begin
  end;
 end;
 
-function DoSpanIntersect(const Vertices1:PVector3s;const Count1:TInt32;const Vertices2:PVector3s;const Count2:TInt32;const AxisTest:TVector3;out AxisPenetration:TVector3):TScalar;
-var min1,max1,min2,max2,len1,len2:TScalar;
+function DoSpanIntersect(const Vertices1:PVector3s;const Count1:TpvInt32;const Vertices2:PVector3s;const Count2:TpvInt32;const AxisTest:TpvVector3;out AxisPenetration:TpvVector3):TpvScalar;
+var min1,max1,min2,max2,len1,len2:TpvScalar;
 begin
  AxisPenetration:=AxisTest.Normalize;
  DoCalculateInterval(Vertices1,Count1,AxisPenetration,min1,max1);
@@ -13408,8 +13408,8 @@ begin
  end;
 end;
 
-function BoxGetDistanceToPoint(Point:TVector3;const Center,Size:TVector3;const InvTransformMatrix,TransformMatrix:TMatrix4x4;var ClosestBoxPoint:TVector3):TScalar;
-var HalfSize:TVector3;
+function BoxGetDistanceToPoint(Point:TpvVector3;const Center,Size:TpvVector3;const InvTransformMatrix,TransformMatrix:TpvMatrix4x4;var ClosestBoxPoint:TpvVector3):TpvScalar;
+var HalfSize:TpvVector3;
 begin
  result:=0;
  ClosestBoxPoint:=(InvTransformMatrix*Point)-Center;
@@ -13440,9 +13440,9 @@ begin
  ClosestBoxPoint:=TransformMatrix*(ClosestBoxPoint+Center);
 end;
 
-function GetDistanceFromLine(const p0,p1,p:TVector3;var Projected:TVector3;const Time:PScalar=nil):TScalar;
-var p10:TVector3;
-    t:TScalar;
+function GetDistanceFromLine(const p0,p1,p:TpvVector3;var Projected:TpvVector3;const Time:PpvScalar=nil):TpvScalar;
+var p10:TpvVector3;
+    t:TpvScalar;
 begin
  p10:=p1-p0;
  t:=p10.Length;
@@ -13459,9 +13459,9 @@ begin
  result:=(p-Projected).Length;
 end;
 
-procedure LineClosestApproach(const pa,ua,pb,ub:TVector3;var Alpha,Beta:TScalar);
-var p:TVector3;
-    uaub,q1,q2,d:TScalar;
+procedure LineClosestApproach(const pa,ua,pb,ub:TpvVector3;var Alpha,Beta:TpvScalar);
+var p:TpvVector3;
+    uaub,q1,q2,d:TpvScalar;
 begin
  p:=pb-pa;
  uaub:=ua.Dot(ub);
@@ -13478,13 +13478,13 @@ begin
  end;
 end;
 
-procedure ClosestLineBoxPoints(const p1,p2,c:TVector3;const ir,r:TMatrix4x4;const side:TVector3;var lret,bret:TVector3);
-const tanchorepsilon:TFloat={$ifdef physicsdouble}1e-307{$else}1e-19{$endif};
-var tmp,s,v,sign,v2,h:TVector3;
-    region:array[0..2] of TInt32;
-    tanchor:array[0..2] of TScalar;
-    i:TInt32;
-    t,dd2dt,nextt,nextdd2dt:TScalar;
+procedure ClosestLineBoxPoints(const p1,p2,c:TpvVector3;const ir,r:TpvMatrix4x4;const side:TpvVector3;var lret,bret:TpvVector3);
+const tanchorepsilon:TpvFloat={$ifdef physicsdouble}1e-307{$else}1e-19{$endif};
+var tmp,s,v,sign,v2,h:TpvVector3;
+    region:array[0..2] of TpvInt32;
+    tanchor:array[0..2] of TpvScalar;
+    i:TpvInt32;
+    t,dd2dt,nextt,nextdd2dt:TpvScalar;
     DoGetAnswer:boolean;
 begin
  s:=ir*(p1-c);
@@ -13570,9 +13570,9 @@ begin
  bret:=c+(r*tmp);
 end;
 
-procedure ClosestLineSegmentPoints(const a0,a1,b0,b1:TVector3;var cp0,cp1:TVector3);
-var a0a1,b0b1,a0b0,a0b1,a1b0,a1b1,n:TVector3;
-    la,lb,k,da0,da1,da2,da3,db0,db1,db2,db3,det,Alpha,Beta:TScalar;
+procedure ClosestLineSegmentPoints(const a0,a1,b0,b1:TpvVector3;var cp0,cp1:TpvVector3);
+var a0a1,b0b1,a0b0,a0b1,a1b0,a1b1,n:TpvVector3;
+    la,lb,k,da0,da1,da2,da3,db0,db1,db2,db3,det,Alpha,Beta:TpvScalar;
 begin
  a0a1:=a1-a0;
  b0b1:=b1-b0;
@@ -13660,9 +13660,9 @@ begin
  end;
 end;
 
-function LineSegmentIntersection(const a0,a1,b0,b1:TVector3;const p:PVector3=nil):boolean;
-var da,db,dc,cdadb:TVector3;
-    t:TScalar;
+function LineSegmentIntersection(const a0,a1,b0,b1:TpvVector3;const p:PpvVector3=nil):boolean;
+var da,db,dc,cdadb:TpvVector3;
+    t:TpvScalar;
 begin
  result:=false;
  da:=a1-a0;
@@ -13682,9 +13682,9 @@ begin
  end;
 end;
 
-function LineLineIntersection(const a0,a1,b0,b1:TVector3;const pa:PVector3=nil;const pb:PVector3=nil;const ta:PScalar=nil;const tb:PScalar=nil):boolean;
-var p02,p32,p10:TVector3;
-    d0232,d3210,d0210,d3232,d1010,Numerator,Denominator,lta,ltb:TScalar;
+function LineLineIntersection(const a0,a1,b0,b1:TpvVector3;const pa:PpvVector3=nil;const pb:PpvVector3=nil;const ta:PpvScalar=nil;const tb:PpvScalar=nil):boolean;
+var p02,p32,p10:TpvVector3;
+    d0232,d3210,d0210,d3232,d1010,Numerator,Denominator,lta,ltb:TpvScalar;
 begin
  result:=false;
 
@@ -13738,13 +13738,13 @@ begin
  result:=true;
 end;
 
-function IsPointsSameSide(const p0,p1,Origin,Direction:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function IsPointsSameSide(const p0,p1,Origin,Direction:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=Direction.Cross(p0-Origin).Dot(Direction.Cross(p1-Origin))>=0.0;
 end;
 
-function PointInTriangle(const p0,p1,p2,Normal,p:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-var r0,r1,r2:TScalar;
+function PointInTriangle(const p0,p1,p2,Normal,p:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+var r0,r1,r2:TpvScalar;
 begin
  r0:=(p1-p0).Cross(Normal).Dot(p-p0);
  r1:=(p2-p1).Cross(Normal).Dot(p-p1);
@@ -13752,15 +13752,15 @@ begin
  result:=((r0>0.0) and (r1>0.0) and (r2>0.0)) or ((r0<=0.0) and (r1<=0.0) and (r2<=0.0));
 end;
 
-function PointInTriangle(const p0,p1,p2,p:TVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function PointInTriangle(const p0,p1,p2,p:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=IsPointsSameSide(p,p0,p1,p2-p1) and
          IsPointsSameSide(p,p1,p0,p2-p0) and
          IsPointsSameSide(p,p2,p0,p1-p0);
 end;
 
-function GetOverlap(const MinA,MaxA,MinB,MaxB:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-var Mins,Maxs:TScalar;
+function GetOverlap(const MinA,MaxA,MinB,MaxB:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+var Mins,Maxs:TpvScalar;
 begin
  if (MinA>MaxB) or (MaxA<MinB) then begin
   result:=0.0;
@@ -13782,15 +13782,15 @@ begin
  end;
 end;
 
-function OldTriangleTriangleIntersection(const a0,a1,a2,b0,b1,b2:TVector3):boolean;
+function OldTriangleTriangleIntersection(const a0,a1,a2,b0,b1,b2:TpvVector3):boolean;
 const EPSILON=1e-2;
       LINEEPSILON=1e-6;
-var Index,NextIndex,RemainingIndex,i,j,k,h:TInt32;
-    tS,tT0,tT1:TScalar;
-    v:array[0..1,0..2] of TVector3;
-    SegmentTriangles:array[0..1] of TSegmentTriangle;
-    Segment:TRelativeSegment;
-    lv,plv:TVector3;
+var Index,NextIndex,RemainingIndex,i,j,k,h:TpvInt32;
+    tS,tT0,tT1:TpvScalar;
+    v:array[0..1,0..2] of TpvVector3;
+    SegmentTriangles:array[0..1] of TpvSegmentTriangle;
+    Segment:TpvRelativeSegment;
+    lv,plv:TpvVector3;
     OK:boolean;
 begin
  result:=false;
@@ -13864,10 +13864,10 @@ begin
  end;
 end;
 
-function TriangleTriangleIntersection(const v0,v1,v2,u0,u1,u2:TVector3):boolean;
+function TriangleTriangleIntersection(const v0,v1,v2,u0,u1,u2:TpvVector3):boolean;
 const EPSILON=1e-6;
- procedure SORT(var a,b:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
- var c:TScalar;
+ procedure SORT(var a,b:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
+ var c:TpvScalar;
  begin
   if a>b then begin
    c:=a;
@@ -13875,13 +13875,13 @@ const EPSILON=1e-6;
    b:=c;
   end;
  end;
- procedure ISECT(const VV0,VV1,VV2,D0,D1,D2:TScalar;var isect0,isect1:TScalar); {$ifdef CAN_INLINE}inline;{$endif}
+ procedure ISECT(const VV0,VV1,VV2,D0,D1,D2:TpvScalar;var isect0,isect1:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
  begin
   isect0:=VV0+(((VV1-VV0)*D0)/(D0-D1));
   isect1:=VV0+(((VV2-VV0)*D0)/(D0-D2));
  end;
- function EDGE_EDGE_TEST(const v0,u0,u1:TVector3;const Ax,Ay:TScalar;const i0,i1:TInt32):boolean; {$ifdef CAN_INLINE}inline;{$endif}
- var Bx,By,Cx,Cy,e,f,d:TScalar;
+ function EDGE_EDGE_TEST(const v0,u0,u1:TpvVector3;const Ax,Ay:TpvScalar;const i0,i1:TpvInt32):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+ var Bx,By,Cx,Cy,e,f,d:TpvScalar;
  begin
   result:=false;
   Bx:=U0.RawComponents[i0]-U1.RawComponents[i0];
@@ -13903,8 +13903,8 @@ const EPSILON=1e-6;
    end;
   end;
  end;
- function POINT_IN_TRI(const v0,u0,u1,u2:TVector3;const i0,i1:TInt32):boolean;
- var a,b,c,d0,d1,d2:TScalar;
+ function POINT_IN_TRI(const v0,u0,u1,u2:TpvVector3;const i0,i1:TpvInt32):boolean;
+ var a,b,c,d0,d1,d2:TpvScalar;
  begin
 
   // is T1 completly inside T2?
@@ -13927,8 +13927,8 @@ const EPSILON=1e-6;
 
   result:=((d0*d1)>0.0) and ((d0*d2)>0.0);
  end;
- function EDGE_AGAINST_TRI_EDGES(const v0,v1,u0,u1,u2:TVector3;const i0,i1:TInt32):boolean;
- var Ax,Ay:TScalar;
+ function EDGE_AGAINST_TRI_EDGES(const v0,v1,u0,u1,u2:TpvVector3;const i0,i1:TpvInt32):boolean;
+ var Ax,Ay:TpvScalar;
  begin
   Ax:=v1.RawComponents[i0]-v0.RawComponents[i0];
   Ay:=v1.RawComponents[i1]-v0.RawComponents[i1];
@@ -13936,9 +13936,9 @@ const EPSILON=1e-6;
           EDGE_EDGE_TEST(V0,U1,U2,Ax,Ay,i0,i1) or // test edge U1,U2 against V0,V1
           EDGE_EDGE_TEST(V0,U2,U0,Ax,Ay,i0,i1);   // test edge U2,U1 against V0,V1
  end;
- function coplanar_tri_tri(const n,v0,v1,v2,u0,u1,u2:TVector3):boolean;
- var i0,i1:TInt32;
-     a:TVector3;
+ function coplanar_tri_tri(const n,v0,v1,v2,u0,u1,u2:TpvVector3):boolean;
+ var i0,i1:TpvInt32;
+     a:TpvVector3;
  begin
   a.x:=abs(n.x);
   a.y:=abs(n.y);
@@ -13967,7 +13967,7 @@ const EPSILON=1e-6;
           POINT_IN_TRI(V0,U0,U1,U2,i0,i1) or // finally, test if tri1 is totally contained in tri2 or vice versa
           POINT_IN_TRI(U0,V0,V1,V2,i0,i1);
  end;
- function COMPUTE_INTERVALS(const N1:TVector3;const VV0,VV1,VV2,D0,D1,D2,D0D1,D0D2:TScalar;var isect0,isect1:TScalar):boolean;
+ function COMPUTE_INTERVALS(const N1:TpvVector3;const VV0,VV1,VV2,D0,D1,D2,D0D1,D0D2:TpvScalar;var isect0,isect1:TpvScalar):boolean;
  begin
   result:=false;
   if D0D1>0.0 then begin
@@ -13989,10 +13989,10 @@ const EPSILON=1e-6;
    result:=coplanar_tri_tri(N1,V0,V1,V2,U0,U1,U2);
   end;
  end;
-var index:TInt32;
-    d1,d2,du0,du1,du2,dv0,dv1,dv2,du0du1,du0du2,dv0dv1,dv0dv2,vp0,vp1,vp2,up0,up1,up2,b,c,m:TScalar;
-    isect1,isect2:array[0..1] of TScalar;
-    e1,e2,n1,n2,d:TVector3;
+var index:TpvInt32;
+    d1,d2,du0,du1,du2,dv0,dv1,dv2,du0du1,du0du2,dv0dv1,dv0dv2,vp0,vp1,vp2,up0,up1,up2,b,c,m:TpvScalar;
+    isect1,isect2:array[0..1] of TpvScalar;
+    e1,e2,n1,n2,d:TpvVector3;
 begin
 
  result:=false;
@@ -14103,9 +14103,9 @@ begin
  result:=not ((isect1[1]<isect2[0]) or (isect2[1]<isect1[0]));
 end;
 
-function ClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TVector3;const ClosestPointOnLine:PVector3=nil;const Time:PScalar=nil):TScalar;
-var LineSegmentPointsDifference,ClosestPoint:TVector3;
-    LineSegmentLengthSquared,PointOnLineSegmentTime:TScalar;
+function ClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TpvVector3;const ClosestPointOnLine:PpvVector3=nil;const Time:PpvScalar=nil):TpvScalar;
+var LineSegmentPointsDifference,ClosestPoint:TpvVector3;
+    LineSegmentLengthSquared,PointOnLineSegmentTime:TpvScalar;
 begin
  LineSegmentPointsDifference:=LineEndPoint-LineStartPoint;
  LineSegmentLengthSquared:=LineSegmentPointsDifference.SquaredLength;
@@ -14133,8 +14133,8 @@ begin
  result:=Point.DistanceTo(ClosestPoint);
 end;
 
-function ClosestPointToAABB(const AABB:TAABB;const Point:TVector3;const ClosestPointOnAABB:PVector3=nil):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-var ClosestPoint:TVector3;
+function ClosestPointToAABB(const AABB:TpvAABB;const Point:TpvVector3;const ClosestPointOnAABB:PpvVector3=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+var ClosestPoint:TpvVector3;
 begin
  ClosestPoint.x:=Min(Max(Point.x,AABB.Min.x),AABB.Max.x);
  ClosestPoint.y:=Min(Max(Point.y,AABB.Min.y),AABB.Max.y);
@@ -14145,8 +14145,8 @@ begin
  result:=ClosestPoint.DistanceTo(Point);
 end;
 
-function ClosestPointToOBB(const OBB:TOBB;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-var DistanceVector:TVector3;
+function ClosestPointToOBB(const OBB:TpvOBB;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+var DistanceVector:TpvVector3;
 begin
  DistanceVector:=Point-OBB.Center;
  ClosestPoint:=OBB.Center+
@@ -14156,15 +14156,15 @@ begin
  result:=ClosestPoint.DistanceTo(Point);
 end;
 
-function ClosestPointToSphere(const Sphere:TSphere;const Point:TVector3;out ClosestPoint:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToSphere(const Sphere:TpvSphere;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=Max(0.0,Sphere.Center.DistanceTo(Point)-Sphere.Radius);
  ClosestPoint:=Point+((Sphere.Center-Point).Normalize*result);
 end;
 
-function ClosestPointToCapsule(const Capsule:TCapsule;const Point:TVector3;out ClosestPoint:TVector3;const Time:PScalar=nil):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-var LineSegmentPointsDifference,LineClosestPoint:TVector3;
-    LineSegmentLengthSquared,PointOnLineSegmentTime:TScalar;
+function ClosestPointToCapsule(const Capsule:TpvCapsule;const Point:TpvVector3;out ClosestPoint:TpvVector3;const Time:PpvScalar=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+var LineSegmentPointsDifference,LineClosestPoint:TpvVector3;
+    LineSegmentLengthSquared,PointOnLineSegmentTime:TpvScalar;
 begin
  LineSegmentPointsDifference:=Capsule.LineEndPoint-Capsule.LineStartPoint;
  LineSegmentLengthSquared:=LineSegmentPointsDifference.SquaredLength;
@@ -14191,9 +14191,9 @@ begin
  end;
 end;
 
-function ClosestPointToTriangle(const a,b,c,p:TVector3;out ClosestPoint:TVector3):TScalar;
-var ab,ac,bc,pa,pb,pc,ap,bp,cp,n:TVector3;
-    snom,sdenom,tnom,tdenom,unom,udenom,vc,vb,va,u,v,w:TScalar;
+function ClosestPointToTriangle(const a,b,c,p:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar;
+var ab,ac,bc,pa,pb,pc,ap,bp,cp,n:TpvVector3;
+    snom,sdenom,tnom,tdenom,unom,udenom,vc,vb,va,u,v,w:TpvScalar;
 begin
 
  ab.x:=b.x-a.x;
@@ -14311,8 +14311,8 @@ begin
  result:=sqrt(sqr(ClosestPoint.x-p.x)+sqr(ClosestPoint.y-p.y)+sqr(ClosestPoint.z-p.z));
 end;
 
-function SquaredDistanceFromPointToAABB(const AABB:TAABB;const Point:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
-var ClosestPoint:TVector3;
+function SquaredDistanceFromPointToAABB(const AABB:TpvAABB;const Point:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+var ClosestPoint:TpvVector3;
 begin
  ClosestPoint.x:=Min(Max(Point.x,AABB.Min.x),AABB.Max.x);
  ClosestPoint.y:=Min(Max(Point.y,AABB.Min.y),AABB.Max.y);
@@ -14320,9 +14320,9 @@ begin
  result:=(ClosestPoint-Point).SquaredLength;
 end;
 
-function SquaredDistanceFromPointToTriangle(const p,a,b,c:TVector3):TScalar;
-var ab,ac,bc,pa,pb,pc,ap,bp,cp,n:TVector3;
-    snom,sdenom,tnom,tdenom,unom,udenom,vc,vb,va,u,v,w:TScalar;
+function SquaredDistanceFromPointToTriangle(const p,a,b,c:TpvVector3):TpvScalar;
+var ab,ac,bc,pa,pb,pc,ap,bp,cp,n:TpvVector3;
+    snom,sdenom,tnom,tdenom,unom,udenom,vc,vb,va,u,v,w:TpvScalar;
 begin
 
  ab.x:=b.x-a.x;
@@ -14426,15 +14426,15 @@ begin
 
 end;
 
-function IsParallel(const a,b:TVector3;const Tolerance:TScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-var t:TVector3;
+function IsParallel(const a,b:TpvVector3;const Tolerance:TpvScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+var t:TpvVector3;
 begin
  t:=a-(b*(a.Length/b.Length));
  result:=(abs(t.x)<Tolerance) and (abs(t.y)<Tolerance) and (abs(t.z)<Tolerance);
 end;
 
-function Vector3ToAnglesLDX(v:TVector3):TVector3;
-var Yaw,Pitch:TScalar;
+function Vector3ToAnglesLDX(v:TpvVector3):TpvVector3;
+var Yaw,Pitch:TpvScalar;
 begin
  if (v.x=0.0) and (v.y=0.0) then begin
   Yaw:=0.0;
@@ -14464,8 +14464,8 @@ begin
  result.Roll:=0.0;
 end;
 
-procedure AnglesToVector3LDX(const Angles:TVector3;var ForwardVector,RightVector,UpVector:TVector3);
-var cp,sp,cy,sy,cr,sr:TScalar;
+procedure AnglesToVector3LDX(const Angles:TpvVector3;var ForwardVector,RightVector,UpVector:TpvVector3);
+var cp,sp,cy,sy,cr,sr:TpvScalar;
 begin
  cp:=cos(Angles.Pitch);
  sp:=sin(Angles.Pitch);
@@ -14473,12 +14473,12 @@ begin
  sy:=sin(Angles.Yaw);
  cr:=cos(Angles.Roll);
  sr:=sin(Angles.Roll);
- ForwardVector:=TVector3.Create(cp*cy,cp*sy,-sp).Normalize;
- RightVector:=TVector3.Create(((-(sr*sp*cy))-(cr*(-sy))),((-(sr*sp*sy))-(cr*cy)),-(sr*cp)).Normalize;
- UpVector:=TVector3.Create((cr*sp*cy)+((-sr)*(-sy)),(cr*sp*sy)+((-sr)*cy),cr*cp).Normalize;
+ ForwardVector:=TpvVector3.Create(cp*cy,cp*sy,-sp).Normalize;
+ RightVector:=TpvVector3.Create(((-(sr*sp*cy))-(cr*(-sy))),((-(sr*sp*sy))-(cr*cy)),-(sr*cp)).Normalize;
+ UpVector:=TpvVector3.Create((cr*sp*cy)+((-sr)*(-sy)),(cr*sp*sy)+((-sr)*cy),cr*cp).Normalize;
 end;
 
-function UnsignedAngle(const v0,v1:TVector3):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function UnsignedAngle(const v0,v1:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
 //result:=ArcCos(v0.Normalize.Dot(v1)));
  result:=ArcTan2(v0.Cross(v1).Length,v0.Dot(v1));
@@ -14489,7 +14489,7 @@ begin
  end;
 end;
 
-function AngleDegClamp(a:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleDegClamp(a:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  a:=ModuloPos(ModuloPos(a+180.0,360.0)+360.0,360.0)-180.0;
  while a<-180.0 do begin
@@ -14501,12 +14501,12 @@ begin
  result:=a;
 end;
 
-function AngleDegDiff(a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleDegDiff(a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=AngleDegClamp(AngleDegClamp(b)-AngleDegClamp(a));
 end;
 
-function AngleClamp(a:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleClamp(a:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  a:=ModuloPos(ModuloPos(a+pi,pi*2.0)+(pi*2.0),pi*2.0)-pi;
  while a<(-pi) do begin
@@ -14518,12 +14518,12 @@ begin
  result:=a;
 end;
 
-function AngleDiff(a,b:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleDiff(a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=AngleClamp(AngleClamp(b)-AngleClamp(a));
 end;
 
-function AngleLerp(a,b,x:TScalar):TScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function AngleLerp(a,b,x:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
 {if (b-a)>pi then begin
   b:=b-(pi*2);
@@ -14535,13 +14535,13 @@ begin
  result:=a+(AngleDiff(a,b)*x);
 end;
 
-function InertiaTensorTransform(const Inertia,Transform:TMatrix3x3):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+function InertiaTensorTransform(const Inertia,Transform:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=(Transform*Inertia)*Transform.Transpose;
 end;
 
-function InertiaTensorParallelAxisTheorem(const Center:TVector3;const Mass:TScalar):TMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-var CenterDotCenter:TScalar;
+function InertiaTensorParallelAxisTheorem(const Center:TpvVector3;const Mass:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+var CenterDotCenter:TpvScalar;
 begin
  CenterDotCenter:=sqr(Center.x)+sqr(Center.y)+sqr(Center.z);
  result[0,0]:=((Matrix3x3Identity[0,0]*CenterDotCenter)-(Center.x*Center.x))*Mass;
@@ -14555,7 +14555,7 @@ begin
  result[2,2]:=((Matrix3x3Identity[2,2]*CenterDotCenter)-(Center.z*Center.z))*Mass;
 end;
 
-procedure OrthoNormalize(var Tangent,Bitangent,Normal:TVector3);
+procedure OrthoNormalize(var Tangent,Bitangent,Normal:TpvVector3);
 begin
  Normal:=Normal.Normalize;
  Tangent:=(Tangent-(Normal*Tangent.Dot(Normal))).Normalize;
@@ -14566,8 +14566,8 @@ begin
  Normal:=Tangent.Cross(Bitangent).Normalize;
 end;
 
-procedure RobustOrthoNormalize(var Tangent,Bitangent,Normal:TVector3;const Tolerance:TScalar=1e-3);
-var Bisector,Axis:TVector3;
+procedure RobustOrthoNormalize(var Tangent,Bitangent,Normal:TpvVector3;const Tolerance:TpvScalar=1e-3);
+var Bisector,Axis:TpvVector3;
 begin
  begin
   if Normal.Length<Tolerance then begin
@@ -14632,7 +14632,7 @@ begin
  Normal:=Tangent.Cross(Bitangent).Normalize;
 end;
 
-function MaxOverlaps(const Min1,Max1,Min2,Max2:TScalar;var LowerLim,UpperLim:TScalar):boolean;
+function MaxOverlaps(const Min1,Max1,Min2,Max2:TpvScalar;var LowerLim,UpperLim:TpvScalar):boolean;
 begin
  if (Max1<Min2) or (Max2<Min1) then begin
   result:=false;
@@ -14664,7 +14664,7 @@ begin
  end;
 end;
 
-function ConvertRGB32FToRGB9E5(r,g,b:TFloat):TUInt32;
+function ConvertRGB32FToRGB9E5(r,g,b:TpvFloat):TpvUInt32;
 const RGB9E5_EXPONENT_BITS=5;
       RGB9E5_MANTISSA_BITS=9;
       RGB9E5_EXP_BIAS=15;
@@ -14674,9 +14674,9 @@ const RGB9E5_EXPONENT_BITS=5;
       MAX_RGB9E5_MANTISSA=RGB9E5_MANTISSA_VALUES-1;
       MAX_RGB9E5=((MAX_RGB9E5_MANTISSA+0.0)/RGB9E5_MANTISSA_VALUES)*(1 shl MAX_RGB9E5_EXP);
       EPSILON_RGB9E5=(1.0/RGB9E5_MANTISSA_VALUES)/(1 shl RGB9E5_EXP_BIAS);
-var Exponent,MaxMantissa,ri,gi,bi:TInt32;
-    MaxComponent,Denominator:TFloat;
-    CastedMaxComponent:TUInt32 absolute MaxComponent;
+var Exponent,MaxMantissa,ri,gi,bi:TpvInt32;
+    MaxComponent,Denominator:TpvFloat;
+    CastedMaxComponent:TpvUInt32 absolute MaxComponent;
 begin
  if r>0.0 then begin
   if r>MAX_RGB9E5 then begin
@@ -14712,7 +14712,7 @@ begin
    MaxComponent:=r;
   end;
  end;
- Exponent:=(TInt32(CastedMaxComponent and $7f800000) shr 23)-127;
+ Exponent:=(TpvInt32(CastedMaxComponent and $7f800000) shr 23)-127;
  if Exponent<((-RGB9E5_EXP_BIAS)-1) then begin
   Exponent:=((-RGB9E5_EXP_BIAS)-1);
  end;
@@ -14749,10 +14749,10 @@ begin
  end else if bi>MAX_RGB9E5_MANTISSA then begin
   bi:=MAX_RGB9E5_MANTISSA;
  end;
- result:=TUInt32(ri) or (TUInt32(gi) shl 9) or (TUInt32(bi) shl 18) or (TUInt32(Exponent and 31) shl 27);
+ result:=TpvUInt32(ri) or (TpvUInt32(gi) shl 9) or (TpvUInt32(bi) shl 18) or (TpvUInt32(Exponent and 31) shl 27);
 end;
 
-function PackFP32FloatToM6E5Float(const pValue:TFloat):TUInt32;
+function PackFP32FloatToM6E5Float(const pValue:TpvFloat):TpvUInt32;
 const Float32MantissaBits=23;
       Float32ExponentBits=8;
       Float32Bits=32;
@@ -14762,8 +14762,8 @@ const Float32MantissaBits=23;
       Float6E5ExponentBits=5;
       Float6E5Bits=11;
       Float6E5ExponentBias=15;
-var CastedValue:TUInt32 absolute pValue;
-    Exponent,Mantissa:TUInt32;
+var CastedValue:TpvUInt32 absolute pValue;
+    Exponent,Mantissa:TpvUInt32;
 begin
 
  // Extract the exponent and the mantissa from the 32-bit floating point value
@@ -14809,7 +14809,7 @@ begin
  end;
 end;
 
-function PackFP32FloatToM5E5Float(const pValue:TFloat):TUInt32;
+function PackFP32FloatToM5E5Float(const pValue:TpvFloat):TpvUInt32;
 const Float32MantissaBits=23;
       Float32ExponentBits=8;
       Float32Bits=32;
@@ -14819,8 +14819,8 @@ const Float32MantissaBits=23;
       Float5E5ExponentBits=5;
       Float5E5Bits=10;
       Float5E5ExponentBias=15;
-var CastedValue:TUInt32 absolute pValue;
-    Exponent,Mantissa:TUInt32;
+var CastedValue:TpvUInt32 absolute pValue;
+    Exponent,Mantissa:TpvUInt32;
 begin
 
  // Extract the exponent and the mantissa from the 32-bit floating point value
@@ -14866,19 +14866,19 @@ begin
  end;
 end;
 
-function Float32ToFloat11(const pValue:TFloat):TUInt32;
+function Float32ToFloat11(const pValue:TpvFloat):TpvUInt32;
 const EXPONENT_BIAS=15;
       EXPONENT_BITS=$1f;
       EXPONENT_SHIFT=6;
       MANTISSA_BITS=$3f;
       MANTISSA_SHIFT=23-EXPONENT_SHIFT;
       MAX_EXPONENT=EXPONENT_BITS shl EXPONENT_SHIFT;
-var CastedValue:TUInt32 absolute pValue;
-    Sign:TUInt32;
-    Exponent,Mantissa:TInt32;
+var CastedValue:TpvUInt32 absolute pValue;
+    Sign:TpvUInt32;
+    Exponent,Mantissa:TpvInt32;
 begin
  Sign:=CastedValue shr 31;
- Exponent:=TInt32(TUInt32((CastedValue and $7f800000) shr 23))-127;
+ Exponent:=TpvInt32(TpvUInt32((CastedValue and $7f800000) shr 23))-127;
  Mantissa:=CastedValue and $007fffff;
  if Exponent=128 then begin
   // Infinity or NaN
@@ -14912,19 +14912,19 @@ begin
  end;
 end;
 
-function Float32ToFloat10(const pValue:TFloat):TUInt32;
+function Float32ToFloat10(const pValue:TpvFloat):TpvUInt32;
 const EXPONENT_BIAS=15;
       EXPONENT_BITS=$1f;
       EXPONENT_SHIFT=5;
       MANTISSA_BITS=$1f;
       MANTISSA_SHIFT=23-EXPONENT_SHIFT;
       MAX_EXPONENT=EXPONENT_BITS shl EXPONENT_SHIFT;
-var CastedValue:TUInt32 absolute pValue;
-    Sign:TUInt32;
-    Exponent,Mantissa:TInt32;
+var CastedValue:TpvUInt32 absolute pValue;
+    Sign:TpvUInt32;
+    Exponent,Mantissa:TpvInt32;
 begin
  Sign:=CastedValue shr 31;
- Exponent:=TInt32(TUInt32((CastedValue and $7f800000) shr 23))-127;
+ Exponent:=TpvInt32(TpvUInt32((CastedValue and $7f800000) shr 23))-127;
  Mantissa:=CastedValue and $007fffff;
  if Exponent=128 then begin
   // Infinity or NaN
@@ -14958,16 +14958,16 @@ begin
  end;
 end;
 
-function ConvertRGB32FToR11FG11FB10F(const r,g,b:TFloat):TUInt32; {$ifdef CAN_INLINE}inline;{$endif}
+function ConvertRGB32FToR11FG11FB10F(const r,g,b:TpvFloat):TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
 begin
 //result:=(PackFP32FloatToM6E5Float(r) and $7ff) or ((PackFP32FloatToM6E5Float(g) and $7ff) shl 11) or ((PackFP32FloatToM6E5Float(b) and $3ff) shl 22);
  result:=(Float32ToFloat11(r) and $7ff) or ((Float32ToFloat11(g) and $7ff) shl 11) or ((Float32ToFloat10(b) and $3ff) shl 22);
 end;
 
-function PackTangentSpace(const Tangent,Bitangent,Normal:TVector3):TPackedTangentSpace;
-var q:TQuaternion;
+function PackTangentSpace(const Tangent,Bitangent,Normal:TpvVector3):TpvPackedTangentSpace;
+var q:TpvQuaternion;
 begin
- q:=TMatrix3x3.Create(Tangent,Bitangent,Normal).ToQTangent;
+ q:=TpvMatrix3x3.Create(Tangent,Bitangent,Normal).ToQTangent;
  result.x:=Min(Max((round(q.x*127)+128),0),255);
  result.y:=Min(Max((round(q.y*127)+128),0),255);
  result.z:=Min(Max((round(q.z*127)+128),0),255);
@@ -14981,15 +14981,15 @@ result.x:=Min(Max((round((ArcSin(Normal.z)/pi)*127)+128),0),255);
  result.w:=Min(Max((round((ArcTan2(Tangent.y,Tangent.x)/pi)*127)+128),0),255);
 end;{}
 
-procedure UnpackTangentSpace(var PackedTangentSpace:TPackedTangentSpace;var Tangent,Bitangent,Normal:TVector3);
-var q:TQuaternion;
-    m:TMatrix3x3;
+procedure UnpackTangentSpace(var PackedTangentSpace:TpvPackedTangentSpace;var Tangent,Bitangent,Normal:TpvVector3);
+var q:TpvQuaternion;
+    m:TpvMatrix3x3;
 begin
  q.x:=(PackedTangentSpace.x-128)/127;
  q.y:=(PackedTangentSpace.y-128)/127;
  q.z:=(PackedTangentSpace.z-128)/127;
  q.w:=(PackedTangentSpace.w-128)/127;
- m:=TMatrix3x3.CreateFromQTangent(q);
+ m:=TpvMatrix3x3.CreateFromQTangent(q);
  Tangent.x:=m[0,0];
  Tangent.y:=m[0,1];
  Tangent.z:=m[0,2];
@@ -15015,352 +15015,352 @@ begin
  Bitangent:=Vector3Norm(Vector3Cross(Normal,Tangent));
 end;{}
 
-constructor TPropertyVector2.Create(AVector:PVector2);
+constructor TpvPropertyVector2.Create(AVector:PpvVector2);
 begin
  inherited Create;
  fVector:=AVector;
 end;
 
-destructor TPropertyVector2.Destroy;
+destructor TpvPropertyVector2.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TPropertyVector2.GetX:TScalar;
+function TpvPropertyVector2.GetX:TpvScalar;
 begin
  result:=fVector^.x;
 end;
 
-function TPropertyVector2.GetY:TScalar;
+function TpvPropertyVector2.GetY:TpvScalar;
 begin
  result:=fVector^.y;
 end;
 
-function TPropertyVector2.GetVector:TVector2;
+function TpvPropertyVector2.GetVector:TpvVector2;
 begin
  result:=fVector^;
 end;
 
-procedure TPropertyVector2.SetX(const pNewValue:TScalar);
+procedure TpvPropertyVector2.SetX(const pNewValue:TpvScalar);
 begin
  fVector^.x:=pNewValue;
 end;
 
-procedure TPropertyVector2.SetY(const pNewValue:TScalar);
+procedure TpvPropertyVector2.SetY(const pNewValue:TpvScalar);
 begin
  fVector^.y:=pNewValue;
 end;
 
-procedure TPropertyVector2.SetVector(const pNewVector:TVector2);
+procedure TpvPropertyVector2.SetVector(const pNewVector:TpvVector2);
 begin
  fVector^:=pNewVector;
 end;
 
-constructor TPropertyVector3.Create(AVector:PVector3);
+constructor TpvPropertyVector3.Create(AVector:PpvVector3);
 begin
  inherited Create;
  fVector:=AVector;
 end;
 
-destructor TPropertyVector3.Destroy;
+destructor TpvPropertyVector3.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TPropertyVector3.GetX:TScalar;
+function TpvPropertyVector3.GetX:TpvScalar;
 begin
  result:=fVector^.x;
 end;
 
-function TPropertyVector3.GetY:TScalar;
+function TpvPropertyVector3.GetY:TpvScalar;
 begin
  result:=fVector^.y;
 end;
 
-function TPropertyVector3.GetZ:TScalar;
+function TpvPropertyVector3.GetZ:TpvScalar;
 begin
  result:=fVector^.z;
 end;
 
-function TPropertyVector3.GetVector:TVector3;
+function TpvPropertyVector3.GetVector:TpvVector3;
 begin
  result:=fVector^;
 end;
 
-procedure TPropertyVector3.SetX(const pNewValue:TScalar);
+procedure TpvPropertyVector3.SetX(const pNewValue:TpvScalar);
 begin
  fVector^.x:=pNewValue;
 end;
 
-procedure TPropertyVector3.SetY(const pNewValue:TScalar);
+procedure TpvPropertyVector3.SetY(const pNewValue:TpvScalar);
 begin
  fVector^.y:=pNewValue;
 end;
 
-procedure TPropertyVector3.SetZ(const pNewValue:TScalar);
+procedure TpvPropertyVector3.SetZ(const pNewValue:TpvScalar);
 begin
  fVector^.z:=pNewValue;
 end;
 
-procedure TPropertyVector3.SetVector(const pNewVector:TVector3);
+procedure TpvPropertyVector3.SetVector(const pNewVector:TpvVector3);
 begin
  fVector^:=pNewVector;
 end;
 
-constructor TPropertyVector4.Create(AVector:PVector4);
+constructor TpvPropertyVector4.Create(AVector:PpvVector4);
 begin
  inherited Create;
  fVector:=AVector;
 end;
 
-destructor TPropertyVector4.Destroy;
+destructor TpvPropertyVector4.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TPropertyVector4.GetX:TScalar;
+function TpvPropertyVector4.GetX:TpvScalar;
 begin
  result:=fVector^.x;
 end;
 
-function TPropertyVector4.GetY:TScalar;
+function TpvPropertyVector4.GetY:TpvScalar;
 begin
  result:=fVector^.y;
 end;
 
-function TPropertyVector4.GetZ:TScalar;
+function TpvPropertyVector4.GetZ:TpvScalar;
 begin
  result:=fVector^.z;
 end;
 
-function TPropertyVector4.GetW:TScalar;
+function TpvPropertyVector4.GetW:TpvScalar;
 begin
  result:=fVector^.w;
 end;
 
-function TPropertyVector4.GetVector:TVector4;
+function TpvPropertyVector4.GetVector:TpvVector4;
 begin
  result:=fVector^;
 end;
 
-procedure TPropertyVector4.SetX(const pNewValue:TScalar);
+procedure TpvPropertyVector4.SetX(const pNewValue:TpvScalar);
 begin
  fVector^.x:=pNewValue;
 end;
 
-procedure TPropertyVector4.SetY(const pNewValue:TScalar);
+procedure TpvPropertyVector4.SetY(const pNewValue:TpvScalar);
 begin
  fVector^.y:=pNewValue;
 end;
 
-procedure TPropertyVector4.SetZ(const pNewValue:TScalar);
+procedure TpvPropertyVector4.SetZ(const pNewValue:TpvScalar);
 begin
  fVector^.z:=pNewValue;
 end;
 
-procedure TPropertyVector4.SetW(const pNewValue:TScalar);
+procedure TpvPropertyVector4.SetW(const pNewValue:TpvScalar);
 begin
  fVector^.w:=pNewValue;
 end;
 
-procedure TPropertyVector4.SetVector(const pNewVector:TVector4);
+procedure TpvPropertyVector4.SetVector(const pNewVector:TpvVector4);
 begin
  fVector^:=pNewVector;
 end;
 
-constructor TPropertyQuaternion.Create(AQuaternion:PQuaternion);
+constructor TpvPropertyQuaternion.Create(AQuaternion:PpvQuaternion);
 begin
  inherited Create;
  fQuaternion:=AQuaternion;
 end;
 
-destructor TPropertyQuaternion.Destroy;
+destructor TpvPropertyQuaternion.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TPropertyQuaternion.GetX:TScalar;
+function TpvPropertyQuaternion.GetX:TpvScalar;
 begin
  result:=fQuaternion^.x;
 end;
 
-function TPropertyQuaternion.GetY:TScalar;
+function TpvPropertyQuaternion.GetY:TpvScalar;
 begin
  result:=fQuaternion^.y;
 end;
 
-function TPropertyQuaternion.GetZ:TScalar;
+function TpvPropertyQuaternion.GetZ:TpvScalar;
 begin
  result:=fQuaternion^.z;
 end;
 
-function TPropertyQuaternion.GetW:TScalar;
+function TpvPropertyQuaternion.GetW:TpvScalar;
 begin
  result:=fQuaternion^.w;
 end;
 
-function TPropertyQuaternion.GetQuaternion:TQuaternion;
+function TpvPropertyQuaternion.GetQuaternion:TpvQuaternion;
 begin
  result:=fQuaternion^;
 end;
 
-procedure TPropertyQuaternion.SetX(const pNewValue:TScalar);
+procedure TpvPropertyQuaternion.SetX(const pNewValue:TpvScalar);
 begin
  fQuaternion^.x:=pNewValue;
 end;
 
-procedure TPropertyQuaternion.SetY(const pNewValue:TScalar);
+procedure TpvPropertyQuaternion.SetY(const pNewValue:TpvScalar);
 begin
  fQuaternion^.y:=pNewValue;
 end;
 
-procedure TPropertyQuaternion.SetZ(const pNewValue:TScalar);
+procedure TpvPropertyQuaternion.SetZ(const pNewValue:TpvScalar);
 begin
  fQuaternion^.z:=pNewValue;
 end;
 
-procedure TPropertyQuaternion.SetW(const pNewValue:TScalar);
+procedure TpvPropertyQuaternion.SetW(const pNewValue:TpvScalar);
 begin
  fQuaternion^.w:=pNewValue;
 end;
 
-procedure TPropertyQuaternion.SetQuaternion(const NewQuaternion:TQuaternion);
+procedure TpvPropertyQuaternion.SetQuaternion(const NewQuaternion:TpvQuaternion);
 begin
  fQuaternion^:=NewQuaternion;
 end;
 
-constructor TPropertyAngle.Create(ARadianAngle:PScalar);
+constructor TpvPropertyAngle.Create(ARadianAngle:PpvScalar);
 begin
  inherited Create;
  fRadianAngle:=ARadianAngle;
 end;
 
-destructor TPropertyAngle.Destroy;
+destructor TpvPropertyAngle.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TPropertyAngle.GetAngle:TScalar;
+function TpvPropertyAngle.GetAngle:TpvScalar;
 begin
  result:=fRadianAngle^*RAD2DEG;
 end;
 
-function TPropertyAngle.GetRadianAngle:TScalar;
+function TpvPropertyAngle.GetRadianAngle:TpvScalar;
 begin
  result:=fRadianAngle^;
 end;
 
-procedure TPropertyAngle.SetAngle(const pNewValue:TScalar);
+procedure TpvPropertyAngle.SetAngle(const pNewValue:TpvScalar);
 begin
  fRadianAngle^:=pNewValue*DEG2RAD;
 end;
 
-procedure TPropertyAngle.SetRadianAngle(const pNewValue:TScalar);
+procedure TpvPropertyAngle.SetRadianAngle(const pNewValue:TpvScalar);
 begin
  fRadianAngle^:=pNewValue;
 end;
 
-constructor TPropertyRotation3D.Create(AQuaternion:PQuaternion);
+constructor TpvPropertyRotation3D.Create(AQuaternion:PpvQuaternion);
 begin
  inherited Create;
  fQuaternion:=AQuaternion;
 end;
 
-destructor TPropertyRotation3D.Destroy;
+destructor TpvPropertyRotation3D.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TPropertyRotation3D.GetX:TScalar;
+function TpvPropertyRotation3D.GetX:TpvScalar;
 begin
  result:=fQuaternion^.x;
 end;
 
-function TPropertyRotation3D.GetY:TScalar;
+function TpvPropertyRotation3D.GetY:TpvScalar;
 begin
  result:=fQuaternion^.y;
 end;
 
-function TPropertyRotation3D.GetZ:TScalar;
+function TpvPropertyRotation3D.GetZ:TpvScalar;
 begin
  result:=fQuaternion^.z;
 end;
 
-function TPropertyRotation3D.GetW:TScalar;
+function TpvPropertyRotation3D.GetW:TpvScalar;
 begin
  result:=fQuaternion^.w;
 end;
 
-function TPropertyRotation3D.GetPitch:TScalar;
+function TpvPropertyRotation3D.GetPitch:TpvScalar;
 begin
  result:=fQuaternion^.Normalize.ToEuler.Pitch*RAD2DEG;
 end;
 
-function TPropertyRotation3D.GetYaw:TScalar;
+function TpvPropertyRotation3D.GetYaw:TpvScalar;
 begin
  result:=fQuaternion^.Normalize.ToEuler.Yaw*RAD2DEG;
 end;
 
-function TPropertyRotation3D.GetRoll:TScalar;
+function TpvPropertyRotation3D.GetRoll:TpvScalar;
 begin
  result:=fQuaternion^.Normalize.ToEuler.Roll*RAD2DEG;
 end;
 
-function TPropertyRotation3D.GetQuaternion:TQuaternion;
+function TpvPropertyRotation3D.GetQuaternion:TpvQuaternion;
 begin
  result:=fQuaternion^;
 end;
 
-procedure TPropertyRotation3D.SetX(const pNewValue:TScalar);
+procedure TpvPropertyRotation3D.SetX(const pNewValue:TpvScalar);
 begin
  fQuaternion^.x:=pNewValue;
 end;
 
-procedure TPropertyRotation3D.SetY(const pNewValue:TScalar);
+procedure TpvPropertyRotation3D.SetY(const pNewValue:TpvScalar);
 begin
  fQuaternion^.y:=pNewValue;
 end;
 
-procedure TPropertyRotation3D.SetZ(const pNewValue:TScalar);
+procedure TpvPropertyRotation3D.SetZ(const pNewValue:TpvScalar);
 begin
  fQuaternion^.z:=pNewValue;
 end;
 
-procedure TPropertyRotation3D.SetW(const pNewValue:TScalar);
+procedure TpvPropertyRotation3D.SetW(const pNewValue:TpvScalar);
 begin
  fQuaternion^.w:=pNewValue;
 end;
 
-procedure TPropertyRotation3D.SetPitch(const pNewValue:TScalar);
-var Angles:TVector3;
+procedure TpvPropertyRotation3D.SetPitch(const pNewValue:TpvScalar);
+var Angles:TpvVector3;
 begin
  Angles:=fQuaternion^.Normalize.ToEuler;
  Angles.Pitch:=pNewValue*DEG2RAD;
- fQuaternion^:=TQuaternion.CreateFromEuler(Angles);
+ fQuaternion^:=TpvQuaternion.CreateFromEuler(Angles);
 end;
 
-procedure TPropertyRotation3D.SetYaw(const pNewValue:TScalar);
-var Angles:TVector3;
+procedure TpvPropertyRotation3D.SetYaw(const pNewValue:TpvScalar);
+var Angles:TpvVector3;
 begin
  Angles:=fQuaternion^.Normalize.ToEuler;
  Angles.Yaw:=pNewValue*DEG2RAD;
- fQuaternion^:=TQuaternion.CreateFromEuler(Angles);
+ fQuaternion^:=TpvQuaternion.CreateFromEuler(Angles);
 end;
 
-procedure TPropertyRotation3D.SetRoll(const pNewValue:TScalar);
-var Angles:TVector3;
+procedure TpvPropertyRotation3D.SetRoll(const pNewValue:TpvScalar);
+var Angles:TpvVector3;
 begin
  Angles:=fQuaternion^.Normalize.ToEuler;
  Angles.Roll:=pNewValue*DEG2RAD;
- fQuaternion^:=TQuaternion.CreateFromEuler(Angles);
+ fQuaternion^:=TpvQuaternion.CreateFromEuler(Angles);
 end;
 
-procedure TPropertyRotation3D.SetQuaternion(const NewQuaternion:TQuaternion);
+procedure TpvPropertyRotation3D.SetQuaternion(const NewQuaternion:TpvQuaternion);
 begin
  fQuaternion^:=NewQuaternion;
 end;
 
-constructor TPropertyColorRGB.Create(AVector:PVector3);
+constructor TPropertyColorRGB.Create(AVector:PpvVector3);
 begin
  inherited Create;
  fVector:=AVector;
@@ -15371,47 +15371,47 @@ begin
  inherited Destroy;
 end;
 
-function TPropertyColorRGB.GetR:TScalar;
+function TPropertyColorRGB.GetR:TpvScalar;
 begin
  result:=fVector^.r;
 end;
 
-function TPropertyColorRGB.GetG:TScalar;
+function TPropertyColorRGB.GetG:TpvScalar;
 begin
  result:=fVector^.g;
 end;
 
-function TPropertyColorRGB.GetB:TScalar;
+function TPropertyColorRGB.GetB:TpvScalar;
 begin
  result:=fVector^.b;
 end;
 
-function TPropertyColorRGB.GetVector:TVector3;
+function TPropertyColorRGB.GetVector:TpvVector3;
 begin
  result:=fVector^;
 end;
 
-procedure TPropertyColorRGB.SetR(const pNewValue:TScalar);
+procedure TPropertyColorRGB.SetR(const pNewValue:TpvScalar);
 begin
  fVector^.r:=pNewValue;
 end;
 
-procedure TPropertyColorRGB.SetG(const pNewValue:TScalar);
+procedure TPropertyColorRGB.SetG(const pNewValue:TpvScalar);
 begin
  fVector^.g:=pNewValue;
 end;
 
-procedure TPropertyColorRGB.SetB(const pNewValue:TScalar);
+procedure TPropertyColorRGB.SetB(const pNewValue:TpvScalar);
 begin
  fVector^.b:=pNewValue;
 end;
 
-procedure TPropertyColorRGB.SetVector(const pNewVector:TVector3);
+procedure TPropertyColorRGB.SetVector(const pNewVector:TpvVector3);
 begin
  fVector^:=pNewVector;
 end;
 
-constructor TPropertyColorRGBA.Create(AVector:PVector4);
+constructor TPropertyColorRGBA.Create(AVector:PpvVector4);
 begin
  inherited Create;
  fVector:=AVector;
@@ -15422,52 +15422,52 @@ begin
  inherited Destroy;
 end;
 
-function TPropertyColorRGBA.GetR:TScalar;
+function TPropertyColorRGBA.GetR:TpvScalar;
 begin
  result:=fVector^.r;
 end;
 
-function TPropertyColorRGBA.GetG:TScalar;
+function TPropertyColorRGBA.GetG:TpvScalar;
 begin
  result:=fVector^.g;
 end;
 
-function TPropertyColorRGBA.GetB:TScalar;
+function TPropertyColorRGBA.GetB:TpvScalar;
 begin
  result:=fVector^.b;
 end;
 
-function TPropertyColorRGBA.GetA:TScalar;
+function TPropertyColorRGBA.GetA:TpvScalar;
 begin
  result:=fVector^.a;
 end;
 
-function TPropertyColorRGBA.GetVector:TVector4;
+function TPropertyColorRGBA.GetVector:TpvVector4;
 begin
  result:=fVector^;
 end;
 
-procedure TPropertyColorRGBA.SetR(const pNewValue:TScalar);
+procedure TPropertyColorRGBA.SetR(const pNewValue:TpvScalar);
 begin
  fVector^.r:=pNewValue;
 end;
 
-procedure TPropertyColorRGBA.SetG(const pNewValue:TScalar);
+procedure TPropertyColorRGBA.SetG(const pNewValue:TpvScalar);
 begin
  fVector^.g:=pNewValue;
 end;
 
-procedure TPropertyColorRGBA.SetB(const pNewValue:TScalar);
+procedure TPropertyColorRGBA.SetB(const pNewValue:TpvScalar);
 begin
  fVector^.b:=pNewValue;
 end;
 
-procedure TPropertyColorRGBA.SetA(const pNewValue:TScalar);
+procedure TPropertyColorRGBA.SetA(const pNewValue:TpvScalar);
 begin
  fVector^.a:=pNewValue;
 end;
 
-procedure TPropertyColorRGBA.SetVector(const pNewVector:TVector4);
+procedure TPropertyColorRGBA.SetVector(const pNewVector:TpvVector4);
 begin
  fVector^:=pNewVector;
 end;

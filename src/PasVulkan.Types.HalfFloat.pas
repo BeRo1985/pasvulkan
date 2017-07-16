@@ -62,74 +62,74 @@ interface
 
 uses PasVulkan.Types.Standard;
 
-type PPHalfFloat=^PHalfFloat;
-     PHalfFloat=^THalfFloat;
-     THalfFloat=record
+type PPpvHalfFloat=^PpvHalfFloat;
+     PpvHalfFloat=^TpvHalfFloat;
+     TpvHalfFloat=record
       public
-       Value:TUInt16;
-       constructor Create(const pValue:TFloat);
-       class function FromFloat(const pValue:TFloat):THalfFloat; static; {$ifdef CAN_INLINE}inline;{$endif}
-       function ToFloat:TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Implicit(const a:TFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Implicit(const a:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator GreaterThan(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator GreaterThan(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator GreaterThan(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator GreaterThanOrEqual(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator GreaterThanOrEqual(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator GreaterThanOrEqual(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator LessThan(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator LessThan(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator LessThan(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator LessThanOrEqual(const a,b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator LessThanOrEqual(const a:THalfFloat;const b:TFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator LessThanOrEqual(const a:TFloat;const b:THalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc(const a:THalfFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Dec(const a:THalfFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a,b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Add(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a,b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a,b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a,b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:THalfFloat;const b:TFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide(const a:TFloat;const b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Modulus(const a,b:THalfFloat):TFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative(const a:THalfFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Positive(const a:THalfFloat):THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       function Abs:THalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       Value:TpvUInt16;
+       constructor Create(const pValue:TpvFloat);
+       class function FromFloat(const pValue:TpvFloat):TpvHalfFloat; static; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToFloat:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Implicit(const a:TpvFloat):TpvHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Implicit(const a:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvFloat):TpvHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a:TpvHalfFloat;const b:TpvFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a:TpvFloat;const b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a:TpvHalfFloat;const b:TpvFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a:TpvFloat;const b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThan(const a,b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThan(const a:TpvHalfFloat;const b:TpvFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThan(const a:TpvFloat;const b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThanOrEqual(const a,b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThanOrEqual(const a:TpvHalfFloat;const b:TpvFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator GreaterThanOrEqual(const a:TpvFloat;const b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThan(const a,b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThan(const a:TpvHalfFloat;const b:TpvFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThan(const a:TpvFloat;const b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThanOrEqual(const a,b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThanOrEqual(const a:TpvHalfFloat;const b:TpvFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator LessThanOrEqual(const a:TpvFloat;const b:TpvHalfFloat):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc(const a:TpvHalfFloat):TpvHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Dec(const a:TpvHalfFloat):TpvHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a,b:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TpvHalfFloat;const b:TpvFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a:TpvFloat;const b:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a,b:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TpvHalfFloat;const b:TpvFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a:TpvFloat;const b:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a,b:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvHalfFloat;const b:TpvFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvFloat;const b:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a,b:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvHalfFloat;const b:TpvFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const a:TpvFloat;const b:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Modulus(const a,b:TpvHalfFloat):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative(const a:TpvHalfFloat):TpvHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Positive(const a:TpvHalfFloat):TpvHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       function Abs:TpvHalfFloat; {$ifdef CAN_INLINE}inline;{$endif}
        function IsNaN:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function IsInfinity:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function IsNegativeInfinity:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function IsPositiveInfinity:boolean; {$ifdef CAN_INLINE}inline;{$endif}
      end;
 
-var FloatToHalfFloatBaseTable:array[0..511] of TUInt16;
-    FloatToHalfFloatShiftTable:array[0..511] of TUInt8;
+var FloatToHalfFloatBaseTable:array[0..511] of TpvUInt16;
+    FloatToHalfFloatShiftTable:array[0..511] of TpvUInt8;
 
-    HalfFloatToFloatMantissaTable:array[0..2047] of TUInt32;
-    HalfFloatToFloatExponentTable:array[0..63] of TUInt32;
-    HalfFloatToFloatOffsetTable:array[0..63] of TUInt32;
+    HalfFloatToFloatMantissaTable:array[0..2047] of TpvUInt32;
+    HalfFloatToFloatExponentTable:array[0..63] of TpvUInt32;
+    HalfFloatToFloatOffsetTable:array[0..63] of TpvUInt32;
 
 implementation
 
 uses Math;
 
 procedure GenerateHalfFloatLookUpTables;
-var i,e:TInt32;
-    Mantissa,Exponent:TUInt32;
+var i,e:TpvInt32;
+    Mantissa,Exponent:TpvUInt32;
 begin
  for i:=0 to 255 do begin
   e:=i-127;
@@ -186,7 +186,7 @@ begin
     HalfFloatToFloatMantissaTable[i]:=Mantissa or Exponent;
    end;
    for i:=1024 to 2047 do begin
-    HalfFloatToFloatMantissaTable[i]:=TUInt32($38000000)+TUInt32(TUInt32(i-1024) shl 13);
+    HalfFloatToFloatMantissaTable[i]:=TpvUInt32($38000000)+TpvUInt32(TpvUInt32(i-1024) shl 13);
    end;
   end;
   begin
@@ -197,7 +197,7 @@ begin
    HalfFloatToFloatExponentTable[31]:=$47800000;
    HalfFloatToFloatExponentTable[32]:=0;
    for i:=33 to 62 do begin
-    HalfFloatToFloatExponentTable[i]:=TUInt32(TUInt32(i-32) shl 23) or TUInt32($80000000);
+    HalfFloatToFloatExponentTable[i]:=TpvUInt32(TpvUInt32(i-32) shl 23) or TpvUInt32($80000000);
    end;
    HalfFloatToFloatExponentTable[63]:=$c7800000;
   end;
@@ -214,244 +214,244 @@ begin
  end;
 end;
 
-constructor THalfFloat.Create(const pValue:TFloat);
-var CastedValue:TUInt32 absolute pValue;
+constructor TpvHalfFloat.Create(const pValue:TpvFloat);
+var CastedValue:TpvUInt32 absolute pValue;
 begin
- Value:=FloatToHalfFloatBaseTable[CastedValue shr 23]+TUInt16((CastedValue and $007fffff) shr FloatToHalfFloatShiftTable[CastedValue shr 23]);
+ Value:=FloatToHalfFloatBaseTable[CastedValue shr 23]+TpvUInt16((CastedValue and $007fffff) shr FloatToHalfFloatShiftTable[CastedValue shr 23]);
 end;
 
-class function THalfFloat.FromFloat(const pValue:TFloat):THalfFloat;
-var CastedValue:TUInt32 absolute pValue;
+class function TpvHalfFloat.FromFloat(const pValue:TpvFloat):TpvHalfFloat;
+var CastedValue:TpvUInt32 absolute pValue;
 begin
- result.Value:=FloatToHalfFloatBaseTable[CastedValue shr 23]+TUInt16((CastedValue and $007fffff) shr FloatToHalfFloatShiftTable[CastedValue shr 23]);
+ result.Value:=FloatToHalfFloatBaseTable[CastedValue shr 23]+TpvUInt16((CastedValue and $007fffff) shr FloatToHalfFloatShiftTable[CastedValue shr 23]);
 end;
 
-function THalfFloat.ToFloat:TFloat;
-var f:TUInt32;
+function TpvHalfFloat.ToFloat:TpvFloat;
+var f:TpvUInt32;
 begin
  f:=HalfFloatToFloatMantissaTable[HalfFloatToFloatOffsetTable[Value shr 10]+(Value and $3ff)]+HalfFloatToFloatExponentTable[Value shr 10];
- result:=TFloat(pointer(@f)^);
+ result:=TpvFloat(pointer(@f)^);
 end;
 
-class operator THalfFloat.Implicit(const a:TFloat):THalfFloat;
+class operator TpvHalfFloat.Implicit(const a:TpvFloat):TpvHalfFloat;
 begin
- result:=THalfFloat.FromFloat(a);
+ result:=TpvHalfFloat.FromFloat(a);
 end;
 
-class operator THalfFloat.Implicit(const a:THalfFloat):TFloat;
-begin
- result:=a.ToFloat;
-end;
-
-class operator THalfFloat.Explicit(const a:TFloat):THalfFloat;
-begin
- result:=THalfFloat.FromFloat(a);
-end;
-
-class operator THalfFloat.Explicit(const a:THalfFloat):TFloat;
+class operator TpvHalfFloat.Implicit(const a:TpvHalfFloat):TpvFloat;
 begin
  result:=a.ToFloat;
 end;
 
-class operator THalfFloat.Equal(const a,b:THalfFloat):boolean;
+class operator TpvHalfFloat.Explicit(const a:TpvFloat):TpvHalfFloat;
+begin
+ result:=TpvHalfFloat.FromFloat(a);
+end;
+
+class operator TpvHalfFloat.Explicit(const a:TpvHalfFloat):TpvFloat;
+begin
+ result:=a.ToFloat;
+end;
+
+class operator TpvHalfFloat.Equal(const a,b:TpvHalfFloat):boolean;
 begin
  result:=a.ToFloat=b.ToFloat;
 end;
 
-class operator THalfFloat.Equal(const a:THalfFloat;const b:TFloat):boolean;
+class operator TpvHalfFloat.Equal(const a:TpvHalfFloat;const b:TpvFloat):boolean;
 begin
  result:=a.ToFloat=b;
 end;
 
-class operator THalfFloat.Equal(const a:TFloat;const b:THalfFloat):boolean;
+class operator TpvHalfFloat.Equal(const a:TpvFloat;const b:TpvHalfFloat):boolean;
 begin
  result:=a=b.ToFloat;
 end;
 
-class operator THalfFloat.NotEqual(const a,b:THalfFloat):boolean;
+class operator TpvHalfFloat.NotEqual(const a,b:TpvHalfFloat):boolean;
 begin
  result:=a.ToFloat=b.ToFloat;
 end;
 
-class operator THalfFloat.NotEqual(const a:THalfFloat;const b:TFloat):boolean;
+class operator TpvHalfFloat.NotEqual(const a:TpvHalfFloat;const b:TpvFloat):boolean;
 begin
  result:=a.ToFloat<>b;
 end;
 
-class operator THalfFloat.NotEqual(const a:TFloat;const b:THalfFloat):boolean;
+class operator TpvHalfFloat.NotEqual(const a:TpvFloat;const b:TpvHalfFloat):boolean;
 begin
  result:=a<>b.ToFloat;
 end;
 
-class operator THalfFloat.GreaterThan(const a,b:THalfFloat):boolean;
+class operator TpvHalfFloat.GreaterThan(const a,b:TpvHalfFloat):boolean;
 begin
  result:=a.ToFloat>b.ToFloat;
 end;
 
-class operator THalfFloat.GreaterThan(const a:THalfFloat;const b:TFloat):boolean;
+class operator TpvHalfFloat.GreaterThan(const a:TpvHalfFloat;const b:TpvFloat):boolean;
 begin
  result:=a.ToFloat>b;
 end;
 
-class operator THalfFloat.GreaterThan(const a:TFloat;const b:THalfFloat):boolean;
+class operator TpvHalfFloat.GreaterThan(const a:TpvFloat;const b:TpvHalfFloat):boolean;
 begin
  result:=a>b.ToFloat;
 end;
 
-class operator THalfFloat.GreaterThanOrEqual(const a,b:THalfFloat):boolean;
+class operator TpvHalfFloat.GreaterThanOrEqual(const a,b:TpvHalfFloat):boolean;
 begin
  result:=a.ToFloat>=b.ToFloat;
 end;
 
-class operator THalfFloat.GreaterThanOrEqual(const a:THalfFloat;const b:TFloat):boolean;
+class operator TpvHalfFloat.GreaterThanOrEqual(const a:TpvHalfFloat;const b:TpvFloat):boolean;
 begin
  result:=a.ToFloat>=b;
 end;
 
-class operator THalfFloat.GreaterThanOrEqual(const a:TFloat;const b:THalfFloat):boolean;
+class operator TpvHalfFloat.GreaterThanOrEqual(const a:TpvFloat;const b:TpvHalfFloat):boolean;
 begin
  result:=a>=b.ToFloat;
 end;
 
-class operator THalfFloat.LessThan(const a,b:THalfFloat):boolean;
+class operator TpvHalfFloat.LessThan(const a,b:TpvHalfFloat):boolean;
 begin
  result:=a.ToFloat<b.ToFloat;
 end;
 
-class operator THalfFloat.LessThan(const a:THalfFloat;const b:TFloat):boolean;
+class operator TpvHalfFloat.LessThan(const a:TpvHalfFloat;const b:TpvFloat):boolean;
 begin
  result:=a.ToFloat<b;
 end;
 
-class operator THalfFloat.LessThan(const a:TFloat;const b:THalfFloat):boolean;
+class operator TpvHalfFloat.LessThan(const a:TpvFloat;const b:TpvHalfFloat):boolean;
 begin
  result:=a<b.ToFloat;
 end;
 
-class operator THalfFloat.LessThanOrEqual(const a,b:THalfFloat):boolean;
+class operator TpvHalfFloat.LessThanOrEqual(const a,b:TpvHalfFloat):boolean;
 begin
  result:=a.ToFloat<=b.ToFloat;
 end;
 
-class operator THalfFloat.LessThanOrEqual(const a:THalfFloat;const b:TFloat):boolean;
+class operator TpvHalfFloat.LessThanOrEqual(const a:TpvHalfFloat;const b:TpvFloat):boolean;
 begin
  result:=a.ToFloat<=b;
 end;
 
-class operator THalfFloat.LessThanOrEqual(const a:TFloat;const b:THalfFloat):boolean;
+class operator TpvHalfFloat.LessThanOrEqual(const a:TpvFloat;const b:TpvHalfFloat):boolean;
 begin
  result:=a<=b.ToFloat;
 end;
 
-class operator THalfFloat.Inc(const a:THalfFloat):THalfFloat;
+class operator TpvHalfFloat.Inc(const a:TpvHalfFloat):TpvHalfFloat;
 begin
- result:=THalfFloat.FromFloat(a.ToFloat+1.0);
+ result:=TpvHalfFloat.FromFloat(a.ToFloat+1.0);
 end;
 
-class operator THalfFloat.Dec(const a:THalfFloat):THalfFloat;
+class operator TpvHalfFloat.Dec(const a:TpvHalfFloat):TpvHalfFloat;
 begin
- result:=THalfFloat.FromFloat(a.ToFloat-1.0);
+ result:=TpvHalfFloat.FromFloat(a.ToFloat-1.0);
 end;
 
-class operator THalfFloat.Add(const a,b:THalfFloat):TFloat;
+class operator TpvHalfFloat.Add(const a,b:TpvHalfFloat):TpvFloat;
 begin
  result:=a.ToFloat+b.ToFloat;
 end;
 
-class operator THalfFloat.Add(const a:THalfFloat;const b:TFloat):TFloat;
+class operator TpvHalfFloat.Add(const a:TpvHalfFloat;const b:TpvFloat):TpvFloat;
 begin
  result:=a.ToFloat+b;
 end;
 
-class operator THalfFloat.Add(const a:TFloat;const b:THalfFloat):TFloat;
+class operator TpvHalfFloat.Add(const a:TpvFloat;const b:TpvHalfFloat):TpvFloat;
 begin
  result:=a+b.ToFloat;
 end;
 
-class operator THalfFloat.Subtract(const a,b:THalfFloat):TFloat;
+class operator TpvHalfFloat.Subtract(const a,b:TpvHalfFloat):TpvFloat;
 begin
  result:=a.ToFloat-b.ToFloat;
 end;
 
-class operator THalfFloat.Subtract(const a:THalfFloat;const b:TFloat):TFloat;
+class operator TpvHalfFloat.Subtract(const a:TpvHalfFloat;const b:TpvFloat):TpvFloat;
 begin
  result:=a.ToFloat-b;
 end;
 
-class operator THalfFloat.Subtract(const a:TFloat;const b:THalfFloat):TFloat;
+class operator TpvHalfFloat.Subtract(const a:TpvFloat;const b:TpvHalfFloat):TpvFloat;
 begin
  result:=a-b.ToFloat;
 end;
 
-class operator THalfFloat.Multiply(const a,b:THalfFloat):TFloat;
+class operator TpvHalfFloat.Multiply(const a,b:TpvHalfFloat):TpvFloat;
 begin
  result:=a.ToFloat*b.ToFloat;
 end;
 
-class operator THalfFloat.Multiply(const a:THalfFloat;const b:TFloat):TFloat;
+class operator TpvHalfFloat.Multiply(const a:TpvHalfFloat;const b:TpvFloat):TpvFloat;
 begin
  result:=a.ToFloat*b;
 end;
 
-class operator THalfFloat.Multiply(const a:TFloat;const b:THalfFloat):TFloat;
+class operator TpvHalfFloat.Multiply(const a:TpvFloat;const b:TpvHalfFloat):TpvFloat;
 begin
  result:=a*b.ToFloat;
 end;
 
-class operator THalfFloat.Divide(const a,b:THalfFloat):TFloat;
+class operator TpvHalfFloat.Divide(const a,b:TpvHalfFloat):TpvFloat;
 begin
  result:=a.ToFloat/b.ToFloat;
 end;
 
-class operator THalfFloat.Divide(const a:THalfFloat;const b:TFloat):TFloat;
+class operator TpvHalfFloat.Divide(const a:TpvHalfFloat;const b:TpvFloat):TpvFloat;
 begin
  result:=a.ToFloat/b;
 end;
 
-class operator THalfFloat.Divide(const a:TFloat;const b:THalfFloat):TFloat;
+class operator TpvHalfFloat.Divide(const a:TpvFloat;const b:TpvHalfFloat):TpvFloat;
 begin
  result:=a/b.ToFloat;
 end;
 
-class operator THalfFloat.Modulus(const a,b:THalfFloat):TFloat;
-var x,y:TFloat;
+class operator TpvHalfFloat.Modulus(const a,b:TpvHalfFloat):TpvFloat;
+var x,y:TpvFloat;
 begin
  x:=a.ToFloat;
  y:=b.ToFloat;
  result:=x-(floor(x/y)*y);
 end;
 
-class operator THalfFloat.Negative(const a:THalfFloat):THalfFloat;
+class operator TpvHalfFloat.Negative(const a:TpvHalfFloat):TpvHalfFloat;
 begin
  result.Value:=a.Value xor $8000;
 end;
 
-class operator THalfFloat.Positive(const a:THalfFloat):THalfFloat;
+class operator TpvHalfFloat.Positive(const a:TpvHalfFloat):TpvHalfFloat;
 begin
  result:=a;
 end;
 
-function THalfFloat.Abs:THalfFloat;
+function TpvHalfFloat.Abs:TpvHalfFloat;
 begin
  result.Value:=Value and $7fff;
 end;
 
-function THalfFloat.IsNaN:boolean;
+function TpvHalfFloat.IsNaN:boolean;
 begin
  result:=(Value and $7fff)>$7c00;
 end;
 
-function THalfFloat.IsInfinity:boolean;
+function TpvHalfFloat.IsInfinity:boolean;
 begin
  result:=(Value and $7fff)=$7c00;
 end;
 
-function THalfFloat.IsNegativeInfinity:boolean;
+function TpvHalfFloat.IsNegativeInfinity:boolean;
 begin
  result:=Value=$fc00;
 end;
 
-function THalfFloat.IsPositiveInfinity:boolean;
+function TpvHalfFloat.IsPositiveInfinity:boolean;
 begin
  result:=Value=$7c00;
 end;

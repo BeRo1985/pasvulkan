@@ -34,29 +34,29 @@ uses SysUtils,
 type TScreenMainMenu=class(TScreenBlank)
       private
        fReady:boolean;
-       fSelectedIndex:TInt32;
-       fStartY:TFloat;
+       fSelectedIndex:TpvInt32;
+       fStartY:TpvFloat;
       public
 
        constructor Create; override;
 
        destructor Destroy; override;
 
-       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean; override;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
 
-       function MouseMoved(const aScreenX,aScreenY:TInt32):boolean; override;
+       function MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
 
-       function Scrolled(const aAmount:TInt32):boolean; override;
+       function Scrolled(const aAmount:TpvInt32):boolean; override;
 
        procedure Update(const aDeltaTime:double); override;
 
@@ -80,7 +80,7 @@ begin
  inherited Destroy;
 end;
 
-function TScreenMainMenu.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenMainMenu.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
  if fReady then begin
@@ -137,19 +137,19 @@ begin
  end;
 end;
 
-function TScreenMainMenu.KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenMainMenu.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenMainMenu.KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenMainMenu.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenMainMenu.TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
+function TScreenMainMenu.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
@@ -169,31 +169,14 @@ begin
  end;
 end;
 
-function TScreenMainMenu.TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
+function TScreenMainMenu.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenMainMenu.TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
-begin
- result:=false;
- if fReady then begin
-  fSelectedIndex:=-1;
-  cy:=fStartY;
-  for Index:=0 to RegisteredExamplesList.Count do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
-    fSelectedIndex:=Index;
-   end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
-  end;
- end;
-end;
-
-function TScreenMainMenu.MouseMoved(const aScreenX,aScreenY:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
+function TScreenMainMenu.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
@@ -208,15 +191,32 @@ begin
  end;
 end;
 
-function TScreenMainMenu.Scrolled(const aAmount:TInt32):boolean;
+function TScreenMainMenu.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
+begin
+ result:=false;
+ if fReady then begin
+  fSelectedIndex:=-1;
+  cy:=fStartY;
+  for Index:=0 to RegisteredExamplesList.Count do begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+    fSelectedIndex:=Index;
+   end;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+  end;
+ end;
+end;
+
+function TScreenMainMenu.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
 procedure TScreenMainMenu.Update(const aDeltaTime:double);
-const BoolToInt:array[boolean] of TInt32=(0,1);
-var Index:TInt32;
-    cy:TFloat;
+const BoolToInt:array[boolean] of TpvInt32=(0,1);
+var Index:TpvInt32;
+    cy:TpvFloat;
     s:string;
     IsSelected:boolean;
 begin

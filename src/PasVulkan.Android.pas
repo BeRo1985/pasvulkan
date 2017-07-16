@@ -400,7 +400,7 @@ type va_list=pointer;
      jweak=jobject;
      jref=jobject;
 
-     PPointer=^pointer;
+     PpvPointer=^pointer;
      Pjobject=^jobject;
      Pjclass=^jclass;
      Pjstring=^jstring;
@@ -799,7 +799,7 @@ type va_list=pointer;
       DestroyJavaVM:function(PVM:PJavaVM):JInt;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
       AttachCurrentThread:function(PVM:PJavaVM;PEnv:PPJNIEnv;Args:pointer):JInt;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
       DetachCurrentThread:function(PVM:PJavaVM):JInt;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
-      GetEnv:function(PVM:PJavaVM;PEnv:Ppointer;Version:JInt):JInt;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
+      GetEnv:function(PVM:PJavaVM;PEnv:Ppvpointer;Version:JInt):JInt;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
       AttachCurrentThreadAsDaemon:function(PVM:PJavaVM;PEnv:PPJNIEnv;Args:pointer):JInt;{$ifdef mswindows}stdcall;{$else}cdecl;{$endif}
      end;
 
@@ -1471,8 +1471,8 @@ function ALooper_forThread:PALooper; cdecl; external LibAndroidName name 'ALoope
 function ALooper_prepare(opts:cint):PALooper; cdecl; external LibAndroidName name 'ALooper_prepare';
 procedure ALooper_acquire(looper:PALooper); cdecl; external LibAndroidName name 'ALooper_acquire';
 procedure ALooper_release(looper:PALooper); cdecl; external LibAndroidName name 'ALooper_release';
-function ALooper_pollOnce(timeoutMillis:cint;outFd,outEvents:Pint;outData:PPointer):cint; cdecl; external LibAndroidName name 'ALooper_pollOnce';
-function ALooper_pollAll(timeoutMillis:cint;outFd,outEvents:Pint;outData:PPointer):cint; cdecl; external LibAndroidName name 'ALooper_pollAll';
+function ALooper_pollOnce(timeoutMillis:cint;outFd,outEvents:Pint;outData:PpvPointer):cint; cdecl; external LibAndroidName name 'ALooper_pollOnce';
+function ALooper_pollAll(timeoutMillis:cint;outFd,outEvents:Pint;outData:PpvPointer):cint; cdecl; external LibAndroidName name 'ALooper_pollAll';
 procedure ALooper_wake(looper:PALooper); cdecl; external LibAndroidName name 'ALooper_wake';
 function ALooper_addFd(looper:PALooper;fd,ident,events:cint;callback:TALooper_callbackFunc;data:Pointer):cint; cdecl; external LibAndroidName name 'ALooper_addFd';
 function ALooper_removeFd(looper:PALooper;fd:cint):cint; cdecl; external LibAndroidName name 'ALooper_removeFd';
@@ -1533,7 +1533,7 @@ function AInputQueue_preDispatchEvent(queue:PAInputQueue;event:PAInputEvent):cin
 procedure AInputQueue_finishEvent(queue:PAInputQueue;event:PAInputEvent;handled:cint); cdecl; external LibAndroidName name 'AInputQueue_finishEvent';
 
 function AndroidBitmap_getInfo(env:PJNIEnv;jbitmap:jobject;info: PAndroidBitmapInfo):cint; cdecl; external LibJNIGraphicsName name 'AndroidBitmap_getInfo';
-function AndroidBitmap_lockPixels(env:PJNIEnv;jbitmap:jobject;addrPtr:PPointer):cint; cdecl; external LibJNIGraphicsName name 'AndroidBitmap_lockPixels';
+function AndroidBitmap_lockPixels(env:PJNIEnv;jbitmap:jobject;addrPtr:PpvPointer):cint; cdecl; external LibJNIGraphicsName name 'AndroidBitmap_lockPixels';
 function AndroidBitmap_unlockPixels(env:PJNIEnv;jbitmap:jobject):cint; cdecl; external LibJNIGraphicsName name 'AndroidBitmap_unlockPixels';
 
 function AAssetManager_fromJava(env:PJNIEnv;assetManager:JObject): PAAssetManager; cdecl; external LibAndroidName name 'AAssetManager_fromJava';

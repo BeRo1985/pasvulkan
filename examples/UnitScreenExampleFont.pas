@@ -40,9 +40,9 @@ type TScreenExampleFont=class(TVulkanApplicationScreen)
        fVulkanCanvas:TVulkanCanvas;
        fVulkanFont:TVulkanFont;
        fReady:boolean;
-       fSelectedIndex:TInt32;
-       fStartY:TFloat;
-       fTime:TDouble;
+       fSelectedIndex:TpvInt32;
+       fStartY:TpvFloat;
+       fTime:TpvDouble;
       public
 
        constructor Create; override;
@@ -57,31 +57,31 @@ type TScreenExampleFont=class(TVulkanApplicationScreen)
 
        procedure Pause; override;
 
-       procedure Resize(const aWidth,aHeight:TInt32); override;
+       procedure Resize(const aWidth,aHeight:TpvInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
 
-       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean; override;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
 
-       function MouseMoved(const aScreenX,aScreenY:TInt32):boolean; override;
+       function MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
 
-       function Scrolled(const aAmount:TInt32):boolean; override;
+       function Scrolled(const aAmount:TpvInt32):boolean; override;
 
-       procedure Update(const aDeltaTime:TDouble); override;
+       procedure Update(const aDeltaTime:TpvDouble); override;
 
-       procedure Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
 
      end;
 
@@ -89,14 +89,14 @@ implementation
 
 uses UnitExampleVulkanApplication,UnitTextOverlay,UnitScreenMainMenu;
 
-const SpritesVertices:array[0..2,0..1,0..2] of TFloat=
+const SpritesVertices:array[0..2,0..1,0..2] of TpvFloat=
        (((0.5,0.5,0.0),(1.0,0.0,0.0)),
         ((-0.5,0.5,0.0),(0.0,1.0,0.0)),
         ((0.0,-0.5,0.0),(0.0,0.0,1.0)));
 
-      SpritesIndices:array[0..2] of TInt32=(0,1,2);
+      SpritesIndices:array[0..2] of TpvInt32=(0,1,2);
 
-      UniformBuffer:array[0..2,0..3,0..3] of TFloat=
+      UniformBuffer:array[0..2,0..3,0..3] of TpvFloat=
        (((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)),  // Projection matrix
         ((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)),  // Model matrix
         ((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0))); // View matrix
@@ -120,7 +120,7 @@ end;
 
 procedure TScreenExampleFont.Show;
 var Stream:TStream;
-    Index,x,y:TInt32;
+    Index,x,y:TpvInt32;
     RawSprite:pointer;
     TrueTypeFont:TVulkanTrueTypeFont;
 begin
@@ -164,7 +164,7 @@ begin
 end;
 
 procedure TScreenExampleFont.Hide;
-var Index:TInt32;
+var Index:TpvInt32;
 begin
  FreeAndNil(fVulkanFont);
  FreeAndNil(fVulkanSpriteAtlas);
@@ -187,13 +187,13 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenExampleFont.Resize(const aWidth,aHeight:TInt32);
+procedure TScreenExampleFont.Resize(const aWidth,aHeight:TpvInt32);
 begin
  inherited Resize(aWidth,aHeight);
 end;
 
 procedure TScreenExampleFont.AfterCreateSwapChain;
-var SwapChainImageIndex:TInt32;
+var SwapChainImageIndex:TpvInt32;
     VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
  inherited AfterCreateSwapChain;
@@ -288,7 +288,7 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-function TScreenExampleFont.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenExampleFont.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
  if fReady then begin
@@ -335,19 +335,19 @@ begin
  end;
 end;
 
-function TScreenExampleFont.KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenExampleFont.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleFont.KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenExampleFont.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleFont.TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
+function TScreenExampleFont.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
@@ -365,31 +365,14 @@ begin
  end;
 end;
 
-function TScreenExampleFont.TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
+function TScreenExampleFont.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleFont.TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
-begin
- result:=false;
- if fReady then begin
-  fSelectedIndex:=-1;
-  cy:=fStartY;
-  for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
-    fSelectedIndex:=Index;
-   end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
-  end;
- end;
-end;
-
-function TScreenExampleFont.MouseMoved(const aScreenX,aScreenY:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
+function TScreenExampleFont.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
@@ -404,16 +387,33 @@ begin
  end;
 end;
 
-function TScreenExampleFont.Scrolled(const aAmount:TInt32):boolean;
+function TScreenExampleFont.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
+begin
+ result:=false;
+ if fReady then begin
+  fSelectedIndex:=-1;
+  cy:=fStartY;
+  for Index:=0 to 0 do begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+    fSelectedIndex:=Index;
+   end;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+  end;
+ end;
+end;
+
+function TScreenExampleFont.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-procedure TScreenExampleFont.Update(const aDeltaTime:TDouble);
-const BoolToInt:array[boolean] of TInt32=(0,1);
+procedure TScreenExampleFont.Update(const aDeltaTime:TpvDouble);
+const BoolToInt:array[boolean] of TpvInt32=(0,1);
       Options:array[0..0] of string=('Back');
-var Index:TInt32;
-    cy,LocalFontSize:TFloat;
+var Index:TpvInt32;
+    cy,LocalFontSize:TpvFloat;
     rbs:TVulkanUTF8String;
     s:string;
     IsSelected:boolean;
@@ -458,9 +458,9 @@ begin
  fReady:=true;
 end;
 
-procedure TScreenExampleFont.Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TScreenExampleFont.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
-var BufferIndex,Size:TInt32;
+var BufferIndex,Size:TpvInt32;
     VulkanVertexBuffer:TVulkanBuffer;
     VulkanCommandBuffer:TVulkanCommandBuffer;
     VulkanSwapChain:TVulkanSwapChain;

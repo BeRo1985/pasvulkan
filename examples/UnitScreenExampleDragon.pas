@@ -33,15 +33,15 @@ uses SysUtils,
 
 type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
      TScreenExampleDragonUniformBuffer=record
-      ModelViewMatrix:TMatrix4x4;
-      ModelViewProjectionMatrix:TMatrix4x4;
-      ModelViewNormalMatrix:TMatrix4x4; // actually TMatrix3x3, but it would have then a TMatrix3x4 alignment, according to https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout
+      ModelViewMatrix:TpvMatrix4x4;
+      ModelViewProjectionMatrix:TpvMatrix4x4;
+      ModelViewNormalMatrix:TpvMatrix4x4; // actually TpvMatrix3x3, but it would have then a TMatrix3x4 alignment, according to https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout
      end;
 
      PScreenExampleDragonState=^TScreenExampleDragonState;
      TScreenExampleDragonState=record
-      Time:TDouble;
-      AnglePhases:array[0..1] of TFloat;
+      Time:TpvDouble;
+      AnglePhases:array[0..1] of TpvFloat;
      end;
 
      PScreenExampleDragonStates=^TScreenExampleDragonStates;
@@ -67,8 +67,8 @@ type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
        fUniformBuffer:TScreenExampleDragonUniformBuffer;
        fBoxAlbedoTexture:TVulkanTexture;
        fReady:boolean;
-       fSelectedIndex:TInt32;
-       fStartY:TFloat;
+       fSelectedIndex:TpvInt32;
+       fStartY:TpvFloat;
        fState:TScreenExampleDragonState;
        fStates:TScreenExampleDragonStates;
       public
@@ -85,31 +85,31 @@ type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
 
        procedure Pause; override;
 
-       procedure Resize(const aWidth,aHeight:TInt32); override;
+       procedure Resize(const aWidth,aHeight:TpvInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
 
-       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean; override;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
 
-       function MouseMoved(const aScreenX,aScreenY:TInt32):boolean; override;
+       function MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
 
-       function Scrolled(const aAmount:TInt32):boolean; override;
+       function Scrolled(const aAmount:TpvInt32):boolean; override;
 
-       procedure Update(const aDeltaTime:TDouble); override;
+       procedure Update(const aDeltaTime:TpvDouble); override;
 
-       procedure Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
 
      end;
 
@@ -137,7 +137,7 @@ end;
 
 procedure TScreenExampleDragon.Show;
 var Stream:TStream;
-    Index:TInt32;
+    Index:TpvInt32;
 begin
  inherited Show;
 
@@ -278,7 +278,7 @@ begin
 end;
 
 procedure TScreenExampleDragon.Hide;
-var Index:TInt32;
+var Index:TpvInt32;
 begin
  fVulkanModel.Unload;
  FreeAndNil(fVulkanPipelineLayout);
@@ -316,13 +316,13 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenExampleDragon.Resize(const aWidth,aHeight:TInt32);
+procedure TScreenExampleDragon.Resize(const aWidth,aHeight:TpvInt32);
 begin
  inherited Resize(aWidth,aHeight);
 end;
 
 procedure TScreenExampleDragon.AfterCreateSwapChain;
-var SwapChainImageIndex:TInt32;
+var SwapChainImageIndex:TpvInt32;
     VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
  inherited AfterCreateSwapChain;
@@ -498,7 +498,7 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-function TScreenExampleDragon.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenExampleDragon.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
  if fReady then begin
@@ -545,19 +545,19 @@ begin
  end;
 end;
 
-function TScreenExampleDragon.KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenExampleDragon.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleDragon.KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenExampleDragon.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleDragon.TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
+function TScreenExampleDragon.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
@@ -575,31 +575,14 @@ begin
  end;
 end;
 
-function TScreenExampleDragon.TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
+function TScreenExampleDragon.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleDragon.TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
-begin
- result:=false;
- if fReady then begin
-  fSelectedIndex:=-1;
-  cy:=fStartY;
-  for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
-    fSelectedIndex:=Index;
-   end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
-  end;
- end;
-end;
-
-function TScreenExampleDragon.MouseMoved(const aScreenX,aScreenY:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
+function TScreenExampleDragon.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
@@ -614,18 +597,35 @@ begin
  end;
 end;
 
-function TScreenExampleDragon.Scrolled(const aAmount:TInt32):boolean;
+function TScreenExampleDragon.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
+begin
+ result:=false;
+ if fReady then begin
+  fSelectedIndex:=-1;
+  cy:=fStartY;
+  for Index:=0 to 0 do begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+    fSelectedIndex:=Index;
+   end;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+  end;
+ end;
+end;
+
+function TScreenExampleDragon.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-procedure TScreenExampleDragon.Update(const aDeltaTime:TDouble);
-const BoolToInt:array[boolean] of TInt32=(0,1);
+procedure TScreenExampleDragon.Update(const aDeltaTime:TpvDouble);
+const BoolToInt:array[boolean] of TpvInt32=(0,1);
       Options:array[0..0] of string=('Back');
       f0=1.0/(2.0*pi);
       f1=0.5/(2.0*pi);
-var Index:TInt32;
-    cy:TFloat;
+var Index:TpvInt32;
+    cy:TpvFloat;
     s:string;
     IsSelected:boolean;
 begin
@@ -649,12 +649,12 @@ begin
  fReady:=true;
 end;
 
-procedure TScreenExampleDragon.Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TScreenExampleDragon.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 const TwoPI=2.0*pi;
 var p:pointer;
-    ModelMatrix:TMatrix4x4;
-    ViewMatrix:TMatrix4x4;
-    ProjectionMatrix:TMatrix4x4;
+    ModelMatrix:TpvMatrix4x4;
+    ViewMatrix:TpvMatrix4x4;
+    ProjectionMatrix:TpvMatrix4x4;
     State:PScreenExampleDragonState;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
@@ -662,14 +662,14 @@ begin
 
   State:=@fStates[VulkanApplication.DrawSwapChainImageIndex];
 
-  ModelMatrix:=TMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TVector3.Create(0.0,0.0,1.0))*
-               TMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TVector3.Create(0.0,1.0,0.0));
-  ViewMatrix:=TMatrix4x4.CreateTranslation(0.0,0.0,-32.0);
-  ProjectionMatrix:=TMatrix4x4.CreatePerspective(45.0,VulkanApplication.Width/VulkanApplication.Height,1.0,1024.0);
+  ModelMatrix:=TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*
+               TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
+  ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-32.0);
+  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,VulkanApplication.Width/VulkanApplication.Height,1.0,1024.0);
 
   fUniformBuffer.ModelViewMatrix:=ModelMatrix*ViewMatrix;
   fUniformBuffer.ModelViewProjectionMatrix:=fUniformBuffer.ModelViewMatrix*ProjectionMatrix;
-  fUniformBuffer.ModelViewNormalMatrix:=TMatrix4x4.Create(fUniformBuffer.ModelViewMatrix.ToMatrix3x3.Inverse.Transpose);
+  fUniformBuffer.ModelViewNormalMatrix:=TpvMatrix4x4.Create(fUniformBuffer.ModelViewMatrix.ToMatrix3x3.Inverse.Transpose);
 
   p:=fVulkanUniformBuffers[VulkanApplication.DrawSwapChainImageIndex].Memory.MapMemory(0,SizeOf(TScreenExampleDragonUniformBuffer));
   if assigned(p) then begin

@@ -1,1698 +1,1698 @@
-function TVector3Helper.GetXXXX:TVector4;
+function TpvVector3Helper.GetXXXX:TpvVector4;
 begin
  result.x:=x;
  result.y:=x;
  result.z:=x;
  result.w:=x;
 end;
-function TVector3Helper.GetXXXY:TVector4;
+function TpvVector3Helper.GetXXXY:TpvVector4;
 begin
  result.x:=x;
  result.y:=x;
  result.z:=x;
  result.w:=y;
 end;
-function TVector3Helper.GetXXXZ:TVector4;
+function TpvVector3Helper.GetXXXZ:TpvVector4;
 begin
  result.x:=x;
  result.y:=x;
  result.z:=x;
  result.w:=z;
 end;
-function TVector3Helper.GetXXYX:TVector4;
+function TpvVector3Helper.GetXXYX:TpvVector4;
 begin
  result.x:=x;
  result.y:=x;
  result.z:=y;
  result.w:=x;
 end;
-function TVector3Helper.GetXXYY:TVector4;
+function TpvVector3Helper.GetXXYY:TpvVector4;
 begin
  result.x:=x;
  result.y:=x;
  result.z:=y;
  result.w:=y;
 end;
-function TVector3Helper.GetXXYZ:TVector4;
+function TpvVector3Helper.GetXXYZ:TpvVector4;
 begin
  result.x:=x;
  result.y:=x;
  result.z:=y;
  result.w:=z;
 end;
-function TVector3Helper.GetXXZX:TVector4;
+function TpvVector3Helper.GetXXZX:TpvVector4;
 begin
  result.x:=x;
  result.y:=x;
  result.z:=z;
  result.w:=x;
 end;
-function TVector3Helper.GetXXZY:TVector4;
+function TpvVector3Helper.GetXXZY:TpvVector4;
 begin
  result.x:=x;
  result.y:=x;
  result.z:=z;
  result.w:=y;
 end;
-function TVector3Helper.GetXXZZ:TVector4;
+function TpvVector3Helper.GetXXZZ:TpvVector4;
 begin
  result.x:=x;
  result.y:=x;
  result.z:=z;
  result.w:=z;
 end;
-function TVector3Helper.GetXYXX:TVector4;
+function TpvVector3Helper.GetXYXX:TpvVector4;
 begin
  result.x:=x;
  result.y:=y;
  result.z:=x;
  result.w:=x;
 end;
-function TVector3Helper.GetXYXY:TVector4;
+function TpvVector3Helper.GetXYXY:TpvVector4;
 begin
  result.x:=x;
  result.y:=y;
  result.z:=x;
  result.w:=y;
 end;
-function TVector3Helper.GetXYXZ:TVector4;
+function TpvVector3Helper.GetXYXZ:TpvVector4;
 begin
  result.x:=x;
  result.y:=y;
  result.z:=x;
  result.w:=z;
 end;
-function TVector3Helper.GetXYYX:TVector4;
+function TpvVector3Helper.GetXYYX:TpvVector4;
 begin
  result.x:=x;
  result.y:=y;
  result.z:=y;
  result.w:=x;
 end;
-function TVector3Helper.GetXYYY:TVector4;
+function TpvVector3Helper.GetXYYY:TpvVector4;
 begin
  result.x:=x;
  result.y:=y;
  result.z:=y;
  result.w:=y;
 end;
-function TVector3Helper.GetXYYZ:TVector4;
+function TpvVector3Helper.GetXYYZ:TpvVector4;
 begin
  result.x:=x;
  result.y:=y;
  result.z:=y;
  result.w:=z;
 end;
-function TVector3Helper.GetXYZX:TVector4;
+function TpvVector3Helper.GetXYZX:TpvVector4;
 begin
  result.x:=x;
  result.y:=y;
  result.z:=z;
  result.w:=x;
 end;
-function TVector3Helper.GetXYZY:TVector4;
+function TpvVector3Helper.GetXYZY:TpvVector4;
 begin
  result.x:=x;
  result.y:=y;
  result.z:=z;
  result.w:=y;
 end;
-function TVector3Helper.GetXYZZ:TVector4;
+function TpvVector3Helper.GetXYZZ:TpvVector4;
 begin
  result.x:=x;
  result.y:=y;
  result.z:=z;
  result.w:=z;
 end;
-function TVector3Helper.GetXZXX:TVector4;
+function TpvVector3Helper.GetXZXX:TpvVector4;
 begin
  result.x:=x;
  result.y:=z;
  result.z:=x;
  result.w:=x;
 end;
-function TVector3Helper.GetXZXY:TVector4;
+function TpvVector3Helper.GetXZXY:TpvVector4;
 begin
  result.x:=x;
  result.y:=z;
  result.z:=x;
  result.w:=y;
 end;
-function TVector3Helper.GetXZXZ:TVector4;
+function TpvVector3Helper.GetXZXZ:TpvVector4;
 begin
  result.x:=x;
  result.y:=z;
  result.z:=x;
  result.w:=z;
 end;
-function TVector3Helper.GetXZYX:TVector4;
+function TpvVector3Helper.GetXZYX:TpvVector4;
 begin
  result.x:=x;
  result.y:=z;
  result.z:=y;
  result.w:=x;
 end;
-function TVector3Helper.GetXZYY:TVector4;
+function TpvVector3Helper.GetXZYY:TpvVector4;
 begin
  result.x:=x;
  result.y:=z;
  result.z:=y;
  result.w:=y;
 end;
-function TVector3Helper.GetXZYZ:TVector4;
+function TpvVector3Helper.GetXZYZ:TpvVector4;
 begin
  result.x:=x;
  result.y:=z;
  result.z:=y;
  result.w:=z;
 end;
-function TVector3Helper.GetXZZX:TVector4;
+function TpvVector3Helper.GetXZZX:TpvVector4;
 begin
  result.x:=x;
  result.y:=z;
  result.z:=z;
  result.w:=x;
 end;
-function TVector3Helper.GetXZZY:TVector4;
+function TpvVector3Helper.GetXZZY:TpvVector4;
 begin
  result.x:=x;
  result.y:=z;
  result.z:=z;
  result.w:=y;
 end;
-function TVector3Helper.GetXZZZ:TVector4;
+function TpvVector3Helper.GetXZZZ:TpvVector4;
 begin
  result.x:=x;
  result.y:=z;
  result.z:=z;
  result.w:=z;
 end;
-function TVector3Helper.GetYXXX:TVector4;
+function TpvVector3Helper.GetYXXX:TpvVector4;
 begin
  result.x:=y;
  result.y:=x;
  result.z:=x;
  result.w:=x;
 end;
-function TVector3Helper.GetYXXY:TVector4;
+function TpvVector3Helper.GetYXXY:TpvVector4;
 begin
  result.x:=y;
  result.y:=x;
  result.z:=x;
  result.w:=y;
 end;
-function TVector3Helper.GetYXXZ:TVector4;
+function TpvVector3Helper.GetYXXZ:TpvVector4;
 begin
  result.x:=y;
  result.y:=x;
  result.z:=x;
  result.w:=z;
 end;
-function TVector3Helper.GetYXYX:TVector4;
+function TpvVector3Helper.GetYXYX:TpvVector4;
 begin
  result.x:=y;
  result.y:=x;
  result.z:=y;
  result.w:=x;
 end;
-function TVector3Helper.GetYXYY:TVector4;
+function TpvVector3Helper.GetYXYY:TpvVector4;
 begin
  result.x:=y;
  result.y:=x;
  result.z:=y;
  result.w:=y;
 end;
-function TVector3Helper.GetYXYZ:TVector4;
+function TpvVector3Helper.GetYXYZ:TpvVector4;
 begin
  result.x:=y;
  result.y:=x;
  result.z:=y;
  result.w:=z;
 end;
-function TVector3Helper.GetYXZX:TVector4;
+function TpvVector3Helper.GetYXZX:TpvVector4;
 begin
  result.x:=y;
  result.y:=x;
  result.z:=z;
  result.w:=x;
 end;
-function TVector3Helper.GetYXZY:TVector4;
+function TpvVector3Helper.GetYXZY:TpvVector4;
 begin
  result.x:=y;
  result.y:=x;
  result.z:=z;
  result.w:=y;
 end;
-function TVector3Helper.GetYXZZ:TVector4;
+function TpvVector3Helper.GetYXZZ:TpvVector4;
 begin
  result.x:=y;
  result.y:=x;
  result.z:=z;
  result.w:=z;
 end;
-function TVector3Helper.GetYYXX:TVector4;
+function TpvVector3Helper.GetYYXX:TpvVector4;
 begin
  result.x:=y;
  result.y:=y;
  result.z:=x;
  result.w:=x;
 end;
-function TVector3Helper.GetYYXY:TVector4;
+function TpvVector3Helper.GetYYXY:TpvVector4;
 begin
  result.x:=y;
  result.y:=y;
  result.z:=x;
  result.w:=y;
 end;
-function TVector3Helper.GetYYXZ:TVector4;
+function TpvVector3Helper.GetYYXZ:TpvVector4;
 begin
  result.x:=y;
  result.y:=y;
  result.z:=x;
  result.w:=z;
 end;
-function TVector3Helper.GetYYYX:TVector4;
+function TpvVector3Helper.GetYYYX:TpvVector4;
 begin
  result.x:=y;
  result.y:=y;
  result.z:=y;
  result.w:=x;
 end;
-function TVector3Helper.GetYYYY:TVector4;
+function TpvVector3Helper.GetYYYY:TpvVector4;
 begin
  result.x:=y;
  result.y:=y;
  result.z:=y;
  result.w:=y;
 end;
-function TVector3Helper.GetYYYZ:TVector4;
+function TpvVector3Helper.GetYYYZ:TpvVector4;
 begin
  result.x:=y;
  result.y:=y;
  result.z:=y;
  result.w:=z;
 end;
-function TVector3Helper.GetYYZX:TVector4;
+function TpvVector3Helper.GetYYZX:TpvVector4;
 begin
  result.x:=y;
  result.y:=y;
  result.z:=z;
  result.w:=x;
 end;
-function TVector3Helper.GetYYZY:TVector4;
+function TpvVector3Helper.GetYYZY:TpvVector4;
 begin
  result.x:=y;
  result.y:=y;
  result.z:=z;
  result.w:=y;
 end;
-function TVector3Helper.GetYYZZ:TVector4;
+function TpvVector3Helper.GetYYZZ:TpvVector4;
 begin
  result.x:=y;
  result.y:=y;
  result.z:=z;
  result.w:=z;
 end;
-function TVector3Helper.GetYZXX:TVector4;
+function TpvVector3Helper.GetYZXX:TpvVector4;
 begin
  result.x:=y;
  result.y:=z;
  result.z:=x;
  result.w:=x;
 end;
-function TVector3Helper.GetYZXY:TVector4;
+function TpvVector3Helper.GetYZXY:TpvVector4;
 begin
  result.x:=y;
  result.y:=z;
  result.z:=x;
  result.w:=y;
 end;
-function TVector3Helper.GetYZXZ:TVector4;
+function TpvVector3Helper.GetYZXZ:TpvVector4;
 begin
  result.x:=y;
  result.y:=z;
  result.z:=x;
  result.w:=z;
 end;
-function TVector3Helper.GetYZYX:TVector4;
+function TpvVector3Helper.GetYZYX:TpvVector4;
 begin
  result.x:=y;
  result.y:=z;
  result.z:=y;
  result.w:=x;
 end;
-function TVector3Helper.GetYZYY:TVector4;
+function TpvVector3Helper.GetYZYY:TpvVector4;
 begin
  result.x:=y;
  result.y:=z;
  result.z:=y;
  result.w:=y;
 end;
-function TVector3Helper.GetYZYZ:TVector4;
+function TpvVector3Helper.GetYZYZ:TpvVector4;
 begin
  result.x:=y;
  result.y:=z;
  result.z:=y;
  result.w:=z;
 end;
-function TVector3Helper.GetYZZX:TVector4;
+function TpvVector3Helper.GetYZZX:TpvVector4;
 begin
  result.x:=y;
  result.y:=z;
  result.z:=z;
  result.w:=x;
 end;
-function TVector3Helper.GetYZZY:TVector4;
+function TpvVector3Helper.GetYZZY:TpvVector4;
 begin
  result.x:=y;
  result.y:=z;
  result.z:=z;
  result.w:=y;
 end;
-function TVector3Helper.GetYZZZ:TVector4;
+function TpvVector3Helper.GetYZZZ:TpvVector4;
 begin
  result.x:=y;
  result.y:=z;
  result.z:=z;
  result.w:=z;
 end;
-function TVector3Helper.GetZXXX:TVector4;
+function TpvVector3Helper.GetZXXX:TpvVector4;
 begin
  result.x:=z;
  result.y:=x;
  result.z:=x;
  result.w:=x;
 end;
-function TVector3Helper.GetZXXY:TVector4;
+function TpvVector3Helper.GetZXXY:TpvVector4;
 begin
  result.x:=z;
  result.y:=x;
  result.z:=x;
  result.w:=y;
 end;
-function TVector3Helper.GetZXXZ:TVector4;
+function TpvVector3Helper.GetZXXZ:TpvVector4;
 begin
  result.x:=z;
  result.y:=x;
  result.z:=x;
  result.w:=z;
 end;
-function TVector3Helper.GetZXYX:TVector4;
+function TpvVector3Helper.GetZXYX:TpvVector4;
 begin
  result.x:=z;
  result.y:=x;
  result.z:=y;
  result.w:=x;
 end;
-function TVector3Helper.GetZXYY:TVector4;
+function TpvVector3Helper.GetZXYY:TpvVector4;
 begin
  result.x:=z;
  result.y:=x;
  result.z:=y;
  result.w:=y;
 end;
-function TVector3Helper.GetZXYZ:TVector4;
+function TpvVector3Helper.GetZXYZ:TpvVector4;
 begin
  result.x:=z;
  result.y:=x;
  result.z:=y;
  result.w:=z;
 end;
-function TVector3Helper.GetZXZX:TVector4;
+function TpvVector3Helper.GetZXZX:TpvVector4;
 begin
  result.x:=z;
  result.y:=x;
  result.z:=z;
  result.w:=x;
 end;
-function TVector3Helper.GetZXZY:TVector4;
+function TpvVector3Helper.GetZXZY:TpvVector4;
 begin
  result.x:=z;
  result.y:=x;
  result.z:=z;
  result.w:=y;
 end;
-function TVector3Helper.GetZXZZ:TVector4;
+function TpvVector3Helper.GetZXZZ:TpvVector4;
 begin
  result.x:=z;
  result.y:=x;
  result.z:=z;
  result.w:=z;
 end;
-function TVector3Helper.GetZYXX:TVector4;
+function TpvVector3Helper.GetZYXX:TpvVector4;
 begin
  result.x:=z;
  result.y:=y;
  result.z:=x;
  result.w:=x;
 end;
-function TVector3Helper.GetZYXY:TVector4;
+function TpvVector3Helper.GetZYXY:TpvVector4;
 begin
  result.x:=z;
  result.y:=y;
  result.z:=x;
  result.w:=y;
 end;
-function TVector3Helper.GetZYXZ:TVector4;
+function TpvVector3Helper.GetZYXZ:TpvVector4;
 begin
  result.x:=z;
  result.y:=y;
  result.z:=x;
  result.w:=z;
 end;
-function TVector3Helper.GetZYYX:TVector4;
+function TpvVector3Helper.GetZYYX:TpvVector4;
 begin
  result.x:=z;
  result.y:=y;
  result.z:=y;
  result.w:=x;
 end;
-function TVector3Helper.GetZYYY:TVector4;
+function TpvVector3Helper.GetZYYY:TpvVector4;
 begin
  result.x:=z;
  result.y:=y;
  result.z:=y;
  result.w:=y;
 end;
-function TVector3Helper.GetZYYZ:TVector4;
+function TpvVector3Helper.GetZYYZ:TpvVector4;
 begin
  result.x:=z;
  result.y:=y;
  result.z:=y;
  result.w:=z;
 end;
-function TVector3Helper.GetZYZX:TVector4;
+function TpvVector3Helper.GetZYZX:TpvVector4;
 begin
  result.x:=z;
  result.y:=y;
  result.z:=z;
  result.w:=x;
 end;
-function TVector3Helper.GetZYZY:TVector4;
+function TpvVector3Helper.GetZYZY:TpvVector4;
 begin
  result.x:=z;
  result.y:=y;
  result.z:=z;
  result.w:=y;
 end;
-function TVector3Helper.GetZYZZ:TVector4;
+function TpvVector3Helper.GetZYZZ:TpvVector4;
 begin
  result.x:=z;
  result.y:=y;
  result.z:=z;
  result.w:=z;
 end;
-function TVector3Helper.GetZZXX:TVector4;
+function TpvVector3Helper.GetZZXX:TpvVector4;
 begin
  result.x:=z;
  result.y:=z;
  result.z:=x;
  result.w:=x;
 end;
-function TVector3Helper.GetZZXY:TVector4;
+function TpvVector3Helper.GetZZXY:TpvVector4;
 begin
  result.x:=z;
  result.y:=z;
  result.z:=x;
  result.w:=y;
 end;
-function TVector3Helper.GetZZXZ:TVector4;
+function TpvVector3Helper.GetZZXZ:TpvVector4;
 begin
  result.x:=z;
  result.y:=z;
  result.z:=x;
  result.w:=z;
 end;
-function TVector3Helper.GetZZYX:TVector4;
+function TpvVector3Helper.GetZZYX:TpvVector4;
 begin
  result.x:=z;
  result.y:=z;
  result.z:=y;
  result.w:=x;
 end;
-function TVector3Helper.GetZZYY:TVector4;
+function TpvVector3Helper.GetZZYY:TpvVector4;
 begin
  result.x:=z;
  result.y:=z;
  result.z:=y;
  result.w:=y;
 end;
-function TVector3Helper.GetZZYZ:TVector4;
+function TpvVector3Helper.GetZZYZ:TpvVector4;
 begin
  result.x:=z;
  result.y:=z;
  result.z:=y;
  result.w:=z;
 end;
-function TVector3Helper.GetZZZX:TVector4;
+function TpvVector3Helper.GetZZZX:TpvVector4;
 begin
  result.x:=z;
  result.y:=z;
  result.z:=z;
  result.w:=x;
 end;
-function TVector3Helper.GetZZZY:TVector4;
+function TpvVector3Helper.GetZZZY:TpvVector4;
 begin
  result.x:=z;
  result.y:=z;
  result.z:=z;
  result.w:=y;
 end;
-function TVector3Helper.GetZZZZ:TVector4;
+function TpvVector3Helper.GetZZZZ:TpvVector4;
 begin
  result.x:=z;
  result.y:=z;
  result.z:=z;
  result.w:=z;
 end;
-function TVector3Helper.GetRRRR:TVector4;
+function TpvVector3Helper.GetRRRR:TpvVector4;
 begin
  result.r:=r;
  result.g:=r;
  result.b:=r;
  result.a:=r;
 end;
-function TVector3Helper.GetRRRG:TVector4;
+function TpvVector3Helper.GetRRRG:TpvVector4;
 begin
  result.r:=r;
  result.g:=r;
  result.b:=r;
  result.a:=g;
 end;
-function TVector3Helper.GetRRRB:TVector4;
+function TpvVector3Helper.GetRRRB:TpvVector4;
 begin
  result.r:=r;
  result.g:=r;
  result.b:=r;
  result.a:=b;
 end;
-function TVector3Helper.GetRRGR:TVector4;
+function TpvVector3Helper.GetRRGR:TpvVector4;
 begin
  result.r:=r;
  result.g:=r;
  result.b:=g;
  result.a:=r;
 end;
-function TVector3Helper.GetRRGG:TVector4;
+function TpvVector3Helper.GetRRGG:TpvVector4;
 begin
  result.r:=r;
  result.g:=r;
  result.b:=g;
  result.a:=g;
 end;
-function TVector3Helper.GetRRGB:TVector4;
+function TpvVector3Helper.GetRRGB:TpvVector4;
 begin
  result.r:=r;
  result.g:=r;
  result.b:=g;
  result.a:=b;
 end;
-function TVector3Helper.GetRRBR:TVector4;
+function TpvVector3Helper.GetRRBR:TpvVector4;
 begin
  result.r:=r;
  result.g:=r;
  result.b:=b;
  result.a:=r;
 end;
-function TVector3Helper.GetRRBG:TVector4;
+function TpvVector3Helper.GetRRBG:TpvVector4;
 begin
  result.r:=r;
  result.g:=r;
  result.b:=b;
  result.a:=g;
 end;
-function TVector3Helper.GetRRBB:TVector4;
+function TpvVector3Helper.GetRRBB:TpvVector4;
 begin
  result.r:=r;
  result.g:=r;
  result.b:=b;
  result.a:=b;
 end;
-function TVector3Helper.GetRGRR:TVector4;
+function TpvVector3Helper.GetRGRR:TpvVector4;
 begin
  result.r:=r;
  result.g:=g;
  result.b:=r;
  result.a:=r;
 end;
-function TVector3Helper.GetRGRG:TVector4;
+function TpvVector3Helper.GetRGRG:TpvVector4;
 begin
  result.r:=r;
  result.g:=g;
  result.b:=r;
  result.a:=g;
 end;
-function TVector3Helper.GetRGRB:TVector4;
+function TpvVector3Helper.GetRGRB:TpvVector4;
 begin
  result.r:=r;
  result.g:=g;
  result.b:=r;
  result.a:=b;
 end;
-function TVector3Helper.GetRGGR:TVector4;
+function TpvVector3Helper.GetRGGR:TpvVector4;
 begin
  result.r:=r;
  result.g:=g;
  result.b:=g;
  result.a:=r;
 end;
-function TVector3Helper.GetRGGG:TVector4;
+function TpvVector3Helper.GetRGGG:TpvVector4;
 begin
  result.r:=r;
  result.g:=g;
  result.b:=g;
  result.a:=g;
 end;
-function TVector3Helper.GetRGGB:TVector4;
+function TpvVector3Helper.GetRGGB:TpvVector4;
 begin
  result.r:=r;
  result.g:=g;
  result.b:=g;
  result.a:=b;
 end;
-function TVector3Helper.GetRGBR:TVector4;
+function TpvVector3Helper.GetRGBR:TpvVector4;
 begin
  result.r:=r;
  result.g:=g;
  result.b:=b;
  result.a:=r;
 end;
-function TVector3Helper.GetRGBG:TVector4;
+function TpvVector3Helper.GetRGBG:TpvVector4;
 begin
  result.r:=r;
  result.g:=g;
  result.b:=b;
  result.a:=g;
 end;
-function TVector3Helper.GetRGBB:TVector4;
+function TpvVector3Helper.GetRGBB:TpvVector4;
 begin
  result.r:=r;
  result.g:=g;
  result.b:=b;
  result.a:=b;
 end;
-function TVector3Helper.GetRBRR:TVector4;
+function TpvVector3Helper.GetRBRR:TpvVector4;
 begin
  result.r:=r;
  result.g:=b;
  result.b:=r;
  result.a:=r;
 end;
-function TVector3Helper.GetRBRG:TVector4;
+function TpvVector3Helper.GetRBRG:TpvVector4;
 begin
  result.r:=r;
  result.g:=b;
  result.b:=r;
  result.a:=g;
 end;
-function TVector3Helper.GetRBRB:TVector4;
+function TpvVector3Helper.GetRBRB:TpvVector4;
 begin
  result.r:=r;
  result.g:=b;
  result.b:=r;
  result.a:=b;
 end;
-function TVector3Helper.GetRBGR:TVector4;
+function TpvVector3Helper.GetRBGR:TpvVector4;
 begin
  result.r:=r;
  result.g:=b;
  result.b:=g;
  result.a:=r;
 end;
-function TVector3Helper.GetRBGG:TVector4;
+function TpvVector3Helper.GetRBGG:TpvVector4;
 begin
  result.r:=r;
  result.g:=b;
  result.b:=g;
  result.a:=g;
 end;
-function TVector3Helper.GetRBGB:TVector4;
+function TpvVector3Helper.GetRBGB:TpvVector4;
 begin
  result.r:=r;
  result.g:=b;
  result.b:=g;
  result.a:=b;
 end;
-function TVector3Helper.GetRBBR:TVector4;
+function TpvVector3Helper.GetRBBR:TpvVector4;
 begin
  result.r:=r;
  result.g:=b;
  result.b:=b;
  result.a:=r;
 end;
-function TVector3Helper.GetRBBG:TVector4;
+function TpvVector3Helper.GetRBBG:TpvVector4;
 begin
  result.r:=r;
  result.g:=b;
  result.b:=b;
  result.a:=g;
 end;
-function TVector3Helper.GetRBBB:TVector4;
+function TpvVector3Helper.GetRBBB:TpvVector4;
 begin
  result.r:=r;
  result.g:=b;
  result.b:=b;
  result.a:=b;
 end;
-function TVector3Helper.GetGRRR:TVector4;
+function TpvVector3Helper.GetGRRR:TpvVector4;
 begin
  result.r:=g;
  result.g:=r;
  result.b:=r;
  result.a:=r;
 end;
-function TVector3Helper.GetGRRG:TVector4;
+function TpvVector3Helper.GetGRRG:TpvVector4;
 begin
  result.r:=g;
  result.g:=r;
  result.b:=r;
  result.a:=g;
 end;
-function TVector3Helper.GetGRRB:TVector4;
+function TpvVector3Helper.GetGRRB:TpvVector4;
 begin
  result.r:=g;
  result.g:=r;
  result.b:=r;
  result.a:=b;
 end;
-function TVector3Helper.GetGRGR:TVector4;
+function TpvVector3Helper.GetGRGR:TpvVector4;
 begin
  result.r:=g;
  result.g:=r;
  result.b:=g;
  result.a:=r;
 end;
-function TVector3Helper.GetGRGG:TVector4;
+function TpvVector3Helper.GetGRGG:TpvVector4;
 begin
  result.r:=g;
  result.g:=r;
  result.b:=g;
  result.a:=g;
 end;
-function TVector3Helper.GetGRGB:TVector4;
+function TpvVector3Helper.GetGRGB:TpvVector4;
 begin
  result.r:=g;
  result.g:=r;
  result.b:=g;
  result.a:=b;
 end;
-function TVector3Helper.GetGRBR:TVector4;
+function TpvVector3Helper.GetGRBR:TpvVector4;
 begin
  result.r:=g;
  result.g:=r;
  result.b:=b;
  result.a:=r;
 end;
-function TVector3Helper.GetGRBG:TVector4;
+function TpvVector3Helper.GetGRBG:TpvVector4;
 begin
  result.r:=g;
  result.g:=r;
  result.b:=b;
  result.a:=g;
 end;
-function TVector3Helper.GetGRBB:TVector4;
+function TpvVector3Helper.GetGRBB:TpvVector4;
 begin
  result.r:=g;
  result.g:=r;
  result.b:=b;
  result.a:=b;
 end;
-function TVector3Helper.GetGGRR:TVector4;
+function TpvVector3Helper.GetGGRR:TpvVector4;
 begin
  result.r:=g;
  result.g:=g;
  result.b:=r;
  result.a:=r;
 end;
-function TVector3Helper.GetGGRG:TVector4;
+function TpvVector3Helper.GetGGRG:TpvVector4;
 begin
  result.r:=g;
  result.g:=g;
  result.b:=r;
  result.a:=g;
 end;
-function TVector3Helper.GetGGRB:TVector4;
+function TpvVector3Helper.GetGGRB:TpvVector4;
 begin
  result.r:=g;
  result.g:=g;
  result.b:=r;
  result.a:=b;
 end;
-function TVector3Helper.GetGGGR:TVector4;
+function TpvVector3Helper.GetGGGR:TpvVector4;
 begin
  result.r:=g;
  result.g:=g;
  result.b:=g;
  result.a:=r;
 end;
-function TVector3Helper.GetGGGG:TVector4;
+function TpvVector3Helper.GetGGGG:TpvVector4;
 begin
  result.r:=g;
  result.g:=g;
  result.b:=g;
  result.a:=g;
 end;
-function TVector3Helper.GetGGGB:TVector4;
+function TpvVector3Helper.GetGGGB:TpvVector4;
 begin
  result.r:=g;
  result.g:=g;
  result.b:=g;
  result.a:=b;
 end;
-function TVector3Helper.GetGGBR:TVector4;
+function TpvVector3Helper.GetGGBR:TpvVector4;
 begin
  result.r:=g;
  result.g:=g;
  result.b:=b;
  result.a:=r;
 end;
-function TVector3Helper.GetGGBG:TVector4;
+function TpvVector3Helper.GetGGBG:TpvVector4;
 begin
  result.r:=g;
  result.g:=g;
  result.b:=b;
  result.a:=g;
 end;
-function TVector3Helper.GetGGBB:TVector4;
+function TpvVector3Helper.GetGGBB:TpvVector4;
 begin
  result.r:=g;
  result.g:=g;
  result.b:=b;
  result.a:=b;
 end;
-function TVector3Helper.GetGBRR:TVector4;
+function TpvVector3Helper.GetGBRR:TpvVector4;
 begin
  result.r:=g;
  result.g:=b;
  result.b:=r;
  result.a:=r;
 end;
-function TVector3Helper.GetGBRG:TVector4;
+function TpvVector3Helper.GetGBRG:TpvVector4;
 begin
  result.r:=g;
  result.g:=b;
  result.b:=r;
  result.a:=g;
 end;
-function TVector3Helper.GetGBRB:TVector4;
+function TpvVector3Helper.GetGBRB:TpvVector4;
 begin
  result.r:=g;
  result.g:=b;
  result.b:=r;
  result.a:=b;
 end;
-function TVector3Helper.GetGBGR:TVector4;
+function TpvVector3Helper.GetGBGR:TpvVector4;
 begin
  result.r:=g;
  result.g:=b;
  result.b:=g;
  result.a:=r;
 end;
-function TVector3Helper.GetGBGG:TVector4;
+function TpvVector3Helper.GetGBGG:TpvVector4;
 begin
  result.r:=g;
  result.g:=b;
  result.b:=g;
  result.a:=g;
 end;
-function TVector3Helper.GetGBGB:TVector4;
+function TpvVector3Helper.GetGBGB:TpvVector4;
 begin
  result.r:=g;
  result.g:=b;
  result.b:=g;
  result.a:=b;
 end;
-function TVector3Helper.GetGBBR:TVector4;
+function TpvVector3Helper.GetGBBR:TpvVector4;
 begin
  result.r:=g;
  result.g:=b;
  result.b:=b;
  result.a:=r;
 end;
-function TVector3Helper.GetGBBG:TVector4;
+function TpvVector3Helper.GetGBBG:TpvVector4;
 begin
  result.r:=g;
  result.g:=b;
  result.b:=b;
  result.a:=g;
 end;
-function TVector3Helper.GetGBBB:TVector4;
+function TpvVector3Helper.GetGBBB:TpvVector4;
 begin
  result.r:=g;
  result.g:=b;
  result.b:=b;
  result.a:=b;
 end;
-function TVector3Helper.GetBRRR:TVector4;
+function TpvVector3Helper.GetBRRR:TpvVector4;
 begin
  result.r:=b;
  result.g:=r;
  result.b:=r;
  result.a:=r;
 end;
-function TVector3Helper.GetBRRG:TVector4;
+function TpvVector3Helper.GetBRRG:TpvVector4;
 begin
  result.r:=b;
  result.g:=r;
  result.b:=r;
  result.a:=g;
 end;
-function TVector3Helper.GetBRRB:TVector4;
+function TpvVector3Helper.GetBRRB:TpvVector4;
 begin
  result.r:=b;
  result.g:=r;
  result.b:=r;
  result.a:=b;
 end;
-function TVector3Helper.GetBRGR:TVector4;
+function TpvVector3Helper.GetBRGR:TpvVector4;
 begin
  result.r:=b;
  result.g:=r;
  result.b:=g;
  result.a:=r;
 end;
-function TVector3Helper.GetBRGG:TVector4;
+function TpvVector3Helper.GetBRGG:TpvVector4;
 begin
  result.r:=b;
  result.g:=r;
  result.b:=g;
  result.a:=g;
 end;
-function TVector3Helper.GetBRGB:TVector4;
+function TpvVector3Helper.GetBRGB:TpvVector4;
 begin
  result.r:=b;
  result.g:=r;
  result.b:=g;
  result.a:=b;
 end;
-function TVector3Helper.GetBRBR:TVector4;
+function TpvVector3Helper.GetBRBR:TpvVector4;
 begin
  result.r:=b;
  result.g:=r;
  result.b:=b;
  result.a:=r;
 end;
-function TVector3Helper.GetBRBG:TVector4;
+function TpvVector3Helper.GetBRBG:TpvVector4;
 begin
  result.r:=b;
  result.g:=r;
  result.b:=b;
  result.a:=g;
 end;
-function TVector3Helper.GetBRBB:TVector4;
+function TpvVector3Helper.GetBRBB:TpvVector4;
 begin
  result.r:=b;
  result.g:=r;
  result.b:=b;
  result.a:=b;
 end;
-function TVector3Helper.GetBGRR:TVector4;
+function TpvVector3Helper.GetBGRR:TpvVector4;
 begin
  result.r:=b;
  result.g:=g;
  result.b:=r;
  result.a:=r;
 end;
-function TVector3Helper.GetBGRG:TVector4;
+function TpvVector3Helper.GetBGRG:TpvVector4;
 begin
  result.r:=b;
  result.g:=g;
  result.b:=r;
  result.a:=g;
 end;
-function TVector3Helper.GetBGRB:TVector4;
+function TpvVector3Helper.GetBGRB:TpvVector4;
 begin
  result.r:=b;
  result.g:=g;
  result.b:=r;
  result.a:=b;
 end;
-function TVector3Helper.GetBGGR:TVector4;
+function TpvVector3Helper.GetBGGR:TpvVector4;
 begin
  result.r:=b;
  result.g:=g;
  result.b:=g;
  result.a:=r;
 end;
-function TVector3Helper.GetBGGG:TVector4;
+function TpvVector3Helper.GetBGGG:TpvVector4;
 begin
  result.r:=b;
  result.g:=g;
  result.b:=g;
  result.a:=g;
 end;
-function TVector3Helper.GetBGGB:TVector4;
+function TpvVector3Helper.GetBGGB:TpvVector4;
 begin
  result.r:=b;
  result.g:=g;
  result.b:=g;
  result.a:=b;
 end;
-function TVector3Helper.GetBGBR:TVector4;
+function TpvVector3Helper.GetBGBR:TpvVector4;
 begin
  result.r:=b;
  result.g:=g;
  result.b:=b;
  result.a:=r;
 end;
-function TVector3Helper.GetBGBG:TVector4;
+function TpvVector3Helper.GetBGBG:TpvVector4;
 begin
  result.r:=b;
  result.g:=g;
  result.b:=b;
  result.a:=g;
 end;
-function TVector3Helper.GetBGBB:TVector4;
+function TpvVector3Helper.GetBGBB:TpvVector4;
 begin
  result.r:=b;
  result.g:=g;
  result.b:=b;
  result.a:=b;
 end;
-function TVector3Helper.GetBBRR:TVector4;
+function TpvVector3Helper.GetBBRR:TpvVector4;
 begin
  result.r:=b;
  result.g:=b;
  result.b:=r;
  result.a:=r;
 end;
-function TVector3Helper.GetBBRG:TVector4;
+function TpvVector3Helper.GetBBRG:TpvVector4;
 begin
  result.r:=b;
  result.g:=b;
  result.b:=r;
  result.a:=g;
 end;
-function TVector3Helper.GetBBRB:TVector4;
+function TpvVector3Helper.GetBBRB:TpvVector4;
 begin
  result.r:=b;
  result.g:=b;
  result.b:=r;
  result.a:=b;
 end;
-function TVector3Helper.GetBBGR:TVector4;
+function TpvVector3Helper.GetBBGR:TpvVector4;
 begin
  result.r:=b;
  result.g:=b;
  result.b:=g;
  result.a:=r;
 end;
-function TVector3Helper.GetBBGG:TVector4;
+function TpvVector3Helper.GetBBGG:TpvVector4;
 begin
  result.r:=b;
  result.g:=b;
  result.b:=g;
  result.a:=g;
 end;
-function TVector3Helper.GetBBGB:TVector4;
+function TpvVector3Helper.GetBBGB:TpvVector4;
 begin
  result.r:=b;
  result.g:=b;
  result.b:=g;
  result.a:=b;
 end;
-function TVector3Helper.GetBBBR:TVector4;
+function TpvVector3Helper.GetBBBR:TpvVector4;
 begin
  result.r:=b;
  result.g:=b;
  result.b:=b;
  result.a:=r;
 end;
-function TVector3Helper.GetBBBG:TVector4;
+function TpvVector3Helper.GetBBBG:TpvVector4;
 begin
  result.r:=b;
  result.g:=b;
  result.b:=b;
  result.a:=g;
 end;
-function TVector3Helper.GetBBBB:TVector4;
+function TpvVector3Helper.GetBBBB:TpvVector4;
 begin
  result.r:=b;
  result.g:=b;
  result.b:=b;
  result.a:=b;
 end;
-function TVector3Helper.GetSSSS:TVector4;
+function TpvVector3Helper.GetSSSS:TpvVector4;
 begin
  result.s:=s;
  result.t:=s;
  result.p:=s;
  result.q:=s;
 end;
-function TVector3Helper.GetSSST:TVector4;
+function TpvVector3Helper.GetSSST:TpvVector4;
 begin
  result.s:=s;
  result.t:=s;
  result.p:=s;
  result.q:=t;
 end;
-function TVector3Helper.GetSSSP:TVector4;
+function TpvVector3Helper.GetSSSP:TpvVector4;
 begin
  result.s:=s;
  result.t:=s;
  result.p:=s;
  result.q:=p;
 end;
-function TVector3Helper.GetSSTS:TVector4;
+function TpvVector3Helper.GetSSTS:TpvVector4;
 begin
  result.s:=s;
  result.t:=s;
  result.p:=t;
  result.q:=s;
 end;
-function TVector3Helper.GetSSTT:TVector4;
+function TpvVector3Helper.GetSSTT:TpvVector4;
 begin
  result.s:=s;
  result.t:=s;
  result.p:=t;
  result.q:=t;
 end;
-function TVector3Helper.GetSSTP:TVector4;
+function TpvVector3Helper.GetSSTP:TpvVector4;
 begin
  result.s:=s;
  result.t:=s;
  result.p:=t;
  result.q:=p;
 end;
-function TVector3Helper.GetSSPS:TVector4;
+function TpvVector3Helper.GetSSPS:TpvVector4;
 begin
  result.s:=s;
  result.t:=s;
  result.p:=p;
  result.q:=s;
 end;
-function TVector3Helper.GetSSPT:TVector4;
+function TpvVector3Helper.GetSSPT:TpvVector4;
 begin
  result.s:=s;
  result.t:=s;
  result.p:=p;
  result.q:=t;
 end;
-function TVector3Helper.GetSSPP:TVector4;
+function TpvVector3Helper.GetSSPP:TpvVector4;
 begin
  result.s:=s;
  result.t:=s;
  result.p:=p;
  result.q:=p;
 end;
-function TVector3Helper.GetSTSS:TVector4;
+function TpvVector3Helper.GetSTSS:TpvVector4;
 begin
  result.s:=s;
  result.t:=t;
  result.p:=s;
  result.q:=s;
 end;
-function TVector3Helper.GetSTST:TVector4;
+function TpvVector3Helper.GetSTST:TpvVector4;
 begin
  result.s:=s;
  result.t:=t;
  result.p:=s;
  result.q:=t;
 end;
-function TVector3Helper.GetSTSP:TVector4;
+function TpvVector3Helper.GetSTSP:TpvVector4;
 begin
  result.s:=s;
  result.t:=t;
  result.p:=s;
  result.q:=p;
 end;
-function TVector3Helper.GetSTTS:TVector4;
+function TpvVector3Helper.GetSTTS:TpvVector4;
 begin
  result.s:=s;
  result.t:=t;
  result.p:=t;
  result.q:=s;
 end;
-function TVector3Helper.GetSTTT:TVector4;
+function TpvVector3Helper.GetSTTT:TpvVector4;
 begin
  result.s:=s;
  result.t:=t;
  result.p:=t;
  result.q:=t;
 end;
-function TVector3Helper.GetSTTP:TVector4;
+function TpvVector3Helper.GetSTTP:TpvVector4;
 begin
  result.s:=s;
  result.t:=t;
  result.p:=t;
  result.q:=p;
 end;
-function TVector3Helper.GetSTPS:TVector4;
+function TpvVector3Helper.GetSTPS:TpvVector4;
 begin
  result.s:=s;
  result.t:=t;
  result.p:=p;
  result.q:=s;
 end;
-function TVector3Helper.GetSTPT:TVector4;
+function TpvVector3Helper.GetSTPT:TpvVector4;
 begin
  result.s:=s;
  result.t:=t;
  result.p:=p;
  result.q:=t;
 end;
-function TVector3Helper.GetSTPP:TVector4;
+function TpvVector3Helper.GetSTPP:TpvVector4;
 begin
  result.s:=s;
  result.t:=t;
  result.p:=p;
  result.q:=p;
 end;
-function TVector3Helper.GetSPSS:TVector4;
+function TpvVector3Helper.GetSPSS:TpvVector4;
 begin
  result.s:=s;
  result.t:=p;
  result.p:=s;
  result.q:=s;
 end;
-function TVector3Helper.GetSPST:TVector4;
+function TpvVector3Helper.GetSPST:TpvVector4;
 begin
  result.s:=s;
  result.t:=p;
  result.p:=s;
  result.q:=t;
 end;
-function TVector3Helper.GetSPSP:TVector4;
+function TpvVector3Helper.GetSPSP:TpvVector4;
 begin
  result.s:=s;
  result.t:=p;
  result.p:=s;
  result.q:=p;
 end;
-function TVector3Helper.GetSPTS:TVector4;
+function TpvVector3Helper.GetSPTS:TpvVector4;
 begin
  result.s:=s;
  result.t:=p;
  result.p:=t;
  result.q:=s;
 end;
-function TVector3Helper.GetSPTT:TVector4;
+function TpvVector3Helper.GetSPTT:TpvVector4;
 begin
  result.s:=s;
  result.t:=p;
  result.p:=t;
  result.q:=t;
 end;
-function TVector3Helper.GetSPTP:TVector4;
+function TpvVector3Helper.GetSPTP:TpvVector4;
 begin
  result.s:=s;
  result.t:=p;
  result.p:=t;
  result.q:=p;
 end;
-function TVector3Helper.GetSPPS:TVector4;
+function TpvVector3Helper.GetSPPS:TpvVector4;
 begin
  result.s:=s;
  result.t:=p;
  result.p:=p;
  result.q:=s;
 end;
-function TVector3Helper.GetSPPT:TVector4;
+function TpvVector3Helper.GetSPPT:TpvVector4;
 begin
  result.s:=s;
  result.t:=p;
  result.p:=p;
  result.q:=t;
 end;
-function TVector3Helper.GetSPPP:TVector4;
+function TpvVector3Helper.GetSPPP:TpvVector4;
 begin
  result.s:=s;
  result.t:=p;
  result.p:=p;
  result.q:=p;
 end;
-function TVector3Helper.GetTSSS:TVector4;
+function TpvVector3Helper.GetTSSS:TpvVector4;
 begin
  result.s:=t;
  result.t:=s;
  result.p:=s;
  result.q:=s;
 end;
-function TVector3Helper.GetTSST:TVector4;
+function TpvVector3Helper.GetTSST:TpvVector4;
 begin
  result.s:=t;
  result.t:=s;
  result.p:=s;
  result.q:=t;
 end;
-function TVector3Helper.GetTSSP:TVector4;
+function TpvVector3Helper.GetTSSP:TpvVector4;
 begin
  result.s:=t;
  result.t:=s;
  result.p:=s;
  result.q:=p;
 end;
-function TVector3Helper.GetTSTS:TVector4;
+function TpvVector3Helper.GetTSTS:TpvVector4;
 begin
  result.s:=t;
  result.t:=s;
  result.p:=t;
  result.q:=s;
 end;
-function TVector3Helper.GetTSTT:TVector4;
+function TpvVector3Helper.GetTSTT:TpvVector4;
 begin
  result.s:=t;
  result.t:=s;
  result.p:=t;
  result.q:=t;
 end;
-function TVector3Helper.GetTSTP:TVector4;
+function TpvVector3Helper.GetTSTP:TpvVector4;
 begin
  result.s:=t;
  result.t:=s;
  result.p:=t;
  result.q:=p;
 end;
-function TVector3Helper.GetTSPS:TVector4;
+function TpvVector3Helper.GetTSPS:TpvVector4;
 begin
  result.s:=t;
  result.t:=s;
  result.p:=p;
  result.q:=s;
 end;
-function TVector3Helper.GetTSPT:TVector4;
+function TpvVector3Helper.GetTSPT:TpvVector4;
 begin
  result.s:=t;
  result.t:=s;
  result.p:=p;
  result.q:=t;
 end;
-function TVector3Helper.GetTSPP:TVector4;
+function TpvVector3Helper.GetTSPP:TpvVector4;
 begin
  result.s:=t;
  result.t:=s;
  result.p:=p;
  result.q:=p;
 end;
-function TVector3Helper.GetTTSS:TVector4;
+function TpvVector3Helper.GetTTSS:TpvVector4;
 begin
  result.s:=t;
  result.t:=t;
  result.p:=s;
  result.q:=s;
 end;
-function TVector3Helper.GetTTST:TVector4;
+function TpvVector3Helper.GetTTST:TpvVector4;
 begin
  result.s:=t;
  result.t:=t;
  result.p:=s;
  result.q:=t;
 end;
-function TVector3Helper.GetTTSP:TVector4;
+function TpvVector3Helper.GetTTSP:TpvVector4;
 begin
  result.s:=t;
  result.t:=t;
  result.p:=s;
  result.q:=p;
 end;
-function TVector3Helper.GetTTTS:TVector4;
+function TpvVector3Helper.GetTTTS:TpvVector4;
 begin
  result.s:=t;
  result.t:=t;
  result.p:=t;
  result.q:=s;
 end;
-function TVector3Helper.GetTTTT:TVector4;
+function TpvVector3Helper.GetTTTT:TpvVector4;
 begin
  result.s:=t;
  result.t:=t;
  result.p:=t;
  result.q:=t;
 end;
-function TVector3Helper.GetTTTP:TVector4;
+function TpvVector3Helper.GetTTTP:TpvVector4;
 begin
  result.s:=t;
  result.t:=t;
  result.p:=t;
  result.q:=p;
 end;
-function TVector3Helper.GetTTPS:TVector4;
+function TpvVector3Helper.GetTTPS:TpvVector4;
 begin
  result.s:=t;
  result.t:=t;
  result.p:=p;
  result.q:=s;
 end;
-function TVector3Helper.GetTTPT:TVector4;
+function TpvVector3Helper.GetTTPT:TpvVector4;
 begin
  result.s:=t;
  result.t:=t;
  result.p:=p;
  result.q:=t;
 end;
-function TVector3Helper.GetTTPP:TVector4;
+function TpvVector3Helper.GetTTPP:TpvVector4;
 begin
  result.s:=t;
  result.t:=t;
  result.p:=p;
  result.q:=p;
 end;
-function TVector3Helper.GetTPSS:TVector4;
+function TpvVector3Helper.GetTPSS:TpvVector4;
 begin
  result.s:=t;
  result.t:=p;
  result.p:=s;
  result.q:=s;
 end;
-function TVector3Helper.GetTPST:TVector4;
+function TpvVector3Helper.GetTPST:TpvVector4;
 begin
  result.s:=t;
  result.t:=p;
  result.p:=s;
  result.q:=t;
 end;
-function TVector3Helper.GetTPSP:TVector4;
+function TpvVector3Helper.GetTPSP:TpvVector4;
 begin
  result.s:=t;
  result.t:=p;
  result.p:=s;
  result.q:=p;
 end;
-function TVector3Helper.GetTPTS:TVector4;
+function TpvVector3Helper.GetTPTS:TpvVector4;
 begin
  result.s:=t;
  result.t:=p;
  result.p:=t;
  result.q:=s;
 end;
-function TVector3Helper.GetTPTT:TVector4;
+function TpvVector3Helper.GetTPTT:TpvVector4;
 begin
  result.s:=t;
  result.t:=p;
  result.p:=t;
  result.q:=t;
 end;
-function TVector3Helper.GetTPTP:TVector4;
+function TpvVector3Helper.GetTPTP:TpvVector4;
 begin
  result.s:=t;
  result.t:=p;
  result.p:=t;
  result.q:=p;
 end;
-function TVector3Helper.GetTPPS:TVector4;
+function TpvVector3Helper.GetTPPS:TpvVector4;
 begin
  result.s:=t;
  result.t:=p;
  result.p:=p;
  result.q:=s;
 end;
-function TVector3Helper.GetTPPT:TVector4;
+function TpvVector3Helper.GetTPPT:TpvVector4;
 begin
  result.s:=t;
  result.t:=p;
  result.p:=p;
  result.q:=t;
 end;
-function TVector3Helper.GetTPPP:TVector4;
+function TpvVector3Helper.GetTPPP:TpvVector4;
 begin
  result.s:=t;
  result.t:=p;
  result.p:=p;
  result.q:=p;
 end;
-function TVector3Helper.GetPSSS:TVector4;
+function TpvVector3Helper.GetPSSS:TpvVector4;
 begin
  result.s:=p;
  result.t:=s;
  result.p:=s;
  result.q:=s;
 end;
-function TVector3Helper.GetPSST:TVector4;
+function TpvVector3Helper.GetPSST:TpvVector4;
 begin
  result.s:=p;
  result.t:=s;
  result.p:=s;
  result.q:=t;
 end;
-function TVector3Helper.GetPSSP:TVector4;
+function TpvVector3Helper.GetPSSP:TpvVector4;
 begin
  result.s:=p;
  result.t:=s;
  result.p:=s;
  result.q:=p;
 end;
-function TVector3Helper.GetPSTS:TVector4;
+function TpvVector3Helper.GetPSTS:TpvVector4;
 begin
  result.s:=p;
  result.t:=s;
  result.p:=t;
  result.q:=s;
 end;
-function TVector3Helper.GetPSTT:TVector4;
+function TpvVector3Helper.GetPSTT:TpvVector4;
 begin
  result.s:=p;
  result.t:=s;
  result.p:=t;
  result.q:=t;
 end;
-function TVector3Helper.GetPSTP:TVector4;
+function TpvVector3Helper.GetPSTP:TpvVector4;
 begin
  result.s:=p;
  result.t:=s;
  result.p:=t;
  result.q:=p;
 end;
-function TVector3Helper.GetPSPS:TVector4;
+function TpvVector3Helper.GetPSPS:TpvVector4;
 begin
  result.s:=p;
  result.t:=s;
  result.p:=p;
  result.q:=s;
 end;
-function TVector3Helper.GetPSPT:TVector4;
+function TpvVector3Helper.GetPSPT:TpvVector4;
 begin
  result.s:=p;
  result.t:=s;
  result.p:=p;
  result.q:=t;
 end;
-function TVector3Helper.GetPSPP:TVector4;
+function TpvVector3Helper.GetPSPP:TpvVector4;
 begin
  result.s:=p;
  result.t:=s;
  result.p:=p;
  result.q:=p;
 end;
-function TVector3Helper.GetPTSS:TVector4;
+function TpvVector3Helper.GetPTSS:TpvVector4;
 begin
  result.s:=p;
  result.t:=t;
  result.p:=s;
  result.q:=s;
 end;
-function TVector3Helper.GetPTST:TVector4;
+function TpvVector3Helper.GetPTST:TpvVector4;
 begin
  result.s:=p;
  result.t:=t;
  result.p:=s;
  result.q:=t;
 end;
-function TVector3Helper.GetPTSP:TVector4;
+function TpvVector3Helper.GetPTSP:TpvVector4;
 begin
  result.s:=p;
  result.t:=t;
  result.p:=s;
  result.q:=p;
 end;
-function TVector3Helper.GetPTTS:TVector4;
+function TpvVector3Helper.GetPTTS:TpvVector4;
 begin
  result.s:=p;
  result.t:=t;
  result.p:=t;
  result.q:=s;
 end;
-function TVector3Helper.GetPTTT:TVector4;
+function TpvVector3Helper.GetPTTT:TpvVector4;
 begin
  result.s:=p;
  result.t:=t;
  result.p:=t;
  result.q:=t;
 end;
-function TVector3Helper.GetPTTP:TVector4;
+function TpvVector3Helper.GetPTTP:TpvVector4;
 begin
  result.s:=p;
  result.t:=t;
  result.p:=t;
  result.q:=p;
 end;
-function TVector3Helper.GetPTPS:TVector4;
+function TpvVector3Helper.GetPTPS:TpvVector4;
 begin
  result.s:=p;
  result.t:=t;
  result.p:=p;
  result.q:=s;
 end;
-function TVector3Helper.GetPTPT:TVector4;
+function TpvVector3Helper.GetPTPT:TpvVector4;
 begin
  result.s:=p;
  result.t:=t;
  result.p:=p;
  result.q:=t;
 end;
-function TVector3Helper.GetPTPP:TVector4;
+function TpvVector3Helper.GetPTPP:TpvVector4;
 begin
  result.s:=p;
  result.t:=t;
  result.p:=p;
  result.q:=p;
 end;
-function TVector3Helper.GetPPSS:TVector4;
+function TpvVector3Helper.GetPPSS:TpvVector4;
 begin
  result.s:=p;
  result.t:=p;
  result.p:=s;
  result.q:=s;
 end;
-function TVector3Helper.GetPPST:TVector4;
+function TpvVector3Helper.GetPPST:TpvVector4;
 begin
  result.s:=p;
  result.t:=p;
  result.p:=s;
  result.q:=t;
 end;
-function TVector3Helper.GetPPSP:TVector4;
+function TpvVector3Helper.GetPPSP:TpvVector4;
 begin
  result.s:=p;
  result.t:=p;
  result.p:=s;
  result.q:=p;
 end;
-function TVector3Helper.GetPPTS:TVector4;
+function TpvVector3Helper.GetPPTS:TpvVector4;
 begin
  result.s:=p;
  result.t:=p;
  result.p:=t;
  result.q:=s;
 end;
-function TVector3Helper.GetPPTT:TVector4;
+function TpvVector3Helper.GetPPTT:TpvVector4;
 begin
  result.s:=p;
  result.t:=p;
  result.p:=t;
  result.q:=t;
 end;
-function TVector3Helper.GetPPTP:TVector4;
+function TpvVector3Helper.GetPPTP:TpvVector4;
 begin
  result.s:=p;
  result.t:=p;
  result.p:=t;
  result.q:=p;
 end;
-function TVector3Helper.GetPPPS:TVector4;
+function TpvVector3Helper.GetPPPS:TpvVector4;
 begin
  result.s:=p;
  result.t:=p;
  result.p:=p;
  result.q:=s;
 end;
-function TVector3Helper.GetPPPT:TVector4;
+function TpvVector3Helper.GetPPPT:TpvVector4;
 begin
  result.s:=p;
  result.t:=p;
  result.p:=p;
  result.q:=t;
 end;
-function TVector3Helper.GetPPPP:TVector4;
+function TpvVector3Helper.GetPPPP:TpvVector4;
 begin
  result.s:=p;
  result.t:=p;

@@ -60,79 +60,79 @@ unit PasVulkan.Types.Standard;
 
 interface
 
-type PPInt8=^PInt8;
-     PInt8=^TInt8;
-     TInt8={$ifdef fpc}Int8{$else}shortint{$endif};
+type PPpvInt8=^PpvInt8;
+     PpvInt8=^TpvInt8;
+     TpvInt8={$ifdef fpc}Int8{$else}shortint{$endif};
 
-     PPUInt8=^PUInt8;
-     PUInt8=^TUInt8;
-     TUInt8={$ifdef fpc}UInt8{$else}byte{$endif};
+     PPpvUInt8=^PpvUInt8;
+     PpvUInt8=^TpvUInt8;
+     TpvUInt8={$ifdef fpc}UInt8{$else}byte{$endif};
 
-     PPInt16=^PInt16;
-     PInt16=^TInt16;
-     TInt16={$ifdef fpc}Int16{$else}smallint{$endif};
+     PPpvInt16=^PpvInt16;
+     PpvInt16=^TpvInt16;
+     TpvInt16={$ifdef fpc}Int16{$else}smallint{$endif};
 
-     PPUInt16=^PUInt16;
-     PUInt16=^TUInt16;
-     TUInt16={$ifdef fpc}UInt16{$else}word{$endif};
+     PPpvUInt16=^PpvUInt16;
+     PpvUInt16=^TpvUInt16;
+     TpvUInt16={$ifdef fpc}UInt16{$else}word{$endif};
 
-     PPInt32=^PInt32;
-     PInt32=^TInt32;
-     TInt32={$ifdef fpc}Int32{$else}longint{$endif};
+     PPpvInt32=^PpvInt32;
+     PpvInt32=^TpvInt32;
+     TpvInt32={$ifdef fpc}Int32{$else}longint{$endif};
 
-     PPUInt32=^PUInt32;
-     PUInt32=^TUInt32;
-     TUInt32={$ifdef fpc}UInt32{$else}longword{$endif};
+     PPpvUInt32=^PpvUInt32;
+     PpvUInt32=^TpvUInt32;
+     TpvUInt32={$ifdef fpc}UInt32{$else}longword{$endif};
 
-     PPInt64=^PInt64;
-     PInt64=^TInt64;
-     TInt64=Int64;
+     PPpvInt64=^PpvInt64;
+     PpvInt64=^TpvInt64;
+     TpvInt64=Int64;
 
-     PPUInt64=^PUInt64;
-     PUInt64=^TUInt64;
-     TUInt64=UInt64;
+     PPpvUInt64=^PpvUInt64;
+     PpvUInt64=^TpvUInt64;
+     TpvUInt64=UInt64;
 
      PPChar=^PChar;
      PChar=PAnsiChar;
      TChar=AnsiChar;
 
-     PPPointer=^PPointer;
-     PPointer=^TPointer;
-     TPointer=Pointer;
+     PPpvPointer=^PpvPointer;
+     PpvPointer=^TpvPointer;
+     TpvPointer=Pointer;
 
      PPPointers=^PPointers;
      PPointers=^TPointers;
      TPointers=array[0..65535] of pointer;
 
-     PPVoid=^PVoid;
-     PVoid=Pointer;
+     PPpvVoid=^PpvVoid;
+     PpvVoid=Pointer;
 
-     PPFloat=^PFloat;
-     PFloat=^TFloat;
-     TFloat=Single;
+     PPpvFloat=^PpvFloat;
+     PpvFloat=^TpvFloat;
+     TpvFloat=Single;
 
-     PPDouble=^PDouble;
-     PDouble=^TDouble;
-     TDouble=Double;
+     PPpvDouble=^PpvDouble;
+     PpvDouble=^TpvDouble;
+     TpvDouble=Double;
 
 {    PPTime=^PTime;
      PTime=^TTime;
-     TTime=TInt64;}
+     TTime=TpvInt64;}
 
-     PPPtrUInt=^PPtrUInt;
-     PPPtrInt=^PPtrInt;
-     PPtrUInt=^TPtrUInt;
-     PPtrInt=^TPtrInt;
+     PPpvPtrUInt=^PpvPtrUInt;
+     PPpvPtrInt=^PpvPtrInt;
+     PpvPtrUInt=^TpvPtrUInt;
+     PpvPtrInt=^TpvPtrInt;
 {$ifdef fpc}
-     TPtrUInt=PtrUInt;
-     TPtrInt=PtrInt;
+     TpvPtrUInt=PtrUInt;
+     TpvPtrInt=PtrInt;
  {$undef OldDelphi}
 {$else}
  {$ifdef conditionalexpressions}
   {$if CompilerVersion>=23.0}
    {$undef OldDelphi}
-     TPtrUInt=NativeUInt;
-     TPtrInt=NativeInt;
+     TpvPtrUInt=NativeUInt;
+     TpvPtrInt=NativeInt;
   {$else}
    {$define OldDelphi}
   {$ifend}
@@ -142,56 +142,56 @@ type PPInt8=^PInt8;
 {$endif}
 {$ifdef OldDelphi}
 {$ifdef cpu64}
-     TPtrUInt=uint64;
-     TPtrInt=int64;
+     TpvPtrUInt=uint64;
+     TpvPtrInt=int64;
 {$else}
-     TPtrUInt=longword;
-     TPtrInt=longint;
+     TpvPtrUInt=longword;
+     TpvPtrInt=longint;
 {$endif}
 {$endif}
 
-     PPSizeUInt=^PSizeUInt;
-     PSizeUInt=^TSizeUInt;
-     TSizeUInt=TPtrUInt;
+     PPpvSizeUInt=^PpvSizeUInt;
+     PpvSizeUInt=^TpvSizeUInt;
+     TpvSizeUInt=TpvPtrUInt;
 
-     PPSizeInt=^PSizeInt;
-     PSizeInt=^TSizeInt;
-     TSizeInt=TPtrInt;
+     PPpvSizeInt=^PpvSizeInt;
+     PpvSizeInt=^TpvSizeInt;
+     TpvSizeInt=TpvPtrInt;
 
-     PPSize=^PSizeUInt;
-     PSize=^TSizeUInt;
-     TSize=TPtrUInt;
+     PPpvSize=^PpvSizeUInt;
+     PpvSize=^TpvSizeUInt;
+     TpvSize=TpvPtrUInt;
 
-     PPPtrDiff=^PPtrDiff;
-     PPtrDiff=^TPtrDiff;
-     TPtrDiff=TPtrInt;
+     PPpvPtrDiff=^PpvPtrDiff;
+     PpvPtrDiff=^TpvPtrDiff;
+     TpvPtrDiff=TpvPtrInt;
 
-     PPRawByteString=^PRawByteString;
-     PRawByteString=^TRawByteString;
-     TRawByteString=RawByteString;
+     PPpvRawByteString=^PpvRawByteString;
+     PpvRawByteString=^TpvRawByteString;
+     TpvRawByteString=RawByteString;
 
-     PPUTF8String=^PUTF8String;
-     PUTF8String=^TUTF8String;
-     TUTF8String=UTF8String;
+     PPpvUTF8String=^PpvUTF8String;
+     PpvUTF8String=^TpvUTF8String;
+     TpvUTF8String=UTF8String;
 
-     PPUnicodeString=^PUnicodeString;
-     PUnicodeString=^TUnicodeString;
-     TUnicodeString=UnicodeString;
+     PPpvUnicodeString=^PpvUnicodeString;
+     PpvUnicodeString=^TpvUnicodeString;
+     TpvUnicodeString=UnicodeString;
 
-     PPFileName=^PFileName;
-     PFileName=^TFileName;
-     TFileName=String;
+     PPpvFileName=^PpvFileName;
+     PpvFileName=^TpvFileName;
+     TpvFileName=String;
 
      PHandle=^THandle;
      THandle={$ifdef fpc}bitpacked{$endif} record
-      Index:TUInt32;
-      Generation:TUInt32;
+      Index:TpvUInt32;
+      Generation:TpvUInt32;
      end;
 
      PID=^TID;
      TID={$ifdef fpc}bitpacked{$endif} record
-      Index:TUInt32;
-      Generation:TUInt32;
+      Index:TpvUInt32;
+      Generation:TpvUInt32;
      end;
 
 {const TimeToSeconds=1.0/TTime($100000000);

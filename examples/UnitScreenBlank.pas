@@ -54,15 +54,15 @@ type TScreenBlank=class(TVulkanApplicationScreen)
 
        procedure Pause; override;
 
-       procedure Resize(const aWidth,aHeight:TInt32); override;
+       procedure Resize(const aWidth,aHeight:TpvInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
 
-       procedure Update(const aDeltaTime:TDouble); override;
+       procedure Update(const aDeltaTime:TpvDouble); override;
 
-       procedure Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
 
      end;
 
@@ -80,7 +80,7 @@ end;
 
 procedure TScreenBlank.Show;
 var Stream:TStream;
-    Index:TInt32;
+    Index:TpvInt32;
 begin
  inherited Show;
 
@@ -115,7 +115,7 @@ begin
 end;
 
 procedure TScreenBlank.Hide;
-var Index:TInt32;
+var Index:TpvInt32;
 begin
  FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fVulkanPipelineShaderStageTriangleVertex);
@@ -140,13 +140,13 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenBlank.Resize(const aWidth,aHeight:TInt32);
+procedure TScreenBlank.Resize(const aWidth,aHeight:TpvInt32);
 begin
  inherited Resize(aWidth,aHeight);
 end;
 
 procedure TScreenBlank.AfterCreateSwapChain;
-var SwapChainImageIndex:TInt32;
+var SwapChainImageIndex:TpvInt32;
     VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
  inherited AfterCreateSwapChain;
@@ -239,12 +239,12 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TScreenBlank.Update(const aDeltaTime:TDouble);
+procedure TScreenBlank.Update(const aDeltaTime:TpvDouble);
 begin
  inherited Update(aDeltaTime);
 end;
 
-procedure TScreenBlank.Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TScreenBlank.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVulkanRenderPass) then begin

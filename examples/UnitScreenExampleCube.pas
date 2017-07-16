@@ -32,14 +32,14 @@ uses SysUtils,
 
 type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
      TScreenExampleCubeUniformBuffer=record
-      ModelViewProjectionMatrix:TMatrix4x4;
-      ModelViewNormalMatrix:TMatrix4x4; // actually TMatrix3x3, but it would have then a TMatrix3x4 alignment, according to https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout
+      ModelViewProjectionMatrix:TpvMatrix4x4;
+      ModelViewNormalMatrix:TpvMatrix4x4; // actually TpvMatrix3x3, but it would have then a TMatrix3x4 alignment, according to https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout
      end;
 
      PScreenExampleCubeState=^TScreenExampleCubeState;
      TScreenExampleCubeState=record
-      Time:TDouble;
-      AnglePhases:array[0..1] of TFloat;
+      Time:TpvDouble;
+      AnglePhases:array[0..1] of TpvFloat;
      end;
 
      PScreenExampleCubeStates=^TScreenExampleCubeStates;
@@ -66,8 +66,8 @@ type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
        fUniformBuffer:TScreenExampleCubeUniformBuffer;
        fBoxAlbedoTexture:TVulkanTexture;
        fReady:boolean;
-       fSelectedIndex:TInt32;
-       fStartY:TFloat;
+       fSelectedIndex:TpvInt32;
+       fStartY:TpvFloat;
        fState:TScreenExampleCubeState;
        fStates:TScreenExampleCubeStates;
       public
@@ -84,31 +84,31 @@ type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
 
        procedure Pause; override;
 
-       procedure Resize(const aWidth,aHeight:TInt32); override;
+       procedure Resize(const aWidth,aHeight:TpvInt32); override;
 
        procedure AfterCreateSwapChain; override;
 
        procedure BeforeDestroySwapChain; override;
 
-       function KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean; override;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean; override;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
 
-       function MouseMoved(const aScreenX,aScreenY:TInt32):boolean; override;
+       function MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
 
-       function Scrolled(const aAmount:TInt32):boolean; override;
+       function Scrolled(const aAmount:TpvInt32):boolean; override;
 
-       procedure Update(const aDeltaTime:TDouble); override;
+       procedure Update(const aDeltaTime:TpvDouble); override;
 
-       procedure Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
 
      end;
 
@@ -118,11 +118,11 @@ uses UnitExampleVulkanApplication,UnitTextOverlay,UnitScreenMainMenu;
 
 type PVertex=^TVertex;
      TVertex=record
-      Position:TVector3;
-      Tangent:TVector3;
-      Bitangent:TVector3;
-      Normal:TVector3;
-      TexCoord:TVector2;
+      Position:TpvVector3;
+      Tangent:TpvVector3;
+      Bitangent:TpvVector3;
+      Normal:TpvVector3;
+      TexCoord:TpvVector2;
      end;
 
 const CubeVertices:array[0..23] of TVertex=
@@ -164,7 +164,7 @@ const CubeVertices:array[0..23] of TVertex=
 
        );
 
-      CubeIndices:array[0..35] of TInt32=
+      CubeIndices:array[0..35] of TpvInt32=
        ( 0, 1, 2,
          0, 2, 3,
 
@@ -208,7 +208,7 @@ end;
 
 procedure TScreenExampleCube.Show;
 var Stream:TStream;
-    Index:TInt32;
+    Index:TpvInt32;
 begin
  inherited Show;
 
@@ -394,7 +394,7 @@ begin
 end;
 
 procedure TScreenExampleCube.Hide;
-var Index:TInt32;
+var Index:TpvInt32;
 begin
  FreeAndNil(fVulkanPipelineLayout);
  for Index:=0 to MaxSwapChainImages-1 do begin
@@ -432,13 +432,13 @@ begin
  inherited Pause;
 end;
 
-procedure TScreenExampleCube.Resize(const aWidth,aHeight:TInt32);
+procedure TScreenExampleCube.Resize(const aWidth,aHeight:TpvInt32);
 begin
  inherited Resize(aWidth,aHeight);
 end;
 
 procedure TScreenExampleCube.AfterCreateSwapChain;
-var SwapChainImageIndex:TInt32;
+var SwapChainImageIndex:TpvInt32;
     VulkanCommandBuffer:TVulkanCommandBuffer;
 begin
  inherited AfterCreateSwapChain;
@@ -616,7 +616,7 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-function TScreenExampleCube.KeyDown(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenExampleCube.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
  if fReady then begin
@@ -663,19 +663,19 @@ begin
  end;
 end;
 
-function TScreenExampleCube.KeyUp(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenExampleCube.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleCube.KeyTyped(const aKeyCode,aKeyModifier:TInt32):boolean;
+function TScreenExampleCube.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleCube.TouchDown(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
+function TScreenExampleCube.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
@@ -693,31 +693,14 @@ begin
  end;
 end;
 
-function TScreenExampleCube.TouchUp(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID,aButton:TInt32):boolean;
+function TScreenExampleCube.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleCube.TouchDragged(const aScreenX,aScreenY,aPressure:TFloat;const aPointerID:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
-begin
- result:=false;
- if fReady then begin
-  fSelectedIndex:=-1;
-  cy:=fStartY;
-  for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
-    fSelectedIndex:=Index;
-   end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
-  end;
- end;
-end;
-
-function TScreenExampleCube.MouseMoved(const aScreenX,aScreenY:TInt32):boolean;
-var Index:TInt32;
-    cy:TFloat;
+function TScreenExampleCube.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
@@ -732,18 +715,35 @@ begin
  end;
 end;
 
-function TScreenExampleCube.Scrolled(const aAmount:TInt32):boolean;
+function TScreenExampleCube.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+var Index:TpvInt32;
+    cy:TpvFloat;
+begin
+ result:=false;
+ if fReady then begin
+  fSelectedIndex:=-1;
+  cy:=fStartY;
+  for Index:=0 to 0 do begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+    fSelectedIndex:=Index;
+   end;
+   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+  end;
+ end;
+end;
+
+function TScreenExampleCube.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-procedure TScreenExampleCube.Update(const aDeltaTime:TDouble);
-const BoolToInt:array[boolean] of TInt32=(0,1);
+procedure TScreenExampleCube.Update(const aDeltaTime:TpvDouble);
+const BoolToInt:array[boolean] of TpvInt32=(0,1);
       Options:array[0..0] of string=('Back');
       f0=1.0/(2.0*pi);
       f1=0.5/(2.0*pi);
-var Index:TInt32;
-    cy:TFloat;
+var Index:TpvInt32;
+    cy:TpvFloat;
     s:string;
     IsSelected:boolean;
 begin
@@ -767,12 +767,12 @@ begin
  fReady:=true;
 end;
 
-procedure TScreenExampleCube.Draw(const aSwapChainImageIndex:TInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TScreenExampleCube.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
 const TwoPI=2.0*pi;
 var p:pointer;
-    ModelMatrix:TMatrix4x4;
-    ViewMatrix:TMatrix4x4;
-    ProjectionMatrix:TMatrix4x4;
+    ModelMatrix:TpvMatrix4x4;
+    ViewMatrix:TpvMatrix4x4;
+    ProjectionMatrix:TpvMatrix4x4;
     State:PScreenExampleCubeState;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
@@ -780,13 +780,13 @@ begin
 
   State:=@fStates[VulkanApplication.DrawSwapChainImageIndex];
 
-  ModelMatrix:=TMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TVector3.Create(0.0,0.0,1.0))*
-               TMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TVector3.Create(0.0,1.0,0.0));
-  ViewMatrix:=TMatrix4x4.CreateTranslation(0.0,0.0,-6.0);
-  ProjectionMatrix:=TMatrix4x4.CreatePerspective(45.0,VulkanApplication.Width/VulkanApplication.Height,1.0,128.0);
+  ModelMatrix:=TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*
+               TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
+  ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-6.0);
+  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,VulkanApplication.Width/VulkanApplication.Height,1.0,128.0);
 
   fUniformBuffer.ModelViewProjectionMatrix:=(ModelMatrix*ViewMatrix)*ProjectionMatrix;
-  fUniformBuffer.ModelViewNormalMatrix:=TMatrix4x4.Create((ModelMatrix*ViewMatrix).ToMatrix3x3.Inverse.Transpose);
+  fUniformBuffer.ModelViewNormalMatrix:=TpvMatrix4x4.Create((ModelMatrix*ViewMatrix).ToMatrix3x3.Inverse.Transpose);
 
   p:=fVulkanUniformBuffers[VulkanApplication.DrawSwapChainImageIndex].Memory.MapMemory(0,SizeOf(TScreenExampleCubeUniformBuffer));
   if assigned(p) then begin
