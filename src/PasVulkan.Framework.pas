@@ -3559,6 +3559,20 @@ type EVulkanException=class(Exception);
        property LineCap:TVulkanCanvasPenLineCap read fLineCap write fLineCap default vcplcRound;
      end;
 
+     PVulkanCanvasPoint=^TVulkanCanvasPoint;
+     TVulkanCanvasPoint=TVector2;
+
+     PVulkanCanvasInternalPoint=^TVulkanCanvasInternalPoint;
+     TVulkanCanvasInternalPoint=record
+      Position:TVector2;
+      Middle:TVector2;
+      Color:TVector4;
+     end;
+
+     TVulkanCanvasInternalPoints=array of TVulkanCanvasInternalPoint;
+
+     TVulkanCanvasMode=(vcmNormal,vcmLine);
+
      PVulkanCanvasVertex=^TVulkanCanvasVertex;
      TVulkanCanvasVertex=packed record
       Position:TVulkanSpriteVertexPoint;             // +  8 (2x 32-bit floats)       = 0
@@ -3566,7 +3580,8 @@ type EVulkanException=class(Exception);
       TextureCoord:TVulkanSpriteVertexTextureCoord;  // + 12 (3x 32-bit floats)       = 16 (=> 16 byte aligned)
       State:TVulkanSpriteVertexState;                // +  4 (2x 16-bit half-floats)  = 28 (=> 4 byte aligned)
       ClipRect:TVulkanSpriteVertexClipRect;          // + 16 (4x 32-bit floats)       = 32 (=> 32 byte aligned)
-     end;                                            // = 48 per vertex
+      MetaInfo:TVector4;                             // + 16 (4x 32-bit floats)       = 48 (=> 32 byte aligned)
+     end;                                            // = 64 per vertex
 
      TVulkanCanvasVertices=array of TVulkanCanvasVertex;
 
