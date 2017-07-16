@@ -20,7 +20,7 @@ unit UnitScreenExampleEmpty;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanApplication,UnitRegisteredExamplesList;
+uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application,UnitRegisteredExamplesList;
 
 type TScreenExampleEmpty=class(TVulkanApplicationScreen)
       private

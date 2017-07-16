@@ -51,7 +51,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkanApplication;
+unit PasVulkan.Application;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -82,9 +82,9 @@ uses {$if defined(Unix)}
      Math,
      PasMP,
      Vulkan,
-     PasVulkan,
-     PasVulkanSDL2,
-     PasVulkanAndroid;
+     PasVulkan.Framework,
+     PasVulkan.SDL2,
+     PasVulkan.Android;
 
 const MaxSwapChainImages=3;
 
@@ -3839,40 +3839,40 @@ end;
 function TVulkanApplicationInput.TranslateSDLKeyModifier(const aKeyModifier:TVkInt32):TVkInt32;
 begin
  result:=0;
- if (aKeyModifier and PasVulkanSDL2.KMOD_LSHIFT)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_LSHIFT)<>0 then begin
   result:=result or KEYMODIFIER_LSHIFT;
  end;
- if (aKeyModifier and PasVulkanSDL2.KMOD_RSHIFT)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_RSHIFT)<>0 then begin
   result:=result or KEYMODIFIER_RSHIFT;
  end;
- if (aKeyModifier and PasVulkanSDL2.KMOD_LCTRL)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_LCTRL)<>0 then begin
   result:=result or KEYMODIFIER_LCTRL;
  end;
- if (aKeyModifier and PasVulkanSDL2.KMOD_RCTRL)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_RCTRL)<>0 then begin
   result:=result or KEYMODIFIER_RCTRL;
  end;
- if (aKeyModifier and PasVulkanSDL2.KMOD_LALT)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_LALT)<>0 then begin
   result:=result or KEYMODIFIER_LALT;
  end;
- if (aKeyModifier and PasVulkanSDL2.KMOD_RALT)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_RALT)<>0 then begin
   result:=result or KEYMODIFIER_RALT;
  end;
- if (aKeyModifier and PasVulkanSDL2.KMOD_LMETA)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_LMETA)<>0 then begin
   result:=result or KEYMODIFIER_LMETA;
  end;
- if (aKeyModifier and PasVulkanSDL2.KMOD_RMETA)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_RMETA)<>0 then begin
   result:=result or KEYMODIFIER_RMETA;
  end;
- if (aKeyModifier and PasVulkanSDL2.KMOD_NUM)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_NUM)<>0 then begin
   result:=result or KEYMODIFIER_NUM;
  end;
- if (aKeyModifier and PasVulkanSDL2.KMOD_CAPS)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_CAPS)<>0 then begin
   result:=result or KEYMODIFIER_CAPS;
  end;
- if (aKeyModifier and PasVulkanSDL2.KMOD_MODE)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_MODE)<>0 then begin
   result:=result or KEYMODIFIER_MODE;
  end;
- if (aKeyModifier and PasVulkanSDL2.KMOD_RESERVED)<>0 then begin
+ if (aKeyModifier and PasVulkan.SDL2.KMOD_RESERVED)<>0 then begin
   result:=result or KEYMODIFIER_RESERVED;
  end;
 end;

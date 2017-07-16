@@ -20,7 +20,7 @@ unit UnitScreenExampleCube;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanApplication,UnitRegisteredExamplesList,UnitMath3D;
+uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application,UnitRegisteredExamplesList,UnitMath3D;
 
 type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
      TScreenExampleCubeUniformBuffer=record

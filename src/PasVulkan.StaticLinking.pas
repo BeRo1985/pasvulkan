@@ -3,7 +3,7 @@
 // third-party C libraries
 // Copyright (C) 2016-2017, Benjamin 'BeRo' Rosseaux
 // License: zlib
-unit PasVulkanStaticLinking;
+unit PasVulkan.StaticLinking;
 {$ifdef fpc}
  {$mode delphi}
  {$packrecords c}

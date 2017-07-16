@@ -20,7 +20,7 @@ unit UnitTextOverlay;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanApplication;
+uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application;
 
 const TextOverlayBufferCharSize=65536;
 

@@ -109,7 +109,7 @@ unit UnitModel;
 
 interface
 
-uses SysUtils,Classes,Math,Vulkan,Kraft,PasVulkan;
+uses SysUtils,Classes,Math,Vulkan,Kraft,PasVulkan.Framework;
 
 const VULKAN_MODEL_VERTEX_BUFFER_BIND_ID=0;
 

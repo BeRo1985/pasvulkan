@@ -20,7 +20,7 @@ unit UnitScreenExampleSprites;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanApplication,UnitRegisteredExamplesList;
+uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application,UnitRegisteredExamplesList;
 
 type TScreenExampleSprites=class(TVulkanApplicationScreen)
       private

@@ -20,7 +20,7 @@ unit UnitExampleVulkanApplication;
 
 interface
 
-uses SysUtils,Classes,UnitRegisteredExamplesList,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanSDL2,PasVulkanApplication,UnitTextOverlay;
+uses SysUtils,Classes,UnitRegisteredExamplesList,Vulkan,PasVulkan.Framework,PasVulkan.Application,UnitTextOverlay;
 
 const MenuColors:array[boolean,0..1,0..3] of single=
        (((0.0625,0.125,0.5,0.95),(1.0,1.0,1.0,0.95)),

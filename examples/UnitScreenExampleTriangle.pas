@@ -20,7 +20,7 @@ unit UnitScreenExampleTriangle;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanApplication,UnitRegisteredExamplesList;
+uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application,UnitRegisteredExamplesList;
 
 type TScreenExampleTriangle=class(TVulkanApplicationScreen)
       private

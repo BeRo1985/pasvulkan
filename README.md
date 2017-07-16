@@ -1,6 +1,6 @@
 # pasvulkan
 
-Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (FreePascal >= 3.0.2 (and FreePascal >= 3.1.1 for the Android target for the hardfloat calling convention keyword) and Delphi >= 7.0)
+Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (FreePascal >= 3.0.2 (and FreePascal >= 3.1.1 for the Android target for the hardfloat calling convention keyword) and Delphi >= 2006)
 
 ## Features
 

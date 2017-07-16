@@ -51,7 +51,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkanGUI;
+unit PasVulkan.GUI;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -63,7 +63,7 @@ unit PasVulkanGUI;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanApplication;
+uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application;
 
 type TPasVulkanGUIObject=class;
 

@@ -1,6 +1,6 @@
 // Minimal single-file Android unit
 // License: zlib
-unit PasVulkanAndroid;
+unit PasVulkan.Android;
 {$ifdef fpc}
  {$mode delphi}
  {$packrecords c}

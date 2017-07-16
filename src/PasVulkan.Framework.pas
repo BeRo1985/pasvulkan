@@ -51,7 +51,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan;
+unit PasVulkan.Framework;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -39142,7 +39142,7 @@ end;
 procedure TVulkanTrueTypeFont.TransformGlyphBuffer(var GlyphBuffer:TVulkanTrueTypeFontGlyphBuffer;GlyphStartPointIndex,StartIndex,EndIndex:TVkInt32);
 var Sum,Direction,StartPointIndex,i,j,x,y,xs,ys:TVkInt32;
     pprev,pfirst,pnext,pcur,pin,pout:TVulkanTrueTypeFontGlyphPoint;
-    ain,aout,ad,s:TVkFloat;
+    ain,aout,ad,s:TVkDouble;
     Matrix:TMatrix;
 begin
  Sum:=0;

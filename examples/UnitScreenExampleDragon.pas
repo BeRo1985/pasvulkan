@@ -20,7 +20,7 @@ unit UnitScreenExampleDragon;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanApplication,UnitRegisteredExamplesList,UnitMath3D,UnitModel;
+uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application,UnitRegisteredExamplesList,UnitMath3D,UnitModel;
 
 type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
      TScreenExampleDragonUniformBuffer=record

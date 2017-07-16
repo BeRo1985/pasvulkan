@@ -20,7 +20,7 @@ unit UnitScreenBlank;
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan,PasVulkanAndroid,PasVulkanApplication;
+uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application;
 
 type TScreenBlank=class(TVulkanApplicationScreen)
       private

@@ -1,7 +1,7 @@
 // Minimal SDL2 unit with optional static linking support (needs PasVulkanStaticLinking helper unit)
 // Copyright (C) 2016-2017, Benjamin 'BeRo' Rosseaux
 // License: zlib
-unit PasVulkanSDL2;
+unit PasVulkan.SDL2;
 {$ifdef fpc}
  {$mode delphi}
  {$packrecords c}
