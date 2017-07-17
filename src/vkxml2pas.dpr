@@ -2698,9 +2698,10 @@ begin
  Stream.Destroy;
 end;
 
-function ParseText(ParentItem:TXMLItem):ansistring;
-var XMLItemIndex:longint;
+function ParseText(ParentItem:TXMLItem;const ExcludedTags:array of ansistring):ansistring;
+var XMLItemIndex,Index:longint;
     XMLItem:TXMLItem;
+    Found:boolean;
 begin
  result:='';
  if assigned(ParentItem) then begin
@@ -2710,10 +2711,19 @@ begin
     if XMLItem is TXMLText then begin
      result:=result+TXMLText(XMLItem).Text;
     end else if XMLItem is TXMLTag then begin
-     if TXMLTag(XMLItem).Name='br' then begin
-      result:=result+#13#10;
+     Found:=false;
+     for Index:=0 to length(ExcludedTags)-1 do begin
+      if TXMLTag(XMLItem).Name=ExcludedTags[Index] then begin
+       Found:=true;
+       break;
+      end;
      end;
-     result:=result+ParseText(XMLItem)+' ';
+     if not Found then begin
+      if TXMLTag(XMLItem).Name='br' then begin
+       result:=result+#13#10;
+      end;
+      result:=result+ParseText(XMLItem,ExcludedTags)+' ';
+     end;
     end;
    end;
   end;
@@ -3061,7 +3071,7 @@ begin
    if ChildItem is TXMLTag then begin
     ChildTag:=TXMLTag(ChildItem);
     if ChildTag.Name='usage' then begin
-     StringList.Add(ParseText(ChildTag));
+     StringList.Add(ParseText(ChildTag,['']));
     end;
    end;
   end;
@@ -3070,7 +3080,7 @@ end;
 
 procedure ParseCommentTag(Tag:TXMLTag);
 begin
- Comment:=ParseText(Tag);
+ Comment:=ParseText(Tag,['']);
 end;
 
 procedure ParseExtensionsTag(Tag:TXMLTag);
@@ -3392,12 +3402,12 @@ begin
       Category:=ChildTag.GetParameter('category');
       if Category='include' then begin
       end else if Category='define' then begin
-       Name:=ParseText(ChildTag.FindTag('name'));
+       Name:=ParseText(ChildTag.FindTag('name'),['']);
        if pos('VK_API_VERSION',Name)=1 then begin
         VersionMajor:=1;
         VersionMinor:=0;
         VersionPatch:=0;
-        Text:=ParseText(ChildTag);
+        Text:=ParseText(ChildTag,['']);
         if length(Text)>0 then begin
          j:=pos('(',Text);
          if j>0 then begin
@@ -3424,7 +3434,7 @@ begin
         VersionConstants.Add('      '+Name+'=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
         VersionConstants.Add('');
        end else if pos('VK_HEADER_VERSION',Name)=1 then begin
-        Text:=ParseText(ChildTag);
+        Text:=ParseText(ChildTag,['']);
         j:=pos(Name,Text);
         if j>0 then begin
          Delete(Text,1,(j+length(Name))-1);
@@ -3434,22 +3444,22 @@ begin
         end;
        end;
       end else if Category='basetype' then begin
-       Type_:=ParseText(ChildTag.FindTag('type'));
-       Name:=ParseText(ChildTag.FindTag('name'));
+       Type_:=ParseText(ChildTag.FindTag('type'),['']);
+       Name:=ParseText(ChildTag.FindTag('name'),['']);
        BaseTypes.Add('     PP'+Name+'=^P'+Name+';');
        BaseTypes.Add('     P'+Name+'=^T'+Name+';');
        BaseTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
        BaseTypes.Add('');
       end else if Category='bitmask' then begin
-       Type_:=ParseText(ChildTag.FindTag('type'));
-       Name:=ParseText(ChildTag.FindTag('name'));
+       Type_:=ParseText(ChildTag.FindTag('type'),['']);
+       Name:=ParseText(ChildTag.FindTag('name'),['']);
        BitMaskTypes.Add('     PP'+Name+'=^P'+Name+';');
        BitMaskTypes.Add('     P'+Name+'=^T'+Name+';');
        BitMaskTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
        BitMaskTypes.Add('');
       end else if Category='handle' then begin
-       Type_:=ParseText(ChildTag.FindTag('type'));
-       Name:=ParseText(ChildTag.FindTag('name'));
+       Type_:=ParseText(ChildTag.FindTag('type'),['']);
+       Name:=ParseText(ChildTag.FindTag('name'),['']);
        HandleTypes.Add('     PP'+Name+'=^P'+Name+';');
        HandleTypes.Add('     P'+Name+'=^T'+Name+';');
        HandleTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
@@ -3476,7 +3486,7 @@ begin
         if ChildChildItem is TXMLTag then begin
          ChildChildTag:=TXMLTag(ChildChildItem);
          if ChildChildTag.Name='name' then begin
-          TypeDefinition^.Name:=ParseText(ChildChildTag);
+          TypeDefinition^.Name:=ParseText(ChildChildTag,['']);
           if pos('void*',Text)>0 then begin
            TypeDefinition^.Ptr:=1;
            TypeDefinition^.Type_:='void';
@@ -3488,7 +3498,7 @@ begin
            TypeDefinition^.Type_:=Text;
           end;
          end else if ChildChildTag.Name='type' then begin
-          Type_:=ParseText(ChildChildTag);
+          Type_:=ParseText(ChildChildTag,['']);
          end;
         end else if ChildChildItem is TXMLText then begin
          Text:=TXMLText(ChildChildItem).Text;
@@ -3579,8 +3589,8 @@ begin
             end;
            end;
           end;
-          Name:=ParseText(ChildChildTag.FindTag('name'));
-          ArraySizeStr:=ParseText(ChildChildTag.FindTag('enum'));
+          Name:=ParseText(ChildChildTag.FindTag('name'),['']);
+          ArraySizeStr:=ParseText(ChildChildTag.FindTag('enum'),['']);
           k:=pos('[',Name);
           ArraySize:=-1;
           if k>0 then begin
@@ -3592,7 +3602,7 @@ begin
            end;
           end;
           if ArraySize<0 then begin
-           Text:=ParseText(ChildChildTag);
+           Text:=ParseText(ChildChildTag,['comment']);
            k:=pos('[',Text);
            if k>0 then begin
             Delete(Text,1,k);
@@ -3601,9 +3611,7 @@ begin
              Text:=trim(copy(Text,1,k-1));
              ArraySize:=StrToIntDef(Text,-1);
              if ArraySize<0 then begin
-              if Text<>'_DYNAMIC' then begin
-               ArraySizeStr:=Text;
-              end;
+              ArraySizeStr:=Text;
              end;
             end;
            end;
@@ -3623,7 +3631,7 @@ begin
           inc(TypeDefinition^.CountMembers);
           TypeDefinitionMember^.Name:=Name;
           TypeDefinitionMember^.ArraySizeInt:=ArraySize;
-          Type_:=ParseText(ChildChildTag.FindTag('type'));
+          Type_:=ParseText(ChildChildTag.FindTag('type'),['']);
           TypeDefinitionMember^.Type_:=Type_;
           TypeDefinitionMember^.Values:=ChildChildTag.GetParameter('values');
           TypeDefinitionMember^.ArraySizeStr:=ArraySizeStr;
@@ -3637,7 +3645,7 @@ begin
           end;{}
           TypeDefinitionMember^.TypeDefinitionIndex:=-1;
           TypeDefinitionMember^.Ptr:=0;
-          Text:=ParseText(ChildChildTag);
+          Text:=ParseText(ChildChildTag,['']);
           for k:=1 to length(Text) do begin
            if Text[k]='*' then begin
             inc(TypeDefinitionMember^.Ptr);
@@ -4142,21 +4150,20 @@ begin
       if ChildChildItem is TXMLTag then begin
        ChildChildTag:=TXMLTag(ChildChildItem);
        if ChildChildTag.Name='proto' then begin
-        ProtoName:=ParseText(ChildChildTag.FindTag('name'));
-        ProtoType:=ParseText(ChildChildTag.FindTag('type'));
+        ProtoName:=ParseText(ChildChildTag.FindTag('name'),['']);
+        ProtoType:=ParseText(ChildChildTag.FindTag('type'),['']);
         ProtoPtr:=0;
-        Text:=ParseText(ChildChildTag);
+        Text:=ParseText(ChildChildTag,['']);
         for k:=1 to length(Text)-1 do begin
          if Text[k]='*' then begin
           inc(ProtoPtr);
          end;
         end;
        end else if ChildChildTag.Name='param' then begin
-        ParamName:=ParseText(ChildChildTag.FindTag('name'));
-        ParamType:=ParseText(ChildChildTag.FindTag('type'));
-        Text:=ParseText(ChildChildTag);
+        ParamName:=ParseText(ChildChildTag.FindTag('name'),['']);
+        ParamType:=ParseText(ChildChildTag.FindTag('type'),['']);
+        Text:=ParseText(ChildChildTag,['']);
         ParamPtr:=0;
-        Text:=ParseText(ChildChildTag);
         for k:=1 to length(Text)-1 do begin
          if Text[k]='*' then begin
           inc(ParamPtr);
