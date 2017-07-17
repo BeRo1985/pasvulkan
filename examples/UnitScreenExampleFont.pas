@@ -27,6 +27,7 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
+     PasVulkan.TrueTypeFont,
      PasVulkan.Application;
 
 type TScreenExampleFont=class(TpvApplicationScreen)
@@ -126,8 +127,8 @@ begin
  inherited Show;
 
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                               pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
-                                               TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+                                                 pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                 TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
  for Index:=0 to MaxSwapChainImages-1 do begin
   fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
@@ -252,15 +253,15 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
  fVulkanCanvas:=TpvVulkanCanvas.Create(pvApplication.VulkanDevice,
-                                     pvApplication.VulkanDevice.GraphicsQueue,
-                                     pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                                     pvApplication.VulkanGraphicsCommandBufferFences[0,0],
-                                     pvApplication.VulkanDevice.TransferQueue,
-                                     pvApplication.VulkanTransferCommandBuffers[0,0],
-                                     pvApplication.VulkanTransferCommandBufferFences[0,0],
-                                     pvApplication.VulkanPipelineCache,
-                                     fVulkanRenderPass,
-                                     pvApplication.CountSwapChainImages);
+                                       pvApplication.VulkanDevice.GraphicsQueue,
+                                       pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                                       pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                       pvApplication.VulkanDevice.TransferQueue,
+                                       pvApplication.VulkanTransferCommandBuffers[0,0],
+                                       pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                       pvApplication.VulkanPipelineCache,
+                                       fVulkanRenderPass,
+                                       pvApplication.CountSwapChainImages);
  if pvApplication.Width<pvApplication.Height then begin
   fVulkanCanvas.Width:=(720*pvApplication.Width) div pvApplication.Height;
   fVulkanCanvas.Height:=720;

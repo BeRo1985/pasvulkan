@@ -131,8 +131,8 @@ begin
  inherited Show;
 
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                               pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
-                                               TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+                                                 pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                 TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
  for Index:=0 to MaxSwapChainImages-1 do begin
   fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
@@ -161,12 +161,11 @@ begin
  fVulkanRenderPass:=nil;
 
  fVulkanVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                           SizeOf(TriangleVertices),
-                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                           nil,
-                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                                          );
+                                             SizeOf(TriangleVertices),
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                             nil,
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
  fVulkanVertexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
                                 pvApplication.VulkanTransferCommandBuffers[0,0],
                                 pvApplication.VulkanTransferCommandBufferFences[0,0],
@@ -176,12 +175,11 @@ begin
                                 vbutsbmYes);
 
  fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                          SizeOf(TriangleIndices),
-                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                          nil,
-                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                                         );
+                                            SizeOf(TriangleIndices),
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                            nil,
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
  fVulkanIndexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
                                pvApplication.VulkanTransferCommandBuffers[0,0],
                                pvApplication.VulkanTransferCommandBufferFences[0,0],
@@ -191,13 +189,11 @@ begin
                                vbutsbmYes);
 
  fVulkanUniformBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                            SizeOf(UniformBuffer),
-                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                            nil,
-                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-//                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-                                           );
+                                              SizeOf(UniformBuffer),
+                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                              nil,
+                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
  fVulkanUniformBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
                                  pvApplication.VulkanTransferCommandBuffers[0,0],
                                  pvApplication.VulkanTransferCommandBufferFences[0,0],
@@ -207,8 +203,8 @@ begin
                                  vbutsbmYes);
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
-                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                     1);
+                                                       TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                       1);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
  fVulkanDescriptorPool.Initialize;
 
@@ -340,14 +336,14 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
-                                                         pvApplication.VulkanPipelineCache,
-                                                         0,
-                                                         [],
-                                                         fVulkanPipelineLayout,
-                                                         fVulkanRenderPass,
-                                                         0,
-                                                         nil,
-                                                         0);
+                                                           pvApplication.VulkanPipelineCache,
+                                                           0,
+                                                           [],
+                                                           fVulkanPipelineLayout,
+                                                           fVulkanRenderPass,
+                                                           0,
+                                                           nil,
+                                                           0);
 
  fVulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleVertex);
  fVulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageTriangleFragment);

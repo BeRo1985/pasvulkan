@@ -1,195 +1,201 @@
 unit UnitScreenExampleCube;
 {$ifdef fpc}
- {$mode delphi}
- {$ifdef cpu386}
-  {$asmmode intel}
- {$endif}
- {$ifdef cpuamd64}
-  {$asmmode intel}
- {$endif}
+{$mode delphi}
+{$ifdef cpu386}
+{$asmmode intel}
+{$endif}
+{$ifdef cpuamd64}
+{$asmmode intel}
+{$endif}
 {$else}
- {$ifdef conditionalexpressions}
-  {$if CompilerVersion>=24.0}
-   {$legacyifend on}
-  {$ifend}
- {$endif}
+{$ifdef conditionalexpressions}
+{$if CompilerVersion>=24.0}
+{$legacyifend on}
+{$ifend}
+{$endif}
 {$endif}
 {$if defined(Win32) or defined(Win64)}
- {$define Windows}
+{$define Windows}
 {$ifend}
 
 interface
 
 uses SysUtils,
-     Classes,
-     UnitRegisteredExamplesList,
-     Vulkan,
-     PasVulkan.Types,
-     PasVulkan.Math,
-     PasVulkan.Framework,
-     PasVulkan.Application;
+ Classes,
+ UnitRegisteredExamplesList,
+ Vulkan,
+ PasVulkan.Types,
+ PasVulkan.Math,
+ PasVulkan.Framework,
+ PasVulkan.Application;
 
-type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
-     TScreenExampleCubeUniformBuffer=record
-      ModelViewProjectionMatrix:TpvMatrix4x4;
-      ModelViewNormalMatrix:TpvMatrix4x4; // actually TpvMatrix3x3, but it would have then a TMatrix3x4 alignment, according to https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout
-     end;
+type
+ PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
 
-     PScreenExampleCubeState=^TScreenExampleCubeState;
-     TScreenExampleCubeState=record
-      Time:TpvDouble;
-      AnglePhases:array[0..1] of TpvFloat;
-     end;
+ TScreenExampleCubeUniformBuffer=record
+  ModelViewProjectionMatrix:TpvMatrix4x4;
+  ModelViewNormalMatrix:TpvMatrix4x4; // actually TpvMatrix3x3, but it would have then a TMatrix3x4 alignment, according to https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout
+ end;
 
-     PScreenExampleCubeStates=^TScreenExampleCubeStates;
-     TScreenExampleCubeStates=array[0..MaxSwapChainImages-1] of TScreenExampleCubeState;
+ PScreenExampleCubeState=^TScreenExampleCubeState;
 
-     TScreenExampleCube=class(TpvApplicationScreen)
-      private
-       fCubeVertexShaderModule:TpvVulkanShaderModule;
-       fCubeFragmentShaderModule:TpvVulkanShaderModule;
-       fVulkanPipelineShaderStageCubeVertex:TpvVulkanPipelineShaderStage;
-       fVulkanPipelineShaderStageCubeFragment:TpvVulkanPipelineShaderStage;
-       fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
-       fVulkanRenderPass:TpvVulkanRenderPass;
-       fVulkanVertexBuffer:TpvVulkanBuffer;
-       fVulkanIndexBuffer:TpvVulkanBuffer;
-       fVulkanUniformBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanBuffer;
-       fVulkanDescriptorPool:TpvVulkanDescriptorPool;
-       fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fVulkanDescriptorSets:array[0..MaxSwapChainImages-1] of TpvVulkanDescriptorSet;
-       fVulkanPipelineLayout:TpvVulkanPipelineLayout;
-       fVulkanCommandPool:TpvVulkanCommandPool;
-       fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
-       fUniformBuffer:TScreenExampleCubeUniformBuffer;
-       fBoxAlbedoTexture:TpvVulkanTexture;
-       fReady:boolean;
-       fSelectedIndex:TpvInt32;
-       fStartY:TpvFloat;
-       fState:TScreenExampleCubeState;
-       fStates:TScreenExampleCubeStates;
-      public
+ TScreenExampleCubeState=record
+  Time:TpvDouble;
+  AnglePhases: array [0..1] of TpvFloat;
+ end;
 
-       constructor Create; override;
+ PScreenExampleCubeStates=^TScreenExampleCubeStates;
+ TScreenExampleCubeStates=array [0..MaxSwapChainImages-1] of TScreenExampleCubeState;
 
-       destructor Destroy; override;
+ TScreenExampleCube=class(TpvApplicationScreen)
+ private
+  fCubeVertexShaderModule:TpvVulkanShaderModule;
+  fCubeFragmentShaderModule:TpvVulkanShaderModule;
+  fVulkanPipelineShaderStageCubeVertex:TpvVulkanPipelineShaderStage;
+  fVulkanPipelineShaderStageCubeFragment:TpvVulkanPipelineShaderStage;
+  fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
+  fVulkanRenderPass:TpvVulkanRenderPass;
+  fVulkanVertexBuffer:TpvVulkanBuffer;
+  fVulkanIndexBuffer:TpvVulkanBuffer;
+  fVulkanUniformBuffers: array [0..MaxSwapChainImages-1] of TpvVulkanBuffer;
+  fVulkanDescriptorPool:TpvVulkanDescriptorPool;
+  fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+  fVulkanDescriptorSets: array [0..MaxSwapChainImages-1] of TpvVulkanDescriptorSet;
+  fVulkanPipelineLayout:TpvVulkanPipelineLayout;
+  fVulkanCommandPool:TpvVulkanCommandPool;
+  fVulkanRenderCommandBuffers: array [0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
+  fVulkanRenderSemaphores: array [0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+  fUniformBuffer:TScreenExampleCubeUniformBuffer;
+  fBoxAlbedoTexture:TpvVulkanTexture;
+  fReady:boolean;
+  fSelectedIndex:TpvInt32;
+  fStartY:TpvFloat;
+  fState:TScreenExampleCubeState;
+  fStates:TScreenExampleCubeStates;
+ public
 
-       procedure Show; override;
+  constructor Create; override;
 
-       procedure Hide; override;
+  destructor Destroy; override;
 
-       procedure Resume; override;
+  procedure Show; override;
 
-       procedure Pause; override;
+  procedure Hide; override;
 
-       procedure Resize(const aWidth,aHeight:TpvInt32); override;
+  procedure Resume; override;
 
-       procedure AfterCreateSwapChain; override;
+  procedure Pause; override;
 
-       procedure BeforeDestroySwapChain; override;
+  procedure Resize(const aWidth,aHeight:TpvInt32); override;
 
-       function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+  procedure AfterCreateSwapChain; override;
 
-       function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+  procedure BeforeDestroySwapChain; override;
 
-       function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+  function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+  function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+  function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
+  function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat; const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
+  function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat; const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function Scrolled(const aAmount:TpvInt32):boolean; override;
+  function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat; const aPointerID:TpvInt32):boolean; override;
 
-       procedure Update(const aDeltaTime:TpvDouble); override;
+  function MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
 
-       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
+  function Scrolled(const aAmount:TpvInt32):boolean; override;
 
-     end;
+  procedure Update(const aDeltaTime:TpvDouble); override;
+
+  procedure Draw(const aSwapChainImageIndex:TpvInt32; var aWaitSemaphore:TpvVulkanSemaphore; const aWaitFence:TpvVulkanFence=nil); override;
+
+ end;
 
 implementation
 
 uses UnitExampleVulkanApplication,UnitTextOverlay,UnitScreenMainMenu;
 
-type PVertex=^TVertex;
-     TVertex=record
-      Position:TpvVector3;
-      Tangent:TpvVector3;
-      Bitangent:TpvVector3;
-      Normal:TpvVector3;
-      TexCoord:TpvVector2;
-     end;
+type
+ PVertex=^TVertex;
 
-const CubeVertices:array[0..23] of TVertex=
-       (// Left
-        (Position:(x:-1;y:-1;z:-1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:0;v:0)),
-        (Position:(x:-1;y: 1;z:-1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:0;v:1)),
-        (Position:(x:-1;y: 1;z: 1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:1;v:1)),
-        (Position:(x:-1;y:-1;z: 1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:1;v:0)),
+ TVertex=record
+  Position:TpvVector3;
+  Tangent:TpvVector3;
+  Bitangent:TpvVector3;
+  Normal:TpvVector3;
+  TexCoord:TpvVector2;
+ end;
 
-        // Right
-        (Position:(x: 1;y:-1;z: 1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:0;v:0)),
-        (Position:(x: 1;y: 1;z: 1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:0;v:1)),
-        (Position:(x: 1;y: 1;z:-1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:1;v:1)),
-        (Position:(x: 1;y:-1;z:-1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:1;v:0)),
+const
+ CubeVertices: array [0..23] of TVertex=
+  ( // Left
+  (Position:(x:-1; y:-1; z:-1;); Tangent:(x:0; y:0; z:1;); Bitangent:(x:0; y:1; z:0;); Normal:(x:-1; y:0; z:0;); TexCoord:(u:0; v:0)),
+  (Position:(x:-1; y:1; z:-1;); Tangent:(x:0; y:0; z:1;); Bitangent:(x:0; y:1; z:0;); Normal:(x:-1; y:0; z:0;); TexCoord:(u:0; v:1)),
+  (Position:(x:-1; y:1; z:1;); Tangent:(x:0; y:0; z:1;); Bitangent:(x:0; y:1; z:0;); Normal:(x:-1; y:0; z:0;); TexCoord:(u:1; v:1)),
+  (Position:(x:-1; y:-1; z:1;); Tangent:(x:0; y:0; z:1;); Bitangent:(x:0; y:1; z:0;); Normal:(x:-1; y:0; z:0;); TexCoord:(u:1; v:0)),
 
-        // Bottom
-        (Position:(x:-1;y:-1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:0;v:0)),
-        (Position:(x:-1;y:-1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:0;v:1)),
-        (Position:(x: 1;y:-1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:1;v:1)),
-        (Position:(x: 1;y:-1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:1;v:0)),
+  // Right
+  (Position:(x:1; y:-1; z:1;); Tangent:(x:0; y:0; z:-1;); Bitangent:(x:0; y:1; z:0;); Normal:(x:1; y:0; z:0;); TexCoord:(u:0; v:0)),
+  (Position:(x:1; y:1; z:1;); Tangent:(x:0; y:0; z:-1;); Bitangent:(x:0; y:1; z:0;); Normal:(x:1; y:0; z:0;); TexCoord:(u:0; v:1)),
+  (Position:(x:1; y:1; z:-1;); Tangent:(x:0; y:0; z:-1;); Bitangent:(x:0; y:1; z:0;); Normal:(x:1; y:0; z:0;); TexCoord:(u:1; v:1)),
+  (Position:(x:1; y:-1; z:-1;); Tangent:(x:0; y:0; z:-1;); Bitangent:(x:0; y:1; z:0;); Normal:(x:1; y:0; z:0;); TexCoord:(u:1; v:0)),
 
-        // Top
-        (Position:(x:-1;y: 1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:0;v:0)),
-        (Position:(x: 1;y: 1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:0;v:1)),
-        (Position:(x: 1;y: 1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:1;v:1)),
-        (Position:(x:-1;y: 1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:1;v:0)),
+  // Bottom
+  (Position:(x:-1; y:-1; z:-1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:0; z:1;); Normal:(x:0; y:-1; z:0;); TexCoord:(u:0; v:0)),
+  (Position:(x:-1; y:-1; z:1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:0; z:1;); Normal:(x:0; y:-1; z:0;); TexCoord:(u:0; v:1)),
+  (Position:(x:1; y:-1; z:1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:0; z:1;); Normal:(x:0; y:-1; z:0;); TexCoord:(u:1; v:1)),
+  (Position:(x:1; y:-1; z:-1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:0; z:1;); Normal:(x:0; y:-1; z:0;); TexCoord:(u:1; v:0)),
 
-        // Back
-        (Position:(x: 1;y:-1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:0;v:0)),
-        (Position:(x: 1;y: 1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:0;v:1)),
-        (Position:(x:-1;y: 1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:1;v:1)),
-        (Position:(x:-1;y:-1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:1;v:0)),
+  // Top
+  (Position:(x:-1; y:1; z:-1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:0; z:-1;); Normal:(x:0; y:1; z:0;); TexCoord:(u:0; v:0)),
+  (Position:(x:1; y:1; z:-1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:0; z:-1;); Normal:(x:0; y:1; z:0;); TexCoord:(u:0; v:1)),
+  (Position:(x:1; y:1; z:1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:0; z:-1;); Normal:(x:0; y:1; z:0;); TexCoord:(u:1; v:1)),
+  (Position:(x:-1; y:1; z:1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:0; z:-1;); Normal:(x:0; y:1; z:0;); TexCoord:(u:1; v:0)),
 
-        // Front
-        (Position:(x:-1;y:-1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:0;v:0)),
-        (Position:(x:-1;y: 1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:0;v:1)),
-        (Position:(x: 1;y: 1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:1;v:1)),
-        (Position:(x: 1;y:-1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:1;v:0))
+  // Back
+  (Position:(x:1; y:-1; z:-1;); Tangent:(x:-1; y:0; z:0;); Bitangent:(x:0; y:1; z:0;); Normal:(x:0; y:0; z:-1;); TexCoord:(u:0; v:0)),
+  (Position:(x:1; y:1; z:-1;); Tangent:(x:-1; y:0; z:0;); Bitangent:(x:0; y:1; z:0;); Normal:(x:0; y:0; z:-1;); TexCoord:(u:0; v:1)),
+  (Position:(x:-1; y:1; z:-1;); Tangent:(x:-1; y:0; z:0;); Bitangent:(x:0; y:1; z:0;); Normal:(x:0; y:0; z:-1;); TexCoord:(u:1; v:1)),
+  (Position:(x:-1; y:-1; z:-1;); Tangent:(x:-1; y:0; z:0;); Bitangent:(x:0; y:1; z:0;); Normal:(x:0; y:0; z:-1;); TexCoord:(u:1; v:0)),
 
-       );
+  // Front
+  (Position:(x:-1; y:-1; z:1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:1; z:0;); Normal:(x:0; y:0; z:1;); TexCoord:(u:0; v:0)),
+  (Position:(x:-1; y:1; z:1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:1; z:0;); Normal:(x:0; y:0; z:1;); TexCoord:(u:0; v:1)),
+  (Position:(x:1; y:1; z:1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:1; z:0;); Normal:(x:0; y:0; z:1;); TexCoord:(u:1; v:1)),
+  (Position:(x:1; y:-1; z:1;); Tangent:(x:1; y:0; z:0;); Bitangent:(x:0; y:1; z:0;); Normal:(x:0; y:0; z:1;); TexCoord:(u:1; v:0))
 
-      CubeIndices:array[0..35] of TpvInt32=
-       ( 0, 1, 2,
-         0, 2, 3,
+  );
 
-         // Right
-         4, 5, 6,
-         4, 6, 7,
+ CubeIndices: array [0..35] of TpvInt32=
+  (0,1,2,
+  0,2,3,
 
-         // Bottom
-         8, 9, 10,
-         8, 10, 11,
+  // Right
+  4,5,6,
+  4,6,7,
 
-         // Top
-         12, 13, 14,
-         12, 14, 15,
+  // Bottom
+  8,9,10,
+  8,10,11,
 
-         // Back
-         16, 17, 18,
-         16, 18, 19,
+  // Top
+  12,13,14,
+  12,14,15,
 
-         // Front
-         20, 21, 22,
-         20, 22, 23);
+  // Back
+  16,17,18,
+  16,18,19,
 
-      Offsets:array[0..0] of TVkDeviceSize=(0);
+  // Front
+  20,21,22,
+  20,22,23);
 
-      FontSize=3.0;
+ Offsets: array [0..0] of TVkDeviceSize=(0);
+
+ FontSize=3.0;
 
 constructor TScreenExampleCube.Create;
 begin
@@ -206,14 +212,15 @@ begin
 end;
 
 procedure TScreenExampleCube.Show;
-var Stream:TStream;
-    Index:TpvInt32;
+var
+ Stream:TStream;
+ Index:TpvInt32;
 begin
  inherited Show;
 
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                                 pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
-                                                 TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
  for Index:=0 to MaxSwapChainImages-1 do begin
   fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
@@ -234,46 +241,46 @@ begin
  end;
 
  fBoxAlbedoTexture:=TpvVulkanTexture.CreateDefault(pvApplication.VulkanDevice,
-                                                   pvApplication.VulkanDevice.GraphicsQueue,
-                                                   pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                                                   pvApplication.VulkanGraphicsCommandBufferFences[0,0],
-                                                   pvApplication.VulkanDevice.TransferQueue,
-                                                   pvApplication.VulkanTransferCommandBuffers[0,0],
-                                                   pvApplication.VulkanTransferCommandBufferFences[0,0],
-                                                   vtdtCheckerboard,
-                                                   512,
-                                                   512,
-                                                   0,
-                                                   0,
-                                                   1,
-                                                   true,
-                                                   true);{}
+  pvApplication.VulkanDevice.GraphicsQueue,
+  pvApplication.VulkanGraphicsCommandBuffers[0,0],
+  pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+  pvApplication.VulkanDevice.TransferQueue,
+  pvApplication.VulkanTransferCommandBuffers[0,0],
+  pvApplication.VulkanTransferCommandBufferFences[0,0],
+  vtdtCheckerboard,
+  512,
+  512,
+  0,
+  0,
+  1,
+  true,
+  true); { }
 
-{Stream:=pvApplication.Assets.GetAssetStream('textures/box_albedo.png');
- try
-  fBoxAlbedoTexture:=TpvVulkanTexture.CreateFromPNG(pvApplication.VulkanDevice,
-                                                    pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                                                    pvApplication.VulkanGraphicsCommandBufferFences[0,0],
-                                                    pvApplication.VulkanTransferCommandBuffers[0,0],
-                                                    pvApplication.VulkanTransferCommandBufferFences[0,0],
-                                                    Stream,
-                                                    true);
- finally
-  Stream.Free;
- end;{}
+ { Stream:=pvApplication.Assets.GetAssetStream('textures/box_albedo.png');
+   try
+   fBoxAlbedoTexture:=TpvVulkanTexture.CreateFromPNG(pvApplication.VulkanDevice,
+   pvApplication.VulkanGraphicsCommandBuffers[0,0],
+   pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+   pvApplication.VulkanTransferCommandBuffers[0,0],
+   pvApplication.VulkanTransferCommandBufferFences[0,0],
+   Stream,
+   true);
+   finally
+   Stream.Free;
+   end;{ }
 
-{Stream:=pvApplication.Assets.GetAssetStream('textures/box_albedo.jpg');
- try
-  fBoxAlbedoTexture:=TpvVulkanTexture.CreateFromJPEG(pvApplication.VulkanDevice,
-                                                     pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                                                     pvApplication.VulkanGraphicsCommandBufferFences[0,0],
-                                                     pvApplication.VulkanTransferCommandBuffers[0,0],
-                                                     pvApplication.VulkanTransferCommandBufferFences[0,0],
-                                                     Stream,
-                                                     true);
- finally
-  Stream.Free;
- end;{}
+ { Stream:=pvApplication.Assets.GetAssetStream('textures/box_albedo.jpg');
+   try
+   fBoxAlbedoTexture:=TpvVulkanTexture.CreateFromJPEG(pvApplication.VulkanDevice,
+   pvApplication.VulkanGraphicsCommandBuffers[0,0],
+   pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+   pvApplication.VulkanTransferCommandBuffers[0,0],
+   pvApplication.VulkanTransferCommandBufferFences[0,0],
+   Stream,
+   true);
+   finally
+   Stream.Free;
+   end;{ }
 
  fBoxAlbedoTexture.WrapModeU:=vtwmClampToEdge;
  fBoxAlbedoTexture.WrapModeV:=vtwmClampToEdge;
@@ -290,99 +297,99 @@ begin
  fVulkanRenderPass:=nil;
 
  fVulkanVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                             SizeOf(CubeVertices),
-                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                             nil,
-                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                                            );
+  SizeOf(CubeVertices),
+  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT)or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+  nil,
+  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+  );
  fVulkanVertexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
-                                pvApplication.VulkanTransferCommandBuffers[0,0],
-                                pvApplication.VulkanTransferCommandBufferFences[0,0],
-                                CubeVertices,
-                                0,
-                                SizeOf(CubeVertices),
-                                vbutsbmYes);
+  pvApplication.VulkanTransferCommandBuffers[0,0],
+  pvApplication.VulkanTransferCommandBufferFences[0,0],
+  CubeVertices,
+  0,
+  SizeOf(CubeVertices),
+  vbutsbmYes);
 
  fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                            SizeOf(CubeIndices),
-                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                            nil,
-                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                                           );
+  SizeOf(CubeIndices),
+  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT)or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+  nil,
+  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+  );
  fVulkanIndexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
-                               pvApplication.VulkanTransferCommandBuffers[0,0],
-                               pvApplication.VulkanTransferCommandBufferFences[0,0],
-                               CubeIndices,
-                               0,
-                               SizeOf(CubeIndices),
-                               vbutsbmYes);
+  pvApplication.VulkanTransferCommandBuffers[0,0],
+  pvApplication.VulkanTransferCommandBufferFences[0,0],
+  CubeIndices,
+  0,
+  SizeOf(CubeIndices),
+  vbutsbmYes);
 
  for Index:=0 to MaxSwapChainImages-1 do begin
   fVulkanUniformBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                       SizeOf(TScreenExampleCubeUniformBuffer),
-                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                       nil,
-                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                       0,
-                                                       0,
-                                                       0,
-                                                       0,
-                                                       0,
-                                                       [vbfPersistentMapped]
-                                                      );
+   SizeOf(TScreenExampleCubeUniformBuffer),
+   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT)or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+   nil,
+   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+   0,
+   0,
+   0,
+   0,
+   0,
+   [vbfPersistentMapped]
+   );
   fVulkanUniformBuffers[Index].UploadData(pvApplication.VulkanDevice.TransferQueue,
-                                          pvApplication.VulkanTransferCommandBuffers[0,0],
-                                          pvApplication.VulkanTransferCommandBufferFences[0,0],
-                                          fUniformBuffer,
-                                          0,
-                                          SizeOf(TScreenExampleCubeUniformBuffer),
-                                          vbutsbmYes);
+   pvApplication.VulkanTransferCommandBuffers[0,0],
+   pvApplication.VulkanTransferCommandBufferFences[0,0],
+   fUniformBuffer,
+   0,
+   SizeOf(TScreenExampleCubeUniformBuffer),
+   vbutsbmYes);
  end;
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
-                                                       TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                       MaxSwapChainImages);
+  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+  MaxSwapChainImages);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,MaxSwapChainImages);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxSwapChainImages);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
  fVulkanDescriptorSetLayout.AddBinding(0,
-                                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                       1,
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                       []);
+  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+  1,
+  TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT)or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+  []);
  fVulkanDescriptorSetLayout.AddBinding(1,
-                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                       1,
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                       []);
+  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+  1,
+  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+  []);
  fVulkanDescriptorSetLayout.Initialize;
 
  for Index:=0 to MaxSwapChainImages-1 do begin
   fVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
-                                                              fVulkanDescriptorSetLayout);
+   fVulkanDescriptorSetLayout);
   fVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
-                                                    0,
-                                                    1,
-                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                    [],
-                                                    [fVulkanUniformBuffers[Index].DescriptorBufferInfo],
-                                                    [],
-                                                    false
-                                                   );
+   0,
+   1,
+   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+   [],
+   [fVulkanUniformBuffers[Index].DescriptorBufferInfo],
+   [],
+   false
+   );
   fVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
-                                                    0,
-                                                    1,
-                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                    [fBoxAlbedoTexture.DescriptorImageInfo],
-                                                    [],
-                                                    [],
-                                                    false
-                                                   );
+   0,
+   1,
+   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+   [fBoxAlbedoTexture.DescriptorImageInfo],
+   [],
+   [],
+   false
+   );
   fVulkanDescriptorSets[Index].Flush;
  end;
 
@@ -393,7 +400,8 @@ begin
 end;
 
 procedure TScreenExampleCube.Hide;
-var Index:TpvInt32;
+var
+ Index:TpvInt32;
 begin
  FreeAndNil(fVulkanPipelineLayout);
  for Index:=0 to MaxSwapChainImages-1 do begin
@@ -437,8 +445,9 @@ begin
 end;
 
 procedure TScreenExampleCube.AfterCreateSwapChain;
-var SwapChainImageIndex:TpvInt32;
-    VulkanCommandBuffer:TpvVulkanCommandBuffer;
+var
+ SwapChainImageIndex:TpvInt32;
+ VulkanCommandBuffer:TpvVulkanCommandBuffer;
 begin
  inherited AfterCreateSwapChain;
 
@@ -448,48 +457,48 @@ begin
  fVulkanRenderPass:=TpvVulkanRenderPass.Create(pvApplication.VulkanDevice);
 
  fVulkanRenderPass.AddSubpassDescription(0,
-                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                         [],
-                                         [fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
-                                                                                                                              pvApplication.VulkanSwapChain.ImageFormat,
-                                                                                                                              VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                              VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
-                                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                              VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                                                                             ),
-                                                                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                            )],
-                                         [],
-                                         fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
-                                                                                                                             pvApplication.VulkanDepthImageFormat,
-                                                                                                                             VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                             VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                                             VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                                             VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                             VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                                                                            ),
-                                                                                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                                 ),
-                                         []);
+  VK_PIPELINE_BIND_POINT_GRAPHICS,
+  [],
+  [fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
+  pvApplication.VulkanSwapChain.ImageFormat,
+  VK_SAMPLE_COUNT_1_BIT,
+  VK_ATTACHMENT_LOAD_OP_CLEAR,
+  VK_ATTACHMENT_STORE_OP_STORE,
+  VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+  VK_ATTACHMENT_STORE_OP_DONT_CARE,
+  VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+  VK_IMAGE_LAYOUT_PRESENT_SRC_KHR // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+  ),
+  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+  )],
+  [],
+  fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
+  pvApplication.VulkanDepthImageFormat,
+  VK_SAMPLE_COUNT_1_BIT,
+  VK_ATTACHMENT_LOAD_OP_CLEAR,
+  VK_ATTACHMENT_STORE_OP_DONT_CARE,
+  VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+  VK_ATTACHMENT_STORE_OP_DONT_CARE,
+  VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+  ),
+  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+  ),
+  []);
  fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
-                                        0,
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                        TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                        TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
-                                        TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+  0,
+  TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+  TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+  TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+  TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT)or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+  TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
  fVulkanRenderPass.AddSubpassDependency(0,
-                                        VK_SUBPASS_EXTERNAL,
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                        TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
-                                        TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                        TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+  VK_SUBPASS_EXTERNAL,
+  TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+  TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+  TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT)or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+  TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+  TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
  fVulkanRenderPass.Initialize;
 
  fVulkanRenderPass.ClearValues[0].color.float32[0]:=0.0;
@@ -498,14 +507,14 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
-                                                           pvApplication.VulkanPipelineCache,
-                                                           0,
-                                                           [],
-                                                           fVulkanPipelineLayout,
-                                                           fVulkanRenderPass,
-                                                           0,
-                                                           nil,
-                                                           0);
+  pvApplication.VulkanPipelineCache,
+  0,
+  [],
+  fVulkanPipelineLayout,
+  fVulkanRenderPass,
+  0,
+  nil,
+  0);
 
  fVulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageCubeVertex);
  fVulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageCubeFragment);
@@ -548,16 +557,16 @@ begin
  fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
  fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
  fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
-                                                                      VK_BLEND_FACTOR_ZERO,
-                                                                      VK_BLEND_FACTOR_ZERO,
-                                                                      VK_BLEND_OP_ADD,
-                                                                      VK_BLEND_FACTOR_ZERO,
-                                                                      VK_BLEND_FACTOR_ZERO,
-                                                                      VK_BLEND_OP_ADD,
-                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
-                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
-                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+  VK_BLEND_FACTOR_ZERO,
+  VK_BLEND_FACTOR_ZERO,
+  VK_BLEND_OP_ADD,
+  VK_BLEND_FACTOR_ZERO,
+  VK_BLEND_FACTOR_ZERO,
+  VK_BLEND_OP_ADD,
+  TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT)or
+  TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT)or
+  TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT)or
+  TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
  fVulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
  fVulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;
@@ -581,18 +590,18 @@ begin
 
   VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
 
- {VulkanCommandBuffer.MetaCmdMemoryBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
-                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                           TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
-                                           TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT));}
+  { VulkanCommandBuffer.MetaCmdMemoryBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+    TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
+    TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT)); }
 
   fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                    pvApplication.VulkanFrameBuffers[SwapChainImageIndex],
-                                    VK_SUBPASS_CONTENTS_INLINE,
-                                    0,
-                                    0,
-                                    pvApplication.VulkanSwapChain.Width,
-                                    pvApplication.VulkanSwapChain.Height);
+   pvApplication.VulkanFrameBuffers[SwapChainImageIndex],
+   VK_SUBPASS_CONTENTS_INLINE,
+   0,
+   0,
+   pvApplication.VulkanSwapChain.Width,
+   pvApplication.VulkanSwapChain.Height);
 
   VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[SwapChainImageIndex].Handle,0,nil);
   VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
@@ -672,16 +681,17 @@ begin
  result:=false;
 end;
 
-function TScreenExampleCube.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
-var Index:TpvInt32;
-    cy:TpvFloat;
+function TScreenExampleCube.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat; const aPointerID,aButton:TpvInt32):boolean;
+var
+ Index:TpvInt32;
+ cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy)and(aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
     if fSelectedIndex=0 then begin
      pvApplication.NextScreen:=TScreenMainMenu.Create;
@@ -692,21 +702,22 @@ begin
  end;
 end;
 
-function TScreenExampleCube.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenExampleCube.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat; const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleCube.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
-var Index:TpvInt32;
-    cy:TpvFloat;
+function TScreenExampleCube.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat; const aPointerID:TpvInt32):boolean;
+var
+ Index:TpvInt32;
+ cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy)and(aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
    cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
@@ -715,15 +726,16 @@ begin
 end;
 
 function TScreenExampleCube.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
-var Index:TpvInt32;
-    cy:TpvFloat;
+var
+ Index:TpvInt32;
+ cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy)and(aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
    cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
@@ -737,14 +749,16 @@ begin
 end;
 
 procedure TScreenExampleCube.Update(const aDeltaTime:TpvDouble);
-const BoolToInt:array[boolean] of TpvInt32=(0,1);
-      Options:array[0..0] of string=('Back');
-      f0=1.0/(2.0*pi);
-      f1=0.5/(2.0*pi);
-var Index:TpvInt32;
-    cy:TpvFloat;
-    s:string;
-    IsSelected:boolean;
+const
+ BoolToInt: array [boolean] of TpvInt32=(0,1);
+ Options: array [0..0] of string=('Back');
+ f0=1.0/(2.0*pi);
+ f1=0.5/(2.0*pi);
+var
+ Index:TpvInt32;
+ cy:TpvFloat;
+ s:string;
+ IsSelected:boolean;
 begin
  inherited Update(aDeltaTime);
  fState.Time:=fState.Time+aDeltaTime;
@@ -766,13 +780,15 @@ begin
  fReady:=true;
 end;
 
-procedure TScreenExampleCube.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
-const TwoPI=2.0*pi;
-var p:pointer;
-    ModelMatrix:TpvMatrix4x4;
-    ViewMatrix:TpvMatrix4x4;
-    ProjectionMatrix:TpvMatrix4x4;
-    State:PScreenExampleCubeState;
+procedure TScreenExampleCube.Draw(const aSwapChainImageIndex:TpvInt32; var aWaitSemaphore:TpvVulkanSemaphore; const aWaitFence:TpvVulkanFence=nil);
+const
+ TwoPI=2.0*pi;
+var
+ p:pointer;
+ ModelMatrix:TpvMatrix4x4;
+ ViewMatrix:TpvMatrix4x4;
+ ProjectionMatrix:TpvMatrix4x4;
+ State:PScreenExampleCubeState;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVulkanGraphicsPipeline) then begin
@@ -780,7 +796,7 @@ begin
   State:=@fStates[pvApplication.DrawSwapChainImageIndex];
 
   ModelMatrix:=TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*
-               TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
+   TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
   ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-6.0);
   ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,pvApplication.Width/pvApplication.Height,1.0,128.0);
 
@@ -797,11 +813,11 @@ begin
   end;
 
   fVulkanRenderCommandBuffers[aSwapChainImageIndex].Execute(pvApplication.VulkanDevice.GraphicsQueue,
-                                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                            aWaitSemaphore,
-                                                            fVulkanRenderSemaphores[aSwapChainImageIndex],
-                                                            aWaitFence,
-                                                            false);
+   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+   aWaitSemaphore,
+   fVulkanRenderSemaphores[aSwapChainImageIndex],
+   aWaitFence,
+   false);
 
   aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
 
@@ -809,5 +825,7 @@ begin
 end;
 
 initialization
- RegisterExample('Cube',TScreenExampleCube);
+
+RegisterExample('Cube',TScreenExampleCube);
+
 end.

@@ -211,6 +211,7 @@
         <DCCReference Include="..\src\PasVulkan.Types.pas"/>
         <DCCReference Include="..\src\PasVulkan.Utils.pas"/>
         <DCCReference Include="..\src\PasVulkan.Collections.pas"/>
+        <DCCReference Include="..\src\PasVulkan.TrueTypeFont.pas"/>
         <DCCReference Include="..\src\PasVulkan.Framework.pas"/>
         <DCCReference Include="..\src\PasVulkan.Android.pas"/>
         <DCCReference Include="..\src\PasVulkan.SDL2.pas"/>
@@ -233,6 +234,7 @@
         <DCCReference Include="UnitScreenExampleDragon.pas"/>
         <DCCReference Include="UnitScreenExampleSprites.pas"/>
         <DCCReference Include="UnitScreenExampleFont.pas"/>
+        <DCCReference Include="..\externals\pucu\src\PUCU.pas"/>
         <None Include="..\src\PasVulkan.inc"/>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_2</Key>

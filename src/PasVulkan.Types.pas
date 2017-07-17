@@ -61,6 +61,8 @@ unit PasVulkan.Types;
 
 interface
 
+uses SysUtils,Classes,Math,PUCU;
+
 type PPpvInt8=^PpvInt8;
      PpvInt8=^TpvInt8;
      TpvInt8={$ifdef fpc}Int8{$else}shortint{$endif};
@@ -169,15 +171,19 @@ type PPpvInt8=^PpvInt8;
 
      PPpvRawByteString=^PpvRawByteString;
      PpvRawByteString=^TpvRawByteString;
-     TpvRawByteString=RawByteString;
+     TpvRawByteString=TPUCURawByteString;
 
      PPpvUTF8String=^PpvUTF8String;
      PpvUTF8String=^TpvUTF8String;
-     TpvUTF8String=UTF8String;
+     TpvUTF8String=TPUCUUTF8String;
+
+     PPpvUTF16String=^PpvUTF16String;
+     PpvUTF16String=^TpvUTF16String;
+     TpvUTF16String=TPUCUUTF16String;
 
      PPpvUnicodeString=^PpvUnicodeString;
      PpvUnicodeString=^TpvUnicodeString;
-     TpvUnicodeString=UnicodeString;
+     TpvUnicodeString=TPUCUUTF16String;
 
      PPpvFileName=^PpvFileName;
      PpvFileName=^TpvFileName;
@@ -329,10 +335,6 @@ var FloatToHalfFloatBaseTable:array[0..511] of TpvUInt16;
     HalfFloatToFloatOffsetTable:array[0..63] of TpvUInt32;
 
 implementation
-
-uses SysUtils,
-     Classes,
-     Math;
 
 procedure GenerateHalfFloatLookUpTables;
 var i,e:TpvInt32;
