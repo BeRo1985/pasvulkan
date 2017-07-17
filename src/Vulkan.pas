@@ -3396,11 +3396,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       buffer:array[0.._DYNAMIC-1] of TVkBuffer;
+       buffer:TVkBuffer;
        offset:TVkDeviceSize;
        range:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pBuffer:array of TVkBuffer;
+       constructor Create(const pBuffer:TVkBuffer;
                           const pOffset:TVkDeviceSize;
                           const pRange:TVkDeviceSize);
 {$endif}
@@ -3436,7 +3436,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        descriptorCount:TVkUInt32;
        descriptorType:TVkDescriptorType;
        pImageInfo:PVkDescriptorImageInfo;
-       pBufferInfo:array[0.._DYNAMIC-1] of PVkDescriptorBufferInfo;
+       pBufferInfo:PVkDescriptorBufferInfo;
        pTexelBufferView:PVkBufferView;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pDstSet:TVkDescriptorSet;
@@ -3445,7 +3445,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const pDescriptorCount:TVkUInt32;
                           const pDescriptorType:TVkDescriptorType;
                           const pPImageInfo:PVkDescriptorImageInfo;
-                          const pPBufferInfo:array of PVkDescriptorBufferInfo;
+                          const pPBufferInfo:PVkDescriptorBufferInfo;
                           const pPTexelBufferView:PVkBufferView);
 {$endif}
      end;
@@ -12327,19 +12327,11 @@ begin
  maxResourceSize:=pMaxResourceSize;
 end;
 
-constructor TVkDescriptorBufferInfo.Create(const pBuffer:array of TVkBuffer;
+constructor TVkDescriptorBufferInfo.Create(const pBuffer:TVkBuffer;
                                            const pOffset:TVkDeviceSize;
                                            const pRange:TVkDeviceSize);
-var ArrayItemCount:TVkInt32;
 begin
- FillChar(self,SizeOf(TVkDescriptorBufferInfo),#0);
- ArrayItemCount:=length(pBuffer);
- if ArrayItemCount>length(buffer) then begin
-  ArrayItemCount:=length(buffer);
- end;
- if ArrayItemCount>0 then begin
-  Move(pBuffer[0],buffer[0],ArrayItemCount*SizeOf(TVkBuffer));
- end;
+ buffer:=pBuffer;
  offset:=pOffset;
  range:=pRange;
 end;
@@ -12359,11 +12351,9 @@ constructor TVkWriteDescriptorSet.Create(const pDstSet:TVkDescriptorSet;
                                          const pDescriptorCount:TVkUInt32;
                                          const pDescriptorType:TVkDescriptorType;
                                          const pPImageInfo:PVkDescriptorImageInfo;
-                                         const pPBufferInfo:array of PVkDescriptorBufferInfo;
+                                         const pPBufferInfo:PVkDescriptorBufferInfo;
                                          const pPTexelBufferView:PVkBufferView);
-var ArrayItemCount:TVkInt32;
 begin
- FillChar(self,SizeOf(TVkWriteDescriptorSet),#0);
  sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
  pNext:=nil;
  dstSet:=pDstSet;
@@ -12372,13 +12362,7 @@ begin
  descriptorCount:=pDescriptorCount;
  descriptorType:=pDescriptorType;
  pImageInfo:=pPImageInfo;
- ArrayItemCount:=length(pPBufferInfo);
- if ArrayItemCount>length(pBufferInfo) then begin
-  ArrayItemCount:=length(pBufferInfo);
- end;
- if ArrayItemCount>0 then begin
-  Move(pPBufferInfo[0],pBufferInfo[0],ArrayItemCount*SizeOf(PVkDescriptorBufferInfo));
- end;
+ pBufferInfo:=pPBufferInfo;
  pTexelBufferView:=pPTexelBufferView;
 end;
 

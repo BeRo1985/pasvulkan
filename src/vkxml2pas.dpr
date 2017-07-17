@@ -3601,7 +3601,9 @@ begin
              Text:=trim(copy(Text,1,k-1));
              ArraySize:=StrToIntDef(Text,-1);
              if ArraySize<0 then begin
-              ArraySizeStr:=Text;
+              if Text<>'_DYNAMIC' then begin
+               ArraySizeStr:=Text;
+              end;
              end;
             end;
            end;
