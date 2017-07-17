@@ -245,7 +245,7 @@ type PVulkanModelVector2=^TVulkanModelVector2;
 
      EModelLoad=class(Exception);
 
-     TVulkanModelBuffers=array of TVulkanBuffer;
+     TVulkanModelBuffers=array of TpvVulkanBuffer;
 
      PVulkanModelBufferSize=^TVulkanModelBufferSize;
      TVulkanModelBufferSize=TVkUInt32;
@@ -254,7 +254,7 @@ type PVulkanModelVector2=^TVulkanModelVector2;
 
      TVulkanModel=class
       private
-       fVulkanDevice:TVulkanDevice;
+       fVulkanDevice:TpvVulkanDevice;
        fUploaded:boolean;
        fSphere:TVulkanModelSphere;
        fAABB:TVulkanModelAABB;
@@ -275,16 +275,16 @@ type PVulkanModelVector2=^TVulkanModelVector2;
        fBufferSizes:TVulkanModelBufferSizes;
        fCountBuffers:TVkInt32;
       public
-       constructor Create(const aVulkanDevice:TVulkanDevice); reintroduce;
+       constructor Create(const aVulkanDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
        procedure Clear;
        procedure MakeCube(const aSizeX,aSizeY,aSizeZ:TVkFloat);
        procedure LoadFromStream(const aStream:TStream;const aDoFree:boolean=false);
-       procedure Upload(const aQueue:TVulkanQueue;
-                        const aCommandBuffer:TVulkanCommandBuffer;
-                        const aFence:TVulkanFence);
+       procedure Upload(const aQueue:TpvVulkanQueue;
+                        const aCommandBuffer:TpvVulkanCommandBuffer;
+                        const aFence:TpvVulkanFence);
        procedure Unload;
-       procedure Draw(const aCommandBuffer:TVulkanCommandBuffer;const aInstanceCount:TVkUInt32=1;const aFirstInstance:TVkUInt32=0);
+       procedure Draw(const aCommandBuffer:TpvVulkanCommandBuffer;const aInstanceCount:TVkUInt32=1;const aFirstInstance:TVkUInt32=0);
        property Uploaded:boolean read fUploaded;
        property Sphere:TVulkanModelSphere read fSphere;
        property AABB:TVulkanModelAABB read fAABB;
@@ -588,7 +588,7 @@ begin
  end;
 end;
 
-constructor TVulkanModel.Create(const aVulkanDevice:TVulkanDevice);
+constructor TVulkanModel.Create(const aVulkanDevice:TpvVulkanDevice);
 begin
  inherited Create;
  fVulkanDevice:=aVulkanDevice;
@@ -1051,9 +1051,9 @@ begin
  end;
 end;
 
-procedure TVulkanModel.Upload(const aQueue:TVulkanQueue;
-                        const aCommandBuffer:TVulkanCommandBuffer;
-                        const aFence:TVulkanFence);
+procedure TVulkanModel.Upload(const aQueue:TpvVulkanQueue;
+                        const aCommandBuffer:TpvVulkanCommandBuffer;
+                        const aFence:TpvVulkanFence);
 type TRemapIndices=array of TVkInt64;
 var BufferIndex,IndexIndex,CountTemporaryVertices:TVkInt32;
     MaxIndexedIndex:TVkUInt32;
@@ -1089,13 +1089,13 @@ begin
 
    fBufferSizes[0]:=fCountIndices;
 
-   fVertexBuffers[0]:=TVulkanBuffer.Create(fVulkanDevice,
-                                           fCountVertices*SizeOf(TVulkanModelVertex),
-                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                           nil,
-                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                                          );
+   fVertexBuffers[0]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                             fCountVertices*SizeOf(TVulkanModelVertex),
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                             nil,
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                            );
    fVertexBuffers[0].UploadData(aQueue,
                                 aCommandBuffer,
                                 aFence,
@@ -1104,13 +1104,13 @@ begin
                                 fCountVertices*SizeOf(TVulkanModelVertex),
                                 vbutsbmYes);
 
-   fIndexBuffers[0]:=TVulkanBuffer.Create(fVulkanDevice,
-                                          fCountIndices*SizeOf(TVulkanModelIndex),
-                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                          nil,
-                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                                         );
+   fIndexBuffers[0]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                            fCountIndices*SizeOf(TVulkanModelIndex),
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                            nil,
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                           );
    fIndexBuffers[0].UploadData(aQueue,
                                aCommandBuffer,
                                aFence,
@@ -1186,13 +1186,13 @@ begin
 
      end;
 
-     fVertexBuffers[BufferIndex]:=TVulkanBuffer.Create(fVulkanDevice,
-                                                       CountTemporaryVertices*SizeOf(TVulkanModelVertex),
-                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                       nil,
-                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                                                      );
+     fVertexBuffers[BufferIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                         CountTemporaryVertices*SizeOf(TVulkanModelVertex),
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                         nil,
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                                        );
      fVertexBuffers[BufferIndex].UploadData(aQueue,
                                             aCommandBuffer,
                                             aFence,
@@ -1201,13 +1201,13 @@ begin
                                             CountTemporaryVertices*SizeOf(TVulkanModelVertex),
                                             vbutsbmYes);
 
-     fIndexBuffers[BufferIndex]:=TVulkanBuffer.Create(fVulkanDevice,
-                                                      fBufferSizes[BufferIndex]*SizeOf(TVulkanModelIndex),
-                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                      nil,
-                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                                                     );
+     fIndexBuffers[BufferIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                        fBufferSizes[BufferIndex]*SizeOf(TVulkanModelIndex),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                        nil,
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                                       );
      fIndexBuffers[BufferIndex].UploadData(aQueue,
                                            aCommandBuffer,
                                            aFence,
@@ -1262,7 +1262,7 @@ begin
  end;
 end;
 
-procedure TVulkanModel.Draw(const aCommandBuffer:TVulkanCommandBuffer;const aInstanceCount:TVkUInt32=1;const aFirstInstance:TVkUInt32=0);
+procedure TVulkanModel.Draw(const aCommandBuffer:TpvVulkanCommandBuffer;const aInstanceCount:TVkUInt32=1;const aFirstInstance:TVkUInt32=0);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var Index:TVkInt32;
 begin

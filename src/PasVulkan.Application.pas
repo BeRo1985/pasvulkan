@@ -480,7 +480,7 @@ const MaxSwapChainImages=3;
       GAME_CONTROLLER_BUTTON_DPAD_RIGHT=14;
       GAME_CONTROLLER_BUTTON_MAX=15;
 
-type EVulkanApplication=class(Exception)
+type EpvApplication=class(Exception)
       private
        fTag:string;
        fLogLevel:TpvInt32;
@@ -492,62 +492,62 @@ type EVulkanApplication=class(Exception)
        property LogLevel:TpvInt32 read fLogLevel write fLogLevel;
      end;
 
-     EVulkanApplicationClass=class of EVulkanApplication;
+     EpvApplicationClass=class of EpvApplication;
 
-     TVulkanApplicationRunnable=procedure of object;
+     TpvApplicationRunnable=procedure of object;
 
-     TVulkanApplicationRunnableList=array of TVulkanApplicationRunnable;
+     TpvApplicationRunnableList=array of TpvApplicationRunnable;
 
-     TVulkanApplication=class;
+     TpvApplication=class;
 
-     TVulkanApplicationRawByteString={$if declared(RawByteString)}RawByteString{$else}AnsiString{$ifend};
+     TpvApplicationRawByteString={$if declared(RawByteString)}RawByteString{$else}AnsiString{$ifend};
 
-     TVulkanApplicationUnicodeString={$if declared(UnicodeString)}UnicodeString{$else}WideString{$ifend};
+     TpvApplicationUnicodeString={$if declared(UnicodeString)}UnicodeString{$else}WideString{$ifend};
 
-     TVulkanApplicationUTF8String={$if declared(UnicodeString)}UTF8String{$else}AnsiString{$ifend};
+     TpvApplicationUTF8String={$if declared(UnicodeString)}UTF8String{$else}AnsiString{$ifend};
 
-     TVulkanApplicationOnEvent=function(const aVulkanApplication:TVulkanApplication;const aEvent:TSDL_Event):boolean of object;
+     TpvApplicationOnEvent=function(const aVulkanApplication:TpvApplication;const aEvent:TSDL_Event):boolean of object;
 
-     TVulkanApplicationOnStep=procedure(const aVulkanApplication:TVulkanApplication) of object;
+     TpvApplicationOnStep=procedure(const aVulkanApplication:TpvApplication) of object;
 
-     PPVulkanApplicationHighResolutionTime=^PVulkanApplicationHighResolutionTime;
-     PVulkanApplicationHighResolutionTime=^TVulkanApplicationHighResolutionTime;
-     TVulkanApplicationHighResolutionTime=TpvInt64;
+     PPpvApplicationHighResolutionTime=^PpvApplicationHighResolutionTime;
+     PpvApplicationHighResolutionTime=^TpvApplicationHighResolutionTime;
+     TpvApplicationHighResolutionTime=TpvInt64;
 
-     TVulkanApplicationHighResolutionTimer=class
+     TpvApplicationHighResolutionTimer=class
       private
        fFrequency:TpvInt64;
        fFrequencyShift:TpvInt32;
-       fMillisecondInterval:TVulkanApplicationHighResolutionTime;
-       fTwoMillisecondsInterval:TVulkanApplicationHighResolutionTime;
-       fFourMillisecondsInterval:TVulkanApplicationHighResolutionTime;
-       fQuarterSecondInterval:TVulkanApplicationHighResolutionTime;
-       fMinuteInterval:TVulkanApplicationHighResolutionTime;
-       fHourInterval:TVulkanApplicationHighResolutionTime;
+       fMillisecondInterval:TpvApplicationHighResolutionTime;
+       fTwoMillisecondsInterval:TpvApplicationHighResolutionTime;
+       fFourMillisecondsInterval:TpvApplicationHighResolutionTime;
+       fQuarterSecondInterval:TpvApplicationHighResolutionTime;
+       fMinuteInterval:TpvApplicationHighResolutionTime;
+       fHourInterval:TpvApplicationHighResolutionTime;
       public
        constructor Create;
        destructor Destroy; override;
        function GetTime:TpvInt64;
-       procedure Sleep(const aDelay:TVulkanApplicationHighResolutionTime);
-       function ToFloatSeconds(const aTime:TVulkanApplicationHighResolutionTime):TpvDouble;
-       function FromFloatSeconds(const aTime:TpvDouble):TVulkanApplicationHighResolutionTime;
-       function ToMilliseconds(const aTime:TVulkanApplicationHighResolutionTime):TpvInt64;
-       function FromMilliseconds(const aTime:TpvInt64):TVulkanApplicationHighResolutionTime;
-       function ToMicroseconds(const aTime:TVulkanApplicationHighResolutionTime):TpvInt64;
-       function FromMicroseconds(const aTime:TpvInt64):TVulkanApplicationHighResolutionTime;
-       function ToNanoseconds(const aTime:TVulkanApplicationHighResolutionTime):TpvInt64;
-       function FromNanoseconds(const aTime:TpvInt64):TVulkanApplicationHighResolutionTime;
+       procedure Sleep(const aDelay:TpvApplicationHighResolutionTime);
+       function ToFloatSeconds(const aTime:TpvApplicationHighResolutionTime):TpvDouble;
+       function FromFloatSeconds(const aTime:TpvDouble):TpvApplicationHighResolutionTime;
+       function ToMilliseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
+       function FromMilliseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
+       function ToMicroseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
+       function FromMicroseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
+       function ToNanoseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
+       function FromNanoseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
        property Frequency:TpvInt64 read fFrequency;
-       property MillisecondInterval:TVulkanApplicationHighResolutionTime read fMillisecondInterval;
-       property TwoMillisecondsInterval:TVulkanApplicationHighResolutionTime read fTwoMillisecondsInterval;
-       property FourMillisecondsInterval:TVulkanApplicationHighResolutionTime read fFourMillisecondsInterval;
-       property QuarterSecondInterval:TVulkanApplicationHighResolutionTime read fQuarterSecondInterval;
-       property SecondInterval:TVulkanApplicationHighResolutionTime read fFrequency;
-       property MinuteInterval:TVulkanApplicationHighResolutionTime read fMinuteInterval;
-       property HourInterval:TVulkanApplicationHighResolutionTime read fHourInterval;
+       property MillisecondInterval:TpvApplicationHighResolutionTime read fMillisecondInterval;
+       property TwoMillisecondsInterval:TpvApplicationHighResolutionTime read fTwoMillisecondsInterval;
+       property FourMillisecondsInterval:TpvApplicationHighResolutionTime read fFourMillisecondsInterval;
+       property QuarterSecondInterval:TpvApplicationHighResolutionTime read fQuarterSecondInterval;
+       property SecondInterval:TpvApplicationHighResolutionTime read fFrequency;
+       property MinuteInterval:TpvApplicationHighResolutionTime read fMinuteInterval;
+       property HourInterval:TpvApplicationHighResolutionTime read fHourInterval;
      end;
 
-     TVulkanApplicationInputProcessor=class
+     TpvApplicationInputProcessor=class
       public
        constructor Create; virtual;
        destructor Destroy; override;
@@ -561,9 +561,9 @@ type EVulkanApplication=class(Exception)
        function Scrolled(const aAmount:TpvInt32):boolean; virtual;
      end;
 
-     PVulkanApplicationInputProcessorQueueEvent=^TVulkanApplicationInputProcessorQueueEvent;
-     TVulkanApplicationInputProcessorQueueEvent=record
-      Next:PVulkanApplicationInputProcessorQueueEvent;
+     PpvApplicationInputProcessorQueueEvent=^TpvApplicationInputProcessorQueueEvent;
+     TpvApplicationInputProcessorQueueEvent=record
+      Next:PpvApplicationInputProcessorQueueEvent;
       Time:TpvInt64;
       case Event:TpvInt32 of
        EVENT_KEY_DOWN,EVENT_KEY_UP,EVENT_KEY_TYPED:(
@@ -586,21 +586,21 @@ type EVulkanApplication=class(Exception)
        );
      end;
 
-     TVulkanApplicationInputProcessorQueue=class(TVulkanApplicationInputProcessor)
+     TpvApplicationInputProcessorQueue=class(TpvApplicationInputProcessor)
       private
-       fProcessor:TVulkanApplicationInputProcessor;
+       fProcessor:TpvApplicationInputProcessor;
        fCriticalSection:TPasMPCriticalSection;
-       fQueuedEvents:PVulkanApplicationInputProcessorQueueEvent;
-       fLastQueuedEvent:PVulkanApplicationInputProcessorQueueEvent;
-       fFreeEvents:PVulkanApplicationInputProcessorQueueEvent;
+       fQueuedEvents:PpvApplicationInputProcessorQueueEvent;
+       fLastQueuedEvent:PpvApplicationInputProcessorQueueEvent;
+       fFreeEvents:PpvApplicationInputProcessorQueueEvent;
        fCurrentEventTime:TpvInt64;
-       function NewEvent:PVulkanApplicationInputProcessorQueueEvent;
-       procedure PushEvent(Event:PVulkanApplicationInputProcessorQueueEvent);
+       function NewEvent:PpvApplicationInputProcessorQueueEvent;
+       procedure PushEvent(Event:PpvApplicationInputProcessorQueueEvent);
       public
        constructor Create; override;
        destructor Destroy; override;
-       procedure SetProcessor(aProcessor:TVulkanApplicationInputProcessor);
-       function GetProcessor:TVulkanApplicationInputProcessor;
+       procedure SetProcessor(aProcessor:TpvApplicationInputProcessor);
+       function GetProcessor:TpvApplicationInputProcessor;
        procedure Drain;
        function GetCurrentEventTime:TpvInt64;
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
@@ -613,16 +613,16 @@ type EVulkanApplication=class(Exception)
        function Scrolled(const aAmount:TpvInt32):boolean; override;
      end;
 
-     TVulkanApplicationInputMultiplexer=class(TVulkanApplicationInputProcessor)
+     TpvApplicationInputMultiplexer=class(TpvApplicationInputProcessor)
       private
        fProcessors:TList;
       public
        constructor Create; override;
        destructor Destroy; override;
-       procedure AddProcessor(const aProcessor:TVulkanApplicationInputProcessor);
-       procedure AddProcessors(const aProcessors:array of TVulkanApplicationInputProcessor);
-       procedure InsertProcessor(const aIndex:TpvInt32;const aProcessor:TVulkanApplicationInputProcessor);
-       procedure RemoveProcessor(const aProcessor:TVulkanApplicationInputProcessor); overload;
+       procedure AddProcessor(const aProcessor:TpvApplicationInputProcessor);
+       procedure AddProcessors(const aProcessors:array of TpvApplicationInputProcessor);
+       procedure InsertProcessor(const aIndex:TpvInt32;const aProcessor:TpvApplicationInputProcessor);
+       procedure RemoveProcessor(const aProcessor:TpvApplicationInputProcessor); overload;
        procedure RemoveProcessor(const aIndex:TpvInt32); overload;
        procedure ClearProcessors;
        function CountProcessors:TpvInt32;
@@ -636,11 +636,11 @@ type EVulkanApplication=class(Exception)
        function Scrolled(const aAmount:TpvInt32):boolean; override;
      end;
 
-     TVulkanApplicationInputTextInputCallback=procedure(aSuccessful:boolean;const aText:TVulkanApplicationRawByteString) of object;
+     TpvApplicationInputTextInputCallback=procedure(aSuccessful:boolean;const aText:TpvApplicationRawByteString) of object;
 
-     TVulkanApplicationInput=class;
+     TpvApplicationInput=class;
 
-     TVulkanApplicationJoystick=class
+     TpvApplicationJoystick=class
       private
        fIndex:TpvInt32;
        fID:TpvInt32;
@@ -657,7 +657,7 @@ type EVulkanApplication=class(Exception)
        function IsGameController:boolean;
        function Index:TpvInt32;
        function ID:TpvInt32;
-       function Name:TVulkanApplicationRawByteString;
+       function Name:TpvApplicationRawByteString;
        function GUID:TGUID;
        function DeviceGUID:TGUID;
        function CountAxes:TpvInt32;
@@ -672,16 +672,16 @@ type EVulkanApplication=class(Exception)
        function IsGameControllerAttached:boolean;
        function GetGameControllerAxis(const aAxis:TpvInt32):TpvInt32;
        function GetGameControllerButton(const aButton:TpvInt32):boolean;
-       function GetGameControllerName:TVulkanApplicationRawByteString;
-       function GetGameControllerMapping:TVulkanApplicationRawByteString;
+       function GetGameControllerName:TpvApplicationRawByteString;
+       function GetGameControllerMapping:TpvApplicationRawByteString;
      end;
 
-     TVulkanApplicationInput=class
+     TpvApplicationInput=class
       private
-       fVulkanApplication:TVulkanApplication;
-       fKeyCodeNames:array[-1..1023] of TVulkanApplicationRawByteString;
+       fVulkanApplication:TpvApplication;
+       fKeyCodeNames:array[-1..1023] of TpvApplicationRawByteString;
        fCriticalSection:TPasMPCriticalSection;
-       fProcessor:TVulkanApplicationInputProcessor;
+       fProcessor:TpvApplicationInputProcessor;
        fEvents:array of TSDL_Event;
        fEventTimes:array of int64;
        fEventCount:TpvInt32;
@@ -706,13 +706,13 @@ type EVulkanApplication=class(Exception)
        fJustTouched:longbool;
        fMaxPointerID:TpvInt32;
        fJoysticks:TList;
-       fMainJoystick:TVulkanApplicationJoystick;
+       fMainJoystick:TpvApplicationJoystick;
        function TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
        function TranslateSDLKeyModifier(const aKeyModifier:TpvInt32):TpvInt32;
        procedure AddEvent(const aEvent:TSDL_Event);
        procedure ProcessEvents;
       public
-       constructor Create(const aVulkanApplication:TVulkanApplication); reintroduce;
+       constructor Create(const aVulkanApplication:TpvApplication); reintroduce;
        destructor Destroy; override;
        function GetAccelerometerX:TpvFloat;
        function GetAccelerometerY:TpvFloat;
@@ -733,9 +733,9 @@ type EVulkanApplication=class(Exception)
        function IsButtonPressed(const aButton:TpvInt32):boolean;
        function IsKeyPressed(const aKeyCode:TpvInt32):boolean;
        function IsKeyJustPressed(const aKeyCode:TpvInt32):boolean;
-       function GetKeyName(const aKeyCode:TpvInt32):TVulkanApplicationRawByteString;
+       function GetKeyName(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
        function GetKeyModifier:TpvInt32;
-       procedure GetTextInput(const aCallback:TVulkanApplicationInputTextInputCallback;const aTitle,aText:TVulkanApplicationRawByteString;const aPlaceholder:TVulkanApplicationRawByteString='');
+       procedure GetTextInput(const aCallback:TpvApplicationInputTextInputCallback;const aTitle,aText:TpvApplicationRawByteString;const aPlaceholder:TpvApplicationRawByteString='');
        procedure SetOnscreenKeyboardVisible(const aVisible:boolean);
        procedure Vibrate(const aMilliseconds:TpvInt32); overload;
        procedure Vibrate(const aPattern:array of TpvInt32;const aRepeats:TpvInt32); overload;
@@ -744,18 +744,18 @@ type EVulkanApplication=class(Exception)
        function GetCurrentEventTime:TpvInt64;
        procedure SetCatchBackKey(const aCatchBack:boolean);
        procedure SetCatchMenuKey(const aCatchMenu:boolean);
-       procedure SetInputProcessor(const aProcessor:TVulkanApplicationInputProcessor);
-       function GetInputProcessor:TVulkanApplicationInputProcessor;
+       procedure SetInputProcessor(const aProcessor:TpvApplicationInputProcessor);
+       function GetInputProcessor:TpvApplicationInputProcessor;
        function IsPeripheralAvailable(const aPeripheral:TpvInt32):boolean;
        function GetNativeOrientation:TpvInt32;
        procedure SetCursorCatched(const aCatched:boolean);
        function IsCursorCatched:boolean;
        procedure SetCursorPosition(const pX,pY:TpvInt32);
        function GetJoystickCount:TpvInt32;
-       function GetJoystick(const aIndex:TpvInt32=-1):TVulkanApplicationJoystick;
+       function GetJoystick(const aIndex:TpvInt32=-1):TpvApplicationJoystick;
      end;
 
-     TVulkanApplicationLifecycleListener=class
+     TpvApplicationLifecycleListener=class
       public
        constructor Create; reintroduce; virtual;
        destructor Destroy; override;
@@ -765,7 +765,7 @@ type EVulkanApplication=class(Exception)
        function Terminate:boolean; virtual;
      end;
 
-     TVulkanApplicationScreen=class
+     TpvApplicationScreen=class
       public
 
        constructor Create; virtual;
@@ -810,32 +810,32 @@ type EVulkanApplication=class(Exception)
 
        procedure Update(const aDeltaTime:TpvDouble); virtual;
 
-       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); virtual;
+       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
      end;
 
-     TVulkanApplicationScreenClass=class of TVulkanApplicationScreen;
+     TpvApplicationScreenClass=class of TpvApplicationScreen;
 
-     TVulkanApplicationAssets=class
+     TpvApplicationAssets=class
       private
-       fVulkanApplication:TVulkanApplication;
+       fVulkanApplication:TpvApplication;
 {$ifndef Android}
        fBasePath:string;
 {$endif}
        function CorrectFileName(const aFileName:string):string;
       public
-       constructor Create(const aVulkanApplication:TVulkanApplication);
+       constructor Create(const aVulkanApplication:TpvApplication);
        destructor Destroy; override;
        function ExistAsset(const aFileName:string):boolean;
        function GetAssetStream(const aFileName:string):TStream;
        function GetAssetSize(const aFileName:string):int64;
      end;
 
-     TVulkanApplicationFiles=class
+     TpvApplicationFiles=class
       private
-       fVulkanApplication:TVulkanApplication;
+       fVulkanApplication:TpvApplication;
       public
-       constructor Create(const aVulkanApplication:TVulkanApplication);
+       constructor Create(const aVulkanApplication:TpvApplication);
        destructor Destroy; override;
        function GetLocalStoragePath:string;
        function GetRoamingStoragePath:string;
@@ -845,25 +845,25 @@ type EVulkanApplication=class(Exception)
        function IsExternalStorageAvailable:boolean;
      end;
 
-     TVulkanApplicationClipboard=class
+     TpvApplicationClipboard=class
       private
-       fVulkanApplication:TVulkanApplication;
+       fVulkanApplication:TpvApplication;
       public
-       constructor Create(const aVulkanApplication:TVulkanApplication);
+       constructor Create(const aVulkanApplication:TpvApplication);
        destructor Destroy; override;
        function HasText:boolean;
-       function GetText:TVulkanApplicationUTF8String;
-       procedure SetText(const aTextString:TVulkanApplicationUTF8String);
+       function GetText:TpvApplicationUTF8String;
+       procedure SetText(const aTextString:TpvApplicationUTF8String);
      end;
 
-     TVulkanApplicationCommandPools=array of array of TVulkanCommandPool;
+     TpvApplicationCommandPools=array of array of TpvVulkanCommandPool;
 
-     TVulkanApplicationCommandBuffers=array of array of TVulkanCommandBuffer;
+     TpvApplicationCommandBuffers=array of array of TpvVulkanCommandBuffer;
 
-     TVulkanApplicationCommandBufferFences=array of array of TVulkanFence;
+     TpvApplicationCommandBufferFences=array of array of TpvVulkanFence;
 
-     PVulkanApplicationVulkanRecreationKind=^TVulkanApplicationVulkanRecreationKind;
-     TVulkanApplicationVulkanRecreationKind=
+     PpvApplicationVulkanRecreationKind=^TpvApplicationVulkanRecreationKind;
+     TpvApplicationVulkanRecreationKind=
       (
        vavrkNone,
        vavrkSwapChain,
@@ -871,7 +871,7 @@ type EVulkanApplication=class(Exception)
        vavrkDevice
       );
 
-     TVulkanApplication=class
+     TpvApplication=class
       private
 
        fTitle:string;
@@ -885,17 +885,17 @@ type EVulkanApplication=class(Exception)
 
        fPasMPInstance:TPasMP;
 
-       fHighResolutionTimer:TVulkanApplicationHighResolutionTimer;
+       fHighResolutionTimer:TpvApplicationHighResolutionTimer;
 
-       fAssets:TVulkanApplicationAssets;
+       fAssets:TpvApplicationAssets;
 
-       fFiles:TVulkanApplicationFiles;
+       fFiles:TpvApplicationFiles;
 
-       fInput:TVulkanApplicationInput;
+       fInput:TpvApplicationInput;
 
-       fClipboard:TVulkanApplicationClipboard;
+       fClipboard:TpvApplicationClipboard;
 
-       fRunnableList:TVulkanApplicationRunnableList;
+       fRunnableList:TpvApplicationRunnableList;
        fRunnableListCount:TpvInt32;
        fRunnableListCriticalSection:TPasMPCriticalSection;
 
@@ -936,9 +936,9 @@ type EVulkanApplication=class(Exception)
        fEvent:TSDL_Event;
 
        fLastPressedKeyEvent:TSDL_Event;
-       fKeyRepeatTimeAccumulator:TVulkanApplicationHighResolutionTime;
-       fKeyRepeatInterval:TVulkanApplicationHighResolutionTime;
-       fKeyRepeatInitialInterval:TVulkanApplicationHighResolutionTime;
+       fKeyRepeatTimeAccumulator:TpvApplicationHighResolutionTime;
+       fKeyRepeatInterval:TpvApplicationHighResolutionTime;
+       fKeyRepeatInitialInterval:TpvApplicationHighResolutionTime;
 
        fScreenWidth:TpvInt32;
        fScreenHeight:TpvInt32;
@@ -953,11 +953,11 @@ type EVulkanApplication=class(Exception)
 
        fVulkanDebuggingEnabled:boolean;
 
-       fVulkanInstance:TVulkanInstance;
+       fVulkanInstance:TpvVulkanInstance;
 
-       fVulkanDevice:TVulkanDevice;
+       fVulkanDevice:TpvVulkanDevice;
 
-       fVulkanPipelineCache:TVulkanPipelineCache;
+       fVulkanPipelineCache:TpvVulkanPipelineCache;
 
        fVulkanPipelineCacheFileName:string;
        
@@ -967,61 +967,61 @@ type EVulkanApplication=class(Exception)
 
        fVulkanCountCommandQueues:TpvInt32;
 
-       fVulkanCommandPools:array of TVulkanApplicationCommandPools;
-       fVulkanCommandBuffers:array of TVulkanApplicationCommandBuffers;
-       fVulkanCommandBufferFences:array of TVulkanApplicationCommandBufferFences;
+       fVulkanCommandPools:array of TpvApplicationCommandPools;
+       fVulkanCommandBuffers:array of TpvApplicationCommandBuffers;
+       fVulkanCommandBufferFences:array of TpvApplicationCommandBufferFences;
 
-       fVulkanUniversalCommandPools:TVulkanApplicationCommandPools;
-       fVulkanUniversalCommandBuffers:TVulkanApplicationCommandBuffers;
-       fVulkanUniversalCommandBufferFences:TVulkanApplicationCommandBufferFences;
+       fVulkanUniversalCommandPools:TpvApplicationCommandPools;
+       fVulkanUniversalCommandBuffers:TpvApplicationCommandBuffers;
+       fVulkanUniversalCommandBufferFences:TpvApplicationCommandBufferFences;
 
-       fVulkanPresentCommandPools:TVulkanApplicationCommandPools;
-       fVulkanPresentCommandBuffers:TVulkanApplicationCommandBuffers;
-       fVulkanPresentCommandBufferFences:TVulkanApplicationCommandBufferFences;
+       fVulkanPresentCommandPools:TpvApplicationCommandPools;
+       fVulkanPresentCommandBuffers:TpvApplicationCommandBuffers;
+       fVulkanPresentCommandBufferFences:TpvApplicationCommandBufferFences;
 
-       fVulkanGraphicsCommandPools:TVulkanApplicationCommandPools;
-       fVulkanGraphicsCommandBuffers:TVulkanApplicationCommandBuffers;
-       fVulkanGraphicsCommandBufferFences:TVulkanApplicationCommandBufferFences;
+       fVulkanGraphicsCommandPools:TpvApplicationCommandPools;
+       fVulkanGraphicsCommandBuffers:TpvApplicationCommandBuffers;
+       fVulkanGraphicsCommandBufferFences:TpvApplicationCommandBufferFences;
 
-       fVulkanComputeCommandPools:TVulkanApplicationCommandPools;
-       fVulkanComputeCommandBuffers:TVulkanApplicationCommandBuffers;
-       fVulkanComputeCommandBufferFences:TVulkanApplicationCommandBufferFences;
+       fVulkanComputeCommandPools:TpvApplicationCommandPools;
+       fVulkanComputeCommandBuffers:TpvApplicationCommandBuffers;
+       fVulkanComputeCommandBufferFences:TpvApplicationCommandBufferFences;
 
-       fVulkanTransferCommandPools:TVulkanApplicationCommandPools;
-       fVulkanTransferCommandBuffers:TVulkanApplicationCommandBuffers;
-       fVulkanTransferCommandBufferFences:TVulkanApplicationCommandBufferFences;
+       fVulkanTransferCommandPools:TpvApplicationCommandPools;
+       fVulkanTransferCommandBuffers:TpvApplicationCommandBuffers;
+       fVulkanTransferCommandBufferFences:TpvApplicationCommandBufferFences;
 
-       fVulkanSurface:TVulkanSurface;
+       fVulkanSurface:TpvVulkanSurface;
 
        fGraphicsPipelinesReady:boolean;
 
        fSkipNextDrawFrame:boolean;
 
-//     fVulkanPresentationSurface:TVulkanPresentationSurface;
+//     fVulkanPresentationSurface:TpvVulkanPresentationSurface;
 
-       fOnEvent:TVulkanApplicationOnEvent;
+       fOnEvent:TpvApplicationOnEvent;
 
-       fOnStep:TVulkanApplicationOnStep;
+       fOnStep:TpvApplicationOnStep;
 
-       fScreen:TVulkanApplicationScreen;
+       fScreen:TpvApplicationScreen;
 
-       fStartScreen:TVulkanApplicationScreenClass;
+       fStartScreen:TpvApplicationScreenClass;
 
-       fNextScreen:TVulkanApplicationScreen;
+       fNextScreen:TpvApplicationScreen;
 
-       fNextScreenClass:TVulkanApplicationScreenClass;
+       fNextScreenClass:TpvApplicationScreenClass;
 
        fHasNewNextScreen:boolean;
 
        fHasLastTime:boolean;
 
-       fLastTime:TVulkanApplicationHighResolutionTime;
-       fNowTime:TVulkanApplicationHighResolutionTime;
-       fDeltaTime:TVulkanApplicationHighResolutionTime;
+       fLastTime:TpvApplicationHighResolutionTime;
+       fNowTime:TpvApplicationHighResolutionTime;
+       fDeltaTime:TpvApplicationHighResolutionTime;
        fFloatDeltaTime:TpvDouble;
 
        fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of TpvDouble;
-       fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TVulkanApplicationHighResolutionTime;
+       fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TpvApplicationHighResolutionTime;
        fFrameTimesHistoryReadIndex:TPasMPInt32;
        fFrameTimesHistoryWriteIndex:TPasMPInt32;
 
@@ -1041,49 +1041,49 @@ type EVulkanApplication=class(Exception)
 
        fRealUsedDrawSwapChainImageIndex:TpvInt32;
 
-       fVulkanRecreationKind:TVulkanApplicationVulkanRecreationKind;
+       fVulkanRecreationKind:TpvApplicationVulkanRecreationKind;
 
-       fVulkanWaitSemaphore:TVulkanSemaphore;
+       fVulkanWaitSemaphore:TpvVulkanSemaphore;
 
-       fVulkanWaitFence:TVulkanFence;
+       fVulkanWaitFence:TpvVulkanFence;
 
-       fVulkanSwapChain:TVulkanSwapChain;
+       fVulkanSwapChain:TpvVulkanSwapChain;
 
-       fVulkanOldSwapChain:TVulkanSwapChain;
+       fVulkanOldSwapChain:TpvVulkanSwapChain;
 
-       fVulkanWaitFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
+       fVulkanWaitFences:array[0..MaxSwapChainImages-1] of TpvVulkanFence;
 
        fVulkanWaitFencesReady:array[0..MaxSwapChainImages-1] of boolean;
 
-       fVulkanPresentCompleteSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fVulkanPresentCompleteSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
 
-       fVulkanPresentCompleteFences:array[0..MaxSwapChainImages-1] of TVulkanFence;
+       fVulkanPresentCompleteFences:array[0..MaxSwapChainImages-1] of TpvVulkanFence;
 
        fVulkanPresentCompleteFencesReady:array[0..MaxSwapChainImages-1] of boolean;
 
        fVulkanDepthImageFormat:TVkFormat;
 
-       fVulkanDepthFrameBufferAttachment:TVulkanFrameBufferAttachment;
+       fVulkanDepthFrameBufferAttachment:TpvVulkanFrameBufferAttachment;
 
-       fVulkanFrameBufferColorAttachments:TVulkanFrameBufferAttachments;
+       fVulkanFrameBufferColorAttachments:TpvVulkanFrameBufferAttachments;
 
-       fVulkanRenderPass:TVulkanRenderPass;
+       fVulkanRenderPass:TpvVulkanRenderPass;
 
-       fVulkanFrameBuffers:TVulkanSwapChainSimpleDirectRenderTargetFrameBuffers;
+       fVulkanFrameBuffers:TpvVulkanSwapChainSimpleDirectRenderTargetFrameBuffers;
 
-       fVulkanCommandPool:TVulkanCommandPool;
+       fVulkanCommandPool:TpvVulkanCommandPool;
 
-       fVulkanBlankCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
+       fVulkanBlankCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
 
-       fVulkanBlankCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fVulkanBlankCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
 
-       fVulkanPresentToDrawImageBarrierCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
+       fVulkanPresentToDrawImageBarrierCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
 
-       fVulkanPresentToDrawImageBarrierCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fVulkanPresentToDrawImageBarrierCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
 
-       fVulkanDrawToPresentImageBarrierCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
+       fVulkanDrawToPresentImageBarrierCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
 
-       fVulkanDrawToPresentImageBarrierCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fVulkanDrawToPresentImageBarrierCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
 
        procedure InitializeGraphics;
        procedure DeinitializeGraphics;
@@ -1096,7 +1096,7 @@ type EVulkanApplication=class(Exception)
 
        procedure VulkanWaitIdle;
 
-       procedure CreateVulkanDevice(const aSurface:TVulkanSurface=nil);
+       procedure CreateVulkanDevice(const aSurface:TpvVulkanSurface=nil);
 
        procedure CreateVulkanInstance;
        procedure DestroyVulkanInstance;
@@ -1119,9 +1119,9 @@ type EVulkanApplication=class(Exception)
        function AcquireVulkanBackBuffer:boolean;
        function PresentVulkanBackBuffer:boolean;
 
-       procedure SetScreen(const aScreen:TVulkanApplicationScreen);
-       procedure SetNextScreen(const aNextScreen:TVulkanApplicationScreen);
-       procedure SetNextScreenClass(const aNextScreenClass:TVulkanApplicationScreenClass);
+       procedure SetScreen(const aScreen:TpvApplicationScreen);
+       procedure SetNextScreen(const aNextScreen:TpvApplicationScreen);
+       procedure SetNextScreenClass(const aNextScreenClass:TpvApplicationScreenClass);
 
        procedure UpdateFrameTimesHistory;
 
@@ -1138,10 +1138,10 @@ type EVulkanApplication=class(Exception)
        procedure ReadConfig; virtual;
        procedure SaveConfig; virtual;
 
-       procedure PostRunnable(const aRunnable:TVulkanApplicationRunnable);
+       procedure PostRunnable(const aRunnable:TpvApplicationRunnable);
 
-       procedure AddLifecycleListener(const aLifecycleListener:TVulkanApplicationLifecycleListener);
-       procedure RemoveLifecycleListener(const aLifecycleListener:TVulkanApplicationLifecycleListener);
+       procedure AddLifecycleListener(const aLifecycleListener:TpvApplicationLifecycleListener);
+       procedure RemoveLifecycleListener(const aLifecycleListener:TpvApplicationLifecycleListener);
 
        procedure Initialize;
 
@@ -1195,25 +1195,25 @@ type EVulkanApplication=class(Exception)
 
        procedure Update(const aDeltaTime:TpvDouble); virtual;
 
-       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); virtual;
+       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
        class procedure Main; virtual;
 
-       property VulkanFrameBuffers:TVulkanSwapChainSimpleDirectRenderTargetFrameBuffers read fVulkanFrameBuffers;
+       property VulkanFrameBuffers:TpvVulkanSwapChainSimpleDirectRenderTargetFrameBuffers read fVulkanFrameBuffers;
        
       published
 
        property PasMPInstance:TPasMP read fPasMPInstance;
 
-       property HighResolutionTimer:TVulkanApplicationHighResolutionTimer read fHighResolutionTimer;
+       property HighResolutionTimer:TpvApplicationHighResolutionTimer read fHighResolutionTimer;
 
-       property Assets:TVulkanApplicationAssets read fAssets;
+       property Assets:TpvApplicationAssets read fAssets;
 
-       property Files:TVulkanApplicationFiles read fFiles;
+       property Files:TpvApplicationFiles read fFiles;
 
-       property Input:TVulkanApplicationInput read fInput;
+       property Input:TpvApplicationInput read fInput;
 
-       property Clipboard:TVulkanApplicationClipboard read fClipboard;
+       property Clipboard:TpvApplicationClipboard read fClipboard;
 
        property Title:string read fTitle write fTitle;
        property Version:TpvUInt32 read fVersion write fVersion;
@@ -1247,8 +1247,8 @@ type EVulkanApplication=class(Exception)
 
        property CountCPUThreads:TpvInt32 read fCountCPUThreads;
 
-       property OnEvent:TVulkanApplicationOnEvent read fOnEvent write fOnEvent;
-       property OnStep:TVulkanApplicationOnStep read fOnStep write fOnStep;
+       property OnEvent:TpvApplicationOnEvent read fOnEvent write fOnEvent;
+       property OnStep:TpvApplicationOnStep read fOnStep write fOnStep;
 
        property VulkanDebugging:boolean read fVulkanDebugging write fVulkanDebugging;
 
@@ -1256,47 +1256,47 @@ type EVulkanApplication=class(Exception)
 
        property VulkanDebuggingEnabled:boolean read fVulkanDebuggingEnabled;
 
-       property VulkanInstance:TVulkanInstance read fVulkanInstance;
+       property VulkanInstance:TpvVulkanInstance read fVulkanInstance;
 
-       property VulkanDevice:TVulkanDevice read fVulkanDevice;
+       property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
 
-       property VulkanPipelineCache:TVulkanPipelineCache read fVulkanPipelineCache;
+       property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
 
        property VulkanPipelineCacheFileName:string read fVulkanPipelineCacheFileName write fVulkanPipelineCacheFileName; 
 
-       property VulkanUniversalCommandPools:TVulkanApplicationCommandPools read fVulkanUniversalCommandPools;
-       property VulkanUniversalCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanUniversalCommandBuffers;
-       property VulkamUniversalCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanUniversalCommandBufferFences;
+       property VulkanUniversalCommandPools:TpvApplicationCommandPools read fVulkanUniversalCommandPools;
+       property VulkanUniversalCommandBuffers:TpvApplicationCommandBuffers read fVulkanUniversalCommandBuffers;
+       property VulkamUniversalCommandBufferFences:TpvApplicationCommandBufferFences read fVulkanUniversalCommandBufferFences;
 
-       property VulkanPresentCommandPools:TVulkanApplicationCommandPools read fVulkanPresentCommandPools;
-       property VulkanPresentCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanPresentCommandBuffers;
-       property VulkanPresentCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanPresentCommandBufferFences;
+       property VulkanPresentCommandPools:TpvApplicationCommandPools read fVulkanPresentCommandPools;
+       property VulkanPresentCommandBuffers:TpvApplicationCommandBuffers read fVulkanPresentCommandBuffers;
+       property VulkanPresentCommandBufferFences:TpvApplicationCommandBufferFences read fVulkanPresentCommandBufferFences;
 
-       property VulkanGraphicsCommandPools:TVulkanApplicationCommandPools read fVulkanGraphicsCommandPools;
-       property VulkanGraphicsCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanGraphicsCommandBuffers;
-       property VulkanGraphicsCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanGraphicsCommandBufferFences;
+       property VulkanGraphicsCommandPools:TpvApplicationCommandPools read fVulkanGraphicsCommandPools;
+       property VulkanGraphicsCommandBuffers:TpvApplicationCommandBuffers read fVulkanGraphicsCommandBuffers;
+       property VulkanGraphicsCommandBufferFences:TpvApplicationCommandBufferFences read fVulkanGraphicsCommandBufferFences;
 
-       property VulkanComputeCommandPools:TVulkanApplicationCommandPools read fVulkanComputeCommandPools;
-       property VulkanComputeCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanComputeCommandBuffers;
-       property VulkanComputeCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanComputeCommandBufferFences;
+       property VulkanComputeCommandPools:TpvApplicationCommandPools read fVulkanComputeCommandPools;
+       property VulkanComputeCommandBuffers:TpvApplicationCommandBuffers read fVulkanComputeCommandBuffers;
+       property VulkanComputeCommandBufferFences:TpvApplicationCommandBufferFences read fVulkanComputeCommandBufferFences;
 
-       property VulkanTransferCommandPools:TVulkanApplicationCommandPools read fVulkanTransferCommandPools;
-       property VulkanTransferCommandBuffers:TVulkanApplicationCommandBuffers read fVulkanTransferCommandBuffers;
-       property VulkanTransferCommandBufferFences:TVulkanApplicationCommandBufferFences read fVulkanTransferCommandBufferFences;
+       property VulkanTransferCommandPools:TpvApplicationCommandPools read fVulkanTransferCommandPools;
+       property VulkanTransferCommandBuffers:TpvApplicationCommandBuffers read fVulkanTransferCommandBuffers;
+       property VulkanTransferCommandBufferFences:TpvApplicationCommandBufferFences read fVulkanTransferCommandBufferFences;
 
-       property VulkanSwapChain:TVulkanSwapChain read fVulkanSwapChain;
+       property VulkanSwapChain:TpvVulkanSwapChain read fVulkanSwapChain;
 
        property VulkanDepthImageFormat:TVkFormat read fVulkanDepthImageFormat;
 
-       property VulkanRenderPass:TVulkanRenderPass read fVulkanRenderPass;
+       property VulkanRenderPass:TpvVulkanRenderPass read fVulkanRenderPass;
 
-       property StartScreen:TVulkanApplicationScreenClass read fStartScreen write fStartScreen;
+       property StartScreen:TpvApplicationScreenClass read fStartScreen write fStartScreen;
 
-       property Screen:TVulkanApplicationScreen read fScreen write SetScreen;
+       property Screen:TpvApplicationScreen read fScreen write SetScreen;
 
-       property NextScreen:TVulkanApplicationScreen read fNextScreen write SetNextScreen;
+       property NextScreen:TpvApplicationScreen read fNextScreen write SetNextScreen;
 
-       property NextScreenClass:TVulkanApplicationScreenClass read fNextScreenClass write SetNextScreenClass;
+       property NextScreenClass:TpvApplicationScreenClass read fNextScreenClass write SetNextScreenClass;
 
        property DeltaTime:TpvDouble read fFloatDeltaTime;
 
@@ -1318,7 +1318,7 @@ type EVulkanApplication=class(Exception)
 
      end;
 
-var VulkanApplication:TVulkanApplication=nil;
+var pvApplication:TpvApplication=nil;
 
 {$if defined(fpc) and defined(android)}
      AndroidJavaEnv:PJNIEnv=nil;
@@ -1335,9 +1335,9 @@ var VulkanApplication:TVulkanApplication=nil;
 
      AndroidDeviceName:string='';
 
-function AndroidGetManufacturerName:TVulkanApplicationUnicodeString;
-function AndroidGetModelName:TVulkanApplicationUnicodeString;
-function AndroidGetDeviceName:TVulkanApplicationUnicodeString;
+function AndroidGetManufacturerName:TpvApplicationUnicodeString;
+function AndroidGetModelName:TpvApplicationUnicodeString;
+function AndroidGetDeviceName:TpvApplicationUnicodeString;
 function Android_JNI_GetEnv:PJNIEnv; cdecl;
 procedure ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:cuint32); cdecl;
 {$ifend}
@@ -1357,8 +1357,8 @@ procedure signal_handler(aSignal:cint); cdecl;
 begin
  case aSignal of
   SIGINT,SIGTERM,SIGKILL:begin
-   if assigned(VulkanApplication) then begin
-    VulkanApplication.Terminate;
+   if assigned(pvApplication) then begin
+    pvApplication.Terminate;
    end;
   end;
  end;
@@ -1377,9 +1377,9 @@ end;
 {$ifend}
 
 {$ifdef unix}
-function GetAppDataLocalPath(Postfix:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
+function GetAppDataLocalPath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
 {$ifdef darwin}
-var TruePath:TVulkanApplicationRawByteString;
+var TruePath:TpvApplicationRawByteString;
 {$endif}
 begin
 {$ifdef darwin}
@@ -1442,9 +1442,9 @@ begin
  result:=IncludeTrailingPathDelimiter(result);
 end;
 
-function GetAppDataRoamingPath(Postfix:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
+function GetAppDataRoamingPath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
 {$ifdef darwin}
-var TruePath:TVulkanApplicationRawByteString;
+var TruePath:TpvApplicationRawByteString;
 {$endif}
 begin
 {$ifdef darwin}
@@ -1507,7 +1507,7 @@ begin
  result:=IncludeTrailingPathDelimiter(result);
 end;
 {$else}
-function ExpandEnvironmentStrings(const s:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
+function ExpandEnvironmentStrings(const s:TpvApplicationRawByteString):TpvApplicationRawByteString;
 var i:TpvInt32;
 begin
  i:=ExpandEnvironmentStringsA(pansichar(s),nil,0);
@@ -1520,7 +1520,7 @@ begin
  end;
 end;
 
-function GetEnvironmentVariable(const s:TVulkanApplicationRawByteString):TVulkanApplicationRawByteString;
+function GetEnvironmentVariable(const s:TpvApplicationRawByteString):TpvApplicationRawByteString;
 var i:TpvInt32;
 begin
  i:=GetEnvironmentVariableA(pansichar(s),nil,0);
@@ -1709,20 +1709,20 @@ begin
 end;
 {$endif}
 
-constructor EVulkanApplication.Create(const aTag,aMessage:string;const aLogLevel:TpvInt32=LOG_NONE);
+constructor EpvApplication.Create(const aTag,aMessage:string;const aLogLevel:TpvInt32=LOG_NONE);
 begin
  inherited Create(aMessage);
  fTag:=aTag;
  fLogLevel:=aLogLevel;
 end;
 
-destructor EVulkanApplication.Destroy;
+destructor EpvApplication.Destroy;
 begin
  fTag:='';
  inherited Destroy;
 end;
 
-constructor TVulkanApplicationHighResolutionTimer.Create;
+constructor TpvApplicationHighResolutionTimer.Create;
 begin
  inherited Create;
  fFrequencyShift:=0;
@@ -1754,12 +1754,12 @@ begin
  fHourInterval:=fFrequency*3600;
 end;
 
-destructor TVulkanApplicationHighResolutionTimer.Destroy;
+destructor TpvApplicationHighResolutionTimer.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TVulkanApplicationHighResolutionTimer.GetTime:TpvInt64;
+function TpvApplicationHighResolutionTimer.GetTime:TpvInt64;
 {$ifdef linux}
 var NowTimeSpec:TimeSpec;
     ia,ib:TpvInt64;
@@ -1797,7 +1797,7 @@ begin
  result:=result shr fFrequencyShift;
 end;
 
-procedure TVulkanApplicationHighResolutionTimer.Sleep(const aDelay:TpvInt64);
+procedure TpvApplicationHighResolutionTimer.Sleep(const aDelay:TpvInt64);
 var EndTime,NowTime{$ifdef unix},SleepTime{$endif}:TpvInt64;
 {$ifdef unix}
     req,rem:timespec;
@@ -1888,7 +1888,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.ToFloatSeconds(const aTime:TVulkanApplicationHighResolutionTime):TpvDouble;
+function TpvApplicationHighResolutionTimer.ToFloatSeconds(const aTime:TpvApplicationHighResolutionTime):TpvDouble;
 begin
  if fFrequency<>0 then begin
   result:=aTime/fFrequency;
@@ -1897,7 +1897,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.FromFloatSeconds(const aTime:TpvDouble):TVulkanApplicationHighResolutionTime;
+function TpvApplicationHighResolutionTimer.FromFloatSeconds(const aTime:TpvDouble):TpvApplicationHighResolutionTime;
 begin
  if fFrequency<>0 then begin
   result:=trunc(aTime*fFrequency);
@@ -1906,7 +1906,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.ToMilliseconds(const aTime:TVulkanApplicationHighResolutionTime):TpvInt64;
+function TpvApplicationHighResolutionTimer.ToMilliseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
 begin
  result:=aTime;
  if fFrequency<>1000 then begin
@@ -1914,7 +1914,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.FromMilliseconds(const aTime:TpvInt64):TVulkanApplicationHighResolutionTime;
+function TpvApplicationHighResolutionTimer.FromMilliseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
 begin
  result:=aTime;
  if fFrequency<>1000 then begin
@@ -1922,7 +1922,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.ToMicroseconds(const aTime:TVulkanApplicationHighResolutionTime):TpvInt64;
+function TpvApplicationHighResolutionTimer.ToMicroseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
 begin
  result:=aTime;
  if fFrequency<>1000000 then begin
@@ -1930,7 +1930,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.FromMicroseconds(const aTime:TpvInt64):TVulkanApplicationHighResolutionTime;
+function TpvApplicationHighResolutionTimer.FromMicroseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
 begin
  result:=aTime;
  if fFrequency<>1000000 then begin
@@ -1938,7 +1938,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.ToNanoseconds(const aTime:TVulkanApplicationHighResolutionTime):TpvInt64;
+function TpvApplicationHighResolutionTimer.ToNanoseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
 begin
  result:=aTime;
  if fFrequency<>1000000000 then begin
@@ -1946,7 +1946,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationHighResolutionTimer.FromNanoseconds(const aTime:TpvInt64):TVulkanApplicationHighResolutionTime;
+function TpvApplicationHighResolutionTimer.FromNanoseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
 begin
  result:=aTime;
  if fFrequency<>1000000000 then begin
@@ -1954,55 +1954,55 @@ begin
  end;
 end;
 
-constructor TVulkanApplicationInputProcessor.Create;
+constructor TpvApplicationInputProcessor.Create;
 begin
 end;
 
-destructor TVulkanApplicationInputProcessor.Destroy;
+destructor TpvApplicationInputProcessor.Destroy;
 begin
 end;
 
-function TVulkanApplicationInputProcessor.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
-begin
- result:=false;
-end;
-
-function TVulkanApplicationInputProcessor.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvApplicationInputProcessor.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvApplicationInputProcessor.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationInputProcessor.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationInputProcessor.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TpvApplicationInputProcessor.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TpvApplicationInputProcessor.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationInputProcessor.Scrolled(const aAmount:TpvInt32):boolean;
+function TpvApplicationInputProcessor.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-constructor TVulkanApplicationInputProcessorQueue.Create;
+function TpvApplicationInputProcessor.Scrolled(const aAmount:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+constructor TpvApplicationInputProcessorQueue.Create;
 begin
  inherited Create;
  fProcessor:=nil;
@@ -2013,8 +2013,8 @@ begin
  fCurrentEventTime:=0;
 end;
 
-destructor TVulkanApplicationInputProcessorQueue.Destroy;
-var CurrentEvent,NextEvent:PVulkanApplicationInputProcessorQueueEvent;
+destructor TpvApplicationInputProcessorQueue.Destroy;
+var CurrentEvent,NextEvent:PpvApplicationInputProcessorQueueEvent;
 begin
  CurrentEvent:=fQueuedEvents;
  while assigned(CurrentEvent) do begin
@@ -2032,7 +2032,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanApplicationInputProcessorQueue.NewEvent:PVulkanApplicationInputProcessorQueueEvent;
+function TpvApplicationInputProcessorQueue.NewEvent:PpvApplicationInputProcessorQueueEvent;
 begin
  if assigned(fFreeEvents) then begin
   result:=fFreeEvents;
@@ -2040,13 +2040,13 @@ begin
   result^.Next:=nil;
   result^.Event:=EVENT_NONE;
  end else begin
-  GetMem(result,SizeOf(TVulkanApplicationInputProcessorQueueEvent));
-  FillChar(result^,SizeOf(TVulkanApplicationInputProcessorQueueEvent),AnsiChar(#0));
+  GetMem(result,SizeOf(TpvApplicationInputProcessorQueueEvent));
+  FillChar(result^,SizeOf(TpvApplicationInputProcessorQueueEvent),AnsiChar(#0));
  end;
- result^.Time:=VulkanApplication.fHighResolutionTimer.GetTime;
+ result^.Time:=pvApplication.fHighResolutionTimer.GetTime;
 end;
 
-procedure TVulkanApplicationInputProcessorQueue.PushEvent(Event:PVulkanApplicationInputProcessorQueueEvent);
+procedure TpvApplicationInputProcessorQueue.PushEvent(Event:PpvApplicationInputProcessorQueueEvent);
 begin
  if assigned(fLastQueuedEvent) then begin
   fLastQueuedEvent^.Next:=Event;
@@ -2057,18 +2057,18 @@ begin
  Event^.Next:=nil;
 end;
 
-procedure TVulkanApplicationInputProcessorQueue.SetProcessor(aProcessor:TVulkanApplicationInputProcessor);
+procedure TpvApplicationInputProcessorQueue.SetProcessor(aProcessor:TpvApplicationInputProcessor);
 begin
  fProcessor:=aProcessor;
 end;
 
-function TVulkanApplicationInputProcessorQueue.GetProcessor:TVulkanApplicationInputProcessor;
+function TpvApplicationInputProcessorQueue.GetProcessor:TpvApplicationInputProcessor;
 begin
  result:=fProcessor;
 end;
 
-procedure TVulkanApplicationInputProcessorQueue.Drain;
-var Events,LastQueuedEvent,CurrentEvent,NextEvent:PVulkanApplicationInputProcessorQueueEvent;
+procedure TpvApplicationInputProcessorQueue.Drain;
+var Events,LastQueuedEvent,CurrentEvent,NextEvent:PpvApplicationInputProcessorQueueEvent;
 begin
  fCriticalSection.Acquire;
  try
@@ -2126,13 +2126,13 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.GetCurrentEventTime:TpvInt64;
+function TpvApplicationInputProcessorQueue.GetCurrentEventTime:TpvInt64;
 begin
  result:=fCurrentEventTime;
 end;
 
-function TVulkanApplicationInputProcessorQueue.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
-var Event:PVulkanApplicationInputProcessorQueueEvent;
+function TpvApplicationInputProcessorQueue.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
  fCriticalSection.Acquire;
@@ -2149,8 +2149,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
-var Event:PVulkanApplicationInputProcessorQueueEvent;
+function TpvApplicationInputProcessorQueue.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
  fCriticalSection.Acquire;
@@ -2167,8 +2167,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
-var Event:PVulkanApplicationInputProcessorQueueEvent;
+function TpvApplicationInputProcessorQueue.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
  fCriticalSection.Acquire;
@@ -2185,8 +2185,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
-var Event:PVulkanApplicationInputProcessorQueueEvent;
+function TpvApplicationInputProcessorQueue.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
  fCriticalSection.Acquire;
@@ -2206,8 +2206,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
-var Event:PVulkanApplicationInputProcessorQueueEvent;
+function TpvApplicationInputProcessorQueue.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
  fCriticalSection.Acquire;
@@ -2227,8 +2227,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
-var Event:PVulkanApplicationInputProcessorQueueEvent;
+function TpvApplicationInputProcessorQueue.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
  fCriticalSection.Acquire;
@@ -2246,8 +2246,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
-var Event:PVulkanApplicationInputProcessorQueueEvent;
+function TpvApplicationInputProcessorQueue.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
  fCriticalSection.Acquire;
@@ -2264,8 +2264,8 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputProcessorQueue.Scrolled(const aAmount:TpvInt32):boolean;
-var Event:PVulkanApplicationInputProcessorQueueEvent;
+function TpvApplicationInputProcessorQueue.Scrolled(const aAmount:TpvInt32):boolean;
+var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
  fCriticalSection.Acquire;
@@ -2281,24 +2281,24 @@ begin
  end;
 end;
 
-constructor TVulkanApplicationInputMultiplexer.Create;
+constructor TpvApplicationInputMultiplexer.Create;
 begin
  inherited Create;
  fProcessors:=TList.Create;
 end;
 
-destructor TVulkanApplicationInputMultiplexer.Destroy;
+destructor TpvApplicationInputMultiplexer.Destroy;
 begin
  FreeAndNil(fProcessors);
  inherited Destroy;
 end;
 
-procedure TVulkanApplicationInputMultiplexer.AddProcessor(const aProcessor:TVulkanApplicationInputProcessor);
+procedure TpvApplicationInputMultiplexer.AddProcessor(const aProcessor:TpvApplicationInputProcessor);
 begin
  fProcessors.Add(aProcessor);
 end;
 
-procedure TVulkanApplicationInputMultiplexer.AddProcessors(const aProcessors:array of TVulkanApplicationInputProcessor);
+procedure TpvApplicationInputMultiplexer.AddProcessors(const aProcessors:array of TpvApplicationInputProcessor);
 var i:TpvInt32;
 begin
  for i:=0 to length(aProcessors)-1 do begin
@@ -2306,34 +2306,34 @@ begin
  end;
 end;
 
-procedure TVulkanApplicationInputMultiplexer.InsertProcessor(const aIndex:TpvInt32;const aProcessor:TVulkanApplicationInputProcessor);
+procedure TpvApplicationInputMultiplexer.InsertProcessor(const aIndex:TpvInt32;const aProcessor:TpvApplicationInputProcessor);
 begin
  fProcessors.Insert(aIndex,aProcessor);
 end;
 
-procedure TVulkanApplicationInputMultiplexer.RemoveProcessor(const aProcessor:TVulkanApplicationInputProcessor);
+procedure TpvApplicationInputMultiplexer.RemoveProcessor(const aProcessor:TpvApplicationInputProcessor);
 begin
  fProcessors.Remove(aProcessor);
 end;
 
-procedure TVulkanApplicationInputMultiplexer.RemoveProcessor(const aIndex:TpvInt32);
+procedure TpvApplicationInputMultiplexer.RemoveProcessor(const aIndex:TpvInt32);
 begin
  fProcessors.Delete(aIndex);
 end;
 
-procedure TVulkanApplicationInputMultiplexer.ClearProcessors;
+procedure TpvApplicationInputMultiplexer.ClearProcessors;
 begin
  fProcessors.Clear;
 end;
 
-function TVulkanApplicationInputMultiplexer.CountProcessors:TpvInt32;
+function TpvApplicationInputMultiplexer.CountProcessors:TpvInt32;
 begin
  result:=fProcessors.Count;
 end;
 
-function TVulkanApplicationInputMultiplexer.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 var i:TpvInt32;
-    p:TVulkanApplicationInputProcessor;
+    p:TpvApplicationInputProcessor;
 begin
  result:=false;
  for i:=0 to fProcessors.Count-1 do begin
@@ -2347,9 +2347,9 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 var i:TpvInt32;
-    p:TVulkanApplicationInputProcessor;
+    p:TpvApplicationInputProcessor;
 begin
  result:=false;
  for i:=0 to fProcessors.Count-1 do begin
@@ -2363,9 +2363,9 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 var i:TpvInt32;
-    p:TVulkanApplicationInputProcessor;
+    p:TpvApplicationInputProcessor;
 begin
  result:=false;
  for i:=0 to fProcessors.Count-1 do begin
@@ -2379,9 +2379,9 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var i:TpvInt32;
-    p:TVulkanApplicationInputProcessor;
+    p:TpvApplicationInputProcessor;
 begin
  result:=false;
  for i:=0 to fProcessors.Count-1 do begin
@@ -2395,9 +2395,9 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var i:TpvInt32;
-    p:TVulkanApplicationInputProcessor;
+    p:TpvApplicationInputProcessor;
 begin
  result:=false;
  for i:=0 to fProcessors.Count-1 do begin
@@ -2411,9 +2411,9 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 var i:TpvInt32;
-    p:TVulkanApplicationInputProcessor;
+    p:TpvApplicationInputProcessor;
 begin
  result:=false;
  for i:=0 to fProcessors.Count-1 do begin
@@ -2427,9 +2427,9 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
 var i:TpvInt32;
-    p:TVulkanApplicationInputProcessor;
+    p:TpvApplicationInputProcessor;
 begin
  result:=false;
  for i:=0 to fProcessors.Count-1 do begin
@@ -2443,9 +2443,9 @@ begin
  end;
 end;
 
-function TVulkanApplicationInputMultiplexer.Scrolled(const aAmount:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.Scrolled(const aAmount:TpvInt32):boolean;
 var i:TpvInt32;
-    p:TVulkanApplicationInputProcessor;
+    p:TpvApplicationInputProcessor;
 begin
  result:=false;
  for i:=0 to fProcessors.Count-1 do begin
@@ -2459,7 +2459,7 @@ begin
  end;
 end;
 
-constructor TVulkanApplicationJoystick.Create(const aIndex:TpvInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController);
+constructor TpvApplicationJoystick.Create(const aIndex:TpvInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController);
 begin
  inherited Create;
  fIndex:=aIndex;
@@ -2472,7 +2472,7 @@ begin
  end;
 end;
 
-destructor TVulkanApplicationJoystick.Destroy;
+destructor TpvApplicationJoystick.Destroy;
 begin
  if assigned(fGameController) then begin
   SDL_GameControllerClose(fGameController);
@@ -2482,7 +2482,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TVulkanApplicationJoystick.Initialize;
+procedure TpvApplicationJoystick.Initialize;
 begin
  fCountAxes:=SDL_JoystickNumAxes(fJoystick);
  fCountBalls:=SDL_JoystickNumBalls(fJoystick);
@@ -2490,72 +2490,72 @@ begin
  fCountButtons:=SDL_JoystickNumButtons(fJoystick);
 end;
 
-function TVulkanApplicationJoystick.IsGameController:boolean;
+function TpvApplicationJoystick.IsGameController:boolean;
 begin
  result:=assigned(fGameController);
 end;
 
-function TVulkanApplicationJoystick.Index:TpvInt32;
+function TpvApplicationJoystick.Index:TpvInt32;
 begin
  result:=fIndex;
 end;
 
-function TVulkanApplicationJoystick.ID:TpvInt32;
+function TpvApplicationJoystick.ID:TpvInt32;
 begin
  result:=SDL_JoystickInstanceID(fJoystick);
 end;
 
-function TVulkanApplicationJoystick.Name:TVulkanApplicationRawByteString;
+function TpvApplicationJoystick.Name:TpvApplicationRawByteString;
 begin
  result:=SDL_JoystickName(fJoystick);
 end;
 
-function TVulkanApplicationJoystick.GUID:TGUID;
+function TpvApplicationJoystick.GUID:TGUID;
 begin
  result:=SDL_JoystickGetGUID(fJoystick);
 end;
 
-function TVulkanApplicationJoystick.DeviceGUID:TGUID;
+function TpvApplicationJoystick.DeviceGUID:TGUID;
 begin
  result:=SDL_JoystickGetDeviceGUID(fJoystick);
 end;
 
-function TVulkanApplicationJoystick.CountAxes:TpvInt32;
+function TpvApplicationJoystick.CountAxes:TpvInt32;
 begin
  result:=fCountAxes;
 end;
 
-function TVulkanApplicationJoystick.CountBalls:TpvInt32;
+function TpvApplicationJoystick.CountBalls:TpvInt32;
 begin
  result:=fCountBalls;
 end;
 
-function TVulkanApplicationJoystick.CountHats:TpvInt32;
+function TpvApplicationJoystick.CountHats:TpvInt32;
 begin
  result:=fCountHats;
 end;
 
-function TVulkanApplicationJoystick.CountButtons:TpvInt32;
+function TpvApplicationJoystick.CountButtons:TpvInt32;
 begin
  result:=fCountButtons;
 end;
 
-procedure TVulkanApplicationJoystick.Update;
+procedure TpvApplicationJoystick.Update;
 begin
  SDL_JoystickUpdate;
 end;
 
-function TVulkanApplicationJoystick.GetAxis(const aAxisIndex:TpvInt32):TpvInt32;
+function TpvApplicationJoystick.GetAxis(const aAxisIndex:TpvInt32):TpvInt32;
 begin
  result:=SDL_JoystickGetAxis(fJoystick,aAxisIndex);
 end;
 
-function TVulkanApplicationJoystick.GetBall(const aBallIndex:TpvInt32;out aDeltaX,aDeltaY:TpvInt32):boolean;
+function TpvApplicationJoystick.GetBall(const aBallIndex:TpvInt32;out aDeltaX,aDeltaY:TpvInt32):boolean;
 begin
  result:=SDL_JoystickGetBall(fJoystick,aBallIndex,@aDeltaX,@aDeltaY)<>0;
 end;
 
-function TVulkanApplicationJoystick.GetHat(const aHatIndex:TpvInt32):TpvInt32;
+function TpvApplicationJoystick.GetHat(const aHatIndex:TpvInt32):TpvInt32;
 begin
  case SDL_JoystickGetHat(fJoystick,aHatIndex) of
   SDL_HAT_LEFTUP:begin
@@ -2591,12 +2591,12 @@ begin
  end;
 end;
 
-function TVulkanApplicationJoystick.GetButton(const aButtonIndex:TpvInt32):boolean;
+function TpvApplicationJoystick.GetButton(const aButtonIndex:TpvInt32):boolean;
 begin
  result:=SDL_JoystickGetButton(fJoystick,aButtonIndex)<>0;
 end;
 
-function TVulkanApplicationJoystick.IsGameControllerAttached:boolean;
+function TpvApplicationJoystick.IsGameControllerAttached:boolean;
 begin
  if assigned(fGameController) then begin
   result:=SDL_GameControllerGetAttached(fGameController)<>0;
@@ -2605,7 +2605,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationJoystick.GetGameControllerAxis(const aAxis:TpvInt32):TpvInt32;
+function TpvApplicationJoystick.GetGameControllerAxis(const aAxis:TpvInt32):TpvInt32;
 begin
  if assigned(fGameController) then begin
   case aAxis of
@@ -2639,7 +2639,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationJoystick.GetGameControllerButton(const aButton:TpvInt32):boolean;
+function TpvApplicationJoystick.GetGameControllerButton(const aButton:TpvInt32):boolean;
 begin
  if assigned(fGameController) then begin
   case aButton of
@@ -2697,7 +2697,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationJoystick.GetGameControllerName:TVulkanApplicationRawByteString;
+function TpvApplicationJoystick.GetGameControllerName:TpvApplicationRawByteString;
 begin
  if assigned(fGameController) then begin
   result:=SDL_GameControllerName(fGameController);
@@ -2706,7 +2706,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationJoystick.GetGameControllerMapping:TVulkanApplicationRawByteString;
+function TpvApplicationJoystick.GetGameControllerMapping:TpvApplicationRawByteString;
 begin
  if assigned(fGameController) then begin
   result:=SDL_GameControllerMapping(fGameController);
@@ -2715,7 +2715,7 @@ begin
  end;
 end;
 
-constructor TVulkanApplicationInput.Create(const aVulkanApplication:TVulkanApplication);
+constructor TpvApplicationInput.Create(const aVulkanApplication:TpvApplication);
 begin
  inherited Create;
  fVulkanApplication:=aVulkanApplication;
@@ -3046,10 +3046,10 @@ begin
  fMainJoystick:=nil;
 end;
 
-destructor TVulkanApplicationInput.Destroy;
+destructor TpvApplicationInput.Destroy;
 begin
  while fJoysticks.Count>0 do begin
-  TVulkanApplicationJoystick(fJoysticks[fJoysticks.Count-1]).Free;
+  TpvApplicationJoystick(fJoysticks[fJoysticks.Count-1]).Free;
   fJoysticks.Delete(fJoysticks.Count-1);
  end;
  fJoysticks.Free;
@@ -3058,7 +3058,7 @@ begin
  inherited Destroy;
 end;
 
-function TVulkanApplicationInput.TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
+function TpvApplicationInput.TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
 begin
  case aKeyCode of
   SDLK_BACKSPACE:begin
@@ -3836,7 +3836,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.TranslateSDLKeyModifier(const aKeyModifier:TpvInt32):TpvInt32;
+function TpvApplicationInput.TranslateSDLKeyModifier(const aKeyModifier:TpvInt32):TpvInt32;
 begin
  result:=0;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_LSHIFT)<>0 then begin
@@ -3879,18 +3879,18 @@ end;
 
 const SDL_KEYTYPED=$30000;
 
-procedure TVulkanApplicationInput.AddEvent(const aEvent:TSDL_Event);
+procedure TpvApplicationInput.AddEvent(const aEvent:TSDL_Event);
 begin
  if fEventCount>=length(fEvents) then begin
   SetLength(fEvents,(fEventCount+1)*2);
   SetLength(fEventTimes,(fEventCount+1)*2);
  end;
  fEvents[fEventCount]:=aEvent;
- fEventTimes[fEventCount]:=VulkanApplication.fHighResolutionTimer.ToNanoseconds(VulkanApplication.fHighResolutionTimer.GetTime);
+ fEventTimes[fEventCount]:=pvApplication.fHighResolutionTimer.ToNanoseconds(pvApplication.fHighResolutionTimer.GetTime);
  inc(fEventCount);
 end;
 
-procedure TVulkanApplicationInput.ProcessEvents;
+procedure TpvApplicationInput.ProcessEvents;
 var Index,PointerID,KeyCode,KeyModifier:TpvInt32;
     Event:PSDL_Event;
     OK:boolean;
@@ -3911,7 +3911,7 @@ begin
         fKeyDown[KeyCode and $ffff]:=true;
         inc(fKeyDownCount);
         fJustKeyDown[KeyCode and $ffff]:=true;
-        if (not VulkanApplication.KeyDown(KeyCode,KeyModifier)) and assigned(fProcessor) then begin
+        if (not pvApplication.KeyDown(KeyCode,KeyModifier)) and assigned(fProcessor) then begin
          fProcessor.KeyDown(KeyCode,KeyModifier);
         end;
        end;
@@ -3921,12 +3921,12 @@ begin
          dec(fKeyDownCount);
         end;
         fJustKeyDown[KeyCode and $ffff]:=false;
-        if (not VulkanApplication.KeyUp(KeyCode,KeyModifier)) and assigned(fProcessor) then begin
+        if (not pvApplication.KeyUp(KeyCode,KeyModifier)) and assigned(fProcessor) then begin
          fProcessor.KeyUp(KeyCode,KeyModifier);
         end;
        end;
        SDL_KEYTYPED:begin
-        if (not VulkanApplication.KeyTyped(KeyCode,KeyModifier)) and assigned(fProcessor) then begin
+        if (not pvApplication.KeyTyped(KeyCode,KeyModifier)) and assigned(fProcessor) then begin
          fProcessor.KeyTyped(KeyCode,KeyModifier);
         end;
        end;
@@ -3938,9 +3938,9 @@ begin
       fMouseDeltaX:=Event^.motion.xrel;
       fMouseDeltaY:=Event^.motion.yrel;
       if fMouseDown<>0 then begin
-       OK:=VulkanApplication.TouchDragged(Event^.motion.x,Event^.motion.y,1.0,0);
+       OK:=pvApplication.TouchDragged(Event^.motion.x,Event^.motion.y,1.0,0);
       end else begin
-       OK:=VulkanApplication.MouseMoved(Event^.motion.x,Event^.motion.y);
+       OK:=pvApplication.MouseMoved(Event^.motion.x,Event^.motion.y);
       end;
       if assigned(fProcessor) and not OK then begin
        if fMouseDown<>0 then begin
@@ -3961,7 +3961,7 @@ begin
         fMouseDown:=fMouseDown or 1;
         fMouseJustDown:=fMouseJustDown or 1;
         fJustTouched:=true;
-        if (not VulkanApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT)) and assigned(fProcessor) then begin
+        if (not pvApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT)) and assigned(fProcessor) then begin
          fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT);
         end;
        end;
@@ -3969,7 +3969,7 @@ begin
         fMouseDown:=fMouseDown or 2;
         fMouseJustDown:=fMouseJustDown or 2;
         fJustTouched:=true;
-        if (not VulkanApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT)) and assigned(fProcessor) then begin
+        if (not pvApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT)) and assigned(fProcessor) then begin
          fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT);
         end;
        end;
@@ -3977,7 +3977,7 @@ begin
         fMouseDown:=fMouseDown or 4;
         fMouseJustDown:=fMouseJustDown or 4;
         fJustTouched:=true;
-        if (not VulkanApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE)) and assigned(fProcessor) then begin
+        if (not pvApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE)) and assigned(fProcessor) then begin
          fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE);
         end;
        end;
@@ -3993,40 +3993,40 @@ begin
        SDL_BUTTON_LEFT:begin
         fMouseDown:=fMouseDown and not 1;
         fMouseJustDown:=fMouseJustDown and not 1;
-        if (not VulkanApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT)) and assigned(fProcessor) then begin
+        if (not pvApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT)) and assigned(fProcessor) then begin
          fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT);
         end;
        end;
        SDL_BUTTON_RIGHT:begin
         fMouseDown:=fMouseDown and not 2;
         fMouseJustDown:=fMouseJustDown and not 2;
-        if (not VulkanApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT)) and assigned(fProcessor) then begin
+        if (not pvApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT)) and assigned(fProcessor) then begin
          fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT);
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
         fMouseDown:=fMouseDown and not 4;
         fMouseJustDown:=fMouseJustDown and not 4;
-        if (not VulkanApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE)) and assigned(fProcessor) then begin
+        if (not pvApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE)) and assigned(fProcessor) then begin
          fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE);
         end;
        end;
       end;
      end;
      SDL_MOUSEWHEEL:begin
-      if (not VulkanApplication.Scrolled(Event^.wheel.x+Event^.wheel.y)) and assigned(fProcessor) then begin
+      if (not pvApplication.Scrolled(Event^.wheel.x+Event^.wheel.y)) and assigned(fProcessor) then begin
        fProcessor.Scrolled(Event^.wheel.x+Event^.wheel.y);
       end;
      end;
      SDL_FINGERMOTION:begin
       PointerID:=Event^.tfinger.fingerId and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=Event^.tfinger.x*VulkanApplication.fWidth;
-      fPointerY[PointerID]:=Event^.tfinger.y*VulkanApplication.fHeight;
+      fPointerX[PointerID]:=Event^.tfinger.x*pvApplication.fWidth;
+      fPointerY[PointerID]:=Event^.tfinger.y*pvApplication.fHeight;
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
-      fPointerDeltaX[PointerID]:=Event^.tfinger.dx*VulkanApplication.fWidth;
-      fPointerDeltaY[PointerID]:=Event^.tfinger.dy*VulkanApplication.fHeight;
-      if (not VulkanApplication.TouchDragged(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1)) and assigned(fProcessor) then begin
+      fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
+      if (not pvApplication.TouchDragged(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1)) and assigned(fProcessor) then begin
        fProcessor.TouchDragged(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1);
       end;
      end;
@@ -4042,7 +4042,7 @@ begin
       fPointerDown[PointerID]:=true;
       fPointerJustDown[PointerID]:=true;
       fJustTouched:=true;
-      if (not VulkanApplication.TouchDown(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
+      if (not pvApplication.TouchDown(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
        fProcessor.TouchDown(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0);
       end;
      end;
@@ -4059,7 +4059,7 @@ begin
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy;
       fPointerDown[PointerID]:=false;
       fPointerJustDown[PointerID]:=false;
-      if (not VulkanApplication.TouchUp(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
+      if (not pvApplication.TouchUp(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
        fProcessor.TouchUp(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0);
       end;
      end;
@@ -4072,37 +4072,37 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetAccelerometerX:TpvFloat;
+function TpvApplicationInput.GetAccelerometerX:TpvFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetAccelerometerY:TpvFloat;
+function TpvApplicationInput.GetAccelerometerY:TpvFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetAccelerometerZ:TpvFloat;
+function TpvApplicationInput.GetAccelerometerZ:TpvFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetOrientationAzimuth:TpvFloat;
+function TpvApplicationInput.GetOrientationAzimuth:TpvFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetOrientationPitch:TpvFloat;
+function TpvApplicationInput.GetOrientationPitch:TpvFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetOrientationRoll:TpvFloat;
+function TpvApplicationInput.GetOrientationRoll:TpvFloat;
 begin
  result:=0.0;
 end;
 
-function TVulkanApplicationInput.GetMaxPointerID:TpvInt32;
+function TpvApplicationInput.GetMaxPointerID:TpvInt32;
 begin
  fCriticalSection.Acquire;
  try
@@ -4112,7 +4112,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetPointerX(const aPointerID:TpvInt32=0):TpvFloat;
+function TpvApplicationInput.GetPointerX(const aPointerID:TpvInt32=0):TpvFloat;
 begin
  fCriticalSection.Acquire;
  try
@@ -4128,7 +4128,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetPointerDeltaX(const aPointerID:TpvInt32=0):TpvFloat;
+function TpvApplicationInput.GetPointerDeltaX(const aPointerID:TpvInt32=0):TpvFloat;
 begin
  fCriticalSection.Acquire;
  try
@@ -4144,7 +4144,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetPointerY(const aPointerID:TpvInt32=0):TpvFloat;
+function TpvApplicationInput.GetPointerY(const aPointerID:TpvInt32=0):TpvFloat;
 begin
  fCriticalSection.Acquire;
  try
@@ -4160,7 +4160,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetPointerDeltaY(const aPointerID:TpvInt32=0):TpvFloat;
+function TpvApplicationInput.GetPointerDeltaY(const aPointerID:TpvInt32=0):TpvFloat;
 begin
  fCriticalSection.Acquire;
  try
@@ -4176,7 +4176,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetPointerPressure(const aPointerID:TpvInt32=0):TpvFloat;
+function TpvApplicationInput.GetPointerPressure(const aPointerID:TpvInt32=0):TpvFloat;
 begin
  fCriticalSection.Acquire;
  try
@@ -4192,7 +4192,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsPointerTouched(const aPointerID:TpvInt32=0):boolean;
+function TpvApplicationInput.IsPointerTouched(const aPointerID:TpvInt32=0):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4208,7 +4208,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsPointerJustTouched(const aPointerID:TpvInt32=0):boolean;
+function TpvApplicationInput.IsPointerJustTouched(const aPointerID:TpvInt32=0):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4226,7 +4226,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsTouched:boolean;
+function TpvApplicationInput.IsTouched:boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4236,7 +4236,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.JustTouched:boolean;
+function TpvApplicationInput.JustTouched:boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4246,7 +4246,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsButtonPressed(const aButton:TpvInt32):boolean;
+function TpvApplicationInput.IsButtonPressed(const aButton:TpvInt32):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4269,7 +4269,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsKeyPressed(const aKeyCode:TpvInt32):boolean;
+function TpvApplicationInput.IsKeyPressed(const aKeyCode:TpvInt32):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4289,7 +4289,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsKeyJustPressed(const aKeyCode:TpvInt32):boolean;
+function TpvApplicationInput.IsKeyJustPressed(const aKeyCode:TpvInt32):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4307,7 +4307,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetKeyName(const aKeyCode:TpvInt32):TVulkanApplicationRawByteString;
+function TpvApplicationInput.GetKeyName(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
 begin
  if (aKeyCode>=low(fKeyCodeNames)) and (aKeyCode<=high(fKeyCodeNames)) then begin
   result:=fKeyCodeNames[aKeyCode];
@@ -4316,49 +4316,49 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetKeyModifier:TpvInt32;
+function TpvApplicationInput.GetKeyModifier:TpvInt32;
 begin
  result:=TranslateSDLKeyModifier(SDL_GetModState);
 end;
 
-procedure TVulkanApplicationInput.GetTextInput(const aCallback:TVulkanApplicationInputTextInputCallback;const aTitle,aText:TVulkanApplicationRawByteString;const aPlaceholder:TVulkanApplicationRawByteString='');
+procedure TpvApplicationInput.GetTextInput(const aCallback:TpvApplicationInputTextInputCallback;const aTitle,aText:TpvApplicationRawByteString;const aPlaceholder:TpvApplicationRawByteString='');
 begin
 end;
 
-procedure TVulkanApplicationInput.SetOnscreenKeyboardVisible(const aVisible:boolean);
+procedure TpvApplicationInput.SetOnscreenKeyboardVisible(const aVisible:boolean);
 begin
 end;
 
-procedure TVulkanApplicationInput.Vibrate(const aMilliseconds:TpvInt32);
+procedure TpvApplicationInput.Vibrate(const aMilliseconds:TpvInt32);
 begin
 end;
 
-procedure TVulkanApplicationInput.Vibrate(const aPattern:array of TpvInt32;const aRepeats:TpvInt32);
+procedure TpvApplicationInput.Vibrate(const aPattern:array of TpvInt32;const aRepeats:TpvInt32);
 begin
 end;
 
-procedure TVulkanApplicationInput.CancelVibrate;
+procedure TpvApplicationInput.CancelVibrate;
 begin
 end;
 
-procedure TVulkanApplicationInput.GetRotationMatrix(const aMatrix3x3:pointer);
+procedure TpvApplicationInput.GetRotationMatrix(const aMatrix3x3:pointer);
 begin
 end;
 
-function TVulkanApplicationInput.GetCurrentEventTime:int64;
+function TpvApplicationInput.GetCurrentEventTime:int64;
 begin
  result:=fCurrentEventTime;
 end;
 
-procedure TVulkanApplicationInput.SetCatchBackKey(const aCatchBack:boolean);
+procedure TpvApplicationInput.SetCatchBackKey(const aCatchBack:boolean);
 begin
 end;
 
-procedure TVulkanApplicationInput.SetCatchMenuKey(const aCatchMenu:boolean);
+procedure TpvApplicationInput.SetCatchMenuKey(const aCatchMenu:boolean);
 begin
 end;
 
-procedure TVulkanApplicationInput.SetInputProcessor(const aProcessor:TVulkanApplicationInputProcessor);
+procedure TpvApplicationInput.SetInputProcessor(const aProcessor:TpvApplicationInputProcessor);
 begin
  fCriticalSection.Acquire;
  try
@@ -4368,7 +4368,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetInputProcessor:TVulkanApplicationInputProcessor;
+function TpvApplicationInput.GetInputProcessor:TpvApplicationInputProcessor;
 begin
  fCriticalSection.Acquire;
  try
@@ -4378,7 +4378,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.IsPeripheralAvailable(const aPeripheral:TpvInt32):boolean;
+function TpvApplicationInput.IsPeripheralAvailable(const aPeripheral:TpvInt32):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4398,10 +4398,10 @@ begin
  end;
 end;
 
-function TVulkanApplicationInput.GetNativeOrientation:TpvInt32;
+function TpvApplicationInput.GetNativeOrientation:TpvInt32;
 var SDLDisplayMode:TSDL_DisplayMode;
 begin
- if SDL_GetDesktopDisplayMode(SDL_GetWindowDisplayIndex(VulkanApplication.fSurfaceWindow),@SDLDisplayMode)=0 then begin
+ if SDL_GetDesktopDisplayMode(SDL_GetWindowDisplayIndex(pvApplication.fSurfaceWindow),@SDLDisplayMode)=0 then begin
   if SDLDisplayMode.w<SDLDisplayMode.h then begin
    result:=ORIENTATION_LANDSCAPE;
   end else begin
@@ -4412,49 +4412,49 @@ begin
  end;
 end;
 
-procedure TVulkanApplicationInput.SetCursorCatched(const aCatched:boolean);
+procedure TpvApplicationInput.SetCursorCatched(const aCatched:boolean);
 begin
  fCriticalSection.Acquire;
  try
-  VulkanApplication.fCatchMouse:=aCatched;
+  pvApplication.fCatchMouse:=aCatched;
  finally
   fCriticalSection.Release;
  end;
 end;
 
-function TVulkanApplicationInput.IsCursorCatched:boolean;
+function TpvApplicationInput.IsCursorCatched:boolean;
 begin
  fCriticalSection.Acquire;
  try
-  result:=VulkanApplication.fCatchMouse;
+  result:=pvApplication.fCatchMouse;
  finally
   fCriticalSection.Release;
  end;
 end;
 
-procedure TVulkanApplicationInput.SetCursorPosition(const pX,pY:TpvInt32);
+procedure TpvApplicationInput.SetCursorPosition(const pX,pY:TpvInt32);
 begin
  fCriticalSection.Acquire;
  try
-  SDL_WarpMouseInWindow(VulkanApplication.fSurfaceWindow,pX,pY);
+  SDL_WarpMouseInWindow(pvApplication.fSurfaceWindow,pX,pY);
  finally
   fCriticalSection.Release;
  end;
 end;
 
-function TVulkanApplicationInput.GetJoystickCount:TpvInt32;
+function TpvApplicationInput.GetJoystickCount:TpvInt32;
 begin
  result:=SDL_NumJoysticks;
 end;
 
-function TVulkanApplicationInput.GetJoystick(const aIndex:TpvInt32=-1):TVulkanApplicationJoystick;
+function TpvApplicationInput.GetJoystick(const aIndex:TpvInt32=-1):TpvApplicationJoystick;
 var ListIndex:TpvInt32;
 begin
  if (aIndex>=0) and (aIndex<SDL_NumJoysticks) then begin
   result:=nil;
   for ListIndex:=0 to fJoysticks.Count-1 do begin
-   if TVulkanApplicationJoystick(fJoysticks[ListIndex]).fIndex=aIndex then begin
-    result:=TVulkanApplicationJoystick(fJoysticks[ListIndex]);
+   if TpvApplicationJoystick(fJoysticks[ListIndex]).fIndex=aIndex then begin
+    result:=TpvApplicationJoystick(fJoysticks[ListIndex]);
     exit;
    end;
   end;
@@ -4463,137 +4463,137 @@ begin
  end;
 end;
 
-constructor TVulkanApplicationLifecycleListener.Create;
+constructor TpvApplicationLifecycleListener.Create;
 begin
  inherited Create;
 end;
 
-destructor TVulkanApplicationLifecycleListener.Destroy;
+destructor TpvApplicationLifecycleListener.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TVulkanApplicationLifecycleListener.Resume:boolean;
+function TpvApplicationLifecycleListener.Resume:boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationLifecycleListener.Pause:boolean;
+function TpvApplicationLifecycleListener.Pause:boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationLifecycleListener.LowMemory:boolean;
+function TpvApplicationLifecycleListener.LowMemory:boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationLifecycleListener.Terminate:boolean;
+function TpvApplicationLifecycleListener.Terminate:boolean;
 begin
  result:=false;
 end;
 
-constructor TVulkanApplicationScreen.Create;
+constructor TpvApplicationScreen.Create;
 begin
  inherited Create;
 end;
 
-destructor TVulkanApplicationScreen.Destroy;
+destructor TpvApplicationScreen.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TVulkanApplicationScreen.Show;
+procedure TpvApplicationScreen.Show;
 begin
 end;
 
-procedure TVulkanApplicationScreen.Hide;
+procedure TpvApplicationScreen.Hide;
 begin
 end;
 
-procedure TVulkanApplicationScreen.Resume;
+procedure TpvApplicationScreen.Resume;
 begin
 end;
 
-procedure TVulkanApplicationScreen.Pause;
+procedure TpvApplicationScreen.Pause;
 begin
 end;
 
-procedure TVulkanApplicationScreen.LowMemory;
+procedure TpvApplicationScreen.LowMemory;
 begin
 end;
 
-procedure TVulkanApplicationScreen.Resize(const aWidth,aHeight:TpvInt32);
+procedure TpvApplicationScreen.Resize(const aWidth,aHeight:TpvInt32);
 begin
 end;
 
-procedure TVulkanApplicationScreen.AfterCreateSwapChain;
+procedure TpvApplicationScreen.AfterCreateSwapChain;
 begin
 end;
 
-procedure TVulkanApplicationScreen.BeforeDestroySwapChain;
+procedure TpvApplicationScreen.BeforeDestroySwapChain;
 begin
 end;
 
-function TVulkanApplicationScreen.HandleEvent(const aEvent:TSDL_Event):boolean;
-begin
- result:=false;
-end;
-
-function TVulkanApplicationScreen.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvApplicationScreen.HandleEvent(const aEvent:TSDL_Event):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvApplicationScreen.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvApplicationScreen.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationScreen.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationScreen.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TpvApplicationScreen.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TpvApplicationScreen.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.Scrolled(const aAmount:TpvInt32):boolean;
+function TpvApplicationScreen.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TVulkanApplicationScreen.CanBeParallelProcessed:boolean;
+function TpvApplicationScreen.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-procedure TVulkanApplicationScreen.Update(const aDeltaTime:TpvDouble);
+function TpvApplicationScreen.CanBeParallelProcessed:boolean;
+begin
+ result:=false;
+end;
+
+procedure TpvApplicationScreen.Update(const aDeltaTime:TpvDouble);
 begin
 end;
 
-procedure TVulkanApplicationScreen.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TpvApplicationScreen.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
 end;
 
-constructor TVulkanApplicationAssets.Create(const aVulkanApplication:TVulkanApplication);
+constructor TpvApplicationAssets.Create(const aVulkanApplication:TpvApplication);
 begin
  inherited Create;
  fVulkanApplication:=aVulkanApplication;
@@ -4608,23 +4608,23 @@ begin
 {$ifend}
 end;
 
-destructor TVulkanApplicationAssets.Destroy;
+destructor TpvApplicationAssets.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TVulkanApplicationAssets.CorrectFileName(const aFileName:string):string;
+function TpvApplicationAssets.CorrectFileName(const aFileName:string):string;
 begin
  result:=StringReplace(StringReplace({$ifndef Android}fBasePath+{$endif}aFileName,'/',PathDelim,[rfReplaceAll]),'\',PathDelim,[rfReplaceAll]);
 end;
 
-function TVulkanApplicationAssets.ExistAsset(const aFileName:string):boolean;
+function TpvApplicationAssets.ExistAsset(const aFileName:string):boolean;
 {$ifdef Android}
 var Asset:PAAsset;
 begin
  result:=false;
  if assigned(AndroidAssetManager) then begin
-  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(TVulkanApplicationRawByteString(CorrectFileName(aFileName))),AASSET_MODE_UNKNOWN);
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(TpvApplicationRawByteString(CorrectFileName(aFileName))),AASSET_MODE_UNKNOWN);
   if assigned(Asset) then begin
    AAsset_close(Asset);
    result:=true;
@@ -4639,14 +4639,14 @@ begin
 end;
 {$endif}
 
-function TVulkanApplicationAssets.GetAssetStream(const aFileName:string):TStream;
+function TpvApplicationAssets.GetAssetStream(const aFileName:string):TStream;
 {$ifdef Android}
 var Asset:PAAsset;
     Size:int64;
 begin
  result:=nil;
  if assigned(AndroidAssetManager) then begin
-  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(TVulkanApplicationRawByteString(CorrectFileName(aFileName))),AASSET_MODE_UNKNOWN);
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(TpvApplicationRawByteString(CorrectFileName(aFileName))),AASSET_MODE_UNKNOWN);
   if assigned(Asset) then begin
    try
     Size:=AAsset_getLength(Asset);
@@ -4670,13 +4670,13 @@ begin
 end;
 {$endif}
 
-function TVulkanApplicationAssets.GetAssetSize(const aFileName:string):int64;
+function TpvApplicationAssets.GetAssetSize(const aFileName:string):int64;
 {$ifdef Android}
 var Asset:PAAsset;
 begin
  result:=0;
  if assigned(AndroidAssetManager) then begin
-  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(TVulkanApplicationRawByteString(CorrectFileName(aFileName))),AASSET_MODE_UNKNOWN);
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(TpvApplicationRawByteString(CorrectFileName(aFileName))),AASSET_MODE_UNKNOWN);
   if assigned(Asset) then begin
    try
     result:=AAsset_getLength(Asset);
@@ -4702,18 +4702,18 @@ begin
 end;
 {$endif}
 
-constructor TVulkanApplicationFiles.Create(const aVulkanApplication:TVulkanApplication);
+constructor TpvApplicationFiles.Create(const aVulkanApplication:TpvApplication);
 begin
  inherited Create;
  fVulkanApplication:=aVulkanApplication;
 end;
 
-destructor TVulkanApplicationFiles.Destroy;
+destructor TpvApplicationFiles.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TVulkanApplicationFiles.GetLocalStoragePath:string;
+function TpvApplicationFiles.GetLocalStoragePath:string;
 begin
  if length(fVulkanApplication.fLocalDataPath)>0 then begin
   result:=IncludeTrailingPathDelimiter(fVulkanApplication.fLocalDataPath);
@@ -4722,7 +4722,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationFiles.GetRoamingStoragePath:string;
+function TpvApplicationFiles.GetRoamingStoragePath:string;
 begin
  if length(fVulkanApplication.fRoamingDataPath)>0 then begin
   result:=IncludeTrailingPathDelimiter(fVulkanApplication.fRoamingDataPath);
@@ -4731,7 +4731,7 @@ begin
  end;
 end;
 
-function TVulkanApplicationFiles.GetExternalStoragePath:string;
+function TpvApplicationFiles.GetExternalStoragePath:string;
 begin
  if length(fVulkanApplication.fExternalStoragePath)>0 then begin
   result:=IncludeTrailingPathDelimiter(fVulkanApplication.fExternalStoragePath);
@@ -4740,38 +4740,38 @@ begin
  end;
 end;
 
-function TVulkanApplicationFiles.IsLocalStorageAvailable:boolean;
+function TpvApplicationFiles.IsLocalStorageAvailable:boolean;
 begin
  result:=length(fVulkanApplication.fLocalDataPath)>0;
 end;
 
-function TVulkanApplicationFiles.IsRoamingStorageAvailable:boolean;
+function TpvApplicationFiles.IsRoamingStorageAvailable:boolean;
 begin
  result:=length(fVulkanApplication.fRoamingDataPath)>0;
 end;
 
-function TVulkanApplicationFiles.IsExternalStorageAvailable:boolean;
+function TpvApplicationFiles.IsExternalStorageAvailable:boolean;
 begin
  result:=length(fVulkanApplication.fExternalStoragePath)>0;
 end;
 
-constructor TVulkanApplicationClipboard.Create(const aVulkanApplication:TVulkanApplication);
+constructor TpvApplicationClipboard.Create(const aVulkanApplication:TpvApplication);
 begin
  inherited Create;
  fVulkanApplication:=aVulkanApplication;
 end;
 
-destructor TVulkanApplicationClipboard.Destroy;
+destructor TpvApplicationClipboard.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TVulkanApplicationClipboard.HasText:boolean;
+function TpvApplicationClipboard.HasText:boolean;
 begin
  result:=SDL_HasClipboardText<>SDL_FALSE;
 end;
 
-function TVulkanApplicationClipboard.GetText:TVulkanApplicationUTF8String;
+function TpvApplicationClipboard.GetText:TpvApplicationUTF8String;
 var p:PAnsiChar;
     l:TpvInt32;
 begin
@@ -4790,12 +4790,12 @@ begin
  end;
 end;
 
-procedure TVulkanApplicationClipboard.SetText(const aTextString:TVulkanApplicationUTF8String);
+procedure TpvApplicationClipboard.SetText(const aTextString:TpvApplicationUTF8String);
 begin
  SDL_SetClipboardText(PAnsiChar(aTextString));
 end;
 
-constructor TVulkanApplication.Create;
+constructor TpvApplication.Create;
 begin
 
  SDL_SetMainReady;
@@ -4827,15 +4827,15 @@ begin
 
  fPasMPInstance:=TPasMP.Create(-1,0,false,true,false,false);
 
- fHighResolutionTimer:=TVulkanApplicationHighResolutionTimer.Create;
+ fHighResolutionTimer:=TpvApplicationHighResolutionTimer.Create;
 
- fAssets:=TVulkanApplicationAssets.Create(self);
+ fAssets:=TpvApplicationAssets.Create(self);
 
- fFiles:=TVulkanApplicationFiles.Create(self);
+ fFiles:=TpvApplicationFiles.Create(self);
 
- fInput:=TVulkanApplicationInput.Create(self);
+ fInput:=TpvApplicationInput.Create(self);
 
- fClipboard:=TVulkanApplicationClipboard.Create(self);
+ fClipboard:=TpvApplicationClipboard.Create(self);
 
  fRunnableList:=nil;
  fRunnableListCount:=0;
@@ -4891,7 +4891,7 @@ begin
 
  fCountCPUThreads:=Max(1,TPasMP.GetCountOfHardwareThreads(fAvailableCPUCores));
 {$if defined(fpc) and defined(android)}
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('Detected CPU thread count: '+IntToStr(fCountCPUThreads))));
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('Detected CPU thread count: '+IntToStr(fCountCPUThreads))));
 {$ifend}
 
  fVulkanCountCommandQueues:=0;
@@ -4956,11 +4956,11 @@ begin
  
  fOnEvent:=nil;
 
- VulkanApplication:=self;
+ pvApplication:=self;
 
 end;
 
-destructor TVulkanApplication.Destroy;
+destructor TpvApplication.Destroy;
 begin
 
  FreeAndNil(fLifecycleListenerList);
@@ -4982,12 +4982,12 @@ begin
 
  FreeAndNil(fPasMPInstance);
 
- VulkanApplication:=nil;
+ pvApplication:=nil;
  
  inherited Destroy;
 end;
 
-procedure TVulkanApplication.VulkanDebugLn(const What:string);
+procedure TpvApplication.VulkanDebugLn(const What:string);
 {$if defined(Windows)}
 var StdOut:Windows.THandle;
 begin
@@ -5007,7 +5007,7 @@ begin
 end;
 {$ifend}
 
-function TVulkanApplication.VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TpvUInt64;const aLocation:TVkSize;aMessageCode:TpvInt32;const aLayerPrefix,aMessage:string):TVkBool32;
+function TpvApplication.VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TpvUInt64;const aLocation:TVkSize;aMessageCode:TpvInt32;const aLayerPrefix,aMessage:string):TVkBool32;
 var Prefix:string;
 begin
  try
@@ -5033,7 +5033,7 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.VulkanWaitIdle;
+procedure TpvApplication.VulkanWaitIdle;
 var Index:TpvInt32;
 begin
  if assigned(fVulkanDevice) then begin
@@ -5059,27 +5059,27 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.CreateVulkanDevice(const aSurface:TVulkanSurface=nil);
+procedure TpvApplication.CreateVulkanDevice(const aSurface:TpvVulkanSurface=nil);
 var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex:TpvInt32;
     FormatProperties:TVkFormatProperties;
 begin
  if not assigned(VulkanDevice) then begin
 
-  fVulkanDevice:=TVulkanDevice.Create(VulkanInstance,nil,aSurface,nil);
+  fVulkanDevice:=TpvVulkanDevice.Create(VulkanInstance,nil,aSurface,nil);
   fVulkanDevice.AddQueues;
   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   fVulkanDevice.Initialize;
 
   if (length(fVulkanPipelineCacheFileName)>0) and FileExists(fVulkanPipelineCacheFileName) then begin
    try
-    fVulkanPipelineCache:=TVulkanPipelineCache.CreateFromFile(fVulkanDevice,fVulkanPipelineCacheFileName);
+    fVulkanPipelineCache:=TpvVulkanPipelineCache.CreateFromFile(fVulkanDevice,fVulkanPipelineCacheFileName);
    except
-    on e:EVulkanPipelineCacheException do begin
-     fVulkanPipelineCache:=TVulkanPipelineCache.Create(fVulkanDevice);
+    on e:EpvVulkanPipelineCacheException do begin
+     fVulkanPipelineCache:=TpvVulkanPipelineCache.Create(fVulkanDevice);
     end;
    end;
   end else begin
-   fVulkanPipelineCache:=TVulkanPipelineCache.Create(fVulkanDevice);
+   fVulkanPipelineCache:=TpvVulkanPipelineCache.Create(fVulkanDevice);
   end;
 
   fVulkanCountCommandQueues:=length(fVulkanDevice.PhysicalDevice.QueueFamilyProperties);
@@ -5094,9 +5094,9 @@ begin
       (QueueFamilyIndex=fVulkanDevice.TransferQueueFamilyIndex) then begin
     for ThreadIndex:=0 to fCountCPUThreads do begin
      for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-      fVulkanCommandPools[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex]:=TVulkanCommandPool.Create(fVulkanDevice,QueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
-      fVulkanCommandBuffers[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex]:=TVulkanCommandBuffer.Create(fVulkanCommandPools[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex],VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-      fVulkanCommandBufferFences[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex]:=TVulkanFence.Create(fVulkanDevice);
+      fVulkanCommandPools[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex]:=TpvVulkanCommandPool.Create(fVulkanDevice,QueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+      fVulkanCommandBuffers[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPools[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex],VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+      fVulkanCommandBufferFences[QueueFamilyIndex,ThreadIndex,SwapChainImageIndex]:=TpvVulkanFence.Create(fVulkanDevice);
      end;
     end;
    end;
@@ -5156,20 +5156,20 @@ begin
 
   fVulkanInstance.Commands.GetPhysicalDeviceFormatProperties(fVulkanDevice.PhysicalDevice.Handle,fVulkanDepthImageFormat,@FormatProperties);
   if (FormatProperties.OptimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))=0 then begin
-   raise EVulkanException.Create('No suitable depth image format!');
+   raise EpvVulkanException.Create('No suitable depth image format!');
   end;
 
  end;
 end;
 
-procedure TVulkanApplication.CreateVulkanInstance;
+procedure TpvApplication.CreateVulkanInstance;
 var i:TpvInt32;
     SDL_SysWMinfo:TSDL_SysWMinfo;
 begin
  if not assigned(fVulkanInstance) then begin
   SDL_VERSION(SDL_SysWMinfo.version);
   if SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0 then begin
-   fVulkanInstance:=TVulkanInstance.Create(TVulkanCharString(Title),Version,
+   fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(Title),Version,
                                            'PasVulkanApplication',$0100,
                                            VK_API_VERSION_1_0,false,nil);
    for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
@@ -5210,7 +5210,7 @@ begin
     end;
 {$ifend}
     else begin
-     raise EVulkanException.Create('Vulkan initialization failure');
+     raise EpvVulkanException.Create('Vulkan initialization failure');
     end;
    end;
    if fVulkanDebugging and
@@ -5255,7 +5255,7 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.DestroyVulkanInstance;
+procedure TpvApplication.DestroyVulkanInstance;
 var Index,SubIndex,SubSubIndex:TpvInt32;
 begin
 
@@ -5311,17 +5311,17 @@ begin
 
 end;
 
-procedure TVulkanApplication.CreateVulkanSurface;
+procedure TpvApplication.CreateVulkanSurface;
 var SDL_SysWMinfo:TSDL_SysWMinfo;
-    VulkanSurfaceCreateInfo:TVulkanSurfaceCreateInfo;
+    VulkanSurfaceCreateInfo:TpvVulkanSurfaceCreateInfo;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
-  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TVulkanApplication.AllocateVulkanSurface');
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.AllocateVulkanSurface');
 {$ifend}
  if not assigned(fVulkanSurface) then begin
   SDL_VERSION(SDL_SysWMinfo.version);
   if SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0 then begin
-   FillChar(VulkanSurfaceCreateInfo,SizeOf(TVulkanSurfaceCreateInfo),#0);
+   FillChar(VulkanSurfaceCreateInfo,SizeOf(TpvVulkanSurfaceCreateInfo),#0);
    case SDL_SysWMinfo.subsystem of
 {$if defined(Android)}
     SDL_SYSWM_ANDROID:begin
@@ -5361,22 +5361,22 @@ begin
 {$ifend}
 {$if (defined(XCB) and not defined(XLIB)) and defined(Unix)}
     SDL_SYSWM_X11:begin
-     raise EVulkanException.Create('Vulkan initialization failure');
+     raise EpvVulkanException.Create('Vulkan initialization failure');
      exit;
     end;
 {$ifend}
     else begin
-     raise EVulkanException.Create('Vulkan initialization failure');
+     raise EpvVulkanException.Create('Vulkan initialization failure');
      exit;
     end;
    end;
 
-   fVulkanSurface:=TVulkanSurface.Create(fVulkanInstance,VulkanSurfaceCreateInfo);
+   fVulkanSurface:=TpvVulkanSurface.Create(fVulkanInstance,VulkanSurfaceCreateInfo);
 
    if not assigned(fVulkanDevice) then begin
     CreateVulkanDevice(fVulkanSurface);
     if not assigned(fVulkanDevice) then begin
-     raise EVulkanSurfaceException.Create('Device does not support surface');
+     raise EpvVulkanSurfaceException.Create('Device does not support surface');
     end;
    end;
 
@@ -5384,27 +5384,27 @@ begin
  end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
 
-  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TVulkanApplication.AllocateVulkanSurface');
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.AllocateVulkanSurface');
 {$ifend}
 end;
 
-procedure TVulkanApplication.DestroyVulkanSurface;
+procedure TpvApplication.DestroyVulkanSurface;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
-  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TVulkanApplication.FreeVulkanSurface');
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.FreeVulkanSurface');
 {$ifend}
  FreeAndNil(fVulkanSurface);
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
-  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TVulkanApplication.FreeVulkanSurface');
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.FreeVulkanSurface');
 {$ifend}
 end;
 
-procedure TVulkanApplication.CreateVulkanSwapChain;
+procedure TpvApplication.CreateVulkanSwapChain;
 var Index:TpvInt32;
 begin
  DestroyVulkanSwapChain;
 
- fVulkanSwapChain:=TVulkanSwapChain.Create(fVulkanDevice,
+ fVulkanSwapChain:=TpvVulkanSwapChain.Create(fVulkanDevice,
                                            fVulkanSurface,
                                            fVulkanOldSwapChain,
                                            fWidth,
@@ -5428,16 +5428,16 @@ begin
  fRealUsedDrawSwapChainImageIndex:=0;
 
  for Index:=0 to fCountSwapChainImages-1 do begin
-  fVulkanWaitFences[Index]:=TVulkanFence.Create(fVulkanDevice);
+  fVulkanWaitFences[Index]:=TpvVulkanFence.Create(fVulkanDevice);
   fVulkanWaitFencesReady[Index]:=false;
-  fVulkanPresentCompleteSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
-  fVulkanPresentCompleteFences[Index]:=TVulkanFence.Create(fVulkanDevice);
+  fVulkanPresentCompleteSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+  fVulkanPresentCompleteFences[Index]:=TpvVulkanFence.Create(fVulkanDevice);
   fVulkanPresentCompleteFencesReady[Index]:=false;
  end;
 
 end;
 
-procedure TVulkanApplication.DestroyVulkanSwapChain;
+procedure TpvApplication.DestroyVulkanSwapChain;
 var Index:TpvInt32;
 begin
  for Index:=0 to fCountSwapChainImages-1 do begin
@@ -5450,12 +5450,12 @@ begin
  FreeAndNil(fVulkanSwapChain);
 end;
 
-procedure TVulkanApplication.CreateVulkanRenderPass;
+procedure TpvApplication.CreateVulkanRenderPass;
 begin
 
  DestroyVulkanRenderPass;
 
- fVulkanRenderPass:=TVulkanRenderPass.Create(VulkanApplication.VulkanDevice);
+ fVulkanRenderPass:=TpvVulkanRenderPass.Create(pvApplication.VulkanDevice);
 
  fVulkanRenderPass.AddSubpassDescription(0,
                                          VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -5509,15 +5509,15 @@ begin
 
 end;
 
-procedure TVulkanApplication.DestroyVulkanRenderPass;
+procedure TpvApplication.DestroyVulkanRenderPass;
 begin
  FreeAndNil(fVulkanRenderPass);
 end;
 
-procedure TVulkanApplication.CreateVulkanFrameBuffers;
+procedure TpvApplication.CreateVulkanFrameBuffers;
 var Index:TpvInt32;
-    ColorAttachmentImage:TVulkanImage;
-    ColorAttachmentImageView:TVulkanImageView;
+    ColorAttachmentImage:TpvVulkanImage;
+    ColorAttachmentImageView:TpvVulkanImageView;
 begin
 
  DestroyVulkanFrameBuffers;
@@ -5536,7 +5536,7 @@ begin
 
   try
 
-   ColorAttachmentImage:=TVulkanImage.Create(fVulkanDevice,fVulkanSwapChain.Images[Index].Handle,nil,false);
+   ColorAttachmentImage:=TpvVulkanImage.Create(fVulkanDevice,fVulkanSwapChain.Images[Index].Handle,nil,false);
 
    ColorAttachmentImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                   VK_IMAGE_LAYOUT_UNDEFINED,
@@ -5547,7 +5547,7 @@ begin
                                   VulkanPresentCommandBufferFences[0,0],
                                   true);
 
-   ColorAttachmentImageView:=TVulkanImageView.Create(fVulkanDevice,
+   ColorAttachmentImageView:=TpvVulkanImageView.Create(fVulkanDevice,
                                                      ColorAttachmentImage,
                                                      VK_IMAGE_VIEW_TYPE_2D,
                                                      fVulkanSwapChain.ImageFormat,
@@ -5564,7 +5564,7 @@ begin
    ColorAttachmentImage.ImageView:=ColorAttachmentImageView;
    ColorAttachmentImageView.Image:=ColorAttachmentImage;
 
-   fVulkanFrameBufferColorAttachments[Index]:=TVulkanFrameBufferAttachment.Create(fVulkanDevice,
+   fVulkanFrameBufferColorAttachments[Index]:=TpvVulkanFrameBufferAttachment.Create(fVulkanDevice,
                                                                                   ColorAttachmentImage,
                                                                                   ColorAttachmentImageView,
                                                                                   fVulkanSwapChain.Width,
@@ -5581,7 +5581,7 @@ begin
 
  end;
 
- fVulkanDepthFrameBufferAttachment:=TVulkanFrameBufferAttachment.Create(fVulkanDevice,
+ fVulkanDepthFrameBufferAttachment:=TpvVulkanFrameBufferAttachment.Create(fVulkanDevice,
                                                                         fVulkanDevice.GraphicsQueue,
                                                                         VulkanGraphicsCommandBuffers[0,0],
                                                                         VulkanGraphicsCommandBufferFences[0,0],
@@ -5595,7 +5595,7 @@ begin
   fVulkanFrameBuffers[Index]:=nil;
  end;
  for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
-  fVulkanFrameBuffers[Index]:=TVulkanFrameBuffer.Create(fVulkanDevice,
+  fVulkanFrameBuffers[Index]:=TpvVulkanFrameBuffer.Create(fVulkanDevice,
                                                         fVulkanRenderPass,
                                                         fVulkanSwapChain.Width,
                                                         fVulkanSwapChain.Height,
@@ -5606,7 +5606,7 @@ begin
 
 end;
 
-procedure TVulkanApplication.DestroyVulkanFrameBuffers;
+procedure TpvApplication.DestroyVulkanFrameBuffers;
 var Index:TpvInt32;
 begin
  for Index:=0 to length(fVulkanFrameBufferColorAttachments)-1 do begin
@@ -5620,20 +5620,20 @@ begin
  fVulkanFrameBuffers:=nil;
 end;
 
-procedure TVulkanApplication.CreateVulkanCommandBuffers;
+procedure TpvApplication.CreateVulkanCommandBuffers;
 var Index:TpvInt32;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
  DestroyVulkanCommandBuffers;
 
- fVulkanCommandPool:=TVulkanCommandPool.Create(fVulkanDevice,
+ fVulkanCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
                                                fVulkanDevice.GraphicsQueueFamilyIndex,
                                                TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
  for Index:=0 to CountSwapChainImages-1 do begin
 
-  fVulkanBlankCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-  fVulkanBlankCommandBufferSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
+  fVulkanBlankCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  fVulkanBlankCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
 
   if (fVulkanDevice.PresentQueueFamilyIndex<>fVulkanDevice.GraphicsQueueFamilyIndex) or
      ((assigned(fVulkanDevice.PresentQueue) and assigned(fVulkanDevice.GraphicsQueue)) and
@@ -5657,8 +5657,8 @@ begin
    ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
    ImageMemoryBarrier.subresourceRange.layerCount:=1;
 
-   fVulkanPresentToDrawImageBarrierCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-   fVulkanPresentToDrawImageBarrierCommandBufferSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanPresentToDrawImageBarrierCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   fVulkanPresentToDrawImageBarrierCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
    fVulkanPresentToDrawImageBarrierCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
    fVulkanPresentToDrawImageBarrierCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
@@ -5684,8 +5684,8 @@ begin
    ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
    ImageMemoryBarrier.subresourceRange.layerCount:=1;
 
-   fVulkanDrawToPresentImageBarrierCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-   fVulkanDrawToPresentImageBarrierCommandBufferSemaphores[Index]:=TVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanDrawToPresentImageBarrierCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   fVulkanDrawToPresentImageBarrierCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
    fVulkanDrawToPresentImageBarrierCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
    fVulkanDrawToPresentImageBarrierCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
@@ -5709,7 +5709,7 @@ begin
 
 end;
 
-procedure TVulkanApplication.DestroyVulkanCommandBuffers;
+procedure TpvApplication.DestroyVulkanCommandBuffers;
 var Index:TpvInt32;
 begin
  for Index:=0 to CountSwapChainImages-1 do begin
@@ -5723,7 +5723,7 @@ begin
  FreeAndNil(fVulkanCommandPool);
 end;
 
-procedure TVulkanApplication.SetScreen(const aScreen:TVulkanApplicationScreen);
+procedure TpvApplication.SetScreen(const aScreen:TpvApplicationScreen);
 begin
  if fScreen<>aScreen then begin
   if assigned(fScreen) then begin
@@ -5762,7 +5762,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.AcquireVulkanBackBuffer:boolean;
+function TpvApplication.AcquireVulkanBackBuffer:boolean;
 var ImageIndex:TpvInt32;
     TimeOut:TpvUInt64;
 begin
@@ -5831,7 +5831,7 @@ begin
      end;
     end;
    except
-    on VulkanResultException:EVulkanResultException do begin
+    on VulkanResultException:EpvVulkanResultException do begin
      case VulkanResultException.ResultCode of
       VK_ERROR_SURFACE_LOST_KHR:begin
        if fVulkanRecreationKind<vavrkSurface then begin
@@ -5947,7 +5947,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.PresentVulkanBackBuffer:boolean;
+function TpvApplication.PresentVulkanBackBuffer:boolean;
 begin
  result:=false;
 
@@ -5987,7 +5987,7 @@ begin
    end;
   end;
  except
-  on VulkanResultException:EVulkanResultException do begin
+  on VulkanResultException:EpvVulkanResultException do begin
    case VulkanResultException.ResultCode of
     VK_ERROR_SURFACE_LOST_KHR:begin
      if fVulkanRecreationKind<vavrkSurface then begin
@@ -6009,7 +6009,7 @@ begin
 
 end;
 
-procedure TVulkanApplication.SetNextScreen(const aNextScreen:TVulkanApplicationScreen);
+procedure TpvApplication.SetNextScreen(const aNextScreen:TpvApplicationScreen);
 begin
  if (fScreen<>aNextScreen) and (fNextScreen<>aNextScreen) then begin
   if assigned(fNextScreen) then begin
@@ -6020,7 +6020,7 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.SetNextScreenClass(const aNextScreenClass:TVulkanApplicationScreenClass);
+procedure TpvApplication.SetNextScreenClass(const aNextScreenClass:TpvApplicationScreenClass);
 begin
  if (not (fScreen is aNextScreenClass)) and (fNextScreenClass<>aNextScreenClass) then begin
   fNextScreenClass:=aNextScreenClass;
@@ -6028,15 +6028,15 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.ReadConfig;
+procedure TpvApplication.ReadConfig;
 begin
 end;
 
-procedure TVulkanApplication.SaveConfig;
+procedure TpvApplication.SaveConfig;
 begin
 end;
 
-procedure TVulkanApplication.PostRunnable(const aRunnable:TVulkanApplicationRunnable);
+procedure TpvApplication.PostRunnable(const aRunnable:TpvApplicationRunnable);
 var Index:TpvInt32;
 begin
  fRunnableListCriticalSection.Acquire;
@@ -6052,7 +6052,7 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.AddLifecycleListener(const aLifecycleListener:TVulkanApplicationLifecycleListener);
+procedure TpvApplication.AddLifecycleListener(const aLifecycleListener:TpvApplicationLifecycleListener);
 begin
  fLifecycleListenerListCriticalSection.Acquire;
  try
@@ -6064,7 +6064,7 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.RemoveLifecycleListener(const aLifecycleListener:TVulkanApplicationLifecycleListener);
+procedure TpvApplication.RemoveLifecycleListener(const aLifecycleListener:TpvApplicationLifecycleListener);
 var Index:TpvInt32;
 begin
  fLifecycleListenerListCriticalSection.Acquire;
@@ -6078,16 +6078,16 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.Initialize;
+procedure TpvApplication.Initialize;
 begin
 end;
 
-procedure TVulkanApplication.Terminate;
+procedure TpvApplication.Terminate;
 begin
  fTerminated:=true;
 end;
 
-procedure TVulkanApplication.InitializeGraphics;
+procedure TpvApplication.InitializeGraphics;
 begin
  if not fGraphicsReady then begin
   try
@@ -6106,7 +6106,7 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.DeinitializeGraphics;
+procedure TpvApplication.DeinitializeGraphics;
 begin
  if fGraphicsReady then begin
   VulkanWaitIdle;
@@ -6120,7 +6120,7 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.UpdateFrameTimesHistory;
+procedure TpvApplication.UpdateFrameTimesHistory;
 var Index,Count:TpvInt32;
     SumOfFrameTimes:TpvDouble;
 begin
@@ -6164,17 +6164,17 @@ begin
 
 end;
 
-procedure TVulkanApplication.UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+procedure TpvApplication.UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
  Update(Min(Max(fFloatDeltaTime,0.0),0.25));
 end;
 
-procedure TVulkanApplication.DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+procedure TpvApplication.DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
  Draw(fRealUsedDrawSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
 end;
 
-procedure TVulkanApplication.ProcessRunnables;
+procedure TpvApplication.ProcessRunnables;
 var Index,Count:TpvInt32;
 begin
  fRunnableListCriticalSection.Acquire;
@@ -6210,7 +6210,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.IsVisibleToUser:boolean;
+function TpvApplication.IsVisibleToUser:boolean;
 const FullScreenFocusActiveFlags=SDL_WINDOW_SHOWN or SDL_WINDOW_INPUT_FOCUS {sor SDL_WINDOW_MOUSE_FOCUS};
 var WindowFlags:TSDLUInt32;
 begin
@@ -6219,9 +6219,9 @@ begin
          ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags);
 end;
 
-procedure TVulkanApplication.ProcessMessages;
+procedure TpvApplication.ProcessMessages;
 var Index,Counter:TpvInt32;
-    Joystick:TVulkanApplicationJoystick;
+    Joystick:TpvApplicationJoystick;
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
     OK,Found,DoUpdateMainJoystick:boolean;
@@ -6316,7 +6316,7 @@ begin
     SDL_APP_WILLENTERBACKGROUND:begin
      writeln('SDL_APP_WILLENTERBACKGROUND');
 {$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
 {$ifend}
      fActive:=false;
      VulkanWaitIdle;
@@ -6327,13 +6327,13 @@ begin
     SDL_APP_DIDENTERBACKGROUND:begin
      writeln('SDL_APP_DIDENTERBACKGROUND');
 {$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_DIDENTERBACKGROUND')));
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERBACKGROUND')));
 {$ifend}
     end;
     SDL_APP_WILLENTERFOREGROUND:begin
      writeln('SDL_APP_WILLENTERFOREGROUND');
 {$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_WILLENTERFOREGROUND')));
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERFOREGROUND')));
 {$ifend}
     end;
     SDL_APP_DIDENTERFOREGROUND:begin
@@ -6343,7 +6343,7 @@ begin
      fActive:=true;
      fHasLastTime:=false;
 {$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('SDL_APP_DIDENTERFOREGROUND')));
+     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERFOREGROUND')));
 {$ifend}
     end;
     SDL_RENDER_TARGETS_RESET,
@@ -6389,7 +6389,7 @@ begin
      Index:=fEvent.jdevice.which;
      Found:=false;
      for Counter:=0 to fInput.fJoysticks.Count-1 do begin
-      Joystick:=TVulkanApplicationJoystick(fInput.fJoysticks.Items[Counter]);
+      Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
       if assigned(Joystick) and (Joystick.Index=Index) then begin
        Found:=true;
        break;
@@ -6408,7 +6408,7 @@ begin
        SDLJoystick:=SDL_JoystickOpen(Index);
       end;
       if assigned(SDLJoystick) then begin
-       Joystick:=TVulkanApplicationJoystick.Create(Index,SDLJoystick,SDLGameController);
+       Joystick:=TpvApplicationJoystick.Create(Index,SDLJoystick,SDLGameController);
        if Index<fInput.fJoysticks.Count then begin
         fInput.fJoysticks.Items[Index]:=Joystick;
        end else begin
@@ -6424,7 +6424,7 @@ begin
     end;
     SDL_JOYDEVICEREMOVED:begin
      for Counter:=0 to fInput.fJoysticks.Count-1 do begin
-      Joystick:=TVulkanApplicationJoystick(fInput.fJoysticks.Items[Counter]);
+      Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
       if assigned(Joystick) and (Joystick.ID=fEvent.jdevice.which) then begin
        Joystick.Free;
        fInput.fJoysticks.Delete(Counter);
@@ -6517,7 +6517,7 @@ begin
    fInput.fMainJoystick:=nil;
    if fInput.fJoysticks.Count>0 then begin
     for Counter:=0 to fInput.fJoysticks.Count-1 do begin
-     Joystick:=TVulkanApplicationJoystick(fInput.fJoysticks.Items[Counter]);
+     Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
      if assigned(Joystick) then begin
       fInput.fMainJoystick:=Joystick;
       break;
@@ -6624,7 +6624,7 @@ begin
 
 end;
 
-procedure TVulkanApplication.Run;
+procedure TpvApplication.Run;
 var Index:TpvInt32;
 begin
  VulkanDisableFloatingPointExceptions;
@@ -6668,7 +6668,7 @@ begin
  fCurrentHideSystemBars:=ord(fHideSystemBars);
 
  if SDL_Init(SDL_INIT_VIDEO or SDL_INIT_EVENTS or SDL_INIT_TIMER)<0 then begin
-  raise EVulkanApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
+  raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
  end;
 
 {$ifdef Unix}
@@ -6708,10 +6708,10 @@ begin
  fCurrentFullscreen:=ord(true);
  fWidth:=fScreenWidth;
  fHeight:=fScreenHeight;
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TVulkanApplicationRawByteString('Window size: '+IntToStr(fWidth)+'x'+IntToStr(fHeight))));
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('Window size: '+IntToStr(fWidth)+'x'+IntToStr(fHeight))));
 {$ifend}
 
- fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TVulkanApplicationRawByteString(fTitle)),
+ fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TpvApplicationRawByteString(fTitle)),
 {$ifdef Android}
                                   SDL_WINDOWPOS_CENTERED_MASK,
                                   SDL_WINDOWPOS_CENTERED_MASK,
@@ -6723,7 +6723,7 @@ begin
                                   fHeight,
                                   SDL_WINDOW_SHOWN or fVideoFlags);
  if not assigned(fSurfaceWindow) then begin
-  raise EVulkanApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
+  raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
  end;
 
  fCurrentWidth:=fWidth;
@@ -6765,7 +6765,7 @@ begin
       fLifecycleListenerListCriticalSection.Acquire;
       try
        for Index:=0 to fLifecycleListenerList.Count-1 do begin
-        if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
+        if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
          break;
         end;
        end;
@@ -6794,12 +6794,12 @@ begin
       fLifecycleListenerListCriticalSection.Acquire;
       try
        for Index:=0 to fLifecycleListenerList.Count-1 do begin
-        if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
+        if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
          break;
         end;
        end;
        for Index:=0 to fLifecycleListenerList.Count-1 do begin
-        if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).Terminate then begin
+        if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Terminate then begin
          break;
         end;
        end;
@@ -6842,30 +6842,30 @@ begin
 
 end;
 
-procedure TVulkanApplication.Start;
+procedure TpvApplication.Start;
 begin
 end;
 
-procedure TVulkanApplication.Stop; 
+procedure TpvApplication.Stop; 
 begin
 end;
 
-procedure TVulkanApplication.Load;
+procedure TpvApplication.Load;
 begin
 end;
 
-procedure TVulkanApplication.Unload;
+procedure TpvApplication.Unload;
 begin
 end;
 
-procedure TVulkanApplication.Resume;
+procedure TpvApplication.Resume;
 var Index:TpvInt32;
 begin
 
  fLifecycleListenerListCriticalSection.Acquire;
  try
   for Index:=0 to fLifecycleListenerList.Count-1 do begin
-   if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
+   if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
     break;
    end;
   end;
@@ -6879,7 +6879,7 @@ begin
 
 end;
 
-procedure TVulkanApplication.Pause;
+procedure TpvApplication.Pause;
 var Index:TpvInt32;
 begin
 
@@ -6890,7 +6890,7 @@ begin
  fLifecycleListenerListCriticalSection.Acquire;
  try
   for Index:=0 to fLifecycleListenerList.Count-1 do begin
-   if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
+   if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
     break;
    end;
   end;
@@ -6900,14 +6900,14 @@ begin
 
 end;
 
-procedure TVulkanApplication.LowMemory;
+procedure TpvApplication.LowMemory;
 var Index:TpvInt32;
 begin
 
  fLifecycleListenerListCriticalSection.Acquire;
  try
   for Index:=0 to fLifecycleListenerList.Count-1 do begin
-   if TVulkanApplicationLifecycleListener(fLifecycleListenerList[Index]).LowMemory then begin
+   if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).LowMemory then begin
     break;
    end;
   end;
@@ -6921,28 +6921,28 @@ begin
 
 end;
 
-procedure TVulkanApplication.Resize(const aWidth,aHeight:TpvInt32);
+procedure TpvApplication.Resize(const aWidth,aHeight:TpvInt32);
 begin
  if assigned(fScreen) then begin
   fScreen.Resize(aWidth,aHeight);
  end;
 end;
 
-procedure TVulkanApplication.AfterCreateSwapChain;
+procedure TpvApplication.AfterCreateSwapChain;
 begin
  if assigned(fScreen) then begin
   fScreen.AfterCreateSwapChain;
  end;
 end;                           
 
-procedure TVulkanApplication.BeforeDestroySwapChain;
+procedure TpvApplication.BeforeDestroySwapChain;
 begin
  if assigned(fScreen) then begin
   fScreen.BeforeDestroySwapChain;
  end;
 end;
 
-function TVulkanApplication.HandleEvent(const aEvent:TSDL_Event):boolean;
+function TpvApplication.HandleEvent(const aEvent:TSDL_Event):boolean;
 begin
  if assigned(fOnEvent) and fOnEvent(self,aEvent) then begin
   result:=true;
@@ -6953,7 +6953,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvApplication.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.KeyDown(aKeyCode,aKeyModifier);
@@ -6962,7 +6962,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvApplication.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.KeyUp(aKeyCode,aKeyModifier);
@@ -6971,7 +6971,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvApplication.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.KeyTyped(aKeyCode,aKeyModifier);
@@ -6980,7 +6980,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplication.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.TouchDown(aScreenX,aScreenY,aPressure,aPointerID,aButton);
@@ -6989,7 +6989,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplication.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.TouchUp(aScreenX,aScreenY,aPressure,aPointerID,aButton);
@@ -6998,7 +6998,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TpvApplication.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.TouchDragged(aScreenX,aScreenY,aPressure,aPointerID);
@@ -7007,7 +7007,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TpvApplication.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.MouseMoved(aScreenX,aScreenY);
@@ -7016,7 +7016,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.Scrolled(const aAmount:TpvInt32):boolean;
+function TpvApplication.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.Scrolled(aAmount);
@@ -7025,7 +7025,7 @@ begin
  end;
 end;
 
-function TVulkanApplication.CanBeParallelProcessed:boolean;
+function TpvApplication.CanBeParallelProcessed:boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.CanBeParallelProcessed;
@@ -7034,15 +7034,15 @@ begin
  end;
 end;
 
-procedure TVulkanApplication.Update(const aDeltaTime:TpvDouble);
+procedure TpvApplication.Update(const aDeltaTime:TpvDouble);
 begin
  if assigned(fScreen) then begin
   fScreen.Update(aDeltaTime);
  end;
 end;
 
-procedure TVulkanApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
-var VulkanCommandBuffer:TVulkanCommandBuffer;
+procedure TpvApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+var VulkanCommandBuffer:TpvVulkanCommandBuffer;
 begin
  if assigned(fScreen) then begin
   fScreen.Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
@@ -7076,12 +7076,12 @@ begin
  end;
 end;
 
-class procedure TVulkanApplication.Main;
+class procedure TpvApplication.Main;
 begin
 end;
 
 {$if defined(fpc) and defined(android)}
-function AndroidGetManufacturerName:TVulkanApplicationUnicodeString;
+function AndroidGetManufacturerName:TpvApplicationUnicodeString;
 var AndroisOSBuild:jclass;
     ManufacturerID:JFieldID;
     ManufacturerStringObject:JString;
@@ -7103,7 +7103,7 @@ begin
  end;
 end;
 
-function AndroidGetModelName:TVulkanApplicationUnicodeString;
+function AndroidGetModelName:TpvApplicationUnicodeString;
 var AndroisOSBuild:jclass;
     ModelID:JFieldID;
     ModelStringObject:JString;
@@ -7125,7 +7125,7 @@ begin
  end;
 end;
 
-function AndroidGetDeviceName:TVulkanApplicationUnicodeString;
+function AndroidGetDeviceName:TpvApplicationUnicodeString;
 begin
  result:=AndroidGetManufacturerName+' '+AndroidGetModelName;
 end;
@@ -7135,7 +7135,7 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_JNI_GetEnv . . .');
 {$ifend}
- if assigned(VulkanApplication) then begin
+ if assigned(pvApplication) then begin
   result:=AndroidJavaEnv;
  end else begin
   result:=nil;

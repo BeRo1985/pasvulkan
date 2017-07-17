@@ -29,16 +29,16 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application;
 
-type TScreenBlank=class(TVulkanApplicationScreen)
+type TScreenBlank=class(TpvApplicationScreen)
       private
-       fTriangleVertexShaderModule:TVulkanShaderModule;
-       fTriangleFragmentShaderModule:TVulkanShaderModule;
-       fVulkanPipelineShaderStageTriangleVertex:TVulkanPipelineShaderStage;
-       fVulkanPipelineShaderStageTriangleFragment:TVulkanPipelineShaderStage;
-       fVulkanRenderPass:TVulkanRenderPass;
-       fVulkanCommandPool:TVulkanCommandPool;
-       fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TVulkanCommandBuffer;
-       fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphore;
+       fTriangleVertexShaderModule:TpvVulkanShaderModule;
+       fTriangleFragmentShaderModule:TpvVulkanShaderModule;
+       fVulkanPipelineShaderStageTriangleVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageTriangleFragment:TpvVulkanPipelineShaderStage;
+       fVulkanRenderPass:TpvVulkanRenderPass;
+       fVulkanCommandPool:TpvVulkanCommandPool;
+       fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
+       fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
       public
 
        constructor Create; override;
@@ -61,7 +61,7 @@ type TScreenBlank=class(TVulkanApplicationScreen)
 
        procedure Update(const aDeltaTime:TpvDouble); override;
 
-       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
 
      end;
 
@@ -83,31 +83,31 @@ var Stream:TStream;
 begin
  inherited Show;
 
- fVulkanCommandPool:=TVulkanCommandPool.Create(VulkanApplication.VulkanDevice,
-                                               VulkanApplication.VulkanDevice.GraphicsQueueFamilyIndex,
-                                               TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                 pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                 TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
  for Index:=0 to MaxSwapChainImages-1 do begin
-  fVulkanRenderCommandBuffers[Index]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-  fVulkanRenderSemaphores[Index]:=TVulkanSemaphore.Create(VulkanApplication.VulkanDevice);
+  fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
  end;
 
- Stream:=VulkanApplication.Assets.GetAssetStream('shaders/triangle/triangle_vert.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/triangle/triangle_vert.spv');
  try
-  fTriangleVertexShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
+  fTriangleVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=VulkanApplication.Assets.GetAssetStream('shaders/triangle/triangle_frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/triangle/triangle_frag.spv');
  try
-  fTriangleFragmentShaderModule:=TVulkanShaderModule.Create(VulkanApplication.VulkanDevice,Stream);
+  fTriangleFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- fVulkanPipelineShaderStageTriangleVertex:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fTriangleVertexShaderModule,'main');
+ fVulkanPipelineShaderStageTriangleVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fTriangleVertexShaderModule,'main');
 
- fVulkanPipelineShaderStageTriangleFragment:=TVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fTriangleFragmentShaderModule,'main');
+ fVulkanPipelineShaderStageTriangleFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fTriangleFragmentShaderModule,'main');
 
  fVulkanRenderPass:=nil;
 
@@ -146,19 +146,19 @@ end;
 
 procedure TScreenBlank.AfterCreateSwapChain;
 var SwapChainImageIndex:TpvInt32;
-    VulkanCommandBuffer:TVulkanCommandBuffer;
+    VulkanCommandBuffer:TpvVulkanCommandBuffer;
 begin
  inherited AfterCreateSwapChain;
 
  FreeAndNil(fVulkanRenderPass);
 
- fVulkanRenderPass:=TVulkanRenderPass.Create(VulkanApplication.VulkanDevice);
+ fVulkanRenderPass:=TpvVulkanRenderPass.Create(pvApplication.VulkanDevice);
 
  fVulkanRenderPass.AddSubpassDescription(0,
                                          VK_PIPELINE_BIND_POINT_GRAPHICS,
                                          [],
                                          [fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
-                                                                                                                              VulkanApplication.VulkanSwapChain.ImageFormat,
+                                                                                                                              pvApplication.VulkanSwapChain.ImageFormat,
                                                                                                                               VK_SAMPLE_COUNT_1_BIT,
                                                                                                                               VK_ATTACHMENT_LOAD_OP_CLEAR,
                                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
@@ -171,7 +171,7 @@ begin
                                                                             )],
                                          [],
                                          fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
-                                                                                                                             VulkanApplication.VulkanDepthImageFormat,
+                                                                                                                             pvApplication.VulkanDepthImageFormat,
                                                                                                                              VK_SAMPLE_COUNT_1_BIT,
                                                                                                                              VK_ATTACHMENT_LOAD_OP_CLEAR,
                                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -208,21 +208,21 @@ begin
   FreeAndNil(fVulkanRenderCommandBuffers[SwapChainImageIndex]);
  end;
 
- for SwapChainImageIndex:=0 to VulkanApplication.CountSwapChainImages-1 do begin
+ for SwapChainImageIndex:=0 to pvApplication.CountSwapChainImages-1 do begin
 
-  fVulkanRenderCommandBuffers[SwapChainImageIndex]:=TVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  fVulkanRenderCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[SwapChainImageIndex];
 
   VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
 
   fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                    VulkanApplication.VulkanFrameBuffers[SwapChainImageIndex],
+                                    pvApplication.VulkanFrameBuffers[SwapChainImageIndex],
                                     VK_SUBPASS_CONTENTS_INLINE,
                                     0,
                                     0,
-                                    VulkanApplication.VulkanSwapChain.Width,
-                                    VulkanApplication.VulkanSwapChain.Height);
+                                    pvApplication.VulkanSwapChain.Width,
+                                    pvApplication.VulkanSwapChain.Height);
 
   fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 
@@ -243,12 +243,12 @@ begin
  inherited Update(aDeltaTime);
 end;
 
-procedure TScreenBlank.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TScreenBlank.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  if assigned(fVulkanRenderPass) then begin
 
-  fVulkanRenderCommandBuffers[aSwapChainImageIndex].Execute(VulkanApplication.VulkanDevice.GraphicsQueue,
+  fVulkanRenderCommandBuffers[aSwapChainImageIndex].Execute(pvApplication.VulkanDevice.GraphicsQueue,
                                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                                             aWaitSemaphore,
                                                             fVulkanRenderSemaphores[aSwapChainImageIndex],

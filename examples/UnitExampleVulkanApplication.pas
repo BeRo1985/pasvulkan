@@ -34,7 +34,7 @@ const MenuColors:array[boolean,0..1,0..3] of TpvFloat=
        (((0.0625,0.125,0.5,0.95),(1.0,1.0,1.0,0.95)),
         ((1.0,1.0,1.0,0.95),(0.0625,0.125,0.5,0.95)));
 
-type TExampleVulkanApplication=class(TVulkanApplication)
+type TExampleVulkanApplication=class(TpvApplication)
       private
        fMakeScreenshot:boolean;
        fTextOverlay:TTextOverlay;
@@ -51,7 +51,7 @@ type TExampleVulkanApplication=class(TVulkanApplication)
        procedure Pause; override;
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
        procedure Update(const aDeltaTime:TpvDouble); override;
-       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil); override;
+       procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
        class procedure Main; override;
       published
        property TextOverlay:TTextOverlay read fTextOverlay;
@@ -142,7 +142,7 @@ begin
  fTextOverlay.PostUpdate(aDeltaTime);
 end;
 
-procedure TExampleVulkanApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TVulkanSemaphore;const aWaitFence:TVulkanFence=nil);
+procedure TExampleVulkanApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 var Stream:TMemoryStream;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
@@ -164,23 +164,23 @@ end;
 
 class procedure TExampleVulkanApplication.Main;
 begin
- VulkanApplication:=TExampleVulkanApplication.Create;
+ pvApplication:=TExampleVulkanApplication.Create;
  try
-  if VulkanApplication.Debugging then begin
-   VulkanApplication.VulkanDebugging:=true;
-   VulkanApplication.VulkanValidation:=true;
+  if pvApplication.Debugging then begin
+   pvApplication.VulkanDebugging:=true;
+   pvApplication.VulkanValidation:=true;
   end;
-  VulkanApplication.Title:='SDL Vulkan Examples Application';
-  VulkanApplication.PathName:='SDLVulkanExamplesApplication';
-  VulkanApplication.StartScreen:=TScreenMainMenu;
-  VulkanApplication.VisibleMouseCursor:=true;
-  VulkanApplication.CatchMouse:=false;
-  VulkanApplication.HideSystemBars:=true;
-  VulkanApplication.AndroidSeparateMouseAndTouch:=false;
-  VulkanApplication.VSync:={$ifdef NoVSync}false{$else}true{$endif};
-  VulkanApplication.Run;
+  pvApplication.Title:='SDL Vulkan Examples Application';
+  pvApplication.PathName:='SDLVulkanExamplesApplication';
+  pvApplication.StartScreen:=TScreenMainMenu;
+  pvApplication.VisibleMouseCursor:=true;
+  pvApplication.CatchMouse:=false;
+  pvApplication.HideSystemBars:=true;
+  pvApplication.AndroidSeparateMouseAndTouch:=false;
+  pvApplication.VSync:={$ifdef NoVSync}false{$else}true{$endif};
+  pvApplication.Run;
  finally
-  FreeAndNil(VulkanApplication);
+  FreeAndNil(pvApplication);
  end;
 end;
 

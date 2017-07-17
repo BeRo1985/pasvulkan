@@ -25,7 +25,7 @@
         <FormatVersion Value="1"/>
       </local>
     </RunParams>
-    <Units Count="23">
+    <Units Count="41">
       <Unit0>
         <Filename Value="examples.dpr"/>
         <IsPartOfProject Value="True"/>
@@ -35,89 +35,161 @@
         <IsPartOfProject Value="True"/>
       </Unit1>
       <Unit2>
-        <Filename Value="..\src\PasVulkan.pas"/>
+        <Filename Value="UnitScreenExampleTriangle.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit2>
       <Unit3>
-        <Filename Value="..\src\PasVulkanSDL2.pas"/>
+        <Filename Value="..\externals\pasmp\src\PasMP.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit3>
       <Unit4>
-        <Filename Value="..\src\PasVulkanStaticLinking.pas"/>
+        <Filename Value="..\externals\kraft\src\kraft.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit4>
       <Unit5>
-        <Filename Value="..\src\PasVulkanApplication.pas"/>
+        <Filename Value="UnitBufferedStream.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit5>
       <Unit6>
-        <Filename Value="UnitScreenExampleTriangle.pas"/>
+        <Filename Value="UnitChunkStream.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit6>
       <Unit7>
-        <Filename Value="..\externals\pasmp\src\PasMP.pas"/>
+        <Filename Value="UnitRegisteredExamplesList.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit7>
       <Unit8>
-        <Filename Value="..\externals\kraft\src\kraft.pas"/>
+        <Filename Value="UnitExampleVulkanApplication.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit8>
       <Unit9>
-        <Filename Value="..\src\PasVulkanAndroid.pas"/>
+        <Filename Value="UnitTextOverlay.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit9>
       <Unit10>
-        <Filename Value="UnitMath3D.pas"/>
+        <Filename Value="UnitModel.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit10>
       <Unit11>
-        <Filename Value="UnitBufferedStream.pas"/>
+        <Filename Value="UnitScreenBlank.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit11>
       <Unit12>
-        <Filename Value="UnitChunkStream.pas"/>
+        <Filename Value="UnitScreenMainMenu.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit12>
       <Unit13>
-        <Filename Value="UnitRegisteredExamplesList.pas"/>
+        <Filename Value="UnitScreenExit.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit13>
       <Unit14>
-        <Filename Value="UnitExampleVulkanApplication.pas"/>
+        <Filename Value="UnitScreenExampleCube.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit14>
       <Unit15>
-        <Filename Value="UnitTextOverlay.pas"/>
+        <Filename Value="UnitScreenExampleDragon.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit15>
       <Unit16>
-        <Filename Value="UnitModel.pas"/>
+        <Filename Value="UnitSDFFont.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit16>
       <Unit17>
-        <Filename Value="UnitScreenBlank.pas"/>
+        <Filename Value="..\src\PasVulkanAssets.inc"/>
         <IsPartOfProject Value="True"/>
       </Unit17>
       <Unit18>
-        <Filename Value="UnitScreenMainMenu.pas"/>
+        <Filename Value="..\src\PasVulkan.Utils.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit18>
       <Unit19>
-        <Filename Value="UnitScreenExit.pas"/>
+        <Filename Value="..\src\PasVulkan.Types.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit19>
       <Unit20>
-        <Filename Value="UnitScreenExampleCube.pas"/>
+        <Filename Value="..\src\PasVulkan.StaticLinking.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit20>
       <Unit21>
-        <Filename Value="UnitScreenExampleDragon.pas"/>
+        <Filename Value="..\src\PasVulkan.SDL2.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit21>
       <Unit22>
-        <Filename Value="UnitSDFFont.pas"/>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector4Helper.Swizzle.Implementations.inc"/>
         <IsPartOfProject Value="True"/>
       </Unit22>
+      <Unit23>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector4Helper.Swizzle.Definitions.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit23>
+      <Unit24>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector4.Swizzle.Implementations.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit24>
+      <Unit25>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector4.Swizzle.Definitions.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit25>
+      <Unit26>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector3Helper.Swizzle.Implementations.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit26>
+      <Unit27>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector3Helper.Swizzle.Definitions.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit27>
+      <Unit28>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector3.Swizzle.Implementations.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit28>
+      <Unit29>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector3.Swizzle.Definitions.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit29>
+      <Unit30>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector2Helper.Swizzle.Implementations.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit30>
+      <Unit31>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector2Helper.Swizzle.Definitions.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit31>
+      <Unit32>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector2.Swizzle.Implementations.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit32>
+      <Unit33>
+        <Filename Value="..\src\PasVulkan.Math.TpvVector2.Swizzle.Definitions.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit33>
+      <Unit34>
+        <Filename Value="..\src\PasVulkan.Math.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit34>
+      <Unit35>
+        <Filename Value="..\src\PasVulkan.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit35>
+      <Unit36>
+        <Filename Value="..\src\PasVulkan.GUI.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit36>
+      <Unit37>
+        <Filename Value="..\src\PasVulkan.Framework.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit37>
+      <Unit38>
+        <Filename Value="..\src\PasVulkan.Collections.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit38>
+      <Unit39>
+        <Filename Value="..\src\PasVulkan.Application.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit39>
+      <Unit40>
+        <Filename Value="..\src\PasVulkan.Android.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit40>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -127,7 +199,8 @@
       <Filename Value="examples"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir)"/>
+      <IncludeFiles Value="$(ProjOutDir);..\src"/>
+      <OtherUnitFiles Value="..\src"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Conditionals Value="if ((TargetOS='linux') or (TargetOS='freebsd') or (TargetOS='unix')) and not (TargetOS='android') then begin

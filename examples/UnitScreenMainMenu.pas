@@ -85,7 +85,7 @@ begin
  if fReady then begin
   case aKeyCode of
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
-    VulkanApplication.NextScreen:=TScreenExit.Create;
+    pvApplication.NextScreen:=TScreenExit.Create;
    end;
    KEYCODE_UP:begin
     if fSelectedIndex<=0 then begin
@@ -127,9 +127,9 @@ begin
    end;
    KEYCODE_RETURN,KEYCODE_SPACE:begin
     if fSelectedIndex=RegisteredExamplesList.Count then begin
-     VulkanApplication.NextScreen:=TScreenExit.Create;
+     pvApplication.NextScreen:=TScreenExit.Create;
     end else if fSelectedIndex>=0 then begin
-     VulkanApplication.NextScreen:=TVulkanApplicationScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
+     pvApplication.NextScreen:=TpvApplicationScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
     end;
    end;
   end;
@@ -158,9 +158,9 @@ begin
    if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
     if fSelectedIndex=RegisteredExamplesList.Count then begin
-     VulkanApplication.NextScreen:=TScreenExit.Create;
+     pvApplication.NextScreen:=TScreenExit.Create;
     end else if fSelectedIndex>=0 then begin
-     VulkanApplication.NextScreen:=TVulkanApplicationScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
+     pvApplication.NextScreen:=TpvApplicationScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
     end;
    end;
    cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
@@ -220,8 +220,8 @@ var Index:TpvInt32;
     IsSelected:boolean;
 begin
  inherited Update(aDeltaTime);
- ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Main menu');
- fStartY:=(VulkanApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*(RegisteredExamplesList.Count+1))-(4*FontSize)))*0.5;
+ ExampleVulkanApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Main menu');
+ fStartY:=(pvApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*(RegisteredExamplesList.Count+1))-(4*FontSize)))*0.5;
  cy:=fStartY;
  for Index:=0 to RegisteredExamplesList.Count-1 do begin
   IsSelected:=fSelectedIndex=Index;
@@ -229,7 +229,7 @@ begin
   if IsSelected then begin
    s:='>'+s+'<';
   end;
-  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,cy,FontSize,toaCenter,s,MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
+  ExampleVulkanApplication.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,s,MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
  end;
  begin
@@ -238,7 +238,7 @@ begin
   if IsSelected then begin
    s:='>'+s+'<';
   end;
-  ExampleVulkanApplication.TextOverlay.AddText(VulkanApplication.Width*0.5,cy,FontSize,toaCenter,s,MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
+  ExampleVulkanApplication.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,s,MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
  end;
  fReady:=true;
 end;
