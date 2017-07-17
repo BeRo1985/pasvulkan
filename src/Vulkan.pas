@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=54;
+      VK_HEADER_VERSION=55;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -261,7 +261,7 @@ const VK_NULL_HANDLE=0;
       VK_MAX_EXTENSION_NAME_SIZE=256;
       VK_MAX_DESCRIPTION_SIZE=256;
       VK_MAX_MEMORY_TYPES=32;
-      VK_MAX_MEMORY_HEAPS=16;
+      VK_MAX_MEMORY_HEAPS=16;                                                    //< The maximum number of unique memory heaps, each of which supporting 1 or more memory types
       VK_LOD_CLAMP_NONE=1000.0;
       VK_REMAINING_MIP_LEVELS=TVkUInt32($ffffffff);
       VK_REMAINING_ARRAY_LAYERS=TVkUInt32($ffffffff);
@@ -482,7 +482,7 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_103_EXTENSION_NAME='VK_NV_extension_103';
       VK_NV_EXTENSION_104_SPEC_VERSION=0;
       VK_NV_EXTENSION_104_EXTENSION_NAME='VK_NV_extension_104';
-      VK_EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION=2;
+      VK_EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION=3;
       VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME='VK_EXT_swapchain_colorspace';
       VK_EXT_HDR_METADATA_SPEC_VERSION=1;
       VK_EXT_HDR_METADATA_EXTENSION_NAME='VK_EXT_hdr_metadata';
@@ -562,8 +562,8 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_143_EXTENSION_NAME='VK_AMD_extension_143';
       VK_AMD_EXTENSION_144_SPEC_VERSION=0;
       VK_AMD_EXTENSION_144_EXTENSION_NAME='VK_AMD_extension_144';
-      VK_KHR_relaxed_block_layout_SPEC_VERSION=0;
-      VK_KHR_relaxed_block_layout_EXTENSION_NAME='VK_KHR_relaxed_block_layout';
+      VK_KHR_RELAXED_BLOCK_LAYOUT_SPEC_VERSION=0;
+      VK_KHR_RELAXED_BLOCK_LAYOUT_EXTENSION_NAME='VK_KHR_relaxed_block_layout';
       VK_KHR_extension_146_SPEC_VERSION=0;
       VK_KHR_extension_146_EXTENSION_NAME='VK_KHR_extension_146';
       VK_KHR_GET_MEMORY_REQUIREMENTS_2_SPEC_VERSION=1;
@@ -594,6 +594,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_EXTENSION_159_EXTENSION_NAME='VK_EXT_extension_159';
       VK_EXT_EXTENSION_160_SPEC_VERSION=0;
       VK_EXT_EXTENSION_160_EXTENSION_NAME='VK_EXT_extension_160';
+      VK_EXT_EXTENSION_161_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_161_EXTENSION_NAME='VK_EXT_extension_161';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1795,8 +1797,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER=44,
        VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER=45,
        VK_STRUCTURE_TYPE_MEMORY_BARRIER=46,
-       VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO=47,
-       VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO=48,
+       VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO=47,                         //< Reserved for internal use by the loader, layers, and ICDs
+       VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO=48,                           //< Reserved for internal use by the loader, layers, and ICDs
        VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR=1000001000,
        VK_STRUCTURE_TYPE_PRESENT_INFO_KHR=1000001001,
        VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR=1000002000,
@@ -2399,7 +2401,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_COLOR_SPACE_HDR10_HLG_EXT=1000104010,
        VK_COLOR_SPACE_ADOBERGB_LINEAR_EXT=1000104011,
        VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT=1000104012,
-       VK_COLOR_SPACE_PASS_THROUGH_EXT=1000104013
+       VK_COLOR_SPACE_PASS_THROUGH_EXT=1000104013,
+       VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT=1000104014
       );
 
      PPVkDisplayPlaneAlphaFlagBitsKHR=^PVkDisplayPlaneAlphaFlagBitsKHR;
@@ -2947,17 +2950,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       residencyStandard2DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (single sample) sparse resources using the standard sparse image block shapes (based on pixel format)
-       residencyStandard2DMultisampleBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (multisample) sparse resources using the standard sparse image block shapes (based on pixel format)
-       residencyStandard3DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 3D sparse resources using the standard sparse image block shapes (based on pixel format)
-       residencyAlignedMipSize:TVkBool32; //< Sparse resources support: Images with mip level dimensions that are NOT a multiple of the sparse image block dimensions will be placed in the mip tail
-       residencyNonResidentStrict:TVkBool32; //< Sparse resources support: GPU can consistently access non-resident regions of a resource, all reads return as if data is 0, writes are discarded
+       residencyStandard2DBlockShape:TVkBool32;
+       residencyStandard2DMultisampleBlockShape:TVkBool32;
+       residencyStandard3DBlockShape:TVkBool32;
+       residencyAlignedMipSize:TVkBool32;
+       residencyNonResidentStrict:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pResidencyStandard2DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (single sample) sparse resources using the standard sparse image block shapes (based on pixel format)
-                          const pResidencyStandard2DMultisampleBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 2D (multisample) sparse resources using the standard sparse image block shapes (based on pixel format)
-                          const pResidencyStandard3DBlockShape:TVkBool32; //< Sparse resources support: GPU will access all 3D sparse resources using the standard sparse image block shapes (based on pixel format)
-                          const pResidencyAlignedMipSize:TVkBool32; //< Sparse resources support: Images with mip level dimensions that are NOT a multiple of the sparse image block dimensions will be placed in the mip tail
-                          const pResidencyNonResidentStrict:TVkBool32); //< Sparse resources support: GPU can consistently access non-resident regions of a resource, all reads return as if data is 0, writes are discarded
+       constructor Create(const pResidencyStandard2DBlockShape:TVkBool32;
+                          const pResidencyStandard2DMultisampleBlockShape:TVkBool32;
+                          const pResidencyStandard3DBlockShape:TVkBool32;
+                          const pResidencyAlignedMipSize:TVkBool32;
+                          const pResidencyNonResidentStrict:TVkBool32);
 {$endif}
      end;
 
@@ -2967,11 +2970,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       extensionName:array[0..VK_MAX_EXTENSION_NAME_SIZE-1] of TVkChar; //< extension name
-       specVersion:TVkUInt32; //< version of the extension specification implemented
+       extensionName:array[0..VK_MAX_EXTENSION_NAME_SIZE-1] of TVkChar;
+       specVersion:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pExtensionName:TVkCharString; //< extension name
-                          const pSpecVersion:TVkUInt32); //< version of the extension specification implemented
+       constructor Create(const pExtensionName:TVkCharString;
+                          const pSpecVersion:TVkUInt32);
 {$endif}
      end;
 
@@ -2981,15 +2984,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       layerName:array[0..VK_MAX_EXTENSION_NAME_SIZE-1] of TVkChar; //< layer name
-       specVersion:TVkUInt32; //< version of the layer specification implemented
-       implementationVersion:TVkUInt32; //< build or release version of the layer's library
-       description:array[0..VK_MAX_DESCRIPTION_SIZE-1] of TVkChar; //< Free-form description of the layer
+       layerName:array[0..VK_MAX_EXTENSION_NAME_SIZE-1] of TVkChar;
+       specVersion:TVkUInt32;
+       implementationVersion:TVkUInt32;
+       description:array[0..VK_MAX_DESCRIPTION_SIZE-1] of TVkChar;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pLayerName:TVkCharString; //< layer name
-                          const pSpecVersion:TVkUInt32; //< version of the layer specification implemented
-                          const pImplementationVersion:TVkUInt32; //< build or release version of the layer's library
-                          const pDescription:TVkCharString); //< Free-form description of the layer
+       constructor Create(const pLayerName:TVkCharString;
+                          const pSpecVersion:TVkUInt32;
+                          const pImplementationVersion:TVkUInt32;
+                          const pDescription:TVkCharString);
 {$endif}
      end;
 
@@ -3000,7 +3003,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_APPLICATION_INFO
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        pApplicationName:PVkChar;
        applicationVersion:TVkUInt32;
        pEngineName:PVkChar;
@@ -3044,13 +3047,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkDeviceQueueCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkDeviceQueueCreateFlags;
        queueFamilyIndex:TVkUInt32;
        queueCount:TVkUInt32;
        pQueuePriorities:PVkFloat;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkDeviceQueueCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkDeviceQueueCreateFlags;
                           const pQueueFamilyIndex:TVkUInt32;
                           const pQueueCount:TVkUInt32;
                           const pPQueuePriorities:PVkFloat);
@@ -3063,117 +3066,117 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       robustBufferAccess:TVkBool32; //< out of bounds buffer accesses are well defined
-       fullDrawIndexUint32:TVkBool32; //< full 32-bit range of indices for indexed draw calls
-       imageCubeArray:TVkBool32; //< image views which are arrays of cube maps
-       independentBlend:TVkBool32; //< blending operations are controlled per-attachment
-       geometryShader:TVkBool32; //< geometry stage
-       tessellationShader:TVkBool32; //< tessellation control and evaluation stage
-       sampleRateShading:TVkBool32; //< per-sample shading and interpolation
-       dualSrcBlend:TVkBool32; //< blend operations which take two sources
-       logicOp:TVkBool32; //< logic operations
-       multiDrawIndirect:TVkBool32; //< multi draw indirect
-       drawIndirectFirstInstance:TVkBool32; //< indirect draws can use non-zero firstInstance
-       depthClamp:TVkBool32; //< depth clamping
-       depthBiasClamp:TVkBool32; //< depth bias clamping
-       fillModeNonSolid:TVkBool32; //< point and wireframe fill modes
-       depthBounds:TVkBool32; //< depth bounds test
-       wideLines:TVkBool32; //< lines with width greater than 1
-       largePoints:TVkBool32; //< points with size greater than 1
-       alphaToOne:TVkBool32; //< the fragment alpha component can be forced to maximum representable alpha value
-       multiViewport:TVkBool32; //< viewport arrays
-       samplerAnisotropy:TVkBool32; //< anisotropic sampler filtering
-       textureCompressionETC2:TVkBool32; //< ETC texture compression formats
-       textureCompressionASTC_LDR:TVkBool32; //< ASTC LDR texture compression formats
-       textureCompressionBC:TVkBool32; //< BC1-7 texture compressed formats
-       occlusionQueryPrecise:TVkBool32; //< precise occlusion queries returning actual sample counts
-       pipelineStatisticsQuery:TVkBool32; //< pipeline statistics query
-       vertexPipelineStoresAndAtomics:TVkBool32; //< stores and atomic ops on storage buffers and images are supported in vertex, tessellation, and geometry stages
-       fragmentStoresAndAtomics:TVkBool32; //< stores and atomic ops on storage buffers and images are supported in the fragment stage
-       shaderTessellationAndGeometryPointSize:TVkBool32; //< tessellation and geometry stages can export point size
-       shaderImageGatherExtended:TVkBool32; //< image gather with run-time values and independent offsets
-       shaderStorageImageExtendedFormats:TVkBool32; //< the extended set of formats can be used for storage images
-       shaderStorageImageMultisample:TVkBool32; //< multisample images can be used for storage images
-       shaderStorageImageReadWithoutFormat:TVkBool32; //< read from storage image does not require format qualifier
-       shaderStorageImageWriteWithoutFormat:TVkBool32; //< write to storage image does not require format qualifier
-       shaderUniformBufferArrayDynamicIndexing:TVkBool32; //< arrays of uniform buffers can be accessed with dynamically uniform indices
-       shaderSampledImageArrayDynamicIndexing:TVkBool32; //< arrays of sampled images can be accessed with dynamically uniform indices
-       shaderStorageBufferArrayDynamicIndexing:TVkBool32; //< arrays of storage buffers can be accessed with dynamically uniform indices
-       shaderStorageImageArrayDynamicIndexing:TVkBool32; //< arrays of storage images can be accessed with dynamically uniform indices
-       shaderClipDistance:TVkBool32; //< clip distance in shaders
-       shaderCullDistance:TVkBool32; //< cull distance in shaders
-       shaderFloat64:TVkBool32; //< 64-bit floats (doubles) in shaders
-       shaderInt64:TVkBool32; //< 64-bit integers in shaders
-       shaderInt16:TVkBool32; //< 16-bit integers in shaders
-       shaderResourceResidency:TVkBool32; //< shader can use texture operations that return resource residency information (requires sparseNonResident support)
-       shaderResourceMinLod:TVkBool32; //< shader can use texture operations that specify minimum resource level of detail
-       sparseBinding:TVkBool32; //< Sparse resources support: Resource memory can be managed at opaque page level rather than object level
-       sparseResidencyBuffer:TVkBool32; //< Sparse resources support: GPU can access partially resident buffers
-       sparseResidencyImage2D:TVkBool32; //< Sparse resources support: GPU can access partially resident 2D (non-MSAA non-depth/stencil) images
-       sparseResidencyImage3D:TVkBool32; //< Sparse resources support: GPU can access partially resident 3D images
-       sparseResidency2Samples:TVkBool32; //< Sparse resources support: GPU can access partially resident MSAA 2D images with 2 samples
-       sparseResidency4Samples:TVkBool32; //< Sparse resources support: GPU can access partially resident MSAA 2D images with 4 samples
-       sparseResidency8Samples:TVkBool32; //< Sparse resources support: GPU can access partially resident MSAA 2D images with 8 samples
-       sparseResidency16Samples:TVkBool32; //< Sparse resources support: GPU can access partially resident MSAA 2D images with 16 samples
-       sparseResidencyAliased:TVkBool32; //< Sparse resources support: GPU can correctly access data aliased into multiple locations (opt-in)
-       variableMultisampleRate:TVkBool32; //< multisample rate must be the same for all pipelines in a subpass
-       inheritedQueries:TVkBool32; //< Queries may be inherited from primary to secondary command buffers
+       robustBufferAccess:TVkBool32;
+       fullDrawIndexUint32:TVkBool32;
+       imageCubeArray:TVkBool32;
+       independentBlend:TVkBool32;
+       geometryShader:TVkBool32;
+       tessellationShader:TVkBool32;
+       sampleRateShading:TVkBool32;
+       dualSrcBlend:TVkBool32;
+       logicOp:TVkBool32;
+       multiDrawIndirect:TVkBool32;
+       drawIndirectFirstInstance:TVkBool32;
+       depthClamp:TVkBool32;
+       depthBiasClamp:TVkBool32;
+       fillModeNonSolid:TVkBool32;
+       depthBounds:TVkBool32;
+       wideLines:TVkBool32;
+       largePoints:TVkBool32;
+       alphaToOne:TVkBool32;
+       multiViewport:TVkBool32;
+       samplerAnisotropy:TVkBool32;
+       textureCompressionETC2:TVkBool32;
+       textureCompressionASTC_LDR:TVkBool32;
+       textureCompressionBC:TVkBool32;
+       occlusionQueryPrecise:TVkBool32;
+       pipelineStatisticsQuery:TVkBool32;
+       vertexPipelineStoresAndAtomics:TVkBool32;
+       fragmentStoresAndAtomics:TVkBool32;
+       shaderTessellationAndGeometryPointSize:TVkBool32;
+       shaderImageGatherExtended:TVkBool32;
+       shaderStorageImageExtendedFormats:TVkBool32;
+       shaderStorageImageMultisample:TVkBool32;
+       shaderStorageImageReadWithoutFormat:TVkBool32;
+       shaderStorageImageWriteWithoutFormat:TVkBool32;
+       shaderUniformBufferArrayDynamicIndexing:TVkBool32;
+       shaderSampledImageArrayDynamicIndexing:TVkBool32;
+       shaderStorageBufferArrayDynamicIndexing:TVkBool32;
+       shaderStorageImageArrayDynamicIndexing:TVkBool32;
+       shaderClipDistance:TVkBool32;
+       shaderCullDistance:TVkBool32;
+       shaderFloat64:TVkBool32;
+       shaderInt64:TVkBool32;
+       shaderInt16:TVkBool32;
+       shaderResourceResidency:TVkBool32;
+       shaderResourceMinLod:TVkBool32;
+       sparseBinding:TVkBool32;
+       sparseResidencyBuffer:TVkBool32;
+       sparseResidencyImage2D:TVkBool32;
+       sparseResidencyImage3D:TVkBool32;
+       sparseResidency2Samples:TVkBool32;
+       sparseResidency4Samples:TVkBool32;
+       sparseResidency8Samples:TVkBool32;
+       sparseResidency16Samples:TVkBool32;
+       sparseResidencyAliased:TVkBool32;
+       variableMultisampleRate:TVkBool32;
+       inheritedQueries:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pRobustBufferAccess:TVkBool32; //< out of bounds buffer accesses are well defined
-                          const pFullDrawIndexUint32:TVkBool32; //< full 32-bit range of indices for indexed draw calls
-                          const pImageCubeArray:TVkBool32; //< image views which are arrays of cube maps
-                          const pIndependentBlend:TVkBool32; //< blending operations are controlled per-attachment
-                          const pGeometryShader:TVkBool32; //< geometry stage
-                          const pTessellationShader:TVkBool32; //< tessellation control and evaluation stage
-                          const pSampleRateShading:TVkBool32; //< per-sample shading and interpolation
-                          const pDualSrcBlend:TVkBool32; //< blend operations which take two sources
-                          const pLogicOp:TVkBool32; //< logic operations
-                          const pMultiDrawIndirect:TVkBool32; //< multi draw indirect
-                          const pDrawIndirectFirstInstance:TVkBool32; //< indirect draws can use non-zero firstInstance
-                          const pDepthClamp:TVkBool32; //< depth clamping
-                          const pDepthBiasClamp:TVkBool32; //< depth bias clamping
-                          const pFillModeNonSolid:TVkBool32; //< point and wireframe fill modes
-                          const pDepthBounds:TVkBool32; //< depth bounds test
-                          const pWideLines:TVkBool32; //< lines with width greater than 1
-                          const pLargePoints:TVkBool32; //< points with size greater than 1
-                          const pAlphaToOne:TVkBool32; //< the fragment alpha component can be forced to maximum representable alpha value
-                          const pMultiViewport:TVkBool32; //< viewport arrays
-                          const pSamplerAnisotropy:TVkBool32; //< anisotropic sampler filtering
-                          const pTextureCompressionETC2:TVkBool32; //< ETC texture compression formats
-                          const pTextureCompressionASTC_LDR:TVkBool32; //< ASTC LDR texture compression formats
-                          const pTextureCompressionBC:TVkBool32; //< BC1-7 texture compressed formats
-                          const pOcclusionQueryPrecise:TVkBool32; //< precise occlusion queries returning actual sample counts
-                          const pPipelineStatisticsQuery:TVkBool32; //< pipeline statistics query
-                          const pVertexPipelineStoresAndAtomics:TVkBool32; //< stores and atomic ops on storage buffers and images are supported in vertex, tessellation, and geometry stages
-                          const pFragmentStoresAndAtomics:TVkBool32; //< stores and atomic ops on storage buffers and images are supported in the fragment stage
-                          const pShaderTessellationAndGeometryPointSize:TVkBool32; //< tessellation and geometry stages can export point size
-                          const pShaderImageGatherExtended:TVkBool32; //< image gather with run-time values and independent offsets
-                          const pShaderStorageImageExtendedFormats:TVkBool32; //< the extended set of formats can be used for storage images
-                          const pShaderStorageImageMultisample:TVkBool32; //< multisample images can be used for storage images
-                          const pShaderStorageImageReadWithoutFormat:TVkBool32; //< read from storage image does not require format qualifier
-                          const pShaderStorageImageWriteWithoutFormat:TVkBool32; //< write to storage image does not require format qualifier
-                          const pShaderUniformBufferArrayDynamicIndexing:TVkBool32; //< arrays of uniform buffers can be accessed with dynamically uniform indices
-                          const pShaderSampledImageArrayDynamicIndexing:TVkBool32; //< arrays of sampled images can be accessed with dynamically uniform indices
-                          const pShaderStorageBufferArrayDynamicIndexing:TVkBool32; //< arrays of storage buffers can be accessed with dynamically uniform indices
-                          const pShaderStorageImageArrayDynamicIndexing:TVkBool32; //< arrays of storage images can be accessed with dynamically uniform indices
-                          const pShaderClipDistance:TVkBool32; //< clip distance in shaders
-                          const pShaderCullDistance:TVkBool32; //< cull distance in shaders
-                          const pShaderFloat64:TVkBool32; //< 64-bit floats (doubles) in shaders
-                          const pShaderInt64:TVkBool32; //< 64-bit integers in shaders
-                          const pShaderInt16:TVkBool32; //< 16-bit integers in shaders
-                          const pShaderResourceResidency:TVkBool32; //< shader can use texture operations that return resource residency information (requires sparseNonResident support)
-                          const pShaderResourceMinLod:TVkBool32; //< shader can use texture operations that specify minimum resource level of detail
-                          const pSparseBinding:TVkBool32; //< Sparse resources support: Resource memory can be managed at opaque page level rather than object level
-                          const pSparseResidencyBuffer:TVkBool32; //< Sparse resources support: GPU can access partially resident buffers
-                          const pSparseResidencyImage2D:TVkBool32; //< Sparse resources support: GPU can access partially resident 2D (non-MSAA non-depth/stencil) images
-                          const pSparseResidencyImage3D:TVkBool32; //< Sparse resources support: GPU can access partially resident 3D images
-                          const pSparseResidency2Samples:TVkBool32; //< Sparse resources support: GPU can access partially resident MSAA 2D images with 2 samples
-                          const pSparseResidency4Samples:TVkBool32; //< Sparse resources support: GPU can access partially resident MSAA 2D images with 4 samples
-                          const pSparseResidency8Samples:TVkBool32; //< Sparse resources support: GPU can access partially resident MSAA 2D images with 8 samples
-                          const pSparseResidency16Samples:TVkBool32; //< Sparse resources support: GPU can access partially resident MSAA 2D images with 16 samples
-                          const pSparseResidencyAliased:TVkBool32; //< Sparse resources support: GPU can correctly access data aliased into multiple locations (opt-in)
-                          const pVariableMultisampleRate:TVkBool32; //< multisample rate must be the same for all pipelines in a subpass
-                          const pInheritedQueries:TVkBool32); //< Queries may be inherited from primary to secondary command buffers
+       constructor Create(const pRobustBufferAccess:TVkBool32;
+                          const pFullDrawIndexUint32:TVkBool32;
+                          const pImageCubeArray:TVkBool32;
+                          const pIndependentBlend:TVkBool32;
+                          const pGeometryShader:TVkBool32;
+                          const pTessellationShader:TVkBool32;
+                          const pSampleRateShading:TVkBool32;
+                          const pDualSrcBlend:TVkBool32;
+                          const pLogicOp:TVkBool32;
+                          const pMultiDrawIndirect:TVkBool32;
+                          const pDrawIndirectFirstInstance:TVkBool32;
+                          const pDepthClamp:TVkBool32;
+                          const pDepthBiasClamp:TVkBool32;
+                          const pFillModeNonSolid:TVkBool32;
+                          const pDepthBounds:TVkBool32;
+                          const pWideLines:TVkBool32;
+                          const pLargePoints:TVkBool32;
+                          const pAlphaToOne:TVkBool32;
+                          const pMultiViewport:TVkBool32;
+                          const pSamplerAnisotropy:TVkBool32;
+                          const pTextureCompressionETC2:TVkBool32;
+                          const pTextureCompressionASTC_LDR:TVkBool32;
+                          const pTextureCompressionBC:TVkBool32;
+                          const pOcclusionQueryPrecise:TVkBool32;
+                          const pPipelineStatisticsQuery:TVkBool32;
+                          const pVertexPipelineStoresAndAtomics:TVkBool32;
+                          const pFragmentStoresAndAtomics:TVkBool32;
+                          const pShaderTessellationAndGeometryPointSize:TVkBool32;
+                          const pShaderImageGatherExtended:TVkBool32;
+                          const pShaderStorageImageExtendedFormats:TVkBool32;
+                          const pShaderStorageImageMultisample:TVkBool32;
+                          const pShaderStorageImageReadWithoutFormat:TVkBool32;
+                          const pShaderStorageImageWriteWithoutFormat:TVkBool32;
+                          const pShaderUniformBufferArrayDynamicIndexing:TVkBool32;
+                          const pShaderSampledImageArrayDynamicIndexing:TVkBool32;
+                          const pShaderStorageBufferArrayDynamicIndexing:TVkBool32;
+                          const pShaderStorageImageArrayDynamicIndexing:TVkBool32;
+                          const pShaderClipDistance:TVkBool32;
+                          const pShaderCullDistance:TVkBool32;
+                          const pShaderFloat64:TVkBool32;
+                          const pShaderInt64:TVkBool32;
+                          const pShaderInt16:TVkBool32;
+                          const pShaderResourceResidency:TVkBool32;
+                          const pShaderResourceMinLod:TVkBool32;
+                          const pSparseBinding:TVkBool32;
+                          const pSparseResidencyBuffer:TVkBool32;
+                          const pSparseResidencyImage2D:TVkBool32;
+                          const pSparseResidencyImage3D:TVkBool32;
+                          const pSparseResidency2Samples:TVkBool32;
+                          const pSparseResidency4Samples:TVkBool32;
+                          const pSparseResidency8Samples:TVkBool32;
+                          const pSparseResidency16Samples:TVkBool32;
+                          const pSparseResidencyAliased:TVkBool32;
+                          const pVariableMultisampleRate:TVkBool32;
+                          const pInheritedQueries:TVkBool32);
 {$endif}
      end;
 
@@ -3184,20 +3187,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkInstanceCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkInstanceCreateFlags;
        pApplicationInfo:PVkApplicationInfo;
        enabledLayerCount:TVkUInt32;
-       ppEnabledLayerNames:PPVkChar; //< Ordered list of layer names to be enabled
+       ppEnabledLayerNames:PPVkChar;
        enabledExtensionCount:TVkUInt32;
-       ppEnabledExtensionNames:PPVkChar; //< Extension names to be enabled
+       ppEnabledExtensionNames:PPVkChar;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkInstanceCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkInstanceCreateFlags;
                           const pPApplicationInfo:PVkApplicationInfo;
                           const pEnabledLayerCount:TVkUInt32;
-                          const pPpEnabledLayerNames:PPVkChar; //< Ordered list of layer names to be enabled
+                          const pPpEnabledLayerNames:PPVkChar;
                           const pEnabledExtensionCount:TVkUInt32;
-                          const pPpEnabledExtensionNames:PPVkChar); //< Extension names to be enabled
+                          const pPpEnabledExtensionNames:PPVkChar);
 {$endif}
      end;
 
@@ -3207,15 +3210,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       queueFlags:TVkQueueFlags; //< Queue flags
+       queueFlags:TVkQueueFlags;
        queueCount:TVkUInt32;
        timestampValidBits:TVkUInt32;
-       minImageTransferGranularity:TVkExtent3D; //< Minimum alignment requirement for image transfers
+       minImageTransferGranularity:TVkExtent3D;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pQueueFlags:TVkQueueFlags; //< Queue flags
+       constructor Create(const pQueueFlags:TVkQueueFlags;
                           const pQueueCount:TVkUInt32;
                           const pTimestampValidBits:TVkUInt32;
-                          const pMinImageTransferGranularity:TVkExtent3D); //< Minimum alignment requirement for image transfers
+                          const pMinImageTransferGranularity:TVkExtent3D);
 {$endif}
      end;
 
@@ -3225,11 +3228,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       propertyFlags:TVkMemoryPropertyFlags; //< Memory properties of this memory type
-       heapIndex:TVkUInt32; //< Index of the memory heap allocations of this memory type are taken from
+       propertyFlags:TVkMemoryPropertyFlags;
+       heapIndex:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pPropertyFlags:TVkMemoryPropertyFlags; //< Memory properties of this memory type
-                          const pHeapIndex:TVkUInt32); //< Index of the memory heap allocations of this memory type are taken from
+       constructor Create(const pPropertyFlags:TVkMemoryPropertyFlags;
+                          const pHeapIndex:TVkUInt32);
 {$endif}
      end;
 
@@ -3240,12 +3243,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       allocationSize:TVkDeviceSize; //< Size of memory allocation
-       memoryTypeIndex:TVkUInt32; //< Index of the of the memory type to allocate from
+       pNext:PVkVoid;
+       allocationSize:TVkDeviceSize;
+       memoryTypeIndex:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pAllocationSize:TVkDeviceSize; //< Size of memory allocation
-                          const pMemoryTypeIndex:TVkUInt32); //< Index of the of the memory type to allocate from
+       constructor Create(const pAllocationSize:TVkDeviceSize;
+                          const pMemoryTypeIndex:TVkUInt32);
 {$endif}
      end;
 
@@ -3255,13 +3258,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       size:TVkDeviceSize; //< Specified in bytes
-       alignment:TVkDeviceSize; //< Specified in bytes
-       memoryTypeBits:TVkUInt32; //< Bitmask of the allowed memory type indices into memoryTypes[] for this object
+       size:TVkDeviceSize;
+       alignment:TVkDeviceSize;
+       memoryTypeBits:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSize:TVkDeviceSize; //< Specified in bytes
-                          const pAlignment:TVkDeviceSize; //< Specified in bytes
-                          const pMemoryTypeBits:TVkUInt32); //< Bitmask of the allowed memory type indices into memoryTypes[] for this object
+       constructor Create(const pSize:TVkDeviceSize;
+                          const pAlignment:TVkDeviceSize;
+                          const pMemoryTypeBits:TVkUInt32);
 {$endif}
      end;
 
@@ -3289,15 +3292,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
        formatProperties:TVkSparseImageFormatProperties;
        imageMipTailFirstLod:TVkUInt32;
-       imageMipTailSize:TVkDeviceSize; //< Specified in bytes, must be a multiple of sparse block size in bytes / alignment
-       imageMipTailOffset:TVkDeviceSize; //< Specified in bytes, must be a multiple of sparse block size in bytes / alignment
-       imageMipTailStride:TVkDeviceSize; //< Specified in bytes, must be a multiple of sparse block size in bytes / alignment
+       imageMipTailSize:TVkDeviceSize;
+       imageMipTailOffset:TVkDeviceSize;
+       imageMipTailStride:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFormatProperties:TVkSparseImageFormatProperties;
                           const pImageMipTailFirstLod:TVkUInt32;
-                          const pImageMipTailSize:TVkDeviceSize; //< Specified in bytes, must be a multiple of sparse block size in bytes / alignment
-                          const pImageMipTailOffset:TVkDeviceSize; //< Specified in bytes, must be a multiple of sparse block size in bytes / alignment
-                          const pImageMipTailStride:TVkDeviceSize); //< Specified in bytes, must be a multiple of sparse block size in bytes / alignment
+                          const pImageMipTailSize:TVkDeviceSize;
+                          const pImageMipTailOffset:TVkDeviceSize;
+                          const pImageMipTailStride:TVkDeviceSize);
 {$endif}
      end;
 
@@ -3307,11 +3310,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       size:TVkDeviceSize; //< Available memory in the heap
-       flags:TVkMemoryHeapFlags; //< Flags for the heap
+       size:TVkDeviceSize;
+       flags:TVkMemoryHeapFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSize:TVkDeviceSize; //< Available memory in the heap
-                          const pFlags:TVkMemoryHeapFlags); //< Flags for the heap
+       constructor Create(const pSize:TVkDeviceSize;
+                          const pFlags:TVkMemoryHeapFlags);
 {$endif}
      end;
 
@@ -3340,14 +3343,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE
-       pNext:PVkVoid; //< Pointer to next structure
-       memory:TVkDeviceMemory; //< Mapped memory object
-       offset:TVkDeviceSize; //< Offset within the memory object where the range starts
-       size:TVkDeviceSize; //< Size of the range within the memory object
+       pNext:PVkVoid;
+       memory:TVkDeviceMemory;
+       offset:TVkDeviceSize;
+       size:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pMemory:TVkDeviceMemory; //< Mapped memory object
-                          const pOffset:TVkDeviceSize; //< Offset within the memory object where the range starts
-                          const pSize:TVkDeviceSize); //< Size of the range within the memory object
+       constructor Create(const pMemory:TVkDeviceMemory;
+                          const pOffset:TVkDeviceSize;
+                          const pSize:TVkDeviceSize);
 {$endif}
      end;
 
@@ -3357,13 +3360,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       linearTilingFeatures:TVkFormatFeatureFlags; //< Format features in case of linear tiling
-       optimalTilingFeatures:TVkFormatFeatureFlags; //< Format features in case of optimal tiling
-       bufferFeatures:TVkFormatFeatureFlags; //< Format features supported by buffers
+       linearTilingFeatures:TVkFormatFeatureFlags;
+       optimalTilingFeatures:TVkFormatFeatureFlags;
+       bufferFeatures:TVkFormatFeatureFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pLinearTilingFeatures:TVkFormatFeatureFlags; //< Format features in case of linear tiling
-                          const pOptimalTilingFeatures:TVkFormatFeatureFlags; //< Format features in case of optimal tiling
-                          const pBufferFeatures:TVkFormatFeatureFlags); //< Format features supported by buffers
+       constructor Create(const pLinearTilingFeatures:TVkFormatFeatureFlags;
+                          const pOptimalTilingFeatures:TVkFormatFeatureFlags;
+                          const pBufferFeatures:TVkFormatFeatureFlags);
 {$endif}
      end;
 
@@ -3373,17 +3376,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       maxExtent:TVkExtent3D; //< max image dimensions for this resource type
-       maxMipLevels:TVkUInt32; //< max number of mipmap levels for this resource type
-       maxArrayLayers:TVkUInt32; //< max array size for this resource type
-       sampleCounts:TVkSampleCountFlags; //< supported sample counts for this resource type
-       maxResourceSize:TVkDeviceSize; //< max size (in bytes) of this resource type
+       maxExtent:TVkExtent3D;
+       maxMipLevels:TVkUInt32;
+       maxArrayLayers:TVkUInt32;
+       sampleCounts:TVkSampleCountFlags;
+       maxResourceSize:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pMaxExtent:TVkExtent3D; //< max image dimensions for this resource type
-                          const pMaxMipLevels:TVkUInt32; //< max number of mipmap levels for this resource type
-                          const pMaxArrayLayers:TVkUInt32; //< max array size for this resource type
-                          const pSampleCounts:TVkSampleCountFlags; //< supported sample counts for this resource type
-                          const pMaxResourceSize:TVkDeviceSize); //< max size (in bytes) of this resource type
+       constructor Create(const pMaxExtent:TVkExtent3D;
+                          const pMaxMipLevels:TVkUInt32;
+                          const pMaxArrayLayers:TVkUInt32;
+                          const pSampleCounts:TVkSampleCountFlags;
+                          const pMaxResourceSize:TVkDeviceSize);
 {$endif}
      end;
 
@@ -3393,13 +3396,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       buffer:TVkBuffer; //< Buffer used for this descriptor slot when the descriptor is UNIFORM_BUFFER[_DYNAMIC] or STORAGE_BUFFER[_DYNAMIC]. VK_NULL_HANDLE otherwise.
-       offset:TVkDeviceSize; //< Base offset from buffer start in bytes to update in the descriptor set.
-       range:TVkDeviceSize; //< Size in bytes of the buffer resource for this descriptor update.
+       buffer:array[0.._DYNAMIC-1] of TVkBuffer;
+       offset:TVkDeviceSize;
+       range:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pBuffer:TVkBuffer; //< Buffer used for this descriptor slot when the descriptor is UNIFORM_BUFFER[_DYNAMIC] or STORAGE_BUFFER[_DYNAMIC]. VK_NULL_HANDLE otherwise.
-                          const pOffset:TVkDeviceSize; //< Base offset from buffer start in bytes to update in the descriptor set.
-                          const pRange:TVkDeviceSize); //< Size in bytes of the buffer resource for this descriptor update.
+       constructor Create(const pBuffer:array of TVkBuffer;
+                          const pOffset:TVkDeviceSize;
+                          const pRange:TVkDeviceSize);
 {$endif}
      end;
 
@@ -3409,13 +3412,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sampler:TVkSampler; //< Sampler to write to the descriptor in case it is a SAMPLER or COMBINED_IMAGE_SAMPLER descriptor. Ignored otherwise.
-       imageView:TVkImageView; //< Image view to write to the descriptor in case it is a SAMPLED_IMAGE, STORAGE_IMAGE, COMBINED_IMAGE_SAMPLER, or INPUT_ATTACHMENT descriptor. Ignored otherwise.
-       imageLayout:TVkImageLayout; //< Layout the image is expected to be in when accessed using this descriptor (only used if imageView is not VK_NULL_HANDLE).
+       sampler:TVkSampler;
+       imageView:TVkImageView;
+       imageLayout:TVkImageLayout;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSampler:TVkSampler; //< Sampler to write to the descriptor in case it is a SAMPLER or COMBINED_IMAGE_SAMPLER descriptor. Ignored otherwise.
-                          const pImageView:TVkImageView; //< Image view to write to the descriptor in case it is a SAMPLED_IMAGE, STORAGE_IMAGE, COMBINED_IMAGE_SAMPLER, or INPUT_ATTACHMENT descriptor. Ignored otherwise.
-                          const pImageLayout:TVkImageLayout); //< Layout the image is expected to be in when accessed using this descriptor (only used if imageView is not VK_NULL_HANDLE).
+       constructor Create(const pSampler:TVkSampler;
+                          const pImageView:TVkImageView;
+                          const pImageLayout:TVkImageLayout);
 {$endif}
      end;
 
@@ -3426,24 +3429,24 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
-       pNext:PVkVoid; //< Pointer to next structure
-       dstSet:TVkDescriptorSet; //< Destination descriptor set
-       dstBinding:TVkUInt32; //< Binding within the destination descriptor set to write
-       dstArrayElement:TVkUInt32; //< Array element within the destination binding to write
-       descriptorCount:TVkUInt32; //< Number of descriptors to write (determines the size of the array pointed by pDescriptors)
-       descriptorType:TVkDescriptorType; //< Descriptor type to write (determines which members of the array pointed by pDescriptors are going to be used)
-       pImageInfo:PVkDescriptorImageInfo; //< Sampler, image view, and layout for SAMPLER, COMBINED_IMAGE_SAMPLER, {SAMPLED,STORAGE}_IMAGE, and INPUT_ATTACHMENT descriptor types.
-       pBufferInfo:PVkDescriptorBufferInfo; //< Raw buffer, size, and offset for {UNIFORM,STORAGE}_BUFFER[_DYNAMIC] descriptor types.
-       pTexelBufferView:PVkBufferView; //< Buffer view to write to the descriptor for {UNIFORM,STORAGE}_TEXEL_BUFFER descriptor types.
+       pNext:PVkVoid;
+       dstSet:TVkDescriptorSet;
+       dstBinding:TVkUInt32;
+       dstArrayElement:TVkUInt32;
+       descriptorCount:TVkUInt32;
+       descriptorType:TVkDescriptorType;
+       pImageInfo:PVkDescriptorImageInfo;
+       pBufferInfo:array[0.._DYNAMIC-1] of PVkDescriptorBufferInfo;
+       pTexelBufferView:PVkBufferView;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pDstSet:TVkDescriptorSet; //< Destination descriptor set
-                          const pDstBinding:TVkUInt32; //< Binding within the destination descriptor set to write
-                          const pDstArrayElement:TVkUInt32; //< Array element within the destination binding to write
-                          const pDescriptorCount:TVkUInt32; //< Number of descriptors to write (determines the size of the array pointed by pDescriptors)
-                          const pDescriptorType:TVkDescriptorType; //< Descriptor type to write (determines which members of the array pointed by pDescriptors are going to be used)
-                          const pPImageInfo:PVkDescriptorImageInfo; //< Sampler, image view, and layout for SAMPLER, COMBINED_IMAGE_SAMPLER, {SAMPLED,STORAGE}_IMAGE, and INPUT_ATTACHMENT descriptor types.
-                          const pPBufferInfo:PVkDescriptorBufferInfo; //< Raw buffer, size, and offset for {UNIFORM,STORAGE}_BUFFER[_DYNAMIC] descriptor types.
-                          const pPTexelBufferView:PVkBufferView); //< Buffer view to write to the descriptor for {UNIFORM,STORAGE}_TEXEL_BUFFER descriptor types.
+       constructor Create(const pDstSet:TVkDescriptorSet;
+                          const pDstBinding:TVkUInt32;
+                          const pDstArrayElement:TVkUInt32;
+                          const pDescriptorCount:TVkUInt32;
+                          const pDescriptorType:TVkDescriptorType;
+                          const pPImageInfo:PVkDescriptorImageInfo;
+                          const pPBufferInfo:array of PVkDescriptorBufferInfo;
+                          const pPTexelBufferView:PVkBufferView);
 {$endif}
      end;
 
@@ -3454,22 +3457,22 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET
-       pNext:PVkVoid; //< Pointer to next structure
-       srcSet:TVkDescriptorSet; //< Source descriptor set
-       srcBinding:TVkUInt32; //< Binding within the source descriptor set to copy from
-       srcArrayElement:TVkUInt32; //< Array element within the source binding to copy from
-       dstSet:TVkDescriptorSet; //< Destination descriptor set
-       dstBinding:TVkUInt32; //< Binding within the destination descriptor set to copy to
-       dstArrayElement:TVkUInt32; //< Array element within the destination binding to copy to
-       descriptorCount:TVkUInt32; //< Number of descriptors to write (determines the size of the array pointed by pDescriptors)
+       pNext:PVkVoid;
+       srcSet:TVkDescriptorSet;
+       srcBinding:TVkUInt32;
+       srcArrayElement:TVkUInt32;
+       dstSet:TVkDescriptorSet;
+       dstBinding:TVkUInt32;
+       dstArrayElement:TVkUInt32;
+       descriptorCount:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSrcSet:TVkDescriptorSet; //< Source descriptor set
-                          const pSrcBinding:TVkUInt32; //< Binding within the source descriptor set to copy from
-                          const pSrcArrayElement:TVkUInt32; //< Array element within the source binding to copy from
-                          const pDstSet:TVkDescriptorSet; //< Destination descriptor set
-                          const pDstBinding:TVkUInt32; //< Binding within the destination descriptor set to copy to
-                          const pDstArrayElement:TVkUInt32; //< Array element within the destination binding to copy to
-                          const pDescriptorCount:TVkUInt32); //< Number of descriptors to write (determines the size of the array pointed by pDescriptors)
+       constructor Create(const pSrcSet:TVkDescriptorSet;
+                          const pSrcBinding:TVkUInt32;
+                          const pSrcArrayElement:TVkUInt32;
+                          const pDstSet:TVkDescriptorSet;
+                          const pDstBinding:TVkUInt32;
+                          const pDstArrayElement:TVkUInt32;
+                          const pDescriptorCount:TVkUInt32);
 {$endif}
      end;
 
@@ -3480,17 +3483,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure.
-       flags:TVkBufferCreateFlags; //< Buffer creation flags
-       size:TVkDeviceSize; //< Specified in bytes
-       usage:TVkBufferUsageFlags; //< Buffer usage flags
+       pNext:PVkVoid;
+       flags:TVkBufferCreateFlags;
+       size:TVkDeviceSize;
+       usage:TVkBufferUsageFlags;
        sharingMode:TVkSharingMode;
        queueFamilyIndexCount:TVkUInt32;
        pQueueFamilyIndices:PVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkBufferCreateFlags; //< Buffer creation flags
-                          const pSize:TVkDeviceSize; //< Specified in bytes
-                          const pUsage:TVkBufferUsageFlags; //< Buffer usage flags
+       constructor Create(const pFlags:TVkBufferCreateFlags;
+                          const pSize:TVkDeviceSize;
+                          const pUsage:TVkBufferUsageFlags;
                           const pSharingMode:TVkSharingMode;
                           const pQueueFamilyIndexCount:TVkUInt32;
                           const pPQueueFamilyIndices:PVkUInt32);
@@ -3504,18 +3507,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure.
-       flags:TVkBufferViewCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkBufferViewCreateFlags;
        buffer:TVkBuffer;
-       format:TVkFormat; //< Optionally specifies format of elements
-       offset:TVkDeviceSize; //< Specified in bytes
-       range:TVkDeviceSize; //< View size specified in bytes
+       format:TVkFormat;
+       offset:TVkDeviceSize;
+       range:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkBufferViewCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkBufferViewCreateFlags;
                           const pBuffer:TVkBuffer;
-                          const pFormat:TVkFormat; //< Optionally specifies format of elements
-                          const pOffset:TVkDeviceSize; //< Specified in bytes
-                          const pRange:TVkDeviceSize); //< View size specified in bytes
+                          const pFormat:TVkFormat;
+                          const pOffset:TVkDeviceSize;
+                          const pRange:TVkDeviceSize);
 {$endif}
      end;
 
@@ -3580,12 +3583,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_BARRIER
-       pNext:PVkVoid; //< Pointer to next structure.
-       srcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
-       dstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
+       pNext:PVkVoid;
+       srcAccessMask:TVkAccessFlags;
+       dstAccessMask:TVkAccessFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSrcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
-                          const pDstAccessMask:TVkAccessFlags); //< Memory accesses from the destination of the dependency to synchronize
+       constructor Create(const pSrcAccessMask:TVkAccessFlags;
+                          const pDstAccessMask:TVkAccessFlags);
 {$endif}
      end;
 
@@ -3596,22 +3599,22 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER
-       pNext:PVkVoid; //< Pointer to next structure.
-       srcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
-       dstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
-       srcQueueFamilyIndex:TVkUInt32; //< Queue family to transition ownership from
-       dstQueueFamilyIndex:TVkUInt32; //< Queue family to transition ownership to
-       buffer:TVkBuffer; //< Buffer to sync
-       offset:TVkDeviceSize; //< Offset within the buffer to sync
-       size:TVkDeviceSize; //< Amount of bytes to sync
+       pNext:PVkVoid;
+       srcAccessMask:TVkAccessFlags;
+       dstAccessMask:TVkAccessFlags;
+       srcQueueFamilyIndex:TVkUInt32;
+       dstQueueFamilyIndex:TVkUInt32;
+       buffer:TVkBuffer;
+       offset:TVkDeviceSize;
+       size:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSrcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
-                          const pDstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
-                          const pSrcQueueFamilyIndex:TVkUInt32; //< Queue family to transition ownership from
-                          const pDstQueueFamilyIndex:TVkUInt32; //< Queue family to transition ownership to
-                          const pBuffer:TVkBuffer; //< Buffer to sync
-                          const pOffset:TVkDeviceSize; //< Offset within the buffer to sync
-                          const pSize:TVkDeviceSize); //< Amount of bytes to sync
+       constructor Create(const pSrcAccessMask:TVkAccessFlags;
+                          const pDstAccessMask:TVkAccessFlags;
+                          const pSrcQueueFamilyIndex:TVkUInt32;
+                          const pDstQueueFamilyIndex:TVkUInt32;
+                          const pBuffer:TVkBuffer;
+                          const pOffset:TVkDeviceSize;
+                          const pSize:TVkDeviceSize);
 {$endif}
      end;
 
@@ -3622,24 +3625,24 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER
-       pNext:PVkVoid; //< Pointer to next structure.
-       srcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
-       dstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
-       oldLayout:TVkImageLayout; //< Current layout of the image
-       newLayout:TVkImageLayout; //< New layout to transition the image to
-       srcQueueFamilyIndex:TVkUInt32; //< Queue family to transition ownership from
-       dstQueueFamilyIndex:TVkUInt32; //< Queue family to transition ownership to
-       image:TVkImage; //< Image to sync
-       subresourceRange:TVkImageSubresourceRange; //< Subresource range to sync
+       pNext:PVkVoid;
+       srcAccessMask:TVkAccessFlags;
+       dstAccessMask:TVkAccessFlags;
+       oldLayout:TVkImageLayout;
+       newLayout:TVkImageLayout;
+       srcQueueFamilyIndex:TVkUInt32;
+       dstQueueFamilyIndex:TVkUInt32;
+       image:TVkImage;
+       subresourceRange:TVkImageSubresourceRange;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSrcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
-                          const pDstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
-                          const pOldLayout:TVkImageLayout; //< Current layout of the image
-                          const pNewLayout:TVkImageLayout; //< New layout to transition the image to
-                          const pSrcQueueFamilyIndex:TVkUInt32; //< Queue family to transition ownership from
-                          const pDstQueueFamilyIndex:TVkUInt32; //< Queue family to transition ownership to
-                          const pImage:TVkImage; //< Image to sync
-                          const pSubresourceRange:TVkImageSubresourceRange); //< Subresource range to sync
+       constructor Create(const pSrcAccessMask:TVkAccessFlags;
+                          const pDstAccessMask:TVkAccessFlags;
+                          const pOldLayout:TVkImageLayout;
+                          const pNewLayout:TVkImageLayout;
+                          const pSrcQueueFamilyIndex:TVkUInt32;
+                          const pDstQueueFamilyIndex:TVkUInt32;
+                          const pImage:TVkImage;
+                          const pSubresourceRange:TVkImageSubresourceRange);
 {$endif}
      end;
 
@@ -3650,8 +3653,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure.
-       flags:TVkImageCreateFlags; //< Image creation flags
+       pNext:PVkVoid;
+       flags:TVkImageCreateFlags;
        imageType:TVkImageType;
        format:TVkFormat;
        extent:TVkExtent3D;
@@ -3659,13 +3662,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        arrayLayers:TVkUInt32;
        samples:TVkSampleCountFlagBits;
        tiling:TVkImageTiling;
-       usage:TVkImageUsageFlags; //< Image usage flags
-       sharingMode:TVkSharingMode; //< Cross-queue-family sharing mode
-       queueFamilyIndexCount:TVkUInt32; //< Number of queue families to share across
-       pQueueFamilyIndices:PVkUInt32; //< Array of queue family indices to share across
-       initialLayout:TVkImageLayout; //< Initial image layout for all subresources
+       usage:TVkImageUsageFlags;
+       sharingMode:TVkSharingMode;
+       queueFamilyIndexCount:TVkUInt32;
+       pQueueFamilyIndices:PVkUInt32;
+       initialLayout:TVkImageLayout;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkImageCreateFlags; //< Image creation flags
+       constructor Create(const pFlags:TVkImageCreateFlags;
                           const pImageType:TVkImageType;
                           const pFormat:TVkFormat;
                           const pExtent:TVkExtent3D;
@@ -3673,11 +3676,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const pArrayLayers:TVkUInt32;
                           const pSamples:TVkSampleCountFlagBits;
                           const pTiling:TVkImageTiling;
-                          const pUsage:TVkImageUsageFlags; //< Image usage flags
-                          const pSharingMode:TVkSharingMode; //< Cross-queue-family sharing mode
-                          const pQueueFamilyIndexCount:TVkUInt32; //< Number of queue families to share across
-                          const pPQueueFamilyIndices:PVkUInt32; //< Array of queue family indices to share across
-                          const pInitialLayout:TVkImageLayout); //< Initial image layout for all subresources
+                          const pUsage:TVkImageUsageFlags;
+                          const pSharingMode:TVkSharingMode;
+                          const pQueueFamilyIndexCount:TVkUInt32;
+                          const pPQueueFamilyIndices:PVkUInt32;
+                          const pInitialLayout:TVkImageLayout);
 {$endif}
      end;
 
@@ -3687,17 +3690,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       offset:TVkDeviceSize; //< Specified in bytes
-       size:TVkDeviceSize; //< Specified in bytes
-       rowPitch:TVkDeviceSize; //< Specified in bytes
-       arrayPitch:TVkDeviceSize; //< Specified in bytes
-       depthPitch:TVkDeviceSize; //< Specified in bytes
+       offset:TVkDeviceSize;
+       size:TVkDeviceSize;
+       rowPitch:TVkDeviceSize;
+       arrayPitch:TVkDeviceSize;
+       depthPitch:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pOffset:TVkDeviceSize; //< Specified in bytes
-                          const pSize:TVkDeviceSize; //< Specified in bytes
-                          const pRowPitch:TVkDeviceSize; //< Specified in bytes
-                          const pArrayPitch:TVkDeviceSize; //< Specified in bytes
-                          const pDepthPitch:TVkDeviceSize); //< Specified in bytes
+       constructor Create(const pOffset:TVkDeviceSize;
+                          const pSize:TVkDeviceSize;
+                          const pRowPitch:TVkDeviceSize;
+                          const pArrayPitch:TVkDeviceSize;
+                          const pDepthPitch:TVkDeviceSize);
 {$endif}
      end;
 
@@ -3708,15 +3711,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkImageViewCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkImageViewCreateFlags;
        image:TVkImage;
        viewType:TVkImageViewType;
        format:TVkFormat;
        components:TVkComponentMapping;
        subresourceRange:TVkImageSubresourceRange;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkImageViewCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkImageViewCreateFlags;
                           const pImage:TVkImage;
                           const pViewType:TVkImageViewType;
                           const pFormat:TVkFormat;
@@ -3731,13 +3734,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       srcOffset:TVkDeviceSize; //< Specified in bytes
-       dstOffset:TVkDeviceSize; //< Specified in bytes
-       size:TVkDeviceSize; //< Specified in bytes
+       srcOffset:TVkDeviceSize;
+       dstOffset:TVkDeviceSize;
+       size:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSrcOffset:TVkDeviceSize; //< Specified in bytes
-                          const pDstOffset:TVkDeviceSize; //< Specified in bytes
-                          const pSize:TVkDeviceSize); //< Specified in bytes
+       constructor Create(const pSrcOffset:TVkDeviceSize;
+                          const pDstOffset:TVkDeviceSize;
+                          const pSize:TVkDeviceSize);
 {$endif}
      end;
 
@@ -3747,17 +3750,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       resourceOffset:TVkDeviceSize; //< Specified in bytes
-       size:TVkDeviceSize; //< Specified in bytes
+       resourceOffset:TVkDeviceSize;
+       size:TVkDeviceSize;
        memory:TVkDeviceMemory;
-       memoryOffset:TVkDeviceSize; //< Specified in bytes
-       flags:TVkSparseMemoryBindFlags; //< Reserved for future
+       memoryOffset:TVkDeviceSize;
+       flags:TVkSparseMemoryBindFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pResourceOffset:TVkDeviceSize; //< Specified in bytes
-                          const pSize:TVkDeviceSize; //< Specified in bytes
+       constructor Create(const pResourceOffset:TVkDeviceSize;
+                          const pSize:TVkDeviceSize;
                           const pMemory:TVkDeviceMemory;
-                          const pMemoryOffset:TVkDeviceSize; //< Specified in bytes
-                          const pFlags:TVkSparseMemoryBindFlags); //< Reserved for future
+                          const pMemoryOffset:TVkDeviceSize;
+                          const pFlags:TVkSparseMemoryBindFlags);
 {$endif}
      end;
 
@@ -3771,15 +3774,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        offset:TVkOffset3D;
        extent:TVkExtent3D;
        memory:TVkDeviceMemory;
-       memoryOffset:TVkDeviceSize; //< Specified in bytes
-       flags:TVkSparseMemoryBindFlags; //< Reserved for future
+       memoryOffset:TVkDeviceSize;
+       flags:TVkSparseMemoryBindFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pSubresource:TVkImageSubresource;
                           const pOffset:TVkOffset3D;
                           const pExtent:TVkExtent3D;
                           const pMemory:TVkDeviceMemory;
-                          const pMemoryOffset:TVkDeviceSize; //< Specified in bytes
-                          const pFlags:TVkSparseMemoryBindFlags); //< Reserved for future
+                          const pMemoryOffset:TVkDeviceSize;
+                          const pFlags:TVkSparseMemoryBindFlags);
 {$endif}
      end;
 
@@ -3838,7 +3841,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_SPARSE_INFO
-       pNext:PVkVoid; //< Pointer to next structure.
+       pNext:PVkVoid;
        waitSemaphoreCount:TVkUInt32;
        pWaitSemaphores:PVkSemaphore;
        bufferBindCount:TVkUInt32;
@@ -3870,16 +3873,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        srcSubresource:TVkImageSubresourceLayers;
-       srcOffset:TVkOffset3D; //< Specified in pixels for both compressed and uncompressed images
+       srcOffset:TVkOffset3D;
        dstSubresource:TVkImageSubresourceLayers;
-       dstOffset:TVkOffset3D; //< Specified in pixels for both compressed and uncompressed images
-       extent:TVkExtent3D; //< Specified in pixels for both compressed and uncompressed images
+       dstOffset:TVkOffset3D;
+       extent:TVkExtent3D;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pSrcSubresource:TVkImageSubresourceLayers;
-                          const pSrcOffset:TVkOffset3D; //< Specified in pixels for both compressed and uncompressed images
+                          const pSrcOffset:TVkOffset3D;
                           const pDstSubresource:TVkImageSubresourceLayers;
-                          const pDstOffset:TVkOffset3D; //< Specified in pixels for both compressed and uncompressed images
-                          const pExtent:TVkExtent3D); //< Specified in pixels for both compressed and uncompressed images
+                          const pDstOffset:TVkOffset3D;
+                          const pExtent:TVkExtent3D);
 {$endif}
      end;
 
@@ -3890,14 +3893,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        srcSubresource:TVkImageSubresourceLayers;
-       srcOffsets:array[0..1] of TVkOffset3D; //< Specified in pixels for both compressed and uncompressed images
+       srcOffsets:array[0..1] of TVkOffset3D;
        dstSubresource:TVkImageSubresourceLayers;
-       dstOffsets:array[0..1] of TVkOffset3D; //< Specified in pixels for both compressed and uncompressed images
+       dstOffsets:array[0..1] of TVkOffset3D;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pSrcSubresource:TVkImageSubresourceLayers;
-                          const pSrcOffsets:array of TVkOffset3D; //< Specified in pixels for both compressed and uncompressed images
+                          const pSrcOffsets:array of TVkOffset3D;
                           const pDstSubresource:TVkImageSubresourceLayers;
-                          const pDstOffsets:array of TVkOffset3D); //< Specified in pixels for both compressed and uncompressed images
+                          const pDstOffsets:array of TVkOffset3D);
 {$endif}
      end;
 
@@ -3907,19 +3910,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       bufferOffset:TVkDeviceSize; //< Specified in bytes
-       bufferRowLength:TVkUInt32; //< Specified in texels
+       bufferOffset:TVkDeviceSize;
+       bufferRowLength:TVkUInt32;
        bufferImageHeight:TVkUInt32;
        imageSubresource:TVkImageSubresourceLayers;
-       imageOffset:TVkOffset3D; //< Specified in pixels for both compressed and uncompressed images
-       imageExtent:TVkExtent3D; //< Specified in pixels for both compressed and uncompressed images
+       imageOffset:TVkOffset3D;
+       imageExtent:TVkExtent3D;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pBufferOffset:TVkDeviceSize; //< Specified in bytes
-                          const pBufferRowLength:TVkUInt32; //< Specified in texels
+       constructor Create(const pBufferOffset:TVkDeviceSize;
+                          const pBufferRowLength:TVkUInt32;
                           const pBufferImageHeight:TVkUInt32;
                           const pImageSubresource:TVkImageSubresourceLayers;
-                          const pImageOffset:TVkOffset3D; //< Specified in pixels for both compressed and uncompressed images
-                          const pImageExtent:TVkExtent3D); //< Specified in pixels for both compressed and uncompressed images
+                          const pImageOffset:TVkOffset3D;
+                          const pImageExtent:TVkExtent3D);
 {$endif}
      end;
 
@@ -3950,14 +3953,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkShaderModuleCreateFlags; //< Reserved
-       codeSize:TVkSize; //< Specified in bytes
-       pCode:PVkUInt32; //< Binary code of size codeSize
+       pNext:PVkVoid;
+       flags:TVkShaderModuleCreateFlags;
+       codeSize:TVkSize;
+       pCode:PVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkShaderModuleCreateFlags; //< Reserved
-                          const pCodeSize:TVkSize; //< Specified in bytes
-                          const pPCode:PVkUInt32); //< Binary code of size codeSize
+       constructor Create(const pFlags:TVkShaderModuleCreateFlags;
+                          const pCodeSize:TVkSize;
+                          const pPCode:PVkUInt32);
 {$endif}
      end;
 
@@ -3967,17 +3970,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       binding:TVkUInt32; //< Binding number for this entry
-       descriptorType:TVkDescriptorType; //< Type of the descriptors in this binding
-       descriptorCount:TVkUInt32; //< Number of descriptors in this binding
-       stageFlags:TVkShaderStageFlags; //< Shader stages this binding is visible to
-       pImmutableSamplers:PVkSampler; //< Immutable samplers (used if descriptor type is SAMPLER or COMBINED_IMAGE_SAMPLER, is either NULL or contains count number of elements)
+       binding:TVkUInt32;
+       descriptorType:TVkDescriptorType;
+       descriptorCount:TVkUInt32;
+       stageFlags:TVkShaderStageFlags;
+       pImmutableSamplers:PVkSampler;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pBinding:TVkUInt32; //< Binding number for this entry
-                          const pDescriptorType:TVkDescriptorType; //< Type of the descriptors in this binding
-                          const pDescriptorCount:TVkUInt32; //< Number of descriptors in this binding
-                          const pStageFlags:TVkShaderStageFlags; //< Shader stages this binding is visible to
-                          const pPImmutableSamplers:PVkSampler); //< Immutable samplers (used if descriptor type is SAMPLER or COMBINED_IMAGE_SAMPLER, is either NULL or contains count number of elements)
+       constructor Create(const pBinding:TVkUInt32;
+                          const pDescriptorType:TVkDescriptorType;
+                          const pDescriptorCount:TVkUInt32;
+                          const pStageFlags:TVkShaderStageFlags;
+                          const pPImmutableSamplers:PVkSampler);
 {$endif}
      end;
 
@@ -3988,14 +3991,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkDescriptorSetLayoutCreateFlags; //< Reserved
-       bindingCount:TVkUInt32; //< Number of bindings in the descriptor set layout
-       pBindings:PVkDescriptorSetLayoutBinding; //< Array of descriptor set layout bindings
+       pNext:PVkVoid;
+       flags:TVkDescriptorSetLayoutCreateFlags;
+       bindingCount:TVkUInt32;
+       pBindings:PVkDescriptorSetLayoutBinding;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkDescriptorSetLayoutCreateFlags; //< Reserved
-                          const pBindingCount:TVkUInt32; //< Number of bindings in the descriptor set layout
-                          const pPBindings:PVkDescriptorSetLayoutBinding); //< Array of descriptor set layout bindings
+       constructor Create(const pFlags:TVkDescriptorSetLayoutCreateFlags;
+                          const pBindingCount:TVkUInt32;
+                          const pPBindings:PVkDescriptorSetLayoutBinding);
 {$endif}
      end;
 
@@ -4020,7 +4023,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        flags:TVkDescriptorPoolCreateFlags;
        maxSets:TVkUInt32;
        poolSizeCount:TVkUInt32;
@@ -4040,7 +4043,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        descriptorPool:TVkDescriptorPool;
        descriptorSetCount:TVkUInt32;
        pSetLayouts:PVkDescriptorSetLayout;
@@ -4057,13 +4060,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       constantID:TVkUInt32; //< The SpecConstant ID specified in the BIL
-       offset:TVkUInt32; //< Offset of the value in the data block
-       size:TVkSize; //< Size in bytes of the SpecConstant
+       constantID:TVkUInt32;
+       offset:TVkUInt32;
+       size:TVkSize;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pConstantID:TVkUInt32; //< The SpecConstant ID specified in the BIL
-                          const pOffset:TVkUInt32; //< Offset of the value in the data block
-                          const pSize:TVkSize); //< Size in bytes of the SpecConstant
+       constructor Create(const pConstantID:TVkUInt32;
+                          const pOffset:TVkUInt32;
+                          const pSize:TVkSize);
 {$endif}
      end;
 
@@ -4073,15 +4076,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       mapEntryCount:TVkUInt32; //< Number of entries in the map
-       pMapEntries:PVkSpecializationMapEntry; //< Array of map entries
-       dataSize:TVkSize; //< Size in bytes of pData
-       pData:PVkVoid; //< Pointer to SpecConstant data
+       mapEntryCount:TVkUInt32;
+       pMapEntries:PVkSpecializationMapEntry;
+       dataSize:TVkSize;
+       pData:PVkVoid;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pMapEntryCount:TVkUInt32; //< Number of entries in the map
-                          const pPMapEntries:PVkSpecializationMapEntry; //< Array of map entries
-                          const pDataSize:TVkSize; //< Size in bytes of pData
-                          const pPData:PVkVoid); //< Pointer to SpecConstant data
+       constructor Create(const pMapEntryCount:TVkUInt32;
+                          const pPMapEntries:PVkSpecializationMapEntry;
+                          const pDataSize:TVkSize;
+                          const pPData:PVkVoid);
 {$endif}
      end;
 
@@ -4092,17 +4095,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineShaderStageCreateFlags; //< Reserved
-       stage:TVkShaderStageFlagBits; //< Shader stage
-       module:TVkShaderModule; //< Module containing entry point
-       pName:PVkChar; //< Null-terminated entry point name
+       pNext:PVkVoid;
+       flags:TVkPipelineShaderStageCreateFlags;
+       stage:TVkShaderStageFlagBits;
+       module:TVkShaderModule;
+       pName:PVkChar;
        pSpecializationInfo:PVkSpecializationInfo;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineShaderStageCreateFlags; //< Reserved
-                          const pStage:TVkShaderStageFlagBits; //< Shader stage
-                          const pModule:TVkShaderModule; //< Module containing entry point
-                          const pPName:PVkChar; //< Null-terminated entry point name
+       constructor Create(const pFlags:TVkPipelineShaderStageCreateFlags;
+                          const pStage:TVkShaderStageFlagBits;
+                          const pModule:TVkShaderModule;
+                          const pPName:PVkChar;
                           const pPSpecializationInfo:PVkSpecializationInfo);
 {$endif}
      end;
@@ -4114,18 +4117,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineCreateFlags; //< Pipeline creation flags
+       pNext:PVkVoid;
+       flags:TVkPipelineCreateFlags;
        stage:TVkPipelineShaderStageCreateInfo;
-       layout:TVkPipelineLayout; //< Interface layout of the pipeline
-       basePipelineHandle:TVkPipeline; //< If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is nonzero, it specifies the handle of the base pipeline this is a derivative of
-       basePipelineIndex:TVkInt32; //< If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is not -1, it specifies an index into pCreateInfos of the base pipeline this is a derivative of
+       layout:TVkPipelineLayout;
+       basePipelineHandle:TVkPipeline;
+       basePipelineIndex:TVkInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineCreateFlags; //< Pipeline creation flags
+       constructor Create(const pFlags:TVkPipelineCreateFlags;
                           const pStage:TVkPipelineShaderStageCreateInfo;
-                          const pLayout:TVkPipelineLayout; //< Interface layout of the pipeline
-                          const pBasePipelineHandle:TVkPipeline; //< If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is nonzero, it specifies the handle of the base pipeline this is a derivative of
-                          const pBasePipelineIndex:TVkInt32); //< If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is not -1, it specifies an index into pCreateInfos of the base pipeline this is a derivative of
+                          const pLayout:TVkPipelineLayout;
+                          const pBasePipelineHandle:TVkPipeline;
+                          const pBasePipelineIndex:TVkInt32);
 {$endif}
      end;
 
@@ -4135,13 +4138,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       binding:TVkUInt32; //< Vertex buffer binding id
-       stride:TVkUInt32; //< Distance between vertices in bytes (0 = no advancement)
-       inputRate:TVkVertexInputRate; //< The rate at which the vertex data is consumed
+       binding:TVkUInt32;
+       stride:TVkUInt32;
+       inputRate:TVkVertexInputRate;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pBinding:TVkUInt32; //< Vertex buffer binding id
-                          const pStride:TVkUInt32; //< Distance between vertices in bytes (0 = no advancement)
-                          const pInputRate:TVkVertexInputRate); //< The rate at which the vertex data is consumed
+       constructor Create(const pBinding:TVkUInt32;
+                          const pStride:TVkUInt32;
+                          const pInputRate:TVkVertexInputRate);
 {$endif}
      end;
 
@@ -4151,15 +4154,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       location:TVkUInt32; //< location of the shader vertex attrib
-       binding:TVkUInt32; //< Vertex buffer binding id
-       format:TVkFormat; //< format of source data
-       offset:TVkUInt32; //< Offset of first element in bytes from base of vertex
+       location:TVkUInt32;
+       binding:TVkUInt32;
+       format:TVkFormat;
+       offset:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pLocation:TVkUInt32; //< location of the shader vertex attrib
-                          const pBinding:TVkUInt32; //< Vertex buffer binding id
-                          const pFormat:TVkFormat; //< format of source data
-                          const pOffset:TVkUInt32); //< Offset of first element in bytes from base of vertex
+       constructor Create(const pLocation:TVkUInt32;
+                          const pBinding:TVkUInt32;
+                          const pFormat:TVkFormat;
+                          const pOffset:TVkUInt32);
 {$endif}
      end;
 
@@ -4170,17 +4173,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineVertexInputStateCreateFlags; //< Reserved
-       vertexBindingDescriptionCount:TVkUInt32; //< number of bindings
+       pNext:PVkVoid;
+       flags:TVkPipelineVertexInputStateCreateFlags;
+       vertexBindingDescriptionCount:TVkUInt32;
        pVertexBindingDescriptions:PVkVertexInputBindingDescription;
-       vertexAttributeDescriptionCount:TVkUInt32; //< number of attributes
+       vertexAttributeDescriptionCount:TVkUInt32;
        pVertexAttributeDescriptions:PVkVertexInputAttributeDescription;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineVertexInputStateCreateFlags; //< Reserved
-                          const pVertexBindingDescriptionCount:TVkUInt32; //< number of bindings
+       constructor Create(const pFlags:TVkPipelineVertexInputStateCreateFlags;
+                          const pVertexBindingDescriptionCount:TVkUInt32;
                           const pPVertexBindingDescriptions:PVkVertexInputBindingDescription;
-                          const pVertexAttributeDescriptionCount:TVkUInt32; //< number of attributes
+                          const pVertexAttributeDescriptionCount:TVkUInt32;
                           const pPVertexAttributeDescriptions:PVkVertexInputAttributeDescription);
 {$endif}
      end;
@@ -4192,12 +4195,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineInputAssemblyStateCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkPipelineInputAssemblyStateCreateFlags;
        topology:TVkPrimitiveTopology;
        primitiveRestartEnable:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineInputAssemblyStateCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkPipelineInputAssemblyStateCreateFlags;
                           const pTopology:TVkPrimitiveTopology;
                           const pPrimitiveRestartEnable:TVkBool32);
 {$endif}
@@ -4210,11 +4213,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineTessellationStateCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkPipelineTessellationStateCreateFlags;
        patchControlPoints:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineTessellationStateCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkPipelineTessellationStateCreateFlags;
                           const pPatchControlPoints:TVkUInt32);
 {$endif}
      end;
@@ -4226,14 +4229,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineViewportStateCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkPipelineViewportStateCreateFlags;
        viewportCount:TVkUInt32;
        pViewports:PVkViewport;
        scissorCount:TVkUInt32;
        pScissors:PVkRect2D;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineViewportStateCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkPipelineViewportStateCreateFlags;
                           const pViewportCount:TVkUInt32;
                           const pPViewports:PVkViewport;
                           const pScissorCount:TVkUInt32;
@@ -4248,11 +4251,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineRasterizationStateCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkPipelineRasterizationStateCreateFlags;
        depthClampEnable:TVkBool32;
        rasterizerDiscardEnable:TVkBool32;
-       polygonMode:TVkPolygonMode; //< optional (GL45)
+       polygonMode:TVkPolygonMode;
        cullMode:TVkCullModeFlags;
        frontFace:TVkFrontFace;
        depthBiasEnable:TVkBool32;
@@ -4261,10 +4264,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        depthBiasSlopeFactor:TVkFloat;
        lineWidth:TVkFloat;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineRasterizationStateCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkPipelineRasterizationStateCreateFlags;
                           const pDepthClampEnable:TVkBool32;
                           const pRasterizerDiscardEnable:TVkBool32;
-                          const pPolygonMode:TVkPolygonMode; //< optional (GL45)
+                          const pPolygonMode:TVkPolygonMode;
                           const pCullMode:TVkCullModeFlags;
                           const pFrontFace:TVkFrontFace;
                           const pDepthBiasEnable:TVkBool32;
@@ -4282,20 +4285,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineMultisampleStateCreateFlags; //< Reserved
-       rasterizationSamples:TVkSampleCountFlagBits; //< Number of samples used for rasterization
-       sampleShadingEnable:TVkBool32; //< optional (GL45)
-       minSampleShading:TVkFloat; //< optional (GL45)
-       pSampleMask:PVkSampleMask; //< Array of sampleMask words
+       pNext:PVkVoid;
+       flags:TVkPipelineMultisampleStateCreateFlags;
+       rasterizationSamples:TVkSampleCountFlagBits;
+       sampleShadingEnable:TVkBool32;
+       minSampleShading:TVkFloat;
+       pSampleMask:PVkSampleMask;
        alphaToCoverageEnable:TVkBool32;
        alphaToOneEnable:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineMultisampleStateCreateFlags; //< Reserved
-                          const pRasterizationSamples:TVkSampleCountFlagBits; //< Number of samples used for rasterization
-                          const pSampleShadingEnable:TVkBool32; //< optional (GL45)
-                          const pMinSampleShading:TVkFloat; //< optional (GL45)
-                          const pPSampleMask:PVkSampleMask; //< Array of sampleMask words
+       constructor Create(const pFlags:TVkPipelineMultisampleStateCreateFlags;
+                          const pRasterizationSamples:TVkSampleCountFlagBits;
+                          const pSampleShadingEnable:TVkBool32;
+                          const pMinSampleShading:TVkFloat;
+                          const pPSampleMask:PVkSampleMask;
                           const pAlphaToCoverageEnable:TVkBool32;
                           const pAlphaToOneEnable:TVkBool32);
 {$endif}
@@ -4334,18 +4337,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineColorBlendStateCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkPipelineColorBlendStateCreateFlags;
        logicOpEnable:TVkBool32;
        logicOp:TVkLogicOp;
-       attachmentCount:TVkUInt32; //< # of pAttachments
+       attachmentCount:TVkUInt32;
        pAttachments:PVkPipelineColorBlendAttachmentState;
        blendConstants:array[0..3] of TVkFloat;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineColorBlendStateCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkPipelineColorBlendStateCreateFlags;
                           const pLogicOpEnable:TVkBool32;
                           const pLogicOp:TVkLogicOp;
-                          const pAttachmentCount:TVkUInt32; //< # of pAttachments
+                          const pAttachmentCount:TVkUInt32;
                           const pPAttachments:PVkPipelineColorBlendAttachmentState;
                           const pBlendConstants:array of TVkFloat);
 {$endif}
@@ -4358,12 +4361,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineDynamicStateCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkPipelineDynamicStateCreateFlags;
        dynamicStateCount:TVkUInt32;
        pDynamicStates:PVkDynamicState;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineDynamicStateCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkPipelineDynamicStateCreateFlags;
                           const pDynamicStateCount:TVkUInt32;
                           const pPDynamicStates:PVkDynamicState);
 {$endif}
@@ -4400,23 +4403,23 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineDepthStencilStateCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkPipelineDepthStencilStateCreateFlags;
        depthTestEnable:TVkBool32;
        depthWriteEnable:TVkBool32;
        depthCompareOp:TVkCompareOp;
-       depthBoundsTestEnable:TVkBool32; //< optional (depth_bounds_test)
+       depthBoundsTestEnable:TVkBool32;
        stencilTestEnable:TVkBool32;
        front:TVkStencilOpState;
        back:TVkStencilOpState;
        minDepthBounds:TVkFloat;
        maxDepthBounds:TVkFloat;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineDepthStencilStateCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkPipelineDepthStencilStateCreateFlags;
                           const pDepthTestEnable:TVkBool32;
                           const pDepthWriteEnable:TVkBool32;
                           const pDepthCompareOp:TVkCompareOp;
-                          const pDepthBoundsTestEnable:TVkBool32; //< optional (depth_bounds_test)
+                          const pDepthBoundsTestEnable:TVkBool32;
                           const pStencilTestEnable:TVkBool32;
                           const pFront:TVkStencilOpState;
                           const pBack:TVkStencilOpState;
@@ -4432,10 +4435,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineCreateFlags; //< Pipeline creation flags
+       pNext:PVkVoid;
+       flags:TVkPipelineCreateFlags;
        stageCount:TVkUInt32;
-       pStages:PVkPipelineShaderStageCreateInfo; //< One entry for each active shader stage
+       pStages:PVkPipelineShaderStageCreateInfo;
        pVertexInputState:PVkPipelineVertexInputStateCreateInfo;
        pInputAssemblyState:PVkPipelineInputAssemblyStateCreateInfo;
        pTessellationState:PVkPipelineTessellationStateCreateInfo;
@@ -4445,15 +4448,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        pDepthStencilState:PVkPipelineDepthStencilStateCreateInfo;
        pColorBlendState:PVkPipelineColorBlendStateCreateInfo;
        pDynamicState:PVkPipelineDynamicStateCreateInfo;
-       layout:TVkPipelineLayout; //< Interface layout of the pipeline
+       layout:TVkPipelineLayout;
        renderPass:TVkRenderPass;
        subpass:TVkUInt32;
-       basePipelineHandle:TVkPipeline; //< If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is nonzero, it specifies the handle of the base pipeline this is a derivative of
-       basePipelineIndex:TVkInt32; //< If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is not -1, it specifies an index into pCreateInfos of the base pipeline this is a derivative of
+       basePipelineHandle:TVkPipeline;
+       basePipelineIndex:TVkInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineCreateFlags; //< Pipeline creation flags
+       constructor Create(const pFlags:TVkPipelineCreateFlags;
                           const pStageCount:TVkUInt32;
-                          const pPStages:PVkPipelineShaderStageCreateInfo; //< One entry for each active shader stage
+                          const pPStages:PVkPipelineShaderStageCreateInfo;
                           const pPVertexInputState:PVkPipelineVertexInputStateCreateInfo;
                           const pPInputAssemblyState:PVkPipelineInputAssemblyStateCreateInfo;
                           const pPTessellationState:PVkPipelineTessellationStateCreateInfo;
@@ -4463,11 +4466,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const pPDepthStencilState:PVkPipelineDepthStencilStateCreateInfo;
                           const pPColorBlendState:PVkPipelineColorBlendStateCreateInfo;
                           const pPDynamicState:PVkPipelineDynamicStateCreateInfo;
-                          const pLayout:TVkPipelineLayout; //< Interface layout of the pipeline
+                          const pLayout:TVkPipelineLayout;
                           const pRenderPass:TVkRenderPass;
                           const pSubpass:TVkUInt32;
-                          const pBasePipelineHandle:TVkPipeline; //< If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is nonzero, it specifies the handle of the base pipeline this is a derivative of
-                          const pBasePipelineIndex:TVkInt32); //< If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is not -1, it specifies an index into pCreateInfos of the base pipeline this is a derivative of
+                          const pBasePipelineHandle:TVkPipeline;
+                          const pBasePipelineIndex:TVkInt32);
 {$endif}
      end;
 
@@ -4478,14 +4481,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineCacheCreateFlags; //< Reserved
-       initialDataSize:TVkSize; //< Size of initial data to populate cache, in bytes
-       pInitialData:PVkVoid; //< Initial data to populate cache
+       pNext:PVkVoid;
+       flags:TVkPipelineCacheCreateFlags;
+       initialDataSize:TVkSize;
+       pInitialData:PVkVoid;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineCacheCreateFlags; //< Reserved
-                          const pInitialDataSize:TVkSize; //< Size of initial data to populate cache, in bytes
-                          const pPInitialData:PVkVoid); //< Initial data to populate cache
+       constructor Create(const pFlags:TVkPipelineCacheCreateFlags;
+                          const pInitialDataSize:TVkSize;
+                          const pPInitialData:PVkVoid);
 {$endif}
      end;
 
@@ -4495,13 +4498,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       stageFlags:TVkShaderStageFlags; //< Which stages use the range
-       offset:TVkUInt32; //< Start of the range, in bytes
-       size:TVkUInt32; //< Size of the range, in bytes
+       stageFlags:TVkShaderStageFlags;
+       offset:TVkUInt32;
+       size:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pStageFlags:TVkShaderStageFlags; //< Which stages use the range
-                          const pOffset:TVkUInt32; //< Start of the range, in bytes
-                          const pSize:TVkUInt32); //< Size of the range, in bytes
+       constructor Create(const pStageFlags:TVkShaderStageFlags;
+                          const pOffset:TVkUInt32;
+                          const pSize:TVkUInt32);
 {$endif}
      end;
 
@@ -4512,18 +4515,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineLayoutCreateFlags; //< Reserved
-       setLayoutCount:TVkUInt32; //< Number of descriptor sets interfaced by the pipeline
-       pSetLayouts:PVkDescriptorSetLayout; //< Array of setCount number of descriptor set layout objects defining the layout of the
-       pushConstantRangeCount:TVkUInt32; //< Number of push-constant ranges used by the pipeline
-       pPushConstantRanges:PVkPushConstantRange; //< Array of pushConstantRangeCount number of ranges used by various shader stages
+       pNext:PVkVoid;
+       flags:TVkPipelineLayoutCreateFlags;
+       setLayoutCount:TVkUInt32;
+       pSetLayouts:PVkDescriptorSetLayout;
+       pushConstantRangeCount:TVkUInt32;
+       pPushConstantRanges:PVkPushConstantRange;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineLayoutCreateFlags; //< Reserved
-                          const pSetLayoutCount:TVkUInt32; //< Number of descriptor sets interfaced by the pipeline
-                          const pPSetLayouts:PVkDescriptorSetLayout; //< Array of setCount number of descriptor set layout objects defining the layout of the
-                          const pPushConstantRangeCount:TVkUInt32; //< Number of push-constant ranges used by the pipeline
-                          const pPPushConstantRanges:PVkPushConstantRange); //< Array of pushConstantRangeCount number of ranges used by various shader stages
+       constructor Create(const pFlags:TVkPipelineLayoutCreateFlags;
+                          const pSetLayoutCount:TVkUInt32;
+                          const pPSetLayouts:PVkDescriptorSetLayout;
+                          const pPushConstantRangeCount:TVkUInt32;
+                          const pPPushConstantRanges:PVkPushConstantRange);
 {$endif}
      end;
 
@@ -4534,11 +4537,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkSamplerCreateFlags; //< Reserved
-       magFilter:TVkFilter; //< Filter mode for magnification
-       minFilter:TVkFilter; //< Filter mode for minifiation
-       mipmapMode:TVkSamplerMipmapMode; //< Mipmap selection mode
+       pNext:PVkVoid;
+       flags:TVkSamplerCreateFlags;
+       magFilter:TVkFilter;
+       minFilter:TVkFilter;
+       mipmapMode:TVkSamplerMipmapMode;
        addressModeU:TVkSamplerAddressMode;
        addressModeV:TVkSamplerAddressMode;
        addressModeW:TVkSamplerAddressMode;
@@ -4552,10 +4555,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        borderColor:TVkBorderColor;
        unnormalizedCoordinates:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkSamplerCreateFlags; //< Reserved
-                          const pMagFilter:TVkFilter; //< Filter mode for magnification
-                          const pMinFilter:TVkFilter; //< Filter mode for minifiation
-                          const pMipmapMode:TVkSamplerMipmapMode; //< Mipmap selection mode
+       constructor Create(const pFlags:TVkSamplerCreateFlags;
+                          const pMagFilter:TVkFilter;
+                          const pMinFilter:TVkFilter;
+                          const pMipmapMode:TVkSamplerMipmapMode;
                           const pAddressModeU:TVkSamplerAddressMode;
                           const pAddressModeV:TVkSamplerAddressMode;
                           const pAddressModeW:TVkSamplerAddressMode;
@@ -4578,11 +4581,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkCommandPoolCreateFlags; //< Command pool creation flags
+       pNext:PVkVoid;
+       flags:TVkCommandPoolCreateFlags;
        queueFamilyIndex:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkCommandPoolCreateFlags; //< Command pool creation flags
+       constructor Create(const pFlags:TVkCommandPoolCreateFlags;
                           const pQueueFamilyIndex:TVkUInt32);
 {$endif}
      end;
@@ -4594,7 +4597,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        commandPool:TVkCommandPool;
        level:TVkCommandBufferLevel;
        commandBufferCount:TVkUInt32;
@@ -4612,20 +4615,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       renderPass:TVkRenderPass; //< Render pass for secondary command buffers
+       pNext:PVkVoid;
+       renderPass:TVkRenderPass;
        subpass:TVkUInt32;
-       framebuffer:TVkFramebuffer; //< Framebuffer for secondary command buffers
-       occlusionQueryEnable:TVkBool32; //< Whether this secondary command buffer may be executed during an occlusion query
-       queryFlags:TVkQueryControlFlags; //< Query flags used by this secondary command buffer, if executed during an occlusion query
-       pipelineStatistics:TVkQueryPipelineStatisticFlags; //< Pipeline statistics that may be counted for this secondary command buffer
+       framebuffer:TVkFramebuffer;
+       occlusionQueryEnable:TVkBool32;
+       queryFlags:TVkQueryControlFlags;
+       pipelineStatistics:TVkQueryPipelineStatisticFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pRenderPass:TVkRenderPass; //< Render pass for secondary command buffers
+       constructor Create(const pRenderPass:TVkRenderPass;
                           const pSubpass:TVkUInt32;
-                          const pFramebuffer:TVkFramebuffer; //< Framebuffer for secondary command buffers
-                          const pOcclusionQueryEnable:TVkBool32; //< Whether this secondary command buffer may be executed during an occlusion query
-                          const pQueryFlags:TVkQueryControlFlags; //< Query flags used by this secondary command buffer, if executed during an occlusion query
-                          const pPipelineStatistics:TVkQueryPipelineStatisticFlags); //< Pipeline statistics that may be counted for this secondary command buffer
+                          const pFramebuffer:TVkFramebuffer;
+                          const pOcclusionQueryEnable:TVkBool32;
+                          const pQueryFlags:TVkQueryControlFlags;
+                          const pPipelineStatistics:TVkQueryPipelineStatisticFlags);
 {$endif}
      end;
 
@@ -4636,12 +4639,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkCommandBufferUsageFlags; //< Command buffer usage flags
-       pInheritanceInfo:PVkCommandBufferInheritanceInfo; //< Pointer to inheritance info for secondary command buffers
+       pNext:PVkVoid;
+       flags:TVkCommandBufferUsageFlags;
+       pInheritanceInfo:PVkCommandBufferInheritanceInfo;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkCommandBufferUsageFlags; //< Command buffer usage flags
-                          const pPInheritanceInfo:PVkCommandBufferInheritanceInfo); //< Pointer to inheritance info for secondary command buffers
+       constructor Create(const pFlags:TVkCommandBufferUsageFlags;
+                          const pPInheritanceInfo:PVkCommandBufferInheritanceInfo);
 {$endif}
      end;
 
@@ -4693,7 +4696,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        renderPass:TVkRenderPass;
        framebuffer:TVkFramebuffer;
        renderArea:TVkRect2D;
@@ -4733,20 +4736,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        flags:TVkAttachmentDescriptionFlags;
        format:TVkFormat;
        samples:TVkSampleCountFlagBits;
-       loadOp:TVkAttachmentLoadOp; //< Load operation for color or depth data
-       storeOp:TVkAttachmentStoreOp; //< Store operation for color or depth data
-       stencilLoadOp:TVkAttachmentLoadOp; //< Load operation for stencil data
-       stencilStoreOp:TVkAttachmentStoreOp; //< Store operation for stencil data
+       loadOp:TVkAttachmentLoadOp;
+       storeOp:TVkAttachmentStoreOp;
+       stencilLoadOp:TVkAttachmentLoadOp;
+       stencilStoreOp:TVkAttachmentStoreOp;
        initialLayout:TVkImageLayout;
        finalLayout:TVkImageLayout;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFlags:TVkAttachmentDescriptionFlags;
                           const pFormat:TVkFormat;
                           const pSamples:TVkSampleCountFlagBits;
-                          const pLoadOp:TVkAttachmentLoadOp; //< Load operation for color or depth data
-                          const pStoreOp:TVkAttachmentStoreOp; //< Store operation for color or depth data
-                          const pStencilLoadOp:TVkAttachmentLoadOp; //< Load operation for stencil data
-                          const pStencilStoreOp:TVkAttachmentStoreOp; //< Store operation for stencil data
+                          const pLoadOp:TVkAttachmentLoadOp;
+                          const pStoreOp:TVkAttachmentStoreOp;
+                          const pStencilLoadOp:TVkAttachmentLoadOp;
+                          const pStencilStoreOp:TVkAttachmentStoreOp;
                           const pInitialLayout:TVkImageLayout;
                           const pFinalLayout:TVkImageLayout);
 {$endif}
@@ -4773,7 +4776,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        flags:TVkSubpassDescriptionFlags;
-       pipelineBindPoint:TVkPipelineBindPoint; //< Must be VK_PIPELINE_BIND_POINT_GRAPHICS for now
+       pipelineBindPoint:TVkPipelineBindPoint;
        inputAttachmentCount:TVkUInt32;
        pInputAttachments:PVkAttachmentReference;
        colorAttachmentCount:TVkUInt32;
@@ -4784,7 +4787,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        pPreserveAttachments:PVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFlags:TVkSubpassDescriptionFlags;
-                          const pPipelineBindPoint:TVkPipelineBindPoint; //< Must be VK_PIPELINE_BIND_POINT_GRAPHICS for now
+                          const pPipelineBindPoint:TVkPipelineBindPoint;
                           const pInputAttachmentCount:TVkUInt32;
                           const pPInputAttachments:PVkAttachmentReference;
                           const pColorAttachmentCount:TVkUInt32;
@@ -4806,16 +4809,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        dstSubpass:TVkUInt32;
        srcStageMask:TVkPipelineStageFlags;
        dstStageMask:TVkPipelineStageFlags;
-       srcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
-       dstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
+       srcAccessMask:TVkAccessFlags;
+       dstAccessMask:TVkAccessFlags;
        dependencyFlags:TVkDependencyFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pSrcSubpass:TVkUInt32;
                           const pDstSubpass:TVkUInt32;
                           const pSrcStageMask:TVkPipelineStageFlags;
                           const pDstStageMask:TVkPipelineStageFlags;
-                          const pSrcAccessMask:TVkAccessFlags; //< Memory accesses from the source of the dependency to synchronize
-                          const pDstAccessMask:TVkAccessFlags; //< Memory accesses from the destination of the dependency to synchronize
+                          const pSrcAccessMask:TVkAccessFlags;
+                          const pDstAccessMask:TVkAccessFlags;
                           const pDependencyFlags:TVkDependencyFlags);
 {$endif}
      end;
@@ -4827,8 +4830,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkRenderPassCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkRenderPassCreateFlags;
        attachmentCount:TVkUInt32;
        pAttachments:PVkAttachmentDescription;
        subpassCount:TVkUInt32;
@@ -4836,7 +4839,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        dependencyCount:TVkUInt32;
        pDependencies:PVkSubpassDependency;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkRenderPassCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkRenderPassCreateFlags;
                           const pAttachmentCount:TVkUInt32;
                           const pPAttachments:PVkAttachmentDescription;
                           const pSubpassCount:TVkUInt32;
@@ -4853,10 +4856,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EVENT_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkEventCreateFlags; //< Event creation flags
+       pNext:PVkVoid;
+       flags:TVkEventCreateFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkEventCreateFlags); //< Event creation flags
+       constructor Create(const pFlags:TVkEventCreateFlags);
 {$endif}
      end;
 
@@ -4867,10 +4870,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkFenceCreateFlags; //< Fence creation flags
+       pNext:PVkVoid;
+       flags:TVkFenceCreateFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkFenceCreateFlags); //< Fence creation flags
+       constructor Create(const pFlags:TVkFenceCreateFlags);
 {$endif}
      end;
 
@@ -4881,21 +4884,21 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkDeviceCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkDeviceCreateFlags;
        queueCreateInfoCount:TVkUInt32;
        pQueueCreateInfos:PVkDeviceQueueCreateInfo;
        enabledLayerCount:TVkUInt32;
-       ppEnabledLayerNames:PPVkChar; //< Ordered list of layer names to be enabled
+       ppEnabledLayerNames:PPVkChar;
        enabledExtensionCount:TVkUInt32;
        ppEnabledExtensionNames:PPVkChar;
        pEnabledFeatures:PVkPhysicalDeviceFeatures;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkDeviceCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkDeviceCreateFlags;
                           const pQueueCreateInfoCount:TVkUInt32;
                           const pPQueueCreateInfos:PVkDeviceQueueCreateInfo;
                           const pEnabledLayerCount:TVkUInt32;
-                          const pPpEnabledLayerNames:PPVkChar; //< Ordered list of layer names to be enabled
+                          const pPpEnabledLayerNames:PPVkChar;
                           const pEnabledExtensionCount:TVkUInt32;
                           const pPpEnabledExtensionNames:PPVkChar;
                           const pPEnabledFeatures:PVkPhysicalDeviceFeatures);
@@ -4908,219 +4911,219 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       maxImageDimension1D:TVkUInt32; //< max 1D image dimension
-       maxImageDimension2D:TVkUInt32; //< max 2D image dimension
-       maxImageDimension3D:TVkUInt32; //< max 3D image dimension
-       maxImageDimensionCube:TVkUInt32; //< max cubemap image dimension
-       maxImageArrayLayers:TVkUInt32; //< max layers for image arrays
-       maxTexelBufferElements:TVkUInt32; //< max texel buffer size (fstexels)
-       maxUniformBufferRange:TVkUInt32; //< max uniform buffer range (bytes)
-       maxStorageBufferRange:TVkUInt32; //< max storage buffer range (bytes)
-       maxPushConstantsSize:TVkUInt32; //< max size of the push constants pool (bytes)
-       maxMemoryAllocationCount:TVkUInt32; //< max number of device memory allocations supported
-       maxSamplerAllocationCount:TVkUInt32; //< max number of samplers that can be allocated on a device
-       bufferImageGranularity:TVkDeviceSize; //< Granularity (in bytes) at which buffers and images can be bound to adjacent memory for simultaneous usage
-       sparseAddressSpaceSize:TVkDeviceSize; //< Total address space available for sparse allocations (bytes)
-       maxBoundDescriptorSets:TVkUInt32; //< max number of descriptors sets that can be bound to a pipeline
-       maxPerStageDescriptorSamplers:TVkUInt32; //< max number of samplers allowed per-stage in a descriptor set
-       maxPerStageDescriptorUniformBuffers:TVkUInt32; //< max number of uniform buffers allowed per-stage in a descriptor set
-       maxPerStageDescriptorStorageBuffers:TVkUInt32; //< max number of storage buffers allowed per-stage in a descriptor set
-       maxPerStageDescriptorSampledImages:TVkUInt32; //< max number of sampled images allowed per-stage in a descriptor set
-       maxPerStageDescriptorStorageImages:TVkUInt32; //< max number of storage images allowed per-stage in a descriptor set
-       maxPerStageDescriptorInputAttachments:TVkUInt32; //< max number of input attachments allowed per-stage in a descriptor set
-       maxPerStageResources:TVkUInt32; //< max number of resources allowed by a single stage
-       maxDescriptorSetSamplers:TVkUInt32; //< max number of samplers allowed in all stages in a descriptor set
-       maxDescriptorSetUniformBuffers:TVkUInt32; //< max number of uniform buffers allowed in all stages in a descriptor set
-       maxDescriptorSetUniformBuffersDynamic:TVkUInt32; //< max number of dynamic uniform buffers allowed in all stages in a descriptor set
-       maxDescriptorSetStorageBuffers:TVkUInt32; //< max number of storage buffers allowed in all stages in a descriptor set
-       maxDescriptorSetStorageBuffersDynamic:TVkUInt32; //< max number of dynamic storage buffers allowed in all stages in a descriptor set
-       maxDescriptorSetSampledImages:TVkUInt32; //< max number of sampled images allowed in all stages in a descriptor set
-       maxDescriptorSetStorageImages:TVkUInt32; //< max number of storage images allowed in all stages in a descriptor set
-       maxDescriptorSetInputAttachments:TVkUInt32; //< max number of input attachments allowed in all stages in a descriptor set
-       maxVertexInputAttributes:TVkUInt32; //< max number of vertex input attribute slots
-       maxVertexInputBindings:TVkUInt32; //< max number of vertex input binding slots
-       maxVertexInputAttributeOffset:TVkUInt32; //< max vertex input attribute offset added to vertex buffer offset
-       maxVertexInputBindingStride:TVkUInt32; //< max vertex input binding stride
-       maxVertexOutputComponents:TVkUInt32; //< max number of output components written by vertex shader
-       maxTessellationGenerationLevel:TVkUInt32; //< max level supported by tessellation primitive generator
-       maxTessellationPatchSize:TVkUInt32; //< max patch size (vertices)
-       maxTessellationControlPerVertexInputComponents:TVkUInt32; //< max number of input components per-vertex in TCS
-       maxTessellationControlPerVertexOutputComponents:TVkUInt32; //< max number of output components per-vertex in TCS
-       maxTessellationControlPerPatchOutputComponents:TVkUInt32; //< max number of output components per-patch in TCS
-       maxTessellationControlTotalOutputComponents:TVkUInt32; //< max total number of per-vertex and per-patch output components in TCS
-       maxTessellationEvaluationInputComponents:TVkUInt32; //< max number of input components per vertex in TES
-       maxTessellationEvaluationOutputComponents:TVkUInt32; //< max number of output components per vertex in TES
-       maxGeometryShaderInvocations:TVkUInt32; //< max invocation count supported in geometry shader
-       maxGeometryInputComponents:TVkUInt32; //< max number of input components read in geometry stage
-       maxGeometryOutputComponents:TVkUInt32; //< max number of output components written in geometry stage
-       maxGeometryOutputVertices:TVkUInt32; //< max number of vertices that can be emitted in geometry stage
-       maxGeometryTotalOutputComponents:TVkUInt32; //< max total number of components (all vertices) written in geometry stage
-       maxFragmentInputComponents:TVkUInt32; //< max number of input compontents read in fragment stage
-       maxFragmentOutputAttachments:TVkUInt32; //< max number of output attachments written in fragment stage
-       maxFragmentDualSrcAttachments:TVkUInt32; //< max number of output attachments written when using dual source blending
-       maxFragmentCombinedOutputResources:TVkUInt32; //< max total number of storage buffers, storage images and output buffers
-       maxComputeSharedMemorySize:TVkUInt32; //< max total storage size of work group local storage (bytes)
-       maxComputeWorkGroupCount:array[0..2] of TVkUInt32; //< max num of compute work groups that may be dispatched by a single command (x,y,z)
-       maxComputeWorkGroupInvocations:TVkUInt32; //< max total compute invocations in a single local work group
-       maxComputeWorkGroupSize:array[0..2] of TVkUInt32; //< max local size of a compute work group (x,y,z)
-       subPixelPrecisionBits:TVkUInt32; //< number bits of subpixel precision in screen x and y
-       subTexelPrecisionBits:TVkUInt32; //< number bits of precision for selecting texel weights
-       mipmapPrecisionBits:TVkUInt32; //< number bits of precision for selecting mipmap weights
-       maxDrawIndexedIndexValue:TVkUInt32; //< max index value for indexed draw calls (for 32-bit indices)
-       maxDrawIndirectCount:TVkUInt32; //< max draw count for indirect draw calls
-       maxSamplerLodBias:TVkFloat; //< max absolute sampler level of detail bias
-       maxSamplerAnisotropy:TVkFloat; //< max degree of sampler anisotropy
-       maxViewports:TVkUInt32; //< max number of active viewports
-       maxViewportDimensions:array[0..1] of TVkUInt32; //< max viewport dimensions (x,y)
-       viewportBoundsRange:array[0..1] of TVkFloat; //< viewport bounds range (min,max)
-       viewportSubPixelBits:TVkUInt32; //< number bits of subpixel precision for viewport
-       minMemoryMapAlignment:TVkSize; //< min required alignment of pointers returned by MapMemory (bytes)
-       minTexelBufferOffsetAlignment:TVkDeviceSize; //< min required alignment for texel buffer offsets (bytes)
-       minUniformBufferOffsetAlignment:TVkDeviceSize; //< min required alignment for uniform buffer sizes and offsets (bytes)
-       minStorageBufferOffsetAlignment:TVkDeviceSize; //< min required alignment for storage buffer offsets (bytes)
-       minTexelOffset:TVkInt32; //< min texel offset for OpTextureSampleOffset
-       maxTexelOffset:TVkUInt32; //< max texel offset for OpTextureSampleOffset
-       minTexelGatherOffset:TVkInt32; //< min texel offset for OpTextureGatherOffset
-       maxTexelGatherOffset:TVkUInt32; //< max texel offset for OpTextureGatherOffset
-       minInterpolationOffset:TVkFloat; //< furthest negative offset for interpolateAtOffset
-       maxInterpolationOffset:TVkFloat; //< furthest positive offset for interpolateAtOffset
-       subPixelInterpolationOffsetBits:TVkUInt32; //< number of subpixel bits for interpolateAtOffset
-       maxFramebufferWidth:TVkUInt32; //< max width for a framebuffer
-       maxFramebufferHeight:TVkUInt32; //< max height for a framebuffer
-       maxFramebufferLayers:TVkUInt32; //< max layer count for a layered framebuffer
-       framebufferColorSampleCounts:TVkSampleCountFlags; //< supported color sample counts for a framebuffer
-       framebufferDepthSampleCounts:TVkSampleCountFlags; //< supported depth sample counts for a framebuffer
-       framebufferStencilSampleCounts:TVkSampleCountFlags; //< supported stencil sample counts for a framebuffer
-       framebufferNoAttachmentsSampleCounts:TVkSampleCountFlags; //< supported sample counts for a framebuffer with no attachments
-       maxColorAttachments:TVkUInt32; //< max number of color attachments per subpass
-       sampledImageColorSampleCounts:TVkSampleCountFlags; //< supported color sample counts for a non-integer sampled image
-       sampledImageIntegerSampleCounts:TVkSampleCountFlags; //< supported sample counts for an integer image
-       sampledImageDepthSampleCounts:TVkSampleCountFlags; //< supported depth sample counts for a sampled image
-       sampledImageStencilSampleCounts:TVkSampleCountFlags; //< supported stencil sample counts for a sampled image
-       storageImageSampleCounts:TVkSampleCountFlags; //< supported sample counts for a storage image
-       maxSampleMaskWords:TVkUInt32; //< max number of sample mask words
-       timestampComputeAndGraphics:TVkBool32; //< timestamps on graphics and compute queues
-       timestampPeriod:TVkFloat; //< number of nanoseconds it takes for timestamp query value to increment by 1
-       maxClipDistances:TVkUInt32; //< max number of clip distances
-       maxCullDistances:TVkUInt32; //< max number of cull distances
-       maxCombinedClipAndCullDistances:TVkUInt32; //< max combined number of user clipping
-       discreteQueuePriorities:TVkUInt32; //< distinct queue priorities available
-       pointSizeRange:array[0..1] of TVkFloat; //< range (min,max) of supported point sizes
-       lineWidthRange:array[0..1] of TVkFloat; //< range (min,max) of supported line widths
-       pointSizeGranularity:TVkFloat; //< granularity of supported point sizes
-       lineWidthGranularity:TVkFloat; //< granularity of supported line widths
-       strictLines:TVkBool32; //< line rasterization follows preferred rules
-       standardSampleLocations:TVkBool32; //< supports standard sample locations for all supported sample counts
-       optimalBufferCopyOffsetAlignment:TVkDeviceSize; //< optimal offset of buffer copies
-       optimalBufferCopyRowPitchAlignment:TVkDeviceSize; //< optimal pitch of buffer copies
-       nonCoherentAtomSize:TVkDeviceSize; //< minimum size and alignment for non-coherent host-mapped device memory access
+       maxImageDimension1D:TVkUInt32;
+       maxImageDimension2D:TVkUInt32;
+       maxImageDimension3D:TVkUInt32;
+       maxImageDimensionCube:TVkUInt32;
+       maxImageArrayLayers:TVkUInt32;
+       maxTexelBufferElements:TVkUInt32;
+       maxUniformBufferRange:TVkUInt32;
+       maxStorageBufferRange:TVkUInt32;
+       maxPushConstantsSize:TVkUInt32;
+       maxMemoryAllocationCount:TVkUInt32;
+       maxSamplerAllocationCount:TVkUInt32;
+       bufferImageGranularity:TVkDeviceSize;
+       sparseAddressSpaceSize:TVkDeviceSize;
+       maxBoundDescriptorSets:TVkUInt32;
+       maxPerStageDescriptorSamplers:TVkUInt32;
+       maxPerStageDescriptorUniformBuffers:TVkUInt32;
+       maxPerStageDescriptorStorageBuffers:TVkUInt32;
+       maxPerStageDescriptorSampledImages:TVkUInt32;
+       maxPerStageDescriptorStorageImages:TVkUInt32;
+       maxPerStageDescriptorInputAttachments:TVkUInt32;
+       maxPerStageResources:TVkUInt32;
+       maxDescriptorSetSamplers:TVkUInt32;
+       maxDescriptorSetUniformBuffers:TVkUInt32;
+       maxDescriptorSetUniformBuffersDynamic:TVkUInt32;
+       maxDescriptorSetStorageBuffers:TVkUInt32;
+       maxDescriptorSetStorageBuffersDynamic:TVkUInt32;
+       maxDescriptorSetSampledImages:TVkUInt32;
+       maxDescriptorSetStorageImages:TVkUInt32;
+       maxDescriptorSetInputAttachments:TVkUInt32;
+       maxVertexInputAttributes:TVkUInt32;
+       maxVertexInputBindings:TVkUInt32;
+       maxVertexInputAttributeOffset:TVkUInt32;
+       maxVertexInputBindingStride:TVkUInt32;
+       maxVertexOutputComponents:TVkUInt32;
+       maxTessellationGenerationLevel:TVkUInt32;
+       maxTessellationPatchSize:TVkUInt32;
+       maxTessellationControlPerVertexInputComponents:TVkUInt32;
+       maxTessellationControlPerVertexOutputComponents:TVkUInt32;
+       maxTessellationControlPerPatchOutputComponents:TVkUInt32;
+       maxTessellationControlTotalOutputComponents:TVkUInt32;
+       maxTessellationEvaluationInputComponents:TVkUInt32;
+       maxTessellationEvaluationOutputComponents:TVkUInt32;
+       maxGeometryShaderInvocations:TVkUInt32;
+       maxGeometryInputComponents:TVkUInt32;
+       maxGeometryOutputComponents:TVkUInt32;
+       maxGeometryOutputVertices:TVkUInt32;
+       maxGeometryTotalOutputComponents:TVkUInt32;
+       maxFragmentInputComponents:TVkUInt32;
+       maxFragmentOutputAttachments:TVkUInt32;
+       maxFragmentDualSrcAttachments:TVkUInt32;
+       maxFragmentCombinedOutputResources:TVkUInt32;
+       maxComputeSharedMemorySize:TVkUInt32;
+       maxComputeWorkGroupCount:array[0..2] of TVkUInt32;
+       maxComputeWorkGroupInvocations:TVkUInt32;
+       maxComputeWorkGroupSize:array[0..2] of TVkUInt32;
+       subPixelPrecisionBits:TVkUInt32;
+       subTexelPrecisionBits:TVkUInt32;
+       mipmapPrecisionBits:TVkUInt32;
+       maxDrawIndexedIndexValue:TVkUInt32;
+       maxDrawIndirectCount:TVkUInt32;
+       maxSamplerLodBias:TVkFloat;
+       maxSamplerAnisotropy:TVkFloat;
+       maxViewports:TVkUInt32;
+       maxViewportDimensions:array[0..1] of TVkUInt32;
+       viewportBoundsRange:array[0..1] of TVkFloat;
+       viewportSubPixelBits:TVkUInt32;
+       minMemoryMapAlignment:TVkSize;
+       minTexelBufferOffsetAlignment:TVkDeviceSize;
+       minUniformBufferOffsetAlignment:TVkDeviceSize;
+       minStorageBufferOffsetAlignment:TVkDeviceSize;
+       minTexelOffset:TVkInt32;
+       maxTexelOffset:TVkUInt32;
+       minTexelGatherOffset:TVkInt32;
+       maxTexelGatherOffset:TVkUInt32;
+       minInterpolationOffset:TVkFloat;
+       maxInterpolationOffset:TVkFloat;
+       subPixelInterpolationOffsetBits:TVkUInt32;
+       maxFramebufferWidth:TVkUInt32;
+       maxFramebufferHeight:TVkUInt32;
+       maxFramebufferLayers:TVkUInt32;
+       framebufferColorSampleCounts:TVkSampleCountFlags;
+       framebufferDepthSampleCounts:TVkSampleCountFlags;
+       framebufferStencilSampleCounts:TVkSampleCountFlags;
+       framebufferNoAttachmentsSampleCounts:TVkSampleCountFlags;
+       maxColorAttachments:TVkUInt32;
+       sampledImageColorSampleCounts:TVkSampleCountFlags;
+       sampledImageIntegerSampleCounts:TVkSampleCountFlags;
+       sampledImageDepthSampleCounts:TVkSampleCountFlags;
+       sampledImageStencilSampleCounts:TVkSampleCountFlags;
+       storageImageSampleCounts:TVkSampleCountFlags;
+       maxSampleMaskWords:TVkUInt32;
+       timestampComputeAndGraphics:TVkBool32;
+       timestampPeriod:TVkFloat;
+       maxClipDistances:TVkUInt32;
+       maxCullDistances:TVkUInt32;
+       maxCombinedClipAndCullDistances:TVkUInt32;
+       discreteQueuePriorities:TVkUInt32;
+       pointSizeRange:array[0..1] of TVkFloat;
+       lineWidthRange:array[0..1] of TVkFloat;
+       pointSizeGranularity:TVkFloat;
+       lineWidthGranularity:TVkFloat;
+       strictLines:TVkBool32;
+       standardSampleLocations:TVkBool32;
+       optimalBufferCopyOffsetAlignment:TVkDeviceSize;
+       optimalBufferCopyRowPitchAlignment:TVkDeviceSize;
+       nonCoherentAtomSize:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pMaxImageDimension1D:TVkUInt32; //< max 1D image dimension
-                          const pMaxImageDimension2D:TVkUInt32; //< max 2D image dimension
-                          const pMaxImageDimension3D:TVkUInt32; //< max 3D image dimension
-                          const pMaxImageDimensionCube:TVkUInt32; //< max cubemap image dimension
-                          const pMaxImageArrayLayers:TVkUInt32; //< max layers for image arrays
-                          const pMaxTexelBufferElements:TVkUInt32; //< max texel buffer size (fstexels)
-                          const pMaxUniformBufferRange:TVkUInt32; //< max uniform buffer range (bytes)
-                          const pMaxStorageBufferRange:TVkUInt32; //< max storage buffer range (bytes)
-                          const pMaxPushConstantsSize:TVkUInt32; //< max size of the push constants pool (bytes)
-                          const pMaxMemoryAllocationCount:TVkUInt32; //< max number of device memory allocations supported
-                          const pMaxSamplerAllocationCount:TVkUInt32; //< max number of samplers that can be allocated on a device
-                          const pBufferImageGranularity:TVkDeviceSize; //< Granularity (in bytes) at which buffers and images can be bound to adjacent memory for simultaneous usage
-                          const pSparseAddressSpaceSize:TVkDeviceSize; //< Total address space available for sparse allocations (bytes)
-                          const pMaxBoundDescriptorSets:TVkUInt32; //< max number of descriptors sets that can be bound to a pipeline
-                          const pMaxPerStageDescriptorSamplers:TVkUInt32; //< max number of samplers allowed per-stage in a descriptor set
-                          const pMaxPerStageDescriptorUniformBuffers:TVkUInt32; //< max number of uniform buffers allowed per-stage in a descriptor set
-                          const pMaxPerStageDescriptorStorageBuffers:TVkUInt32; //< max number of storage buffers allowed per-stage in a descriptor set
-                          const pMaxPerStageDescriptorSampledImages:TVkUInt32; //< max number of sampled images allowed per-stage in a descriptor set
-                          const pMaxPerStageDescriptorStorageImages:TVkUInt32; //< max number of storage images allowed per-stage in a descriptor set
-                          const pMaxPerStageDescriptorInputAttachments:TVkUInt32; //< max number of input attachments allowed per-stage in a descriptor set
-                          const pMaxPerStageResources:TVkUInt32; //< max number of resources allowed by a single stage
-                          const pMaxDescriptorSetSamplers:TVkUInt32; //< max number of samplers allowed in all stages in a descriptor set
-                          const pMaxDescriptorSetUniformBuffers:TVkUInt32; //< max number of uniform buffers allowed in all stages in a descriptor set
-                          const pMaxDescriptorSetUniformBuffersDynamic:TVkUInt32; //< max number of dynamic uniform buffers allowed in all stages in a descriptor set
-                          const pMaxDescriptorSetStorageBuffers:TVkUInt32; //< max number of storage buffers allowed in all stages in a descriptor set
-                          const pMaxDescriptorSetStorageBuffersDynamic:TVkUInt32; //< max number of dynamic storage buffers allowed in all stages in a descriptor set
-                          const pMaxDescriptorSetSampledImages:TVkUInt32; //< max number of sampled images allowed in all stages in a descriptor set
-                          const pMaxDescriptorSetStorageImages:TVkUInt32; //< max number of storage images allowed in all stages in a descriptor set
-                          const pMaxDescriptorSetInputAttachments:TVkUInt32; //< max number of input attachments allowed in all stages in a descriptor set
-                          const pMaxVertexInputAttributes:TVkUInt32; //< max number of vertex input attribute slots
-                          const pMaxVertexInputBindings:TVkUInt32; //< max number of vertex input binding slots
-                          const pMaxVertexInputAttributeOffset:TVkUInt32; //< max vertex input attribute offset added to vertex buffer offset
-                          const pMaxVertexInputBindingStride:TVkUInt32; //< max vertex input binding stride
-                          const pMaxVertexOutputComponents:TVkUInt32; //< max number of output components written by vertex shader
-                          const pMaxTessellationGenerationLevel:TVkUInt32; //< max level supported by tessellation primitive generator
-                          const pMaxTessellationPatchSize:TVkUInt32; //< max patch size (vertices)
-                          const pMaxTessellationControlPerVertexInputComponents:TVkUInt32; //< max number of input components per-vertex in TCS
-                          const pMaxTessellationControlPerVertexOutputComponents:TVkUInt32; //< max number of output components per-vertex in TCS
-                          const pMaxTessellationControlPerPatchOutputComponents:TVkUInt32; //< max number of output components per-patch in TCS
-                          const pMaxTessellationControlTotalOutputComponents:TVkUInt32; //< max total number of per-vertex and per-patch output components in TCS
-                          const pMaxTessellationEvaluationInputComponents:TVkUInt32; //< max number of input components per vertex in TES
-                          const pMaxTessellationEvaluationOutputComponents:TVkUInt32; //< max number of output components per vertex in TES
-                          const pMaxGeometryShaderInvocations:TVkUInt32; //< max invocation count supported in geometry shader
-                          const pMaxGeometryInputComponents:TVkUInt32; //< max number of input components read in geometry stage
-                          const pMaxGeometryOutputComponents:TVkUInt32; //< max number of output components written in geometry stage
-                          const pMaxGeometryOutputVertices:TVkUInt32; //< max number of vertices that can be emitted in geometry stage
-                          const pMaxGeometryTotalOutputComponents:TVkUInt32; //< max total number of components (all vertices) written in geometry stage
-                          const pMaxFragmentInputComponents:TVkUInt32; //< max number of input compontents read in fragment stage
-                          const pMaxFragmentOutputAttachments:TVkUInt32; //< max number of output attachments written in fragment stage
-                          const pMaxFragmentDualSrcAttachments:TVkUInt32; //< max number of output attachments written when using dual source blending
-                          const pMaxFragmentCombinedOutputResources:TVkUInt32; //< max total number of storage buffers, storage images and output buffers
-                          const pMaxComputeSharedMemorySize:TVkUInt32; //< max total storage size of work group local storage (bytes)
-                          const pMaxComputeWorkGroupCount:array of TVkUInt32; //< max num of compute work groups that may be dispatched by a single command (x,y,z)
-                          const pMaxComputeWorkGroupInvocations:TVkUInt32; //< max total compute invocations in a single local work group
-                          const pMaxComputeWorkGroupSize:array of TVkUInt32; //< max local size of a compute work group (x,y,z)
-                          const pSubPixelPrecisionBits:TVkUInt32; //< number bits of subpixel precision in screen x and y
-                          const pSubTexelPrecisionBits:TVkUInt32; //< number bits of precision for selecting texel weights
-                          const pMipmapPrecisionBits:TVkUInt32; //< number bits of precision for selecting mipmap weights
-                          const pMaxDrawIndexedIndexValue:TVkUInt32; //< max index value for indexed draw calls (for 32-bit indices)
-                          const pMaxDrawIndirectCount:TVkUInt32; //< max draw count for indirect draw calls
-                          const pMaxSamplerLodBias:TVkFloat; //< max absolute sampler level of detail bias
-                          const pMaxSamplerAnisotropy:TVkFloat; //< max degree of sampler anisotropy
-                          const pMaxViewports:TVkUInt32; //< max number of active viewports
-                          const pMaxViewportDimensions:array of TVkUInt32; //< max viewport dimensions (x,y)
-                          const pViewportBoundsRange:array of TVkFloat; //< viewport bounds range (min,max)
-                          const pViewportSubPixelBits:TVkUInt32; //< number bits of subpixel precision for viewport
-                          const pMinMemoryMapAlignment:TVkSize; //< min required alignment of pointers returned by MapMemory (bytes)
-                          const pMinTexelBufferOffsetAlignment:TVkDeviceSize; //< min required alignment for texel buffer offsets (bytes)
-                          const pMinUniformBufferOffsetAlignment:TVkDeviceSize; //< min required alignment for uniform buffer sizes and offsets (bytes)
-                          const pMinStorageBufferOffsetAlignment:TVkDeviceSize; //< min required alignment for storage buffer offsets (bytes)
-                          const pMinTexelOffset:TVkInt32; //< min texel offset for OpTextureSampleOffset
-                          const pMaxTexelOffset:TVkUInt32; //< max texel offset for OpTextureSampleOffset
-                          const pMinTexelGatherOffset:TVkInt32; //< min texel offset for OpTextureGatherOffset
-                          const pMaxTexelGatherOffset:TVkUInt32; //< max texel offset for OpTextureGatherOffset
-                          const pMinInterpolationOffset:TVkFloat; //< furthest negative offset for interpolateAtOffset
-                          const pMaxInterpolationOffset:TVkFloat; //< furthest positive offset for interpolateAtOffset
-                          const pSubPixelInterpolationOffsetBits:TVkUInt32; //< number of subpixel bits for interpolateAtOffset
-                          const pMaxFramebufferWidth:TVkUInt32; //< max width for a framebuffer
-                          const pMaxFramebufferHeight:TVkUInt32; //< max height for a framebuffer
-                          const pMaxFramebufferLayers:TVkUInt32; //< max layer count for a layered framebuffer
-                          const pFramebufferColorSampleCounts:TVkSampleCountFlags; //< supported color sample counts for a framebuffer
-                          const pFramebufferDepthSampleCounts:TVkSampleCountFlags; //< supported depth sample counts for a framebuffer
-                          const pFramebufferStencilSampleCounts:TVkSampleCountFlags; //< supported stencil sample counts for a framebuffer
-                          const pFramebufferNoAttachmentsSampleCounts:TVkSampleCountFlags; //< supported sample counts for a framebuffer with no attachments
-                          const pMaxColorAttachments:TVkUInt32; //< max number of color attachments per subpass
-                          const pSampledImageColorSampleCounts:TVkSampleCountFlags; //< supported color sample counts for a non-integer sampled image
-                          const pSampledImageIntegerSampleCounts:TVkSampleCountFlags; //< supported sample counts for an integer image
-                          const pSampledImageDepthSampleCounts:TVkSampleCountFlags; //< supported depth sample counts for a sampled image
-                          const pSampledImageStencilSampleCounts:TVkSampleCountFlags; //< supported stencil sample counts for a sampled image
-                          const pStorageImageSampleCounts:TVkSampleCountFlags; //< supported sample counts for a storage image
-                          const pMaxSampleMaskWords:TVkUInt32; //< max number of sample mask words
-                          const pTimestampComputeAndGraphics:TVkBool32; //< timestamps on graphics and compute queues
-                          const pTimestampPeriod:TVkFloat; //< number of nanoseconds it takes for timestamp query value to increment by 1
-                          const pMaxClipDistances:TVkUInt32; //< max number of clip distances
-                          const pMaxCullDistances:TVkUInt32; //< max number of cull distances
-                          const pMaxCombinedClipAndCullDistances:TVkUInt32; //< max combined number of user clipping
-                          const pDiscreteQueuePriorities:TVkUInt32; //< distinct queue priorities available
-                          const pPointSizeRange:array of TVkFloat; //< range (min,max) of supported point sizes
-                          const pLineWidthRange:array of TVkFloat; //< range (min,max) of supported line widths
-                          const pPointSizeGranularity:TVkFloat; //< granularity of supported point sizes
-                          const pLineWidthGranularity:TVkFloat; //< granularity of supported line widths
-                          const pStrictLines:TVkBool32; //< line rasterization follows preferred rules
-                          const pStandardSampleLocations:TVkBool32; //< supports standard sample locations for all supported sample counts
-                          const pOptimalBufferCopyOffsetAlignment:TVkDeviceSize; //< optimal offset of buffer copies
-                          const pOptimalBufferCopyRowPitchAlignment:TVkDeviceSize; //< optimal pitch of buffer copies
-                          const pNonCoherentAtomSize:TVkDeviceSize); //< minimum size and alignment for non-coherent host-mapped device memory access
+       constructor Create(const pMaxImageDimension1D:TVkUInt32;
+                          const pMaxImageDimension2D:TVkUInt32;
+                          const pMaxImageDimension3D:TVkUInt32;
+                          const pMaxImageDimensionCube:TVkUInt32;
+                          const pMaxImageArrayLayers:TVkUInt32;
+                          const pMaxTexelBufferElements:TVkUInt32;
+                          const pMaxUniformBufferRange:TVkUInt32;
+                          const pMaxStorageBufferRange:TVkUInt32;
+                          const pMaxPushConstantsSize:TVkUInt32;
+                          const pMaxMemoryAllocationCount:TVkUInt32;
+                          const pMaxSamplerAllocationCount:TVkUInt32;
+                          const pBufferImageGranularity:TVkDeviceSize;
+                          const pSparseAddressSpaceSize:TVkDeviceSize;
+                          const pMaxBoundDescriptorSets:TVkUInt32;
+                          const pMaxPerStageDescriptorSamplers:TVkUInt32;
+                          const pMaxPerStageDescriptorUniformBuffers:TVkUInt32;
+                          const pMaxPerStageDescriptorStorageBuffers:TVkUInt32;
+                          const pMaxPerStageDescriptorSampledImages:TVkUInt32;
+                          const pMaxPerStageDescriptorStorageImages:TVkUInt32;
+                          const pMaxPerStageDescriptorInputAttachments:TVkUInt32;
+                          const pMaxPerStageResources:TVkUInt32;
+                          const pMaxDescriptorSetSamplers:TVkUInt32;
+                          const pMaxDescriptorSetUniformBuffers:TVkUInt32;
+                          const pMaxDescriptorSetUniformBuffersDynamic:TVkUInt32;
+                          const pMaxDescriptorSetStorageBuffers:TVkUInt32;
+                          const pMaxDescriptorSetStorageBuffersDynamic:TVkUInt32;
+                          const pMaxDescriptorSetSampledImages:TVkUInt32;
+                          const pMaxDescriptorSetStorageImages:TVkUInt32;
+                          const pMaxDescriptorSetInputAttachments:TVkUInt32;
+                          const pMaxVertexInputAttributes:TVkUInt32;
+                          const pMaxVertexInputBindings:TVkUInt32;
+                          const pMaxVertexInputAttributeOffset:TVkUInt32;
+                          const pMaxVertexInputBindingStride:TVkUInt32;
+                          const pMaxVertexOutputComponents:TVkUInt32;
+                          const pMaxTessellationGenerationLevel:TVkUInt32;
+                          const pMaxTessellationPatchSize:TVkUInt32;
+                          const pMaxTessellationControlPerVertexInputComponents:TVkUInt32;
+                          const pMaxTessellationControlPerVertexOutputComponents:TVkUInt32;
+                          const pMaxTessellationControlPerPatchOutputComponents:TVkUInt32;
+                          const pMaxTessellationControlTotalOutputComponents:TVkUInt32;
+                          const pMaxTessellationEvaluationInputComponents:TVkUInt32;
+                          const pMaxTessellationEvaluationOutputComponents:TVkUInt32;
+                          const pMaxGeometryShaderInvocations:TVkUInt32;
+                          const pMaxGeometryInputComponents:TVkUInt32;
+                          const pMaxGeometryOutputComponents:TVkUInt32;
+                          const pMaxGeometryOutputVertices:TVkUInt32;
+                          const pMaxGeometryTotalOutputComponents:TVkUInt32;
+                          const pMaxFragmentInputComponents:TVkUInt32;
+                          const pMaxFragmentOutputAttachments:TVkUInt32;
+                          const pMaxFragmentDualSrcAttachments:TVkUInt32;
+                          const pMaxFragmentCombinedOutputResources:TVkUInt32;
+                          const pMaxComputeSharedMemorySize:TVkUInt32;
+                          const pMaxComputeWorkGroupCount:array of TVkUInt32;
+                          const pMaxComputeWorkGroupInvocations:TVkUInt32;
+                          const pMaxComputeWorkGroupSize:array of TVkUInt32;
+                          const pSubPixelPrecisionBits:TVkUInt32;
+                          const pSubTexelPrecisionBits:TVkUInt32;
+                          const pMipmapPrecisionBits:TVkUInt32;
+                          const pMaxDrawIndexedIndexValue:TVkUInt32;
+                          const pMaxDrawIndirectCount:TVkUInt32;
+                          const pMaxSamplerLodBias:TVkFloat;
+                          const pMaxSamplerAnisotropy:TVkFloat;
+                          const pMaxViewports:TVkUInt32;
+                          const pMaxViewportDimensions:array of TVkUInt32;
+                          const pViewportBoundsRange:array of TVkFloat;
+                          const pViewportSubPixelBits:TVkUInt32;
+                          const pMinMemoryMapAlignment:TVkSize;
+                          const pMinTexelBufferOffsetAlignment:TVkDeviceSize;
+                          const pMinUniformBufferOffsetAlignment:TVkDeviceSize;
+                          const pMinStorageBufferOffsetAlignment:TVkDeviceSize;
+                          const pMinTexelOffset:TVkInt32;
+                          const pMaxTexelOffset:TVkUInt32;
+                          const pMinTexelGatherOffset:TVkInt32;
+                          const pMaxTexelGatherOffset:TVkUInt32;
+                          const pMinInterpolationOffset:TVkFloat;
+                          const pMaxInterpolationOffset:TVkFloat;
+                          const pSubPixelInterpolationOffsetBits:TVkUInt32;
+                          const pMaxFramebufferWidth:TVkUInt32;
+                          const pMaxFramebufferHeight:TVkUInt32;
+                          const pMaxFramebufferLayers:TVkUInt32;
+                          const pFramebufferColorSampleCounts:TVkSampleCountFlags;
+                          const pFramebufferDepthSampleCounts:TVkSampleCountFlags;
+                          const pFramebufferStencilSampleCounts:TVkSampleCountFlags;
+                          const pFramebufferNoAttachmentsSampleCounts:TVkSampleCountFlags;
+                          const pMaxColorAttachments:TVkUInt32;
+                          const pSampledImageColorSampleCounts:TVkSampleCountFlags;
+                          const pSampledImageIntegerSampleCounts:TVkSampleCountFlags;
+                          const pSampledImageDepthSampleCounts:TVkSampleCountFlags;
+                          const pSampledImageStencilSampleCounts:TVkSampleCountFlags;
+                          const pStorageImageSampleCounts:TVkSampleCountFlags;
+                          const pMaxSampleMaskWords:TVkUInt32;
+                          const pTimestampComputeAndGraphics:TVkBool32;
+                          const pTimestampPeriod:TVkFloat;
+                          const pMaxClipDistances:TVkUInt32;
+                          const pMaxCullDistances:TVkUInt32;
+                          const pMaxCombinedClipAndCullDistances:TVkUInt32;
+                          const pDiscreteQueuePriorities:TVkUInt32;
+                          const pPointSizeRange:array of TVkFloat;
+                          const pLineWidthRange:array of TVkFloat;
+                          const pPointSizeGranularity:TVkFloat;
+                          const pLineWidthGranularity:TVkFloat;
+                          const pStrictLines:TVkBool32;
+                          const pStandardSampleLocations:TVkBool32;
+                          const pOptimalBufferCopyOffsetAlignment:TVkDeviceSize;
+                          const pOptimalBufferCopyRowPitchAlignment:TVkDeviceSize;
+                          const pNonCoherentAtomSize:TVkDeviceSize);
 {$endif}
      end;
 
@@ -5159,10 +5162,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkSemaphoreCreateFlags; //< Semaphore creation flags
+       pNext:PVkVoid;
+       flags:TVkSemaphoreCreateFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkSemaphoreCreateFlags); //< Semaphore creation flags
+       constructor Create(const pFlags:TVkSemaphoreCreateFlags);
 {$endif}
      end;
 
@@ -5173,16 +5176,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkQueryPoolCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkQueryPoolCreateFlags;
        queryType:TVkQueryType;
        queryCount:TVkUInt32;
-       pipelineStatistics:TVkQueryPipelineStatisticFlags; //< Optional
+       pipelineStatistics:TVkQueryPipelineStatisticFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkQueryPoolCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkQueryPoolCreateFlags;
                           const pQueryType:TVkQueryType;
                           const pQueryCount:TVkUInt32;
-                          const pPipelineStatistics:TVkQueryPipelineStatisticFlags); //< Optional
+                          const pPipelineStatistics:TVkQueryPipelineStatisticFlags);
 {$endif}
      end;
 
@@ -5193,8 +5196,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkFramebufferCreateFlags; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkFramebufferCreateFlags;
        renderPass:TVkRenderPass;
        attachmentCount:TVkUInt32;
        pAttachments:PVkImageView;
@@ -5202,7 +5205,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        height:TVkUInt32;
        layers:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkFramebufferCreateFlags; //< Reserved
+       constructor Create(const pFlags:TVkFramebufferCreateFlags;
                           const pRenderPass:TVkRenderPass;
                           const pAttachmentCount:TVkUInt32;
                           const pPAttachments:PVkImageView;
@@ -5273,7 +5276,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SUBMIT_INFO
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        waitSemaphoreCount:TVkUInt32;
        pWaitSemaphores:PVkSemaphore;
        pWaitDstStageMask:PVkPipelineStageFlags;
@@ -5298,21 +5301,21 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       display:TVkDisplayKHR; //< Handle of the display object
-       displayName:PVkChar; //< Name of the display
-       physicalDimensions:TVkExtent2D; //< In millimeters?
-       physicalResolution:TVkExtent2D; //< Max resolution for CRT?
-       supportedTransforms:TVkSurfaceTransformFlagsKHR; //< one or more bits from VkSurfaceTransformFlagsKHR
-       planeReorderPossible:TVkBool32; //< VK_TRUE if the overlay plane's z-order can be changed on this display.
-       persistentContent:TVkBool32; //< VK_TRUE if this is a "smart" display that supports self-refresh/internal buffering.
+       display:TVkDisplayKHR;
+       displayName:PVkChar;
+       physicalDimensions:TVkExtent2D;
+       physicalResolution:TVkExtent2D;
+       supportedTransforms:TVkSurfaceTransformFlagsKHR;
+       planeReorderPossible:TVkBool32;
+       persistentContent:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pDisplay:TVkDisplayKHR; //< Handle of the display object
-                          const pDisplayName:PVkChar; //< Name of the display
-                          const pPhysicalDimensions:TVkExtent2D; //< In millimeters?
-                          const pPhysicalResolution:TVkExtent2D; //< Max resolution for CRT?
-                          const pSupportedTransforms:TVkSurfaceTransformFlagsKHR; //< one or more bits from VkSurfaceTransformFlagsKHR
-                          const pPlaneReorderPossible:TVkBool32; //< VK_TRUE if the overlay plane's z-order can be changed on this display.
-                          const pPersistentContent:TVkBool32); //< VK_TRUE if this is a "smart" display that supports self-refresh/internal buffering.
+       constructor Create(const pDisplay:TVkDisplayKHR;
+                          const pDisplayName:PVkChar;
+                          const pPhysicalDimensions:TVkExtent2D;
+                          const pPhysicalResolution:TVkExtent2D;
+                          const pSupportedTransforms:TVkSurfaceTransformFlagsKHR;
+                          const pPlaneReorderPossible:TVkBool32;
+                          const pPersistentContent:TVkBool32);
 {$endif}
      end;
 
@@ -5322,11 +5325,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       currentDisplay:TVkDisplayKHR; //< Display the plane is currently associated with. Will be VK_NULL_HANDLE if the plane is not in use.
-       currentStackIndex:TVkUInt32; //< Current z-order of the plane.
+       currentDisplay:TVkDisplayKHR;
+       currentStackIndex:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pCurrentDisplay:TVkDisplayKHR; //< Display the plane is currently associated with. Will be VK_NULL_HANDLE if the plane is not in use.
-                          const pCurrentStackIndex:TVkUInt32); //< Current z-order of the plane.
+       constructor Create(const pCurrentDisplay:TVkDisplayKHR;
+                          const pCurrentStackIndex:TVkUInt32);
 {$endif}
      end;
 
@@ -5336,11 +5339,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       visibleRegion:TVkExtent2D; //< Visible scanout region.
-       refreshRate:TVkUInt32; //< Number of times per second the display is updated.
+       visibleRegion:TVkExtent2D;
+       refreshRate:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pVisibleRegion:TVkExtent2D; //< Visible scanout region.
-                          const pRefreshRate:TVkUInt32); //< Number of times per second the display is updated.
+       constructor Create(const pVisibleRegion:TVkExtent2D;
+                          const pRefreshRate:TVkUInt32);
 {$endif}
      end;
 
@@ -5350,11 +5353,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       displayMode:TVkDisplayModeKHR; //< Handle of this display mode.
-       parameters:TVkDisplayModeParametersKHR; //< The parameters this mode uses.
+       displayMode:TVkDisplayModeKHR;
+       parameters:TVkDisplayModeParametersKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pDisplayMode:TVkDisplayModeKHR; //< Handle of this display mode.
-                          const pParameters:TVkDisplayModeParametersKHR); //< The parameters this mode uses.
+       constructor Create(const pDisplayMode:TVkDisplayModeKHR;
+                          const pParameters:TVkDisplayModeParametersKHR);
 {$endif}
      end;
 
@@ -5365,12 +5368,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkDisplayModeCreateFlagsKHR; //< Reserved
-       parameters:TVkDisplayModeParametersKHR; //< The parameters this mode uses.
+       pNext:PVkVoid;
+       flags:TVkDisplayModeCreateFlagsKHR;
+       parameters:TVkDisplayModeParametersKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkDisplayModeCreateFlagsKHR; //< Reserved
-                          const pParameters:TVkDisplayModeParametersKHR); //< The parameters this mode uses.
+       constructor Create(const pFlags:TVkDisplayModeCreateFlagsKHR;
+                          const pParameters:TVkDisplayModeParametersKHR);
 {$endif}
      end;
 
@@ -5380,8 +5383,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       supportedAlpha:TVkDisplayPlaneAlphaFlagsKHR; //< Types of alpha blending supported, if any.
-       minSrcPosition:TVkOffset2D; //< Does the plane have any position and extent restrictions?
+       supportedAlpha:TVkDisplayPlaneAlphaFlagsKHR;
+       minSrcPosition:TVkOffset2D;
        maxSrcPosition:TVkOffset2D;
        minSrcExtent:TVkExtent2D;
        maxSrcExtent:TVkExtent2D;
@@ -5390,8 +5393,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        minDstExtent:TVkExtent2D;
        maxDstExtent:TVkExtent2D;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSupportedAlpha:TVkDisplayPlaneAlphaFlagsKHR; //< Types of alpha blending supported, if any.
-                          const pMinSrcPosition:TVkOffset2D; //< Does the plane have any position and extent restrictions?
+       constructor Create(const pSupportedAlpha:TVkDisplayPlaneAlphaFlagsKHR;
+                          const pMinSrcPosition:TVkOffset2D;
                           const pMaxSrcPosition:TVkOffset2D;
                           const pMinSrcExtent:TVkExtent2D;
                           const pMaxSrcExtent:TVkExtent2D;
@@ -5409,24 +5412,24 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkDisplaySurfaceCreateFlagsKHR; //< Reserved
-       displayMode:TVkDisplayModeKHR; //< The mode to use when displaying this surface
-       planeIndex:TVkUInt32; //< The plane on which this surface appears. Must be between 0 and the value returned by vkGetPhysicalDeviceDisplayPlanePropertiesKHR() in pPropertyCount.
-       planeStackIndex:TVkUInt32; //< The z-order of the plane.
-       transform:TVkSurfaceTransformFlagBitsKHR; //< Transform to apply to the images as part of the scanout operation
-       globalAlpha:TVkFloat; //< Global alpha value. Must be between 0 and 1, inclusive. Ignored if alphaMode is not VK_DISPLAY_PLANE_ALPHA_GLOBAL_BIT_KHR
-       alphaMode:TVkDisplayPlaneAlphaFlagBitsKHR; //< What type of alpha blending to use. Must be a bit from vkGetDisplayPlanePropertiesKHR::supportedAlpha.
-       imageExtent:TVkExtent2D; //< size of the images to use with this surface
+       pNext:PVkVoid;
+       flags:TVkDisplaySurfaceCreateFlagsKHR;
+       displayMode:TVkDisplayModeKHR;
+       planeIndex:TVkUInt32;
+       planeStackIndex:TVkUInt32;
+       transform:TVkSurfaceTransformFlagBitsKHR;
+       globalAlpha:TVkFloat;
+       alphaMode:TVkDisplayPlaneAlphaFlagBitsKHR;
+       imageExtent:TVkExtent2D;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkDisplaySurfaceCreateFlagsKHR; //< Reserved
-                          const pDisplayMode:TVkDisplayModeKHR; //< The mode to use when displaying this surface
-                          const pPlaneIndex:TVkUInt32; //< The plane on which this surface appears. Must be between 0 and the value returned by vkGetPhysicalDeviceDisplayPlanePropertiesKHR() in pPropertyCount.
-                          const pPlaneStackIndex:TVkUInt32; //< The z-order of the plane.
-                          const pTransform:TVkSurfaceTransformFlagBitsKHR; //< Transform to apply to the images as part of the scanout operation
-                          const pGlobalAlpha:TVkFloat; //< Global alpha value. Must be between 0 and 1, inclusive. Ignored if alphaMode is not VK_DISPLAY_PLANE_ALPHA_GLOBAL_BIT_KHR
-                          const pAlphaMode:TVkDisplayPlaneAlphaFlagBitsKHR; //< What type of alpha blending to use. Must be a bit from vkGetDisplayPlanePropertiesKHR::supportedAlpha.
-                          const pImageExtent:TVkExtent2D); //< size of the images to use with this surface
+       constructor Create(const pFlags:TVkDisplaySurfaceCreateFlagsKHR;
+                          const pDisplayMode:TVkDisplayModeKHR;
+                          const pPlaneIndex:TVkUInt32;
+                          const pPlaneStackIndex:TVkUInt32;
+                          const pTransform:TVkSurfaceTransformFlagBitsKHR;
+                          const pGlobalAlpha:TVkFloat;
+                          const pAlphaMode:TVkDisplayPlaneAlphaFlagBitsKHR;
+                          const pImageExtent:TVkExtent2D);
 {$endif}
      end;
 
@@ -5437,14 +5440,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_PRESENT_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       srcRect:TVkRect2D; //< Rectangle within the presentable image to read pixel data from when presenting to the display.
-       dstRect:TVkRect2D; //< Rectangle within the current display mode's visible region to display srcRectangle in.
-       persistent:TVkBool32; //< For smart displays, use buffered mode. If the display properties member "persistentMode" is VK_FALSE, this member must always be VK_FALSE.
+       pNext:PVkVoid;
+       srcRect:TVkRect2D;
+       dstRect:TVkRect2D;
+       persistent:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSrcRect:TVkRect2D; //< Rectangle within the presentable image to read pixel data from when presenting to the display.
-                          const pDstRect:TVkRect2D; //< Rectangle within the current display mode's visible region to display srcRectangle in.
-                          const pPersistent:TVkBool32); //< For smart displays, use buffered mode. If the display properties member "persistentMode" is VK_FALSE, this member must always be VK_FALSE.
+       constructor Create(const pSrcRect:TVkRect2D;
+                          const pDstRect:TVkRect2D;
+                          const pPersistent:TVkBool32);
 {$endif}
      end;
 
@@ -5454,27 +5457,27 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       minImageCount:TVkUInt32; //< Supported minimum number of images for the surface
-       maxImageCount:TVkUInt32; //< Supported maximum number of images for the surface, 0 for unlimited
-       currentExtent:TVkExtent2D; //< Current image width and height for the surface, (0, 0) if undefined
-       minImageExtent:TVkExtent2D; //< Supported minimum image width and height for the surface
-       maxImageExtent:TVkExtent2D; //< Supported maximum image width and height for the surface
-       maxImageArrayLayers:TVkUInt32; //< Supported maximum number of image layers for the surface
-       supportedTransforms:TVkSurfaceTransformFlagsKHR; //< 1 or more bits representing the transforms supported
-       currentTransform:TVkSurfaceTransformFlagBitsKHR; //< The surface's current transform relative to the device's natural orientation
-       supportedCompositeAlpha:TVkCompositeAlphaFlagsKHR; //< 1 or more bits representing the alpha compositing modes supported
-       supportedUsageFlags:TVkImageUsageFlags; //< Supported image usage flags for the surface
+       minImageCount:TVkUInt32;
+       maxImageCount:TVkUInt32;
+       currentExtent:TVkExtent2D;
+       minImageExtent:TVkExtent2D;
+       maxImageExtent:TVkExtent2D;
+       maxImageArrayLayers:TVkUInt32;
+       supportedTransforms:TVkSurfaceTransformFlagsKHR;
+       currentTransform:TVkSurfaceTransformFlagBitsKHR;
+       supportedCompositeAlpha:TVkCompositeAlphaFlagsKHR;
+       supportedUsageFlags:TVkImageUsageFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pMinImageCount:TVkUInt32; //< Supported minimum number of images for the surface
-                          const pMaxImageCount:TVkUInt32; //< Supported maximum number of images for the surface, 0 for unlimited
-                          const pCurrentExtent:TVkExtent2D; //< Current image width and height for the surface, (0, 0) if undefined
-                          const pMinImageExtent:TVkExtent2D; //< Supported minimum image width and height for the surface
-                          const pMaxImageExtent:TVkExtent2D; //< Supported maximum image width and height for the surface
-                          const pMaxImageArrayLayers:TVkUInt32; //< Supported maximum number of image layers for the surface
-                          const pSupportedTransforms:TVkSurfaceTransformFlagsKHR; //< 1 or more bits representing the transforms supported
-                          const pCurrentTransform:TVkSurfaceTransformFlagBitsKHR; //< The surface's current transform relative to the device's natural orientation
-                          const pSupportedCompositeAlpha:TVkCompositeAlphaFlagsKHR; //< 1 or more bits representing the alpha compositing modes supported
-                          const pSupportedUsageFlags:TVkImageUsageFlags); //< Supported image usage flags for the surface
+       constructor Create(const pMinImageCount:TVkUInt32;
+                          const pMaxImageCount:TVkUInt32;
+                          const pCurrentExtent:TVkExtent2D;
+                          const pMinImageExtent:TVkExtent2D;
+                          const pMaxImageExtent:TVkExtent2D;
+                          const pMaxImageArrayLayers:TVkUInt32;
+                          const pSupportedTransforms:TVkSurfaceTransformFlagsKHR;
+                          const pCurrentTransform:TVkSurfaceTransformFlagBitsKHR;
+                          const pSupportedCompositeAlpha:TVkCompositeAlphaFlagsKHR;
+                          const pSupportedUsageFlags:TVkImageUsageFlags);
 {$endif}
      end;
 
@@ -5486,11 +5489,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkAndroidSurfaceCreateFlagsKHR; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkAndroidSurfaceCreateFlagsKHR;
        window:PVkAndroidANativeWindow;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkAndroidSurfaceCreateFlagsKHR; //< Reserved
+       constructor Create(const pFlags:TVkAndroidSurfaceCreateFlagsKHR;
                           const pWindow:PVkAndroidANativeWindow);
 {$endif}
      end;
@@ -5504,12 +5507,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkMirSurfaceCreateFlagsKHR; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkMirSurfaceCreateFlagsKHR;
        connection:PVkMirConnection;
        mirSurface:PVkMirSurface;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkMirSurfaceCreateFlagsKHR; //< Reserved
+       constructor Create(const pFlags:TVkMirSurfaceCreateFlagsKHR;
                           const pConnection:PVkMirConnection;
                           const pMirSurface:PVkMirSurface);
 {$endif}
@@ -5523,11 +5526,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_VI_SURFACE_CREATE_INFO_NN
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkViSurfaceCreateFlagsNN; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkViSurfaceCreateFlagsNN;
        window:PVkVoid;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkViSurfaceCreateFlagsNN; //< Reserved
+       constructor Create(const pFlags:TVkViSurfaceCreateFlagsNN;
                           const pWindow:PVkVoid);
 {$endif}
      end;
@@ -5540,12 +5543,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkWaylandSurfaceCreateFlagsKHR; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkWaylandSurfaceCreateFlagsKHR;
        display:PVkWaylandDisplay;
        surface:PVkWaylandSurface;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkWaylandSurfaceCreateFlagsKHR; //< Reserved
+       constructor Create(const pFlags:TVkWaylandSurfaceCreateFlagsKHR;
                           const pDisplay:PVkWaylandDisplay;
                           const pSurface:PVkWaylandSurface);
 {$endif}
@@ -5560,12 +5563,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkWin32SurfaceCreateFlagsKHR; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkWin32SurfaceCreateFlagsKHR;
        hinstance_:TVkHINSTANCE;
        hwnd_:TVkHWND;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkWin32SurfaceCreateFlagsKHR; //< Reserved
+       constructor Create(const pFlags:TVkWin32SurfaceCreateFlagsKHR;
                           const pHinstance_:TVkHINSTANCE;
                           const pHwnd_:TVkHWND);
 {$endif}
@@ -5580,12 +5583,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkXlibSurfaceCreateFlagsKHR; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkXlibSurfaceCreateFlagsKHR;
        dpy:PVkXLIBDisplay;
        window:TVkXLIBWindow;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkXlibSurfaceCreateFlagsKHR; //< Reserved
+       constructor Create(const pFlags:TVkXlibSurfaceCreateFlagsKHR;
                           const pDpy:PVkXLIBDisplay;
                           const pWindow:TVkXLIBWindow);
 {$endif}
@@ -5600,12 +5603,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkXcbSurfaceCreateFlagsKHR; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkXcbSurfaceCreateFlagsKHR;
        connection:PVkXCBConnection;
        window:TVkXCBWindow;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkXcbSurfaceCreateFlagsKHR; //< Reserved
+       constructor Create(const pFlags:TVkXcbSurfaceCreateFlagsKHR;
                           const pConnection:PVkXCBConnection;
                           const pWindow:TVkXCBWindow);
 {$endif}
@@ -5618,11 +5621,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       format:TVkFormat; //< Supported pair of rendering format
-       colorSpace:TVkColorSpaceKHR; //< and color space for the surface
+       format:TVkFormat;
+       colorSpace:TVkColorSpaceKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFormat:TVkFormat; //< Supported pair of rendering format
-                          const pColorSpace:TVkColorSpaceKHR); //< and color space for the surface
+       constructor Create(const pFormat:TVkFormat;
+                          const pColorSpace:TVkColorSpaceKHR);
 {$endif}
      end;
 
@@ -5633,40 +5636,40 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkSwapchainCreateFlagsKHR; //< Reserved
-       surface:TVkSurfaceKHR; //< The swapchain's target surface
-       minImageCount:TVkUInt32; //< Minimum number of presentation images the application needs
-       imageFormat:TVkFormat; //< Format of the presentation images
-       imageColorSpace:TVkColorSpaceKHR; //< Colorspace of the presentation images
-       imageExtent:TVkExtent2D; //< Dimensions of the presentation images
-       imageArrayLayers:TVkUInt32; //< Determines the number of views for multiview/stereo presentation
-       imageUsage:TVkImageUsageFlags; //< Bits indicating how the presentation images will be used
-       imageSharingMode:TVkSharingMode; //< Sharing mode used for the presentation images
-       queueFamilyIndexCount:TVkUInt32; //< Number of queue families having access to the images in case of concurrent sharing mode
-       pQueueFamilyIndices:PVkUInt32; //< Array of queue family indices having access to the images in case of concurrent sharing mode
-       preTransform:TVkSurfaceTransformFlagBitsKHR; //< The transform, relative to the device's natural orientation, applied to the image content prior to presentation
-       compositeAlpha:TVkCompositeAlphaFlagBitsKHR; //< The alpha blending mode used when compositing this surface with other surfaces in the window system
-       presentMode:TVkPresentModeKHR; //< Which presentation mode to use for presents on this swap chain
-       clipped:TVkBool32; //< Specifies whether presentable images may be affected by window clip regions
-       oldSwapchain:TVkSwapchainKHR; //< Existing swap chain to replace, if any
+       pNext:PVkVoid;
+       flags:TVkSwapchainCreateFlagsKHR;
+       surface:TVkSurfaceKHR;
+       minImageCount:TVkUInt32;
+       imageFormat:TVkFormat;
+       imageColorSpace:TVkColorSpaceKHR;
+       imageExtent:TVkExtent2D;
+       imageArrayLayers:TVkUInt32;
+       imageUsage:TVkImageUsageFlags;
+       imageSharingMode:TVkSharingMode;
+       queueFamilyIndexCount:TVkUInt32;
+       pQueueFamilyIndices:PVkUInt32;
+       preTransform:TVkSurfaceTransformFlagBitsKHR;
+       compositeAlpha:TVkCompositeAlphaFlagBitsKHR;
+       presentMode:TVkPresentModeKHR;
+       clipped:TVkBool32;
+       oldSwapchain:TVkSwapchainKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkSwapchainCreateFlagsKHR; //< Reserved
-                          const pSurface:TVkSurfaceKHR; //< The swapchain's target surface
-                          const pMinImageCount:TVkUInt32; //< Minimum number of presentation images the application needs
-                          const pImageFormat:TVkFormat; //< Format of the presentation images
-                          const pImageColorSpace:TVkColorSpaceKHR; //< Colorspace of the presentation images
-                          const pImageExtent:TVkExtent2D; //< Dimensions of the presentation images
-                          const pImageArrayLayers:TVkUInt32; //< Determines the number of views for multiview/stereo presentation
-                          const pImageUsage:TVkImageUsageFlags; //< Bits indicating how the presentation images will be used
-                          const pImageSharingMode:TVkSharingMode; //< Sharing mode used for the presentation images
-                          const pQueueFamilyIndexCount:TVkUInt32; //< Number of queue families having access to the images in case of concurrent sharing mode
-                          const pPQueueFamilyIndices:PVkUInt32; //< Array of queue family indices having access to the images in case of concurrent sharing mode
-                          const pPreTransform:TVkSurfaceTransformFlagBitsKHR; //< The transform, relative to the device's natural orientation, applied to the image content prior to presentation
-                          const pCompositeAlpha:TVkCompositeAlphaFlagBitsKHR; //< The alpha blending mode used when compositing this surface with other surfaces in the window system
-                          const pPresentMode:TVkPresentModeKHR; //< Which presentation mode to use for presents on this swap chain
-                          const pClipped:TVkBool32; //< Specifies whether presentable images may be affected by window clip regions
-                          const pOldSwapchain:TVkSwapchainKHR); //< Existing swap chain to replace, if any
+       constructor Create(const pFlags:TVkSwapchainCreateFlagsKHR;
+                          const pSurface:TVkSurfaceKHR;
+                          const pMinImageCount:TVkUInt32;
+                          const pImageFormat:TVkFormat;
+                          const pImageColorSpace:TVkColorSpaceKHR;
+                          const pImageExtent:TVkExtent2D;
+                          const pImageArrayLayers:TVkUInt32;
+                          const pImageUsage:TVkImageUsageFlags;
+                          const pImageSharingMode:TVkSharingMode;
+                          const pQueueFamilyIndexCount:TVkUInt32;
+                          const pPQueueFamilyIndices:PVkUInt32;
+                          const pPreTransform:TVkSurfaceTransformFlagBitsKHR;
+                          const pCompositeAlpha:TVkCompositeAlphaFlagBitsKHR;
+                          const pPresentMode:TVkPresentModeKHR;
+                          const pClipped:TVkBool32;
+                          const pOldSwapchain:TVkSwapchainKHR);
 {$endif}
      end;
 
@@ -5677,20 +5680,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       waitSemaphoreCount:TVkUInt32; //< Number of semaphores to wait for before presenting
-       pWaitSemaphores:PVkSemaphore; //< Semaphores to wait for before presenting
-       swapchainCount:TVkUInt32; //< Number of swapchains to present in this call
-       pSwapchains:PVkSwapchainKHR; //< Swapchains to present an image from
-       pImageIndices:PVkUInt32; //< Indices of which presentable images to present
-       pResults:PVkResult; //< Optional (i.e. if non-NULL) VkResult for each swapchain
+       pNext:PVkVoid;
+       waitSemaphoreCount:TVkUInt32;
+       pWaitSemaphores:PVkSemaphore;
+       swapchainCount:TVkUInt32;
+       pSwapchains:PVkSwapchainKHR;
+       pImageIndices:PVkUInt32;
+       pResults:PVkResult;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pWaitSemaphoreCount:TVkUInt32; //< Number of semaphores to wait for before presenting
-                          const pPWaitSemaphores:PVkSemaphore; //< Semaphores to wait for before presenting
-                          const pSwapchainCount:TVkUInt32; //< Number of swapchains to present in this call
-                          const pPSwapchains:PVkSwapchainKHR; //< Swapchains to present an image from
-                          const pPImageIndices:PVkUInt32; //< Indices of which presentable images to present
-                          const pPResults:PVkResult); //< Optional (i.e. if non-NULL) VkResult for each swapchain
+       constructor Create(const pWaitSemaphoreCount:TVkUInt32;
+                          const pPWaitSemaphores:PVkSemaphore;
+                          const pSwapchainCount:TVkUInt32;
+                          const pPSwapchains:PVkSwapchainKHR;
+                          const pPImageIndices:PVkUInt32;
+                          const pPResults:PVkResult);
 {$endif}
      end;
 
@@ -5701,14 +5704,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkDebugReportFlagsEXT; //< Indicates which events call this callback
-       pfnCallback:TPFN_vkDebugReportCallbackEXT; //< Function pointer of a callback function
-       pUserData:PVkVoid; //< User data provided to callback function
+       pNext:PVkVoid;
+       flags:TVkDebugReportFlagsEXT;
+       pfnCallback:TPFN_vkDebugReportCallbackEXT;
+       pUserData:PVkVoid;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkDebugReportFlagsEXT; //< Indicates which events call this callback
-                          const pPfnCallback:TPFN_vkDebugReportCallbackEXT; //< Function pointer of a callback function
-                          const pPUserData:PVkVoid); //< User data provided to callback function
+       constructor Create(const pFlags:TVkDebugReportFlagsEXT;
+                          const pPfnCallback:TPFN_vkDebugReportCallbackEXT;
+                          const pPUserData:PVkVoid);
 {$endif}
      end;
 
@@ -5719,12 +5722,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT
-       pNext:PVkVoid; //< Pointer to next structure
-       disabledValidationCheckCount:TVkUInt32; //< Number of validation checks to disable
-       pDisabledValidationChecks:PVkValidationCheckEXT; //< Validation checks to disable
+       pNext:PVkVoid;
+       disabledValidationCheckCount:TVkUInt32;
+       pDisabledValidationChecks:PVkValidationCheckEXT;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pDisabledValidationCheckCount:TVkUInt32; //< Number of validation checks to disable
-                          const pPDisabledValidationChecks:PVkValidationCheckEXT); //< Validation checks to disable
+       constructor Create(const pDisabledValidationCheckCount:TVkUInt32;
+                          const pPDisabledValidationChecks:PVkValidationCheckEXT);
 {$endif}
      end;
 
@@ -5735,10 +5738,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD
-       pNext:PVkVoid; //< Pointer to next structure
-       rasterizationOrder:TVkRasterizationOrderAMD; //< Rasterization order to use for the pipeline
+       pNext:PVkVoid;
+       rasterizationOrder:TVkRasterizationOrderAMD;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pRasterizationOrder:TVkRasterizationOrderAMD); //< Rasterization order to use for the pipeline
+       constructor Create(const pRasterizationOrder:TVkRasterizationOrderAMD);
 {$endif}
      end;
 
@@ -5749,14 +5752,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT
-       pNext:PVkVoid; //< Pointer to next structure
-       objectType:TVkDebugReportObjectTypeEXT; //< The type of the object
-       object_:TVkUInt64; //< The handle of the object, cast to uint64_t
-       pObjectName:PVkChar; //< Name to apply to the object
+       pNext:PVkVoid;
+       objectType:TVkDebugReportObjectTypeEXT;
+       object_:TVkUInt64;
+       pObjectName:PVkChar;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pObjectType:TVkDebugReportObjectTypeEXT; //< The type of the object
-                          const pObject_:TVkUInt64; //< The handle of the object, cast to uint64_t
-                          const pPObjectName:PVkChar); //< Name to apply to the object
+       constructor Create(const pObjectType:TVkDebugReportObjectTypeEXT;
+                          const pObject_:TVkUInt64;
+                          const pPObjectName:PVkChar);
 {$endif}
      end;
 
@@ -5767,18 +5770,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT
-       pNext:PVkVoid; //< Pointer to next structure
-       objectType:TVkDebugReportObjectTypeEXT; //< The type of the object
-       object_:TVkUInt64; //< The handle of the object, cast to uint64_t
-       tagName:TVkUInt64; //< The name of the tag to set on the object
-       tagSize:TVkSize; //< The length in bytes of the tag data
-       pTag:PVkVoid; //< Tag data to attach to the object
+       pNext:PVkVoid;
+       objectType:TVkDebugReportObjectTypeEXT;
+       object_:TVkUInt64;
+       tagName:TVkUInt64;
+       tagSize:TVkSize;
+       pTag:PVkVoid;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pObjectType:TVkDebugReportObjectTypeEXT; //< The type of the object
-                          const pObject_:TVkUInt64; //< The handle of the object, cast to uint64_t
-                          const pTagName:TVkUInt64; //< The name of the tag to set on the object
-                          const pTagSize:TVkSize; //< The length in bytes of the tag data
-                          const pPTag:PVkVoid); //< Tag data to attach to the object
+       constructor Create(const pObjectType:TVkDebugReportObjectTypeEXT;
+                          const pObject_:TVkUInt64;
+                          const pTagName:TVkUInt64;
+                          const pTagSize:TVkSize;
+                          const pPTag:PVkVoid);
 {$endif}
      end;
 
@@ -5789,12 +5792,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT
-       pNext:PVkVoid; //< Pointer to next structure
-       pMarkerName:PVkChar; //< Name of the debug marker
-       color:array[0..3] of TVkFloat; //< Optional color for debug marker
+       pNext:PVkVoid;
+       pMarkerName:PVkChar;
+       color:array[0..3] of TVkFloat;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pPMarkerName:PVkChar; //< Name of the debug marker
-                          const pColor:array of TVkFloat); //< Optional color for debug marker
+       constructor Create(const pPMarkerName:PVkChar;
+                          const pColor:array of TVkFloat);
 {$endif}
      end;
 
@@ -5805,10 +5808,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV
-       pNext:PVkVoid; //< Pointer to next structure
-       dedicatedAllocation:TVkBool32; //< Whether this image uses a dedicated allocation
+       pNext:PVkVoid;
+       dedicatedAllocation:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pDedicatedAllocation:TVkBool32); //< Whether this image uses a dedicated allocation
+       constructor Create(const pDedicatedAllocation:TVkBool32);
 {$endif}
      end;
 
@@ -5819,10 +5822,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV
-       pNext:PVkVoid; //< Pointer to next structure
-       dedicatedAllocation:TVkBool32; //< Whether this buffer uses a dedicated allocation
+       pNext:PVkVoid;
+       dedicatedAllocation:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pDedicatedAllocation:TVkBool32); //< Whether this buffer uses a dedicated allocation
+       constructor Create(const pDedicatedAllocation:TVkBool32);
 {$endif}
      end;
 
@@ -5833,12 +5836,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV
-       pNext:PVkVoid; //< Pointer to next structure
-       image:TVkImage; //< Image that this allocation will be bound to
-       buffer:TVkBuffer; //< Buffer that this allocation will be bound to
+       pNext:PVkVoid;
+       image:TVkImage;
+       buffer:TVkBuffer;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pImage:TVkImage; //< Image that this allocation will be bound to
-                          const pBuffer:TVkBuffer); //< Buffer that this allocation will be bound to
+       constructor Create(const pImage:TVkImage;
+                          const pBuffer:TVkBuffer);
 {$endif}
      end;
 
@@ -5991,12 +5994,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        tokenType:TVkIndirectCommandsTokenTypeNVX;
-       buffer:TVkBuffer; //< buffer containing tableEntries and additional data for indirectCommands
-       offset:TVkDeviceSize; //< offset from the base address of the buffer
+       buffer:TVkBuffer;
+       offset:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pTokenType:TVkIndirectCommandsTokenTypeNVX;
-                          const pBuffer:TVkBuffer; //< buffer containing tableEntries and additional data for indirectCommands
-                          const pOffset:TVkDeviceSize); //< offset from the base address of the buffer
+                          const pBuffer:TVkBuffer;
+                          const pOffset:TVkDeviceSize);
 {$endif}
      end;
 
@@ -6007,14 +6010,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        tokenType:TVkIndirectCommandsTokenTypeNVX;
-       bindingUnit:TVkUInt32; //< Binding unit for vertex attribute / descriptor set, offset for pushconstants
-       dynamicCount:TVkUInt32; //< Number of variable dynamic values for descriptor set / push constants
-       divisor:TVkUInt32; //< Rate the which the array is advanced per element (must be power of 2, minimum 1)
+       bindingUnit:TVkUInt32;
+       dynamicCount:TVkUInt32;
+       divisor:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pTokenType:TVkIndirectCommandsTokenTypeNVX;
-                          const pBindingUnit:TVkUInt32; //< Binding unit for vertex attribute / descriptor set, offset for pushconstants
-                          const pDynamicCount:TVkUInt32; //< Number of variable dynamic values for descriptor set / push constants
-                          const pDivisor:TVkUInt32); //< Rate the which the array is advanced per element (must be power of 2, minimum 1)
+                          const pBindingUnit:TVkUInt32;
+                          const pDynamicCount:TVkUInt32;
+                          const pDivisor:TVkUInt32);
 {$endif}
      end;
 
@@ -6225,7 +6228,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        features:TVkPhysicalDeviceFeatures;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFeatures:TVkPhysicalDeviceFeatures);
@@ -6239,7 +6242,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        properties:TVkPhysicalDeviceProperties;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pProperties:TVkPhysicalDeviceProperties);
@@ -6253,7 +6256,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        formatProperties:TVkFormatProperties;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFormatProperties:TVkFormatProperties);
@@ -6267,7 +6270,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        imageFormatProperties:TVkImageFormatProperties;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pImageFormatProperties:TVkImageFormatProperties);
@@ -6281,7 +6284,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        format:TVkFormat;
        type_:TVkImageType;
        tiling:TVkImageTiling;
@@ -6303,7 +6306,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        queueFamilyProperties:TVkQueueFamilyProperties;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pQueueFamilyProperties:TVkQueueFamilyProperties);
@@ -6317,7 +6320,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        memoryProperties:TVkPhysicalDeviceMemoryProperties;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pMemoryProperties:TVkPhysicalDeviceMemoryProperties);
@@ -6331,7 +6334,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        properties:TVkSparseImageFormatProperties;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pProperties:TVkSparseImageFormatProperties);
@@ -6345,7 +6348,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        format:TVkFormat;
        type_:TVkImageType;
        samples:TVkSampleCountFlagBits;
@@ -6367,7 +6370,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        maxPushDescriptors:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pMaxPushDescriptors:TVkUInt32);
@@ -6380,13 +6383,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       offset:TVkOffset2D; //< upper-left corner of a rectangle that has not changed, in pixels of a presentation images
-       extent:TVkExtent2D; //< Dimensions of a rectangle that has not changed, in pixels of a presentation images
-       layer:TVkUInt32; //< Layer of a swapchain's image(s), for stereoscopic-3D images
+       offset:TVkOffset2D;
+       extent:TVkExtent2D;
+       layer:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pOffset:TVkOffset2D; //< upper-left corner of a rectangle that has not changed, in pixels of a presentation images
-                          const pExtent:TVkExtent2D; //< Dimensions of a rectangle that has not changed, in pixels of a presentation images
-                          const pLayer:TVkUInt32); //< Layer of a swapchain's image(s), for stereoscopic-3D images
+       constructor Create(const pOffset:TVkOffset2D;
+                          const pExtent:TVkExtent2D;
+                          const pLayer:TVkUInt32);
 {$endif}
      end;
 
@@ -6396,11 +6399,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       rectangleCount:TVkUInt32; //< Number of rectangles in pRectangles
-       pRectangles:PVkRectLayerKHR; //< Array of rectangles that have changed in a swapchain's image(s)
+       rectangleCount:TVkUInt32;
+       pRectangles:PVkRectLayerKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pRectangleCount:TVkUInt32; //< Number of rectangles in pRectangles
-                          const pPRectangles:PVkRectLayerKHR); //< Array of rectangles that have changed in a swapchain's image(s)
+       constructor Create(const pRectangleCount:TVkUInt32;
+                          const pPRectangles:PVkRectLayerKHR);
 {$endif}
      end;
 
@@ -6411,12 +6414,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       swapchainCount:TVkUInt32; //< Copy of VkPresentInfoKHR::swapchainCount
-       pRegions:PVkPresentRegionKHR; //< The regions that have changed
+       pNext:PVkVoid;
+       swapchainCount:TVkUInt32;
+       pRegions:PVkPresentRegionKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSwapchainCount:TVkUInt32; //< Copy of VkPresentInfoKHR::swapchainCount
-                          const pPRegions:PVkPresentRegionKHR); //< The regions that have changed
+       constructor Create(const pSwapchainCount:TVkUInt32;
+                          const pPRegions:PVkPresentRegionKHR);
 {$endif}
      end;
 
@@ -6427,7 +6430,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        variablePointersStorageBuffer:TVkBool32;
        variablePointers:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -6459,7 +6462,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pHandleType:TVkExternalMemoryHandleTypeFlagBitsKHR);
@@ -6473,7 +6476,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        externalMemoryProperties:TVkExternalMemoryPropertiesKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pExternalMemoryProperties:TVkExternalMemoryPropertiesKHR);
@@ -6487,7 +6490,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        flags:TVkBufferCreateFlags;
        usage:TVkBufferUsageFlags;
        handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;
@@ -6505,7 +6508,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        externalMemoryProperties:TVkExternalMemoryPropertiesKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pExternalMemoryProperties:TVkExternalMemoryPropertiesKHR);
@@ -6519,7 +6522,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        deviceUUID:array[0..VK_UUID_SIZE-1] of TVkUInt8;
        driverUUID:array[0..VK_UUID_SIZE-1] of TVkUInt8;
        deviceLUID:array[0..VK_LUID_SIZE_KHR-1] of TVkUInt8;
@@ -6541,7 +6544,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        handleTypes:TVkExternalMemoryHandleTypeFlagsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsKHR);
@@ -6555,7 +6558,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        handleTypes:TVkExternalMemoryHandleTypeFlagsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsKHR);
@@ -6569,7 +6572,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        handleTypes:TVkExternalMemoryHandleTypeFlagsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pHandleTypes:TVkExternalMemoryHandleTypeFlagsKHR);
@@ -6583,7 +6586,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;
        handle:THANDLE;
        name:PWideChar;
@@ -6602,7 +6605,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        pAttributes:PSecurityAttributes;
        dwAccess:TVkUInt32;
        name:PWideChar;
@@ -6621,7 +6624,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_WIN32_HANDLE_PROPERTIES_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        memoryTypeBits:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pMemoryTypeBits:TVkUInt32);
@@ -6635,7 +6638,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        memory:TVkDeviceMemory;
        handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -6651,7 +6654,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;
        fd:TVkInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -6667,7 +6670,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        memoryTypeBits:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pMemoryTypeBits:TVkUInt32);
@@ -6681,7 +6684,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        memory:TVkDeviceMemory;
        handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -6697,7 +6700,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        acquireCount:TVkUInt32;
        pAcquireSyncs:PVkDeviceMemory;
        pAcquireKeys:PVkUInt64;
@@ -6723,7 +6726,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pHandleType:TVkExternalSemaphoreHandleTypeFlagBitsKHR);
@@ -6737,7 +6740,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        exportFromImportedHandleTypes:TVkExternalSemaphoreHandleTypeFlagsKHR;
        compatibleHandleTypes:TVkExternalSemaphoreHandleTypeFlagsKHR;
        externalSemaphoreFeatures:TVkExternalSemaphoreFeatureFlagsKHR;
@@ -6755,7 +6758,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        handleTypes:TVkExternalSemaphoreHandleTypeFlagsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pHandleTypes:TVkExternalSemaphoreHandleTypeFlagsKHR);
@@ -6769,7 +6772,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        semaphore:TVkSemaphore;
        flags:TVkSemaphoreImportFlagsKHR;
        handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHR;
@@ -6792,7 +6795,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        pAttributes:PSecurityAttributes;
        dwAccess:TVkUInt32;
        name:PWideChar;
@@ -6811,7 +6814,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_D3D12_FENCE_SUBMIT_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        waitSemaphoreValuesCount:TVkUInt32;
        pWaitSemaphoreValues:PVkUInt64;
        signalSemaphoreValuesCount:TVkUInt32;
@@ -6831,7 +6834,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        semaphore:TVkSemaphore;
        handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -6847,7 +6850,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        semaphore:TVkSemaphore;
        flags:TVkSemaphoreImportFlagsKHR;
        handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHR;
@@ -6867,7 +6870,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        semaphore:TVkSemaphore;
        handleType:TVkExternalSemaphoreHandleTypeFlagBitsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -6883,7 +6886,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        handleType:TVkExternalFenceHandleTypeFlagBitsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pHandleType:TVkExternalFenceHandleTypeFlagBitsKHR);
@@ -6897,7 +6900,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        exportFromImportedHandleTypes:TVkExternalFenceHandleTypeFlagsKHR;
        compatibleHandleTypes:TVkExternalFenceHandleTypeFlagsKHR;
        externalFenceFeatures:TVkExternalFenceFeatureFlagsKHR;
@@ -6915,7 +6918,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        handleTypes:TVkExternalFenceHandleTypeFlagsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pHandleTypes:TVkExternalFenceHandleTypeFlagsKHR);
@@ -6929,7 +6932,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_FENCE_WIN32_HANDLE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        fence:TVkFence;
        flags:TVkFenceImportFlagsKHR;
        handleType:TVkExternalFenceHandleTypeFlagBitsKHR;
@@ -6952,7 +6955,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXPORT_FENCE_WIN32_HANDLE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        pAttributes:PSecurityAttributes;
        dwAccess:TVkUInt32;
        name:PWideChar;
@@ -6971,7 +6974,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_FENCE_GET_WIN32_HANDLE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        fence:TVkFence;
        handleType:TVkExternalFenceHandleTypeFlagBitsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -6987,7 +6990,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_FENCE_FD_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        fence:TVkFence;
        flags:TVkFenceImportFlagsKHR;
        handleType:TVkExternalFenceHandleTypeFlagBitsKHR;
@@ -7007,7 +7010,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        fence:TVkFence;
        handleType:TVkExternalFenceHandleTypeFlagBitsKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -7023,14 +7026,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHX
-       pNext:PVkVoid; //< Pointer to next structure
-       multiview:TVkBool32; //< Multiple views in a renderpass
-       multiviewGeometryShader:TVkBool32; //< Multiple views in a renderpass w/ geometry shader
-       multiviewTessellationShader:TVkBool32; //< Multiple views in a renderpass w/ tessellation shader
+       pNext:PVkVoid;
+       multiview:TVkBool32;
+       multiviewGeometryShader:TVkBool32;
+       multiviewTessellationShader:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pMultiview:TVkBool32; //< Multiple views in a renderpass
-                          const pMultiviewGeometryShader:TVkBool32; //< Multiple views in a renderpass w/ geometry shader
-                          const pMultiviewTessellationShader:TVkBool32); //< Multiple views in a renderpass w/ tessellation shader
+       constructor Create(const pMultiview:TVkBool32;
+                          const pMultiviewGeometryShader:TVkBool32;
+                          const pMultiviewTessellationShader:TVkBool32);
 {$endif}
      end;
 
@@ -7041,12 +7044,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHX
-       pNext:PVkVoid; //< Pointer to next structure
-       maxMultiviewViewCount:TVkUInt32; //< max number of views in a subpass
-       maxMultiviewInstanceIndex:TVkUInt32; //< max instance index for a draw in a multiview subpass
+       pNext:PVkVoid;
+       maxMultiviewViewCount:TVkUInt32;
+       maxMultiviewInstanceIndex:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pMaxMultiviewViewCount:TVkUInt32; //< max number of views in a subpass
-                          const pMaxMultiviewInstanceIndex:TVkUInt32); //< max instance index for a draw in a multiview subpass
+       constructor Create(const pMaxMultiviewViewCount:TVkUInt32;
+                          const pMaxMultiviewInstanceIndex:TVkUInt32);
 {$endif}
      end;
 
@@ -7057,7 +7060,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        subpassCount:TVkUInt32;
        pViewMasks:PVkUInt32;
        dependencyCount:TVkUInt32;
@@ -7082,28 +7085,28 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES2_EXT
        pNext:PVkVoid;
-       minImageCount:TVkUInt32; //< Supported minimum number of images for the surface
-       maxImageCount:TVkUInt32; //< Supported maximum number of images for the surface, 0 for unlimited
-       currentExtent:TVkExtent2D; //< Current image width and height for the surface, (0, 0) if undefined
-       minImageExtent:TVkExtent2D; //< Supported minimum image width and height for the surface
-       maxImageExtent:TVkExtent2D; //< Supported maximum image width and height for the surface
-       maxImageArrayLayers:TVkUInt32; //< Supported maximum number of image layers for the surface
-       supportedTransforms:TVkSurfaceTransformFlagsKHR; //< 1 or more bits representing the transforms supported
-       currentTransform:TVkSurfaceTransformFlagBitsKHR; //< The surface's current transform relative to the device's natural orientation
-       supportedCompositeAlpha:TVkCompositeAlphaFlagsKHR; //< 1 or more bits representing the alpha compositing modes supported
-       supportedUsageFlags:TVkImageUsageFlags; //< Supported image usage flags for the surface
+       minImageCount:TVkUInt32;
+       maxImageCount:TVkUInt32;
+       currentExtent:TVkExtent2D;
+       minImageExtent:TVkExtent2D;
+       maxImageExtent:TVkExtent2D;
+       maxImageArrayLayers:TVkUInt32;
+       supportedTransforms:TVkSurfaceTransformFlagsKHR;
+       currentTransform:TVkSurfaceTransformFlagBitsKHR;
+       supportedCompositeAlpha:TVkCompositeAlphaFlagsKHR;
+       supportedUsageFlags:TVkImageUsageFlags;
        supportedSurfaceCounters:TVkSurfaceCounterFlagsEXT;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pMinImageCount:TVkUInt32; //< Supported minimum number of images for the surface
-                          const pMaxImageCount:TVkUInt32; //< Supported maximum number of images for the surface, 0 for unlimited
-                          const pCurrentExtent:TVkExtent2D; //< Current image width and height for the surface, (0, 0) if undefined
-                          const pMinImageExtent:TVkExtent2D; //< Supported minimum image width and height for the surface
-                          const pMaxImageExtent:TVkExtent2D; //< Supported maximum image width and height for the surface
-                          const pMaxImageArrayLayers:TVkUInt32; //< Supported maximum number of image layers for the surface
-                          const pSupportedTransforms:TVkSurfaceTransformFlagsKHR; //< 1 or more bits representing the transforms supported
-                          const pCurrentTransform:TVkSurfaceTransformFlagBitsKHR; //< The surface's current transform relative to the device's natural orientation
-                          const pSupportedCompositeAlpha:TVkCompositeAlphaFlagsKHR; //< 1 or more bits representing the alpha compositing modes supported
-                          const pSupportedUsageFlags:TVkImageUsageFlags; //< Supported image usage flags for the surface
+       constructor Create(const pMinImageCount:TVkUInt32;
+                          const pMaxImageCount:TVkUInt32;
+                          const pCurrentExtent:TVkExtent2D;
+                          const pMinImageExtent:TVkExtent2D;
+                          const pMaxImageExtent:TVkExtent2D;
+                          const pMaxImageArrayLayers:TVkUInt32;
+                          const pSupportedTransforms:TVkSurfaceTransformFlagsKHR;
+                          const pCurrentTransform:TVkSurfaceTransformFlagBitsKHR;
+                          const pSupportedCompositeAlpha:TVkCompositeAlphaFlagsKHR;
+                          const pSupportedUsageFlags:TVkImageUsageFlags;
                           const pSupportedSurfaceCounters:TVkSurfaceCounterFlagsEXT);
 {$endif}
      end;
@@ -7171,7 +7174,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        physicalDeviceCount:TVkUInt32;
        physicalDevices:array[0..VK_MAX_DEVICE_GROUP_SIZE_KHX-1] of TVkPhysicalDevice;
        subsetAllocation:TVkBool32;
@@ -7189,7 +7192,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        flags:TVkMemoryAllocateFlagsKHX;
        deviceMask:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -7205,7 +7208,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        buffer:TVkBuffer;
        memory:TVkDeviceMemory;
        memoryOffset:TVkDeviceSize;
@@ -7227,7 +7230,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        image:TVkImage;
        memory:TVkDeviceMemory;
        memoryOffset:TVkDeviceSize;
@@ -7253,7 +7256,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        deviceMask:TVkUInt32;
        deviceRenderAreaCount:TVkUInt32;
        pDeviceRenderAreas:PVkRect2D;
@@ -7271,7 +7274,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        deviceMask:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pDeviceMask:TVkUInt32);
@@ -7285,7 +7288,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        waitSemaphoreCount:TVkUInt32;
        pWaitSemaphoreDeviceIndices:PVkUInt32;
        commandBufferCount:TVkUInt32;
@@ -7309,7 +7312,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        resourceDeviceIndex:TVkUInt32;
        memoryDeviceIndex:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -7325,7 +7328,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_CAPABILITIES_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        presentMask:array[0..VK_MAX_DEVICE_GROUP_SIZE_KHX-1] of TVkUInt32;
        modes:TVkDeviceGroupPresentModeFlagsKHX;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -7341,7 +7344,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        swapchain:TVkSwapchainKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pSwapchain:TVkSwapchainKHR);
@@ -7355,7 +7358,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        swapchain:TVkSwapchainKHR;
        imageIndex:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -7371,7 +7374,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        swapchain:TVkSwapchainKHR;
        timeout:TVkUInt64;
        semaphore:TVkSemaphore;
@@ -7393,7 +7396,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        swapchainCount:TVkUInt32;
        pDeviceMasks:PVkUInt32;
        mode:TVkDeviceGroupPresentModeFlagBitsKHX;
@@ -7411,7 +7414,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        physicalDeviceCount:TVkUInt32;
        pPhysicalDevices:PVkPhysicalDevice;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -7427,7 +7430,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        modes:TVkDeviceGroupPresentModeFlagsKHX;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pModes:TVkDeviceGroupPresentModeFlagsKHX);
@@ -7440,19 +7443,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       dstBinding:TVkUInt32; //< Binding within the destination descriptor set to write
-       dstArrayElement:TVkUInt32; //< Array element within the destination binding to write
-       descriptorCount:TVkUInt32; //< Number of descriptors to write
-       descriptorType:TVkDescriptorType; //< Descriptor type to write
-       offset:TVkSize; //< Offset into pData where the descriptors to update are stored
-       stride:TVkSize; //< Stride between two descriptors in pData when writing more than one descriptor
+       dstBinding:TVkUInt32;
+       dstArrayElement:TVkUInt32;
+       descriptorCount:TVkUInt32;
+       descriptorType:TVkDescriptorType;
+       offset:TVkSize;
+       stride:TVkSize;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pDstBinding:TVkUInt32; //< Binding within the destination descriptor set to write
-                          const pDstArrayElement:TVkUInt32; //< Array element within the destination binding to write
-                          const pDescriptorCount:TVkUInt32; //< Number of descriptors to write
-                          const pDescriptorType:TVkDescriptorType; //< Descriptor type to write
-                          const pOffset:TVkSize; //< Offset into pData where the descriptors to update are stored
-                          const pStride:TVkSize); //< Stride between two descriptors in pData when writing more than one descriptor
+       constructor Create(const pDstBinding:TVkUInt32;
+                          const pDstArrayElement:TVkUInt32;
+                          const pDescriptorCount:TVkUInt32;
+                          const pDescriptorType:TVkDescriptorType;
+                          const pOffset:TVkSize;
+                          const pStride:TVkSize);
 {$endif}
      end;
 
@@ -7463,23 +7466,23 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkDescriptorUpdateTemplateCreateFlagsKHR; //< Reserved
-       descriptorUpdateEntryCount:TVkUInt32; //< Number of descriptor update entries to use for the update template
-       pDescriptorUpdateEntries:PVkDescriptorUpdateTemplateEntryKHR; //< Descriptor update entries for the template
+       pNext:PVkVoid;
+       flags:TVkDescriptorUpdateTemplateCreateFlagsKHR;
+       descriptorUpdateEntryCount:TVkUInt32;
+       pDescriptorUpdateEntries:PVkDescriptorUpdateTemplateEntryKHR;
        templateType:TVkDescriptorUpdateTemplateTypeKHR;
        descriptorSetLayout:TVkDescriptorSetLayout;
        pipelineBindPoint:TVkPipelineBindPoint;
-       pipelineLayout:TVkPipelineLayout; //< If used for push descriptors, this is the only allowed layout
+       pipelineLayout:TVkPipelineLayout;
        set_:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkDescriptorUpdateTemplateCreateFlagsKHR; //< Reserved
-                          const pDescriptorUpdateEntryCount:TVkUInt32; //< Number of descriptor update entries to use for the update template
-                          const pPDescriptorUpdateEntries:PVkDescriptorUpdateTemplateEntryKHR; //< Descriptor update entries for the template
+       constructor Create(const pFlags:TVkDescriptorUpdateTemplateCreateFlagsKHR;
+                          const pDescriptorUpdateEntryCount:TVkUInt32;
+                          const pPDescriptorUpdateEntries:PVkDescriptorUpdateTemplateEntryKHR;
                           const pTemplateType:TVkDescriptorUpdateTemplateTypeKHR;
                           const pDescriptorSetLayout:TVkDescriptorSetLayout;
                           const pPipelineBindPoint:TVkPipelineBindPoint;
-                          const pPipelineLayout:TVkPipelineLayout; //< If used for push descriptors, this is the only allowed layout
+                          const pPipelineLayout:TVkPipelineLayout;
                           const pSet_:TVkUInt32);
 {$endif}
      end;
@@ -7505,23 +7508,23 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_HDR_METADATA_EXT
-       pNext:PVkVoid; //< From SMPTE 2086
-       displayPrimaryRed:TVkXYColorEXT; //< Display primary's Red
-       displayPrimaryGreen:TVkXYColorEXT; //< Display primary's Green
-       displayPrimaryBlue:TVkXYColorEXT; //< Display primary's Blue
-       whitePoint:TVkXYColorEXT; //< Display primary's Blue
-       maxLuminance:TVkFloat; //< Display maximum luminance
-       minLuminance:TVkFloat; //< Display minimum luminance
-       maxContentLightLevel:TVkFloat; //< Content maximum luminance
+       pNext:PVkVoid;
+       displayPrimaryRed:TVkXYColorEXT;
+       displayPrimaryGreen:TVkXYColorEXT;
+       displayPrimaryBlue:TVkXYColorEXT;
+       whitePoint:TVkXYColorEXT;
+       maxLuminance:TVkFloat;
+       minLuminance:TVkFloat;
+       maxContentLightLevel:TVkFloat;
        maxFrameAverageLightLevel:TVkFloat;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pDisplayPrimaryRed:TVkXYColorEXT; //< Display primary's Red
-                          const pDisplayPrimaryGreen:TVkXYColorEXT; //< Display primary's Green
-                          const pDisplayPrimaryBlue:TVkXYColorEXT; //< Display primary's Blue
-                          const pWhitePoint:TVkXYColorEXT; //< Display primary's Blue
-                          const pMaxLuminance:TVkFloat; //< Display maximum luminance
-                          const pMinLuminance:TVkFloat; //< Display minimum luminance
-                          const pMaxContentLightLevel:TVkFloat; //< Content maximum luminance
+       constructor Create(const pDisplayPrimaryRed:TVkXYColorEXT;
+                          const pDisplayPrimaryGreen:TVkXYColorEXT;
+                          const pDisplayPrimaryBlue:TVkXYColorEXT;
+                          const pWhitePoint:TVkXYColorEXT;
+                          const pMaxLuminance:TVkFloat;
+                          const pMinLuminance:TVkFloat;
+                          const pMaxContentLightLevel:TVkFloat;
                           const pMaxFrameAverageLightLevel:TVkFloat);
 {$endif}
      end;
@@ -7532,9 +7535,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       refreshDuration:TVkUInt64; //< Number of nanoseconds from the start of one refresh cycle to the next
+       refreshDuration:TVkUInt64;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pRefreshDuration:TVkUInt64); //< Number of nanoseconds from the start of one refresh cycle to the next
+       constructor Create(const pRefreshDuration:TVkUInt64);
 {$endif}
      end;
 
@@ -7544,17 +7547,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       presentID:TVkUInt32; //< Application-provided identifier, previously given to vkQueuePresentKHR
-       desiredPresentTime:TVkUInt64; //< Earliest time an image should have been presented, previously given to vkQueuePresentKHR
-       actualPresentTime:TVkUInt64; //< Time the image was actually displayed
-       earliestPresentTime:TVkUInt64; //< Earliest time the image could have been displayed
-       presentMargin:TVkUInt64; //< How early vkQueuePresentKHR was processed vs. how soon it needed to be and make earliestPresentTime
+       presentID:TVkUInt32;
+       desiredPresentTime:TVkUInt64;
+       actualPresentTime:TVkUInt64;
+       earliestPresentTime:TVkUInt64;
+       presentMargin:TVkUInt64;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pPresentID:TVkUInt32; //< Application-provided identifier, previously given to vkQueuePresentKHR
-                          const pDesiredPresentTime:TVkUInt64; //< Earliest time an image should have been presented, previously given to vkQueuePresentKHR
-                          const pActualPresentTime:TVkUInt64; //< Time the image was actually displayed
-                          const pEarliestPresentTime:TVkUInt64; //< Earliest time the image could have been displayed
-                          const pPresentMargin:TVkUInt64); //< How early vkQueuePresentKHR was processed vs. how soon it needed to be and make earliestPresentTime
+       constructor Create(const pPresentID:TVkUInt32;
+                          const pDesiredPresentTime:TVkUInt64;
+                          const pActualPresentTime:TVkUInt64;
+                          const pEarliestPresentTime:TVkUInt64;
+                          const pPresentMargin:TVkUInt64);
 {$endif}
      end;
 
@@ -7564,11 +7567,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       presentID:TVkUInt32; //< Application-provided identifier
-       desiredPresentTime:TVkUInt64; //< Earliest time an image should be presented
+       presentID:TVkUInt32;
+       desiredPresentTime:TVkUInt64;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pPresentID:TVkUInt32; //< Application-provided identifier
-                          const pDesiredPresentTime:TVkUInt64); //< Earliest time an image should be presented
+       constructor Create(const pPresentID:TVkUInt32;
+                          const pDesiredPresentTime:TVkUInt64);
 {$endif}
      end;
 
@@ -7579,12 +7582,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE
-       pNext:PVkVoid; //< Pointer to next structure
-       swapchainCount:TVkUInt32; //< Copy of VkPresentInfoKHR::swapchainCount
-       pTimes:PVkPresentTimeGOOGLE; //< The earliest times to present images
+       pNext:PVkVoid;
+       swapchainCount:TVkUInt32;
+       pTimes:PVkPresentTimeGOOGLE;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSwapchainCount:TVkUInt32; //< Copy of VkPresentInfoKHR::swapchainCount
-                          const pPTimes:PVkPresentTimeGOOGLE); //< The earliest times to present images
+       constructor Create(const pSwapchainCount:TVkUInt32;
+                          const pPTimes:PVkPresentTimeGOOGLE);
 {$endif}
      end;
 
@@ -7596,11 +7599,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkIOSSurfaceCreateFlagsMVK; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkIOSSurfaceCreateFlagsMVK;
        pView:PVkVoid;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkIOSSurfaceCreateFlagsMVK; //< Reserved
+       constructor Create(const pFlags:TVkIOSSurfaceCreateFlagsMVK;
                           const pPView:PVkVoid);
 {$endif}
      end;
@@ -7614,11 +7617,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkMacOSSurfaceCreateFlagsMVK; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkMacOSSurfaceCreateFlagsMVK;
        pView:PVkVoid;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkMacOSSurfaceCreateFlagsMVK; //< Reserved
+       constructor Create(const pFlags:TVkMacOSSurfaceCreateFlagsMVK;
                           const pPView:PVkVoid);
 {$endif}
      end;
@@ -7645,7 +7648,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        viewportWScalingEnable:TVkBool32;
        viewportCount:TVkUInt32;
        pViewportWScalings:PVkViewportWScalingNV;
@@ -7681,12 +7684,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineViewportSwizzleStateCreateFlagsNV; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkPipelineViewportSwizzleStateCreateFlagsNV;
        viewportCount:TVkUInt32;
        pViewportSwizzles:PVkViewportSwizzleNV;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineViewportSwizzleStateCreateFlagsNV; //< Reserved
+       constructor Create(const pFlags:TVkPipelineViewportSwizzleStateCreateFlagsNV;
                           const pViewportCount:TVkUInt32;
                           const pPViewportSwizzles:PVkViewportSwizzleNV);
 {$endif}
@@ -7699,10 +7702,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT
-       pNext:PVkVoid; //< Pointer to next structure
-       maxDiscardRectangles:TVkUInt32; //< max number of active discard rectangles
+       pNext:PVkVoid;
+       maxDiscardRectangles:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pMaxDiscardRectangles:TVkUInt32); //< max number of active discard rectangles
+       constructor Create(const pMaxDiscardRectangles:TVkUInt32);
 {$endif}
      end;
 
@@ -7713,13 +7716,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineDiscardRectangleStateCreateFlagsEXT; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkPipelineDiscardRectangleStateCreateFlagsEXT;
        discardRectangleMode:TVkDiscardRectangleModeEXT;
        discardRectangleCount:TVkUInt32;
        pDiscardRectangles:PVkRect2D;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineDiscardRectangleStateCreateFlagsEXT; //< Reserved
+       constructor Create(const pFlags:TVkPipelineDiscardRectangleStateCreateFlagsEXT;
                           const pDiscardRectangleMode:TVkDiscardRectangleModeEXT;
                           const pDiscardRectangleCount:TVkUInt32;
                           const pPDiscardRectangles:PVkRect2D);
@@ -7733,7 +7736,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        perViewPositionAllComponents:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pPerViewPositionAllComponents:TVkBool32);
@@ -7761,7 +7764,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        surfaceCapabilities:TVkSurfaceCapabilitiesKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pSurfaceCapabilities:TVkSurfaceCapabilitiesKHR);
@@ -7789,10 +7792,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       sharedPresentSupportedUsageFlags:TVkImageUsageFlags; //< Supported image usage flags if swapchain created using a shared present mode
+       pNext:PVkVoid;
+       sharedPresentSupportedUsageFlags:TVkImageUsageFlags;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pSharedPresentSupportedUsageFlags:TVkImageUsageFlags); //< Supported image usage flags if swapchain created using a shared present mode
+       constructor Create(const pSharedPresentSupportedUsageFlags:TVkImageUsageFlags);
 {$endif}
      end;
 
@@ -7803,16 +7806,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       storageBuffer16BitAccess:TVkBool32; //< 16-bit integer/floating-point variables supported in BufferBlock
-       uniformAndStorageBuffer16BitAccess:TVkBool32; //< 16-bit integer/floating-point variables supported in BufferBlock and Block
-       storagePushConstant16:TVkBool32; //< 16-bit integer/floating-point variables supported in PushConstant
-       storageInputOutput16:TVkBool32; //< 16-bit integer/floating-point variables supported in shader inputs and outputs
+       pNext:PVkVoid;
+       storageBuffer16BitAccess:TVkBool32;
+       uniformAndStorageBuffer16BitAccess:TVkBool32;
+       storagePushConstant16:TVkBool32;
+       storageInputOutput16:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pStorageBuffer16BitAccess:TVkBool32; //< 16-bit integer/floating-point variables supported in BufferBlock
-                          const pUniformAndStorageBuffer16BitAccess:TVkBool32; //< 16-bit integer/floating-point variables supported in BufferBlock and Block
-                          const pStoragePushConstant16:TVkBool32; //< 16-bit integer/floating-point variables supported in PushConstant
-                          const pStorageInputOutput16:TVkBool32); //< 16-bit integer/floating-point variables supported in shader inputs and outputs
+       constructor Create(const pStorageBuffer16BitAccess:TVkBool32;
+                          const pUniformAndStorageBuffer16BitAccess:TVkBool32;
+                          const pStoragePushConstant16:TVkBool32;
+                          const pStorageInputOutput16:TVkBool32);
 {$endif}
      end;
 
@@ -7823,7 +7826,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        buffer:TVkBuffer;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pBuffer:TVkBuffer);
@@ -7837,7 +7840,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        image:TVkImage;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pImage:TVkImage);
@@ -7851,7 +7854,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        image:TVkImage;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pImage:TVkImage);
@@ -7865,7 +7868,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        memoryRequirements:TVkMemoryRequirements;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pMemoryRequirements:TVkMemoryRequirements);
@@ -7879,7 +7882,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        memoryRequirements:TVkSparseImageMemoryRequirements;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pMemoryRequirements:TVkSparseImageMemoryRequirements);
@@ -7893,7 +7896,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        prefersDedicatedAllocation:TVkBool32;
        requiresDedicatedAllocation:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -7909,12 +7912,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR
-       pNext:PVkVoid; //< Pointer to next structure
-       image:TVkImage; //< Image that this allocation will be bound to
-       buffer:TVkBuffer; //< Buffer that this allocation will be bound to
+       pNext:PVkVoid;
+       image:TVkImage;
+       buffer:TVkBuffer;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pImage:TVkImage; //< Image that this allocation will be bound to
-                          const pBuffer:TVkBuffer); //< Buffer that this allocation will be bound to
+       constructor Create(const pImage:TVkImage;
+                          const pBuffer:TVkBuffer);
 {$endif}
      end;
 
@@ -7925,7 +7928,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        supportsTextureGatherLODBiasAMD:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pSupportsTextureGatherLODBiasAMD:TVkBool32);
@@ -7939,12 +7942,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_TO_COLOR_STATE_CREATE_INFO_NV
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineCoverageToColorStateCreateFlagsNV; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkPipelineCoverageToColorStateCreateFlagsNV;
        coverageToColorEnable:TVkBool32;
        coverageToColorLocation:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineCoverageToColorStateCreateFlagsNV; //< Reserved
+       constructor Create(const pFlags:TVkPipelineCoverageToColorStateCreateFlagsNV;
                           const pCoverageToColorEnable:TVkBool32;
                           const pCoverageToColorLocation:TVkUInt32);
 {$endif}
@@ -7957,7 +7960,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        filterMinmaxSingleComponentFormats:TVkBool32;
        filterMinmaxImageComponentMapping:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -7973,7 +7976,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        reductionMode:TVkSamplerReductionModeEXT;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pReductionMode:TVkSamplerReductionModeEXT);
@@ -7987,7 +7990,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        advancedBlendCoherentOperations:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pAdvancedBlendCoherentOperations:TVkBool32);
@@ -8001,7 +8004,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        advancedBlendMaxColorAttachments:TVkUInt32;
        advancedBlendIndependentBlend:TVkBool32;
        advancedBlendNonPremultipliedSrcColor:TVkBool32;
@@ -8025,7 +8028,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT
-       pNext:PVkVoid; //< Pointer to next structure
+       pNext:PVkVoid;
        srcPremultiplied:TVkBool32;
        dstPremultiplied:TVkBool32;
        blendOverlap:TVkBlendOverlapEXT;
@@ -8043,14 +8046,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV
-       pNext:PVkVoid; //< Pointer to next structure
-       flags:TVkPipelineCoverageModulationStateCreateFlagsNV; //< Reserved
+       pNext:PVkVoid;
+       flags:TVkPipelineCoverageModulationStateCreateFlagsNV;
        coverageModulationMode:TVkCoverageModulationModeNV;
        coverageModulationTableEnable:TVkBool32;
        coverageModulationTableCount:TVkUInt32;
        pCoverageModulationTable:PVkFloat;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pFlags:TVkPipelineCoverageModulationStateCreateFlagsNV; //< Reserved
+       constructor Create(const pFlags:TVkPipelineCoverageModulationStateCreateFlagsNV;
                           const pCoverageModulationMode:TVkCoverageModulationModeNV;
                           const pCoverageModulationTableEnable:TVkBool32;
                           const pCoverageModulationTableCount:TVkUInt32;
@@ -8420,15 +8423,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkDebugReportMessageEXT=procedure(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkDebugMarkerSetObjectNameEXT=function(device:TVkDevice;pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDebugMarkerSetObjectNameEXT=function(device:TVkDevice;const pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkDebugMarkerSetObjectTagEXT=function(device:TVkDevice;pTagInfo:PVkDebugMarkerObjectTagInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDebugMarkerSetObjectTagEXT=function(device:TVkDevice;const pTagInfo:PVkDebugMarkerObjectTagInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDebugMarkerBeginEXT=procedure(commandBuffer:TVkCommandBuffer;pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDebugMarkerBeginEXT=procedure(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdDebugMarkerEndEXT=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDebugMarkerInsertEXT=procedure(commandBuffer:TVkCommandBuffer;pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDebugMarkerInsertEXT=procedure(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetPhysicalDeviceExternalImageFormatPropertiesNV=function(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;externalHandleType:TVkExternalMemoryHandleTypeFlagsNV;pExternalImageFormatProperties:PVkExternalImageFormatPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -9509,15 +9512,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure DebugReportMessageEXT(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); virtual;
 
-       function DebugMarkerSetObjectNameEXT(device:TVkDevice;pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult; virtual;
+       function DebugMarkerSetObjectNameEXT(device:TVkDevice;const pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult; virtual;
 
-       function DebugMarkerSetObjectTagEXT(device:TVkDevice;pTagInfo:PVkDebugMarkerObjectTagInfoEXT):TVkResult; virtual;
+       function DebugMarkerSetObjectTagEXT(device:TVkDevice;const pTagInfo:PVkDebugMarkerObjectTagInfoEXT):TVkResult; virtual;
 
-       procedure CmdDebugMarkerBeginEXT(commandBuffer:TVkCommandBuffer;pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); virtual;
+       procedure CmdDebugMarkerBeginEXT(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); virtual;
 
        procedure CmdDebugMarkerEndEXT(commandBuffer:TVkCommandBuffer); virtual;
 
-       procedure CmdDebugMarkerInsertEXT(commandBuffer:TVkCommandBuffer;pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); virtual;
+       procedure CmdDebugMarkerInsertEXT(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); virtual;
 
        function GetPhysicalDeviceExternalImageFormatPropertiesNV(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;externalHandleType:TVkExternalMemoryHandleTypeFlagsNV;pExternalImageFormatProperties:PVkExternalImageFormatPropertiesNV):TVkResult; virtual;
 
@@ -12324,11 +12327,19 @@ begin
  maxResourceSize:=pMaxResourceSize;
 end;
 
-constructor TVkDescriptorBufferInfo.Create(const pBuffer:TVkBuffer;
+constructor TVkDescriptorBufferInfo.Create(const pBuffer:array of TVkBuffer;
                                            const pOffset:TVkDeviceSize;
                                            const pRange:TVkDeviceSize);
+var ArrayItemCount:TVkInt32;
 begin
- buffer:=pBuffer;
+ FillChar(self,SizeOf(TVkDescriptorBufferInfo),#0);
+ ArrayItemCount:=length(pBuffer);
+ if ArrayItemCount>length(buffer) then begin
+  ArrayItemCount:=length(buffer);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(pBuffer[0],buffer[0],ArrayItemCount*SizeOf(TVkBuffer));
+ end;
  offset:=pOffset;
  range:=pRange;
 end;
@@ -12348,9 +12359,11 @@ constructor TVkWriteDescriptorSet.Create(const pDstSet:TVkDescriptorSet;
                                          const pDescriptorCount:TVkUInt32;
                                          const pDescriptorType:TVkDescriptorType;
                                          const pPImageInfo:PVkDescriptorImageInfo;
-                                         const pPBufferInfo:PVkDescriptorBufferInfo;
+                                         const pPBufferInfo:array of PVkDescriptorBufferInfo;
                                          const pPTexelBufferView:PVkBufferView);
+var ArrayItemCount:TVkInt32;
 begin
+ FillChar(self,SizeOf(TVkWriteDescriptorSet),#0);
  sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
  pNext:=nil;
  dstSet:=pDstSet;
@@ -12359,7 +12372,13 @@ begin
  descriptorCount:=pDescriptorCount;
  descriptorType:=pDescriptorType;
  pImageInfo:=pPImageInfo;
- pBufferInfo:=pPBufferInfo;
+ ArrayItemCount:=length(pPBufferInfo);
+ if ArrayItemCount>length(pBufferInfo) then begin
+  ArrayItemCount:=length(pBufferInfo);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(pPBufferInfo[0],pBufferInfo[0],ArrayItemCount*SizeOf(PVkDescriptorBufferInfo));
+ end;
  pTexelBufferView:=pPTexelBufferView;
 end;
 
@@ -16338,17 +16357,17 @@ begin
  fCommands.DebugReportMessageEXT(instance,flags,objectType,object_,location,messageCode,pLayerPrefix,pMessage);
 end;
 
-function TVulkan.DebugMarkerSetObjectNameEXT(device:TVkDevice;pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult;
+function TVulkan.DebugMarkerSetObjectNameEXT(device:TVkDevice;const pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult;
 begin
  result:=fCommands.DebugMarkerSetObjectNameEXT(device,pNameInfo);
 end;
 
-function TVulkan.DebugMarkerSetObjectTagEXT(device:TVkDevice;pTagInfo:PVkDebugMarkerObjectTagInfoEXT):TVkResult;
+function TVulkan.DebugMarkerSetObjectTagEXT(device:TVkDevice;const pTagInfo:PVkDebugMarkerObjectTagInfoEXT):TVkResult;
 begin
  result:=fCommands.DebugMarkerSetObjectTagEXT(device,pTagInfo);
 end;
 
-procedure TVulkan.CmdDebugMarkerBeginEXT(commandBuffer:TVkCommandBuffer;pMarkerInfo:PVkDebugMarkerMarkerInfoEXT);
+procedure TVulkan.CmdDebugMarkerBeginEXT(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkDebugMarkerMarkerInfoEXT);
 begin
  fCommands.CmdDebugMarkerBeginEXT(commandBuffer,pMarkerInfo);
 end;
@@ -16358,7 +16377,7 @@ begin
  fCommands.CmdDebugMarkerEndEXT(commandBuffer);
 end;
 
-procedure TVulkan.CmdDebugMarkerInsertEXT(commandBuffer:TVkCommandBuffer;pMarkerInfo:PVkDebugMarkerMarkerInfoEXT);
+procedure TVulkan.CmdDebugMarkerInsertEXT(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkDebugMarkerMarkerInfoEXT);
 begin
  fCommands.CmdDebugMarkerInsertEXT(commandBuffer,pMarkerInfo);
 end;
