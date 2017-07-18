@@ -26,6 +26,7 @@ uses
   {$ifend }
   SysUtils,
   Classes,
+  PasDblStrUtils in '..\externals\pasdblstrutils\src\PasDblStrUtils.pas',
   PUCU in '..\externals\pucu\src\PUCU.pas',
   PasMP in '..\externals\pasmp\src\PasMP.pas',
   kraft in '..\externals\kraft\src\kraft.pas',
@@ -51,6 +52,10 @@ uses
   PasVulkan.Android in '..\src\PasVulkan.Android.pas',
   PasVulkan.SDL2 in '..\src\PasVulkan.SDL2.pas',
   PasVulkan.StaticLinking in '..\src\PasVulkan.StaticLinking.pas',
+  PasVulkan.Audio.HRTFTables in '..\src\PasVulkan.Audio.HRTFTables.pas',
+  PasVulkan.Audio.OGGVorbisTremor in '..\src\PasVulkan.Audio.OGGVorbisTremor.pas',
+  PasVulkan.Audio.OGGVorbisTremor.ExternalLibrary in '..\src\PasVulkan.Audio.OGGVorbisTremor.ExternalLibrary.pas',
+  PasVulkan.Audio in '..\src\PasVulkan.Audio.pas',
   PasVulkan.Application in '..\src\PasVulkan.Application.pas',
   PasVulkan.GUI in '..\src\PasVulkan.GUI.pas',
   UnitChunkStream in 'UnitChunkStream.pas',
@@ -67,8 +72,7 @@ uses
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
   UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
   UnitScreenExampleSprites in 'UnitScreenExampleSprites.pas',
-  UnitScreenExampleFont in 'UnitScreenExampleFont.pas',
-  PasDblStrUtils in '..\externals\pasdblstrutils\src\PasDblStrUtils.pas';
+  UnitScreenExampleFont in 'UnitScreenExampleFont.pas';
 
 // {$if defined(fpc) and defined(android)}
 

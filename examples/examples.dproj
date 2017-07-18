@@ -204,6 +204,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="..\externals\pasdblstrutils\src\PasDblStrUtils.pas"/>
         <DCCReference Include="..\externals\pucu\src\PUCU.pas"/>
         <DCCReference Include="..\externals\pasmp\src\PasMP.pas"/>
         <DCCReference Include="..\externals\kraft\src\kraft.pas"/>
@@ -229,6 +230,10 @@
         <DCCReference Include="..\src\PasVulkan.Android.pas"/>
         <DCCReference Include="..\src\PasVulkan.SDL2.pas"/>
         <DCCReference Include="..\src\PasVulkan.StaticLinking.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Audio.HRTFTables.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Audio.OGGVorbisTremor.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Audio.OGGVorbisTremor.ExternalLibrary.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Audio.pas"/>
         <DCCReference Include="..\src\PasVulkan.Application.pas"/>
         <DCCReference Include="..\src\PasVulkan.GUI.pas"/>
         <DCCReference Include="UnitChunkStream.pas"/>
@@ -246,7 +251,6 @@
         <DCCReference Include="UnitScreenExampleDragon.pas"/>
         <DCCReference Include="UnitScreenExampleSprites.pas"/>
         <DCCReference Include="UnitScreenExampleFont.pas"/>
-        <DCCReference Include="..\externals\pasdblstrutils\src\PasDblStrUtils.pas"/>
         <None Include="..\src\PasVulkan.inc"/>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_2</Key>
@@ -278,7 +282,6 @@
                 <Platform value="iOSDevice32">False</Platform>
                 <Platform value="iOSDevice64">False</Platform>
                 <Platform value="iOSSimulator">False</Platform>
-                <Platform value="Linux64">False</Platform>
                 <Platform value="OSX32">False</Platform>
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">True</Platform>
