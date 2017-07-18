@@ -68,6 +68,7 @@ uses SysUtils,
      PasMP,
      Vulkan,
      PasVulkan.Types,
+     PasVulkan.Collections,
      PasVulkan.Framework,
      PasVulkan.TrueTypeFont;
 
@@ -152,6 +153,8 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
 
      TpvFontDistanceFieldJobs=array of TpvFontDistanceFieldJob;
 
+     TpvFontInt64HashMap=class(TpvHashMap<TpvInt64,TpvInt64>);
+
      TpvFont=class
       private
        fDevice:TpvVulkanDevice;
@@ -170,8 +173,8 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        fGlyphs:TpvFontGlyphs;
        fCodePointGlyphPairs:TpvFontCodePointGlyphPairs;
        fKerningPairs:TpvFontKerningPairs;
-       fCodePointToGlyphHashMap:TpvVulkanInt64HashMap;
-       fKerningPairHashMap:TpvVulkanInt64HashMap;
+       fCodePointToGlyphHashMap:TpvFontInt64HashMap;
+       fKerningPairHashMap:TpvFontInt64HashMap;
 {$ifdef PasVulkanPasMP}
        fDistanceFieldJobs:TpvFontDistanceFieldJobs;
 {$endif}
@@ -187,11 +190,11 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        class function CodePointRange(const aFromCodePoint,aToCodePoint:WideChar):TpvFontCodePointRange; overload;
        class function CodePointRange(const aCharacterRange:TpvFontCharacterRange):TpvFontCodePointRange; overload;
        function GetScaleFactor(const aSize:TpvFloat):TpvFloat;
-       function TextWidth(const aText:TpvVulkanUTF8String;const aSize:TpvFloat):TpvFloat;
-       function TextHeight(const aText:TpvVulkanUTF8String;const aSize:TpvFloat):TpvFloat;
-       procedure TextSize(const aText:TpvVulkanUTF8String;const aSize:TpvFloat;out aWidth,aHeight:TpvFloat);
+       function TextWidth(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
+       function TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
+       procedure TextSize(const aText:TpvUTF8String;const aSize:TpvFloat;out aWidth,aHeight:TpvFloat);
        function RowHeight(const Percent:TpvFloat):TpvFloat;
-       procedure Draw(const aCanvas:TpvVulkanCanvas;const aText:TpvVulkanUTF8String;const aX,aY,aSize:TpvFloat;const aColorRed:TpvFloat=1.0;const aColorGreen:TpvFloat=1.0;const aColorBlue:TpvFloat=1.0;const aColorAlpha:TpvFloat=1.0);
+       procedure Draw(const aCanvas:TpvVulkanCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat;const aColorRed:TpvFloat=1.0;const aColorGreen:TpvFloat=1.0;const aColorBlue:TpvFloat=1.0;const aColorAlpha:TpvFloat=1.0);
      end;
 
 implementation
@@ -2210,9 +2213,9 @@ begin
 
  fKerningPairs:=nil;
 
- fCodePointToGlyphHashMap:=TpvVulkanInt64HashMap.Create;
+ fCodePointToGlyphHashMap:=TpvFontInt64HashMap.Create(-1);
 
- fKerningPairHashMap:=TpvVulkanInt64HashMap.Create;
+ fKerningPairHashMap:=TpvFontInt64HashMap.Create(-1);
 
 {$ifdef PasVulkanPasMP}
  fDistanceFieldJobs:=nil;
@@ -2229,14 +2232,14 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     KerningPairIndex,CountKerningPairs:TpvInt32;
     x0,y0,x1,y1:TpvDouble;
     KerningPairDoubleIndex:TpvUInt64;
+    Int64Value:TpvInt64;
     CodePointRange:PpvFontCodePointRange;
     CodePointIndex,BitmapCodePointIndex:TpvUInt32;
     CodePointBitmap:TpvFontCodePointBitmap;
-    CodePointToTTFGlyphHashMap:TpvVulkanInt64HashMap;
-    TTFGlyphToGlyphHashMap:TpvVulkanInt64HashMap;
-    GlyphToTTFGlyphHashMap:TpvVulkanInt64HashMap;
-    KerningPairHashMap:TpvVulkanInt64HashMap;
-    Int64HashMapData:TpvVulkanInt64HashMapData;
+    CodePointToTTFGlyphHashMap:TpvFontInt64HashMap;
+    TTFGlyphToGlyphHashMap:TpvFontInt64HashMap;
+    GlyphToTTFGlyphHashMap:TpvFontInt64HashMap;
+    KerningPairHashMap:TpvFontInt64HashMap;
     Glyph:PpvFontGlyph;
     GlyphBuffer:TpvTrueTypeFontGlyphBuffer;
     PolygonBuffers:TpvTrueTypeFontPolygonBuffers;
@@ -2291,14 +2294,14 @@ begin
    end;
   end;
 
-  TTFGlyphToGlyphHashMap:=TpvVulkanInt64HashMap.Create;
+  TTFGlyphToGlyphHashMap:=TpvFontInt64HashMap.Create(-1);
   try
 
-   GlyphToTTFGlyphHashMap:=TpvVulkanInt64HashMap.Create;
+   GlyphToTTFGlyphHashMap:=TpvFontInt64HashMap.Create(-1);
    try
 
     // Collect used glyphs
-    CodePointToTTFGlyphHashMap:=TpvVulkanInt64HashMap.Create;
+    CodePointToTTFGlyphHashMap:=TpvFontInt64HashMap.Create(-1);
     try
      CountGlyphs:=0;
      CountCodePointGlyphPairs:=0;
@@ -2309,16 +2312,16 @@ begin
         TTFGlyphIndex:=aTrueTypeFont.GetGlyphIndex(CodePointIndex);
         if (TTFGlyphIndex>=0) and (TTFGlyphIndex<aTrueTypeFont.CountGlyphs) then begin
          if not CodePointToTTFGlyphHashMap.ExistKey(CodePointIndex) then begin
-          CodePointToTTFGlyphHashMap.Add(CodePointIndex,{%H-}TpvPointer(TpvPtrUInt(TTFGlyphIndex)));
-          if TTFGlyphToGlyphHashMap.TryGet(TTFGlyphIndex,Int64HashMapData) then begin
-           GlyphIndex:={%H-}TpvPtrUInt(TpvPointer(Int64HashMapData));
+          CodePointToTTFGlyphHashMap.Add(CodePointIndex,TTFGlyphIndex);
+          if TTFGlyphToGlyphHashMap.TryGet(TTFGlyphIndex,Int64Value) then begin
+           GlyphIndex:=Int64Value;
           end else begin
            GlyphIndex:=CountGlyphs;
            inc(CountGlyphs);
-           TTFGlyphToGlyphHashMap.Add(TTFGlyphIndex,{%H-}TpvPointer(TpvPtrUInt(GlyphIndex)));
-           GlyphToTTFGlyphHashMap.Add(GlyphIndex,{%H-}TpvPointer(TpvPtrUInt(TTFGlyphIndex)));
+           TTFGlyphToGlyphHashMap.Add(TTFGlyphIndex,GlyphIndex);
+           GlyphToTTFGlyphHashMap.Add(GlyphIndex,TTFGlyphIndex);
           end;
-          fCodePointToGlyphHashMap.Add(CodePointIndex,{%H-}TpvPointer(TpvPtrUInt(GlyphIndex)));
+          fCodePointToGlyphHashMap.Add(CodePointIndex,GlyphIndex);
           CodePointGlyphPairIndex:=CountCodePointGlyphPairs;
           inc(CountCodePointGlyphPairs);
           if length(fCodePointGlyphPairs)<CountCodePointGlyphPairs then begin
@@ -2351,9 +2354,9 @@ begin
 
       FillChar(Glyph^,SizeOf(TpvFontGlyph),#0);
 
-      if GlyphToTTFGlyphHashMap.TryGet(GlyphIndex,Int64HashMapData) then begin
+      if GlyphToTTFGlyphHashMap.TryGet(GlyphIndex,Int64Value) then begin
 
-       TTFGlyphIndex:={%H-}TpvPtrUInt(TpvPointer(Int64HashMapData));
+       TTFGlyphIndex:=Int64Value;
 
        Glyph^.AdvanceWidth:=aTrueTypeFont.GetGlyphAdvanceWidth(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
        Glyph^.AdvanceHeight:=aTrueTypeFont.GetGlyphAdvanceHeight(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
@@ -2459,7 +2462,7 @@ begin
         Glyph:=SortedGlyphs[GlyphIndex];
         if (Glyph^.Width>0) and (Glyph^.Height>0) then begin
          OtherGlyphIndex:={%H-}((TpvPtrUInt(TpvPointer(Glyph))-TpvPtrUInt(TpvPointer(@fGlyphs[0])))) div SizeOf(TpvFontGlyph);
-         Glyph^.Sprite:=aSpriteAtlas.LoadRawSprite(TpvVulkanRawByteString(String('glyph'+IntToStr(OtherGlyphIndex))),
+         Glyph^.Sprite:=aSpriteAtlas.LoadRawSprite(TpvRawByteString(String('glyph'+IntToStr(OtherGlyphIndex))),
                                                    @GlyphDistanceFields[OtherGlyphIndex].Pixels[0],
                                                    Glyph^.Width,
                                                    Glyph^.Height,
@@ -2487,16 +2490,16 @@ begin
    fKerningPairs:=nil;
    CountKerningPairs:=0;
    try
-    KerningPairHashMap:=TpvVulkanInt64HashMap.Create;
+    KerningPairHashMap:=TpvFontInt64HashMap.Create(-1);
     try
      for TrueTypeFontKerningIndex:=0 to length(aTrueTypeFont.KerningTables)-1 do begin
       TrueTypeFontKerningTable:=@aTrueTypeFont.KerningTables[TrueTypeFontKerningIndex];
       for TrueTypeFontKerningPairIndex:=0 to length(TrueTypeFontKerningTable^.KerningPairs)-1 do begin
        TrueTypeFontKerningPair:=@TrueTypeFontKerningTable^.KerningPairs[TrueTypeFontKerningPairIndex];
-       if TTFGlyphToGlyphHashMap.TryGet(TrueTypeFontKerningPair^.Left,Int64HashMapData) then begin
-        GlyphIndex:={%H-}TpvPtrUInt(TpvPointer(Int64HashMapData));
-        if TTFGlyphToGlyphHashMap.TryGet(TrueTypeFontKerningPair^.Right,Int64HashMapData) then begin
-         OtherGlyphIndex:={%H-}TpvPtrUInt(TpvPointer(Int64HashMapData));
+       if TTFGlyphToGlyphHashMap.TryGet(TrueTypeFontKerningPair^.Left,Int64Value) then begin
+        GlyphIndex:=Int64Value;
+        if TTFGlyphToGlyphHashMap.TryGet(TrueTypeFontKerningPair^.Right,Int64Value) then begin
+         OtherGlyphIndex:=Int64Value;
          KerningPairDoubleIndex:=CombineTwoUInt32IntoOneUInt64(GlyphIndex,OtherGlyphIndex);
          if not KerningPairHashMap.ExistKey(KerningPairDoubleIndex) then begin
           KerningPairIndex:=CountKerningPairs;
@@ -2504,7 +2507,7 @@ begin
           if length(fKerningPairs)<CountKerningPairs then begin
            SetLength(fKerningPairs,CountKerningPairs*2);
           end;
-          KerningPairHashMap.Add(KerningPairDoubleIndex,{%H-}TpvPointer(TpvPtrUInt(KerningPairIndex)));
+          KerningPairHashMap.Add(KerningPairDoubleIndex,KerningPairIndex);
           KerningPair:=@fKerningPairs[KerningPairIndex];
           KerningPair^.Left:=TrueTypeFontKerningPair^.Left;
           KerningPair^.Right:=TrueTypeFontKerningPair^.Right;
@@ -2526,7 +2529,7 @@ begin
     for KerningPairIndex:=0 to length(fKerningPairs)-1 do begin
      KerningPair:=@fKerningPairs[KerningPairIndex];
      KerningPairDoubleIndex:=CombineTwoUInt32IntoOneUInt64(KerningPair^.Left,KerningPair^.Right);
-     fKerningPairHashMap.Add(KerningPairDoubleIndex,{%H-}TpvPointer(TpvPtrUInt(KerningPairIndex)));
+     fKerningPairHashMap.Add(KerningPairDoubleIndex,KerningPairIndex);
     end;
    end;
 
@@ -2630,11 +2633,11 @@ begin
 end;
 {$endif}
 
-function TpvFont.TextWidth(const aText:TpvVulkanUTF8String;const aSize:TpvFloat):TpvFloat;
+function TpvFont.TextWidth(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
 var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
     CurrentCodePoint:TpvUInt32;
     Width,NewWidth:TpvFloat;
-    Int64HashMapData:TpvVulkanInt64HashMapData;
+    Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
 begin
  result:=0.0;
@@ -2643,12 +2646,12 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
-   CurrentGlyph:={%H-}TpvPtrUInt(TpvPointer(Int64HashMapData));
+  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
+   CurrentGlyph:=Int64Value;
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
-       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
-     result:=result+fKerningPairs[TpvPtrUInt(TpvPointer(Int64HashMapData))].Horizontal;
+       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+     result:=result+fKerningPairs[Int64Value].Horizontal;
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
     if LastGlyph<0 then begin
@@ -2674,11 +2677,11 @@ begin
  result:=result*GetScaleFactor(aSize);
 end;
 
-function TpvFont.TextHeight(const aText:TpvVulkanUTF8String;const aSize:TpvFloat):TpvFloat;
+function TpvFont.TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
 var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
     CurrentCodePoint:TpvUInt32;
     Height,NewHeight:TpvFloat;
-    Int64HashMapData:TpvVulkanInt64HashMapData;
+    Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
 begin
  result:=0.0;
@@ -2687,12 +2690,12 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
-   CurrentGlyph:={%H-}TpvPtrUInt(TpvPointer(Int64HashMapData));
+  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
+   CurrentGlyph:=Int64Value;
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
-       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
-     result:=result+fKerningPairs[TpvPtrUInt(TpvPointer(Int64HashMapData))].Vertical;
+       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+     result:=result+fKerningPairs[Int64Value].Vertical;
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
     if LastGlyph<0 then begin
@@ -2718,11 +2721,11 @@ begin
  result:=result*GetScaleFactor(aSize);
 end;
 
-procedure TpvFont.TextSize(const aText:TpvVulkanUTF8String;const aSize:TpvFloat;out aWidth,aHeight:TpvFloat);
+procedure TpvFont.TextSize(const aText:TpvUTF8String;const aSize:TpvFloat;out aWidth,aHeight:TpvFloat);
 var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
     CurrentCodePoint:TpvUInt32;
     Width,NewWidth,Height,NewHeight,ScaleFactor:TpvFloat;
-    Int64HashMapData:TpvVulkanInt64HashMapData;
+    Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
     KerningPair:PpvFontKerningPair;
 begin
@@ -2734,12 +2737,12 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
-   CurrentGlyph:={%H-}TpvPtrUInt(TpvPointer(Int64HashMapData));
+  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
+   CurrentGlyph:=Int64Value;
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
-       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
-     KerningPair:=@fKerningPairs[TpvPtrUInt(TpvPointer(Int64HashMapData))];
+       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+     KerningPair:=@fKerningPairs[Int64Value];
      aWidth:=aWidth+KerningPair^.Horizontal;
      aHeight:=aHeight+KerningPair^.Vertical;
     end;
@@ -2786,10 +2789,10 @@ begin
  result:=fUnitsPerEm*(Percent*0.01);
 end;
 
-procedure TpvFont.Draw(const aCanvas:TpvVulkanCanvas;const aText:TpvVulkanUTF8String;const aX,aY,aSize:TpvFloat;const aColorRed:TpvFloat=1.0;const aColorGreen:TpvFloat=1.0;const aColorBlue:TpvFloat=1.0;const aColorAlpha:TpvFloat=1.0);
+procedure TpvFont.Draw(const aCanvas:TpvVulkanCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat;const aColorRed:TpvFloat=1.0;const aColorGreen:TpvFloat=1.0;const aColorBlue:TpvFloat=1.0;const aColorAlpha:TpvFloat=1.0);
 var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
     x,y,ScaleFactor,RescaleFactor:TpvFloat;
-    Int64HashMapData:TpvVulkanInt64HashMapData;
+    Int64Value:TpvInt64;
     KerningPair:PpvFontKerningPair;
     Glyph:PpvFontGlyph;
     Src,Dest:TpvVulkanSpriteRect;
@@ -2807,12 +2810,12 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64HashMapData) then begin
-   CurrentGlyph:={%H-}TpvPtrUInt(TpvPointer(Int64HashMapData));
+  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
+   CurrentGlyph:=Int64Value;
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
-       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64HashMapData) then begin
-     KerningPair:=@fKerningPairs[TpvPtrUInt(TpvPointer(Int64HashMapData))];
+       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+     KerningPair:=@fKerningPairs[Int64Value];
      x:=x+KerningPair^.Horizontal;
      y:=y+KerningPair^.Vertical;
     end;

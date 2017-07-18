@@ -415,7 +415,7 @@ const BoolToInt:array[boolean] of TpvInt32=(0,1);
       Options:array[0..0] of string=('Back');
 var Index:TpvInt32;
     cy,LocalFontSize:TpvFloat;
-    rbs:TpvVulkanUTF8String;
+    rbs:TpvUTF8String;
     s:string;
     IsSelected:boolean;
     SrcRect:TpvVulkanSpriteRect;

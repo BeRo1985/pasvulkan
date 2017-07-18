@@ -75,10 +75,12 @@ uses {$if defined(Windows)}
      {$ifdef PasVulkanPasMP}
       PasMP,
      {$endif}
+     PUCU,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
-     PasVulkan.TrueTypeFont;
+     PasVulkan.TrueTypeFont,
+     PasVulkan.Collections;
 
 var VulkanMinimumMemoryChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 24; // 16 MB minimum memory chunk size
 
@@ -147,20 +149,10 @@ type EpvVulkanException=class(Exception);
      PpvVulkanRawByteChar=PAnsiChar;
      TpvVulkanRawByteChar=AnsiChar;
 
-     PpvVulkanUTF32Char=^TpvVulkanUTF32Char;
-     TpvVulkanUTF32Char=TpvUInt32;
-
-     PpvVulkanRawByteString=^TpvVulkanRawByteString;
-     TpvVulkanRawByteString={$if declared(RawByteString)}RawByteString{$else}AnsiString{$ifend};
-
-     PpvVulkanUTF8String=^TpvVulkanUTF8String;
-     TpvVulkanUTF8String={$if declared(UTF8String)}UTF8String{$else}AnsiString{$ifend};
-
      PpvVulkanCharString=^TpvVulkanCharString;
      TpvVulkanCharString=TVkCharString;
 
      TpvVulkanCharStringArray=array of TpvVulkanCharString;
-     TpvVulkanRawByteStringArray=array of TpvVulkanRawByteString;
      TVkUInt8Array=array of TVkUInt8;
      TVkInt32Array=array of TVkInt32;
      TVkUInt32Array=array of TVkUInt32;
@@ -465,117 +457,6 @@ type EpvVulkanException=class(Exception);
        procedure SetSize(const NewSize:TpvInt64); overload; override;
      end;
 
-     TpvVulkanStringHashMapData=TpvPointer;
-
-     PpvVulkanStringHashMapEntity=^TpvVulkanStringHashMapEntity;
-     TpvVulkanStringHashMapEntity=record
-      Key:TpvVulkanRawByteString;
-      Value:TpvVulkanStringHashMapData;
-     end;
-
-     TpvVulkanStringHashMapEntities=array of TpvVulkanStringHashMapEntity;
-
-     TpvVulkanStringHashMapEntityIndices=array of TpvInt32;
-
-     TpvVulkanStringHashMap=class
-      private
-       function FindCell(const Key:TpvVulkanRawByteString):TpvUInt32;
-       procedure Resize;
-      protected
-       function GetValue(const Key:TpvVulkanRawByteString):TpvVulkanStringHashMapData;
-       procedure SetValue(const Key:TpvVulkanRawByteString;const Value:TpvVulkanStringHashMapData);
-      public
-       RealSize:TpvInt32;
-       LogSize:TpvInt32;
-       Size:TpvInt32;
-       Entities:TpvVulkanStringHashMapEntities;
-       EntityToCellIndex:TpvVulkanStringHashMapEntityIndices;
-       CellToEntityIndex:TpvVulkanStringHashMapEntityIndices;
-       constructor Create;
-       destructor Destroy; override;
-       procedure Clear;
-       function Add(const Key:TpvVulkanRawByteString;Value:TpvVulkanStringHashMapData):PpvVulkanStringHashMapEntity;
-       function Get(const Key:TpvVulkanRawByteString;CreateIfNotExist:boolean=false):PpvVulkanStringHashMapEntity;
-       function TryGet(const Key:TpvVulkanRawByteString;out Value:TpvVulkanStringHashMapData):boolean;
-       function ExistKey(const Key:TpvVulkanRawByteString):boolean;
-       function Delete(const Key:TpvVulkanRawByteString):boolean;
-       property Values[const Key:TpvVulkanRawByteString]:TpvVulkanStringHashMapData read GetValue write SetValue; default;
-     end;
-
-     TpvVulkanPointerHashMapData=TpvPointer;
-
-     PpvVulkanPointerHashMapEntity=^TpvVulkanPointerHashMapEntity;
-     TpvVulkanPointerHashMapEntity=record
-      Key:TpvPointer;
-      Value:TpvVulkanPointerHashMapData;
-     end;
-
-     TpvVulkanPointerHashMapEntities=array of TpvVulkanPointerHashMapEntity;
-
-     TpvVulkanPointerHashMapEntityIndices=array of TpvInt32;
-
-     TpvVulkanPointerHashMap=class
-      private
-       function FindCell(const Key:TpvPointer):TpvUInt32;
-       procedure Resize;
-      protected
-       function GetValue(const Key:TpvPointer):TpvVulkanPointerHashMapData;
-       procedure SetValue(const Key:TpvPointer;const Value:TpvVulkanPointerHashMapData);
-      public
-       RealSize:TpvInt32;
-       LogSize:TpvInt32;
-       Size:TpvInt32;
-       Entities:TpvVulkanPointerHashMapEntities;
-       EntityToCellIndex:TpvVulkanPointerHashMapEntityIndices;
-       CellToEntityIndex:TpvVulkanPointerHashMapEntityIndices;
-       constructor Create;
-       destructor Destroy; override;
-       procedure Clear;
-       function Add(const Key:TpvPointer;Value:TpvVulkanPointerHashMapData):PpvVulkanPointerHashMapEntity;
-       function Get(const Key:TpvPointer;CreateIfNotExist:boolean=false):PpvVulkanPointerHashMapEntity;
-       function TryGet(const Key:TpvPointer;out Value:TpvVulkanPointerHashMapData):boolean;
-       function ExistKey(const Key:TpvPointer):boolean;
-       function Delete(const Key:TpvPointer):boolean;
-       property Values[const Key:TpvPointer]:TpvVulkanPointerHashMapData read GetValue write SetValue; default;
-     end;
-
-     TpvVulkanInt64HashMapData=TpvPointer;
-
-     PpvVulkanInt64HashMapEntity=^TpvVulkanInt64HashMapEntity;
-     TpvVulkanInt64HashMapEntity=record
-      Key:TpvInt64;
-      Value:TpvVulkanInt64HashMapData;
-     end;
-
-     TpvVulkanInt64HashMapEntities=array of TpvVulkanInt64HashMapEntity;
-
-     TpvVulkanInt64HashMapEntityIndices=array of TpvInt32;
-
-     TpvVulkanInt64HashMap=class
-      private
-       function FindCell(const Key:TpvInt64):TpvUInt32;
-       procedure Resize;
-      protected
-       function GetValue(const Key:TpvInt64):TpvVulkanInt64HashMapData;
-       procedure SetValue(const Key:TpvInt64;const Value:TpvVulkanInt64HashMapData);
-      public
-       RealSize:TpvInt32;
-       LogSize:TpvInt32;
-       Size:TpvInt32;
-       Entities:TpvVulkanInt64HashMapEntities;
-       EntityToCellIndex:TpvVulkanInt64HashMapEntityIndices;
-       CellToEntityIndex:TpvVulkanInt64HashMapEntityIndices;
-       constructor Create;
-       destructor Destroy; override;
-       procedure Clear;
-       function Add(const Key:TpvInt64;Value:TpvVulkanInt64HashMapData):PpvVulkanInt64HashMapEntity;
-       function Get(const Key:TpvInt64;CreateIfNotExist:boolean=false):PpvVulkanInt64HashMapEntity;
-       function TryGet(const Key:TpvInt64;out Value:TpvVulkanInt64HashMapData):boolean;
-       function ExistKey(const Key:TpvInt64):boolean;
-       function Delete(const Key:TpvInt64):boolean;
-       property Values[const Key:TpvInt64]:TpvVulkanInt64HashMapData read GetValue write SetValue; default;
-     end;
-
      TpvVulkanXMLClass=class
       public
        Previous,Next:TpvVulkanXMLClass;
@@ -650,12 +531,12 @@ type EpvVulkanException=class(Exception);
        function Count:TpvInt32;
      end;
 
-     TpvVulkanXMLString={$ifdef VulkanXMLUnicode}{$if declared(UnicodeString)}UnicodeString{$else}WideString{$ifend}{$else}TpvVulkanRawByteString{$endif};
+     TpvVulkanXMLString={$ifdef VulkanXMLUnicode}{$if declared(UnicodeString)}UnicodeString{$else}WideString{$ifend}{$else}TpvRawByteString{$endif};
      TpvVulkanXMLChar={$ifdef VulkanXMLUnicode}WideChar{$else}TpvVulkanRawByteChar{$endif};
 
      TpvVulkanXMLParameter=class(TpvVulkanXMLClass)
       public
-       Name:TpvVulkanRawByteString;
+       Name:TpvRawByteString;
        Value:TpvVulkanXMLString;
        constructor Create; override;
        destructor Destroy; override;
@@ -674,7 +555,7 @@ type EpvVulkanException=class(Exception);
        procedure Clear; virtual;
        procedure Add(Item:TpvVulkanXMLItem);
        procedure Assign(From:TpvVulkanXMLItem); virtual;
-       function FindTag(const TagName:TpvVulkanRawByteString):TpvVulkanXMLTag;
+       function FindTag(const TagName:TpvRawByteString):TpvVulkanXMLTag;
      end;
 
      TpvVulkanXMLItemList=class(TpvVulkanXMLClassList)
@@ -685,7 +566,7 @@ type EpvVulkanException=class(Exception);
        constructor Create; override;
        destructor Destroy; override;
        function NewClass:TpvVulkanXMLItem;
-       function FindTag(const TagName:TpvVulkanRawByteString):TpvVulkanXMLTag;
+       function FindTag(const TagName:TpvRawByteString):TpvVulkanXMLTag;
        property Item[Index:TpvInt32]:TpvVulkanXMLItem read GetItem write SetItem; default;
        property Items[Index:TpvInt32]:TpvVulkanXMLItem read GetItem write SetItem;
      end;
@@ -696,33 +577,33 @@ type EpvVulkanException=class(Exception);
        constructor Create; override;
        destructor Destroy; override;
        procedure Assign(From:TpvVulkanXMLItem); override;
-       procedure SetText(AText:TpvVulkanRawByteString);
+       procedure SetText(AText:TpvRawByteString);
      end;
 
      TpvVulkanXMLCommentTag=class(TpvVulkanXMLItem)
       public
-       Text:TpvVulkanRawByteString;
+       Text:TpvRawByteString;
        constructor Create; override;
        destructor Destroy; override;
        procedure Assign(From:TpvVulkanXMLItem); override;
-       procedure SetText(AText:TpvVulkanRawByteString);
+       procedure SetText(AText:TpvRawByteString);
      end;
 
      TpvVulkanXMLTag=class(TpvVulkanXMLItem)
       public
-       Name:TpvVulkanRawByteString;
+       Name:TpvRawByteString;
        Parameter:array of TpvVulkanXMLParameter;
        IsAloneTag:boolean;
        constructor Create; override;
        destructor Destroy; override;
        procedure Clear; override;
        procedure Assign(From:TpvVulkanXMLItem); override;
-       function FindParameter(ParameterName:TpvVulkanRawByteString):TpvVulkanXMLParameter;
-       function GetParameter(ParameterName:TpvVulkanRawByteString;default:TpvVulkanRawByteString=''):TpvVulkanRawByteString;
+       function FindParameter(ParameterName:TpvRawByteString):TpvVulkanXMLParameter;
+       function GetParameter(ParameterName:TpvRawByteString;default:TpvRawByteString=''):TpvRawByteString;
        function AddParameter(AParameter:TpvVulkanXMLParameter):boolean; overload;
-       function AddParameter(Name:TpvVulkanRawByteString;Value:TpvVulkanXMLString):boolean; overload;
+       function AddParameter(Name:TpvRawByteString;Value:TpvVulkanXMLString):boolean; overload;
        function RemoveParameter(AParameter:TpvVulkanXMLParameter):boolean; overload;
-       function RemoveParameter(ParameterName:TpvVulkanRawByteString):boolean; overload;
+       function RemoveParameter(ParameterName:TpvRawByteString):boolean; overload;
      end;
 
      TpvVulkanXMLProcessTag=class(TpvVulkanXMLTag)
@@ -734,44 +615,44 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanXMLScriptTag=class(TpvVulkanXMLItem)
       public
-       Text:TpvVulkanRawByteString;
+       Text:TpvRawByteString;
        constructor Create; override;
        destructor Destroy; override;
        procedure Assign(From:TpvVulkanXMLItem); override;
-       procedure SetText(AText:TpvVulkanRawByteString);
+       procedure SetText(AText:TpvRawByteString);
      end;
 
      TpvVulkanXMLCDataTag=class(TpvVulkanXMLItem)
       public
-       Text:TpvVulkanRawByteString;
+       Text:TpvRawByteString;
        constructor Create; override;
        destructor Destroy; override;
        procedure Assign(From:TpvVulkanXMLItem); override;
-       procedure SetText(AText:TpvVulkanRawByteString);
+       procedure SetText(AText:TpvRawByteString);
      end;
 
      TpvVulkanXMLDOCTYPETag=class(TpvVulkanXMLItem)
       public
-       Text:TpvVulkanRawByteString;
+       Text:TpvRawByteString;
        constructor Create; override;
        destructor Destroy; override;
        procedure Assign(From:TpvVulkanXMLItem); override;
-       procedure SetText(AText:TpvVulkanRawByteString);
+       procedure SetText(AText:TpvRawByteString);
      end;
 
      TpvVulkanXMLExtraTag=class(TpvVulkanXMLItem)
       public
-       Text:TpvVulkanRawByteString;
+       Text:TpvRawByteString;
        constructor Create; override;
        destructor Destroy; override;
        procedure Assign(From:TpvVulkanXMLItem); override;
-       procedure SetText(AText:TpvVulkanRawByteString);
+       procedure SetText(AText:TpvRawByteString);
      end;
 
      TpvVulkanXML=class(TpvVulkanXMLClass)
       private
-       function ReadXMLText:TpvVulkanRawByteString;
-       procedure WriteXMLText(Text:TpvVulkanRawByteString);
+       function ReadXMLText:TpvRawByteString;
+       procedure WriteXMLText(Text:TpvRawByteString);
       public
        Root:TpvVulkanXMLItem;
        AutomaticAloneTagDetection:boolean;
@@ -783,7 +664,7 @@ type EpvVulkanException=class(Exception);
        function Parse(Stream:TStream):boolean;
        function Read(Stream:TStream):boolean;
        function Write(Stream:TStream;IdentSize:TpvInt32=2):boolean;
-       property Text:TpvVulkanRawByteString read ReadXMLText write WriteXMLText;
+       property Text:TpvRawByteString read ReadXMLText write WriteXMLText;
      end;
 
      TpvVulkanAllocationManager=class(TpvVulkanObject)
@@ -3274,7 +3155,7 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanSprite=class
       public
-       Name:TpvVulkanRawByteString;
+       Name:TpvRawByteString;
        ArrayTexture:TpvVulkanSpriteAtlasArrayTexture;
        x:TpvInt32;
        y:TpvInt32;
@@ -3442,6 +3323,8 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanCanvasBuffers=array of TpvVulkanCanvasBuffer;
 
+     TpvVulkanCanvasAtlasArrayTextureDescriptorSetHashMap=class(TpvHashMap<TpvVulkanSpriteAtlasArrayTexture,TpvInt32>);
+
      TpvVulkanCanvas=class
       private
        fDevice:TpvVulkanDevice;
@@ -3460,7 +3343,7 @@ type EpvVulkanException=class(Exception);
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:TpvVulkanCanvasDescriptorSets;
        fCountVulkanDescriptorSets:TpvInt32;
-       fVulkanTextureDescriptorSetHashMap:TpvVulkanPointerHashMap;
+       fVulkanTextureDescriptorSetHashMap:TpvVulkanCanvasAtlasArrayTextureDescriptorSetHashMap;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
@@ -3535,13 +3418,15 @@ type EpvVulkanException=class(Exception);
        property Pen:TpvVulkanCanvasPen read fPen;
      end;
 
+     TpvVulkanSpriteAtlasStringHashMap=class(TpvStringHashMap<TpvVulkanSprite>);
+
      TpvVulkanSpriteAtlas=class
       private
        fDevice:TpvVulkanDevice;
        fArrayTextures:TpvVulkanSpriteAtlasArrayTextures;
        fCountArrayTextures:TpvInt32;
        fList:TList;
-       fHashMap:TpvVulkanStringHashMap;
+       fHashMap:TpvVulkanSpriteAtlasStringHashMap;
        fIsUploaded:boolean;
        fMipMaps:boolean;
        fWidth:TpvInt32;
@@ -3550,7 +3435,7 @@ type EpvVulkanException=class(Exception);
        function GetCount:TpvInt32;
        function GetItem(Index:TpvInt32):TpvVulkanSprite;
        procedure SetItem(Index:TpvInt32;Item:TpvVulkanSprite);
-       function GetSprite(const Name:TpvVulkanRawByteString):TpvVulkanSprite;
+       function GetSprite(const Name:TpvRawByteString):TpvVulkanSprite;
        procedure AddSprite(Sprite:TpvVulkanSprite);
        function LoadImage(const aDataPointer:TpvPointer;
                           const aDataSize:TVkSizeInt;
@@ -3569,13 +3454,13 @@ type EpvVulkanException=class(Exception);
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
        function LoadXML(const aTextureStream:TStream;const aStream:TStream;const aAutomaticTrim:boolean=true):boolean; virtual;
-       function LoadRawSprite(const Name:TpvVulkanRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true):TpvVulkanSprite; virtual;
-       function LoadSprite(const Name:TpvVulkanRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TpvVulkanSprite; virtual;
-       function LoadSprites(const Name:TpvVulkanRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true):TpvVulkanSprites; virtual;
+       function LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true):TpvVulkanSprite; virtual;
+       function LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TpvVulkanSprite; virtual;
+       function LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true):TpvVulkanSprites; virtual;
        property Device:TpvVulkanDevice read fDevice;
        property Count:TpvInt32 read GetCount;
        property Items[Index:TpvInt32]:TpvVulkanSprite read GetItem write SetItem;
-       property Sprites[const Name:TpvVulkanRawByteString]:TpvVulkanSprite read GetSprite; default;
+       property Sprites[const Name:TpvRawByteString]:TpvVulkanSprite read GetSprite; default;
       published
        property MipMaps:boolean read fMipMaps write fMipMaps;
        property Width:TpvInt32 read fWidth write fWidth;
@@ -3637,55 +3522,7 @@ implementation
 
 uses PasVulkan.Utils;
 
-const suDONOTKNOW=-1;
-      suNOUTF8=0;
-      suPOSSIBLEUTF8=1;
-      suISUTF8=2;
-
-      ucACCEPT=0;
-      ucERROR=16;
-
-      VulkanUTF8DFACharClasses:array[TpvVulkanRawByteChar] of TpvUInt8=
-       (
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-        3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
-        3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
-        4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
-        5,5,5,5,5,5,5,5,6,6,6,6,7,7,8,8
-       );
-
-     VulkanUTF8DFATransitions:array[TpvUInt8] of TpvUInt8=
-      (
-       0,16,16,32,48,64,80,96,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,0,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,32,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,48,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,64,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,80,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-       16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16
-      );
-
-      BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
+const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
 
       MipMapLevels:array[boolean] of TpvInt32=(1,-1);
 
@@ -6290,7 +6127,7 @@ begin
 end;
 {$ifend}
 
-function HashString(const Str:TpvVulkanRawByteString):TpvUInt32;
+function HashString(const Str:TpvRawByteString):TpvUInt32;
 {$ifdef cpuarm}
 var b:PpvVulkanRawByteChar;
     len,h,i:TpvUInt32;
@@ -10844,236 +10681,6 @@ begin
  result.a:=a;
 end;
 
-function VulkanUTF32CharToUTF8(CharValue:TpvVulkanUTF32Char):TpvVulkanUTF8String;
-var Data:array[0..5] of TpvVulkanRawByteChar;
-    ResultLen:TpvInt32;
-begin
- if CharValue=0 then begin
-  result:=#0;
- end else begin
-  if CharValue<=$7f then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8(CharValue));
-   ResultLen:=1;
-  end else if CharValue<=$7ff then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8($c0 or ((CharValue shr 6) and $1f)));
-   Data[1]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-   ResultLen:=2;
-  end else if CharValue<=$ffff then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8($e0 or ((CharValue shr 12) and $0f)));
-   Data[1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[2]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-   ResultLen:=3;
-  end else if CharValue<=$1fffff then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8($f0 or ((CharValue shr 18) and $07)));
-   Data[1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[2]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[3]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-   ResultLen:=4;
-  end else if CharValue<=$3ffffff then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8($f8 or ((CharValue shr 24) and $03)));
-   Data[1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
-   Data[2]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[3]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[4]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-   ResultLen:=5;
-  end else if CharValue<=$7fffffff then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8($fc or ((CharValue shr 30) and $01)));
-   Data[1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 24) and $3f)));
-   Data[2]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
-   Data[3]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[4]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[5]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-   ResultLen:=6;
-  end else begin
-   Data[0]:=#$ef; // $fffd
-   Data[1]:=#$bf;
-   Data[2]:=#$bd;
-   ResultLen:=3;
-  end;
-  SetLength(result,ResultLen);
-  Move(Data[0],result[1],ResultLen);
- end;
-end;
-
-function VulkanUTF32CharToUTF8At(CharValue:TpvVulkanUTF32Char;var s:TpvVulkanUTF8String;const Index:TpvInt32):TpvInt32;
-var Data:array[0..5] of TpvVulkanRawByteChar;
-    ResultLen:TpvInt32;
-begin
- if CharValue=0 then begin
-  result:=0;
- end else begin
-  if CharValue<=$7f then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8(CharValue));
-   ResultLen:=1;
-  end else if CharValue<=$7ff then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8($c0 or ((CharValue shr 6) and $1f)));
-   Data[1]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-   ResultLen:=2;
-  end else if CharValue<=$ffff then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8($e0 or ((CharValue shr 12) and $0f)));
-   Data[1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[2]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-   ResultLen:=3;
-  end else if CharValue<=$1fffff then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8($f0 or ((CharValue shr 18) and $07)));
-   Data[1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[2]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[3]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-   ResultLen:=4;
-  end else if CharValue<=$3ffffff then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8($f8 or ((CharValue shr 24) and $03)));
-   Data[1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
-   Data[2]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[3]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[4]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-   ResultLen:=5;
-  end else if CharValue<=$7fffffff then begin
-   Data[0]:=TpvVulkanRawByteChar(TpvUInt8($fc or ((CharValue shr 30) and $01)));
-   Data[1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 24) and $3f)));
-   Data[2]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
-   Data[3]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
-   Data[4]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-   Data[5]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-   ResultLen:=6;
-  end else begin
-   Data[0]:=#$ef; // $fffd
-   Data[1]:=#$bf;
-   Data[2]:=#$bd;
-   ResultLen:=3;
-  end;
-  if (Index+ResultLen)>length(s) then begin
-   SetLength(s,Index+ResultLen);
-  end;
-  Move(Data[0],s[Index],ResultLen);
-  result:=ResultLen;
- end;
-end;
-
-function VulkanUTF8Validate(const s:TpvVulkanRawByteString):boolean;
-var CodeUnit:TpvInt32;
-    State:TpvUInt32;
-begin
- State:=ucACCEPT;
- for CodeUnit:=1 to length(s) do begin
-  State:=VulkanUTF8DFATransitions[State+VulkanUTF8DFACharClasses[s[CodeUnit]]];
-  if State=ucERROR then begin
-   result:=false;
-   exit;
-  end;
- end;
- result:=State=ucACCEPT;
-end;
-
-function VulkanUTF8Correct(const Str:TpvVulkanRawByteString):TpvVulkanUTF8String;
-var CodeUnit,Len,ResultLen:TpvInt32;
-    StartCodeUnit,Value,CharClass,State,CharValue:TpvUInt32;
-    Data:PpvVulkanRawByteChar;
-begin
- if (length(Str)=0) or VulkanUTF8Validate(Str) then begin
-  result:=Str;
- end else begin
-  result:='';
-  CodeUnit:=1;
-  Len:=length(Str);
-  SetLength(result,Len*6);
-  Data:=@result[1];
-  ResultLen:=0;
-  while CodeUnit<=Len do begin
-   StartCodeUnit:=CodeUnit;
-   State:=ucACCEPT;
-   CharValue:=0;
-   while CodeUnit<=Len do begin
-    Value:=TpvUInt8(TpvVulkanRawByteChar(Str[CodeUnit]));
-    inc(CodeUnit);
-    CharClass:=VulkanUTF8DFACharClasses[TpvVulkanRawByteChar(Value)];
-    if State=ucACCEPT then begin
-     CharValue:=Value and ($ff shr CharClass);
-    end else begin
-     CharValue:=(CharValue shl 6) or (Value and $3f);
-    end;
-    State:=VulkanUTF8DFATransitions[State+CharClass];
-    if State<=ucERROR then begin
-     break;
-    end;
-   end;
-   if State<>ucACCEPT then begin
-    CharValue:=TpvUInt8(TpvVulkanRawByteChar(Str[StartCodeUnit]));
-    CodeUnit:=StartCodeUnit+1;
-   end;
-   if CharValue<=$7f then begin
-    Data[ResultLen]:=TpvVulkanRawByteChar(TpvUInt8(CharValue));
-    inc(ResultLen);
-   end else if CharValue<=$7ff then begin
-    Data[ResultLen]:=TpvVulkanRawByteChar(TpvUInt8($c0 or ((CharValue shr 6) and $1f)));
-    Data[ResultLen+1]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,2);
-   end else if CharValue<=$ffff then begin
-    Data[ResultLen]:=TpvVulkanRawByteChar(TpvUInt8($e0 or ((CharValue shr 12) and $0f)));
-    Data[ResultLen+1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+2]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,3);
-   end else if CharValue<=$1fffff then begin
-    Data[ResultLen]:=TpvVulkanRawByteChar(TpvUInt8($f0 or ((CharValue shr 18) and $07)));
-    Data[ResultLen+1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
-    Data[ResultLen+2]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+3]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,4);
-   end else if CharValue<=$3ffffff then begin
-    Data[ResultLen]:=TpvVulkanRawByteChar(TpvUInt8($f8 or ((CharValue shr 24) and $03)));
-    Data[ResultLen+1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
-    Data[ResultLen+2]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
-    Data[ResultLen+3]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+4]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,5);
-   end else if CharValue<=$7fffffff then begin
-    Data[ResultLen]:=TpvVulkanRawByteChar(TpvUInt8($fc or ((CharValue shr 30) and $01)));
-    Data[ResultLen+1]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 24) and $3f)));
-    Data[ResultLen+2]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
-    Data[ResultLen+3]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
-    Data[ResultLen+4]:=TpvVulkanRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+5]:=TpvVulkanRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,6);
-   end else begin
-    Data[ResultLen]:=#$ef; // $fffd
-    Data[ResultLen+1]:=#$bf;
-    Data[ResultLen+2]:=#$bd;
-    inc(ResultLen,3);
-   end;
-  end;
-  SetLength(result,ResultLen);
- end;
-end;
-
-function VulkanUTF8CodeUnitGetCharAndIncFallback(const s:TpvVulkanUTF8String;var CodeUnit:TpvInt32):TpvUInt32;
-var Len:TpvInt32;
-    StartCodeUnit,Value,CharClass,State:TpvUInt32;
-begin
- result:=0;
- Len:=length(s);
- if (CodeUnit>0) and (CodeUnit<=Len) then begin
-  StartCodeUnit:=CodeUnit;
-  State:=ucACCEPT;
-  while CodeUnit<=Len do begin
-   Value:=TpvUInt8(TpvVulkanRawByteChar(s[CodeUnit]));
-   inc(CodeUnit);
-   CharClass:=VulkanUTF8DFACharClasses[TpvVulkanRawByteChar(Value)];
-   if State=ucACCEPT then begin
-    result:=Value and ($ff shr CharClass);
-   end else begin
-    result:=(result shl 6) or (Value and $3f);
-   end;
-   State:=VulkanUTF8DFATransitions[State+CharClass];
-   if State<=ucERROR then begin
-    break;
-   end;
-  end;
-  if State<>ucACCEPT then begin
-   result:=TpvUInt8(TpvVulkanRawByteChar(s[StartCodeUnit]));
-   CodeUnit:=StartCodeUnit+1;
-  end;
- end;
-end;
-
 constructor EpvVulkanResultException.Create(const aResultCode:TVkResult);
 begin
  fResultCode:=aResultCode;
@@ -12165,606 +11772,6 @@ begin
  end;
 end;
 
-constructor TpvVulkanStringHashMap.Create;
-begin
- inherited Create;
- RealSize:=0;
- LogSize:=0;
- Size:=0;
- Entities:=nil;
- EntityToCellIndex:=nil;
- CellToEntityIndex:=nil;
- Resize;
-end;
-
-destructor TpvVulkanStringHashMap.Destroy;
-var Counter:TpvInt32;
-begin
- Clear;
- for Counter:=0 to length(Entities)-1 do begin
-  Entities[Counter].Key:='';
- end;
- SetLength(Entities,0);
- SetLength(EntityToCellIndex,0);
- SetLength(CellToEntityIndex,0);
- inherited Destroy;
-end;
-
-procedure TpvVulkanStringHashMap.Clear;
-var Counter:TpvInt32;
-begin
- for Counter:=0 to length(Entities)-1 do begin
-  Entities[Counter].Key:='';
- end;
- RealSize:=0;
- LogSize:=0;
- Size:=0;
- SetLength(Entities,0);
- SetLength(EntityToCellIndex,0);
- SetLength(CellToEntityIndex,0);
- Resize;
-end;
-
-function TpvVulkanStringHashMap.FindCell(const Key:TpvVulkanRawByteString):TpvUInt32;
-var HashCode,Mask,Step:TpvUInt32;
-    Entity:TpvInt32;
-begin
- HashCode:=HashString(Key);
- Mask:=(2 shl LogSize)-1;
- Step:=((HashCode shl 1)+1) and Mask;
- if LogSize<>0 then begin
-  result:=HashCode shr (32-LogSize);
- end else begin
-  result:=0;
- end;
- repeat
-  Entity:=CellToEntityIndex[result];
-  if (Entity=ENT_EMPTY) or ((Entity<>ENT_DELETED) and (Entities[Entity].Key=Key)) then begin
-   exit;
-  end;
-  result:=(result+Step) and Mask;
- until false;
-end;
-
-procedure TpvVulkanStringHashMap.Resize;
-var NewLogSize,NewSize,Cell,Entity,Counter:TpvInt32;
-    OldEntities:TpvVulkanStringHashMapEntities;
-    OldCellToEntityIndex:TpvVulkanStringHashMapEntityIndices;
-    OldEntityToCellIndex:TpvVulkanStringHashMapEntityIndices;
-begin
- NewLogSize:=0;
- NewSize:=RealSize;
- while NewSize<>0 do begin
-  NewSize:=NewSize shr 1;
-  inc(NewLogSize);
- end;
- if NewLogSize<1 then begin
-  NewLogSize:=1;
- end;
- Size:=0;
- RealSize:=0;
- LogSize:=NewLogSize;
- OldEntities:=Entities;
- OldCellToEntityIndex:=CellToEntityIndex;
- OldEntityToCellIndex:=EntityToCellIndex;
- Entities:=nil;
- CellToEntityIndex:=nil;
- EntityToCellIndex:=nil;
- SetLength(Entities,2 shl LogSize);
- SetLength(CellToEntityIndex,2 shl LogSize);
- SetLength(EntityToCellIndex,2 shl LogSize);
- for Counter:=0 to length(CellToEntityIndex)-1 do begin
-  CellToEntityIndex[Counter]:=ENT_EMPTY;
- end;
- for Counter:=0 to length(EntityToCellIndex)-1 do begin
-  EntityToCellIndex[Counter]:=CELL_EMPTY;
- end;
- for Counter:=0 to length(OldEntityToCellIndex)-1 do begin
-  Cell:=OldEntityToCellIndex[Counter];
-  if Cell>=0 then begin
-   Entity:=OldCellToEntityIndex[Cell];
-   if Entity>=0 then begin
-    Add(OldEntities[Counter].Key,OldEntities[Counter].Value);
-   end;
-  end;
- end;
- for Counter:=0 to length(OldEntities)-1 do begin
-  OldEntities[Counter].Key:='';
- end;
- SetLength(OldEntities,0);
- SetLength(OldCellToEntityIndex,0);
- SetLength(OldEntityToCellIndex,0);
-end;
-
-function TpvVulkanStringHashMap.Add(const Key:TpvVulkanRawByteString;Value:TpvVulkanStringHashMapData):PpvVulkanStringHashMapEntity;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- result:=nil;
- while RealSize>=(1 shl LogSize) do begin
-  Resize;
- end;
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=@Entities[Entity];
-  result^.Key:=Key;
-  result^.Value:=Value;
-  exit;
- end;
- Entity:=Size;
- inc(Size);
- if Entity<(2 shl LogSize) then begin
-  CellToEntityIndex[Cell]:=Entity;
-  EntityToCellIndex[Entity]:=Cell;
-  inc(RealSize);
-  result:=@Entities[Entity];
-  result^.Key:=Key;
-  result^.Value:=Value;
- end;
-end;
-
-function TpvVulkanStringHashMap.Get(const Key:TpvVulkanRawByteString;CreateIfNotExist:boolean=false):PpvVulkanStringHashMapEntity;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- result:=nil;
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=@Entities[Entity];
- end else if CreateIfNotExist then begin
-  result:=Add(Key,nil);
- end;
-end;
-
-function TpvVulkanStringHashMap.TryGet(const Key:TpvVulkanRawByteString;out Value:TpvVulkanStringHashMapData):boolean;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- result:=Entity>=0;
- if result then begin
-  Value:=Entities[Entity].Value;
- end else begin
-  Value:=nil;
- end;
-end;
-
-function TpvVulkanStringHashMap.ExistKey(const Key:TpvVulkanRawByteString):boolean;
-begin
- result:=CellToEntityIndex[FindCell(Key)]>=0;
-end;
-
-function TpvVulkanStringHashMap.Delete(const Key:TpvVulkanRawByteString):boolean;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- result:=false;
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  Entities[Entity].Key:='';
-  Entities[Entity].Value:=nil;
-  EntityToCellIndex[Entity]:=CELL_DELETED;
-  CellToEntityIndex[Cell]:=ENT_DELETED;
-  result:=true;
- end;
-end;
-
-function TpvVulkanStringHashMap.GetValue(const Key:TpvVulkanRawByteString):TpvVulkanStringHashMapData;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=Entities[Entity].Value;
- end else begin
-  result:=nil;
- end;
-end;
-
-procedure TpvVulkanStringHashMap.SetValue(const Key:TpvVulkanRawByteString;const Value:TpvVulkanStringHashMapData);
-begin
- Add(Key,Value);
-end;
-
-constructor TpvVulkanPointerHashMap.Create;
-begin
- inherited Create;
- RealSize:=0;
- LogSize:=0;
- Size:=0;
- Entities:=nil;
- EntityToCellIndex:=nil;
- CellToEntityIndex:=nil;
- Resize;
-end;
-
-destructor TpvVulkanPointerHashMap.Destroy;
-var Counter:TpvInt32;
-begin
- Clear;
- SetLength(Entities,0);
- SetLength(EntityToCellIndex,0);
- SetLength(CellToEntityIndex,0);
- inherited Destroy;
-end;
-
-procedure TpvVulkanPointerHashMap.Clear;
-var Counter:TpvInt32;
-begin
- RealSize:=0;
- LogSize:=0;
- Size:=0;
- SetLength(Entities,0);
- SetLength(EntityToCellIndex,0);
- SetLength(CellToEntityIndex,0);
- Resize;
-end;
-
-function TpvVulkanPointerHashMap.FindCell(const Key:TpvPointer):TpvUInt32;
-var HashCode,Mask,Step:TpvUInt32;
-    Entity:TpvInt32;
-begin
- HashCode:=HashPointer(Key);
- Mask:=(2 shl LogSize)-1;
- Step:=((HashCode shl 1)+1) and Mask;
- if LogSize<>0 then begin
-  result:=HashCode shr (32-LogSize);
- end else begin
-  result:=0;
- end;
- repeat
-  Entity:=CellToEntityIndex[result];
-  if (Entity=ENT_EMPTY) or ((Entity<>ENT_DELETED) and (Entities[Entity].Key=Key)) then begin
-   exit;
-  end;
-  result:=(result+Step) and Mask;
- until false;
-end;
-
-procedure TpvVulkanPointerHashMap.Resize;
-var NewLogSize,NewSize,Cell,Entity,Counter:TpvInt32;
-    OldEntities:TpvVulkanPointerHashMapEntities;
-    OldCellToEntityIndex:TpvVulkanPointerHashMapEntityIndices;
-    OldEntityToCellIndex:TpvVulkanPointerHashMapEntityIndices;
-begin
- NewLogSize:=0;
- NewSize:=RealSize;
- while NewSize<>0 do begin
-  NewSize:=NewSize shr 1;
-  inc(NewLogSize);
- end;
- if NewLogSize<1 then begin
-  NewLogSize:=1;
- end;
- Size:=0;
- RealSize:=0;
- LogSize:=NewLogSize;
- OldEntities:=Entities;
- OldCellToEntityIndex:=CellToEntityIndex;
- OldEntityToCellIndex:=EntityToCellIndex;
- Entities:=nil;
- CellToEntityIndex:=nil;
- EntityToCellIndex:=nil;
- SetLength(Entities,2 shl LogSize);
- SetLength(CellToEntityIndex,2 shl LogSize);
- SetLength(EntityToCellIndex,2 shl LogSize);
- for Counter:=0 to length(CellToEntityIndex)-1 do begin
-  CellToEntityIndex[Counter]:=ENT_EMPTY;
- end;
- for Counter:=0 to length(EntityToCellIndex)-1 do begin
-  EntityToCellIndex[Counter]:=CELL_EMPTY;
- end;
- for Counter:=0 to length(OldEntityToCellIndex)-1 do begin
-  Cell:=OldEntityToCellIndex[Counter];
-  if Cell>=0 then begin
-   Entity:=OldCellToEntityIndex[Cell];
-   if Entity>=0 then begin
-    Add(OldEntities[Counter].Key,OldEntities[Counter].Value);
-   end;
-  end;
- end;
- SetLength(OldEntities,0);
- SetLength(OldCellToEntityIndex,0);
- SetLength(OldEntityToCellIndex,0);
-end;
-
-function TpvVulkanPointerHashMap.Add(const Key:TpvPointer;Value:TpvVulkanPointerHashMapData):PpvVulkanPointerHashMapEntity;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- result:=nil;
- while RealSize>=(1 shl LogSize) do begin
-  Resize;
- end;
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=@Entities[Entity];
-  result^.Key:=Key;
-  result^.Value:=Value;
-  exit;
- end;
- Entity:=Size;
- inc(Size);
- if Entity<(2 shl LogSize) then begin
-  CellToEntityIndex[Cell]:=Entity;
-  EntityToCellIndex[Entity]:=Cell;
-  inc(RealSize);
-  result:=@Entities[Entity];
-  result^.Key:=Key;
-  result^.Value:=Value;
- end;
-end;
-
-function TpvVulkanPointerHashMap.Get(const Key:TpvPointer;CreateIfNotExist:boolean=false):PpvVulkanPointerHashMapEntity;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- result:=nil;
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=@Entities[Entity];
- end else if CreateIfNotExist then begin
-  result:=Add(Key,nil);
- end;
-end;
-
-function TpvVulkanPointerHashMap.TryGet(const Key:TpvPointer;out Value:TpvVulkanPointerHashMapData):boolean;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- result:=Entity>=0;
- if result then begin
-  Value:=Entities[Entity].Value;
- end else begin
-  Value:=nil;
- end;
-end;
-
-function TpvVulkanPointerHashMap.ExistKey(const Key:TpvPointer):boolean;
-begin
- result:=CellToEntityIndex[FindCell(Key)]>=0;
-end;
-
-function TpvVulkanPointerHashMap.Delete(const Key:TpvPointer):boolean;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- result:=false;
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  Entities[Entity].Key:=nil;
-  Entities[Entity].Value:=nil;
-  EntityToCellIndex[Entity]:=CELL_DELETED;
-  CellToEntityIndex[Cell]:=ENT_DELETED;
-  result:=true;
- end;
-end;
-
-function TpvVulkanPointerHashMap.GetValue(const Key:TpvPointer):TpvVulkanPointerHashMapData;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=Entities[Entity].Value;
- end else begin
-  result:=nil;
- end;
-end;
-
-procedure TpvVulkanPointerHashMap.SetValue(const Key:TpvPointer;const Value:TpvVulkanPointerHashMapData);
-begin
- Add(Key,Value);
-end;
-
-constructor TpvVulkanInt64HashMap.Create;
-begin
- inherited Create;
- RealSize:=0;
- LogSize:=0;
- Size:=0;
- Entities:=nil;
- EntityToCellIndex:=nil;
- CellToEntityIndex:=nil;
- Resize;
-end;
-
-destructor TpvVulkanInt64HashMap.Destroy;
-var Counter:TpvInt32;
-begin
- Clear;
- SetLength(Entities,0);
- SetLength(EntityToCellIndex,0);
- SetLength(CellToEntityIndex,0);
- inherited Destroy;
-end;
-
-procedure TpvVulkanInt64HashMap.Clear;
-var Counter:TpvInt32;
-begin
- RealSize:=0;
- LogSize:=0;
- Size:=0;
- SetLength(Entities,0);
- SetLength(EntityToCellIndex,0);
- SetLength(CellToEntityIndex,0);
- Resize;
-end;
-
-function TpvVulkanInt64HashMap.FindCell(const Key:TpvInt64):TpvUInt32;
-var HashCode,Mask,Step:TpvUInt32;
-    Entity:TpvInt32;
-begin
- HashCode:=HashUInt64(Key);
- Mask:=(2 shl LogSize)-1;
- Step:=((HashCode shl 1)+1) and Mask;
- if LogSize<>0 then begin
-  result:=HashCode shr (32-LogSize);
- end else begin
-  result:=0;
- end;
- repeat
-  Entity:=CellToEntityIndex[result];
-  if (Entity=ENT_EMPTY) or ((Entity<>ENT_DELETED) and (Entities[Entity].Key=Key)) then begin
-   exit;
-  end;
-  result:=(result+Step) and Mask;
- until false;
-end;
-
-procedure TpvVulkanInt64HashMap.Resize;
-var NewLogSize,NewSize,Cell,Entity,Counter:TpvInt32;
-    OldEntities:TpvVulkanInt64HashMapEntities;
-    OldCellToEntityIndex:TpvVulkanInt64HashMapEntityIndices;
-    OldEntityToCellIndex:TpvVulkanInt64HashMapEntityIndices;
-begin
- NewLogSize:=0;
- NewSize:=RealSize;
- while NewSize<>0 do begin
-  NewSize:=NewSize shr 1;
-  inc(NewLogSize);
- end;
- if NewLogSize<1 then begin
-  NewLogSize:=1;
- end;
- Size:=0;
- RealSize:=0;
- LogSize:=NewLogSize;
- OldEntities:=Entities;
- OldCellToEntityIndex:=CellToEntityIndex;
- OldEntityToCellIndex:=EntityToCellIndex;
- Entities:=nil;
- CellToEntityIndex:=nil;
- EntityToCellIndex:=nil;
- SetLength(Entities,2 shl LogSize);
- SetLength(CellToEntityIndex,2 shl LogSize);
- SetLength(EntityToCellIndex,2 shl LogSize);
- for Counter:=0 to length(CellToEntityIndex)-1 do begin
-  CellToEntityIndex[Counter]:=ENT_EMPTY;
- end;
- for Counter:=0 to length(EntityToCellIndex)-1 do begin
-  EntityToCellIndex[Counter]:=CELL_EMPTY;
- end;
- for Counter:=0 to length(OldEntityToCellIndex)-1 do begin
-  Cell:=OldEntityToCellIndex[Counter];
-  if Cell>=0 then begin
-   Entity:=OldCellToEntityIndex[Cell];
-   if Entity>=0 then begin
-    Add(OldEntities[Counter].Key,OldEntities[Counter].Value);
-   end;
-  end;
- end;
- SetLength(OldEntities,0);
- SetLength(OldCellToEntityIndex,0);
- SetLength(OldEntityToCellIndex,0);
-end;
-
-function TpvVulkanInt64HashMap.Add(const Key:TpvInt64;Value:TpvVulkanInt64HashMapData):PpvVulkanInt64HashMapEntity;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- result:=nil;
- while RealSize>=(1 shl LogSize) do begin
-  Resize;
- end;
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=@Entities[Entity];
-  result^.Key:=Key;
-  result^.Value:=Value;
-  exit;
- end;
- Entity:=Size;
- inc(Size);
- if Entity<(2 shl LogSize) then begin
-  CellToEntityIndex[Cell]:=Entity;
-  EntityToCellIndex[Entity]:=Cell;
-  inc(RealSize);
-  result:=@Entities[Entity];
-  result^.Key:=Key;
-  result^.Value:=Value;
- end;
-end;
-
-function TpvVulkanInt64HashMap.Get(const Key:TpvInt64;CreateIfNotExist:boolean=false):PpvVulkanInt64HashMapEntity;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- result:=nil;
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=@Entities[Entity];
- end else if CreateIfNotExist then begin
-  result:=Add(Key,nil);
- end;
-end;
-
-function TpvVulkanInt64HashMap.TryGet(const Key:TpvInt64;out Value:TpvVulkanInt64HashMapData):boolean;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- result:=Entity>=0;
- if result then begin
-  Value:=Entities[Entity].Value;
- end else begin
-  Value:=nil;
- end;
-end;
-
-function TpvVulkanInt64HashMap.ExistKey(const Key:TpvInt64):boolean;
-begin
- result:=CellToEntityIndex[FindCell(Key)]>=0;
-end;
-
-function TpvVulkanInt64HashMap.Delete(const Key:TpvInt64):boolean;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- result:=false;
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  Entities[Entity].Key:=0;
-  Entities[Entity].Value:=nil;
-  EntityToCellIndex[Entity]:=CELL_DELETED;
-  CellToEntityIndex[Cell]:=ENT_DELETED;
-  result:=true;
- end;
-end;
-
-function TpvVulkanInt64HashMap.GetValue(const Key:TpvInt64):TpvVulkanInt64HashMapData;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-begin
- Cell:=FindCell(Key);
- Entity:=CellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=Entities[Entity].Value;
- end else begin
-  result:=nil;
- end;
-end;
-
-procedure TpvVulkanInt64HashMap.SetValue(const Key:TpvInt64;const Value:TpvVulkanInt64HashMapData);
-begin
- Add(Key,Value);
-end;
-
 function VulkanAllocationCallback(UserData:PVkVoid;Size:TVkSize;Alignment:TVkSize;Scope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 begin
  result:=TpvVulkanAllocationManager(UserData).AllocationCallback(Size,Alignment,Scope);
@@ -13304,7 +12311,7 @@ begin
  end;
 end;
 
-function TpvVulkanXMLItem.FindTag(const TagName:TpvVulkanRawByteString):TpvVulkanXMLTag;
+function TpvVulkanXMLItem.FindTag(const TagName:TpvRawByteString):TpvVulkanXMLTag;
 begin
  result:=Items.FindTag(TagName);
 end;
@@ -13339,7 +12346,7 @@ begin
  inherited Items[Index]:=Value;
 end;
 
-function TpvVulkanXMLItemList.FindTag(const TagName:TpvVulkanRawByteString):TpvVulkanXMLTag;
+function TpvVulkanXMLItemList.FindTag(const TagName:TpvRawByteString):TpvVulkanXMLTag;
 var i:TpvInt32;
     Item:TpvVulkanXMLItem;
 begin
@@ -13393,7 +12400,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanXMLText.SetText(AText:TpvVulkanRawByteString);
+procedure TpvVulkanXMLText.SetText(AText:TpvRawByteString);
 begin
  Text:=AText;
 end;
@@ -13418,7 +12425,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanXMLCommentTag.SetText(AText:TpvVulkanRawByteString);
+procedure TpvVulkanXMLCommentTag.SetText(AText:TpvRawByteString);
 begin
  Text:=AText;
 end;
@@ -13463,7 +12470,7 @@ begin
  end;
 end;
 
-function TpvVulkanXMLTag.FindParameter(ParameterName:TpvVulkanRawByteString):TpvVulkanXMLParameter;
+function TpvVulkanXMLTag.FindParameter(ParameterName:TpvRawByteString):TpvVulkanXMLParameter;
 var i:TpvInt32;
 begin
  for i:=0 to length(Parameter)-1 do begin
@@ -13475,7 +12482,7 @@ begin
  result:=nil;
 end;
 
-function TpvVulkanXMLTag.GetParameter(ParameterName:TpvVulkanRawByteString;default:TpvVulkanRawByteString=''):TpvVulkanRawByteString;
+function TpvVulkanXMLTag.GetParameter(ParameterName:TpvRawByteString;default:TpvRawByteString=''):TpvRawByteString;
 var i:TpvInt32;
 begin
  for i:=0 to length(Parameter)-1 do begin
@@ -13500,7 +12507,7 @@ begin
  end;
 end;
 
-function TpvVulkanXMLTag.AddParameter(Name:TpvVulkanRawByteString;Value:TpvVulkanXMLString):boolean;
+function TpvVulkanXMLTag.AddParameter(Name:TpvRawByteString;Value:TpvVulkanXMLString):boolean;
 var AParameter:TpvVulkanXMLParameter;
 begin
  AParameter:=TpvVulkanXMLParameter.Create;
@@ -13533,7 +12540,7 @@ begin
  end;
 end;
 
-function TpvVulkanXMLTag.RemoveParameter(ParameterName:TpvVulkanRawByteString):boolean;
+function TpvVulkanXMLTag.RemoveParameter(ParameterName:TpvRawByteString):boolean;
 begin
  result:=RemoveParameter(FindParameter(ParameterName));
 end;
@@ -13573,7 +12580,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanXMLScriptTag.SetText(AText:TpvVulkanRawByteString);
+procedure TpvVulkanXMLScriptTag.SetText(AText:TpvRawByteString);
 begin
  Text:=AText;
 end;
@@ -13598,7 +12605,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanXMLCDataTag.SetText(AText:TpvVulkanRawByteString);
+procedure TpvVulkanXMLCDataTag.SetText(AText:TpvRawByteString);
 begin
  Text:=AText;
 end;
@@ -13623,7 +12630,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanXMLDOCTYPETag.SetText(AText:TpvVulkanRawByteString);
+procedure TpvVulkanXMLDOCTYPETag.SetText(AText:TpvRawByteString);
 begin
  Text:=AText;
 end;
@@ -13648,7 +12655,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanXMLExtraTag.SetText(AText:TpvVulkanRawByteString);
+procedure TpvVulkanXMLExtraTag.SetText(AText:TpvRawByteString);
 begin
  Text:=AText;
 end;
@@ -13682,13 +12689,15 @@ const EntityChars:array[1..102,1..2] of TpvVulkanXMLString=(('&quot;',#34),('&am
 
 type TEntitiesCharLookUpItem=record
       IsEntity:boolean;
-      Entity:TpvVulkanRawByteString;
+      Entity:TpvRawByteString;
      end;
 
      TEntitiesCharLookUpTable=array[0..{$ifdef VulkanXMLUnicode}65535{$else}255{$endif}] of TEntitiesCharLookUpItem;
 
+     TEntityStringHashMap=class(TpvStringHashMap<TpvInt32>);
+
 var EntitiesCharLookUp:TEntitiesCharLookUpTable;
-    EntityStringHashMap:TpvVulkanStringHashMap;
+    EntityStringHashMap:TEntityStringHashMap;
 
 const EntityInitialized:boolean=false;
 
@@ -13697,10 +12706,10 @@ var EntityCounter:TpvInt32;
 begin
  if not EntityInitialized then begin
   EntityInitialized:=true;
-  EntityStringHashMap:=TpvVulkanStringHashMap.Create;
+  EntityStringHashMap:=TEntityStringHashMap.Create(-1);
   FillChar(EntitiesCharLookUp,SizeOf(TEntitiesCharLookUpTable),#0);
   for EntityCounter:=low(EntityChars) to high(EntityChars) do begin
-   EntityStringHashMap.Add(EntityChars[EntityCounter,1],TVkPointer(TpvPtrInt(EntityCounter)));
+   EntityStringHashMap.Add(EntityChars[EntityCounter,1],EntityCounter);
    with EntitiesCharLookUp[ord(EntityChars[EntityCounter,2][1])] do begin
     IsEntity:=true;
     Entity:=EntityChars[EntityCounter,1];
@@ -13715,7 +12724,7 @@ begin
  EntityInitialized:=false;
 end;
 
-function ConvertToEntities(AString:TpvVulkanXMLString;IdentLevel:TpvInt32=0):TpvVulkanRawByteString;
+function ConvertToEntities(AString:TpvVulkanXMLString;IdentLevel:TpvInt32=0):TpvRawByteString;
 var Counter,IdentCounter:TpvInt32;
     c:TpvVulkanXMLChar;
 begin
@@ -13740,12 +12749,12 @@ begin
   end else begin
 {$ifdef VulkanXMLUnicode}
    if c<#255 then begin
-    result:=result+'&#'+TpvVulkanRawByteString(IntToStr(ord(c)))+';';
+    result:=result+'&#'+TpvRawByteString(IntToStr(ord(c)))+';';
    end else begin
-    result:=result+'&#x'+TpvVulkanRawByteString(IntToHex(ord(c),4))+';';
+    result:=result+'&#x'+TpvRawByteString(IntToHex(ord(c),4))+';';
    end;
 {$else}
-   result:=result+'&#'+TpvVulkanRawByteString(IntToStr(TpvUInt8(c)))+';';
+   result:=result+'&#'+TpvRawByteString(IntToStr(TpvUInt8(c)))+';';
 {$endif}
   end;
  end;
@@ -13812,7 +12821,7 @@ var Errors:boolean;
   end;
  end;
 
- function GetName:TpvVulkanRawByteString;
+ function GetName:TpvRawByteString;
  var i:TpvInt32;
  begin
   result:='';
@@ -13830,7 +12839,7 @@ var Errors:boolean;
   SetLength(result,i);
  end;
 
- function ExpectToken(const S:TpvVulkanRawByteString):boolean; overload;
+ function ExpectToken(const S:TpvRawByteString):boolean; overload;
  var i:TpvInt32;
  begin
   result:=true;
@@ -13852,7 +12861,7 @@ var Errors:boolean;
   end;
  end;
 
- function GetUntil(var Content:TpvVulkanRawByteString;const TerminateToken:TpvVulkanRawByteString):boolean;
+ function GetUntil(var Content:TpvRawByteString;const TerminateToken:TpvRawByteString):boolean;
  var i,j,OldPosition:TpvInt32;
      OldEOF:boolean;
      OldChar:TpvVulkanRawByteChar;
@@ -13948,9 +12957,8 @@ var Errors:boolean;
 
  function GetEntity:TpvVulkanXMLString;
  var Value:TpvInt32;
-     Entity:TpvVulkanRawByteString;
+     Entity:TpvRawByteString;
      c:TpvVulkanXMLChar;
-     StringHashMapEntity:PpvVulkanStringHashMapEntity;
  begin
   result:='';
   if CurrentChar='&' then begin
@@ -13988,9 +12996,8 @@ var Errors:boolean;
      if CurrentChar=';' then begin
       Entity:=Entity+CurrentChar;
       NextChar;
-      StringHashMapEntity:=EntityStringHashMap.Get(Entity,false);
-      if assigned(StringHashMapEntity) then begin
-       result:=EntityChars[TpvPtrInt(TpvPtrUInt(TVkPointer(StringHashMapEntity^.Value))),2];
+      if EntityStringHashMap.TryGet(Entity,Value) then begin
+       result:=EntityChars[Value,2];
       end else begin
        result:=Entity;
       end;
@@ -14057,7 +13064,7 @@ var Errors:boolean;
  end;
 
  procedure ParseTagParameter(XMLTag:TpvVulkanXMLTag);
- var ParameterName,ParameterValue:TpvVulkanRawByteString;
+ var ParameterName,ParameterValue:TpvRawByteString;
      TerminateChar:TpvVulkanRawByteChar;
  begin
   SkipBlank;
@@ -14104,7 +13111,7 @@ var Errors:boolean;
       XMLText:TpvVulkanXMLText;
       i,wc,c:TpvInt32;
 {$ifndef VulkanXMLUnicode}
-      w:TpvVulkanRawByteString;
+      w:TpvRawByteString;
 {$endif}
   begin
    SkipBlank;
@@ -14184,7 +13191,7 @@ var Errors:boolean;
       end;
       Text[i]:=TpvVulkanRawByteChar(TpvUInt8(wc));
      end else begin
-      w:=VulkanUTF32CharToUTF8(wc);
+      w:=PUCUUTF32CharToUTF8(wc);
       if length(w)>0 then begin
        inc(i);
        if (i+length(w)+1)>length(Text) then begin
@@ -14215,7 +13222,7 @@ var Errors:boolean;
       end;
       Text[i]:=TpvVulkanRawByteChar(TpvUInt8(wc));
      end else begin
-      w:=VulkanUTF32CharToUTF8(wc);
+      w:=PUCUUTF32CharToUTF8(wc);
       if length(w)>0 then begin
        inc(i);
        if (i+length(w)+1)>length(Text) then begin
@@ -14243,7 +13250,7 @@ var Errors:boolean;
       end;
       Text[i]:=TpvVulkanRawByteChar(TpvUInt8(wc));
      end else begin
-      w:=VulkanUTF32CharToUTF8(wc);
+      w:=PUCUUTF32CharToUTF8(wc);
       if length(w)>0 then begin
        inc(i);
        if (i+length(w)+1)>length(Text) then begin
@@ -14266,7 +13273,7 @@ var Errors:boolean;
   end;
 
   procedure ParseProcessTag;
-  var TagName,EncodingName:TpvVulkanRawByteString;
+  var TagName,EncodingName:TpvRawByteString;
       XMLProcessTag:TpvVulkanXMLProcessTag;
   begin
    if not ExpectToken('?') then begin
@@ -14287,7 +13294,7 @@ var Errors:boolean;
     exit;
    end;
    if XMLProcessTag.Name='xml' then begin
-    EncodingName:=TpvVulkanRawByteString(UpperCase(String(XMLProcessTag.GetParameter('encoding','ascii'))));
+    EncodingName:=TpvRawByteString(UpperCase(String(XMLProcessTag.GetParameter('encoding','ascii'))));
     if EncodingName='UTF-8' then begin
      Encoding:=etUTF8;
     end else if EncodingName='UTF-16' then begin
@@ -14353,7 +13360,7 @@ var Errors:boolean;
   end;
 
   procedure ParseDOCTYPEOrExtraTag;
-  var Content:TpvVulkanRawByteString;
+  var Content:TpvRawByteString;
       XMLDOCTYPETag:TpvVulkanXMLDOCTYPETag;
       XMLExtraTag:TpvVulkanXMLExtraTag;
   begin
@@ -14365,7 +13372,7 @@ var Errors:boolean;
    if pos('DOCTYPE',String(Content))=1 then begin
     XMLDOCTYPETag:=TpvVulkanXMLDOCTYPETag.Create;
     ParentItem.Add(XMLDOCTYPETag);
-    XMLDOCTYPETag.Text:=TpvVulkanRawByteString(TrimLeft(Copy(String(Content),8,length(String(Content))-7)));
+    XMLDOCTYPETag.Text:=TpvRawByteString(TrimLeft(Copy(String(Content),8,length(String(Content))-7)));
    end else begin
     XMLExtraTag:=TpvVulkanXMLExtraTag.Create;
     ParentItem.Add(XMLExtraTag);
@@ -14374,7 +13381,7 @@ var Errors:boolean;
   end;
 
   procedure ParseTag;
-  var TagName:TpvVulkanRawByteString;
+  var TagName:TpvRawByteString;
       XMLTag:TpvVulkanXMLTag;
       IsAloneTag:boolean;
   begin
@@ -14483,10 +13490,10 @@ function TpvVulkanXML.Write(Stream:TStream;IdentSize:TpvInt32=2):boolean;
 var IdentLevel:TpvInt32;
     Errors:boolean;
  procedure Process(Item:TpvVulkanXMLItem;DoIndent:boolean);
- var Line:TpvVulkanRawByteString;
+ var Line:TpvRawByteString;
      Counter:TpvInt32;
      TagWithSingleLineText,ItemsText:boolean;
-  procedure WriteLineEx(Line:TpvVulkanRawByteString);
+  procedure WriteLineEx(Line:TpvRawByteString);
   begin
    if length(Line)>0 then begin
     if Stream.Write(Line[1],length(Line))<>length(Line) then begin
@@ -14494,7 +13501,7 @@ var IdentLevel:TpvInt32;
     end;
    end;
   end;
-  procedure WriteLine(Line:TpvVulkanRawByteString);
+  procedure WriteLine(Line:TpvRawByteString);
   begin
    if FormatIndent and DoIndent then begin
     Line:=Line+#10;
@@ -14645,7 +13652,7 @@ begin
  result:=not Errors;
 end;
 
-function TpvVulkanXML.ReadXMLText:TpvVulkanRawByteString;
+function TpvVulkanXML.ReadXMLText:TpvRawByteString;
 var Stream:TMemoryStream;
 begin
  Stream:=TMemoryStream.Create;
@@ -14660,7 +13667,7 @@ begin
  Stream.Destroy;
 end;
 
-procedure TpvVulkanXML.WriteXMLText(Text:TpvVulkanRawByteString);
+procedure TpvVulkanXML.WriteXMLText(Text:TpvRawByteString);
 var Stream:TMemoryStream;
 begin
  Stream:=TMemoryStream.Create;
@@ -27311,7 +26318,7 @@ begin
  fVulkanDescriptorSets:=nil;
  fCountVulkanDescriptorSets:=0;
 
- fVulkanTextureDescriptorSetHashMap:=TpvVulkanPointerHashMap.Create;
+ fVulkanTextureDescriptorSetHashMap:=TpvVulkanCanvasAtlasArrayTextureDescriptorSetHashMap.Create(-1);
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
@@ -27575,7 +26582,6 @@ end;
 procedure TpvVulkanCanvas.Flush;
 var CurrentVulkanBufferIndex,OldCount,NewCount,QueueItemIndex,DescriptorSetIndex:TpvInt32;
     QueueItem:PpvVulkanCanvasQueueItem;
-    PointerHashMapEntity:PpvVulkanPointerHashMapEntity;
     VulkanDescriptorSet:TpvVulkanDescriptorSet;
 begin
  if assigned(fCurrentFillBuffer) and (fCurrentCountVertices>0) then begin
@@ -27608,10 +26614,7 @@ begin
 
    inc(fCurrentFillBuffer^.fIndexBufferSizes[CurrentVulkanBufferIndex],fCurrentCountIndices*SizeOf(TpvUInt32));
 
-   PointerHashMapEntity:=fVulkanTextureDescriptorSetHashMap.Get(fLastArrayTexture,false);
-   if assigned(PointerHashMapEntity) then begin
-    DescriptorSetIndex:=TpvPtrUInt(PointerHashMapEntity^.Value);
-   end else begin
+   if not fVulkanTextureDescriptorSetHashMap.TryGet(fLastArrayTexture,DescriptorSetIndex) then begin
     DescriptorSetIndex:=fCountVulkanDescriptorSets;
     inc(fCountVulkanDescriptorSets);
     if length(fVulkanDescriptorSets)<fCountVulkanDescriptorSets then begin
@@ -27630,7 +26633,7 @@ begin
                                             );
     VulkanDescriptorSet.Flush;
     fVulkanDescriptorSets[DescriptorSetIndex]:=VulkanDescriptorSet;
-    fVulkanTextureDescriptorSetHashMap.Add(fLastArrayTexture,TpvPointer(TpvPtrUInt(DescriptorSetIndex)));
+    fVulkanTextureDescriptorSetHashMap.Add(fLastArrayTexture,DescriptorSetIndex);
    end;
 
    QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
@@ -28393,7 +27396,7 @@ begin
  fArrayTextures:=nil;
  fCountArrayTextures:=0;
  fList:=TList.Create;
- fHashMap:=TpvVulkanStringHashMap.Create;
+ fHashMap:=TpvVulkanSpriteAtlasStringHashMap.Create(nil);
  fIsUploaded:=false;
  fMipMaps:=true;
  fWidth:=Min(VULKAN_SPRITEATLASTEXTURE_WIDTH,fDevice.fPhysicalDevice.fProperties.limits.maxImageDimension2D);
@@ -28490,7 +27493,7 @@ begin
  fList.Items[Index]:=TpvPointer(Item);
 end;
 
-function TpvVulkanSpriteAtlas.GetSprite(const Name:TpvVulkanRawByteString):TpvVulkanSprite;
+function TpvVulkanSpriteAtlas.GetSprite(const Name:TpvRawByteString):TpvVulkanSprite;
 begin
  result:=fHashMap[Name];
 end;
@@ -28554,7 +27557,7 @@ var XML:TpvVulkanXML;
     i,j:TpvInt32;
     XMLItem,XMLChildrenItem:TpvVulkanXMLItem;
     XMLTag,XMLChildrenTag:TpvVulkanXMLTag;
-    SpriteName:TpvVulkanRawByteString;
+    SpriteName:TpvRawByteString;
     Sprite:TpvVulkanSprite;
     SpriteAtlasArrayTexture:TpvVulkanSpriteAtlasArrayTexture;
     ImageData:TpvPointer;
@@ -28647,7 +27650,7 @@ begin
  end;
 end;
 
-function TpvVulkanSpriteAtlas.LoadRawSprite(const Name:TpvVulkanRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true):TpvVulkanSprite;
+function TpvVulkanSpriteAtlas.LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true):TpvVulkanSprite;
 var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer:TpvInt32;
     ArrayTexture:TpvVulkanSpriteAtlasArrayTexture;
     Node:PpvVulkanSpriteAtlasArrayTextureLayerRectNode;
@@ -28939,7 +27942,7 @@ begin
 
 end;
 
-function TpvVulkanSpriteAtlas.LoadSprite(const Name:TpvVulkanRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TpvVulkanSprite;
+function TpvVulkanSpriteAtlas.LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TpvVulkanSprite;
 var InputImageData,ImageData:TpvPointer;
     InputImageDataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -28995,7 +27998,7 @@ begin
 
 end;
 
-function TpvVulkanSpriteAtlas.LoadSprites(const Name:TpvVulkanRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true):TpvVulkanSprites;
+function TpvVulkanSpriteAtlas.LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true):TpvVulkanSprites;
 var InputImageData,ImageData,SpriteData:TpvPointer;
     InputImageDataSize,ImageWidth,ImageHeight,Count,x,y,sy,sw,sh:TpvInt32;
     sp,dp:PpvUInt32;
@@ -29062,7 +28065,7 @@ begin
             inc(dp,SpriteWidth);
            end;
 
-           result[Count]:=LoadRawSprite(Name+TpvVulkanRawByteString(IntToStr(Count)),SpriteData,SpriteWidth,SpriteHeight,aAutomaticTrim);
+           result[Count]:=LoadRawSprite(Name+TpvRawByteString(IntToStr(Count)),SpriteData,SpriteWidth,SpriteHeight,aAutomaticTrim);
 
            inc(Count);
 
