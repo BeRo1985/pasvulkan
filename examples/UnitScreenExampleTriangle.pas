@@ -94,7 +94,7 @@ type TScreenExampleTriangle=class(TpvApplicationScreen)
 
 implementation
 
-uses UnitExampleVulkanApplication,UnitTextOverlay,UnitScreenMainMenu;
+uses UnitExampleApplication,UnitTextOverlay,UnitScreenMainMenu;
 
 const TriangleVertices:array[0..2,0..1,0..2] of TpvFloat=
        (((0.5,0.5,0.0),(1.0,0.0,0.0)),
@@ -511,13 +511,13 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
     if fSelectedIndex=0 then begin
      pvApplication.NextScreen:=TScreenMainMenu.Create;
     end;
    end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+   cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -536,10 +536,10 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+   cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -553,10 +553,10 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+   cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -575,8 +575,8 @@ var Index:TpvInt32;
     IsSelected:boolean;
 begin
  inherited Update(aDeltaTime);
- ExampleVulkanApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Triangle');
- fStartY:=pvApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*1.25)-(4*FontSize));
+ ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Triangle');
+ fStartY:=pvApplication.Height-((((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize)*1.25)-(4*FontSize));
  cy:=fStartY;
  for Index:=0 to 0 do begin
   IsSelected:=fSelectedIndex=Index;
@@ -584,8 +584,8 @@ begin
   if IsSelected then begin
    s:='>'+s+'<';
   end;
-  ExampleVulkanApplication.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,s,MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
-  cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+  ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,s,MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
+  cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
  end;
  fReady:=true;
 end;

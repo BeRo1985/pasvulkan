@@ -238,7 +238,7 @@
         <DCCReference Include="..\src\PasVulkan.GUI.pas"/>
         <DCCReference Include="UnitChunkStream.pas"/>
         <DCCReference Include="UnitRegisteredExamplesList.pas"/>
-        <DCCReference Include="UnitExampleVulkanApplication.pas"/>
+        <DCCReference Include="UnitExampleApplication.pas"/>
         <DCCReference Include="UnitTextOverlay.pas"/>
         <DCCReference Include="UnitModel.pas"/>
         <DCCReference Include="UnitSDFFont.pas"/>

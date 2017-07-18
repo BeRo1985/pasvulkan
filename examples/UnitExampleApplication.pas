@@ -1,4 +1,4 @@
-unit UnitExampleVulkanApplication;
+unit UnitExampleApplication;
 {$ifdef fpc}
  {$mode delphi}
  {$ifdef cpu386}
@@ -34,7 +34,7 @@ const MenuColors:array[boolean,0..1,0..3] of TpvFloat=
        (((0.0625,0.125,0.5,0.95),(1.0,1.0,1.0,0.95)),
         ((1.0,1.0,1.0,0.95),(0.0625,0.125,0.5,0.95)));
 
-type TExampleVulkanApplication=class(TpvApplication)
+type TExampleApplication=class(TpvApplication)
       private
        fMakeScreenshotJPEG:boolean;
        fMakeScreenshotPNG:boolean;
@@ -58,77 +58,77 @@ type TExampleVulkanApplication=class(TpvApplication)
        property TextOverlay:TTextOverlay read fTextOverlay;
      end;
 
-var ExampleVulkanApplication:TExampleVulkanApplication=nil;
+var ExampleApplication:TExampleApplication=nil;
 
 implementation
 
 uses UnitScreenMainMenu;
 
-constructor TExampleVulkanApplication.Create;
+constructor TExampleApplication.Create;
 begin
  inherited Create;
- ExampleVulkanApplication:=self;
+ ExampleApplication:=self;
  fMakeScreenshotJPEG:=false;
  fMakeScreenshotPNG:=false;
  fTextOverlay:=nil;
 end;
 
-destructor TExampleVulkanApplication.Destroy;
+destructor TExampleApplication.Destroy;
 begin
- ExampleVulkanApplication:=nil;
+ ExampleApplication:=nil;
  inherited Destroy;
 end;
 
-procedure TExampleVulkanApplication.Start;
+procedure TExampleApplication.Start;
 begin
  inherited Start;
  fTextOverlay:=TTextOverlay.Create;
 end;
 
-procedure TExampleVulkanApplication.Stop;
+procedure TExampleApplication.Stop;
 begin
  FreeAndNil(fTextOverlay);
  inherited Stop;
 end;
 
-procedure TExampleVulkanApplication.Load;
+procedure TExampleApplication.Load;
 begin
  inherited Load;
  fTextOverlay.Load;
 end;
 
-procedure TExampleVulkanApplication.Unload;
+procedure TExampleApplication.Unload;
 begin
  fTextOverlay.Unload;
  inherited Unload;
 end;
 
-procedure TExampleVulkanApplication.AfterCreateSwapChain;
+procedure TExampleApplication.AfterCreateSwapChain;
 begin
  inherited AfterCreateSwapChain;
  fTextOverlay.Load;
  fTextOverlay.AfterCreateSwapChain;
 end;
 
-procedure TExampleVulkanApplication.BeforeDestroySwapChain;
+procedure TExampleApplication.BeforeDestroySwapChain;
 begin
  inherited BeforeDestroySwapChain;
  fTextOverlay.BeforeDestroySwapChain;
 end;
 
-procedure TExampleVulkanApplication.Resume;
+procedure TExampleApplication.Resume;
 begin
  inherited Resume;
  fTextOverlay.Load;
 end;
 
-procedure TExampleVulkanApplication.Pause;
+procedure TExampleApplication.Pause;
 begin
  fTextOverlay.Unload;
  inherited Pause;
 end;
 
-function TExampleVulkanApplication.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TExampleApplication.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=inherited KeyDown(aKeyCode,aKeyModifier);
  case aKeyCode of
@@ -141,14 +141,14 @@ begin
  end;
 end;
 
-procedure TExampleVulkanApplication.Update(const aDeltaTime:TpvDouble);
+procedure TExampleApplication.Update(const aDeltaTime:TpvDouble);
 begin
  fTextOverlay.PreUpdate(aDeltaTime);
  inherited Update(aDeltaTime);
  fTextOverlay.PostUpdate(aDeltaTime);
 end;
 
-procedure TExampleVulkanApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+procedure TExampleApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 var Stream:TMemoryStream;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
@@ -180,9 +180,9 @@ begin
  end;
 end;
 
-class procedure TExampleVulkanApplication.Main;
+class procedure TExampleApplication.Main;
 begin
- pvApplication:=TExampleVulkanApplication.Create;
+ pvApplication:=TExampleApplication.Create;
  try
   if pvApplication.Debugging then begin
    pvApplication.VulkanDebugging:=true;

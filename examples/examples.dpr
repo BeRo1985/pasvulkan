@@ -60,7 +60,7 @@ uses
   PasVulkan.GUI in '..\src\PasVulkan.GUI.pas',
   UnitChunkStream in 'UnitChunkStream.pas',
   UnitRegisteredExamplesList in 'UnitRegisteredExamplesList.pas',
-  UnitExampleVulkanApplication in 'UnitExampleVulkanApplication.pas',
+  UnitExampleApplication in 'UnitExampleApplication.pas',
   UnitTextOverlay in 'UnitTextOverlay.pas',
   UnitModel in 'UnitModel.pas',
   UnitSDFFont in 'UnitSDFFont.pas',
@@ -123,7 +123,7 @@ begin
 {$if defined(fpc) and defined(android)}
  try
 {$ifend}
-  TExampleVulkanApplication.Main;
+  TExampleApplication.Main;
 {$if defined(fpc) and defined(android)}
  except
   on e:Exception do begin

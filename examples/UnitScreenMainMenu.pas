@@ -63,7 +63,7 @@ type TScreenMainMenu=class(TScreenBlank)
 
 implementation
 
-uses UnitExampleVulkanApplication,UnitTextOverlay,UnitScreenExit;
+uses UnitExampleApplication,UnitTextOverlay,UnitScreenExit;
 
 const FontSize=3.0;
 
@@ -155,7 +155,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to RegisteredExamplesList.Count do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
     if fSelectedIndex=RegisteredExamplesList.Count then begin
      pvApplication.NextScreen:=TScreenExit.Create;
@@ -163,7 +163,7 @@ begin
      pvApplication.NextScreen:=TpvApplicationScreenClass(RegisteredExamplesList.Objects[fSelectedIndex]).Create;
     end;
    end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+   cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -182,10 +182,10 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to RegisteredExamplesList.Count do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+   cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -199,10 +199,10 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to RegisteredExamplesList.Count do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleVulkanApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
-   cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+   cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
   end;
  end;
 end;
@@ -220,8 +220,8 @@ var Index:TpvInt32;
     IsSelected:boolean;
 begin
  inherited Update(aDeltaTime);
- ExampleVulkanApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleVulkanApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Main menu');
- fStartY:=(pvApplication.Height-((((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize)*(RegisteredExamplesList.Count+1))-(4*FontSize)))*0.5;
+ ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Main menu');
+ fStartY:=(pvApplication.Height-((((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize)*(RegisteredExamplesList.Count+1))-(4*FontSize)))*0.5;
  cy:=fStartY;
  for Index:=0 to RegisteredExamplesList.Count-1 do begin
   IsSelected:=fSelectedIndex=Index;
@@ -229,8 +229,8 @@ begin
   if IsSelected then begin
    s:='>'+s+'<';
   end;
-  ExampleVulkanApplication.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,s,MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
-  cy:=cy+((ExampleVulkanApplication.TextOverlay.FontCharHeight+4)*FontSize);
+  ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,s,MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
+  cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
  end;
  begin
   IsSelected:=fSelectedIndex=RegisteredExamplesList.Count;
@@ -238,7 +238,7 @@ begin
   if IsSelected then begin
    s:='>'+s+'<';
   end;
-  ExampleVulkanApplication.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,s,MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
+  ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,s,MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
  end;
  fReady:=true;
 end;
