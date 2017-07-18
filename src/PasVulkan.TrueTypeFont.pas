@@ -69,233 +69,233 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Collections;
 
-const VkTTF_PID_Apple=0;
-      VkTTF_PID_Macintosh=1;
-      VkTTF_PID_ISO=2;
-      VkTTF_PID_Microsoft=3;
+const pvTTF_PID_Apple=0;
+      pvTTF_PID_Macintosh=1;
+      pvTTF_PID_ISO=2;
+      pvTTF_PID_Microsoft=3;
 
-      VkTTF_SID_APPLE_DEFAULT=0;
-      VkTTF_SID_APPLE_UNICODE_1_1=1;
-      VkTTF_SID_APPLE_ISO_10646=2;
-      VkTTF_SID_APPLE_UNICODE_2_0=3;
-      VkTTF_SID_APPLE_UNICODE32=4;
-      VkTTF_SID_APPLE_VARIANT_SELECTOR=5;
-      VkTTF_SID_APPLE_FULL_UNICODE_COVERAGE=6;
+      pvTTF_SID_APPLE_DEFAULT=0;
+      pvTTF_SID_APPLE_UNICODE_1_1=1;
+      pvTTF_SID_APPLE_ISO_10646=2;
+      pvTTF_SID_APPLE_UNICODE_2_0=3;
+      pvTTF_SID_APPLE_UNICODE32=4;
+      pvTTF_SID_APPLE_VARIANT_SELECTOR=5;
+      pvTTF_SID_APPLE_FULL_UNICODE_COVERAGE=6;
 
-      VkTTF_SID_MAC_Roman=0;
-      VkTTF_SID_MAC_Japanese=1;
-      VkTTF_SID_MAC_Chinese=2;
-      VkTTF_SID_MAC_Korean=3;
-      VkTTF_SID_MAC_Arabic=4;
-      VkTTF_SID_MAC_Hebrew=5;
-      VkTTF_SID_MAC_Greek=6;
-      VkTTF_SID_MAC_Russian=7;
-      VkTTF_SID_MAC_RSymbol=8;
-      VkTTF_SID_MAC_Devanagari=9;
-      VkTTF_SID_MAC_Gurmukhi=10;
-      VkTTF_SID_MAC_Gujarati=11;
-      VkTTF_SID_MAC_Oriya=12;
-      VkTTF_SID_MAC_Bengali=13;
-      VkTTF_SID_MAC_Tamil=14;
-      VkTTF_SID_MAC_Telugu=15;
-      VkTTF_SID_MAC_Kannada=16;
-      VkTTF_SID_MAC_Malayalam=17;
-      VkTTF_SID_MAC_Sinhalese=18;
-      VkTTF_SID_MAC_Burmese=19;
-      VkTTF_SID_MAC_Khmer=20;
-      VkTTF_SID_MAC_Thai=21;
-      VkTTF_SID_MAC_Laotian=22;
-      VkTTF_SID_MAC_Georgian=23;
-      VkTTF_SID_MAC_Armenian=24;
-      VkTTF_SID_MAC_Maldivian=25;
-      VkTTF_SID_MAC_Tibetian=26;
-      VkTTF_SID_MAC_Mongolian=27;
-      VkTTF_SID_MAC_Geez=28;
-      VkTTF_SID_MAC_Slavic=29;
-      VkTTF_SID_MAC_Vietnamese=30;
-      VkTTF_SID_MAC_Sindhi=31;
-      VkTTF_SID_MAC_Uninterp=32;
+      pvTTF_SID_MAC_Roman=0;
+      pvTTF_SID_MAC_Japanese=1;
+      pvTTF_SID_MAC_Chinese=2;
+      pvTTF_SID_MAC_Korean=3;
+      pvTTF_SID_MAC_Arabic=4;
+      pvTTF_SID_MAC_Hebrew=5;
+      pvTTF_SID_MAC_Greek=6;
+      pvTTF_SID_MAC_Russian=7;
+      pvTTF_SID_MAC_RSymbol=8;
+      pvTTF_SID_MAC_Devanagari=9;
+      pvTTF_SID_MAC_Gurmukhi=10;
+      pvTTF_SID_MAC_Gujarati=11;
+      pvTTF_SID_MAC_Oriya=12;
+      pvTTF_SID_MAC_Bengali=13;
+      pvTTF_SID_MAC_Tamil=14;
+      pvTTF_SID_MAC_Telugu=15;
+      pvTTF_SID_MAC_Kannada=16;
+      pvTTF_SID_MAC_Malayalam=17;
+      pvTTF_SID_MAC_Sinhalese=18;
+      pvTTF_SID_MAC_Burmese=19;
+      pvTTF_SID_MAC_Khmer=20;
+      pvTTF_SID_MAC_Thai=21;
+      pvTTF_SID_MAC_Laotian=22;
+      pvTTF_SID_MAC_Georgian=23;
+      pvTTF_SID_MAC_Armenian=24;
+      pvTTF_SID_MAC_Maldivian=25;
+      pvTTF_SID_MAC_Tibetian=26;
+      pvTTF_SID_MAC_Mongolian=27;
+      pvTTF_SID_MAC_Geez=28;
+      pvTTF_SID_MAC_Slavic=29;
+      pvTTF_SID_MAC_Vietnamese=30;
+      pvTTF_SID_MAC_Sindhi=31;
+      pvTTF_SID_MAC_Uninterp=32;
 
-      VkTTF_SID_MS_SYMBOL_CS=0;
-      VkTTF_SID_MS_UNICODE_CS=1;
-      VkTTF_SID_MS_SJIS=2;
-      VkTTF_SID_MS_GB2312=3;
-      VkTTF_SID_MS_BIG_5=4;
-      VkTTF_SID_MS_WANSUNG=5;
-      VkTTF_SID_MS_JOHAB=6;
-      VkTTF_SID_MS_UCS_4=10;
+      pvTTF_SID_MS_SYMBOL_CS=0;
+      pvTTF_SID_MS_UNICODE_CS=1;
+      pvTTF_SID_MS_SJIS=2;
+      pvTTF_SID_MS_GB2312=3;
+      pvTTF_SID_MS_BIG_5=4;
+      pvTTF_SID_MS_WANSUNG=5;
+      pvTTF_SID_MS_JOHAB=6;
+      pvTTF_SID_MS_UCS_4=10;
 
-      VkTTF_SID_ISO_ASCII=0;
-      VkTTF_SID_ISO_10646=1;
-      VkTTF_SID_ISO_8859_1=2;
+      pvTTF_SID_ISO_ASCII=0;
+      pvTTF_SID_ISO_10646=1;
+      pvTTF_SID_ISO_8859_1=2;
 
-      VkTTF_LID_MS_Arabic=$0401;
-      VkTTF_LID_MS_Bulgarian=$0402;
-      VkTTF_LID_MS_Catalan=$0403;
-      VkTTF_LID_MS_TraditionalChinese=$0404;
-      VkTTF_LID_MS_SimplifiedChinese=$0804;
-      VkTTF_LID_MS_Czech=$0405;
-      VkTTF_LID_MS_Danish=$0406;
-      VkTTF_LID_MS_German=$0407;
-      VkTTF_LID_MS_SwissGerman=$0807;
-      VkTTF_LID_MS_Greek=$0408;
-      VkTTF_LID_MS_USEnglish=$0409;
-      VkTTF_LID_MS_UKEnglish=$0809;
-      VkTTF_LID_MS_CastilianSpanish=$040a;
-      VkTTF_LID_MS_MexicanSpanish=$080a;
-      VkTTF_LID_MS_ModernSpanish=$0c0a;
-      VkTTF_LID_MS_Finnish=$040b;
-      VkTTF_LID_MS_French=$040c;
-      VkTTF_LID_MS_BelgianFrench=$080c;
-      VkTTF_LID_MS_CanadianFrench=$0c0c;
-      VkTTF_LID_MS_SwissFrench=$100c;
-      VkTTF_LID_MS_Hebrew=$040d;
-      VkTTF_LID_MS_Hungarian=$040e;
-      VkTTF_LID_MS_Icelandic=$040f;
-      VkTTF_LID_MS_Italian=$0410;
-      VkTTF_LID_MS_SwissItalian=$0810;
-      VkTTF_LID_MS_Japanese=$0411;
-      VkTTF_LID_MS_Korean=$0412;
-      VkTTF_LID_MS_Dutch=$0413;
-      VkTTF_LID_MS_BelgianDutch=$0813;
-      VkTTF_LID_MS_NorwegianBokmal=$0414;
-      VkTTF_LID_MS_NorwegianNynorsk=$0814;
-      VkTTF_LID_MS_Polish=$0415;
-      VkTTF_LID_MS_BrazilianPortuguese=$0416;
-      VkTTF_LID_MS_Portuguese=$0816;
-      VkTTF_LID_MS_RhaetoRomanic=$0417;
-      VkTTF_LID_MS_Romanian=$0418;
-      VkTTF_LID_MS_Russian=$0419;
-      VkTTF_LID_MS_CroatoSerbian=$041a;
-      VkTTF_LID_MS_SerboCroatian=$081a;
-      VkTTF_LID_MS_Slovakian=$041b;
-      VkTTF_LID_MS_Albanian=$041c;
-      VkTTF_LID_MS_Swedish=$041d;
-      VkTTF_LID_MS_Thai=$041e;
-      VkTTF_LID_MS_Turkish=$041f;
-      VkTTF_LID_MS_Urdu=$0420;
-      VkTTF_LID_MS_Bahasa=$0421;
+      pvTTF_LID_MS_Arabic=$0401;
+      pvTTF_LID_MS_Bulgarian=$0402;
+      pvTTF_LID_MS_Catalan=$0403;
+      pvTTF_LID_MS_TraditionalChinese=$0404;
+      pvTTF_LID_MS_SimplifiedChinese=$0804;
+      pvTTF_LID_MS_Czech=$0405;
+      pvTTF_LID_MS_Danish=$0406;
+      pvTTF_LID_MS_German=$0407;
+      pvTTF_LID_MS_SwissGerman=$0807;
+      pvTTF_LID_MS_Greek=$0408;
+      pvTTF_LID_MS_USEnglish=$0409;
+      pvTTF_LID_MS_UKEnglish=$0809;
+      pvTTF_LID_MS_CastilianSpanish=$040a;
+      pvTTF_LID_MS_MexicanSpanish=$080a;
+      pvTTF_LID_MS_ModernSpanish=$0c0a;
+      pvTTF_LID_MS_Finnish=$040b;
+      pvTTF_LID_MS_French=$040c;
+      pvTTF_LID_MS_BelgianFrench=$080c;
+      pvTTF_LID_MS_CanadianFrench=$0c0c;
+      pvTTF_LID_MS_SwissFrench=$100c;
+      pvTTF_LID_MS_Hebrew=$040d;
+      pvTTF_LID_MS_Hungarian=$040e;
+      pvTTF_LID_MS_Icelandic=$040f;
+      pvTTF_LID_MS_Italian=$0410;
+      pvTTF_LID_MS_SwissItalian=$0810;
+      pvTTF_LID_MS_Japanese=$0411;
+      pvTTF_LID_MS_Korean=$0412;
+      pvTTF_LID_MS_Dutch=$0413;
+      pvTTF_LID_MS_BelgianDutch=$0813;
+      pvTTF_LID_MS_NorwegianBokmal=$0414;
+      pvTTF_LID_MS_NorwegianNynorsk=$0814;
+      pvTTF_LID_MS_Polish=$0415;
+      pvTTF_LID_MS_BrazilianPortuguese=$0416;
+      pvTTF_LID_MS_Portuguese=$0816;
+      pvTTF_LID_MS_RhaetoRomanic=$0417;
+      pvTTF_LID_MS_Romanian=$0418;
+      pvTTF_LID_MS_Russian=$0419;
+      pvTTF_LID_MS_CroatoSerbian=$041a;
+      pvTTF_LID_MS_SerboCroatian=$081a;
+      pvTTF_LID_MS_Slovakian=$041b;
+      pvTTF_LID_MS_Albanian=$041c;
+      pvTTF_LID_MS_Swedish=$041d;
+      pvTTF_LID_MS_Thai=$041e;
+      pvTTF_LID_MS_Turkish=$041f;
+      pvTTF_LID_MS_Urdu=$0420;
+      pvTTF_LID_MS_Bahasa=$0421;
 
-      VkTTF_LID_MAC_English=0;
-      VkTTF_LID_MAC_French=1;
-      VkTTF_LID_MAC_German=2;
-      VkTTF_LID_MAC_Italian=3;
-      VkTTF_LID_MAC_Dutch=4;
-      VkTTF_LID_MAC_Swedish=5;
-      VkTTF_LID_MAC_Spanish=6;
-      VkTTF_LID_MAC_Danish=7;
-      VkTTF_LID_MAC_Portuguese=8;
-      VkTTF_LID_MAC_Norwegian=9;
-      VkTTF_LID_MAC_Hebrew=10;
-      VkTTF_LID_MAC_Japanese=11;
-      VkTTF_LID_MAC_Arabic=12;
-      VkTTF_LID_MAC_Finnish=13;
-      VkTTF_LID_MAC_Greek=14;
-      VkTTF_LID_MAC_Icelandic=15;
-      VkTTF_LID_MAC_Maltese=16;
-      VkTTF_LID_MAC_Turkish=17;
-      VkTTF_LID_MAC_Yugoslavian=18;
-      VkTTF_LID_MAC_Chinese=19;
-      VkTTF_LID_MAC_Urdu=20;
-      VkTTF_LID_MAC_Hindi=21;
-      VkTTF_LID_MAC_Thai=22;
+      pvTTF_LID_MAC_English=0;
+      pvTTF_LID_MAC_French=1;
+      pvTTF_LID_MAC_German=2;
+      pvTTF_LID_MAC_Italian=3;
+      pvTTF_LID_MAC_Dutch=4;
+      pvTTF_LID_MAC_Swedish=5;
+      pvTTF_LID_MAC_Spanish=6;
+      pvTTF_LID_MAC_Danish=7;
+      pvTTF_LID_MAC_Portuguese=8;
+      pvTTF_LID_MAC_Norwegian=9;
+      pvTTF_LID_MAC_Hebrew=10;
+      pvTTF_LID_MAC_Japanese=11;
+      pvTTF_LID_MAC_Arabic=12;
+      pvTTF_LID_MAC_Finnish=13;
+      pvTTF_LID_MAC_Greek=14;
+      pvTTF_LID_MAC_Icelandic=15;
+      pvTTF_LID_MAC_Maltese=16;
+      pvTTF_LID_MAC_Turkish=17;
+      pvTTF_LID_MAC_Yugoslavian=18;
+      pvTTF_LID_MAC_Chinese=19;
+      pvTTF_LID_MAC_Urdu=20;
+      pvTTF_LID_MAC_Hindi=21;
+      pvTTF_LID_MAC_Thai=22;
 
-      VkTTF_cfgfNONE=0;
-      VkTTF_cfgfXY=1;
-      VkTTF_cfgfX=2;
-      VkTTF_cfgfY=3;
+      pvTTF_cfgfNONE=0;
+      pvTTF_cfgfXY=1;
+      pvTTF_cfgfX=2;
+      pvTTF_cfgfY=3;
 
-      VkTTF_NID_Copyright=0;
-      VkTTF_NID_Family=1;
-      VkTTF_NID_Subfamily=2;
-      VkTTF_NID_UniqueID=3;
-      VkTTF_NID_FullName=4;
-      VkTTF_NID_Version=5;
-      VkTTF_NID_PostscriptName=6;
-      VkTTF_NID_Trademark=7;
+      pvTTF_NID_Copyright=0;
+      pvTTF_NID_Family=1;
+      pvTTF_NID_Subfamily=2;
+      pvTTF_NID_UniqueID=3;
+      pvTTF_NID_FullName=4;
+      pvTTF_NID_Version=5;
+      pvTTF_NID_PostscriptName=6;
+      pvTTF_NID_Trademark=7;
 
-      VkTTF_CMAP_FORMAT0=0;
-      VkTTF_CMAP_FORMAT2=2;
-      VkTTF_CMAP_FORMAT4=4;
-      VkTTF_CMAP_FORMAT6=6;
-      VkTTF_CMAP_FORMAT8=8;
-      VkTTF_CMAP_FORMAT10=10;
-      VkTTF_CMAP_FORMAT12=12;
-      VkTTF_CMAP_FORMAT13=13;
-      VkTTF_CMAP_FORMAT14=14;
+      pvTTF_CMAP_FORMAT0=0;
+      pvTTF_CMAP_FORMAT2=2;
+      pvTTF_CMAP_FORMAT4=4;
+      pvTTF_CMAP_FORMAT6=6;
+      pvTTF_CMAP_FORMAT8=8;
+      pvTTF_CMAP_FORMAT10=10;
+      pvTTF_CMAP_FORMAT12=12;
+      pvTTF_CMAP_FORMAT13=13;
+      pvTTF_CMAP_FORMAT14=14;
 
-      VkTTF_OFFSET_TABLE_SIZE=12;
+      pvTTF_OFFSET_TABLE_SIZE=12;
 
-      VkTTF_MACINTOSH=1;
-      VkTTF_MICROSOFT=2;
+      pvTTF_MACINTOSH=1;
+      pvTTF_MICROSOFT=2;
 
-      VkTTF_GASP_GRIDFIT=1;
-      VkTTF_GASP_DOGRAY=2;
-      VkTTF_GASP_SYMMETRIC_GRIDFIT=4;
-      VkTTF_GASP_SYMMETRIC_SMOOTHING=8;
+      pvTTF_GASP_GRIDFIT=1;
+      pvTTF_GASP_DOGRAY=2;
+      pvTTF_GASP_SYMMETRIC_GRIDFIT=4;
+      pvTTF_GASP_SYMMETRIC_SMOOTHING=8;
 
-      VkTTF_TT_NO_POINT=0;
-      VkTTF_TT_OFF_CURVE=1;
-      VkTTF_TT_ON_CURVE=2;
+      pvTTF_TT_NO_POINT=0;
+      pvTTF_TT_OFF_CURVE=1;
+      pvTTF_TT_ON_CURVE=2;
 
-      VkTTF_TT_ERR_NoError=0;
-      VkTTF_TT_ERR_InvalidFile=1;
-      VkTTF_TT_ERR_CorruptFile=2;
-      VkTTF_TT_ERR_OutOfMemory=3;
-      VkTTF_TT_ERR_TableNotFound=4;
-      VkTTF_TT_ERR_NoCharacterMapFound=5;
-      VkTTF_TT_ERR_UnknownCharacterMapFormat=6;
-      VkTTF_TT_ERR_CharacterMapNotPresent=7;
-      VkTTF_TT_ERR_UnableToOpenFile=8;
-      VkTTF_TT_ERR_UnknownKerningFormat=9;
-      VkTTF_TT_ERR_UnknownGPOSFormat=10;
-      VkTTF_TT_ERR_UnknownCharsetFormat=11;
-      VkTTF_TT_ERR_UnknownEncodingFormat=12;
-      VkTTF_TT_ERR_OutOfBounds=13;
+      pvTTF_TT_ERR_NoError=0;
+      pvTTF_TT_ERR_InvalidFile=1;
+      pvTTF_TT_ERR_CorruptFile=2;
+      pvTTF_TT_ERR_OutOfMemory=3;
+      pvTTF_TT_ERR_TableNotFound=4;
+      pvTTF_TT_ERR_NoCharacterMapFound=5;
+      pvTTF_TT_ERR_UnknownCharacterMapFormat=6;
+      pvTTF_TT_ERR_CharacterMapNotPresent=7;
+      pvTTF_TT_ERR_UnableToOpenFile=8;
+      pvTTF_TT_ERR_UnknownKerningFormat=9;
+      pvTTF_TT_ERR_UnknownGPOSFormat=10;
+      pvTTF_TT_ERR_UnknownCharsetFormat=11;
+      pvTTF_TT_ERR_UnknownEncodingFormat=12;
+      pvTTF_TT_ERR_OutOfBounds=13;
 
-      VkTTF_LineCapMode_BUTT=0;
-      VkTTF_LineCapMode_SQUARE=1;
-      VkTTF_LineCapMode_ROUND=2;
+      pvTTF_LineCapMode_BUTT=0;
+      pvTTF_LineCapMode_SQUARE=1;
+      pvTTF_LineCapMode_ROUND=2;
 
-      VkTTF_LineJoinMode_BEVEL=0;
-      VkTTF_LineJoinMode_ROUND=1;
-      VkTTF_LineJoinMode_MITER=2;
-      VkTTF_LineJoinMode_MITERREVERT=3;
-      VkTTF_LineJoinMode_MITERROUND=4;
+      pvTTF_LineJoinMode_BEVEL=0;
+      pvTTF_LineJoinMode_ROUND=1;
+      pvTTF_LineJoinMode_MITER=2;
+      pvTTF_LineJoinMode_MITERREVERT=3;
+      pvTTF_LineJoinMode_MITERROUND=4;
 
-      VkTTF_LineInnerJoinMode_BEVEL=0;
-      VkTTF_LineInnerJoinMode_MITER=1;
-      VkTTF_LineInnerJoinMode_JAG=2;
-      VkTTF_LineInnerJoinMode_ROUND=3;
+      pvTTF_LineInnerJoinMode_BEVEL=0;
+      pvTTF_LineInnerJoinMode_MITER=1;
+      pvTTF_LineInnerJoinMode_JAG=2;
+      pvTTF_LineInnerJoinMode_ROUND=3;
 
-      VkTTF_PolygonWindingRule_NONZERO=0; // TTF fonts uses the non-zero winding rule only
-      VkTTF_PolygonWindingRule_EVENODD=1; // <- exists here only for completeness :-)
+      pvTTF_PolygonWindingRule_NONZERO=0; // TTF fonts uses the non-zero winding rule only
+      pvTTF_PolygonWindingRule_EVENODD=1; // <- exists here only for completeness :-)
 
-      VkTTF_PathFlag_OnCurve=1 shl 0;
-      VkTTF_PathFlag_OnXShortVector=1 shl 1;
-      VkTTF_PathFlag_OnYShortVector=1 shl 2;
-      VkTTF_PathFlag_Repeat=1 shl 3;
-      VkTTF_PathFlag_PositiveXShortVector=1 shl 4;
-      VkTTF_PathFlag_ThisXIsSame=1 shl 4;
-      VkTTF_PathFlag_PositiveYShortVector=1 shl 5;
-      VkTTF_PathFlag_ThisYIsSame=1 shl 5;
-      VkTTF_PathFlag_TouchedX=1 shl 6;
-      VkTTF_PathFlag_TouchedY=1 shl 7;
+      pvTTF_PathFlag_OnCurve=1 shl 0;
+      pvTTF_PathFlag_OnXShortVector=1 shl 1;
+      pvTTF_PathFlag_OnYShortVector=1 shl 2;
+      pvTTF_PathFlag_Repeat=1 shl 3;
+      pvTTF_PathFlag_PositiveXShortVector=1 shl 4;
+      pvTTF_PathFlag_ThisXIsSame=1 shl 4;
+      pvTTF_PathFlag_PositiveYShortVector=1 shl 5;
+      pvTTF_PathFlag_ThisYIsSame=1 shl 5;
+      pvTTF_PathFlag_TouchedX=1 shl 6;
+      pvTTF_PathFlag_TouchedY=1 shl 7;
 
-      VkTTF_Zone_Twilight=0;
-      VkTTF_Zone_Glyph=1;
-      VkTTF_Zone_Count=2;
+      pvTTF_Zone_Twilight=0;
+      pvTTF_Zone_Glyph=1;
+      pvTTF_Zone_Count=2;
 
-      VkTTF_PointType_Current=0;
-      VkTTF_PointType_Unhinted=1;
-      VkTTF_PointType_InFontUnits=2;
-      VkTTF_PointType_Count=3;
+      pvTTF_PointType_Current=0;
+      pvTTF_PointType_Unhinted=1;
+      pvTTF_PointType_InFontUnits=2;
+      pvTTF_PointType_Count=3;
 
-type EpvVulkanTrueTypeFont=class(Exception);
+type EpvTrueTypeFont=class(Exception);
 
-     TpvVulkanTrueTypeFont=class;
+     TpvTrueTypeFont=class;
 
-     TpvVulkanTrueTypeFontRasterizer=class
+     TpvTrueTypeFontRasterizer=class
       protected
        fLastX:TpvInt32;
        fLastY:TpvInt32;
@@ -325,43 +325,43 @@ type EpvVulkanTrueTypeFont=class(Exception);
        property WindingRule:TpvInt32 read GetWindingRule write SetWindingRule;
      end;
 
-     TpvVulkanTrueTypeFontPolygonRasterizerGammaLookUpTable=array[TpvUInt8] of TpvUInt8;
+     TpvTrueTypeFontPolygonRasterizerGammaLookUpTable=array[TpvUInt8] of TpvUInt8;
 
-     PpvVulkanTrueTypeFontPolygonRasterizerCell=^TpvVulkanTrueTypeFontPolygonRasterizerCell;
-     TpvVulkanTrueTypeFontPolygonRasterizerCell=record
-      Previous:PpvVulkanTrueTypeFontPolygonRasterizerCell;
-      Next:PpvVulkanTrueTypeFontPolygonRasterizerCell;
+     PpvTrueTypeFontPolygonRasterizerCell=^TpvTrueTypeFontPolygonRasterizerCell;
+     TpvTrueTypeFontPolygonRasterizerCell=record
+      Previous:PpvTrueTypeFontPolygonRasterizerCell;
+      Next:PpvTrueTypeFontPolygonRasterizerCell;
       x:TpvInt32;
       Area:TpvInt32;
       Cover:TpvInt32;
      end;
 
-     TpvVulkanTrueTypeFontPolygonRasterizerCells=array of PpvVulkanTrueTypeFontPolygonRasterizerCell;
+     TpvTrueTypeFontPolygonRasterizerCells=array of PpvTrueTypeFontPolygonRasterizerCell;
 
-     TpvVulkanTrueTypeFontPolygonRasterizerScanline=record
-      CellFirst:PpvVulkanTrueTypeFontPolygonRasterizerCell;
-      CellLast:PpvVulkanTrueTypeFontPolygonRasterizerCell;
+     TpvTrueTypeFontPolygonRasterizerScanline=record
+      CellFirst:PpvTrueTypeFontPolygonRasterizerCell;
+      CellLast:PpvTrueTypeFontPolygonRasterizerCell;
      end;
-     TpvVulkanTrueTypeFontPolygonRasterizerScanlines=array of TpvVulkanTrueTypeFontPolygonRasterizerScanline;
+     TpvTrueTypeFontPolygonRasterizerScanlines=array of TpvTrueTypeFontPolygonRasterizerScanline;
 
-     TpvVulkanTrueTypeFontPolygonRasterizer=class(TpvVulkanTrueTypeFontRasterizer)
+     TpvTrueTypeFontPolygonRasterizer=class(TpvTrueTypeFontRasterizer)
       protected
        fCurrentWidth:TpvInt32;
        fCurrentHeight:TpvInt32;
        fCurrentGamma:TpvDouble;
        fCurrentWindingRule:TpvInt32;
-       fCurrentGammaLookUpTable:TpvVulkanTrueTypeFontPolygonRasterizerGammaLookUpTable;
+       fCurrentGammaLookUpTable:TpvTrueTypeFontPolygonRasterizerGammaLookUpTable;
        fCellX:TpvInt32;
        fCellY:TpvInt32;
        fArea:TpvInt32;
        fCover:TpvInt32;
-       fCells:TpvVulkanTrueTypeFontPolygonRasterizerCells;
+       fCells:TpvTrueTypeFontPolygonRasterizerCells;
        fNumCells:TpvInt32;
        fX:TpvInt32;
        fY:TpvInt32;
        fMoveToX:TpvInt32;
        fMoveToY:TpvInt32;
-       fScanlines:TpvVulkanTrueTypeFontPolygonRasterizerScanlines;
+       fScanlines:TpvTrueTypeFontPolygonRasterizerScanlines;
        fRenderMinY:TpvInt32;
        fRenderMaxY:TpvInt32;
        fNeedToClose:boolean;
@@ -376,7 +376,7 @@ type EpvVulkanTrueTypeFont=class(Exception);
        procedure SetHeight(NewHeight:TpvInt32); override;
        function GetWindingRule:TpvInt32; override;
        procedure SetWindingRule(NewWindingRule:TpvInt32); override;
-       function NewCell:PpvVulkanTrueTypeFontPolygonRasterizerCell;
+       function NewCell:PpvTrueTypeFontPolygonRasterizerCell;
        procedure RecordCell;
        procedure SetCell(NewX,NewY:TpvInt32;Force:boolean=false);
        procedure StartCell(NewX,NewY:TpvInt32);
@@ -397,21 +397,21 @@ type EpvVulkanTrueTypeFont=class(Exception);
        procedure Close; override;
        procedure Render; override;
        property Gamma:TpvDouble read fCurrentGamma write SetGamma;
-       property GammaLookUpTable:TpvVulkanTrueTypeFontPolygonRasterizerGammaLookUpTable read fCurrentGammaLookUpTable write fCurrentGammaLookUpTable;
+       property GammaLookUpTable:TpvTrueTypeFontPolygonRasterizerGammaLookUpTable read fCurrentGammaLookUpTable write fCurrentGammaLookUpTable;
        property Antialiasing:boolean read fAntialiasing write fAntialiasing;
      end;
 
-     TpvVulkanTrueTypeFontStrokeRasterizerPoint=record
+     TpvTrueTypeFontStrokeRasterizerPoint=record
       x:TpvInt32;
       y:TpvInt32;
       d:TpvInt32;
      end;
 
-     TpvVulkanTrueTypeFontStrokeRasterizerPoints=array of TpvVulkanTrueTypeFontStrokeRasterizerPoint;
+     TpvTrueTypeFontStrokeRasterizerPoints=array of TpvTrueTypeFontStrokeRasterizerPoint;
 
-     TpvVulkanTrueTypeFontStrokeRasterizer=class(TpvVulkanTrueTypeFontRasterizer)
+     TpvTrueTypeFontStrokeRasterizer=class(TpvTrueTypeFontRasterizer)
       private
-       fLinePoints:TpvVulkanTrueTypeFontStrokeRasterizerPoints;
+       fLinePoints:TpvTrueTypeFontStrokeRasterizerPoints;
        fNumLinePoints:TpvInt32;
        fLineWidth:TpvDouble;
        fLineCapMode:TpvInt32;
@@ -422,7 +422,7 @@ type EpvVulkanTrueTypeFont=class(Exception);
        fStartLineX:TpvInt32;
        fStartLineY:TpvInt32;
        fFlushLineOnWork:boolean;
-       fRasterizer:TpvVulkanTrueTypeFontRasterizer;
+       fRasterizer:TpvTrueTypeFontRasterizer;
        procedure AddLinePoint(const x,y:TpvInt32);
        procedure ConvertLineStorkeToPolygon;
        procedure FlushLine;
@@ -436,7 +436,7 @@ type EpvVulkanTrueTypeFont=class(Exception);
        function GetWindingRule:TpvInt32; override;
        procedure SetWindingRule(NewWindingRule:TpvInt32); override;
       public
-       constructor Create(Rasterizer:TpvVulkanTrueTypeFontRasterizer); reintroduce;
+       constructor Create(Rasterizer:TpvTrueTypeFontRasterizer); reintroduce;
        destructor Destroy; override;
        procedure Clear; override;
        procedure Reset; override;
@@ -453,43 +453,43 @@ type EpvVulkanTrueTypeFont=class(Exception);
        property LineStrokePatternStepSize:TpvDouble read fLineStrokePatternStepSize write fLineStrokePatternStepSize;
      end;
 
-     PpvVulkanTrueTypeFontKerningPair=^TpvVulkanTrueTypeFontKerningPair;
-     TpvVulkanTrueTypeFontKerningPair=record
+     PpvTrueTypeFontKerningPair=^TpvTrueTypeFontKerningPair;
+     TpvTrueTypeFontKerningPair=record
       Left:TpvUInt32;
       Right:TpvUInt32;
       Value:TpvInt32;
      end;
 
-     TpvVulkanTrueTypeFontKerningPairs=array of TpvVulkanTrueTypeFontKerningPair;
+     TpvTrueTypeFontKerningPairs=array of TpvTrueTypeFontKerningPair;
 
-     PpvVulkanTrueTypeFontKerningTable=^TpvVulkanTrueTypeFontKerningTable;
-     TpvVulkanTrueTypeFontKerningTable=record
+     PpvTrueTypeFontKerningTable=^TpvTrueTypeFontKerningTable;
+     TpvTrueTypeFontKerningTable=record
       Horizontal:longbool;
       Minimum:longbool;
       XStream:longbool;
       ValueOverride:longbool;
       BinarySearch:longbool;
-      KerningPairs:TpvVulkanTrueTypeFontKerningPairs;
+      KerningPairs:TpvTrueTypeFontKerningPairs;
       CountKerningPairs:TpvInt32;
      end;
 
-     TpvVulkanTrueTypeFontKerningTables=array of TpvVulkanTrueTypeFontKerningTable;
+     TpvTrueTypeFontKerningTables=array of TpvTrueTypeFontKerningTable;
 
-     PpvVulkanTrueTypeFontGlyphPoint=^TpvVulkanTrueTypeFontGlyphPoint;
-     TpvVulkanTrueTypeFontGlyphPoint=record
+     PpvTrueTypeFontGlyphPoint=^TpvTrueTypeFontGlyphPoint;
+     TpvTrueTypeFontGlyphPoint=record
       x:TpvInt32;
       y:TpvInt32;
       Flags:TpvUInt32;
      end;
-     TpvVulkanTrueTypeFontGlyphPoints=array of TpvVulkanTrueTypeFontGlyphPoint;
+     TpvTrueTypeFontGlyphPoints=array of TpvTrueTypeFontGlyphPoint;
 
-     TpvVulkanTrueTypeFontContour=record
-      Points:TpvVulkanTrueTypeFontGlyphPoints;
+     TpvTrueTypeFontContour=record
+      Points:TpvTrueTypeFontGlyphPoints;
      end;
-     TpvVulkanTrueTypeFontContours=array of TpvVulkanTrueTypeFontContour;
+     TpvTrueTypeFontContours=array of TpvTrueTypeFontContour;
 
-     PpvVulkanTrueTypeFontGlyphCompositeSubGlyph=^TpvVulkanTrueTypeFontGlyphCompositeSubGlyph;
-     TpvVulkanTrueTypeFontGlyphCompositeSubGlyph=record
+     PpvTrueTypeFontGlyphCompositeSubGlyph=^TpvTrueTypeFontGlyphCompositeSubGlyph;
+     TpvTrueTypeFontGlyphCompositeSubGlyph=record
       Glyph:TpvUInt32;
       Flags:TpvUInt32;
       Arg1:TpvInt32;
@@ -500,83 +500,83 @@ type EpvVulkanTrueTypeFont=class(Exception);
       yy:TpvInt32;
      end;
 
-     TpvVulkanTrueTypeFontGlyphCompositeSubGlyphs=array of TpvVulkanTrueTypeFontGlyphCompositeSubGlyph;
+     TpvTrueTypeFontGlyphCompositeSubGlyphs=array of TpvTrueTypeFontGlyphCompositeSubGlyph;
 
-     PpvVulkanTrueTypeFontGlyphBounds=^TpvVulkanTrueTypeFontGlyphBounds;
-     TpvVulkanTrueTypeFontGlyphBounds=record
+     PpvTrueTypeFontGlyphBounds=^TpvTrueTypeFontGlyphBounds;
+     TpvTrueTypeFontGlyphBounds=record
       XMin:TpvInt16;
       YMin:TpvInt16;
       XMax:TpvInt16;
       YMax:TpvInt16;
      end;
 
-     TpvVulkanTrueTypeFontGlyphEndPointIndices=array of TpvInt32;
+     TpvTrueTypeFontGlyphEndPointIndices=array of TpvInt32;
 
-     PpvVulkanTrueTypeFontGlyphBuffer=^TpvVulkanTrueTypeFontGlyphBuffer;
-     TpvVulkanTrueTypeFontGlyphBuffer=record
-      Bounds:TpvVulkanTrueTypeFontGlyphBounds;
-      Points:TpvVulkanTrueTypeFontGlyphPoints;
-      UnhintedPoints:TpvVulkanTrueTypeFontGlyphPoints;
-      InFontUnitsPoints:TpvVulkanTrueTypeFontGlyphPoints;
-      EndPointIndices:TpvVulkanTrueTypeFontGlyphEndPointIndices;
+     PpvTrueTypeFontGlyphBuffer=^TpvTrueTypeFontGlyphBuffer;
+     TpvTrueTypeFontGlyphBuffer=record
+      Bounds:TpvTrueTypeFontGlyphBounds;
+      Points:TpvTrueTypeFontGlyphPoints;
+      UnhintedPoints:TpvTrueTypeFontGlyphPoints;
+      InFontUnitsPoints:TpvTrueTypeFontGlyphPoints;
+      EndPointIndices:TpvTrueTypeFontGlyphEndPointIndices;
       CountPoints:TpvInt32;
       CountIndices:TpvInt32;
      end;
 
-     PpvVulkanTrueTypeFontByteArray=^TpvVulkanTrueTypeFontByteArray;
-     TpvVulkanTrueTypeFontByteArray=array[0..65535] of TpvUInt8;
+     PpvTrueTypeFontByteArray=^TpvTrueTypeFontByteArray;
+     TpvTrueTypeFontByteArray=array[0..65535] of TpvUInt8;
 
-     PpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes=^TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
-     TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes=record
-      Data:PpvVulkanTrueTypeFontByteArray;
+     PpvTrueTypeFontByteCodeInterpreterProgramBytes=^TpvTrueTypeFontByteCodeInterpreterProgramBytes;
+     TpvTrueTypeFontByteCodeInterpreterProgramBytes=record
+      Data:PpvTrueTypeFontByteArray;
       Size:TpvInt32;
      end;
 
-     TpvVulkanTrueTypeFontPolygonCommandType=
+     TpvTrueTypeFontPolygonCommandType=
       (
-       VkTTF_PolygonCommandType_MOVETO,
-       VkTTF_PolygonCommandType_LINETO,
-       VkTTF_PolygonCommandType_QUADRATICCURVETO,
-       VkTTF_PolygonCommandType_CUBICCURVETO,
-       VkTTF_PolygonCommandType_CLOSE
+       pvTTF_PolygonCommandType_MOVETO,
+       pvTTF_PolygonCommandType_LINETO,
+       pvTTF_PolygonCommandType_QUADRATICCURVETO,
+       pvTTF_PolygonCommandType_CUBICCURVETO,
+       pvTTF_PolygonCommandType_CLOSE
       );
 
-     TpvVulkanTrueTypeFontPolygonCommandPoint=packed record
+     TpvTrueTypeFontPolygonCommandPoint=packed record
       x:TpvDouble;
       y:TpvDouble;
      end;
 
-     TpvVulkanTrueTypeFontPolygonCommandPoints=array[0..2] of TpvVulkanTrueTypeFontPolygonCommandPoint;
+     TpvTrueTypeFontPolygonCommandPoints=array[0..2] of TpvTrueTypeFontPolygonCommandPoint;
 
-     PpvVulkanTrueTypeFontPolygonCommand=^TpvVulkanTrueTypeFontPolygonCommand;
-     TpvVulkanTrueTypeFontPolygonCommand=record
-      CommandType:TpvVulkanTrueTypeFontPolygonCommandType;
-      Points:TpvVulkanTrueTypeFontPolygonCommandPoints;
+     PpvTrueTypeFontPolygonCommand=^TpvTrueTypeFontPolygonCommand;
+     TpvTrueTypeFontPolygonCommand=record
+      CommandType:TpvTrueTypeFontPolygonCommandType;
+      Points:TpvTrueTypeFontPolygonCommandPoints;
      end;
 
-     TpvVulkanTrueTypeFontPolygonCommands=array of TpvVulkanTrueTypeFontPolygonCommand;
+     TpvTrueTypeFontPolygonCommands=array of TpvTrueTypeFontPolygonCommand;
 
-     PpvVulkanTrueTypeFontPolygon=^TpvVulkanTrueTypeFontPolygon;
-     TpvVulkanTrueTypeFontPolygon=record
-      Commands:TpvVulkanTrueTypeFontPolygonCommands;
+     PpvTrueTypeFontPolygon=^TpvTrueTypeFontPolygon;
+     TpvTrueTypeFontPolygon=record
+      Commands:TpvTrueTypeFontPolygonCommands;
      end;
 
-     PpvVulkanTrueTypeFontPolygonBuffer=^TpvVulkanTrueTypeFontPolygonBuffer;
-     TpvVulkanTrueTypeFontPolygonBuffer=record
-      Commands:TpvVulkanTrueTypeFontPolygonCommands;
+     PpvTrueTypeFontPolygonBuffer=^TpvTrueTypeFontPolygonBuffer;
+     TpvTrueTypeFontPolygonBuffer=record
+      Commands:TpvTrueTypeFontPolygonCommands;
       CountCommands:TpvInt32;
      end;
 
-     TpvVulkanTrueTypeFontPolygonBuffers=array of TpvVulkanTrueTypeFontPolygonBuffer;
-     PpvVulkanTrueTypeFontGlyph=^TpvVulkanTrueTypeFontGlyph;
-     TpvVulkanTrueTypeFontGlyph=record
-      Bounds:TpvVulkanTrueTypeFontGlyphBounds;
-      Points:TpvVulkanTrueTypeFontGlyphPoints;
-      EndPointIndices:TpvVulkanTrueTypeFontGlyphEndPointIndices;
-      CompositeSubGlyphs:TpvVulkanTrueTypeFontGlyphCompositeSubGlyphs;
+     TpvTrueTypeFontPolygonBuffers=array of TpvTrueTypeFontPolygonBuffer;
+     PpvTrueTypeFontGlyph=^TpvTrueTypeFontGlyph;
+     TpvTrueTypeFontGlyph=record
+      Bounds:TpvTrueTypeFontGlyphBounds;
+      Points:TpvTrueTypeFontGlyphPoints;
+      EndPointIndices:TpvTrueTypeFontGlyphEndPointIndices;
+      CompositeSubGlyphs:TpvTrueTypeFontGlyphCompositeSubGlyphs;
       UseMetricsFrom:TpvInt32;
-      PostScriptPolygon:TpvVulkanTrueTypeFontPolygonBuffer;
-      Instructions:TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
+      PostScriptPolygon:TpvTrueTypeFontPolygonBuffer;
+      Instructions:TpvTrueTypeFontByteCodeInterpreterProgramBytes;
       Locked:longbool;
       AdvanceWidth:TpvInt32;
       AdvanceHeight:TpvInt32;
@@ -584,146 +584,146 @@ type EpvVulkanTrueTypeFont=class(Exception);
       TopSideBearing:TpvInt32;
      end;
 
-     TpvVulkanTrueTypeFontGlyphs=array of TpvVulkanTrueTypeFontGlyph;
+     TpvTrueTypeFontGlyphs=array of TpvTrueTypeFontGlyph;
 
-     TpvVulkanTrueTypeFontCVTTable=array of TpvInt32;
+     TpvTrueTypeFontCVTTable=array of TpvInt32;
 
-     TpvVulkanTrueTypeFontBytes=array of TpvUInt8;
+     TpvTrueTypeFontBytes=array of TpvUInt8;
 
-     TpvVulkanTrueTypeFontLongWords=array of TpvUInt32;
+     TpvTrueTypeFontLongWords=array of TpvUInt32;
 
      TpvVulkanCFFCodePointToGlyphIndexTable=array of TpvInt32;
 
-     TpvVulkanTrueTypeFontGlyphIndexSubHeaderKeys=array[0..255] of TpvUInt16;
+     TpvTrueTypeFontGlyphIndexSubHeaderKeys=array[0..255] of TpvUInt16;
 
-     PpvVulkanTrueTypeFontGASPRange=^TpvVulkanTrueTypeFontGASPRange;
-     TpvVulkanTrueTypeFontGASPRange=record
+     PpvTrueTypeFontGASPRange=^TpvTrueTypeFontGASPRange;
+     TpvTrueTypeFontGASPRange=record
       LowerPPEM:TpvInt32;
       UpperPPEM:TpvInt32;
       Flags:TpvUInt32;
      end;
 
-     TpvVulkanTrueTypeFontGASPRanges=array of TpvVulkanTrueTypeFontGASPRange;
+     TpvTrueTypeFontGASPRanges=array of TpvTrueTypeFontGASPRange;
 
-     TpvVulkanTrueTypeFontGlyphFlagBitmap=array of TpvUInt32;
+     TpvTrueTypeFontGlyphFlagBitmap=array of TpvUInt32;
 
-     PpvVulkanTrueTypeFont2d14=^TpvVulkanTrueTypeFontVector2d14;
-     TpvVulkanTrueTypeFont2d14=TpvInt16;
+     PpvTrueTypeFont2d14=^TpvTrueTypeFontVector2d14;
+     TpvTrueTypeFont2d14=TpvInt16;
 
-     PpvVulkanTrueTypeFont26d6=^TpvVulkanTrueTypeFontVector26d6;
-     TpvVulkanTrueTypeFont26d6=TpvInt32;
+     PpvTrueTypeFont26d6=^TpvTrueTypeFontVector26d6;
+     TpvTrueTypeFont26d6=TpvInt32;
 
-     PpvVulkanTrueTypeFontVector2d14=^TpvVulkanTrueTypeFontVector2d14;
-     TpvVulkanTrueTypeFontVector2d14=array[0..1] of TpvVulkanTrueTypeFont2d14;
+     PpvTrueTypeFontVector2d14=^TpvTrueTypeFontVector2d14;
+     TpvTrueTypeFontVector2d14=array[0..1] of TpvTrueTypeFont2d14;
 
-     PpvVulkanTrueTypeFontVector26d6=^TpvVulkanTrueTypeFontVector26d6;
-     TpvVulkanTrueTypeFontVector26d6=array[0..1] of TpvVulkanTrueTypeFont26d6;
+     PpvTrueTypeFontVector26d6=^TpvTrueTypeFontVector26d6;
+     TpvTrueTypeFontVector26d6=array[0..1] of TpvTrueTypeFont26d6;
 
-     PpvVulkanTrueTypeFontVectorThreeInt32=^TpvVulkanTrueTypeFontVectorThreeInt32;
-     TpvVulkanTrueTypeFontVectorThreeInt32=array[0..2] of TpvInt32;
+     PpvTrueTypeFontVectorThreeInt32=^TpvTrueTypeFontVectorThreeInt32;
+     TpvTrueTypeFontVectorThreeInt32=array[0..2] of TpvInt32;
 
-     PpvVulkanTrueTypeFontGraphicsState=^TpvVulkanTrueTypeFontGraphicsState;
-     TpvVulkanTrueTypeFontGraphicsState=record
-      pv:TpvVulkanTrueTypeFontVector2d14;
-      fv:TpvVulkanTrueTypeFontVector2d14;
-      dv:TpvVulkanTrueTypeFontVector2d14;
-      rp:TpvVulkanTrueTypeFontVectorThreeInt32;
-      zp:TpvVulkanTrueTypeFontVectorThreeInt32;
-      ControlValueCutIn:TpvVulkanTrueTypeFont26d6;
-      SingleWidthCutIn:TpvVulkanTrueTypeFont26d6;
-      SingleWidth:TpvVulkanTrueTypeFont26d6;
+     PpvTrueTypeFontGraphicsState=^TpvTrueTypeFontGraphicsState;
+     TpvTrueTypeFontGraphicsState=record
+      pv:TpvTrueTypeFontVector2d14;
+      fv:TpvTrueTypeFontVector2d14;
+      dv:TpvTrueTypeFontVector2d14;
+      rp:TpvTrueTypeFontVectorThreeInt32;
+      zp:TpvTrueTypeFontVectorThreeInt32;
+      ControlValueCutIn:TpvTrueTypeFont26d6;
+      SingleWidthCutIn:TpvTrueTypeFont26d6;
+      SingleWidth:TpvTrueTypeFont26d6;
       DeltaBase:TpvInt32;
       DeltaShift:TpvInt32;
-      MinDist:TpvVulkanTrueTypeFont26d6;
+      MinDist:TpvTrueTypeFont26d6;
       Loop:TpvInt32;
-      RoundPeriod:TpvVulkanTrueTypeFont26d6;
-      RoundPhase:TpvVulkanTrueTypeFont26d6;
-      RoundThreshold:TpvVulkanTrueTypeFont26d6;
+      RoundPeriod:TpvTrueTypeFont26d6;
+      RoundPhase:TpvTrueTypeFont26d6;
+      RoundThreshold:TpvTrueTypeFont26d6;
       RoundSuper45:boolean;
       AutoFlip:boolean;
       InstructionControl:TpvInt32;
      end;
 
-     TpvVulkanTrueTypeFontByteCodeInterpreterInt32Array=array of TpvInt32;
+     TpvTrueTypeFontByteCodeInterpreterInt32Array=array of TpvInt32;
 
-     TpvVulkanTrueTypeFontByteCodeInterpreterPoints=array[0..VkTTF_Zone_Count-1,0..VkTTF_PointType_Count-1] of TpvVulkanTrueTypeFontGlyphPoints;
+     TpvTrueTypeFontByteCodeInterpreterPoints=array[0..pvTTF_Zone_Count-1,0..pvTTF_PointType_Count-1] of TpvTrueTypeFontGlyphPoints;
 
-     PpvVulkanTrueTypeFontByteCodeInterpreterCallStackEntry=^TpvVulkanTrueTypeFontByteCodeInterpreterCallStackEntry;
-     TpvVulkanTrueTypeFontByteCodeInterpreterCallStackEntry=record
-       ProgramBytes:TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
+     PpvTrueTypeFontByteCodeInterpreterCallStackEntry=^TpvTrueTypeFontByteCodeInterpreterCallStackEntry;
+     TpvTrueTypeFontByteCodeInterpreterCallStackEntry=record
+       ProgramBytes:TpvTrueTypeFontByteCodeInterpreterProgramBytes;
        PC:TpvInt32;
        LoopCount:TpvInt32;
      end;
 
-     PpvVulkanTrueTypeFontByteCodeInterpreterCallStackEntries=^TpvVulkanTrueTypeFontByteCodeInterpreterCallStackEntries;
-     TpvVulkanTrueTypeFontByteCodeInterpreterCallStackEntries=array[0..31] of TpvVulkanTrueTypeFontByteCodeInterpreterCallStackEntry;
+     PpvTrueTypeFontByteCodeInterpreterCallStackEntries=^TpvTrueTypeFontByteCodeInterpreterCallStackEntries;
+     TpvTrueTypeFontByteCodeInterpreterCallStackEntries=array[0..31] of TpvTrueTypeFontByteCodeInterpreterCallStackEntry;
 
-     TpvVulkanTrueTypeFontByteCodeInterpreterFunctions=array of TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
+     TpvTrueTypeFontByteCodeInterpreterFunctions=array of TpvTrueTypeFontByteCodeInterpreterProgramBytes;
 
-     PpvVulkanTrueTypeFontByteCodeInterpreterParameters=^TpvVulkanTrueTypeFontByteCodeInterpreterParameters;
-     TpvVulkanTrueTypeFontByteCodeInterpreterParameters=record
-      pCurrent:TpvVulkanTrueTypeFontGlyphPoints;
-      pUnhinted:TpvVulkanTrueTypeFontGlyphPoints;
-      pInFontUnits:TpvVulkanTrueTypeFontGlyphPoints;
-      Ends:TpvVulkanTrueTypeFontGlyphEndPointIndices;
+     PpvTrueTypeFontByteCodeInterpreterParameters=^TpvTrueTypeFontByteCodeInterpreterParameters;
+     TpvTrueTypeFontByteCodeInterpreterParameters=record
+      pCurrent:TpvTrueTypeFontGlyphPoints;
+      pUnhinted:TpvTrueTypeFontGlyphPoints;
+      pInFontUnits:TpvTrueTypeFontGlyphPoints;
+      Ends:TpvTrueTypeFontGlyphEndPointIndices;
      end;
 
-     TpvVulkanTrueTypeFontByteCodeInterpreter=class
+     TpvTrueTypeFontByteCodeInterpreter=class
       private
-       fFont:TpvVulkanTrueTypeFont;
+       fFont:TpvTrueTypeFont;
 {$ifdef ttfdebug}
-       fLastCVT:TpvVulkanTrueTypeFontByteCodeInterpreterInt32Array;
-       fLastStack:TpvVulkanTrueTypeFontByteCodeInterpreterInt32Array;
-       fLastStorage:TpvVulkanTrueTypeFontByteCodeInterpreterInt32Array;
-       fLastGraphicsState:TpvVulkanTrueTypeFontGraphicsState;
-       fLastPoints:TpvVulkanTrueTypeFontByteCodeInterpreterPoints;
+       fLastCVT:TpvTrueTypeFontByteCodeInterpreterInt32Array;
+       fLastStack:TpvTrueTypeFontByteCodeInterpreterInt32Array;
+       fLastStorage:TpvTrueTypeFontByteCodeInterpreterInt32Array;
+       fLastGraphicsState:TpvTrueTypeFontGraphicsState;
+       fLastPoints:TpvTrueTypeFontByteCodeInterpreterPoints;
 {$endif}
-       fCVT:TpvVulkanTrueTypeFontByteCodeInterpreterInt32Array;
-       fStack:TpvVulkanTrueTypeFontByteCodeInterpreterInt32Array;
-       fStorage:TpvVulkanTrueTypeFontByteCodeInterpreterInt32Array;
-       fFunctions:TpvVulkanTrueTypeFontByteCodeInterpreterFunctions;
+       fCVT:TpvTrueTypeFontByteCodeInterpreterInt32Array;
+       fStack:TpvTrueTypeFontByteCodeInterpreterInt32Array;
+       fStorage:TpvTrueTypeFontByteCodeInterpreterInt32Array;
+       fFunctions:TpvTrueTypeFontByteCodeInterpreterFunctions;
        fScale:TpvInt32;
        fForceReinitialize:longbool;
-       fGraphicsState:TpvVulkanTrueTypeFontGraphicsState;
-       fDefaultGraphicsState:TpvVulkanTrueTypeFontGraphicsState;
-       fPoints:TpvVulkanTrueTypeFontByteCodeInterpreterPoints;
-       fEnds:TpvVulkanTrueTypeFontGlyphEndPointIndices;
+       fGraphicsState:TpvTrueTypeFontGraphicsState;
+       fDefaultGraphicsState:TpvTrueTypeFontGraphicsState;
+       fPoints:TpvTrueTypeFontByteCodeInterpreterPoints;
+       fEnds:TpvTrueTypeFontGlyphEndPointIndices;
       public
-       constructor Create(AFont:TpvVulkanTrueTypeFont);
+       constructor Create(AFont:TpvTrueTypeFont);
        destructor Destroy; override;
        procedure Reinitialize;
-       function SkipInstructionPayload(const ProgramBytes:TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes;var PC:TpvInt32):boolean;
+       function SkipInstructionPayload(const ProgramBytes:TpvTrueTypeFontByteCodeInterpreterProgramBytes;var PC:TpvInt32):boolean;
        function MulDiv(a,b,c:TpvInt32;DoRound:boolean):TpvInt32;
-       procedure MovePoint(var p:TpvVulkanTrueTypeFontGlyphPoint;Distance:TpvInt32;Touch:boolean);
-       function DotProduct(x,y:TpvVulkanTrueTypeFont26d6;const q:TpvVulkanTrueTypeFontVector2d14):TpvVulkanTrueTypeFont26d6;
-       function Div18d14(a,b:TpvVulkanTrueTypeFont26d6):TpvVulkanTrueTypeFont26d6;
-       function Mul18d14(a,b:TpvVulkanTrueTypeFont26d6):TpvVulkanTrueTypeFont26d6;
-       function Div26d6(a,b:TpvVulkanTrueTypeFont26d6):TpvVulkanTrueTypeFont26d6;
-       function Mul26d6(a,b:TpvVulkanTrueTypeFont26d6):TpvVulkanTrueTypeFont26d6;
-       function RoundValue(Value:TpvVulkanTrueTypeFont26d6):TpvVulkanTrueTypeFont26d6;
+       procedure MovePoint(var p:TpvTrueTypeFontGlyphPoint;Distance:TpvInt32;Touch:boolean);
+       function DotProduct(x,y:TpvTrueTypeFont26d6;const q:TpvTrueTypeFontVector2d14):TpvTrueTypeFont26d6;
+       function Div18d14(a,b:TpvTrueTypeFont26d6):TpvTrueTypeFont26d6;
+       function Mul18d14(a,b:TpvTrueTypeFont26d6):TpvTrueTypeFont26d6;
+       function Div26d6(a,b:TpvTrueTypeFont26d6):TpvTrueTypeFont26d6;
+       function Mul26d6(a,b:TpvTrueTypeFont26d6):TpvTrueTypeFont26d6;
+       function RoundValue(Value:TpvTrueTypeFont26d6):TpvTrueTypeFont26d6;
        procedure IUPInterpolate(IUPY:boolean;p1,p2,ref1,ref2:TpvInt32);
        procedure IUPShift(IUPY:boolean;p1,p2,p:TpvInt32);
-       function GetPoint(ZonePointer,PointType,Index:TpvInt32):PpvVulkanTrueTypeFontGlyphPoint;
-       procedure Normalize(var x,y:TpvVulkanTrueTypeFont26d6);
+       function GetPoint(ZonePointer,PointType,Index:TpvInt32):PpvTrueTypeFontGlyphPoint;
+       procedure Normalize(var x,y:TpvTrueTypeFont26d6);
        function GetCVT(Index:TpvInt32):TpvInt32;
        procedure SetCVT(Index,Value:TpvInt32);
-       procedure ComputePointDisplacement(Flag:boolean;var Zone,Ref:TpvInt32;var dx,dy:TpvVulkanTrueTypeFont26d6);
-       procedure Run(ProgramBytes:TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes;Parameters:PpvVulkanTrueTypeFontByteCodeInterpreterParameters=nil);
-       property Font:TpvVulkanTrueTypeFont read fFont;
+       procedure ComputePointDisplacement(Flag:boolean;var Zone,Ref:TpvInt32;var dx,dy:TpvTrueTypeFont26d6);
+       procedure Run(ProgramBytes:TpvTrueTypeFontByteCodeInterpreterProgramBytes;Parameters:PpvTrueTypeFontByteCodeInterpreterParameters=nil);
+       property Font:TpvTrueTypeFont read fFont;
      end;
 
-     TpvVulkanTrueTypeFont=class
+     TpvTrueTypeFont=class
       private
-       fGlyphBuffer:TpvVulkanTrueTypeFontGlyphBuffer;
-       fPolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;
-       fFontData:TpvVulkanTrueTypeFontBytes;
-       fGlyphLoadedBitmap:TpvVulkanTrueTypeFontGlyphFlagBitmap;
-       fGlyphs:TpvVulkanTrueTypeFontGlyphs;
-       fCMaps:array[0..1] of PpvVulkanTrueTypeFontByteArray;
+       fGlyphBuffer:TpvTrueTypeFontGlyphBuffer;
+       fPolygonBuffer:TpvTrueTypeFontPolygonBuffer;
+       fFontData:TpvTrueTypeFontBytes;
+       fGlyphLoadedBitmap:TpvTrueTypeFontGlyphFlagBitmap;
+       fGlyphs:TpvTrueTypeFontGlyphs;
+       fCMaps:array[0..1] of PpvTrueTypeFontByteArray;
        fCMapLengths:array[0..1] of TpvInt32;
-       fGlyphOffsetArray:TpvVulkanTrueTypeFontLongWords;
-       fKerningTables:TpvVulkanTrueTypeFontKerningTables;
-       fSubHeaderKeys:TpvVulkanTrueTypeFontGlyphIndexSubHeaderKeys;
+       fGlyphOffsetArray:TpvTrueTypeFontLongWords;
+       fKerningTables:TpvTrueTypeFontKerningTables;
+       fSubHeaderKeys:TpvTrueTypeFontGlyphIndexSubHeaderKeys;
        fFontDataSize:TpvInt32;
        fGlyfOffset:TpvUInt32;
        fNumfHMetrics:TpvUInt16;
@@ -768,13 +768,13 @@ type EpvVulkanTrueTypeFont=class(Exception);
        fMaxStorage:TpvInt32;
        fMaxFunctionDefs:TpvInt32;
        fMaxStackElements:TpvInt32;
-       fCVT:TpvVulkanTrueTypeFontCVTTable;
-       fFPGM:TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
-       fPREP:TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
-       fByteCodeInterpreter:TpvVulkanTrueTypeFontByteCodeInterpreter;
-       fByteCodeInterpreterParameters:TpvVulkanTrueTypeFontByteCodeInterpreterParameters;
+       fCVT:TpvTrueTypeFontCVTTable;
+       fFPGM:TpvTrueTypeFontByteCodeInterpreterProgramBytes;
+       fPREP:TpvTrueTypeFontByteCodeInterpreterProgramBytes;
+       fByteCodeInterpreter:TpvTrueTypeFontByteCodeInterpreter;
+       fByteCodeInterpreterParameters:TpvTrueTypeFontByteCodeInterpreterParameters;
        fIgnoreByteCodeInterpreter:boolean;
-       fGASPRanges:TpvVulkanTrueTypeFontGASPRanges;
+       fGASPRanges:TpvTrueTypeFontGASPRanges;
        fCFFCodePointToGlyphIndexTable:TpvVulkanCFFCodePointToGlyphIndexTable;
        function ReadFontData(Stream:TStream;CollectionIndex:TpvInt32):TpvInt32;
        function GetTableDirEntry(Tag:TpvUInt32;var CheckSum,Offset,Size:TpvUInt32):TpvInt32;
@@ -799,9 +799,9 @@ type EpvVulkanTrueTypeFont=class(Exception);
        function LoadGlyphData(GlyphIndex:TpvInt32):TpvInt32;
        procedure SetSize(NewSize:TpvInt32);
       public
-       constructor Create(const Stream:TStream;const TargetPPI:TpvInt32=96;const ForceSelector:boolean=false;const PlatformID:TpvUInt16=VkTTF_PID_Microsoft;const SpecificID:TpvUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TpvUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TpvInt32=0);
+       constructor Create(const Stream:TStream;const TargetPPI:TpvInt32=96;const ForceSelector:boolean=false;const PlatformID:TpvUInt16=pvTTF_PID_Microsoft;const SpecificID:TpvUInt16=pvTTF_SID_MS_UNICODE_CS;const LanguageID:TpvUInt16=pvTTF_LID_MS_USEnglish;const CollectionIndex:TpvInt32=0);
        destructor Destroy; override;
-       function GetGASPRange:PpvVulkanTrueTypeFontGASPRange;
+       function GetGASPRange:PpvTrueTypeFontGASPRange;
        function GetGlyphIndex(CodePointCode:TpvUInt32;CMapIndex:TpvInt32=0):TpvUInt32;
        function GetGlyphAdvanceWidth(GlyphIndex:TpvInt32):TpvInt32;
        function GetGlyphAdvanceHeight(GlyphIndex:TpvInt32):TpvInt32;
@@ -823,24 +823,25 @@ type EpvVulkanTrueTypeFont=class(Exception);
        function GetScale:TpvInt32;
        function ScaleRound(Value:TpvInt32):TpvInt32;
        function IsPostScriptGlyph(const GlyphIndex:TpvInt32):boolean;
-       procedure ResetGlyphBuffer(var GlyphBuffer:TpvVulkanTrueTypeFontGlyphBuffer);
-       procedure TransformGlyphBuffer(var GlyphBuffer:TpvVulkanTrueTypeFontGlyphBuffer;GlyphStartPointIndex,StartIndex,EndIndex:TpvInt32);
-       procedure FillGlyphBuffer(var GlyphBuffer:TpvVulkanTrueTypeFontGlyphBuffer;const GlyphIndex:TpvInt32);
-       procedure ResetPolygonBuffer(var PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer);
-       procedure FillPolygonBuffer(var PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;const GlyphBuffer:TpvVulkanTrueTypeFontGlyphBuffer);
-       procedure FillPostScriptPolygonBuffer(var PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;const GlyphIndex:TpvInt32);
-       procedure FillTextPolygonBuffer(var PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;const Text:TpvUTF8String;const StartX:TpvInt32=0;const StartY:TpvInt32=0);
-       procedure GetPolygonBufferBounds(const PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TpvDouble;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
-       procedure DrawPolygonBuffer(Rasterizer:TpvVulkanTrueTypeFontRasterizer;const PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;x,y:TpvInt32;Tolerance:TpvInt32=2;MaxLevel:TpvInt32=32);
+       procedure ResetGlyphBuffer(var GlyphBuffer:TpvTrueTypeFontGlyphBuffer);
+       procedure TransformGlyphBuffer(var GlyphBuffer:TpvTrueTypeFontGlyphBuffer;GlyphStartPointIndex,StartIndex,EndIndex:TpvInt32);
+       procedure FillGlyphBuffer(var GlyphBuffer:TpvTrueTypeFontGlyphBuffer;const GlyphIndex:TpvInt32);
+       procedure ResetPolygonBuffer(var PolygonBuffer:TpvTrueTypeFontPolygonBuffer);
+       procedure FillPolygonBuffer(var PolygonBuffer:TpvTrueTypeFontPolygonBuffer;const GlyphBuffer:TpvTrueTypeFontGlyphBuffer);
+       procedure FillPostScriptPolygonBuffer(var PolygonBuffer:TpvTrueTypeFontPolygonBuffer;const GlyphIndex:TpvInt32);
+       procedure FillTextPolygonBuffer(var PolygonBuffer:TpvTrueTypeFontPolygonBuffer;const Text:TpvUTF8String;const StartX:TpvInt32=0;const StartY:TpvInt32=0);
+       procedure GetPolygonBufferBounds(const PolygonBuffer:TpvTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TpvDouble;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
+       procedure DrawPolygonBuffer(Rasterizer:TpvTrueTypeFontRasterizer;const PolygonBuffer:TpvTrueTypeFontPolygonBuffer;x,y:TpvInt32;Tolerance:TpvInt32=2;MaxLevel:TpvInt32=32);
        property TargetPPI:TpvInt32 read fTargetPPI;
-       property Glyphs:TpvVulkanTrueTypeFontGlyphs read fGlyphs;
+       property Glyphs:TpvTrueTypeFontGlyphs read fGlyphs;
        property CountGlyphs:TpvInt32 read fCountGlyphs;
+       property KerningTables:TpvTrueTypeFontKerningTables read fKerningTables;
        property Size:TpvInt32 read fSize write SetSize;
        property LetterSpacingX:TpvInt32 read fLetterSpacingX write fLetterSpacingX;
        property LetterSpacingY:TpvInt32 read fLetterSpacingY write fLetterSpacingY;
        property StyleIndex:TpvInt32 read fStyleIndex write fStyleIndex;
        property Hinting:boolean read fHinting write fHinting;
-       property GASPRanges:TpvVulkanTrueTypeFontGASPRanges read fGASPRanges;
+       property GASPRanges:TpvTrueTypeFontGASPRanges read fGASPRanges;
        property MinX:TpvInt16 read fMinX;
        property MinY:TpvInt16 read fMinY;
        property MaxX:TpvInt16 read fMaxX;
@@ -1165,7 +1166,7 @@ const PixelBits=8;
 
       DefaultGraphicsStateControlValueCutIn=(17 shl 6) div 16;
 
-      DefaultGraphicsState:TpvVulkanTrueTypeFontGraphicsState=
+      DefaultGraphicsState:TpvTrueTypeFontGraphicsState=
        (
         pv:($4000,0);
         fv:($4000,0);
@@ -1460,83 +1461,83 @@ end;
 
 function CompareKerningPairs(const a,b:TpvPointer):TpvInt32;
 begin
- result:=PpvVulkanTrueTypeFontKerningPair(a)^.Left-PpvVulkanTrueTypeFontKerningPair(b)^.Left;
+ result:=PpvTrueTypeFontKerningPair(a)^.Left-PpvTrueTypeFontKerningPair(b)^.Left;
  if result=0 then begin
-  result:=PpvVulkanTrueTypeFontKerningPair(a)^.Right-PpvVulkanTrueTypeFontKerningPair(b)^.Right;
+  result:=PpvTrueTypeFontKerningPair(a)^.Right-PpvTrueTypeFontKerningPair(b)^.Right;
  end;
 end;
 
-constructor TpvVulkanTrueTypeFontRasterizer.Create;
+constructor TpvTrueTypeFontRasterizer.Create;
 begin
  inherited Create;
 end;
 
-destructor TpvVulkanTrueTypeFontRasterizer.Destroy;
+destructor TpvTrueTypeFontRasterizer.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvVulkanTrueTypeFontRasterizer.GetCanvas:TpvPointer;
+function TpvTrueTypeFontRasterizer.GetCanvas:TpvPointer;
 begin
  result:=nil;
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.SetCanvas(NewCanvas:TpvPointer);
+procedure TpvTrueTypeFontRasterizer.SetCanvas(NewCanvas:TpvPointer);
 begin
 end;
 
-function TpvVulkanTrueTypeFontRasterizer.GetWidth:TpvInt32;
-begin
- result:=0;
-end;
-
-procedure TpvVulkanTrueTypeFontRasterizer.SetWidth(NewWidth:TpvInt32);
-begin
-end;
-
-function TpvVulkanTrueTypeFontRasterizer.GetHeight:TpvInt32;
+function TpvTrueTypeFontRasterizer.GetWidth:TpvInt32;
 begin
  result:=0;
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.SetHeight(NewHeight:TpvInt32);
+procedure TpvTrueTypeFontRasterizer.SetWidth(NewWidth:TpvInt32);
 begin
 end;
 
-function TpvVulkanTrueTypeFontRasterizer.GetWindingRule:TpvInt32;
+function TpvTrueTypeFontRasterizer.GetHeight:TpvInt32;
 begin
  result:=0;
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.SetWindingRule(NewWindingRule:TpvInt32);
+procedure TpvTrueTypeFontRasterizer.SetHeight(NewHeight:TpvInt32);
 begin
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.Clear;
+function TpvTrueTypeFontRasterizer.GetWindingRule:TpvInt32;
+begin
+ result:=0;
+end;
+
+procedure TpvTrueTypeFontRasterizer.SetWindingRule(NewWindingRule:TpvInt32);
 begin
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.Reset;
+procedure TpvTrueTypeFontRasterizer.Clear;
 begin
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.Resize(NewWidth,NewHeight:TpvInt32);
+procedure TpvTrueTypeFontRasterizer.Reset;
 begin
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.MoveTo(ToX,ToY:TpvInt32);
+procedure TpvTrueTypeFontRasterizer.Resize(NewWidth,NewHeight:TpvInt32);
+begin
+end;
+
+procedure TpvTrueTypeFontRasterizer.MoveTo(ToX,ToY:TpvInt32);
 begin
  fLastX:=ToX;
  fLastY:=ToY;
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.LineTo(ToX,ToY:TpvInt32);
+procedure TpvTrueTypeFontRasterizer.LineTo(ToX,ToY:TpvInt32);
 begin
  fLastX:=ToX;
  fLastY:=ToY;
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.QuadraticCurveTo(const ControlX,ControlY,AnchorX,AnchorY:TpvInt32;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
+procedure TpvTrueTypeFontRasterizer.QuadraticCurveTo(const ControlX,ControlY,AnchorX,AnchorY:TpvInt32;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
  procedure Recursive(const x1,y1,x2,y2,x3,y3,Level:TpvInt32);
  var x12,y12,x23,y23,x123,y123,MiddleX,MiddleY,Delta:TpvInt32;
  begin
@@ -1561,7 +1562,7 @@ begin
  LineTo(AnchorX,AnchorY);
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TpvInt32;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
+procedure TpvTrueTypeFontRasterizer.CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TpvInt32;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4,Level:TpvInt32);
  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,d:TpvInt32;
  begin
@@ -1591,19 +1592,19 @@ begin
  LineTo(ax,ay);
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.Close;
+procedure TpvTrueTypeFontRasterizer.Close;
 begin
 end;
 
-procedure TpvVulkanTrueTypeFontRasterizer.Render;
+procedure TpvTrueTypeFontRasterizer.Render;
 begin
 end;
 
-constructor TpvVulkanTrueTypeFontPolygonRasterizer.Create;
+constructor TpvTrueTypeFontPolygonRasterizer.Create;
 begin
  inherited Create;
  fCanvas:=nil;
- fCurrentWindingRule:=VkTTF_PolygonWindingRule_NONZERO;
+ fCurrentWindingRule:=pvTTF_PolygonWindingRule_NONZERO;
  fCurrentWidth:=0;
  fCurrentHeight:=0;
  fScanlines:=nil;
@@ -1615,7 +1616,7 @@ begin
  Reset;
 end;
 
-destructor TpvVulkanTrueTypeFontPolygonRasterizer.Destroy;
+destructor TpvTrueTypeFontPolygonRasterizer.Destroy;
 var i:TpvInt32;
 begin
  for i:=0 to length(fCells)-1 do begin
@@ -1629,54 +1630,54 @@ begin
  inherited Destroy;
 end;
 
-function TpvVulkanTrueTypeFontPolygonRasterizer.GetCanvas:TpvPointer;
+function TpvTrueTypeFontPolygonRasterizer.GetCanvas:TpvPointer;
 begin
  result:=fCanvas;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.SetCanvas(NewCanvas:TpvPointer);
+procedure TpvTrueTypeFontPolygonRasterizer.SetCanvas(NewCanvas:TpvPointer);
 begin
  fCanvas:=NewCanvas;
 end;
 
-function TpvVulkanTrueTypeFontPolygonRasterizer.GetWidth:TpvInt32;
+function TpvTrueTypeFontPolygonRasterizer.GetWidth:TpvInt32;
 begin
  result:=fCurrentWidth;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.SetWidth(NewWidth:TpvInt32);
+procedure TpvTrueTypeFontPolygonRasterizer.SetWidth(NewWidth:TpvInt32);
 begin
  Resize(NewWidth,fCurrentHeight);
 end;
 
-function TpvVulkanTrueTypeFontPolygonRasterizer.GetHeight:TpvInt32;
+function TpvTrueTypeFontPolygonRasterizer.GetHeight:TpvInt32;
 begin
  result:=fCurrentHeight;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.SetHeight(NewHeight:TpvInt32);
+procedure TpvTrueTypeFontPolygonRasterizer.SetHeight(NewHeight:TpvInt32);
 begin
  Resize(fCurrentWidth,NewHeight);
 end;
 
-function TpvVulkanTrueTypeFontPolygonRasterizer.GetWindingRule:TpvInt32;
+function TpvTrueTypeFontPolygonRasterizer.GetWindingRule:TpvInt32;
 begin
  result:=fCurrentWindingRule;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.SetWindingRule(NewWindingRule:TpvInt32);
+procedure TpvTrueTypeFontPolygonRasterizer.SetWindingRule(NewWindingRule:TpvInt32);
 begin
  fCurrentWindingRule:=NewWindingRule;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.Clear;
+procedure TpvTrueTypeFontPolygonRasterizer.Clear;
 begin
  if assigned(Canvas) then begin
   FillChar(Canvas^,fCurrentWidth*fCurrentHeight*SizeOf(TpvUInt8),AnsiChar(#0));
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.Reset;
+procedure TpvTrueTypeFontPolygonRasterizer.Reset;
 var i:TpvInt32;
 begin
  fNumCells:=0;
@@ -1697,7 +1698,7 @@ begin
  fLastY:=0;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.Resize(NewWidth,NewHeight:TpvInt32);
+procedure TpvTrueTypeFontPolygonRasterizer.Resize(NewWidth,NewHeight:TpvInt32);
 var i:TpvInt32;
 begin
  fCurrentWidth:=NewWidth;
@@ -1711,8 +1712,8 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFontPolygonRasterizer.NewCell:PpvVulkanTrueTypeFontPolygonRasterizerCell;
- procedure InsertBefore(CellNew,CellOld:PpvVulkanTrueTypeFontPolygonRasterizerCell);
+function TpvTrueTypeFontPolygonRasterizer.NewCell:PpvTrueTypeFontPolygonRasterizerCell;
+ procedure InsertBefore(CellNew,CellOld:PpvTrueTypeFontPolygonRasterizerCell);
  begin
   CellNew^.Next:=CellOld;
   CellNew^.Previous:=CellOld^.Previous;
@@ -1724,7 +1725,7 @@ function TpvVulkanTrueTypeFontPolygonRasterizer.NewCell:PpvVulkanTrueTypeFontPol
    fScanlines[fCellY].CellFirst:=CellNew;
   end;
  end;
- procedure InsertAfter(CellOld,CellNew:PpvVulkanTrueTypeFontPolygonRasterizerCell);
+ procedure InsertAfter(CellOld,CellNew:PpvTrueTypeFontPolygonRasterizerCell);
  begin
   CellNew^.Next:=CellOld^.Next;
   CellNew^.Previous:=CellOld;
@@ -1736,7 +1737,7 @@ function TpvVulkanTrueTypeFontPolygonRasterizer.NewCell:PpvVulkanTrueTypeFontPol
    fScanlines[fCellY].CellLast:=CellNew;
   end;
  end;
- function GetCell:PpvVulkanTrueTypeFontPolygonRasterizerCell;
+ function GetCell:PpvTrueTypeFontPolygonRasterizerCell;
  var i,OldCount,NewCount:TpvInt32;
  begin
   if fNumCells>=length(fCells) then begin
@@ -1755,7 +1756,7 @@ function TpvVulkanTrueTypeFontPolygonRasterizer.NewCell:PpvVulkanTrueTypeFontPol
   result^.Previous:=nil;
   result^.Next:=nil;
  end;
-var CurrentCell:PpvVulkanTrueTypeFontPolygonRasterizerCell;
+var CurrentCell:PpvTrueTypeFontPolygonRasterizerCell;
 begin
  if (fCellY<0) or (fCellY>=length(fScanlines)) then begin
   result:=nil;
@@ -1802,8 +1803,8 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.RecordCell;
-var Cell:PpvVulkanTrueTypeFontPolygonRasterizerCell;
+procedure TpvTrueTypeFontPolygonRasterizer.RecordCell;
+var Cell:PpvTrueTypeFontPolygonRasterizerCell;
 begin
  if (fArea<>0) or (fCover<>0) then begin
   Cell:=NewCell;
@@ -1814,7 +1815,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.SetCell(NewX,NewY:TpvInt32;Force:boolean=false);
+procedure TpvTrueTypeFontPolygonRasterizer.SetCell(NewX,NewY:TpvInt32;Force:boolean=false);
 begin
  if (fCellX<>NewX) or (fCellY<>NewY) or Force then begin
   RecordCell;
@@ -1825,14 +1826,14 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.StartCell(NewX,NewY:TpvInt32);
+procedure TpvTrueTypeFontPolygonRasterizer.StartCell(NewX,NewY:TpvInt32);
 begin
  fArea:=0;
  fCover:=0;
  SetCell(NewX,NewY,true);
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.RenderScanLine(NewY,x1,y1,x2,y2:TpvInt32);
+procedure TpvTrueTypeFontPolygonRasterizer.RenderScanLine(NewY,x1,y1,x2,y2:TpvInt32);
 var ex1,ex2,fx1,fx2,Delta,Temp,First,DeltaX,Increment,Lift,Modulo,Remainder:TpvInt32;
 begin
  DeltaX:=x2-x1;
@@ -1909,7 +1910,7 @@ begin
  inc(fCover,Delta);
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.RenderLine(ToX,ToY:TpvInt32);
+procedure TpvTrueTypeFontPolygonRasterizer.RenderLine(ToX,ToY:TpvInt32);
 var ey1,ey2,fy1,fy2,DeltaX,DeltaY,NewX,NextX,Temp,First,Delta,Remainder,Modulo,Lift,Increment,MinValue,MaxValue,NewCellX,TwoFracX,Area:TpvInt32;
 begin
  ey1:=SARLongint(fY,PixelBits);
@@ -2032,19 +2033,19 @@ begin
  fY:=ToY;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.ProcessSpan(x,y,Area,Len:TpvInt32);
+procedure TpvTrueTypeFontPolygonRasterizer.ProcessSpan(x,y,Area,Len:TpvInt32);
 const Bits=((PixelBits*2)+1)-8;
       Half=1 shl (Bits-1);
 var Coverage:TpvInt32;
 begin
  Coverage:=abs(SARLongint(Area+Half,Bits));
  case fCurrentWindingRule of
-  VkTTF_PolygonWindingRule_NONZERO:begin
+  pvTTF_PolygonWindingRule_NONZERO:begin
    if Coverage>255 then begin
     Coverage:=255;
    end;
   end;
-  VkTTF_PolygonWindingRule_EVENODD:begin
+  pvTTF_PolygonWindingRule_EVENODD:begin
    Coverage:=Coverage and 511;
    if Coverage>256 then begin
     Coverage:=512-Coverage;
@@ -2058,9 +2059,9 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.MakeScanLineSpansAndRenderThese;
+procedure TpvTrueTypeFontPolygonRasterizer.MakeScanLineSpansAndRenderThese;
 var Cover,x,Area,i:TpvInt32;
-    c:PpvVulkanTrueTypeFontPolygonRasterizerCell;
+    c:PpvTrueTypeFontPolygonRasterizerCell;
 begin
  if fNumCells<>0 then begin
   for i:=fRenderMinY to fRenderMaxY do begin
@@ -2083,14 +2084,14 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.SetGamma(AGamma:TpvDouble);
+procedure TpvTrueTypeFontPolygonRasterizer.SetGamma(AGamma:TpvDouble);
 const div255=1/255;
 var i,j:TpvInt32;
 begin
  if fCurrentGamma<>AGamma then begin
   fCurrentGamma:=AGamma;
   fForceNonAntialiasing:=AGamma<1e-8;
-  for i:=low(TpvVulkanTrueTypeFontPolygonRasterizerGammaLookUpTable) to high(TpvVulkanTrueTypeFontPolygonRasterizerGammaLookUpTable) do begin
+  for i:=low(TpvTrueTypeFontPolygonRasterizerGammaLookUpTable) to high(TpvTrueTypeFontPolygonRasterizerGammaLookUpTable) do begin
    if i=0 then begin
     j:=0;
    end else if fForceNonAntialiasing then begin
@@ -2108,7 +2109,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.MoveTo(ToX,ToY:TpvInt32);
+procedure TpvTrueTypeFontPolygonRasterizer.MoveTo(ToX,ToY:TpvInt32);
 begin
  Close;
  fNeedToClose:=true;
@@ -2121,14 +2122,14 @@ begin
  fLastY:=ToY;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.LineTo(ToX,ToY:TpvInt32);
+procedure TpvTrueTypeFontPolygonRasterizer.LineTo(ToX,ToY:TpvInt32);
 begin
  RenderLine(ToX,ToY);
  fLastX:=ToX;
  fLastY:=ToY;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.Close;
+procedure TpvTrueTypeFontPolygonRasterizer.Close;
 begin
  if fNeedToClose then begin
   fNeedToClose:=false;
@@ -2141,14 +2142,14 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.Render;
+procedure TpvTrueTypeFontPolygonRasterizer.Render;
 begin
  Close;
  MakeScanLineSpansAndRenderThese;
  Reset;
 end;
 
-procedure TpvVulkanTrueTypeFontPolygonRasterizer.RenderSpanCoverage(y,x,Len,Coverage:TpvInt32);
+procedure TpvTrueTypeFontPolygonRasterizer.RenderSpanCoverage(y,x,Len,Coverage:TpvInt32);
 var p:PpvUInt8;
     Alpha:TpvUInt32;
     i:TpvInt32;
@@ -2166,7 +2167,7 @@ begin
    Len:=fCurrentWidth-x;
   end;
   if Len>0 then begin
-   p:=@PpvVulkanTrueTypeFontByteArray(Canvas)^[(y*fCurrentWidth)+x];
+   p:=@PpvTrueTypeFontByteArray(Canvas)^[(y*fCurrentWidth)+x];
    if fAntialiasing then begin
     Alpha:=GammaLookUpTable[Coverage and $ff];
     case Alpha of
@@ -2207,28 +2208,28 @@ begin
  end;
 end;
 
-constructor TpvVulkanTrueTypeFontStrokeRasterizer.Create(Rasterizer:TpvVulkanTrueTypeFontRasterizer);
+constructor TpvTrueTypeFontStrokeRasterizer.Create(Rasterizer:TpvTrueTypeFontRasterizer);
 begin
  inherited Create;
  fRasterizer:=Rasterizer;
  fLinePoints:=nil;
  fNumLinePoints:=0;
  fLineWidth:=1.0;
- fLineCapMode:=VkTTF_LineCapMode_BUTT;
- fLineJoinMode:=VkTTF_LineJoinMode_BEVEL;
- fLineInnerJoinMode:=VkTTF_LineInnerJoinMode_BEVEL;
+ fLineCapMode:=pvTTF_LineCapMode_BUTT;
+ fLineJoinMode:=pvTTF_LineJoinMode_BEVEL;
+ fLineInnerJoinMode:=pvTTF_LineInnerJoinMode_BEVEL;
  fLineStrokePattern:='';
  fLineStrokePatternStepSize:=4.0;
  fFlushLineOnWork:=false;
 end;
 
-destructor TpvVulkanTrueTypeFontStrokeRasterizer.Destroy;
+destructor TpvTrueTypeFontStrokeRasterizer.Destroy;
 begin
  SetLength(fLinePoints,0);
  inherited Destroy;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.AddLinePoint(const x,y:TpvInt32);
+procedure TpvTrueTypeFontStrokeRasterizer.AddLinePoint(const x,y:TpvInt32);
 begin
  if fNumLinePoints>=length(fLinePoints) then begin
   SetLength(fLinePoints,(fNumLinePoints+1)*2);
@@ -2238,7 +2239,7 @@ begin
  inc(fNumLinePoints);
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.ConvertLineStorkeToPolygon;
+procedure TpvTrueTypeFontStrokeRasterizer.ConvertLineStorkeToPolygon;
 var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TpvInt32;
     First,Closed:boolean;
     lhw:TpvFloat;
@@ -2336,11 +2337,11 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TpvInt32;
   end;
   if miterlimitexceeded then begin
    case CurrentLineJoinMode of
-    VkTTF_LineJoinMode_MITERREVERT:begin
+    pvTTF_LineJoinMode_MITERREVERT:begin
      Point(p2x+dx1,p2y-dy1);
      Point(p2x+dx2,p2y-dy2);
     end;
-    VkTTF_LineJoinMode_MITERROUND:begin
+    pvTTF_LineJoinMode_MITERROUND:begin
      DoArc(p2x,p2y,dx1,-dy1,dx2,-dy2);
     end;
     else begin
@@ -2371,27 +2372,27 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TpvInt32;
   dy2:=(CurrentLineWidth*(x3-x2)) div (d2*2);
   if calc_point_location(x1,y1,x2,y2,x3,y3)>0 then begin
    case fLineInnerJoinMode of
-    VkTTF_LineInnerJoinMode_BEVEL:begin
+    pvTTF_LineInnerJoinMode_BEVEL:begin
      Point(x2+dx1,y2-dy1);
      Point(x2+dx2,y2-dy2);
     end;
-    VkTTF_LineInnerJoinMode_MITER:begin
-     DoMiter(x1,y1,x2,y2,x3,y3,dx1,dy1,dx2,dy2,VkTTF_LineJoinMode_MITERREVERT,258);
+    pvTTF_LineInnerJoinMode_MITER:begin
+     DoMiter(x1,y1,x2,y2,x3,y3,dx1,dy1,dx2,dy2,pvTTF_LineJoinMode_MITERREVERT,258);
     end;
-    VkTTF_LineInnerJoinMode_JAG:begin
+    pvTTF_LineInnerJoinMode_JAG:begin
      d:=((dx1-dx2)*(dx1-dx2))+((dy1-dy2)*(dy1-dy2));
      if (d<(d1*d1)) and (d<(d2*d2)) then begin
-      DoMiter(x1,y1,x2,y2,x3,y3,dx1,dy1,dx2,dy2,VkTTF_LineJoinMode_MITERREVERT,258);
+      DoMiter(x1,y1,x2,y2,x3,y3,dx1,dy1,dx2,dy2,pvTTF_LineJoinMode_MITERREVERT,258);
      end else begin
       Point(x2+dx1,y2-dy1);
       Point(x2,y2);
       Point(x2+dx2,y2-dy2);
      end;
     end;
-    VkTTF_LineInnerJoinMode_ROUND:begin
+    pvTTF_LineInnerJoinMode_ROUND:begin
      d:=((dx1-dx2)*(dx1-dx2))+((dy1-dy2)*(dy1-dy2));
      if (d<(d1*d1)) and (d<(d2*d2)) then begin
-      DoMiter(x1,y1,x2,y2,x3,y3,dx1,dy1,dx2,dy2,VkTTF_LineJoinMode_MITERREVERT,258);
+      DoMiter(x1,y1,x2,y2,x3,y3,dx1,dy1,dx2,dy2,pvTTF_LineJoinMode_MITERREVERT,258);
      end else begin
       Point(x2+dx1,y2-dy1);
       Point(x2,y2);
@@ -2403,14 +2404,14 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TpvInt32;
    end;
   end else begin
    case fLineJoinMode of
-    VkTTF_LineJoinMode_BEVEL:begin
+    pvTTF_LineJoinMode_BEVEL:begin
      Point(x2+dx1,y2-dy1);
      Point(x2+dx2,y2-dy2);
     end;
-    VkTTF_LineJoinMode_ROUND:begin
+    pvTTF_LineJoinMode_ROUND:begin
      DoArc(x2,y2,dx1,-dy1,dx2,-dy2);
     end;
-    VkTTF_LineJoinMode_MITER,VkTTF_LineJoinMode_MITERREVERT,VkTTF_LineJoinMode_MITERROUND:begin
+    pvTTF_LineJoinMode_MITER,pvTTF_LineJoinMode_MITERREVERT,pvTTF_LineJoinMode_MITERROUND:begin
      DoMiter(x1,y1,x2,y2,x3,y3,dx1,dy1,dx2,dy2,fLineJoinMode,1024);
     end;
    end;
@@ -2428,7 +2429,7 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TpvInt32;
   dx1:=(CurrentLineWidth*(y2-y1)) div (2*d);
   dy1:=(CurrentLineWidth*(x2-x1)) div (2*d);
   case fLineCapMode of
-   VkTTF_LineCapMode_ROUND:begin
+   pvTTF_LineCapMode_ROUND:begin
     Point(x1-dx1,y1+dy1);
     if dx1=0 then begin
      dx1:=1;
@@ -2446,7 +2447,7 @@ var CurrentLineWidth,i,x1,y1,x2,y2,dx,dy,d,fx,fy,lx,ly:TpvInt32;
    end;
    else begin
     case fLineCapMode of
-     VkTTF_LineCapMode_SQUARE:begin
+     pvTTF_LineCapMode_SQUARE:begin
       dx2:=dx1;
       dy2:=dy1;
      end;
@@ -2517,11 +2518,11 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.FlushLine;
+procedure TpvTrueTypeFontStrokeRasterizer.FlushLine;
 var StepCounter,StepIndex,
     StepEndX,StepEndY:TpvInt32;
     NewLine,LastStepBool,StepBool,DoFlushStepLine,DoConvertLineStorkeToPolygon:boolean;
-    LinePointsBuf:TpvVulkanTrueTypeFontStrokeRasterizerPoints;
+    LinePointsBuf:TpvTrueTypeFontStrokeRasterizerPoints;
     i:TpvInt32;
  procedure AddLinePointEx(x,y:TpvInt32);
  begin
@@ -2684,7 +2685,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFontStrokeRasterizer.GetCanvas:TpvPointer;
+function TpvTrueTypeFontStrokeRasterizer.GetCanvas:TpvPointer;
 begin
  if assigned(fRasterizer) then begin
   result:=fRasterizer.GetCanvas;
@@ -2693,14 +2694,14 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.SetCanvas(NewCanvas:TpvPointer);
+procedure TpvTrueTypeFontStrokeRasterizer.SetCanvas(NewCanvas:TpvPointer);
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.SetCanvas(NewCanvas);
  end;
 end;
 
-function TpvVulkanTrueTypeFontStrokeRasterizer.GetWidth:TpvInt32;
+function TpvTrueTypeFontStrokeRasterizer.GetWidth:TpvInt32;
 begin
  if assigned(fRasterizer) then begin
   result:=fRasterizer.GetWidth;
@@ -2709,14 +2710,14 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.SetWidth(NewWidth:TpvInt32);
+procedure TpvTrueTypeFontStrokeRasterizer.SetWidth(NewWidth:TpvInt32);
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.SetWidth(NewWidth);
  end;
 end;
 
-function TpvVulkanTrueTypeFontStrokeRasterizer.GetHeight:TpvInt32;
+function TpvTrueTypeFontStrokeRasterizer.GetHeight:TpvInt32;
 begin
  if assigned(fRasterizer) then begin
   result:=fRasterizer.GetHeight;
@@ -2725,14 +2726,14 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.SetHeight(NewHeight:TpvInt32);
+procedure TpvTrueTypeFontStrokeRasterizer.SetHeight(NewHeight:TpvInt32);
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.SetHeight(NewHeight);
  end;
 end;
 
-function TpvVulkanTrueTypeFontStrokeRasterizer.GetWindingRule:TpvInt32;
+function TpvTrueTypeFontStrokeRasterizer.GetWindingRule:TpvInt32;
 begin
  if assigned(fRasterizer) then begin
   result:=fRasterizer.GetWindingRule;
@@ -2741,35 +2742,35 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.SetWindingRule(NewWindingRule:TpvInt32);
+procedure TpvTrueTypeFontStrokeRasterizer.SetWindingRule(NewWindingRule:TpvInt32);
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.SetWindingRule(NewWindingRule);
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.Clear;
+procedure TpvTrueTypeFontStrokeRasterizer.Clear;
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.Clear;
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.Reset;
+procedure TpvTrueTypeFontStrokeRasterizer.Reset;
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.Reset;
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.Resize(NewWidth,NewHeight:TpvInt32);
+procedure TpvTrueTypeFontStrokeRasterizer.Resize(NewWidth,NewHeight:TpvInt32);
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.Resize(NewWidth,NewHeight);
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.MoveTo(ToX,ToY:TpvInt32);
+procedure TpvTrueTypeFontStrokeRasterizer.MoveTo(ToX,ToY:TpvInt32);
 begin
  FlushLine;
  fStartLineX:=ToX;
@@ -2779,20 +2780,20 @@ begin
  fLastY:=ToY;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.LineTo(ToX,ToY:TpvInt32);
+procedure TpvTrueTypeFontStrokeRasterizer.LineTo(ToX,ToY:TpvInt32);
 begin
  AddLinePoint(ToX,ToY);
  fLastX:=ToX;
  fLastY:=ToY;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.Close;
+procedure TpvTrueTypeFontStrokeRasterizer.Close;
 begin
  FlushLine;
  fRasterizer.Close;
 end;
 
-procedure TpvVulkanTrueTypeFontStrokeRasterizer.Render;
+procedure TpvTrueTypeFontStrokeRasterizer.Render;
 begin
  if assigned(fRasterizer) then begin
   fRasterizer.Render;
@@ -2928,7 +2929,7 @@ begin
  result:=(ByteValue and (1 shl Bit))<>0;
 end;
 
-constructor TpvVulkanTrueTypeFontByteCodeInterpreter.Create(AFont:TpvVulkanTrueTypeFont);
+constructor TpvTrueTypeFontByteCodeInterpreter.Create(AFont:TpvTrueTypeFont);
 var i:TpvInt32;
 begin
  inherited Create;
@@ -2937,8 +2938,8 @@ begin
  fLastCVT:=nil;
  fLastStack:=nil;
  fLastStorage:=nil;
- FillChar(fLastGraphicsState,SizeOf(TpvVulkanTrueTypeFontGraphicsState),AnsiChar(#0));
- FillChar(fLastPoints,SizeOf(TpvVulkanTrueTypeFontByteCodeInterpreterPoints),AnsiChar(#0));
+ FillChar(fLastGraphicsState,SizeOf(TpvTrueTypeFontGraphicsState),AnsiChar(#0));
+ FillChar(fLastPoints,SizeOf(TpvTrueTypeFontByteCodeInterpreterPoints),AnsiChar(#0));
 {$endif}
  fCVT:=nil;
  fStack:=nil;
@@ -2948,7 +2949,7 @@ begin
  fForceReinitialize:=false;
  fGraphicsState:=DefaultGraphicsState;
  fDefaultGraphicsState:=DefaultGraphicsState;
- FillChar(fPoints,SizeOf(TpvVulkanTrueTypeFontByteCodeInterpreterPoints),AnsiChar(#0));
+ FillChar(fPoints,SizeOf(TpvTrueTypeFontByteCodeInterpreterPoints),AnsiChar(#0));
  fEnds:=nil;
 {$ifdef ttfdebug}
  SetLength(fLastCVT,length(fFont.fCVT));
@@ -2959,13 +2960,13 @@ begin
  SetLength(fStack,RoundUpToPowerOfTwo(fFont.fMaxStackElements+256));
  SetLength(fStorage,RoundUpToPowerOfTwo(fFont.fMaxStorage+16));
 {$ifdef ttfdebug}
- SetLength(fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current],fFont.fMaxTwilightPoints+4);
- SetLength(fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted],fFont.fMaxTwilightPoints+4);
- SetLength(fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits],fFont.fMaxTwilightPoints+4);
+ SetLength(fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current],fFont.fMaxTwilightPoints+4);
+ SetLength(fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted],fFont.fMaxTwilightPoints+4);
+ SetLength(fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits],fFont.fMaxTwilightPoints+4);
 {$endif}
- SetLength(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current],fFont.fMaxTwilightPoints+4);
- SetLength(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted],fFont.fMaxTwilightPoints+4);
- SetLength(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits],fFont.fMaxTwilightPoints+4);
+ SetLength(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current],fFont.fMaxTwilightPoints+4);
+ SetLength(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted],fFont.fMaxTwilightPoints+4);
+ SetLength(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits],fFont.fMaxTwilightPoints+4);
  SetLength(fFunctions,fFont.fMaxFunctionDefs);
  for i:=0 to fFont.fMaxFunctionDefs-1 do begin
   fFunctions[i].Data:=nil;
@@ -2987,34 +2988,34 @@ begin
 {$endif}
 end;
 
-destructor TpvVulkanTrueTypeFontByteCodeInterpreter.Destroy;
+destructor TpvTrueTypeFontByteCodeInterpreter.Destroy;
 begin
 {$ifdef ttfdebug}
  SetLength(fLastCVT,0);
  SetLength(fLastStack,0);
  SetLength(fLastStorage,0);
- SetLength(fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current],0);
- SetLength(fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted],0);
- SetLength(fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits],0);
- SetLength(fLastPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current],0);
- SetLength(fLastPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted],0);
- SetLength(fLastPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits],0);
+ SetLength(fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current],0);
+ SetLength(fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted],0);
+ SetLength(fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits],0);
+ SetLength(fLastPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current],0);
+ SetLength(fLastPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted],0);
+ SetLength(fLastPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits],0);
 {$endif}
  SetLength(fCVT,0);
  SetLength(fStack,0);
  SetLength(fStorage,0);
  SetLength(fFunctions,0);
- SetLength(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current],0);
- SetLength(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted],0);
- SetLength(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits],0);
- SetLength(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current],0);
- SetLength(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted],0);
- SetLength(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits],0);
+ SetLength(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current],0);
+ SetLength(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted],0);
+ SetLength(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits],0);
+ SetLength(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current],0);
+ SetLength(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted],0);
+ SetLength(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits],0);
  SetLength(fEnds,0);
  inherited Destroy;
 end;
 
-procedure TpvVulkanTrueTypeFontByteCodeInterpreter.Reinitialize;
+procedure TpvTrueTypeFontByteCodeInterpreter.Reinitialize;
 var i:TpvInt32;
 begin
  if (fScale<>fFont.Size) or fForceReinitialize then begin
@@ -3022,19 +3023,19 @@ begin
   fForceReinitialize:=false;
   if assigned(fFont.fPREP.Data) and (fFont.fPREP.Size>0) then begin
    for i:=0 to (fFont.fMaxTwilightPoints+4)-1 do begin
-    fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current,i].x:=0;
-    fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current,i].y:=0;
-    fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted,i].x:=0;
-    fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted,i].y:=0;
-    fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits,i].x:=0;
-    fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits,i].y:=0;
+    fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current,i].x:=0;
+    fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current,i].y:=0;
+    fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted,i].x:=0;
+    fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted,i].y:=0;
+    fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits,i].x:=0;
+    fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits,i].y:=0;
 {$ifdef ttfdebug}
-    fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current,i].x:=0;
-    fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current,i].y:=0;
-    fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted,i].x:=0;
-    fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted,i].y:=0;
-    fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits,i].x:=0;
-    fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits,i].y:=0;
+    fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current,i].x:=0;
+    fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current,i].y:=0;
+    fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted,i].x:=0;
+    fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted,i].y:=0;
+    fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits,i].x:=0;
+    fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits,i].y:=0;
 {$endif}
    end;
    for i:=0 to length(fStorage)-1 do begin
@@ -3069,7 +3070,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFontByteCodeInterpreter.SkipInstructionPayload(const ProgramBytes:TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes;var PC:TpvInt32):boolean;
+function TpvTrueTypeFontByteCodeInterpreter.SkipInstructionPayload(const ProgramBytes:TpvTrueTypeFontByteCodeInterpreterProgramBytes;var PC:TpvInt32):boolean;
 begin
  case ProgramBytes.Data^[PC] of
   opNPUSHB:begin
@@ -3106,7 +3107,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFontByteCodeInterpreter.MulDiv(a,b,c:TpvInt32;DoRound:boolean):TpvInt32;
+function TpvTrueTypeFontByteCodeInterpreter.MulDiv(a,b,c:TpvInt32;DoRound:boolean):TpvInt32;
 var s:TpvInt32;
 begin
  if (a=0) or (b=c) then begin
@@ -3152,37 +3153,37 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontByteCodeInterpreter.MovePoint(var p:TpvVulkanTrueTypeFontGlyphPoint;Distance:TpvInt32;Touch:boolean);
+procedure TpvTrueTypeFontByteCodeInterpreter.MovePoint(var p:TpvTrueTypeFontGlyphPoint;Distance:TpvInt32;Touch:boolean);
 var FVdotPV:TpvInt64;
 begin
  if (fGraphicsState.fv[0]=$4000) and (fGraphicsState.pv[0]=$4000) and (fGraphicsState.fv[1]=0) and (fGraphicsState.pv[1]=0) then begin
   inc(p.x,Distance);
   if Touch then begin
-   p.Flags:=p.Flags or VkTTF_PathFlag_TouchedX;
+   p.Flags:=p.Flags or pvTTF_PathFlag_TouchedX;
   end;
  end else if (fGraphicsState.fv[0]=0) and (fGraphicsState.pv[0]=0) and (fGraphicsState.fv[1]=$4000) and (fGraphicsState.pv[1]=$4000) then begin
   inc(p.y,Distance);
   if Touch then begin
-   p.Flags:=p.Flags or VkTTF_PathFlag_TouchedY;
+   p.Flags:=p.Flags or pvTTF_PathFlag_TouchedY;
   end;
  end else begin
   FVdotPV:=SARInt64((TpvInt64(fGraphicsState.fv[0])*fGraphicsState.pv[0])+(TpvInt64(fGraphicsState.fv[1])*fGraphicsState.pv[1]),14);
   if fGraphicsState.fv[0]<>0 then begin
    inc(p.x,MulDiv(Distance,fGraphicsState.fv[0],FVdotPV,true));
    if Touch then begin
-    p.Flags:=p.Flags or VkTTF_PathFlag_TouchedX;
+    p.Flags:=p.Flags or pvTTF_PathFlag_TouchedX;
    end;
   end;
   if fGraphicsState.fv[1]<>0 then begin
    inc(p.y,MulDiv(Distance,fGraphicsState.fv[1],FVdotPV,true));
    if Touch then begin
-    p.Flags:=p.Flags or VkTTF_PathFlag_TouchedY;
+    p.Flags:=p.Flags or pvTTF_PathFlag_TouchedY;
    end;
   end;
  end;
 end;
 
-function TpvVulkanTrueTypeFontByteCodeInterpreter.DotProduct(x,y:TpvVulkanTrueTypeFont26d6;const q:TpvVulkanTrueTypeFontVector2d14):TpvVulkanTrueTypeFont26d6;
+function TpvTrueTypeFontByteCodeInterpreter.DotProduct(x,y:TpvTrueTypeFont26d6;const q:TpvTrueTypeFontVector2d14):TpvTrueTypeFont26d6;
 {$ifdef TTFCompactDotProduct}
 var v:TpvInt64;
 {$else}
@@ -3239,7 +3240,7 @@ begin
 {$endif}
 end;
 
-function TpvVulkanTrueTypeFontByteCodeInterpreter.Div18d14(a,b:TpvVulkanTrueTypeFont26d6):TpvVulkanTrueTypeFont26d6;
+function TpvTrueTypeFontByteCodeInterpreter.Div18d14(a,b:TpvTrueTypeFont26d6):TpvTrueTypeFont26d6;
 var s:TpvInt32;
 begin
  s:=1;
@@ -3265,7 +3266,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFontByteCodeInterpreter.Mul18d14(a,b:TpvVulkanTrueTypeFont26d6):TpvVulkanTrueTypeFont26d6;
+function TpvTrueTypeFontByteCodeInterpreter.Mul18d14(a,b:TpvTrueTypeFont26d6):TpvTrueTypeFont26d6;
 var s:TpvInt32;
 begin
  s:=1;
@@ -3287,7 +3288,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFontByteCodeInterpreter.Div26d6(a,b:TpvVulkanTrueTypeFont26d6):TpvVulkanTrueTypeFont26d6;
+function TpvTrueTypeFontByteCodeInterpreter.Div26d6(a,b:TpvTrueTypeFont26d6):TpvTrueTypeFont26d6;
 var s:TpvInt32;
 begin
  s:=1;
@@ -3313,7 +3314,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFontByteCodeInterpreter.Mul26d6(a,b:TpvVulkanTrueTypeFont26d6):TpvVulkanTrueTypeFont26d6;
+function TpvTrueTypeFontByteCodeInterpreter.Mul26d6(a,b:TpvTrueTypeFont26d6):TpvTrueTypeFont26d6;
 var s:TpvInt32;
 begin
  s:=1;
@@ -3335,7 +3336,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFontByteCodeInterpreter.RoundValue(Value:TpvVulkanTrueTypeFont26d6):TpvVulkanTrueTypeFont26d6;
+function TpvTrueTypeFontByteCodeInterpreter.RoundValue(Value:TpvTrueTypeFont26d6):TpvTrueTypeFont26d6;
 begin
  if fGraphicsState.RoundPeriod=0 then begin
   result:=Value;
@@ -3366,18 +3367,18 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontByteCodeInterpreter.IUPInterpolate(IUPY:boolean;p1,p2,ref1,ref2:TpvInt32);
+procedure TpvTrueTypeFontByteCodeInterpreter.IUPInterpolate(IUPY:boolean;p1,p2,ref1,ref2:TpvInt32);
 var ifu1,ifu2,t,unh1,unh2,delta1,delta2,xy,ifuXY,i:TpvInt32;
     Scale:TpvInt64;
     ScaleOK:boolean;
 begin
- if (p1<=p2) and ((ref1<length(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current])) and (ref2<length(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current]))) then begin
+ if (p1<=p2) and ((ref1<length(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current])) and (ref2<length(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current]))) then begin
   if IUPY then begin
-   ifu1:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits,ref1].y;
-   ifu2:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits,ref2].y;
+   ifu1:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits,ref1].y;
+   ifu2:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits,ref2].y;
   end else begin
-   ifu1:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits,ref1].x;
-   ifu2:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits,ref2].x;
+   ifu1:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits,ref1].x;
+   ifu2:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits,ref2].x;
   end;
   if ifu1>ifu2 then begin
    t:=ifu1;
@@ -3388,22 +3389,22 @@ begin
    ref2:=t;
   end;
   if IUPY then begin
-   unh1:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,ref1].y;
-   unh2:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,ref2].y;
-   delta1:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,ref1].y-unh1;
-   delta2:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,ref2].y-unh2;
+   unh1:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,ref1].y;
+   unh2:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,ref2].y;
+   delta1:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,ref1].y-unh1;
+   delta2:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,ref2].y-unh2;
   end else begin
-   unh1:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,ref1].x;
-   unh2:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,ref2].x;
-   delta1:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,ref1].x-unh1;
-   delta2:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,ref2].x-unh2;
+   unh1:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,ref1].x;
+   unh2:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,ref2].x;
+   delta1:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,ref1].x-unh1;
+   delta2:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,ref2].x-unh2;
   end;
   if ifu1=ifu2 then begin
    for i:=p1 to p2 do begin
     if IUPY then begin
-     xy:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,i].y;
+     xy:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,i].y;
     end else begin
-     xy:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,i].x;
+     xy:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,i].x;
     end;
     if xy<=unh1 then begin
      inc(xy,delta1);
@@ -3411,9 +3412,9 @@ begin
      inc(xy,delta2);
     end;
     if IUPY then begin
-     fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,i].y:=xy;
+     fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,i].y:=xy;
     end else begin
-     fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,i].x:=xy;
+     fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,i].x:=xy;
     end;
    end;
   end else begin
@@ -3421,11 +3422,11 @@ begin
    ScaleOK:=false;
    for i:=p1 to p2 do begin
     if IUPY then begin
-     xy:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,i].y;
-     IFUXY:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits,i].y;
+     xy:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,i].y;
+     IFUXY:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits,i].y;
     end else begin
-     xy:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,i].x;
-     IFUXY:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits,i].x;
+     xy:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,i].x;
+     IFUXY:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits,i].x;
     end;
     if xy<=unh1 then begin
      inc(xy,delta1);
@@ -3439,40 +3440,40 @@ begin
      xy:=(unh1+delta1)+MulDiv(ifuXY-ifu1,Scale,$10000,true);
     end;
     if IUPY then begin
-     fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,i].y:=xy;
+     fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,i].y:=xy;
     end else begin
-     fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,i].x:=xy;
+     fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,i].x:=xy;
     end;
    end;
   end;
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontByteCodeInterpreter.IUPShift(IUPY:boolean;p1,p2,p:TpvInt32);
+procedure TpvTrueTypeFontByteCodeInterpreter.IUPShift(IUPY:boolean;p1,p2,p:TpvInt32);
 var Delta,i:TpvInt32;
 begin
  if IUPY then begin
-  Delta:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,p].y-fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,p].y;
+  Delta:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,p].y-fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,p].y;
  end else begin
-  Delta:=fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,p].x-fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,p].x;
+  Delta:=fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,p].x-fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,p].x;
  end;
  if Delta<>0 then begin
   for i:=p1 to p2 do begin
    if i<>p then begin
     if IUPY then begin
-     inc(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,i].y,Delta);
+     inc(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,i].y,Delta);
     end else begin
-     inc(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,i].x,Delta);
+     inc(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,i].x,Delta);
     end;
    end;
   end;
  end;
 end;
 
-function TpvVulkanTrueTypeFontByteCodeInterpreter.GetPoint(ZonePointer,PointType,Index:TpvInt32):PpvVulkanTrueTypeFontGlyphPoint;
+function TpvTrueTypeFontByteCodeInterpreter.GetPoint(ZonePointer,PointType,Index:TpvInt32):PpvTrueTypeFontGlyphPoint;
 begin
  if ((ZonePointer>=0) and (ZonePointer<3)) and
-    ((fGraphicsState.zp[ZonePointer]>=0) and (fGraphicsState.zp[ZonePointer]<VkTTF_Zone_Count)) and
+    ((fGraphicsState.zp[ZonePointer]>=0) and (fGraphicsState.zp[ZonePointer]<pvTTF_Zone_Count)) and
     ((Index>=0) and (Index<length(fPoints[fGraphicsState.zp[ZonePointer],PointType]))) then begin
   result:=@fPoints[fGraphicsState.zp[ZonePointer],PointType,Index];
  end else begin
@@ -3480,7 +3481,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontByteCodeInterpreter.Normalize(var x,y:TpvVulkanTrueTypeFont26d6);
+procedure TpvTrueTypeFontByteCodeInterpreter.Normalize(var x,y:TpvTrueTypeFont26d6);
 var l:TpvInt32;
 begin
  if (x<>0) or (y<>0) then begin
@@ -3500,7 +3501,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFontByteCodeInterpreter.GetCVT(Index:TpvInt32):TpvInt32;
+function TpvTrueTypeFontByteCodeInterpreter.GetCVT(Index:TpvInt32):TpvInt32;
 begin
  if (Index>=0) and (Index<length(fCVT)) then begin
   result:=fCVT[Index];
@@ -3509,16 +3510,16 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontByteCodeInterpreter.SetCVT(Index,Value:TpvInt32);
+procedure TpvTrueTypeFontByteCodeInterpreter.SetCVT(Index,Value:TpvInt32);
 begin
  if (Index>=0) and (Index<length(fCVT)) then begin
   fCVT[Index]:=Value;
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontByteCodeInterpreter.ComputePointDisplacement(Flag:boolean;var Zone,Ref:TpvInt32;var dx,dy:TpvVulkanTrueTypeFont26d6);
+procedure TpvTrueTypeFontByteCodeInterpreter.ComputePointDisplacement(Flag:boolean;var Zone,Ref:TpvInt32;var dx,dy:TpvTrueTypeFont26d6);
 var Distance,FVdotPV:TpvInt64;
-    p1,p2:PpvVulkanTrueTypeFontGlyphPoint;
+    p1,p2:PpvTrueTypeFontGlyphPoint;
 begin
  if Flag then begin
   Ref:=fGraphicsState.rp[1];
@@ -3527,8 +3528,8 @@ begin
   Ref:=fGraphicsState.rp[2];
   Zone:=1;
  end;
- p1:=GetPoint(Zone,VkTTF_PointType_Unhinted,Ref);
- p2:=GetPoint(Zone,VkTTF_PointType_Current,Ref);
+ p1:=GetPoint(Zone,pvTTF_PointType_Unhinted,Ref);
+ p2:=GetPoint(Zone,pvTTF_PointType_Current,Ref);
  if assigned(p1) and assigned(p2) then begin
   Distance:=DotProduct(p2^.x-p1.x,p2^.y-p1^.y,fGraphicsState.pv);
   if (fGraphicsState.fv[0]=$4000) and (fGraphicsState.pv[0]=$4000) and (fGraphicsState.fv[1]=0) and (fGraphicsState.pv[1]=0) then begin
@@ -3548,21 +3549,21 @@ begin
    end;
   end;
  end else begin
-  raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+  raise EpvTrueTypeFont.Create('Out of point bounds');
  end;
 end;
 
-procedure TpvVulkanTrueTypeFontByteCodeInterpreter.Run(ProgramBytes:TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes;Parameters:PpvVulkanTrueTypeFontByteCodeInterpreterParameters=nil);
+procedure TpvTrueTypeFontByteCodeInterpreter.Run(ProgramBytes:TpvTrueTypeFontByteCodeInterpreterProgramBytes;Parameters:PpvTrueTypeFontByteCodeInterpreterParameters=nil);
 var Steps,PC,Top,CallStackTop,PopCount,Depth,Temp,x,StartPC,i,Distance,PrevEnd,j,k,FirstTouched,CurrentTouched,PointType,
     FirstPoint,EndPoint,CurrentPoint,OldDist,CurrentDist,NewDist,t1,t2,t3,CVTDist,d1,d2,dx,dy,d,ZonePointer,RefIndex,
     Base,Count,a0,a1,b0,b1:TpvInt32;
     Mask:TpvUInt32;
     Opcode:TpvUInt8;
-    CallStack:TpvVulkanTrueTypeFontByteCodeInterpreterCallStackEntries;
+    CallStack:TpvTrueTypeFontByteCodeInterpreterCallStackEntries;
     OK,Twilight:boolean;
-    f:TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes;
-    p,OldP,CurrentP,Ref,q,p0,p1,p2:PpvVulkanTrueTypeFontGlyphPoint;
-    OldRange,CurrentRange,ax0,ay0,ax1,ay1,bx0,by0,bx1,by1:TpvVulkanTrueTypeFont26d6;
+    f:TpvTrueTypeFontByteCodeInterpreterProgramBytes;
+    p,OldP,CurrentP,Ref,q,p0,p1,p2:PpvTrueTypeFontGlyphPoint;
+    OldRange,CurrentRange,ax0,ay0,ax1,ay1,bx0,by0,bx1,by1:TpvTrueTypeFont26d6;
     dxa,dya,dxb,dyb,det,v:TpvInt64;
 {$ifdef ttfdebug}
  procedure StoreState;
@@ -3577,17 +3578,17 @@ var Steps,PC,Top,CallStackTop,PopCount,Depth,Temp,x,StartPC,i,Distance,PrevEnd,j
   for i:=0 to length(fStorage)-1 do begin
    fLastStorage[i]:=fStorage[i];
   end;
-  fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current]:=copy(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current]);
-  fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted]:=copy(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted]);
-  fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits]:=copy(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits]);
-  fLastPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current]:=copy(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current]);
-  fLastPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted]:=copy(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted]);
-  fLastPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits]:=copy(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits]);
+  fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current]:=copy(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current]);
+  fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted]:=copy(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted]);
+  fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits]:=copy(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits]);
+  fLastPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current]:=copy(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current]);
+  fLastPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted]:=copy(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted]);
+  fLastPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits]:=copy(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits]);
   fLastGraphicsState:=fGraphicsState;
  end;
  procedure DumpState;
  var i:TpvInt32;
-     p1,p2:PpvVulkanTrueTypeFontGlyphPoint;
+     p1,p2:PpvTrueTypeFontGlyphPoint;
  begin
   if (fLastGraphicsState.pv[0]<>fGraphicsState.pv[0]) or (fLastGraphicsState.pv[1]<>fGraphicsState.pv[1]) then begin
     writeln('    pv: ',fLastGraphicsState.pv[0],',',fLastGraphicsState.pv[1],' => ',fGraphicsState.pv[0],',',fGraphicsState.pv[1]);
@@ -3619,44 +3620,44 @@ var Steps,PC,Top,CallStackTop,PopCount,Depth,Temp,x,StartPC,i,Distance,PrevEnd,j
     writeln('    Storage[',i,']: ',fLastStorage[i],' => ',fStorage[i]);
    end;
   end;
-  for i:=0 to length(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current])-1 do begin
-   p1:=@fLastPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,i];
-   p2:=@fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,i];
+  for i:=0 to length(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current])-1 do begin
+   p1:=@fLastPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,i];
+   p2:=@fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,i];
    if (p1^.x<>p2^.x) or (p1^.y<>p2^.y) then begin
     writeln('    CurrentPoints[',i,']: ',p1^.x,',',p1^.y,' => ',p2^.x,',',p2^.y);
    end;
   end;
-  for i:=0 to length(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted])-1 do begin
-   p1:=@fLastPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,i];
-   p2:=@fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted,i];
+  for i:=0 to length(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted])-1 do begin
+   p1:=@fLastPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,i];
+   p2:=@fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted,i];
    if (p1^.x<>p2^.x) or (p1^.y<>p2^.y) then begin
     writeln('    OriginalPoints[',i,']: ',p1^.x,',',p1^.y,' => ',p2^.x,',',p2^.y);
    end;
   end;
-  for i:=0 to length(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits])-1 do begin
-   p1:=@fLastPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits,i];
-   p2:=@fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits,i];
+  for i:=0 to length(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits])-1 do begin
+   p1:=@fLastPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits,i];
+   p2:=@fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits,i];
    if (p1^.x<>p2^.x) or (p1^.y<>p2^.y) then begin
     writeln('    InFontUnitsPoints[',i,']: ',p1^.x,',',p1^.y,' => ',p2^.x,',',p2^.y);
    end;
   end;
-  for i:=0 to length(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current])-1 do begin
-   p1:=@fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current,i];
-   p2:=@fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Current,i];
+  for i:=0 to length(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current])-1 do begin
+   p1:=@fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current,i];
+   p2:=@fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Current,i];
    if (p1^.x<>p2^.x) or (p1^.y<>p2^.y) then begin
     writeln('    TwilightCurrentPoints[',i,']: ',p1^.x,',',p1^.y,' => ',p2^.x,',',p2^.y);
    end;
   end;
-  for i:=0 to length(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted])-1 do begin
-   p1:=@fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted,i];
-   p2:=@fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_Unhinted,i];
+  for i:=0 to length(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted])-1 do begin
+   p1:=@fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted,i];
+   p2:=@fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_Unhinted,i];
    if (p1^.x<>p2^.x) or (p1^.y<>p2^.y) then begin
     writeln('    TwilightOriginalPoints[',i,']: ',p1^.x,',',p1^.y,' => ',p2^.x,',',p2^.y);
    end;
   end;
-  for i:=0 to length(fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits])-1 do begin
-   p1:=@fLastPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits,i];
-   p2:=@fPoints[VkTTF_Zone_Twilight,VkTTF_PointType_InFontUnits,i];
+  for i:=0 to length(fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits])-1 do begin
+   p1:=@fLastPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits,i];
+   p2:=@fPoints[pvTTF_Zone_Twilight,pvTTF_PointType_InFontUnits,i];
    if (p1^.x<>p2^.x) or (p1^.y<>p2^.y) then begin
     writeln('    TwilightInFontUnitsPoints[',i,']: ',p1^.x,',',p1^.y,' => ',p2^.x,',',p2^.y);
    end;
@@ -3666,18 +3667,18 @@ var Steps,PC,Top,CallStackTop,PopCount,Depth,Temp,x,StartPC,i,Distance,PrevEnd,j
 begin
  fGraphicsState:=fDefaultGraphicsState;
  if assigned(Parameters) then begin
-  fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current]:=Parameters^.pCurrent;
-  fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted]:=Parameters^.pUnhinted;
-  fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits]:=Parameters^.pInFontUnits;
+  fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current]:=Parameters^.pCurrent;
+  fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted]:=Parameters^.pUnhinted;
+  fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits]:=Parameters^.pInFontUnits;
   fEnds:=Parameters^.Ends;
  end else begin
-  fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current]:=nil;
-  fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Unhinted]:=nil;
-  fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_InFontUnits]:=nil;
+  fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current]:=nil;
+  fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Unhinted]:=nil;
+  fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_InFontUnits]:=nil;
   fEnds:=nil;
  end;
  if ProgramBytes.Size>50000 then begin
-  raise EpvVulkanTrueTypeFont.Create('Too many instructions');
+  raise EpvTrueTypeFont.Create('Too many instructions');
  end else begin
   Steps:=0;
   PC:=0;
@@ -3694,7 +3695,7 @@ begin
 {$endif}
    inc(Steps);
    if Steps=100000 then begin
-    raise EpvVulkanTrueTypeFont.Create('Too many steps');
+    raise EpvTrueTypeFont.Create('Too many steps');
    end else begin
     Opcode:=ProgramBytes.Data^[PC];
     PopCount:=OpcodePopCount[Opcode];
@@ -3703,9 +3704,9 @@ begin
       if Opcode<>0 then begin
       end;
      end;
-     raise EpvVulkanTrueTypeFont.Create('Unimplemented instruction');
+     raise EpvTrueTypeFont.Create('Unimplemented instruction');
     end else if Top<PopCount then begin
-     raise EpvVulkanTrueTypeFont.Create('Stack underflow');
+     raise EpvTrueTypeFont.Create('Stack underflow');
     end else begin
      if (ProgramBytes.Size>14) and (ProgramBytes.Data^[13] in [opMSIRP0,opMSIRP1]) then begin
       if (ProgramBytes.Size>14) and (ProgramBytes.Data^[13] in [opMSIRP0,opMSIRP1]) then begin
@@ -3753,8 +3754,8 @@ begin
       end;
       opSPVTL0,opSPVTL1,opSFVTL0,opSFVTL1:begin
        dec(Top,2);
-       p1:=GetPoint(1,VkTTF_PointType_Current,fStack[Top]);
-       p2:=GetPoint(2,VkTTF_PointType_Current,fStack[Top+1]);
+       p1:=GetPoint(1,pvTTF_PointType_Current,fStack[Top]);
+       p2:=GetPoint(2,pvTTF_PointType_Current,fStack[Top+1]);
        if assigned(p1) and assigned(p2) then begin
         dx:=p1^.x-p2^.x;
         dy:=p1^.y-p2^.y;
@@ -3778,7 +3779,7 @@ begin
          end;
         end;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opSPVFS:begin
@@ -3800,7 +3801,7 @@ begin
       end;
       opGPV:begin
        if (Top+1)>=length(fStack) then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack overflow');
+        raise EpvTrueTypeFont.Create('Stack overflow');
        end else begin
         fStack[Top]:=fGraphicsState.pv[0];
         fStack[Top+1]:=fGraphicsState.pv[1];
@@ -3809,7 +3810,7 @@ begin
       end;
       opGFV:begin
        if (Top+1)>=length(fStack) then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack overflow');
+        raise EpvTrueTypeFont.Create('Stack overflow');
        end else begin
         fStack[Top]:=fGraphicsState.fv[0];
         fStack[Top+1]:=fGraphicsState.fv[1];
@@ -3825,22 +3826,22 @@ begin
        b0:=fStack[Top+3];
        a1:=fStack[Top+2];
        a0:=fStack[Top+1];
-       p:=GetPoint(2,VkTTF_PointType_Current,fStack[Top]);
+       p:=GetPoint(2,pvTTF_PointType_Current,fStack[Top]);
        if assigned(p) then begin
-        p^.Flags:=p^.Flags or (VkTTF_PathFlag_TouchedX or VkTTF_PathFlag_TouchedY);
-        p0:=GetPoint(1,VkTTF_PointType_Current,a0);
+        p^.Flags:=p^.Flags or (pvTTF_PathFlag_TouchedX or pvTTF_PathFlag_TouchedY);
+        p0:=GetPoint(1,pvTTF_PointType_Current,a0);
         if assigned(p0) then begin
          ax0:=p0^.x;
          ay0:=p0^.y;
-         p0:=GetPoint(1,VkTTF_PointType_Current,a1);
+         p0:=GetPoint(1,pvTTF_PointType_Current,a1);
          if assigned(p0) then begin
           ax1:=p0^.x;
           ay1:=p0^.y;
-          p0:=GetPoint(0,VkTTF_PointType_Current,b0);
+          p0:=GetPoint(0,pvTTF_PointType_Current,b0);
           if assigned(p0) then begin
            bx0:=p0^.x;
            by0:=p0^.y;
-           p0:=GetPoint(0,VkTTF_PointType_Current,b1);
+           p0:=GetPoint(0,pvTTF_PointType_Current,b1);
            if assigned(p0) then begin
             bx1:=p0^.x;
             by1:=p0^.y;
@@ -3859,19 +3860,19 @@ begin
              p^.y:=SARLongint(ay0+ay1+by0+by1,2);
             end;
            end else begin
-            raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+            raise EpvTrueTypeFont.Create('Out of point bounds');
            end;
           end else begin
-           raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+           raise EpvTrueTypeFont.Create('Out of point bounds');
           end;
          end else begin
-          raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+          raise EpvTrueTypeFont.Create('Out of point bounds');
          end;
         end else begin
-         raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+         raise EpvTrueTypeFont.Create('Out of point bounds');
         end;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opSRP0,opSRP1,opSRP2:begin
@@ -3897,7 +3898,7 @@ begin
        // we use here <0 instead <=0 (which would be more correct according to the
        // TTF specifications)
        if fStack[Top]<0 then begin
-        raise EpvVulkanTrueTypeFont.Create('Invalid data');
+        raise EpvTrueTypeFont.Create('Invalid data');
        end else begin
         fGraphicsState.Loop:=fStack[Top];
        end;
@@ -3923,7 +3924,7 @@ begin
        repeat
         inc(PC);
         if PC>=ProgramBytes.Size then begin
-         raise EpvVulkanTrueTypeFont.Create('Unbalanced ELSE');
+         raise EpvTrueTypeFont.Create('Unbalanced ELSE');
         end else begin
          case ProgramBytes.Data^[PC] of
           opIF:begin
@@ -3940,7 +3941,7 @@ begin
           else begin
            OK:=SkipInstructionPayload(ProgramBytes,PC);
            if not OK Then begin
-            raise EpvVulkanTrueTypeFont.Create('Unbalanced ELSE');
+            raise EpvTrueTypeFont.Create('Unbalanced ELSE');
            end;
           end;
          end;
@@ -3966,7 +3967,7 @@ begin
       end;
       opDUP:begin
        if Top>=length(fStack) then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack overflow');
+        raise EpvTrueTypeFont.Create('Stack overflow');
        end else begin
         fStack[Top]:=fStack[Top-1];
         inc(Top);
@@ -3985,7 +3986,7 @@ begin
       end;
       opDEPTH:begin
        if Top>=length(fStack) then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack overflow');
+        raise EpvTrueTypeFont.Create('Stack overflow');
        end else begin
         fStack[Top]:=Top;
         inc(Top);
@@ -3996,7 +3997,7 @@ begin
        if (x>0) and (x<Top) then begin
         fStack[Top-1]:=fStack[Top-(x+1)];
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Invalid data');
+        raise EpvTrueTypeFont.Create('Invalid data');
        end;
       end;
       opMINDEX:begin
@@ -4009,43 +4010,43 @@ begin
         end;
         fStack[Top-1]:=Temp;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Invalid data');
+        raise EpvTrueTypeFont.Create('Invalid data');
        end;
       end;
       opALIGNPTS:begin
        dec(Top,2);
-       p1:=GetPoint(0,VkTTF_PointType_Current,fStack[Top+1]);
-       p2:=GetPoint(1,VkTTF_PointType_Current,fStack[Top]);
+       p1:=GetPoint(0,pvTTF_PointType_Current,fStack[Top+1]);
+       p2:=GetPoint(1,pvTTF_PointType_Current,fStack[Top]);
        if assigned(p1) and assigned(p2) then begin
         Distance:=SARLongint(DotProduct(p1^.x-p2^.x,p1^.y-p2^.y,fGraphicsState.pv),1);
         MovePoint(p1^,Distance,true);
         MovePoint(p2^,-Distance,true);
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opUTP:begin
        dec(Top);
-       p:=GetPoint(2,VkTTF_PointType_Current,fStack[Top]);
+       p:=GetPoint(2,pvTTF_PointType_Current,fStack[Top]);
        if assigned(p) then begin
         if fGraphicsState.fv[0]<>0 then begin
-         p^.Flags:=p^.Flags and not VkTTF_PathFlag_TouchedX;
+         p^.Flags:=p^.Flags and not pvTTF_PathFlag_TouchedX;
         end;
         if fGraphicsState.fv[1]<>0 then begin
-         p^.Flags:=p^.Flags and not VkTTF_PathFlag_TouchedY;
+         p^.Flags:=p^.Flags and not pvTTF_PathFlag_TouchedY;
         end;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opLOOPCALL:begin
        if CallStackTop>=length(CallStack) then begin
-        raise EpvVulkanTrueTypeFont.Create('Call stack overflow');
+        raise EpvTrueTypeFont.Create('Call stack overflow');
        end else begin
         dec(Top);
         f:=fFunctions[fStack[Top]];
         if not (assigned(f.Data) and (f.Size>0)) then begin
-         raise EpvVulkanTrueTypeFont.Create('Undefined function');
+         raise EpvTrueTypeFont.Create('Undefined function');
         end else begin
          CallStack[CallStackTop].ProgramBytes:=ProgramBytes;
          CallStack[CallStackTop].PC:=PC;
@@ -4063,12 +4064,12 @@ begin
       end;
       opCALL:begin
        if CallStackTop>=length(CallStack) then begin
-        raise EpvVulkanTrueTypeFont.Create('Call stack overflow');
+        raise EpvTrueTypeFont.Create('Call stack overflow');
        end else begin
         dec(Top);
         f:=fFunctions[fStack[Top]];
         if not (assigned(f.Data) and (f.Size>0)) then begin
-         raise EpvVulkanTrueTypeFont.Create('Undefined function');
+         raise EpvTrueTypeFont.Create('Undefined function');
         end else begin
          CallStack[CallStackTop].ProgramBytes:=ProgramBytes;
          CallStack[CallStackTop].PC:=PC;
@@ -4085,11 +4086,11 @@ begin
        repeat
         inc(PC);
         if PC>=ProgramBytes.Size then begin
-         raise EpvVulkanTrueTypeFont.Create('Unbalanced FDEF');
+         raise EpvTrueTypeFont.Create('Unbalanced FDEF');
         end else begin
          case ProgramBytes.Data^[PC] of
           opFDEF:begin
-           raise EpvVulkanTrueTypeFont.Create('Nested FDEF');
+           raise EpvTrueTypeFont.Create('Nested FDEF');
           end;
           opENDF:begin
            dec(Top);
@@ -4100,7 +4101,7 @@ begin
           else begin
            OK:=SkipInstructionPayload(ProgramBytes,PC);
            if not OK Then begin
-            raise EpvVulkanTrueTypeFont.Create('Unbalanced FDEF');
+            raise EpvTrueTypeFont.Create('Unbalanced FDEF');
            end;
           end;
          end;
@@ -4109,7 +4110,7 @@ begin
       end;
       opENDF:begin
        if CallStackTop<=0 then begin
-        raise EpvVulkanTrueTypeFont.Create('Call stack underflow');
+        raise EpvTrueTypeFont.Create('Call stack underflow');
        end else begin
         dec(CallStackTop);
         dec(CallStack[CallStackTop].LoopCount);
@@ -4126,19 +4127,19 @@ begin
       opMDAP0:begin
        dec(Top);
        i:=fStack[Top];
-       p:=GetPoint(0,VkTTF_PointType_Current,i);
+       p:=GetPoint(0,pvTTF_PointType_Current,i);
        if assigned(p) then begin
         MovePoint(p^,0,true);
         fGraphicsState.rp[0]:=i;
         fGraphicsState.rp[1]:=i;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opMDAP1:begin
        dec(Top);
        i:=fStack[Top];
-       p:=GetPoint(0,VkTTF_PointType_Current,i);
+       p:=GetPoint(0,pvTTF_PointType_Current,i);
        if assigned(p) then begin
         Distance:=DotProduct(p^.x,p^.y,fGraphicsState.pv);
         Distance:=RoundValue(Distance)-Distance;
@@ -4146,23 +4147,23 @@ begin
         fGraphicsState.rp[0]:=i;
         fGraphicsState.rp[1]:=i;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opIUP0,opIUP1:begin
        if Opcode=opIUP0 then begin
-        Mask:=VkTTF_PathFlag_TouchedY;
+        Mask:=pvTTF_PathFlag_TouchedY;
        end else begin
-        Mask:=VkTTF_PathFlag_TouchedX;
+        Mask:=pvTTF_PathFlag_TouchedX;
        end;
        CurrentPoint:=0;
        for i:=0 to length(fEnds)-1 do begin
         EndPoint:=fEnds[i];
         FirstPoint:=CurrentPoint;
-        if EndPoint>=length(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current]) then begin
-         EndPoint:=length(fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current])-1;
+        if EndPoint>=length(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current]) then begin
+         EndPoint:=length(fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current])-1;
         end;
-        while (CurrentPoint<=EndPoint) and ((fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,CurrentPoint].Flags and Mask)=0) do begin
+        while (CurrentPoint<=EndPoint) and ((fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,CurrentPoint].Flags and Mask)=0) do begin
          inc(CurrentPoint);
         end;
         if CurrentPoint<=EndPoint then begin
@@ -4170,7 +4171,7 @@ begin
          CurrentTouched:=CurrentPoint;
          inc(CurrentPoint);
          while CurrentPoint<=EndPoint do begin
-          if (fPoints[VkTTF_Zone_Glyph,VkTTF_PointType_Current,CurrentPoint].Flags and Mask)<>0 then begin
+          if (fPoints[pvTTF_Zone_Glyph,pvTTF_PointType_Current,CurrentPoint].Flags and Mask)<>0 then begin
            IUPInterpolate(Opcode=opIUP0,CurrentTouched+1,CurrentPoint-1,CurrentTouched,CurrentPoint);
            CurrentTouched:=CurrentPoint;
           end;
@@ -4189,20 +4190,20 @@ begin
       end;
       opSHP0,opSHP1:begin
        if Top<fGraphicsState.Loop then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack underflow');
+        raise EpvTrueTypeFont.Create('Stack underflow');
        end else begin
         ComputePointDisplacement(Opcode=opSHP1,ZonePointer,RefIndex,dx,dy);
         while fGraphicsState.Loop<>0 do begin
          dec(Top);
          i:=fStack[Top];
-         p:=GetPoint(2,VkTTF_PointType_Current,i);
+         p:=GetPoint(2,pvTTF_PointType_Current,i);
          if fGraphicsState.fv[0]<>0 then begin
           inc(p^.x,dx);
-          p^.Flags:=p^.Flags or VkTTF_PathFlag_TouchedX;
+          p^.Flags:=p^.Flags or pvTTF_PathFlag_TouchedX;
          end;
          if fGraphicsState.fv[1]<>0 then begin
           inc(p^.y,dy);
-          p^.Flags:=p^.Flags or VkTTF_PathFlag_TouchedY;
+          p^.Flags:=p^.Flags or pvTTF_PathFlag_TouchedY;
          end;
          dec(fGraphicsState.Loop);
         end;
@@ -4214,7 +4215,7 @@ begin
        dec(Top);
        x:=fStack[Top];
        if (x<0) or (x>=length(fEnds)) then begin
-        raise EpvVulkanTrueTypeFont.Create('Contour range underflow');
+        raise EpvTrueTypeFont.Create('Contour range underflow');
        end else if x=0 then begin
         i:=0;
         j:=fEnds[x];
@@ -4224,14 +4225,14 @@ begin
        end;
        while i<=j do begin
         if (ZonePointer<>2) or (i<>RefIndex) then begin
-         p:=GetPoint(2,VkTTF_PointType_Current,i);
+         p:=GetPoint(2,pvTTF_PointType_Current,i);
          if fGraphicsState.fv[0]<>0 then begin
           inc(p^.x,dx);
-          p^.Flags:=p^.Flags or VkTTF_PathFlag_TouchedX;
+          p^.Flags:=p^.Flags or pvTTF_PathFlag_TouchedX;
          end;
          if fGraphicsState.fv[1]<>0 then begin
           inc(p^.y,dy);
-          p^.Flags:=p^.Flags or VkTTF_PathFlag_TouchedY;
+          p^.Flags:=p^.Flags or pvTTF_PathFlag_TouchedY;
          end;
         end;
         inc(i);
@@ -4242,16 +4243,16 @@ begin
        dec(Top);
        x:=fStack[Top];
        if (x<0) or (x>2) then begin
-        raise EpvVulkanTrueTypeFont.Create('Zone range underflow');
+        raise EpvTrueTypeFont.Create('Zone range underflow');
        end else begin
         i:=0;
-        j:=length(fPoints[fGraphicsState.zp[x],VkTTF_PointType_Current]);
-        if fGraphicsState.zp[x]=VkTTF_Zone_Glyph then begin
+        j:=length(fPoints[fGraphicsState.zp[x],pvTTF_PointType_Current]);
+        if fGraphicsState.zp[x]=pvTTF_Zone_Glyph then begin
          dec(j,4);
         end;
         while i<j do begin
          if (ZonePointer<>x) or (i<>RefIndex) then begin
-          p:=GetPoint(2,VkTTF_PointType_Current,i);
+          p:=GetPoint(2,pvTTF_PointType_Current,i);
           if fGraphicsState.fv[0]<>0 then begin
            inc(p^.x,dx);
           end;
@@ -4265,7 +4266,7 @@ begin
       end;
       opSHPIX:begin
        if Top<(fGraphicsState.Loop+1) then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack underflow');
+        raise EpvTrueTypeFont.Create('Stack underflow');
        end else begin
         dec(Top);
         Distance:=fStack[Top];
@@ -4274,14 +4275,14 @@ begin
         while fGraphicsState.Loop<>0 do begin
          dec(Top);
          i:=fStack[Top];
-         p:=GetPoint(2,VkTTF_PointType_Current,i);
+         p:=GetPoint(2,pvTTF_PointType_Current,i);
          if fGraphicsState.fv[0]<>0 then begin
           inc(p^.x,dx);
-          p^.Flags:=p^.Flags or VkTTF_PathFlag_TouchedX;
+          p^.Flags:=p^.Flags or pvTTF_PathFlag_TouchedX;
          end;
          if fGraphicsState.fv[1]<>0 then begin
           inc(p^.y,dy);
-          p^.Flags:=p^.Flags or VkTTF_PathFlag_TouchedY;
+          p^.Flags:=p^.Flags or pvTTF_PathFlag_TouchedY;
          end;
          dec(fGraphicsState.Loop);
         end;
@@ -4290,18 +4291,18 @@ begin
       end;
       opIP:begin
        if Top<fGraphicsState.Loop then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack underflow');
+        raise EpvTrueTypeFont.Create('Stack underflow');
        end else begin
         Twilight:=(fGraphicsState.zp[0]=0) or (fGraphicsState.zp[1]=0) or (fGraphicsState.zp[2]=0);
         if Twilight then begin
-         PointType:=VkTTF_PointType_Unhinted;
+         PointType:=pvTTF_PointType_Unhinted;
         end else begin
-         PointType:=VkTTF_PointType_InFontUnits;
+         PointType:=pvTTF_PointType_InFontUnits;
         end;
         p:=GetPoint(1,PointType,fGraphicsState.rp[2]);
         OldP:=GetPoint(0,PointType,fGraphicsState.rp[1]);
         if assigned(p) and assigned(OldP) then begin
-         if PointType=VkTTF_PointType_InFontUnits then begin
+         if PointType=pvTTF_PointType_InFontUnits then begin
           OldRange:=DotProduct(fFont.Scale(p^.x-OldP^.x),fFont.Scale(p^.y-OldP^.y),fGraphicsState.dv);
          end else begin
           OldRange:=DotProduct(p^.x-OldP^.x,p^.y-OldP^.y,fGraphicsState.dv);
@@ -4309,8 +4310,8 @@ begin
         end else begin
          OldRange:=0;
         end;
-        p:=GetPoint(1,VkTTF_PointType_Current,fGraphicsState.rp[2]);
-        CurrentP:=GetPoint(0,VkTTF_PointType_Current,fGraphicsState.rp[1]);
+        p:=GetPoint(1,pvTTF_PointType_Current,fGraphicsState.rp[2]);
+        CurrentP:=GetPoint(0,pvTTF_PointType_Current,fGraphicsState.rp[1]);
         if assigned(p) and assigned(CurrentP) then begin
          CurrentRange:=DotProduct(p^.x-CurrentP^.x,p^.y-CurrentP^.y,fGraphicsState.pv);
         end else begin
@@ -4321,12 +4322,12 @@ begin
          i:=fStack[Top];
          p:=GetPoint(2,PointType,i);
          if assigned(p) then begin
-          if PointType=VkTTF_PointType_InFontUnits then begin
+          if PointType=pvTTF_PointType_InFontUnits then begin
            OldDist:=DotProduct(fFont.Scale(p^.x-OldP^.x),fFont.Scale(p^.y-OldP^.y),fGraphicsState.dv);
           end else begin
            OldDist:=DotProduct(p^.x-OldP^.x,p^.y-OldP^.y,fGraphicsState.dv);
           end;
-          p:=GetPoint(2,VkTTF_PointType_Current,i);
+          p:=GetPoint(2,pvTTF_PointType_Current,i);
           if assigned(p) then begin
            CurrentDist:=DotProduct(p^.x-CurrentP^.x,p^.y-CurrentP^.y,fGraphicsState.pv);
            if OldDist<>0 then begin
@@ -4350,20 +4351,20 @@ begin
        dec(Top,2);
        d:=fStack[Top+1];
        i:=fStack[Top];
-       if fGraphicsState.zp[0]=VkTTF_Zone_Twilight then begin
+       if fGraphicsState.zp[0]=pvTTF_Zone_Twilight then begin
         // undocumented behaviour
-        p0:=GetPoint(0,VkTTF_PointType_Unhinted,fGraphicsState.rp[0]);
-        p1:=GetPoint(1,VkTTF_PointType_Unhinted,fGraphicsState.rp[0]);
-        p2:=GetPoint(1,VkTTF_PointType_Current,fGraphicsState.rp[0]);
+        p0:=GetPoint(0,pvTTF_PointType_Unhinted,fGraphicsState.rp[0]);
+        p1:=GetPoint(1,pvTTF_PointType_Unhinted,fGraphicsState.rp[0]);
+        p2:=GetPoint(1,pvTTF_PointType_Current,fGraphicsState.rp[0]);
         if assigned(p0) and assigned(p1) and assigned(p2) then begin
          p1^:=p0^;
          p2^:=p0^;
         end else begin
-         raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+         raise EpvTrueTypeFont.Create('Out of point bounds');
         end;
        end;
-       p1:=GetPoint(1,VkTTF_PointType_Current,i);
-       p2:=GetPoint(0,VkTTF_PointType_Current,fGraphicsState.rp[0]);
+       p1:=GetPoint(1,pvTTF_PointType_Current,i);
+       p2:=GetPoint(0,pvTTF_PointType_Current,fGraphicsState.rp[0]);
        if assigned(p1) and assigned(p2) then begin
         Distance:=DotProduct(p1^.x-p2^.x,p1^.y-p2^.y,fGraphicsState.pv);
         MovePoint(p1^,d-Distance,true);
@@ -4373,28 +4374,28 @@ begin
          fGraphicsState.rp[0]:=i;
         end;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opALIGNRP:begin
        if Top<fGraphicsState.Loop then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack underflow');
+        raise EpvTrueTypeFont.Create('Stack underflow');
        end else begin
-        Ref:=GetPoint(0,VkTTF_PointType_Current,fGraphicsState.rp[0]);
+        Ref:=GetPoint(0,pvTTF_PointType_Current,fGraphicsState.rp[0]);
         if assigned(Ref) then begin
          while fGraphicsState.Loop<>0 do begin
           dec(Top);
-          p:=GetPoint(1,VkTTF_PointType_Current,fStack[Top]);
+          p:=GetPoint(1,pvTTF_PointType_Current,fStack[Top]);
           if assigned(p) then begin
            MovePoint(p^,-DotProduct(p^.x-Ref^.x,p^.y-Ref^.y,fGraphicsState.pv),true);
            dec(fGraphicsState.Loop);
           end else begin
-           raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+           raise EpvTrueTypeFont.Create('Out of point bounds');
           end;
          end;
          fGraphicsState.Loop:=1;
         end else begin
-         raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+         raise EpvTrueTypeFont.Create('Out of point bounds');
         end;
        end;
       end;
@@ -4409,15 +4410,15 @@ begin
        i:=fStack[Top];
        Distance:=GetCVT(fStack[Top+1]);
        if fGraphicsState.zp[0]=0 then begin
-        p:=GetPoint(0,VkTTF_PointType_Unhinted,i);
-        q:=GetPoint(0,VkTTF_PointType_Current,i);
+        p:=GetPoint(0,pvTTF_PointType_Unhinted,i);
+        q:=GetPoint(0,pvTTF_PointType_Current,i);
         if assigned(p) and assigned(q) then begin
          p^.x:=SARInt64(TpvInt64(Distance)*fGraphicsState.fv[0],14);
          p^.y:=SARInt64(TpvInt64(Distance)*fGraphicsState.fv[1],14);
          q^:=p^;
         end;
        end;
-       p:=GetPoint(0,VkTTF_PointType_Current,i);
+       p:=GetPoint(0,pvTTF_PointType_Current,i);
        if assigned(p) then begin
         OldDist:=DotProduct(p^.x,p^.y,fGraphicsState.pv);
         MovePoint(p^,Distance-OldDist,true);
@@ -4430,15 +4431,15 @@ begin
        i:=fStack[Top];
        Distance:=GetCVT(fStack[Top+1]);
        if fGraphicsState.zp[0]=0 then begin
-        p:=GetPoint(0,VkTTF_PointType_Unhinted,i);
-        q:=GetPoint(0,VkTTF_PointType_Current,i);
+        p:=GetPoint(0,pvTTF_PointType_Unhinted,i);
+        q:=GetPoint(0,pvTTF_PointType_Current,i);
         if assigned(p) and assigned(q) then begin
          p^.x:=SARInt64(TpvInt64(Distance)*fGraphicsState.fv[0],14);
          p^.y:=SARInt64(TpvInt64(Distance)*fGraphicsState.fv[1],14);
          q^:=p^;
         end;
        end;
-       p:=GetPoint(0,VkTTF_PointType_Current,i);
+       p:=GetPoint(0,pvTTF_PointType_Current,i);
        if assigned(p) then begin
         OldDist:=DotProduct(p^.x,p^.y,fGraphicsState.pv);
         if abs(Distance-OldDist)>fGraphicsState.ControlValueCutIn then begin
@@ -4453,14 +4454,14 @@ begin
       opNPUSHB:begin
        inc(PC);
        if PC>=ProgramBytes.Size then begin
-        raise EpvVulkanTrueTypeFont.Create('Insufficient data');
+        raise EpvTrueTypeFont.Create('Insufficient data');
        end else begin
         Opcode:=ProgramBytes.Data^[PC];
         inc(PC);
         if (Top+Opcode)>length(fStack) then begin
-         raise EpvVulkanTrueTypeFont.Create('Stack overflow');
+         raise EpvTrueTypeFont.Create('Stack overflow');
         end else if (PC+Opcode)>ProgramBytes.Size then begin
-         raise EpvVulkanTrueTypeFont.Create('Insufficient data');
+         raise EpvTrueTypeFont.Create('Insufficient data');
         end else begin
          while Opcode>0 do begin
           fStack[Top]:=ProgramBytes.Data^[PC];
@@ -4475,14 +4476,14 @@ begin
       opNPUSHW:begin
        inc(PC);
        if PC>=ProgramBytes.Size then begin
-        raise EpvVulkanTrueTypeFont.Create('Insufficient data');
+        raise EpvTrueTypeFont.Create('Insufficient data');
        end else begin
         Opcode:=ProgramBytes.Data^[PC];
         inc(PC);
         if (Top+Opcode)>length(fStack) then begin
-         raise EpvVulkanTrueTypeFont.Create('Stack overflow');
+         raise EpvTrueTypeFont.Create('Stack overflow');
         end else if (PC+(Opcode*2))>ProgramBytes.Size then begin
-         raise EpvVulkanTrueTypeFont.Create('Insufficient data');
+         raise EpvTrueTypeFont.Create('Insufficient data');
         end else begin
          while Opcode>0 do begin
           fStack[Top]:=TpvInt16(TpvUInt16((ProgramBytes.Data^[PC] shl 8) or ProgramBytes.Data^[PC+1]));
@@ -4500,7 +4501,7 @@ begin
        if (i>=0) and (i<length(fStorage)) then begin
         fStorage[i]:=fStack[Top+1];
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Invalid data');
+        raise EpvTrueTypeFont.Create('Invalid data');
        end;
       end;
       opRS:begin
@@ -4508,7 +4509,7 @@ begin
        if (i>=0) and (i<length(fStorage)) then begin
         fStack[Top-1]:=fStorage[i];
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Invalid data');
+        raise EpvTrueTypeFont.Create('Invalid data');
        end;
       end;
       opWCVTP:begin
@@ -4519,7 +4520,7 @@ begin
        fStack[Top-1]:=GetCVT(fStack[Top-1]);
       end;
       opGC0,opGC1:begin
-       p:=GetPoint(2,VkTTF_PointType_Current,fStack[Top-1]);
+       p:=GetPoint(2,pvTTF_PointType_Current,fStack[Top-1]);
        if assigned(p) then begin
         case Opcode of
          opGC0:begin
@@ -4530,19 +4531,19 @@ begin
          end;
         end;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opSCFS:begin
        dec(Top,2);
        Distance:=fStack[Top+1];
-       p:=GetPoint(2,VkTTF_PointType_Current,fStack[Top]);
+       p:=GetPoint(2,pvTTF_PointType_Current,fStack[Top]);
        if assigned(p) then begin
         OldDist:=DotProduct(p^.x,p^.y,fGraphicsState.pv);
         MovePoint(p^,Distance-OldDist,true);
         if fGraphicsState.zp[2]=0 then begin
          // UNDOCUMENTED! The MS rasterizer does that with twilight points
-         p1:=GetPoint(2,VkTTF_PointType_Unhinted,fStack[Top]);
+         p1:=GetPoint(2,pvTTF_PointType_Unhinted,fStack[Top]);
          if assigned(p1) then begin
 {         p1^.x:=p0^.x;
           p1^.y:=p0^.y;}
@@ -4551,43 +4552,43 @@ begin
          end;
         end;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opMD0:begin
        dec(Top);
-       p0:=GetPoint(0,VkTTF_PointType_Current,fStack[Top-1]);
-       p1:=GetPoint(1,VkTTF_PointType_Current,fStack[Top]);
+       p0:=GetPoint(0,pvTTF_PointType_Current,fStack[Top-1]);
+       p1:=GetPoint(1,pvTTF_PointType_Current,fStack[Top]);
        if assigned(p0) and assigned(p1) then begin
         fStack[Top-1]:=DotProduct(p0^.x-p1^.x,p0^.y-p1^.y,fGraphicsState.pv);
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opMD1:begin
        dec(Top);
        if (fGraphicsState.zp[0]=0) or (fGraphicsState.zp[1]=0) then begin
-        p0:=GetPoint(0,VkTTF_PointType_Unhinted,fStack[Top-1]);
-        p1:=GetPoint(1,VkTTF_PointType_Unhinted,fStack[Top]);
+        p0:=GetPoint(0,pvTTF_PointType_Unhinted,fStack[Top-1]);
+        p1:=GetPoint(1,pvTTF_PointType_Unhinted,fStack[Top]);
         if assigned(p0) and assigned(p1) then begin
          fStack[Top-1]:=DotProduct(p0^.x-p1^.x,p0^.y-p1^.y,fGraphicsState.dv);
         end else begin
-         raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+         raise EpvTrueTypeFont.Create('Out of point bounds');
         end;
        end else begin
         // UNDOCUMENTED: twilight zone special case
-        p0:=GetPoint(0,VkTTF_PointType_InFontUnits,fStack[Top-1]);
-        p1:=GetPoint(1,VkTTF_PointType_InFontUnits,fStack[Top]);
+        p0:=GetPoint(0,pvTTF_PointType_InFontUnits,fStack[Top-1]);
+        p1:=GetPoint(1,pvTTF_PointType_InFontUnits,fStack[Top]);
         if assigned(p0) and assigned(p1) then begin
          fStack[Top-1]:=DotProduct(fFont.Scale(p0^.x-p1^.x),fFont.Scale(p0^.y-p1^.y),fGraphicsState.dv);
         end else begin
-         raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+         raise EpvTrueTypeFont.Create('Out of point bounds');
         end;
        end;
       end;
       opMPPEM:begin
        if Top>=length(fStack) then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack overflow');
+        raise EpvTrueTypeFont.Create('Stack overflow');
        end else begin
         fStack[Top]:=SARLongint(Font.GetScale+32,6);
         inc(Top);
@@ -4595,7 +4596,7 @@ begin
       end;
       opMPS:begin
        if Top>=length(fStack) then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack overflow');
+        raise EpvTrueTypeFont.Create('Stack overflow');
        end else begin
         fStack[Top]:=SARLongint(Font.GetScale+32,6);
         inc(Top);
@@ -4670,7 +4671,7 @@ begin
         repeat
          inc(PC);
          if PC>=ProgramBytes.Size then begin
-          raise EpvVulkanTrueTypeFont.Create('Unbalanced IF');
+          raise EpvTrueTypeFont.Create('Unbalanced IF');
          end else begin
           case ProgramBytes.Data^[PC] of
            opIF:begin
@@ -4690,7 +4691,7 @@ begin
            else begin
             OK:=SkipInstructionPayload(ProgramBytes,PC);
             if not OK Then begin
-             raise EpvVulkanTrueTypeFont.Create('Unbalanced IF');
+             raise EpvTrueTypeFont.Create('Unbalanced IF');
             end;
            end;
           end;
@@ -4725,7 +4726,7 @@ begin
       end;
       opDELTAP1,opDELTAP2,opDELTAP3:begin
        if Top<1 then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack underflow');
+        raise EpvTrueTypeFont.Create('Stack underflow');
        end else begin
         dec(Top);
         Base:=fGraphicsState.DeltaBase;
@@ -4740,7 +4741,7 @@ begin
         x:=SARLongint(fFont.GetScale,6);
         Count:=fStack[Top];
         if Top<(Count*2) then begin
-         raise EpvVulkanTrueTypeFont.Create('Stack underflow');
+         raise EpvTrueTypeFont.Create('Stack underflow');
         end else begin
          while Count<>0 do begin
           dec(Top,2);
@@ -4748,7 +4749,7 @@ begin
           j:=fStack[Top];
           k:=((j and $f0) shr 4)+Base;
           if k=x then begin
-           p:=GetPoint(0,VkTTF_PointType_Current,i);
+           p:=GetPoint(0,pvTTF_PointType_Current,i);
            if assigned(p) then begin
             j:=(j and $f)-8;
             if j>=0 then begin
@@ -4764,7 +4765,7 @@ begin
       end;
       opDELTAC1,opDELTAC2,opDELTAC3:begin
        if Top<1 then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack underflow');
+        raise EpvTrueTypeFont.Create('Stack underflow');
        end else begin
         dec(Top);
         Base:=fGraphicsState.DeltaBase;
@@ -4779,7 +4780,7 @@ begin
         x:=SARLongint(fFont.GetScale+32,6);
         Count:=fStack[Top];
         if Top<(Count*2) then begin
-         raise EpvVulkanTrueTypeFont.Create('Stack underflow');
+         raise EpvTrueTypeFont.Create('Stack underflow');
         end else begin
          while Count<>0 do begin
           dec(Top,2);
@@ -4820,7 +4821,7 @@ begin
       opDIV:begin
        dec(Top);
        if fStack[Top]=0 then begin
-        raise EpvVulkanTrueTypeFont.Create('Division by zero');
+        raise EpvTrueTypeFont.Create('Division by zero');
        end else begin
         fStack[Top-1]:=Div26d6(fStack[Top-1],fStack[Top]);
        end;
@@ -4917,15 +4918,15 @@ begin
       end;
       opFLIPPT:begin
        if Top<fGraphicsState.Loop then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack underflow');
+        raise EpvTrueTypeFont.Create('Stack underflow');
        end else begin
         dec(Top);
         while fGraphicsState.Loop<>0 do begin
          dec(Top);
          i:=fStack[Top];
-         p:=GetPoint(1,VkTTF_PointType_Current,i);
+         p:=GetPoint(1,pvTTF_PointType_Current,i);
          if assigned(p) then begin
-          p^.Flags:=p^.Flags xor VkTTF_PathFlag_OnCurve;
+          p^.Flags:=p^.Flags xor pvTTF_PathFlag_OnCurve;
          end;
          dec(fGraphicsState.Loop);
         end;
@@ -4937,9 +4938,9 @@ begin
        j:=fStack[Top+1];
        i:=fStack[Top];
        while i<=j do begin
-        p:=GetPoint(1,VkTTF_PointType_Current,i);
+        p:=GetPoint(1,pvTTF_PointType_Current,i);
         if assigned(p) then begin
-         p^.Flags:=p^.Flags or VkTTF_PathFlag_OnCurve;
+         p^.Flags:=p^.Flags or pvTTF_PathFlag_OnCurve;
         end;
         inc(i);
        end;
@@ -4949,9 +4950,9 @@ begin
        j:=fStack[Top+1];
        i:=fStack[Top];
        while i<=j do begin
-        p:=GetPoint(1,VkTTF_PointType_Current,i);
+        p:=GetPoint(1,pvTTF_PointType_Current,i);
         if assigned(p) then begin
-         p^.Flags:=p^.Flags and not VkTTF_PathFlag_OnCurve;
+         p^.Flags:=p^.Flags and not pvTTF_PathFlag_OnCurve;
         end;
         inc(i);
        end;
@@ -4964,8 +4965,8 @@ begin
       end;
       opSDPVTL0,opSDPVTL1:begin
        dec(Top,2);
-       p1:=GetPoint(1,VkTTF_PointType_Unhinted,fStack[Top]);
-       p2:=GetPoint(2,VkTTF_PointType_Unhinted,fStack[Top+1]);
+       p1:=GetPoint(1,pvTTF_PointType_Unhinted,fStack[Top]);
+       p2:=GetPoint(2,pvTTF_PointType_Unhinted,fStack[Top+1]);
        if assigned(p1) and assigned(p2) then begin
         dx:=p1^.x-p2^.x;
         dy:=p1^.y-p2^.y;
@@ -4981,8 +4982,8 @@ begin
          fGraphicsState.dv[0]:=-dy;
          fGraphicsState.dv[1]:=dx;
         end;
-        p1:=GetPoint(1,VkTTF_PointType_Current,fStack[Top]);
-        p2:=GetPoint(2,VkTTF_PointType_Current,fStack[Top+1]);
+        p1:=GetPoint(1,pvTTF_PointType_Current,fStack[Top]);
+        p2:=GetPoint(2,pvTTF_PointType_Current,fStack[Top+1]);
         if assigned(p1) and assigned(p2) then begin
          dx:=p1^.x-p2^.x;
          dy:=p1^.y-p2^.y;
@@ -4999,10 +5000,10 @@ begin
           fGraphicsState.pv[1]:=dx;
          end;
         end else begin
-         raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+         raise EpvTrueTypeFont.Create('Out of point bounds');
         end;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opGETINFO:begin
@@ -5016,7 +5017,7 @@ begin
        fStack[Top-1]:=x;
       end;
       opIDEF:begin
-       raise EpvVulkanTrueTypeFont.Create('Unsupported IDEF instruction');
+       raise EpvTrueTypeFont.Create('Unsupported IDEF instruction');
       end;
       opROLL:begin
        t1:=fStack[Top-1];
@@ -5050,16 +5051,16 @@ begin
          fGraphicsState.InstructionControl:=(fGraphicsState.InstructionControl and not fStack[Top+1]) or fStack[Top];
         end;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Invalid reference');
+        raise EpvTrueTypeFont.Create('Invalid reference');
        end;
       end;
       opPUSHB000,opPUSHB001,opPUSHB010,opPUSHB011,opPUSHB100,opPUSHB101,opPUSHB110,opPUSHB111:begin
        inc(PC);
        dec(Opcode,opPUSHB000-1);
        if (Top+Opcode)>length(fStack) then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack overflow');
+        raise EpvTrueTypeFont.Create('Stack overflow');
        end else if (PC+Opcode)>ProgramBytes.Size then begin
-        raise EpvVulkanTrueTypeFont.Create('Insufficient data');
+        raise EpvTrueTypeFont.Create('Insufficient data');
        end else begin
         while Opcode>0 do begin
          fStack[Top]:=ProgramBytes.Data^[PC];
@@ -5074,9 +5075,9 @@ begin
        inc(PC);
        dec(Opcode,opPUSHW000-1);
        if (Top+Opcode)>length(fStack) then begin
-        raise EpvVulkanTrueTypeFont.Create('Stack overflow');
+        raise EpvTrueTypeFont.Create('Stack overflow');
        end else if (PC+(Opcode*2))>ProgramBytes.Size then begin
-        raise EpvVulkanTrueTypeFont.Create('Insufficient data');
+        raise EpvTrueTypeFont.Create('Insufficient data');
        end else begin
         while Opcode>0 do begin
          fStack[Top]:=TpvInt16(TpvUInt16((ProgramBytes.Data^[PC] shl 8) or ProgramBytes.Data^[PC+1]));
@@ -5093,16 +5094,16 @@ begin
       opMDRP11000,opMDRP11001,opMDRP11010,opMDRP11011,opMDRP11100,opMDRP11101,opMDRP11110,opMDRP11111:begin
        dec(Top);
        i:=fStack[Top];
-       Ref:=GetPoint(0,VkTTF_PointType_Current,fGraphicsState.rp[0]);
-       p:=GetPoint(1,VkTTF_PointType_Current,i);
+       Ref:=GetPoint(0,pvTTF_PointType_Current,fGraphicsState.rp[0]);
+       p:=GetPoint(1,pvTTF_PointType_Current,i);
        if assigned(Ref) and assigned(p) then begin
         if (fGraphicsState.zp[0]=0) or (fGraphicsState.zp[1]=0) then begin
-         p0:=GetPoint(1,VkTTF_PointType_Unhinted,i);
-         p1:=GetPoint(0,VkTTF_PointType_Unhinted,fGraphicsState.rp[0]);
+         p0:=GetPoint(1,pvTTF_PointType_Unhinted,i);
+         p1:=GetPoint(0,pvTTF_PointType_Unhinted,fGraphicsState.rp[0]);
          OldDist:=DotProduct(p0^.x-p1^.x,p0^.y-p1^.y,fGraphicsState.dv);
         end else begin
-         p0:=GetPoint(1,VkTTF_PointType_InFontUnits,i);
-         p1:=GetPoint(0,VkTTF_PointType_InFontUnits,fGraphicsState.rp[0]);
+         p0:=GetPoint(1,pvTTF_PointType_InFontUnits,i);
+         p1:=GetPoint(0,pvTTF_PointType_InFontUnits,fGraphicsState.rp[0]);
          OldDist:=fFont.Scale(DotProduct(p0^.x-p1^.x,p0^.y-p1^.y,fGraphicsState.dv));
         end;
         if abs(OldDist-fGraphicsState.SingleWidth)<fGraphicsState.SingleWidthCutIn then begin
@@ -5136,7 +5137,7 @@ begin
         OldDist:=DotProduct(p^.x-Ref^.x,p^.y-Ref^.y,fGraphicsState.pv);
         MovePoint(p^,Distance-OldDist,true);
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       opMIRP00000,opMIRP00001,opMIRP00010,opMIRP00011,opMIRP00100,opMIRP00101,opMIRP00110,opMIRP00111,
@@ -5153,26 +5154,26 @@ begin
          CVTDist:=-fGraphicsState.SingleWidth;
         end;
        end;
-       if fGraphicsState.zp[1]=VkTTF_Zone_Twilight then begin
+       if fGraphicsState.zp[1]=pvTTF_Zone_Twilight then begin
         // UNDOCUMENTED: when moving a twilight zone point, its original position is changed as well.
-        p0:=GetPoint(0,VkTTF_PointType_Unhinted,fGraphicsState.rp[0]);
-        p1:=GetPoint(1,VkTTF_PointType_Unhinted,i);
+        p0:=GetPoint(0,pvTTF_PointType_Unhinted,fGraphicsState.rp[0]);
+        p1:=GetPoint(1,pvTTF_PointType_Unhinted,i);
         if assigned(p0) and assigned(p1) then begin
          p1^.x:=p0^.x+MulDiv(CVTDist,fGraphicsState.fv[0],$4000,true);
          p1^.y:=p0^.y+MulDiv(CVTDist,fGraphicsState.fv[1],$4000,true);
-         p2:=GetPoint(1,VkTTF_PointType_Current,i);
+         p2:=GetPoint(1,pvTTF_PointType_Current,i);
          if assigned(p2) then begin
           p2^.x:=p1^.x;
           p2^.y:=p1^.y;
          end;
         end;
        end;
-       Ref:=GetPoint(0,VkTTF_PointType_Unhinted,fGraphicsState.rp[0]);
-       p:=GetPoint(1,VkTTF_PointType_Unhinted,i);
+       Ref:=GetPoint(0,pvTTF_PointType_Unhinted,fGraphicsState.rp[0]);
+       p:=GetPoint(1,pvTTF_PointType_Unhinted,i);
        if assigned(Ref) and assigned(p) then begin
         OldDist:=DotProduct(p^.x-Ref^.x,p^.y-Ref^.y,fGraphicsState.dv);
-        Ref:=GetPoint(0,VkTTF_PointType_Current,fGraphicsState.rp[0]);
-        p:=GetPoint(1,VkTTF_PointType_Current,i);
+        Ref:=GetPoint(0,pvTTF_PointType_Current,fGraphicsState.rp[0]);
+        p:=GetPoint(1,pvTTF_PointType_Current,i);
         if assigned(Ref) and assigned(p) then begin
          CurrentDist:=DotProduct(p^.x-Ref^.x,p^.y-Ref^.y,fGraphicsState.pv);
          if fGraphicsState.AutoFlip and (TpvInt32(OldDist xor CVTDist)<0) then begin
@@ -5205,14 +5206,14 @@ begin
          fGraphicsState.rp[2]:=i;
          MovePoint(p^,Distance-CurrentDist,true);
         end else begin
-         raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+         raise EpvTrueTypeFont.Create('Out of point bounds');
         end;
        end else begin
-        raise EpvVulkanTrueTypeFont.Create('Out of point bounds');
+        raise EpvTrueTypeFont.Create('Out of point bounds');
        end;
       end;
       else begin
-       raise EpvVulkanTrueTypeFont.Create('Unrecognized instruction');
+       raise EpvTrueTypeFont.Create('Unrecognized instruction');
       end;
      end;
      inc(PC);
@@ -5225,7 +5226,7 @@ begin
 {$endif}
 end;
 
-constructor TpvVulkanTrueTypeFont.Create(const Stream:TStream;const TargetPPI:TpvInt32=96;const ForceSelector:boolean=false;const PlatformID:TpvUInt16=VkTTF_PID_Microsoft;const SpecificID:TpvUInt16=VkTTF_SID_MS_UNICODE_CS;const LanguageID:TpvUInt16=VkTTF_LID_MS_USEnglish;const CollectionIndex:TpvInt32=0);
+constructor TpvTrueTypeFont.Create(const Stream:TStream;const TargetPPI:TpvInt32=96;const ForceSelector:boolean=false;const PlatformID:TpvUInt16=pvTTF_PID_Microsoft;const SpecificID:TpvUInt16=pvTTF_SID_MS_UNICODE_CS;const LanguageID:TpvUInt16=pvTTF_LID_MS_USEnglish;const CollectionIndex:TpvInt32=0);
 begin
  inherited Create;
  fTargetPPI:=TargetPPI;
@@ -5242,8 +5243,8 @@ begin
  fCMapFormat:=0;
  fNumTables:=0;
  fIndexToLocationFormat:=0;
- FillChar(fGlyphBuffer,SizeOf(TpvVulkanTrueTypeFontGlyphBuffer),AnsiChar(#0));
- FillChar(fPolygonBuffer,SizeOf(TpvVulkanTrueTypeFontPolygonBuffer),AnsiChar(#0));
+ FillChar(fGlyphBuffer,SizeOf(TpvTrueTypeFontGlyphBuffer),AnsiChar(#0));
+ FillChar(fPolygonBuffer,SizeOf(TpvTrueTypeFontPolygonBuffer),AnsiChar(#0));
  fGlyfOffset:=0;
  fGlyphLoadedBitmap:=nil;
  fGlyphs:=nil;
@@ -5254,8 +5255,8 @@ begin
  fMaxFunctionDefs:=0;
  fMaxStackElements:=0;
  fCVT:=nil;
- FillChar(fFPGM,SizeOf(TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes),AnsiChar(#0));
- FillChar(fPREP,SizeOf(TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes),AnsiChar(#0));
+ FillChar(fFPGM,SizeOf(TpvTrueTypeFontByteCodeInterpreterProgramBytes),AnsiChar(#0));
+ FillChar(fPREP,SizeOf(TpvTrueTypeFontByteCodeInterpreterProgramBytes),AnsiChar(#0));
  fStringCopyright:='';
  fStringFamily:='';
  fStringSubFamily:='';
@@ -5287,94 +5288,94 @@ begin
   begin
    fGASPRanges[0].LowerPPEM:=0;
    fGASPRanges[0].UpperPPEM:=8;
-   fGASPRanges[0].Flags:=VkTTF_GASP_DOGRAY or VkTTF_GASP_SYMMETRIC_GRIDFIT;
+   fGASPRanges[0].Flags:=pvTTF_GASP_DOGRAY or pvTTF_GASP_SYMMETRIC_GRIDFIT;
   end;
   begin
    fGASPRanges[1].LowerPPEM:=9;
    fGASPRanges[1].UpperPPEM:=16;
-   fGASPRanges[1].Flags:=VkTTF_GASP_GRIDFIT or VkTTF_GASP_SYMMETRIC_GRIDFIT;
+   fGASPRanges[1].Flags:=pvTTF_GASP_GRIDFIT or pvTTF_GASP_SYMMETRIC_GRIDFIT;
   end;
   begin
    fGASPRanges[2].LowerPPEM:=17;
    fGASPRanges[2].UpperPPEM:=19;
-   fGASPRanges[2].Flags:=VkTTF_GASP_GRIDFIT or VkTTF_GASP_DOGRAY or VkTTF_GASP_SYMMETRIC_GRIDFIT;
+   fGASPRanges[2].Flags:=pvTTF_GASP_GRIDFIT or pvTTF_GASP_DOGRAY or pvTTF_GASP_SYMMETRIC_GRIDFIT;
   end;
   begin
    fGASPRanges[3].LowerPPEM:=20;
    fGASPRanges[3].UpperPPEM:=$7ffffff;
-   fGASPRanges[3].Flags:=VkTTF_GASP_GRIDFIT or VkTTF_GASP_DOGRAY or VkTTF_GASP_SYMMETRIC_GRIDFIT or VkTTF_GASP_SYMMETRIC_SMOOTHING;
+   fGASPRanges[3].Flags:=pvTTF_GASP_GRIDFIT or pvTTF_GASP_DOGRAY or pvTTF_GASP_SYMMETRIC_GRIDFIT or pvTTF_GASP_SYMMETRIC_SMOOTHING;
   end;
  end;
- FillChar(fByteCodeInterpreterParameters,SizeOf(TpvVulkanTrueTypeFontByteCodeInterpreterParameters),#0);
+ FillChar(fByteCodeInterpreterParameters,SizeOf(TpvTrueTypeFontByteCodeInterpreterParameters),#0);
  fIgnoreByteCodeInterpreter:=true;
- fLastError:=VkTTF_TT_ERR_NoError;
+ fLastError:=pvTTF_TT_ERR_NoError;
  fPostScriptFlavored:=false;
  try
-  if ReadFontData(Stream,CollectionIndex)=VkTTF_TT_ERR_NoError then begin
+  if ReadFontData(Stream,CollectionIndex)=pvTTF_TT_ERR_NoError then begin
 
    repeat
 
     fLastError:=LoadOS2;
-    if fLastError<>VkTTF_TT_ERR_NoError then begin
+    if fLastError<>pvTTF_TT_ERR_NoError then begin
      break;
     end;
 
     fLastError:=LoadHEAD;
-    if fLastError<>VkTTF_TT_ERR_NoError then begin
+    if fLastError<>pvTTF_TT_ERR_NoError then begin
      break;
     end;
 
     fLastError:=LoadMAXP;
-    if fLastError<>VkTTF_TT_ERR_NoError then begin
+    if fLastError<>pvTTF_TT_ERR_NoError then begin
      break;
     end;
 
     fLastError:=LoadNAME;
-    if fLastError<>VkTTF_TT_ERR_NoError then begin
+    if fLastError<>pvTTF_TT_ERR_NoError then begin
      break;
     end;
 
     fLastError:=LoadCMAP;
-    if fLastError<>VkTTF_TT_ERR_NoError then begin
+    if fLastError<>pvTTF_TT_ERR_NoError then begin
      break;
     end;
 
     fLastError:=LoadCFF;
-    if fLastError=VkTTF_TT_ERR_NoError then begin
+    if fLastError=pvTTF_TT_ERR_NoError then begin
 
      fPostScriptFlavored:=true;
 
     end else begin
 
      fLastError:=LoadLOCA;
-     if fLastError<>VkTTF_TT_ERR_NoError then begin
+     if fLastError<>pvTTF_TT_ERR_NoError then begin
       break;
      end;
 
      fLastError:=LoadGLYF;
-     if fLastError<>VkTTF_TT_ERR_NoError then begin
+     if fLastError<>pvTTF_TT_ERR_NoError then begin
       break;
      end;
 
     end;
 
     fLastError:=LoadHHEA;
-    if fLastError<>VkTTF_TT_ERR_NoError then begin
+    if fLastError<>pvTTF_TT_ERR_NoError then begin
      break;
     end;
 
     fLastError:=LoadHMTX;
-    if fLastError<>VkTTF_TT_ERR_NoError then begin
+    if fLastError<>pvTTF_TT_ERR_NoError then begin
      break;
     end;
 
     fLastError:=LoadVHEA;
-    if fLastError<>VkTTF_TT_ERR_NoError then begin
+    if fLastError<>pvTTF_TT_ERR_NoError then begin
      break;
     end;
 
     fLastError:=LoadVMTX;
-    if fLastError<>VkTTF_TT_ERR_NoError then begin
+    if fLastError<>pvTTF_TT_ERR_NoError then begin
      break;
     end;
 
@@ -5397,7 +5398,7 @@ begin
 
   end;
   try
-   fByteCodeInterpreter:=TpvVulkanTrueTypeFontByteCodeInterpreter.Create(self);
+   fByteCodeInterpreter:=TpvTrueTypeFontByteCodeInterpreter.Create(self);
    fIgnoreByteCodeInterpreter:=false;
    fByteCodeInterpreter.Reinitialize;
   except
@@ -5406,46 +5407,46 @@ begin
   end;
  finally
  end;
- if fLastError<>VkTTF_TT_ERR_NoError then begin
+ if fLastError<>pvTTF_TT_ERR_NoError then begin
   case fLastError of
-   VkTTF_TT_ERR_InvalidFile:begin
-    raise EpvVulkanTrueTypeFont.Create('Invalid font file');
+   pvTTF_TT_ERR_InvalidFile:begin
+    raise EpvTrueTypeFont.Create('Invalid font file');
    end;
-   VkTTF_TT_ERR_CorruptFile:begin
-    raise EpvVulkanTrueTypeFont.Create('Corrupt font file');
+   pvTTF_TT_ERR_CorruptFile:begin
+    raise EpvTrueTypeFont.Create('Corrupt font file');
    end;
-   VkTTF_TT_ERR_OutOfMemory:begin
-    raise EpvVulkanTrueTypeFont.Create('Out of memory');
+   pvTTF_TT_ERR_OutOfMemory:begin
+    raise EpvTrueTypeFont.Create('Out of memory');
    end;
-   VkTTF_TT_ERR_TableNotFound:begin
-    raise EpvVulkanTrueTypeFont.Create('Font table not found');
+   pvTTF_TT_ERR_TableNotFound:begin
+    raise EpvTrueTypeFont.Create('Font table not found');
    end;
-   VkTTF_TT_ERR_NoCharacterMapFound:begin
-    raise EpvVulkanTrueTypeFont.Create('No character map found');
+   pvTTF_TT_ERR_NoCharacterMapFound:begin
+    raise EpvTrueTypeFont.Create('No character map found');
    end;
-   VkTTF_TT_ERR_UnknownCharacterMapFormat:begin
-    raise EpvVulkanTrueTypeFont.Create('Unknown character map format');
+   pvTTF_TT_ERR_UnknownCharacterMapFormat:begin
+    raise EpvTrueTypeFont.Create('Unknown character map format');
    end;
-   VkTTF_TT_ERR_CharacterMapNotPresent:begin
-    raise EpvVulkanTrueTypeFont.Create('Character map not present');
+   pvTTF_TT_ERR_CharacterMapNotPresent:begin
+    raise EpvTrueTypeFont.Create('Character map not present');
    end;
-   VkTTF_TT_ERR_UnableToOpenFile:begin
-    raise EpvVulkanTrueTypeFont.Create('Unable to open file');
+   pvTTF_TT_ERR_UnableToOpenFile:begin
+    raise EpvTrueTypeFont.Create('Unable to open file');
    end;
-   VkTTF_TT_ERR_UnknownKerningFormat:begin
-    raise EpvVulkanTrueTypeFont.Create('Unknown kerning format');
+   pvTTF_TT_ERR_UnknownKerningFormat:begin
+    raise EpvTrueTypeFont.Create('Unknown kerning format');
    end;
-   VkTTF_TT_ERR_OutOfBounds:begin
-    raise EpvVulkanTrueTypeFont.Create('Out of bounds');
+   pvTTF_TT_ERR_OutOfBounds:begin
+    raise EpvTrueTypeFont.Create('Out of bounds');
    end;
    else begin
-    raise EpvVulkanTrueTypeFont.Create('Unknown font error');
+    raise EpvTrueTypeFont.Create('Unknown font error');
    end;
   end;
  end;
 end;
 
-destructor TpvVulkanTrueTypeFont.Destroy;
+destructor TpvTrueTypeFont.Destroy;
 var i:TpvInt32;
 begin
  SetLength(fByteCodeInterpreterParameters.pCurrent,0);
@@ -5479,7 +5480,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvVulkanTrueTypeFont.SetSize(NewSize:TpvInt32);
+procedure TpvTrueTypeFont.SetSize(NewSize:TpvInt32);
 begin
  if fSize<>NewSize then begin
   fSize:=NewSize;
@@ -5494,19 +5495,19 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.ReadFontData(Stream:TStream;CollectionIndex:TpvInt32):TpvInt32;
+function TpvTrueTypeFont.ReadFontData(Stream:TStream;CollectionIndex:TpvInt32):TpvInt32;
 var i,tablelength,tabledirsize,tabledatasize:TpvInt32;
-    tfd:array[0..VkTTF_OFFSET_TABLE_SIZE-1] of TpvUInt8;
+    tfd:array[0..pvTTF_OFFSET_TABLE_SIZE-1] of TpvUInt8;
     TableDirectory:array of TpvUInt8;
     i64:TpvInt64;
 begin
  if (not assigned(Stream)) or (Stream.Seek(0,soBeginning)<>0) then begin
-  result:=VkTTF_TT_ERR_UnableToOpenFile;
+  result:=pvTTF_TT_ERR_UnableToOpenFile;
   exit;
  end;
 
- if Stream.Read(tfd,VkTTF_OFFSET_TABLE_SIZE)<>VkTTF_OFFSET_TABLE_SIZE then begin
-  result:=VkTTF_TT_ERR_CorruptFile;
+ if Stream.Read(tfd,pvTTF_OFFSET_TABLE_SIZE)<>pvTTF_OFFSET_TABLE_SIZE then begin
+  result:=pvTTF_TT_ERR_CorruptFile;
   exit;
  end;
 
@@ -5514,24 +5515,24 @@ begin
     ((tfd[4]=$00) or (tfd[5] in [$01,$02]) or (tfd[6]=$00) or (tfd[7]=$00)) then begin
   i:=CollectionIndex;
   if TpvUInt32(i+0)>=ToLONGWORD(tfd[8],tfd[9],tfd[10],tfd[11]) then begin
-   result:=VkTTF_TT_ERR_InvalidFile;
+   result:=pvTTF_TT_ERR_InvalidFile;
    exit;
   end;
   if Stream.Seek(12+(i*14),soBeginning)<>(12+(i*14)) then begin
-   result:=VkTTF_TT_ERR_CorruptFile;
+   result:=pvTTF_TT_ERR_CorruptFile;
    exit;
   end;
   if Stream.Read(tfd,4)<>4 then begin
-   result:=VkTTF_TT_ERR_CorruptFile;
+   result:=pvTTF_TT_ERR_CorruptFile;
    exit;
   end;
   i64:=ToLONGWORD(tfd[0],tfd[1],tfd[2],tfd[3]);
   if Stream.Seek(i64,soBeginning)<>i64 then begin
-   result:=VkTTF_TT_ERR_CorruptFile;
+   result:=pvTTF_TT_ERR_CorruptFile;
    exit;
   end;
-  if Stream.Read(tfd,VkTTF_OFFSET_TABLE_SIZE)<>VkTTF_OFFSET_TABLE_SIZE then begin
-   result:=VkTTF_TT_ERR_CorruptFile;
+  if Stream.Read(tfd,pvTTF_OFFSET_TABLE_SIZE)<>pvTTF_OFFSET_TABLE_SIZE then begin
+   result:=pvTTF_TT_ERR_CorruptFile;
    exit;
   end;
  end;
@@ -5547,7 +5548,7 @@ begin
   TableDirectory:=nil;
   SetLength(TableDirectory,tabledirsize);              // Allocate storage for Table Directory
   if length(TableDirectory)<>tabledirsize then begin
-   result:=VkTTF_TT_ERR_OutOfMemory;
+   result:=pvTTF_TT_ERR_OutOfMemory;
    exit;
   end;
 
@@ -5556,7 +5557,7 @@ begin
   while i<tabledirsize do begin
    if Stream.Read(TableDirectory[i],16)<>16 then begin
     SetLength(TableDirectory,0);
-    result:=VkTTF_TT_ERR_CorruptFile;
+    result:=pvTTF_TT_ERR_CorruptFile;
     exit;
    end;
    tablelength:=ToLONGWORD(TableDirectory[i+12],TableDirectory[i+13],TableDirectory[i+14],TableDirectory[i+15]);
@@ -5567,43 +5568,43 @@ begin
    inc(i,16);
   end;
 
-  fFontDataSize:=VkTTF_OFFSET_TABLE_SIZE+tabledirsize+tabledatasize; // Calculate Size of entire font file
+  fFontDataSize:=pvTTF_OFFSET_TABLE_SIZE+tabledirsize+tabledatasize; // Calculate Size of entire font file
   SetLength(fFontData,fFontDataSize); // Allocate space for all that Data
   if length(fFontData)<>fFontDataSize then begin
    SetLength(TableDirectory,0);
-   result:=VkTTF_TT_ERR_OutOfMemory;
+   result:=pvTTF_TT_ERR_OutOfMemory;
    exit;
   end;
   FillChar(fFontData[0],fFontDataSize,#0);
 
-  Move(tfd[0],fFontData[0],VkTTF_OFFSET_TABLE_SIZE); // Store the Offset Table
-  Move(TableDirectory[0],fFontData[VkTTF_OFFSET_TABLE_SIZE],tabledirsize); // Store the Offset Table
-  if Stream.Read(fFontData[VkTTF_OFFSET_TABLE_SIZE+tabledirsize],(fFontDataSize-(VkTTF_OFFSET_TABLE_SIZE+tabledirsize)))<>((fFontDataSize-(VkTTF_OFFSET_TABLE_SIZE+tabledirsize))) then begin // Store the rest of the font
+  Move(tfd[0],fFontData[0],pvTTF_OFFSET_TABLE_SIZE); // Store the Offset Table
+  Move(TableDirectory[0],fFontData[pvTTF_OFFSET_TABLE_SIZE],tabledirsize); // Store the Offset Table
+  if Stream.Read(fFontData[pvTTF_OFFSET_TABLE_SIZE+tabledirsize],(fFontDataSize-(pvTTF_OFFSET_TABLE_SIZE+tabledirsize)))<>((fFontDataSize-(pvTTF_OFFSET_TABLE_SIZE+tabledirsize))) then begin // Store the rest of the font
    // Some TTF files are shorter than they must be? So this is commented out:
  { SetLength(TableDirectory,0);
    SetLength(fFontData,0);
    fFontDataSize:=0;
-   result:=VkTTF_TT_ERR_OutOfMemory;
+   result:=pvTTF_TT_ERR_OutOfMemory;
    exit;}
   end;
 
   SetLength(TableDirectory,0);
 
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
 
  end else begin
 
-  result:=VkTTF_TT_ERR_CorruptFile;
+  result:=pvTTF_TT_ERR_CorruptFile;
 
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetTableDirEntry(Tag:TpvUInt32;var CheckSum,Offset,Size:TpvUInt32):TpvInt32;
+function TpvTrueTypeFont.GetTableDirEntry(Tag:TpvUInt32;var CheckSum,Offset,Size:TpvUInt32):TpvInt32;
 var i:TpvInt32;
     Position,CurrentTag:TpvUInt32;
     Found:boolean;
 begin
- Position:=VkTTF_OFFSET_TABLE_SIZE;
+ Position:=pvTTF_OFFSET_TABLE_SIZE;
  Found:=false;
  for i:=0 to fNumTables-1 do begin
   CurrentTag:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
@@ -5617,18 +5618,18 @@ begin
   inc(Position,16);
  end;
  if Found then begin
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end else begin
-  result:=VkTTF_TT_ERR_TableNotFound;
+  result:=pvTTF_TT_ERR_TableNotFound;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadOS2:TpvInt32;
+function TpvTrueTypeFont.LoadOS2:TpvInt32;
 var Position,Tag,CheckSum,Offset,Size,Version:TpvUInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('O'),TpvUInt8('S'),TpvUInt8('/'),TpvUInt8('2'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
   Position:=Offset;
   Version:=ToWORD(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TpvUInt16));
@@ -5674,19 +5675,19 @@ begin
    end;
    if Position<>0 then begin
    end;
-   result:=VkTTF_TT_ERR_NoError;
+   result:=pvTTF_TT_ERR_NoError;
   end else begin
-   result:=VkTTF_TT_ERR_InvalidFile;
+   result:=pvTTF_TT_ERR_InvalidFile;
   end;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadHEAD:TpvInt32;
+function TpvTrueTypeFont.LoadHEAD:TpvInt32;
 var Position,Tag,CheckSum,Offset,Size,MagicNumber:TpvUInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('h'),TpvUInt8('e'),TpvUInt8('a'),TpvUInt8('d'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
   Position:=Offset;
   inc(Position,sizeof(TpvUInt32)); // Table version number
   inc(Position,sizeof(TpvUInt32)); // Font revision number
@@ -5694,7 +5695,7 @@ begin
   MagicNumber:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
   inc(Position,sizeof(TpvUInt32)); // Magic number
   if MagicNumber<>$5f0f3cf5 then begin
-   result:=VkTTF_TT_ERR_InvalidFile;
+   result:=pvTTF_TT_ERR_InvalidFile;
    exit;
   end;
   inc(Position,sizeof(TpvUInt16)); // Flags
@@ -5724,17 +5725,17 @@ begin
    fUnitsPerPixel:=1;
   end;
   fThinBoldStrength:=SARLongint(fUnitsPerEm,4);
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadMAXP:TpvInt32;
+function TpvTrueTypeFont.LoadMAXP:TpvInt32;
 var Tag,CheckSum,Offset,Size:TpvUInt32;
     i:TpvInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('m'),TpvUInt8('a'),TpvUInt8('x'),TpvUInt8('p'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
   fCountGlyphs:=ToWORD(fFontData[Offset+4],fFontData[Offset+5]);
   fMaxTwilightPoints:=ToWORD(fFontData[Offset+16],fFontData[Offset+17]);
   fMaxStorage:=ToWORD(fFontData[Offset+18],fFontData[Offset+19]);
@@ -5742,25 +5743,25 @@ begin
   fMaxStackElements:=ToWORD(fFontData[Offset+24],fFontData[Offset+25]);
   SetLength(fGlyphs,fCountGlyphs);
   if length(fGlyphs)<>fCountGlyphs then begin
-   result:=VkTTF_TT_ERR_OutOfMemory;
+   result:=pvTTF_TT_ERR_OutOfMemory;
    exit;
   end;
   for i:=0 to fCountGlyphs-1 do begin
-   FillChar(fGlyphs[i],sizeof(TpvVulkanTrueTypeFontGlyph),#0);
+   FillChar(fGlyphs[i],sizeof(TpvTrueTypeFontGlyph),#0);
   end;
   SetLength(fGlyphLoadedBitmap,(fCountGlyphs+31) shr 3);
   if length(fGlyphLoadedBitmap)<>((fCountGlyphs+31) shr 3) then begin
-   result:=VkTTF_TT_ERR_OutOfMemory;
+   result:=pvTTF_TT_ERR_OutOfMemory;
    exit;
   end;
   for i:=0 to length(fGlyphLoadedBitmap)-1 do begin
    fGlyphLoadedBitmap[i]:=0;
   end;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadNAME:TpvInt32;
+function TpvTrueTypeFont.LoadNAME:TpvInt32;
 type PpvVulkanRawByteString=^TpvRawByteString;
 var Position,Tag,CheckSum,Offset,Size,NumNameRecords,StringStorageOffset,i,j,c,c2,o:TpvUInt32;
     ThisPlatformID,ThisSpecificID,ThisLanguageID,ThisNameID,ThisStringLength,ThisStringOffset:TpvUInt16;
@@ -5771,7 +5772,7 @@ var Position,Tag,CheckSum,Offset,Size,NumNameRecords,StringStorageOffset,i,j,c,c
 begin
  Tag:=ToLONGWORD(TpvUInt8('n'),TpvUInt8('a'),TpvUInt8('m'),TpvUInt8('e'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
   Position:=Offset;
   inc(Position,sizeof(TpvUInt16)); // Format Selector
   NumNameRecords:=ToWORD(fFontData[Position],fFontData[Position+1]);
@@ -5795,46 +5796,46 @@ begin
     NameFound:=false;
     u8s:=nil;
     case ThisNameID of
-     VkTTF_NID_Copyright:begin
+     pvTTF_NID_Copyright:begin
       NameFound:=true;
       u8s:=@fStringCopyright;
      end;
-     VkTTF_NID_Family:begin
+     pvTTF_NID_Family:begin
       NameFound:=true;
       u8s:=@fStringFamily;
      end;
-     VkTTF_NID_Subfamily:begin
+     pvTTF_NID_Subfamily:begin
       NameFound:=true;
       u8s:=@fStringSubFamily;
      end;
-     VkTTF_NID_UniqueID:begin
+     pvTTF_NID_UniqueID:begin
       NameFound:=true;
       u8s:=@fStringUniqueID;
      end;
-     VkTTF_NID_FullName:begin
+     pvTTF_NID_FullName:begin
       NameFound:=true;
       u8s:=@fStringFullName;
      end;
-     VkTTF_NID_Version:begin
+     pvTTF_NID_Version:begin
       NameFound:=true;
       u8s:=@fStringVersion;
      end;
-     VkTTF_NID_PostscriptName:begin
+     pvTTF_NID_PostscriptName:begin
       NameFound:=true;
       u8s:=@fStringPostScript;
      end;
-     VkTTF_NID_Trademark:begin
+     pvTTF_NID_Trademark:begin
       NameFound:=true;
       u8s:=@fStringTrademark;
      end;
     end;
     if NameFound then begin
      case ThisPlatformID of
-      VkTTF_PID_Microsoft:begin
+      pvTTF_PID_Microsoft:begin
        s:='';
        SetLength(s,ThisStringLength*2);
        if length(s)<>(ThisStringLength*2) then begin
-        result:=VkTTF_TT_ERR_OutOfMemory;
+        result:=pvTTF_TT_ERR_OutOfMemory;
         exit;
        end;
        j:=0;
@@ -5863,7 +5864,7 @@ begin
        s:='';
        SetLength(s,ThisStringLength);
        if length(s)<>ThisStringLength then begin
-        result:=VkTTF_TT_ERR_OutOfMemory;
+        result:=pvTTF_TT_ERR_OutOfMemory;
         exit;
        end;
        Move(fFontData[StringStorageOffset+ThisStringOffset],s[1],ThisStringLength);
@@ -5874,11 +5875,11 @@ begin
     end;
    end;
   end;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadCFF:TpvInt32;
+function TpvTrueTypeFont.LoadCFF:TpvInt32;
 const CFFScaleFactor=4.0;
       TopDictVersionOp=0;
       TopDictNoticeOp=1;
@@ -6074,7 +6075,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
   BaseOffset:=Position;
 
   if ((Position+SizeOf(TpvUInt16))-1)>=(Offset+Size) then begin
-   result:=VkTTF_TT_ERR_CorruptFile;
+   result:=pvTTF_TT_ERR_CorruptFile;
    exit;
   end;
   Count:=ToWORD(fFontData[Position],fFontData[Position+1]);
@@ -6083,7 +6084,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
   if Count>0 then begin
 
    if ((Position+SizeOf(TpvUInt8))-1)>=(Offset+Size) then begin
-    result:=VkTTF_TT_ERR_CorruptFile;
+    result:=pvTTF_TT_ERR_CorruptFile;
     exit;
    end;
    OffsetSize:=fFontData[Position];
@@ -6095,7 +6096,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
      OffsetValue:=0;
      for j:=0 to OffsetSize-1 do begin
       if ((Position+SizeOf(TpvUInt8))-1)>=(Offset+Size) then begin
-       result:=VkTTF_TT_ERR_CorruptFile;
+       result:=pvTTF_TT_ERR_CorruptFile;
        exit;
       end;
       OffsetValue:=(OffsetValue shl 8) or fFontData[Position];
@@ -6118,7 +6119,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
 
   end;
 
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
 
  end;
  function LoadDict(const DictPosition,DictSize:TpvInt32;out DictEntryArray:TDictEntryArray):TpvInt32;
@@ -6145,7 +6146,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     while Position<UntilExcludingPosition do begin
 
      if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
-      result:=VkTTF_TT_ERR_CorruptFile;
+      result:=pvTTF_TT_ERR_CorruptFile;
       exit;
      end;
      Op:=fFontData[Position];
@@ -6155,7 +6156,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
       12:begin
        SetLength(Operands,CountOperands);
        if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Op:=1200+fFontData[Position];
@@ -6184,7 +6185,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
       end;
       28:begin
        if ((Position+SizeOf(TpvUInt16))-1)>=UntilExcludingPosition then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        if length(Operands)<(CountOperands+1) then begin
@@ -6197,7 +6198,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
       end;
       29:begin
        if ((Position+SizeOf(TpvUInt32))-1)>=UntilExcludingPosition then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        if length(Operands)<(CountOperands+1) then begin
@@ -6212,7 +6213,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
        FloatString:='';
        repeat
         if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         Value:=fFontData[Position];
@@ -6245,7 +6246,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
       end;
       247..250:begin
        if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        if length(Operands)<(CountOperands+1) then begin
@@ -6258,7 +6259,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
       end;
       251..254:begin
        if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        if length(Operands)<(CountOperands+1) then begin
@@ -6270,7 +6271,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
        inc(Position,SizeOf(TpvUInt8));
       end;
       else begin
-       result:=VkTTF_TT_ERR_CorruptFile;
+       result:=pvTTF_TT_ERR_CorruptFile;
        exit;
       end;
      end;
@@ -6285,7 +6286,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
    SetLength(DictEntryArray,CountDictEntries);
   end;
 
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
 
  end;
 {function ConvertDict(const DictEntryArray:TDictEntryArray;var Dict:TDict):TpvInt32;
@@ -6303,11 +6304,11 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
      Dict[DictEntry^.Op]:=copy(DictEntry^.Operands);
     end;
    end else begin
-    result:=VkTTF_TT_ERR_CorruptFile;
+    result:=pvTTF_TT_ERR_CorruptFile;
     exit;
    end;
   end;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;}
  function GetCFFString(const SID:TpvInt32):TpvRawByteString;
  begin
@@ -6320,7 +6321,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
    end;
   end;
  end;
- function LoadCFFGlyph(var Glyph:TpvVulkanTrueTypeFontGlyph;const GlyphPosition,GlyphSize:TpvInt32):TpvInt32;
+ function LoadCFFGlyph(var Glyph:TpvTrueTypeFontGlyph;const GlyphPosition,GlyphSize:TpvInt32):TpvInt32;
  type TStack=array of TpvDouble;
  var i,v,StackSize,CountStems:TpvInt32;
      Width,x,y,c0x,c0y,c1x,c1y,GlyphMinX,GlyphMinY,GlyphMaxX,GlyphMaxY:TpvDouble;
@@ -6368,7 +6369,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
   end;
   procedure MoveTo(aX,aY:TpvDouble);
   var CommandIndex:TpvInt32;
-      Command:PpvVulkanTrueTypeFontPolygonCommand;
+      Command:PpvTrueTypeFontPolygonCommand;
   begin
    aY:=fMaxY-aY;
    CommandIndex:=Glyph.PostScriptPolygon.CountCommands;
@@ -6377,7 +6378,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=VkTTF_PolygonCommandType_MOVETO;
+   Command^.CommandType:=pvTTF_PolygonCommandType_MOVETO;
    Command^.Points[0].x:=aX*CFFScaleFactor;
    Command^.Points[0].y:=aY*CFFScaleFactor;
    GlyphMinX:=Min(GlyphMinX,aX);
@@ -6387,7 +6388,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
   end;
   procedure LineTo(aX,aY:TpvDouble);
   var CommandIndex:TpvInt32;
-      Command:PpvVulkanTrueTypeFontPolygonCommand;
+      Command:PpvTrueTypeFontPolygonCommand;
   begin
    aY:=fMaxY-aY;
    CommandIndex:=Glyph.PostScriptPolygon.CountCommands;
@@ -6396,7 +6397,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=VkTTF_PolygonCommandType_LINETO;
+   Command^.CommandType:=pvTTF_PolygonCommandType_LINETO;
    Command^.Points[0].x:=aX*CFFScaleFactor;
    Command^.Points[0].y:=aY*CFFScaleFactor;
    GlyphMinX:=Min(GlyphMinX,aX);
@@ -6406,7 +6407,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
   end;
   procedure CubicCurveTo(aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble);
   var CommandIndex:TpvInt32;
-      Command:PpvVulkanTrueTypeFontPolygonCommand;
+      Command:PpvTrueTypeFontPolygonCommand;
   begin
    aC0Y:=fMaxY-aC0Y;
    aC1Y:=fMaxY-aC1Y;
@@ -6417,7 +6418,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=VkTTF_PolygonCommandType_CUBICCURVETO;
+   Command^.CommandType:=pvTTF_PolygonCommandType_CUBICCURVETO;
    Command^.Points[0].x:=aC0X*CFFScaleFactor;
    Command^.Points[0].y:=aC0Y*CFFScaleFactor;
    Command^.Points[1].x:=aC1X*CFFScaleFactor;
@@ -6439,7 +6440,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
   end;
   procedure ClosePath;
   var CommandIndex:TpvInt32;
-      Command:PpvVulkanTrueTypeFontPolygonCommand;
+      Command:PpvTrueTypeFontPolygonCommand;
   begin
    CommandIndex:=Glyph.PostScriptPolygon.CountCommands;
    inc(Glyph.PostScriptPolygon.CountCommands);
@@ -6447,7 +6448,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=VkTTF_PolygonCommandType_CLOSE;
+   Command^.CommandType:=pvTTF_PolygonCommandType_CLOSE;
   end;
   function Execute(const CodePosition,CodeSize:TpvInt32):TpvInt32;
   var Position,UntilExcludingPosition,CodeIndex:TpvInt32;
@@ -6457,7 +6458,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
    UntilExcludingPosition:=CodePosition+CodeSize;
    while Position<UntilExcludingPosition do begin
     if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
     v:=fFontData[Position];
@@ -6531,20 +6532,20 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
       CodeIndex:=trunc(StackPop)+CFFSubroutineBias;
       if SubroutineIndexData[CodeIndex].Size>0 then begin
        result:=Execute(SubroutineIndexData[CodeIndex].Position,SubroutineIndexData[CodeIndex].Size);
-       if result<>VkTTF_TT_ERR_NoError then begin
+       if result<>pvTTF_TT_ERR_NoError then begin
         exit;
        end;
       end;
      end;
      11:begin
       // return
-      result:=VkTTF_TT_ERR_NoError;
+      result:=pvTTF_TT_ERR_NoError;
       exit;
      end;
      12:begin
       // escape
       if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
-       result:=VkTTF_TT_ERR_CorruptFile;
+       result:=pvTTF_TT_ERR_CorruptFile;
        exit;
       end;
       v:=fFontData[Position];
@@ -6667,7 +6668,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
         CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
        end;
        else begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
       end;
@@ -6780,7 +6781,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
      28:begin
       // smallint
       if ((Position+SizeOf(TpvUInt16))-1)>=UntilExcludingPosition then begin
-       result:=VkTTF_TT_ERR_CorruptFile;
+       result:=pvTTF_TT_ERR_CorruptFile;
        exit;
       end;
       StackPush(ToSMALLINT(fFontData[Position],fFontData[Position+1]));
@@ -6791,7 +6792,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
       CodeIndex:=trunc(StackPop)+CFFGlobalSubroutineBias;
       if GlobalSubroutineIndexData[CodeIndex].Size>0 then begin
        result:=Execute(GlobalSubroutineIndexData[CodeIndex].Position,GlobalSubroutineIndexData[CodeIndex].Size);
-       if result<>VkTTF_TT_ERR_NoError then begin
+       if result<>pvTTF_TT_ERR_NoError then begin
         exit;
        end;
       end;
@@ -6863,7 +6864,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
      end;
      247..250:begin
       if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
-       result:=VkTTF_TT_ERR_CorruptFile;
+       result:=pvTTF_TT_ERR_CorruptFile;
        exit;
       end;
       StackPush((((v-247) shl 8)+fFontData[Position])+108);
@@ -6871,7 +6872,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
      end;
      251..254:begin
       if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
-       result:=VkTTF_TT_ERR_CorruptFile;
+       result:=pvTTF_TT_ERR_CorruptFile;
        exit;
       end;
       StackPush(((-((v-251)*256))-fFontData[Position])-108);
@@ -6879,19 +6880,19 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
      end;
      255:begin
       if ((Position+SizeOf(TpvUInt32))-1)>=UntilExcludingPosition then begin
-       result:=VkTTF_TT_ERR_CorruptFile;
+       result:=pvTTF_TT_ERR_CorruptFile;
        exit;
       end;
       StackPush(ToLONGINT(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3])/65536.0);
       inc(Position,SizeOf(TpvUInt32));
      end
      else begin
-      result:=VkTTF_TT_ERR_CorruptFile;
+      result:=pvTTF_TT_ERR_CorruptFile;
       exit;
      end;
     end;
    end;
-   result:=VkTTF_TT_ERR_NoError;
+   result:=pvTTF_TT_ERR_NoError;
   end;
  begin
   Stack:=nil;
@@ -6906,7 +6907,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
    GlyphMinY:=MaxDouble;
    GlyphMaxX:=-MaxDouble;
    GlyphMaxY:=-MaxDouble;
-   FillChar(Glyph,SizeOf(TpvVulkanTrueTypeFontGlyph),#0);
+   FillChar(Glyph,SizeOf(TpvTrueTypeFontGlyph),#0);
    Glyph.PostScriptPolygon.Commands:=nil;
    Glyph.PostScriptPolygon.CountCommands:=0;
    try
@@ -6928,7 +6929,7 @@ var TopDictEntryArray,PrivateDictEntryArray:TDictEntryArray;
 begin
  Tag:=ToLONGWORD(TpvUInt8('C'),TpvUInt8('F'),TpvUInt8('F'),TpvUInt8(32));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
 
   CFFGlobalSubroutineBias:=0;
   CFFSubroutineBias:=0;
@@ -6965,28 +6966,28 @@ begin
     EndOffset:=Offset+Size;
 
     if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
     HeaderFormatMajor:=fFontData[Position];
     inc(Position,SizeOf(TpvUInt8));
 
     if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
     HeaderFormatMinor:=fFontData[Position];
     inc(Position,SizeOf(TpvUInt8));
 
     if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
     HeaderSize:=fFontData[Position];
     inc(Position,SizeOf(TpvUInt8));
 
     if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
     HeaderOffsetSize:=fFontData[Position];
@@ -6995,20 +6996,20 @@ begin
     Position:=Offset+TpvUInt32(HeaderSize);
 
     result:=LoadIndex(NameIndexData);
-    if result<>VkTTF_TT_ERR_NoError then begin
+    if result<>pvTTF_TT_ERR_NoError then begin
      exit;
     end;
     if length(NameIndexData)>0 then begin
     end;
 
     result:=LoadIndex(TopDictIndexData);
-    if result<>VkTTF_TT_ERR_NoError then begin
+    if result<>pvTTF_TT_ERR_NoError then begin
      exit;
     end;
     if length(TopDictIndexData)>0 then begin
 
      result:=LoadDict(TopDictIndexData[0].Position,TopDictIndexData[0].Size,TopDictEntryArray);
-     if result<>VkTTF_TT_ERR_NoError then begin
+     if result<>pvTTF_TT_ERR_NoError then begin
       exit;
      end;
 
@@ -7017,7 +7018,7 @@ begin
       case DictEntry^.Op of
        TopDictCharStringTypeOp:begin
         if length(DictEntry^.Operands)<1 then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         if DictEntry^.Operands[0].Kind=nkINT then begin
@@ -7028,7 +7029,7 @@ begin
        end;
        TopDictCharsetOp:begin
         if length(DictEntry^.Operands)<1 then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         if DictEntry^.Operands[0].Kind=nkINT then begin
@@ -7039,7 +7040,7 @@ begin
        end;
        TopDictEncodingOp:begin
         if length(DictEntry^.Operands)<1 then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         if DictEntry^.Operands[0].Kind=nkINT then begin
@@ -7050,7 +7051,7 @@ begin
        end;
        TopDictCharStringsOp:begin
         if length(DictEntry^.Operands)<1 then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         if DictEntry^.Operands[0].Kind=nkINT then begin
@@ -7061,7 +7062,7 @@ begin
        end;
        TopDictFontBBoxOp:begin
         if length(DictEntry^.Operands)<4 then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         if DictEntry^.Operands[0].Kind=nkINT then begin
@@ -7091,7 +7092,7 @@ begin
        end;
        TopDictPrivateOp:begin
         if length(DictEntry^.Operands)<2 then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         if DictEntry^.Operands[0].Kind=nkINT then begin
@@ -7107,7 +7108,7 @@ begin
        end;
        TopDictFontMatrixOp:begin
         if length(DictEntry^.Operands)<6 then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         for j:=0 to 5 do begin
@@ -7127,7 +7128,7 @@ begin
     if (TopDictPrivate[0]>0) and (TopDictPrivate[1]>0) then begin
 
      result:=LoadDict(TpvInt32(Offset)+TopDictPrivate[1],TopDictPrivate[0],PrivateDictEntryArray);
-     if result<>VkTTF_TT_ERR_NoError then begin
+     if result<>pvTTF_TT_ERR_NoError then begin
       exit;
      end;
 
@@ -7136,7 +7137,7 @@ begin
       case DictEntry^.Op of
        PrivateDictSubRoutineOp:begin
         if length(DictEntry^.Operands)<1 then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         if DictEntry^.Operands[0].Kind=nkINT then begin
@@ -7147,7 +7148,7 @@ begin
        end;
        PrivateDictDefaultWidthXOp:begin
         if length(DictEntry^.Operands)<1 then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         if DictEntry^.Operands[0].Kind=nkINT then begin
@@ -7158,7 +7159,7 @@ begin
        end;
        PrivateDictNominalWidthXOp:begin
         if length(DictEntry^.Operands)<1 then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         if DictEntry^.Operands[0].Kind=nkINT then begin
@@ -7171,7 +7172,7 @@ begin
      end;
 
     end else begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
 
@@ -7179,7 +7180,7 @@ begin
     try
 
      result:=LoadIndex(StringIndexData);
-     if result<>VkTTF_TT_ERR_NoError then begin
+     if result<>pvTTF_TT_ERR_NoError then begin
       exit;
      end;
      if length(StringIndexData)>0 then begin
@@ -7191,20 +7192,20 @@ begin
         Move(fFontData[IndexDataItem^.Position],CurrentRawByteString[1],IndexDataItem^.Size);
         StringTable[i]:=CurrentRawByteString;
        end else begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
       end;
      end;
 
      result:=LoadIndex(GlobalSubroutineIndexData);
-     if result<>VkTTF_TT_ERR_NoError then begin
+     if result<>pvTTF_TT_ERR_NoError then begin
       exit;
      end;
      if length(GlobalSubroutineIndexData)>0 then begin
       for i:=0 to length(GlobalSubroutineIndexData)-1 do begin
        if ((GlobalSubroutineIndexData[i].Position+GlobalSubroutineIndexData[i].Size)-1)>=TpvInt32(EndOffset) then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
       end;
@@ -7214,13 +7215,13 @@ begin
      if (TopDictPrivate[0]>0) and (TopDictPrivate[1]>0) and (PrivateDictSubRoutine<>0) then begin
       Position:=TpvInt32(Offset)+TopDictPrivate[1]+PrivateDictSubRoutine;
       result:=LoadIndex(SubroutineIndexData);
-      if result<>VkTTF_TT_ERR_NoError then begin
+      if result<>pvTTF_TT_ERR_NoError then begin
        exit;
       end;
       if length(SubroutineIndexData)>0 then begin
        for i:=0 to length(SubroutineIndexData)-1 do begin
         if ((SubroutineIndexData[i].Position+SubroutineIndexData[i].Size)-1)>=TpvInt32(EndOffset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
        end;
@@ -7231,19 +7232,19 @@ begin
      if TopDictCharStrings>0 then begin
       Position:=TpvInt32(TpvInt32(Offset)+TopDictCharStrings);
       result:=LoadIndex(TopDictCharStringsIndexData);
-      if result<>VkTTF_TT_ERR_NoError then begin
+      if result<>pvTTF_TT_ERR_NoError then begin
        exit;
       end;
       fCountGlyphs:=length(TopDictCharStringsIndexData);
       SetLength(fGlyphs,fCountGlyphs);
       for i:=0 to fCountGlyphs-1 do begin
        result:=LoadCFFGlyph(fGlyphs[i],TopDictCharStringsIndexData[i].Position,TopDictCharStringsIndexData[i].Size);
-       if result<>VkTTF_TT_ERR_NoError then begin
+       if result<>pvTTF_TT_ERR_NoError then begin
         exit;
        end;
       end;
      end else begin
-      result:=VkTTF_TT_ERR_CorruptFile;
+      result:=pvTTF_TT_ERR_CorruptFile;
       exit;
      end;
 
@@ -7253,7 +7254,7 @@ begin
       if TopDictCharset>0 then begin
        Position:=TpvInt32(TpvInt32(Offset)+TopDictCharset);
        if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        CharsetFormat:=fFontData[Position];
@@ -7264,7 +7265,7 @@ begin
         0:begin
          for i:=0 to fCountGlyphs-2 do begin
           if ((Position+SizeOf(TpvUInt16))-1)>=EndOffset then begin
-           result:=VkTTF_TT_ERR_CorruptFile;
+           result:=pvTTF_TT_ERR_CorruptFile;
            exit;
           end;
           SID:=ToWORD(fFontData[Position],fFontData[Position+1]);
@@ -7276,28 +7277,28 @@ begin
          i:=1;
          while i<fCountGlyphs do begin
           if ((Position+SizeOf(TpvUInt16))-1)>=EndOffset then begin
-           result:=VkTTF_TT_ERR_CorruptFile;
+           result:=pvTTF_TT_ERR_CorruptFile;
            exit;
           end;
           SID:=ToWORD(fFontData[Position],fFontData[Position+1]);
           inc(Position,SizeOf(TpvUInt16));
           if CharsetFormat=1 then begin
            if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-            result:=VkTTF_TT_ERR_CorruptFile;
+            result:=pvTTF_TT_ERR_CorruptFile;
             exit;
            end;
            Count:=fFontData[Position];
            inc(Position,SizeOf(TpvUInt8));
           end else begin
            if ((Position+SizeOf(TpvUInt16))-1)>=EndOffset then begin
-            result:=VkTTF_TT_ERR_CorruptFile;
+            result:=pvTTF_TT_ERR_CorruptFile;
             exit;
            end;
            Count:=ToWORD(fFontData[Position],fFontData[Position+1]);
            inc(Position,SizeOf(TpvUInt16));
           end;
           if Count=0 then begin
-           result:=VkTTF_TT_ERR_CorruptFile;
+           result:=pvTTF_TT_ERR_CorruptFile;
            exit;
           end else begin
            for j:=1 to Count do begin
@@ -7308,12 +7309,12 @@ begin
          end;
         end;
         else begin
-         result:=VkTTF_TT_ERR_UnknownCharsetFormat;
+         result:=pvTTF_TT_ERR_UnknownCharsetFormat;
          exit;
         end;
        end;
       end else begin
-       result:=VkTTF_TT_ERR_CorruptFile;
+       result:=pvTTF_TT_ERR_CorruptFile;
        exit;
       end;
 
@@ -7336,7 +7337,7 @@ begin
         else begin
          Position:=TpvInt32(TpvInt32(Offset)+TopDictEncoding);
          if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-          result:=VkTTF_TT_ERR_CorruptFile;
+          result:=pvTTF_TT_ERR_CorruptFile;
           exit;
          end;
          EncodingFormat:=fFontData[Position];
@@ -7344,7 +7345,7 @@ begin
          case EncodingFormat of
           0:begin
            if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-            result:=VkTTF_TT_ERR_CorruptFile;
+            result:=pvTTF_TT_ERR_CorruptFile;
             exit;
            end;
            CountCodes:=fFontData[Position];
@@ -7352,7 +7353,7 @@ begin
            SetLength(EncodingTable,CountCodes);
            for i:=0 to CountCodes-1 do begin
             if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-             result:=VkTTF_TT_ERR_CorruptFile;
+             result:=pvTTF_TT_ERR_CorruptFile;
              exit;
             end;
             Code:=fFontData[Position];
@@ -7364,7 +7365,7 @@ begin
            CountCodes:=0;
            try
             if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-             result:=VkTTF_TT_ERR_CorruptFile;
+             result:=pvTTF_TT_ERR_CorruptFile;
              exit;
             end;
             CountRanges:=fFontData[Position];
@@ -7372,13 +7373,13 @@ begin
             Code:=1;
             for i:=0 to CountRanges-1 do begin
              if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-              result:=VkTTF_TT_ERR_CorruptFile;
+              result:=pvTTF_TT_ERR_CorruptFile;
               exit;
              end;
              First:=fFontData[Position];
              inc(Position,SizeOf(TpvUInt8));
              if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
-              result:=VkTTF_TT_ERR_CorruptFile;
+              result:=pvTTF_TT_ERR_CorruptFile;
               exit;
              end;
              CountSubCodes:=fFontData[Position];
@@ -7397,7 +7398,7 @@ begin
            end;
           end;
           else begin
-           result:=VkTTF_TT_ERR_UnknownEncodingFormat;
+           result:=pvTTF_TT_ERR_UnknownEncodingFormat;
            exit;
           end;
          end;
@@ -7447,22 +7448,22 @@ begin
    TopDictEntryArray:=nil;
   end;
 
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
 
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadLOCA:TpvInt32;
+function TpvTrueTypeFont.LoadLOCA:TpvInt32;
 var Position,Tag,CheckSum,Offset,Size,thisOffset:TpvUInt32;
     i:TpvInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('l'),TpvUInt8('o'),TpvUInt8('c'),TpvUInt8('a'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
   Position:=Offset;
   SetLength(fGlyphOffsetArray,fCountGlyphs+1);
   if length(fGlyphOffsetArray)<>(fCountGlyphs+1) then begin
-   result:=VkTTF_TT_ERR_OutOfMemory;
+   result:=pvTTF_TT_ERR_OutOfMemory;
    exit;
   end;
   thisOffset:=0;
@@ -7477,33 +7478,33 @@ begin
      inc(Position,sizeof(TpvUInt32));
     end;
     else begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
    end;
    fGlyphOffsetArray[i]:=thisOffset;
   end;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadGLYF:TpvInt32;
+function TpvTrueTypeFont.LoadGLYF:TpvInt32;
 var Tag,CheckSum,Offset,Size:TpvUInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('g'),TpvUInt8('l'),TpvUInt8('y'),TpvUInt8('f'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
   fGlyfOffset:=Offset;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadHHEA:TpvInt32;
+function TpvTrueTypeFont.LoadHHEA:TpvInt32;
 var Position,Tag,CheckSum,Offset,Size:TpvUInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('h'),TpvUInt8('h'),TpvUInt8('e'),TpvUInt8('a'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result<>VkTTF_TT_Err_NoError then begin
+ if result<>pvTTF_TT_Err_NoError then begin
   Tag:=ToLONGWORD(TpvUInt8('v'),TpvUInt8('h'),TpvUInt8('e'),TpvUInt8('a'));
   result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  end else begin
@@ -7525,17 +7526,17 @@ begin
   inc(Position,sizeof(TpvUInt16)*5); // 5 reserved words
   inc(Position,sizeof(TpvInt16)); // MetricDataFormat
   fNumfHMetrics:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadHMTX:TpvInt32;
+function TpvTrueTypeFont.LoadHMTX:TpvInt32;
 var Position,Tag,CheckSum,Offset,Size:TpvUInt32;
     i,j:TpvInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('h'),TpvUInt8('m'),TpvUInt8('t'),TpvUInt8('x'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result<>VkTTF_TT_Err_NoError then begin
+ if result<>pvTTF_TT_Err_NoError then begin
   Tag:=ToLONGWORD(TpvUInt8('v'),TpvUInt8('m'),TpvUInt8('t'),TpvUInt8('x'));
   result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  end else begin
@@ -7557,16 +7558,16 @@ begin
     inc(i);
    end;
   end;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadVHEA:TpvInt32;
+function TpvTrueTypeFont.LoadVHEA:TpvInt32;
 var Position,Tag,CheckSum,Offset,Size:TpvUInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('v'),TpvUInt8('h'),TpvUInt8('e'),TpvUInt8('a'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result<>VkTTF_TT_Err_NoError then begin
+ if result<>pvTTF_TT_Err_NoError then begin
   Tag:=ToLONGWORD(TpvUInt8('h'),TpvUInt8('h'),TpvUInt8('e'),TpvUInt8('a'));
   result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  end else begin
@@ -7588,17 +7589,17 @@ begin
   inc(Position,sizeof(TpvUInt16)*5); // 5 reserved words
   inc(Position,sizeof(TpvInt16)); // MetricDataFormat
   fNumfVMetrics:=ToWORD(fFontData[Position],fFontData[Position+1]);
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadVMTX:TpvInt32;
+function TpvTrueTypeFont.LoadVMTX:TpvInt32;
 var Position,Tag,CheckSum,Offset,Size:TpvUInt32;
     i,j:TpvInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('v'),TpvUInt8('m'),TpvUInt8('t'),TpvUInt8('x'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result<>VkTTF_TT_Err_NoError then begin
+ if result<>pvTTF_TT_Err_NoError then begin
   Tag:=ToLONGWORD(TpvUInt8('h'),TpvUInt8('m'),TpvUInt8('t'),TpvUInt8('x'));
   result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  end else begin
@@ -7620,11 +7621,11 @@ begin
     inc(i);
    end;
   end;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadGPOS:TpvInt32;
+function TpvTrueTypeFont.LoadGPOS:TpvInt32;
 type PGlyphs=^TGlyphs;
      TGlyphs=record
       Count:TpvInt32;
@@ -7687,12 +7688,12 @@ var Position,Tag,CheckSum,Offset,Size,Next:TpvUInt32;
      end;
     end;
     else begin
-     result:=VkTTF_TT_ERR_UnknownGPOSFormat;
+     result:=pvTTF_TT_ERR_UnknownGPOSFormat;
      exit;
     end;
    end;
 
-   result:=VkTTF_TT_Err_NoError;
+   result:=pvTTF_TT_Err_NoError;
 
   end;
   function LoadClassDefinition(Offset:TpvInt32;const ClassCount:TpvInt32;var GlyphsByClass:TGlyphsByClass):TpvInt32;
@@ -7747,13 +7748,13 @@ var Position,Tag,CheckSum,Offset,Size,Next:TpvUInt32;
       end;
      end;
      else begin
-      result:=VkTTF_TT_ERR_UnknownGPOSFormat;
+      result:=pvTTF_TT_ERR_UnknownGPOSFormat;
       exit;
      end;
     end;
    finally
    end;
-   result:=VkTTF_TT_Err_NoError;
+   result:=pvTTF_TT_Err_NoError;
   end;
   function ReadValueFromValueRecord(var Offset:TpvInt32;const ValueFormat,TargetMask:TpvInt32):TpvInt32;
   var Mask,Value:TpvInt32;
@@ -7771,8 +7772,8 @@ var Position,Tag,CheckSum,Offset,Size,Next:TpvUInt32;
   end;
   procedure AddKerningPair(const FirstGlyph,SecondGlyph,Value:TpvInt32;const Horizontal:boolean);
   var i:TpvInt32;
-      KerningTable:PpvVulkanTrueTypeFontKerningTable;
-      KerningPair:PpvVulkanTrueTypeFontKerningPair;
+      KerningTable:PpvTrueTypeFontKerningTable;
+      KerningPair:PpvTrueTypeFontKerningPair;
   begin
    KerningTable:=nil;
    for i:=0 to length(fKerningTables)-1 do begin
@@ -7834,7 +7835,7 @@ var Position,Tag,CheckSum,Offset,Size,Next:TpvUInt32;
       try
 
        result:=LoadCoverageTable(CoverageOffset);
-       if result<>VkTTF_TT_Err_NoError then begin
+       if result<>pvTTF_TT_Err_NoError then begin
         exit;
        end;
 
@@ -7875,7 +7876,7 @@ var Position,Tag,CheckSum,Offset,Size,Next:TpvUInt32;
       try
 
        result:=LoadCoverageTable(CoverageOffset);
-       if result<>VkTTF_TT_Err_NoError then begin
+       if result<>pvTTF_TT_Err_NoError then begin
         exit;
        end;
 
@@ -7886,12 +7887,12 @@ var Position,Tag,CheckSum,Offset,Size,Next:TpvUInt32;
         try
 
          result:=LoadClassDefinition(SubTableOffset+ClassDefOffset1,Class1Count,GlyphsByClass1);
-         if result<>VkTTF_TT_Err_NoError then begin
+         if result<>pvTTF_TT_Err_NoError then begin
           exit;
          end;
 
          result:=LoadClassDefinition(SubTableOffset+ClassDefOffset2,Class2Count,GlyphsByClass2);
-         if result<>VkTTF_TT_Err_NoError then begin
+         if result<>pvTTF_TT_Err_NoError then begin
           exit;
          end;
 
@@ -7971,7 +7972,7 @@ var Position,Tag,CheckSum,Offset,Size,Next:TpvUInt32;
       CurrentPosition:=SubTableOffset+TpvInt32(ToLONGWORD(fFontData[SubTableOffset+4],fFontData[SubTableOffset+5],fFontData[SubTableOffset+6],fFontData[SubTableOffset+7]));
 
       result:=LoadSubTable(NewLookupType,CurrentPosition);
-      if result<>VkTTF_TT_Err_NoError then begin
+      if result<>pvTTF_TT_Err_NoError then begin
        exit;
       end;
 
@@ -7981,16 +7982,16 @@ var Position,Tag,CheckSum,Offset,Size,Next:TpvUInt32;
    end;
   end;
 
-  result:=VkTTF_TT_Err_NoError;
+  result:=pvTTF_TT_Err_NoError;
 
  end;
-var KerningTable:PpvVulkanTrueTypeFontKerningTable;
+var KerningTable:PpvTrueTypeFontKerningTable;
     DoNeedSort:boolean;
 begin
 
  Tag:=ToLONGWORD(TpvUInt8('G'),TpvUInt8('P'),TpvUInt8('O'),TpvUInt8('S'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
 
   Position:=Offset;
 
@@ -8017,7 +8018,7 @@ begin
    FeatureVariations:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
    inc(Position,sizeof(TpvUInt32));
   end else begin
-   result:=VkTTF_TT_ERR_UnknownGPOSFormat;
+   result:=pvTTF_TT_ERR_UnknownGPOSFormat;
    exit;
   end;
 
@@ -8046,7 +8047,7 @@ begin
     SubTableOffset:=LookupTableOffset+ToWORD(fFontData[LookupTableOffset+6+(i*2)],fFontData[LookupTableOffset+7+(i*2)]);
 
     result:=LoadSubTable(LookupType,SubTableOffset);
-    if result<>VkTTF_TT_Err_NoError then begin
+    if result<>pvTTF_TT_Err_NoError then begin
      exit;
     end;
 
@@ -8067,7 +8068,7 @@ begin
      end;
     end;
     if DoNeedSort then begin
-     UntypedDirectIntroSort(@KerningTable^.KerningPairs[0],0,length(KerningTable^.KerningPairs)-1,SizeOf(TpvVulkanTrueTypeFontKerningPair),CompareKerningPairs);
+     UntypedDirectIntroSort(@KerningTable^.KerningPairs[0],0,length(KerningTable^.KerningPairs)-1,SizeOf(TpvTrueTypeFontKerningPair),CompareKerningPairs);
     end;
     KerningTable^.BinarySearch:=true;
     for j:=1 to length(KerningTable^.KerningPairs)-1 do begin
@@ -8079,22 +8080,22 @@ begin
    end;
   end;
 
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
 
  end;
 
 end;
 
-function TpvVulkanTrueTypeFont.LoadKERN:TpvInt32;
+function TpvTrueTypeFont.LoadKERN:TpvInt32;
 var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TpvUInt32;
     CountSubTables,i,j:TpvInt32;
     CoverageFormat,CoverageFlags:TpvUInt8;
     DoNeedSort,Minimum,XStream:boolean;
-    KerningTable:PpvVulkanTrueTypeFontKerningTable;
+    KerningTable:PpvTrueTypeFontKerningTable;
  function LoadKerningTableFormat0:TpvInt32;
  var i,j:TpvInt32;
      DoNeedSort:boolean;
-     KerningPair:PpvVulkanTrueTypeFontKerningPair;
+     KerningPair:PpvTrueTypeFontKerningPair;
  begin
 
   KerningTable^.CountKerningPairs:=ToWORD(fFontData[Position],fFontData[Position+1]);
@@ -8106,12 +8107,12 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TpvUInt32;
   KerningTable^.KerningPairs:=nil;
   SetLength(KerningTable^.KerningPairs,KerningTable^.CountKerningPairs);
   if length(KerningTable^.KerningPairs)<>KerningTable^.CountKerningPairs then begin
-   result:=VkTTF_TT_ERR_OutOfMemory;
+   result:=pvTTF_TT_ERR_OutOfMemory;
    exit;
   end;
 
   if (length(KerningTable^.KerningPairs)*12)>length(fFontData) then begin
-   result:=VkTTF_TT_ERR_CorruptFile;
+   result:=pvTTF_TT_ERR_CorruptFile;
    exit;
   end;
 
@@ -8135,7 +8136,7 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TpvUInt32;
     end;
    end;
    if DoNeedSort then begin
-    UntypedDirectIntroSort(@KerningTable^.KerningPairs[0],0,length(KerningTable^.KerningPairs)-1,SizeOf(TpvVulkanTrueTypeFontKerningPair),CompareKerningPairs);
+    UntypedDirectIntroSort(@KerningTable^.KerningPairs[0],0,length(KerningTable^.KerningPairs)-1,SizeOf(TpvTrueTypeFontKerningPair),CompareKerningPairs);
    end;
    KerningTable^.BinarySearch:=true;
    for j:=1 to length(KerningTable^.KerningPairs)-1 do begin
@@ -8146,7 +8147,7 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TpvUInt32;
    end;
   end;
 
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
 
  end;
  function LoadKerningTableFormat2:TpvInt32;
@@ -8155,7 +8156,7 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TpvUInt32;
      RightFirstGlyph,RightCountGlyphs,LeftGlyphCounter,RightGlyphCounter,
      KerningPairIndex:TpvInt32;
      DoNeedSort:boolean;
-     KerningPair:PpvVulkanTrueTypeFontKerningPair;
+     KerningPair:PpvTrueTypeFontKerningPair;
  begin
 
   Offset:=Position;
@@ -8201,7 +8202,7 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TpvUInt32;
   end;
 
   if length(KerningTable^.KerningPairs)<>KerningTable^.CountKerningPairs then begin
-   result:=VkTTF_TT_ERR_OutOfMemory;
+   result:=pvTTF_TT_ERR_OutOfMemory;
    exit;
   end;
 
@@ -8215,7 +8216,7 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TpvUInt32;
     end;
    end;
    if DoNeedSort then begin
-    UntypedDirectIntroSort(@KerningTable^.KerningPairs[0],0,length(KerningTable^.KerningPairs)-1,SizeOf(TpvVulkanTrueTypeFontKerningPair),CompareKerningPairs);
+    UntypedDirectIntroSort(@KerningTable^.KerningPairs[0],0,length(KerningTable^.KerningPairs)-1,SizeOf(TpvTrueTypeFontKerningPair),CompareKerningPairs);
    end;
    KerningTable^.BinarySearch:=true;
    for j:=1 to length(KerningTable^.KerningPairs)-1 do begin
@@ -8226,14 +8227,14 @@ var Position,Tag,CheckSum,Offset,Size,SubTableSize,Next,Version:TpvUInt32;
    end;
   end;
 
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
 
  end;
 
 begin
  Tag:=ToLONGWORD(TpvUInt8('k'),TpvUInt8('e'),TpvUInt8('r'),TpvUInt8('n'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
   Position:=Offset;
 
   Version:=ToWORD(fFontData[Position],fFontData[Position+1]);
@@ -8247,7 +8248,7 @@ begin
 
     SetLength(fKerningTables,CountSubTables);
     if length(fKerningTables)<>CountSubTables then begin
-     result:=VkTTF_TT_ERR_OutOfMemory;
+     result:=pvTTF_TT_ERR_OutOfMemory;
      exit;
     end;
 
@@ -8271,13 +8272,13 @@ begin
      case CoverageFormat of
       0:begin
        result:=LoadKerningTableFormat0;
-       if result<>VkTTF_TT_ERR_NoError then begin
+       if result<>pvTTF_TT_ERR_NoError then begin
         exit;
        end;
       end;
       2:begin
        result:=LoadKerningTableFormat2;
-       if result<>VkTTF_TT_ERR_NoError then begin
+       if result<>pvTTF_TT_ERR_NoError then begin
         exit;
        end;
       end;
@@ -8286,7 +8287,7 @@ begin
      Position:=Next;
     end;
 
-    result:=VkTTF_TT_ERR_NoError;
+    result:=pvTTF_TT_ERR_NoError;
 
    end;
    1:begin
@@ -8298,7 +8299,7 @@ begin
 
     SetLength(fKerningTables,CountSubTables);
     if length(fKerningTables)<>CountSubTables then begin
-     result:=VkTTF_TT_ERR_OutOfMemory;
+     result:=pvTTF_TT_ERR_OutOfMemory;
      exit;
     end;
 
@@ -8328,13 +8329,13 @@ begin
      case CoverageFormat of
       0:begin
        result:=LoadKerningTableFormat0;
-       if result<>VkTTF_TT_ERR_NoError then begin
+       if result<>pvTTF_TT_ERR_NoError then begin
         exit;
       end;
       end;
       2:begin
        result:=LoadKerningTableFormat2;
-       if result<>VkTTF_TT_ERR_NoError then begin
+       if result<>pvTTF_TT_ERR_NoError then begin
         exit;
        end;
       end;
@@ -8344,12 +8345,12 @@ begin
 
     end;
 
-    result:=VkTTF_TT_ERR_NoError;
+    result:=pvTTF_TT_ERR_NoError;
 
    end;
    else begin
 
-    result:=VkTTF_TT_ERR_UnknownKerningFormat;
+    result:=pvTTF_TT_ERR_UnknownKerningFormat;
 
    end;
   end;
@@ -8357,23 +8358,23 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadCMAP:TpvInt32;
+function TpvTrueTypeFont.LoadCMAP:TpvInt32;
 type PTryEntry=^TTryEntry;
      TTryEntry=record
       PlatformID:TpvUInt32;
       SpecificID:TpvUInt32;
      end;
 const TryEntries:array[0..9] of TTryEntry=
-       ((PlatformID:VkTTF_PID_Microsoft;SpecificID:VkTTF_SID_MS_UCS_4),
-        (PlatformID:VkTTF_PID_Apple;SpecificID:VkTTF_SID_APPLE_UNICODE32),
-        (PlatformID:VkTTF_PID_Apple;SpecificID:VkTTF_SID_APPLE_UNICODE_2_0),
-        (PlatformID:VkTTF_PID_Microsoft;SpecificID:VkTTF_SID_MS_UNICODE_CS),
-        (PlatformID:VkTTF_PID_Apple;SpecificID:VkTTF_SID_APPLE_UNICODE_1_1),
-        (PlatformID:VkTTF_PID_Apple;SpecificID:VkTTF_SID_APPLE_DEFAULT),
-        (PlatformID:VkTTF_PID_Apple;SpecificID:VkTTF_SID_APPLE_ISO_10646),
-        (PlatformID:VkTTF_PID_ISO;SpecificID:VkTTF_SID_ISO_10646),
-        (PlatformID:VkTTF_PID_ISO;SpecificID:VkTTF_SID_ISO_8859_1),
-        (PlatformID:VkTTF_PID_ISO;SpecificID:VkTTF_SID_ISO_ASCII)
+       ((PlatformID:pvTTF_PID_Microsoft;SpecificID:pvTTF_SID_MS_UCS_4),
+        (PlatformID:pvTTF_PID_Apple;SpecificID:pvTTF_SID_APPLE_UNICODE32),
+        (PlatformID:pvTTF_PID_Apple;SpecificID:pvTTF_SID_APPLE_UNICODE_2_0),
+        (PlatformID:pvTTF_PID_Microsoft;SpecificID:pvTTF_SID_MS_UNICODE_CS),
+        (PlatformID:pvTTF_PID_Apple;SpecificID:pvTTF_SID_APPLE_UNICODE_1_1),
+        (PlatformID:pvTTF_PID_Apple;SpecificID:pvTTF_SID_APPLE_DEFAULT),
+        (PlatformID:pvTTF_PID_Apple;SpecificID:pvTTF_SID_APPLE_ISO_10646),
+        (PlatformID:pvTTF_PID_ISO;SpecificID:pvTTF_SID_ISO_10646),
+        (PlatformID:pvTTF_PID_ISO;SpecificID:pvTTF_SID_ISO_8859_1),
+        (PlatformID:pvTTF_PID_ISO;SpecificID:pvTTF_SID_ISO_ASCII)
        );
 var Position,Tag,CheckSum,Offset,Size,NumSubTables,ThisPlatformID,ThisSpecificID,ThisSubtableOffset,SubtableOffset,
     SubtablePosition,i,j:TpvUInt32;
@@ -8383,7 +8384,7 @@ var Position,Tag,CheckSum,Offset,Size,NumSubTables,ThisPlatformID,ThisSpecificID
 begin
  Tag:=ToLONGWORD(TpvUInt8('c'),TpvUInt8('m'),TpvUInt8('a'),TpvUInt8('p'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
 
   for CMapIndex:=0 to 1 do begin
    fCMaps[CMapIndex]:=nil;
@@ -8427,7 +8428,7 @@ begin
      inc(SubtablePosition,sizeof(TpvUInt16));
      ThisSubtableOffset:=ToLONGWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1],fFontData[SubtablePosition+2],fFontData[SubtablePosition+3]);
      inc(SubtablePosition,sizeof(TpvUInt32));
-     if (ThisPlatformID=VkTTF_PID_Apple) and (ThisSpecificID=VkTTF_SID_APPLE_VARIANT_SELECTOR) then begin
+     if (ThisPlatformID=pvTTF_PID_Apple) and (ThisSpecificID=pvTTF_SID_APPLE_VARIANT_SELECTOR) then begin
       SubtableFound:=true;
       SubtableOffset:=ThisSubtableOffset;
       break;
@@ -8469,7 +8470,7 @@ begin
       inc(SubtablePosition,sizeof(TpvUInt16));
       ThisSubtableOffset:=ToLONGWORD(fFontData[SubtablePosition],fFontData[SubtablePosition+1],fFontData[SubtablePosition+2],fFontData[SubtablePosition+3]);
       inc(SubtablePosition,sizeof(TpvUInt32));
-      if (ThisPlatformID<>VkTTF_PID_Apple) and (ThisSpecificID<>VkTTF_SID_APPLE_VARIANT_SELECTOR) then begin
+      if (ThisPlatformID<>pvTTF_PID_Apple) and (ThisSpecificID<>pvTTF_SID_APPLE_VARIANT_SELECTOR) then begin
        SubtableFound:=true;
        SubtableOffset:=ThisSubtableOffset;
        break;
@@ -8483,7 +8484,7 @@ begin
      end;
 
      if not SubtableFound then begin
-      result:=VkTTF_TT_ERR_NoCharacterMapFound;
+      result:=pvTTF_TT_ERR_NoCharacterMapFound;
       exit;
      end;
 
@@ -8496,17 +8497,17 @@ begin
    fCMapFormat:=ToWORD(fFontData[Position],fFontData[Position+1]);
 
    case fCMapFormat of
-    VkTTF_CMAP_FORMAT0,VkTTF_CMAP_FORMAT2,VkTTF_CMAP_FORMAT4,VkTTF_CMAP_FORMAT6:begin
+    pvTTF_CMAP_FORMAT0,pvTTF_CMAP_FORMAT2,pvTTF_CMAP_FORMAT4,pvTTF_CMAP_FORMAT6:begin
      SubtableLength:=ToWORD(fFontData[Position+2],fFontData[Position+3]);
     end;
-    VkTTF_CMAP_FORMAT8,VkTTF_CMAP_FORMAT10,VkTTF_CMAP_FORMAT12,VkTTF_CMAP_FORMAT13:begin
+    pvTTF_CMAP_FORMAT8,pvTTF_CMAP_FORMAT10,pvTTF_CMAP_FORMAT12,pvTTF_CMAP_FORMAT13:begin
      SubtableLength:=ToLONGWORD(fFontData[Position+4],fFontData[Position+5],fFontData[Position+6],fFontData[Position+7]);
     end;
-    VkTTF_CMAP_FORMAT14:begin
+    pvTTF_CMAP_FORMAT14:begin
      SubtableLength:=ToLONGWORD(fFontData[Position+2],fFontData[Position+3],fFontData[Position+4],fFontData[Position+5]);
     end;
     else begin
-     result:=VkTTF_TT_ERR_UnknownCharacterMapFormat;
+     result:=pvTTF_TT_ERR_UnknownCharacterMapFormat;
      exit;
     end;
    end;
@@ -8514,63 +8515,63 @@ begin
    fCMaps[CMapIndex]:=@fFontData[Offset+SubtableOffset];
    fCMapLengths[CMapIndex]:=SubtableLength;
 
-   if fCMapFormat<>VkTTF_CMAP_FORMAT14 then begin
+   if fCMapFormat<>pvTTF_CMAP_FORMAT14 then begin
     break;
    end;
 
   end;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadCVT:TpvInt32;
+function TpvTrueTypeFont.LoadCVT:TpvInt32;
 var Position,Tag,CheckSum,Offset,Size:TpvUInt32;
     Index:TpvInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('c'),TpvUInt8('v'),TpvUInt8('t'),TpvUInt8(' '));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
   SetLength(fCVT,(Size+1) shr 1);
   Position:=Offset;
   for Index:=0 to length(fCVT)-1 do begin
    fCVT[Index]:=TpvInt16(TpvUInt16(ToWORD(fFontData[Position],fFontData[Position+1])));
    inc(Position,SizeOf(TpvUInt16));
   end;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadFPGM:TpvInt32;
+function TpvTrueTypeFont.LoadFPGM:TpvInt32;
 var Tag,CheckSum,Offset,Size:TpvUInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('f'),TpvUInt8('p'),TpvUInt8('g'),TpvUInt8('m'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
   fFPGM.Data:=TpvPointer(@fFontData[Offset]);
   fFPGM.Size:=Size;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadPREP:TpvInt32;
+function TpvTrueTypeFont.LoadPREP:TpvInt32;
 var Tag,CheckSum,Offset,Size:TpvUInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('p'),TpvUInt8('r'),TpvUInt8('e'),TpvUInt8('p'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
   fPREP.Data:=TpvPointer(@fFontData[Offset]);
   fPREP.Size:=Size;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadGASP:TpvInt32;
+function TpvTrueTypeFont.LoadGASP:TpvInt32;
 var Position,Tag,CheckSum,Offset,Size,{Version,}NumRanges,Index:TpvUInt32;
     LowerRange:TpvInt32;
 begin
  Tag:=ToLONGWORD(TpvUInt8('g'),TpvUInt8('a'),TpvUInt8('s'),TpvUInt8('p'));
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
- if result=VkTTF_TT_Err_NoError then begin
+ if result=pvTTF_TT_Err_NoError then begin
   Position:=Offset;
   {Version:=}ToWORD(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TpvUInt16));
@@ -8595,11 +8596,11 @@ begin
     end;
    end;
   end;
-  result:=VkTTF_TT_ERR_NoError;
+  result:=pvTTF_TT_ERR_NoError;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetGASPRange:PpvVulkanTrueTypeFontGASPRange;
+function TpvTrueTypeFont.GetGASPRange:PpvTrueTypeFontGASPRange;
 var l,h,m,v:TpvInt32;
 begin
  l:=0;
@@ -8619,7 +8620,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.LoadGlyphData(GlyphIndex:TpvInt32):TpvInt32;
+function TpvTrueTypeFont.LoadGlyphData(GlyphIndex:TpvInt32):TpvInt32;
 var Offset,Size,CurrentGlyphOffset,NextGlyphOffset,CurrentGlyphLength,Position,OldPosition,CurrentFlags,CurrentIndex,
     InstructionLength,RepeatCount,CurrentFlag:TpvUInt32;
     SubGlyphIndex,NumContours,Index,NumAllPoints,Last,Current:TpvInt32;
@@ -8638,7 +8639,7 @@ begin
    fGlyphs[GlyphIndex].PostScriptPolygon.Commands:=nil;
    fGlyphs[GlyphIndex].PostScriptPolygon.CountCommands:=0;
 
-   FillChar(fGlyphs[GlyphIndex].Instructions,SizeOf(TpvVulkanTrueTypeFontByteCodeInterpreterProgramBytes),AnsiChar(#0));
+   FillChar(fGlyphs[GlyphIndex].Instructions,SizeOf(TpvTrueTypeFontByteCodeInterpreterProgramBytes),AnsiChar(#0));
 
    CurrentGlyphOffset:=fGlyphOffsetArray[GlyphIndex];
    NextGlyphOffset:=fGlyphOffsetArray[GlyphIndex+1];
@@ -8659,35 +8660,35 @@ begin
     Position:=Offset+CurrentGlyphOffset;
 
     if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
     NumContours:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
     inc(Position,sizeof(TpvInt16));
 
     if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.XMin:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
     inc(Position,sizeof(TpvInt16));
 
     if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.YMin:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
     inc(Position,sizeof(TpvInt16));
 
     if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.XMax:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
     inc(Position,sizeof(TpvInt16));
 
     if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-     result:=VkTTF_TT_ERR_CorruptFile;
+     result:=pvTTF_TT_ERR_CorruptFile;
      exit;
     end;
     fGlyphs[GlyphIndex].Bounds.YMax:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
@@ -8704,39 +8705,39 @@ begin
       repeat
 
        if (Position+sizeof(TpvUInt16))>(NextGlyphOffset+Offset) then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        CurrentFlags:=ToWORD(fFontData[Position],fFontData[Position+1]);
        inc(Position,sizeof(TpvUInt16));
 
        if (Position+sizeof(TpvUInt16))>(NextGlyphOffset+Offset) then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        inc(Position,sizeof(TpvUInt16));
 
        if (CurrentFlags and ARGS_ARE_WORDS)<>0 then begin
         if (Position+sizeof(TpvUInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TpvInt16));
 
         if (Position+sizeof(TpvUInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TpvInt16));
        end else begin
         if (Position+sizeof(shortint))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position);
 
         if (Position+sizeof(shortint))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position);
@@ -8744,43 +8745,43 @@ begin
 
        if (CurrentFlags and WE_HAVE_A_SCALE)<>0 then begin
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TpvInt16));
        end else if (CurrentFlags and WE_HAVE_AN_XY_SCALE)<>0 then begin
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TpvInt16));
 
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TpvInt16));
        end else if (CurrentFlags and WE_HAVE_A_2X2)<>0 then begin
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TpvInt16));
 
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TpvInt16));
 
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TpvInt16));
 
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         inc(Position,sizeof(TpvInt16));
@@ -8798,14 +8799,14 @@ begin
       repeat
 
        if (Position+sizeof(TpvUInt16))>(NextGlyphOffset+Offset) then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        CurrentFlags:=ToWORD(fFontData[Position],fFontData[Position+1]);
        inc(Position,sizeof(TpvUInt16));
 
        if (Position+sizeof(TpvUInt16))>(NextGlyphOffset+Offset) then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        CurrentIndex:=ToWORD(fFontData[Position],fFontData[Position+1]);
@@ -8817,28 +8818,28 @@ begin
 
        if (CurrentFlags and ARGS_ARE_WORDS)<>0 then begin
         if (Position+sizeof(TpvUInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         carg1:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
         inc(Position,sizeof(TpvInt16));
 
         if (Position+sizeof(TpvUInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         carg2:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
         inc(Position,sizeof(TpvInt16));
        end else begin
         if (Position+sizeof(shortint))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         carg1:=SHORTINT(fFontData[Position]);
         inc(Position);
 
         if (Position+sizeof(shortint))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         carg2:=SHORTINT(fFontData[Position]);
@@ -8852,7 +8853,7 @@ begin
 
        if (CurrentFlags and WE_HAVE_A_SCALE)<>0 then begin
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
@@ -8860,42 +8861,42 @@ begin
         cyy:=cxx;
        end else if (CurrentFlags and WE_HAVE_AN_XY_SCALE)<>0 then begin
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
         inc(Position,sizeof(TpvInt16));
 
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cyy:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
         inc(Position,sizeof(TpvInt16));
        end else if (CurrentFlags and WE_HAVE_A_2X2)<>0 then begin
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
         inc(Position,sizeof(TpvInt16));
 
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cyx:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
         inc(Position,sizeof(TpvInt16));
 
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cxy:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
         inc(Position,sizeof(TpvInt16));
 
         if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-         result:=VkTTF_TT_ERR_CorruptFile;
+         result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
         cyy:=ToSMALLINT(fFontData[Position],fFontData[Position+1])*4;
@@ -8918,13 +8919,13 @@ begin
 
        // TpvUInt8 code instruction Data
        if (Position+sizeof(TpvUInt16))>(NextGlyphOffset+Offset) then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        InstructionLength:=ToWORD(fFontData[Position],fFontData[Position+1]);
        inc(Position,sizeof(TpvUInt16));
        if (Position+InstructionLength)>(NextGlyphOffset+Offset) then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
 
@@ -8944,14 +8945,14 @@ begin
 
      SetLength(fGlyphs[GlyphIndex].EndPointIndices,NumContours);
      if length(fGlyphs[GlyphIndex].EndPointIndices)<>NumContours then begin
-      result:=VkTTF_TT_ERR_OutOfMemory;
+      result:=pvTTF_TT_ERR_OutOfMemory;
       exit;
      end;
 
      // End point indices
      for Index:=0 to NumContours-1 do begin
       if (Position+sizeof(TpvUInt16))>(NextGlyphOffset+Offset) then begin
-       result:=VkTTF_TT_ERR_CorruptFile;
+       result:=pvTTF_TT_ERR_CorruptFile;
        exit;
       end;
       fGlyphs[GlyphIndex].EndPointIndices[Index]:=ToWORD(fFontData[Position],fFontData[Position+1]);
@@ -8961,13 +8962,13 @@ begin
 
      // TpvUInt8 code instruction Data
      if (Position+sizeof(TpvUInt16))>(NextGlyphOffset+Offset) then begin
-      result:=VkTTF_TT_ERR_CorruptFile;
+      result:=pvTTF_TT_ERR_CorruptFile;
       exit;
      end;
      InstructionLength:=ToWORD(fFontData[Position],fFontData[Position+1]);
      inc(Position,sizeof(TpvUInt16));
      if (Position+InstructionLength)>(NextGlyphOffset+Offset) then begin
-      result:=VkTTF_TT_ERR_CorruptFile;
+      result:=pvTTF_TT_ERR_CorruptFile;
       exit;
      end;
 
@@ -8982,7 +8983,7 @@ begin
 
      SetLength(fGlyphs[GlyphIndex].Points,NumAllPoints);
      if length(fGlyphs[GlyphIndex].Points)<>NumAllPoints then begin
-      result:=VkTTF_TT_ERR_OutOfMemory;
+      result:=pvTTF_TT_ERR_OutOfMemory;
       exit;
      end;
 
@@ -8990,12 +8991,12 @@ begin
      Index:=0;
      while Index<NumAllPoints do begin
       if (Position+sizeof(TpvUInt8))>(NextGlyphOffset+Offset) then begin
-       result:=VkTTF_TT_ERR_CorruptFile;
+       result:=pvTTF_TT_ERR_CorruptFile;
        exit;
       end;
       fGlyphs[GlyphIndex].Points[Index].Flags:=fFontData[Position];
       inc(Position);
-      if (fGlyphs[GlyphIndex].Points[Index].Flags and VkTTF_PathFlag_Repeat)<>0 then begin
+      if (fGlyphs[GlyphIndex].Points[Index].Flags and pvTTF_PathFlag_Repeat)<>0 then begin
        RepeatCount:=fFontData[Position];
        inc(Position);
        while RepeatCount>0 do begin
@@ -9011,21 +9012,21 @@ begin
      Last:=0;
      for Index:=0 to NumAllPoints-1 do begin
       CurrentFlag:=fGlyphs[GlyphIndex].Points[Index].Flags;
-      if (CurrentFlag and VkTTF_PathFlag_OnXShortVector)<>0 then begin
+      if (CurrentFlag and pvTTF_PathFlag_OnXShortVector)<>0 then begin
        if (Position+sizeof(TpvUInt8))>(NextGlyphOffset+Offset) then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Current:=fFontData[Position];
        inc(Position);
-       if (CurrentFlag and VkTTF_PathFlag_PositiveXShortVector)=0 then begin
+       if (CurrentFlag and pvTTF_PathFlag_PositiveXShortVector)=0 then begin
         Current:=-Current;
        end;
-      end else if (CurrentFlag and VkTTF_PathFlag_ThisXIsSame)<>0 then begin
+      end else if (CurrentFlag and pvTTF_PathFlag_ThisXIsSame)<>0 then begin
        Current:=0;
       end else begin
        if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Current:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
@@ -9039,21 +9040,21 @@ begin
      Last:=0;
      for Index:=0 to NumAllPoints-1 do begin
       CurrentFlag:=fGlyphs[GlyphIndex].Points[Index].Flags;
-      if (CurrentFlag and VkTTF_PathFlag_OnYShortVector)<>0 then begin
+      if (CurrentFlag and pvTTF_PathFlag_OnYShortVector)<>0 then begin
        if (Position+sizeof(TpvUInt8))>(NextGlyphOffset+Offset) then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Current:=fFontData[Position];
        inc(Position);
-       if (CurrentFlag and VkTTF_PathFlag_PositiveYShortVector)=0 then begin
+       if (CurrentFlag and pvTTF_PathFlag_PositiveYShortVector)=0 then begin
         Current:=-Current;
        end;
-      end else if (CurrentFlag and VkTTF_PathFlag_ThisYIsSame)<>0 then begin
+      end else if (CurrentFlag and pvTTF_PathFlag_ThisYIsSame)<>0 then begin
        Current:=0;
       end else begin
        if (Position+sizeof(TpvInt16))>(NextGlyphOffset+Offset) then begin
-        result:=VkTTF_TT_ERR_CorruptFile;
+        result:=pvTTF_TT_ERR_CorruptFile;
         exit;
        end;
        Current:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
@@ -9068,31 +9069,31 @@ begin
    end;
 
    if (fGlyphs[GlyphIndex].UseMetricsFrom>=0) and (fGlyphs[GlyphIndex].UseMetricsFrom<fCountGlyphs) then begin
-    if LoadGlyphData(fGlyphs[GlyphIndex].UseMetricsFrom)=VkTTF_TT_ERR_NoError then begin
+    if LoadGlyphData(fGlyphs[GlyphIndex].UseMetricsFrom)=pvTTF_TT_ERR_NoError then begin
      fGlyphs[GlyphIndex].Bounds:=fGlyphs[fGlyphs[GlyphIndex].UseMetricsFrom].Bounds;
     end;
    end;
 
-   result:=VkTTF_TT_ERR_NoError;
+   result:=pvTTF_TT_ERR_NoError;
 
   end else begin
 
-   result:=VkTTF_TT_ERR_NoError;
+   result:=pvTTF_TT_ERR_NoError;
 
   end;
 
  end else begin
 
-  result:=VkTTF_TT_ERR_OutOfBounds;
+  result:=pvTTF_TT_ERR_OutOfBounds;
 
  end;
 
 end;
 
-function TpvVulkanTrueTypeFont.GetGlyphIndex(CodePointCode:TpvUInt32;CMapIndex:TpvInt32=0):TpvUInt32;
-var CMap:PpvVulkanTrueTypeFontByteArray;
+function TpvTrueTypeFont.GetGlyphIndex(CodePointCode:TpvUInt32;CMapIndex:TpvInt32=0):TpvUInt32;
+var CMap:PpvTrueTypeFontByteArray;
     SegCount,u:TpvUInt16;
-    EndCount,StartCount,IDDelta,IDRangeOffset,Data,SubHeaderKeysData:PpvVulkanTrueTypeFontByteArray;
+    EndCount,StartCount,IDDelta,IDRangeOffset,Data,SubHeaderKeysData:PpvTrueTypeFontByteArray;
     CMapLength,EndV,Start,Delta,Range,Index,Seg,i,NumSH,NumGlyphID,index1,Idx,IDDeltaValue,
     IDRangeOffsetValue,Offset,FirstCode,EntryCount,l,h,m,CharHi,CharLo,
     NumSelectors,SelectorIndex,LastVarSelector,VarSelector,DefaultOffset,
@@ -9106,12 +9107,12 @@ begin
   CMapLength:=0;
  end;
  if CMapLength=0 then begin
-  fLastError:=VkTTF_TT_ERR_CharacterMapNotPresent;
+  fLastError:=pvTTF_TT_ERR_CharacterMapNotPresent;
   result:=0;
  end else begin
-  fLastError:=VkTTF_TT_ERR_NoError;
+  fLastError:=pvTTF_TT_ERR_NoError;
   case fCMapFormat of
-   VkTTF_CMAP_FORMAT0:begin
+   pvTTF_CMAP_FORMAT0:begin
     Offset:=CodePointCode+6;
     if Offset<TpvUInt32(CMapLength) then begin
      result:=CMap^[Offset];
@@ -9119,7 +9120,7 @@ begin
      result:=0;
     end;
    end;
-   VkTTF_CMAP_FORMAT2:begin
+   pvTTF_CMAP_FORMAT2:begin
     if CodePointCode>$ffff then begin
      result:=0;
     end else begin
@@ -9178,7 +9179,7 @@ begin
      end;
     end;
    end;
-   VkTTF_CMAP_FORMAT4:begin
+   pvTTF_CMAP_FORMAT4:begin
     if CodePointCode>$ffff then begin
      result:=0;
     end else begin
@@ -9213,7 +9214,7 @@ begin
      end;
     end;
    end;
-   VkTTF_CMAP_FORMAT6:begin
+   pvTTF_CMAP_FORMAT6:begin
     FirstCode:=ToWORD(CMap^[6],CMap^[7]);
     EntryCount:=ToWORD(CMap^[8],CMap^[9]);
     if (CodePointCode>=FirstCode) and (CodePointCode<(FirstCode+EntryCount)) then begin
@@ -9223,7 +9224,7 @@ begin
      result:=0;
     end;
    end;
-   VkTTF_CMAP_FORMAT8:begin
+   pvTTF_CMAP_FORMAT8:begin
     result:=0;
     EntryCount:=ToLONGWORD(CMap^[8204],CMap^[8205],CMap^[8206],CMap^[8207]);
     if EntryCount>0 then begin
@@ -9255,7 +9256,7 @@ begin
      end;
     end;
    end;
-   VkTTF_CMAP_FORMAT10:begin
+   pvTTF_CMAP_FORMAT10:begin
     FirstCode:=ToLONGWORD(CMap^[12],CMap^[13],CMap^[14],CMap^[15]);
     EntryCount:=ToLONGWORD(CMap^[16],CMap^[17],CMap^[18],CMap^[19]);
     if (CodePointCode>=FirstCode) and (CodePointCode<(FirstCode+EntryCount)) then begin
@@ -9265,7 +9266,7 @@ begin
      result:=0;
     end;
    end;
-   VkTTF_CMAP_FORMAT12:begin
+   pvTTF_CMAP_FORMAT12:begin
     result:=0;
     EntryCount:=ToWORD(CMap^[6],CMap^[7]);
     if EntryCount>0 then begin
@@ -9287,7 +9288,7 @@ begin
      end;
     end;
    end;
-   VkTTF_CMAP_FORMAT13:begin
+   pvTTF_CMAP_FORMAT13:begin
     result:=0;
     EntryCount:=ToWORD(CMap^[6],CMap^[7]);
     if EntryCount>0 then begin
@@ -9309,7 +9310,7 @@ begin
      end;
     end;
    end;
-   VkTTF_CMAP_FORMAT14:begin
+   pvTTF_CMAP_FORMAT14:begin
     result:=0;
     NumSelectors:=ToLONGWORD(CMap^[6],CMap^[7],CMap^[8],CMap^[9]);
     if NumSelectors>0 then begin
@@ -9378,17 +9379,17 @@ begin
    end;
   end;
  end;
- if fLastError=VkTTF_TT_ERR_CharacterMapNotPresent then begin
+ if fLastError=pvTTF_TT_ERR_CharacterMapNotPresent then begin
   if (TpvInt32(CodePointCode)<length(fCFFCodePointToGlyphIndexTable)) and
      ((fCFFCodePointToGlyphIndexTable[TpvInt32(CodePointCode)]>=0) and
       (fCFFCodePointToGlyphIndexTable[TpvInt32(CodePointCode)]<fCountGlyphs)) then begin
-   fLastError:=VkTTF_TT_ERR_NoError;
+   fLastError:=pvTTF_TT_ERR_NoError;
    result:=fCFFCodePointToGlyphIndexTable[TpvInt32(CodePointCode)];
   end;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetGlyphAdvanceWidth(GlyphIndex:TpvInt32):TpvInt32;
+function TpvTrueTypeFont.GetGlyphAdvanceWidth(GlyphIndex:TpvInt32):TpvInt32;
 begin
  if (GlyphIndex>=0) and (GlyphIndex<fCountGlyphs) then begin
   result:=fGlyphs[GlyphIndex].AdvanceWidth;
@@ -9407,7 +9408,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetGlyphAdvanceHeight(GlyphIndex:TpvInt32):TpvInt32;
+function TpvTrueTypeFont.GetGlyphAdvanceHeight(GlyphIndex:TpvInt32):TpvInt32;
 begin
  if (GlyphIndex>=0) and (GlyphIndex<fCountGlyphs) then begin
   result:=fGlyphs[GlyphIndex].AdvanceHeight;
@@ -9416,7 +9417,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetGlyphLeftSideBearing(GlyphIndex:TpvInt32):TpvInt32;
+function TpvTrueTypeFont.GetGlyphLeftSideBearing(GlyphIndex:TpvInt32):TpvInt32;
 begin
  if (GlyphIndex>=0) and (GlyphIndex<fCountGlyphs) then begin
   result:=fGlyphs[GlyphIndex].LeftSideBearing;
@@ -9435,9 +9436,9 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetGlyphRightSideBearing(GlyphIndex:TpvInt32):TpvInt32;
+function TpvTrueTypeFont.GetGlyphRightSideBearing(GlyphIndex:TpvInt32):TpvInt32;
 begin
- if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and (LoadGlyphData(GlyphIndex)=VkTTF_TT_ERR_NoError) then begin
+ if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and (LoadGlyphData(GlyphIndex)=pvTTF_TT_ERR_NoError) then begin
   result:=fGlyphs[GlyphIndex].LeftSideBearing;
   case fStyleIndex of
    2,3:begin
@@ -9455,7 +9456,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetGlyphTopSideBearing(GlyphIndex:TpvInt32):TpvInt32;
+function TpvTrueTypeFont.GetGlyphTopSideBearing(GlyphIndex:TpvInt32):TpvInt32;
 begin
  if (GlyphIndex>=0) and (GlyphIndex<fCountGlyphs) then begin
   result:=fGlyphs[GlyphIndex].TopSideBearing;
@@ -9464,19 +9465,19 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetGlyphBottomSideBearing(GlyphIndex:TpvInt32):TpvInt32;
+function TpvTrueTypeFont.GetGlyphBottomSideBearing(GlyphIndex:TpvInt32):TpvInt32;
 begin
- if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and (LoadGlyphData(GlyphIndex)=VkTTF_TT_ERR_NoError) then begin
+ if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and (LoadGlyphData(GlyphIndex)=pvTTF_TT_ERR_NoError) then begin
   result:=fGlyphs[GlyphIndex].AdvanceHeight-(fGlyphs[GlyphIndex].TopSideBearing+(fGlyphs[GlyphIndex].Bounds.YMax-fGlyphs[GlyphIndex].Bounds.YMin));
  end else begin
   result:=0;
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetKerning(Left,Right:TpvUInt32;Horizontal:boolean):TpvInt32;
+function TpvTrueTypeFont.GetKerning(Left,Right:TpvUInt32;Horizontal:boolean):TpvInt32;
 var KerningIndex,KerningPairIndex,LeftIndex,RightIndex,MiddleIndex,Index:TpvInt32;
-    KerningTable:PpvVulkanTrueTypeFontKerningTable;
-    KerningPair:PpvVulkanTrueTypeFontKerningPair;
+    KerningTable:PpvTrueTypeFontKerningTable;
+    KerningPair:PpvTrueTypeFontKerningPair;
 begin
  result:=0;
  if length(fKerningTables)>0 then begin
@@ -9530,7 +9531,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetScaleFactor:TpvDouble;
+function TpvTrueTypeFont.GetScaleFactor:TpvDouble;
 begin
  if fSize<0 then begin
   result:=(-fSize)/fUnitsPerEm;
@@ -9539,7 +9540,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetScaleFactorFixed:TpvInt32;
+function TpvTrueTypeFont.GetScaleFactorFixed:TpvInt32;
 begin
  if fSize<0 then begin
   result:=(TpvInt64(-fSize)*$10000) div fUnitsPerEm;
@@ -9548,7 +9549,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.Scale(Value:TpvInt32):TpvInt32;
+function TpvTrueTypeFont.Scale(Value:TpvInt32):TpvInt32;
 begin
  if fSize<0 then begin
   if Value>=0 then begin
@@ -9565,7 +9566,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.FloatScale(Value:TpvDouble):TpvDouble;
+function TpvTrueTypeFont.FloatScale(Value:TpvDouble):TpvDouble;
 begin
  if fSize<0 then begin
   result:=(Value*TpvInt64((-fSize)*64))/fUnitsPerEm;
@@ -9574,7 +9575,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetScale:TpvInt32;
+function TpvTrueTypeFont.GetScale:TpvInt32;
 begin
  if fSize<0 then begin
   result:=(-fSize)*64;
@@ -9583,7 +9584,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.ScaleRound(Value:TpvInt32):TpvInt32;
+function TpvTrueTypeFont.ScaleRound(Value:TpvInt32):TpvInt32;
 begin
  if fSize<0 then begin
   if Value>=0 then begin
@@ -9600,7 +9601,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.IsPostScriptGlyph(const GlyphIndex:TpvInt32):boolean;
+function TpvTrueTypeFont.IsPostScriptGlyph(const GlyphIndex:TpvInt32):boolean;
 begin
  if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and not fGlyphs[GlyphIndex].Locked then begin
   fGlyphs[GlyphIndex].Locked:=true;
@@ -9614,15 +9615,15 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFont.ResetGlyphBuffer(var GlyphBuffer:TpvVulkanTrueTypeFontGlyphBuffer);
+procedure TpvTrueTypeFont.ResetGlyphBuffer(var GlyphBuffer:TpvTrueTypeFontGlyphBuffer);
 begin
  GlyphBuffer.CountPoints:=0;
  GlyphBuffer.CountIndices:=0;
 end;
 
-procedure TpvVulkanTrueTypeFont.TransformGlyphBuffer(var GlyphBuffer:TpvVulkanTrueTypeFontGlyphBuffer;GlyphStartPointIndex,StartIndex,EndIndex:TpvInt32);
+procedure TpvTrueTypeFont.TransformGlyphBuffer(var GlyphBuffer:TpvTrueTypeFontGlyphBuffer;GlyphStartPointIndex,StartIndex,EndIndex:TpvInt32);
 var Sum,Direction,StartPointIndex,i,j,x,y,xs,ys:TpvInt32;
-    pprev,pfirst,pnext,pcur,pin,pout:TpvVulkanTrueTypeFontGlyphPoint;
+    pprev,pfirst,pnext,pcur,pin,pout:TpvTrueTypeFontGlyphPoint;
     ain,aout,ad,s:TpvDouble;
     Matrix:TMatrix;
 begin
@@ -9709,19 +9710,19 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFont.FillGlyphBuffer(var GlyphBuffer:TpvVulkanTrueTypeFontGlyphBuffer;const GlyphIndex:TpvInt32);
+procedure TpvTrueTypeFont.FillGlyphBuffer(var GlyphBuffer:TpvTrueTypeFontGlyphBuffer;const GlyphIndex:TpvInt32);
 const fi65536=1.0/65536;
 var CountSubGlyphs,SubGlyphArrayIndex,PointIndex,cx,cy,OriginalCount,DstCount,SrcCount,l,Offset,Count,EndOffset:TpvInt32;
-    SubGlyph:PpvVulkanTrueTypeFontGlyphCompositeSubGlyph;
+    SubGlyph:PpvTrueTypeFontGlyphCompositeSubGlyph;
     HaveScale:boolean;
-    p:TpvVulkanTrueTypeFontGlyphPoint;
+    p:TpvTrueTypeFontGlyphPoint;
 begin
  if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and not fGlyphs[GlyphIndex].Locked then begin
 
   fGlyphs[GlyphIndex].Locked:=true;
   try
 
-   if LoadGlyphData(GlyphIndex)=VkTTF_TT_ERR_NoError then begin
+   if LoadGlyphData(GlyphIndex)=pvTTF_TT_ERR_NoError then begin
 
     if GlyphBuffer.CountPoints=0 then begin
      GlyphBuffer.Bounds:=fGlyphs[GlyphIndex].Bounds;
@@ -9905,10 +9906,10 @@ begin
         SetLength(GlyphBuffer.InFontUnitsPoints,RoundUpToPowerOfTwo(l+1));
        end;
       end;
-      Move(fGlyphs[GlyphIndex].Points[0],GlyphBuffer.Points[DstCount],SrcCount*SizeOf(TpvVulkanTrueTypeFontGlyphPoint));
+      Move(fGlyphs[GlyphIndex].Points[0],GlyphBuffer.Points[DstCount],SrcCount*SizeOf(TpvTrueTypeFontGlyphPoint));
       if fHinting then begin
-       Move(fGlyphs[GlyphIndex].Points[0],GlyphBuffer.UnhintedPoints[DstCount],SrcCount*SizeOf(TpvVulkanTrueTypeFontGlyphPoint));
-       Move(fGlyphs[GlyphIndex].Points[0],GlyphBuffer.InFontUnitsPoints[DstCount],SrcCount*SizeOf(TpvVulkanTrueTypeFontGlyphPoint));
+       Move(fGlyphs[GlyphIndex].Points[0],GlyphBuffer.UnhintedPoints[DstCount],SrcCount*SizeOf(TpvTrueTypeFontGlyphPoint));
+       Move(fGlyphs[GlyphIndex].Points[0],GlyphBuffer.InFontUnitsPoints[DstCount],SrcCount*SizeOf(TpvTrueTypeFontGlyphPoint));
       end;
       GlyphBuffer.CountPoints:=l;
      end;
@@ -10025,12 +10026,12 @@ begin
 
 end;
 
-procedure TpvVulkanTrueTypeFont.ResetPolygonBuffer(var PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer);
+procedure TpvTrueTypeFont.ResetPolygonBuffer(var PolygonBuffer:TpvTrueTypeFontPolygonBuffer);
 begin
  PolygonBuffer.CountCommands:=0;
 end;
 
-procedure TpvVulkanTrueTypeFont.FillPolygonBuffer(var PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;const GlyphBuffer:TpvVulkanTrueTypeFontGlyphBuffer);
+procedure TpvTrueTypeFont.FillPolygonBuffer(var PolygonBuffer:TpvTrueTypeFontPolygonBuffer;const GlyphBuffer:TpvTrueTypeFontGlyphBuffer);
 var StartPointIndex,CommandIndex,CommandCount,i,j,fx,fy,lx,ly,cx,cy,x,y,MiddleX,MiddleY,MaxY:TpvInt32;
     OnCurve:boolean;
 begin
@@ -10045,8 +10046,8 @@ begin
    ly:=(MaxY-GlyphBuffer.Points[GlyphBuffer.EndPointIndices[i]].y)*4;
    cx:=fx;
    cy:=fy;
-   OnCurve:=(GlyphBuffer.Points[StartPointIndex].Flags and VkTTF_PathFlag_OnCurve)<>0;
-   if (not OnCurve) and ((GlyphBuffer.Points[GlyphBuffer.EndPointIndices[i]].Flags and VkTTF_PathFlag_OnCurve)=0) then begin
+   OnCurve:=(GlyphBuffer.Points[StartPointIndex].Flags and pvTTF_PathFlag_OnCurve)<>0;
+   if (not OnCurve) and ((GlyphBuffer.Points[GlyphBuffer.EndPointIndices[i]].Flags and pvTTF_PathFlag_OnCurve)=0) then begin
     lx:=SARLongint((fx+lx)+1,1);
     ly:=SARLongint((fy+ly)+1,1);
    end;
@@ -10055,21 +10056,21 @@ begin
    if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
     SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
    end;
-   PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_MOVETO;
+   PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_MOVETO;
    PolygonBuffer.Commands[CommandIndex].Points[0].x:=fx;
    PolygonBuffer.Commands[CommandIndex].Points[0].y:=fy;
    for j:=StartPointIndex+1 to GlyphBuffer.EndPointIndices[i] do begin
     x:=GlyphBuffer.Points[j].x*4;
     y:=(MaxY-GlyphBuffer.Points[j].y)*4;
     if OnCurve then begin
-     OnCurve:=(GlyphBuffer.Points[j].Flags and VkTTF_PathFlag_OnCurve)<>0;
+     OnCurve:=(GlyphBuffer.Points[j].Flags and pvTTF_PathFlag_OnCurve)<>0;
      if OnCurve then begin
       CommandIndex:=CommandCount;
       inc(CommandCount);
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_LINETO;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_LINETO;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=x;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=y;
      end else begin
@@ -10077,14 +10078,14 @@ begin
       cy:=y;
      end;
     end else begin
-     OnCurve:=(GlyphBuffer.Points[j].Flags and VkTTF_PathFlag_OnCurve)<>0;
+     OnCurve:=(GlyphBuffer.Points[j].Flags and pvTTF_PathFlag_OnCurve)<>0;
      if OnCurve then begin
       CommandIndex:=CommandCount;
       inc(CommandCount);
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_QUADRATICCURVETO;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QUADRATICCURVETO;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
       PolygonBuffer.Commands[CommandIndex].Points[1].x:=x;
@@ -10097,7 +10098,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_QUADRATICCURVETO;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QUADRATICCURVETO;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
       PolygonBuffer.Commands[CommandIndex].Points[1].x:=MiddleX;
@@ -10107,14 +10108,14 @@ begin
      end;
     end;
    end;
-   if (GlyphBuffer.Points[StartPointIndex].Flags and VkTTF_PathFlag_OnCurve)<>0 then begin
+   if (GlyphBuffer.Points[StartPointIndex].Flags and pvTTF_PathFlag_OnCurve)<>0 then begin
     if OnCurve then begin
      CommandIndex:=CommandCount;
      inc(CommandCount);
      if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
       SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
      end;
-     PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_LINETO;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_LINETO;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=fx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=fy;
     end else begin
@@ -10123,7 +10124,7 @@ begin
      if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
       SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
      end;
-     PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_QUADRATICCURVETO;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QUADRATICCURVETO;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
      PolygonBuffer.Commands[CommandIndex].Points[1].x:=fx;
@@ -10133,7 +10134,7 @@ begin
     if not OnCurve then begin
      CommandIndex:=length(PolygonBuffer.Commands);
      SetLength(PolygonBuffer.Commands,CommandIndex+1);
-     PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_QUADRATICCURVETO;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QUADRATICCURVETO;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
      PolygonBuffer.Commands[CommandIndex].Points[1].x:=lx;
@@ -10148,14 +10149,14 @@ begin
  if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
   SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
  end;
- PolygonBuffer.Commands[CommandIndex].CommandType:=VkTTF_PolygonCommandType_CLOSE;
+ PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_CLOSE;
  PolygonBuffer.CountCommands:=CommandCount;
 end;
 
-procedure TpvVulkanTrueTypeFont.FillPostScriptPolygonBuffer(var PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;const GlyphIndex:TpvInt32);
+procedure TpvTrueTypeFont.FillPostScriptPolygonBuffer(var PolygonBuffer:TpvTrueTypeFontPolygonBuffer;const GlyphIndex:TpvInt32);
 var CommandIndex,BaseIndex:TpvInt32;
-    Glyph:PpvVulkanTrueTypeFontGlyph;
-    Command:PpvVulkanTrueTypeFontPolygonCommand;
+    Glyph:PpvTrueTypeFontGlyph;
+    Command:PpvTrueTypeFontPolygonCommand;
 begin
  if ((GlyphIndex>=0) and (GlyphIndex<fCountGlyphs)) and not fGlyphs[GlyphIndex].Locked then begin
 
@@ -10178,21 +10179,21 @@ begin
     Command:=@PolygonBuffer.Commands[BaseIndex+CommandIndex];
     Command^:=Glyph^.PostScriptPolygon.Commands[CommandIndex];
     case Command^.CommandType of
-     VkTTF_PolygonCommandType_MOVETO:begin
+     pvTTF_PolygonCommandType_MOVETO:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
      end;
-     VkTTF_PolygonCommandType_LINETO:begin
+     pvTTF_PolygonCommandType_LINETO:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
      end;
-     VkTTF_PolygonCommandType_QUADRATICCURVETO:begin
+     pvTTF_PolygonCommandType_QUADRATICCURVETO:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
       Command^.Points[1].x:=FloatScale(Command^.Points[1].x);
       Command^.Points[1].y:=FloatScale(Command^.Points[1].y);
      end;
-     VkTTF_PolygonCommandType_CUBICCURVETO:begin
+     pvTTF_PolygonCommandType_CUBICCURVETO:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
       Command^.Points[1].x:=FloatScale(Command^.Points[1].x);
@@ -10200,7 +10201,7 @@ begin
       Command^.Points[2].x:=FloatScale(Command^.Points[2].x);
       Command^.Points[2].y:=FloatScale(Command^.Points[2].y);
      end;
-     VkTTF_PolygonCommandType_CLOSE:begin
+     pvTTF_PolygonCommandType_CLOSE:begin
      end;
     end;
    end;
@@ -10212,12 +10213,12 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFont.FillTextPolygonBuffer(var PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;const Text:TpvUTF8String;const StartX:TpvInt32=0;const StartY:TpvInt32=0);
+procedure TpvTrueTypeFont.FillTextPolygonBuffer(var PolygonBuffer:TpvTrueTypeFontPolygonBuffer;const Text:TpvUTF8String;const StartX:TpvInt32=0;const StartY:TpvInt32=0);
 var TextIndex,CurrentGlyph,LastGlyph,CurrentX,CurrentY,OffsetX,OffsetY,
     CommandCount,CommandIndex,CommandBaseIndex:TpvInt32;
-    GlyphBuffer:TpvVulkanTrueTypeFontGlyphBuffer;
-    GlyphPolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;
-    Command:PpvVulkanTrueTypeFontPolygonCommand;
+    GlyphBuffer:TpvTrueTypeFontGlyphBuffer;
+    GlyphPolygonBuffer:TpvTrueTypeFontPolygonBuffer;
+    Command:PpvTrueTypeFontPolygonCommand;
 begin
  Initialize(GlyphBuffer);
  Initialize(GlyphPolygonBuffer);
@@ -10299,7 +10300,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.GetStyleIndex(Thin,Bold,Italic:boolean):TpvInt32;
+function TpvTrueTypeFont.GetStyleIndex(Thin,Bold,Italic:boolean):TpvInt32;
 begin
  if Bold then begin
   if Italic then begin
@@ -10322,7 +10323,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.TextWidth(const aText:TpvUTF8String):TpvInt32;
+function TpvTrueTypeFont.TextWidth(const aText:TpvUTF8String):TpvInt32;
 var TextIndex,CurrentGlyph,LastGlyph,Width,NewWidth:TpvInt32;
 begin
  result:=0;
@@ -10338,7 +10339,7 @@ begin
    if LastGlyph<0 then begin
     dec(result,GetGlyphLeftSideBearing(CurrentGlyph));
    end;
-   if LoadGlyphData(CurrentGlyph)=VkTTF_TT_ERR_NoError then begin
+   if LoadGlyphData(CurrentGlyph)=pvTTF_TT_ERR_NoError then begin
     NewWidth:=result+(fGlyphs[CurrentGlyph].Bounds.XMax-fGlyphs[CurrentGlyph].Bounds.XMin);
     if Width<NewWidth then begin
      Width:=NewWidth;
@@ -10356,7 +10357,7 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.TextHeight(const aText:TpvUTF8String):TpvInt32;
+function TpvTrueTypeFont.TextHeight(const aText:TpvUTF8String):TpvInt32;
 var TextIndex,CurrentGlyph,LastGlyph,Height,NewHeight:TpvInt32;
 begin
  result:=0;
@@ -10372,7 +10373,7 @@ begin
    if LastGlyph<0 then begin
     dec(result,GetGlyphTopSideBearing(CurrentGlyph));
    end;
-   if LoadGlyphData(CurrentGlyph)=VkTTF_TT_ERR_NoError then begin
+   if LoadGlyphData(CurrentGlyph)=pvTTF_TT_ERR_NoError then begin
     NewHeight:=result+(fGlyphs[CurrentGlyph].Bounds.YMax-fGlyphs[CurrentGlyph].Bounds.YMin);
     if Height<NewHeight then begin
      Height:=NewHeight;
@@ -10390,7 +10391,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanTrueTypeFont.TextSize(const aText:TpvUTF8String;out aWidth,aHeight:TpvInt32);
+procedure TpvTrueTypeFont.TextSize(const aText:TpvUTF8String;out aWidth,aHeight:TpvInt32);
 var TextIndex,CurrentGlyph,LastGlyph,Width,NewWidth,Height,NewHeight:TpvInt32;
 begin
  aWidth:=0;
@@ -10410,7 +10411,7 @@ begin
     dec(aWidth,GetGlyphLeftSideBearing(CurrentGlyph));
     dec(aHeight,GetGlyphTopSideBearing(CurrentGlyph));
    end;
-   if LoadGlyphData(CurrentGlyph)=VkTTF_TT_ERR_NoError then begin
+   if LoadGlyphData(CurrentGlyph)=pvTTF_TT_ERR_NoError then begin
     NewWidth:=aWidth+(fGlyphs[CurrentGlyph].Bounds.XMax-fGlyphs[CurrentGlyph].Bounds.XMin);
     NewHeight:=aHeight+(fGlyphs[CurrentGlyph].Bounds.YMax-fGlyphs[CurrentGlyph].Bounds.YMin);
     if Width<NewWidth then begin
@@ -10439,17 +10440,17 @@ begin
  end;
 end;
 
-function TpvVulkanTrueTypeFont.RowHeight(const Percent:TpvInt32):TpvInt32;
+function TpvTrueTypeFont.RowHeight(const Percent:TpvInt32):TpvInt32;
 begin
  result:=((fUnitsPerEm*Percent)+50) div 100;
 end;
 
-function TpvVulkanTrueTypeFont.GetUnitsPerEm:TpvInt32;
+function TpvTrueTypeFont.GetUnitsPerEm:TpvInt32;
 begin
  result:=fUnitsPerEm;
 end;
 
-procedure TpvVulkanTrueTypeFont.GetPolygonBufferBounds(const PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TpvDouble;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
+procedure TpvTrueTypeFont.GetPolygonBufferBounds(const PolygonBuffer:TpvTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TpvDouble;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
 var lastcx,lastcy:TpvDouble;
     First:boolean;
  procedure PointAt(x,y:TpvDouble);
@@ -10540,49 +10541,49 @@ begin
  fPolygonBuffer.CountCommands:=0;
  for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
   case PolygonBuffer.Commands[CommandIndex].CommandType of
-   VkTTF_PolygonCommandType_MOVETO,VkTTF_PolygonCommandType_LINETO:begin
+   pvTTF_PolygonCommandType_MOVETO,pvTTF_PolygonCommandType_LINETO:begin
     PointAt(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y);
    end;
-   VkTTF_PolygonCommandType_QUADRATICCURVETO:begin
+   pvTTF_PolygonCommandType_QUADRATICCURVETO:begin
     QuadraticCurveTo(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y,
                      PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y,
                      Tolerance,MaxLevel);
    end;
-   VkTTF_PolygonCommandType_CUBICCURVETO:begin
+   pvTTF_PolygonCommandType_CUBICCURVETO:begin
     CubicCurveTo(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y,
                  PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y,
                  PolygonBuffer.Commands[CommandIndex].Points[2].x,PolygonBuffer.Commands[CommandIndex].Points[2].y,
                  Tolerance,MaxLevel);
    end;
-   VkTTF_PolygonCommandType_CLOSE:begin
+   pvTTF_PolygonCommandType_CLOSE:begin
    end;
   end;
  end;
 end;
 
-procedure TpvVulkanTrueTypeFont.DrawPolygonBuffer(Rasterizer:TpvVulkanTrueTypeFontRasterizer;const PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;x,y:TpvInt32;Tolerance:TpvInt32=2;MaxLevel:TpvInt32=32);
+procedure TpvTrueTypeFont.DrawPolygonBuffer(Rasterizer:TpvTrueTypeFontRasterizer;const PolygonBuffer:TpvTrueTypeFontPolygonBuffer;x,y:TpvInt32;Tolerance:TpvInt32=2;MaxLevel:TpvInt32=32);
 var CommandIndex:TpvInt32;
 begin
  if assigned(Rasterizer) then begin
   fPolygonBuffer.CountCommands:=0;
   for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
    case PolygonBuffer.Commands[CommandIndex].CommandType of
-    VkTTF_PolygonCommandType_MOVETO:begin
+    pvTTF_PolygonCommandType_MOVETO:begin
      Rasterizer.MoveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                        round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y));
     end;
-    VkTTF_PolygonCommandType_LINETO:begin
+    pvTTF_PolygonCommandType_LINETO:begin
      Rasterizer.LineTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                        round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y));
     end;
-    VkTTF_PolygonCommandType_QUADRATICCURVETO:begin
+    pvTTF_PolygonCommandType_QUADRATICCURVETO:begin
      Rasterizer.QuadraticCurveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                                  round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y),
                                  round(x+PolygonBuffer.Commands[CommandIndex].Points[1].x),
                                  round(y+PolygonBuffer.Commands[CommandIndex].Points[1].y),
                                  Tolerance,MaxLevel);
     end;
-    VkTTF_PolygonCommandType_CUBICCURVETO:begin
+    pvTTF_PolygonCommandType_CUBICCURVETO:begin
      Rasterizer.CubicCurveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                              round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y),
                              round(x+PolygonBuffer.Commands[CommandIndex].Points[1].x),
@@ -10591,7 +10592,7 @@ begin
                              round(y+PolygonBuffer.Commands[CommandIndex].Points[2].y),
                              Tolerance,MaxLevel);
     end;
-    VkTTF_PolygonCommandType_CLOSE:begin
+    pvTTF_PolygonCommandType_CLOSE:begin
      Rasterizer.Close;
     end;
    end;

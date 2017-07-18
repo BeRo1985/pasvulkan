@@ -122,7 +122,7 @@ procedure TScreenExampleFont.Show;
 var Stream:TStream;
     Index,x,y:TpvInt32;
     RawSprite:pointer;
-    TrueTypeFont:TpvVulkanTrueTypeFont;
+    TrueTypeFont:TpvTrueTypeFont;
 begin
  inherited Show;
 
@@ -142,7 +142,7 @@ begin
  //Stream:=pvApplication.Assets.GetAssetStream('fonts/notosans.ttf');
  Stream:=pvApplication.Assets.GetAssetStream('fonts/vera.ttf');
  try
-  TrueTypeFont:=TpvVulkanTrueTypeFont.Create(Stream,72);
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
   try
    TrueTypeFont.Size:=-64;
    TrueTypeFont.Hinting:=false;

@@ -12,9 +12,10 @@
 uses
   {$if defined(fpc) and defined(Unix)}
   cthreads,
-  {$ifend }
+  {$ifend}
   SysUtils,
   Classes,
+  PUCU in '..\externals\pucu\src\PUCU.pas',
   PasMP in '..\externals\pasmp\src\PasMP.pas',
   kraft in '..\externals\kraft\src\kraft.pas',
   Vulkan in '..\src\Vulkan.pas',
@@ -44,8 +45,7 @@ uses
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
   UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
   UnitScreenExampleSprites in 'UnitScreenExampleSprites.pas',
-  UnitScreenExampleFont in 'UnitScreenExampleFont.pas',
-  PUCU in '..\externals\pucu\src\PUCU.pas';
+  UnitScreenExampleFont in 'UnitScreenExampleFont.pas';
 
 // {$if defined(fpc) and defined(android)}
 

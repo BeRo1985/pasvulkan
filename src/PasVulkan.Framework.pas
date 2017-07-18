@@ -3659,7 +3659,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanFontDistanceFieldJob=record
       DistanceField:PpvVulkanFontDistanceField;
       MultiChannel:boolean;
-      PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;
+      PolygonBuffer:TpvTrueTypeFontPolygonBuffer;
      end;
 
      TpvVulkanFontDistanceFieldJobs=array of TpvVulkanFontDistanceFieldJob;
@@ -3687,13 +3687,13 @@ type EpvVulkanException=class(Exception);
 {$ifdef PasVulkanPasMP}
        fDistanceFieldJobs:TpvVulkanFontDistanceFieldJobs;
 {$endif}
-       procedure GenerateSignedDistanceField(var DistanceField:TpvVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;const FillRule:TpvInt32);
+       procedure GenerateSignedDistanceField(var DistanceField:TpvVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TpvTrueTypeFontPolygonBuffer;const FillRule:TpvInt32);
 {$ifdef PasVulkanPasMP}
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
 {$endif}
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvVulkanSpriteAtlas;const aTargetPPI:TpvInt32=72); reintroduce;
-       constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvVulkanSpriteAtlas;const aTrueTypeFont:TpvVulkanTrueTypeFont;const aCodePointRanges:array of TpvVulkanFontCodePointRange);
+       constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvVulkanSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvVulkanFontCodePointRange);
        destructor Destroy; override;
        class function CodePointRange(const aFromCodePoint,aToCodePoint:TpvUInt32):TpvVulkanFontCodePointRange; overload;
        class function CodePointRange(const aFromCodePoint,aToCodePoint:WideChar):TpvVulkanFontCodePointRange; overload;
@@ -29395,7 +29395,7 @@ type PpvVulkanFontPathSegmentSide=^TpvVulkanFontPathSegmentSide;
      TpvVulkanFontDataGenerator=class
       private
        PointInPolygonPathSegments:TpvVulkanFontPointInPolygonPathSegments;
-       PolygonBuffer:PpvVulkanTrueTypeFontPolygonBuffer;
+       PolygonBuffer:PpvTrueTypeFontPolygonBuffer;
        DistanceField:PpvVulkanFontDistanceField;
        MultiChannel:boolean;
        FillRule:TpvInt32;
@@ -29470,7 +29470,7 @@ begin
  PolygonBuffer:=nil;
  DistanceField:=nil;
  MultiChannel:=false;
- FillRule:=VkTTF_PolygonWindingRule_NONZERO;
+ FillRule:=pvTTF_PolygonWindingRule_NONZERO;
 end;
 
 destructor TpvVulkanFontDataGenerator.Destroy;
@@ -30398,7 +30398,7 @@ begin
    LastPoint.y:=0.0;
    for CommandIndex:=0 to PolygonBuffer^.CountCommands-1 do begin
     case PolygonBuffer^.Commands[CommandIndex].CommandType of
-     VkTTF_PolygonCommandType_MOVETO:begin
+     pvTTF_PolygonCommandType_MOVETO:begin
       if assigned(Contour) then begin
        SetLength(Contour^.PathSegments,Contour^.CountPathSegments);
       end;
@@ -30411,7 +30411,7 @@ begin
       LastPoint.y:=(PolygonBuffer^.Commands[CommandIndex].Points[0].y*VulkanFontRasterizerToScreenScale)+DistanceField^.OffsetY;
       StartPoint:=LastPoint;
      end;
-     VkTTF_PolygonCommandType_LINETO:begin
+     pvTTF_PolygonCommandType_LINETO:begin
       Point.x:=(PolygonBuffer^.Commands[CommandIndex].Points[0].x*VulkanFontRasterizerToScreenScale)+DistanceField^.OffsetX;
       Point.y:=(PolygonBuffer^.Commands[CommandIndex].Points[0].y*VulkanFontRasterizerToScreenScale)+DistanceField^.OffsetY;
       if assigned(Contour) and not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
@@ -30419,7 +30419,7 @@ begin
       end;
       LastPoint:=Point;
      end;
-     VkTTF_PolygonCommandType_QUADRATICCURVETO:begin
+     pvTTF_PolygonCommandType_QUADRATICCURVETO:begin
       ControlPoint.x:=(PolygonBuffer^.Commands[CommandIndex].Points[0].x*VulkanFontRasterizerToScreenScale)+DistanceField^.OffsetX;
       ControlPoint.y:=(PolygonBuffer^.Commands[CommandIndex].Points[0].y*VulkanFontRasterizerToScreenScale)+DistanceField^.OffsetY;
       Point.x:=(PolygonBuffer^.Commands[CommandIndex].Points[1].x*VulkanFontRasterizerToScreenScale)+DistanceField^.OffsetX;
@@ -30434,7 +30434,7 @@ begin
       end;
       LastPoint:=Point;
      end;
-     VkTTF_PolygonCommandType_CUBICCURVETO:begin
+     pvTTF_PolygonCommandType_CUBICCURVETO:begin
       ControlPoint.x:=(PolygonBuffer^.Commands[CommandIndex].Points[0].x*VulkanFontRasterizerToScreenScale)+DistanceField^.OffsetX;
       ControlPoint.y:=(PolygonBuffer^.Commands[CommandIndex].Points[0].y*VulkanFontRasterizerToScreenScale)+DistanceField^.OffsetY;
       OtherControlPoint.x:=(PolygonBuffer^.Commands[CommandIndex].Points[1].x*VulkanFontRasterizerToScreenScale)+DistanceField^.OffsetX;
@@ -30453,7 +30453,7 @@ begin
       end;
       LastPoint:=Point;
      end;
-     VkTTF_PolygonCommandType_CLOSE:begin
+     pvTTF_PolygonCommandType_CLOSE:begin
       if assigned(Contour) then begin
        if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
         AddLineToPathSegmentArray(Contour^,[LastPoint,StartPoint]);
@@ -31133,14 +31133,14 @@ begin
     end;
    end;
    case FillRule of
-    VkTTF_PolygonWindingRule_NONZERO:begin
+    pvTTF_PolygonWindingRule_NONZERO:begin
      if WindingNumber<>0 then begin
       DistanceFieldSign:=1;
      end else begin
       DistanceFieldSign:=-1;
      end;
     end;
-    else {VkTTF_PolygonWindingRule_EVENODD:}begin
+    else {pvTTF_PolygonWindingRule_EVENODD:}begin
      if (WindingNumber and 1)<>0 then begin
       DistanceFieldSign:=1;
      end else begin
@@ -31276,7 +31276,7 @@ begin
 
 end;
 
-constructor TpvVulkanFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvVulkanSpriteAtlas;const aTrueTypeFont:TpvVulkanTrueTypeFont;const aCodePointRanges:array of TpvVulkanFontCodePointRange);
+constructor TpvVulkanFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvVulkanSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvVulkanFontCodePointRange);
 const GlyphMetaDataScaleFactor=1.0;
       GlyphRasterizationScaleFactor=1.0/256.0;
 var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
@@ -31294,12 +31294,12 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     KerningPairHashMap:TpvVulkanInt64HashMap;
     Int64HashMapData:TpvVulkanInt64HashMapData;
     Glyph:PpvVulkanFontGlyph;
-    GlyphBuffer:TpvVulkanTrueTypeFontGlyphBuffer;
-    PolygonBuffers:TpvVulkanTrueTypeFontPolygonBuffers;
+    GlyphBuffer:TpvTrueTypeFontGlyphBuffer;
+    PolygonBuffers:TpvTrueTypeFontPolygonBuffers;
     SortedGlyphs:TPVulkanFontGlyphs;
     DistanceField:TpvVulkanFontDistanceField;
-    TrueTypeFontKerningTable:PpvVulkanTrueTypeFontKerningTable;
-    TrueTypeFontKerningPair:PpvVulkanTrueTypeFontKerningPair;
+    TrueTypeFontKerningTable:PpvTrueTypeFontKerningTable;
+    TrueTypeFontKerningPair:PpvTrueTypeFontKerningPair;
     CodePointGlyphPair:PpvVulkanFontCodePointGlyphPair;
     KerningPair:PpvVulkanFontKerningPair;
     GlyphDistanceField:PpvVulkanFontDistanceField;
@@ -31483,7 +31483,7 @@ begin
         GlyphDistanceFieldJob^.MultiChannel:=false;
         GlyphDistanceFieldJob^.PolygonBuffer:=PolygonBuffers[GlyphIndex];
 {$else}
-        GenerateSignedDistanceField(GlyphDistanceField^,false,PolygonBuffers[GlyphIndex],VkTTF_PolygonWindingRule_NONZERO);
+        GenerateSignedDistanceField(GlyphDistanceField^,false,PolygonBuffers[GlyphIndex],pvTTF_PolygonWindingRule_NONZERO);
 {$endif}
        end;
 
@@ -31656,7 +31656,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanFont.GenerateSignedDistanceField(var DistanceField:TpvVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TpvVulkanTrueTypeFontPolygonBuffer;const FillRule:TpvInt32);
+procedure TpvVulkanFont.GenerateSignedDistanceField(var DistanceField:TpvVulkanFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TpvTrueTypeFontPolygonBuffer;const FillRule:TpvInt32);
 var DataGenerator:TpvVulkanFontDataGenerator;
 begin
  DataGenerator:=TpvVulkanFontDataGenerator.Create;
@@ -31680,7 +31680,7 @@ begin
  Index:=FromIndex;
  while Index<=ToIndex do begin
   JobData:=@fDistanceFieldJobs[Index];
-  GenerateSignedDistanceField(JobData^.DistanceField^,JobData^.MultiChannel,JobData^.PolygonBuffer,VkTTF_PolygonWindingRule_NONZERO);
+  GenerateSignedDistanceField(JobData^.DistanceField^,JobData^.MultiChannel,JobData^.PolygonBuffer,pvTTF_PolygonWindingRule_NONZERO);
   inc(Index);
  end;
 end;
