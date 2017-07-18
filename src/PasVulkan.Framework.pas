@@ -72,9 +72,7 @@ uses {$if defined(Windows)}
      {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}
      {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}
      SysUtils,Classes,SyncObjs,Math,
-     {$ifdef PasVulkanPasMP}
-      PasMP,
-     {$endif}
+     PasMP,
      PUCU,
      Vulkan,
      PasVulkan.Types,
@@ -2790,10 +2788,8 @@ type EpvVulkanException=class(Exception);
        property MaxAnisotropy:double read fMaxAnisotropy write fMaxAnisotropy;
      end;
 
-{$ifdef PasVulkanPasMP}
-var VulkanPasMP:TPasMP=nil;
-    VulkanPasMPLock:TPasMPSpinLock=nil;
-{$endif}
+var pvPasMP:TPasMP=nil;
+    pvPasMPLock:TPasMPSpinLock=nil;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
        (
@@ -2806,9 +2802,7 @@ const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling
         VK_IMAGE_TILING_LINEAR   // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
        );
 
-{$ifdef PasVulkanPasMP}
-function GetVulkanPasMP:TPasMP;
-{$endif}
+function GetPasMP:TPasMP;
 
 function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TpvUInt32):TVkFormat;
 function VulkanGetFormatFromOpenGLType(const aType,aNumComponents:TpvUInt32;const aNormalized:boolean):TVkFormat;
@@ -3173,24 +3167,22 @@ const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
 
-{$ifdef PasVulkanPasMP}
-function GetVulkanPasMP:TPasMP;
+function GetPasMP:TPasMP;
 begin
- result:=TpvPointer(TPasMPInterlocked.Read(TpvPointer(VulkanPasMP)));
+ result:=TpvPointer(TPasMPInterlocked.Read(TpvPointer(pvPasMP)));
  if not assigned(result) then begin
-  VulkanPasMPLock.Acquire;
+  pvPasMPLock.Acquire;
   try
-   result:=TpvPointer(TPasMPInterlocked.Read(TpvPointer(VulkanPasMP)));
+   result:=TpvPointer(TPasMPInterlocked.Read(TpvPointer(pvPasMP)));
    if not assigned(result) then begin
     result:=TPasMP.GetGlobalInstance;
-    TPasMPInterlocked.Write(TpvPointer(VulkanPasMP),TpvPointer(result));
+    TPasMPInterlocked.Write(TpvPointer(pvPasMP),TpvPointer(result));
    end;
   finally
-   VulkanPasMPLock.Release;
+   pvPasMPLock.Release;
   end;
  end;
 end;
-{$endif}
 
 function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TpvUInt32):TVkFormat;
 begin
@@ -19074,14 +19066,10 @@ begin
 end;
 
 initialization
-{$ifdef PasVulkanPasMP}
- VulkanPasMP:=nil;
- VulkanPasMPLock:=TPasMPSpinLock.Create;
-{$endif}
+ pvPasMP:=nil;
+ pvPasMPLock:=TPasMPSpinLock.Create;
 finalization
-{$ifdef PasVulkanPasMP}
- FreeAndNil(VulkanPasMPLock);
-{$endif}
+ FreeAndNil(pvPasMPLock);
 end.
 
 

@@ -2127,7 +2127,7 @@ var TryIteration:TpvInt32;
 begin
 
 {$ifdef PasVulkanPasMP}
- PasMPInstance:=GetVulkanPasMP;
+ PasMPInstance:=GetPasMP;
 {$endif}
 
  Initialize(Shape);
@@ -2262,7 +2262,7 @@ begin
  Create(aDevice,aSpriteAtlas,aTrueTypeFont.TargetPPI);
 
 {$ifdef PasVulkanPasMP}
- PasMPInstance:=GetVulkanPasMP;
+ PasMPInstance:=GetPasMP;
 {$endif}
 
  fUnitsPerEm:=aTrueTypeFont.GetUnitsPerEm;
