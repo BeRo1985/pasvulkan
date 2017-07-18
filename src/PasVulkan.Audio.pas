@@ -211,41 +211,41 @@ type PpvAudioInt32=^TpvInt32;
      PPpvAudioFloats=^TPpvAudioFloats;
      TPpvAudioFloats=array[0..$ffff] of PpvAudioFloats;
      
-     PAudioSoundSampleValue=^TAudioSoundSampleValue;
-     TAudioSoundSampleValue=TpvInt32;
+     PpvAudioSoundSampleValue=^TpvAudioSoundSampleValue;
+     TpvAudioSoundSampleValue=TpvInt32;
 
-     PAudioSoundSampleStereoValue=^TAudioSoundSampleStereoValue;
-     TAudioSoundSampleStereoValue=array[0..1] of TpvInt32;
+     PpvAudioSoundSampleStereoValue=^TpvAudioSoundSampleStereoValue;
+     TpvAudioSoundSampleStereoValue=array[0..1] of TpvInt32;
 
-     PAudioSoundSampleValues=^TAudioSoundSampleValues;
-     TAudioSoundSampleValues=array[0..($7ffffff0 div sizeof(TAudioSoundSampleValue))-1] of TAudioSoundSampleValue;
+     PpvAudioSoundSampleValues=^TpvAudioSoundSampleValues;
+     TpvAudioSoundSampleValues=array[0..($7ffffff0 div sizeof(TpvAudioSoundSampleValue))-1] of TpvAudioSoundSampleValue;
 
-     PAudioSoundSampleLoop=^TAudioSoundSampleLoop;
-     TAudioSoundSampleLoop=record
+     PpvAudioSoundSampleLoop=^TpvAudioSoundSampleLoop;
+     TpvAudioSoundSampleLoop=record
       Mode:TpvInt32;
       StartSample:TpvInt32;
       EndSample:TpvInt32;
      end;
 
-     TAudioSoundSample=class;
-     TAudio=class;
+     TpvAudioSoundSample=class;
+     TpvAudio=class;
 
-     TAudioStringHashMap=class(TpvStringHashMap<TpvPointer>);
+     TpvAudioStringHashMap=class(TpvStringHashMap<TpvPointer>);
 
-     TAudioHRTFCoefs=array[0..HRIR_MAX_LENGTH-1] of TpvInt32;
+     TpvAudioHRTFCoefs=array[0..HRIR_MAX_LENGTH-1] of TpvInt32;
 
-     TAudioHRTFHistory=array[0..HRIR_MAX_LENGTH-1] of TpvInt32;
+     TpvAudioHRTFHistory=array[0..HRIR_MAX_LENGTH-1] of TpvInt32;
 
-     TAudioSoundSampleVoiceLowPassHistory=array[0..1] of TpvInt32;
+     TpvAudioSoundSampleVoiceLowPassHistory=array[0..1] of TpvInt32;
 
-     TAudioSoundSampleVoice=class
+     TpvAudioSoundSampleVoice=class
       private
-       Previous:TAudioSoundSampleVoice;
-       Next:TAudioSoundSampleVoice;
-       NextFree:TAudioSoundSampleVoice;
+       Previous:TpvAudioSoundSampleVoice;
+       Next:TpvAudioSoundSampleVoice;
+       NextFree:TpvAudioSoundSampleVoice;
        IsOnList:LongBool;
-       AudioEngine:TAudio;
-       Sample:TAudioSoundSample;
+       AudioEngine:TpvAudio;
+       Sample:TpvAudioSoundSample;
        Index:TpvInt32;
        MixToEffect:LongBool;
        Active:LongBool;
@@ -274,14 +274,14 @@ type PpvAudioInt32=^TpvInt32;
        VolumeLeftIncrement:TpvInt32;
        VolumeRightIncrement:TpvInt32;
        VolumeRampingRemain:TpvInt32;
-       HRTFLeftCoefs:TAudioHRTFCoefs;
-       HRTFRightCoefs:TAudioHRTFCoefs;
-       HRTFLeftCoefsCurrent:TAudioHRTFCoefs;
-       HRTFRightCoefsCurrent:TAudioHRTFCoefs;
-       HRTFLeftCoefsIncrement:TAudioHRTFCoefs;
-       HRTFRightCoefsIncrement:TAudioHRTFCoefs;
-       HRTFLeftHistory:TAudioHRTFHistory;
-       HRTFRightHistory:TAudioHRTFHistory;
+       HRTFLeftCoefs:TpvAudioHRTFCoefs;
+       HRTFRightCoefs:TpvAudioHRTFCoefs;
+       HRTFLeftCoefsCurrent:TpvAudioHRTFCoefs;
+       HRTFRightCoefsCurrent:TpvAudioHRTFCoefs;
+       HRTFLeftCoefsIncrement:TpvAudioHRTFCoefs;
+       HRTFRightCoefsIncrement:TpvAudioHRTFCoefs;
+       HRTFLeftHistory:TpvAudioHRTFHistory;
+       HRTFRightHistory:TpvAudioHRTFHistory;
        HRTFHistoryIndex:TpvInt32;
        HRTFLeftDelay:TpvInt32;
        HRTFRightDelay:TpvInt32;
@@ -321,8 +321,8 @@ type PpvAudioInt32=^TpvInt32;
        SpatializationLowPassRightCurrentCoef:TpvInt32;
        SpatializationLowPassLeftIncrementCoef:TpvInt32;
        SpatializationLowPassRightIncrementCoef:TpvInt32;
-       SpatializationLowPassLeftHistory:TAudioSoundSampleVoiceLowPassHistory;
-       SpatializationLowPassRightHistory:TAudioSoundSampleVoiceLowPassHistory;
+       SpatializationLowPassLeftHistory:TpvAudioSoundSampleVoiceLowPassHistory;
+       SpatializationLowPassRightHistory:TpvAudioSoundSampleVoiceLowPassHistory;
        SpatializationLowPassRampingRemain:TpvInt32;
        LastDirection:TpvVector3;
        LastLeft:TpvInt32;
@@ -345,33 +345,33 @@ type PpvAudioInt32=^TpvInt32;
        procedure UpdateSpatializationDelayRamping;
        procedure UpdateSpatializationLowPassRamping;
       public
-       constructor Create(AAudioEngine:TAudio;ASample:TAudioSoundSample;AIndex:TpvInt32);
+       constructor Create(AAudioEngine:TpvAudio;ASample:TpvAudioSoundSample;AIndex:TpvInt32);
        destructor Destroy; override;
        procedure Enqueue;
        procedure Dequeue;
        procedure Init(AVolume,APanning,ARate:TpvFloat);
-       procedure MixTo(Buffer:PAudioSoundSampleValues;MixVolume:TpvInt32);
+       procedure MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
      end;
 
-     TAudioSoundSampleVoices=array of TAudioSoundSampleVoice;
+     TpvAudioSoundSampleVoices=array of TpvAudioSoundSampleVoice;
 
-     TAudioSoundSamples=class;
+     TpvAudioSoundSamples=class;
 
-     TAudioSoundSample=class
+     TpvAudioSoundSample=class
       public
-       AudioEngine:TAudio;
-       SoundSamples:TAudioSoundSamples;
+       AudioEngine:TpvAudio;
+       SoundSamples:TpvAudioSoundSamples;
        Name:TpvRawByteString;
-       Data:PAudioSoundSampleValues;
+       Data:PpvAudioSoundSampleValues;
        SampleLength:TpvInt32;
        SampleRate:TpvInt32;
-       Loop:TAudioSoundSampleLoop;
-       SustainLoop:TAudioSoundSampleLoop;
-       Voices:TAudioSoundSampleVoices;
+       Loop:TpvAudioSoundSampleLoop;
+       SustainLoop:TpvAudioSoundSampleLoop;
+       Voices:TpvAudioSoundSampleVoices;
        ReferenceCounter:TpvInt32;
        SamplePolyphony:TpvInt32;
-       FreeVoice:TAudioSoundSampleVoice;
-       constructor Create(AAudioEngine:TAudio;ASoundSamples:TAudioSoundSamples);
+       FreeVoice:TpvAudioSoundSampleVoice;
+       constructor Create(AAudioEngine:TpvAudio;ASoundSamples:TpvAudioSoundSamples);
        destructor Destroy; override;
        procedure IncRef;
        procedure DecRef;
@@ -390,31 +390,31 @@ type PpvAudioInt32=^TpvInt32;
        function IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
      end;
 
-     PAudioSoundOGGBufferSample=^TAudioSoundOGGBufferSample;
-     TAudioSoundOGGBufferSample=record
+     PpvAudioSoundOGGBufferSample=^TpvAudioSoundOGGBufferSample;
+     TpvAudioSoundOGGBufferSample=record
       Left,Right:TpvInt32;
      end;
 
-     TAudioResamplerBuffer=array[0..ResamplerBufferSize-1] of TAudioSoundOGGBufferSample;
+     TpvAudioResamplerBuffer=array[0..ResamplerBufferSize-1] of TpvAudioSoundOGGBufferSample;
 
-     PAudioResamplerCubicSplineSubArray=^TAudioResamplerCubicSplineSubArray;
-     TAudioResamplerCubicSplineSubArray=packed array[0..3] of TpvInt32;
+     PpvAudioResamplerCubicSplineSubArray=^TpvAudioResamplerCubicSplineSubArray;
+     TpvAudioResamplerCubicSplineSubArray=packed array[0..3] of TpvInt32;
 
-     PAudioResamplerCubicSplineArray=^TAudioResamplerCubicSplineArray;
-     TAudioResamplerCubicSplineArray=packed array[0..ResamplerCubicSplineLength-1] of TAudioResamplerCubicSplineSubArray;
+     PpvAudioResamplerCubicSplineArray=^TpvAudioResamplerCubicSplineArray;
+     TpvAudioResamplerCubicSplineArray=packed array[0..ResamplerCubicSplineLength-1] of TpvAudioResamplerCubicSplineSubArray;
 
-     PAudioResamplerSINCSubArray=^TAudioResamplerSINCSubArray;
-     TAudioResamplerSINCSubArray=packed array[0..ResamplerSINCWidth-1] of TpvInt32;
+     PpvAudioResamplerSINCSubArray=^TpvAudioResamplerSINCSubArray;
+     TpvAudioResamplerSINCSubArray=packed array[0..ResamplerSINCWidth-1] of TpvInt32;
 
-     PAudioResamplerSINCArray=^TAudioResamplerSINCArray;
-     TAudioResamplerSINCArray=packed array[0..ResamplerSINCLength-1] of TAudioResamplerSINCSubArray;
+     PpvAudioResamplerSINCArray=^TpvAudioResamplerSINCArray;
+     TpvAudioResamplerSINCArray=packed array[0..ResamplerSINCLength-1] of TpvAudioResamplerSINCSubArray;
 
-     TAudioSoundOGGs=class;
+     TpvAudioSoundOGGs=class;
 
-     TAudioSoundOGG=class
+     TpvAudioSoundOGG=class
       public
-       AudioEngine:TAudio;
-       SoundOGGs:TAudioSoundOGGs;
+       AudioEngine:TpvAudio;
+       SoundOGGs:TpvAudioSoundOGGs;
        Name:TpvRawByteString;
        Data:TStream;
        Active:LongBool;
@@ -436,27 +436,27 @@ type PpvAudioInt32=^TpvInt32;
        LastRight:TpvInt32;
        NewLastLeft:TpvInt32;
        NewLastRight:TpvInt32;
-       ResamplerBuffer:TAudioResamplerBuffer;
+       ResamplerBuffer:TpvAudioResamplerBuffer;
        ResamplerBufferPosition:TpvInt32;
-       ResamplerCurrentSample:TAudioSoundOGGBufferSample;
-       ResamplerLastSample:TAudioSoundOGGBufferSample;
+       ResamplerCurrentSample:TpvAudioSoundOGGBufferSample;
+       ResamplerLastSample:TpvAudioSoundOGGBufferSample;
        ResamplerPosition:TpvInt64;
        ResamplerIncrement:TpvInt64;
        ResamplerOriginalIncrement:TpvInt64;
-       OutBuffer:array[0..4095] of TAudioSoundOGGBufferSample;
+       OutBuffer:array[0..4095] of TpvAudioSoundOGGBufferSample;
        OutBufferPosition:TpvInt32;
        OutBufferSize:TpvInt32;
-       InBuffer:array[0..4095] of TAudioSoundOGGBufferSample;
+       InBuffer:array[0..4095] of TpvAudioSoundOGGBufferSample;
        InBufferPosition:TpvInt32;
        InBufferSize:TpvInt32;
        PCMBuffer:array [0..65535] of smallint;
        Channels:TpvInt32;
        SampleRate:TpvInt32;
        BitStream:TpvInt32;
-       LastSample:TAudioSoundOGGBufferSample;
-       Table:TAudioResamplerSINCArray;
+       LastSample:TpvAudioSoundOGGBufferSample;
+       Table:TpvAudioResamplerSINCArray;
        vf:POggVorbis_File;
-       constructor Create(AAudioEngine:TAudio;ASoundOGGs:TAudioSoundOGGs);
+       constructor Create(AAudioEngine:TpvAudio;ASoundOGGs:TpvAudioSoundOGGs);
        destructor Destroy; override;
        procedure InitSINC;
        procedure Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
@@ -466,73 +466,73 @@ type PpvAudioInt32=^TpvInt32;
        procedure SetRate(ARate:TpvFloat);
        procedure GetNextInBuffer;
        procedure Resample;
-       procedure MixTo(Buffer:PAudioSoundSampleValues;MixVolume:TpvInt32);
+       procedure MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
        function IsPlaying:boolean;
      end;
 
-     TAudioSoundSamples=class(TList)
+     TpvAudioSoundSamples=class(TList)
       private
-       function GetItem(Index:TpvInt32):TAudioSoundSample;
-       procedure SetItem(Index:TpvInt32;Item:TAudioSoundSample);
+       function GetItem(Index:TpvInt32):TpvAudioSoundSample;
+       procedure SetItem(Index:TpvInt32;Item:TpvAudioSoundSample);
       public
-       AudioEngine:TAudio;
-       HashMap:TAudioStringHashMap;
-       constructor Create(AAudioEngine:TAudio);
+       AudioEngine:TpvAudio;
+       HashMap:TpvAudioStringHashMap;
+       constructor Create(AAudioEngine:TpvAudio);
        destructor Destroy; override;
-       function Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true;Polyphony:TpvInt32=1;Loop:TpvUInt32=1):TAudioSoundSample;
-       property Items[Index:TpvInt32]:TAudioSoundSample read GetItem write SetItem; default;
+       function Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true;Polyphony:TpvInt32=1;Loop:TpvUInt32=1):TpvAudioSoundSample;
+       property Items[Index:TpvInt32]:TpvAudioSoundSample read GetItem write SetItem; default;
      end;
 
-     TAudioSoundOGGs=class(TList)
+     TpvAudioSoundOGGs=class(TList)
       private
-       function GetItem(Index:TpvInt32):TAudioSoundOGG;
-       procedure SetItem(Index:TpvInt32;Item:TAudioSoundOGG);
+       function GetItem(Index:TpvInt32):TpvAudioSoundOGG;
+       procedure SetItem(Index:TpvInt32;Item:TpvAudioSoundOGG);
       public
-       AudioEngine:TAudio;
-       HashMap:TAudioStringHashMap;
-       constructor Create(AAudioEngine:TAudio);
+       AudioEngine:TpvAudio;
+       HashMap:TpvAudioStringHashMap;
+       constructor Create(AAudioEngine:TpvAudio);
        destructor Destroy; override;
-       function Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true):TAudioSoundOGG;
-       property Items[Index:TpvInt32]:TAudioSoundOGG read GetItem write SetItem; default;
+       function Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true):TpvAudioSoundOGG;
+       property Items[Index:TpvInt32]:TpvAudioSoundOGG read GetItem write SetItem; default;
      end;
 
-     TAudioUpdateHook=procedure of object;
+     TpvAudioUpdateHook=procedure of object;
 
-     PAudioPitchShifterBuffer=^TAudioPitchShifterBuffer;
-     TAudioPitchShifterBuffer=array[0..PitchShifterBufferSize+16] of TAudioSoundSampleStereoValue;
+     PpvAudioPitchShifterBuffer=^TpvAudioPitchShifterBuffer;
+     TpvAudioPitchShifterBuffer=array[0..PitchShifterBufferSize+16] of TpvAudioSoundSampleStereoValue;
 
-     PAudioPitchShifterFadeBuffer=^TAudioPitchShifterFadeBuffer;
-     TAudioPitchShifterFadeBuffer=array[0..PitchShifterBufferSize+1] of TAudioSoundSampleValue;
+     PpvAudioPitchShifterFadeBuffer=^TpvAudioPitchShifterFadeBuffer;
+     TpvAudioPitchShifterFadeBuffer=array[0..PitchShifterBufferSize+1] of TpvAudioSoundSampleValue;
 
-     TAudioPitchShifter=class
+     TpvAudioPitchShifter=class
       public
-       AudioEngine:TAudio;
-       PitchShifterFadeBuffer:TAudioPitchShifterFadeBuffer;
-       WorkBuffer:TAudioPitchShifterBuffer;
+       AudioEngine:TpvAudio;
+       PitchShifterFadeBuffer:TpvAudioPitchShifterFadeBuffer;
+       WorkBuffer:TpvAudioPitchShifterBuffer;
        p1:TpvUInt32;
        p2:TpvUInt32;
        InputPointer:TpvUInt32;
        Factor:TpvFloat;
-       constructor Create(AAudioEngine:TAudio);
+       constructor Create(AAudioEngine:TpvAudio);
        destructor Destroy; override;
        procedure Reset;
        procedure Process(Buffer:TpvPointer;Samples:TpvInt32);
      end;
 
-     TAudioReverbAllPassBufferSample=array[0..1] of TpvInt32;
+     TpvAudioReverbAllPassBufferSample=array[0..1] of TpvInt32;
 
-     TAudioReverbAllPassBuffer=array of TAudioReverbAllPassBufferSample;
+     TpvAudioReverbAllPassBuffer=array of TpvAudioReverbAllPassBufferSample;
 
-     TAudioReverbBuffer=array of TpvInt32;
+     TpvAudioReverbBuffer=array of TpvInt32;
 
-     TAudioReverb=class
+     TpvAudioReverb=class
       private
-       AllPassBuffer:array[0..MaxReverbAllPassFilters-1] of TAudioReverbAllPassBuffer;
+       AllPassBuffer:array[0..MaxReverbAllPassFilters-1] of TpvAudioReverbAllPassBuffer;
        Counter:array[0..MaxReverbAllPassFilters-1,0..3] of TpvInt32;
        LastLowPassLeft:TpvInt32;
        LastLowPassRight:TpvInt32;
-       LeftBuffer:TAudioReverbBuffer;
-       RightBuffer:TAudioReverbBuffer;
+       LeftBuffer:TpvAudioReverbBuffer;
+       RightBuffer:TpvAudioReverbBuffer;
        LeftDelayedCounter:TpvInt32;
        RightDelayedCounter:TpvInt32;
        LeftCounter:TpvInt32;
@@ -541,7 +541,7 @@ type PpvAudioInt32=^TpvInt32;
        SampleBufferMask:TpvInt32;
        CutOff:TpvInt32;
       public
-       AudioEngine:TAudio;
+       AudioEngine:TpvAudio;
        PreDelay:TpvInt32;
        CombFilterSeparation:TpvInt32;
        RoomSize:TpvInt32;
@@ -550,41 +550,41 @@ type PpvAudioInt32=^TpvInt32;
        Dry:TpvFloat;
        Wet:TpvFloat;
        AllPassFilters:TpvInt32;
-       constructor Create(AAudioEngine:TAudio);
+       constructor Create(AAudioEngine:TpvAudio);
        destructor Destroy; override;
        procedure Reset;
        procedure Init;
        procedure Process(Buffer:TpvPointer;Samples:TpvInt32);
      end;
 
-     TAudioThread=class(TThread)
+     TpvAudioThread=class(TThread)
       protected
        procedure Execute; override;
       public
-       AudioEngine:TAudio;
+       AudioEngine:TpvAudio;
        Buffer:TpvPointer;
        Event:TEvent;
        Sleeping:TpvInt32;
-       constructor Create(AAudioEngine:TAudio);
+       constructor Create(AAudioEngine:TpvAudio);
        destructor Destroy; override;
        procedure Start;
       published
        property Terminated;
      end;
 
-     TAudio=class
+     TpvAudio=class
       private
        procedure CalcEvIndices(ev:TpvFloat;evidx:PpvAudioInt32s;var evmu:TpvFloat);
        procedure CalcAzIndices(evidx:TpvInt32;az:TpvFloat;azidx:PpvAudioInt32s;var azmu:TpvFloat);
-       procedure GetLerpedHRTFCoefs(Elevation,Azimuth:TpvFloat;var LeftCoefs,RightCoefs:TAudioHRTFCoefs;var LeftDelay,RightDelay:TpvInt32);
+       procedure GetLerpedHRTFCoefs(Elevation,Azimuth:TpvFloat;var LeftCoefs,RightCoefs:TpvAudioHRTFCoefs;var LeftDelay,RightDelay:TpvInt32);
       public
-       Samples:TAudioSoundSamples;
-       OGGs:TAudioSoundOGGs;
+       Samples:TpvAudioSoundSamples;
+       OGGs:TpvAudioSoundOGGs;
        SpatializationMode:TpvInt32;
        HRTF:LongBool;
        HRTFPreset:PpvAudioHRTFPreset;
-       VoiceFirst:TAudioSoundSampleVoice;
-       VoiceLast:TAudioSoundSampleVoice;
+       VoiceFirst:TpvAudioSoundSampleVoice;
+       VoiceLast:TpvAudioSoundSampleVoice;
        SampleRate:TpvInt32;
        Channels:TpvInt32;
        Bits:TpvInt32;
@@ -602,8 +602,8 @@ type PpvAudioInt32=^TpvInt32;
        BufferOutputChannelSamples:TpvInt32;
        MixingBufferSize:TpvInt32;
        OutputBufferSize:TpvInt32;
-       MixingBuffer:PAudioSoundSampleValues;
-       EffectMixingBuffer:PAudioSoundSampleValues;
+       MixingBuffer:PpvAudioSoundSampleValues;
+       EffectMixingBuffer:PpvAudioSoundSampleValues;
        OutputBuffer:TpvPointer;
        MasterVolume:TpvInt32;
        SampleVolume:TpvInt32;
@@ -615,7 +615,7 @@ type PpvAudioInt32=^TpvInt32;
        AGCCounter:TpvInt32;
        AGCInterval:TpvInt32;
        CriticalSection:TCriticalSection;
-       CubicSplineTable:TAudioResamplerCubicSplineArray;
+       CubicSplineTable:TpvAudioResamplerCubicSplineArray;
        ListenerOrigin:TpvVector3;
        ListenerVelocity:TpvVector3;
        ListenerMatrix:TpvMatrix4x4;
@@ -634,12 +634,12 @@ type PpvAudioInt32=^TpvInt32;
        WaterBoostHighPassRight:array[0..3] of TpvInt32;
        WaterBoostHistoryLeft:array[0..3] of TpvInt32;
        WaterBoostHistoryRight:array[0..3] of TpvInt32;
-       UpdateHook:TAudioUpdateHook;
-       PitchShifter:TAudioPitchShifter;
-       Reverb:TAudioReverb;
+       UpdateHook:TpvAudioUpdateHook;
+       PitchShifter:TpvAudioPitchShifter;
+       Reverb:TpvAudioReverb;
        PanningLUT:array[0..$10000] of TpvInt32;
        RingBuffer:TPasMPSingleProducerSingleConsumerRingBuffer;
-       Thread:TAudioThread;
+       Thread:TpvAudioThread;
        IsReady:LongBool;
        IsMuted:LongBool;
        IsActive:LongBool;
@@ -832,7 +832,7 @@ begin
  result:=Min(Max(AngleChange*25.0,GainChange)*2.0,1.0);
 end;
  
-constructor TAudioSoundSampleVoice.Create(AAudioEngine:TAudio;ASample:TAudioSoundSample;AIndex:TpvInt32);
+constructor TpvAudioSoundSampleVoice.Create(AAudioEngine:TpvAudio;ASample:TpvAudioSoundSample;AIndex:TpvInt32);
 begin
  inherited Create;
  Previous:=nil;
@@ -853,14 +853,14 @@ begin
  VolumeRampingRemain:=0;
  IncrementRampingRemain:=0;
  IncrementRampingStepRemain:=0;
- FillChar(HRTFLeftCoefs,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFRightCoefs,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFLeftCoefsCurrent,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFRightCoefsCurrent,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFLeftCoefsIncrement,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFRightCoefsIncrement,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFLeftHistory,SizeOf(TAudioHRTFHistory),AnsiChar(#0));
- FillChar(HRTFRightHistory,SizeOf(TAudioHRTFHistory),AnsiChar(#0));
+ FillChar(HRTFLeftCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(HRTFRightCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(HRTFLeftCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(HRTFRightCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(HRTFLeftCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(HRTFRightCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(HRTFLeftHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
+ FillChar(HRTFRightHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
  HRTFHistoryIndex:=0;
  HRTFLeftDelay:=0;
  HRTFRightDelay:=0;
@@ -910,7 +910,7 @@ begin
  HRTFMask:=HRTFLength-1;
 end;
 
-destructor TAudioSoundSampleVoice.Destroy;
+destructor TpvAudioSoundSampleVoice.Destroy;
 begin
  Dequeue;
  SetLength(SpatializationDelayLeftLine,0);
@@ -918,7 +918,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TAudioSoundSampleVoice.Enqueue;
+procedure TpvAudioSoundSampleVoice.Enqueue;
 begin
  if not IsOnList then begin
   if assigned(AudioEngine.VoiceLast) then begin
@@ -935,7 +935,7 @@ begin
  end;
 end;
 
-procedure TAudioSoundSampleVoice.Dequeue;
+procedure TpvAudioSoundSampleVoice.Dequeue;
 begin
  if IsOnList then begin
   if assigned(Previous) then begin
@@ -954,7 +954,7 @@ begin
  end;
 end;
 
-procedure TAudioSoundSampleVoice.Init(AVolume,APanning,ARate:TpvFloat);
+procedure TpvAudioSoundSampleVoice.Init(AVolume,APanning,ARate:TpvFloat);
 begin
  Active:=true;
  KeyOff:=false;
@@ -972,14 +972,14 @@ begin
  Age:=0;
  Position:=0;
  if AudioEngine.SpatializationMode=SPATIALIZATION_HRTF then begin
-  FillChar(HRTFLeftCoefs,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFRightCoefs,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFLeftCoefsCurrent,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFRightCoefsCurrent,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFLeftCoefsIncrement,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFRightCoefsIncrement,SizeOf(TAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFLeftHistory,SizeOf(TAudioHRTFHistory),AnsiChar(#0));
-  FillChar(HRTFRightHistory,SizeOf(TAudioHRTFHistory),AnsiChar(#0));
+  FillChar(HRTFLeftCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(HRTFRightCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(HRTFLeftCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(HRTFRightCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(HRTFLeftCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(HRTFRightCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(HRTFLeftHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
+  FillChar(HRTFRightHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
   HRTFHistoryIndex:=0;
   HRTFLeftDelay:=0;
   HRTFRightDelay:=0;
@@ -1036,7 +1036,7 @@ begin
  RampingSamples:=AudioEngine.RampingSamples;
 end;
 
-procedure TAudioSoundSampleVoice.UpdateSpatialization;
+procedure TpvAudioSoundSampleVoice.UpdateSpatialization;
  function LowPassCoef(Gain,cw:TpvFloat):TpvFloat;
  begin
   if Gain<0.01 then begin
@@ -1269,7 +1269,7 @@ begin
  end;
 end;
 
-function TAudioSoundSampleVoice.GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
+function TpvAudioSoundSampleVoice.GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
 const i32=TpvInt64($100000000);
 var SmpInc,SmpLen,SmpLoopStart,SmpLoopEnd,CountSamples,SampleBufferSize,Difference:TpvInt64;
     LoopMode:TpvInt32;
@@ -1377,7 +1377,7 @@ begin
  end;
 end;
 
-procedure TAudioSoundSampleVoice.PreClickRemoval(Buffer:TpvPointer);
+procedure TpvAudioSoundSampleVoice.PreClickRemoval(Buffer:TpvPointer);
 var LocalLeft,LocalRight,Counter:TpvInt32;
     Buf:PpvAudioInt32;
 begin
@@ -1398,7 +1398,7 @@ begin
  end;
 end;
 
-procedure TAudioSoundSampleVoice.PostClickRemoval(Buffer:TpvPointer;Remain:TpvInt32);
+procedure TpvAudioSoundSampleVoice.PostClickRemoval(Buffer:TpvPointer;Remain:TpvInt32);
 var LocalNewLastLeft,LocalNewLastRight:TpvInt32;
     Buf:PpvAudioInt32;
 begin
@@ -1420,13 +1420,13 @@ begin
  NewLastRight:=LocalNewLastRight;
 end;
 
-procedure TAudioSoundSampleVoice.MixProcSpatializationHRTF(Buffer:TpvPointer;ToDo:TpvInt32);
+procedure TpvAudioSoundSampleVoice.MixProcSpatializationHRTF(Buffer:TpvPointer;ToDo:TpvInt32);
 var vl,vr,vli,vri,pll,plr,plli,plri,pdl,pdr,pdli,pdri,pdlip,pdrip,pdm,hhi,hm,p,m,s,v,i:TpvInt32;
-    pllh,plrh:TAudioSoundSampleVoiceLowPassHistory;
+    pllh,plrh:TpvAudioSoundSampleVoiceLowPassHistory;
     pdlp,pdrp,hl,hr,hli,hri,hlh,hrh:PpvAudioInt32s;
     Buf:PpvAudioInt32;
     p64,i64:TpvInt64;
-    d:PAudioSoundSampleValues;
+    d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
  d:=Sample.Data;
@@ -1582,13 +1582,13 @@ begin
  Position:=p64;
 end;
 
-procedure TAudioSoundSampleVoice.MixProcSpatializationPSEUDO(Buffer:TpvPointer;ToDo:TpvInt32);
+procedure TpvAudioSoundSampleVoice.MixProcSpatializationPSEUDO(Buffer:TpvPointer;ToDo:TpvInt32);
 var vl,vr,vli,vri,pll,plr,plli,plri,pdl,pdr,pdli,pdri,pdlip,pdrip,pdm,p,m,s,v:TpvInt32;
-    pllh,plrh:TAudioSoundSampleVoiceLowPassHistory;
+    pllh,plrh:TpvAudioSoundSampleVoiceLowPassHistory;
     pdlp,pdrp:PpvAudioInt32s;
     Buf:PpvAudioInt32;
     p64,i64:TpvInt64;
-    d:PAudioSoundSampleValues;
+    d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
  d:=Sample.Data;
@@ -1714,11 +1714,11 @@ begin
  Position:=p64;
 end;
 
-procedure TAudioSoundSampleVoice.MixProcVolumeRamping(Buffer:TpvPointer;ToDo:TpvInt32);
+procedure TpvAudioSoundSampleVoice.MixProcVolumeRamping(Buffer:TpvPointer;ToDo:TpvInt32);
 var vl,vr,vli,vri,p,m,s:TpvInt32;
     Buf:PpvAudioInt32;
     p64,i64:TpvInt64;
-    d:PAudioSoundSampleValues;
+    d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
  d:=Sample.Data;
@@ -1755,11 +1755,11 @@ begin
  Position:=p64;
 end;
 
-procedure TAudioSoundSampleVoice.MixProcNormal(Buffer:TpvPointer;ToDo:TpvInt32);
+procedure TpvAudioSoundSampleVoice.MixProcNormal(Buffer:TpvPointer;ToDo:TpvInt32);
 var vl,vr,p,m,s:TpvInt32;
     Buf:PpvAudioInt32;
     p64,i64:TpvInt64;
-    d:PAudioSoundSampleValues;
+    d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
  d:=Sample.Data;
@@ -1795,7 +1795,7 @@ begin
  Position:=p64;
 end;
 
-procedure TAudioSoundSampleVoice.UpdateIncrementRamping;
+procedure TpvAudioSoundSampleVoice.UpdateIncrementRamping;
 begin
  if Age=0 then begin
   IncrementRampingRemain:=0;
@@ -1811,7 +1811,7 @@ begin
  end;
 end;
 
-procedure TAudioSoundSampleVoice.UpdateVolumeRamping(MixVolume:TpvInt32);
+procedure TpvAudioSoundSampleVoice.UpdateVolumeRamping(MixVolume:TpvInt32);
 var Pan:TpvInt32;
 begin
  MixVolume:=SARLongint(SARLongint(Volume,1)*MixVolume,15);
@@ -1867,7 +1867,7 @@ begin
  end;
 end;
 
-procedure TAudioSoundSampleVoice.UpdateSpatializationDelayRamping;
+procedure TpvAudioSoundSampleVoice.UpdateSpatializationDelayRamping;
 begin
  if Age=0 then begin
   SpatializationDelayRampingRemain:=0;
@@ -1890,7 +1890,7 @@ begin
  end;
 end;
 
-procedure TAudioSoundSampleVoice.UpdateSpatializationLowPassRamping;
+procedure TpvAudioSoundSampleVoice.UpdateSpatializationLowPassRamping;
 begin
  if Age=0 then begin
   SpatializationLowPassRampingRemain:=0;
@@ -1913,7 +1913,7 @@ begin
  end;
 end;
 
-procedure TAudioSoundSampleVoice.MixTo(Buffer:PAudioSoundSampleValues;MixVolume:TpvInt32);
+procedure TpvAudioSoundSampleVoice.MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
 var Remain,ToDo,Counter:TpvInt32;
     Buf:PpvAudioInt32;
     BufEx:PpvAudioInt32s;
@@ -2128,7 +2128,7 @@ begin
  end;
 end;
 
-constructor TAudioSoundSample.Create(AAudioEngine:TAudio;ASoundSamples:TAudioSoundSamples);
+constructor TpvAudioSoundSample.Create(AAudioEngine:TpvAudio;ASoundSamples:TpvAudioSoundSamples);
 begin
  inherited Create;
  AudioEngine:=AAudioEngine;
@@ -2146,9 +2146,9 @@ begin
  SamplePolyphony:=0;
 end;
 
-destructor TAudioSoundSample.Destroy;
+destructor TpvAudioSoundSample.Destroy;
 var i:TpvInt32;
-    Voice:TAudioSoundSampleVoice;
+    Voice:TpvAudioSoundSampleVoice;
 begin
  SoundSamples.Remove(self);
  if length(Name)>0 then begin
@@ -2171,12 +2171,12 @@ begin
  inherited Destroy;
 end;
 
-procedure TAudioSoundSample.IncRef;
+procedure TpvAudioSoundSample.IncRef;
 begin
  inc(ReferenceCounter);
 end;
 
-procedure TAudioSoundSample.DecRef;
+procedure TpvAudioSoundSample.DecRef;
 begin
  if ReferenceCounter>0 then begin
   dec(ReferenceCounter);
@@ -2186,14 +2186,14 @@ begin
  end;
 end;
 
-procedure TAudioSoundSample.CorrectPolyphony;
+procedure TpvAudioSoundSample.CorrectPolyphony;
 begin
  if (ReferenceCounter>0) and (SamplePolyphony>0) then begin
   SetPolyphony(SamplePolyphony*ReferenceCounter);
  end;
 end;
 
-procedure TAudioSoundSample.FixUp;
+procedure TpvAudioSoundSample.FixUp;
 var Counter,LoopStart,LoopEnd:TpvInt32;
 begin
  if assigned(Data) then begin
@@ -2228,7 +2228,7 @@ begin
  end;
 end;
 
-procedure TAudioSoundSample.SetPolyphony(Polyphony:TpvInt32);
+procedure TpvAudioSoundSample.SetPolyphony(Polyphony:TpvInt32);
 var i:TpvInt32;
 begin
  for i:=0 to length(Voices)-1 do begin
@@ -2240,16 +2240,16 @@ begin
  FreeVoice:=nil;
  SetLength(Voices,Polyphony);
  for i:=0 to length(Voices)-1 do begin
-  Voices[i]:=TAudioSoundSampleVoice.Create(AudioEngine,self,i);
+  Voices[i]:=TpvAudioSoundSampleVoice.Create(AudioEngine,self,i);
   Voices[i].NextFree:=FreeVoice;
   FreeVoice:=Voices[i];
  end;
 end;
 
-function TAudioSoundSample.Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil):TpvInt32;
+function TpvAudioSoundSample.Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil):TpvInt32;
 var BestVoice,BestVolume,i:TpvInt32;
     BestAge:TpvInt64;
-    Voice:TAudioSoundSampleVoice;
+    Voice:TpvAudioSoundSampleVoice;
 begin
  if assigned(FreeVoice) then begin
   Voice:=FreeVoice;
@@ -2292,8 +2292,8 @@ begin
  result:=BestVoice;
 end;
 
-procedure TAudioSoundSample.Stop(VoiceNumber:TpvInt32);
-var Voice:TAudioSoundSampleVoice;
+procedure TpvAudioSoundSample.Stop(VoiceNumber:TpvInt32);
+var Voice:TpvAudioSoundSampleVoice;
 begin
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
   Voice:=Voices[VoiceNumber];
@@ -2305,8 +2305,8 @@ begin
  end;
 end;
 
-procedure TAudioSoundSample.KeyOff(VoiceNumber:TpvInt32);
-var Voice:TAudioSoundSampleVoice;
+procedure TpvAudioSoundSample.KeyOff(VoiceNumber:TpvInt32);
+var Voice:TpvAudioSoundSampleVoice;
 begin
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
   Voice:=Voices[VoiceNumber];
@@ -2321,8 +2321,8 @@ begin
  end;
 end;
 
-function TAudioSoundSample.SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
-var Voice:TAudioSoundSampleVoice;
+function TpvAudioSoundSample.SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
+var Voice:TpvAudioSoundSampleVoice;
 begin
  result:=VoiceNumber;
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
@@ -2331,8 +2331,8 @@ begin
  end;
 end;
 
-function TAudioSoundSample.SetPanning(VoiceNumber:TpvInt32;Panning:TpvFloat):TpvInt32;
-var Voice:TAudioSoundSampleVoice;
+function TpvAudioSoundSample.SetPanning(VoiceNumber:TpvInt32;Panning:TpvFloat):TpvInt32;
+var Voice:TpvAudioSoundSampleVoice;
 begin
  result:=VoiceNumber;
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
@@ -2341,8 +2341,8 @@ begin
  end;
 end;
 
-function TAudioSoundSample.SetRate(VoiceNumber:TpvInt32;Rate:TpvFloat):TpvInt32;
-var Voice:TAudioSoundSampleVoice;
+function TpvAudioSoundSample.SetRate(VoiceNumber:TpvInt32;Rate:TpvFloat):TpvInt32;
+var Voice:TpvAudioSoundSampleVoice;
 begin
  result:=VoiceNumber;
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
@@ -2352,8 +2352,8 @@ begin
  end;
 end;
 
-function TAudioSoundSample.SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3):TpvInt32;
-var Voice:TAudioSoundSampleVoice;
+function TpvAudioSoundSample.SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3):TpvInt32;
+var Voice:TpvAudioSoundSampleVoice;
 begin
  result:=VoiceNumber;
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
@@ -2364,8 +2364,8 @@ begin
  end;
 end;
 
-function TAudioSoundSample.SetEffectMix(VoiceNumber:TpvInt32;Active:LongBool):TpvInt32;
-var Voice:TAudioSoundSampleVoice;
+function TpvAudioSoundSample.SetEffectMix(VoiceNumber:TpvInt32;Active:LongBool):TpvInt32;
+var Voice:TpvAudioSoundSampleVoice;
 begin
  result:=VoiceNumber;
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
@@ -2374,7 +2374,7 @@ begin
  end;
 end;
 
-function TAudioSoundSample.IsPlaying:boolean;
+function TpvAudioSoundSample.IsPlaying:boolean;
 var i:TpvInt32;
 begin
  result:=false;
@@ -2386,12 +2386,12 @@ begin
  end;
 end;
 
-function TAudioSoundSample.IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
+function TpvAudioSoundSample.IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
 begin
  result:=((VoiceNumber>=0) and (VoiceNumber<length(Voices))) and Voices[VoiceNumber].Active;
 end;
 
-constructor TAudioSoundOGG.Create(AAudioEngine:TAudio;ASoundOGGs:TAudioSoundOGGs);
+constructor TpvAudioSoundOGG.Create(AAudioEngine:TpvAudio;ASoundOGGs:TpvAudioSoundOGGs);
 begin
  inherited Create;
  AudioEngine:=AAudioEngine;
@@ -2418,7 +2418,7 @@ begin
  vf:=nil;
 end;
 
-destructor TAudioSoundOGG.Destroy;
+destructor TpvAudioSoundOGG.Destroy;
 begin
  SoundOGGs.Remove(self);
  if length(Name)>0 then begin
@@ -2435,7 +2435,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TAudioSoundOGG.InitSINC;
+procedure TpvAudioSoundOGG.InitSINC;
 const Points=ResamplerSINCWidth;
       ThePoints=Points;
       HalfPoints=Points*0.5;
@@ -2464,7 +2464,7 @@ begin
  end;
 end;
 
-procedure TAudioSoundOGG.Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
+procedure TpvAudioSoundOGG.Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
 var Pan,VolLeft,VolRight,MixVolume:TpvInt32;
 begin
  inc(LastLeft,LastSample.Left);
@@ -2512,12 +2512,12 @@ begin
  ResamplerIncrement:=(abs(round(ARate*65536.0))*ResamplerOriginalIncrement) shr 16;
  ResamplerBufferPosition:=0;
  FillChar(ResamplerBuffer,SizeOf(ResamplerBuffer),AnsiChar(#0));
- FillChar(ResamplerCurrentSample,SizeOf(TAudioSoundOGGBufferSample),AnsiChar(#0));
- FillChar(ResamplerLastSample,SizeOf(TAudioSoundOGGBufferSample),AnsiChar(#0));
+ FillChar(ResamplerCurrentSample,SizeOf(TpvAudioSoundOGGBufferSample),AnsiChar(#0));
+ FillChar(ResamplerLastSample,SizeOf(TpvAudioSoundOGGBufferSample),AnsiChar(#0));
  Active:=true;
 end;
 
-procedure TAudioSoundOGG.Stop;
+procedure TpvAudioSoundOGG.Stop;
 begin
  Active:=false;
  inc(LastLeft,LastSample.Left);
@@ -2526,24 +2526,24 @@ begin
  LastSample.Right:=0;
 end;
 
-procedure TAudioSoundOGG.SetVolume(AVolume:TpvFloat);
+procedure TpvAudioSoundOGG.SetVolume(AVolume:TpvFloat);
 begin
  Volume:=round(AVolume*65536.0);
  VolumeRampingRemain:=AudioEngine.RampingSamples;
 end;
 
-procedure TAudioSoundOGG.SetPanning(APanning:TpvFloat);
+procedure TpvAudioSoundOGG.SetPanning(APanning:TpvFloat);
 begin
  Panning:=round(APanning*65536.0);
  VolumeRampingRemain:=AudioEngine.RampingSamples;
 end;
 
-procedure TAudioSoundOGG.SetRate(ARate:TpvFloat);
+procedure TpvAudioSoundOGG.SetRate(ARate:TpvFloat);
 begin
  ResamplerIncrement:=(abs(round(ARate*65536.0))*ResamplerOriginalIncrement) shr 16;
 end;
 
-procedure TAudioSoundOGG.GetNextInBuffer;
+procedure TpvAudioSoundOGG.GetNextInBuffer;
 var ToRead,BytesIn,Position,Tries:TpvInt32;
 begin
  InBufferSize:=0;
@@ -2625,15 +2625,15 @@ begin
  InBufferPosition:=0;
 end;
 
-procedure TAudioSoundOGG.Resample;
+procedure TpvAudioSoundOGG.Resample;
 var Counter{$ifdef cpuarm},Factor{$endif}:TpvInt32;
-    OutSample:PAudioSoundOGGBufferSample;
+    OutSample:PpvAudioSoundOGGBufferSample;
 {$ifdef cpuarm}
-    InSamples:array[-1..0] of PAudioSoundOGGBufferSample;
+    InSamples:array[-1..0] of PpvAudioSoundOGGBufferSample;
 {$else}
-    SINCSubArray:PAudioResamplerSINCSubArray;
-    InSamples:array[-3..0] of PAudioSoundOGGBufferSample;
-    SubArray:PAudioResamplerCubicSplineSubArray;
+    SINCSubArray:PpvAudioResamplerSINCSubArray;
+    InSamples:array[-3..0] of PpvAudioSoundOGGBufferSample;
+    SubArray:PpvAudioResamplerCubicSplineSubArray;
 {$endif}
 begin
  if ResamplerIncrement=ResamplerFixedPointFactor then begin
@@ -2727,10 +2727,10 @@ begin
  OutBufferSize:=length(OutBuffer);
 end;
 
-procedure TAudioSoundOGG.MixTo(Buffer:PAudioSoundSampleValues;MixVolume:TpvInt32);
+procedure TpvAudioSoundOGG.MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
 var Counter,Pan,VolLeft,VolRight:TpvInt32;
-    Sample:TAudioSoundOGGBufferSample;
-    BufferSample:PAudioSoundSampleValue;
+    Sample:TpvAudioSoundOGGBufferSample;
+    BufferSample:PpvAudioSoundSampleValue;
 begin
  if Active or ((VolumeRampingRemain>0) or ((LastLeft<>0) or (LastRight<>0))) then begin
   Pan:=Panning+65536;
@@ -2812,38 +2812,38 @@ begin
  end;
 end;
 
-function TAudioSoundOGG.IsPlaying:boolean;
+function TpvAudioSoundOGG.IsPlaying:boolean;
 begin
  result:=Active;
 end;
 
-constructor TAudioSoundSamples.Create(AAudioEngine:TAudio);
+constructor TpvAudioSoundSamples.Create(AAudioEngine:TpvAudio);
 begin
  inherited Create;
  AudioEngine:=AAudioEngine;
- HashMap:=TAudioStringHashMap.Create(nil);
+ HashMap:=TpvAudioStringHashMap.Create(nil);
 end;
 
-destructor TAudioSoundSamples.Destroy;
+destructor TpvAudioSoundSamples.Destroy;
 begin
  while Count>0 do begin
-  TAudioSoundSample(inherited Items[0]).Free;
+  TpvAudioSoundSample(inherited Items[0]).Free;
  end;
  Clear;
  HashMap.Free;
  inherited Destroy;
 end;
 
-function TAudioSoundSamples.GetItem(Index:TpvInt32):TAudioSoundSample;
+function TpvAudioSoundSamples.GetItem(Index:TpvInt32):TpvAudioSoundSample;
 begin
  if (Index>=0) and (Index<Count) then begin
-  result:=TAudioSoundSample(inherited Items[Index]);
+  result:=TpvAudioSoundSample(inherited Items[Index]);
  end else begin
   result:=nil;
  end;
 end;
 
-procedure TAudioSoundSamples.SetItem(Index:TpvInt32;Item:TAudioSoundSample);
+procedure TpvAudioSoundSamples.SetItem(Index:TpvInt32;Item:TpvAudioSoundSample);
 begin
  if (Index>=0) and (Index<Count) then begin
   inherited Items[Index]:=TpvPointer(Item);
@@ -2883,10 +2883,10 @@ end;
 
 const _ov_open_callbacks:ov_callbacks=(read_func:oggread;seek_func:oggseek;close_func:oggclose;tell_func:oggtell);
 
-function TAudioSoundSamples.Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true;Polyphony:TpvInt32=1;Loop:TpvUInt32=1):TAudioSoundSample;
+function TpvAudioSoundSamples.Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true;Polyphony:TpvInt32=1;Loop:TpvUInt32=1):TpvAudioSoundSample;
 var DataStream:TMemoryStream;
 //  WSMPOffset:TpvUInt32;
-    DestSample:TAudioSoundSample;
+    DestSample:TpvAudioSoundSample;
  function LoadWAV:boolean;
  type TWaveFileHeader=packed record
        Signatur:array[1..4] of ansichar;
@@ -3568,7 +3568,7 @@ begin
    AudioEngine.CriticalSection.Enter;
    OK:=false;
    try
-    DestSample:=TAudioSoundSample.Create(AudioEngine,self);
+    DestSample:=TpvAudioSoundSample.Create(AudioEngine,self);
     try
      if assigned(Stream) and (Stream.Size>4) then begin
       DestSample.SamplePolyphony:=Polyphony;
@@ -3632,43 +3632,43 @@ begin
  end;
 end;
 
-constructor TAudioSoundOGGs.Create(AAudioEngine:TAudio);
+constructor TpvAudioSoundOGGs.Create(AAudioEngine:TpvAudio);
 begin
  inherited Create;
  AudioEngine:=AAudioEngine;
- HashMap:=TAudioStringHashMap.Create(nil);
+ HashMap:=TpvAudioStringHashMap.Create(nil);
 end;
 
-destructor TAudioSoundOGGs.Destroy;
+destructor TpvAudioSoundOGGs.Destroy;
 begin
  while Count>0 do begin
-  TAudioSoundOGG(inherited Items[0]).Free;
+  TpvAudioSoundOGG(inherited Items[0]).Free;
  end;
  Clear;
  HashMap.Free;
  inherited Destroy;
 end;
 
-function TAudioSoundOGGs.GetItem(Index:TpvInt32):TAudioSoundOGG;
+function TpvAudioSoundOGGs.GetItem(Index:TpvInt32):TpvAudioSoundOGG;
 begin
  if (Index>=0) and (Index<Count) then begin
-  result:=TAudioSoundOGG(inherited Items[Index]);
+  result:=TpvAudioSoundOGG(inherited Items[Index]);
  end else begin
   result:=nil;
  end;
 end;
 
-procedure TAudioSoundOGGs.SetItem(Index:TpvInt32;Item:TAudioSoundOGG);
+procedure TpvAudioSoundOGGs.SetItem(Index:TpvInt32;Item:TpvAudioSoundOGG);
 begin
  if (Index>=0) and (Index<Count) then begin
   inherited Items[Index]:=TpvPointer(Item);
  end;
 end;
 
-function TAudioSoundOGGs.Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true):TAudioSoundOGG;
+function TpvAudioSoundOGGs.Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true):TpvAudioSoundOGG;
 var vf:POggVorbis_File;
     Data:TMemoryStream;
-    OGG:TAudioSoundOGG;
+    OGG:TpvAudioSoundOGG;
     info:Pvorbis_info;
 begin
  try
@@ -3684,7 +3684,7 @@ begin
        Data.LoadFromStream(Stream);
        if Data.Seek(0,soFromBeginning)=0 then begin
         if ov_open_callbacks(Data,vf,nil,0,_ov_open_callbacks)=0 then begin
-         OGG:=TAudioSoundOGG.Create(AudioEngine,self);
+         OGG:=TpvAudioSoundOGG.Create(AudioEngine,self);
          OGG.vf:=vf;
          OGG.Data:=Data;
          info:=ov_info(vf,-1);
@@ -3734,7 +3734,7 @@ begin
  end;
 end;
 
-constructor TAudioPitchShifter.Create(AAudioEngine:TAudio);
+constructor TpvAudioPitchShifter.Create(AAudioEngine:TpvAudio);
 var i:TpvInt32;
 begin
  inherited Create;
@@ -3745,22 +3745,22 @@ begin
  Reset;
 end;
 
-destructor TAudioPitchShifter.Destroy;
+destructor TpvAudioPitchShifter.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TAudioPitchShifter.Reset;
+procedure TpvAudioPitchShifter.Reset;
 begin
- FillChar(WorkBuffer,SizeOf(TAudioPitchShifterBuffer),AnsiChar(#0));
+ FillChar(WorkBuffer,SizeOf(TpvAudioPitchShifterBuffer),AnsiChar(#0));
  p1:=0;
  p2:=(PitchShifterBufferSize shr 1) shl PitchShifterOutputShift;
  InputPointer:=0;
  Factor:=1;
 end;
 
-procedure TAudioPitchShifter.Process(Buffer:TpvPointer;Samples:TpvInt32);
-var Sample:PAudioSoundSampleStereoValue;
+procedure TpvAudioPitchShifter.Process(Buffer:TpvPointer;Samples:TpvInt32);
+var Sample:PpvAudioSoundSampleStereoValue;
     Counter,v1,v2:TpvInt32;
     OutputIncrement,up1,up2:TpvUInt32;
 begin
@@ -3800,7 +3800,7 @@ begin
  end;
 end;
 
-constructor TAudioReverb.Create(AAudioEngine:TAudio);
+constructor TpvAudioReverb.Create(AAudioEngine:TpvAudio);
 var i:TpvInt32;
 begin
  inherited Create;
@@ -3833,7 +3833,7 @@ begin
  Reset;
 end;
 
-destructor TAudioReverb.Destroy;
+destructor TpvAudioReverb.Destroy;
 var i:TpvInt32;
 begin
  for i:=0 to length(AllPassBuffer)-1 do begin
@@ -3844,11 +3844,11 @@ begin
  inherited Destroy;
 end;
 
-procedure TAudioReverb.Reset;
+procedure TpvAudioReverb.Reset;
 var i:TpvInt32;
 begin
  for i:=0 to length(AllPassBuffer)-1 do begin
-  FillChar(AllPassBuffer[i,0],length(AllPassBuffer[i])*SizeOf(TAudioReverbAllPassBufferSample),AnsiChar(#0));
+  FillChar(AllPassBuffer[i,0],length(AllPassBuffer[i])*SizeOf(TpvAudioReverbAllPassBufferSample),AnsiChar(#0));
  end;
  FillChar(Counter,sizeof(Counter),AnsiChar(#0));
  FillChar(LeftBuffer[0],length(LeftBuffer)*SizeOf(TpvInt32),AnsiChar(#0));
@@ -3862,7 +3862,7 @@ begin
  Init;
 end;
 
-procedure TAudioReverb.Init;
+procedure TpvAudioReverb.Init;
 var AllPassFilterCounter,TimeEx,Time:TpvInt32;
 begin
  if AllPassFilters>=MaxReverbAllPassFilters then begin
@@ -3883,10 +3883,10 @@ begin
  end;
 end;
 
-procedure TAudioReverb.Process(Buffer:TpvPointer;Samples:TpvInt32);
+procedure TpvAudioReverb.Process(Buffer:TpvPointer;Samples:TpvInt32);
 const ExtraAccurateBits=0;
       ExtraAccurateLength=1 shl ExtraAccurateBits;
-var Sample:PAudioSoundSampleStereoValue;
+var Sample:PpvAudioSoundSampleStereoValue;
     SampleCounter,AllPassFilterCounter,WetFactor,DryFactor,FeedBackFactor,
     OutputLeft,OutputRight,LeftOutput,RightOutput:TpvInt32;
 begin
@@ -3944,7 +3944,7 @@ begin
  end;
 end;
 
-constructor TAudioThread.Create(AAudioEngine:TAudio);
+constructor TpvAudioThread.Create(AAudioEngine:TpvAudio);
 begin
  AudioEngine:=AAudioEngine;
  GetMem(Buffer,AudioEngine.OutputBufferSize);
@@ -3955,7 +3955,7 @@ begin
  inherited Create(false);
 end;
 
-destructor TAudioThread.Destroy;
+destructor TpvAudioThread.Destroy;
 begin
  Terminate;
  Event.SetEvent;
@@ -3965,12 +3965,12 @@ begin
  inherited Destroy;
 end;
 
-procedure TAudioThread.Start;
+procedure TpvAudioThread.Start;
 begin
  Event.SetEvent;
 end;
 
-procedure TAudioThread.Execute;
+procedure TpvAudioThread.Execute;
 begin
  try
 (*{$ifdef windows}
@@ -4015,7 +4015,7 @@ begin
  end;
 end;
 
-constructor TAudio.Create(ASampleRate,AChannels,ABits,ABufferSamples:TpvInt32);
+constructor TpvAudio.Create(ASampleRate,AChannels,ABits,ABufferSamples:TpvInt32);
 var i,TableLengthSize:TpvInt32;
     X,TableLength:{$ifdef cpuarm}TpvFloat{$else}TpvDouble{$endif};
 begin
@@ -4041,8 +4041,8 @@ begin
  SpatializationDelayUnderwater:=(SampleRate*EAR_DELAY_UNDERWATER)*0.001;
  SpatializationDelayPowerOfTwo:=TPasMPMath.RoundUpToPowerOfTwo(Max(round(Max(SpatializationDelayAir,SpatializationDelayUnderwater)+0.5),HRIR_MAX_DELAY));
  SpatializationDelayMask:=SpatializationDelayPowerOfTwo-1;
- Samples:=TAudioSoundSamples.Create(self);
- OGGs:=TAudioSoundOGGs.Create(self);
+ Samples:=TpvAudioSoundSamples.Create(self);
+ OGGs:=TpvAudioSoundOGGs.Create(self);
  HRTFPreset:=@DefaultHRTFPreset;
  HRTF:=ASampleRate=HRTFPreset^.SampleRate;
  iF HRTF then begin
@@ -4094,20 +4094,20 @@ begin
  UpdateHook:=nil;
  VoiceFirst:=nil;
  VoiceLast:=nil;
- PitchShifter:=TAudioPitchShifter.Create(self);
- Reverb:=TAudioReverb.Create(self);
+ PitchShifter:=TpvAudioPitchShifter.Create(self);
+ Reverb:=TpvAudioReverb.Create(self);
  for i:=0 to high(PanningLUT) do begin
   PanningLUT[i]:=round(sin(HalfPI*(i/high(PanningLUT)))*32768.0);
  end;
  PanningLUT[$10000]:=32768;
  RingBuffer:=TPasMPSingleProducerSingleConsumerRingBuffer.Create(OutputBufferSize*2);
- Thread:=TAudioThread.Create(self);
+ Thread:=TpvAudioThread.Create(self);
  IsReady:=true;
  IsMuted:=false;
  IsActive:=true;
 end;
 
-destructor TAudio.Destroy;
+destructor TpvAudio.Destroy;
 begin
  FreeAndNil(Thread);
  RingBuffer.Destroy;
@@ -4122,7 +4122,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TAudio.CalcEvIndices(ev:TpvFloat;evidx:PpvAudioInt32s;var evmu:TpvFloat);
+procedure TpvAudio.CalcEvIndices(ev:TpvFloat;evidx:PpvAudioInt32s;var evmu:TpvFloat);
 const pi2=pi*2;
 begin
  ev:=(pi2+ev)*((HRTFPreset^.evCount-1)/pi);
@@ -4132,7 +4132,7 @@ begin
 end;
 
 
-procedure TAudio.CalcAzIndices(evidx:TpvInt32;az:TpvFloat;azidx:PpvAudioInt32s;var azmu:TpvFloat);
+procedure TpvAudio.CalcAzIndices(evidx:TpvInt32;az:TpvFloat;azidx:PpvAudioInt32s;var azmu:TpvFloat);
 const pi2=pi*2;
 begin
  az:=(pi2+az)*(PpvAudioInt32s(HRTFPreset^.azCount)^[evidx]/pi2);
@@ -4141,7 +4141,7 @@ begin
  azmu:=az-floor(az);
 end;
                                                                                                       
-procedure TAudio.GetLerpedHRTFCoefs(Elevation,Azimuth:TpvFloat;var LeftCoefs,RightCoefs:TAudioHRTFCoefs;var LeftDelay,RightDelay:TpvInt32);
+procedure TpvAudio.GetLerpedHRTFCoefs(Elevation,Azimuth:TpvFloat;var LeftCoefs,RightCoefs:TpvAudioHRTFCoefs;var LeftDelay,RightDelay:TpvInt32);
 var evidx,azidx:array[0..1] of TpvInt32;
     mu:array[0..2] of TpvFloat;
     b:array[0..3] of TpvFloat;
@@ -4198,7 +4198,7 @@ begin
 end;
 
 
-procedure TAudio.SetMixerMasterVolume(NewVolume:TpvFloat);
+procedure TpvAudio.SetMixerMasterVolume(NewVolume:TpvFloat);
 begin
  CriticalSection.Enter;
  try
@@ -4208,7 +4208,7 @@ begin
  end;
 end;
 
-procedure TAudio.SetMixerOGGVolume(NewVolume:TpvFloat);
+procedure TpvAudio.SetMixerOGGVolume(NewVolume:TpvFloat);
 begin
  CriticalSection.Enter;
  try
@@ -4218,7 +4218,7 @@ begin
  end;
 end;
 
-procedure TAudio.SetMixerSampleVolume(NewVolume:TpvFloat);
+procedure TpvAudio.SetMixerSampleVolume(NewVolume:TpvFloat);
 begin
  CriticalSection.Enter;
  try
@@ -4228,7 +4228,7 @@ begin
  end;
 end;
 
-procedure TAudio.SetMixerAGC(Enabled:boolean);
+procedure TpvAudio.SetMixerAGC(Enabled:boolean);
 begin
  CriticalSection.Enter;
  try
@@ -4238,7 +4238,7 @@ begin
  end;
 end;
 
-procedure TAudio.Setup;
+procedure TpvAudio.Setup;
 var i:TpvInt32;
 begin
  for i:=0 to Samples.Count-1 do begin
@@ -4246,7 +4246,7 @@ begin
  end;
 end;
 
-procedure TAudio.ClipBuffer(p:TpvPointer;Range:TpvInt32);
+procedure TpvAudio.ClipBuffer(p:TpvPointer;Range:TpvInt32);
 type PpvAudioInt32=^TpvInt32;
 var pl:PpvAudioInt32;
     i:TpvInt32;
@@ -4275,7 +4275,7 @@ begin
 {$endif}
 end;
 
-procedure TAudio.FillBuffer;
+procedure TpvAudio.FillBuffer;
 type pbyte=^TpvUInt8;
      psmallint=^smallint;
      PpvAudioInt32=^TpvInt32;
@@ -4284,7 +4284,7 @@ var i,jl,jr,Sample,HighPass,Samples,ToDo,LowPassCoef,Coef:TpvInt32;
     pl,pll,plr:PpvAudioInt32;
     ps:psmallint;
     pb:pbyte;
-    Voice,NextVoice:TAudioSoundSampleVoice;
+    Voice,NextVoice:TpvAudioSoundSampleVoice;
 begin
  CriticalSection.Enter;
  try
@@ -4695,7 +4695,7 @@ begin
  end;
 end;
 
-procedure TAudio.Lock;
+procedure TpvAudio.Lock;
 begin
  CriticalSection.Enter;
  try
@@ -4705,7 +4705,7 @@ begin
  end;
 end;
 
-procedure TAudio.Unlock;
+procedure TpvAudio.Unlock;
 begin
  CriticalSection.Enter;
  try
@@ -4715,7 +4715,7 @@ begin
  end;
 end;
 
-procedure TAudio.SetActive(Active:boolean);
+procedure TpvAudio.SetActive(Active:boolean);
 begin
  CriticalSection.Enter;
  try
@@ -4725,7 +4725,7 @@ begin
  end;
 end;
 
-procedure TAudio.Mute;
+procedure TpvAudio.Mute;
 begin
  CriticalSection.Enter;
  try
@@ -4735,7 +4735,7 @@ begin
  end;
 end;
 
-procedure TAudio.Unmute;
+procedure TpvAudio.Unmute;
 begin
  CriticalSection.Enter;
  try
