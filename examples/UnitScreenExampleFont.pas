@@ -28,6 +28,7 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.TrueTypeFont,
+     PasVulkan.Font,
      PasVulkan.Application;
 
 type TScreenExampleFont=class(TpvApplicationScreen)
@@ -38,7 +39,7 @@ type TScreenExampleFont=class(TpvApplicationScreen)
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
        fVulkanSpriteAtlas:TpvVulkanSpriteAtlas;
        fVulkanCanvas:TpvVulkanCanvas;
-       fVulkanFont:TpvVulkanFont;
+       fVulkanFont:TpvFont;
        fReady:boolean;
        fSelectedIndex:TpvInt32;
        fStartY:TpvFloat;
@@ -146,7 +147,7 @@ begin
   try
    TrueTypeFont.Size:=-64;
    TrueTypeFont.Hinting:=false;
-   fVulkanFont:=TpvVulkanFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,fVulkanSpriteAtlas,TrueTypeFont,[TpvVulkanFont.CodePointRange(0,255)]);
+   fVulkanFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,fVulkanSpriteAtlas,TrueTypeFont,[TpvFont.CodePointRange(0,255)]);
   finally
    TrueTypeFont.Free;
   end;

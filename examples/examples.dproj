@@ -214,6 +214,7 @@
         <DCCReference Include="..\src\PasVulkan.Collections.pas"/>
         <DCCReference Include="..\src\PasVulkan.TrueTypeFont.pas"/>
         <DCCReference Include="..\src\PasVulkan.Framework.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Font.pas"/>
         <DCCReference Include="..\src\PasVulkan.Android.pas"/>
         <DCCReference Include="..\src\PasVulkan.SDL2.pas"/>
         <DCCReference Include="..\src\PasVulkan.StaticLinking.pas"/>

@@ -1,6 +1,17 @@
-{$if defined(fpc) and defined(android)}library{$else}program{$ifend} examples;
+{$ifdef fpc}
+ {$ifdef android}
+  {$define fpcandroid}
+ {$endif}
+{$endif}
+{$ifdef fpcandroid}library{$else}program{$endif} examples;
 {$ifdef fpc}
  {$mode delphi}
+{$else}
+ {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}
+  {$ifend}
+ {$endif}
 {$endif}
 {$if defined(win32) or defined(win64)}
  {$apptype console}
@@ -12,7 +23,7 @@
 uses
   {$if defined(fpc) and defined(Unix)}
   cthreads,
-  {$ifend}
+  {$ifend }
   SysUtils,
   Classes,
   PUCU in '..\externals\pucu\src\PUCU.pas',
@@ -25,6 +36,7 @@ uses
   PasVulkan.Collections in '..\src\PasVulkan.Collections.pas',
   PasVulkan.TrueTypeFont in '..\src\PasVulkan.TrueTypeFont.pas',
   PasVulkan.Framework in '..\src\PasVulkan.Framework.pas',
+  PasVulkan.Font in '..\src\PasVulkan.Font.pas',
   PasVulkan.Android in '..\src\PasVulkan.Android.pas',
   PasVulkan.SDL2 in '..\src\PasVulkan.SDL2.pas',
   PasVulkan.StaticLinking in '..\src\PasVulkan.StaticLinking.pas',

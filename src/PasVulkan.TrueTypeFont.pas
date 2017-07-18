@@ -592,7 +592,7 @@ type EpvTrueTypeFont=class(Exception);
 
      TpvTrueTypeFontLongWords=array of TpvUInt32;
 
-     TpvVulkanCFFCodePointToGlyphIndexTable=array of TpvInt32;
+     TpvTrueTypeFontCFFCodePointToGlyphIndexTable=array of TpvInt32;
 
      TpvTrueTypeFontGlyphIndexSubHeaderKeys=array[0..255] of TpvUInt16;
 
@@ -775,7 +775,7 @@ type EpvTrueTypeFont=class(Exception);
        fByteCodeInterpreterParameters:TpvTrueTypeFontByteCodeInterpreterParameters;
        fIgnoreByteCodeInterpreter:boolean;
        fGASPRanges:TpvTrueTypeFontGASPRanges;
-       fCFFCodePointToGlyphIndexTable:TpvVulkanCFFCodePointToGlyphIndexTable;
+       fCFFCodePointToGlyphIndexTable:TpvTrueTypeFontCFFCodePointToGlyphIndexTable;
        function ReadFontData(Stream:TStream;CollectionIndex:TpvInt32):TpvInt32;
        function GetTableDirEntry(Tag:TpvUInt32;var CheckSum,Offset,Size:TpvUInt32):TpvInt32;
        function LoadOS2:TpvInt32;
@@ -5762,7 +5762,6 @@ begin
 end;
 
 function TpvTrueTypeFont.LoadNAME:TpvInt32;
-type PpvVulkanRawByteString=^TpvRawByteString;
 var Position,Tag,CheckSum,Offset,Size,NumNameRecords,StringStorageOffset,i,j,c,c2,o:TpvUInt32;
     ThisPlatformID,ThisSpecificID,ThisLanguageID,ThisNameID,ThisStringLength,ThisStringOffset:TpvUInt16;
     NameFound:boolean;

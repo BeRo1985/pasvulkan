@@ -127,6 +127,8 @@ type TpvUntypedSortCompareFunction=function(const a,b:TpvPointer):TpvInt32;
        property Count:TpvInt32 read fCount write SetCount;
      end;
 
+function CombineTwoUInt32IntoOneUInt64(const a,b:TpvUInt32):TpvUInt64; {$ifdef caninline}inline;{$endif}
+
 // Sorts data direct inplace
 procedure UntypedDirectIntroSort(const pItems:TpvPointer;const pLeft,pRight,pElementSize:TpvInt32;const pCompareFunc:TpvUntypedSortCompareFunction);
 
@@ -139,6 +141,11 @@ implementation
 
 uses PasVulkan.Math,
      Generics.Defaults;
+
+function CombineTwoUInt32IntoOneUInt64(const a,b:TpvUInt32):TpvUInt64; {$ifdef caninline}inline;{$endif}
+begin
+ result:=(TpvUInt64(a) shl 32) or b;
+end;
 
 procedure MemorySwap(pA,pB:TpvPointer;pSize:TpvInt32);
 var Temp:TpvInt32;
