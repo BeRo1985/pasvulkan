@@ -73,7 +73,7 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Sprites;
 
-type TpvVulkanCanvasColor=class(TPersistent)
+type TpvCanvasColor=class(TPersistent)
       private
        fRed:TpvFloat;
        fGreen:TpvFloat;
@@ -90,51 +90,51 @@ type TpvVulkanCanvasColor=class(TPersistent)
        property Alpha:TpvFloat read fAlpha write fAlpha;
      end;
 
-     TpvVulkanCanvasPenStyle=(vcpsClear,vcpsSolid);
+     TpvCanvasPenStyle=(vcpsClear,vcpsSolid);
 
-     TpvVulkanCanvasPenLineJoin=(vcpljBevel,vcpljMiter,vcpljRound);
+     TpvCanvasPenLineJoin=(vcpljBevel,vcpljMiter,vcpljRound);
 
-     TpvVulkanCanvasPenLineCap=(vcplcButt,vcplcSquare,vcplcRound);
+     TpvCanvasPenLineCap=(vcplcButt,vcplcSquare,vcplcRound);
 
-     TpvVulkanCanvasPen=class(TPersistent)
+     TpvCanvasPen=class(TPersistent)
       private
-       fColor:TpvVulkanCanvasColor;
+       fColor:TpvCanvasColor;
        fWidth:TpvFloat;
        fAntialiasingWidth:TpvFloat;
        fMiterLimit:TpvFloat;
-       fStyle:TpvVulkanCanvasPenStyle;
-       fLineJoin:TpvVulkanCanvasPenLineJoin;
-       fLineCap:TpvVulkanCanvasPenLineCap;
+       fStyle:TpvCanvasPenStyle;
+       fLineJoin:TpvCanvasPenLineJoin;
+       fLineCap:TpvCanvasPenLineCap;
       public
        constructor Create;
        destructor Destroy; override;
        procedure Assign(Source:TPersistent); override;
       published
-       property Color:TpvVulkanCanvasColor read fColor;
+       property Color:TpvCanvasColor read fColor;
        property Width:TpvFloat read fWidth write fWidth;
        property AntialiasingWidth:TpvFloat read fAntialiasingWidth write fAntialiasingWidth;
        property MiterLimit:TpvFloat read fMiterLimit write fMiterLimit;
-       property Style:TpvVulkanCanvasPenStyle read fStyle write fStyle default vcpsSolid;
-       property LineJoin:TpvVulkanCanvasPenLineJoin read fLineJoin write fLineJoin default vcpljRound;
-       property LineCap:TpvVulkanCanvasPenLineCap read fLineCap write fLineCap default vcplcRound;
+       property Style:TpvCanvasPenStyle read fStyle write fStyle default vcpsSolid;
+       property LineJoin:TpvCanvasPenLineJoin read fLineJoin write fLineJoin default vcpljRound;
+       property LineCap:TpvCanvasPenLineCap read fLineCap write fLineCap default vcplcRound;
      end;
 
-     PpvVulkanCanvasPoint=^TpvVulkanCanvasPoint;
-     TpvVulkanCanvasPoint=TpvVector2;
+     PpvCanvasPoint=^TpvCanvasPoint;
+     TpvCanvasPoint=TpvVector2;
 
-     PpvVulkanCanvasInternalPoint=^TpvVulkanCanvasInternalPoint;
-     TpvVulkanCanvasInternalPoint=record
+     PpvCanvasInternalPoint=^TpvCanvasInternalPoint;
+     TpvCanvasInternalPoint=record
       Position:TpvVector2;
       Middle:TpvVector2;
       Color:TpvVector4;
      end;
 
-     TpvVulkanCanvasInternalPoints=array of TpvVulkanCanvasInternalPoint;
+     TpvCanvasInternalPoints=array of TpvCanvasInternalPoint;
 
-     TpvVulkanCanvasMode=(vcmNormal,vcmLine);
+     TpvCanvasMode=(vcmNormal,vcmLine);
 
-     PpvVulkanCanvasVertex=^TpvVulkanCanvasVertex;
-     TpvVulkanCanvasVertex=packed record
+     PpvCanvasVertex=^TpvCanvasVertex;
+     TpvCanvasVertex=packed record
       Position:TpvSpriteVertexPoint;             // +  8 (2x 32-bit floats)       = 0
       Color:TpvSpriteVertexColor;                // +  8 (4x 16-bit half-floats)  = 8  (=> 8 byte aligned)
       TextureCoord:TpvSpriteVertexTextureCoord;  // + 12 (3x 32-bit floats)       = 16 (=> 16 byte aligned)
@@ -143,42 +143,42 @@ type TpvVulkanCanvasColor=class(TPersistent)
       MetaInfo:TpvVector4;                             // + 16 (4x 32-bit floats)       = 48 (=> 32 byte aligned)
      end;                                            // = 64 per vertex
 
-     TpvVulkanCanvasVertices=array of TpvVulkanCanvasVertex;
+     TpvCanvasVertices=array of TpvCanvasVertex;
 
-     TpvVulkanCanvasVulkanBuffers=array of TpvVulkanBuffer;
+     TpvCanvasVulkanBuffers=array of TpvVulkanBuffer;
 
-     PpvVulkanCanvasVertexBuffer=^TpvVulkanCanvasVertexBuffer;
-     TpvVulkanCanvasVertexBuffer=array[0..(32768*4)-1] of TpvVulkanCanvasVertex;
+     PpvCanvasVertexBuffer=^TpvCanvasVertexBuffer;
+     TpvCanvasVertexBuffer=array[0..(32768*4)-1] of TpvCanvasVertex;
 
-     TpvVulkanCanvasVertexBuffers=array of TpvVulkanCanvasVertexBuffer;
+     TpvCanvasVertexBuffers=array of TpvCanvasVertexBuffer;
 
-     TpvVulkanCanvasVertexBufferSizes=array of TVkSizeInt;
+     TpvCanvasVertexBufferSizes=array of TVkSizeInt;
 
-     PpvVulkanCanvasIndexBuffer=^TpvVulkanCanvasIndexBuffer;
-     TpvVulkanCanvasIndexBuffer=array[0..((SizeOf(TpvVulkanCanvasVertexBuffer) div (SizeOf(TpvVulkanCanvasVertex)*4))*6)-1] of TpvUInt32;
+     PpvCanvasIndexBuffer=^TpvCanvasIndexBuffer;
+     TpvCanvasIndexBuffer=array[0..((SizeOf(TpvCanvasVertexBuffer) div (SizeOf(TpvCanvasVertex)*4))*6)-1] of TpvUInt32;
 
-     TpvVulkanCanvasIndexBuffers=array of TpvVulkanCanvasIndexBuffer;
+     TpvCanvasIndexBuffers=array of TpvCanvasIndexBuffer;
 
-     TpvVulkanCanvasIndexBufferSizes=array of TVkSizeInt;
+     TpvCanvasIndexBufferSizes=array of TVkSizeInt;
 
-     PpvVulkanCanvasRenderingMode=^TpvVulkanCanvasRenderingMode;
-     TpvVulkanCanvasRenderingMode=
+     PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
+     TpvCanvasRenderingMode=
       (
        vsbrmNormal,
        vsbrmFont
       );
 
-     PpvVulkanCanvasBlendingMode=^TpvVulkanCanvasBlendingMode;
-     TpvVulkanCanvasBlendingMode=
+     PpvCanvasBlendingMode=^TpvCanvasBlendingMode;
+     TpvCanvasBlendingMode=
       (
        vsbbmNone,
        vsbbmAlphaBlending,
        vsbbmAdditiveBlending
       );
 
-     TpvVulkanCanvasHook=procedure(const aData:TpvPointer) of object;
+     TpvCanvasHook=procedure(const aData:TpvPointer) of object;
 
-     TpvVulkanCanvasQueueItemKind=
+     TpvCanvasQueueItemKind=
       (
        vcqikNone,
        vcqikNormal,
@@ -186,46 +186,46 @@ type TpvVulkanCanvasColor=class(TPersistent)
        vcqikHook
       );
 
-     PpvVulkanCanvasQueueItem=^TpvVulkanCanvasQueueItem;
-     TpvVulkanCanvasQueueItem=record
-      Kind:TpvVulkanCanvasQueueItemKind;
+     PpvCanvasQueueItem=^TpvCanvasQueueItem;
+     TpvCanvasQueueItem=record
+      Kind:TpvCanvasQueueItemKind;
       BufferIndex:TpvInt32;
       DescriptorSetIndex:TpvInt32;
       StartVertexIndex:TpvInt32;
       StartIndexIndex:TpvInt32;
       CountVertices:TpvInt32;
       CountIndices:TpvInt32;
-      RenderingMode:TpvVulkanCanvasRenderingMode;
-      BlendingMode:TpvVulkanCanvasBlendingMode;
+      RenderingMode:TpvCanvasRenderingMode;
+      BlendingMode:TpvCanvasBlendingMode;
       Scissor:TVkRect2D;
-      Hook:TpvVulkanCanvasHook;
+      Hook:TpvCanvasHook;
       HookData:TVkPointer;
      end;
 
-     TpvVulkanCanvasQueueItems=array of TpvVulkanCanvasQueueItem;
+     TpvCanvasQueueItems=array of TpvCanvasQueueItem;
 
-     TpvVulkanCanvasDescriptorSets=array of TpvVulkanDescriptorSet;
+     TpvCanvasDescriptorSets=array of TpvVulkanDescriptorSet;
 
-     PpvVulkanCanvasBuffer=^TpvVulkanCanvasBuffer;
-     TpvVulkanCanvasBuffer=record
+     PpvCanvasBuffer=^TpvCanvasBuffer;
+     TpvCanvasBuffer=record
       fSpinLock:TpvInt32;
-      fVulkanVertexBuffers:TpvVulkanCanvasVulkanBuffers;
-      fVulkanIndexBuffers:TpvVulkanCanvasVulkanBuffers;
-      fVertexBuffers:TpvVulkanCanvasVertexBuffers;
-      fVertexBufferSizes:TpvVulkanCanvasVertexBufferSizes;
-      fIndexBuffers:TpvVulkanCanvasIndexBuffers;
-      fIndexBufferSizes:TpvVulkanCanvasIndexBufferSizes;
+      fVulkanVertexBuffers:TpvCanvasVulkanBuffers;
+      fVulkanIndexBuffers:TpvCanvasVulkanBuffers;
+      fVertexBuffers:TpvCanvasVertexBuffers;
+      fVertexBufferSizes:TpvCanvasVertexBufferSizes;
+      fIndexBuffers:TpvCanvasIndexBuffers;
+      fIndexBufferSizes:TpvCanvasIndexBufferSizes;
       fCountAllocatedBuffers:TpvInt32;
       fCountUsedBuffers:TpvInt32;
-      fQueueItems:TpvVulkanCanvasQueueItems;
+      fQueueItems:TpvCanvasQueueItems;
       fCountQueueItems:TpvInt32;
      end;
 
-     TpvVulkanCanvasBuffers=array of TpvVulkanCanvasBuffer;
+     TpvCanvasBuffers=array of TpvCanvasBuffer;
 
-     TpvVulkanCanvasAtlasArrayTextureDescriptorSetHashMap=class(TpvHashMap<TpvSpriteAtlasArrayTexture,TpvInt32>);
+     TpvCanvasAtlasArrayTextureDescriptorSetHashMap=class(TpvHashMap<TpvSpriteAtlasArrayTexture,TpvInt32>);
 
-     TpvVulkanCanvas=class
+     TpvCanvas=class
       private
        fDevice:TpvVulkanDevice;
        fGraphicsQueue:TpvVulkanQueue;
@@ -241,15 +241,15 @@ type TpvVulkanCanvasColor=class(TPersistent)
        fVulkanPipelineSpriteBatchShaderStageFragment:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fVulkanDescriptorSets:TpvVulkanCanvasDescriptorSets;
+       fVulkanDescriptorSets:TpvCanvasDescriptorSets;
        fCountVulkanDescriptorSets:TpvInt32;
-       fVulkanTextureDescriptorSetHashMap:TpvVulkanCanvasAtlasArrayTextureDescriptorSetHashMap;
+       fVulkanTextureDescriptorSetHashMap:TpvCanvasAtlasArrayTextureDescriptorSetHashMap;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
-       fVulkanCanvasBuffers:TpvVulkanCanvasBuffers;
+       fVulkanCanvasBuffers:TpvCanvasBuffers;
        fCountBuffers:TpvInt32;
-       fCurrentFillBuffer:PpvVulkanCanvasBuffer;
+       fCurrentFillBuffer:PpvCanvasBuffer;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fViewPort:TVkViewport;
@@ -260,8 +260,8 @@ type TpvVulkanCanvasColor=class(TPersistent)
        fState:TpvSpriteVertexState;
        fClipRect:TpvSpriteVertexClipRect;
        fUnscaledClipRect:TpvSpriteVertexClipRect;
-       fRenderingMode:TpvVulkanCanvasRenderingMode;
-       fBlendingMode:TpvVulkanCanvasBlendingMode;
+       fRenderingMode:TpvCanvasRenderingMode;
+       fBlendingMode:TpvCanvasBlendingMode;
        fLastArrayTexture:TpvSpriteAtlasArrayTexture;
        fInverseWidth:TpvFloat;
        fInverseHeight:TpvFloat;
@@ -269,14 +269,14 @@ type TpvVulkanCanvasColor=class(TPersistent)
        fInverseTextureHeight:TpvFloat;
        fCurrentCountVertices:TVkSizeInt;
        fCurrentCountIndices:TVkSizeInt;
-       fCurrentDestinationVertexBufferPointer:PpvVulkanCanvasVertexBuffer;
-       fCurrentDestinationIndexBufferPointer:PpvVulkanCanvasIndexBuffer;
+       fCurrentDestinationVertexBufferPointer:PpvCanvasVertexBuffer;
+       fCurrentDestinationIndexBufferPointer:PpvCanvasIndexBuffer;
        fScissor:TVkRect2D;
-       fPen:TpvVulkanCanvasPen;
+       fPen:TpvCanvasPen;
        function RotatePoint(const PointToRotate,AroundPoint:TpvSpritePoint;Cosinus,Sinus:TpvFloat):TpvSpritePoint;
        procedure SetArrayTexture(const ArrayTexture:TpvSpriteAtlasArrayTexture);
-       procedure SetRenderingMode(aRenderingMode:TpvVulkanCanvasRenderingMode);
-       procedure SetBlendingMode(aBlendingMode:TpvVulkanCanvasBlendingMode);
+       procedure SetRenderingMode(aRenderingMode:TpvCanvasRenderingMode);
+       procedure SetBlendingMode(aBlendingMode:TpvCanvasBlendingMode);
        procedure GetNextDestinationVertexBuffer;
        procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
        function ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
@@ -299,7 +299,7 @@ type TpvVulkanCanvasColor=class(TPersistent)
        procedure SetScissor(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
        procedure SetClipRect(const aClipRect:TVkRect2D); overload;
        procedure SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
-       procedure Hook(const aHook:TpvVulkanCanvasHook;const aData:TpvPointer); overload;
+       procedure Hook(const aHook:TpvCanvasHook;const aData:TpvPointer); overload;
        procedure DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Color:TpvSpriteColor); overload;
        procedure DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Origin:TpvSpritePoint;Rotation:TpvFloat;const Color:TpvSpriteColor); overload;
        procedure DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat;const Color:TpvSpriteColor); overload;
@@ -313,16 +313,16 @@ type TpvVulkanCanvasColor=class(TPersistent)
        property Device:TpvVulkanDevice read fDevice;
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
-       property RenderingMode:TpvVulkanCanvasRenderingMode read fRenderingMode write SetRenderingMode;
-       property BlendingMode:TpvVulkanCanvasBlendingMode read fBlendingMode write SetBlendingMode;
-       property Pen:TpvVulkanCanvasPen read fPen;
+       property RenderingMode:TpvCanvasRenderingMode read fRenderingMode write SetRenderingMode;
+       property BlendingMode:TpvCanvasBlendingMode read fBlendingMode write SetBlendingMode;
+       property Pen:TpvCanvasPen read fPen;
      end;
 
 implementation
 
 uses PasVulkan.Assets;
 
-constructor TpvVulkanCanvasColor.Create;
+constructor TpvCanvasColor.Create;
 begin
  inherited Create;
  fRed:=1.0;
@@ -331,24 +331,24 @@ begin
  fAlpha:=1.0;
 end;
 
-destructor TpvVulkanCanvasColor.Destroy;
+destructor TpvCanvasColor.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvVulkanCanvasColor.Assign(Source:TPersistent);
+procedure TpvCanvasColor.Assign(Source:TPersistent);
 begin
- Assert(Source is TpvVulkanCanvasColor);
- fRed:=TpvVulkanCanvasColor(Source).fRed;
- fGreen:=TpvVulkanCanvasColor(Source).fGreen;
- fBlue:=TpvVulkanCanvasColor(Source).fBlue;
- fAlpha:=TpvVulkanCanvasColor(Source).fAlpha;
+ Assert(Source is TpvCanvasColor);
+ fRed:=TpvCanvasColor(Source).fRed;
+ fGreen:=TpvCanvasColor(Source).fGreen;
+ fBlue:=TpvCanvasColor(Source).fBlue;
+ fAlpha:=TpvCanvasColor(Source).fAlpha;
 end;
 
-constructor TpvVulkanCanvasPen.Create;
+constructor TpvCanvasPen.Create;
 begin
  inherited Create;
- fColor:=TpvVulkanCanvasColor.Create;
+ fColor:=TpvCanvasColor.Create;
  fWidth:=1.0;
  fAntialiasingWidth:=2.0;
  fMiterLimit:=3.0;
@@ -357,25 +357,25 @@ begin
  fLineCap:=vcplcRound;
 end;
 
-destructor TpvVulkanCanvasPen.Destroy;
+destructor TpvCanvasPen.Destroy;
 begin
  FreeAndNil(fColor);
  inherited Destroy;
 end;
 
-procedure TpvVulkanCanvasPen.Assign(Source:TPersistent);
+procedure TpvCanvasPen.Assign(Source:TPersistent);
 begin
- Assert(Source is TpvVulkanCanvasPen);
- fColor.Assign(TpvVulkanCanvasPen(Source).fColor);
- fWidth:=TpvVulkanCanvasPen(Source).fWidth;
- fAntialiasingWidth:=TpvVulkanCanvasPen(Source).fAntialiasingWidth;
- fMiterLimit:=TpvVulkanCanvasPen(Source).fMiterLimit;
- fStyle:=TpvVulkanCanvasPen(Source).fStyle;
- fLineJoin:=TpvVulkanCanvasPen(Source).fLineJoin;
- fLineCap:=TpvVulkanCanvasPen(Source).fLineCap;
+ Assert(Source is TpvCanvasPen);
+ fColor.Assign(TpvCanvasPen(Source).fColor);
+ fWidth:=TpvCanvasPen(Source).fWidth;
+ fAntialiasingWidth:=TpvCanvasPen(Source).fAntialiasingWidth;
+ fMiterLimit:=TpvCanvasPen(Source).fMiterLimit;
+ fStyle:=TpvCanvasPen(Source).fStyle;
+ fLineJoin:=TpvCanvasPen(Source).fLineJoin;
+ fLineCap:=TpvCanvasPen(Source).fLineCap;
 end;
 
-constructor TpvVulkanCanvas.Create(const aDevice:TpvVulkanDevice;
+constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
                                       const aGraphicsQueue:TpvVulkanQueue;
                                       const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
                                       const aGraphicsFence:TpvVulkanFence;
@@ -386,10 +386,10 @@ constructor TpvVulkanCanvas.Create(const aDevice:TpvVulkanDevice;
                                       const aRenderPass:TpvVulkanRenderPass;
                                       const aCountBuffers:TpvInt32);
 var Index:TpvInt32;
-    RenderingModeIndex:TpvVulkanCanvasRenderingMode;
-    BlendingModeIndex:TpvVulkanCanvasBlendingMode;
+    RenderingModeIndex:TpvCanvasRenderingMode;
+    BlendingModeIndex:TpvCanvasBlendingMode;
     VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
-    VulkanCanvasBuffer:PpvVulkanCanvasBuffer;
+    VulkanCanvasBuffer:PpvCanvasBuffer;
     Stream:TStream;
 begin
  inherited Create;
@@ -473,7 +473,7 @@ begin
  fVulkanDescriptorSets:=nil;
  fCountVulkanDescriptorSets:=0;
 
- fVulkanTextureDescriptorSetHashMap:=TpvVulkanCanvasAtlasArrayTextureDescriptorSetHashMap.Create(-1);
+ fVulkanTextureDescriptorSetHashMap:=TpvCanvasAtlasArrayTextureDescriptorSetHashMap.Create(-1);
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
@@ -516,12 +516,12 @@ begin
  VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvVulkanCanvasVertex),VK_VERTEX_INPUT_RATE_VERTEX);
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvVulkanCanvasVertex(nil)^.Position)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvVulkanCanvasVertex(nil)^.Color)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvVulkanCanvasVertex(nil)^.TextureCoord)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvVulkanCanvasVertex(nil)^.State)));
- VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvVulkanCanvasVertex(nil)^.ClipRect)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvCanvasVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Position)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Color)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.TextureCoord)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.State)));
+ VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.ClipRect)));
 
  VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
  VulkanGraphicsPipeline.ViewPortState.DynamicViewPorts:=true;
@@ -579,15 +579,15 @@ begin
 
  fCurrentFillBuffer:=nil;
 
- fPen:=TpvVulkanCanvasPen.Create;
+ fPen:=TpvCanvasPen.Create;
 
 end;
 
-destructor TpvVulkanCanvas.Destroy;
+destructor TpvCanvas.Destroy;
 var Index,SubIndex:TpvInt32;
-    RenderingModeIndex:TpvVulkanCanvasRenderingMode;
-    BlendingModeIndex:TpvVulkanCanvasBlendingMode;
-    VulkanCanvasBuffer:PpvVulkanCanvasBuffer;
+    RenderingModeIndex:TpvCanvasRenderingMode;
+    BlendingModeIndex:TpvCanvasBlendingMode;
+    VulkanCanvasBuffer:PpvCanvasBuffer;
 begin
 
  FreeAndNil(fPen);
@@ -639,7 +639,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvVulkanCanvas.RotatePoint(const PointToRotate,AroundPoint:TpvSpritePoint;Cosinus,Sinus:TpvFloat):TpvSpritePoint;
+function TpvCanvas.RotatePoint(const PointToRotate,AroundPoint:TpvSpritePoint;Cosinus,Sinus:TpvFloat):TpvSpritePoint;
 var x,y:TpvFloat;
 begin
  x:=PointToRotate.x-AroundPoint.x;
@@ -648,7 +648,7 @@ begin
  result.y:=(((((x*Sinus)+(y*Cosinus))+AroundPoint.y)*fInverseHeight)-0.5)*2;
 end;
 
-procedure TpvVulkanCanvas.SetRenderingMode(aRenderingMode:TpvVulkanCanvasRenderingMode);
+procedure TpvCanvas.SetRenderingMode(aRenderingMode:TpvCanvasRenderingMode);
 begin
  if fRenderingMode<>aRenderingMode then begin
   fRenderingMode:=aRenderingMode;
@@ -663,7 +663,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.SetBlendingMode(aBlendingMode:TpvVulkanCanvasBlendingMode);
+procedure TpvCanvas.SetBlendingMode(aBlendingMode:TpvCanvasBlendingMode);
 begin
  if fBlendingMode<>aBlendingMode then begin
   fBlendingMode:=aBlendingMode;
@@ -681,7 +681,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.Start(const aBufferIndex:TpvInt32);
+procedure TpvCanvas.Start(const aBufferIndex:TpvInt32);
 begin
 
  fInverseWidth:=1.0/fWidth;
@@ -725,7 +725,7 @@ begin
 
 end;
 
-procedure TpvVulkanCanvas.Stop;
+procedure TpvCanvas.Stop;
 begin
 
  Flush;
@@ -734,9 +734,9 @@ begin
 
 end;
 
-procedure TpvVulkanCanvas.Flush;
+procedure TpvCanvas.Flush;
 var CurrentVulkanBufferIndex,OldCount,NewCount,QueueItemIndex,DescriptorSetIndex:TpvInt32;
-    QueueItem:PpvVulkanCanvasQueueItem;
+    QueueItem:PpvCanvasQueueItem;
     VulkanDescriptorSet:TpvVulkanDescriptorSet;
 begin
  if assigned(fCurrentFillBuffer) and (fCurrentCountVertices>0) then begin
@@ -765,7 +765,7 @@ begin
     fCurrentFillBuffer^.fCountAllocatedBuffers:=NewCount;
    end;
 
-   inc(fCurrentFillBuffer^.fVertexBufferSizes[CurrentVulkanBufferIndex],fCurrentCountVertices*SizeOf(TpvVulkanCanvasVertex));
+   inc(fCurrentFillBuffer^.fVertexBufferSizes[CurrentVulkanBufferIndex],fCurrentCountVertices*SizeOf(TpvCanvasVertex));
 
    inc(fCurrentFillBuffer^.fIndexBufferSizes[CurrentVulkanBufferIndex],fCurrentCountIndices*SizeOf(TpvUInt32));
 
@@ -824,7 +824,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.GetNextDestinationVertexBuffer;
+procedure TpvCanvas.GetNextDestinationVertexBuffer;
 var OldCount,NewCount:TpvInt32;
 begin
 
@@ -859,9 +859,9 @@ begin
 
 end;
 
-procedure TpvVulkanCanvas.FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
-const UntilCountVertices=SizeOf(TpvVulkanCanvasVertexBuffer) div SizeOf(TpvVulkanCanvasVertex);
-      UntilCountIndices=SizeOf(TpvVulkanCanvasIndexBuffer) div SizeOf(TpvUInt32);
+procedure TpvCanvas.FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
+const UntilCountVertices=SizeOf(TpvCanvasVertexBuffer) div SizeOf(TpvCanvasVertex);
+      UntilCountIndices=SizeOf(TpvCanvasIndexBuffer) div SizeOf(TpvUInt32);
 begin
  if ((fCurrentVulkanVertexBufferOffset+fCurrentCountVertices+aCountVerticesToCheck)>=UntilCountVertices) or
     ((fCurrentVulkanIndexBufferOffset+fCurrentCountIndices+aCountIndicesToCheck)>=UntilCountIndices) then begin
@@ -870,7 +870,7 @@ begin
  end;
 end;
 
-function TpvVulkanCanvas.ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
+function TpvCanvas.ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
 const Threshold=1e-6;
 begin
  result:=(fUnscaledClipRect.x0<=(aX1+Threshold)) and
@@ -879,7 +879,7 @@ begin
          (aY0<=(fUnscaledClipRect.y1+Threshold));
 end;
 
-procedure TpvVulkanCanvas.SetArrayTexture(const ArrayTexture:TpvSpriteAtlasArrayTexture);
+procedure TpvCanvas.SetArrayTexture(const ArrayTexture:TpvSpriteAtlasArrayTexture);
 begin
  if fLastArrayTexture<>ArrayTexture then begin
   Flush;
@@ -889,7 +889,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.SetScissor(const aScissor:TVkRect2D);
+procedure TpvCanvas.SetScissor(const aScissor:TVkRect2D);
 begin
  if (fScissor.offset.x<>aScissor.offset.x) or
     (fScissor.offset.y<>aScissor.offset.y) or
@@ -900,7 +900,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.SetScissor(const aLeft,aTop,aWidth,aHeight:TpvInt32);
+procedure TpvCanvas.SetScissor(const aLeft,aTop,aWidth,aHeight:TpvInt32);
 var NewScissor:TVkRect2D;
 begin
  NewScissor.offset.x:=aLeft;
@@ -910,7 +910,7 @@ begin
  SetScissor(NewScissor);
 end;
 
-procedure TpvVulkanCanvas.SetClipRect(const aClipRect:TVkRect2D);
+procedure TpvCanvas.SetClipRect(const aClipRect:TVkRect2D);
 begin
  fUnscaledClipRect.x0:=aClipRect.offset.x;
  fUnscaledClipRect.y0:=aClipRect.offset.y;
@@ -922,7 +922,7 @@ begin
  fClipRect.y1:=(((aClipRect.offset.y+(aClipRect.extent.height+0.0))*fInverseHeight)-0.5)*2.0;
 end;
 
-procedure TpvVulkanCanvas.SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32);
+procedure TpvCanvas.SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32);
 begin
  fUnscaledClipRect.x0:=aLeft;
  fUnscaledClipRect.y0:=aTop;
@@ -934,9 +934,9 @@ begin
  fClipRect.y1:=(((aTop+aHeight)*fInverseHeight)-0.5)*2.0;
 end;
 
-procedure TpvVulkanCanvas.Hook(const aHook:TpvVulkanCanvasHook;const aData:TpvPointer);
+procedure TpvCanvas.Hook(const aHook:TpvCanvasHook;const aData:TpvPointer);
 var QueueItemIndex:TpvInt32;
-    QueueItem:PpvVulkanCanvasQueueItem;
+    QueueItem:PpvCanvasQueueItem;
 begin
  if assigned(aHook) then begin
 
@@ -955,7 +955,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Color:TpvSpriteColor);
+procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Color:TpvSpriteColor);
 const MinA=1.0/1024.0;
 var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     TempDest,TempSrc:TpvSpriteRect;
@@ -1146,7 +1146,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Origin:TpvSpritePoint;Rotation:TpvFloat;const Color:TpvSpriteColor);
+procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Origin:TpvSpritePoint;Rotation:TpvFloat;const Color:TpvSpriteColor);
 const MinA=1.0/1024.0;
 var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     AroundPoint:TpvSpritePoint;
@@ -1326,7 +1326,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat;const Color:TpvSpriteColor);
+procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat;const Color:TpvSpriteColor);
 var Src,Dest:TpvSpriteRect;
 begin
  Src.Left:=0;
@@ -1340,7 +1340,7 @@ begin
  DrawSprite(Sprite,Src,Dest,Color);
 end;
 
-procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat);
+procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat);
 var Color:TpvSpriteColor;
 begin
  Color.r:=1;
@@ -1350,7 +1350,7 @@ begin
  DrawSprite(Sprite,x,y,Color);
 end;
 
-procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TpvFloat);
+procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TpvFloat);
 var Src,Dest:TpvSpriteRect;
     Color:TpvSpriteColor;
 begin
@@ -1369,9 +1369,9 @@ begin
  DrawSprite(Sprite,Src,Dest,Color);
 end;
 
-procedure TpvVulkanCanvas.ExecuteUpload(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
+procedure TpvCanvas.ExecuteUpload(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
 var Index:TpvInt32;
-    CurrentDrawSpriteBatchBuffer:PpvVulkanCanvasBuffer;
+    CurrentDrawSpriteBatchBuffer:PpvCanvasBuffer;
     VulkanBuffer:TpvVulkanBuffer;
 begin
  CurrentDrawSpriteBatchBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
@@ -1384,7 +1384,7 @@ begin
      VulkanBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanVertexBuffers[Index];
      if not assigned(VulkanBuffer) then begin
       VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
-                                         SizeOf(TpvVulkanCanvasVertexBuffer),
+                                         SizeOf(TpvCanvasVertexBuffer),
                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                          nil,
@@ -1412,7 +1412,7 @@ begin
      VulkanBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanIndexBuffers[Index];
      if not assigned(VulkanBuffer) then begin
       VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
-                                         SizeOf(TpvVulkanCanvasIndexBuffer),
+                                         SizeOf(TpvCanvasIndexBuffer),
                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                          nil,
@@ -1447,11 +1447,11 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
+procedure TpvCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
 var Index,DescriptorSetIndex,StartVertexIndex:TpvInt32;
-    QueueItem:PpvVulkanCanvasQueueItem;
-    OldQueueItemKind:TpvVulkanCanvasQueueItemKind;
-    CurrentDrawSpriteBatchBuffer:PpvVulkanCanvasBuffer;
+    QueueItem:PpvCanvasQueueItem;
+    OldQueueItemKind:TpvCanvasQueueItemKind;
+    CurrentDrawSpriteBatchBuffer:PpvCanvasBuffer;
     VulkanVertexBuffer,VulkanIndexBuffer:TpvVulkanBuffer;
     OldScissor:TVkRect2D;
     ForceUpdate:boolean;
@@ -1514,7 +1514,7 @@ begin
       aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
      end;
 
-     Offsets[0]:=QueueItem^.StartVertexIndex*SizeOf(TpvVulkanCanvasVertex);
+     Offsets[0]:=QueueItem^.StartVertexIndex*SizeOf(TpvCanvasVertex);
      aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
 
      aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,QueueItem^.StartIndexIndex*SizeOf(TpvUInt32),VK_INDEX_TYPE_UINT32);

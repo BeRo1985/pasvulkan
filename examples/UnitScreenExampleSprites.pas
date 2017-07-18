@@ -38,7 +38,7 @@ type TScreenExampleSprites=class(TpvApplicationScreen)
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
        fVulkanSpriteAtlas:TpvSpriteAtlas;
-       fVulkanCanvas:TpvVulkanCanvas;
+       fVulkanCanvas:TpvCanvas;
        fVulkanSpriteTest:TpvSprite;
        fVulkanSpriteSmiley0:TpvSprite;
        fVulkanSpriteAppIcon:TpvSprite;
@@ -282,7 +282,7 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
- fVulkanCanvas:=TpvVulkanCanvas.Create(pvApplication.VulkanDevice,
+ fVulkanCanvas:=TpvCanvas.Create(pvApplication.VulkanDevice,
                                        pvApplication.VulkanDevice.GraphicsQueue,
                                        pvApplication.VulkanGraphicsCommandBuffers[0,0],
                                        pvApplication.VulkanGraphicsCommandBufferFences[0,0],

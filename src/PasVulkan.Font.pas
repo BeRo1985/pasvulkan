@@ -196,7 +196,7 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        function TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
        procedure TextSize(const aText:TpvUTF8String;const aSize:TpvFloat;out aWidth,aHeight:TpvFloat);
        function RowHeight(const Percent:TpvFloat):TpvFloat;
-       procedure Draw(const aCanvas:TpvVulkanCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat;const aColorRed:TpvFloat=1.0;const aColorGreen:TpvFloat=1.0;const aColorBlue:TpvFloat=1.0;const aColorAlpha:TpvFloat=1.0);
+       procedure Draw(const aCanvas:TpvCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat;const aColorRed:TpvFloat=1.0;const aColorGreen:TpvFloat=1.0;const aColorBlue:TpvFloat=1.0;const aColorAlpha:TpvFloat=1.0);
      end;
 
 implementation
@@ -2791,7 +2791,7 @@ begin
  result:=fUnitsPerEm*(Percent*0.01);
 end;
 
-procedure TpvFont.Draw(const aCanvas:TpvVulkanCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat;const aColorRed:TpvFloat=1.0;const aColorGreen:TpvFloat=1.0;const aColorBlue:TpvFloat=1.0;const aColorAlpha:TpvFloat=1.0);
+procedure TpvFont.Draw(const aCanvas:TpvCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat;const aColorRed:TpvFloat=1.0;const aColorGreen:TpvFloat=1.0;const aColorBlue:TpvFloat=1.0;const aColorAlpha:TpvFloat=1.0);
 var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
     x,y,ScaleFactor,RescaleFactor:TpvFloat;
     Int64Value:TpvInt64;
