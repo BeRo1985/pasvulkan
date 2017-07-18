@@ -1270,7 +1270,6 @@ begin
 end;
 
 function TpvAudioSoundSampleVoice.GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
-const i32=TpvInt64($100000000);
 var SmpInc,SmpLen,SmpLoopStart,SmpLoopEnd,CountSamples,SampleBufferSize,Difference:TpvInt64;
     LoopMode:TpvInt32;
 begin
@@ -1278,15 +1277,15 @@ begin
  if SmpInc=0 then begin
   result:=0;
  end else begin
-  SmpLen:=Sample.SampleLength*i32;
+  SmpLen:=TpvInt64(Sample.SampleLength) shl 32;
   if (Sample.SustainLoop.Mode<>SoundLoopModeNONE) and not KeyOff then begin
    LoopMode:=Sample.SustainLoop.Mode;
-   SmpLoopStart:=Sample.SustainLoop.StartSample*i32;
-   SmpLoopEnd:=Sample.SustainLoop.EndSample*i32;
+   SmpLoopStart:=TpvInt64(Sample.SustainLoop.StartSample) shl 32;
+   SmpLoopEnd:=TpvInt64(Sample.SustainLoop.EndSample) shl 32;
   end else if Sample.Loop.Mode<>SoundLoopModeNONE then begin
    LoopMode:=Sample.Loop.Mode;
-   SmpLoopStart:=Sample.Loop.StartSample*i32;
-   SmpLoopEnd:=Sample.Loop.EndSample*i32;
+   SmpLoopStart:=TpvInt64(Sample.Loop.StartSample) shl 32;
+   SmpLoopEnd:=TpvInt64(Sample.Loop.EndSample) shl 32;
   end else begin
    LoopMode:=SoundLoopModeNONE;
    SmpLoopStart:=0;
