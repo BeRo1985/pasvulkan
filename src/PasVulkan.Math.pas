@@ -1170,6 +1170,8 @@ const Vector2Origin:TpvVector2=(x:0.0;y:0.0);
 
       QuaternionIdentity:TpvQuaternion=(x:0.0;y:0.0;z:0.0;w:1.0);
 
+function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+
 function IntLog2(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
 function Modulo(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1347,6 +1349,17 @@ function PackTangentSpace(const Tangent,Bitangent,Normal:TpvVector3):TpvPackedTa
 procedure UnpackTangentSpace(var PackedTangentSpace:TpvPackedTangentSpace;var Tangent,Bitangent,Normal:TpvVector3);
 
 implementation
+
+function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32;
+begin
+ dec(x);
+ x:=x or (x shr 1);
+ x:=x or (x shr 2);
+ x:=x or (x shr 4);
+ x:=x or (x shr 8);
+ x:=x or (x shr 16);
+ result:=x+1;
+end;
 
 function IntLog2(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}
 begin

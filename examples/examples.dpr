@@ -34,6 +34,7 @@ uses
   PasVulkan.Types in '..\src\PasVulkan.Types.pas',
   PasVulkan.Utils in '..\src\PasVulkan.Utils.pas',
   PasVulkan.Collections in '..\src\PasVulkan.Collections.pas',
+  PasVulkan.XML in '..\src\PasVulkan.XML.pas',
   PasVulkan.TrueTypeFont in '..\src\PasVulkan.TrueTypeFont.pas',
   PasVulkan.Framework in '..\src\PasVulkan.Framework.pas',
   PasVulkan.Font in '..\src\PasVulkan.Font.pas',

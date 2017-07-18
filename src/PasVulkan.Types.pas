@@ -95,9 +95,13 @@ type PPpvInt8=^PpvInt8;
      PpvUInt64=^TpvUInt64;
      TpvUInt64=UInt64;
 
-     PPChar=^PChar;
-     PChar=PAnsiChar;
-     TChar=AnsiChar;
+     PPpvChar=^PChar;
+     PpvChar=PAnsiChar;
+     TpvChar=AnsiChar;
+
+     PPpvRawByteChar=^PChar;
+     PpvRawByteChar=PAnsiChar;
+     TpvRawByteChar=AnsiChar;
 
      PPpvPointer=^PpvPointer;
      PpvPointer=^TpvPointer;
