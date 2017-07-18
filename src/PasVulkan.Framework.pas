@@ -440,24 +440,6 @@ type EpvVulkanException=class(Exception);
        property Items[const Index:TVkSizeInt]:TVkClearValue read GetItem write SetItem; default;
      end;
 
-     EpvVulkanDataStream=class(Exception);
-
-     TpvVulkanDataStream=class(TStream)
-      private
-       fData:TpvPointer;
-       fSize:TpvInt64;
-       fPosition:TpvInt64;
-      public
-       constructor Create(const AData:TpvPointer;const ASize:TpvInt64);
-       destructor Destroy; override;
-       function Read(var Buffer;Count:TpvInt32):TpvInt32; override;
-       function Write(const Buffer;Count:TpvInt32):TpvInt32; override;
-       function Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32; overload; override;
-       function Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64; overload; override;
-       procedure SetSize(NewSize:TpvInt32); overload; override;
-       procedure SetSize(const NewSize:TpvInt64); overload; override;
-     end;
-
      TpvVulkanAllocationManager=class(TpvVulkanObject)
       private
        fAllocationCallbacks:TVkAllocationCallbacks;
@@ -6827,99 +6809,6 @@ end;
 procedure TVkClearValueList.Remove(const Item:TVkClearValue);
 begin
  inherited Remove(Item);
-end;
-
-constructor TpvVulkanDataStream.Create(const AData:TpvPointer;const ASize:TpvInt64);
-begin
- inherited Create;
- fData:=AData;
- fSize:=ASize;
- fPosition:=0;
-end;
-
-destructor TpvVulkanDataStream.Destroy;
-begin
- inherited Destroy;
-end;
-
-function TpvVulkanDataStream.Read(var Buffer;Count:TpvInt32):TpvInt32;
-begin
- if (fPosition+Count)>fSize then begin
-  Count:=fSize-fPosition;
- end;
- if Count>0 then begin
-  Move(PpvVulkanBytes(fData)^[fPosition],Buffer,Count);
-  inc(fPosition,Count);
-  result:=Count;
- end else begin
-  result:=0;
- end;
-end;
-
-function TpvVulkanDataStream.Write(const Buffer;Count:TpvInt32):TpvInt32;
-begin
- if (fPosition+Count)>fSize then begin
-  Count:=fSize-fPosition;
- end;
- if Count>0 then begin
-  Move(Buffer,PpvVulkanBytes(fData)^[fPosition],Count);
-  inc(fPosition,Count);
-  result:=Count;
- end else begin
-  result:=0;
- end;
-end;
-
-function TpvVulkanDataStream.Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32;
-begin
- case Origin of
-  soFromBeginning:begin
-   fPosition:=Offset;
-  end;
-  soFromCurrent:begin
-   inc(fPosition,Offset);
-  end;
-  soFromEnd:begin
-   fPosition:=fSize+Offset;
-  end;
- end;
- if (fPosition<0) or (fPosition>fSize) then begin
-  raise EpvVulkanDataStream.Create('Stream seek error');
- end;
- result:=fPosition;
-end;
-
-function TpvVulkanDataStream.Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64;
-begin
- case Origin of
-  soBeginning:begin
-   fPosition:=Offset;
-  end;
-  soCurrent:begin
-   inc(fPosition,Offset);
-  end;
-  soEnd:begin
-   fPosition:=fSize+Offset;
-  end;
- end;
- if (fPosition<0) or (fPosition>fSize) then begin
-  raise EpvVulkanDataStream.Create('Stream seek error');
- end;
- result:=fPosition;
-end;
-
-procedure TpvVulkanDataStream.SetSize(NewSize:TpvInt32);
-begin
- if fSize<>NewSize then begin
-  raise EpvVulkanDataStream.Create('Stream set size error');
- end;
-end;
-
-procedure TpvVulkanDataStream.SetSize(const NewSize:TpvInt64);
-begin
- if fSize<>NewSize then begin
-  raise EpvVulkanDataStream.Create('Stream set size error');
- end;
 end;
 
 function VulkanAllocationCallback(UserData:PVkVoid;Size:TVkSize;Alignment:TVkSize;Scope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}

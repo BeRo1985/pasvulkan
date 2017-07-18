@@ -36,6 +36,7 @@ uses
   PasVulkan.Collections in '..\src\PasVulkan.Collections.pas',
   PasVulkan.XML in '..\src\PasVulkan.XML.pas',
   PasVulkan.TrueTypeFont in '..\src\PasVulkan.TrueTypeFont.pas',
+  PasVulkan.Streams in '..\src\PasVulkan.Streams.pas',
   PasVulkan.Assets in '..\src\PasVulkan.Assets.pas',
   PasVulkan.Compression.Deflate in '..\src\PasVulkan.Compression.Deflate.pas',
   PasVulkan.Image.PNG in '..\src\PasVulkan.Image.PNG.pas',

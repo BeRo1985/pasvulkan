@@ -214,6 +214,7 @@
         <DCCReference Include="..\src\PasVulkan.Collections.pas"/>
         <DCCReference Include="..\src\PasVulkan.XML.pas"/>
         <DCCReference Include="..\src\PasVulkan.TrueTypeFont.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Streams.pas"/>
         <DCCReference Include="..\src\PasVulkan.Assets.pas"/>
         <DCCReference Include="..\src\PasVulkan.Compression.Deflate.pas"/>
         <DCCReference Include="..\src\PasVulkan.Image.PNG.pas"/>

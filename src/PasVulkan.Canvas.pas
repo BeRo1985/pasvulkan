@@ -320,7 +320,8 @@ type TpvCanvasColor=class(TPersistent)
 
 implementation
 
-uses PasVulkan.Assets;
+uses PasVulkan.Assets,
+     PasVulkan.Streams;
 
 constructor TpvCanvasColor.Create;
 begin
@@ -481,14 +482,14 @@ begin
 
  fVulkanRenderPass:=aRenderPass;
 
- Stream:=TpvVulkanDataStream.Create(@SpriteBatchVertexSPIRVData,SpriteBatchVertexSPIRVDataSize);
+ Stream:=TpvDataStream.Create(@SpriteBatchVertexSPIRVData,SpriteBatchVertexSPIRVDataSize);
  try
   fSpriteBatchVertexShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=TpvVulkanDataStream.Create(@SpriteBatchFragmentSPIRVData,SpriteBatchFragmentSPIRVDataSize);
+ Stream:=TpvDataStream.Create(@SpriteBatchFragmentSPIRVData,SpriteBatchFragmentSPIRVDataSize);
  try
   fSpriteBatchFragmentShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally

@@ -71,7 +71,7 @@ function LoadTGAImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:Tp
 
 implementation
 
-uses PasVulkan.Framework;
+uses PasVulkan.Streams;
 
 function LoadTGAImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean):boolean;
 type PLongwords=^TLongwords;
@@ -106,7 +106,7 @@ var TGAHeader:TTGAHeader;
     ImagePointer,NewImagePointer,Pixel:PpvUInt32;
     B8:TpvUInt8;
     Palette:array of TpvUInt8;
-    Stream:TpvVulkanDataStream;
+    Stream:TpvDataStream;
  function PaletteEncode(Index:TpvUInt32):TpvUInt32;
  var r:TRGBA;
      l:TpvUInt32 ABSOLUTE r;
@@ -420,7 +420,7 @@ var TGAHeader:TTGAHeader;
 begin
  result:=false;
  if DataSize>0 then begin
-  Stream:=TpvVulkanDataStream.Create(DataPointer,DataSize);
+  Stream:=TpvDataStream.Create(DataPointer,DataSize);
   try
    result:=DoIt;
   finally
