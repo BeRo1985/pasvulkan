@@ -84,7 +84,8 @@ uses {$if defined(Unix)}
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.SDL2,
-     PasVulkan.Android;
+     PasVulkan.Android,
+     PasVulkan.Audio;
 
 const MaxSwapChainImages=3;
 
@@ -895,6 +896,8 @@ type EpvApplication=class(Exception)
 
        fClipboard:TpvApplicationClipboard;
 
+       fAudio:TpvAudio;
+
        fRunnableList:TpvApplicationRunnableList;
        fRunnableListCount:TpvInt32;
        fRunnableListCriticalSection:TPasMPCriticalSection;
@@ -1088,6 +1091,9 @@ type EpvApplication=class(Exception)
        procedure InitializeGraphics;
        procedure DeinitializeGraphics;
 
+       procedure InitializeAudio;
+       procedure DeinitializeAudio;
+
       protected
 
        procedure VulkanDebugLn(const What:string);
@@ -1214,6 +1220,8 @@ type EpvApplication=class(Exception)
        property Input:TpvApplicationInput read fInput;
 
        property Clipboard:TpvApplicationClipboard read fClipboard;
+
+       property Audio:TpvAudio read fAudio;
 
        property Title:string read fTitle write fTitle;
        property Version:TpvUInt32 read fVersion write fVersion;
@@ -4795,6 +4803,26 @@ begin
  SDL_SetClipboardText(PAnsiChar(aTextString));
 end;
 
+procedure AudioFillBuffer(AudioEngine:TpvAudio;Buffer:TpvPointer;Len:TSDLInt32);
+begin
+ while (AudioEngine.IsReady and AudioEngine.IsActive) and assigned(AudioEngine.Thread) and not AudioEngine.Thread.Terminated do begin
+  if AudioEngine.RingBuffer.AvailableForRead>=Len then begin
+   AudioEngine.RingBuffer.Read(Buffer,Len);
+   exit;
+  end;
+  if AudioEngine.Thread.Sleeping<>0 then begin
+   AudioEngine.Thread.Event.SetEvent;
+  end;
+  Sleep(1);
+ end;
+ FillChar(Buffer^,Len,0);
+end;
+
+procedure SDLFillBuffer(UserData:TpvPointer;Stream:PSDLUInt8;Remain:TSDLInt32); cdecl;
+begin
+ AudioFillBuffer(UserData,Stream,Remain);
+end;
+
 constructor TpvApplication.Create;
 begin
 
@@ -4836,6 +4864,8 @@ begin
  fInput:=TpvApplicationInput.Create(self);
 
  fClipboard:=TpvApplicationClipboard.Create(self);
+
+ fAudio:=nil;
 
  fRunnableList:=nil;
  fRunnableListCount:=0;
@@ -4895,7 +4925,7 @@ begin
 {$ifend}
 
  fVulkanCountCommandQueues:=0;
- 
+
  fVulkanCommandPools:=nil;
  fVulkanCommandBuffers:=nil;
  fVulkanCommandBufferFences:=nil;
@@ -4970,8 +5000,10 @@ begin
  fRunnableListCount:=0;
  FreeAndNil(fRunnableListCriticalSection);
 
+ FreeAndNil(fAudio);
+
  FreeAndNil(fClipboard);
- 
+
  FreeAndNil(fInput);
 
  FreeAndNil(fFiles);
@@ -6120,6 +6152,36 @@ begin
  end;
 end;
 
+procedure TpvApplication.InitializeAudio;
+begin
+ if not assigned(fAudio) then begin
+  FillChar(fSDLWaveFormat,SizeOf(TSDL_AudioSpec),#0);
+  fSDLWaveFormat.Channels:=2;
+  fSDLWaveFormat.Format:=AUDIO_S16;
+  fSDLWaveFormat.Freq:=44100;
+  fSDLWaveFormat.Callback:=@SDLFillBuffer;
+  fSDLWaveFormat.silence:=0;
+  fSDLWaveFormat.Samples:=1024;
+  fSDLWaveFormat.Size:=fSDLWaveFormat.Samples*2*2;
+  fAudio:=TpvAudio.Create(44100,2,16,fSDLWaveFormat.Samples);
+  fAudio.SetMixerAGC(true);
+  //fAudio.UpdateHook:=AApplication.AudioUpdateHook;
+  fSDLWaveFormat.userdata:=fAudio;
+  if SDL_OpenAudio(@fSDLWaveFormat,nil)<0 then begin
+   raise EpvApplication.Create('SDL','Unable to initialize SDL audio: '+SDL_GetError,LOG_ERROR);
+  end;
+  SDL_PauseAudio(1);
+ end;
+end;
+
+procedure TpvApplication.DeinitializeAudio;
+begin
+ if assigned(fAudio) then begin
+  SDL_CloseAudio;
+  FreeAndNil(fAudio);
+ end;
+end;
+
 procedure TpvApplication.UpdateFrameTimesHistory;
 var Index,Count:TpvInt32;
     SumOfFrameTimes:TpvDouble;
@@ -6752,67 +6814,85 @@ begin
 
   CreateVulkanInstance;
   try
-          
+
    Start;
    try
 
     InitializeGraphics;
     try
 
-     Load;
+     InitializeAudio;
      try
 
-      fLifecycleListenerListCriticalSection.Acquire;
-      try
-       for Index:=0 to fLifecycleListenerList.Count-1 do begin
-        if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
-         break;
-        end;
-       end;
-      finally
-       fLifecycleListenerListCriticalSection.Release;
-      end;
-
-      if assigned(fStartScreen) then begin
-       SetScreen(fStartScreen.Create);
-      end;
+      Load;
       try
 
-       while not fTerminated do begin
-        ProcessMessages;
+       fLifecycleListenerListCriticalSection.Acquire;
+       try
+        for Index:=0 to fLifecycleListenerList.Count-1 do begin
+         if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
+          break;
+         end;
+        end;
+       finally
+        fLifecycleListenerListCriticalSection.Release;
+       end;
+
+       if assigned(fStartScreen) then begin
+        SetScreen(fStartScreen.Create);
+       end;
+       try
+
+        if assigned(fAudio) then begin
+         SDL_PauseAudio(0);
+        end;
+        try
+
+         while not fTerminated do begin
+          ProcessMessages;
+         end;
+
+        finally
+         if assigned(fAudio) then begin
+          SDL_PauseAudio(1);
+         end;
+        end;
+
+       finally
+
+        SetScreen(nil);
+
+        FreeAndNil(fNextScreen);
+        FreeAndNil(fScreen);
+
+       end;
+
+       fLifecycleListenerListCriticalSection.Acquire;
+       try
+        for Index:=0 to fLifecycleListenerList.Count-1 do begin
+         if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
+          break;
+         end;
+        end;
+        for Index:=0 to fLifecycleListenerList.Count-1 do begin
+         if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Terminate then begin
+          break;
+         end;
+        end;
+       finally
+        fLifecycleListenerListCriticalSection.Release;
        end;
 
       finally
 
-       SetScreen(nil);
+       VulkanWaitIdle;
 
-       FreeAndNil(fNextScreen);
-       FreeAndNil(fScreen);
+       Unload;
 
-      end;
-
-      fLifecycleListenerListCriticalSection.Acquire;
-      try
-       for Index:=0 to fLifecycleListenerList.Count-1 do begin
-        if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
-         break;
-        end;
-       end;
-       for Index:=0 to fLifecycleListenerList.Count-1 do begin
-        if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Terminate then begin
-         break;
-        end;
-       end;
-      finally
-       fLifecycleListenerListCriticalSection.Release;
       end;
 
      finally
-
-      VulkanWaitIdle;
-
-      Unload;
-
+      DeinitializeAudio;
      end;
 
     finally
