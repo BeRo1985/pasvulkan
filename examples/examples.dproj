@@ -214,7 +214,15 @@
         <DCCReference Include="..\src\PasVulkan.Collections.pas"/>
         <DCCReference Include="..\src\PasVulkan.XML.pas"/>
         <DCCReference Include="..\src\PasVulkan.TrueTypeFont.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Assets.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Compression.Deflate.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Image.PNG.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Image.BMP.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Image.JPEG.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Image.TGA.pas"/>
         <DCCReference Include="..\src\PasVulkan.Framework.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Sprites.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Canvas.pas"/>
         <DCCReference Include="..\src\PasVulkan.Font.pas"/>
         <DCCReference Include="..\src\PasVulkan.Android.pas"/>
         <DCCReference Include="..\src\PasVulkan.SDL2.pas"/>

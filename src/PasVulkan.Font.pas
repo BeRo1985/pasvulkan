@@ -70,7 +70,9 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Collections,
      PasVulkan.Framework,
-     PasVulkan.TrueTypeFont;
+     PasVulkan.TrueTypeFont,
+     PasVulkan.Sprites,
+     PasVulkan.Canvas;
 
 type TpvFontCodePointBitmap=array of TpvUInt32;
 

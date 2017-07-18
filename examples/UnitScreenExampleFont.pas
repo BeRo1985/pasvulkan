@@ -28,8 +28,10 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.TrueTypeFont,
-     PasVulkan.Font,
-     PasVulkan.Application;
+     PasVulkan.Application,
+     PasVulkan.Sprites,
+     PasVulkan.Canvas,
+     PasVulkan.Font;
 
 type TScreenExampleFont=class(TpvApplicationScreen)
       private

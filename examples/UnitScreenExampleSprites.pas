@@ -27,7 +27,9 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
-     PasVulkan.Application;
+     PasVulkan.Application,
+     PasVulkan.Sprites,
+     PasVulkan.Canvas;
 
 type TScreenExampleSprites=class(TpvApplicationScreen)
       private
