@@ -61,10 +61,19 @@ unit PasVulkan.Streams;
 
 interface
 
-uses SysUtils,
+uses {$if defined(Windows)}
+      Windows,
+     {$elseif defined(Unix)}
+      BaseUnix,
+      UnixType,
+     {$ifend}
+     SysUtils,
      Classes,
      Math,
      PasVulkan.Types;
+
+const DefaultBufferSize=4096;
+      DefaultBufferBucketCount=4096;
 
 type EpvDataStream=class(Exception);
 
@@ -82,6 +91,73 @@ type EpvDataStream=class(Exception);
        function Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64; overload; override;
        procedure SetSize(NewSize:TpvInt32); overload; override;
        procedure SetSize(const NewSize:TpvInt64); overload; override;
+     end;
+
+     TpvSimpleBufferedStream=class(TStream)
+      private
+       fWrappedStream:TStream;
+       fWrappedStreamSize:TpvInt64;
+       fFreeWrappedStream:boolean;
+       fStreamBuffer:PpvRawByteChar;
+       fStreamBufferSize:TpvInt64;
+       fStreamBufferPosition:TpvInt64;
+       fStreamBufferPointer:PpvRawByteChar;
+       fStreamBufferEnd:PpvRawByteChar;
+       fStreamBufferDirty:boolean;
+       procedure ReadBufferFromFile;
+      protected
+       procedure SetSize(NewSize:TpvInt32); overload; override;
+       procedure SetSize(const NewSize:TpvInt64); overload; override;
+      public
+       constructor Create(Stream:TStream;FreeStream:boolean=false;BufferSize:TpvInt32=DefaultBufferSize);
+       destructor Destroy; override;
+       function Read(var Buffer;Count:TpvInt32):TpvInt32; override;
+       function Write(const Buffer;Count:TpvInt32):TpvInt32; override;
+       function Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32; overload; override;
+       function Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64; overload; override;
+       procedure Flush;
+     end;
+
+     PpvBufferedStreamBucket=^TpvBufferedStreamBucket;
+     TpvBufferedStreamBucket=record
+      Previous,Next:PpvBufferedStreamBucket;
+      Buffer:TpvPointer;
+      BufferSize,BasePosition:TpvInt64;
+      Dirty:boolean;
+     end;
+
+     TpvBufferedStreamBuckets=array of TpvBufferedStreamBucket;
+
+     TpvBufferedStreamBucketBitmap=array[0..1048575] of TpvUInt8;
+
+     TpvBufferedStream=class(TStream)
+      private
+       fWrappedStream:TStream;
+       fWrappedStreamSize:TpvInt64;
+       fFreeWrappedStream:boolean;
+       fBuckets:TpvBufferedStreamBuckets;
+       fBucketBitmap:TpvBufferedStreamBucketBitmap;
+       fFirstBucket:PpvBufferedStreamBucket;
+       fLastBucket:PpvBufferedStreamBucket;
+       fStreamBuffer:PpvRawByteChar;
+       fStreamPosition:TpvInt64;
+       fStreamBufferSize:TpvInt64;
+       fStreamBufferSizeMask:TpvInt64;
+       fStreamBufferSizeInvMask:TpvInt64;
+       fStreamBufferSizeShift:TpvInt32;
+       fBucketCount:TpvInt32;
+       function GetBucket(fStreamPosition:TpvInt64):PpvBufferedStreamBucket;
+      protected
+       procedure SetSize(NewSize:TpvInt32); overload; override;
+       procedure SetSize(const NewSize:TpvInt64); overload; override;
+      public
+       constructor Create(Stream:TStream;FreeStream:boolean=false;BufferSize:TpvInt32=DefaultBufferSize;BufferBucketCount:TpvInt32=DefaultBufferBucketCount);
+       destructor Destroy; override;
+       function Read(var Buffer;Count:TpvInt32):TpvInt32; override;
+       function Write(const Buffer;Count:TpvInt32):TpvInt32; override;
+       function Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32; overload; override;
+       function Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64; overload; override;
+       procedure Flush;
      end;
 
 implementation
@@ -179,6 +255,575 @@ procedure TpvDataStream.SetSize(const NewSize:TpvInt64);
 begin
  if fSize<>NewSize then begin
   raise EpvDataStream.Create('Stream set size error');
+ end;
+end;
+
+constructor TpvSimpleBufferedStream.Create(Stream:TStream;FreeStream:boolean=false;BufferSize:TpvInt32=DefaultBufferSize);
+begin
+ inherited Create;
+ fWrappedStream:=Stream;
+ fWrappedStreamSize:=fWrappedStream.Size;
+ fFreeWrappedStream:=FreeStream;
+ fStreamBufferPosition:=0;
+ fStreamBufferSize:=BufferSize;
+ GetMem(fStreamBuffer,fStreamBufferSize);
+ fStreamBufferPointer:=fStreamBuffer;
+ fStreamBufferEnd:=fStreamBufferPointer;
+ fStreamBufferDirty:=false;
+end;
+
+destructor TpvSimpleBufferedStream.Destroy;
+begin
+ Flush;
+ FreeMem(fStreamBuffer,fStreamBufferSize);
+ if fFreeWrappedStream then begin
+  FreeAndNil(fWrappedStream);
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvSimpleBufferedStream.ReadBufferFromFile;
+var BytesRead:TpvInt64;
+begin
+ if fWrappedStream.Seek(fStreamBufferPosition,soBeginning)<>fStreamBufferPosition then begin
+  raise EStreamError.Create('Seek error');
+ end;
+ BytesRead:=fWrappedStream.Read(fStreamBuffer^,fStreamBufferSize);
+ if (BytesRead<0) or (BytesRead>fStreamBufferSize) then begin
+  raise EReadError.Create('Read error');
+ end;
+ fStreamBufferPointer:=fStreamBuffer;
+ fStreamBufferEnd:=@fStreamBufferPointer[BytesRead];
+end;
+
+function TpvSimpleBufferedStream.Read(var Buffer;Count:TpvInt32):TpvInt32;
+var Destination,OldfStreamBufferPointer:PpvRawByteChar;
+    BytesToRead,BytesInBuffer:TpvPtrUInt;
+begin
+ result:=0;
+ Destination:=@Buffer;
+ if assigned(Destination) then begin
+  while Count>0 do begin
+   BytesToRead:=TpvPtrUInt(fStreamBufferEnd)-TpvPtrUInt(fStreamBufferPointer);
+   if BytesToRead<=0 then begin
+    BytesInBuffer:=TpvPtrUInt(fStreamBufferEnd)-TpvPtrUInt(fStreamBuffer);
+    OldfStreamBufferPointer:=fStreamBufferPointer;
+    Assert(BytesInBuffer<=fStreamBufferSize,'Buffer overflow');
+    if BytesInBuffer>=fStreamBufferSize then begin
+     inc(fStreamBufferPosition,fStreamBufferSize);
+     dec(OldfStreamBufferPointer,fStreamBufferSize);
+    end;
+    ReadBufferFromFile;
+    fStreamBufferPointer:=OldfStreamBufferPointer;
+    BytesToRead:=TpvPtrUInt(fStreamBufferEnd)-TpvPtrUInt(fStreamBufferPointer);
+   end;
+   if TpvPtrInt(BytesToRead)>Count then begin
+    BytesToRead:=Count;
+   end;
+   if BytesToRead>0 then begin
+    Move(fStreamBufferPointer^,Destination^,BytesToRead);
+    dec(Count,BytesToRead);
+    inc(fStreamBufferPointer,BytesToRead);
+    inc(Destination,BytesToRead);
+    inc(result,BytesToRead);
+   end else begin
+    break;
+   end;
+  end;
+ end;
+end;
+
+function TpvSimpleBufferedStream.Write(const Buffer;Count:TpvInt32):TpvInt32;
+var Source:PpvRawByteChar;
+    BytesToWrite,CurrentPosition:TpvInt64;
+begin
+ result:=0;
+ Source:=@Buffer;
+ if assigned(Source) then begin
+  while Count>0 do begin
+   BytesToWrite:=fStreamBufferSize-(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+   if BytesToWrite<=0 then begin
+    Flush;
+    inc(fStreamBufferPosition,fStreamBufferSize);
+    ReadBufferFromFile;
+    BytesToWrite:=fStreamBufferSize-(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+   end;
+   if BytesToWrite>Count then begin
+    BytesToWrite:=Count;
+   end;
+   if BytesToWrite>(TpvPtrUInt(fStreamBufferEnd)-TpvPtrUInt(fStreamBufferPointer)) then begin
+    fStreamBufferEnd:=@fStreamBufferPointer[BytesToWrite];
+   end;
+   if BytesToWrite>0 then begin
+    fStreamBufferDirty:=true;
+    Move(Source^,fStreamBufferPointer^,BytesToWrite);
+    dec(Count,BytesToWrite);
+    inc(Source,BytesToWrite);
+    inc(fStreamBufferPointer,BytesToWrite);
+    inc(result,BytesToWrite);
+    CurrentPosition:=fStreamBufferPosition+(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+    if fWrappedStreamSize<CurrentPosition then begin
+     fWrappedStreamSize:=CurrentPosition;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvSimpleBufferedStream.Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32;
+var CurrentPosition,Delta:TpvInt64;
+begin
+ CurrentPosition:=fStreamBufferPosition+(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+ if (Origin=soFromCurrent) and (Offset=0) then begin
+  result:=CurrentPosition;
+ end else begin
+  case Origin of
+   soFromBeginning:begin
+    result:=Offset;
+   end;
+   soFromCurrent:begin
+    result:=CurrentPosition+Offset;
+   end;
+   soFromEnd:begin
+    result:=fWrappedStreamSize+Offset;
+   end;
+   else begin
+    raise EStreamError.Create('Unknown seek origin');
+   end;
+  end;
+  if result<0 then begin
+   result:=0;
+  end;
+  if (fStreamBufferPosition<=result) and (result<(fStreamBufferPosition+fStreamBufferSize)) then begin
+   fStreamBufferPointer:=@fStreamBuffer[result-fStreamBufferPosition];
+  end else begin
+   Flush;
+   Delta:=result mod fStreamBufferSize;
+   fStreamBufferPosition:=result-Delta;
+   ReadBufferFromFile;
+   fStreamBufferPointer:=@fStreamBuffer[Delta];
+  end;
+  result:=fStreamBufferPosition+(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+  if fWrappedStreamSize<result then begin
+   fWrappedStreamSize:=result;
+  end;
+ end;
+end;
+
+function TpvSimpleBufferedStream.Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64;
+var CurrentPosition,Delta:TpvInt64;
+begin
+ CurrentPosition:=fStreamBufferPosition+(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+ if (Origin=soCurrent) and (Offset=0) then begin
+  result:=CurrentPosition;
+ end else begin
+  case Origin of
+   soBeginning:begin
+    result:=Offset;
+   end;
+   soCurrent:begin
+    result:=CurrentPosition+Offset;
+   end;
+   soEnd:begin
+    result:=fWrappedStreamSize+Offset;
+   end;
+   else begin
+    raise EStreamError.Create('Unknown seek origin');
+   end;
+  end;
+  if result<0 then begin
+   result:=0;
+  end;
+  if (fStreamBufferPosition<=result) and (result<(fStreamBufferPosition+fStreamBufferSize)) then begin
+   fStreamBufferPointer:=@fStreamBuffer[result-fStreamBufferPosition];
+  end else begin
+   Flush;
+   Delta:=result mod fStreamBufferSize;
+   fStreamBufferPosition:=result-Delta;
+   ReadBufferFromFile;
+   fStreamBufferPointer:=@fStreamBuffer[Delta];
+  end;
+  result:=fStreamBufferPosition+(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+  if fWrappedStreamSize<result then begin
+   fWrappedStreamSize:=result;
+  end;
+ end;
+end;
+
+procedure TpvSimpleBufferedStream.Flush;
+var BytesToWrite:TpvInt64;
+begin
+ if fStreamBufferDirty then begin
+  fStreamBufferDirty:=false;
+  if fWrappedStream.Seek(fStreamBufferPosition,soBeginning)<>fStreamBufferPosition then begin
+   raise EStreamError.Create('Seek error');
+  end;
+  BytesToWrite:=TpvPtrUInt(fStreamBufferEnd)-TpvPtrUInt(fStreamBuffer);
+  if fWrappedStream.Write(fStreamBuffer^,BytesToWrite)<>BytesToWrite then begin
+   raise EWriteError.Create('Write error');
+  end;
+  fWrappedStreamSize:=fWrappedStream.Size;
+  if fWrappedStream is TFileStream then begin
+{$ifdef Windows}
+  Windows.FlushFileBuffers(TFileStream(fWrappedStream).Handle);
+{$else}
+  fpfsync(TFileStream(fWrappedStream).Handle);
+{$endif}
+  end;
+ end;
+end;
+
+procedure TpvSimpleBufferedStream.SetSize(NewSize:TpvInt32);
+begin
+ if NewSize<0 then begin
+  NewSize:=0;
+ end;
+ if NewSize>fStreamBufferPosition then begin
+  Flush;
+ end;
+ fWrappedStream.Size:=NewSize;
+ if fWrappedStream.Seek(NewSize,soBeginning)<>NewSize then begin
+  raise EStreamError.Create('Seek error');
+ end;
+ fWrappedStreamSize:=NewSize;
+ if Position>NewSize then begin
+  Position:=NewSize;
+ end;
+end;
+
+procedure TpvSimpleBufferedStream.SetSize(const NewSize:TpvInt64);
+var NewSizeEx:TpvInt64;
+begin
+ NewSizeEx:=NewSize;
+ if NewSizeEx<0 then begin
+  NewSizeEx:=0;
+ end;
+ if NewSizeEx>fStreamBufferPosition then begin
+  Flush;
+ end;
+ fWrappedStream.Size:=NewSizeEx;
+ if fWrappedStream.Seek(NewSizeEx,soBeginning)<>NewSizeEx then begin
+  raise EStreamError.Create('Seek error');
+ end;
+ fWrappedStreamSize:=NewSize;
+ if Position>NewSizeEx then begin
+  Position:=NewSizeEx;
+ end;
+end;
+
+constructor TpvBufferedStream.Create(Stream:TStream;FreeStream:boolean=false;BufferSize:TpvInt32=DefaultBufferSize;BufferBucketCount:TpvInt32=DefaultBufferBucketCount);
+var i:TpvInt32;
+begin
+ inherited Create;
+ fBuckets:=nil;
+ fWrappedStream:=Stream;
+ fWrappedStreamSize:=fWrappedStream.Size;
+ fFreeWrappedStream:=FreeStream;
+ fBucketCount:=BufferBucketCount;
+ begin
+  dec(BufferSize);
+  BufferSize:=BufferSize or (BufferSize shr 1);
+  BufferSize:=BufferSize or (BufferSize shr 2);
+  BufferSize:=BufferSize or (BufferSize shr 4);
+  BufferSize:=BufferSize or (BufferSize shr 8);
+  BufferSize:=BufferSize or (BufferSize shr 16);
+ {$ifdef cpu64}
+  BufferSize:=BufferSize or (BufferSize shr 32);
+ {$endif}
+  fStreamBufferSize:=BufferSize+1;
+ end;
+ fStreamBufferSizeMask:=fStreamBufferSize-1;
+ fStreamBufferSizeInvMask:=not fStreamBufferSizeMask;
+ fStreamBufferSizeShift:=1;
+ while (TpvInt64(1) shl fStreamBufferSizeShift)<fStreamBufferSize do begin
+  inc(fStreamBufferSizeShift);
+ end;
+ GetMem(fStreamBuffer,fStreamBufferSize*fBucketCount);
+ SetLength(fBuckets,fBucketCount);
+ for i:=0 to fBucketCount-1 do begin
+  FillChar(fBuckets[i],sizeof(TpvBufferedStreamBucket),#0);
+  fBuckets[i].Previous:=nil;
+  fBuckets[i].Next:=nil;
+  fBuckets[i].BasePosition:=-1;
+  fBuckets[i].Dirty:=false;
+  fBuckets[i].Buffer:=@fStreamBuffer[i*fStreamBufferSize];
+ end;
+ for i:=1 to fBucketCount-1 do begin
+  fBuckets[i].Previous:=@fBuckets[i-1];
+ end;
+ for i:=0 to fBucketCount-2 do begin
+  fBuckets[i].Next:=@fBuckets[i+1];
+ end;
+ fFirstBucket:=@fBuckets[0];
+ fLastBucket:=@fBuckets[fBucketCount-1];
+ fStreamPosition:=0;
+ FillChar(fBucketBitmap,sizeof(TpvBufferedStreamBucketBitmap),#0);
+end;
+
+destructor TpvBufferedStream.Destroy;
+begin
+ Flush;
+ FreeMem(fStreamBuffer);
+ SetLength(fBuckets,0);
+ if fFreeWrappedStream then begin
+  FreeAndNil(fWrappedStream);
+ end;
+ inherited Destroy;
+end;
+
+function TpvBufferedStream.GetBucket(fStreamPosition:TpvInt64):PpvBufferedStreamBucket;
+var MaskedStreamPosition,BucketBitmapPosition:TpvInt64;
+begin
+ MaskedStreamPosition:=fStreamPosition and fStreamBufferSizeInvMask;
+ BucketBitmapPosition:=MaskedStreamPosition shr fStreamBufferSizeShift;
+ if ((BucketBitmapPosition shr 3)>=length(fBucketBitmap)) or ((fBucketBitmap[BucketBitmapPosition shr 3] and (1 shl (BucketBitmapPosition and 7)))<>0) then begin
+  result:=fFirstBucket;
+  while assigned(result) and (result^.BasePosition<>MaskedStreamPosition) do begin
+   result:=result^.Next;
+  end;
+ end else begin
+  result:=nil;
+ end;
+ if not assigned(result) then begin
+  result:=fLastBucket;
+  if result^.Dirty then begin
+   if fWrappedStream.Seek(result^.BasePosition,soBeginning)<>result^.BasePosition then begin
+    raise EStreamError.Create('Seek error');
+   end;
+   if fWrappedStream.Write(result^.Buffer^,result^.BufferSize)<>result^.BufferSize then begin
+    raise EWriteError.Create('Write error');
+   end;
+   result^.Dirty:=false;
+  end;
+  if result^.BasePosition>=0 then begin
+   BucketBitmapPosition:=result^.BasePosition shr fStreamBufferSizeShift;
+   if (BucketBitmapPosition shr 3)<length(fBucketBitmap) then begin
+    fBucketBitmap[BucketBitmapPosition shr 3]:=fBucketBitmap[BucketBitmapPosition shr 3] and not (1 shl (BucketBitmapPosition and 7));
+   end;
+  end;
+  BucketBitmapPosition:=MaskedStreamPosition shr fStreamBufferSizeShift;
+  if (BucketBitmapPosition shr 3)<length(fBucketBitmap) then begin
+   fBucketBitmap[BucketBitmapPosition shr 3]:=fBucketBitmap[BucketBitmapPosition shr 3] or (1 shl (BucketBitmapPosition and 7));
+  end;
+  result^.BasePosition:=MaskedStreamPosition;
+  if fWrappedStream.Seek(result^.BasePosition,soBeginning)<>result^.BasePosition then begin
+   raise EStreamError.Create('Seek error');
+  end;
+  result^.BufferSize:=fWrappedStream.Read(result^.Buffer^,fStreamBufferSize);
+  if (result^.BufferSize<0) or (result^.BufferSize>fStreamBufferSize) then begin
+   raise EReadError.Create('Read error');
+  end;
+ end;
+ if assigned(result) and (fFirstBucket<>result) then begin
+  if assigned(result^.Previous) then begin
+   result^.Previous^.Next:=result^.Next;
+  end;
+  if assigned(result^.Next) then begin
+   result^.Next^.Previous:=result^.Previous;
+  end else if fLastBucket=result then begin
+   fLastBucket:=result^.Previous;
+  end;
+  fFirstBucket^.Previous:=result;
+  result^.Next:=fFirstBucket;
+  result^.Previous:=nil;
+  fFirstBucket:=result;
+ end;
+end;
+
+function TpvBufferedStream.Read(var Buffer;Count:TpvInt32):TpvInt32;
+var Bucket:PpvBufferedStreamBucket;
+    Destination:PpvRawByteChar;
+    BufferPosition,BytesToRead:TpvInt64;
+begin
+ result:=0;
+ Destination:=@Buffer;
+ if assigned(Destination) then begin
+  while Count>0 do begin
+   Bucket:=GetBucket(fStreamPosition);
+   if assigned(Bucket) then begin
+    BufferPosition:=fStreamPosition-Bucket^.BasePosition;
+    BytesToRead:=Bucket^.BufferSize-BufferPosition;
+    if BytesToRead>Count then begin
+     BytesToRead:=Count;
+    end;
+    if BytesToRead>0 then begin
+     Move(PpvRawByteChar(Bucket^.Buffer)[BufferPosition],Destination^,BytesToRead);
+     inc(fStreamPosition,BytesToRead);
+     inc(Destination,BytesToRead);
+     inc(result,BytesToRead);
+     dec(Count,BytesToRead);
+    end else begin
+     break;
+    end;
+   end else begin
+    break;
+   end;
+  end;
+ end;
+end;
+
+function TpvBufferedStream.Write(const Buffer;Count:TpvInt32):TpvInt32;
+var Bucket:PpvBufferedStreamBucket;
+    Source:PpvRawByteChar;
+    BufferPosition,BytesToWrite:TpvInt64;
+    DoNeedResize:boolean;
+begin
+ result:=0;
+ Source:=@Buffer;
+ if assigned(Source) then begin
+  while Count>0 do begin
+   Bucket:=GetBucket(fStreamPosition);
+   if assigned(Bucket) then begin
+    DoNeedResize:=false;
+    BufferPosition:=fStreamPosition-Bucket^.BasePosition;
+    BytesToWrite:=Bucket^.BufferSize-BufferPosition;
+    if BytesToWrite<=0 then begin
+     BytesToWrite:=fStreamBufferSize-BufferPosition;
+     DoNeedResize:=true;
+    end;
+    if BytesToWrite>Count then begin
+     BytesToWrite:=Count;
+    end;
+    if BytesToWrite>0 then begin
+     Bucket^.Dirty:=true;
+     Move(Source^,PpvRawByteChar(Bucket^.Buffer)[BufferPosition],BytesToWrite);
+     inc(fStreamPosition,BytesToWrite);
+     inc(Source,BytesToWrite);
+     inc(result,BytesToWrite);
+     dec(Count,BytesToWrite);
+     if fWrappedStreamSize<fStreamPosition then begin
+      fWrappedStreamSize:=fStreamPosition;
+     end;
+     if DoNeedResize and (Bucket^.BufferSize<(BufferPosition+BytesToWrite)) then begin
+      Bucket^.BufferSize:=BufferPosition+BytesToWrite;
+     end;
+    end else begin
+     break;
+    end;
+   end else begin
+    break;
+   end;
+  end;
+ end;
+end;
+
+function TpvBufferedStream.Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32;
+begin
+ if (Origin=soFromCurrent) and (Offset=0) then begin
+  result:=fStreamPosition;
+ end else begin
+  case Origin of
+   soFromBeginning:begin
+    result:=Offset;
+   end;
+   soFromCurrent:begin
+    result:=fStreamPosition+Offset;
+   end;
+   soFromEnd:begin
+    result:=fWrappedStreamSize+Offset;
+   end;
+   else begin
+    raise EStreamError.Create('Unknown seek origin');
+   end;
+  end;
+  if result<0 then begin
+   result:=0;
+  end else if result>fWrappedStreamSize then begin
+   result:=fWrappedStreamSize;
+  end;
+  fStreamPosition:=result;
+ end;
+end;
+
+function TpvBufferedStream.Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64;
+begin
+ if (Origin=soCurrent) and (Offset=0) then begin
+  result:=fStreamPosition;
+ end else begin
+  case Origin of
+   soBeginning:begin
+    result:=Offset;
+   end;
+   soCurrent:begin
+    result:=fStreamPosition+Offset;
+   end;
+   soEnd:begin
+    result:=fWrappedStreamSize+Offset;
+   end;
+   else begin
+    raise EStreamError.Create('Unknown seek origin');
+   end;
+  end;
+  if result<0 then begin
+   result:=0;
+  end else if result>fWrappedStreamSize then begin
+   result:=fWrappedStreamSize;
+  end;
+  fStreamPosition:=result;
+ end;
+end;
+
+procedure TpvBufferedStream.Flush;
+var i:TpvInt32;
+    Dirty:boolean;
+begin
+ Dirty:=false;
+ for i:=0 to fBucketCount-1 do begin
+  if fBuckets[i].Dirty then begin
+   if fWrappedStream.Seek(fBuckets[i].BasePosition,soBeginning)<>fBuckets[i].BasePosition then begin
+    raise EStreamError.Create('Seek error');
+   end;
+   if fWrappedStream.Write(fBuckets[i].Buffer^,fBuckets[i].BufferSize)<>fBuckets[i].BufferSize then begin
+    raise EWriteError.Create('Write error');
+   end;
+   Dirty:=true;
+   fBuckets[i].Dirty:=false;
+  end;
+ end;
+ if Dirty and (fWrappedStream is TFileStream) then begin
+{$ifdef windows}
+  Windows.FlushFileBuffers(TFileStream(fWrappedStream).Handle);
+{$else}
+  fpfsync(TFileStream(fWrappedStream).Handle);
+{$endif}
+ end;
+end;
+
+procedure TpvBufferedStream.SetSize(NewSize:TpvInt32);
+begin
+ if NewSize<0 then begin
+  NewSize:=0;
+ end;
+ if NewSize>fStreamPosition then begin
+  Flush;
+ end;
+ fWrappedStream.Size:=NewSize;
+ if fWrappedStream.Seek(NewSize,soBeginning)<>NewSize then begin
+  raise EStreamError.Create('Seek error');
+ end;
+ fWrappedStreamSize:=NewSize;
+ if Position>NewSize then begin
+  Position:=NewSize;
+ end;
+end;
+
+procedure TpvBufferedStream.SetSize(const NewSize:TpvInt64);
+var NewSizeEx:TpvInt64;
+begin
+ NewSizeEx:=NewSize;
+ if NewSizeEx<0 then begin
+  NewSizeEx:=0;
+ end;
+ if NewSizeEx>fStreamPosition then begin
+  Flush;
+ end;
+ fWrappedStream.Size:=NewSizeEx;
+ if fWrappedStream.Seek(NewSizeEx,soBeginning)<>NewSizeEx then begin
+  raise EStreamError.Create('Seek error');
+ end;
+ fWrappedStreamSize:=NewSize;
+ if Position>NewSizeEx then begin
+  Position:=NewSizeEx;
  end;
 end;
 

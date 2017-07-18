@@ -230,7 +230,6 @@
         <DCCReference Include="..\src\PasVulkan.StaticLinking.pas"/>
         <DCCReference Include="..\src\PasVulkan.Application.pas"/>
         <DCCReference Include="..\src\PasVulkan.GUI.pas"/>
-        <DCCReference Include="UnitBufferedStream.pas"/>
         <DCCReference Include="UnitChunkStream.pas"/>
         <DCCReference Include="UnitRegisteredExamplesList.pas"/>
         <DCCReference Include="UnitExampleVulkanApplication.pas"/>
