@@ -215,7 +215,7 @@ type PPpvInt8=^PpvInt8;
        class operator Explicit(const a:TpvUInt128):TpvUInt64; {$ifdef caninline}inline;{$endif}
        class operator Add(const a,b:TpvUInt128):TpvUInt128; {$ifdef caninline}inline;{$endif}
        class operator Multiply(const a,b:TpvUInt128):TpvUInt128;
-       class operator IntDivide(const a:TpvUInt128;const b:TpvUInt64):TpvUInt128;
+       class operator IntDivide(const Dividend:TpvUInt128;const Divisor:TpvUInt64):TpvUInt128;
        class function Mul64(const a,b:TpvUInt64):TpvUInt128; static;
 {$ifdef BIG_ENDIAN}
        case byte of
@@ -531,37 +531,10 @@ begin
  result.Lo:=(TpvUInt64(dw[4] and $ffff) shl 48) or (TpvUInt64(dw[5] and $ffff) shl 32) or (TpvUInt64(dw[6] and $ffff) shl 16) or (TpvUInt64(dw[7] and $ffff) shl 0);
 end;
 
-class operator TpvUInt128.IntDivide(const a:TpvUInt128;const b:TpvUInt64):TpvUInt128;
-{$ifdef fpc}
-var Quotient:TpvUInt128;
-    Remainder:TpvUInt64;
-    Bit,RemainderHi,RemainderLo,DivisorHi,DivisorLo:TpvUInt32;
-    Dividend:TpvUInt128 absolute a;
-    Divisor:TpvUInt64 absolute b;
-begin
- Quotient:=Dividend;
- Remainder:=0;
- for Bit:=1 to 128 do begin
-  Remainder:=(Remainder shl 1) or (ord((Quotient.Hi and $8000000000000000)<>0) and 1);
-  Quotient.Hi:=(Quotient.Hi shl 1) or (Quotient.Lo shr 63);
-  Quotient.Lo:=Quotient.Lo shl 1;
-  RemainderHi:=Remainder shr 32;
-  RemainderLo:=Remainder and $ffffffff;
-  DivisorHi:=Divisor shr 32;
-  DivisorLo:=Divisor and $ffffffff;
-  if (RemainderHi>DivisorHi) or ((RemainderHi=DivisorHi) and (RemainderLo>=DivisorLo)) then begin
-   dec(Remainder,Divisor);
-   Quotient.Lo:=Quotient.Lo or 1;
-  end;
- end;
- result:=Quotient;
-end;
-{$else}
+class operator TpvUInt128.IntDivide(const Dividend:TpvUInt128;const Divisor:TpvUInt64):TpvUInt128;
 var Quotient:TpvUInt128;
     Remainder:TpvUInt64;
     Bit:TpvUInt32;
-    Dividend:TpvUInt128 absolute a;
-    Divisor:TpvUInt64 absolute b;
 begin
  Quotient:=Dividend;
  Remainder:=0;
@@ -577,7 +550,6 @@ begin
  end;
  result:=Quotient;
 end;
-{$endif}
 
 class function TpvUInt128.Mul64(const a,b:TpvUInt64):TpvUInt128;
 var u0,u1,v0,v1,k,t,w0,w1,w2:TpvUInt64;
