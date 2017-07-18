@@ -89,6 +89,8 @@ var VulkanMinimumMemoryChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 24; // 16 MB
 
     VulkanSmallMaximumHeapSize:TVkDeviceSize=TVkDeviceSize(1) shl 31; // 2048 MB small maximum heap size as threshold
 
+    VulkanDefaultAndroidHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 24; // 16 MB memory chunk size at heaps on Android-devices
+
     VulkanDefaultSmallHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 25; // 32 MB memory chunk size at small-sized heaps
 
     VulkanDefaultLargeHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 27; // 128 MB memory chunk size at large-sized heaps
@@ -8709,6 +8711,13 @@ begin
      HeapIndex:=PhysicalDevice.fMemoryProperties.memoryTypes[Index].heapIndex;
      CurrentSize:=PhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size;
      if aSizeIsMinimumSize then begin
+{$ifdef Android}
+      if aSize<VulkanDefaultAndroidHeapChunkSize then begin
+       CurrentWantedChunkSize:=VulkanDefaultAndroidHeapChunkSize;
+      end else begin
+       CurrentWantedChunkSize:=aSize;
+      end;
+{$else}
       if CurrentSize<=VulkanSmallMaximumHeapSize then begin
        if aSize<VulkanDefaultSmallHeapChunkSize then begin
         CurrentWantedChunkSize:=VulkanDefaultSmallHeapChunkSize;
@@ -8722,6 +8731,7 @@ begin
         CurrentWantedChunkSize:=aSize;
        end;
       end;
+{$endif}
      end else begin
       CurrentWantedChunkSize:=aSize;
      end;

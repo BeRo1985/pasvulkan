@@ -5419,25 +5419,28 @@ begin
   end;
  end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
-
-  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.AllocateVulkanSurface');
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.AllocateVulkanSurface');
 {$ifend}
 end;
 
 procedure TpvApplication.DestroyVulkanSurface;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
-  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.FreeVulkanSurface');
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DestroyVulkanSurface');
 {$ifend}
  FreeAndNil(fVulkanSurface);
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
-  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.FreeVulkanSurface');
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanSurface');
 {$ifend}
 end;
 
 procedure TpvApplication.CreateVulkanSwapChain;
 var Index:TpvInt32;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanSwapChain');
+{$ifend}
+
  DestroyVulkanSwapChain;
 
  fVulkanSwapChain:=TpvVulkanSwapChain.Create(fVulkanDevice,
@@ -5471,11 +5474,17 @@ begin
   fVulkanPresentCompleteFencesReady[Index]:=false;
  end;
 
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanSwapChain');
+{$ifend}
 end;
 
 procedure TpvApplication.DestroyVulkanSwapChain;
 var Index:TpvInt32;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DestroyVulkanSwapChain');
+{$ifend}
  for Index:=0 to fCountSwapChainImages-1 do begin
   fVulkanWaitFencesReady[Index]:=false;
   fVulkanPresentCompleteFencesReady[Index]:=false;
@@ -5484,10 +5493,16 @@ begin
   FreeAndNil(fVulkanPresentCompleteFences[Index]);
  end;
  FreeAndNil(fVulkanSwapChain);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanSwapChain');
+{$ifend}
 end;
 
 procedure TpvApplication.CreateVulkanRenderPass;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanRenderPass');
+{$ifend}
 
  DestroyVulkanRenderPass;
 
@@ -5543,11 +5558,20 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanRenderPass');
+{$ifend}
 end;
 
 procedure TpvApplication.DestroyVulkanRenderPass;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DestroyVulkanRenderPass');
+{$ifend}
  FreeAndNil(fVulkanRenderPass);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanRenderPass');
+{$ifend}
 end;
 
 procedure TpvApplication.CreateVulkanFrameBuffers;
@@ -5555,6 +5579,9 @@ var Index:TpvInt32;
     ColorAttachmentImage:TpvVulkanImage;
     ColorAttachmentImageView:TpvVulkanImageView;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanFrameBuffers');
+{$ifend}
 
  DestroyVulkanFrameBuffers;
 
@@ -5640,11 +5667,17 @@ begin
                                                         false);
  end;
 
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanFrameBuffers');
+{$ifend}
 end;
 
 procedure TpvApplication.DestroyVulkanFrameBuffers;
 var Index:TpvInt32;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DestroyVulkanFrameBuffers');
+{$ifend}
  for Index:=0 to length(fVulkanFrameBufferColorAttachments)-1 do begin
   FreeAndNil(fVulkanFrameBufferColorAttachments[Index]);
  end;
@@ -5654,12 +5687,19 @@ begin
   FreeAndNil(fVulkanFrameBuffers[Index]);
  end;
  fVulkanFrameBuffers:=nil;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanFrameBuffers');
+{$ifend}
 end;
 
 procedure TpvApplication.CreateVulkanCommandBuffers;
 var Index:TpvInt32;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanFrameBuffers');
+{$ifend}
+
  DestroyVulkanCommandBuffers;
 
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
@@ -5743,11 +5783,17 @@ begin
 
  end;
 
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanCommandBuffers');
+{$ifend}
 end;
 
 procedure TpvApplication.DestroyVulkanCommandBuffers;
 var Index:TpvInt32;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DestroyVulkanCommandBuffers');
+{$ifend}
  for Index:=0 to CountSwapChainImages-1 do begin
   FreeAndNil(fVulkanBlankCommandBuffers[Index]);
   FreeAndNil(fVulkanBlankCommandBufferSemaphores[Index]);
@@ -5757,6 +5803,9 @@ begin
   FreeAndNil(fVulkanDrawToPresentImageBarrierCommandBufferSemaphores[Index]);
  end;
  FreeAndNil(fVulkanCommandPool);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanCommandBuffers');
+{$ifend}
 end;
 
 procedure TpvApplication.SetScreen(const aScreen:TpvApplicationScreen);
@@ -6125,6 +6174,9 @@ end;
 
 procedure TpvApplication.InitializeGraphics;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.InitializeGraphics');
+{$ifend}
  if not fGraphicsReady then begin
   try
    fGraphicsReady:=true;
@@ -6140,10 +6192,16 @@ begin
    raise;
   end;
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.InitializeGraphics');
+{$ifend}
 end;
 
 procedure TpvApplication.DeinitializeGraphics;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DeinitializeGraphics');
+{$ifend}
  if fGraphicsReady then begin
   VulkanWaitIdle;
   BeforeDestroySwapChain;
@@ -6154,10 +6212,16 @@ begin
   DestroyVulkanSurface;
   fGraphicsReady:=false;
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DeinitializeGraphics');
+{$ifend}
 end;
 
 procedure TpvApplication.InitializeAudio;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.InitializeAudio . . .');
+{$ifend}
  if fUseAudio and not assigned(fAudio) then begin
   FillChar(fSDLWaveFormat,SizeOf(TSDL_AudioSpec),#0);
   fSDLWaveFormat.Channels:=2;
@@ -6176,14 +6240,23 @@ begin
   end;
   SDL_PauseAudio(1);
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.InitializeAudio . . .');
+{$ifend}
 end;
 
 procedure TpvApplication.DeinitializeAudio;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DeinitializeAudio . . .');
+{$ifend}
  if assigned(fAudio) then begin
   SDL_CloseAudio;
   FreeAndNil(fAudio);
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DeinitializeAudio . . .');
+{$ifend}
 end;
 
 procedure TpvApplication.UpdateFrameTimesHistory;
