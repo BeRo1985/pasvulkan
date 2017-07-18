@@ -6878,12 +6878,12 @@ begin
 end;
 
 constructor TpvVulkanInstance.Create(const aApplicationName:TpvVulkanCharString='Vulkan application';
-                                   const aApplicationVersion:TpvUInt32=1;
-                                   const aEngineName:TpvVulkanCharString='Vulkan engine';
-                                   const aEngineVersion:TpvUInt32=1;
-                                   const pAPIVersion:TpvUInt32=VK_API_VERSION_1_0;
-                                   const aValidation:boolean=false;
-                                   const aAllocationManager:TpvVulkanAllocationManager=nil);
+                                     const aApplicationVersion:TpvUInt32=1;
+                                     const aEngineName:TpvVulkanCharString='Vulkan engine';
+                                     const aEngineVersion:TpvUInt32=1;
+                                     const pAPIVersion:TpvUInt32=VK_API_VERSION_1_0;
+                                     const aValidation:boolean=false;
+                                     const aAllocationManager:TpvVulkanAllocationManager=nil);
 var Index,SubIndex:TpvInt32;
     Count,SubCount:TpvUInt32;
     LayerName:PVkChar;
@@ -7346,19 +7346,19 @@ begin
 end;
 
 function TpvVulkanPhysicalDevice.GetImageFormatProperties(const aFormat:TVkFormat;
-                                                        const aType:TVkImageType;
-                                                        const aTiling:TVkImageTiling;
-                                                        const aUsageFlags:TVkImageUsageFlags;
-                                                        const aCreateFlags:TVkImageCreateFlags):TVkImageFormatProperties;
+                                                          const aType:TVkImageType;
+                                                          const aTiling:TVkImageTiling;
+                                                          const aUsageFlags:TVkImageUsageFlags;
+                                                          const aCreateFlags:TVkImageCreateFlags):TVkImageFormatProperties;
 begin
  fInstance.Commands.GetPhysicalDeviceImageFormatProperties(fPhysicalDeviceHandle,aFormat,aType,aTiling,aUsageFlags,aCreateFlags,@result);
 end;
 
 function TpvVulkanPhysicalDevice.GetSparseImageFormatProperties(const aFormat:TVkFormat;
-                                                              const aType:TVkImageType;
-                                                              const aSamples:TVkSampleCountFlagBits;
-                                                              const aUsageFlags:TVkImageUsageFlags;
-                                                              const aTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
+                                                                const aType:TVkImageType;
+                                                                const aSamples:TVkSampleCountFlagBits;
+                                                                const aUsageFlags:TVkImageUsageFlags;
+                                                                const aTiling:TVkImageTiling):TVkSparseImageFormatPropertiesArray;
 var Count:TpvUInt32;
 begin
  result:=nil;
@@ -7606,17 +7606,17 @@ end;
 
 (*constructor TpvVulkanSurface.Create(const aInstance:TpvVulkanInstance;
 {$if defined(Android)}
-                                  const aWindow:PANativeWindow
+                                      const aWindow:PANativeWindow
 {$elseif defined(Mir)}
-                                  const aConnection:PMirConnection;const aMirSurface:PMirSurface
+                                      const aConnection:PMirConnection;const aMirSurface:PMirSurface
 {$elseif defined(Wayland)}
-                                  const aDisplay:Pwl_display;const aSurface:Pwl_surface
+                                      const aDisplay:Pwl_display;const aSurface:Pwl_surface
 {$elseif defined(Windows)}
-                                  const aInstanceHandle,aWindowHandle:Windows.THandle
+                                      const aInstanceHandle,aWindowHandle:Windows.THandle
 {$elseif defined(XLIB)}
-                                  const aDisplay:PDisplay;const aWindow:TWindow
+                                      const aDisplay:PDisplay;const aWindow:TWindow
 {$elseif defined(XCB)}
-                                  const aConnection:Pxcb_connection;aWindow:Pxcb_window
+                                      const aConnection:Pxcb_connection;aWindow:Pxcb_window
 {$ifend}
                                  );*)
 
@@ -7781,9 +7781,9 @@ begin
 end;
 
 constructor TpvVulkanDevice.Create(const aInstance:TpvVulkanInstance;
-                                 const aPhysicalDevice:TpvVulkanPhysicalDevice=nil;
-                                 const aSurface:TpvVulkanSurface=nil;
-                                 const aAllocationManager:TpvVulkanAllocationManager=nil);
+                                   const aPhysicalDevice:TpvVulkanPhysicalDevice=nil;
+                                   const aSurface:TpvVulkanSurface=nil;
+                                   const aAllocationManager:TpvVulkanAllocationManager=nil);
 var Index,SubIndex:TpvInt32;
     BestPhysicalDevice,CurrentPhysicalDevice:TpvVulkanPhysicalDevice;
     BestScore,CurrentScore,Temp:int64;
@@ -7966,12 +7966,12 @@ begin
 end;
 
 procedure TpvVulkanDevice.AddQueues(const aUniversal:boolean=true;
-                                  const aPresent:boolean=true;
-                                  const aGraphics:boolean=true;
-                                  const aCompute:boolean=true;
-                                  const aTransfer:boolean=true;
-                                  const aSparseBinding:boolean=false;
-                                  const aSurface:TpvVulkanSurface=nil);
+                                    const aPresent:boolean=true;
+                                    const aGraphics:boolean=true;
+                                    const aCompute:boolean=true;
+                                    const aTransfer:boolean=true;
+                                    const aSparseBinding:boolean=false;
+                                    const aSurface:TpvVulkanSurface=nil);
 var Index:TpvInt32;
     DoAdd:boolean;
     QueueFamilyProperties:PVkQueueFamilyProperties;
@@ -8222,11 +8222,11 @@ begin
 end;
 
 constructor TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode.Create(const aKey:TpvUInt64=0;
-                                                                 const aValue:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeValue=nil;
-                                                                 const aLeft:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
-                                                                 const aRight:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
-                                                                 const aParent:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
-                                                                 const aColor:boolean=false);
+                                                                   const aValue:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeValue=nil;
+                                                                   const aLeft:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                                                                   const aRight:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                                                                   const aParent:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode=nil;
+                                                                   const aColor:boolean=false);
 begin
  inherited Create;
  fKey:=aKey;
@@ -8378,7 +8378,7 @@ begin
 end;
 
 function TpvVulkanDeviceMemoryChunkBlockRedBlackTree.Insert(const aKey:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeKey;
-                                                          const aValue:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeValue):TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+                                                            const aValue:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeValue):TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
 var x,y,xParentParent:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
 begin
  x:=fRoot;
@@ -8598,9 +8598,9 @@ begin
 end;
 
 constructor TpvVulkanDeviceMemoryChunkBlock.Create(const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
-                                                 const aOffset:TVkDeviceSize;
-                                                 const aSize:TVkDeviceSize;
-                                                 const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
+                                                   const aOffset:TVkDeviceSize;
+                                                   const aSize:TVkDeviceSize;
+                                                   const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
 begin
  inherited Create;
  fMemoryChunk:=aMemoryChunk;
@@ -8623,8 +8623,8 @@ begin
 end;
 
 procedure TpvVulkanDeviceMemoryChunkBlock.Update(const aOffset:TVkDeviceSize;
-                                               const aSize:TVkDeviceSize;
-                                               const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
+                                                 const aSize:TVkDeviceSize;
+                                                 const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
 begin
  if fOffset<>aOffset then begin
   fMemoryChunk.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
@@ -8645,17 +8645,17 @@ begin
 end;
 
 constructor TpvVulkanDeviceMemoryChunk.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
-                                            const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
-                                            const aSize:TVkDeviceSize;
-                                            const aSizeIsMinimumSize:boolean;
-                                            const aMemoryTypeBits:TpvUInt32;
-                                            const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
-                                            const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
-                                            const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
-                                            const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
-                                            const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
-                                            const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
-                                            const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList);
+                                              const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
+                                              const aSize:TVkDeviceSize;
+                                              const aSizeIsMinimumSize:boolean;
+                                              const aMemoryTypeBits:TpvUInt32;
+                                              const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+                                              const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
+                                              const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+                                              const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
+                                              const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
+                                              const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+                                              const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList);
 type TBlacklistedHeaps=array of TpvUInt32;
 var Index,HeapIndex,CurrentScore,BestScore,CountBlacklistedHeaps,BlacklistedHeapIndex:TpvInt32;
     MemoryAllocateInfo:TVkMemoryAllocateInfo;
@@ -9365,9 +9365,9 @@ begin
 end;
 
 constructor TpvVulkanDeviceMemoryBlock.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
-                                            const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
-                                            const aOffset:TVkDeviceSize;
-                                            const aSize:TVkDeviceSize);
+                                              const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
+                                              const aOffset:TVkDeviceSize;
+                                              const aSize:TVkDeviceSize);
 begin
 
  inherited Create;
@@ -9491,16 +9491,16 @@ begin
 end;
 
 function TpvVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
-                                                        const aMemoryBlockSize:TVkDeviceSize;
-                                                        const aMemoryBlockAlignment:TVkDeviceSize;
-                                                        const aMemoryTypeBits:TpvUInt32;
-                                                        const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
-                                                        const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
-                                                        const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
-                                                        const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
-                                                        const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
-                                                        const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
-                                                        const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType):TpvVulkanDeviceMemoryBlock;
+                                                          const aMemoryBlockSize:TVkDeviceSize;
+                                                          const aMemoryBlockAlignment:TVkDeviceSize;
+                                                          const aMemoryTypeBits:TpvUInt32;
+                                                          const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+                                                          const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
+                                                          const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+                                                          const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
+                                                          const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
+                                                          const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+                                                          const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType):TpvVulkanDeviceMemoryBlock;
 var TryIteration:TpvInt32;
     MemoryChunk:TpvVulkanDeviceMemoryChunk;
     Offset,Alignment:TVkDeviceSize;
@@ -9663,17 +9663,17 @@ begin
 end;
 
 constructor TpvVulkanBuffer.Create(const aDevice:TpvVulkanDevice;
-                                 const aSize:TVkDeviceSize;
-                                 const aUsage:TVkBufferUsageFlags;
-                                 const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-                                 const aQueueFamilyIndices:TVkUInt32List=nil;
-                                 const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-                                 const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-                                 const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
-                                 const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
-                                 const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
-                                 const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
-                                 const aBufferFlags:TpvVulkanBufferFlags=[]);
+                                   const aSize:TVkDeviceSize;
+                                   const aUsage:TVkBufferUsageFlags;
+                                   const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                   const aQueueFamilyIndices:TVkUInt32List=nil;
+                                   const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                   const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                                   const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                   const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
+                                   const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
+                                   const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                   const aBufferFlags:TpvVulkanBufferFlags=[]);
 var Index:TpvInt32;
     BufferCreateInfo:TVkBufferCreateInfo;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
@@ -9785,12 +9785,12 @@ begin
 end;
 
 procedure TpvVulkanBuffer.UploadData(const aTransferQueue:TpvVulkanQueue;
-                                   const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                   const aTransferFence:TpvVulkanFence;
-                                   const aData;
-                                   const aDataOffset:TVkDeviceSize;
-                                   const aDataSize:TVkDeviceSize;
-                                   const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=vbutsbmAutomatic);
+                                     const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                     const aTransferFence:TpvVulkanFence;
+                                     const aData;
+                                     const aDataOffset:TVkDeviceSize;
+                                     const aDataSize:TVkDeviceSize;
+                                     const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=vbutsbmAutomatic);
 var StagingBuffer:TpvVulkanBuffer;
     p:TpvPointer;
     VkBufferCopy:TVkBufferCopy;
@@ -9864,8 +9864,8 @@ begin
 end;
 
 procedure TpvVulkanBuffer.UpdateData(const aData;
-                                   const aDataOffset:TVkDeviceSize;
-                                   const aDataSize:TVkDeviceSize);
+                                     const aDataOffset:TVkDeviceSize;
+                                     const aDataSize:TVkDeviceSize);
 var p:TpvPointer;
 begin
  if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
@@ -9888,10 +9888,10 @@ begin
 end;
 
 constructor TpvVulkanBufferView.Create(const aDevice:TpvVulkanDevice;
-                                     const aBuffer:TpvVulkanBuffer;
-                                     const aFormat:TVkFormat;
-                                     const aOffset:TVkDeviceSize=0;
-                                     const aRange:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE));
+                                       const aBuffer:TpvVulkanBuffer;
+                                       const aFormat:TVkFormat;
+                                       const aOffset:TVkDeviceSize=0;
+                                       const aRange:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE));
 var BufferViewCreateInfo:TVkBufferViewCreateInfo;
 begin
 
@@ -9917,8 +9917,8 @@ begin
 end;
 
 constructor TpvVulkanBufferView.Create(const aDevice:TpvVulkanDevice;
-                                     const aBufferView:TVkBufferView;
-                                     const aBuffer:TpvVulkanBuffer=nil);
+                                       const aBufferView:TVkBufferView;
+                                       const aBuffer:TpvVulkanBuffer=nil);
 begin
 
  inherited Create;
@@ -9942,7 +9942,7 @@ begin
 end;
 
 constructor TpvVulkanEvent.Create(const aDevice:TpvVulkanDevice;
-                                const aFlags:TVkEventCreateFlags=TVkEventCreateFlags(0));
+                                  const aFlags:TVkEventCreateFlags=TVkEventCreateFlags(0));
 var EventCreateInfo:TVkEventCreateInfo;
 begin
  inherited Create;
@@ -9991,7 +9991,7 @@ begin
 end;
 
 constructor TpvVulkanFence.Create(const aDevice:TpvVulkanDevice;
-                                const aFlags:TVkFenceCreateFlags=TVkFenceCreateFlags(0));
+                                  const aFlags:TVkFenceCreateFlags=TVkFenceCreateFlags(0));
 var FenceCreateInfo:TVkFenceCreateInfo;
 begin
  inherited Create;
@@ -10088,7 +10088,7 @@ begin
 end;
 
 constructor TpvVulkanSemaphore.Create(const aDevice:TpvVulkanDevice;
-                                    const aFlags:TVkSemaphoreCreateFlags=TVkSemaphoreCreateFlags(0));
+                                      const aFlags:TVkSemaphoreCreateFlags=TVkSemaphoreCreateFlags(0));
 var SemaphoreCreateInfo:TVkSemaphoreCreateInfo;
 begin
  inherited Create;
@@ -10116,8 +10116,8 @@ begin
 end;
 
 constructor TpvVulkanQueue.Create(const aDevice:TpvVulkanDevice;
-                                const aQueue:TVkQueue;
-                                const aQueueFamilyIndex:TpvUInt32);
+                                  const aQueue:TVkQueue;
+                                  const aQueueFamilyIndex:TpvUInt32);
 begin
  inherited Create;
 
@@ -10160,8 +10160,8 @@ begin
 end;
 
 constructor TpvVulkanCommandPool.Create(const aDevice:TpvVulkanDevice;
-                                      const aQueueFamilyIndex:TpvUInt32;
-                                      const aFlags:TVkCommandPoolCreateFlags=TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+                                        const aQueueFamilyIndex:TpvUInt32;
+                                        const aFlags:TVkCommandPoolCreateFlags=TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 var CommandPoolCreateInfo:TVkCommandPoolCreateInfo;
 begin
  inherited Create;
@@ -10192,8 +10192,8 @@ begin
 end;
 
 constructor TpvVulkanCommandBuffer.Create(const aCommandPool:TpvVulkanCommandPool;
-                                        const aLevel:TVkCommandBufferLevel;
-                                        const aCommandBufferHandle:TVkCommandBuffer);
+                                          const aLevel:TVkCommandBufferLevel;
+                                          const aCommandBufferHandle:TVkCommandBuffer);
 begin
 
  fDevice:=aCommandPool.fDevice;
@@ -10213,7 +10213,7 @@ begin
 end;
 
 constructor TpvVulkanCommandBuffer.Create(const aCommandPool:TpvVulkanCommandPool;
-                                        const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+                                          const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 var CommandBufferAllocateInfo:TVkCommandBufferAllocateInfo;
 begin
  inherited Create;
@@ -10253,8 +10253,8 @@ begin
 end;
 
 class function TpvVulkanCommandBuffer.Allocate(const aCommandPool:TpvVulkanCommandPool;
-                                             const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                                             const aCommandBufferCount:TpvUInt32=1):TpvVulkanObjectList;
+                                               const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+                                               const aCommandBufferCount:TpvUInt32=1):TpvVulkanObjectList;
 var Index:TpvInt32;
     CommandBufferHandles:array of TVkCommandBuffer;
     CommandBufferAllocateInfo:TVkCommandBufferAllocateInfo;
@@ -10877,14 +10877,14 @@ begin
 end;
 
 function TpvVulkanRenderPass.AddAttachmentDescription(const aFlags:TVkAttachmentDescriptionFlags;
-                                                    const aFormat:TVkFormat;
-                                                    const aSamples:TVkSampleCountFlagBits;
-                                                    const aLoadOp:TVkAttachmentLoadOp;
-                                                    const aStoreOp:TVkAttachmentStoreOp;
-                                                    const aStencilLoadOp:TVkAttachmentLoadOp;
-                                                    const aStencilStoreOp:TVkAttachmentStoreOp;
-                                                    const aInitialLayout:TVkImageLayout;
-                                                    const aFinalLayout:TVkImageLayout):TpvUInt32;
+                                                      const aFormat:TVkFormat;
+                                                      const aSamples:TVkSampleCountFlagBits;
+                                                      const aLoadOp:TVkAttachmentLoadOp;
+                                                      const aStoreOp:TVkAttachmentStoreOp;
+                                                      const aStencilLoadOp:TVkAttachmentLoadOp;
+                                                      const aStencilStoreOp:TVkAttachmentStoreOp;
+                                                      const aInitialLayout:TVkImageLayout;
+                                                      const aFinalLayout:TVkImageLayout):TpvUInt32;
 var AttachmentDescription:PVkAttachmentDescription;
 begin
  result:=fCountAttachmentDescriptions;
@@ -10905,7 +10905,7 @@ begin
 end;
 
 function TpvVulkanRenderPass.AddAttachmentReference(const aAttachment:TpvUInt32;
-                                                  const aLayout:TVkImageLayout):TpvUInt32;
+                                                    const aLayout:TVkImageLayout):TpvUInt32;
 var AttachmentReference:PVkAttachmentReference;
 begin
  result:=fCountAttachmentReferences;
@@ -10919,12 +10919,12 @@ begin
 end;
 
 function TpvVulkanRenderPass.AddSubpassDescription(const aFlags:TVkSubpassDescriptionFlags;
-                                                 const aPipelineBindPoint:TVkPipelineBindPoint;
-                                                 const aInputAttachments:array of TpvInt32;
-                                                 const aColorAttachments:array of TpvInt32;
-                                                 const aResolveAttachments:array of TpvInt32;
-                                                 const aDepthStencilAttachment:TpvInt32;
-                                                 const aPreserveAttachments:array of TpvUInt32):TpvUInt32;
+                                                   const aPipelineBindPoint:TVkPipelineBindPoint;
+                                                   const aInputAttachments:array of TpvInt32;
+                                                   const aColorAttachments:array of TpvInt32;
+                                                   const aResolveAttachments:array of TpvInt32;
+                                                   const aDepthStencilAttachment:TpvInt32;
+                                                   const aPreserveAttachments:array of TpvUInt32):TpvUInt32;
 var RenderPassSubpassDescription:PpvVulkanRenderPassSubpassDescription;
 begin
  result:=fCountSubpassDescriptions;
@@ -10963,12 +10963,12 @@ begin
 end;
 
 function TpvVulkanRenderPass.AddSubpassDependency(const aSrcSubpass:TpvUInt32;
-                                                const aDstSubpass:TpvUInt32;
-                                                const aSrcStageMask:TVkPipelineStageFlags;
-                                                const aDstStageMask:TVkPipelineStageFlags;
-                                                const aSrcAccessMask:TVkAccessFlags;
-                                                const aDstAccessMask:TVkAccessFlags;
-                                                const aDependencyFlags:TVkDependencyFlags):TpvUInt32;
+                                                  const aDstSubpass:TpvUInt32;
+                                                  const aSrcStageMask:TVkPipelineStageFlags;
+                                                  const aDstStageMask:TVkPipelineStageFlags;
+                                                  const aSrcAccessMask:TVkAccessFlags;
+                                                  const aDstAccessMask:TVkAccessFlags;
+                                                  const aDependencyFlags:TVkDependencyFlags):TpvUInt32;
 var SubpassDependency:PVkSubpassDependency;
 begin
  result:=fCountSubpassDependencies;
@@ -11099,9 +11099,9 @@ begin
 end;
 
 procedure TpvVulkanRenderPass.BeginRenderPass(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                            const aFrameBuffer:TpvVulkanFrameBuffer;
-                                            const aSubpassContents:TVkSubpassContents;
-                                            const aOffsetX,aOffsetY,aWidth,aHeight:TpvUInt32);
+                                              const aFrameBuffer:TpvVulkanFrameBuffer;
+                                              const aSubpassContents:TVkSubpassContents;
+                                              const aOffsetX,aOffsetY,aWidth,aHeight:TpvUInt32);
 var RenderPassBeginInfo:TVkRenderPassBeginInfo;
 begin
  FillChar(RenderPassBeginInfo,SizeOf(TVkRenderPassBeginInfo),#0);
@@ -11125,8 +11125,8 @@ begin
 end;
 
 constructor TpvVulkanSampler.Create(const aDevice:TpvVulkanDevice;
-                                  const aSampler:TVkSampler;
-                                  const aDoDestroy:boolean=true);
+                                    const aSampler:TVkSampler;
+                                    const aDoDestroy:boolean=true);
 begin
 
  inherited Create;
@@ -11140,21 +11140,21 @@ begin
 end;
 
 constructor TpvVulkanSampler.Create(const aDevice:TpvVulkanDevice;
-                                  const aMagFilter:TVkFilter;
-                                  const aMinFilter:TVkFilter;
-                                  const aMipmapMode:TVkSamplerMipmapMode;
-                                  const aAddressModeU:TVkSamplerAddressMode;
-                                  const aAddressModeV:TVkSamplerAddressMode;
-                                  const aAddressModeW:TVkSamplerAddressMode;
-                                  const aMipLodBias:TpvFloat;
-                                  const aAnisotropyEnable:boolean;
-                                  const aMaxAnisotropy:TpvFloat;
-                                  const aCompareEnable:boolean;
-                                  const aCompareOp:TVkCompareOp;
-                                  const aMinLod:TpvFloat;
-                                  const aMaxLod:TpvFloat;
-                                  const aBorderColor:TVkBorderColor;
-                                  const aUnnormalizedCoordinates:boolean);
+                                    const aMagFilter:TVkFilter;
+                                    const aMinFilter:TVkFilter;
+                                    const aMipmapMode:TVkSamplerMipmapMode;
+                                    const aAddressModeU:TVkSamplerAddressMode;
+                                    const aAddressModeV:TVkSamplerAddressMode;
+                                    const aAddressModeW:TVkSamplerAddressMode;
+                                    const aMipLodBias:TpvFloat;
+                                    const aAnisotropyEnable:boolean;
+                                    const aMaxAnisotropy:TpvFloat;
+                                    const aCompareEnable:boolean;
+                                    const aCompareOp:TVkCompareOp;
+                                    const aMinLod:TpvFloat;
+                                    const aMaxLod:TpvFloat;
+                                    const aBorderColor:TVkBorderColor;
+                                    const aUnnormalizedCoordinates:boolean);
 var SamplerCreateInfo:TVkSamplerCreateInfo;
 begin
 
@@ -11214,9 +11214,9 @@ begin
 end;
 
 constructor TpvVulkanImage.Create(const aDevice:TpvVulkanDevice;
-                                const aImage:TVkImage;
-                                const aImageView:TpvVulkanImageView=nil;
-                                const aDoDestroy:boolean=true);
+                                  const aImage:TVkImage;
+                                  const aImageView:TpvVulkanImageView=nil;
+                                  const aDoDestroy:boolean=true);
 begin
 
  inherited Create;
@@ -11232,21 +11232,21 @@ begin
 end;
 
 constructor TpvVulkanImage.Create(const aDevice:TpvVulkanDevice;
-                                const aFlags:TVkImageCreateFlags;
-                                const aImageType:TVkImageType;
-                                const aFormat:TVkFormat;
-                                const aExtentWidth:TpvUInt32;
-                                const aExtentHeight:TpvUInt32;
-                                const aExtentDepth:TpvUInt32;
-                                const aMipLevels:TpvUInt32;
-                                const aArrayLayers:TpvUInt32;
-                                const aSamples:TVkSampleCountFlagBits;
-                                const aTiling:TVkImageTiling;
-                                const aUsage:TVkImageUsageFlags;
-                                const aSharingMode:TVkSharingMode;
-                                const aQueueFamilyIndexCount:TpvUInt32;
-                                const aQueueFamilyIndices:PpvUInt32;
-                                const aInitialLayout:TVkImageLayout);
+                                  const aFlags:TVkImageCreateFlags;
+                                  const aImageType:TVkImageType;
+                                  const aFormat:TVkFormat;
+                                  const aExtentWidth:TpvUInt32;
+                                  const aExtentHeight:TpvUInt32;
+                                  const aExtentDepth:TpvUInt32;
+                                  const aMipLevels:TpvUInt32;
+                                  const aArrayLayers:TpvUInt32;
+                                  const aSamples:TVkSampleCountFlagBits;
+                                  const aTiling:TVkImageTiling;
+                                  const aUsage:TVkImageUsageFlags;
+                                  const aSharingMode:TVkSharingMode;
+                                  const aQueueFamilyIndexCount:TpvUInt32;
+                                  const aQueueFamilyIndices:PpvUInt32;
+                                  const aInitialLayout:TVkImageLayout);
 var ImageCreateInfo:TVkImageCreateInfo;
 begin
 
@@ -11284,20 +11284,20 @@ begin
 end;
 
 constructor TpvVulkanImage.Create(const aDevice:TpvVulkanDevice;
-                                const aFlags:TVkImageCreateFlags;
-                                const aImageType:TVkImageType;
-                                const aFormat:TVkFormat;
-                                const aExtentWidth:TpvUInt32;
-                                const aExtentHeight:TpvUInt32;
-                                const aExtentDepth:TpvUInt32;
-                                const aMipLevels:TpvUInt32;
-                                const aArrayLayers:TpvUInt32;
-                                const aSamples:TVkSampleCountFlagBits;
-                                const aTiling:TVkImageTiling;
-                                const aUsage:TVkImageUsageFlags;
-                                const aSharingMode:TVkSharingMode;
-                                const aQueueFamilyIndices:array of TpvUInt32;
-                                const aInitialLayout:TVkImageLayout);
+                                  const aFlags:TVkImageCreateFlags;
+                                  const aImageType:TVkImageType;
+                                  const aFormat:TVkFormat;
+                                  const aExtentWidth:TpvUInt32;
+                                  const aExtentHeight:TpvUInt32;
+                                  const aExtentDepth:TpvUInt32;
+                                  const aMipLevels:TpvUInt32;
+                                  const aArrayLayers:TpvUInt32;
+                                  const aSamples:TVkSampleCountFlagBits;
+                                  const aTiling:TVkImageTiling;
+                                  const aUsage:TVkImageUsageFlags;
+                                  const aSharingMode:TVkSharingMode;
+                                  const aQueueFamilyIndices:array of TpvUInt32;
+                                  const aInitialLayout:TVkImageLayout);
 var ImageCreateInfo:TVkImageCreateInfo;
 begin
 
@@ -11356,15 +11356,15 @@ begin
 end;
 
 procedure TpvVulkanImage.SetLayout(const aAspectMask:TVkImageAspectFlags;
-                                 const aOldImageLayout:TVkImageLayout;
-                                 const aNewImageLayout:TVkImageLayout;
-                                 const aRange:PVkImageSubresourceRange;
-                                 const aCommandBuffer:TpvVulkanCommandBuffer;
-                                 const aQueue:TpvVulkanQueue=nil;
-                                 const aFence:TpvVulkanFence=nil;
-                                 const aBeginAndExecuteCommandBuffer:boolean=false;
-                                 const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                                 const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
+                                   const aOldImageLayout:TVkImageLayout;
+                                   const aNewImageLayout:TVkImageLayout;
+                                   const aRange:PVkImageSubresourceRange;
+                                   const aCommandBuffer:TpvVulkanCommandBuffer;
+                                   const aQueue:TpvVulkanQueue=nil;
+                                   const aFence:TpvVulkanFence=nil;
+                                   const aBeginAndExecuteCommandBuffer:boolean=false;
+                                   const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                                   const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
 begin
  VulkanSetImageLayout(fImageHandle,
                       aAspectMask,
@@ -11380,8 +11380,8 @@ begin
 end;
 
 constructor TpvVulkanImageView.Create(const aDevice:TpvVulkanDevice;
-                                    const aImageView:TVkImageView;
-                                    const aImage:TpvVulkanImage=nil);
+                                      const aImageView:TVkImageView;
+                                      const aImage:TpvVulkanImage=nil);
 begin
 
  inherited Create;
@@ -11395,18 +11395,18 @@ begin
 end;
 
 constructor TpvVulkanImageView.Create(const aDevice:TpvVulkanDevice;
-                                    const aImage:TpvVulkanImage;
-                                    const aImageViewType:TVkImageViewType;
-                                    const aFormat:TvkFormat;
-                                    const aComponentRed:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                    const aComponentGreen:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                    const aComponentBlue:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                    const aComponentAlpha:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                    const aImageAspectFlags:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-                                    const aBaseMipLevel:TpvUInt32=0;
-                                    const aCountMipMapLevels:TpvUInt32=1;
-                                    const aBaseArrayLayer:TpvUInt32=1;
-                                    const aCountArrayLayers:TpvUInt32=0);
+                                      const aImage:TpvVulkanImage;
+                                      const aImageViewType:TVkImageViewType;
+                                      const aFormat:TvkFormat;
+                                      const aComponentRed:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                      const aComponentGreen:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                      const aComponentBlue:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                      const aComponentAlpha:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
+                                      const aImageAspectFlags:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+                                      const aBaseMipLevel:TpvUInt32=0;
+                                      const aCountMipMapLevels:TpvUInt32=1;
+                                      const aBaseArrayLayer:TpvUInt32=1;
+                                      const aCountArrayLayers:TpvUInt32=0);
 var ImageViewCreateInfo:TVkImageViewCreateInfo;
 begin
 
@@ -11455,13 +11455,13 @@ begin
 end;
 
 constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
-                                                const aGraphicsQueue:TpvVulkanQueue;
-                                                const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                                const aGraphicsCommandBufferFence:TpvVulkanFence;
-                                                const aWidth:TpvUInt32;
-                                                const aHeight:TpvUInt32;
-                                                const aFormat:TVkFormat;
-                                                const aUsage:TVkBufferUsageFlags);
+                                                  const aGraphicsQueue:TpvVulkanQueue;
+                                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                                  const aGraphicsCommandBufferFence:TpvVulkanFence;
+                                                  const aWidth:TpvUInt32;
+                                                  const aHeight:TpvUInt32;
+                                                  const aFormat:TVkFormat;
+                                                  const aUsage:TVkBufferUsageFlags);
 var MemoryRequirements:TVkMemoryRequirements;
     AspectMask:TVkImageAspectFlags;
     ImageLayout:TVkImageLayout;
@@ -11588,12 +11588,12 @@ begin
 end;
 
 constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
-                                                const aImage:TpvVulkanImage;
-                                                const aImageView:TpvVulkanImageView;
-                                                const aWidth:TpvUInt32;
-                                                const aHeight:TpvUInt32;
-                                                const aFormat:TVkFormat;
-                                                const aDoDestroy:boolean=true);
+                                                  const aImage:TpvVulkanImage;
+                                                  const aImageView:TpvVulkanImageView;
+                                                  const aWidth:TpvUInt32;
+                                                  const aHeight:TpvUInt32;
+                                                  const aFormat:TVkFormat;
+                                                  const aDoDestroy:boolean=true);
 begin
 
  inherited Create;
@@ -11645,10 +11645,10 @@ begin
 end;
 
 constructor TpvVulkanFrameBuffer.Create(const aDevice:TpvVulkanDevice;
-                                      const aRenderPass:TpvVulkanRenderPass;
-                                      const aWidth:TpvUInt32;
-                                      const aHeight:TpvUInt32;
-                                      const aLayers:TpvUInt32);
+                                        const aRenderPass:TpvVulkanRenderPass;
+                                        const aWidth:TpvUInt32;
+                                        const aHeight:TpvUInt32;
+                                        const aLayers:TpvUInt32);
 begin
 
  inherited Create;
@@ -11676,12 +11676,12 @@ begin
 end;
 
 constructor TpvVulkanFrameBuffer.Create(const aDevice:TpvVulkanDevice;
-                                      const aRenderPass:TpvVulkanRenderPass;
-                                      const aWidth:TpvUInt32;
-                                      const aHeight:TpvUInt32;
-                                      const aLayers:TpvUInt32;
-                                      const aFrameBufferAttachments:array of TpvVulkanFrameBufferAttachment;
-                                      const aDoDestroyAttachments:boolean=true);
+                                        const aRenderPass:TpvVulkanRenderPass;
+                                        const aWidth:TpvUInt32;
+                                        const aHeight:TpvUInt32;
+                                        const aLayers:TpvUInt32;
+                                        const aFrameBufferAttachments:array of TpvVulkanFrameBufferAttachment;
+                                        const aDoDestroyAttachments:boolean=true);
 begin
 
  inherited Create;
@@ -11719,14 +11719,14 @@ begin
 end;                                      
 
 constructor TpvVulkanFrameBuffer.Create(const aDevice:TpvVulkanDevice;
-                                      const aRenderPass:TpvVulkanRenderPass;
-                                      const aWidth:TpvUInt32;
-                                      const aHeight:TpvUInt32;
-                                      const aLayers:TpvUInt32;
-                                      const aFrameBufferHandle:TVkFrameBuffer;
-                                      const aFrameBufferAttachments:array of TpvVulkanFrameBufferAttachment;
-                                      const aDoDestroy:boolean=true;
-                                      const aDoDestroyAttachments:boolean=true);
+                                        const aRenderPass:TpvVulkanRenderPass;
+                                        const aWidth:TpvUInt32;
+                                        const aHeight:TpvUInt32;
+                                        const aLayers:TpvUInt32;
+                                        const aFrameBufferHandle:TVkFrameBuffer;
+                                        const aFrameBufferAttachments:array of TpvVulkanFrameBufferAttachment;
+                                        const aDoDestroy:boolean=true;
+                                        const aDoDestroyAttachments:boolean=true);
 begin
 
  inherited Create;
@@ -11833,21 +11833,21 @@ begin
 end;
 
 constructor TpvVulkanSwapChain.Create(const aDevice:TpvVulkanDevice;
-                                    const aSurface:TpvVulkanSurface;
-                                    const aOldSwapChain:TpvVulkanSwapChain=nil;
-                                    const aDesiredImageWidth:TpvUInt32=0;
-                                    const aDesiredImageHeight:TpvUInt32=0;
-                                    const aDesiredImageCount:TpvUInt32=2;
-                                    const aImageArrayLayers:TpvUInt32=1;
-                                    const aImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
-                                    const aImageColorSpace:TVkColorSpaceKHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-                                    const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-                                    const aImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-                                    const aQueueFamilyIndices:TVkUInt32List=nil;
-                                    const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-                                    const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
-                                    const aClipped:boolean=true;
-                                    const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff));
+                                      const aSurface:TpvVulkanSurface;
+                                      const aOldSwapChain:TpvVulkanSwapChain=nil;
+                                      const aDesiredImageWidth:TpvUInt32=0;
+                                      const aDesiredImageHeight:TpvUInt32=0;
+                                      const aDesiredImageCount:TpvUInt32=2;
+                                      const aImageArrayLayers:TpvUInt32=1;
+                                      const aImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
+                                      const aImageColorSpace:TVkColorSpaceKHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+                                      const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+                                      const aImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                      const aQueueFamilyIndices:TVkUInt32List=nil;
+                                      const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+                                      const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
+                                      const aClipped:boolean=true;
+                                      const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff));
 type TPresentModes=VK_PRESENT_MODE_IMMEDIATE_KHR..VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 const PresentModeTryOrder:array[TPresentModes,0..3] of TVkPresentModeKHR=
        ((VK_PRESENT_MODE_IMMEDIATE_KHR,VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_FIFO_KHR),
@@ -12637,16 +12637,16 @@ begin
 end;
 
 constructor TpvVulkanSwapChainSimpleDirectRenderTarget.Create(const aDevice:TpvVulkanDevice;
-                                                            const aSwapChain:TpvVulkanSwapChain;
-                                                            const aPresentQueue:TpvVulkanQueue;
-                                                            const aPresentCommandBuffer:TpvVulkanCommandBuffer;
-                                                            const aPresentCommandBufferFence:TpvVulkanFence;
-                                                            const aGraphicsQueue:TpvVulkanQueue;
-                                                            const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                                            const aGraphicsCommandBufferFence:TpvVulkanFence;
-                                                            const aDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
-                                                            const aDepthImageFormatWithStencil:boolean=false;
-                                                            const aClear:boolean=true);
+                                                              const aSwapChain:TpvVulkanSwapChain;
+                                                              const aPresentQueue:TpvVulkanQueue;
+                                                              const aPresentCommandBuffer:TpvVulkanCommandBuffer;
+                                                              const aPresentCommandBufferFence:TpvVulkanFence;
+                                                              const aGraphicsQueue:TpvVulkanQueue;
+                                                              const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                                              const aGraphicsCommandBufferFence:TpvVulkanFence;
+                                                              const aDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
+                                                              const aDepthImageFormatWithStencil:boolean=false;
+                                                              const aClear:boolean=true);
 var Index:TpvInt32;
     FormatProperties:TVkFormatProperties;
     ColorAttachmentImage:TpvVulkanImage;
@@ -13163,8 +13163,8 @@ begin
 end;
 
 constructor TpvVulkanDescriptorPool.Create(const aDevice:TpvVulkanDevice;
-                                         const aFlags:TVkDescriptorPoolCreateFlags;
-                                         const aMaxSets:TpvUInt32);
+                                           const aFlags:TVkDescriptorPoolCreateFlags;
+                                           const aMaxSets:TpvUInt32);
 begin
  inherited Create;
 
@@ -13221,9 +13221,9 @@ begin
 end;
 
 constructor TpvVulkanDescriptorSetLayoutBinding.Create(const aBinding:TpvUInt32;
-                                                     const aDescriptorType:TVkDescriptorType;
-                                                     const aDescriptorCount:TpvUInt32;
-                                                     const aStageFlags:TVkShaderStageFlags);
+                                                       const aDescriptorType:TVkDescriptorType;
+                                                       const aDescriptorCount:TpvUInt32;
+                                                       const aStageFlags:TVkShaderStageFlags);
 begin
  inherited Create;
 
@@ -13336,10 +13336,10 @@ begin
 end;
 
 procedure TpvVulkanDescriptorSetLayout.AddBinding(const aBinding:TpvUInt32;
-                                                const aDescriptorType:TVkDescriptorType;
-                                                const aDescriptorCount:TpvUInt32;
-                                                const aStageFlags:TVkShaderStageFlags;
-                                                const aImmutableSamplers:array of TpvVulkanSampler);
+                                                  const aDescriptorType:TVkDescriptorType;
+                                                  const aDescriptorCount:TpvUInt32;
+                                                  const aStageFlags:TVkShaderStageFlags;
+                                                  const aImmutableSamplers:array of TpvVulkanSampler);
 var DescriptorSetLayoutBinding:TpvVulkanDescriptorSetLayoutBinding;
 begin
  DescriptorSetLayoutBinding:=TpvVulkanDescriptorSetLayoutBinding.Create(aBinding,aDescriptorType,aDescriptorCount,aStageFlags);
@@ -13368,7 +13368,7 @@ begin
 end;
 
 constructor TpvVulkanDescriptorSet.Create(const aDescriptorPool:TpvVulkanDescriptorPool;
-                                        const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout);
+                                          const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout);
 begin
  inherited Create;
 
@@ -13410,8 +13410,7 @@ begin
 end;
 
 class function TpvVulkanDescriptorSet.Allocate(const aDescriptorPool:TpvVulkanDescriptorPool;
-                                             const aDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout):TpvVulkanObjectList;
-
+                                               const aDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout):TpvVulkanObjectList;
 var Index:TpvInt32;
 begin
  result:=TpvVulkanObjectList.Create;
@@ -13426,12 +13425,12 @@ begin
 end;
 
 procedure TpvVulkanDescriptorSet.CopyFromDescriptorSet(const aSourceDescriptorSet:TpvVulkanDescriptorSet;
-                                                     const aSourceBinding:TpvUInt32;
-                                                     const aSourceArrayElement:TpvUInt32;
-                                                     const aDestinationBinding:TpvUInt32;
-                                                     const aDestinationArrayElement:TpvUInt32;
-                                                     const aDescriptorCount:TpvUInt32;
-                                                     const aDoInstant:boolean=false);
+                                                       const aSourceBinding:TpvUInt32;
+                                                       const aSourceArrayElement:TpvUInt32;
+                                                       const aDestinationBinding:TpvUInt32;
+                                                       const aDestinationArrayElement:TpvUInt32;
+                                                       const aDescriptorCount:TpvUInt32;
+                                                       const aDoInstant:boolean=false);
  procedure InstantCopyFromDescriptorSet;
  var CopyDescriptorSet:TVkCopyDescriptorSet;
  begin
@@ -13469,13 +13468,13 @@ begin
 end;
 
 procedure TpvVulkanDescriptorSet.WriteToDescriptorSet(const aDestinationBinding:TpvUInt32;
-                                                    const aDestinationArrayElement:TpvUInt32;
-                                                    const aDescriptorCount:TpvUInt32;
-                                                    const aDescriptorType:TVkDescriptorType;
-                                                    const aImageInfo:array of TVkDescriptorImageInfo;
-                                                    const aBufferInfo:array of TVkDescriptorBufferInfo;
-                                                    const aTexelBufferView:array of TVkBufferView;
-                                                    const aDoInstant:boolean=false);
+                                                      const aDestinationArrayElement:TpvUInt32;
+                                                      const aDescriptorCount:TpvUInt32;
+                                                      const aDescriptorType:TVkDescriptorType;
+                                                      const aImageInfo:array of TVkDescriptorImageInfo;
+                                                      const aBufferInfo:array of TVkDescriptorBufferInfo;
+                                                      const aTexelBufferView:array of TVkBufferView;
+                                                      const aDoInstant:boolean=false);
  procedure InstantWriteToDescriptorSet;
  var WriteDescriptorSet:TVkWriteDescriptorSet;
  begin
@@ -13740,8 +13739,8 @@ begin
 end;
 
 constructor TpvVulkanPipelineShaderStage.Create(const aStage:TVkShaderStageFlagBits;
-                                              const aModule:TpvVulkanShaderModule;
-                                              const aName:TVkCharString);
+                                                const aModule:TpvVulkanShaderModule;
+                                                const aName:TVkCharString);
 begin
 
  inherited Create;
@@ -14049,12 +14048,12 @@ begin
 end;
 
 constructor TpvVulkanComputePipeline.Create(const aDevice:TpvVulkanDevice;
-                                          const aCache:TpvVulkanPipelineCache;
-                                          const aFlags:TVkPipelineCreateFlags;
-                                          const aStage:TpvVulkanPipelineShaderStage;
-                                          const aLayout:TpvVulkanPipelineLayout;
-                                          const aBasePipelineHandle:TpvVulkanPipeline;
-                                          const aBasePipelineIndex:TpvInt32);
+                                            const aCache:TpvVulkanPipelineCache;
+                                            const aFlags:TVkPipelineCreateFlags;
+                                            const aStage:TpvVulkanPipelineShaderStage;
+                                            const aLayout:TpvVulkanPipelineLayout;
+                                            const aBasePipelineHandle:TpvVulkanPipeline;
+                                            const aBasePipelineIndex:TpvInt32);
 var PipelineCache:TVkPipelineCache;
     ComputePipelineCreateInfo:TVkComputePipelineCreateInfo;
 begin
@@ -14649,15 +14648,15 @@ begin
 end;
 
 procedure TpvVulkanPipelineRasterizationState.SetRasterizationState(const aDepthClampEnable:boolean;
-                                                                  const aRasterizerDiscardEnable:boolean;
-                                                                  const aPolygonMode:TVkPolygonMode;
-                                                                  const aCullMode:TVkCullModeFlags;
-                                                                  const aFrontFace:TVkFrontFace;
-                                                                  const aDepthBiasEnable:boolean;
-                                                                  const aDepthBiasConstantFactor:TpvFloat;
-                                                                  const aDepthBiasClamp:TpvFloat;
-                                                                  const aDepthBiasSlopeFactor:TpvFloat;
-                                                                  const aLineWidth:TpvFloat);
+                                                                    const aRasterizerDiscardEnable:boolean;
+                                                                    const aPolygonMode:TVkPolygonMode;
+                                                                    const aCullMode:TVkCullModeFlags;
+                                                                    const aFrontFace:TVkFrontFace;
+                                                                    const aDepthBiasEnable:boolean;
+                                                                    const aDepthBiasConstantFactor:TpvFloat;
+                                                                    const aDepthBiasClamp:TpvFloat;
+                                                                    const aDepthBiasSlopeFactor:TpvFloat;
+                                                                    const aLineWidth:TpvFloat);
 begin
  fRasterizationStateCreateInfo.depthClampEnable:=BooleanToVkBool[aDepthClampEnable];
  fRasterizationStateCreateInfo.rasterizerDiscardEnable:=BooleanToVkBool[aRasterizerDiscardEnable];
@@ -14801,11 +14800,11 @@ begin
 end;
 
 procedure TpvVulkanPipelineMultisampleState.SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
-                                                              const aSampleShadingEnable:boolean;
-                                                              const aMinSampleShading:TpvFloat;
-                                                              const aSampleMask:array of TVkSampleMask;
-                                                              const aAlphaToCoverageEnable:boolean;
-                                                              const aAlphaToOneEnable:boolean);
+                                                                const aSampleShadingEnable:boolean;
+                                                                const aMinSampleShading:TpvFloat;
+                                                                const aSampleMask:array of TVkSampleMask;
+                                                                const aAlphaToCoverageEnable:boolean;
+                                                                const aAlphaToOneEnable:boolean);
 begin
  fMultisampleStateCreateInfo.rasterizationSamples:=aRasterizationSamples;
  fMultisampleStateCreateInfo.sampleShadingEnable:=BooleanToVkBool[aSampleShadingEnable];
@@ -15035,14 +15034,14 @@ begin
 end;
 
 procedure TpvVulkanPipelineDepthStencilState.SetDepthStencilState(const aDepthTestEnable:boolean;
-                                                                const aDepthWriteEnable:boolean;
-                                                                const aDepthCompareOp:TVkCompareOp;
-                                                                const aDepthBoundsTestEnable:boolean;
-                                                                const aStencilTestEnable:boolean;
-                                                                const aFront:TVkStencilOpState;
-                                                                const aBack:TVkStencilOpState;
-                                                                const aMinDepthBounds:TpvFloat;
-                                                                const aMaxDepthBounds:TpvFloat);
+                                                                  const aDepthWriteEnable:boolean;
+                                                                  const aDepthCompareOp:TVkCompareOp;
+                                                                  const aDepthBoundsTestEnable:boolean;
+                                                                  const aStencilTestEnable:boolean;
+                                                                  const aFront:TVkStencilOpState;
+                                                                  const aBack:TVkStencilOpState;
+                                                                  const aMinDepthBounds:TpvFloat;
+                                                                  const aMaxDepthBounds:TpvFloat);
 begin
  fDepthStencilStateCreateInfo.depthTestEnable:=BooleanToVkBool[aDepthTestEnable];
  fDepthStencilStateCreateInfo.depthWriteEnable:=BooleanToVkBool[aDepthWriteEnable];
@@ -15135,8 +15134,8 @@ begin
 end;
 
 procedure TpvVulkanPipelineColorBlendState.SetColorBlendState(const aLogicOpEnable:boolean;
-                                                            const aLogicOp:TVkLogicOp;
-                                                            const aBlendConstants:array of TpvFloat);
+                                                              const aLogicOp:TVkLogicOp;
+                                                              const aBlendConstants:array of TpvFloat);
 var ArrayItemCount:TpvInt32;
 begin
  fColorBlendStateCreateInfo.logicOpEnable:=BooleanToVkBool[aLogicOpEnable];
@@ -15161,13 +15160,13 @@ begin
 end;
 
 function TpvVulkanPipelineColorBlendState.AddColorBlendAttachmentState(const aBlendEnable:boolean;
-                                                                     const aSrcColorBlendFactor:TVkBlendFactor;
-                                                                     const aDstColorBlendFactor:TVkBlendFactor;
-                                                                     const aColorBlendOp:TVkBlendOp;
-                                                                     const aSrcAlphaBlendFactor:TVkBlendFactor;
-                                                                     const aDstAlphaBlendFactor:TVkBlendFactor;
-                                                                     const aAlphaBlendOp:TVkBlendOp;
-                                                                     const aColorWriteMask:TVkColorComponentFlags):TpvInt32;
+                                                                       const aSrcColorBlendFactor:TVkBlendFactor;
+                                                                       const aDstColorBlendFactor:TVkBlendFactor;
+                                                                       const aColorBlendOp:TVkBlendOp;
+                                                                       const aSrcAlphaBlendFactor:TVkBlendFactor;
+                                                                       const aDstAlphaBlendFactor:TVkBlendFactor;
+                                                                       const aAlphaBlendOp:TVkBlendOp;
+                                                                       const aColorWriteMask:TVkColorComponentFlags):TpvInt32;
 var ColorBlendAttachmentState:PVkPipelineColorBlendAttachmentState;
 begin
  result:=fCountColorBlendAttachmentStates;
@@ -15291,14 +15290,14 @@ begin
 end;
 
 constructor TpvVulkanGraphicsPipelineConstructor.Create(const aDevice:TpvVulkanDevice;
-                                                      const aCache:TpvVulkanPipelineCache;
-                                                      const aFlags:TVkPipelineCreateFlags;
-                                                      const aStages:array of TpvVulkanPipelineShaderStage;
-                                                      const aLayout:TpvVulkanPipelineLayout;
-                                                      const aRenderPass:TpvVulkanRenderPass;
-                                                      const aSubPass:TpvUInt32;
-                                                      const aBasePipelineHandle:TpvVulkanPipeline;
-                                                      const aBasePipelineIndex:TpvInt32);
+                                                        const aCache:TpvVulkanPipelineCache;
+                                                        const aFlags:TVkPipelineCreateFlags;
+                                                        const aStages:array of TpvVulkanPipelineShaderStage;
+                                                        const aLayout:TpvVulkanPipelineLayout;
+                                                        const aRenderPass:TpvVulkanRenderPass;
+                                                        const aSubPass:TpvUInt32;
+                                                        const aBasePipelineHandle:TpvVulkanPipeline;
+                                                        const aBasePipelineIndex:TpvInt32);
 var Index:TpvInt32;
 begin
  fStages:=nil;
@@ -15514,15 +15513,15 @@ begin
 end;
 
 procedure TpvVulkanGraphicsPipelineConstructor.SetRasterizationState(const aDepthClampEnable:boolean;
-                                                                   const aRasterizerDiscardEnable:boolean;
-                                                                   const aPolygonMode:TVkPolygonMode;
-                                                                   const aCullMode:TVkCullModeFlags;
-                                                                   const aFrontFace:TVkFrontFace;
-                                                                   const aDepthBiasEnable:boolean;
-                                                                   const aDepthBiasConstantFactor:TpvFloat;
-                                                                   const aDepthBiasClamp:TpvFloat;
-                                                                   const aDepthBiasSlopeFactor:TpvFloat;
-                                                                   const aLineWidth:TpvFloat);
+                                                                     const aRasterizerDiscardEnable:boolean;
+                                                                     const aPolygonMode:TVkPolygonMode;
+                                                                     const aCullMode:TVkCullModeFlags;
+                                                                     const aFrontFace:TVkFrontFace;
+                                                                     const aDepthBiasEnable:boolean;
+                                                                     const aDepthBiasConstantFactor:TpvFloat;
+                                                                     const aDepthBiasClamp:TpvFloat;
+                                                                     const aDepthBiasSlopeFactor:TpvFloat;
+                                                                     const aLineWidth:TpvFloat);
 begin
  Assert(assigned(fRasterizationState));
  fRasterizationState.SetRasterizationState(aDepthClampEnable,
@@ -15538,11 +15537,11 @@ begin
 end;
 
 procedure TpvVulkanGraphicsPipelineConstructor.SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
-                                                                 const aSampleShadingEnable:boolean;
-                                                                 const aMinSampleShading:TpvFloat;
-                                                                 const aSampleMask:array of TVkSampleMask;
-                                                                 const aAlphaToCoverageEnable:boolean;
-                                                                 const aAlphaToOneEnable:boolean);
+                                                                   const aSampleShadingEnable:boolean;
+                                                                   const aMinSampleShading:TpvFloat;
+                                                                   const aSampleMask:array of TVkSampleMask;
+                                                                   const aAlphaToCoverageEnable:boolean;
+                                                                   const aAlphaToOneEnable:boolean);
 begin
  Assert(assigned(fMultisampleState));
  fMultisampleState.SetMultisampleState(aRasterizationSamples,
@@ -15554,14 +15553,14 @@ begin
 end;
 
 procedure TpvVulkanGraphicsPipelineConstructor.SetDepthStencilState(const aDepthTestEnable:boolean;
-                                                                  const aDepthWriteEnable:boolean;
-                                                                  const aDepthCompareOp:TVkCompareOp;
-                                                                  const aDepthBoundsTestEnable:boolean;
-                                                                  const aStencilTestEnable:boolean;
-                                                                  const aFront:TVkStencilOpState;
-                                                                  const aBack:TVkStencilOpState;
-                                                                  const aMinDepthBounds:TpvFloat;
-                                                                  const aMaxDepthBounds:TpvFloat);
+                                                                    const aDepthWriteEnable:boolean;
+                                                                    const aDepthCompareOp:TVkCompareOp;
+                                                                    const aDepthBoundsTestEnable:boolean;
+                                                                    const aStencilTestEnable:boolean;
+                                                                    const aFront:TVkStencilOpState;
+                                                                    const aBack:TVkStencilOpState;
+                                                                    const aMinDepthBounds:TpvFloat;
+                                                                    const aMaxDepthBounds:TpvFloat);
 begin
  Assert(assigned(fDepthStencilState));
  fDepthStencilState.SetDepthStencilState(aDepthTestEnable,
@@ -15576,8 +15575,8 @@ begin
 end;
 
 procedure TpvVulkanGraphicsPipelineConstructor.SetColorBlendState(const aLogicOpEnable:boolean;
-                                                                const aLogicOp:TVkLogicOp;
-                                                                const aBlendConstants:array of TpvFloat);
+                                                                  const aLogicOp:TVkLogicOp;
+                                                                  const aBlendConstants:array of TpvFloat);
 begin
  Assert(assigned(fColorBlendState));
  fColorBlendState.SetColorBlendState(aLogicOpEnable,
@@ -15592,13 +15591,13 @@ begin
 end;
 
 function TpvVulkanGraphicsPipelineConstructor.AddColorBlendAttachmentState(const aBlendEnable:boolean;
-                                                                         const aSrcColorBlendFactor:TVkBlendFactor;
-                                                                         const aDstColorBlendFactor:TVkBlendFactor;
-                                                                         const aColorBlendOp:TVkBlendOp;
-                                                                         const aSrcAlphaBlendFactor:TVkBlendFactor;
-                                                                         const aDstAlphaBlendFactor:TVkBlendFactor;
-                                                                         const aAlphaBlendOp:TVkBlendOp;
-                                                                         const aColorWriteMask:TVkColorComponentFlags):TpvInt32;
+                                                                           const aSrcColorBlendFactor:TVkBlendFactor;
+                                                                           const aDstColorBlendFactor:TVkBlendFactor;
+                                                                           const aColorBlendOp:TVkBlendOp;
+                                                                           const aSrcAlphaBlendFactor:TVkBlendFactor;
+                                                                           const aDstAlphaBlendFactor:TVkBlendFactor;
+                                                                           const aAlphaBlendOp:TVkBlendOp;
+                                                                           const aColorWriteMask:TVkColorComponentFlags):TpvInt32;
 begin
  Assert(assigned(fColorBlendState));
  result:=fColorBlendState.AddColorBlendAttachmentState(aBlendEnable,
@@ -15666,14 +15665,14 @@ begin
 end;
 
 constructor TpvVulkanGraphicsPipeline.Create(const aDevice:TpvVulkanDevice;
-                                           const aCache:TpvVulkanPipelineCache;
-                                           const aFlags:TVkPipelineCreateFlags;
-                                           const aStages:array of TpvVulkanPipelineShaderStage;
-                                           const aLayout:TpvVulkanPipelineLayout;
-                                           const aRenderPass:TpvVulkanRenderPass;
-                                           const aSubPass:TpvUInt32;
-                                           const aBasePipelineHandle:TpvVulkanPipeline;
-                                           const aBasePipelineIndex:TpvInt32);
+                                             const aCache:TpvVulkanPipelineCache;
+                                             const aFlags:TVkPipelineCreateFlags;
+                                             const aStages:array of TpvVulkanPipelineShaderStage;
+                                             const aLayout:TpvVulkanPipelineLayout;
+                                             const aRenderPass:TpvVulkanRenderPass;
+                                             const aSubPass:TpvUInt32;
+                                             const aBasePipelineHandle:TpvVulkanPipeline;
+                                             const aBasePipelineIndex:TpvInt32);
 begin
  inherited Create(aDevice);
  fGraphicsPipelineConstructor:=TpvVulkanGraphicsPipelineConstructor.Create(fDevice,
@@ -15855,15 +15854,15 @@ begin
 end;
 
 procedure TpvVulkanGraphicsPipeline.SetRasterizationState(const aDepthClampEnable:boolean;
-                                                        const aRasterizerDiscardEnable:boolean;
-                                                        const aPolygonMode:TVkPolygonMode;
-                                                        const aCullMode:TVkCullModeFlags;
-                                                        const aFrontFace:TVkFrontFace;
-                                                        const aDepthBiasEnable:boolean;
-                                                        const aDepthBiasConstantFactor:TpvFloat;
-                                                        const aDepthBiasClamp:TpvFloat;
-                                                        const aDepthBiasSlopeFactor:TpvFloat;
-                                                        const aLineWidth:TpvFloat);
+                                                          const aRasterizerDiscardEnable:boolean;
+                                                          const aPolygonMode:TVkPolygonMode;
+                                                          const aCullMode:TVkCullModeFlags;
+                                                          const aFrontFace:TVkFrontFace;
+                                                          const aDepthBiasEnable:boolean;
+                                                          const aDepthBiasConstantFactor:TpvFloat;
+                                                          const aDepthBiasClamp:TpvFloat;
+                                                          const aDepthBiasSlopeFactor:TpvFloat;
+                                                          const aLineWidth:TpvFloat);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  fGraphicsPipelineConstructor.SetRasterizationState(aDepthClampEnable,
@@ -15879,11 +15878,11 @@ begin
 end;
 
 procedure TpvVulkanGraphicsPipeline.SetMultisampleState(const aRasterizationSamples:TVkSampleCountFlagBits;
-                                                      const aSampleShadingEnable:boolean;
-                                                      const aMinSampleShading:TpvFloat;
-                                                      const aSampleMask:array of TVkSampleMask;
-                                                      const aAlphaToCoverageEnable:boolean;
-                                                      const aAlphaToOneEnable:boolean);
+                                                        const aSampleShadingEnable:boolean;
+                                                        const aMinSampleShading:TpvFloat;
+                                                        const aSampleMask:array of TVkSampleMask;
+                                                        const aAlphaToCoverageEnable:boolean;
+                                                        const aAlphaToOneEnable:boolean);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  fGraphicsPipelineConstructor.SetMultisampleState(aRasterizationSamples,
@@ -15895,14 +15894,14 @@ begin
 end;
 
 procedure TpvVulkanGraphicsPipeline.SetDepthStencilState(const aDepthTestEnable:boolean;
-                                                       const aDepthWriteEnable:boolean;
-                                                       const aDepthCompareOp:TVkCompareOp;
-                                                       const aDepthBoundsTestEnable:boolean;
-                                                       const aStencilTestEnable:boolean;
-                                                       const aFront:TVkStencilOpState;
-                                                       const aBack:TVkStencilOpState;
-                                                       const aMinDepthBounds:TpvFloat;
-                                                       const aMaxDepthBounds:TpvFloat);
+                                                         const aDepthWriteEnable:boolean;
+                                                         const aDepthCompareOp:TVkCompareOp;
+                                                         const aDepthBoundsTestEnable:boolean;
+                                                         const aStencilTestEnable:boolean;
+                                                         const aFront:TVkStencilOpState;
+                                                         const aBack:TVkStencilOpState;
+                                                         const aMinDepthBounds:TpvFloat;
+                                                         const aMaxDepthBounds:TpvFloat);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  fGraphicsPipelineConstructor.SetDepthStencilState(aDepthTestEnable,
@@ -15917,8 +15916,8 @@ begin
 end;
 
 procedure TpvVulkanGraphicsPipeline.SetColorBlendState(const aLogicOpEnable:boolean;
-                                                     const aLogicOp:TVkLogicOp;
-                                                     const aBlendConstants:array of TpvFloat);
+                                                       const aLogicOp:TVkLogicOp;
+                                                       const aBlendConstants:array of TpvFloat);
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  fGraphicsPipelineConstructor.SetColorBlendState(aLogicOpEnable,
@@ -15933,13 +15932,13 @@ begin
 end;
 
 function TpvVulkanGraphicsPipeline.AddColorBlendAttachmentState(const aBlendEnable:boolean;
-                                                              const aSrcColorBlendFactor:TVkBlendFactor;
-                                                              const aDstColorBlendFactor:TVkBlendFactor;
-                                                              const aColorBlendOp:TVkBlendOp;
-                                                              const aSrcAlphaBlendFactor:TVkBlendFactor;
-                                                              const aDstAlphaBlendFactor:TVkBlendFactor;
-                                                              const aAlphaBlendOp:TVkBlendOp;
-                                                              const aColorWriteMask:TVkColorComponentFlags):TpvInt32;
+                                                                const aSrcColorBlendFactor:TVkBlendFactor;
+                                                                const aDstColorBlendFactor:TVkBlendFactor;
+                                                                const aColorBlendOp:TVkBlendOp;
+                                                                const aSrcAlphaBlendFactor:TVkBlendFactor;
+                                                                const aDstAlphaBlendFactor:TVkBlendFactor;
+                                                                const aAlphaBlendOp:TVkBlendOp;
+                                                                const aColorWriteMask:TVkColorComponentFlags):TpvInt32;
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddColorBlendAttachmentState(aBlendEnable,
@@ -15991,27 +15990,27 @@ begin
 end;
 
 constructor TpvVulkanTexture.CreateFromMemory(const aDevice:TpvVulkanDevice;
-                                            const aGraphicsQueue:TpvVulkanQueue;
-                                            const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                            const aGraphicsFence:TpvVulkanFence;
-                                            const aTransferQueue:TpvVulkanQueue;
-                                            const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                            const aTransferFence:TpvVulkanFence;
-                                            const aFormat:TVkFormat;
-                                            const aSampleCount:TVkSampleCountFlagBits;
-                                            const aWidth:TpvInt32;
-                                            const aHeight:TpvInt32;
-                                            const aDepth:TpvInt32;
-                                            const aCountArrayLayers:TpvInt32;
-                                            const aCountFaces:TpvInt32;
-                                            const aCountMipMaps:TpvInt32;
-                                            const aUsageFlags:TpvVulkanTextureUsageFlags;
-                                            const aData:TpvPointer;
-                                            const aDataSize:TVkSizeInt;
-                                            const aMipMapSizeStored:boolean;
-                                            const aSwapEndianness:boolean;
-                                            const aSwapEndiannessTexels:TpvInt32;
-                                            const aFromDDS:boolean=false);
+                                              const aGraphicsQueue:TpvVulkanQueue;
+                                              const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                              const aGraphicsFence:TpvVulkanFence;
+                                              const aTransferQueue:TpvVulkanQueue;
+                                              const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                              const aTransferFence:TpvVulkanFence;
+                                              const aFormat:TVkFormat;
+                                              const aSampleCount:TVkSampleCountFlagBits;
+                                              const aWidth:TpvInt32;
+                                              const aHeight:TpvInt32;
+                                              const aDepth:TpvInt32;
+                                              const aCountArrayLayers:TpvInt32;
+                                              const aCountFaces:TpvInt32;
+                                              const aCountMipMaps:TpvInt32;
+                                              const aUsageFlags:TpvVulkanTextureUsageFlags;
+                                              const aData:TpvPointer;
+                                              const aDataSize:TVkSizeInt;
+                                              const aMipMapSizeStored:boolean;
+                                              const aSwapEndianness:boolean;
+                                              const aSwapEndiannessTexels:TpvInt32;
+                                              const aFromDDS:boolean=false);
 type PUInt8Array=^TUInt8Array;
      TUInt8Array=array[0..65535] of TpvUInt8;
  function Swap16(x:TpvUInt16):TpvUInt16;
@@ -16989,26 +16988,26 @@ begin
 end;
 
 constructor TpvVulkanTexture.CreateFromStream(const aDevice:TpvVulkanDevice;
-                                            const aGraphicsQueue:TpvVulkanQueue;
-                                            const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                            const aGraphicsFence:TpvVulkanFence;
-                                            const aTransferQueue:TpvVulkanQueue;
-                                            const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                            const aTransferFence:TpvVulkanFence;
-                                            const aFormat:TVkFormat;
-                                            const aSampleCount:TVkSampleCountFlagBits;
-                                            const aWidth:TpvInt32;
-                                            const aHeight:TpvInt32;
-                                            const aDepth:TpvInt32;
-                                            const aCountArrayLayers:TpvInt32;
-                                            const aCountFaces:TpvInt32;
-                                            const aCountMipMaps:TpvInt32;
-                                            const aUsageFlags:TpvVulkanTextureUsageFlags;
-                                            const aStream:TStream;
-                                            const aMipMapSizeStored:boolean;
-                                            const aSwapEndianness:boolean;
-                                            const aSwapEndiannessTexels:TpvInt32;
-                                            const aFromDDS:boolean=false);
+                                              const aGraphicsQueue:TpvVulkanQueue;
+                                              const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                              const aGraphicsFence:TpvVulkanFence;
+                                              const aTransferQueue:TpvVulkanQueue;
+                                              const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                              const aTransferFence:TpvVulkanFence;
+                                              const aFormat:TVkFormat;
+                                              const aSampleCount:TVkSampleCountFlagBits;
+                                              const aWidth:TpvInt32;
+                                              const aHeight:TpvInt32;
+                                              const aDepth:TpvInt32;
+                                              const aCountArrayLayers:TpvInt32;
+                                              const aCountFaces:TpvInt32;
+                                              const aCountMipMaps:TpvInt32;
+                                              const aUsageFlags:TpvVulkanTextureUsageFlags;
+                                              const aStream:TStream;
+                                              const aMipMapSizeStored:boolean;
+                                              const aSwapEndianness:boolean;
+                                              const aSwapEndiannessTexels:TpvInt32;
+                                              const aFromDDS:boolean=false);
 var Data:TpvPointer;
     DataSize:TpvUInt32;
 begin
@@ -17046,13 +17045,13 @@ begin
 end;
 
 constructor TpvVulkanTexture.CreateFromKTX(const aDevice:TpvVulkanDevice;
-                                         const aGraphicsQueue:TpvVulkanQueue;
-                                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aGraphicsFence:TpvVulkanFence;
-                                         const aTransferQueue:TpvVulkanQueue;
-                                         const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aTransferFence:TpvVulkanFence;
-                                         const aStream:TStream);
+                                           const aGraphicsQueue:TpvVulkanQueue;
+                                           const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aGraphicsFence:TpvVulkanFence;
+                                           const aTransferQueue:TpvVulkanQueue;
+                                           const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aTransferFence:TpvVulkanFence;
+                                           const aStream:TStream);
 type PKTXIdentifier=^TKTXIdentifier;
      TKTXIdentifier=array[0..11] of TpvUInt8;
      PKTXHeader=^TKTXHeader;
@@ -17199,13 +17198,13 @@ begin
 end;
 
 constructor TpvVulkanTexture.CreateFromDDS(const aDevice:TpvVulkanDevice;
-                                         const aGraphicsQueue:TpvVulkanQueue;
-                                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aGraphicsFence:TpvVulkanFence;
-                                         const aTransferQueue:TpvVulkanQueue;
-                                         const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aTransferFence:TpvVulkanFence;
-                                         const aStream:TStream);
+                                           const aGraphicsQueue:TpvVulkanQueue;
+                                           const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aGraphicsFence:TpvVulkanFence;
+                                           const aTransferQueue:TpvVulkanQueue;
+                                           const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aTransferFence:TpvVulkanFence;
+                                           const aStream:TStream);
 const DDS_MAGIC=$20534444;
       DDSD_CAPS=$00000001;
       DDSD_HEIGHT=$00000002;
@@ -18001,14 +18000,14 @@ begin
 end;
 
 constructor TpvVulkanTexture.CreateFromHDR(const aDevice:TpvVulkanDevice;
-                                         const aGraphicsQueue:TpvVulkanQueue;
-                                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aGraphicsFence:TpvVulkanFence;
-                                         const aTransferQueue:TpvVulkanQueue;
-                                         const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aTransferFence:TpvVulkanFence;
-                                         const aStream:TStream;
-                                         const aMipMaps:boolean);
+                                           const aGraphicsQueue:TpvVulkanQueue;
+                                           const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aGraphicsFence:TpvVulkanFence;
+                                           const aTransferQueue:TpvVulkanQueue;
+                                           const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aTransferFence:TpvVulkanFence;
+                                           const aStream:TStream;
+                                           const aMipMaps:boolean);
 const RGBE_DATA_RED=0;
       RGBE_DATA_GREEN=1;
       RGBE_DATA_BLUE=2;
@@ -18305,14 +18304,14 @@ begin
 end;
 
 constructor TpvVulkanTexture.CreateFromTGA(const aDevice:TpvVulkanDevice;
-                                         const aGraphicsQueue:TpvVulkanQueue;
-                                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aGraphicsFence:TpvVulkanFence;
-                                         const aTransferQueue:TpvVulkanQueue;
-                                         const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aTransferFence:TpvVulkanFence;
-                                         const aStream:TStream;
-                                         const aMipMaps:boolean);
+                                           const aGraphicsQueue:TpvVulkanQueue;
+                                           const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aGraphicsFence:TpvVulkanFence;
+                                           const aTransferQueue:TpvVulkanQueue;
+                                           const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aTransferFence:TpvVulkanFence;
+                                           const aStream:TStream;
+                                           const aMipMaps:boolean);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -18439,14 +18438,14 @@ begin
 end;
 
 constructor TpvVulkanTexture.CreateFromJPEG(const aDevice:TpvVulkanDevice;
-                                          const aGraphicsQueue:TpvVulkanQueue;
-                                          const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                          const aGraphicsFence:TpvVulkanFence;
-                                          const aTransferQueue:TpvVulkanQueue;
-                                          const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                          const aTransferFence:TpvVulkanFence;
-                                          const aStream:TStream;
-                                          const aMipMaps:boolean);
+                                            const aGraphicsQueue:TpvVulkanQueue;
+                                            const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                            const aGraphicsFence:TpvVulkanFence;
+                                            const aTransferQueue:TpvVulkanQueue;
+                                            const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                            const aTransferFence:TpvVulkanFence;
+                                            const aStream:TStream;
+                                            const aMipMaps:boolean);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -18497,14 +18496,14 @@ begin
 end;
 
 constructor TpvVulkanTexture.CreateFromBMP(const aDevice:TpvVulkanDevice;
-                                         const aGraphicsQueue:TpvVulkanQueue;
-                                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aGraphicsFence:TpvVulkanFence;
-                                         const aTransferQueue:TpvVulkanQueue;
-                                         const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aTransferFence:TpvVulkanFence;
-                                         const aStream:TStream;
-                                         const aMipMaps:boolean);
+                                           const aGraphicsQueue:TpvVulkanQueue;
+                                           const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aGraphicsFence:TpvVulkanFence;
+                                           const aTransferQueue:TpvVulkanQueue;
+                                           const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aTransferFence:TpvVulkanFence;
+                                           const aStream:TStream;
+                                           const aMipMaps:boolean);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -18555,14 +18554,14 @@ begin
 end;
 
 constructor TpvVulkanTexture.CreateFromImage(const aDevice:TpvVulkanDevice;
-                                           const aGraphicsQueue:TpvVulkanQueue;
-                                           const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                           const aGraphicsFence:TpvVulkanFence;
-                                           const aTransferQueue:TpvVulkanQueue;
-                                           const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                           const aTransferFence:TpvVulkanFence;
-                                           const aStream:TStream;
-                                           const aMipMaps:boolean);
+                                             const aGraphicsQueue:TpvVulkanQueue;
+                                             const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                             const aGraphicsFence:TpvVulkanFence;
+                                             const aTransferQueue:TpvVulkanQueue;
+                                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                             const aTransferFence:TpvVulkanFence;
+                                             const aStream:TStream;
+                                             const aMipMaps:boolean);
 const DDS_MAGIC=$20534444;
       DDSD_CAPS=$00000001;
       DDSD_PIXELFORMAT=$00001000;
@@ -18657,20 +18656,20 @@ begin
 end;
 
 constructor TpvVulkanTexture.CreateDefault(const aDevice:TpvVulkanDevice;
-                                         const aGraphicsQueue:TpvVulkanQueue;
-                                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aGraphicsFence:TpvVulkanFence;
-                                         const aTransferQueue:TpvVulkanQueue;
-                                         const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aTransferFence:TpvVulkanFence;
-                                         const aDefaultType:TpvVulkanTextureDefaultType;
-                                         const aWidth:TpvInt32;
-                                         const aHeight:TpvInt32;
-                                         const aDepth:TpvInt32;
-                                         const aCountArrayLayers:TpvInt32;
-                                         const aCountFaces:TpvInt32;
-                                         const aMipmaps:boolean;
-                                         const aBorder:boolean);
+                                           const aGraphicsQueue:TpvVulkanQueue;
+                                           const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aGraphicsFence:TpvVulkanFence;
+                                           const aTransferQueue:TpvVulkanQueue;
+                                           const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aTransferFence:TpvVulkanFence;
+                                           const aDefaultType:TpvVulkanTextureDefaultType;
+                                           const aWidth:TpvInt32;
+                                           const aHeight:TpvInt32;
+                                           const aDepth:TpvInt32;
+                                           const aCountArrayLayers:TpvInt32;
+                                           const aCountFaces:TpvInt32;
+                                           const aMipmaps:boolean;
+                                           const aBorder:boolean);
 const TexelSize=4;
       BlockShift=5;
       BlockSize=1 shl BlockShift;
