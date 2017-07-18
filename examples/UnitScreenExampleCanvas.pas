@@ -1,4 +1,4 @@
-unit UnitScreenExampleSprites;
+unit UnitScreenExampleCanvas;
 {$ifdef fpc}
  {$mode delphi}
  {$ifdef cpu386}
@@ -29,16 +29,20 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.Sprites,
-     PasVulkan.Canvas;
+     PasVulkan.Canvas,
+     PasVulkan.Font,
+     PasVulkan.TrueTypeFont;
 
-type TScreenExampleSprites=class(TpvApplicationScreen)
+type TScreenExampleCanvas=class(TpvApplicationScreen)
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanCommandPool:TpvVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
        fVulkanSpriteAtlas:TpvSpriteAtlas;
+       fVulkanFontSpriteAtlas:TpvSpriteAtlas;
        fVulkanCanvas:TpvCanvas;
+       fVulkanFont:TpvFont;
        fVulkanSpriteTest:TpvSprite;
        fVulkanSpriteSmiley0:TpvSprite;
        fVulkanSpriteAppIcon:TpvSprite;
@@ -109,7 +113,7 @@ const SpritesVertices:array[0..2,0..1,0..2] of TpvFloat=
 
       FontSize=3.0;
 
-constructor TScreenExampleSprites.Create;
+constructor TScreenExampleCanvas.Create;
 begin
  inherited Create;
  fSelectedIndex:=-1;
@@ -117,15 +121,16 @@ begin
  fTime:=0;
 end;
 
-destructor TScreenExampleSprites.Destroy;
+destructor TScreenExampleCanvas.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TScreenExampleSprites.Show;
+procedure TScreenExampleCanvas.Show;
 var Stream:TStream;
     Index,x,y:TpvInt32;
     RawSprite:pointer;
+    TrueTypeFont:TpvTrueTypeFont;
 begin
  inherited Show;
 
@@ -140,6 +145,25 @@ begin
  fVulkanRenderPass:=nil;
 
  fVulkanSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice);
+
+ fVulkanFontSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice);
+ fVulkanFontSpriteAtlas.MipMaps:=false;
+
+ //Stream:=pvApplication.Assets.GetAssetStream('fonts/linbiolinum_r.otf');
+ //Stream:=pvApplication.Assets.GetAssetStream('fonts/notosans.ttf');
+ Stream:=pvApplication.Assets.GetAssetStream('fonts/vera.ttf');
+ try
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  try
+   TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
+   fVulkanFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,TrueTypeFont,[TpvFont.CodePointRange(0,255)]);
+  finally
+   TrueTypeFont.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
 
  GetMem(RawSprite,256*256*4);
  try
@@ -185,6 +209,13 @@ begin
   Stream.Free;
  end;
 
+ fVulkanFontSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
+                               pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                               pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                               pvApplication.VulkanDevice.TransferQueue,
+                               pvApplication.VulkanTransferCommandBuffers[0,0],
+                               pvApplication.VulkanTransferCommandBufferFences[0,0]);
+
  fVulkanSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
                            pvApplication.VulkanGraphicsCommandBuffers[0,0],
                            pvApplication.VulkanGraphicsCommandBufferFences[0,0],
@@ -194,9 +225,11 @@ begin
 
 end;
 
-procedure TScreenExampleSprites.Hide;
+procedure TScreenExampleCanvas.Hide;
 var Index:TpvInt32;
 begin
+ FreeAndNil(fVulkanFont);
+ FreeAndNil(fVulkanFontSpriteAtlas);
  FreeAndNil(fVulkanSpriteAtlas);
  FreeAndNil(fVulkanRenderPass);
  for Index:=0 to MaxSwapChainImages-1 do begin
@@ -207,22 +240,22 @@ begin
  inherited Hide;
 end;
 
-procedure TScreenExampleSprites.Resume;
+procedure TScreenExampleCanvas.Resume;
 begin
  inherited Resume;
 end;
 
-procedure TScreenExampleSprites.Pause;
+procedure TScreenExampleCanvas.Pause;
 begin
  inherited Pause;
 end;
 
-procedure TScreenExampleSprites.Resize(const aWidth,aHeight:TpvInt32);
+procedure TScreenExampleCanvas.Resize(const aWidth,aHeight:TpvInt32);
 begin
  inherited Resize(aWidth,aHeight);
 end;
 
-procedure TScreenExampleSprites.AfterCreateSwapChain;
+procedure TScreenExampleCanvas.AfterCreateSwapChain;
 var SwapChainImageIndex:TpvInt32;
     VulkanCommandBuffer:TpvVulkanCommandBuffer;
 begin
@@ -311,14 +344,14 @@ begin
 
 end;
 
-procedure TScreenExampleSprites.BeforeDestroySwapChain;
+procedure TScreenExampleCanvas.BeforeDestroySwapChain;
 begin
  FreeAndNil(fVulkanCanvas);
  FreeAndNil(fVulkanRenderPass);
  inherited BeforeDestroySwapChain;
 end;
 
-function TScreenExampleSprites.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TScreenExampleCanvas.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
  if fReady then begin
@@ -365,17 +398,17 @@ begin
  end;
 end;
 
-function TScreenExampleSprites.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TScreenExampleCanvas.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleSprites.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TScreenExampleCanvas.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleSprites.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenExampleCanvas.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -395,12 +428,12 @@ begin
  end;
 end;
 
-function TScreenExampleSprites.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenExampleCanvas.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleSprites.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TScreenExampleCanvas.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -417,7 +450,7 @@ begin
  end;
 end;
 
-function TScreenExampleSprites.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TScreenExampleCanvas.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -434,16 +467,17 @@ begin
  end;
 end;
 
-function TScreenExampleSprites.Scrolled(const aAmount:TpvInt32):boolean;
+function TScreenExampleCanvas.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-procedure TScreenExampleSprites.Update(const aDeltaTime:TpvDouble);
+procedure TScreenExampleCanvas.Update(const aDeltaTime:TpvDouble);
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
       Options:array[0..0] of string=('Back');
 var Index:TpvInt32;
-    cy:TpvFloat;
+    cy,LocalFontSize:TpvFloat;
+    rbs:TpvUTF8String;
     s:string;
     IsSelected:boolean;
     SrcRect:TpvSpriteRect;
@@ -496,9 +530,23 @@ begin
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
  fVulkanCanvas.DrawSprite(fVulkanSpriteSmiley0,SrcRect,DstRect,TpvSpritePoint.Create(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,TpvSpriteColor.Create(1.0,1.0,1.0,1.0));
 
+ fVulkanCanvas.RenderingMode:=vsbrmFont;
+
+ fVulkanCanvas.BlendingMode:=vsbbmAlphaBlending;
+
+ LocalFontSize:=(-56.0)+(sin((fTime*0.1)*pi*2.0)*48.0);
+
+ rbs:='This is an example text';
+
+ fVulkanFont.Draw(fVulkanCanvas,
+                  rbs,
+                  ((fVulkanCanvas.Width-fVulkanFont.TextWidth(rbs,LocalFontSize))*0.5)+0.0,
+                  ((fVulkanCanvas.Height-fVulkanFont.TextHeight(rbs,LocalFontSize))*0.5)+(sin(fTime*pi*0.07)*(fVulkanCanvas.Height*0.3275)),
+                  LocalFontSize);
+
  fVulkanCanvas.Stop;
 
- ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Sprites');
+ ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Canvas');
  fStartY:=pvApplication.Height-((((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize)*1.25)-(4*FontSize));
  cy:=fStartY;
  for Index:=0 to 0 do begin
@@ -516,7 +564,7 @@ begin
  fReady:=true;
 end;
 
-procedure TScreenExampleSprites.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+procedure TScreenExampleCanvas.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var BufferIndex,Size:TpvInt32;
     VulkanVertexBuffer:TpvVulkanBuffer;
@@ -569,5 +617,5 @@ begin
 end;
 
 initialization
- RegisterExample('Sprites',TScreenExampleSprites);
+ RegisterExample('Canvas',TScreenExampleCanvas);
 end.

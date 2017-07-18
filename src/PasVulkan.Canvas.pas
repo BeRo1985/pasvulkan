@@ -190,7 +190,7 @@ type TpvCanvasColor=class(TPersistent)
      TpvCanvasQueueItem=record
       Kind:TpvCanvasQueueItemKind;
       BufferIndex:TpvInt32;
-      DescriptorSetIndex:TpvInt32;
+      DescriptorIndex:TpvInt32;
       StartVertexIndex:TpvInt32;
       StartIndexIndex:TpvInt32;
       CountVertices:TpvInt32;
@@ -203,6 +203,8 @@ type TpvCanvasColor=class(TPersistent)
      end;
 
      TpvCanvasQueueItems=array of TpvCanvasQueueItem;
+
+     TpvCanvasDescriptorPools=array of TpvVulkanDescriptorPool;
 
      TpvCanvasDescriptorSets=array of TpvVulkanDescriptorSet;
 
@@ -239,10 +241,10 @@ type TpvCanvasColor=class(TPersistent)
        fSpriteBatchFragmentShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineSpriteBatchShaderStageVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineSpriteBatchShaderStageFragment:TpvVulkanPipelineShaderStage;
-       fVulkanDescriptorPool:TpvVulkanDescriptorPool;
+       fVulkanDescriptorPools:TpvCanvasDescriptorPools;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:TpvCanvasDescriptorSets;
-       fCountVulkanDescriptorSets:TpvInt32;
+       fCountVulkanDescriptors:TpvInt32;
        fVulkanTextureDescriptorSetHashMap:TpvCanvasAtlasArrayTextureDescriptorSetHashMap;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
@@ -456,13 +458,6 @@ begin
  fCurrentVulkanVertexBufferOffset:=0;
  fCurrentVulkanIndexBufferOffset:=0;
 
- fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
-                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                     2);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
- fVulkanDescriptorPool.Initialize;
-
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
  fVulkanDescriptorSetLayout.AddBinding(0,
                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -471,8 +466,9 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.Initialize;
 
+ fVulkanDescriptorPools:=nil;
  fVulkanDescriptorSets:=nil;
- fCountVulkanDescriptorSets:=0;
+ fCountVulkanDescriptors:=0;
 
  fVulkanTextureDescriptorSetHashMap:=TpvCanvasAtlasArrayTextureDescriptorSetHashMap.Create(-1);
 
@@ -599,7 +595,7 @@ begin
 
 //FreeAndNil(fVulkanRenderPass);
 
- for Index:=0 to fCountVulkanDescriptorSets-1 do begin
+ for Index:=0 to fCountVulkanDescriptors-1 do begin
   FreeAndNil(fVulkanDescriptorSets[Index]);
  end;
 
@@ -607,7 +603,11 @@ begin
 
  FreeAndNil(fVulkanDescriptorSetLayout);
 
- FreeAndNil(fVulkanDescriptorPool);
+ for Index:=0 to fCountVulkanDescriptors-1 do begin
+  FreeAndNil(fVulkanDescriptorPools[Index]);
+ end;
+
+ fVulkanDescriptorPools:=nil;
 
  FreeAndNil(fVulkanTextureDescriptorSetHashMap);
 
@@ -709,6 +709,7 @@ begin
  fCurrentVulkanBufferIndex:=-1;
  fCurrentVulkanVertexBufferOffset:=0;
  fCurrentVulkanIndexBufferOffset:=0;
+
  GetNextDestinationVertexBuffer;
 
  fState.BlendingMode:=1.0;
@@ -736,8 +737,9 @@ begin
 end;
 
 procedure TpvCanvas.Flush;
-var CurrentVulkanBufferIndex,OldCount,NewCount,QueueItemIndex,DescriptorSetIndex:TpvInt32;
+var CurrentVulkanBufferIndex,OldCount,NewCount,QueueItemIndex,DescriptorIndex:TpvInt32;
     QueueItem:PpvCanvasQueueItem;
+    VulkanDescriptorPool:TpvVulkanDescriptorPool;
     VulkanDescriptorSet:TpvVulkanDescriptorSet;
 begin
  if assigned(fCurrentFillBuffer) and (fCurrentCountVertices>0) then begin
@@ -770,14 +772,25 @@ begin
 
    inc(fCurrentFillBuffer^.fIndexBufferSizes[CurrentVulkanBufferIndex],fCurrentCountIndices*SizeOf(TpvUInt32));
 
-   if not fVulkanTextureDescriptorSetHashMap.TryGet(fLastArrayTexture,DescriptorSetIndex) then begin
-    DescriptorSetIndex:=fCountVulkanDescriptorSets;
-    inc(fCountVulkanDescriptorSets);
-    if length(fVulkanDescriptorSets)<fCountVulkanDescriptorSets then begin
-     SetLength(fVulkanDescriptorSets,fCountVulkanDescriptorSets*2);
+   if not fVulkanTextureDescriptorSetHashMap.TryGet(fLastArrayTexture,DescriptorIndex) then begin
+    DescriptorIndex:=fCountVulkanDescriptors;
+    inc(fCountVulkanDescriptors);
+    if length(fVulkanDescriptorPools)<fCountVulkanDescriptors then begin
+     SetLength(fVulkanDescriptorPools,fCountVulkanDescriptors*2);
     end;
-    VulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
-                                                     fVulkanDescriptorSetLayout);
+    if length(fVulkanDescriptorSets)<fCountVulkanDescriptors then begin
+     SetLength(fVulkanDescriptorSets,fCountVulkanDescriptors*2);
+    end;
+    VulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
+                                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                         2);
+    fVulkanDescriptorPools[DescriptorIndex]:=VulkanDescriptorPool;
+    VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
+    VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
+    VulkanDescriptorPool.Initialize;
+    VulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(VulkanDescriptorPool,
+                                                       fVulkanDescriptorSetLayout);
+    fVulkanDescriptorSets[DescriptorIndex]:=VulkanDescriptorSet;
     VulkanDescriptorSet.WriteToDescriptorSet(0,
                                              0,
                                              1,
@@ -788,8 +801,7 @@ begin
                                              false
                                             );
     VulkanDescriptorSet.Flush;
-    fVulkanDescriptorSets[DescriptorSetIndex]:=VulkanDescriptorSet;
-    fVulkanTextureDescriptorSetHashMap.Add(fLastArrayTexture,DescriptorSetIndex);
+    fVulkanTextureDescriptorSetHashMap.Add(fLastArrayTexture,DescriptorIndex);
    end;
 
    QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
@@ -800,7 +812,7 @@ begin
    QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
    QueueItem^.Kind:=vcqikNormal;
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
-   QueueItem^.DescriptorSetIndex:=DescriptorSetIndex;
+   QueueItem^.DescriptorIndex:=DescriptorIndex;
    QueueItem^.StartVertexIndex:=fCurrentVulkanVertexBufferOffset;
    QueueItem^.StartIndexIndex:=fCurrentVulkanIndexBufferOffset;
    QueueItem^.CountVertices:=fCurrentCountVertices;
@@ -820,7 +832,7 @@ begin
   fCurrentCountIndices:=0;
 
   fCurrentDestinationVertexBufferPointer:=@fCurrentFillBuffer^.fVertexBuffers[fCurrentVulkanBufferIndex][fCurrentVulkanVertexBufferOffset];
-  fCurrentDestinationIndexBufferPointer:=@fCurrentFillBuffer^.fVertexBuffers[fCurrentVulkanBufferIndex][fCurrentVulkanIndexBufferOffset];
+  fCurrentDestinationIndexBufferPointer:=@fCurrentFillBuffer^.fIndexBuffers[fCurrentVulkanBufferIndex][fCurrentVulkanIndexBufferOffset];
 
  end;
 end;
@@ -1449,7 +1461,7 @@ begin
 end;
 
 procedure TpvCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
-var Index,DescriptorSetIndex,StartVertexIndex:TpvInt32;
+var Index,DescriptorIndex,StartVertexIndex:TpvInt32;
     QueueItem:PpvCanvasQueueItem;
     OldQueueItemKind:TpvCanvasQueueItemKind;
     CurrentDrawSpriteBatchBuffer:PpvCanvasBuffer;
@@ -1466,7 +1478,7 @@ begin
   OldScissor.extent.Width:=$7fffffff;
   OldScissor.extent.Height:=$7fffffff;
 
-  DescriptorSetIndex:=-1;
+  DescriptorIndex:=-1;
 
   OldQueueItemKind:=vcqikNone;
 
@@ -1493,9 +1505,9 @@ begin
      end;
 
      if ForceUpdate or
-        (DescriptorSetIndex<>QueueItem^.DescriptorSetIndex) then begin
-      DescriptorSetIndex:=QueueItem^.DescriptorSetIndex;
-      aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorSetIndex].Handle,0,nil);
+        (DescriptorIndex<>QueueItem^.DescriptorIndex) then begin
+      DescriptorIndex:=QueueItem^.DescriptorIndex;
+      aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorIndex].Handle,0,nil);
      end;
 
      if ForceUpdate then begin

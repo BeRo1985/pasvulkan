@@ -249,8 +249,7 @@
         <DCCReference Include="UnitScreenExampleTriangle.pas"/>
         <DCCReference Include="UnitScreenExampleCube.pas"/>
         <DCCReference Include="UnitScreenExampleDragon.pas"/>
-        <DCCReference Include="UnitScreenExampleSprites.pas"/>
-        <DCCReference Include="UnitScreenExampleFont.pas"/>
+        <DCCReference Include="UnitScreenExampleCanvas.pas"/>
         <None Include="..\src\PasVulkan.inc"/>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_2</Key>

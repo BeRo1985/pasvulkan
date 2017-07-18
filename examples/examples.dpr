@@ -71,8 +71,7 @@ uses
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas',
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
   UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
-  UnitScreenExampleSprites in 'UnitScreenExampleSprites.pas',
-  UnitScreenExampleFont in 'UnitScreenExampleFont.pas';
+  UnitScreenExampleCanvas in 'UnitScreenExampleCanvas.pas';
 
 // {$if defined(fpc) and defined(android)}
 
