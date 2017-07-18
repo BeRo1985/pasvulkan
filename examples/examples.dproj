@@ -212,6 +212,7 @@
         <DCCReference Include="..\src\PasVulkan.Types.pas"/>
         <DCCReference Include="..\src\PasVulkan.Utils.pas"/>
         <DCCReference Include="..\src\PasVulkan.Collections.pas"/>
+        <DCCReference Include="..\src\PasVulkan.JSON.pas"/>
         <DCCReference Include="..\src\PasVulkan.XML.pas"/>
         <DCCReference Include="..\src\PasVulkan.TrueTypeFont.pas"/>
         <DCCReference Include="..\src\PasVulkan.Streams.pas"/>
@@ -245,6 +246,7 @@
         <DCCReference Include="UnitScreenExampleDragon.pas"/>
         <DCCReference Include="UnitScreenExampleSprites.pas"/>
         <DCCReference Include="UnitScreenExampleFont.pas"/>
+        <DCCReference Include="..\externals\pasdblstrutils\src\PasDblStrUtils.pas"/>
         <None Include="..\src\PasVulkan.inc"/>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_2</Key>
