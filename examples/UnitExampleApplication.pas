@@ -195,6 +195,7 @@ begin
   pvApplication.CatchMouse:=false;
   pvApplication.HideSystemBars:=true;
   pvApplication.AndroidSeparateMouseAndTouch:=false;
+  pvApplication.UseAudio:=true;
   pvApplication.VSync:={$ifdef NoVSync}false{$else}true{$endif};
   pvApplication.Run;
  finally

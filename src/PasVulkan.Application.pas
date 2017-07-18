@@ -923,6 +923,7 @@ type EpvApplication=class(Exception)
        fCatchMouse:boolean;
        fHideSystemBars:boolean;
        fAndroidSeparateMouseAndTouch:boolean;
+       fUseAudio:boolean;
        fBlocking:boolean;
 
        fDebugging:boolean;
@@ -1244,6 +1245,8 @@ type EpvApplication=class(Exception)
        property HideSystemBars:boolean read fHideSystemBars write fHideSystemBars;
 
        property AndroidSeparateMouseAndTouch:boolean read fAndroidSeparateMouseAndTouch write fAndroidSeparateMouseAndTouch;
+
+       property UseAudio:boolean read fUseAudio write fUseAudio;
 
        property Blocking:boolean read fBlocking write fBlocking;
 
@@ -4897,6 +4900,7 @@ begin
  fCatchMouse:=false;
  fHideSystemBars:=false;
  fAndroidSeparateMouseAndTouch:=true;
+ fUseAudio:=false;
  fBlocking:=true;
 
  fActive:=true;
@@ -6154,7 +6158,7 @@ end;
 
 procedure TpvApplication.InitializeAudio;
 begin
- if not assigned(fAudio) then begin
+ if fUseAudio and not assigned(fAudio) then begin
   FillChar(fSDLWaveFormat,SizeOf(TSDL_AudioSpec),#0);
   fSDLWaveFormat.Channels:=2;
   fSDLWaveFormat.Format:=AUDIO_S16;
