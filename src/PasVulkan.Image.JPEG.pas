@@ -5344,7 +5344,7 @@ begin
    end;
    for PassIndex:=0 to Passes-1 do begin
     for y:=0 to Height-1 do begin
-     OK:=ProcessScanline(TpvPointer(@PpvJPEGEncoderUInt8Array(FrameData)^[((Height-(y+1))*Width) shl 2]));
+     OK:=ProcessScanline(TpvPointer(@PpvJPEGEncoderUInt8Array(FrameData)^[(y*Width) shl 2]));
      if not OK then begin
       break;
      end;
