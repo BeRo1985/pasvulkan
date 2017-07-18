@@ -31,6 +31,7 @@ The Vulkan.pas binding header unit itself (including the vkxml2pas.dpr converter
         - TGA
     - Features swap chain screenshot API functions
         - including an own ObjectPascal-native minimal PNG writer implementation (including an own minimal static-huffman only deflate implementation)
+        - including an own ObjectPascal-native JPEG writer implementation
     - Optional automatic GPU-based texture mipmap generation (with help of vkCmdBlitImage)
     - Own ObjectPascal-native TrueType/OpenType Font loader implementation
         - With experimental PostScript-flavoured OpenType Font support (CFF Type 2)
