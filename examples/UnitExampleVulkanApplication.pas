@@ -36,7 +36,8 @@ const MenuColors:array[boolean,0..1,0..3] of TpvFloat=
 
 type TExampleVulkanApplication=class(TpvApplication)
       private
-       fMakeScreenshot:boolean;
+       fMakeScreenshotJPEG:boolean;
+       fMakeScreenshotPNG:boolean;
        fTextOverlay:TTextOverlay;
       public
        constructor Create; override;
@@ -67,6 +68,8 @@ constructor TExampleVulkanApplication.Create;
 begin
  inherited Create;
  ExampleVulkanApplication:=self;
+ fMakeScreenshotJPEG:=false;
+ fMakeScreenshotPNG:=false;
  fTextOverlay:=nil;
 end;
 
@@ -129,8 +132,11 @@ function TExampleVulkanApplication.KeyDown(const aKeyCode,aKeyModifier:TpvInt32)
 begin
  result:=inherited KeyDown(aKeyCode,aKeyModifier);
  case aKeyCode of
+  KEYCODE_F10:begin
+   fMakeScreenshotJPEG:=true;
+  end;
   KEYCODE_F11:begin
-   fMakeScreenshot:=true;
+   fMakeScreenshotPNG:=true;
   end;
  end;
 end;
@@ -147,8 +153,20 @@ var Stream:TMemoryStream;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
  fTextOverlay.Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
- if fMakeScreenshot then begin
-  fMakeScreenshot:=false;
+ if fMakeScreenshotJPEG then begin
+  fMakeScreenshotJPEG:=false;
+  Stream:=TMemoryStream.Create;
+  try
+   VulkanSwapChain.SaveScreenshotAsJPEGToStream(Stream);
+   try
+    Stream.SaveToFile('screenshot.jpeg');
+   except
+   end;
+  finally
+   Stream.Free;
+  end;
+ end else if fMakeScreenshotPNG then begin
+  fMakeScreenshotPNG:=false;
   Stream:=TMemoryStream.Create;
   try
    VulkanSwapChain.SaveScreenshotAsPNGToStream(Stream);

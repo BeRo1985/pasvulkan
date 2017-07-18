@@ -101,10 +101,10 @@ type EpvLoadJPEGImage=class(Exception);
      PpvJPEGEncoderUInt16Array=^TpvJPEGEncoderUInt16Array;
      TpvJPEGEncoderUInt16Array=array[0..65535] of TpvUInt16;
 
-     PpvJPEGEncoderInt32Array=^TpvJPEGEncoderInt16Array;
+     PpvJPEGEncoderInt32Array=^TpvJPEGEncoderInt32Array;
      TpvJPEGEncoderInt32Array=array[0..65535] of TpvInt32;
 
-     PpvJPEGEncoderUInt32Array=^TpvJPEGEncoderUInt16Array;
+     PpvJPEGEncoderUInt32Array=^TpvJPEGEncoderUInt32Array;
      TpvJPEGEncoderUInt32Array=array[0..65535] of TpvUInt32;
 
      TpvJPEGEncoder=class
@@ -192,12 +192,12 @@ type EpvLoadJPEGImage=class(Exception);
       public
        constructor Create;
        destructor Destroy; override;
-       function Encode(const FrameData:TpvPointer;var CompressedData:TpvPointer;Width,Height:TpvInt32;Quality,MaxCompressedDataSize:TpvUInt32;Fast:boolean;ChromaSubsampling:TpvInt32):TpvUInt32;
+       function Encode(const FrameData:TpvPointer;var CompressedData:TpvPointer;Width,Height:TpvInt32;Quality,MaxCompressedDataSize:TpvUInt32;const Fast:boolean=false;const ChromaSubsampling:TpvInt32=-1):TpvUInt32;
      end;
 
 function LoadJPEGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean):boolean;
 
-function SaveJPEGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aQuality:TpvInt32;const aFast:boolean;const aChromaSubsampling:TpvInt32):boolean;
+function SaveJPEGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aQuality:TpvInt32=99;const aFast:boolean=false;const aChromaSubsampling:TpvInt32=-1):boolean;
 
 implementation
 
@@ -2510,7 +2510,7 @@ begin
   end else if j>255 then begin
    j:=255;
   end;
-  pDst[i]:=j;
+  pDst^[i]:=j;
  end;
 end;
 
@@ -4808,8 +4808,8 @@ end;
 
 procedure TpvJPEGEncoder.LoadQuantizedCoefficients(ComponentIndex:TpvInt32);
 const ZigZagTable:array[0..63] of TpvUInt8=(0,1,8,16,9,2,3,10,17,24,32,25,18,11,4,5,12,19,26,33,40,48,41,34,27,20,13,6,7,14,21,28,35,42,49,56,57,50,43,36,29,22,15,23,30,37,44,51,58,59,52,45,38,31,39,46,53,60,61,54,47,55,62,63);
-var q:PLongint;
-    pDst:PSmallInt;
+var q:PpvInt32;
+    pDst:PpvInt16;
     i,j:TpvInt32;
 begin
  if ComponentIndex>0 then begin
@@ -5274,7 +5274,7 @@ begin
  result:=true;
 end;
 
-function TpvJPEGEncoder.Encode(const FrameData:TpvPointer;var CompressedData:TpvPointer;Width,Height:TpvInt32;Quality,MaxCompressedDataSize:TpvUInt32;Fast:boolean;ChromaSubsampling:TpvInt32):TpvUInt32;
+function TpvJPEGEncoder.Encode(const FrameData:TpvPointer;var CompressedData:TpvPointer;Width,Height:TpvInt32;Quality,MaxCompressedDataSize:TpvUInt32;const Fast:boolean=false;const ChromaSubsampling:TpvInt32=-1):TpvUInt32;
 type PPixel=^TPixel;
      TPixel=packed record
       r,g,b,a:TpvUInt8;
@@ -5374,11 +5374,12 @@ begin
  end;
 end;
 
-function SaveJPEGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aQuality:TpvInt32;const aFast:boolean;const aChromaSubsampling:TpvInt32):boolean;
+function SaveJPEGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aQuality:TpvInt32=99;const aFast:boolean=false;const aChromaSubsampling:TpvInt32=-1):boolean;
 var JPEGEncoder:TpvJPEGEncoder;
 begin
  JPEGEncoder:=TpvJPEGEncoder.Create;
  try
+  aDestData:=nil;
   aDestDataSize:=JPEGEncoder.Encode(aImageData,aDestData,aImageWidth,aImageHeight,aQuality,0,aFast,aChromaSubsampling);
   result:=aDestDataSize>0;
  finally
