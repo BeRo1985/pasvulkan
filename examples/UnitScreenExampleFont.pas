@@ -39,7 +39,7 @@ type TScreenExampleFont=class(TpvApplicationScreen)
        fVulkanCommandPool:TpvVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
-       fVulkanSpriteAtlas:TpvVulkanSpriteAtlas;
+       fVulkanSpriteAtlas:TpvSpriteAtlas;
        fVulkanCanvas:TpvVulkanCanvas;
        fVulkanFont:TpvFont;
        fReady:boolean;
@@ -139,7 +139,7 @@ begin
 
  fVulkanRenderPass:=nil;
 
- fVulkanSpriteAtlas:=TpvVulkanSpriteAtlas.Create(pvApplication.VulkanDevice);
+ fVulkanSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice);
 
  //Stream:=pvApplication.Assets.GetAssetStream('fonts/linbiolinum_r.otf');
  //Stream:=pvApplication.Assets.GetAssetStream('fonts/notosans.ttf');
@@ -420,8 +420,8 @@ var Index:TpvInt32;
     rbs:TpvUTF8String;
     s:string;
     IsSelected:boolean;
-    SrcRect:TpvVulkanSpriteRect;
-    DstRect:TpvVulkanSpriteRect;
+    SrcRect:TpvSpriteRect;
+    DstRect:TpvSpriteRect;
 begin
  inherited Update(aDeltaTime);
 

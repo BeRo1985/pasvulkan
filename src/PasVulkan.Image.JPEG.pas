@@ -64,7 +64,6 @@ interface
 uses SysUtils,
      Classes,
      Math,
-     Vulkan,
      PasVulkan.Types;
 
 type EpvLoadJPEGImage=class(Exception);

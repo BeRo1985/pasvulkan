@@ -103,7 +103,7 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
       OffsetY:TpvFloat;
       Width:TpvInt32;
       Height:TpvInt32;
-      Sprite:TpvVulkanSprite;
+      Sprite:TpvSprite;
      end;
 
      TPVulkanFontGlyphs=array of PpvFontGlyph;
@@ -160,7 +160,7 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
      TpvFont=class
       private
        fDevice:TpvVulkanDevice;
-       fSpriteAtlas:TpvVulkanSpriteAtlas;
+       fSpriteAtlas:TpvSpriteAtlas;
        fTargetPPI:TpvInt32;
        fUnitsPerEm:TpvInt32;
        fBaseScaleFactor:TpvFloat;
@@ -185,8 +185,8 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
 {$endif}
       public
-       constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvVulkanSpriteAtlas;const aTargetPPI:TpvInt32=72); reintroduce;
-       constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvVulkanSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange);
+       constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72); reintroduce;
+       constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange);
        destructor Destroy; override;
        class function CodePointRange(const aFromCodePoint,aToCodePoint:TpvUInt32):TpvFontCodePointRange; overload;
        class function CodePointRange(const aFromCodePoint,aToCodePoint:WideChar):TpvFontCodePointRange; overload;
@@ -2182,7 +2182,7 @@ begin
 
 end;
 
-constructor TpvFont.Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvVulkanSpriteAtlas;const aTargetPPI:TpvInt32=72);
+constructor TpvFont.Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72);
 begin
 
  inherited Create;
@@ -2225,7 +2225,7 @@ begin
 
 end;
 
-constructor TpvFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvVulkanSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange);
+constructor TpvFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange);
 const GlyphMetaDataScaleFactor=1.0;
       GlyphRasterizationScaleFactor=1.0/256.0;
 var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
@@ -2797,8 +2797,8 @@ var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
     Int64Value:TpvInt64;
     KerningPair:PpvFontKerningPair;
     Glyph:PpvFontGlyph;
-    Src,Dest:TpvVulkanSpriteRect;
-    Color:TpvVulkanSpriteColor;
+    Src,Dest:TpvSpriteRect;
+    Color:TpvSpriteColor;
 begin
  Color.r:=aColorRed;
  Color.g:=aColorGreen;

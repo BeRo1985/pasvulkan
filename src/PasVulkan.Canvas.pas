@@ -135,11 +135,11 @@ type TpvVulkanCanvasColor=class(TPersistent)
 
      PpvVulkanCanvasVertex=^TpvVulkanCanvasVertex;
      TpvVulkanCanvasVertex=packed record
-      Position:TpvVulkanSpriteVertexPoint;             // +  8 (2x 32-bit floats)       = 0
-      Color:TpvVulkanSpriteVertexColor;                // +  8 (4x 16-bit half-floats)  = 8  (=> 8 byte aligned)
-      TextureCoord:TpvVulkanSpriteVertexTextureCoord;  // + 12 (3x 32-bit floats)       = 16 (=> 16 byte aligned)
-      State:TpvVulkanSpriteVertexState;                // +  4 (2x 16-bit half-floats)  = 28 (=> 4 byte aligned)
-      ClipRect:TpvVulkanSpriteVertexClipRect;          // + 16 (4x 32-bit floats)       = 32 (=> 32 byte aligned)
+      Position:TpvSpriteVertexPoint;             // +  8 (2x 32-bit floats)       = 0
+      Color:TpvSpriteVertexColor;                // +  8 (4x 16-bit half-floats)  = 8  (=> 8 byte aligned)
+      TextureCoord:TpvSpriteVertexTextureCoord;  // + 12 (3x 32-bit floats)       = 16 (=> 16 byte aligned)
+      State:TpvSpriteVertexState;                // +  4 (2x 16-bit half-floats)  = 28 (=> 4 byte aligned)
+      ClipRect:TpvSpriteVertexClipRect;          // + 16 (4x 32-bit floats)       = 32 (=> 32 byte aligned)
       MetaInfo:TpvVector4;                             // + 16 (4x 32-bit floats)       = 48 (=> 32 byte aligned)
      end;                                            // = 64 per vertex
 
@@ -223,7 +223,7 @@ type TpvVulkanCanvasColor=class(TPersistent)
 
      TpvVulkanCanvasBuffers=array of TpvVulkanCanvasBuffer;
 
-     TpvVulkanCanvasAtlasArrayTextureDescriptorSetHashMap=class(TpvHashMap<TpvVulkanSpriteAtlasArrayTexture,TpvInt32>);
+     TpvVulkanCanvasAtlasArrayTextureDescriptorSetHashMap=class(TpvHashMap<TpvSpriteAtlasArrayTexture,TpvInt32>);
 
      TpvVulkanCanvas=class
       private
@@ -257,12 +257,12 @@ type TpvVulkanCanvasColor=class(TPersistent)
        fCurrentVulkanBufferIndex:TpvInt32;
        fCurrentVulkanVertexBufferOffset:TpvInt32;
        fCurrentVulkanIndexBufferOffset:TpvInt32;
-       fState:TpvVulkanSpriteVertexState;
-       fClipRect:TpvVulkanSpriteVertexClipRect;
-       fUnscaledClipRect:TpvVulkanSpriteVertexClipRect;
+       fState:TpvSpriteVertexState;
+       fClipRect:TpvSpriteVertexClipRect;
+       fUnscaledClipRect:TpvSpriteVertexClipRect;
        fRenderingMode:TpvVulkanCanvasRenderingMode;
        fBlendingMode:TpvVulkanCanvasBlendingMode;
-       fLastArrayTexture:TpvVulkanSpriteAtlasArrayTexture;
+       fLastArrayTexture:TpvSpriteAtlasArrayTexture;
        fInverseWidth:TpvFloat;
        fInverseHeight:TpvFloat;
        fInverseTextureWidth:TpvFloat;
@@ -273,8 +273,8 @@ type TpvVulkanCanvasColor=class(TPersistent)
        fCurrentDestinationIndexBufferPointer:PpvVulkanCanvasIndexBuffer;
        fScissor:TVkRect2D;
        fPen:TpvVulkanCanvasPen;
-       function RotatePoint(const PointToRotate,AroundPoint:TpvVulkanSpritePoint;Cosinus,Sinus:TpvFloat):TpvVulkanSpritePoint;
-       procedure SetArrayTexture(const ArrayTexture:TpvVulkanSpriteAtlasArrayTexture);
+       function RotatePoint(const PointToRotate,AroundPoint:TpvSpritePoint;Cosinus,Sinus:TpvFloat):TpvSpritePoint;
+       procedure SetArrayTexture(const ArrayTexture:TpvSpriteAtlasArrayTexture);
        procedure SetRenderingMode(aRenderingMode:TpvVulkanCanvasRenderingMode);
        procedure SetBlendingMode(aBlendingMode:TpvVulkanCanvasBlendingMode);
        procedure GetNextDestinationVertexBuffer;
@@ -300,11 +300,11 @@ type TpvVulkanCanvasColor=class(TPersistent)
        procedure SetClipRect(const aClipRect:TVkRect2D); overload;
        procedure SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
        procedure Hook(const aHook:TpvVulkanCanvasHook;const aData:TpvPointer); overload;
-       procedure DrawSprite(const Sprite:TpvVulkanSprite;const Src,Dest:TpvVulkanSpriteRect;const Color:TpvVulkanSpriteColor); overload;
-       procedure DrawSprite(const Sprite:TpvVulkanSprite;const Src,Dest:TpvVulkanSpriteRect;const Origin:TpvVulkanSpritePoint;Rotation:TpvFloat;const Color:TpvVulkanSpriteColor); overload;
-       procedure DrawSprite(const Sprite:TpvVulkanSprite;const x,y:TpvFloat;const Color:TpvVulkanSpriteColor); overload;
-       procedure DrawSprite(const Sprite:TpvVulkanSprite;const x,y:TpvFloat); overload;
-       procedure DrawSprite(const Sprite:TpvVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TpvFloat); overload;
+       procedure DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Color:TpvSpriteColor); overload;
+       procedure DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Origin:TpvSpritePoint;Rotation:TpvFloat;const Color:TpvSpriteColor); overload;
+       procedure DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat;const Color:TpvSpriteColor); overload;
+       procedure DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat); overload;
+       procedure DrawSprite(const Sprite:TpvSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TpvFloat); overload;
        procedure ExecuteUpload(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
       public
@@ -639,7 +639,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvVulkanCanvas.RotatePoint(const PointToRotate,AroundPoint:TpvVulkanSpritePoint;Cosinus,Sinus:TpvFloat):TpvVulkanSpritePoint;
+function TpvVulkanCanvas.RotatePoint(const PointToRotate,AroundPoint:TpvSpritePoint;Cosinus,Sinus:TpvFloat):TpvSpritePoint;
 var x,y:TpvFloat;
 begin
  x:=PointToRotate.x-AroundPoint.x;
@@ -879,7 +879,7 @@ begin
          (aY0<=(fUnscaledClipRect.y1+Threshold));
 end;
 
-procedure TpvVulkanCanvas.SetArrayTexture(const ArrayTexture:TpvVulkanSpriteAtlasArrayTexture);
+procedure TpvVulkanCanvas.SetArrayTexture(const ArrayTexture:TpvSpriteAtlasArrayTexture);
 begin
  if fLastArrayTexture<>ArrayTexture then begin
   Flush;
@@ -955,11 +955,11 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvVulkanSprite;const Src,Dest:TpvVulkanSpriteRect;const Color:TpvVulkanSpriteColor);
+procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Color:TpvSpriteColor);
 const MinA=1.0/1024.0;
 var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
-    TempDest,TempSrc:TpvVulkanSpriteRect;
-    VertexColor:TpvVulkanSpriteVertexColor;
+    TempDest,TempSrc:TpvSpriteRect;
+    VertexColor:TpvSpriteVertexColor;
 begin
  if (abs(Color.a)>MinA) and
     ClipCheck(Dest.Left,Dest.Top,Dest.Right,Dest.Bottom) and
@@ -1146,13 +1146,13 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvVulkanSprite;const Src,Dest:TpvVulkanSpriteRect;const Origin:TpvVulkanSpritePoint;Rotation:TpvFloat;const Color:TpvVulkanSpriteColor);
+procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Origin:TpvSpritePoint;Rotation:TpvFloat;const Color:TpvSpriteColor);
 const MinA=1.0/1024.0;
 var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
-    AroundPoint:TpvVulkanSpritePoint;
-    Points:array[0..3] of TpvVulkanSpritePoint;
-    TempDest,TempSrc:TpvVulkanSpriteRect;
-    VertexColor:TpvVulkanSpriteVertexColor;
+    AroundPoint:TpvSpritePoint;
+    Points:array[0..3] of TpvSpritePoint;
+    TempDest,TempSrc:TpvSpriteRect;
+    VertexColor:TpvSpriteVertexColor;
 begin
  if (abs(Color.a)>MinA) and
     (((Src.Right>=Sprite.TrimmedX) and (Src.Bottom>=Sprite.TrimmedY)) and
@@ -1326,8 +1326,8 @@ begin
  end;
 end;
 
-procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvVulkanSprite;const x,y:TpvFloat;const Color:TpvVulkanSpriteColor);
-var Src,Dest:TpvVulkanSpriteRect;
+procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat;const Color:TpvSpriteColor);
+var Src,Dest:TpvSpriteRect;
 begin
  Src.Left:=0;
  Src.Top:=0;
@@ -1340,8 +1340,8 @@ begin
  DrawSprite(Sprite,Src,Dest,Color);
 end;
 
-procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvVulkanSprite;const x,y:TpvFloat);
-var Color:TpvVulkanSpriteColor;
+procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat);
+var Color:TpvSpriteColor;
 begin
  Color.r:=1;
  Color.g:=1;
@@ -1350,9 +1350,9 @@ begin
  DrawSprite(Sprite,x,y,Color);
 end;
 
-procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvVulkanSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TpvFloat);
-var Src,Dest:TpvVulkanSpriteRect;
-    Color:TpvVulkanSpriteColor;
+procedure TpvVulkanCanvas.DrawSprite(const Sprite:TpvSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TpvFloat);
+var Src,Dest:TpvSpriteRect;
+    Color:TpvSpriteColor;
 begin
  Dest.Left:=dx1;
  Dest.Top:=dy1;

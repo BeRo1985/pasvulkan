@@ -76,76 +76,78 @@ uses SysUtils,
      PasVulkan.Image.PNG,
      PasVulkan.Image.TGA;
 
-type PpvVulkanSpritePoint=^TpvVulkanSpritePoint;
-     TpvVulkanSpritePoint=TpvVector2;
+type PpvSpritePoint=^TpvSpritePoint;
+     TpvSpritePoint=TpvVector2;
 
-     PpvVulkanSpriteRect=^TpvVulkanSpriteRect;
-     TpvVulkanSpriteRect=packed record
-      case TpvInt32 of
-       0:(
-        Left:TpvFloat;
-        Top:TpvFloat;
-        Right:TpvFloat;
-        Bottom:TpvFloat;
-       );
-       1:(
-        LeftTop:TpvVulkanSpritePoint;
-        RightBottom:TpvVulkanSpritePoint;
-       );
+     PpvSpriteRect=^TpvSpriteRect;
+     TpvSpriteRect=packed record
+      public
+       constructor Create(const aLeft,aTop,aRight,aBottom:TpvFloat);
+       case TpvInt32 of
+        0:(
+         Left:TpvFloat;
+         Top:TpvFloat;
+         Right:TpvFloat;
+         Bottom:TpvFloat;
+        );
+        1:(
+         LeftTop:TpvSpritePoint;
+         RightBottom:TpvSpritePoint;
+        );
      end;
 
-     PpvVulkanSpriteColor=^TpvVulkanSpriteColor;
-     TpvVulkanSpriteColor=TpvVector4;
+     PpvSpriteColor=^TpvSpriteColor;
+     TpvSpriteColor=TpvVector4;
 
-     PpvVulkanSpriteVertexPoint=^TpvVulkanSpriteVertexPoint;
-     TpvVulkanSpriteVertexPoint=TpvVulkanSpritePoint;
+     PpvSpriteVertexPoint=^TpvSpriteVertexPoint;
+     TpvSpriteVertexPoint=TpvSpritePoint;
 
-     PpvVulkanSpriteVertexTextureCoord=^TpvVulkanSpriteVertexTextureCoord;
-     TpvVulkanSpriteVertexTextureCoord=TpvVector3;
+     PpvSpriteVertexTextureCoord=^TpvSpriteVertexTextureCoord;
+     TpvSpriteVertexTextureCoord=TpvVector3;
 
-     PpvVulkanSpriteVertexColor=^TpvVulkanSpriteVertexColor;
-     TpvVulkanSpriteVertexColor=packed record
+     PpvSpriteVertexColor=^TpvSpriteVertexColor;
+     TpvSpriteVertexColor=packed record
       r:TpvHalfFloat;
       g:TpvHalfFloat;
       b:TpvHalfFloat;
       a:TpvHalfFloat;
      end;
 
-     PpvVulkanSpriteVertexState=^TpvVulkanSpriteVertexState;
-     TpvVulkanSpriteVertexState=record
+     PpvSpriteVertexState=^TpvSpriteVertexState;
+     TpvSpriteVertexState=record
       BlendingMode:TpvHalfFloat;
       RenderingMode:TpvHalfFloat;
      end;
 
-     PpvVulkanSpriteVertexClipRect=^TpvVulkanSpriteVertexClipRect;
-     TpvVulkanSpriteVertexClipRect=record
+     PpvSpriteVertexClipRect=^TpvSpriteVertexClipRect;
+     TpvSpriteVertexClipRect=record
       x0:TpvFloat;
       y0:TpvFloat;
       x1:TpvFloat;
       y1:TpvFloat;
      end;
 
-     PpvVulkanSpriteTextureTexel=^TpvVulkanSpriteTextureTexel;
-     TpvVulkanSpriteTextureTexel=packed record
+     PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
+     TpvSpriteTextureTexel=packed record
       r:TpvUInt8;
       g:TpvUInt8;
       b:TpvUInt8;
       a:TpvUInt8;
      end;
 
-     PpvVulkanSpriteTextureTexels=^TpvVulkanSpriteTextureTexels;
-     TpvVulkanSpriteTextureTexels=array[0..65535] of TpvVulkanSpriteTextureTexel;
+     PpvSpriteTextureTexels=^TpvSpriteTextureTexels;
+     TpvSpriteTextureTexels=array[0..65535] of TpvSpriteTextureTexel;
 
-     TpvVulkanSpriteTexture=class
+     TpvSpriteTexture=class
       private
        fTexture:TpvVulkanTexture;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fUploaded:boolean;
        fDirty:boolean;
-       fPixels:PpvVulkanSpriteTextureTexels;
+       fPixels:PpvSpriteTextureTexels;
       public
-       constructor Create(const aPixels:PpvVulkanSpriteTextureTexels;const aWidth,aHeight:TpvInt32); reintroduce;
+       constructor Create(const aPixels:PpvSpriteTextureTexels;const aWidth,aHeight:TpvInt32); reintroduce;
        destructor Destroy; override;
        procedure Upload(const aDevice:TpvVulkanDevice;
                         const aGraphicsQueue:TpvVulkanQueue;
@@ -164,17 +166,17 @@ type PpvVulkanSpritePoint=^TpvVulkanSpritePoint;
        property Dirty:boolean read fDirty write fDirty;
      end;
 
-     PpvVulkanSpriteAtlasArrayTextureTexel=^TpvVulkanSpriteAtlasArrayTextureTexel;
-     TpvVulkanSpriteAtlasArrayTextureTexel=TpvVulkanSpriteTextureTexel;
+     PpvSpriteAtlasArrayTextureTexel=^TpvSpriteAtlasArrayTextureTexel;
+     TpvSpriteAtlasArrayTextureTexel=TpvSpriteTextureTexel;
 
-     TpvVulkanSpriteAtlasArrayTextureTexels=array of TpvVulkanSpriteAtlasArrayTextureTexel;
+     TpvSpriteAtlasArrayTextureTexels=array of TpvSpriteAtlasArrayTextureTexel;
 
-     TpvVulkanSpriteAtlasArrayTexture=class;
+     TpvSpriteAtlasArrayTexture=class;
 
-     PpvVulkanSpriteAtlasArrayTextureLayerRectNode=^TpvVulkanSpriteAtlasArrayTextureLayerRectNode;
-     TpvVulkanSpriteAtlasArrayTextureLayerRectNode=record
-      Left:PpvVulkanSpriteAtlasArrayTextureLayerRectNode;
-      Right:PpvVulkanSpriteAtlasArrayTextureLayerRectNode;
+     PpvSpriteAtlasArrayTextureLayerRectNode=^TpvSpriteAtlasArrayTextureLayerRectNode;
+     TpvSpriteAtlasArrayTextureLayerRectNode=record
+      Left:PpvSpriteAtlasArrayTextureLayerRectNode;
+      Right:PpvSpriteAtlasArrayTextureLayerRectNode;
       x:TpvInt32;
       y:TpvInt32;
       Width:TpvInt32;
@@ -184,18 +186,18 @@ type PpvVulkanSpritePoint=^TpvVulkanSpritePoint;
       ContentHeight:TpvInt32;
      end;
 
-     TPVulkanSpriteAtlasArrayTextureLayerRectNodes=array of PpvVulkanSpriteAtlasArrayTextureLayerRectNode;
+     TPVulkanSpriteAtlasArrayTextureLayerRectNodes=array of PpvSpriteAtlasArrayTextureLayerRectNode;
 
-     PpvVulkanSpriteAtlasArrayTextureLayer=^TpvVulkanSpriteAtlasArrayTextureLayer;
-     TpvVulkanSpriteAtlasArrayTextureLayer=record
-      Next:PpvVulkanSpriteAtlasArrayTextureLayer;
-      ArrayTexture:TpvVulkanSpriteAtlasArrayTexture;
-      RootNode:PpvVulkanSpriteAtlasArrayTextureLayerRectNode;
+     PpvSpriteAtlasArrayTextureLayer=^TpvSpriteAtlasArrayTextureLayer;
+     TpvSpriteAtlasArrayTextureLayer=record
+      Next:PpvSpriteAtlasArrayTextureLayer;
+      ArrayTexture:TpvSpriteAtlasArrayTexture;
+      RootNode:PpvSpriteAtlasArrayTextureLayerRectNode;
      end;
 
-     TpvVulkanSpriteAtlasArrayTexture=class
+     TpvSpriteAtlasArrayTexture=class
       private
-       fTexels:TpvVulkanSpriteAtlasArrayTextureTexels;
+       fTexels:TpvSpriteAtlasArrayTextureTexels;
        fTexture:TpvVulkanTexture;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
@@ -210,7 +212,7 @@ type PpvVulkanSpritePoint=^TpvVulkanSpritePoint;
        destructor Destroy; override;
        procedure Resize(const aWidth,aHeight,aLayers:TpvInt32);
        procedure CopyIn(const aData;const aSrcWidth,aSrcHeight,aDestX,aDestY,aDestLayer:TpvInt32);
-       function GetTexelPointer(const aX,aY,aLayer:TpvInt32):PpvVulkanSpriteTextureTexel;
+       function GetTexelPointer(const aX,aY,aLayer:TpvInt32):PpvSpriteTextureTexel;
        procedure Upload(const aDevice:TpvVulkanDevice;
                         const aGraphicsQueue:TpvVulkanQueue;
                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -230,12 +232,12 @@ type PpvVulkanSpritePoint=^TpvVulkanSpritePoint;
        property Dirty:boolean read fDirty write fDirty;
      end;
 
-     TpvVulkanSpriteAtlasArrayTextures=array of TpvVulkanSpriteAtlasArrayTexture;
+     TpvSpriteAtlasArrayTextures=array of TpvSpriteAtlasArrayTexture;
 
-     TpvVulkanSprite=class
+     TpvSprite=class
       public
        Name:TpvRawByteString;
-       ArrayTexture:TpvVulkanSpriteAtlasArrayTexture;
+       ArrayTexture:TpvSpriteAtlasArrayTexture;
        x:TpvInt32;
        y:TpvInt32;
        Layer:TpvInt32;
@@ -250,27 +252,27 @@ type PpvVulkanSpritePoint=^TpvVulkanSpritePoint;
        destructor Destroy; override;
      end;
 
-     TpvVulkanSprites=array of TpvVulkanSprite;
+     TpvSprites=array of TpvSprite;
 
-     TpvVulkanSpriteAtlasStringHashMap=class(TpvStringHashMap<TpvVulkanSprite>);
+     TpvSpriteAtlasStringHashMap=class(TpvStringHashMap<TpvSprite>);
 
-     TpvVulkanSpriteAtlas=class
+     TpvSpriteAtlas=class
       private
        fDevice:TpvVulkanDevice;
-       fArrayTextures:TpvVulkanSpriteAtlasArrayTextures;
+       fArrayTextures:TpvSpriteAtlasArrayTextures;
        fCountArrayTextures:TpvInt32;
        fList:TList;
-       fHashMap:TpvVulkanSpriteAtlasStringHashMap;
+       fHashMap:TpvSpriteAtlasStringHashMap;
        fIsUploaded:boolean;
        fMipMaps:boolean;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fMaximumCountArrayLayers:TpvInt32;
        function GetCount:TpvInt32;
-       function GetItem(Index:TpvInt32):TpvVulkanSprite;
-       procedure SetItem(Index:TpvInt32;Item:TpvVulkanSprite);
-       function GetSprite(const Name:TpvRawByteString):TpvVulkanSprite;
-       procedure AddSprite(Sprite:TpvVulkanSprite);
+       function GetItem(Index:TpvInt32):TpvSprite;
+       procedure SetItem(Index:TpvInt32;Item:TpvSprite);
+       function GetSprite(const Name:TpvRawByteString):TpvSprite;
+       procedure AddSprite(Sprite:TpvSprite);
        function LoadImage(const aDataPointer:TpvPointer;
                           const aDataSize:TVkSizeInt;
                           var aImageData:TpvPointer;
@@ -288,13 +290,13 @@ type PpvVulkanSpritePoint=^TpvVulkanSpritePoint;
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
        function LoadXML(const aTextureStream:TStream;const aStream:TStream;const aAutomaticTrim:boolean=true):boolean; virtual;
-       function LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true):TpvVulkanSprite; virtual;
-       function LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TpvVulkanSprite; virtual;
-       function LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true):TpvVulkanSprites; virtual;
+       function LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true):TpvSprite; virtual;
+       function LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TpvSprite; virtual;
+       function LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true):TpvSprites; virtual;
        property Device:TpvVulkanDevice read fDevice;
        property Count:TpvInt32 read GetCount;
-       property Items[Index:TpvInt32]:TpvVulkanSprite read GetItem write SetItem;
-       property Sprites[const Name:TpvRawByteString]:TpvVulkanSprite read GetSprite; default;
+       property Items[Index:TpvInt32]:TpvSprite read GetItem write SetItem;
+       property Sprites[const Name:TpvRawByteString]:TpvSprite read GetSprite; default;
       published
        property MipMaps:boolean read fMipMaps write fMipMaps;
        property Width:TpvInt32 read fWidth write fWidth;
@@ -302,43 +304,25 @@ type PpvVulkanSpritePoint=^TpvVulkanSpritePoint;
        property MaximumCountArrayLayers:TpvInt32 read fMaximumCountArrayLayers write fMaximumCountArrayLayers;
      end;
 
-function VulkanSpritePoint(const x,y:TpvFloat):TpvVulkanSpritePoint;
-function VulkanSpriteRect(const Left,Top,Right,Bottom:TpvFloat):TpvVulkanSpriteRect;
-function VulkanSpriteColor(const r,g,b,a:TpvFloat):TpvVulkanSpriteColor;
-
 implementation
 
 const MipMapLevels:array[boolean] of TpvInt32=(1,-1);
 
-function VulkanSpritePoint(const x,y:TpvFloat):TpvVulkanSpritePoint;
+constructor TpvSpriteRect.Create(const aLeft,aTop,aRight,aBottom:TpvFloat);
 begin
- result.x:=x;
- result.y:=y;
+ Left:=aLeft;
+ Top:=aTop;
+ Right:=aRight;
+ Bottom:=aBottom;
 end;
 
-function VulkanSpriteRect(const Left,Top,Right,Bottom:TpvFloat):TpvVulkanSpriteRect;
+function NewTextureRectNode:PpvSpriteAtlasArrayTextureLayerRectNode;
 begin
- result.Left:=Left;
- result.Top:=Top;
- result.Right:=Right;
- result.Bottom:=Bottom;
+ GetMem(result,SizeOf(TpvSpriteAtlasArrayTextureLayerRectNode));
+ FillChar(result^,SizeOf(TpvSpriteAtlasArrayTextureLayerRectNode),AnsiChar(#0));
 end;
 
-function VulkanSpriteColor(const r,g,b,a:TpvFloat):TpvVulkanSpriteColor;
-begin
- result.r:=r;
- result.g:=g;
- result.b:=b;
- result.a:=a;
-end;
-
-function NewTextureRectNode:PpvVulkanSpriteAtlasArrayTextureLayerRectNode;
-begin
- GetMem(result,SizeOf(TpvVulkanSpriteAtlasArrayTextureLayerRectNode));
- FillChar(result^,SizeOf(TpvVulkanSpriteAtlasArrayTextureLayerRectNode),AnsiChar(#0));
-end;
-
-procedure FreeTextureRectNode(const Node:PpvVulkanSpriteAtlasArrayTextureLayerRectNode);
+procedure FreeTextureRectNode(const Node:PpvSpriteAtlasArrayTextureLayerRectNode);
 begin
  if assigned(Node) then begin
   FreeTextureRectNode(Node^.Left);
@@ -349,7 +333,7 @@ begin
  end;
 end;
 
-function InsertTextureRectNode(const Node:PpvVulkanSpriteAtlasArrayTextureLayerRectNode;const Width,Height,Area:TpvInt32):PpvVulkanSpriteAtlasArrayTextureLayerRectNode;
+function InsertTextureRectNode(const Node:PpvSpriteAtlasArrayTextureLayerRectNode;const Width,Height,Area:TpvInt32):PpvSpriteAtlasArrayTextureLayerRectNode;
 var RemainWidth,RemainHeight:TpvInt32;
 begin
  result:=nil;
@@ -411,7 +395,7 @@ begin
  end;
 end;
 
-constructor TpvVulkanSpriteTexture.Create(const aPixels:PpvVulkanSpriteTextureTexels;const aWidth,aHeight:TpvInt32);
+constructor TpvSpriteTexture.Create(const aPixels:PpvSpriteTextureTexels;const aWidth,aHeight:TpvInt32);
 begin
  inherited Create;
 
@@ -427,7 +411,7 @@ begin
 
 end;
 
-destructor TpvVulkanSpriteTexture.Destroy;
+destructor TpvSpriteTexture.Destroy;
 begin
 
  Unload;
@@ -439,7 +423,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvVulkanSpriteTexture.Upload(const aDevice:TpvVulkanDevice;
+procedure TpvSpriteTexture.Upload(const aDevice:TpvVulkanDevice;
                                       const aGraphicsQueue:TpvVulkanQueue;
                                       const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
                                       const aGraphicsFence:TpvVulkanFence;
@@ -505,7 +489,7 @@ begin
 
 end;
 
-procedure TpvVulkanSpriteTexture.Unload;
+procedure TpvSpriteTexture.Unload;
 begin
 
  if fUploaded then begin
@@ -518,7 +502,7 @@ begin
 
 end;
 
-constructor TpvVulkanSpriteAtlasArrayTexture.Create;
+constructor TpvSpriteAtlasArrayTexture.Create;
 begin
  inherited Create;
  fTexels:=nil;
@@ -533,7 +517,7 @@ begin
  fSpecialSizedArrayTexture:=false;
 end;
 
-destructor TpvVulkanSpriteAtlasArrayTexture.Destroy;
+destructor TpvSpriteAtlasArrayTexture.Destroy;
 var LayerIndex:TpvInt32;
 begin
  Unload;
@@ -549,9 +533,9 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvVulkanSpriteAtlasArrayTexture.Resize(const aWidth,aHeight,aLayers:TpvInt32);
+procedure TpvSpriteAtlasArrayTexture.Resize(const aWidth,aHeight,aLayers:TpvInt32);
 var y,LayerIndex,OldWidth,OldHeight,OldLayers:TpvInt32;
-    OldTexels:TpvVulkanSpriteAtlasArrayTextureTexels;
+    OldTexels:TpvSpriteAtlasArrayTextureTexels;
 begin
  if (fWidth<>aWidth) or
     (fHeight<>aHeight) or
@@ -568,10 +552,10 @@ begin
    fCountTexels:=TpvInt64(fWidth)*TpvInt64(fHeight)*TpvInt64(fLayers);
    if fCountTexels>0 then begin
     SetLength(fTexels,fCountTexels);
-    FillChar(fTexels[0],fCountTexels*SizeOf(TpvVulkanSpriteTextureTexel),#0);
+    FillChar(fTexels[0],fCountTexels*SizeOf(TpvSpriteTextureTexel),#0);
     for LayerIndex:=0 to Min(fLayers,OldLayers)-1 do begin
      for y:=0 to Min(fHeight,OldHeight)-1 do begin
-      Move(OldTexels[((TpvInt64(LayerIndex)*OldHeight)+y)*OldWidth],fTexels[((TpvInt64(LayerIndex)*fHeight)+y)*fWidth],Min(fWidth,OldWidth)*SizeOf(TpvVulkanSpriteTextureTexel));
+      Move(OldTexels[((TpvInt64(LayerIndex)*OldHeight)+y)*OldWidth],fTexels[((TpvInt64(LayerIndex)*fHeight)+y)*fWidth],Min(fWidth,OldWidth)*SizeOf(TpvSpriteTextureTexel));
      end;
     end;
    end;
@@ -596,25 +580,25 @@ begin
  end;
 end;
 
-procedure TpvVulkanSpriteAtlasArrayTexture.CopyIn(const aData;const aSrcWidth,aSrcHeight,aDestX,aDestY,aDestLayer:TpvInt32);
+procedure TpvSpriteAtlasArrayTexture.CopyIn(const aData;const aSrcWidth,aSrcHeight,aDestX,aDestY,aDestLayer:TpvInt32);
 var dy,sx,dw:TpvInt32;
-    Src,Dst:PpvVulkanSpriteTextureTexel;
+    Src,Dst:PpvSpriteTextureTexel;
 begin
  sx:=Min(0,-aDestX);
  dw:=Min(Max(aSrcWidth-sx,0),fWidth-aDestX);
  if dw>0 then begin
   for dy:=Min(Max(aDestY,0),fHeight-1) to Min(Max(aDestY+(aSrcHeight-1),0),fHeight-1) do begin
-   Move(PpvVulkanSpriteTextureTexels(TpvPointer(@aData))^[((dy-aDestY)*aSrcWidth)+sx],fTexels[(((TpvInt64(aDestLayer)*fHeight)+dy)*fWidth)+aDestX],dw*SizeOf(TpvVulkanSpriteTextureTexel));
+   Move(PpvSpriteTextureTexels(TpvPointer(@aData))^[((dy-aDestY)*aSrcWidth)+sx],fTexels[(((TpvInt64(aDestLayer)*fHeight)+dy)*fWidth)+aDestX],dw*SizeOf(TpvSpriteTextureTexel));
   end;
  end;
 end;
 
-function TpvVulkanSpriteAtlasArrayTexture.GetTexelPointer(const aX,aY,aLayer:TpvInt32):PpvVulkanSpriteTextureTexel;
+function TpvSpriteAtlasArrayTexture.GetTexelPointer(const aX,aY,aLayer:TpvInt32):PpvSpriteTextureTexel;
 begin
  result:=@fTexels[(((TpvInt64(aLayer)*fHeight)+aY)*fWidth)+aX];
 end;
 
-procedure TpvVulkanSpriteAtlasArrayTexture.Upload(const aDevice:TpvVulkanDevice;
+procedure TpvSpriteAtlasArrayTexture.Upload(const aDevice:TpvVulkanDevice;
                                            const aGraphicsQueue:TpvVulkanQueue;
                                            const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
                                            const aGraphicsFence:TpvVulkanFence;
@@ -646,7 +630,7 @@ begin
                                             MipMapLevels[aMipMaps],
                                             [vtufTransferDst,vtufSampled],
                                             @fTexels[0],
-                                            fCountTexels*SizeOf(TpvVulkanSpriteTextureTexel),
+                                            fCountTexels*SizeOf(TpvSpriteTextureTexel),
                                             false,
                                             false,
                                             1,
@@ -680,7 +664,7 @@ begin
 
 end;
 
-procedure TpvVulkanSpriteAtlasArrayTexture.Unload;
+procedure TpvSpriteAtlasArrayTexture.Unload;
 begin
  if fUploaded then begin
   FreeAndNil(fTexture);
@@ -688,25 +672,25 @@ begin
  end;
 end;
 
-constructor TpvVulkanSprite.Create;
+constructor TpvSprite.Create;
 begin
  inherited Create;
  Name:='';
 end;
 
-destructor TpvVulkanSprite.Destroy;
+destructor TpvSprite.Destroy;
 begin
  Name:='';
  inherited Destroy;
 end;
 
-constructor TpvVulkanSpriteAtlas.Create(const aDevice:TpvVulkanDevice);
+constructor TpvSpriteAtlas.Create(const aDevice:TpvVulkanDevice);
 begin
  fDevice:=aDevice;
  fArrayTextures:=nil;
  fCountArrayTextures:=0;
  fList:=TList.Create;
- fHashMap:=TpvVulkanSpriteAtlasStringHashMap.Create(nil);
+ fHashMap:=TpvSpriteAtlasStringHashMap.Create(nil);
  fIsUploaded:=false;
  fMipMaps:=true;
  fWidth:=Min(VULKAN_SPRITEATLASTEXTURE_WIDTH,fDevice.PhysicalDevice.Properties.limits.maxImageDimension2D);
@@ -715,7 +699,7 @@ begin
  inherited Create;
 end;
 
-destructor TpvVulkanSpriteAtlas.Destroy;
+destructor TpvSpriteAtlas.Destroy;
 var Index:TpvInt32;
 begin
  Unload;
@@ -729,25 +713,25 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvVulkanSpriteAtlas.ClearAll;
+procedure TpvSpriteAtlas.ClearAll;
 var Index:TpvInt32;
 begin
  for Index:=0 to fList.Count-1 do begin
-  TpvVulkanSprite(Items[Index]).Free;
+  TpvSprite(Items[Index]).Free;
   Items[Index]:=nil;
  end;
  fList.Clear;
  fHashMap.Clear;
 end;
 
-procedure TpvVulkanSpriteAtlas.Upload(const aGraphicsQueue:TpvVulkanQueue;
+procedure TpvSpriteAtlas.Upload(const aGraphicsQueue:TpvVulkanQueue;
                                     const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
                                     const aGraphicsFence:TpvVulkanFence;
                                     const aTransferQueue:TpvVulkanQueue;
                                     const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                     const aTransferFence:TpvVulkanFence);
 var Index:TpvInt32;
-    ArrayTexture:TpvVulkanSpriteAtlasArrayTexture;
+    ArrayTexture:TpvSpriteAtlasArrayTexture;
 begin
  if not fIsUploaded then begin
   for Index:=0 to fCountArrayTextures-1 do begin
@@ -768,9 +752,9 @@ begin
  end;
 end;
 
-procedure TpvVulkanSpriteAtlas.Unload;
+procedure TpvSpriteAtlas.Unload;
 var Index:TpvInt32;
-    ArrayTexture:TpvVulkanSpriteAtlasArrayTexture;
+    ArrayTexture:TpvSpriteAtlasArrayTexture;
 begin
  if fIsUploaded then begin
   for Index:=0 to fCountArrayTextures-1 do begin
@@ -783,38 +767,38 @@ begin
  end;
 end;
 
-function TpvVulkanSpriteAtlas.Uploaded:boolean;
+function TpvSpriteAtlas.Uploaded:boolean;
 begin
  result:=fIsUploaded;
 end;
 
-function TpvVulkanSpriteAtlas.GetCount:TpvInt32;
+function TpvSpriteAtlas.GetCount:TpvInt32;
 begin
  result:=fList.Count;
 end;
 
-function TpvVulkanSpriteAtlas.GetItem(Index:TpvInt32):TpvVulkanSprite;
+function TpvSpriteAtlas.GetItem(Index:TpvInt32):TpvSprite;
 begin
- result:=TpvVulkanSprite(fList.Items[Index]);
+ result:=TpvSprite(fList.Items[Index]);
 end;
 
-procedure TpvVulkanSpriteAtlas.SetItem(Index:TpvInt32;Item:TpvVulkanSprite);
+procedure TpvSpriteAtlas.SetItem(Index:TpvInt32;Item:TpvSprite);
 begin
  fList.Items[Index]:=TpvPointer(Item);
 end;
 
-function TpvVulkanSpriteAtlas.GetSprite(const Name:TpvRawByteString):TpvVulkanSprite;
+function TpvSpriteAtlas.GetSprite(const Name:TpvRawByteString):TpvSprite;
 begin
  result:=fHashMap[Name];
 end;
 
-procedure TpvVulkanSpriteAtlas.AddSprite(Sprite:TpvVulkanSprite);
+procedure TpvSpriteAtlas.AddSprite(Sprite:TpvSprite);
 begin
  fHashMap.Add(Sprite.Name,Sprite);
  fList.Add(Sprite);
 end;
 
-function TpvVulkanSpriteAtlas.LoadImage(const aDataPointer:TpvPointer;
+function TpvSpriteAtlas.LoadImage(const aDataPointer:TpvPointer;
                                       const aDataSize:TVkSizeInt;
                                       var aImageData:TpvPointer;
                                       var aImageWidth,aImageHeight:TpvInt32):boolean;
@@ -861,15 +845,15 @@ begin
  end;
 end;
 
-function TpvVulkanSpriteAtlas.LoadXML(const aTextureStream:TStream;const aStream:TStream;const aAutomaticTrim:boolean=true):boolean;
+function TpvSpriteAtlas.LoadXML(const aTextureStream:TStream;const aStream:TStream;const aAutomaticTrim:boolean=true):boolean;
 var XML:TpvXML;
     MemoryStream:TMemoryStream;
     i,j:TpvInt32;
     XMLItem,XMLChildrenItem:TpvXMLItem;
     XMLTag,XMLChildrenTag:TpvXMLTag;
     SpriteName:TpvRawByteString;
-    Sprite:TpvVulkanSprite;
-    SpriteAtlasArrayTexture:TpvVulkanSpriteAtlasArrayTexture;
+    Sprite:TpvSprite;
+    SpriteAtlasArrayTexture:TpvSpriteAtlasArrayTexture;
     ImageData:TpvPointer;
     ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -884,7 +868,7 @@ begin
    ImageData:=nil;
    try
     if LoadImage(MemoryStream.Memory,MemoryStream.Size,ImageData,ImageWidth,ImageHeight) then begin
-     SpriteAtlasArrayTexture:=TpvVulkanSpriteAtlasArrayTexture.Create;
+     SpriteAtlasArrayTexture:=TpvSpriteAtlasArrayTexture.Create;
      SpriteAtlasArrayTexture.Resize(ImageWidth,ImageHeight,1);
      if length(fArrayTextures)<(fCountArrayTextures+1) then begin
       SetLength(fArrayTextures,(fCountArrayTextures+1)*2);
@@ -927,7 +911,7 @@ begin
            if XMLChildrenTag.Name='sprite' then begin
             SpriteName:=XMLChildrenTag.GetParameter('n','');
             if length(SpriteName)>0 then begin
-             Sprite:=TpvVulkanSprite.Create;
+             Sprite:=TpvSprite.Create;
              Sprite.ArrayTexture:=SpriteAtlasArrayTexture;
              Sprite.Name:=SpriteName;
              Sprite.x:=StrToIntDef(String(XMLChildrenTag.GetParameter('x','0')),0);
@@ -960,11 +944,11 @@ begin
  end;
 end;
 
-function TpvVulkanSpriteAtlas.LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true):TpvVulkanSprite;
+function TpvSpriteAtlas.LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true):TpvSprite;
 var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer:TpvInt32;
-    ArrayTexture:TpvVulkanSpriteAtlasArrayTexture;
-    Node:PpvVulkanSpriteAtlasArrayTextureLayerRectNode;
-    Sprite:TpvVulkanSprite;
+    ArrayTexture:TpvSpriteAtlasArrayTexture;
+    Node:PpvSpriteAtlasArrayTextureLayerRectNode;
+    Sprite:TpvSprite;
     sp,dp:PpvUInt32;
     OK,SpecialSizedArrayTexture:boolean;
     TrimmedImageData:TpvPointer;
@@ -1137,7 +1121,7 @@ begin
     if (Layer<0) or not (assigned(ArrayTexture) and assigned(Node)) then begin
      Layer:=0;
      SpecialSizedArrayTexture:=(fWidth<=TrimmedImageWidth) or (fHeight<=TrimmedImageHeight);
-     ArrayTexture:=TpvVulkanSpriteAtlasArrayTexture.Create;
+     ArrayTexture:=TpvSpriteAtlasArrayTexture.Create;
      ArrayTexture.fSpecialSizedArrayTexture:=SpecialSizedArrayTexture;
      ArrayTexture.Resize(Max(fWidth,TrimmedImageWidth),Max(fHeight,TrimmedImageHeight),1);
      if length(fArrayTextures)<(fCountArrayTextures+1) then begin
@@ -1160,7 +1144,7 @@ begin
     end;
 
     begin
-     Sprite:=TpvVulkanSprite.Create;
+     Sprite:=TpvSprite.Create;
      Sprite.ArrayTexture:=ArrayTexture;
      Sprite.Name:=Name;
      if SpecialSizedArrayTexture then begin
@@ -1252,7 +1236,7 @@ begin
 
 end;
 
-function TpvVulkanSpriteAtlas.LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TpvVulkanSprite;
+function TpvSpriteAtlas.LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TpvSprite;
 var InputImageData,ImageData:TpvPointer;
     InputImageDataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -1308,7 +1292,7 @@ begin
 
 end;
 
-function TpvVulkanSpriteAtlas.LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true):TpvVulkanSprites;
+function TpvSpriteAtlas.LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true):TpvSprites;
 var InputImageData,ImageData,SpriteData:TpvPointer;
     InputImageDataSize,ImageWidth,ImageHeight,Count,x,y,sy,sw,sh:TpvInt32;
     sp,dp:PpvUInt32;
