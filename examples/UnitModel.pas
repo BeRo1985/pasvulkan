@@ -109,7 +109,13 @@ unit UnitModel;
 
 interface
 
-uses SysUtils,Classes,Math,Vulkan,Kraft,PasVulkan.Framework;
+uses SysUtils,
+     Classes,
+     Math,
+     Vulkan,
+     Kraft,
+     PasVulkan.Framework,
+     PasVulkan.Streams;
 
 const VULKAN_MODEL_VERTEX_BUFFER_BIND_ID=0;
 
@@ -304,7 +310,7 @@ type PVulkanModelVector2=^TVulkanModelVector2;
 
 implementation
 
-uses UnitBufferedStream,UnitChunkStream;
+uses UnitChunkStream;
 
 function VulkanModelVector3Length(const v:TVulkanModelVector3):TVkFloat; {$ifdef CAN_INLINE}inline;{$endif}
 begin

@@ -1333,7 +1333,7 @@ var pvApplication:TpvApplication=nil;
      AndroidExternalDataPath:string='';
      AndroidLibraryPath:string='';
 
-     AndroidDeviceName:string='';
+     AndroidDeviceName:TpvUTF8String='';
 
 function AndroidGetManufacturerName:TpvApplicationUnicodeString;
 function AndroidGetModelName:TpvApplicationUnicodeString;

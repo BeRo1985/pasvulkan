@@ -65,6 +65,7 @@ uses {$if defined(Windows)}
       Windows,
      {$elseif defined(Unix)}
       BaseUnix,
+      Unix,
       UnixType,
      {$ifend}
      SysUtils,
