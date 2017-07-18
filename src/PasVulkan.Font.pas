@@ -68,6 +68,7 @@ uses SysUtils,
      PasMP,
      Vulkan,
      PasVulkan.Types,
+     PasVulkan.Math,
      PasVulkan.Collections,
      PasVulkan.Framework,
      PasVulkan.TrueTypeFont,
@@ -192,7 +193,7 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        function TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
        procedure TextSize(const aText:TpvUTF8String;const aSize:TpvFloat;out aWidth,aHeight:TpvFloat);
        function RowHeight(const Percent:TpvFloat):TpvFloat;
-       procedure Draw(const aCanvas:TpvCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat;const aColorRed:TpvFloat=1.0;const aColorGreen:TpvFloat=1.0;const aColorBlue:TpvFloat=1.0;const aColorAlpha:TpvFloat=1.0);
+       procedure Draw(const aCanvas:TpvCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat;const aColor:TpvVector4);
      end;
 
 implementation
@@ -2758,19 +2759,14 @@ begin
  result:=fUnitsPerEm*(Percent*0.01);
 end;
 
-procedure TpvFont.Draw(const aCanvas:TpvCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat;const aColorRed:TpvFloat=1.0;const aColorGreen:TpvFloat=1.0;const aColorBlue:TpvFloat=1.0;const aColorAlpha:TpvFloat=1.0);
+procedure TpvFont.Draw(const aCanvas:TpvCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat;const aColor:TpvVector4);
 var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
     x,y,ScaleFactor,RescaleFactor:TpvFloat;
     Int64Value:TpvInt64;
     KerningPair:PpvFontKerningPair;
     Glyph:PpvFontGlyph;
     Src,Dest:TpvSpriteRect;
-    Color:TpvSpriteColor;
 begin
- Color.r:=aColorRed;
- Color.g:=aColorGreen;
- Color.b:=aColorBlue;
- Color.a:=aColorAlpha;
  x:=0.0;
  y:=0.0;
  ScaleFactor:=GetScaleFactor(aSize);
@@ -2801,7 +2797,7 @@ begin
     Dest.Top:=aY+(y*ScaleFactor)+(Glyph^.OffsetY*RescaleFactor);
     Dest.Right:=aX+(x*ScaleFactor)+((Glyph^.OffsetX+Glyph^.Width)*RescaleFactor);
     Dest.Bottom:=aY+(y*ScaleFactor)+((Glyph^.OffsetY+Glyph^.Height)*RescaleFactor);
-    aCanvas.DrawSprite(Glyph^.Sprite,Src,Dest,Color);
+    aCanvas.DrawSprite(Glyph^.Sprite,Src,Dest,aColor);
     x:=x+Glyph^.AdvanceWidth;
     y:=y+Glyph^.AdvanceHeight;
    end;

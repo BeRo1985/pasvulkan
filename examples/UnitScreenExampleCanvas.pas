@@ -542,7 +542,11 @@ begin
                   rbs,
                   ((fVulkanCanvas.Width-fVulkanFont.TextWidth(rbs,LocalFontSize))*0.5)+0.0,
                   ((fVulkanCanvas.Height-fVulkanFont.TextHeight(rbs,LocalFontSize))*0.5)+(sin(fTime*pi*0.07)*(fVulkanCanvas.Height*0.3275)),
-                  LocalFontSize);
+                  LocalFontSize,
+                  TpvVector4.Create((sin((fTime*0.43)*pi*2.0)*0.5)+0.5,
+                                    (cos((fTime*0.29)*pi*2.0)*0.5)+0.5,
+                                    (sin((fTime*0.23)*pi*2.0)*0.5)+0.5,
+                                    (cos((fTime*0.17)*pi*2.0)*0.25)+0.75));
 
  fVulkanCanvas.Stop;
 
