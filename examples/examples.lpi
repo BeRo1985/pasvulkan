@@ -25,7 +25,7 @@
         <FormatVersion Value="1"/>
       </local>
     </RunParams>
-    <Units Count="53">
+    <Units Count="57">
       <Unit0>
         <Filename Value="examples.dpr"/>
         <IsPartOfProject Value="True"/>
@@ -238,6 +238,22 @@
         <Filename Value="..\src\PasVulkan.Assets.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit52>
+      <Unit53>
+        <Filename Value="..\src\PasVulkan.Audio.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit53>
+      <Unit54>
+        <Filename Value="..\src\PasVulkan.Audio.OGGVorbisTremor.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit54>
+      <Unit55>
+        <Filename Value="..\src\PasVulkan.Audio.OGGVorbisTremor.ExternalLibrary.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit55>
+      <Unit56>
+        <Filename Value="..\src\PasVulkan.Audio.HRTFTables.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit56>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -177,13 +177,9 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        fKerningPairs:TpvFontKerningPairs;
        fCodePointToGlyphHashMap:TpvFontInt64HashMap;
        fKerningPairHashMap:TpvFontInt64HashMap;
-{$ifdef PasVulkanPasMP}
        fDistanceFieldJobs:TpvFontDistanceFieldJobs;
-{$endif}
        procedure GenerateSignedDistanceField(var DistanceField:TpvFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TpvTrueTypeFontPolygonBuffer;const FillRule:TpvInt32);
-{$ifdef PasVulkanPasMP}
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
-{$endif}
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72); reintroduce;
        constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange);
@@ -396,9 +392,7 @@ type PpvFontPathSegmentSide=^TpvFontPathSegmentSide;
        function GetQuadraticBezierCurveNonClippedTime(const p,p0,p1,p2:TpvFontDoublePrecisionPoint):TpvDouble;
        function GetNonClampedSignedLineDistance(const p,p0,p1:TpvFontDoublePrecisionPoint):TpvDouble;
        procedure CalculateDistanceFieldDataLineRange(const FromY,ToY:TpvInt32);
-{$ifdef PasVulkanPasMP}
        procedure CalculateDistanceFieldDataLineRangeParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TpvPointer;const FromIndex,ToIndex:TPasMPNativeInt);
-{$endif}
        function PackDistanceFieldValue(Distance:TpvDouble):TpvUInt8;
        function PackPseudoDistanceFieldValue(Distance:TpvDouble):TpvUInt8;
        procedure ConvertToPointInPolygonPathSegments;
@@ -1909,12 +1903,10 @@ begin
  end;
 end;
 
-{$ifdef PasVulkanPasMP}
 procedure TpvFontDataGenerator.CalculateDistanceFieldDataLineRangeParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TpvPointer;const FromIndex,ToIndex:TPasMPNativeInt);
 begin
  CalculateDistanceFieldDataLineRange(FromIndex,ToIndex);
 end;
-{$endif}
 
 function TpvFontDataGenerator.PackDistanceFieldValue(Distance:TpvDouble):TpvUInt8;
 begin
@@ -2121,14 +2113,10 @@ end;
 
 procedure TpvFontDataGenerator.DoIt;
 var TryIteration:TpvInt32;
-{$ifdef PasVulkanPasMP}
     PasMPInstance:TPasMP;
-{$endif}
 begin
 
-{$ifdef PasVulkanPasMP}
  PasMPInstance:=GetPasMP;
-{$endif}
 
  Initialize(Shape);
  try
@@ -2156,11 +2144,7 @@ begin
        ConvertToPointInPolygonPathSegments;
       end;
      end;
-{$ifdef PasVulkanPasMP}
      PasMPInstance.Invoke(PasMPInstance.ParallelFor(nil,0,DistanceField.Height-1,CalculateDistanceFieldDataLineRangeParallelForJobFunction,1,10,nil,0));
-{$else}
-     CalculateDistanceFieldDataLineRange(0,DistanceField.Height-1);
-{$endif}
      if GenerateDistanceFieldPicture(DistanceFieldData,DistanceField.Width,DistanceField.Height,TryIteration) then begin
       break;
      end else begin
@@ -2219,9 +2203,7 @@ begin
 
  fKerningPairHashMap:=TpvFontInt64HashMap.Create(-1);
 
-{$ifdef PasVulkanPasMP}
  fDistanceFieldJobs:=nil;
-{$endif}
 
 end;
 
@@ -2253,17 +2235,13 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     KerningPair:PpvFontKerningPair;
     GlyphDistanceField:PpvFontDistanceField;
     GlyphDistanceFields:TpvFontDistanceFields;
-{$ifdef PasVulkanPasMP}
     PasMPInstance:TPasMP;
     GlyphDistanceFieldJob:PpvFontDistanceFieldJob;
-{$endif}
 begin
 
  Create(aDevice,aSpriteAtlas,aTrueTypeFont.TargetPPI);
 
-{$ifdef PasVulkanPasMP}
  PasMPInstance:=GetPasMP;
-{$endif}
 
  fUnitsPerEm:=aTrueTypeFont.GetUnitsPerEm;
 
@@ -2409,12 +2387,10 @@ begin
 
       SetLength(GlyphDistanceFields,CountGlyphs);
 
-{$ifdef PasVulkanPasMP}
       fDistanceFieldJobs:=nil;
       try
 
        SetLength(fDistanceFieldJobs,CountGlyphs);
-{$endif}
 
        // Rasterize glyph signed distance field sprites
        for GlyphIndex:=0 to CountGlyphs-1 do begin
@@ -2426,17 +2402,13 @@ begin
         GlyphDistanceField^.Height:=Max(1,Glyph^.Height);
         GlyphDistanceField^.Pixels:=nil;
         SetLength(GlyphDistanceField^.Pixels,GlyphDistanceField^.Width*GlyphDistanceField^.Height);
-{$ifdef PasVulkanPasMP}
         GlyphDistanceFieldJob:=@fDistanceFieldJobs[GlyphIndex];
         GlyphDistanceFieldJob^.DistanceField:=GlyphDistanceField;
         GlyphDistanceFieldJob^.MultiChannel:=false;
         GlyphDistanceFieldJob^.PolygonBuffer:=PolygonBuffers[GlyphIndex];
-{$else}
-        GenerateSignedDistanceField(GlyphDistanceField^,false,PolygonBuffers[GlyphIndex],pvTTF_PolygonWindingRule_NONZERO);
-{$endif}
+//      GenerateSignedDistanceField(GlyphDistanceField^,false,PolygonBuffers[GlyphIndex],pvTTF_PolygonWindingRule_NONZERO);
        end;
 
-{$ifdef PasVulkanPasMP}
        if CountGlyphs>0 then begin
         PasMPInstance.Invoke(PasMPInstance.ParallelFor(@fDistanceFieldJobs[0],0,CountGlyphs-1,GenerateSignedDistanceFieldParallelForJobFunction,1,10,nil,0));
        end;
@@ -2444,7 +2416,6 @@ begin
       finally
        fDistanceFieldJobs:=nil;
       end;
-{$endif}
 
       // Insert glyph signed distance field sprites by sorted area size order
       SortedGlyphs:=nil;
@@ -2558,9 +2529,7 @@ begin
 
  fKerningPairHashMap.Free;
 
-{$ifdef PasVulkanPasMP}
  fDistanceFieldJobs:=nil;
-{$endif}
 
  inherited Destroy;
 end;
@@ -2621,7 +2590,6 @@ begin
  end;
 end;
 
-{$ifdef PasVulkanPasMP}
 procedure TpvFont.GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TpvPointer;const FromIndex,ToIndex:TPasMPNativeInt);
 var Index:TPasMPNativeInt;
     JobData:PpvFontDistanceFieldJob;
@@ -2633,7 +2601,6 @@ begin
   inc(Index);
  end;
 end;
-{$endif}
 
 function TpvFont.TextWidth(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
 var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
