@@ -76,58 +76,7 @@ uses SysUtils,
      PasVulkan.Image.PNG,
      PasVulkan.Image.TGA;
 
-type PpvSpritePoint=^TpvSpritePoint;
-     TpvSpritePoint=TpvVector2;
-
-     PpvSpriteRect=^TpvSpriteRect;
-     TpvSpriteRect=packed record
-      public
-       constructor Create(const aLeft,aTop,aRight,aBottom:TpvFloat);
-       case TpvInt32 of
-        0:(
-         Left:TpvFloat;
-         Top:TpvFloat;
-         Right:TpvFloat;
-         Bottom:TpvFloat;
-        );
-        1:(
-         LeftTop:TpvSpritePoint;
-         RightBottom:TpvSpritePoint;
-        );
-     end;
-
-     PpvSpriteColor=^TpvSpriteColor;
-     TpvSpriteColor=TpvVector4;
-
-     PpvSpriteVertexPoint=^TpvSpriteVertexPoint;
-     TpvSpriteVertexPoint=TpvSpritePoint;
-
-     PpvSpriteVertexTextureCoord=^TpvSpriteVertexTextureCoord;
-     TpvSpriteVertexTextureCoord=TpvVector3;
-
-     PpvSpriteVertexColor=^TpvSpriteVertexColor;
-     TpvSpriteVertexColor=packed record
-      r:TpvHalfFloat;
-      g:TpvHalfFloat;
-      b:TpvHalfFloat;
-      a:TpvHalfFloat;
-     end;
-
-     PpvSpriteVertexState=^TpvSpriteVertexState;
-     TpvSpriteVertexState=record
-      BlendingMode:TpvHalfFloat;
-      RenderingMode:TpvHalfFloat;
-     end;
-
-     PpvSpriteVertexClipRect=^TpvSpriteVertexClipRect;
-     TpvSpriteVertexClipRect=record
-      x0:TpvFloat;
-      y0:TpvFloat;
-      x1:TpvFloat;
-      y1:TpvFloat;
-     end;
-
-     PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
+type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
      TpvSpriteTextureTexel=packed record
       r:TpvUInt8;
       g:TpvUInt8;
@@ -307,14 +256,6 @@ type PpvSpritePoint=^TpvSpritePoint;
 implementation
 
 const MipMapLevels:array[boolean] of TpvInt32=(1,-1);
-
-constructor TpvSpriteRect.Create(const aLeft,aTop,aRight,aBottom:TpvFloat);
-begin
- Left:=aLeft;
- Top:=aTop;
- Right:=aRight;
- Bottom:=aBottom;
-end;
 
 function NewTextureRectNode:PpvSpriteAtlasArrayTextureLayerRectNode;
 begin

@@ -2765,7 +2765,7 @@ var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
     Int64Value:TpvInt64;
     KerningPair:PpvFontKerningPair;
     Glyph:PpvFontGlyph;
-    Src,Dest:TpvSpriteRect;
+    Src,Dest:TpvRect;
 begin
  x:=0.0;
  y:=0.0;

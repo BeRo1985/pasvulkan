@@ -133,15 +133,21 @@ type TpvCanvasColor=class(TPersistent)
 
      TpvCanvasMode=(vcmNormal,vcmLine);
 
+     PpvCanvasVertexState=^TpvCanvasVertexState;
+     TpvCanvasVertexState=record
+      BlendingMode:TpvHalfFloat;
+      RenderingMode:TpvHalfFloat;
+     end;
+
      PpvCanvasVertex=^TpvCanvasVertex;
      TpvCanvasVertex=packed record
-      Position:TpvSpriteVertexPoint;             // +  8 (2x 32-bit floats)       = 0
-      Color:TpvSpriteVertexColor;                // +  8 (4x 16-bit half-floats)  = 8  (=> 8 byte aligned)
-      TextureCoord:TpvSpriteVertexTextureCoord;  // + 12 (3x 32-bit floats)       = 16 (=> 16 byte aligned)
-      State:TpvSpriteVertexState;                // +  4 (2x 16-bit half-floats)  = 28 (=> 4 byte aligned)
-      ClipRect:TpvSpriteVertexClipRect;          // + 16 (4x 32-bit floats)       = 32 (=> 32 byte aligned)
-      MetaInfo:TpvVector4;                             // + 16 (4x 32-bit floats)       = 48 (=> 32 byte aligned)
-     end;                                            // = 64 per vertex
+      Position:TpvVector2;                       // +  8 (2x 32-bit floats)       = 0
+      Color:TpvHalfFloatVector4;                 // +  8 (4x 16-bit half-floats)  = 8  (=> 8 byte aligned)
+      TextureCoord:TpvVector3;                   // + 12 (3x 32-bit floats)       = 16 (=> 16 byte aligned)
+      State:TpvCanvasVertexState;                // +  4 (2x 16-bit half-floats)  = 28 (=> 4 byte aligned)
+      ClipRect:TpvRect;                          // + 16 (4x 32-bit floats)       = 32 (=> 32 byte aligned)
+      MetaInfo:TpvVector4;                       // + 16 (4x 32-bit floats)       = 48 (=> 32 byte aligned)
+     end;                                        // = 64 per vertex
 
      TpvCanvasVertices=array of TpvCanvasVertex;
 
@@ -259,9 +265,9 @@ type TpvCanvasColor=class(TPersistent)
        fCurrentVulkanBufferIndex:TpvInt32;
        fCurrentVulkanVertexBufferOffset:TpvInt32;
        fCurrentVulkanIndexBufferOffset:TpvInt32;
-       fState:TpvSpriteVertexState;
-       fClipRect:TpvSpriteVertexClipRect;
-       fUnscaledClipRect:TpvSpriteVertexClipRect;
+       fState:TpvCanvasVertexState;
+       fClipRect:TpvRect;
+       fUnscaledClipRect:TpvRect;
        fRenderingMode:TpvCanvasRenderingMode;
        fBlendingMode:TpvCanvasBlendingMode;
        fLastArrayTexture:TpvSpriteAtlasArrayTexture;
@@ -274,11 +280,13 @@ type TpvCanvasColor=class(TPersistent)
        fCurrentDestinationVertexBufferPointer:PpvCanvasVertexBuffer;
        fCurrentDestinationIndexBufferPointer:PpvCanvasIndexBuffer;
        fScissor:TVkRect2D;
+       fMatrix:TpvMatrix4x4;
        fPen:TpvCanvasPen;
-       function RotatePoint(const PointToRotate,AroundPoint:TpvSpritePoint;Cosinus,Sinus:TpvFloat):TpvSpritePoint;
+       function RotatePoint(const PointToRotate,AroundPoint:TpvVector2;Cosinus,Sinus:TpvFloat):TpvVector2;
        procedure SetArrayTexture(const ArrayTexture:TpvSpriteAtlasArrayTexture);
-       procedure SetRenderingMode(aRenderingMode:TpvCanvasRenderingMode);
-       procedure SetBlendingMode(aBlendingMode:TpvCanvasBlendingMode);
+       procedure SetRenderingMode(const aRenderingMode:TpvCanvasRenderingMode);
+       procedure SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
+       procedure SetMatrix(const aMatrix:TpvMatrix4x4);
        procedure GetNextDestinationVertexBuffer;
        procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
        function ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
@@ -300,11 +308,12 @@ type TpvCanvasColor=class(TPersistent)
        procedure SetScissor(const aScissor:TVkRect2D); overload;
        procedure SetScissor(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
        procedure SetClipRect(const aClipRect:TVkRect2D); overload;
+       procedure SetClipRect(const aClipRect:TpvRect); overload;
        procedure SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
        procedure Hook(const aHook:TpvCanvasHook;const aData:TpvPointer); overload;
-       procedure DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Color:TpvSpriteColor); overload;
-       procedure DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Origin:TpvSpritePoint;Rotation:TpvFloat;const Color:TpvSpriteColor); overload;
-       procedure DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat;const Color:TpvSpriteColor); overload;
+       procedure DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvRect;const Color:TpvVector4); overload;
+       procedure DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvRect;const Origin:TpvVector2;Rotation:TpvFloat;const Color:TpvVector4); overload;
+       procedure DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat;const Color:TpvVector4); overload;
        procedure DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat); overload;
        procedure DrawSprite(const Sprite:TpvSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TpvFloat); overload;
        procedure ExecuteUpload(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
@@ -317,6 +326,7 @@ type TpvCanvasColor=class(TPersistent)
        property Height:TpvInt32 read fHeight write fHeight;
        property RenderingMode:TpvCanvasRenderingMode read fRenderingMode write SetRenderingMode;
        property BlendingMode:TpvCanvasBlendingMode read fBlendingMode write SetBlendingMode;
+       property Matrix:TpvMatrix4x4 read fMatrix write SetMatrix;
        property Pen:TpvCanvasPen read fPen;
      end;
 
@@ -640,7 +650,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvCanvas.RotatePoint(const PointToRotate,AroundPoint:TpvSpritePoint;Cosinus,Sinus:TpvFloat):TpvSpritePoint;
+function TpvCanvas.RotatePoint(const PointToRotate,AroundPoint:TpvVector2;Cosinus,Sinus:TpvFloat):TpvVector2;
 var x,y:TpvFloat;
 begin
  x:=PointToRotate.x-AroundPoint.x;
@@ -649,7 +659,7 @@ begin
  result.y:=(((((x*Sinus)+(y*Cosinus))+AroundPoint.y)*fInverseHeight)-0.5)*2;
 end;
 
-procedure TpvCanvas.SetRenderingMode(aRenderingMode:TpvCanvasRenderingMode);
+procedure TpvCanvas.SetRenderingMode(const aRenderingMode:TpvCanvasRenderingMode);
 begin
  if fRenderingMode<>aRenderingMode then begin
   fRenderingMode:=aRenderingMode;
@@ -664,7 +674,7 @@ begin
  end;
 end;
 
-procedure TpvCanvas.SetBlendingMode(aBlendingMode:TpvCanvasBlendingMode);
+procedure TpvCanvas.SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
 begin
  if fBlendingMode<>aBlendingMode then begin
   fBlendingMode:=aBlendingMode;
@@ -679,6 +689,14 @@ begin
     fState.BlendingMode:=0.0;
    end;
   end;
+ end;
+end;
+
+procedure TpvCanvas.SetMatrix(const aMatrix:TpvMatrix4x4);
+begin
+ if fMatrix<>aMatrix then begin
+  Flush;
+  fMatrix:=aMatrix;
  end;
 end;
 
@@ -706,6 +724,8 @@ begin
  fScissor.extent.Width:=trunc(ceil(fViewport.Width));
  fScissor.extent.Height:=trunc(ceil(fViewport.Height));
 
+ fMatrix:=TpvMatrix4x4.Identity;
+
  fCurrentVulkanBufferIndex:=-1;
  fCurrentVulkanVertexBufferOffset:=0;
  fCurrentVulkanIndexBufferOffset:=0;
@@ -715,15 +735,9 @@ begin
  fState.BlendingMode:=1.0;
  fState.RenderingMode:=0.0;
 
- fClipRect.x0:=-1.0;
- fClipRect.y0:=-1.0;
- fClipRect.x1:=1.0;
- fClipRect.y1:=1.0;
+ fClipRect:=TpvRect.Create(-1.0,-1.0,1.0,1.0);
 
- fUnscaledClipRect.x0:=0.0;
- fUnscaledClipRect.y0:=0.0;
- fUnscaledClipRect.x1:=fWidth;
- fUnscaledClipRect.y1:=fHeight;
+ fUnscaledClipRect:=TpvRect.Create(0.0,0.0,fWidth,fHeight);
 
 end;
 
@@ -886,10 +900,10 @@ end;
 function TpvCanvas.ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
 const Threshold=1e-6;
 begin
- result:=(fUnscaledClipRect.x0<=(aX1+Threshold)) and
-         (aX0<=(fUnscaledClipRect.x1+Threshold)) and
-         (fUnscaledClipRect.y0<=(aY1+Threshold)) and
-         (aY0<=(fUnscaledClipRect.y1+Threshold));
+ result:=(fUnscaledClipRect.LeftTop.x<=(aX1+Threshold)) and
+         (aX0<=(fUnscaledClipRect.RightBottom.x+Threshold)) and
+         (fUnscaledClipRect.LeftTop.y<=(aY1+Threshold)) and
+         (aY0<=(fUnscaledClipRect.RightBottom.y+Threshold));
 end;
 
 procedure TpvCanvas.SetArrayTexture(const ArrayTexture:TpvSpriteAtlasArrayTexture);
@@ -925,26 +939,25 @@ end;
 
 procedure TpvCanvas.SetClipRect(const aClipRect:TVkRect2D);
 begin
- fUnscaledClipRect.x0:=aClipRect.offset.x;
- fUnscaledClipRect.y0:=aClipRect.offset.y;
- fUnscaledClipRect.x1:=aClipRect.offset.x+(aClipRect.extent.width+0.0);
- fUnscaledClipRect.y1:=aClipRect.offset.y+(aClipRect.extent.height+0.0);
- fClipRect.x0:=((aClipRect.offset.x*fInverseWidth)-0.5)*2.0;
- fClipRect.y0:=((aClipRect.offset.y*fInverseHeight)-0.5)*2.0;
- fClipRect.x1:=(((aClipRect.offset.x+(aClipRect.extent.width+0.0))*fInverseWidth)-0.5)*2.0;
- fClipRect.y1:=(((aClipRect.offset.y+(aClipRect.extent.height+0.0))*fInverseHeight)-0.5)*2.0;
+ fUnscaledClipRect.LeftTop:=TpvVector2.Create(aClipRect.offset.x,aClipRect.offset.y);
+ fUnscaledClipRect.RightBottom:=TpvVector2.Create(aClipRect.offset.x+aClipRect.extent.width,aClipRect.offset.y+aClipRect.extent.height);
+ fClipRect.LeftTop:=TpvVector2.Create(((aClipRect.offset.x*fInverseWidth)-0.5)*2.0,((aClipRect.offset.y*fInverseHeight)-0.5)*2.0);
+ fClipRect.RightBottom:=TpvVector2.Create((((aClipRect.offset.x+aClipRect.extent.width)*fInverseWidth)-0.5)*2.0,(((aClipRect.offset.y+aClipRect.extent.height)*fInverseHeight)-0.5)*2.0);
+end;
+
+procedure TpvCanvas.SetClipRect(const aClipRect:TpvRect);
+begin
+ fUnscaledClipRect:=aClipRect;
+ fClipRect.LeftTop:=((aClipRect.LeftTop*TpvVector2.Create(fInverseWidth,fInverseHeight))-TpvVector2.Create(0.5,0.5))*2.0;
+ fClipRect.RightBottom:=((aClipRect.RightBottom*TpvVector2.Create(fInverseWidth,fInverseHeight))-TpvVector2.Create(0.5,0.5))*2.0;
 end;
 
 procedure TpvCanvas.SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32);
 begin
- fUnscaledClipRect.x0:=aLeft;
- fUnscaledClipRect.y0:=aTop;
- fUnscaledClipRect.x1:=aLeft+aWidth;
- fUnscaledClipRect.y1:=aTop+aHeight;
- fClipRect.x0:=((aLeft*fInverseWidth)-0.5)*2.0;
- fClipRect.y0:=((aTop*fInverseHeight)-0.5)*2.0;
- fClipRect.x1:=(((aLeft+aWidth)*fInverseWidth)-0.5)*2.0;
- fClipRect.y1:=(((aTop+aHeight)*fInverseHeight)-0.5)*2.0;
+ fUnscaledClipRect.LeftTop:=TpvVector2.Create(aLeft,aTop);
+ fUnscaledClipRect.RightBottom:=TpvVector2.Create(aLeft+aWidth,aTop+aHeight);
+ fClipRect.LeftTop:=TpvVector2.Create(((aLeft*fInverseWidth)-0.5)*2.0,((aTop*fInverseHeight)-0.5)*2.0);
+ fClipRect.RightBottom:=TpvVector2.Create((((aLeft+aWidth)*fInverseWidth)-0.5)*2.0,(((aTop+aHeight)*fInverseHeight)-0.5)*2.0);
 end;
 
 procedure TpvCanvas.Hook(const aHook:TpvCanvasHook;const aData:TpvPointer);
@@ -968,11 +981,11 @@ begin
  end;
 end;
 
-procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Color:TpvSpriteColor);
+procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvRect;const Color:TpvVector4);
 const MinA=1.0/1024.0;
 var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
-    TempDest,TempSrc:TpvSpriteRect;
-    VertexColor:TpvSpriteVertexColor;
+    TempDest,TempSrc:TpvRect;
+    VertexColor:TpvHalfFloatVector4;
 begin
  if (abs(Color.a)>MinA) and
     ClipCheck(Dest.Left,Dest.Top,Dest.Right,Dest.Bottom) and
@@ -1091,21 +1104,21 @@ begin
    TempSrc.Top:=(ty1-Sprite.TrimmedY)+Sprite.y;
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
-   if TempDest.Left<fUnscaledClipRect.x0 then begin
-    TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.x0-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-    TempDest.Left:=fUnscaledClipRect.x0;
+   if TempDest.Left<fUnscaledClipRect.LeftTop.x then begin
+    TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+    TempDest.Left:=fUnscaledClipRect.LeftTop.x;
    end;
-   if TempDest.Top<fUnscaledClipRect.y0 then begin
-    TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.y0-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-    TempDest.Top:=fUnscaledClipRect.y0;
+   if TempDest.Top<fUnscaledClipRect.LeftTop.y then begin
+    TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+    TempDest.Top:=fUnscaledClipRect.LeftTop.y;
    end;
-   if TempDest.Right>fUnscaledClipRect.x1 then begin
-    TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.x1-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-    TempDest.Right:=fUnscaledClipRect.x1;
+   if TempDest.Right>fUnscaledClipRect.RightBottom.x then begin
+    TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+    TempDest.Right:=fUnscaledClipRect.RightBottom.x;
    end;
-   if TempDest.Bottom>fUnscaledClipRect.y1 then begin
-    TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.y1-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-    TempDest.Bottom:=fUnscaledClipRect.y1;
+   if TempDest.Bottom>fUnscaledClipRect.RightBottom.y then begin
+    TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+    TempDest.Bottom:=fUnscaledClipRect.RightBottom.y;
    end;
    sX0:=TempSrc.Left*fInverseTextureWidth;
    sY0:=TempSrc.Top*fInverseTextureHeight;
@@ -1159,13 +1172,13 @@ begin
  end;
 end;
 
-procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvSpriteRect;const Origin:TpvSpritePoint;Rotation:TpvFloat;const Color:TpvSpriteColor);
+procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvRect;const Origin:TpvVector2;Rotation:TpvFloat;const Color:TpvVector4);
 const MinA=1.0/1024.0;
 var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
-    AroundPoint:TpvSpritePoint;
-    Points:array[0..3] of TpvSpritePoint;
-    TempDest,TempSrc:TpvSpriteRect;
-    VertexColor:TpvSpriteVertexColor;
+    AroundPoint:TpvVector2;
+    Points:array[0..3] of TpvVector2;
+    TempDest,TempSrc:TpvRect;
+    VertexColor:TpvHalfFloatVector4;
 begin
  if (abs(Color.a)>MinA) and
     (((Src.Right>=Sprite.TrimmedX) and (Src.Bottom>=Sprite.TrimmedY)) and
@@ -1264,21 +1277,21 @@ begin
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
    if Rotation=0.0 then begin
-    if TempDest.Left<fUnscaledClipRect.x0 then begin
-     TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.x0-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-     TempDest.Left:=fUnscaledClipRect.x0;
+    if TempDest.Left<fUnscaledClipRect.LeftTop.x then begin
+     TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+     TempDest.Left:=fUnscaledClipRect.LeftTop.x;
     end;
-    if TempDest.Top<fUnscaledClipRect.y0 then begin
-     TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.y0-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-     TempDest.Top:=fUnscaledClipRect.y0;
+    if TempDest.Top<fUnscaledClipRect.LeftTop.y then begin
+     TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+     TempDest.Top:=fUnscaledClipRect.LeftTop.y;
     end;
-    if TempDest.Right>fUnscaledClipRect.x1 then begin
-     TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.x1-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-     TempDest.Right:=fUnscaledClipRect.x1;
+    if TempDest.Right>fUnscaledClipRect.RightBottom.x then begin
+     TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+     TempDest.Right:=fUnscaledClipRect.RightBottom.x;
     end;
-    if TempDest.Bottom>fUnscaledClipRect.y1 then begin
-     TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.y1-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-     TempDest.Bottom:=fUnscaledClipRect.y1;
+    if TempDest.Bottom>fUnscaledClipRect.RightBottom.y then begin
+     TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+     TempDest.Bottom:=fUnscaledClipRect.RightBottom.y;
     end;
    end;
    AroundPoint.x:=TempDest.Left+Origin.x;
@@ -1339,8 +1352,8 @@ begin
  end;
 end;
 
-procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat;const Color:TpvSpriteColor);
-var Src,Dest:TpvSpriteRect;
+procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat;const Color:TpvVector4);
+var Src,Dest:TpvRect;
 begin
  Src.Left:=0;
  Src.Top:=0;
@@ -1354,7 +1367,7 @@ begin
 end;
 
 procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat);
-var Color:TpvSpriteColor;
+var Color:TpvVector4;
 begin
  Color.r:=1;
  Color.g:=1;
@@ -1364,8 +1377,8 @@ begin
 end;
 
 procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TpvFloat);
-var Src,Dest:TpvSpriteRect;
-    Color:TpvSpriteColor;
+var Src,Dest:TpvRect;
+    Color:TpvVector4;
 begin
  Dest.Left:=dx1;
  Dest.Top:=dy1;

@@ -324,6 +324,39 @@ type PpvScalar=^TpvScalar;
       {$i PasVulkan.Math.TpvVector4Helper.Swizzle.Definitions.inc}
      end;
 
+     PpvHalfFloatVector2=^TpvHalfFloatVector2;
+     TpvHalfFloatVector2=record
+      public
+       case TpvUInt8 of
+        0:(RawComponents:array[0..1] of TpvScalar);
+        1:(x,y:TpvHalfFloat);
+        2:(r,g:TpvHalfFloat);
+        3:(s,t:TpvHalfFloat);
+     end;
+
+     PpvHalfFloatVector3=^TpvHalfFloatVector3;
+     TpvHalfFloatVector3=record
+      public
+       case TpvUInt8 of
+        0:(RawComponents:array[0..2] of TpvScalar);
+        1:(x,y,z:TpvHalfFloat);
+        2:(r,g,b:TpvHalfFloat);
+        3:(s,t,p:TpvHalfFloat);
+        5:(Vector2:TpvHalfFloatVector2);
+     end;
+
+     PpvHalfFloatVector4=^TpvHalfFloatVector4;
+     TpvHalfFloatVector4=record
+      public
+       case TpvUInt8 of
+        0:(RawComponents:array[0..3] of TpvScalar);
+        1:(x,y,z,w:TpvHalfFloat);
+        2:(r,g,b,a:TpvHalfFloat);
+        3:(s,t,p,q:TpvHalfFloat);
+        5:(Vector2:TpvHalfFloatVector2);
+        6:(Vector3:TpvHalfFloatVector3);
+     end;
+
      PpvPackedTangentSpace=^TpvPackedTangentSpace;
      TpvPackedTangentSpace=record
       x,y,z,w:TpvUInt8;
@@ -453,6 +486,8 @@ type PpvScalar=^TpvScalar;
        constructor Create(const pX:TpvScalar); overload;
        constructor Create(const pXX,pXY,pYX,pYY:TpvScalar); overload;
        constructor Create(const pX,pY:TpvVector2); overload;
+       class function Identity:TpvMatrix2x2; static; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Null:TpvMatrix2x2; static; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Implicit(const a:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvMatrix2x2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -530,6 +565,8 @@ type PpvScalar=^TpvScalar;
        constructor CreateFromQuaternion(ppvQuaternion:TpvQuaternion);
        constructor CreateFromQTangent(pQTangent:TpvQuaternion);
        constructor CreateRecomposed(const DecomposedMatrix3x3:TpvDecomposedMatrix3x3);
+       class function Identity:TpvMatrix3x3; static; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Null:TpvMatrix3x3; static; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Implicit(const a:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvMatrix3x3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -655,6 +692,8 @@ type PpvScalar=^TpvScalar;
        constructor CreateConstructZ(const zAxis:TpvVector3);
        constructor CreateProjectionMatrixClip(const ProjectionMatrix:TpvMatrix4x4;const ClipPlane:TPlane);
        constructor CreateRecomposed(const DecomposedMatrix4x4:TpvDecomposedMatrix4x4);
+       class function Identity:TpvMatrix4x4; static; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Null:TpvMatrix4x4; static; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Explicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -943,6 +982,24 @@ type PpvScalar=^TpvScalar;
        constructor CreateFromCartesianVector(const v:TpvVector3); overload;
        constructor CreateFromCartesianVector(const v:TpvVector4); overload;
        function ToCartesianVector:TpvVector3;
+     end;
+
+     PpvRect=^TpvRect;
+     TpvRect=packed record
+      public
+       constructor Create(const aLeft,aTop,aRight,aBottom:TpvFloat); overload;
+       constructor Create(const aLeftTop,aRightBottom:TpvVector2); overload;
+       case TpvInt32 of
+        0:(
+         Left:TpvFloat;
+         Top:TpvFloat;
+         Right:TpvFloat;
+         Bottom:TpvFloat;
+        );
+        1:(
+         LeftTop:TpvVector2;
+         RightBottom:TpvVector2;
+        );
      end;
 
      Vec2=TpvVector2;
@@ -5111,6 +5168,22 @@ begin
  RawComponents[1,1]:=pY.y;
 end;
 
+class function TpvMatrix2x2.Identity:TpvMatrix2x2;
+begin
+ result.RawComponents[0,0]:=1.0;
+ result.RawComponents[0,1]:=0.0;
+ result.RawComponents[1,0]:=0.0;
+ result.RawComponents[1,1]:=1.0;
+end;
+
+class function TpvMatrix2x2.Null:TpvMatrix2x2;
+begin
+ result.RawComponents[0,0]:=0.0;
+ result.RawComponents[0,1]:=0.0;
+ result.RawComponents[1,0]:=0.0;
+ result.RawComponents[1,1]:=0.0;
+end;
+
 class operator TpvMatrix2x2.Implicit(const a:TpvScalar):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a;
@@ -5731,6 +5804,32 @@ begin
 
  self:=TpvMatrix3x3.CreateScale(DecomposedMatrix3x3.Scale)*self;
 
+end;
+
+class function TpvMatrix3x3.Identity:TpvMatrix3x3;
+begin
+ result.RawComponents[0,0]:=1.0;
+ result.RawComponents[0,1]:=0.0;
+ result.RawComponents[0,2]:=0.0;
+ result.RawComponents[1,0]:=0.0;
+ result.RawComponents[1,1]:=1.0;
+ result.RawComponents[1,2]:=0.0;
+ result.RawComponents[2,0]:=0.0;
+ result.RawComponents[2,1]:=0.0;
+ result.RawComponents[2,2]:=1.0;
+end;
+
+class function TpvMatrix3x3.Null:TpvMatrix3x3;
+begin
+ result.RawComponents[0,0]:=0.0;
+ result.RawComponents[0,1]:=0.0;
+ result.RawComponents[0,2]:=0.0;
+ result.RawComponents[1,0]:=0.0;
+ result.RawComponents[1,1]:=0.0;
+ result.RawComponents[1,2]:=0.0;
+ result.RawComponents[2,0]:=0.0;
+ result.RawComponents[2,1]:=0.0;
+ result.RawComponents[2,2]:=1.0;
 end;
 
 class operator TpvMatrix3x3.Implicit(const a:TpvScalar):TpvMatrix3x3;
@@ -7584,6 +7683,46 @@ begin
 
  self:=TpvMatrix4x4.CreateScale(DecomposedMatrix4x4.Scale)*self;
 
+end;
+
+class function TpvMatrix4x4.Identity:TpvMatrix4x4;
+begin
+ result.RawComponents[0,0]:=1.0;
+ result.RawComponents[0,1]:=0.0;
+ result.RawComponents[0,2]:=0.0;
+ result.RawComponents[0,3]:=0.0;
+ result.RawComponents[1,0]:=0.0;
+ result.RawComponents[1,1]:=1.0;
+ result.RawComponents[1,2]:=0.0;
+ result.RawComponents[1,3]:=0.0;
+ result.RawComponents[2,0]:=0.0;
+ result.RawComponents[2,1]:=0.0;
+ result.RawComponents[2,2]:=1.0;
+ result.RawComponents[2,3]:=0.0;
+ result.RawComponents[3,0]:=0.0;
+ result.RawComponents[3,1]:=0.0;
+ result.RawComponents[3,2]:=0.0;
+ result.RawComponents[3,3]:=1.0;
+end;
+
+class function TpvMatrix4x4.Null:TpvMatrix4x4;
+begin
+ result.RawComponents[0,0]:=0.0;
+ result.RawComponents[0,1]:=0.0;
+ result.RawComponents[0,2]:=0.0;
+ result.RawComponents[0,3]:=0.0;
+ result.RawComponents[1,0]:=0.0;
+ result.RawComponents[1,1]:=0.0;
+ result.RawComponents[1,2]:=0.0;
+ result.RawComponents[1,3]:=0.0;
+ result.RawComponents[2,0]:=0.0;
+ result.RawComponents[2,1]:=0.0;
+ result.RawComponents[2,2]:=0.0;
+ result.RawComponents[2,3]:=0.0;
+ result.RawComponents[3,0]:=0.0;
+ result.RawComponents[3,1]:=0.0;
+ result.RawComponents[3,2]:=0.0;
+ result.RawComponents[3,3]:=0.0;
 end;
 
 class operator TpvMatrix4x4.Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4;
@@ -12808,6 +12947,20 @@ begin
  result.x:=Radius*sin(Theta)*cos(Phi);
  result.y:=Radius*sin(Theta)*sin(Phi);
  result.z:=Radius*cos(Theta);
+end;
+
+constructor TpvRect.Create(const aLeft,aTop,aRight,aBottom:TpvFloat);
+begin
+ Left:=aLeft;
+ Top:=aTop;
+ Right:=aRight;
+ Bottom:=aBottom;
+end;
+
+constructor TpvRect.Create(const aLeftTop,aRightBottom:TpvVector2);
+begin
+ LeftTop:=aLeftTop;
+ RightBottom:=aRightBottom;
 end;
 
 function Cross(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}

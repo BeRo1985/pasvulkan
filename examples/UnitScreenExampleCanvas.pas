@@ -480,8 +480,8 @@ var Index:TpvInt32;
     rbs:TpvUTF8String;
     s:string;
     IsSelected:boolean;
-    SrcRect:TpvSpriteRect;
-    DstRect:TpvSpriteRect;
+    SrcRect:TpvRect;
+    DstRect:TpvRect;
 begin
  inherited Update(aDeltaTime);
 
@@ -489,46 +489,46 @@ begin
 
  fVulkanCanvas.BlendingMode:=vsbbmNone;
 
- SrcRect:=TpvSpriteRect.Create(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
+ SrcRect:=TpvRect.Create(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteTest.Width)*0.5)+(cos(fTime*pi*2.0*0.1)*128.0);
  DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteTest.Height)*0.5)+(sin(fTime*pi*3.0*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteTest.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteTest.Height;
- fVulkanCanvas.DrawSprite(fVulkanSpriteTest,SrcRect,DstRect,TpvSpritePoint.Create(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0,TpvSpriteColor.Create(1.0,1.0,1.0,1.0));
+ fVulkanCanvas.DrawSprite(fVulkanSpriteTest,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0,TpvVector4.Create(1.0,1.0,1.0,1.0));
 
  fVulkanCanvas.BlendingMode:=vsbbmAlphaBlending;
 
- SrcRect:=TpvSpriteRect.Create(0,0,fVulkanSpriteAppIcon.Width,fVulkanSpriteAppIcon.Height);
+ SrcRect:=TpvRect.Create(0,0,fVulkanSpriteAppIcon.Width,fVulkanSpriteAppIcon.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteAppIcon.Width)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0);
  DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteAppIcon.Height)*0.5)+(cos(fTime*pi*3.0*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteAppIcon.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteAppIcon.Height;
- fVulkanCanvas.DrawSprite(fVulkanSpriteAppIcon,SrcRect,DstRect,TpvSpritePoint.Create(fVulkanSpriteAppIcon.Width*0.5,fVulkanSpriteAppIcon.Height*0.5),cos(fTime*pi*1.7*0.1)*pi*2.0,TpvSpriteColor.Create(1.0,1.0,1.0,1.0));
+ fVulkanCanvas.DrawSprite(fVulkanSpriteAppIcon,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteAppIcon.Width*0.5,fVulkanSpriteAppIcon.Height*0.5),cos(fTime*pi*1.7*0.1)*pi*2.0,TpvVector4.Create(1.0,1.0,1.0,1.0));
  {
- SrcRect:=TpvSpriteRect.Create(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
+ SrcRect:=TpvRect.Create(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
  DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteSmiley0.Height)*0.5)+(cos(fTime*pi*2.3*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteSmiley0.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
- fVulkanCanvas.DrawSprite(fVulkanSpriteSmiley0,SrcRect,DstRect,TpvSpritePoint.Create(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,TpvSpriteColor.Create(1.0,1.0,1.0,0.9));
+ fVulkanCanvas.DrawSprite(fVulkanSpriteSmiley0,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,TpvVector4.Create(1.0,1.0,1.0,0.9));
 }
  fVulkanCanvas.BlendingMode:=vsbbmAdditiveBlending;
 
- SrcRect:=TpvSpriteRect.Create(0,0,fVulkanSpriteDancer0.Width,fVulkanSpriteDancer0.Height);
+ SrcRect:=TpvRect.Create(0,0,fVulkanSpriteDancer0.Width,fVulkanSpriteDancer0.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteDancer0.Width)*0.5)+(cos(fTime*pi*1.7*0.1)*128.0);
  DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteDancer0.Height)*0.5)+(sin(fTime*pi*2.3*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteDancer0.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteDancer0.Height;
- fVulkanCanvas.DrawSprite(fVulkanSpriteDancer0,SrcRect,DstRect,TpvSpritePoint.Create(fVulkanSpriteDancer0.Width*0.5,fVulkanSpriteDancer0.Height*0.5),cos(fTime*pi*1.5*0.1)*pi*2.0,TpvSpriteColor.Create(1.0,1.0,1.0,0.5));
+ fVulkanCanvas.DrawSprite(fVulkanSpriteDancer0,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteDancer0.Width*0.5,fVulkanSpriteDancer0.Height*0.5),cos(fTime*pi*1.5*0.1)*pi*2.0,TpvVector4.Create(1.0,1.0,1.0,0.5));
 
  fVulkanCanvas.BlendingMode:=vsbbmAlphaBlending;
 
- SrcRect:=TpvSpriteRect.Create(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
+ SrcRect:=TpvRect.Create(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
  DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteSmiley0.Height)*0.5)+(cos(fTime*pi*2.3*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteSmiley0.Width;
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
- fVulkanCanvas.DrawSprite(fVulkanSpriteSmiley0,SrcRect,DstRect,TpvSpritePoint.Create(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,TpvSpriteColor.Create(1.0,1.0,1.0,1.0));
+ fVulkanCanvas.DrawSprite(fVulkanSpriteSmiley0,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,TpvVector4.Create(1.0,1.0,1.0,1.0));
 
  fVulkanCanvas.RenderingMode:=vsbrmFont;
 
