@@ -329,7 +329,6 @@ type PpvCanvasVertexState=^TpvCanvasVertexState;
        fCurrentVulkanIndexBufferOffset:TpvInt32;
        fState:TpvCanvasVertexState;
        fClipRect:TpvRect;
-       fUnscaledClipRect:TpvRect;
        fRenderingMode:TpvCanvasRenderingMode;
        fBlendingMode:TpvCanvasBlendingMode;
        fLastArrayTexture:TpvSpriteAtlasArrayTexture;
@@ -342,11 +341,13 @@ type PpvCanvasVertexState=^TpvCanvasVertexState;
        fCurrentDestinationVertexBufferPointer:PpvCanvasVertexBuffer;
        fCurrentDestinationIndexBufferPointer:PpvCanvasIndexBuffer;
        fScissor:TVkRect2D;
+       fProjectionMatrix:TpvMatrix4x4;
        fMatrix:TpvMatrix4x4;
        function RotatePoint(const PointToRotate,AroundPoint:TpvVector2;Cosinus,Sinus:TpvFloat):TpvVector2;
        procedure SetArrayTexture(const ArrayTexture:TpvSpriteAtlasArrayTexture);
        procedure SetRenderingMode(const aRenderingMode:TpvCanvasRenderingMode);
        procedure SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
+       procedure SetProjectionMatrix(const aProjectionMatrix:TpvMatrix4x4);
        procedure SetMatrix(const aMatrix:TpvMatrix4x4);
        procedure GetNextDestinationVertexBuffer;
        procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
@@ -388,6 +389,7 @@ type PpvCanvasVertexState=^TpvCanvasVertexState;
        property Height:TpvInt32 read fHeight write fHeight;
        property RenderingMode:TpvCanvasRenderingMode read fRenderingMode write SetRenderingMode;
        property BlendingMode:TpvCanvasBlendingMode read fBlendingMode write SetBlendingMode;
+       property ProjectionMatrix:TpvMatrix4x4 read fProjectionMatrix write SetProjectionMatrix;
        property Matrix:TpvMatrix4x4 read fMatrix write SetMatrix;
      end;
 
@@ -828,8 +830,8 @@ var x,y:TpvFloat;
 begin
  x:=PointToRotate.x-AroundPoint.x;
  y:=PointToRotate.y-AroundPoint.y;
- result.x:=(((((x*Cosinus)-(y*Sinus))+AroundPoint.x)*fInverseWidth)-0.5)*2;
- result.y:=(((((x*Sinus)+(y*Cosinus))+AroundPoint.y)*fInverseHeight)-0.5)*2;
+ result.x:=((x*Cosinus)-(y*Sinus))+AroundPoint.x;
+ result.y:=((x*Sinus)+(y*Cosinus))+AroundPoint.y;
 end;
 
 procedure TpvCanvas.SetRenderingMode(const aRenderingMode:TpvCanvasRenderingMode);
@@ -865,6 +867,14 @@ begin
  end;
 end;
 
+procedure TpvCanvas.SetProjectionMatrix(const aProjectionMatrix:TpvMatrix4x4);
+begin
+ if fProjectionMatrix<>aProjectionMatrix then begin
+  Flush;
+  fProjectionMatrix:=aProjectionMatrix;
+ end;
+end;
+
 procedure TpvCanvas.SetMatrix(const aMatrix:TpvMatrix4x4);
 begin
  if fMatrix<>aMatrix then begin
@@ -897,6 +907,8 @@ begin
  fScissor.extent.Width:=trunc(ceil(fViewport.Width));
  fScissor.extent.Height:=trunc(ceil(fViewport.Height));
 
+ fProjectionMatrix:=TpvMatrix4x4.CreateOrtho(0.0,fWidth,0.0,fHeight,-100.0,100.0);
+
  fMatrix:=TpvMatrix4x4.Identity;
 
  fCurrentVulkanBufferIndex:=-1;
@@ -908,9 +920,7 @@ begin
  fState.BlendingMode:=1.0;
  fState.RenderingMode:=0.0;
 
- fClipRect:=TpvRect.Create(-1.0,-1.0,1.0,1.0);
-
- fUnscaledClipRect:=TpvRect.Create(0.0,0.0,fWidth,fHeight);
+ fClipRect:=TpvRect.Create(0.0,0.0,fWidth,fHeight);
 
 end;
 
@@ -1007,7 +1017,7 @@ begin
    QueueItem^.RenderingMode:=fRenderingMode;
    QueueItem^.BlendingMode:=fBlendingMode;
    QueueItem^.Scissor:=fScissor;
-   QueueItem^.Matrix:=fMatrix;
+   QueueItem^.Matrix:=fMatrix*fProjectionMatrix;
 
   finally
    TPasMPInterlocked.Exchange(fCurrentFillBuffer^.fSpinLock,0);
@@ -1074,10 +1084,10 @@ end;
 function TpvCanvas.ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
 const Threshold=1e-6;
 begin
- result:=(fUnscaledClipRect.LeftTop.x<=(aX1+Threshold)) and
-         (aX0<=(fUnscaledClipRect.RightBottom.x+Threshold)) and
-         (fUnscaledClipRect.LeftTop.y<=(aY1+Threshold)) and
-         (aY0<=(fUnscaledClipRect.RightBottom.y+Threshold));
+ result:=(fClipRect.LeftTop.x<=(aX1+Threshold)) and
+         (aX0<=(fClipRect.RightBottom.x+Threshold)) and
+         (fClipRect.LeftTop.y<=(aY1+Threshold)) and
+         (aY0<=(fClipRect.RightBottom.y+Threshold));
 end;
 
 procedure TpvCanvas.SetArrayTexture(const ArrayTexture:TpvSpriteAtlasArrayTexture);
@@ -1113,25 +1123,19 @@ end;
 
 procedure TpvCanvas.SetClipRect(const aClipRect:TVkRect2D);
 begin
- fUnscaledClipRect.LeftTop:=TpvVector2.Create(aClipRect.offset.x,aClipRect.offset.y);
- fUnscaledClipRect.RightBottom:=TpvVector2.Create(aClipRect.offset.x+TpvFloat(aClipRect.extent.width),aClipRect.offset.y+TpvFloat(aClipRect.extent.height));
- fClipRect.LeftTop:=TpvVector2.Create(((aClipRect.offset.x*fInverseWidth)-0.5)*2.0,((aClipRect.offset.y*fInverseHeight)-0.5)*2.0);
- fClipRect.RightBottom:=TpvVector2.Create((((aClipRect.offset.x+TpvFloat(aClipRect.extent.width))*fInverseWidth)-0.5)*2.0,(((aClipRect.offset.y+TpvFloat(aClipRect.extent.height))*fInverseHeight)-0.5)*2.0);
+ fClipRect.LeftTop:=TpvVector2.Create(aClipRect.offset.x,aClipRect.offset.y);
+ fClipRect.RightBottom:=TpvVector2.Create(aClipRect.offset.x+TpvFloat(aClipRect.extent.width),aClipRect.offset.y+TpvFloat(aClipRect.extent.height));
 end;
 
 procedure TpvCanvas.SetClipRect(const aClipRect:TpvRect);
 begin
- fUnscaledClipRect:=aClipRect;
- fClipRect.LeftTop:=((aClipRect.LeftTop*TpvVector2.Create(fInverseWidth,fInverseHeight))-TpvVector2.Create(0.5,0.5))*2.0;
- fClipRect.RightBottom:=((aClipRect.RightBottom*TpvVector2.Create(fInverseWidth,fInverseHeight))-TpvVector2.Create(0.5,0.5))*2.0;
+ fClipRect:=aClipRect;
 end;
 
 procedure TpvCanvas.SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32);
 begin
- fUnscaledClipRect.LeftTop:=TpvVector2.Create(aLeft,aTop);
- fUnscaledClipRect.RightBottom:=TpvVector2.Create(aLeft+aWidth,aTop+aHeight);
- fClipRect.LeftTop:=TpvVector2.Create(((aLeft*fInverseWidth)-0.5)*2.0,((aTop*fInverseHeight)-0.5)*2.0);
- fClipRect.RightBottom:=TpvVector2.Create((((aLeft+aWidth)*fInverseWidth)-0.5)*2.0,(((aTop+aHeight)*fInverseHeight)-0.5)*2.0);
+ fClipRect.LeftTop:=TpvVector2.Create(aLeft,aTop);
+ fClipRect.RightBottom:=TpvVector2.Create(aLeft+aWidth,aTop+aHeight);
 end;
 
 procedure TpvCanvas.Hook(const aHook:TpvCanvasHook;const aData:TpvPointer);
@@ -1212,8 +1216,8 @@ begin
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+2;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+3;
    inc(fCurrentCountIndices,6);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Left;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Top;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -1221,8 +1225,8 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Top;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -1230,8 +1234,8 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Bottom;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -1239,8 +1243,8 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Left;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Bottom;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -1278,21 +1282,21 @@ begin
    TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
-   if TempDest.Left<fUnscaledClipRect.LeftTop.x then begin
-    TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-    TempDest.Left:=fUnscaledClipRect.LeftTop.x;
+   if TempDest.Left<fClipRect.LeftTop.x then begin
+    TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+    TempDest.Left:=fClipRect.LeftTop.x;
    end;
-   if TempDest.Top<fUnscaledClipRect.LeftTop.y then begin
-    TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-    TempDest.Top:=fUnscaledClipRect.LeftTop.y;
+   if TempDest.Top<fClipRect.LeftTop.y then begin
+    TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+    TempDest.Top:=fClipRect.LeftTop.y;
    end;
-   if TempDest.Right>fUnscaledClipRect.RightBottom.x then begin
-    TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-    TempDest.Right:=fUnscaledClipRect.RightBottom.x;
+   if TempDest.Right>fClipRect.RightBottom.x then begin
+    TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+    TempDest.Right:=fClipRect.RightBottom.x;
    end;
-   if TempDest.Bottom>fUnscaledClipRect.RightBottom.y then begin
-    TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-    TempDest.Bottom:=fUnscaledClipRect.RightBottom.y;
+   if TempDest.Bottom>fClipRect.RightBottom.y then begin
+    TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+    TempDest.Bottom:=fClipRect.RightBottom.y;
    end;
    sX0:=TempSrc.Left*fInverseTextureWidth;
    sY0:=TempSrc.Top*fInverseTextureHeight;
@@ -1305,8 +1309,8 @@ begin
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+2;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+3;
    inc(fCurrentCountIndices,6);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Left;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Top;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -1314,8 +1318,8 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Top;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -1323,8 +1327,8 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Right*fInverseWidth)-0.5)*2;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Bottom;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -1332,8 +1336,8 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=((TempDest.Left*fInverseWidth)-0.5)*2;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Left;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Bottom;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -1451,21 +1455,21 @@ begin
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
    if aRotation=0.0 then begin
-    if TempDest.Left<fUnscaledClipRect.LeftTop.x then begin
-     TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-     TempDest.Left:=fUnscaledClipRect.LeftTop.x;
+    if TempDest.Left<fClipRect.LeftTop.x then begin
+     TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+     TempDest.Left:=fClipRect.LeftTop.x;
     end;
-    if TempDest.Top<fUnscaledClipRect.LeftTop.y then begin
-     TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-     TempDest.Top:=fUnscaledClipRect.LeftTop.y;
+    if TempDest.Top<fClipRect.LeftTop.y then begin
+     TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+     TempDest.Top:=fClipRect.LeftTop.y;
     end;
-    if TempDest.Right>fUnscaledClipRect.RightBottom.x then begin
-     TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-     TempDest.Right:=fUnscaledClipRect.RightBottom.x;
+    if TempDest.Right>fClipRect.RightBottom.x then begin
+     TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+     TempDest.Right:=fClipRect.RightBottom.x;
     end;
-    if TempDest.Bottom>fUnscaledClipRect.RightBottom.y then begin
-     TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fUnscaledClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-     TempDest.Bottom:=fUnscaledClipRect.RightBottom.y;
+    if TempDest.Bottom>fClipRect.RightBottom.y then begin
+     TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+     TempDest.Bottom:=fClipRect.RightBottom.y;
     end;
    end;
    AroundPoint.x:=TempDest.Left+aOrigin.x;

@@ -486,6 +486,8 @@ begin
 
  fVulkanCanvas.Start(pvApplication.UpdateSwapChainImageIndex);
 
+ fVulkanCanvas.Matrix:=TpvMatrix4x4.Identity;
+
  fVulkanCanvas.BlendingMode:=vsbbmNone;
 
  SrcRect:=TpvRect.Create(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
@@ -529,6 +531,15 @@ begin
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
  fVulkanCanvas.DrawSprite(fVulkanSpriteSmiley0,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,TpvVector4.Create(1.0,1.0,1.0,1.0));
 
+ fVulkanCanvas.Matrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.5),-(fVulkanCanvas.Height*0.5),0.0)*
+                       TpvMatrix4x4.CreateRotateZ(sin(fTime*pi*2.0*0.75)*(30.0*DEG2RAD))*
+                       TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5,0.0);
+
+ fVulkanCanvas.ProjectionMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.5),-(fVulkanCanvas.Height*0.5),0.0)*
+                                 TpvMatrix4x4.CreateScale(1.0/fVulkanCanvas.Height,1.0/fVulkanCanvas.Height,1.0/fVulkanCanvas.Height)*
+                                 TpvMatrix4x4.CreateTranslation(0.0,0.0,-1.0)*
+                                 TpvMatrix4x4.CreatePerspective(53.13,fVulkanCanvas.Width/fVulkanCanvas.Height,0.01,128.0);
+
  fVulkanCanvas.RenderingMode:=vsbrmFont;
 
  fVulkanCanvas.BlendingMode:=vsbbmAlphaBlending;
@@ -546,6 +557,21 @@ begin
                                     (cos((fTime*0.29)*pi*2.0)*0.5)+0.5,
                                     (sin((fTime*0.23)*pi*2.0)*0.5)+0.5,
                                     (cos((fTime*0.17)*pi*2.0)*0.25)+0.75));
+
+ fVulkanCanvas.Matrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.5),-(fVulkanCanvas.Height*0.5),0.0)*
+                       TpvMatrix4x4.CreateRotateY(sin(fTime*pi*2.0*0.5)*(45.0*DEG2RAD))*
+                       TpvMatrix4x4.CreateRotateZ(cos(fTime*pi*2.0*0.9)*(45.0*DEG2RAD))*
+                       TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5,0.0);
+
+ fVulkanFont.Draw(fVulkanCanvas,
+                  rbs,
+                  ((fVulkanCanvas.Width-fVulkanFont.TextWidth(rbs,LocalFontSize))*0.5)+0.0,
+                  ((fVulkanCanvas.Height-fVulkanFont.TextHeight(rbs,LocalFontSize))*0.5)+(cos(fTime*pi*0.05)*(fVulkanCanvas.Height*0.3275)),
+                  LocalFontSize,
+                  TpvVector4.Create((cos((fTime*0.43)*pi*2.0)*0.5)+0.5,
+                                    (sin((fTime*0.29)*pi*2.0)*0.5)+0.5,
+                                    (cos((fTime*0.23)*pi*2.0)*0.5)+0.5,
+                                    (sin((fTime*0.17)*pi*2.0)*0.25)+0.75));
 
  fVulkanCanvas.Stop;
 
