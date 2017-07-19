@@ -233,6 +233,46 @@ type TpvCanvasColor=class(TPersistent)
 
      TpvCanvasAtlasArrayTextureDescriptorSetHashMap=class(TpvHashMap<TpvSpriteAtlasArrayTexture,TpvInt32>);
 
+     TpvCanvasPathCommandType=
+      (
+       pcpctMoveTo,
+       pcpctLineTo,
+       pcpctQuadraticCurveTo,
+       pcpctCubicCurveTo,
+       pcpctClose
+      );
+
+     PpvCanvasPathCommandPoints=^TpvCanvasPathCommandPoints;
+     TpvCanvasPathCommandPoints=array[0..2] of TpvVector2;
+
+     PpvCanvasPathCommand=^TpvCanvasPathCommand;
+     TpvCanvasPathCommand=record
+      CommandType:TpvCanvasPathCommandType;
+      Points:TpvCanvasPathCommandPoints;
+     end;
+
+     TpvCanvasPathCommands=array of TpvCanvasPathCommand;
+
+     TpvCanvasPath=class
+      private
+       fCommands:TpvCanvasPathCommands;
+       fCountCommands:TpvInt32;
+       function NewCommand:PpvCanvasPathCommand;
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+       function Reset:TpvCanvasPath;
+       function MoveTo(const aP0:TpvVector2):TpvCanvasPath; overload;
+       function MoveTo(const aX,aY:TpvFloat):TpvCanvasPath; overload;
+       function LineTo(const aP0:TpvVector2):TpvCanvasPath; overload;
+       function LineTo(const aX,aY:TpvFloat):TpvCanvasPath; overload;
+       function QuadraticCurveTo(const aC0,aA0:TpvVector2):TpvCanvasPath; overload;
+       function QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvFloat):TpvCanvasPath; overload;
+       function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvasPath; overload;
+       function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvasPath; overload;
+       function Close:TpvCanvasPath;
+     end;
+
      TpvCanvas=class
       private
        fDevice:TpvVulkanDevice;
@@ -386,6 +426,107 @@ begin
  fStyle:=TpvCanvasPen(Source).fStyle;
  fLineJoin:=TpvCanvasPen(Source).fLineJoin;
  fLineCap:=TpvCanvasPen(Source).fLineCap;
+end;
+
+constructor TpvCanvasPath.Create;
+begin
+ inherited Create;
+ fCommands:=nil;
+ fCountCommands:=0;
+end;
+
+destructor TpvCanvasPath.Destroy;
+begin
+ fCommands:=nil;
+ inherited Destroy;
+end;
+
+function TpvCanvasPath.NewCommand:PpvCanvasPathCommand;
+var Index:TpvInt32;
+begin
+ Index:=fCountCommands;
+ inc(fCountCommands);
+ if length(fCommands)<fCountCommands then begin
+  SetLength(fCommands,fCountCommands*2);
+ end;
+ result:=@fCommands[Index];
+end;
+
+function TpvCanvasPath.Reset:TpvCanvasPath;
+begin
+ fCountCommands:=0;
+ result:=self;
+end;
+
+function TpvCanvasPath.MoveTo(const aP0:TpvVector2):TpvCanvasPath;
+var Command:PpvCanvasPathCommand;
+begin
+ Command:=NewCommand;
+ Command^.CommandType:=pcpctMoveTo;
+ Command^.Points[0]:=aP0;
+ result:=self;
+end;
+
+function TpvCanvasPath.MoveTo(const aX,aY:TpvFloat):TpvCanvasPath;
+begin
+ MoveTo(TpvVector2.Create(aX,aY));
+ result:=self;
+end;
+
+function TpvCanvasPath.LineTo(const aP0:TpvVector2):TpvCanvasPath;
+var Command:PpvCanvasPathCommand;
+begin
+ Command:=NewCommand;
+ Command^.CommandType:=pcpctLineTo;
+ Command^.Points[0]:=aP0;
+ result:=self;
+end;
+
+function TpvCanvasPath.LineTo(const aX,aY:TpvFloat):TpvCanvasPath;
+begin
+ LineTo(TpvVector2.Create(aX,aY));
+ result:=self;
+end;
+
+function TpvCanvasPath.QuadraticCurveTo(const aC0,aA0:TpvVector2):TpvCanvasPath;
+var Command:PpvCanvasPathCommand;
+begin
+ Command:=NewCommand;
+ Command^.CommandType:=pcpctQuadraticCurveTo;
+ Command^.Points[0]:=aC0;
+ Command^.Points[1]:=aA0;
+ result:=self;
+end;
+
+function TpvCanvasPath.QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvFloat):TpvCanvasPath;
+begin
+ QuadraticCurveTo(TpvVector2.Create(aCX,aCY),TpvVector2.Create(aAX,aAY));
+ result:=self;
+end;
+
+function TpvCanvasPath.CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvasPath;
+var Command:PpvCanvasPathCommand;
+begin
+ Command:=NewCommand;
+ Command^.CommandType:=pcpctCubicCurveTo;
+ Command^.Points[0]:=aC0;
+ Command^.Points[1]:=aC1;
+ Command^.Points[2]:=aA0;
+ result:=self;
+end;
+
+function TpvCanvasPath.CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvasPath;
+begin
+ CubicCurveTo(TpvVector2.Create(aC0X,aC0Y),TpvVector2.Create(aC1X,aC1Y),TpvVector2.Create(aAX,aAY));
+ result:=self;
+end;
+
+function TpvCanvasPath.Close:TpvCanvasPath;
+var Command:PpvCanvasPathCommand;
+begin
+ Command:=NewCommand;
+ Command^.CommandType:=pcpctClose;
+ result:=self;
 end;
 
 constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
@@ -940,9 +1081,9 @@ end;
 procedure TpvCanvas.SetClipRect(const aClipRect:TVkRect2D);
 begin
  fUnscaledClipRect.LeftTop:=TpvVector2.Create(aClipRect.offset.x,aClipRect.offset.y);
- fUnscaledClipRect.RightBottom:=TpvVector2.Create(aClipRect.offset.x+aClipRect.extent.width,aClipRect.offset.y+aClipRect.extent.height);
+ fUnscaledClipRect.RightBottom:=TpvVector2.Create(aClipRect.offset.x+TpvFloat(aClipRect.extent.width),aClipRect.offset.y+TpvFloat(aClipRect.extent.height));
  fClipRect.LeftTop:=TpvVector2.Create(((aClipRect.offset.x*fInverseWidth)-0.5)*2.0,((aClipRect.offset.y*fInverseHeight)-0.5)*2.0);
- fClipRect.RightBottom:=TpvVector2.Create((((aClipRect.offset.x+aClipRect.extent.width)*fInverseWidth)-0.5)*2.0,(((aClipRect.offset.y+aClipRect.extent.height)*fInverseHeight)-0.5)*2.0);
+ fClipRect.RightBottom:=TpvVector2.Create((((aClipRect.offset.x+TpvFloat(aClipRect.extent.width))*fInverseWidth)-0.5)*2.0,(((aClipRect.offset.y+TpvFloat(aClipRect.extent.height))*fInverseHeight)-0.5)*2.0);
 end;
 
 procedure TpvCanvas.SetClipRect(const aClipRect:TpvRect);
