@@ -305,10 +305,10 @@ type PpvCanvasVertexState=^TpvCanvasVertexState;
        fTransferCommandBuffer:TpvVulkanCommandBuffer;
        fTransferFence:TpvVulkanFence;
        fPipelineCache:TpvVulkanPipelineCache;
-       fSpriteBatchVertexShaderModule:TpvVulkanShaderModule;
-       fSpriteBatchFragmentShaderModule:TpvVulkanShaderModule;
-       fVulkanPipelineSpriteBatchShaderStageVertex:TpvVulkanPipelineShaderStage;
-       fVulkanPipelineSpriteBatchShaderStageFragment:TpvVulkanPipelineShaderStage;
+       fCanvasVertexShaderModule:TpvVulkanShaderModule;
+       fCanvasFragmentShaderModule:TpvVulkanShaderModule;
+       fVulkanPipelineCanvasShaderStageVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageFragment:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorPools:TpvCanvasDescriptorPools;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:TpvCanvasDescriptorSets;
@@ -665,23 +665,23 @@ begin
 
  fVulkanRenderPass:=aRenderPass;
 
- Stream:=TpvDataStream.Create(@SpriteBatchVertexSPIRVData,SpriteBatchVertexSPIRVDataSize);
+ Stream:=TpvDataStream.Create(@CanvasVertexSPIRVData,CanvasVertexSPIRVDataSize);
  try
-  fSpriteBatchVertexShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+  fCanvasVertexShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=TpvDataStream.Create(@SpriteBatchFragmentSPIRVData,SpriteBatchFragmentSPIRVDataSize);
+ Stream:=TpvDataStream.Create(@CanvasFragmentSPIRVData,CanvasFragmentSPIRVDataSize);
  try
-  fSpriteBatchFragmentShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+  fCanvasFragmentShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
 
- fVulkanPipelineSpriteBatchShaderStageVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fSpriteBatchVertexShaderModule,'main');
+ fVulkanPipelineCanvasShaderStageVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCanvasVertexShaderModule,'main');
 
- fVulkanPipelineSpriteBatchShaderStageFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fSpriteBatchFragmentShaderModule,'main');
+ fVulkanPipelineCanvasShaderStageFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentShaderModule,'main');
 
  VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fDevice,
                                                         fPipelineCache,
@@ -694,8 +694,8 @@ begin
                                                         0);
  fVulkanGraphicsPipeline:=VulkanGraphicsPipeline;
 
- VulkanGraphicsPipeline.AddStage(fVulkanPipelineSpriteBatchShaderStageVertex);
- VulkanGraphicsPipeline.AddStage(fVulkanPipelineSpriteBatchShaderStageFragment);
+ VulkanGraphicsPipeline.AddStage(fVulkanPipelineCanvasShaderStageVertex);
+ VulkanGraphicsPipeline.AddStage(fVulkanPipelineCanvasShaderStageFragment);
 
  VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
@@ -794,13 +794,13 @@ begin
 
  FreeAndNil(fVulkanTextureDescriptorSetHashMap);
 
- FreeAndNil(fVulkanPipelineSpriteBatchShaderStageVertex);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageVertex);
 
- FreeAndNil(fVulkanPipelineSpriteBatchShaderStageFragment);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageFragment);
 
- FreeAndNil(fSpriteBatchVertexShaderModule);
+ FreeAndNil(fCanvasVertexShaderModule);
 
- FreeAndNil(fSpriteBatchFragmentShaderModule);
+ FreeAndNil(fCanvasFragmentShaderModule);
 
  for Index:=0 to length(fVulkanCanvasBuffers)-1 do begin
   VulkanCanvasBuffer:=@fVulkanCanvasBuffers[Index];
