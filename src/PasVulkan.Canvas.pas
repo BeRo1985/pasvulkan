@@ -383,14 +383,14 @@ type PpvCanvasVertexState=^TpvCanvasVertexState;
        procedure ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
       public
        property Viewport:PVkViewport read fPointerToViewport;
+       property ProjectionMatrix:TpvMatrix4x4 read fProjectionMatrix write SetProjectionMatrix;
+       property Matrix:TpvMatrix4x4 read fMatrix write SetMatrix;
       published
        property Device:TpvVulkanDevice read fDevice;
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
        property RenderingMode:TpvCanvasRenderingMode read fRenderingMode write SetRenderingMode;
        property BlendingMode:TpvCanvasBlendingMode read fBlendingMode write SetBlendingMode;
-       property ProjectionMatrix:TpvMatrix4x4 read fProjectionMatrix write SetProjectionMatrix;
-       property Matrix:TpvMatrix4x4 read fMatrix write SetMatrix;
      end;
 
 implementation
