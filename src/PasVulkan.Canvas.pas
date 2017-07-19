@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Canvas;
+unit PasVulkan.Canvas; // An sprite and vector canvas with a manual-cache-based concept (just Vulkan-API-ideology-like, but OOPized)
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -73,53 +73,7 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Sprites;
 
-type TpvCanvasColor=class(TPersistent)
-      private
-       fRed:TpvFloat;
-       fGreen:TpvFloat;
-       fBlue:TpvFloat;
-       fAlpha:TpvFloat;
-      public
-       constructor Create;
-       destructor Destroy; override;
-       procedure Assign(Source:TPersistent); override;
-      published
-       property Red:TpvFloat read fRed write fRed;
-       property Green:TpvFloat read fGreen write fGreen;
-       property Blue:TpvFloat read fBlue write fBlue;
-       property Alpha:TpvFloat read fAlpha write fAlpha;
-     end;
-
-     TpvCanvasPenStyle=(vcpsClear,vcpsSolid);
-
-     TpvCanvasPenLineJoin=(vcpljBevel,vcpljMiter,vcpljRound);
-
-     TpvCanvasPenLineCap=(vcplcButt,vcplcSquare,vcplcRound);
-
-     TpvCanvasPen=class(TPersistent)
-      private
-       fColor:TpvCanvasColor;
-       fWidth:TpvFloat;
-       fAntialiasingWidth:TpvFloat;
-       fMiterLimit:TpvFloat;
-       fStyle:TpvCanvasPenStyle;
-       fLineJoin:TpvCanvasPenLineJoin;
-       fLineCap:TpvCanvasPenLineCap;
-      public
-       constructor Create;
-       destructor Destroy; override;
-       procedure Assign(Source:TPersistent); override;
-      published
-       property Color:TpvCanvasColor read fColor;
-       property Width:TpvFloat read fWidth write fWidth;
-       property AntialiasingWidth:TpvFloat read fAntialiasingWidth write fAntialiasingWidth;
-       property MiterLimit:TpvFloat read fMiterLimit write fMiterLimit;
-       property Style:TpvCanvasPenStyle read fStyle write fStyle default vcpsSolid;
-       property LineJoin:TpvCanvasPenLineJoin read fLineJoin write fLineJoin default vcpljRound;
-       property LineCap:TpvCanvasPenLineCap read fLineCap write fLineCap default vcplcRound;
-     end;
-
-     PpvCanvasPoint=^TpvCanvasPoint;
+type PpvCanvasPoint=^TpvCanvasPoint;
      TpvCanvasPoint=TpvVector2;
 
      PpvCanvasInternalPoint=^TpvCanvasInternalPoint;
@@ -253,6 +207,8 @@ type TpvCanvasColor=class(TPersistent)
 
      TpvCanvasPathCommands=array of TpvCanvasPathCommand;
 
+     TpvCanvasPolygons=class;
+
      TpvCanvasPath=class
       private
        fCommands:TpvCanvasPathCommands;
@@ -271,6 +227,54 @@ type TpvCanvasColor=class(TPersistent)
        function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvasPath; overload;
        function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvasPath; overload;
        function Close:TpvCanvasPath;
+       function OutlineFrom(const aPolygons:TpvCanvasPolygons):TpvCanvasPath;
+     end;
+
+     TpvCanvasPolyLineJoin=
+      (
+       pcpljBevel,
+       pcpljMiter,
+       pcpljRound
+      );
+
+     TpvCanvasPolyLineCap=
+      (
+       pcplcButt,
+       pcplcSquare,
+       pcplcRound
+      );
+
+     TpvCanvasPolyLines=class
+      private
+       fLineWidth:TpvFloat;
+       fMiterLimit:TpvFloat;
+       fLineJoin:TpvCanvasPolyLineJoin;
+       fLineCap:TpvCanvasPolyLineCap;
+      public
+       constructor Create(const aPath:TpvCanvasPath=nil); reintroduce;
+       destructor Destroy; override;
+       procedure Assign(const aPath:TpvCanvasPath);
+       property LineWidth:TpvFloat read fLineWidth write fLineWidth;
+       property MiterLimit:TpvFloat read fMiterLimit write fMiterLimit;
+       property LineJoin:TpvCanvasPolyLineJoin read fLineJoin write fLineJoin;
+       property LineCap:TpvCanvasPolyLineCap read fLineCap write fLineCap;
+     end;
+
+     PpvCanvasPolygonWindingRule=^TpvCanvasPolygonWindingRule;
+     TpvCanvasPolygonWindingRule=
+      (
+       pcpwrNonZero,
+       pcpwrEvenOdd
+      );
+
+     TpvCanvasPolygons=class
+      private
+       fWindingRule:TpvCanvasPolygonWindingRule;
+      public
+       constructor Create(const aPath:TpvCanvasPath=nil); reintroduce;
+       destructor Destroy; override;
+       procedure Assign(const aPath:TpvCanvasPath);
+       property WindingRule:TpvCanvasPolygonWindingRule read fWindingRule write fWindingRule;
      end;
 
      TpvCanvas=class
@@ -321,7 +325,6 @@ type TpvCanvasColor=class(TPersistent)
        fCurrentDestinationIndexBufferPointer:PpvCanvasIndexBuffer;
        fScissor:TVkRect2D;
        fMatrix:TpvMatrix4x4;
-       fPen:TpvCanvasPen;
        function RotatePoint(const PointToRotate,AroundPoint:TpvVector2;Cosinus,Sinus:TpvFloat):TpvVector2;
        procedure SetArrayTexture(const ArrayTexture:TpvSpriteAtlasArrayTexture);
        procedure SetRenderingMode(const aRenderingMode:TpvCanvasRenderingMode);
@@ -367,66 +370,12 @@ type TpvCanvasColor=class(TPersistent)
        property RenderingMode:TpvCanvasRenderingMode read fRenderingMode write SetRenderingMode;
        property BlendingMode:TpvCanvasBlendingMode read fBlendingMode write SetBlendingMode;
        property Matrix:TpvMatrix4x4 read fMatrix write SetMatrix;
-       property Pen:TpvCanvasPen read fPen;
      end;
 
 implementation
 
 uses PasVulkan.Assets,
      PasVulkan.Streams;
-
-constructor TpvCanvasColor.Create;
-begin
- inherited Create;
- fRed:=1.0;
- fGreen:=1.0;
- fBlue:=1.0;
- fAlpha:=1.0;
-end;
-
-destructor TpvCanvasColor.Destroy;
-begin
- inherited Destroy;
-end;
-
-procedure TpvCanvasColor.Assign(Source:TPersistent);
-begin
- Assert(Source is TpvCanvasColor);
- fRed:=TpvCanvasColor(Source).fRed;
- fGreen:=TpvCanvasColor(Source).fGreen;
- fBlue:=TpvCanvasColor(Source).fBlue;
- fAlpha:=TpvCanvasColor(Source).fAlpha;
-end;
-
-constructor TpvCanvasPen.Create;
-begin
- inherited Create;
- fColor:=TpvCanvasColor.Create;
- fWidth:=1.0;
- fAntialiasingWidth:=2.0;
- fMiterLimit:=3.0;
- fStyle:=vcpsSolid;
- fLineJoin:=vcpljRound;
- fLineCap:=vcplcRound;
-end;
-
-destructor TpvCanvasPen.Destroy;
-begin
- FreeAndNil(fColor);
- inherited Destroy;
-end;
-
-procedure TpvCanvasPen.Assign(Source:TPersistent);
-begin
- Assert(Source is TpvCanvasPen);
- fColor.Assign(TpvCanvasPen(Source).fColor);
- fWidth:=TpvCanvasPen(Source).fWidth;
- fAntialiasingWidth:=TpvCanvasPen(Source).fAntialiasingWidth;
- fMiterLimit:=TpvCanvasPen(Source).fMiterLimit;
- fStyle:=TpvCanvasPen(Source).fStyle;
- fLineJoin:=TpvCanvasPen(Source).fLineJoin;
- fLineCap:=TpvCanvasPen(Source).fLineCap;
-end;
 
 constructor TpvCanvasPath.Create;
 begin
@@ -527,6 +476,50 @@ begin
  Command:=NewCommand;
  Command^.CommandType:=pcpctClose;
  result:=self;
+end;
+
+function TpvCanvasPath.OutlineFrom(const aPolygons:TpvCanvasPolygons):TpvCanvasPath;
+begin
+ result:=self;
+end;
+
+constructor TpvCanvasPolyLines.Create(const aPath:TpvCanvasPath=nil);
+begin
+ inherited Create;
+ fLineWidth:=1.0;
+ fMiterLimit:=3.0;
+ fLineJoin:=pcpljRound;
+ fLineCap:=pcplcRound;
+ if assigned(aPath) then begin
+  Assign(aPath);
+ end;
+end;
+
+destructor TpvCanvasPolyLines.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvCanvasPolyLines.Assign(const aPath:TpvCanvasPath);
+begin
+end;
+
+constructor TpvCanvasPolygons.Create(const aPath:TpvCanvasPath=nil);
+begin
+ inherited Create;
+ fWindingRule:=pcpwrEvenOdd;
+ if assigned(aPath) then begin
+  Assign(aPath);
+ end;
+end;
+
+destructor TpvCanvasPolygons.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvCanvasPolygons.Assign(const aPath:TpvCanvasPath);
+begin
 end;
 
 constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
@@ -727,8 +720,6 @@ begin
 
  fCurrentFillBuffer:=nil;
 
- fPen:=TpvCanvasPen.Create;
-
 end;
 
 destructor TpvCanvas.Destroy;
@@ -737,8 +728,6 @@ var Index,SubIndex:TpvInt32;
     BlendingModeIndex:TpvCanvasBlendingMode;
     VulkanCanvasBuffer:PpvCanvasBuffer;
 begin
-
- FreeAndNil(fPen);
 
  FreeAndNil(fVulkanGraphicsPipeline);
 
