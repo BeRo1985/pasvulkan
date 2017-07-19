@@ -73,21 +73,7 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Sprites;
 
-type PpvCanvasPoint=^TpvCanvasPoint;
-     TpvCanvasPoint=TpvVector2;
-
-     PpvCanvasInternalPoint=^TpvCanvasInternalPoint;
-     TpvCanvasInternalPoint=record
-      Position:TpvVector2;
-      Middle:TpvVector2;
-      Color:TpvVector4;
-     end;
-
-     TpvCanvasInternalPoints=array of TpvCanvasInternalPoint;
-
-     TpvCanvasMode=(vcmNormal,vcmLine);
-
-     PpvCanvasVertexState=^TpvCanvasVertexState;
+type PpvCanvasVertexState=^TpvCanvasVertexState;
      TpvCanvasVertexState=record
       BlendingMode:TpvHalfFloat;
       RenderingMode:TpvHalfFloat;
@@ -187,6 +173,33 @@ type PpvCanvasPoint=^TpvCanvasPoint;
 
      TpvCanvasAtlasArrayTextureDescriptorSetHashMap=class(TpvHashMap<TpvSpriteAtlasArrayTexture,TpvInt32>);
 
+     PpvCanvasCacheTrianglePoint=^TpvCanvasCacheTrianglePoints;
+     TpvCanvasCacheTrianglePoint=record
+      Kind:TVkInt32;
+      Position:TpvVector2;
+      MetaInfos:array[0..1] of TpvVector4;
+     end;
+
+     PpvCanvasCacheTrianglePoints=^TpvCanvasCacheTrianglePoints;
+     TpvCanvasCacheTrianglePoints=array[0..2] of TpvCanvasCacheTrianglePoint;
+
+     PpvCanvasCacheTriangle=^TpvCanvasCacheTriangle;
+     TpvCanvasCacheTriangle=record
+      Points:TpvCanvasCacheTrianglePoints;
+     end;
+
+     TpvCanvasCacheTriangles=array of TpvCanvasCacheTriangle;
+
+     TpvCanvasCachedTriangles=class
+      private
+       fTriangles:TpvCanvasCacheTriangles;
+       fCountTriangles:TpvInt32;
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+     end;
+
+     PpvCanvasPathCommandType=^TpvCanvasPathCommandType;
      TpvCanvasPathCommandType=
       (
        pcpctMoveTo,
@@ -376,6 +389,19 @@ implementation
 
 uses PasVulkan.Assets,
      PasVulkan.Streams;
+
+constructor TpvCanvasCachedTriangles.Create;
+begin
+ inherited Create;
+ fTriangles:=nil;
+ fCountTriangles:=0;
+end;
+
+destructor TpvCanvasCachedTriangles.Destroy;
+begin
+ fTriangles:=nil;
+ inherited Destroy;
+end;
 
 constructor TpvCanvasPath.Create;
 begin
