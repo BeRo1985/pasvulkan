@@ -13,11 +13,11 @@ layout(location = 3) out vec2 outState;
 layout(location = 4) out vec4 outClipRect; 
 
 layout(push_constant) uniform PushConstants {
-	vec4 matrix;
+  layout(offset = 0) mat4 matrix;
 } pushConstants;
 
 out gl_PerVertex {
-    vec4 gl_Position;   
+  vec4 gl_Position;   
 };
 
 void main(void){

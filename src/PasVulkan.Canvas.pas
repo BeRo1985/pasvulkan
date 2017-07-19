@@ -1639,6 +1639,7 @@ var Index,DescriptorIndex,StartVertexIndex:TpvInt32;
     CurrentBuffer:PpvCanvasBuffer;
     VulkanVertexBuffer,VulkanIndexBuffer:TpvVulkanBuffer;
     OldScissor:TVkRect2D;
+    Matrix:TpvMatrix4x4;
     ForceUpdate:boolean;
     Offsets:array[0..0] of TVkDeviceSize;
 begin
@@ -1651,6 +1652,8 @@ begin
   OldScissor.extent.Height:=$7fffffff;
 
   DescriptorIndex:=-1;
+
+  Matrix:=TpvMatrix4x4.Null;
 
   OldQueueItemKind:=vcqikNone;
 
@@ -1682,14 +1685,17 @@ begin
       aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorIndex].Handle,0,nil);
      end;
 
-     aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvMatrix4x4),@QueueItem.Matrix);
-
      if ForceUpdate then begin
       aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
       OldScissor.offset.x:=-$7fffffff;
       OldScissor.offset.y:=-$7fffffff;
       OldScissor.extent.Width:=$7fffffff;
       OldScissor.extent.Height:=$7fffffff;
+     end;
+
+     if ForceUpdate or
+        (Matrix<>QueueItem^.Matrix) then begin
+      aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvMatrix4x4),@QueueItem^.Matrix);
      end;
 
      if ForceUpdate or
