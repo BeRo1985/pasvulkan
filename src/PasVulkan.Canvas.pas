@@ -173,6 +173,10 @@ type PpvCanvasVertexState=^TpvCanvasVertexState;
 
      TpvCanvasAtlasArrayTextureDescriptorSetHashMap=class(TpvHashMap<TpvSpriteAtlasArrayTexture,TpvInt32>);
 
+     TpvCanvasPolyLines=class;
+
+     TpvCanvasPolygons=class;
+
      PpvCanvasCacheTrianglePoint=^TpvCanvasCacheTrianglePoints;
      TpvCanvasCacheTrianglePoint=record
       Kind:TVkInt32;
@@ -190,13 +194,15 @@ type PpvCanvasVertexState=^TpvCanvasVertexState;
 
      TpvCanvasCacheTriangles=array of TpvCanvasCacheTriangle;
 
-     TpvCanvasCachedTriangles=class
+     TpvCanvasShape=class
       private
        fTriangles:TpvCanvasCacheTriangles;
        fCountTriangles:TpvInt32;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
+       procedure Assign(const aFrom:TpvCanvasPolyLines); overload;
+       procedure Assign(const aFrom:TpvCanvasPolygons); overload;
      end;
 
      PpvCanvasPathCommandType=^TpvCanvasPathCommandType;
@@ -219,8 +225,6 @@ type PpvCanvasVertexState=^TpvCanvasVertexState;
      end;
 
      TpvCanvasPathCommands=array of TpvCanvasPathCommand;
-
-     TpvCanvasPolygons=class;
 
      TpvCanvasPath=class
       private
@@ -367,11 +371,12 @@ type PpvCanvasVertexState=^TpvCanvasVertexState;
        procedure SetClipRect(const aClipRect:TpvRect); overload;
        procedure SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
        procedure Hook(const aHook:TpvCanvasHook;const aData:TpvPointer); overload;
-       procedure DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvRect;const Color:TpvVector4); overload;
-       procedure DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvRect;const Origin:TpvVector2;Rotation:TpvFloat;const Color:TpvVector4); overload;
-       procedure DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat;const Color:TpvVector4); overload;
-       procedure DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat); overload;
-       procedure DrawSprite(const Sprite:TpvSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TpvFloat); overload;
+       procedure DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aColor:TpvVector4); overload;
+       procedure DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat;const aColor:TpvVector4); overload;
+       procedure DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2;const aColor:TpvVector4); overload;
+       procedure DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2); overload;
+       procedure DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aAlpha:TpvFloat); overload;
+       procedure DrawShape(const aShape:TpvCanvasShape;const Color:TpvVector4);
        procedure ExecuteUpload(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
       public
@@ -390,17 +395,27 @@ implementation
 uses PasVulkan.Assets,
      PasVulkan.Streams;
 
-constructor TpvCanvasCachedTriangles.Create;
+constructor TpvCanvasShape.Create;
 begin
  inherited Create;
  fTriangles:=nil;
  fCountTriangles:=0;
 end;
 
-destructor TpvCanvasCachedTriangles.Destroy;
+destructor TpvCanvasShape.Destroy;
 begin
  fTriangles:=nil;
  inherited Destroy;
+end;
+
+procedure TpvCanvasShape.Assign(const aFrom:TpvCanvasPolyLines);
+begin
+ fCountTriangles:=0;
+end;
+
+procedure TpvCanvasShape.Assign(const aFrom:TpvCanvasPolygons);
+begin
+ fCountTriangles:=0;
 end;
 
 constructor TpvCanvasPath.Create;
@@ -1137,50 +1152,50 @@ begin
  end;
 end;
 
-procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvRect;const Color:TpvVector4);
+procedure TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aColor:TpvVector4);
 const MinA=1.0/1024.0;
 var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     TempDest,TempSrc:TpvRect;
     VertexColor:TpvHalfFloatVector4;
 begin
- if (abs(Color.a)>MinA) and
-    ClipCheck(Dest.Left,Dest.Top,Dest.Right,Dest.Bottom) and
-    (((Src.Right>=Sprite.TrimmedX) and (Src.Bottom>=Sprite.TrimmedY)) and
-    (((not Sprite.Rotated) and (((Sprite.TrimmedX+Sprite.TrimmedWidth)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedHeight)>=Src.Top))) or
-     (Sprite.Rotated and (((Sprite.TrimmedX+Sprite.TrimmedHeight)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedWidth)>=Src.Top))))) then begin
-  VertexColor.r:=Color.r;
-  VertexColor.g:=Color.g;
-  VertexColor.b:=Color.b;
-  VertexColor.a:=Color.a;
-  SetArrayTexture(Sprite.ArrayTexture);
+ if (abs(aColor.a)>MinA) and
+    ClipCheck(aDest.Left,aDest.Top,aDest.Right,aDest.Bottom) and
+    (((aSrc.Right>=aSprite.TrimmedX) and (aSrc.Bottom>=aSprite.TrimmedY)) and
+    (((not aSprite.Rotated) and (((aSprite.TrimmedX+aSprite.TrimmedWidth)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedHeight)>=aSrc.Top))) or
+     (aSprite.Rotated and (((aSprite.TrimmedX+aSprite.TrimmedHeight)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedWidth)>=aSrc.Top))))) then begin
+  VertexColor.r:=aColor.r;
+  VertexColor.g:=aColor.g;
+  VertexColor.b:=aColor.b;
+  VertexColor.a:=aColor.a;
+  SetArrayTexture(aSprite.ArrayTexture);
   FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
-  if Sprite.Rotated then begin
-   tx1:=Max(Sprite.TrimmedX,Src.Left);
-   ty1:=Max(Sprite.TrimmedY,Src.Top);
-   tx2:=Min((Sprite.TrimmedX+Sprite.TrimmedHeight),Src.Right);
-   ty2:=Min((Sprite.TrimmedY+Sprite.TrimmedWidth),Src.Bottom);
-   xf:=abs(Dest.Right-Dest.Left)/(Src.Right-Src.Left);
-   yf:=abs(Dest.Bottom-Dest.Top)/(Src.Bottom-Src.Top);
-   TempDest.Left:=Dest.Left+((tx1-Src.Left)*xf);
-   TempDest.Right:=Dest.Right+((tx2-Src.Right)*xf);
-   TempDest.Top:=Dest.Top+((ty1-Src.Top)*yf);
-   TempDest.Bottom:=Dest.Bottom+((ty2-Src.Bottom)*yf);
-{  if Dest.Left<=Dest.Right then begin
-    TempDest.Left:=Dest.Left+((tx1-Src.Left)*xf);
-    TempDest.Right:=Dest.Right+((tx2-Src.Right)*xf);
+  if aSprite.Rotated then begin
+   tx1:=Max(aSprite.TrimmedX,aSrc.Left);
+   ty1:=Max(aSprite.TrimmedY,aSrc.Top);
+   tx2:=Min((aSprite.TrimmedX+aSprite.TrimmedHeight),aSrc.Right);
+   ty2:=Min((aSprite.TrimmedY+aSprite.TrimmedWidth),aSrc.Bottom);
+   xf:=abs(aDest.Right-aDest.Left)/(aSrc.Right-aSrc.Left);
+   yf:=abs(aDest.Bottom-aDest.Top)/(aSrc.Bottom-aSrc.Top);
+   TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
+   TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
+   TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
+   TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
+{  if aDest.Left<=aDest.Right then begin
+    TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
+    TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
    end else begin
-    TempDest.Left:=Dest.Left+((tx2-Src.Right)*xf);
-    TempDest.Right:=Dest.Right+((tx1-Src.Left)*xf);
+    TempDest.Left:=aDest.Left+((tx2-aSrc.Right)*xf);
+    TempDest.Right:=aDest.Right+((tx1-aSrc.Left)*xf);
    end;
-   if Dest.Top<=Dest.Bottom then begin
-    TempDest.Top:=Dest.Top+((ty1-Src.Top)*yf);
-    TempDest.Bottom:=Dest.Bottom+((ty2-Src.Bottom)*yf);
+   if aDest.Top<=aDest.Bottom then begin
+    TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
+    TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
    end else begin
-    TempDest.Top:=Dest.Top+((ty2-Src.Bottom)*yf);
-    TempDest.Bottom:=Dest.Bottom+((ty1-Src.Top)*yf);
+    TempDest.Top:=aDest.Top+((ty2-aSrc.Bottom)*yf);
+    TempDest.Bottom:=aDest.Bottom+((ty1-aSrc.Top)*yf);
    end;}
-   TempSrc.Left:=(tx1-Sprite.TrimmedX)+Sprite.x;
-   TempSrc.Top:=(ty1-Sprite.TrimmedY)+Sprite.y;
+   TempSrc.Left:=(tx1-aSprite.TrimmedX)+aSprite.x;
+   TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
    TempSrc.Right:=TempSrc.Left+(ty2-ty1);
    TempSrc.Bottom:=TempSrc.Top+(tx2-tx1);
    sX0:=TempSrc.Left*fInverseTextureWidth;
@@ -1198,7 +1213,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1207,7 +1222,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1216,7 +1231,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1225,39 +1240,39 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
   end else begin
-   tx1:=Max(Sprite.TrimmedX,Src.Left);
-   ty1:=Max(Sprite.TrimmedY,Src.Top);
-   tx2:=Min((Sprite.TrimmedX+Sprite.TrimmedWidth),Src.Right);
-   ty2:=Min((Sprite.TrimmedY+Sprite.TrimmedHeight),Src.Bottom);
-   xf:=abs(Dest.Right-Dest.Left)/(Src.Right-Src.Left);
-   yf:=abs(Dest.Bottom-Dest.Top)/(Src.Bottom-Src.Top);
-   TempDest.Left:=Dest.Left+((tx1-Src.Left)*xf);
-   TempDest.Right:=Dest.Right+((tx2-Src.Right)*xf);
-   TempDest.Top:=Dest.Top+((ty1-Src.Top)*yf);
-   TempDest.Bottom:=Dest.Bottom+((ty2-Src.Bottom)*yf);
-{  if Dest.Left<=Dest.Right then begin
-    TempDest.Left:=Dest.Left+((tx1-Src.Left)*xf);
-    TempDest.Right:=Dest.Right+((tx2-Src.Right)*xf);
+   tx1:=Max(aSprite.TrimmedX,aSrc.Left);
+   ty1:=Max(aSprite.TrimmedY,aSrc.Top);
+   tx2:=Min((aSprite.TrimmedX+aSprite.TrimmedWidth),aSrc.Right);
+   ty2:=Min((aSprite.TrimmedY+aSprite.TrimmedHeight),aSrc.Bottom);
+   xf:=abs(aDest.Right-aDest.Left)/(aSrc.Right-aSrc.Left);
+   yf:=abs(aDest.Bottom-aDest.Top)/(aSrc.Bottom-aSrc.Top);
+   TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
+   TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
+   TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
+   TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
+{  if aDest.Left<=aDest.Right then begin
+    TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
+    TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
    end else begin
-    TempDest.Left:=Dest.Left+((tx2-Src.Right)*xf);
-    TempDest.Right:=Dest.Right+((tx1-Src.Left)*xf);
+    TempDest.Left:=aDest.Left+((tx2-aSrc.Right)*xf);
+    TempDest.Right:=aDest.Right+((tx1-aSrc.Left)*xf);
    end;
-   if Dest.Top<=Dest.Bottom then begin
-    TempDest.Top:=Dest.Top+((ty1-Src.Top)*yf);
-    TempDest.Bottom:=Dest.Bottom+((ty2-Src.Bottom)*yf);
+   if aDest.Top<=aDest.Bottom then begin
+    TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
+    TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
    end else begin
-    TempDest.Top:=Dest.Bottom+((ty2-Src.Bottom)*yf);
-    TempDest.Bottom:=Dest.Top+((ty1-Src.Top)*yf);
+    TempDest.Top:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
+    TempDest.Bottom:=aDest.Top+((ty1-aSrc.Top)*yf);
    end;}
-   TempSrc.Left:=(tx1-Sprite.TrimmedX)+Sprite.x;
-   TempSrc.Top:=(ty1-Sprite.TrimmedY)+Sprite.y;
+   TempSrc.Left:=(tx1-aSprite.TrimmedX)+aSprite.x;
+   TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
    if TempDest.Left<fUnscaledClipRect.LeftTop.x then begin
@@ -1291,7 +1306,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1300,7 +1315,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Top*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1309,7 +1324,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1318,7 +1333,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=((TempDest.Bottom*fInverseHeight)-0.5)*2;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1328,7 +1343,7 @@ begin
  end;
 end;
 
-procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const Src,Dest:TpvRect;const Origin:TpvVector2;Rotation:TpvFloat;const Color:TpvVector4);
+procedure TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat;const aColor:TpvVector4);
 const MinA=1.0/1024.0;
 var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     AroundPoint:TpvVector2;
@@ -1336,35 +1351,35 @@ var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     TempDest,TempSrc:TpvRect;
     VertexColor:TpvHalfFloatVector4;
 begin
- if (abs(Color.a)>MinA) and
-    (((Src.Right>=Sprite.TrimmedX) and (Src.Bottom>=Sprite.TrimmedY)) and
-    (((not Sprite.Rotated) and (((Sprite.TrimmedX+Sprite.TrimmedWidth)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedHeight)>=Src.Top))) or
-     (Sprite.Rotated and (((Sprite.TrimmedX+Sprite.TrimmedHeight)>=Src.Left) and ((Sprite.TrimmedY+Sprite.TrimmedWidth)>=Src.Top))))) then begin
-  VertexColor.r:=Color.r;
-  VertexColor.g:=Color.g;
-  VertexColor.b:=Color.b;
-  VertexColor.a:=Color.a;
-  Cosinus:=cos(Rotation);
-  Sinus:=sin(Rotation);
-  SetArrayTexture(Sprite.ArrayTexture);
+ if (abs(aColor.a)>MinA) and
+    (((aSrc.Right>=aSprite.TrimmedX) and (aSrc.Bottom>=aSprite.TrimmedY)) and
+    (((not aSprite.Rotated) and (((aSprite.TrimmedX+aSprite.TrimmedWidth)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedHeight)>=aSrc.Top))) or
+     (aSprite.Rotated and (((aSprite.TrimmedX+aSprite.TrimmedHeight)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedWidth)>=aSrc.Top))))) then begin
+  VertexColor.r:=aColor.r;
+  VertexColor.g:=aColor.g;
+  VertexColor.b:=aColor.b;
+  VertexColor.a:=aColor.a;
+  Cosinus:=cos(aRotation);
+  Sinus:=sin(aRotation);
+  SetArrayTexture(aSprite.ArrayTexture);
   FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
-  if Sprite.Rotated then begin
-   tx1:=Max(Sprite.TrimmedX,Src.Left);
-   ty1:=Max(Sprite.TrimmedY,Src.Top);
-   tx2:=Min((Sprite.TrimmedX+Sprite.TrimmedHeight),Src.Right);
-   ty2:=Min((Sprite.TrimmedY+Sprite.TrimmedWidth),Src.Bottom);
-   xf:=(Dest.Right-Dest.Left)/(Src.Right-Src.Left);
-   yf:=(Dest.Bottom-Dest.Top)/(Src.Bottom-Src.Top);
-   TempDest.Left:=Dest.Left+((tx1-Src.Left)*xf);
-   TempDest.Top:=Dest.Top+((ty1-Src.Top)*yf);
-   TempDest.Right:=Dest.Right+((tx2-Src.Right)*xf);
-   TempDest.Bottom:=Dest.Bottom+((ty2-Src.Bottom)*yf);
-   TempSrc.Left:=(tx1-Sprite.TrimmedX)+Sprite.x;
-   TempSrc.Top:=(ty1-Sprite.TrimmedY)+Sprite.y;
+  if aSprite.Rotated then begin
+   tx1:=Max(aSprite.TrimmedX,aSrc.Left);
+   ty1:=Max(aSprite.TrimmedY,aSrc.Top);
+   tx2:=Min((aSprite.TrimmedX+aSprite.TrimmedHeight),aSrc.Right);
+   ty2:=Min((aSprite.TrimmedY+aSprite.TrimmedWidth),aSrc.Bottom);
+   xf:=(aDest.Right-aDest.Left)/(aSrc.Right-aSrc.Left);
+   yf:=(aDest.Bottom-aDest.Top)/(aSrc.Bottom-aSrc.Top);
+   TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
+   TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
+   TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
+   TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
+   TempSrc.Left:=(tx1-aSprite.TrimmedX)+aSprite.x;
+   TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
    TempSrc.Right:=TempSrc.Left+(ty2-ty1);
    TempSrc.Bottom:=TempSrc.Top+(tx2-tx1);
-   AroundPoint.x:=TempDest.Left+Origin.x;
-   AroundPoint.y:=TempDest.Top+Origin.y;
+   AroundPoint.x:=TempDest.Left+aOrigin.x;
+   AroundPoint.y:=TempDest.Top+aOrigin.y;
    Points[0].x:=TempDest.Left;
    Points[0].y:=TempDest.Top;
    Points[1].x:=TempDest.Right;
@@ -1387,7 +1402,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1395,7 +1410,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1403,7 +1418,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1411,28 +1426,28 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
   end else begin
-   tx1:=Max(Sprite.TrimmedX,Src.Left);
-   ty1:=Max(Sprite.TrimmedY,Src.Top);
-   tx2:=Min((Sprite.TrimmedX+Sprite.TrimmedWidth),Src.Right);
-   ty2:=Min((Sprite.TrimmedY+Sprite.TrimmedHeight),Src.Bottom);
-   xf:=(Dest.Right-Dest.Left)/(Src.Right-Src.Left);
-   yf:=(Dest.Bottom-Dest.Top)/(Src.Bottom-Src.Top);
-   TempDest.Left:=Dest.Left+((tx1-Src.Left)*xf);
-   TempDest.Top:=Dest.Top+((ty1-Src.Top)*yf);
-   TempDest.Right:=Dest.Right+((tx2-Src.Right)*xf);
-   TempDest.Bottom:=Dest.Bottom+((ty2-Src.Bottom)*yf);
-   TempSrc.Left:=(tx1-Sprite.TrimmedX)+Sprite.x;
-   TempSrc.Top:=(ty1-Sprite.TrimmedY)+Sprite.y;
+   tx1:=Max(aSprite.TrimmedX,aSrc.Left);
+   ty1:=Max(aSprite.TrimmedY,aSrc.Top);
+   tx2:=Min((aSprite.TrimmedX+aSprite.TrimmedWidth),aSrc.Right);
+   ty2:=Min((aSprite.TrimmedY+aSprite.TrimmedHeight),aSrc.Bottom);
+   xf:=(aDest.Right-aDest.Left)/(aSrc.Right-aSrc.Left);
+   yf:=(aDest.Bottom-aDest.Top)/(aSrc.Bottom-aSrc.Top);
+   TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
+   TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
+   TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
+   TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
+   TempSrc.Left:=(tx1-aSprite.TrimmedX)+aSprite.x;
+   TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
-   if Rotation=0.0 then begin
+   if aRotation=0.0 then begin
     if TempDest.Left<fUnscaledClipRect.LeftTop.x then begin
      TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fUnscaledClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
      TempDest.Left:=fUnscaledClipRect.LeftTop.x;
@@ -1450,8 +1465,8 @@ begin
      TempDest.Bottom:=fUnscaledClipRect.RightBottom.y;
     end;
    end;
-   AroundPoint.x:=TempDest.Left+Origin.x;
-   AroundPoint.y:=TempDest.Top+Origin.y;
+   AroundPoint.x:=TempDest.Left+aOrigin.x;
+   AroundPoint.y:=TempDest.Top+aOrigin.y;
    Points[0].x:=TempDest.Left;
    Points[0].y:=TempDest.Top;
    Points[1].x:=TempDest.Right;
@@ -1474,7 +1489,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1482,7 +1497,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1490,7 +1505,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1498,7 +1513,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=Sprite.Layer;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fClipRect;
@@ -1508,62 +1523,47 @@ begin
  end;
 end;
 
-procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat;const Color:TpvVector4);
-var Src,Dest:TpvRect;
+procedure TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2;const aColor:TpvVector4);
 begin
- Src.Left:=0;
- Src.Top:=0;
- Src.Right:=Sprite.Width;
- Src.Bottom:=Sprite.Height;
- Dest.Left:=x;
- Dest.Top:=y;
- Dest.Right:=x+Sprite.Width;
- Dest.Bottom:=y+Sprite.Height;
- DrawSprite(Sprite,Src,Dest,Color);
+ DrawSprite(aSprite,
+            TpvRect.Create(0.0,0.0,aSprite.Width,aSprite.Height),
+            TpvRect.Create(aPosition.x,aPosition.y,aPosition.x+aSprite.Width,aPosition.y+aSprite.Height),
+            aColor);
 end;
 
-procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const x,y:TpvFloat);
-var Color:TpvVector4;
+procedure TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2);
 begin
- Color.r:=1;
- Color.g:=1;
- Color.b:=1;
- Color.a:=1;
- DrawSprite(Sprite,x,y,Color);
+ DrawSprite(aSprite,
+            aPosition,
+            TpvVector4.Create(1.0,1.0,1.0,1.0));
 end;
 
-procedure TpvCanvas.DrawSprite(const Sprite:TpvSprite;const sx1,sy1,sx2,sy2,dx1,dy1,dx2,dy2,Alpha:TpvFloat);
-var Src,Dest:TpvRect;
-    Color:TpvVector4;
+procedure TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aAlpha:TpvFloat);
 begin
- Dest.Left:=dx1;
- Dest.Top:=dy1;
- Dest.Right:=dx2;
- Dest.Bottom:=dy2;
- Src.Left:=sx1;
- Src.Top:=sy1;
- Src.Right:=sx2;
- Src.Bottom:=sy2;
- Color.r:=1;
- Color.g:=1;
- Color.b:=1;
- Color.a:=Alpha;
- DrawSprite(Sprite,Src,Dest,Color);
+ DrawSprite(aSprite,
+            aSrc,
+            aDest,
+            TpvVector4.Create(1.0,1.0,1.0,aAlpha));
+end;
+
+procedure TpvCanvas.DrawShape(const aShape:TpvCanvasShape;const Color:TpvVector4);
+begin
+
 end;
 
 procedure TpvCanvas.ExecuteUpload(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
 var Index:TpvInt32;
-    CurrentDrawSpriteBatchBuffer:PpvCanvasBuffer;
+    CurrentBuffer:PpvCanvasBuffer;
     VulkanBuffer:TpvVulkanBuffer;
 begin
- CurrentDrawSpriteBatchBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
- if assigned(CurrentDrawSpriteBatchBuffer) and (CurrentDrawSpriteBatchBuffer^.fCountUsedBuffers>0) then begin
-  while TPasMPInterlocked.CompareExchange(CurrentDrawSpriteBatchBuffer^.fSpinLock,-1,0)<>0 do begin
+ CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
+ if assigned(CurrentBuffer) and (CurrentBuffer^.fCountUsedBuffers>0) then begin
+  while TPasMPInterlocked.CompareExchange(CurrentBuffer^.fSpinLock,-1,0)<>0 do begin
   end;
   try
-   for Index:=0 to CurrentDrawSpriteBatchBuffer^.fCountUsedBuffers-1 do begin
-    if CurrentDrawSpriteBatchBuffer^.fVertexBufferSizes[Index]>0 then begin
-     VulkanBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanVertexBuffers[Index];
+   for Index:=0 to CurrentBuffer^.fCountUsedBuffers-1 do begin
+    if CurrentBuffer^.fVertexBufferSizes[Index]>0 then begin
+     VulkanBuffer:=CurrentBuffer^.fVulkanVertexBuffers[Index];
      if not assigned(VulkanBuffer) then begin
       VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
                                          SizeOf(TpvCanvasVertexBuffer),
@@ -1578,20 +1578,20 @@ begin
                                          0,
                                          [vbfPersistentMapped]
                                         );
-      CurrentDrawSpriteBatchBuffer^.fVulkanVertexBuffers[Index]:=VulkanBuffer;
+      CurrentBuffer^.fVulkanVertexBuffers[Index]:=VulkanBuffer;
      end;
      if assigned(VulkanBuffer) then begin
       VulkanBuffer.UploadData(fTransferQueue,
                               fTransferCommandBuffer,
                               fTransferFence,
-                              CurrentDrawSpriteBatchBuffer^.fVertexBuffers[Index,0],
+                              CurrentBuffer^.fVertexBuffers[Index,0],
                               0,
-                              CurrentDrawSpriteBatchBuffer^.fVertexBufferSizes[Index],
+                              CurrentBuffer^.fVertexBufferSizes[Index],
                               vbutsbmNo);
      end;
     end;
-    if CurrentDrawSpriteBatchBuffer^.fIndexBufferSizes[Index]>0 then begin
-     VulkanBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanIndexBuffers[Index];
+    if CurrentBuffer^.fIndexBufferSizes[Index]>0 then begin
+     VulkanBuffer:=CurrentBuffer^.fVulkanIndexBuffers[Index];
      if not assigned(VulkanBuffer) then begin
       VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
                                          SizeOf(TpvCanvasIndexBuffer),
@@ -1606,21 +1606,21 @@ begin
                                          0,
                                          [vbfPersistentMapped]
                                         );
-      CurrentDrawSpriteBatchBuffer^.fVulkanIndexBuffers[Index]:=VulkanBuffer;
+      CurrentBuffer^.fVulkanIndexBuffers[Index]:=VulkanBuffer;
      end;
      if assigned(VulkanBuffer) then begin
       VulkanBuffer.UploadData(fTransferQueue,
                               fTransferCommandBuffer,
                               fTransferFence,
-                              CurrentDrawSpriteBatchBuffer^.fIndexBuffers[Index,0],
+                              CurrentBuffer^.fIndexBuffers[Index,0],
                               0,
-                              CurrentDrawSpriteBatchBuffer^.fIndexBufferSizes[Index],
+                              CurrentBuffer^.fIndexBufferSizes[Index],
                               vbutsbmNo);
      end;
     end;
    end;
   finally
-   TPasMPInterlocked.Exchange(CurrentDrawSpriteBatchBuffer^.fSpinLock,0);
+   TPasMPInterlocked.Exchange(CurrentBuffer^.fSpinLock,0);
   end;
 { aVulkanCommandBuffer.MetaCmdMemoryBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
@@ -1633,14 +1633,14 @@ procedure TpvCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffe
 var Index,DescriptorIndex,StartVertexIndex:TpvInt32;
     QueueItem:PpvCanvasQueueItem;
     OldQueueItemKind:TpvCanvasQueueItemKind;
-    CurrentDrawSpriteBatchBuffer:PpvCanvasBuffer;
+    CurrentBuffer:PpvCanvasBuffer;
     VulkanVertexBuffer,VulkanIndexBuffer:TpvVulkanBuffer;
     OldScissor:TVkRect2D;
     ForceUpdate:boolean;
     Offsets:array[0..0] of TVkDeviceSize;
 begin
- CurrentDrawSpriteBatchBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
- if assigned(CurrentDrawSpriteBatchBuffer) and (CurrentDrawSpriteBatchBuffer^.fCountQueueItems>0) then begin
+ CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
+ if assigned(CurrentBuffer) and (CurrentBuffer^.fCountQueueItems>0) then begin
 
   OldScissor.offset.x:=-$7fffffff;
   OldScissor.offset.y:=-$7fffffff;
@@ -1653,9 +1653,9 @@ begin
 
   ForceUpdate:=true;
 
-  for Index:=0 to CurrentDrawSpriteBatchBuffer^.fCountQueueItems-1 do begin
+  for Index:=0 to CurrentBuffer^.fCountQueueItems-1 do begin
 
-   QueueItem:=@CurrentDrawSpriteBatchBuffer^.fQueueItems[Index];
+   QueueItem:=@CurrentBuffer^.fQueueItems[Index];
 
    if OldQueueItemKind<>QueueItem^.Kind then begin
     OldQueueItemKind:=QueueItem^.Kind;
@@ -1665,9 +1665,9 @@ begin
    case QueueItem^.Kind of
     vcqikNormal:begin
 
-     VulkanVertexBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
+     VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
 
-     VulkanIndexBuffer:=CurrentDrawSpriteBatchBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
+     VulkanIndexBuffer:=CurrentBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
 
      if ForceUpdate then begin
       aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
@@ -1721,8 +1721,8 @@ begin
 
   end;
 
-  CurrentDrawSpriteBatchBuffer^.fCountQueueItems:=0;
-  CurrentDrawSpriteBatchBuffer^.fCountUsedBuffers:=0;
+  CurrentBuffer^.fCountQueueItems:=0;
+  CurrentBuffer^.fCountUsedBuffers:=0;
 
  end;
 end;
