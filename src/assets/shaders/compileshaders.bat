@@ -1,6 +1,6 @@
 @echo off
 
-cd spritebatch
+cd canvas
 call compileshaders.bat
 cd ..
 

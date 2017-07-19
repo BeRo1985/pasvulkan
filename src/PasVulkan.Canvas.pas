@@ -144,6 +144,7 @@ type PpvCanvasVertexState=^TpvCanvasVertexState;
       RenderingMode:TpvCanvasRenderingMode;
       BlendingMode:TpvCanvasBlendingMode;
       Scissor:TVkRect2D;
+      Matrix:TpvMatrix4x4;
       Hook:TpvCanvasHook;
       HookData:TVkPointer;
      end;
@@ -659,6 +660,7 @@ begin
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvMatrix4x4));
  fVulkanPipelineLayout.Initialize;
 
  fVulkanRenderPass:=aRenderPass;
@@ -1005,6 +1007,7 @@ begin
    QueueItem^.RenderingMode:=fRenderingMode;
    QueueItem^.BlendingMode:=fBlendingMode;
    QueueItem^.Scissor:=fScissor;
+   QueueItem^.Matrix:=fMatrix;
 
   finally
    TPasMPInterlocked.Exchange(fCurrentFillBuffer^.fSpinLock,0);
@@ -1678,6 +1681,8 @@ begin
       DescriptorIndex:=QueueItem^.DescriptorIndex;
       aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorIndex].Handle,0,nil);
      end;
+
+     aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvMatrix4x4),@QueueItem.Matrix);
 
      if ForceUpdate then begin
       aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);

@@ -12,6 +12,10 @@ layout(location = 2) out vec3 outTexCoord;
 layout(location = 3) out vec2 outState;    
 layout(location = 4) out vec4 outClipRect; 
 
+layout(push_constant) uniform PushConstants {
+	vec4 matrix;
+} pushConstants;
+
 out gl_PerVertex {
     vec4 gl_Position;   
 };
@@ -22,5 +26,5 @@ void main(void){
   outTexCoord = inTexCoord;
   outState = inState;
   outClipRect = inClipRect;
-  gl_Position = vec4(inPosition, 0.0, 1.0);
+  gl_Position = pushConstants.matrix * vec4(inPosition, 0.0, 1.0);
 }
