@@ -374,6 +374,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fStateStack:TpvCanvasStateStack;
        function RotatePoint(const PointToRotate,AroundPoint:TpvVector2;Cosinus,Sinus:TpvFloat):TpvVector2;
        procedure SetInternalArrayTexture(const aArrayTexture:TpvSpriteAtlasArrayTexture);
+       procedure UpdateVertexState;
        function GetRenderingMode:TpvCanvasRenderingMode; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetRenderingMode(const aRenderingMode:TpvCanvasRenderingMode);
        function GetBlendingMode:TpvCanvasBlendingMode; {$ifdef CAN_INLINE}inline;{$endif}
@@ -672,6 +673,10 @@ begin
 
  fInternalArrayTexture:=nil;
 
+ fState:=TpvCanvasState.Create;
+
+ fStateStack:=TpvCanvasStateStack.Create(true);
+
  fState.fRenderingMode:=pvcrmNormal;
 
  fState.fBlendingMode:=pvcbmAlphaBlending;
@@ -829,10 +834,6 @@ begin
 
  fCurrentFillBuffer:=nil;
 
- fState:=TpvCanvasState.Create;
-
- fStateStack:=TpvCanvasStateStack.Create(true);
-
 end;
 
 destructor TpvCanvas.Destroy;
@@ -952,6 +953,29 @@ begin
  fState.fClipRect.RightBottom:=TpvVector2.Create(aLeft+aWidth,aTop+aHeight);
 end;
 
+procedure TpvCanvas.UpdateVertexState;
+begin
+ case fState.fRenderingMode of
+  pvcrmNormal:begin
+   fVertexState.RenderingMode:=0.0;
+  end;
+  else {pvcrmFont:}begin
+   fVertexState.RenderingMode:=1.0;
+  end;
+ end;
+ case fState.fBlendingMode of
+  pvcbmNone:begin
+   fVertexState.BlendingMode:=-1.0;
+  end;
+  pvcbmAlphaBlending:begin
+   fVertexState.BlendingMode:=1.0;
+  end;
+  else{pvcbmAdditiveBlending:}begin
+   fVertexState.BlendingMode:=0.0;
+  end;
+ end;
+end;
+
 function TpvCanvas.GetRenderingMode:TpvCanvasRenderingMode;
 begin
  result:=fState.fRenderingMode;
@@ -961,14 +985,7 @@ procedure TpvCanvas.SetRenderingMode(const aRenderingMode:TpvCanvasRenderingMode
 begin
  if fState.fRenderingMode<>aRenderingMode then begin
   fState.fRenderingMode:=aRenderingMode;
-  case fState.fRenderingMode of
-   pvcrmNormal:begin
-    fVertexState.RenderingMode:=0.0;
-   end;
-   else {pvcrmFont:}begin
-    fVertexState.RenderingMode:=1.0;
-   end;
-  end;
+  UpdateVertexState;
  end;
 end;
 
@@ -981,17 +998,7 @@ procedure TpvCanvas.SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
 begin
  if fState.fBlendingMode<>aBlendingMode then begin
   fState.fBlendingMode:=aBlendingMode;
-  case fState.fBlendingMode of
-   pvcbmNone:begin
-    fVertexState.BlendingMode:=-1.0;
-   end;
-   pvcbmAlphaBlending:begin
-    fVertexState.BlendingMode:=1.0;
-   end;
-   else{pvcbmAdditiveBlending:}begin
-    fVertexState.BlendingMode:=0.0;
-   end;
-  end;
+  UpdateVertexState;
  end;
 end;
 
@@ -1832,6 +1839,7 @@ function TpvCanvas.Pop:TpvCanvas;
 begin
  Flush;
  TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(fStateStack.Extract)))).Free;
+ UpdateVertexState;
  result:=self;
 end;
 
