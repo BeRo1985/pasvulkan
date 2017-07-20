@@ -74,7 +74,22 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Sprites;
 
-type PpvCanvasLineJoin=^TpvCanvasLineJoin;
+type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
+     TpvCanvasRenderingMode=
+      (
+       pvcrmNormal,
+       pvcrmFont
+      );
+
+     PpvCanvasBlendingMode=^TpvCanvasBlendingMode;
+     TpvCanvasBlendingMode=
+      (
+       pvcbmNone,
+       pvcbmAlphaBlending,
+       pvcbmAdditiveBlending
+      );
+
+     PpvCanvasLineJoin=^TpvCanvasLineJoin;
      TpvCanvasLineJoin=
       (
        pvcljBevel,
@@ -151,6 +166,8 @@ type PpvCanvasLineJoin=^TpvCanvasLineJoin;
 
      TpvCanvasState=class(TPersistent)
       private
+       fRenderingMode:TpvCanvasRenderingMode;
+       fBlendingMode:TpvCanvasBlendingMode;
        fLineWidth:TpvFloat;
        fMiterLimit:TpvFloat;
        fLineJoin:TpvCanvasLineJoin;
@@ -171,6 +188,8 @@ type PpvCanvasLineJoin=^TpvCanvasLineJoin;
        property ProjectionMatrix:TpvMatrix4x4 read fProjectionMatrix write fProjectionMatrix;
        property TransformationMatrix:TpvMatrix4x4 read fTransformationMatrix write fTransformationMatrix;
       published
+       property RenderingMode:TpvCanvasRenderingMode read fRenderingMode write fRenderingMode;
+       property BlendingMode:TpvCanvasBlendingMode read fBlendingMode write fBlendingMode;
        property LineWidth:TpvFloat read fLineWidth write fLineWidth;
        property MiterLimit:TpvFloat read fMiterLimit write fMiterLimit;
        property LineJoin:TpvCanvasLineJoin read fLineJoin write fLineJoin;
@@ -263,21 +282,6 @@ type PpvCanvasLineJoin=^TpvCanvasLineJoin;
 
      TpvCanvasIndexBufferSizes=array of TVkSizeInt;
 
-     PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
-     TpvCanvasRenderingMode=
-      (
-       pvcrmNormal,
-       pvcrmFont
-      );
-
-     PpvCanvasBlendingMode=^TpvCanvasBlendingMode;
-     TpvCanvasBlendingMode=
-      (
-       pvcbmNone,
-       pvcbmAlphaBlending,
-       pvcbmAdditiveBlending
-      );
-
      TpvCanvasHook=procedure(const aData:TpvPointer) of object;
 
      TpvCanvasQueueItemKind=
@@ -297,8 +301,6 @@ type PpvCanvasLineJoin=^TpvCanvasLineJoin;
       StartIndexIndex:TpvInt32;
       CountVertices:TpvInt32;
       CountIndices:TpvInt32;
-      RenderingMode:TpvCanvasRenderingMode;
-      BlendingMode:TpvCanvasBlendingMode;
       Scissor:TVkRect2D;
       Matrix:TpvMatrix4x4;
       Hook:TpvCanvasHook;
@@ -368,20 +370,18 @@ type PpvCanvasLineJoin=^TpvCanvasLineJoin;
        fCurrentDestinationVertexBufferPointer:PpvCanvasVertexBuffer;
        fCurrentDestinationIndexBufferPointer:PpvCanvasIndexBuffer;
        fInternalArrayTexture:TpvSpriteAtlasArrayTexture;
-       fInternalClipRect:TpvRect;
-       fInternalRenderingMode:TpvCanvasRenderingMode;
-       fInternalBlendingMode:TpvCanvasBlendingMode;
-       fInternalScissor:TVkRect2D;
-       fInternalProjectionMatrix:TpvMatrix4x4;
-       fInternalMatrix:TpvMatrix4x4;
        fState:TpvCanvasState;
        fStateStack:TpvCanvasStateStack;
        function RotatePoint(const PointToRotate,AroundPoint:TpvVector2;Cosinus,Sinus:TpvFloat):TpvVector2;
        procedure SetInternalArrayTexture(const aArrayTexture:TpvSpriteAtlasArrayTexture);
-       procedure SetInternalRenderingMode(const aRenderingMode:TpvCanvasRenderingMode);
-       procedure SetInternalBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
-       procedure SetInternalProjectionMatrix(const aProjectionMatrix:TpvMatrix4x4);
-       procedure SetInternalMatrix(const aMatrix:TpvMatrix4x4);
+       function GetRenderingMode:TpvCanvasRenderingMode; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetRenderingMode(const aRenderingMode:TpvCanvasRenderingMode);
+       function GetBlendingMode:TpvCanvasBlendingMode; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
+       function GetProjectionMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetProjectionMatrix(const aProjectionMatrix:TpvMatrix4x4);
+       function GetTransformationMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetTransformationMatrix(const aTransformationMatrix:TpvMatrix4x4);
        procedure GetNextDestinationVertexBuffer;
        procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
        function ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
@@ -400,11 +400,11 @@ type PpvCanvasLineJoin=^TpvCanvasLineJoin;
        procedure Start(const aBufferIndex:TpvInt32);
        procedure Stop;
        procedure Flush;
-       procedure SetInternalScissor(const aScissor:TVkRect2D); overload;
-       procedure SetInternalScissor(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
-       procedure SetInternalClipRect(const aClipRect:TVkRect2D); overload;
-       procedure SetInternalClipRect(const aClipRect:TpvRect); overload;
-       procedure SetInternalClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
+       procedure SetScissor(const aScissor:TVkRect2D); overload;
+       procedure SetScissor(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
+       procedure SetClipRect(const aClipRect:TVkRect2D); overload;
+       procedure SetClipRect(const aClipRect:TpvRect); overload;
+       procedure SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
        procedure Hook(const aHook:TpvCanvasHook;const aData:TpvPointer); overload;
        procedure DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aColor:TpvVector4); overload;
        procedure DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat;const aColor:TpvVector4); overload;
@@ -414,8 +414,8 @@ type PpvCanvasLineJoin=^TpvCanvasLineJoin;
        procedure ExecuteUpload(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
       public
-       procedure Push;
-       procedure Pop;
+       function Push:TpvCanvas;
+       function Pop:TpvCanvas;
       public
        function BeginPath:TpvCanvas;
        function ClosePath:TpvCanvas;
@@ -429,15 +429,16 @@ type PpvCanvasLineJoin=^TpvCanvasLineJoin;
        function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvas; overload;
        function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvas; overload;
       public
+      public
        property Viewport:PVkViewport read fPointerToViewport;
-       property ProjectionMatrix:TpvMatrix4x4 read fInternalProjectionMatrix write SetInternalProjectionMatrix;
-       property Matrix:TpvMatrix4x4 read fInternalMatrix write SetInternalMatrix;
+       property ProjectionMatrix:TpvMatrix4x4 read GetProjectionMatrix write SetProjectionMatrix;
+       property TransformationMatrix:TpvMatrix4x4 read GetTransformationMatrix write SetTransformationMatrix;
       published
        property Device:TpvVulkanDevice read fDevice;
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
-       property RenderingMode:TpvCanvasRenderingMode read fInternalRenderingMode write SetInternalRenderingMode;
-       property BlendingMode:TpvCanvasBlendingMode read fInternalBlendingMode write SetInternalBlendingMode;
+       property RenderingMode:TpvCanvasRenderingMode read GetRenderingMode write SetRenderingMode;
+       property BlendingMode:TpvCanvasBlendingMode read GetBlendingMode write SetBlendingMode;
      end;
 
 implementation
@@ -671,9 +672,9 @@ begin
 
  fInternalArrayTexture:=nil;
 
- fInternalRenderingMode:=pvcrmNormal;
+ fState.fRenderingMode:=pvcrmNormal;
 
- fInternalBlendingMode:=pvcbmAlphaBlending;
+ fState.fBlendingMode:=pvcbmAlphaBlending;
 
  fWidth:=1280;
  fHeight:=720;
@@ -913,49 +914,54 @@ begin
  end;
 end;
 
-procedure TpvCanvas.SetInternalScissor(const aScissor:TVkRect2D);
+procedure TpvCanvas.SetScissor(const aScissor:TVkRect2D);
 begin
- if (fInternalScissor.offset.x<>aScissor.offset.x) or
-    (fInternalScissor.offset.y<>aScissor.offset.y) or
-    (fInternalScissor.extent.Width<>aScissor.extent.Width) or
-    (fInternalScissor.extent.Height<>aScissor.extent.Height) then begin
+ if (fState.fScissor.offset.x<>aScissor.offset.x) or
+    (fState.fScissor.offset.y<>aScissor.offset.y) or
+    (fState.fScissor.extent.Width<>aScissor.extent.Width) or
+    (fState.fScissor.extent.Height<>aScissor.extent.Height) then begin
   Flush;
-  fInternalScissor:=aScissor;
+  fState.fScissor:=aScissor;
  end;
 end;
 
-procedure TpvCanvas.SetInternalScissor(const aLeft,aTop,aWidth,aHeight:TpvInt32);
+procedure TpvCanvas.SetScissor(const aLeft,aTop,aWidth,aHeight:TpvInt32);
 var NewScissor:TVkRect2D;
 begin
  NewScissor.offset.x:=aLeft;
  NewScissor.offset.y:=aTop;
  NewScissor.extent.Width:=aWidth;
  NewScissor.extent.Height:=aHeight;
- SetInternalScissor(NewScissor);
+ SetScissor(NewScissor);
 end;
 
-procedure TpvCanvas.SetInternalClipRect(const aClipRect:TVkRect2D);
+procedure TpvCanvas.SetClipRect(const aClipRect:TVkRect2D);
 begin
- fInternalClipRect.LeftTop:=TpvVector2.Create(aClipRect.offset.x,aClipRect.offset.y);
- fInternalClipRect.RightBottom:=TpvVector2.Create(aClipRect.offset.x+TpvFloat(aClipRect.extent.width),aClipRect.offset.y+TpvFloat(aClipRect.extent.height));
+ fState.fClipRect.LeftTop:=TpvVector2.Create(aClipRect.offset.x,aClipRect.offset.y);
+ fState.fClipRect.RightBottom:=TpvVector2.Create(aClipRect.offset.x+TpvFloat(aClipRect.extent.width),aClipRect.offset.y+TpvFloat(aClipRect.extent.height));
 end;
 
-procedure TpvCanvas.SetInternalClipRect(const aClipRect:TpvRect);
+procedure TpvCanvas.SetClipRect(const aClipRect:TpvRect);
 begin
- fInternalClipRect:=aClipRect;
+ fState.fClipRect:=aClipRect;
 end;
 
-procedure TpvCanvas.SetInternalClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32);
+procedure TpvCanvas.SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32);
 begin
- fInternalClipRect.LeftTop:=TpvVector2.Create(aLeft,aTop);
- fInternalClipRect.RightBottom:=TpvVector2.Create(aLeft+aWidth,aTop+aHeight);
+ fState.fClipRect.LeftTop:=TpvVector2.Create(aLeft,aTop);
+ fState.fClipRect.RightBottom:=TpvVector2.Create(aLeft+aWidth,aTop+aHeight);
 end;
 
-procedure TpvCanvas.SetInternalRenderingMode(const aRenderingMode:TpvCanvasRenderingMode);
+function TpvCanvas.GetRenderingMode:TpvCanvasRenderingMode;
 begin
- if fInternalRenderingMode<>aRenderingMode then begin
-  fInternalRenderingMode:=aRenderingMode;
-  case aRenderingMode of
+ result:=fState.fRenderingMode;
+end;
+
+procedure TpvCanvas.SetRenderingMode(const aRenderingMode:TpvCanvasRenderingMode);
+begin
+ if fState.fRenderingMode<>aRenderingMode then begin
+  fState.fRenderingMode:=aRenderingMode;
+  case fState.fRenderingMode of
    pvcrmNormal:begin
     fVertexState.RenderingMode:=0.0;
    end;
@@ -966,11 +972,16 @@ begin
  end;
 end;
 
-procedure TpvCanvas.SetInternalBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
+function TpvCanvas.GetBlendingMode:TpvCanvasBlendingMode;
 begin
- if fInternalBlendingMode<>aBlendingMode then begin
-  fInternalBlendingMode:=aBlendingMode;
-  case fInternalBlendingMode of
+ result:=fState.fBlendingMode;
+end;
+
+procedure TpvCanvas.SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
+begin
+ if fState.fBlendingMode<>aBlendingMode then begin
+  fState.fBlendingMode:=aBlendingMode;
+  case fState.fBlendingMode of
    pvcbmNone:begin
     fVertexState.BlendingMode:=-1.0;
    end;
@@ -984,19 +995,29 @@ begin
  end;
 end;
 
-procedure TpvCanvas.SetInternalProjectionMatrix(const aProjectionMatrix:TpvMatrix4x4);
+function TpvCanvas.GetProjectionMatrix:TpvMatrix4x4;
 begin
- if fInternalProjectionMatrix<>aProjectionMatrix then begin
+ result:=fState.fProjectionMatrix;
+end;
+
+procedure TpvCanvas.SetProjectionMatrix(const aProjectionMatrix:TpvMatrix4x4);
+begin
+ if fState.fProjectionMatrix<>aProjectionMatrix then begin
   Flush;
-  fInternalProjectionMatrix:=aProjectionMatrix;
+  fState.fProjectionMatrix:=aProjectionMatrix;
  end;
 end;
 
-procedure TpvCanvas.SetInternalMatrix(const aMatrix:TpvMatrix4x4);
+function TpvCanvas.GetTransformationMatrix:TpvMatrix4x4;
 begin
- if fInternalMatrix<>aMatrix then begin
+ result:=fState.fTransformationMatrix;
+end;
+
+procedure TpvCanvas.SetTransformationMatrix(const aTransformationMatrix:TpvMatrix4x4);
+begin
+ if fState.fTransformationMatrix<>aTransformationMatrix then begin
   Flush;
-  fInternalMatrix:=aMatrix;
+  fState.fTransformationMatrix:=aTransformationMatrix;
  end;
 end;
 
@@ -1015,20 +1036,20 @@ begin
 
  fInternalArrayTexture:=nil;
 
- fInternalRenderingMode:=pvcrmNormal;
+ fState.fRenderingMode:=pvcrmNormal;
 
- fInternalBlendingMode:=pvcbmAlphaBlending;
+ fState.fBlendingMode:=pvcbmAlphaBlending;
 
- fInternalScissor.offset.x:=trunc(floor(fViewport.x));
- fInternalScissor.offset.y:=trunc(floor(fViewport.y));
- fInternalScissor.extent.Width:=trunc(ceil(fViewport.Width));
- fInternalScissor.extent.Height:=trunc(ceil(fViewport.Height));
+ fState.fScissor.offset.x:=trunc(floor(fViewport.x));
+ fState.fScissor.offset.y:=trunc(floor(fViewport.y));
+ fState.fScissor.extent.Width:=trunc(ceil(fViewport.Width));
+ fState.fScissor.extent.Height:=trunc(ceil(fViewport.Height));
 
- fInternalClipRect:=TpvRect.Create(0.0,0.0,fWidth,fHeight);
+ fState.fClipRect:=TpvRect.Create(0.0,0.0,fWidth,fHeight);
 
- fInternalProjectionMatrix:=TpvMatrix4x4.CreateOrtho(0.0,fWidth,0.0,fHeight,-100.0,100.0);
+ fState.fProjectionMatrix:=TpvMatrix4x4.CreateOrtho(0.0,fWidth,0.0,fHeight,-100.0,100.0);
 
- fInternalMatrix:=TpvMatrix4x4.Identity;
+ fState.fTransformationMatrix:=TpvMatrix4x4.Identity;
 
  fCurrentVulkanBufferIndex:=-1;
  fCurrentVulkanVertexBufferOffset:=0;
@@ -1128,10 +1149,8 @@ begin
    QueueItem^.StartIndexIndex:=fCurrentVulkanIndexBufferOffset;
    QueueItem^.CountVertices:=fCurrentCountVertices;
    QueueItem^.CountIndices:=fCurrentCountIndices;
-   QueueItem^.RenderingMode:=fInternalRenderingMode;
-   QueueItem^.BlendingMode:=fInternalBlendingMode;
-   QueueItem^.Scissor:=fInternalScissor;
-   QueueItem^.Matrix:=fInternalMatrix*fInternalProjectionMatrix;
+   QueueItem^.Scissor:=fState.fScissor;
+   QueueItem^.Matrix:=fState.fTransformationMatrix*fState.fProjectionMatrix;
 
   finally
    TPasMPInterlocked.Exchange(fCurrentFillBuffer^.fSpinLock,0);
@@ -1198,10 +1217,10 @@ end;
 function TpvCanvas.ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
 const Threshold=1e-6;
 begin
- result:=(fInternalClipRect.LeftTop.x<=(aX1+Threshold)) and
-         (aX0<=(fInternalClipRect.RightBottom.x+Threshold)) and
-         (fInternalClipRect.LeftTop.y<=(aY1+Threshold)) and
-         (aY0<=(fInternalClipRect.RightBottom.y+Threshold));
+ result:=(fState.fClipRect.LeftTop.x<=(aX1+Threshold)) and
+         (aX0<=(fState.fClipRect.RightBottom.x+Threshold)) and
+         (fState.fClipRect.LeftTop.y<=(aY1+Threshold)) and
+         (aY0<=(fState.fClipRect.RightBottom.y+Threshold));
 end;
 
 procedure TpvCanvas.Hook(const aHook:TpvCanvasHook;const aData:TpvPointer);
@@ -1289,7 +1308,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Top;
@@ -1298,7 +1317,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Bottom;
@@ -1307,7 +1326,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Left;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Bottom;
@@ -1316,7 +1335,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
   end else begin
@@ -1348,21 +1367,21 @@ begin
    TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
-   if TempDest.Left<fInternalClipRect.LeftTop.x then begin
-    TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fInternalClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-    TempDest.Left:=fInternalClipRect.LeftTop.x;
+   if TempDest.Left<fState.fClipRect.LeftTop.x then begin
+    TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+    TempDest.Left:=fState.fClipRect.LeftTop.x;
    end;
-   if TempDest.Top<fInternalClipRect.LeftTop.y then begin
-    TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fInternalClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-    TempDest.Top:=fInternalClipRect.LeftTop.y;
+   if TempDest.Top<fState.fClipRect.LeftTop.y then begin
+    TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+    TempDest.Top:=fState.fClipRect.LeftTop.y;
    end;
-   if TempDest.Right>fInternalClipRect.RightBottom.x then begin
-    TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fInternalClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-    TempDest.Right:=fInternalClipRect.RightBottom.x;
+   if TempDest.Right>fState.fClipRect.RightBottom.x then begin
+    TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+    TempDest.Right:=fState.fClipRect.RightBottom.x;
    end;
-   if TempDest.Bottom>fInternalClipRect.RightBottom.y then begin
-    TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fInternalClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-    TempDest.Bottom:=fInternalClipRect.RightBottom.y;
+   if TempDest.Bottom>fState.fClipRect.RightBottom.y then begin
+    TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+    TempDest.Bottom:=fState.fClipRect.RightBottom.y;
    end;
    sX0:=TempSrc.Left*fInternalArrayTexture.InverseWidth;
    sY0:=TempSrc.Top*fInternalArrayTexture.InverseHeight;
@@ -1382,7 +1401,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Top;
@@ -1391,7 +1410,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Bottom;
@@ -1400,7 +1419,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Left;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.y:=TempDest.Bottom;
@@ -1409,7 +1428,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
   end;
@@ -1478,7 +1497,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
@@ -1486,7 +1505,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
@@ -1494,7 +1513,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
@@ -1502,7 +1521,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
   end else begin
@@ -1521,21 +1540,21 @@ begin
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
    if aRotation=0.0 then begin
-    if TempDest.Left<fInternalClipRect.LeftTop.x then begin
-     TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fInternalClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-     TempDest.Left:=fInternalClipRect.LeftTop.x;
+    if TempDest.Left<fState.fClipRect.LeftTop.x then begin
+     TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+     TempDest.Left:=fState.fClipRect.LeftTop.x;
     end;
-    if TempDest.Top<fInternalClipRect.LeftTop.y then begin
-     TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fInternalClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-     TempDest.Top:=fInternalClipRect.LeftTop.y;
+    if TempDest.Top<fState.fClipRect.LeftTop.y then begin
+     TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+     TempDest.Top:=fState.fClipRect.LeftTop.y;
     end;
-    if TempDest.Right>fInternalClipRect.RightBottom.x then begin
-     TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fInternalClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-     TempDest.Right:=fInternalClipRect.RightBottom.x;
+    if TempDest.Right>fState.fClipRect.RightBottom.x then begin
+     TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+     TempDest.Right:=fState.fClipRect.RightBottom.x;
     end;
-    if TempDest.Bottom>fInternalClipRect.RightBottom.y then begin
-     TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fInternalClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-     TempDest.Bottom:=fInternalClipRect.RightBottom.y;
+    if TempDest.Bottom>fState.fClipRect.RightBottom.y then begin
+     TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+     TempDest.Bottom:=fState.fClipRect.RightBottom.y;
     end;
    end;
    AroundPoint.x:=TempDest.Left+aOrigin.x;
@@ -1565,7 +1584,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
@@ -1573,7 +1592,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
@@ -1581,7 +1600,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
@@ -1589,7 +1608,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fInternalClipRect;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
   end;
@@ -1803,14 +1822,17 @@ begin
  end;
 end;
 
-procedure TpvCanvas.Push;
+function TpvCanvas.Push:TpvCanvas;
 begin
  fStateStack.Push(TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(TpvCanvasState.Create)))));
+ result:=self;
 end;
 
-procedure TpvCanvas.Pop;
+function TpvCanvas.Pop:TpvCanvas;
 begin
+ Flush;
  TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(fStateStack.Extract)))).Free;
+ result:=self;
 end;
 
 function TpvCanvas.BeginPath:TpvCanvas;
