@@ -2123,7 +2123,7 @@ end;
 
 function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat):TpvCanvas;
 const MinA=1.0/65536.0;
-var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
+var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     AroundPoint:TpvVector2;
     Points:array[0..3] of TpvVector2;
     TempDest,TempSrc:TpvRect;
@@ -2141,8 +2141,6 @@ begin
   VertexColor.b:=fState.fColor.b;
   VertexColor.a:=fState.fColor.a;
   VertexState:=GetVertexState;
-  Cosinus:=cos(aRotation);
-  Sinus:=sin(aRotation);
   SetInternalArrayTexture(aSprite.ArrayTexture);
   FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
   if aSprite.Rotated then begin
@@ -2161,9 +2159,9 @@ begin
    TempSrc.Right:=TempSrc.Left+(ty2-ty1);
    TempSrc.Bottom:=TempSrc.Top+(tx2-tx1);
    AroundPoint:=TempDest.LeftTop+aOrigin;
-   Matrix:=TpvMatrix3x3.Create(1.0,0.0,0.0,0.0,1.0,0.0,-AroundPoint.x,-AroundPoint.y,1.0)*
+   Matrix:=TpvMatrix3x3.CreateTranslation(-AroundPoint)*
            TpvMatrix3x3.CreateRotateZ(aRotation)*
-           TpvMatrix3x3.Create(1.0,0.0,0.0,0.0,1.0,0.0,AroundPoint.x,AroundPoint.y,1.0);
+           TpvMatrix3x3.CreateTranslation(AroundPoint);
    Points[0].x:=TempDest.Left;
    Points[0].y:=TempDest.Top;
    Points[1].x:=TempDest.Right;
@@ -2250,9 +2248,9 @@ begin
     end;
    end;
    AroundPoint:=TempDest.LeftTop+aOrigin;
-   Matrix:=TpvMatrix3x3.Create(1.0,0.0,0.0,0.0,1.0,0.0,-AroundPoint.x,-AroundPoint.y,1.0)*
+   Matrix:=TpvMatrix3x3.CreateTranslation(-AroundPoint)*
            TpvMatrix3x3.CreateRotateZ(aRotation)*
-           TpvMatrix3x3.Create(1.0,0.0,0.0,0.0,1.0,0.0,AroundPoint.x,AroundPoint.y,1.0);
+           TpvMatrix3x3.CreateTranslation(AroundPoint);
    Points[0].x:=TempDest.Left;
    Points[0].y:=TempDest.Top;
    Points[1].x:=TempDest.Right;
