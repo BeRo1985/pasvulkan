@@ -488,7 +488,7 @@ begin
 
  fVulkanCanvas.Matrix:=TpvMatrix4x4.Identity;
 
- fVulkanCanvas.BlendingMode:=vsbbmNone;
+ fVulkanCanvas.BlendingMode:=pvcbmNone;
 
  SrcRect:=TpvRect.Create(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteTest.Width)*0.5)+(cos(fTime*pi*2.0*0.1)*128.0);
@@ -497,7 +497,7 @@ begin
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteTest.Height;
  fVulkanCanvas.DrawSprite(fVulkanSpriteTest,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0,TpvVector4.Create(1.0,1.0,1.0,1.0));
 
- fVulkanCanvas.BlendingMode:=vsbbmAlphaBlending;
+ fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
  SrcRect:=TpvRect.Create(0,0,fVulkanSpriteAppIcon.Width,fVulkanSpriteAppIcon.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteAppIcon.Width)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0);
@@ -513,7 +513,7 @@ begin
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
  fVulkanCanvas.DrawSprite(fVulkanSpriteSmiley0,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0,TpvVector4.Create(1.0,1.0,1.0,0.9));
 }
- fVulkanCanvas.BlendingMode:=vsbbmAdditiveBlending;
+ fVulkanCanvas.BlendingMode:=pvcbmAdditiveBlending;
 
  SrcRect:=TpvRect.Create(0,0,fVulkanSpriteDancer0.Width,fVulkanSpriteDancer0.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteDancer0.Width)*0.5)+(cos(fTime*pi*1.7*0.1)*128.0);
@@ -522,7 +522,7 @@ begin
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteDancer0.Height;
  fVulkanCanvas.DrawSprite(fVulkanSpriteDancer0,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteDancer0.Width*0.5,fVulkanSpriteDancer0.Height*0.5),cos(fTime*pi*1.5*0.1)*pi*2.0,TpvVector4.Create(1.0,1.0,1.0,0.5));
 
- fVulkanCanvas.BlendingMode:=vsbbmAlphaBlending;
+ fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
  SrcRect:=TpvRect.Create(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
@@ -540,9 +540,9 @@ begin
                                  TpvMatrix4x4.CreateTranslation(0.0,0.0,-1.0)*
                                  TpvMatrix4x4.CreatePerspective(53.13,fVulkanCanvas.Width/fVulkanCanvas.Height,0.01,128.0);
 
- fVulkanCanvas.RenderingMode:=vsbrmFont;
+ fVulkanCanvas.RenderingMode:=pvcrmFont;
 
- fVulkanCanvas.BlendingMode:=vsbbmAlphaBlending;
+ fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
  LocalFontSize:=(-56.0)+(sin((fTime*0.1)*pi*2.0)*48.0);
 

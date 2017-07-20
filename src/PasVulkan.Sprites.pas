@@ -156,6 +156,8 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        fDirty:boolean;
        fSpecialSizedArrayTexture:boolean;
        fLayerRootNodes:TPVulkanSpriteAtlasArrayTextureLayerRectNodes;
+       fInverseWidth:TpvDouble;
+       fInverseHeight:TpvDouble;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -179,6 +181,8 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        property CountTexels:TpvInt64 read fCountTexels;
        property Uploaded:boolean read fUploaded;
        property Dirty:boolean read fDirty write fDirty;
+       property InverseWidth:TpvDouble read fInverseWidth;
+       property InverseHeight:TpvDouble read fInverseHeight;
      end;
 
      TpvSpriteAtlasArrayTextures=array of TpvSpriteAtlasArrayTexture;
@@ -515,6 +519,8 @@ begin
     fLayerRootNodes[LayerIndex]^.Height:=fHeight;
     fLayerRootNodes[LayerIndex]^.FreeArea:=fWidth*fHeight;
    end;
+   fInverseWidth:=1.0/fWidth;
+   fInverseHeight:=1.0/fHeight;
   finally
    OldTexels:=nil;
   end;
