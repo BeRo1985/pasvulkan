@@ -557,6 +557,12 @@ type PpvScalar=^TpvScalar;
        constructor CreateRotateY(const Angle:TpvScalar);
        constructor CreateRotateZ(const Angle:TpvScalar);
        constructor CreateRotate(const Angle:TpvScalar;const Axis:TpvVector3);
+       constructor CreateSkewYX(const Angle:TpvScalar);
+       constructor CreateSkewZX(const Angle:TpvScalar);
+       constructor CreateSkewXY(const Angle:TpvScalar);
+       constructor CreateSkewZY(const Angle:TpvScalar);
+       constructor CreateSkewXZ(const Angle:TpvScalar);
+       constructor CreateSkewYZ(const Angle:TpvScalar);
        constructor CreateScale(const sx,sy:TpvScalar); overload;
        constructor CreateScale(const sx,sy,sz:TpvScalar); overload;
        constructor CreateScale(const pScale:TpvVector2); overload;
@@ -668,6 +674,12 @@ type PpvScalar=^TpvScalar;
        constructor CreateRotateZ(const Angle:TpvScalar);
        constructor CreateRotate(const Angle:TpvScalar;const Axis:TpvVector3);
        constructor CreateRotation(const pMatrix:TpvMatrix4x4); overload;
+       constructor CreateSkewYX(const Angle:TpvScalar);
+       constructor CreateSkewZX(const Angle:TpvScalar);
+       constructor CreateSkewXY(const Angle:TpvScalar);
+       constructor CreateSkewZY(const Angle:TpvScalar);
+       constructor CreateSkewXZ(const Angle:TpvScalar);
+       constructor CreateSkewYZ(const Angle:TpvScalar);
        constructor CreateScale(const sx,sy:TpvScalar); overload;
        constructor CreateScale(const pScale:TpvVector2); overload;
        constructor CreateScale(const sx,sy,sz:TpvScalar); overload;
@@ -5611,6 +5623,84 @@ begin
  RawComponents[2,2]:=CosinusAngle+((1.0-CosinusAngle)*sqr(Axis.z));
 end;
 
+constructor TpvMatrix3x3.CreateSkewYX(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=tan(Angle);
+ RawComponents[0,2]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+end;
+
+constructor TpvMatrix3x3.CreateSkewZX(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=tan(Angle);
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+end;
+
+constructor TpvMatrix3x3.CreateSkewXY(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[1,0]:=tan(Angle);
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+end;
+
+constructor TpvMatrix3x3.CreateSkewZY(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=tan(Angle);
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+end;
+
+constructor TpvMatrix3x3.CreateSkewXZ(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[2,0]:=tan(Angle);
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+end;
+
+constructor TpvMatrix3x3.CreateSkewYZ(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=tan(Angle);
+ RawComponents[2,2]:=1.0;
+end;
+
 constructor TpvMatrix3x3.CreateScale(const sx,sy:TpvScalar);
 begin
  RawComponents[0,0]:=sx;
@@ -5850,20 +5940,20 @@ begin
 
  if DecomposedMatrix3x3.Skew.z<>0.0 then begin // YZ
   self:=TpvMatrix3x3.Create(1.0,0.0,0.0,
-                          0.0,1.0,0.0,
-                          0.0,DecomposedMatrix3x3.Skew.z,1.0)*self;
+                            0.0,1.0,0.0,
+                            0.0,DecomposedMatrix3x3.Skew.z,1.0)*self;
  end;
 
  if DecomposedMatrix3x3.Skew.y<>0.0 then begin // XZ
   self:=TpvMatrix3x3.Create(1.0,0.0,0.0,
-                          0.0,1.0,0.0,
-                          DecomposedMatrix3x3.Skew.y,0.0,1.0)*self;
+                            0.0,1.0,0.0,
+                            DecomposedMatrix3x3.Skew.y,0.0,1.0)*self;
  end;
 
  if DecomposedMatrix3x3.Skew.x<>0.0 then begin // XY
   self:=TpvMatrix3x3.Create(1.0,0.0,0.0,
-                          DecomposedMatrix3x3.Skew.x,1.0,0.0,
-                          0.0,0.0,1.0)*self;
+                            DecomposedMatrix3x3.Skew.x,1.0,0.0,
+                            0.0,0.0,1.0)*self;
  end;
 
  self:=TpvMatrix3x3.CreateScale(DecomposedMatrix3x3.Scale)*self;
@@ -6995,6 +7085,126 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
+constructor TpvMatrix4x4.CreateSkewYX(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=tan(Angle);
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvMatrix4x4.CreateSkewZX(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=tan(Angle);
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvMatrix4x4.CreateSkewXY(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=tan(Angle);
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvMatrix4x4.CreateSkewZY(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=tan(Angle);
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvMatrix4x4.CreateSkewXZ(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=tan(Angle);
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvMatrix4x4.CreateSkewYZ(const Angle:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=tan(Angle);
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
 constructor TpvMatrix4x4.CreateScale(const sx,sy:TpvScalar);
 begin
  RawComponents[0,0]:=sx;
@@ -7818,23 +8028,23 @@ begin
 
  if DecomposedMatrix4x4.Skew.z<>0.0 then begin // YZ
   self:=TpvMatrix4x4.Create(1.0,0.0,0.0,0.0,
-                          0.0,1.0,0.0,0.0,
-                          0.0,DecomposedMatrix4x4.Skew.z,1.0,0.0,
-                          0.0,0.0,0.0,1.0)*self;
+                            0.0,1.0,0.0,0.0,
+                            0.0,DecomposedMatrix4x4.Skew.z,1.0,0.0,
+                            0.0,0.0,0.0,1.0)*self;
  end;
 
  if DecomposedMatrix4x4.Skew.y<>0.0 then begin // XZ
   self:=TpvMatrix4x4.Create(1.0,0.0,0.0,0.0,
-                          0.0,1.0,0.0,0.0,
-                          DecomposedMatrix4x4.Skew.y,0.0,1.0,0.0,
-                          0.0,0.0,0.0,1.0)*self;
+                            0.0,1.0,0.0,0.0,
+                            DecomposedMatrix4x4.Skew.y,0.0,1.0,0.0,
+                            0.0,0.0,0.0,1.0)*self;
  end;
 
  if DecomposedMatrix4x4.Skew.x<>0.0 then begin // XY
   self:=TpvMatrix4x4.Create(1.0,0.0,0.0,0.0,
-                          DecomposedMatrix4x4.Skew.x,1.0,0.0,0.0,
-                          0.0,0.0,1.0,0.0,
-                          0.0,0.0,0.0,1.0)*self;
+                            DecomposedMatrix4x4.Skew.x,1.0,0.0,0.0,
+                            0.0,0.0,1.0,0.0,
+                            0.0,0.0,0.0,1.0)*self;
  end;
 
  self:=TpvMatrix4x4.CreateScale(DecomposedMatrix4x4.Scale)*self;
