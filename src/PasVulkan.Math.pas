@@ -582,6 +582,8 @@ type PpvScalar=^TpvScalar;
        class operator Multiply(const a,b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvMatrix3x3;const b:TpvVector2):TpvVector2;  {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvVector2;const b:TpvMatrix3x3):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvMatrix3x3;const b:TpvVector3):TpvVector3;  {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvVector3;const b:TpvMatrix3x3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvMatrix3x3;const b:TpvVector4):TpvVector4;  {$ifdef CAN_INLINE}inline;{$endif}
@@ -6025,6 +6027,18 @@ begin
  result.RawComponents[2,0]:=a*b.RawComponents[2,0];
  result.RawComponents[2,1]:=a*b.RawComponents[2,1];
  result.RawComponents[2,2]:=a*b.RawComponents[2,2];
+end;
+
+class operator TpvMatrix3x3.Multiply(const a:TpvMatrix3x3;const b:TpvVector2):TpvVector2;
+begin
+ result.x:=(a.RawComponents[0,0]*b.x)+(a.RawComponents[1,0]*b.y)+a.RawComponents[2,0];
+ result.y:=(a.RawComponents[0,1]*b.x)+(a.RawComponents[1,1]*b.y)+a.RawComponents[2,1];
+end;
+
+class operator TpvMatrix3x3.Multiply(const a:TpvVector2;const b:TpvMatrix3x3):TpvVector2;
+begin
+ result.x:=(a.x*b.RawComponents[0,0])+(a.y*b.RawComponents[0,1])+b.RawComponents[0,2];
+ result.y:=(a.x*b.RawComponents[1,0])+(a.y*b.RawComponents[1,1])+b.RawComponents[1,2];
 end;
 
 class operator TpvMatrix3x3.Multiply(const a:TpvMatrix3x3;const b:TpvVector3):TpvVector3;

@@ -352,7 +352,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasBuffers=array of TpvCanvasBuffer;
 
-     TpvCanvasAtlasArrayTextureDescriptorSetHashMap=class(TpvHashMap<TpvSpriteAtlasArrayTexture,TpvInt32>);
+     TpvCanvasTextureDescriptorSetHashMap=class(TpvHashMap<TObject,TpvInt32>);
 
      PpvCanvasRenderingModeValues=^TpvCanvasRenderingModeValues;
      TpvCanvasRenderingModeValues=array[TpvCanvasRenderingMode] of TpvFloat;
@@ -397,7 +397,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fVulkanDescriptorSetNoTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:TpvCanvasDescriptorSets;
        fCountVulkanDescriptors:TpvInt32;
-       fVulkanTextureDescriptorSetHashMap:TpvCanvasAtlasArrayTextureDescriptorSetHashMap;
+       fVulkanTextureDescriptorSetHashMap:TpvCanvasTextureDescriptorSetHashMap;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fVulkanGraphicsPipelines:TpvCanvasVulkanGraphicsPipelines;
@@ -416,10 +416,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCurrentDestinationVertexBufferPointer:PpvCanvasVertexBuffer;
        fCurrentDestinationIndexBufferPointer:PpvCanvasIndexBuffer;
        fInternalRenderingMode:TpvCanvasRenderingMode;
-       fInternalArrayTexture:TpvSpriteAtlasArrayTexture;
+       fInternalTexture:TObject;
        fState:TpvCanvasState;
        fStateStack:TpvCanvasStateStack;
-       function RotatePoint(const PointToRotate,AroundPoint:TpvVector2;Cosinus,Sinus:TpvFloat):TpvVector2;
        procedure SetInternalArrayTexture(const aArrayTexture:TpvSpriteAtlasArrayTexture);
        function GetBlendingMode:TpvCanvasBlendingMode; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
@@ -880,7 +879,7 @@ begin
  fCurrentCountVertices:=0;
  fCurrentCountIndices:=0;
 
- fInternalArrayTexture:=nil;
+ fInternalTexture:=nil;
 
  fState:=TpvCanvasState.Create;
 
@@ -937,7 +936,7 @@ begin
  fVulkanDescriptorSets:=nil;
  fCountVulkanDescriptors:=0;
 
- fVulkanTextureDescriptorSetHashMap:=TpvCanvasAtlasArrayTextureDescriptorSetHashMap.Create(-1);
+ fVulkanTextureDescriptorSetHashMap:=TpvCanvasTextureDescriptorSetHashMap.Create(-1);
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout);
@@ -1100,20 +1099,11 @@ begin
  inherited Destroy;
 end;
 
-function TpvCanvas.RotatePoint(const PointToRotate,AroundPoint:TpvVector2;Cosinus,Sinus:TpvFloat):TpvVector2;
-var x,y:TpvFloat;
-begin
- x:=PointToRotate.x-AroundPoint.x;
- y:=PointToRotate.y-AroundPoint.y;
- result.x:=((x*Cosinus)-(y*Sinus))+AroundPoint.x;
- result.y:=((x*Sinus)+(y*Cosinus))+AroundPoint.y;
-end;
-
 procedure TpvCanvas.SetInternalArrayTexture(const aArrayTexture:TpvSpriteAtlasArrayTexture);
 begin
- if fInternalArrayTexture<>aArrayTexture then begin
+ if fInternalTexture<>aArrayTexture then begin
   Flush;
-  fInternalArrayTexture:=aArrayTexture;
+  fInternalTexture:=aArrayTexture;
  end;
 end;
 
@@ -1307,7 +1297,7 @@ begin
  fCurrentFillBuffer^.fCountQueueItems:=0;
  fCurrentFillBuffer^.fCountUsedBuffers:=0;
 
- fInternalArrayTexture:=nil;
+ fInternalTexture:=nil;
 
  fState.Reset;
 
@@ -1375,7 +1365,7 @@ begin
 
    inc(fCurrentFillBuffer^.fIndexBufferSizes[CurrentVulkanBufferIndex],fCurrentCountIndices*SizeOf(TpvUInt32));
 
-   if not fVulkanTextureDescriptorSetHashMap.TryGet(fInternalArrayTexture,DescriptorIndex) then begin
+   if not fVulkanTextureDescriptorSetHashMap.TryGet(fInternalTexture,DescriptorIndex) then begin
     DescriptorIndex:=fCountVulkanDescriptors;
     inc(fCountVulkanDescriptors);
     if length(fVulkanDescriptorPools)<fCountVulkanDescriptors then begin
@@ -1384,7 +1374,7 @@ begin
     if length(fVulkanDescriptorSets)<fCountVulkanDescriptors then begin
      SetLength(fVulkanDescriptorSets,fCountVulkanDescriptors*2);
     end;
-    if assigned(fInternalArrayTexture) then begin
+    if assigned(fInternalTexture) then begin
      VulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
                                                           TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                           1);
@@ -1394,15 +1384,27 @@ begin
      VulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(VulkanDescriptorPool,
                                                         fVulkanDescriptorSetTextureLayout);
      fVulkanDescriptorSets[DescriptorIndex]:=VulkanDescriptorSet;
-     VulkanDescriptorSet.WriteToDescriptorSet(0,
-                                              0,
-                                              1,
-                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                              [fInternalArrayTexture.Texture.DescriptorImageInfo],
-                                              [],
-                                              [],
-                                              false
-                                             );
+     if fInternalTexture is TpvSpriteAtlasArrayTexture then begin
+      VulkanDescriptorSet.WriteToDescriptorSet(0,
+                                               0,
+                                               1,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                               [TpvSpriteAtlasArrayTexture(fInternalTexture).Texture.DescriptorImageInfo],
+                                               [],
+                                               [],
+                                               false
+                                              );
+     end else begin
+      VulkanDescriptorSet.WriteToDescriptorSet(0,
+                                               0,
+                                               1,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                               [TpvVulkanTexture(fInternalTexture).DescriptorImageInfo],
+                                               [],
+                                               [],
+                                               false
+                                              );
+     end;
      VulkanDescriptorSet.Flush;
     end else begin
      VulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
@@ -1415,7 +1417,7 @@ begin
      fVulkanDescriptorSets[DescriptorIndex]:=VulkanDescriptorSet;
      VulkanDescriptorSet.Flush;
     end;
-    fVulkanTextureDescriptorSetHashMap.Add(fInternalArrayTexture,DescriptorIndex);
+    fVulkanTextureDescriptorSetHashMap.Add(fInternalTexture,DescriptorIndex);
    end;
 
    QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
@@ -1427,7 +1429,7 @@ begin
    QueueItem^.Kind:=pvcqikNormal;
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
    QueueItem^.DescriptorIndex:=DescriptorIndex;
-   QueueItem^.TextureMode:=assigned(fInternalArrayTexture);
+   QueueItem^.TextureMode:=assigned(fInternalTexture);
    QueueItem^.StartVertexIndex:=fCurrentVulkanVertexBufferOffset;
    QueueItem^.StartIndexIndex:=fCurrentVulkanIndexBufferOffset;
    QueueItem^.CountVertices:=fCurrentCountVertices;
@@ -1778,10 +1780,10 @@ begin
    TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
    TempSrc.Right:=TempSrc.Left+(ty2-ty1);
    TempSrc.Bottom:=TempSrc.Top+(tx2-tx1);
-   sX0:=TempSrc.Left*fInternalArrayTexture.InverseWidth;
-   sY0:=TempSrc.Top*fInternalArrayTexture.InverseHeight;
-   sX1:=TempSrc.Right*fInternalArrayTexture.InverseWidth;
-   sY1:=TempSrc.Bottom*fInternalArrayTexture.InverseHeight;
+   sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
+   sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
@@ -1871,10 +1873,10 @@ begin
     TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
     TempDest.Bottom:=fState.fClipRect.RightBottom.y;
    end;
-   sX0:=TempSrc.Left*fInternalArrayTexture.InverseWidth;
-   sY0:=TempSrc.Top*fInternalArrayTexture.InverseHeight;
-   sX1:=TempSrc.Right*fInternalArrayTexture.InverseWidth;
-   sY1:=TempSrc.Bottom*fInternalArrayTexture.InverseHeight;
+   sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
+   sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
@@ -1973,10 +1975,10 @@ begin
    TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
    TempSrc.Right:=TempSrc.Left+(ty2-ty1);
    TempSrc.Bottom:=TempSrc.Top+(tx2-tx1);
-   sX0:=TempSrc.Left*fInternalArrayTexture.InverseWidth;
-   sY0:=TempSrc.Top*fInternalArrayTexture.InverseHeight;
-   sX1:=TempSrc.Right*fInternalArrayTexture.InverseWidth;
-   sY1:=TempSrc.Bottom*fInternalArrayTexture.InverseHeight;
+   sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
+   sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
@@ -2066,10 +2068,10 @@ begin
     TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
     TempDest.Bottom:=fState.fClipRect.RightBottom.y;
    end;
-   sX0:=TempSrc.Left*fInternalArrayTexture.InverseWidth;
-   sY0:=TempSrc.Top*fInternalArrayTexture.InverseHeight;
-   sX1:=TempSrc.Right*fInternalArrayTexture.InverseWidth;
-   sY1:=TempSrc.Bottom*fInternalArrayTexture.InverseHeight;
+   sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
+   sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
@@ -2127,6 +2129,7 @@ var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     TempDest,TempSrc:TpvRect;
     VertexColor:TpvHalfFloatVector4;
     VertexState:TpvHalfFloatVector2;
+    Matrix:TpvMatrix3x3;
 begin
  if ((fState.fBlendingMode=pvcbmNone) or (abs(fState.fColor.a)>MinA)) and
     (((aSrc.Right>=aSprite.TrimmedX) and (aSrc.Bottom>=aSprite.TrimmedY)) and
@@ -2157,8 +2160,10 @@ begin
    TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
    TempSrc.Right:=TempSrc.Left+(ty2-ty1);
    TempSrc.Bottom:=TempSrc.Top+(tx2-tx1);
-   AroundPoint.x:=TempDest.Left+aOrigin.x;
-   AroundPoint.y:=TempDest.Top+aOrigin.y;
+   AroundPoint:=TempDest.LeftTop+aOrigin;
+   Matrix:=TpvMatrix3x3.Create(1.0,0.0,0.0,0.0,1.0,0.0,-AroundPoint.x,-AroundPoint.y,1.0)*
+           TpvMatrix3x3.CreateRotateZ(aRotation)*
+           TpvMatrix3x3.Create(1.0,0.0,0.0,0.0,1.0,0.0,AroundPoint.x,AroundPoint.y,1.0);
    Points[0].x:=TempDest.Left;
    Points[0].y:=TempDest.Top;
    Points[1].x:=TempDest.Right;
@@ -2167,10 +2172,10 @@ begin
    Points[2].y:=TempDest.Bottom;
    Points[3].x:=TempDest.Left;
    Points[3].y:=TempDest.Bottom;
-   sX0:=TempSrc.Left*fInternalArrayTexture.InverseWidth;
-   sY0:=TempSrc.Top*fInternalArrayTexture.InverseHeight;
-   sX1:=TempSrc.Right*fInternalArrayTexture.InverseWidth;
-   sY1:=TempSrc.Bottom*fInternalArrayTexture.InverseHeight;
+   sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
+   sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
@@ -2178,7 +2183,7 @@ begin
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+2;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+3;
    inc(fCurrentCountIndices,6);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=Matrix*Points[0];
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -2186,7 +2191,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=Matrix*Points[1];
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -2194,7 +2199,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=Matrix*Points[2];
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -2202,7 +2207,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=Matrix*Points[3];
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -2244,8 +2249,10 @@ begin
      TempDest.Bottom:=fState.fClipRect.RightBottom.y;
     end;
    end;
-   AroundPoint.x:=TempDest.Left+aOrigin.x;
-   AroundPoint.y:=TempDest.Top+aOrigin.y;
+   AroundPoint:=TempDest.LeftTop+aOrigin;
+   Matrix:=TpvMatrix3x3.Create(1.0,0.0,0.0,0.0,1.0,0.0,-AroundPoint.x,-AroundPoint.y,1.0)*
+           TpvMatrix3x3.CreateRotateZ(aRotation)*
+           TpvMatrix3x3.Create(1.0,0.0,0.0,0.0,1.0,0.0,AroundPoint.x,AroundPoint.y,1.0);
    Points[0].x:=TempDest.Left;
    Points[0].y:=TempDest.Top;
    Points[1].x:=TempDest.Right;
@@ -2254,10 +2261,10 @@ begin
    Points[2].y:=TempDest.Bottom;
    Points[3].x:=TempDest.Left;
    Points[3].y:=TempDest.Bottom;
-   sX0:=TempSrc.Left*fInternalArrayTexture.InverseWidth;
-   sY0:=TempSrc.Top*fInternalArrayTexture.InverseHeight;
-   sX1:=TempSrc.Right*fInternalArrayTexture.InverseWidth;
-   sY1:=TempSrc.Bottom*fInternalArrayTexture.InverseHeight;
+   sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
+   sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
+   sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
@@ -2265,7 +2272,7 @@ begin
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+2;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+3;
    inc(fCurrentCountIndices,6);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[0],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=Matrix*Points[0];
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -2273,7 +2280,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=Matrix*Points[1];
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -2281,7 +2288,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=Matrix*Points[2];
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
@@ -2289,7 +2296,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=Matrix*Points[3];
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
