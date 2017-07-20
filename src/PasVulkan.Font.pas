@@ -2806,7 +2806,7 @@ begin
     Dest.Top:=aY+(y*ScaleFactor)+(Glyph^.OffsetY*RescaleFactor);
     Dest.Right:=aX+(x*ScaleFactor)+((Glyph^.OffsetX+Glyph^.Width)*RescaleFactor);
     Dest.Bottom:=aY+(y*ScaleFactor)+((Glyph^.OffsetY+Glyph^.Height)*RescaleFactor);
-    TpvCanvas(aCanvas).DrawSprite(Glyph^.Sprite,Src,Dest);
+    TpvCanvas(aCanvas).DrawFontGlyphSprite(Glyph^.Sprite,Src,Dest);
     x:=x+Glyph^.AdvanceWidth;
     y:=y+Glyph^.AdvanceHeight;
    end;

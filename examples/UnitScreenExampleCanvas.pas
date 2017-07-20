@@ -539,8 +539,6 @@ begin
                                  TpvMatrix4x4.CreateTranslation(0.0,0.0,-1.0)*
                                  TpvMatrix4x4.CreatePerspective(53.13,fVulkanCanvas.Width/fVulkanCanvas.Height,0.01,128.0);
 
- fVulkanCanvas.RenderingMode:=pvcrmFont;
-
  fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
  LocalFontSize:=(-56.0)+(sin((fTime*0.1)*pi*2.0)*48.0);
