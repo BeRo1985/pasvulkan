@@ -1,5 +1,4 @@
 #version 450 core
-#extension GL_GOOGLE_include_directive : enable
 
 layout(location = 0) in vec2 inPosition; // 2D position
 layout(location = 1) in vec4 inColor;    // RGBA Color 
