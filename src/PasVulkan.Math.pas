@@ -557,8 +557,12 @@ type PpvScalar=^TpvScalar;
        constructor CreateRotateY(const Angle:TpvScalar);
        constructor CreateRotateZ(const Angle:TpvScalar);
        constructor CreateRotate(const Angle:TpvScalar;const Axis:TpvVector3);
+       constructor CreateScale(const sx,sy:TpvScalar); overload;
        constructor CreateScale(const sx,sy,sz:TpvScalar); overload;
+       constructor CreateScale(const pScale:TpvVector2); overload;
        constructor CreateScale(const pScale:TpvVector3); overload;
+       constructor CreateTranslation(const tx,ty:TpvScalar); overload;
+       constructor CreateTranslation(const pTranslation:TpvVector2); overload;
        constructor CreateFromToRotation(const FromDirection,ToDirection:TpvVector3);
        constructor CreateConstruct(const pForwards,pUp:TpvVector3);
        constructor CreateOuterProduct(const u,v:TpvVector3);
@@ -664,10 +668,14 @@ type PpvScalar=^TpvScalar;
        constructor CreateRotateZ(const Angle:TpvScalar);
        constructor CreateRotate(const Angle:TpvScalar;const Axis:TpvVector3);
        constructor CreateRotation(const pMatrix:TpvMatrix4x4); overload;
+       constructor CreateScale(const sx,sy:TpvScalar); overload;
+       constructor CreateScale(const pScale:TpvVector2); overload;
        constructor CreateScale(const sx,sy,sz:TpvScalar); overload;
        constructor CreateScale(const pScale:TpvVector3); overload;
        constructor CreateScale(const sx,sy,sz,sw:TpvScalar); overload;
        constructor CreateScale(const pScale:TpvVector4); overload;
+       constructor CreateTranslation(const tx,ty:TpvScalar); overload;
+       constructor CreateTranslation(const pTranslation:TpvVector2); overload;
        constructor CreateTranslation(const tx,ty,tz:TpvScalar); overload;
        constructor CreateTranslation(const pTranslation:TpvVector3); overload;
        constructor CreateTranslation(const tx,ty,tz,tw:TpvScalar); overload;
@@ -5603,6 +5611,19 @@ begin
  RawComponents[2,2]:=CosinusAngle+((1.0-CosinusAngle)*sqr(Axis.z));
 end;
 
+constructor TpvMatrix3x3.CreateScale(const sx,sy:TpvScalar);
+begin
+ RawComponents[0,0]:=sx;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=sy;
+ RawComponents[1,2]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+end;
+
 constructor TpvMatrix3x3.CreateScale(const sx,sy,sz:TpvScalar);
 begin
  RawComponents[0,0]:=sx;
@@ -5616,6 +5637,19 @@ begin
  RawComponents[2,2]:=sz;
 end;
 
+constructor TpvMatrix3x3.CreateScale(const pScale:TpvVector2);
+begin
+ RawComponents[0,0]:=pScale.x;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=pScale.y;
+ RawComponents[1,2]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+end;
+
 constructor TpvMatrix3x3.CreateScale(const pScale:TpvVector3);
 begin
  RawComponents[0,0]:=pScale.x;
@@ -5627,6 +5661,32 @@ begin
  RawComponents[2,0]:=0.0;
  RawComponents[2,1]:=0.0;
  RawComponents[2,2]:=pScale.z;
+end;
+
+constructor TpvMatrix3x3.CreateTranslation(const tx,ty:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[2,0]:=tx;
+ RawComponents[2,1]:=ty;
+ RawComponents[2,2]:=1.0;
+end;
+
+constructor TpvMatrix3x3.CreateTranslation(const pTranslation:TpvVector2);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[2,0]:=pTranslation.x;
+ RawComponents[2,1]:=pTranslation.y;
+ RawComponents[2,2]:=1.0;
 end;
 
 constructor TpvMatrix3x3.CreateFromToRotation(const FromDirection,ToDirection:TpvVector3);
@@ -6935,6 +6995,46 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
+constructor TpvMatrix4x4.CreateScale(const sx,sy:TpvScalar);
+begin
+ RawComponents[0,0]:=sx;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=sy;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvMatrix4x4.CreateScale(const pScale:TpvVector2);
+begin
+ RawComponents[0,0]:=pScale.x;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=pScale.y;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
 constructor TpvMatrix4x4.CreateScale(const sx,sy,sz:TpvScalar);
 begin
  RawComponents[0,0]:=sx;
@@ -7013,6 +7113,46 @@ begin
  RawComponents[3,1]:=0.0;
  RawComponents[3,2]:=0.0;
  RawComponents[3,3]:=pScale.w;
+end;
+
+constructor TpvMatrix4x4.CreateTranslation(const tx,ty:TpvScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=tx;
+ RawComponents[3,1]:=ty;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvMatrix4x4.CreateTranslation(const pTranslation:TpvVector2);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=pTranslation.x;
+ RawComponents[3,1]:=pTranslation.y;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
 end;
 
 constructor TpvMatrix4x4.CreateTranslation(const tx,ty,tz:TpvScalar);
