@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Canvas; // An sprite and vector canvas with a manual-cache-based concept (just Vulkan-API-ideology-like, but OOPized)
+unit PasVulkan.Canvas;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -109,6 +109,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      PpvCanvasFillRule=^TpvCanvasFillRule;
      TpvCanvasFillRule=
       (
+       pvcfrDoNotMatter, // for pure raw speed, where is no guarantee winding fill rule correctness of triangulation
        pvcfrNonZero,
        pvcfrEvenOdd
       );
