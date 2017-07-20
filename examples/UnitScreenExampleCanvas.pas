@@ -486,7 +486,7 @@ begin
 
  fVulkanCanvas.Start(pvApplication.UpdateSwapChainImageIndex);
 
- fVulkanCanvas.TransformationMatrix:=TpvMatrix4x4.Identity;
+ fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.Identity;
 
  fVulkanCanvas.BlendingMode:=pvcbmNone;
 
@@ -530,9 +530,9 @@ begin
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
  fVulkanCanvas.DrawSprite(fVulkanSpriteSmiley0,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0);
 
- fVulkanCanvas.TransformationMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.5),-(fVulkanCanvas.Height*0.5),0.0)*
-                                     TpvMatrix4x4.CreateRotateZ(sin(fTime*pi*2.0*0.75)*(30.0*DEG2RAD))*
-                                     TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5,0.0);
+ fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.5),-(fVulkanCanvas.Height*0.5),0.0)*
+                           TpvMatrix4x4.CreateRotateZ(sin(fTime*pi*2.0*0.75)*(30.0*DEG2RAD))*
+                           TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5,0.0);
 
  fVulkanCanvas.ProjectionMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.5),-(fVulkanCanvas.Height*0.5),0.0)*
                                  TpvMatrix4x4.CreateScale(1.0/fVulkanCanvas.Height,1.0/fVulkanCanvas.Height,1.0/fVulkanCanvas.Height)*
@@ -557,10 +557,10 @@ begin
                         ((fVulkanCanvas.Width-fVulkanCanvas.TextWidth(rbs))*0.5)+0.0,
                         ((fVulkanCanvas.Height-fVulkanCanvas.TextHeight(rbs))*0.5)+(sin(fTime*pi*0.07)*(fVulkanCanvas.Height*0.3275)));
 
- fVulkanCanvas.TransformationMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.5),-(fVulkanCanvas.Height*0.5),0.0)*
-                                     TpvMatrix4x4.CreateRotateY(sin(fTime*pi*2.0*0.5)*(45.0*DEG2RAD))*
-                                     TpvMatrix4x4.CreateRotateZ(cos(fTime*pi*2.0*0.9)*(45.0*DEG2RAD))*
-                                     TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5,0.0);
+ fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.5),-(fVulkanCanvas.Height*0.5),0.0)*
+                           TpvMatrix4x4.CreateRotateY(sin(fTime*pi*2.0*0.5)*(45.0*DEG2RAD))*
+                           TpvMatrix4x4.CreateRotateZ(cos(fTime*pi*2.0*0.9)*(45.0*DEG2RAD))*
+                           TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5,0.0);
 
  fVulkanCanvas.Color:=TpvVector4.Create((cos((fTime*0.43)*pi*2.0)*0.5)+0.5,
                                         (sin((fTime*0.29)*pi*2.0)*0.5)+0.5,
