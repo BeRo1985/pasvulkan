@@ -424,15 +424,15 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure ExecuteUpload(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
       public
-       procedure Hook(const aHook:TpvCanvasHook;const aData:TpvPointer); overload;
-      public
-       procedure DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect); overload;
-       procedure DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat); overload;
-       procedure DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2); overload;
-       procedure DrawSprite(const aSprite:TpvSprite); overload;
-      public
        function Push:TpvCanvas;
        function Pop:TpvCanvas;
+      public
+       function Hook(const aHook:TpvCanvasHook;const aData:TpvPointer):TpvCanvas; overload;
+      public
+       function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas; overload;
+       function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat):TpvCanvas; overload;
+       function DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2):TpvCanvas; overload;
+       function DrawSprite(const aSprite:TpvSprite):TpvCanvas; overload;
       public
        function BeginPath:TpvCanvas;
        function ClosePath:TpvCanvas;
@@ -1492,7 +1492,20 @@ begin
  end;
 end;
 
-procedure TpvCanvas.Hook(const aHook:TpvCanvasHook;const aData:TpvPointer);
+function TpvCanvas.Push:TpvCanvas;
+begin
+ fStateStack.Push(TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(TpvCanvasState.Create)))));
+ result:=self;
+end;
+
+function TpvCanvas.Pop:TpvCanvas;
+begin
+ Flush;
+ TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(fStateStack.Extract)))).Free;
+ result:=self;
+end;
+
+function TpvCanvas.Hook(const aHook:TpvCanvasHook;const aData:TpvPointer):TpvCanvas;
 var QueueItemIndex:TpvInt32;
     QueueItem:PpvCanvasQueueItem;
 begin
@@ -1511,16 +1524,17 @@ begin
   QueueItem^.HookData:=aData;
 
  end;
+ result:=self;
 end;
 
-procedure TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect);
-const MinA=1.0/1024.0;
+function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;
+const MinA=1.0/65536.0;
 var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     TempDest,TempSrc:TpvRect;
     VertexColor:TpvHalfFloatVector4;
     VertexState:TpvHalfFloatVector2;
 begin
- if (abs(fState.fColor.a)>MinA) and
+ if ((fState.fBlendingMode=pvcbmNone) or (abs(fState.fColor.a)>MinA)) and
     ClipCheck(aDest.Left,aDest.Top,aDest.Right,aDest.Bottom) and
     (((aSrc.Right>=aSprite.TrimmedX) and (aSrc.Bottom>=aSprite.TrimmedY)) and
     (((not aSprite.Rotated) and (((aSprite.TrimmedX+aSprite.TrimmedWidth)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedHeight)>=aSrc.Top))) or
@@ -1704,10 +1718,11 @@ begin
    inc(fCurrentCountIndices,6);
   end;
  end;
+ result:=self;
 end;
 
-procedure TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat);
-const MinA=1.0/1024.0;
+function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat):TpvCanvas;
+const MinA=1.0/65536.0;
 var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     AroundPoint:TpvVector2;
     Points:array[0..3] of TpvVector2;
@@ -1715,7 +1730,7 @@ var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     VertexColor:TpvHalfFloatVector4;
     VertexState:TpvHalfFloatVector2;
 begin
- if (abs(fState.fColor.a)>MinA) and
+ if ((fState.fBlendingMode=pvcbmNone) or (abs(fState.fColor.a)>MinA)) and
     (((aSrc.Right>=aSprite.TrimmedX) and (aSrc.Bottom>=aSprite.TrimmedY)) and
     (((not aSprite.Rotated) and (((aSprite.TrimmedX+aSprite.TrimmedWidth)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedHeight)>=aSrc.Top))) or
      (aSprite.Rotated and (((aSprite.TrimmedX+aSprite.TrimmedHeight)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedWidth)>=aSrc.Top))))) then begin
@@ -1886,31 +1901,21 @@ begin
    inc(fCurrentCountIndices,6);
   end;
  end;
+ result:=self;
 end;
 
-procedure TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2);
+function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2):TpvCanvas;
 begin
  DrawSprite(aSprite,
             TpvRect.Create(0.0,0.0,aSprite.Width,aSprite.Height),
             TpvRect.Create(aPosition.x,aPosition.y,aPosition.x+aSprite.Width,aPosition.y+aSprite.Height));
-end;
-
-procedure TpvCanvas.DrawSprite(const aSprite:TpvSprite);
-begin
- DrawSprite(aSprite,
-            TpvVector2.Create(0.0,0.0));
-end;
-
-function TpvCanvas.Push:TpvCanvas;
-begin
- fStateStack.Push(TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(TpvCanvasState.Create)))));
  result:=self;
 end;
 
-function TpvCanvas.Pop:TpvCanvas;
+function TpvCanvas.DrawSprite(const aSprite:TpvSprite):TpvCanvas;
 begin
- Flush;
- TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(fStateStack.Extract)))).Free;
+ DrawSprite(aSprite,
+            TpvVector2.Create(0.0,0.0));
  result:=self;
 end;
 
