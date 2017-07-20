@@ -178,6 +178,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fScissor:TVkRect2D;
        fProjectionMatrix:TpvMatrix4x4;
        fTransformationMatrix:TpvMatrix4x4;
+       fFont:TpvFont;
+       fFontSize:TpvFloat;
        fPath:TpvCanvasPath;
        procedure Reset;
       public
@@ -197,6 +199,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property LineJoin:TpvCanvasLineJoin read fLineJoin write fLineJoin;
        property LineCap:TpvCanvasLineCap read fLineCap write fLineCap;
        property FillRule:TpvCanvasFillRule read fFillRule write fFillRule;
+       property Font:TpvFont read fFont write fFont;
+       property FontSize:TpvFloat read fFontSize write fFontSize;
        property Path:TpvCanvasPath read fPath write fPath;
      end;
 
@@ -414,6 +418,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetProjectionMatrix(const aProjectionMatrix:TpvMatrix4x4);
        function GetTransformationMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetTransformationMatrix(const aTransformationMatrix:TpvMatrix4x4);
+       function GetFont:TpvFont; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetFont(const aFont:TpvFont); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetFontSize:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetFontSize(const aFontSize:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        procedure GetNextDestinationVertexBuffer;
        procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
        function ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
@@ -454,9 +462,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawSprite(const aSprite:TpvSprite):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function DrawText(const aFont:TpvFont;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat):TpvCanvas; overload;
-       function DrawText(const aFont:TpvFont;const aText:TpvUTF8String;const aSize:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function DrawText(const aFont:TpvFont;const aText:TpvUTF8String):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawText(const aText:TpvUTF8String;const aX:TpvFloat=0.0;const aY:TpvFloat=0.0):TpvCanvas;
       public
        function BeginPath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
        function ClosePath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
@@ -477,6 +483,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property Color:TpvVector4 read GetColor write SetColor;
        property ProjectionMatrix:TpvMatrix4x4 read GetProjectionMatrix write SetProjectionMatrix;
        property TransformationMatrix:TpvMatrix4x4 read GetTransformationMatrix write SetTransformationMatrix;
+       property Font:TpvFont read GetFont write SetFont;
+       property FontSize:TpvFloat read GetFontSize write SetFontSize;
       published
        property Device:TpvVulkanDevice read fDevice;
        property Width:TpvInt32 read fWidth write fWidth;
@@ -623,6 +631,8 @@ begin
  fLineCap:=TpvCanvasLineCap.pvclcRound;
  fFillRule:=TpvCanvasFillRule.pvcfrNonZero;
  fColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ fFont:=nil;
+ fFontSize:=-12;
 end;
 
 procedure TpvCanvasState.Assign(aSource:TPersistent);
@@ -639,6 +649,8 @@ begin
   fScissor:=TpvCanvasState(aSource).fScissor;
   fProjectionMatrix:=TpvCanvasState(aSource).fProjectionMatrix;
   fTransformationMatrix:=TpvCanvasState(aSource).fTransformationMatrix;
+  fFont:=TpvCanvasState(aSource).fFont;
+  fFontSize:=TpvCanvasState(aSource).fFontSize;
   fPath.Assign(TpvCanvasState(aSource).fPath);
  end;
 end;
@@ -1200,6 +1212,26 @@ begin
   Flush;
   fState.fTransformationMatrix:=aTransformationMatrix;
  end;
+end;
+
+function TpvCanvas.GetFont:TpvFont;
+begin
+ result:=fState.fFont;
+end;
+
+procedure TpvCanvas.SetFont(const aFont:TpvFont);
+begin
+ fState.fFont:=aFont;
+end;
+
+function TpvCanvas.GetFontSize:TpvFloat;
+begin
+ result:=fState.fFontSize;
+end;
+
+procedure TpvCanvas.SetFontSize(const aFontSize:TpvFloat);
+begin
+ fState.fFontSize:=aFontSize;
 end;
 
 function TpvCanvas.GetVertexState:TpvHalfFloatVector2;
@@ -2229,21 +2261,9 @@ begin
  result:=self;
 end;
 
-function TpvCanvas.DrawText(const aFont:TpvFont;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat):TpvCanvas;
+function TpvCanvas.DrawText(const aText:TpvUTF8String;const aX:TpvFloat=0.0;const aY:TpvFloat=0.0):TpvCanvas;
 begin
- aFont.Draw(self,aText,aX,aY,aSize);
- result:=self;
-end;
-
-function TpvCanvas.DrawText(const aFont:TpvFont;const aText:TpvUTF8String;const aSize:TpvFloat):TpvCanvas;
-begin
- DrawText(aFont,aText,0.0,0.0,aSize);
- result:=self;
-end;
-
-function TpvCanvas.DrawText(const aFont:TpvFont;const aText:TpvUTF8String):TpvCanvas;
-begin
- DrawText(aFont,aText,aFont.BaseSize);
+ fState.fFont.Draw(self,aText,aX,aY,fState.fFontSize);
  result:=self;
 end;
 

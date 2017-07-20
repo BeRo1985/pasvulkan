@@ -475,7 +475,7 @@ procedure TScreenExampleCanvas.Update(const aDeltaTime:TpvDouble);
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
       Options:array[0..0] of string=('Back');
 var Index:TpvInt32;
-    cy,LocalFontSize:TpvFloat;
+    cy:TpvFloat;
     rbs:TpvUTF8String;
     s:string;
     IsSelected:boolean;
@@ -541,7 +541,6 @@ begin
 
  fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
- LocalFontSize:=(-56.0)+(sin((fTime*0.1)*pi*2.0)*48.0);
 
  rbs:='This is an example text';
 
@@ -550,11 +549,13 @@ begin
                                         (sin((fTime*0.23)*pi*2.0)*0.5)+0.5,
                                         (cos((fTime*0.17)*pi*2.0)*0.25)+0.75);
 
- fVulkanCanvas.DrawText(fVulkanFont,
-                        rbs,
-                        ((fVulkanCanvas.Width-fVulkanFont.TextWidth(rbs,LocalFontSize))*0.5)+0.0,
-                        ((fVulkanCanvas.Height-fVulkanFont.TextHeight(rbs,LocalFontSize))*0.5)+(sin(fTime*pi*0.07)*(fVulkanCanvas.Height*0.3275)),
-                        LocalFontSize);
+ fVulkanCanvas.Font:=fVulkanFont;
+
+ fVulkanCanvas.FontSize:=(-56.0)+(sin((fTime*0.1)*pi*2.0)*48.0);
+
+ fVulkanCanvas.DrawText(rbs,
+                        ((fVulkanCanvas.Width-fVulkanFont.TextWidth(rbs,fVulkanCanvas.FontSize))*0.5)+0.0,
+                        ((fVulkanCanvas.Height-fVulkanFont.TextHeight(rbs,fVulkanCanvas.FontSize))*0.5)+(sin(fTime*pi*0.07)*(fVulkanCanvas.Height*0.3275)));
 
  fVulkanCanvas.TransformationMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.5),-(fVulkanCanvas.Height*0.5),0.0)*
                                      TpvMatrix4x4.CreateRotateY(sin(fTime*pi*2.0*0.5)*(45.0*DEG2RAD))*
@@ -566,11 +567,9 @@ begin
                                         (cos((fTime*0.23)*pi*2.0)*0.5)+0.5,
                                         (sin((fTime*0.17)*pi*2.0)*0.25)+0.75);
 
- fVulkanCanvas.DrawText(fVulkanFont,
-                        rbs,
-                        ((fVulkanCanvas.Width-fVulkanFont.TextWidth(rbs,LocalFontSize))*0.5)+0.0,
-                        ((fVulkanCanvas.Height-fVulkanFont.TextHeight(rbs,LocalFontSize))*0.5)+(cos(fTime*pi*0.05)*(fVulkanCanvas.Height*0.3275)),
-                        LocalFontSize);
+ fVulkanCanvas.DrawText(rbs,
+                        ((fVulkanCanvas.Width-fVulkanFont.TextWidth(rbs,fVulkanCanvas.FontSize))*0.5)+0.0,
+                        ((fVulkanCanvas.Height-fVulkanFont.TextHeight(rbs,fVulkanCanvas.FontSize))*0.5)+(cos(fTime*pi*0.05)*(fVulkanCanvas.Height*0.3275)));
 
  fVulkanCanvas.Stop;
 
