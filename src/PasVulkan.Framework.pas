@@ -760,6 +760,7 @@ type EpvVulkanException=class(Exception);
        fComputeQueue:TpvVulkanQueue;
        fTransferQueue:TpvVulkanQueue;
        fMemoryManager:TpvVulkanDeviceMemoryManager;
+       fCanvasCommon:TObject;
       protected
       public
        constructor Create(const aInstance:TpvVulkanInstance;
@@ -797,6 +798,7 @@ type EpvVulkanException=class(Exception);
        property ComputeQueue:TpvVulkanQueue read fComputeQueue;
        property TransferQueue:TpvVulkanQueue read fTransferQueue;
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
+       property CanvasCommon:TObject read fCanvasCommon write fCanvasCommon;
      end;
 
      TpvVulkanDeviceQueueCreateInfo=class(TpvVulkanObject)
@@ -7908,11 +7910,14 @@ begin
 
  fMemoryManager:=TpvVulkanDeviceMemoryManager.Create(self);
 
+ fCanvasCommon:=nil;
+
 end;
 
 destructor TpvVulkanDevice.Destroy;
 var Index:TpvInt32;
 begin
+ FreeAndNil(fCanvasCommon);
  for Index:=0 to length(fQueues)-1 do begin
   if assigned(fQueues[Index]) then begin
    fQueues[Index].Free;

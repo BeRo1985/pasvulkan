@@ -334,9 +334,27 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      PpvCanvasBlendingModeValues=^TpvCanvasBlendingModeValues;
      TpvCanvasBlendingModeValues=array[TpvCanvasBlendingMode] of TpvFloat;
 
+     TpvCanvasCommon=class
+      private
+       class var fLock:TPasMPInt32;
+      private
+       fDevice:TpvVulkanDevice;
+       fReferenceCounter:TpvInt32;
+       fCanvasVertexShaderModule:TpvVulkanShaderModule;
+       fCanvasFragmentShaderModule:TpvVulkanShaderModule;
+       fVulkanPipelineCanvasShaderStageVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageFragment:TpvVulkanPipelineShaderStage;
+      public
+       constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
+       destructor Destroy; override;
+       class function Acquire(const aDevice:TpvVulkanDevice):TpvCanvasCommon;
+       class procedure Release(const aDevice:TpvVulkanDevice);
+     end;
+
      TpvCanvas=class
       private
        fDevice:TpvVulkanDevice;
+       fCanvasCommon:TpvCanvasCommon;
        fGraphicsQueue:TpvVulkanQueue;
        fGraphicsCommandBuffer:TpvVulkanCommandBuffer;
        fGraphicsFence:TpvVulkanFence;
@@ -344,10 +362,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fTransferCommandBuffer:TpvVulkanCommandBuffer;
        fTransferFence:TpvVulkanFence;
        fPipelineCache:TpvVulkanPipelineCache;
-       fCanvasVertexShaderModule:TpvVulkanShaderModule;
-       fCanvasFragmentShaderModule:TpvVulkanShaderModule;
-       fVulkanPipelineCanvasShaderStageVertex:TpvVulkanPipelineShaderStage;
-       fVulkanPipelineCanvasShaderStageFragment:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorPools:TpvCanvasDescriptorPools;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:TpvCanvasDescriptorSets;
@@ -680,16 +694,93 @@ procedure TpvCanvasPolygons.Assign(const aPath:TpvCanvasPath);
 begin
 end;
 
+constructor TpvCanvasCommon.Create(const aDevice:TpvVulkanDevice);
+var Stream:TStream;
+begin
+ inherited Create;
+
+ fDevice:=aDevice;
+
+ fDevice.CanvasCommon:=self;
+
+ fReferenceCounter:=0;
+
+ Stream:=TpvDataStream.Create(@CanvasVertexSPIRVData,CanvasVertexSPIRVDataSize);
+ try
+  fCanvasVertexShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=TpvDataStream.Create(@CanvasFragmentSPIRVData,CanvasFragmentSPIRVDataSize);
+ try
+  fCanvasFragmentShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ fVulkanPipelineCanvasShaderStageVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCanvasVertexShaderModule,'main');
+
+ fVulkanPipelineCanvasShaderStageFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentShaderModule,'main');
+
+end;
+
+destructor TpvCanvasCommon.Destroy;
+begin
+ fDevice.CanvasCommon:=nil;
+ FreeAndNil(fVulkanPipelineCanvasShaderStageVertex);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageFragment);
+ FreeAndNil(fCanvasVertexShaderModule);
+ FreeAndNil(fCanvasFragmentShaderModule);
+ inherited Destroy;
+end;
+
+class function TpvCanvasCommon.Acquire(const aDevice:TpvVulkanDevice):TpvCanvasCommon;
+begin
+ while TPasMPInterlocked.CompareExchange(fLock,-1,0)<>0 do begin
+  TPasMP.Yield;
+ end;
+ try
+  result:=TpvCanvasCommon(aDevice.CanvasCommon);
+  if not assigned(result) then begin
+   result:=TpvCanvasCommon.Create(aDevice);
+  end;
+  TPasMPInterlocked.Increment(result.fReferenceCounter);
+ finally
+  TPasMPInterlocked.Write(fLock,0);
+ end;
+end;
+
+class procedure TpvCanvasCommon.Release(const aDevice:TpvVulkanDevice);
+var CanvasCommon:TpvCanvasCommon;
+begin
+ while TPasMPInterlocked.CompareExchange(fLock,-1,0)<>0 do begin
+  TPasMP.Yield;
+ end;
+ try
+  if assigned(aDevice) then begin
+   CanvasCommon:=TpvCanvasCommon(aDevice.CanvasCommon);
+   if assigned(CanvasCommon) then begin
+    if TPasMPInterlocked.Decrement(CanvasCommon.fReferenceCounter)=0 then begin
+     CanvasCommon.Free;
+    end;
+   end;
+  end;
+ finally
+  TPasMPInterlocked.Write(fLock,0);
+ end;
+end;
+
 constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
-                                      const aGraphicsQueue:TpvVulkanQueue;
-                                      const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-                                      const aGraphicsFence:TpvVulkanFence;
-                                      const aTransferQueue:TpvVulkanQueue;
-                                      const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                      const aTransferFence:TpvVulkanFence;
-                                      const aPipelineCache:TpvVulkanPipelineCache;
-                                      const aRenderPass:TpvVulkanRenderPass;
-                                      const aCountBuffers:TpvInt32);
+                             const aGraphicsQueue:TpvVulkanQueue;
+                             const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                             const aGraphicsFence:TpvVulkanFence;
+                             const aTransferQueue:TpvVulkanQueue;
+                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                             const aTransferFence:TpvVulkanFence;
+                             const aPipelineCache:TpvVulkanPipelineCache;
+                             const aRenderPass:TpvVulkanRenderPass;
+                             const aCountBuffers:TpvInt32);
 var Index:TpvInt32;
     RenderingModeIndex:TpvCanvasRenderingMode;
     BlendingModeIndex:TpvCanvasBlendingMode;
@@ -700,6 +791,8 @@ begin
  inherited Create;
 
  fDevice:=aDevice;
+
+ fCanvasCommon:=TpvCanvasCommon.Acquire(fDevice);
 
  fGraphicsQueue:=aGraphicsQueue;
  fGraphicsCommandBuffer:=aGraphicsCommandBuffer;
@@ -783,37 +876,19 @@ begin
 
  fVulkanRenderPass:=aRenderPass;
 
- Stream:=TpvDataStream.Create(@CanvasVertexSPIRVData,CanvasVertexSPIRVDataSize);
- try
-  fCanvasVertexShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
- finally
-  Stream.Free;
- end;
-
- Stream:=TpvDataStream.Create(@CanvasFragmentSPIRVData,CanvasFragmentSPIRVDataSize);
- try
-  fCanvasFragmentShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
- finally
-  Stream.Free;
- end;
-
- fVulkanPipelineCanvasShaderStageVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCanvasVertexShaderModule,'main');
-
- fVulkanPipelineCanvasShaderStageFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentShaderModule,'main');
-
  VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fDevice,
-                                                        fPipelineCache,
-                                                        0,
-                                                        [],
-                                                        fVulkanPipelineLayout,
-                                                        fVulkanRenderPass,
-                                                        0,
-                                                        nil,
-                                                        0);
+                                                          fPipelineCache,
+                                                          0,
+                                                          [],
+                                                          fVulkanPipelineLayout,
+                                                          fVulkanRenderPass,
+                                                          0,
+                                                          nil,
+                                                          0);
  fVulkanGraphicsPipeline:=VulkanGraphicsPipeline;
 
- VulkanGraphicsPipeline.AddStage(fVulkanPipelineCanvasShaderStageVertex);
- VulkanGraphicsPipeline.AddStage(fVulkanPipelineCanvasShaderStageFragment);
+ VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageVertex);
+ VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragment);
 
  VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
@@ -916,14 +991,6 @@ begin
 
  FreeAndNil(fVulkanTextureDescriptorSetHashMap);
 
- FreeAndNil(fVulkanPipelineCanvasShaderStageVertex);
-
- FreeAndNil(fVulkanPipelineCanvasShaderStageFragment);
-
- FreeAndNil(fCanvasVertexShaderModule);
-
- FreeAndNil(fCanvasFragmentShaderModule);
-
  for Index:=0 to length(fVulkanCanvasBuffers)-1 do begin
   VulkanCanvasBuffer:=@fVulkanCanvasBuffers[Index];
   for SubIndex:=0 to VulkanCanvasBuffer^.fCountAllocatedBuffers-1 do begin
@@ -941,6 +1008,10 @@ begin
 
  fCurrentDestinationVertexBufferPointer:=nil;
  fCurrentDestinationIndexBufferPointer:=nil;
+
+ fCanvasCommon:=nil;
+
+ TpvCanvasCommon.Release(fDevice);
 
  inherited Destroy;
 end;
