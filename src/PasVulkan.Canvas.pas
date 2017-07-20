@@ -490,6 +490,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function TextWidth(const aText:TpvUTF8String):TpvFloat;
        function TextHeight(const aText:TpvUTF8String):TpvFloat;
        function TextSize(const aText:TpvUTF8String):TpvVector2;
+       function TextRowHeight(const aPercent:TpvFloat):TpvFloat;
        function DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvas; overload;
        function DrawText(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawText(const aText:TpvUTF8String):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -2341,6 +2342,15 @@ begin
   result:=fState.fFont.TextSize(aText,fState.fFontSize);
  end else begin
   result:=TpvVector2.Create(0.0,0.0);
+ end;
+end;
+
+function TpvCanvas.TextRowHeight(const aPercent:TpvFloat):TpvFloat;
+begin
+ if assigned(fState.fFont) then begin
+  result:=fState.fFont.RowHeight(aPercent);
+ end else begin
+  result:=0.0;
  end;
 end;
 
