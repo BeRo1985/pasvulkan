@@ -193,7 +193,7 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        function GetScaleFactor(const aSize:TpvFloat):TpvFloat;
        function TextWidth(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
        function TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
-       procedure TextSize(const aText:TpvUTF8String;const aSize:TpvFloat;out aWidth,aHeight:TpvFloat);
+       function TextSize(const aText:TpvUTF8String;const aSize:TpvFloat):TpvVector2;
        function RowHeight(const Percent:TpvFloat):TpvFloat;
        procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat);
       published
@@ -2700,16 +2700,16 @@ begin
  result:=result*GetScaleFactor(aSize);
 end;
 
-procedure TpvFont.TextSize(const aText:TpvUTF8String;const aSize:TpvFloat;out aWidth,aHeight:TpvFloat);
+function TpvFont.TextSize(const aText:TpvUTF8String;const aSize:TpvFloat):TpvVector2;
 var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
     CurrentCodePoint:TpvUInt32;
-    Width,NewWidth,Height,NewHeight,ScaleFactor:TpvFloat;
+    Width,NewWidth,Height,NewHeight:TpvFloat;
     Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
     KerningPair:PpvFontKerningPair;
 begin
- aWidth:=0.0;
- aHeight:=0.0;
+ result.x:=0.0;
+ result.y:=0.0;
  Width:=0.0;
  Height:=0.0;
  TextIndex:=1;
@@ -2722,45 +2722,43 @@ begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
      KerningPair:=@fKerningPairs[Int64Value];
-     aWidth:=aWidth+KerningPair^.Horizontal;
-     aHeight:=aHeight+KerningPair^.Vertical;
+     result.x:=result.x+KerningPair^.Horizontal;
+     result.y:=result.y+KerningPair^.Vertical;
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
     if LastGlyph<0 then begin
-     aWidth:=aWidth+Glyph^.LeftSideBearing;
-     aHeight:=aHeight+Glyph^.TopSideBearing;
+     result.x:=result.x+Glyph^.LeftSideBearing;
+     result.y:=result.y+Glyph^.TopSideBearing;
     end;
-    NewWidth:=aWidth+(Glyph^.BoundsMaxX-Glyph^.BoundsMinX);
+    NewWidth:=result.x+(Glyph^.BoundsMaxX-Glyph^.BoundsMinX);
     if Width<NewWidth then begin
      Width:=NewWidth;
     end;
-    NewHeight:=aHeight+(Glyph^.BoundsMaxY-Glyph^.BoundsMinY);
+    NewHeight:=result.y+(Glyph^.BoundsMaxY-Glyph^.BoundsMinY);
     if Height<NewHeight then begin
      Height:=NewHeight;
     end;
-    aWidth:=aWidth+Glyph^.AdvanceWidth;
-    aHeight:=aHeight+Glyph^.AdvanceHeight;
+    result.x:=result.x+Glyph^.AdvanceWidth;
+    result.y:=result.y+Glyph^.AdvanceHeight;
    end;
   end else begin
    CurrentGlyph:=0;
   end;
   LastGlyph:=CurrentGlyph;
  end;
- if aWidth=0 then begin
-  aWidth:=fMaxX-fMinX;
+ if result.x=0 then begin
+  result.x:=fMaxX-fMinX;
  end;
- if aWidth<Width then begin
-  aWidth:=Width;
+ if result.x<Width then begin
+  result.x:=Width;
  end;
- if aHeight=0 then begin
-  aHeight:=fMaxY-fMinY;
+ if result.y=0 then begin
+  result.y:=fMaxY-fMinY;
  end;
- if aHeight<Height then begin
-  aHeight:=Height;
+ if result.y<Height then begin
+  result.y:=Height;
  end;
- ScaleFactor:=GetScaleFactor(aSize);
- aWidth:=aWidth*ScaleFactor;
- aHeight:=aHeight*ScaleFactor;
+ result:=result*GetScaleFactor(aSize);
 end;
 
 function TpvFont.RowHeight(const Percent:TpvFloat):TpvFloat;

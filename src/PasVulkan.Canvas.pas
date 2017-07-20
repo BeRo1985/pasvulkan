@@ -462,7 +462,12 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawSprite(const aSprite:TpvSprite):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function DrawText(const aText:TpvUTF8String;const aX:TpvFloat=0.0;const aY:TpvFloat=0.0):TpvCanvas;
+       function TextWidth(const aText:TpvUTF8String):TpvFloat;
+       function TextHeight(const aText:TpvUTF8String):TpvFloat;
+       function TextSize(const aText:TpvUTF8String):TpvVector2;
+       function DrawText(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvas; overload;
+       function DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawText(const aText:TpvUTF8String):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function BeginPath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
        function ClosePath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
@@ -2261,10 +2266,49 @@ begin
  result:=self;
 end;
 
-function TpvCanvas.DrawText(const aText:TpvUTF8String;const aX:TpvFloat=0.0;const aY:TpvFloat=0.0):TpvCanvas;
+function TpvCanvas.TextWidth(const aText:TpvUTF8String):TpvFloat;
 begin
- fState.fFont.Draw(self,aText,aX,aY,fState.fFontSize);
+ if assigned(fState.fFont) then begin
+  result:=fState.fFont.TextWidth(aText,fState.fFontSize);
+ end else begin
+  result:=0.0;
+ end;
+end;
+
+function TpvCanvas.TextHeight(const aText:TpvUTF8String):TpvFloat;
+begin
+ if assigned(fState.fFont) then begin
+  result:=fState.fFont.TextHeight(aText,fState.fFontSize);
+ end else begin
+  result:=0.0;
+ end;
+end;
+
+function TpvCanvas.TextSize(const aText:TpvUTF8String):TpvVector2;
+begin
+ if assigned(fState.fFont) then begin
+  result:=fState.fFont.TextSize(aText,fState.fFontSize);
+ end else begin
+  result:=TpvVector2.Create(0.0,0.0);
+ end;
+end;
+
+function TpvCanvas.DrawText(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvas;
+begin
+ if assigned(fState.fFont) then begin
+  fState.fFont.Draw(self,aText,aX,aY,fState.fFontSize);
+ end;
  result:=self;
+end;
+
+function TpvCanvas.DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvas;
+begin
+ result:=DrawText(aText,aPosition.x,aPosition.y);
+end;
+
+function TpvCanvas.DrawText(const aText:TpvUTF8String):TpvCanvas;
+begin
+ result:=DrawText(aText,0.0,0.0);
 end;
 
 function TpvCanvas.BeginPath:TpvCanvas;
