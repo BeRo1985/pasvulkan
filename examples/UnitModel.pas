@@ -816,7 +816,7 @@ var Signature:TChunkSignature;
     fAABB.Max.y:=ChunkStream.ReadFloat;
     fAABB.Max.z:=ChunkStream.ReadFloat;
    end else begin
-    raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
+    raise EModelLoad.Create('Missing "'+String(ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3])+'" chunk');
    end;
   finally
    ChunkStream.Free;
@@ -852,7 +852,7 @@ var Signature:TChunkSignature;
      Material^.Shininess:=ChunkStream.ReadFloat;
     end;
    end else begin
-    raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
+    raise EModelLoad.Create('Missing "'+String(ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3])+'" chunk');
    end;
   finally
    ChunkStream.Free;
@@ -885,7 +885,7 @@ var Signature:TChunkSignature;
      end;
     end;
    end else begin
-    raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
+    raise EModelLoad.Create('Missing "'+String(ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3])+'" chunk');
    end;
   finally
    ChunkStream.Free;
@@ -914,7 +914,7 @@ var Signature:TChunkSignature;
      end;
     end;
    end else begin
-    raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
+    raise EModelLoad.Create('Missing "'+String(ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3])+'" chunk');
    end;
   finally
    ChunkStream.Free;
@@ -938,7 +938,7 @@ var Signature:TChunkSignature;
      Part^.CountIndices:=ChunkStream.ReadInt32;
     end;
    end else begin
-    raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
+    raise EModelLoad.Create('Missing "'+String(ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3])+'" chunk');
    end;
   finally
    ChunkStream.Free;
@@ -970,7 +970,7 @@ var Signature:TChunkSignature;
      AObject^.AABB.Max.z:=ChunkStream.ReadFloat;
     end;
    end else begin
-    raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
+    raise EModelLoad.Create('Missing "'+String(ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3])+'" chunk');
    end;
   finally
    ChunkStream.Free;
@@ -987,7 +987,7 @@ var Signature:TChunkSignature;
      fKraftConvexHull.LoadFromStream(ChunkStream);
     end;
    end else begin
-    raise EModelLoad.Create('Missing "'+ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3]+'" chunk');
+    raise EModelLoad.Create('Missing "'+String(ChunkSignature[0]+ChunkSignature[1]+ChunkSignature[2]+ChunkSignature[3])+'" chunk');
    end;
   finally
    ChunkStream.Free;

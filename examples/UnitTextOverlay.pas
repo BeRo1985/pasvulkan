@@ -556,18 +556,18 @@ begin
 end;
 
 procedure TTextOverlay.PreUpdate(const aDeltaTime:double);
-var FPS,ms:string;
+var FPS,ms:shortstring;
 begin
  fUpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
  fBufferChars:=@fBufferCharsBuffers[fUpdateBufferIndex];
  begin
   Reset;
-  AddText(0.0,fFontCharHeight*0.0,1.0,toaLeft,'Device: '+pvApplication.VulkanDevice.PhysicalDevice.DeviceName{$ifdef Android}+' ('+TpvApplicationRawByteString(AndroidDeviceName)+')'{$endif});
-  AddText(0.0,fFontCharHeight*1.0,1.0,toaLeft,'Vulkan API version: '+IntToStr(pvApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 22)+'.'+IntToStr((pvApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 12) and $3ff)+'.'+IntToStr((pvApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 0) and $fff));
+  AddText(0.0,fFontCharHeight*0.0,1.0,toaLeft,TpvApplicationRawByteString('Device: '+pvApplication.VulkanDevice.PhysicalDevice.DeviceName{$ifdef Android}+' ('+TpvApplicationRawByteString(AndroidDeviceName)+')'{$endif}));
+  AddText(0.0,fFontCharHeight*1.0,1.0,toaLeft,TpvApplicationRawByteString('Vulkan API version: '+IntToStr(pvApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 22)+'.'+IntToStr((pvApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 12) and $3ff)+'.'+IntToStr((pvApplication.VulkanDevice.PhysicalDevice.Properties.apiVersion shr 0) and $fff)));
   Str(pvApplication.FramesPerSecond:1:1,FPS);
   Str(pvApplication.DeltaTime*1000.0:1:2,ms);
-  AddText(0.0,fFontCharHeight*2.0,1.0,toaLeft,'Frame rate: '+FPS+' FPS');
-  AddText(0.0,fFontCharHeight*3.0,1.0,toaLeft,'Frame time: '+MS+' ms');
+  AddText(0.0,fFontCharHeight*2.0,1.0,toaLeft,TpvApplicationRawByteString('Frame rate: '+String(FPS)+' FPS'));
+  AddText(0.0,fFontCharHeight*3.0,1.0,toaLeft,TpvApplicationRawByteString('Frame time: '+String(MS)+' ms'));
  end;
 end;
 

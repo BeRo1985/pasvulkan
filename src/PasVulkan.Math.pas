@@ -711,6 +711,8 @@ type PpvScalar=^TpvScalar;
        class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector2;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
@@ -8323,6 +8325,18 @@ begin
  result.RawComponents[3,3]:=a*b.RawComponents[3,3];
 end;
 {$ifend}
+
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector2):TpvVector2;
+begin
+ result.x:=(a.RawComponents[0,0]*b.x)+(a.RawComponents[1,0]*b.y)+a.RawComponents[3,0];
+ result.y:=(a.RawComponents[0,1]*b.x)+(a.RawComponents[1,1]*b.y)+a.RawComponents[3,1];
+end;
+
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector2;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector2;
+begin
+ result.x:=(a.x*b.RawComponents[0,0])+(a.y*b.RawComponents[0,1])+b.RawComponents[0,3];
+ result.y:=(a.x*b.RawComponents[1,0])+(a.y*b.RawComponents[1,1])+b.RawComponents[1,3];
+end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}

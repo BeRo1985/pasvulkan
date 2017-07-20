@@ -113,8 +113,7 @@ begin
 end;
 
 procedure TScreenExampleEmpty.Show;
-var Stream:TStream;
-    Index:TpvInt32;
+var Index:TpvInt32;
 begin
  inherited Show;
 
@@ -390,7 +389,7 @@ begin
   if IsSelected then begin
    s:='>'+s+'<';
   end;
-  ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,s,MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
+  ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,TpvRawByteString(s),MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
   cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
  end;
  fReady:=true;
@@ -398,11 +397,8 @@ end;
 
 procedure TScreenExampleEmpty.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
-var BufferIndex,Size:TpvInt32;
-    VulkanVertexBuffer:TpvVulkanBuffer;
-    VulkanCommandBuffer:TpvVulkanCommandBuffer;
+var VulkanCommandBuffer:TpvVulkanCommandBuffer;
     VulkanSwapChain:TpvVulkanSwapChain;
-    p:pointer;
 begin
 
  begin
