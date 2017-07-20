@@ -195,7 +195,7 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        function TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
        function TextSize(const aText:TpvUTF8String;const aSize:TpvFloat):TpvVector2;
        function RowHeight(const Percent:TpvFloat):TpvFloat;
-       procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat);
+       procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
       published
        property BaseSize:TpvFloat read fBaseSize;
      end;
@@ -2766,7 +2766,7 @@ begin
  result:=fUnitsPerEm*(Percent*0.01);
 end;
 
-procedure TpvFont.Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat);
+procedure TpvFont.Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
 var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
     x,y,ScaleFactor,RescaleFactor:TpvFloat;
     Int64Value:TpvInt64;
@@ -2800,10 +2800,10 @@ begin
     Src.Top:=0.0;
     Src.Right:=Src.Left+Glyph^.Width;
     Src.Bottom:=Src.Top+Glyph^.Height;
-    Dest.Left:=aX+(x*ScaleFactor)+(Glyph^.OffsetX*RescaleFactor);
-    Dest.Top:=aY+(y*ScaleFactor)+(Glyph^.OffsetY*RescaleFactor);
-    Dest.Right:=aX+(x*ScaleFactor)+((Glyph^.OffsetX+Glyph^.Width)*RescaleFactor);
-    Dest.Bottom:=aY+(y*ScaleFactor)+((Glyph^.OffsetY+Glyph^.Height)*RescaleFactor);
+    Dest.Left:=aPosition.x+(x*ScaleFactor)+(Glyph^.OffsetX*RescaleFactor);
+    Dest.Top:=aPosition.y+(y*ScaleFactor)+(Glyph^.OffsetY*RescaleFactor);
+    Dest.Right:=aPosition.x+(x*ScaleFactor)+((Glyph^.OffsetX+Glyph^.Width)*RescaleFactor);
+    Dest.Bottom:=aPosition.y+(y*ScaleFactor)+((Glyph^.OffsetY+Glyph^.Height)*RescaleFactor);
     TpvCanvas(aCanvas).DrawFontGlyphSprite(Glyph^.Sprite,Src,Dest);
     x:=x+Glyph^.AdvanceWidth;
     y:=y+Glyph^.AdvanceHeight;

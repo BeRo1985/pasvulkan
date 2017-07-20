@@ -127,6 +127,22 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        pvcssSolid
       );
 
+     PpvCanvasTextHorizontalAlignment=^TpvCanvasTextHorizontalAlignment;
+     TpvCanvasTextHorizontalAlignment=
+      (
+       pvcthaLeft,
+       pvcthaCenter,
+       pvcthaRight
+      );
+
+     ppvCanvasTextVerticalAlignment=^TpvCanvasTextVerticalAlignment;
+     TpvCanvasTextVerticalAlignment=
+      (
+       pvctvaTop,
+       pvctvaMiddle,
+       pvctvaBottom
+      );
+
      PpvCanvasPathCommandType=^TpvCanvasPathCommandType;
      TpvCanvasPathCommandType=
       (
@@ -180,6 +196,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fTransformationMatrix:TpvMatrix4x4;
        fFont:TpvFont;
        fFontSize:TpvFloat;
+       fTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
+       fTextVerticalAlignment:TpvCanvasTextVerticalAlignment;
        fPath:TpvCanvasPath;
        procedure Reset;
       public
@@ -201,6 +219,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property FillRule:TpvCanvasFillRule read fFillRule write fFillRule;
        property Font:TpvFont read fFont write fFont;
        property FontSize:TpvFloat read fFontSize write fFontSize;
+       property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read fTextHorizontalAlignment write fTextHorizontalAlignment;
+       property TextVerticalAlignment:TpvCanvasTextVerticalAlignment read fTextVerticalAlignment write fTextVerticalAlignment;
        property Path:TpvCanvasPath read fPath write fPath;
      end;
 
@@ -422,6 +442,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetFont(const aFont:TpvFont); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFontSize:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFontSize(const aFontSize:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetTextHorizontalAlignment(aTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetTextVerticalAlignment:TpvCanvasTextVerticalAlignment; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetTextVerticalAlignment(aTextVerticalAlignment:TpvCanvasTextVerticalAlignment); {$ifdef CAN_INLINE}inline;{$endif}
        procedure GetNextDestinationVertexBuffer;
        procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
        function ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
@@ -465,8 +489,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function TextWidth(const aText:TpvUTF8String):TpvFloat;
        function TextHeight(const aText:TpvUTF8String):TpvFloat;
        function TextSize(const aText:TpvUTF8String):TpvVector2;
-       function DrawText(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvas; overload;
-       function DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvas; overload;
+       function DrawText(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawText(const aText:TpvUTF8String):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function BeginPath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
@@ -490,6 +514,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property TransformationMatrix:TpvMatrix4x4 read GetTransformationMatrix write SetTransformationMatrix;
        property Font:TpvFont read GetFont write SetFont;
        property FontSize:TpvFloat read GetFontSize write SetFontSize;
+       property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read GetTextHorizontalAlignment write SetTextHorizontalAlignment;
+       property TextVerticalAlignment:TpvCanvasTextVerticalAlignment read GetTextVerticalAlignment write SetTextVerticalAlignment;
       published
        property Device:TpvVulkanDevice read fDevice;
        property Width:TpvInt32 read fWidth write fWidth;
@@ -638,6 +664,8 @@ begin
  fColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
  fFont:=nil;
  fFontSize:=-12;
+ fTextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.pvcthaLeft;
+ fTextVerticalAlignment:=TpvCanvasTextVerticalAlignment.pvctvaTop;
 end;
 
 procedure TpvCanvasState.Assign(aSource:TPersistent);
@@ -656,6 +684,8 @@ begin
   fTransformationMatrix:=TpvCanvasState(aSource).fTransformationMatrix;
   fFont:=TpvCanvasState(aSource).fFont;
   fFontSize:=TpvCanvasState(aSource).fFontSize;
+  fTextHorizontalAlignment:=TpvCanvasState(aSource).fTextHorizontalAlignment;
+  fTextVerticalAlignment:=TpvCanvasState(aSource).fTextVerticalAlignment;
   fPath.Assign(TpvCanvasState(aSource).fPath);
  end;
 end;
@@ -1237,6 +1267,26 @@ end;
 procedure TpvCanvas.SetFontSize(const aFontSize:TpvFloat);
 begin
  fState.fFontSize:=aFontSize;
+end;
+
+function TpvCanvas.GetTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
+begin
+ result:=fState.fTextHorizontalAlignment;
+end;
+
+procedure TpvCanvas.SetTextHorizontalAlignment(aTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment);
+begin
+ fState.fTextHorizontalAlignment:=aTextHorizontalAlignment;
+end;
+
+function TpvCanvas.GetTextVerticalAlignment:TpvCanvasTextVerticalAlignment;
+begin
+ result:=fState.fTextVerticalAlignment;
+end;
+
+procedure TpvCanvas.SetTextVerticalAlignment(aTextVerticalAlignment:TpvCanvasTextVerticalAlignment);
+begin
+ fState.fTextVerticalAlignment:=aTextVerticalAlignment;
 end;
 
 function TpvCanvas.GetVertexState:TpvHalfFloatVector2;
@@ -2293,22 +2343,59 @@ begin
  end;
 end;
 
-function TpvCanvas.DrawText(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvas;
+function TpvCanvas.DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvas;
+var Position,Size:TpvVector2;
 begin
  if assigned(fState.fFont) then begin
-  fState.fFont.Draw(self,aText,aX,aY,fState.fFontSize);
+  Position:=aPosition;
+  if fState.fTextHorizontalAlignment<>pvcthaLeft then begin
+   if fState.fTextVerticalAlignment<>pvctvaTop then begin
+    Size:=TextSize(aText);
+   end else begin
+    Size:=TpvVector2.Create(TextWidth(aText),0.0);
+   end;
+  end else begin
+   if fState.fTextVerticalAlignment<>pvctvaTop then begin
+    Size:=TpvVector2.Create(0.0,TextHeight(aText));
+   end else begin
+    Size:=TpvVector2.Create(0.0,0.0);
+   end;
+  end;
+  case fState.fTextHorizontalAlignment of
+   pvcthaLeft:begin
+    // Do nothing
+   end;
+   pvcthaCenter:begin
+    Position.x:=Position.x-(Size.x*0.5);
+   end;
+   pvcthaRight:begin
+    Position.x:=Position.x-Size.x;
+   end;
+  end;
+  case fState.fTextVerticalAlignment of
+   pvctvaTop:begin
+    // Do nothing
+   end;
+   pvctvaMiddle:begin
+    Position.y:=Position.y-(Size.y*0.5);
+   end;
+   pvctvaBottom:begin
+    Position.y:=Position.y-Size.y;
+   end;
+  end;
+  fState.fFont.Draw(self,aText,Position,fState.fFontSize);
  end;
  result:=self;
 end;
 
-function TpvCanvas.DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvas;
+function TpvCanvas.DrawText(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvas;
 begin
- result:=DrawText(aText,aPosition.x,aPosition.y);
+ result:=DrawText(aText,TpvVector2.Create(aX,aY));
 end;
 
 function TpvCanvas.DrawText(const aText:TpvUTF8String):TpvCanvas;
 begin
- result:=DrawText(aText,0.0,0.0);
+ result:=DrawText(aText,TpvVector2.Create(0.0,0.0));
 end;
 
 function TpvCanvas.BeginPath:TpvCanvas;
