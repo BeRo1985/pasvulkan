@@ -248,18 +248,12 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure Assign(const aPath:TpvCanvasPath);
      end;
 
-     PpvCanvasVertexState=^TpvCanvasVertexState;
-     TpvCanvasVertexState=record
-      BlendingMode:TpvHalfFloat;
-      RenderingMode:TpvHalfFloat;
-     end;
-
      PpvCanvasVertex=^TpvCanvasVertex;
      TpvCanvasVertex=packed record
       Position:TpvVector2;                       // +  8 (2x 32-bit floats)       = 0
       Color:TpvHalfFloatVector4;                 // +  8 (4x 16-bit half-floats)  = 8  (=> 8 byte aligned)
       TextureCoord:TpvVector3;                   // + 12 (3x 32-bit floats)       = 16 (=> 16 byte aligned)
-      State:TpvCanvasVertexState;                // +  4 (2x 16-bit half-floats)  = 28 (=> 4 byte aligned)
+      State:TpvHalfFloatVector2;                 // +  4 (2x 16-bit half-floats)  = 28 (=> 4 byte aligned)
       ClipRect:TpvRect;                          // + 16 (4x 32-bit floats)       = 32 (=> 32 byte aligned)
       MetaInfo:TpvVector4;                       // + 16 (4x 32-bit floats)       = 48 (=> 32 byte aligned)
      end;                                        // = 64 per vertex
@@ -332,6 +326,12 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasAtlasArrayTextureDescriptorSetHashMap=class(TpvHashMap<TpvSpriteAtlasArrayTexture,TpvInt32>);
 
+     PpvCanvasRenderingModeValues=^TpvCanvasRenderingModeValues;
+     TpvCanvasRenderingModeValues=array[TpvCanvasRenderingMode] of TpvFloat;
+
+     PpvCanvasBlendingModeValues=^TpvCanvasBlendingModeValues;
+     TpvCanvasBlendingModeValues=array[TpvCanvasBlendingMode] of TpvFloat;
+
      TpvCanvas=class
       private
        fDevice:TpvVulkanDevice;
@@ -364,7 +364,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCurrentVulkanBufferIndex:TpvInt32;
        fCurrentVulkanVertexBufferOffset:TpvInt32;
        fCurrentVulkanIndexBufferOffset:TpvInt32;
-       fVertexState:TpvCanvasVertexState;
        fCurrentCountVertices:TVkSizeInt;
        fCurrentCountIndices:TVkSizeInt;
        fCurrentDestinationVertexBufferPointer:PpvCanvasVertexBuffer;
@@ -374,7 +373,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fStateStack:TpvCanvasStateStack;
        function RotatePoint(const PointToRotate,AroundPoint:TpvVector2;Cosinus,Sinus:TpvFloat):TpvVector2;
        procedure SetInternalArrayTexture(const aArrayTexture:TpvSpriteAtlasArrayTexture);
-       procedure UpdateVertexState;
        function GetRenderingMode:TpvCanvasRenderingMode; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetRenderingMode(const aRenderingMode:TpvCanvasRenderingMode);
        function GetBlendingMode:TpvCanvasBlendingMode; {$ifdef CAN_INLINE}inline;{$endif}
@@ -386,6 +384,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure GetNextDestinationVertexBuffer;
        procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
        function ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
+       function GetVertexState:TpvHalfFloatVector2; {$ifdef CAN_INLINE}inline;{$endif}
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aGraphicsQueue:TpvVulkanQueue;
@@ -441,6 +440,19 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property RenderingMode:TpvCanvasRenderingMode read GetRenderingMode write SetRenderingMode;
        property BlendingMode:TpvCanvasBlendingMode read GetBlendingMode write SetBlendingMode;
      end;
+
+const pvCanvasRenderingModeValues:TpvCanvasRenderingModeValues=
+       (
+        0.0, // pvcrmNormal
+        1.0  // pvcrmFont
+       );
+
+      pvCanvasBlendingModeValues:TpvCanvasBlendingModeValues=
+       (
+        -1.0, // pvcbmNone
+         1.0, // pvcbmAlphaBlending
+         0.0  // pvcbmAdditiveBlending
+       );
 
 implementation
 
@@ -953,29 +965,6 @@ begin
  fState.fClipRect.RightBottom:=TpvVector2.Create(aLeft+aWidth,aTop+aHeight);
 end;
 
-procedure TpvCanvas.UpdateVertexState;
-begin
- case fState.fRenderingMode of
-  pvcrmNormal:begin
-   fVertexState.RenderingMode:=0.0;
-  end;
-  else {pvcrmFont:}begin
-   fVertexState.RenderingMode:=1.0;
-  end;
- end;
- case fState.fBlendingMode of
-  pvcbmNone:begin
-   fVertexState.BlendingMode:=-1.0;
-  end;
-  pvcbmAlphaBlending:begin
-   fVertexState.BlendingMode:=1.0;
-  end;
-  else{pvcbmAdditiveBlending:}begin
-   fVertexState.BlendingMode:=0.0;
-  end;
- end;
-end;
-
 function TpvCanvas.GetRenderingMode:TpvCanvasRenderingMode;
 begin
  result:=fState.fRenderingMode;
@@ -985,7 +974,6 @@ procedure TpvCanvas.SetRenderingMode(const aRenderingMode:TpvCanvasRenderingMode
 begin
  if fState.fRenderingMode<>aRenderingMode then begin
   fState.fRenderingMode:=aRenderingMode;
-  UpdateVertexState;
  end;
 end;
 
@@ -998,7 +986,6 @@ procedure TpvCanvas.SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
 begin
  if fState.fBlendingMode<>aBlendingMode then begin
   fState.fBlendingMode:=aBlendingMode;
-  UpdateVertexState;
  end;
 end;
 
@@ -1028,11 +1015,14 @@ begin
  end;
 end;
 
+function TpvCanvas.GetVertexState:TpvHalfFloatVector2;
+begin
+ result.x:=pvCanvasBlendingModeValues[fState.fBlendingMode];
+ result.y:=pvCanvasRenderingModeValues[fState.fRenderingMode];
+end;
+
 procedure TpvCanvas.Start(const aBufferIndex:TpvInt32);
 begin
-
- fVertexState.BlendingMode:=1.0;
- fVertexState.RenderingMode:=0.0;
 
  fCurrentCountVertices:=0;
  fCurrentCountIndices:=0;
@@ -1256,6 +1246,7 @@ const MinA=1.0/1024.0;
 var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     TempDest,TempSrc:TpvRect;
     VertexColor:TpvHalfFloatVector4;
+    VertexState:TpvHalfFloatVector2;
 begin
  if (abs(aColor.a)>MinA) and
     ClipCheck(aDest.Left,aDest.Top,aDest.Right,aDest.Bottom) and
@@ -1266,6 +1257,7 @@ begin
   VertexColor.g:=aColor.g;
   VertexColor.b:=aColor.b;
   VertexColor.a:=aColor.a;
+  VertexState:=GetVertexState;
   SetInternalArrayTexture(aSprite.ArrayTexture);
   FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
   if aSprite.Rotated then begin
@@ -1314,7 +1306,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
@@ -1323,7 +1315,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
@@ -1332,7 +1324,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Left;
@@ -1341,7 +1333,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
@@ -1407,7 +1399,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
@@ -1416,7 +1408,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Right;
@@ -1425,7 +1417,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position.x:=TempDest.Left;
@@ -1434,7 +1426,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
@@ -1449,6 +1441,7 @@ var Cosinus,Sinus,tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     Points:array[0..3] of TpvVector2;
     TempDest,TempSrc:TpvRect;
     VertexColor:TpvHalfFloatVector4;
+    VertexState:TpvHalfFloatVector2;
 begin
  if (abs(aColor.a)>MinA) and
     (((aSrc.Right>=aSprite.TrimmedX) and (aSrc.Bottom>=aSprite.TrimmedY)) and
@@ -1458,6 +1451,7 @@ begin
   VertexColor.g:=aColor.g;
   VertexColor.b:=aColor.b;
   VertexColor.a:=aColor.a;
+  VertexState:=GetVertexState;
   Cosinus:=cos(aRotation);
   Sinus:=sin(aRotation);
   SetInternalArrayTexture(aSprite.ArrayTexture);
@@ -1503,7 +1497,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
@@ -1511,7 +1505,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
@@ -1519,7 +1513,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
@@ -1527,7 +1521,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
@@ -1590,7 +1584,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[1],AroundPoint,Cosinus,Sinus);
@@ -1598,7 +1592,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[2],AroundPoint,Cosinus,Sinus);
@@ -1606,7 +1600,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=RotatePoint(Points[3],AroundPoint,Cosinus,Sinus);
@@ -1614,7 +1608,7 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=fVertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
@@ -1839,7 +1833,6 @@ function TpvCanvas.Pop:TpvCanvas;
 begin
  Flush;
  TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(fStateStack.Extract)))).Free;
- UpdateVertexState;
  result:=self;
 end;
 
