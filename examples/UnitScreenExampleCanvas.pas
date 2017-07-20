@@ -552,11 +552,11 @@ begin
                                         (sin((fTime*0.23)*pi*2.0)*0.5)+0.5,
                                         (cos((fTime*0.17)*pi*2.0)*0.25)+0.75);
 
- fVulkanFont.Draw(fVulkanCanvas,
-                  rbs,
-                  ((fVulkanCanvas.Width-fVulkanFont.TextWidth(rbs,LocalFontSize))*0.5)+0.0,
-                  ((fVulkanCanvas.Height-fVulkanFont.TextHeight(rbs,LocalFontSize))*0.5)+(sin(fTime*pi*0.07)*(fVulkanCanvas.Height*0.3275)),
-                  LocalFontSize);
+ fVulkanCanvas.DrawText(fVulkanFont,
+                        rbs,
+                        ((fVulkanCanvas.Width-fVulkanFont.TextWidth(rbs,LocalFontSize))*0.5)+0.0,
+                        ((fVulkanCanvas.Height-fVulkanFont.TextHeight(rbs,LocalFontSize))*0.5)+(sin(fTime*pi*0.07)*(fVulkanCanvas.Height*0.3275)),
+                        LocalFontSize);
 
  fVulkanCanvas.TransformationMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.5),-(fVulkanCanvas.Height*0.5),0.0)*
                                      TpvMatrix4x4.CreateRotateY(sin(fTime*pi*2.0*0.5)*(45.0*DEG2RAD))*
@@ -568,11 +568,11 @@ begin
                                         (cos((fTime*0.23)*pi*2.0)*0.5)+0.5,
                                         (sin((fTime*0.17)*pi*2.0)*0.25)+0.75);
 
- fVulkanFont.Draw(fVulkanCanvas,
-                  rbs,
-                  ((fVulkanCanvas.Width-fVulkanFont.TextWidth(rbs,LocalFontSize))*0.5)+0.0,
-                  ((fVulkanCanvas.Height-fVulkanFont.TextHeight(rbs,LocalFontSize))*0.5)+(cos(fTime*pi*0.05)*(fVulkanCanvas.Height*0.3275)),
-                  LocalFontSize);
+ fVulkanCanvas.DrawText(fVulkanFont,
+                        rbs,
+                        ((fVulkanCanvas.Width-fVulkanFont.TextWidth(rbs,LocalFontSize))*0.5)+0.0,
+                        ((fVulkanCanvas.Height-fVulkanFont.TextHeight(rbs,LocalFontSize))*0.5)+(cos(fTime*pi*0.05)*(fVulkanCanvas.Height*0.3275)),
+                        LocalFontSize);
 
  fVulkanCanvas.Stop;
 

@@ -72,7 +72,8 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Collections,
      PasVulkan.Framework,
-     PasVulkan.Sprites;
+     PasVulkan.Sprites,
+     PasVulkan.Font;
 
 type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasRenderingMode=
@@ -431,20 +432,24 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       public
        function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas; overload;
        function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat):TpvCanvas; overload;
-       function DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2):TpvCanvas; overload;
-       function DrawSprite(const aSprite:TpvSprite):TpvCanvas; overload;
+       function DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawSprite(const aSprite:TpvSprite):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function BeginPath:TpvCanvas;
-       function ClosePath:TpvCanvas;
+       function DrawText(const aFont:TpvFont;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat):TpvCanvas; overload;
+       function DrawText(const aFont:TpvFont;const aText:TpvUTF8String;const aSize:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawText(const aFont:TpvFont;const aText:TpvUTF8String):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function MoveTo(const aP0:TpvVector2):TpvCanvas; overload;
-       function MoveTo(const aX,aY:TpvFloat):TpvCanvas; overload;
-       function LineTo(const aP0:TpvVector2):TpvCanvas; overload;
-       function LineTo(const aX,aY:TpvFloat):TpvCanvas; overload;
-       function QuadraticCurveTo(const aC0,aA0:TpvVector2):TpvCanvas; overload;
-       function QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvFloat):TpvCanvas; overload;
-       function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvas; overload;
-       function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvas; overload;
+       function BeginPath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
+       function ClosePath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
+      public
+       function MoveTo(const aP0:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MoveTo(const aX,aY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function LineTo(const aP0:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function LineTo(const aX,aY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function QuadraticCurveTo(const aC0,aA0:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function Stroke:TpvCanvas;
        function Fill:TpvCanvas;
@@ -1916,6 +1921,24 @@ function TpvCanvas.DrawSprite(const aSprite:TpvSprite):TpvCanvas;
 begin
  DrawSprite(aSprite,
             TpvVector2.Create(0.0,0.0));
+ result:=self;
+end;
+
+function TpvCanvas.DrawText(const aFont:TpvFont;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat):TpvCanvas;
+begin
+ aFont.Draw(self,aText,aX,aY,aSize);
+ result:=self;
+end;
+
+function TpvCanvas.DrawText(const aFont:TpvFont;const aText:TpvUTF8String;const aSize:TpvFloat):TpvCanvas;
+begin
+ DrawText(aFont,aText,0.0,0.0,aSize);
+ result:=self;
+end;
+
+function TpvCanvas.DrawText(const aFont:TpvFont;const aText:TpvUTF8String):TpvCanvas;
+begin
+ DrawText(aFont,aText,aFont.BaseSize);
  result:=self;
 end;
 

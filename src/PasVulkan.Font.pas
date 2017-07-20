@@ -58,6 +58,7 @@ unit PasVulkan.Font;
   {$ifend}
  {$endif}
 {$endif}
+{$m+}
 
 interface
 
@@ -72,8 +73,7 @@ uses SysUtils,
      PasVulkan.Collections,
      PasVulkan.Framework,
      PasVulkan.TrueTypeFont,
-     PasVulkan.Sprites,
-     PasVulkan.Canvas;
+     PasVulkan.Sprites;
 
 type TpvFontCodePointBitmap=array of TpvUInt32;
 
@@ -166,6 +166,8 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        fUnitsPerEm:TpvInt32;
        fBaseScaleFactor:TpvFloat;
        fInverseBaseScaleFactor:TpvFloat;
+       fBaseSize:TpvFloat;
+       fInverseBaseSize:TpvFloat;
        fMinX:TpvFloat;
        fMinY:TpvFloat;
        fMaxX:TpvFloat;
@@ -182,7 +184,7 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        procedure GenerateSignedDistanceField(var DistanceField:TpvFontDistanceField;const MultiChannel:boolean;const PolygonBuffer:TpvTrueTypeFontPolygonBuffer;const FillRule:TpvInt32);
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
       public
-       constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72); reintroduce;
+       constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
        constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange);
        destructor Destroy; override;
        class function CodePointRange(const aFromCodePoint,aToCodePoint:TpvUInt32):TpvFontCodePointRange; overload;
@@ -193,12 +195,15 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        function TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
        procedure TextSize(const aText:TpvUTF8String;const aSize:TpvFloat;out aWidth,aHeight:TpvFloat);
        function RowHeight(const Percent:TpvFloat):TpvFloat;
-       procedure Draw(const aCanvas:TpvCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat);
+       procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat);
+      published
+       property BaseSize:TpvFloat read fBaseSize;
      end;
 
 implementation
 
-uses PasVulkan.Utils;
+uses PasVulkan.Utils,
+     PasVulkan.Canvas;
 
 function CompareVulkanFontGlyphsByArea(const a,b:TpvPointer):TpvInt32;
 begin
@@ -2167,7 +2172,7 @@ begin
 
 end;
 
-constructor TpvFont.Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72);
+constructor TpvFont.Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0);
 begin
 
  inherited Create;
@@ -2183,6 +2188,10 @@ begin
  fBaseScaleFactor:=1.0;
 
  fInverseBaseScaleFactor:=1.0;
+
+ fBaseSize:=aBaseSize;
+
+ fInverseBaseSize:=1.0/fBaseSize;
 
  fMinX:=0.0;
  fMinY:=0.0;
@@ -2240,7 +2249,7 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     GlyphDistanceFieldJob:PpvFontDistanceFieldJob;
 begin
 
- Create(aDevice,aSpriteAtlas,aTrueTypeFont.TargetPPI);
+ Create(aDevice,aSpriteAtlas,aTrueTypeFont.TargetPPI,aTrueTypeFont.Size);
 
  PasMPInstance:=GetPasMP;
 
@@ -2759,7 +2768,7 @@ begin
  result:=fUnitsPerEm*(Percent*0.01);
 end;
 
-procedure TpvFont.Draw(const aCanvas:TpvCanvas;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat);
+procedure TpvFont.Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aX,aY,aSize:TpvFloat);
 var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
     x,y,ScaleFactor,RescaleFactor:TpvFloat;
     Int64Value:TpvInt64;
@@ -2797,7 +2806,7 @@ begin
     Dest.Top:=aY+(y*ScaleFactor)+(Glyph^.OffsetY*RescaleFactor);
     Dest.Right:=aX+(x*ScaleFactor)+((Glyph^.OffsetX+Glyph^.Width)*RescaleFactor);
     Dest.Bottom:=aY+(y*ScaleFactor)+((Glyph^.OffsetY+Glyph^.Height)*RescaleFactor);
-    aCanvas.DrawSprite(Glyph^.Sprite,Src,Dest);
+    TpvCanvas(aCanvas).DrawSprite(Glyph^.Sprite,Src,Dest);
     x:=x+Glyph^.AdvanceWidth;
     y:=y+Glyph^.AdvanceHeight;
    end;
