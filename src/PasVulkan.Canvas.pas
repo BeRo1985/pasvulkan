@@ -279,14 +279,14 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      end;
 
      PpvCanvasVertex=^TpvCanvasVertex;
-     TpvCanvasVertex=packed record
-      Position:TpvVector2;                       // +  8 (2x 32-bit floats)       = 0
-      Color:TpvHalfFloatVector4;                 // +  8 (4x 16-bit half-floats)  = 8  (=> 8 byte aligned)
-      TextureCoord:TpvVector3;                   // + 12 (3x 32-bit floats)       = 16 (=> 16 byte aligned)
-      State:TpvHalfFloatVector2;                 // +  4 (2x 16-bit half-floats)  = 28 (=> 4 byte aligned)
-      ClipRect:TpvRect;                          // + 16 (4x 32-bit floats)       = 32 (=> 32 byte aligned)
-      MetaInfo:TpvVector4;                       // + 16 (4x 32-bit floats)       = 48 (=> 32 byte aligned)
-     end;                                        // = 64 per vertex
+     TpvCanvasVertex=packed record               //   Size                                    Offset
+      Position:TpvVector2;                       //    8 bytes (2x 32-bit floats)           =  0
+      Color:TpvHalfFloatVector4;                 // +  8 bytes (4x 16-bit half-floats)      =  8 (=> 8 byte aligned)
+      TextureCoord:TpvVector3;                   // + 12 bytes (3x 32-bit floats)           = 16 (=> 16 byte aligned)
+      State:TpvUInt32;                           // +  4 bytes (1x 32-bit unsigned integer) = 28 (=> 4 byte aligned)
+      ClipRect:TpvRect;                          // + 16 bytes (4x 32-bit floats)           = 32 (=> 32 byte aligned)
+      MetaInfo:TpvVector4;                       // + 16 bytes (4x 32-bit floats)           = 48 (=> 32 byte aligned)
+     end;                                        // = 64 bytes per vertex
 
      TpvCanvasVertices=array of TpvCanvasVertex;
 
@@ -358,10 +358,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasTextureDescriptorSetHashMap=class(TpvHashMap<TObject,TpvInt32>);
 
      PpvCanvasRenderingModeValues=^TpvCanvasRenderingModeValues;
-     TpvCanvasRenderingModeValues=array[TpvCanvasRenderingMode] of TpvFloat;
+     TpvCanvasRenderingModeValues=array[TpvCanvasRenderingMode] of TpvUInt32;
 
      PpvCanvasBlendingModeValues=^TpvCanvasBlendingModeValues;
-     TpvCanvasBlendingModeValues=array[TpvCanvasBlendingMode] of TpvFloat;
+     TpvCanvasBlendingModeValues=array[TpvCanvasBlendingMode] of TpvUInt32;
 
      TpvCanvasCommon=class
       private
@@ -466,7 +466,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure GetNextDestinationVertexBuffer;
        procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
        function ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
-       function GetVertexState:TpvHalfFloatVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetVertexState:TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aGraphicsQueue:TpvVulkanQueue;
@@ -552,16 +552,16 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
 const pvCanvasRenderingModeValues:TpvCanvasRenderingModeValues=
        (
-        0.0, // pvcrmNormal
-        1.0  // pvcrmFont
+        0, // pvcrmNormal
+        1  // pvcrmFont
        );
 
       pvCanvasBlendingModeValues:TpvCanvasBlendingModeValues=
        (
-        -1.0, // pvcbmNone
-         1.0, // pvcbmAlphaBlending
-         0.0  // pvcbmAdditiveBlending
-       );
+         0, // pvcbmNone
+         1, // pvcbmAlphaBlending
+         2  // pvcbmAdditiveBlending
+        );
 
 implementation
 
@@ -1012,8 +1012,9 @@ begin
   VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Position)));
   VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Color)));
   VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.TextureCoord)));
-  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.State)));
+  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32_UINT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.State)));
   VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.ClipRect)));
+  VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.MetaInfo)));
 
   VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
   VulkanGraphicsPipeline.ViewPortState.DynamicViewPorts:=true;
@@ -1330,10 +1331,10 @@ begin
  fState.fTextVerticalAlignment:=aTextVerticalAlignment;
 end;
 
-function TpvCanvas.GetVertexState:TpvHalfFloatVector2;
+function TpvCanvas.GetVertexState:TpvUInt32;
 begin
- result.x:=pvCanvasBlendingModeValues[fState.fBlendingMode];
- result.y:=pvCanvasRenderingModeValues[fInternalRenderingMode];
+ result:=(pvCanvasBlendingModeValues[fState.fBlendingMode] shl 0) or
+         (pvCanvasRenderingModeValues[fInternalRenderingMode] shl 2);
 end;
 
 procedure TpvCanvas.Start(const aBufferIndex:TpvInt32);
@@ -1788,7 +1789,7 @@ const MinA=1.0/65536.0;
 var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     TempDest,TempSrc:TpvRect;
     VertexColor:TpvHalfFloatVector4;
-    VertexState:TpvHalfFloatVector2;
+    VertexState:TpvUInt32;
 begin
  if ((fState.fBlendingMode=pvcbmNone) or (abs(fState.fColor.a)>MinA)) and
     ClipCheck(aDest.Left,aDest.Top,aDest.Right,aDest.Bottom) and
@@ -2190,7 +2191,7 @@ var StartPoint,LastPoint:TpvVector2;
  end;
  procedure StrokeFlush;
  var VertexColor:TpvHalfFloatVector4;
-     VertexState:TpvHalfFloatVector2;
+     VertexState:TpvUInt32;
      Closed:boolean;
      Width:TpvFloat;
      v0,v1,v2,v3:TpvVector2;
