@@ -237,13 +237,13 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       MetaInfo:TpvVector4;
      end;
 
-     PpvCanvasCacheLinePoint=^TpvCanvasCacheLinePoint;
-     TpvCanvasCacheLinePoint=record
+     PpvCanvasShapeCacheLinePoint=^TpvCanvasShapeCacheLinePoint;
+     TpvCanvasShapeCacheLinePoint=record
       Position:TpvVector2;
       Middle:TpvVector2;
      end;
 
-     TpvCanvasCacheLinePoints=array of TpvCanvasCacheLinePoint;
+     TpvCanvasShapeCacheLinePoints=array of TpvCanvasShapeCacheLinePoint;
 
      PpvCanvasShapeCacheVertices=^TpvCanvasShapeCacheVertices;
      TpvCanvasShapeCacheVertices=array of TpvCanvasShapeCacheVertex;
@@ -264,7 +264,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       private
        fCacheGroups:TpvCanvasShapeCacheGroups;
        fCountCacheGroups:TpvInt32;
-       fCacheLinePoints:TpvCanvasCacheLinePoints;
+       fCacheLinePoints:TpvCanvasShapeCacheLinePoints;
        fCountCacheLinePoints:TpvInt32;
        function NewCacheGroup(const aStartAllocationCountVertices:TpvInt32=0;const aStartAllocationCountIndices:TpvInt32=0):PpvCanvasShapeCacheGroup;
       public
@@ -418,8 +418,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCurrentDestinationIndexBufferPointer:PpvCanvasIndexBuffer;
        fInternalRenderingMode:TpvCanvasRenderingMode;
        fInternalTexture:TObject;
-       fCacheLinePoints:TpvCanvasCacheLinePoints;
-       fCountCacheLinePoints:TpvInt32;
        fShape:TpvCanvasShape;
        fState:TpvCanvasState;
        fStateStack:TpvCanvasStateStack;
@@ -754,7 +752,7 @@ var StartPoint,LastPoint:TpvVector2;
     CacheGroup:PpvCanvasShapeCacheGroup;
  procedure StrokeAddPoint(const aP0:TpvVector2);
  var Index:TpvInt32;
-     CacheLinePoint:PpvCanvasCacheLinePoint;
+     ShapeCacheLinePoint:PpvCanvasShapeCacheLinePoint;
  begin
   if (fCountCacheLinePoints=0) or
      (fCacheLinePoints[fCountCacheLinePoints-1].Position<>aP0) then begin
@@ -763,8 +761,8 @@ var StartPoint,LastPoint:TpvVector2;
    if length(fCacheLinePoints)<fCountCacheLinePoints then begin
     SetLength(fCacheLinePoints,fCountCacheLinePoints*2);
    end;
-   CacheLinePoint:=@fCacheLinePoints[Index];
-   CacheLinePoint^.Position:=aP0;
+   ShapeCacheLinePoint:=@fCacheLinePoints[Index];
+   ShapeCacheLinePoint^.Position:=aP0;
   end;
  end;
  procedure StrokeFlush;
@@ -1121,7 +1119,7 @@ var StartPoint,LastPoint:TpvVector2;
    for i:=fCountCacheLinePoints-2 downto 0 do begin
     if fCacheLinePoints[i].Position=fCacheLinePoints[i+1].Position then begin
      dec(fCountCacheLinePoints);
-     Move(fCacheLinePoints[i-1],fCacheLinePoints[i],fCountCacheLinePoints*SizeOf(TpvCanvasCacheLinePoint));
+     Move(fCacheLinePoints[i-1],fCacheLinePoints[i],fCountCacheLinePoints*SizeOf(TpvCanvasShapeCacheLinePoint));
     end;
    end;
    if fCountCacheLinePoints>2 then begin
@@ -1429,9 +1427,6 @@ begin
 
  fInternalTexture:=nil;
 
- fCacheLinePoints:=nil;
- fCountCacheLinePoints:=0;
-
  fShape:=TpvCanvasShape.Create;
 
  fState:=TpvCanvasState.Create;
@@ -1608,8 +1603,6 @@ begin
  FreeAndNil(fState);
 
  FreeAndNil(fShape);
-
- fCacheLinePoints:=nil;
 
  for TextureModeIndex:=false to true do begin
   FreeAndNil(fVulkanGraphicsPipelines[TextureModeIndex]);
