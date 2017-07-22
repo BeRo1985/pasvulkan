@@ -568,6 +568,9 @@ implementation
 uses PasVulkan.Assets,
      PasVulkan.Streams;
 
+const pcvvaomLineEdge=1;
+      pcvvaomRoundLineCapCircle=2;
+
 constructor TpvCanvasPath.Create;
 begin
  inherited Create;
@@ -2196,7 +2199,7 @@ var StartPoint,LastPoint:TpvVector2;
      Width:TpvFloat;
      v0,v1,v2,v3:TpvVector2;
      First:boolean;
-  function AddVertex(const Position:TpvVector2;const MetaInfo:TpvVector4):TpvInt32;
+  function AddVertex(const Position:TpvVector2;const ObjectMode:TpvUInt8;const MetaInfo:TpvVector4):TpvInt32;
   var v:PpvCanvasVertex;
   begin
    result:=fCurrentCountVertices;
@@ -2205,7 +2208,7 @@ var StartPoint,LastPoint:TpvVector2;
    v^.Position:=Position;
    v^.Color:=VertexColor;
    v^.TextureCoord:=Vector3Origin;
-   v^.State:=VertexState;
+   v^.State:=VertexState or ((ObjectMode and $ff) shl 4);
    v^.ClipRect:=fState.fClipRect;
    v^.MetaInfo:=MetaInfo;
   end;
@@ -2236,9 +2239,9 @@ var StartPoint,LastPoint:TpvVector2;
    FlushAndGetNewDestinationVertexBufferIfNeeded(3,3);
    Normal:=(Center-NextPointInLine).Normalize;
    Matrix:=TpvMatrix2x2.Create(Normal,TpvVector2.Create(-Normal.y,Normal.x));
-   AddIndex(AddVertex(Center+((Matrix*Offsets[0])*Radius),MetaInfo));
-   AddIndex(AddVertex(Center+((Matrix*Offsets[1])*Radius),MetaInfo));
-   AddIndex(AddVertex(Center+((Matrix*Offsets[2])*Radius),MetaInfo));
+   AddIndex(AddVertex(Center+((Matrix*Offsets[0])*Radius),pcvvaomRoundLineCapCircle,MetaInfo));
+   AddIndex(AddVertex(Center+((Matrix*Offsets[1])*Radius),pcvvaomRoundLineCapCircle,MetaInfo));
+   AddIndex(AddVertex(Center+((Matrix*Offsets[2])*Radius),pcvvaomRoundLineCapCircle,MetaInfo));
  end;
 {$else}
   procedure CreateRoundCap(const Center,p0,p1,NextPointInLine:TpvVector2); // On the CPU slower but with less overdraw on the GPU
@@ -2267,13 +2270,13 @@ var StartPoint,LastPoint:TpvVector2;
    Radius:=ceil(Radius);
    if Segments<1024 then begin
     FlushAndGetNewDestinationVertexBufferIfNeeded(2+Segments,Segments*3);
-    iCenter:=AddVertex(Center,MetaInfo);
+    iCenter:=AddVertex(Center,pcvvaomRoundLineCapCircle,MetaInfo);
     Phase:=Angle0;
-    iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),MetaInfo);
+    iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),pcvvaomRoundLineCapCircle,MetaInfo);
     for i:=0 to Segments-1 do begin
      iLast:=iCurrent;
      Phase:=Phase+AngleIncrement;
-     iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),MetaInfo);
+     iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),pcvvaomRoundLineCapCircle,MetaInfo);
      AddIndex(iCenter);
      AddIndex(iLast);
      AddIndex(iCurrent);
@@ -2282,10 +2285,10 @@ var StartPoint,LastPoint:TpvVector2;
     Phase:=Angle0;
     for i:=0 to Segments-1 do begin
      FlushAndGetNewDestinationVertexBufferIfNeeded(3,3);
-     iCenter:=AddVertex(Center,MetaInfo);
-     iLast:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),MetaInfo);
+     iCenter:=AddVertex(Center,pcvvaomRoundLineCapCircle,MetaInfo);
+     iLast:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),pcvvaomRoundLineCapCircle,MetaInfo);
      Phase:=Phase+AngleIncrement;
-     iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),MetaInfo);
+     iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),pcvvaomRoundLineCapCircle,MetaInfo);
      AddIndex(iCenter);
      AddIndex(iLast);
      AddIndex(iCurrent);
@@ -2318,10 +2321,10 @@ var StartPoint,LastPoint:TpvVector2;
   var ip0,ip0d,ip1d,ip1:TpvInt32;
   begin
    FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
-   ip0:=AddVertex(p0,TpvVector4.Create(-Width,0.0,Width,Width));
-   ip0d:=AddVertex(p0+d,TpvVector4.Create(-Width,Width,Width,Width));
-   ip1d:=AddVertex(p1+d,TpvVector4.Create(Width,Width,Width,Width));
-   ip1:=AddVertex(p1,TpvVector4.Create(Width,0.0,Width,Width));
+   ip0:=AddVertex(p0,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width));
+   ip0d:=AddVertex(p0+d,pcvvaomLineEdge,TpvVector4.Create(-Width,Width,Width,Width));
+   ip1d:=AddVertex(p1+d,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
+   ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
    AddIndex(ip0);
    AddIndex(ip0d);
    AddIndex(ip1d);
@@ -2403,20 +2406,20 @@ var StartPoint,LastPoint:TpvVector2;
      LineJoinCase:=3;
     end;
     FlushAndGetNewDestinationVertexBufferIfNeeded(CountVerticesToAdd,CountIndicesToAdd);
-    ip0at0:=AddVertex(p0+t0,TpvVector4.Create(Width,l0,Width,s0));
-    ip0st0:=AddVertex(p0-t0,TpvVector4.Create(-Width,l0,Width,s0));
-    ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,s0));
-    ip1st0:=AddVertex(p1-t0,TpvVector4.Create(-Width,0.0,Width,s0));
+    ip0at0:=AddVertex(p0+t0,pcvvaomLineEdge,TpvVector4.Create(Width,l0,Width,s0));
+    ip0st0:=AddVertex(p0-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,l0,Width,s0));
+    ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s0));
+    ip1st0:=AddVertex(p1-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s0));
     AddIndex(ip0at0);
     AddIndex(ip0st0);
     AddIndex(ip1at0);
     AddIndex(ip0st0);
     AddIndex(ip1at0);
     AddIndex(ip1st0);
-    ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,s2));
-    ip2at2:=AddVertex(p2+t2,TpvVector4.Create(Width,l2,Width,s2));
-    ip1st2:=AddVertex(p1-t2,TpvVector4.Create(-Width,0.0,Width,s2));
-    ip2st2:=AddVertex(p2-t2,TpvVector4.Create(-Width,l2,Width,s2));
+    ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s2));
+    ip2at2:=AddVertex(p2+t2,pcvvaomLineEdge,TpvVector4.Create(Width,l2,Width,s2));
+    ip1st2:=AddVertex(p1-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s2));
+    ip2st2:=AddVertex(p2-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,l2,Width,s2));
     AddIndex(ip2at2);
     AddIndex(ip1st2);
     AddIndex(ip1at2);
@@ -2430,19 +2433,19 @@ var StartPoint,LastPoint:TpvVector2;
      end;
      1:begin
       // Bevel join
-      ip1:=AddVertex(p1,TpvVector4.Create(Width,0.0,Width,Width));
-      ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,Width));
-      ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
       AddIndex(ip1);
       AddIndex(ip1at0);
       AddIndex(ip1at2);
      end;
      2:begin
       // Miter join
-      ip1:=AddVertex(p1,TpvVector4.Create(0.0,0.0,Width,Width));
-      iIntersectionPoint:=AddVertex(IntersectionPoint,TpvVector4.Create(AnchorLength,0.0,AnchorLength,Width));
-      ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,Width));
-      ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width));
+      iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(AnchorLength,0.0,AnchorLength,Width));
+      ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
       AddIndex(ip1at0);
       AddIndex(ip1);
       AddIndex(iIntersectionPoint);
@@ -2473,20 +2476,20 @@ var StartPoint,LastPoint:TpvVector2;
      LineJoinCase:=3;
     end;
     FlushAndGetNewDestinationVertexBufferIfNeeded(CountVerticesToAdd,CountIndicesToAdd);
-    ip0at0:=AddVertex(p0+t0,TpvVector4.Create(Width,l0,Width,s0));
-    ip0st0:=AddVertex(p0-t0,TpvVector4.Create(-Width,l0,Width,s0));
-    ip1sAnchor:=AddVertex(p1-Anchor,TpvVector4.Create(-Width,0.0,Width,s0));
-    ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,s0));
+    ip0at0:=AddVertex(p0+t0,pcvvaomLineEdge,TpvVector4.Create(Width,l0,Width,s0));
+    ip0st0:=AddVertex(p0-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,l0,Width,s0));
+    ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s0));
+    ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s0));
     AddIndex(ip0at0);
     AddIndex(ip0st0);
     AddIndex(ip1sAnchor);
     AddIndex(ip0at0);
     AddIndex(ip1sAnchor);
     AddIndex(ip1at0);
-    ip1sAnchor:=AddVertex(p1-Anchor,TpvVector4.Create(-Width,0.0,Width,s2));
-    ip2at2:=AddVertex(p2+t2,TpvVector4.Create(Width,l2,Width,s2));
-    ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,s2));
-    ip2st2:=AddVertex(p2-t2,TpvVector4.Create(-Width,l2,Width,s2));
+    ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s2));
+    ip2at2:=AddVertex(p2+t2,pcvvaomLineEdge,TpvVector4.Create(Width,l2,Width,s2));
+    ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s2));
+    ip2st2:=AddVertex(p2-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,l2,Width,s2));
     AddIndex(ip2at2);
     AddIndex(ip1sAnchor);
     AddIndex(ip1at2);
@@ -2496,10 +2499,10 @@ var StartPoint,LastPoint:TpvVector2;
     case LineJoinCase of
      0:begin
       // Round join
-      ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,Width));
-      ip1:=AddVertex(p1,TpvVector4.Create(0.0,0.0,Width,Width));
-      ip1sAnchor:=AddVertex(p1-Anchor,TpvVector4.Create(-Width,0.0,Width,Width));
-      ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width));
+      ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width));
+      ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
       AddIndex(ip1at0);
       AddIndex(ip1);
       AddIndex(ip1sAnchor);
@@ -2510,19 +2513,19 @@ var StartPoint,LastPoint:TpvVector2;
      end;
      1:begin
       // Bevel join
-      ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,Width));
-      ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,Width));
-      ip1sAnchor:=AddVertex(p1-Anchor,TpvVector4.Create(-AnchorLength,0.0,AnchorLength,Width));
+      ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-AnchorLength,0.0,AnchorLength,Width));
       AddIndex(ip1at0);
       AddIndex(ip1at2);
       AddIndex(ip1sAnchor);
      end;
      2:begin
       // Miter join
-      ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,Width));
-      ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,Width));
-      iCenter:=AddVertex(p1-Anchor,TpvVector4.Create(-AnchorLength,0.0,AnchorLength,Width));
-      iIntersectionPoint:=AddVertex(IntersectionPoint,TpvVector4.Create(AnchorLength,0.0,AnchorLength,Width));
+      ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+      iCenter:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-AnchorLength,0.0,AnchorLength,Width));
+      iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(AnchorLength,0.0,AnchorLength,Width));
       AddIndex(ip1at0);
       AddIndex(iCenter);
       AddIndex(iIntersectionPoint);

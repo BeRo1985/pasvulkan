@@ -55,7 +55,24 @@ void main(void){
   }
   color *= inColor;
 #endif
-#if 1
+  int objectMode = int((inState >> 4u) & 0xffu);
+  if(objectMode != 0){
+    float threshold = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy)));
+    switch(objectMode){
+      case 0x01:{
+        // Distance to line edge
+        color.a *= min(smoothstep(0.0, -threshold, -(inMetaInfo.z - abs(inMetaInfo.x))),  // To the line edges left and right
+                       smoothstep(0.0, -threshold, -(inMetaInfo.w - abs(inMetaInfo.y)))); // To the line ends
+        break;      
+      }
+      case 0x02:{
+        // Distance to line round cap circle       
+        color.a *= smoothstep(0, -threshold, length(inPosition.xy - inMetaInfo.xy) - inMetaInfo.z);
+        break;      
+      }
+    }
+  }
+#if 0
   int blendingMode = int((inState >> 0u) & 0x3u);
   color = vec4(color.rgb, float(blendingMode < 2)) * mix(color.a, clamp(floor(color.a + 0.5), 0.0, 1.0), float(blendingMode >= 2));
 #else
