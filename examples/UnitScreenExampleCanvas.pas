@@ -474,7 +474,7 @@ end;
 procedure TScreenExampleCanvas.Update(const aDeltaTime:TpvDouble);
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
       Options:array[0..0] of string=('Back');
-var Index:TpvInt32;
+var Index,SubIndex:TpvInt32;
     cy:TpvFloat;
     rbs:TpvUTF8String;
     s:string;
@@ -587,6 +587,68 @@ begin
  fVulkanCanvas.ClosePath;
  fVulkanCanvas.Stroke;
  fVulkanCanvas.EndPath;
+ fVulkanCanvas.Pop;
+
+ fVulkanCanvas.Push;
+ for SubIndex:=0 to 1 do begin
+  case SubIndex of
+   0:begin
+    fVulkanCanvas.LineWidth:=fVulkanCanvas.Height*0.05;
+   end;
+   else begin
+    fVulkanCanvas.LineWidth:=fVulkanCanvas.Height*0.025;
+   end;
+  end;
+  for Index:=0 to 2 do begin
+   case SubIndex of
+    0:begin
+     case Index of
+      0:begin
+       fVulkanCanvas.Color:=TpvVector4.Create(1.0,0.25,0.25,1.0);
+       fVulkanCanvas.LineJoin:=pvcljRound;
+       fVulkanCanvas.LineCap:=pvclcRound;
+      end;
+      1:begin
+       fVulkanCanvas.Color:=TpvVector4.Create(0.25,1.0,0.25,1.0);
+       fVulkanCanvas.LineJoin:=pvcljMiter;
+       fVulkanCanvas.LineCap:=pvclcButt;
+      end;
+      2:begin
+       fVulkanCanvas.Color:=TpvVector4.Create(0.25,0.25,1.0,1.0);
+       fVulkanCanvas.LineJoin:=pvcljBevel;
+       fVulkanCanvas.LineCap:=pvclcSquare;
+      end;
+     end;
+    end;
+    else begin
+     case Index of
+      0:begin
+       fVulkanCanvas.Color:=TpvVector4.Create(0.25,1.0,0.25,1.0);
+       fVulkanCanvas.LineJoin:=pvcljRound;
+       fVulkanCanvas.LineCap:=pvclcRound;
+      end;
+      1:begin
+       fVulkanCanvas.Color:=TpvVector4.Create(0.25,0.25,1.0,1.0);
+       fVulkanCanvas.LineJoin:=pvcljMiter;
+       fVulkanCanvas.LineCap:=pvclcButt;
+      end;
+      2:begin
+       fVulkanCanvas.Color:=TpvVector4.Create(1.0,0.25,0.25,1.0);
+       fVulkanCanvas.LineJoin:=pvcljBevel;
+       fVulkanCanvas.LineCap:=pvclcSquare;
+      end;
+     end;
+    end;
+   end;
+   fVulkanCanvas.ModelMatrix:=TpvMatrix3x3.CreateTranslation(fVulkanCanvas.Width*(0.125+(0.175*(Index+1))),fVulkanCanvas.Height*0.7);
+   fVulkanCanvas.BeginPath;
+   fVulkanCanvas.MoveTo(0.0,0.0);
+   fVulkanCanvas.LineTo(0.0,fVulkanCanvas.Height*0.125);
+   fVulkanCanvas.LineTo(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height*(0.125*(0.5+(sin(fTime*1.0)*0.5))));
+   fVulkanCanvas.Stroke;
+   fVulkanCanvas.EndPath;
+  end;
+ end;
  fVulkanCanvas.Pop;
 
  fVulkanCanvas.Stop;

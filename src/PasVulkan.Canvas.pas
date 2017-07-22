@@ -2620,13 +2620,65 @@ var StartPoint,LastPoint:TpvVector2;
   StrokeAddPoint(aP0);
   LastPoint:=aP0;
  end;
- procedure StrokeQuadraticCurveTo(const aC0,aA0:TpvVector2);
+ procedure StrokeQuadraticCurveTo(const aC0,aA0:TpvVector2;const Tolerance:TpvDouble=1.0/256.0;const MaxLevel:TpvInt32=32);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvFloat;const Level:TpvInt32);
+  var x12,y12,x23,y23,x123,y123,mx,my,d:TpvFloat;
+      Point:TpvVector2;
+  begin
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   mx:=(x1+x3)*0.5;
+   my:=(y1+y3)*0.5;
+   d:=abs(mx-x123)+abs(my-y123);
+   if (Level>MaxLevel) or (d<Tolerance) then begin
+    Point.x:=x123;
+    Point.y:=y123;
+    StrokeAddPoint(Point);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,level+1);
+    Recursive(x123,y123,x23,y23,x3,y3,level+1);
+   end;
+  end;
  begin
-  LastPoint:=aA0;
+  Recursive(LastPoint.x,LastPoint.y,aC0.x,aC0.y,aA0.x,aA0.y,0);
+  StrokeAddPoint(aA0);
  end;
- procedure StrokeCubicCurveTo(const aC0,aC1,aA0:TpvVector2);
+ procedure StrokeCubicCurveTo(const aC0,aC1,aA0:TpvVector2;const Tolerance:TpvDouble=1.0/256.0;const MaxLevel:TpvInt32=32);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;const Level:TpvInt32);
+  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,mx,my,d:TpvDouble;
+      Point:TpvVector2;
+  begin
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x34:=(x3+x4)*0.5;
+   y34:=(y3+y4)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   x234:=(x23+x34)*0.5;
+   y234:=(y23+y34)*0.5;
+   x1234:=(x123+x234)*0.5;
+   y1234:=(y123+y234)*0.5;
+   mx:=(x1+x4)*0.5;
+   my:=(y1+y4)*0.5;
+   d:=abs(mx-x1234)+abs(my-y1234);
+   if (Level>MaxLevel) or (d<Tolerance) then begin
+    Point.x:=x1234;
+    Point.y:=y1234;
+    StrokeAddPoint(Point);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
+    Recursive(x1234,y1234,x234,y234,x34,y34,x4,y4,Level+1);
+   end;
+  end;
  begin
-  LastPoint:=aA0;
+  Recursive(LastPoint.x,LastPoint.y,aC0.x,aC0.y,aC1.x,aC1.y,aA0.x,aA0.y,0);
+  StrokeAddPoint(aA0);
  end;
  procedure StrokeClose;
  begin
