@@ -2433,9 +2433,9 @@ var StartPoint,LastPoint:TpvVector2;
      end;
      1:begin
       // Bevel join
-      ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
-      ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
-      ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width));
+      ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
+      ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
       AddIndex(ip1);
       AddIndex(ip1at0);
       AddIndex(ip1at2);
@@ -2443,7 +2443,7 @@ var StartPoint,LastPoint:TpvVector2;
      2:begin
       // Miter join
       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width));
-      iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(AnchorLength,0.0,AnchorLength,Width));
+      iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
       AddIndex(ip1at0);
@@ -2513,9 +2513,9 @@ var StartPoint,LastPoint:TpvVector2;
      end;
      1:begin
       // Bevel join
-      ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
-      ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
-      ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-AnchorLength,0.0,AnchorLength,Width));
+      ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
+      ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
+      ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width));
       AddIndex(ip1at0);
       AddIndex(ip1at2);
       AddIndex(ip1sAnchor);
@@ -2524,8 +2524,8 @@ var StartPoint,LastPoint:TpvVector2;
       // Miter join
       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
-      iCenter:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-AnchorLength,0.0,AnchorLength,Width));
-      iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(AnchorLength,0.0,AnchorLength,Width));
+      iCenter:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width));
+      iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
       AddIndex(ip1at0);
       AddIndex(iCenter);
       AddIndex(iIntersectionPoint);
