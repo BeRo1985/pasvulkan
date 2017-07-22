@@ -530,6 +530,8 @@ begin
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteSmiley0.Height;
  fVulkanCanvas.DrawSprite(fVulkanSpriteSmiley0,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteSmiley0.Width*0.5,fVulkanSpriteSmiley0.Height*0.5),sin(fTime*pi*2.1*0.1)*pi*2.0);
 
+ fVulkanCanvas.Push;
+
  fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.5),-(fVulkanCanvas.Height*0.5),0.0)*
                            TpvMatrix4x4.CreateRotateZ(sin(fTime*pi*2.0*0.75)*(30.0*DEG2RAD))*
                            TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5,0.0);
@@ -569,6 +571,23 @@ begin
  fVulkanCanvas.DrawText(rbs,
                         ((fVulkanCanvas.Width-fVulkanCanvas.TextWidth(rbs))*0.5)+0.0,
                         ((fVulkanCanvas.Height-fVulkanCanvas.TextHeight(rbs))*0.5)+(cos(fTime*pi*0.05)*(fVulkanCanvas.Height*0.3275)));
+
+ fVulkanCanvas.Pop;
+
+ fVulkanCanvas.Push;
+//fVulkanCanvas.ModelMatrix:=TpvMatrix3x3.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5);
+ fVulkanCanvas.LineWidth:=4.0;
+ fVulkanCanvas.BeginPath;
+ fVulkanCanvas.MoveTo(fVulkanCanvas.Width*(0.5+(sin(fTime*0.5)*0.375)),fVulkanCanvas.Height*(0.5+(cos(fTime*2.0)*0.375)));
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(cos(fTime*0.5)*0.375)),fVulkanCanvas.Height*(0.5+(sin(fTime*2.0)*0.375)));
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(cos(fTime*0.75)*0.375)),fVulkanCanvas.Height*(0.5+(sin(fTime*0.25)*0.375)));
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(cos(fTime*0.3)*0.375)),fVulkanCanvas.Height*(0.5+(cos(fTime*3.0)*0.375)));
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(sin(fTime*1.3)*0.375)),fVulkanCanvas.Height*(0.5+(cos(fTime*0.7)*0.375)));
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(sin(fTime*0.78)*0.375)),fVulkanCanvas.Height*(0.5+(sin(fTime*1.3)*0.375)));
+ fVulkanCanvas.ClosePath;
+ fVulkanCanvas.Stroke;
+ fVulkanCanvas.EndPath;
+ fVulkanCanvas.Pop;
 
  fVulkanCanvas.Stop;
 

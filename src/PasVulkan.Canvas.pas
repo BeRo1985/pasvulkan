@@ -175,6 +175,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        destructor Destroy; override;
        procedure Assign(aSource:TPersistent); override;
        function BeginPath:TpvCanvasPath;
+       function EndPath:TpvCanvasPath;
        function ClosePath:TpvCanvasPath;
        function MoveTo(const aP0:TpvVector2):TpvCanvasPath;
        function LineTo(const aP0:TpvVector2):TpvCanvasPath;
@@ -381,6 +382,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        class procedure Release(const aDevice:TpvVulkanDevice);
      end;
 
+     TpvCanvasVulkanPipelineLayouts=array[boolean] of TpvVulkanPipelineLayout;
+
      TpvCanvasVulkanGraphicsPipelines=array[boolean] of TpvVulkanGraphicsPipeline;
 
      PpvCanvasCacheLinePoint=^TpvCanvasCacheLinePoint;
@@ -409,7 +412,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCountVulkanDescriptors:TpvInt32;
        fVulkanTextureDescriptorSetHashMap:TpvCanvasTextureDescriptorSetHashMap;
        fVulkanRenderPass:TpvVulkanRenderPass;
-       fVulkanPipelineLayout:TpvVulkanPipelineLayout;
+       fVulkanPipelineLayouts:TpvCanvasVulkanPipelineLayouts;
        fVulkanGraphicsPipelines:TpvCanvasVulkanGraphicsPipelines;
        fVulkanCanvasBuffers:TpvCanvasBuffers;
        fCountBuffers:TpvInt32;
@@ -511,6 +514,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function DrawText(const aText:TpvUTF8String):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function BeginPath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
+       function EndPath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
        function ClosePath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function MoveTo(const aP0:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -607,6 +611,12 @@ begin
  result:=self;
 end;
 
+function TpvCanvasPath.EndPath:TpvCanvasPath;
+begin
+ fCountCommands:=0;
+ result:=self;
+end;
+
 function TpvCanvasPath.ClosePath:TpvCanvasPath;
 var Command:PpvCanvasPathCommand;
 begin
@@ -657,11 +667,11 @@ end;
 constructor TpvCanvasState.Create;
 begin
  inherited Create;
- Reset;
  fClipRect:=TpvRect.Create(-MaxSingle,-MaxSingle,MaxSingle,MaxSingle);
  fScissor:=TVkRect2D.Create(TVkOffset2D.Create(0,0),TVkExtent2D.Create($7fffffff,$7fffffff));
  fProjectionMatrix:=TpvMatrix4x4.Identity;
  fPath:=TpvCanvasPath.Create;
+ Reset;
 end;
 
 destructor TpvCanvasState.Destroy;
@@ -685,6 +695,7 @@ begin
  fTextVerticalAlignment:=TpvCanvasTextVerticalAlignment.pvctvaTop;
  fViewMatrix:=TpvMatrix4x4.Identity;
  fModelMatrix:=TpvMatrix3x3.Identity;
+ fPath.fCountCommands:=0;
 end;
 
 procedure TpvCanvasState.Assign(aSource:TPersistent);
@@ -868,6 +879,7 @@ constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
 var Index:TpvInt32;
     RenderingModeIndex:TpvCanvasRenderingMode;
     BlendingModeIndex:TpvCanvasBlendingMode;
+    VulkanPipelineLayout:TpvVulkanPipelineLayout;
     VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
     VulkanCanvasBuffer:PpvCanvasBuffer;
     Stream:TStream;
@@ -960,21 +972,25 @@ begin
 
  fVulkanTextureDescriptorSetHashMap:=TpvCanvasTextureDescriptorSetHashMap.Create(-1);
 
- fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
- fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout);
- fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetNoTextureLayout);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvMatrix4x4));
- fVulkanPipelineLayout.Initialize;
-
  fVulkanRenderPass:=aRenderPass;
 
  for TextureModeIndex:=false to true do begin
+
+  VulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
+  fVulkanPipelineLayouts[TextureModeIndex]:=VulkanPipelineLayout;
+  if TextureModeIndex then begin
+   VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout);
+  end else begin
+   VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetNoTextureLayout);
+  end;
+  VulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvMatrix4x4));
+  VulkanPipelineLayout.Initialize;
 
   VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fDevice,
                                                            fPipelineCache,
                                                            0,
                                                            [],
-                                                           fVulkanPipelineLayout,
+                                                           VulkanPipelineLayout,
                                                            fVulkanRenderPass,
                                                            0,
                                                            nil,
@@ -1075,9 +1091,8 @@ begin
 
  for TextureModeIndex:=false to true do begin
   FreeAndNil(fVulkanGraphicsPipelines[TextureModeIndex]);
+  FreeAndNil(fVulkanPipelineLayouts[TextureModeIndex]);
  end;
-
- FreeAndNil(fVulkanPipelineLayout);
 
 //FreeAndNil(fVulkanRenderPass);
 
@@ -1443,6 +1458,7 @@ begin
                                                           TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                           1);
      fVulkanDescriptorPools[DescriptorIndex]:=VulkanDescriptorPool;
+     VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
      VulkanDescriptorPool.Initialize;
      VulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(VulkanDescriptorPool,
                                                         fVulkanDescriptorSetNoTextureLayout);
@@ -1668,12 +1684,6 @@ begin
      end;
 
      if ForceUpdate or
-        (DescriptorIndex<>QueueItem^.DescriptorIndex) then begin
-      DescriptorIndex:=QueueItem^.DescriptorIndex;
-      aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[DescriptorIndex].Handle,0,nil);
-     end;
-
-     if ForceUpdate or
         (TextureMode<>QueueItem^.TextureMode) then begin
       TextureMode:=QueueItem^.TextureMode;
       aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.TextureMode].Handle);
@@ -1681,11 +1691,18 @@ begin
       OldScissor.offset.y:=-$7fffffff;
       OldScissor.extent.Width:=$7fffffff;
       OldScissor.extent.Height:=$7fffffff;
+      DescriptorIndex:=-1;
+     end;
+
+     if ForceUpdate or
+        (DescriptorIndex<>QueueItem^.DescriptorIndex) then begin
+      DescriptorIndex:=QueueItem^.DescriptorIndex;
+      aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayouts[QueueItem^.TextureMode].Handle,0,1,@fVulkanDescriptorSets[DescriptorIndex].Handle,0,nil);
      end;
 
      if ForceUpdate or
         (Matrix<>QueueItem^.Matrix) then begin
-      aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvMatrix4x4),@QueueItem^.Matrix);
+      aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayouts[TextureMode].Handle,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvMatrix4x4),@QueueItem^.Matrix);
      end;
 
      if ForceUpdate or
@@ -1729,8 +1746,11 @@ begin
 end;
 
 function TpvCanvas.Push:TpvCanvas;
+var NewState:TpvCanvasState;
 begin
- fStateStack.Push(TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(TpvCanvasState.Create)))));
+ NewState:=TpvCanvasState.Create;
+ NewState.Assign(fState);
+ fStateStack.Push(TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(NewState)))));
  result:=self;
 end;
 
@@ -2091,6 +2111,12 @@ begin
  result:=self;
 end;
 
+function TpvCanvas.EndPath:TpvCanvas;
+begin
+ fState.fPath.EndPath;
+ result:=self;
+end;
+
 function TpvCanvas.ClosePath:TpvCanvas;
 begin
  fState.fPath.ClosePath;
@@ -2159,7 +2185,7 @@ var StartPoint,LastPoint:TpvVector2;
     SetLength(fCacheLinePoints,fCountCacheLinePoints*2);
    end;
    CacheLinePoint:=@fCacheLinePoints[Index];
-   CacheLinePoint^.Position:=aP0;
+   CacheLinePoint^.Position:=fState.fModelMatrix*aP0;
   end;
  end;
  procedure StrokeFlush;
@@ -2511,7 +2537,7 @@ var StartPoint,LastPoint:TpvVector2;
  begin
   if fCountCacheLinePoints>2 then begin
    for i:=fCountCacheLinePoints-2 downto 0 do begin
-    if fCacheLinePoints[i].Position<>fCacheLinePoints[i+1].Position then begin
+    if fCacheLinePoints[i].Position=fCacheLinePoints[i+1].Position then begin
      dec(fCountCacheLinePoints);
      Move(fCacheLinePoints[i-1],fCacheLinePoints[i],fCountCacheLinePoints*SizeOf(TpvCanvasCacheLinePoint));
     end;
@@ -2631,6 +2657,7 @@ begin
    end;
   end;
  end;
+ StrokeFlush;
  result:=self;
 end;
 
