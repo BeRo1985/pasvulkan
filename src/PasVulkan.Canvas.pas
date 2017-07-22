@@ -230,52 +230,38 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasStateStack=class(TObjectStack<TpvCanvasState>);
 
-     TpvCanvasPolyLines=class;
-
-     TpvCanvasPolygons=class;
-
-     PpvCanvasCacheTrianglePoint=^TpvCanvasCacheTrianglePoints;
-     TpvCanvasCacheTrianglePoint=record
-      Kind:TVkInt32;
+     PpvCanvasShapeCacheVertex=^TpvCanvasShapeCacheVertex;
+     TpvCanvasShapeCacheVertex=record
+      ObjectMode:TVkUInt32;
       Position:TpvVector2;
-      MetaInfos:array[0..1] of TpvVector4;
+      MetaInfo:TpvVector4;
      end;
 
-     PpvCanvasCacheTrianglePoints=^TpvCanvasCacheTrianglePoints;
-     TpvCanvasCacheTrianglePoints=array[0..2] of TpvCanvasCacheTrianglePoint;
+     PpvCanvasShapeCacheVertices=^TpvCanvasShapeCacheVertices;
+     TpvCanvasShapeCacheVertices=array[0..2] of TpvCanvasShapeCacheVertex;
 
-     PpvCanvasCacheTriangle=^TpvCanvasCacheTriangle;
-     TpvCanvasCacheTriangle=record
-      Points:TpvCanvasCacheTrianglePoints;
+     TpvCanvasShapeCacheIndices=array of TpvUInt32;
+
+     PpvCanvasShapeCacheGroup=^TpvCanvasShapeCacheGroup;
+     TpvCanvasShapeCacheGroup=record
+      Vertices:TpvCanvasShapeCacheVertices;
+      Indices:TpvCanvasShapeCacheIndices;
+      CountVertices:TpvInt32;
+      CountIndices:TpvInt32;
      end;
 
-     TpvCanvasCacheTriangles=array of TpvCanvasCacheTriangle;
+     TpvCanvasShapeCacheGroups=array of TpvCanvasShapeCacheGroup;
 
      TpvCanvasShape=class
       private
-       fTriangles:TpvCanvasCacheTriangles;
-       fCountTriangles:TpvInt32;
+       fCacheGroups:TpvCanvasShapeCacheGroups;
+       fCountCacheGroups:TpvInt32;
+       function NewCacheGroup:PpvCanvasShapeCacheGroup;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure Assign(const aFrom:TpvCanvasPolyLines); overload;
-       procedure Assign(const aFrom:TpvCanvasPolygons); overload;
-     end;
-
-     TpvCanvasPolyLines=class
-      private
-      public
-       constructor Create(const aPath:TpvCanvasPath=nil); reintroduce;
-       destructor Destroy; override;
-       procedure Assign(const aPath:TpvCanvasPath);
-     end;
-
-     TpvCanvasPolygons=class
-      private
-      public
-       constructor Create(const aPath:TpvCanvasPath=nil); reintroduce;
-       destructor Destroy; override;
-       procedure Assign(const aPath:TpvCanvasPath);
+       procedure StrokeFromPath(const aPath:TpvCanvasPath);
+       procedure FillFromPath(const aPath:TpvCanvasPath);
      end;
 
      PpvCanvasVertex=^TpvCanvasVertex;
@@ -727,58 +713,35 @@ end;
 constructor TpvCanvasShape.Create;
 begin
  inherited Create;
- fTriangles:=nil;
- fCountTriangles:=0;
+ fCacheGroups:=nil;
+ fCountCacheGroups:=0;
 end;
 
 destructor TpvCanvasShape.Destroy;
 begin
- fTriangles:=nil;
+ fCacheGroups:=nil;
  inherited Destroy;
 end;
 
-procedure TpvCanvasShape.Assign(const aFrom:TpvCanvasPolyLines);
+function TpvCanvasShape.NewCacheGroup:PpvCanvasShapeCacheGroup;
 begin
- fCountTriangles:=0;
-end;
-
-procedure TpvCanvasShape.Assign(const aFrom:TpvCanvasPolygons);
-begin
- fCountTriangles:=0;
-end;
-
-constructor TpvCanvasPolyLines.Create(const aPath:TpvCanvasPath=nil);
-begin
- inherited Create;
- if assigned(aPath) then begin
-  Assign(aPath);
+ inc(fCountCacheGroups);
+ if length(fCacheGroups)<fCountCacheGroups then begin
+  SetLength(fCacheGroups,fCountCacheGroups*2);
  end;
+ result:=@fCacheGroups[fCountCacheGroups-1];
+ result^.CountVertices:=0;
+ result^.CountIndices:=0;
 end;
 
-destructor TpvCanvasPolyLines.Destroy;
+procedure TpvCanvasShape.StrokeFromPath(const aPath:TpvCanvasPath);
 begin
- inherited Destroy;
+ fCountCacheGroups:=0;
 end;
 
-procedure TpvCanvasPolyLines.Assign(const aPath:TpvCanvasPath);
+procedure TpvCanvasShape.FillFromPath(const aPath:TpvCanvasPath);
 begin
-end;
-
-constructor TpvCanvasPolygons.Create(const aPath:TpvCanvasPath=nil);
-begin
- inherited Create;
- if assigned(aPath) then begin
-  Assign(aPath);
- end;
-end;
-
-destructor TpvCanvasPolygons.Destroy;
-begin
- inherited Destroy;
-end;
-
-procedure TpvCanvasPolygons.Assign(const aPath:TpvCanvasPath);
-begin
+ fCountCacheGroups:=0;
 end;
 
 constructor TpvCanvasCommon.Create(const aDevice:TpvVulkanDevice);
