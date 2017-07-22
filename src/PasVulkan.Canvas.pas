@@ -2218,7 +2218,7 @@ var StartPoint,LastPoint:TpvVector2;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices]:=VertexIndex;
    inc(fCurrentCountIndices);
   end;
-{-$define FasterRoundCap}
+{$define FasterRoundCap}
 {$ifdef FasterRoundCap}
   procedure CreateRoundCap(const Center,p0,p1,NextPointInLine:TpvVector2); // On the CPU faster but with more overdraw on the GPU
   const Offsets:array[0..2] of TpvVector2=

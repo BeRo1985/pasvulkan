@@ -3,9 +3,10 @@
 layout(location = 0) in vec2 inPosition; // 2D position
 layout(location = 1) in vec4 inColor;    // RGBA Color 
 layout(location = 2) in vec3 inTexCoord; // 2D texture coordinate with array texture layer index inside the z component
-layout(location = 3) flat in ivec4 inState; // x = Blending mode, y = Rendering mode, z = object type, w = not used yet
+layout(location = 3) flat in ivec4 inState; // x = Rendering mode, y = object type, z = not used yet, w = not used yet
 layout(location = 4) in vec4 inClipRect; // xy = Left Top, zw = Right Bottom
 layout(location = 5) in vec4 inMetaInfo; // Various stuff
+layout(location = 6) flat in vec2 inBlendFactors; // x = Alpha channel factor, y = multiplication mode factor 
 
 #if defined(ATLAS_TEXTURE)
 layout(binding = 0) uniform sampler2DArray uTexture;
@@ -20,7 +21,7 @@ void main(void){
 #ifdef NO_TEXTURE
   color = inColor;
 #else 
-  switch(inState.y){ 
+  switch(inState.x){ 
     case 1:{
       const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), ONE_BY_THREE = 1.0 / 3.0;     
 #if defined(ATLAS_TEXTURE)
@@ -55,9 +56,9 @@ void main(void){
   }
   color *= inColor;
 #endif
-  if(inState.z != 0){
+  if(inState.y != 0){
     float threshold = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy)));
-    switch(inState.z){
+    switch(inState.y){
       case 0x01:{
         // Distance to line edge
         color.a *= min(smoothstep(0.0, -threshold, -(inMetaInfo.z - abs(inMetaInfo.x))),  // To the line edges left and right
@@ -71,23 +72,6 @@ void main(void){
       }
     }
   }
-  switch(inState.x){
-    case 1:{
-      // Alpha blending
-      color = vec4(color.rgb, 1.0) * color.a;
-      break;
-    }
-    case 2:{
-      // Additive blending
-      color = vec4(color.rgb, 0.0) * color.a;
-      break;
-    }
-    default:{
-      // No blending
-      color = vec4(color.rgb, 1.0) * clamp(floor(color.a + 0.5), 0.0, 1.0);
-      break;
-    }
-  }
-  outFragColor = color * 
+  outFragColor = (vec4(color.rgb, inBlendFactors.x) * mix(clamp(floor(color.a + 0.5), 0.0, 1.0), color.a, inBlendFactors.y)) * 
                  (step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w));
 }

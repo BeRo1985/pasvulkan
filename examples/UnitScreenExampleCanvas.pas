@@ -576,7 +576,7 @@ begin
 
  fVulkanCanvas.Push;
 //fVulkanCanvas.ModelMatrix:=TpvMatrix3x3.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5);
- fVulkanCanvas.LineWidth:=4.0;
+ fVulkanCanvas.LineWidth:=10.0+(sin((fTime*0.13)*pi*2.0)*6.0);
  fVulkanCanvas.BeginPath;
  fVulkanCanvas.MoveTo(fVulkanCanvas.Width*(0.5+(sin(fTime*0.5)*0.375)),fVulkanCanvas.Height*(0.5+(cos(fTime*2.0)*0.375)));
  fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(cos(fTime*0.5)*0.375)),fVulkanCanvas.Height*(0.5+(sin(fTime*2.0)*0.375)));
