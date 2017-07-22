@@ -3,7 +3,7 @@
 layout(location = 0) in vec2 inPosition; // 2D position
 layout(location = 1) in vec4 inColor;    // RGBA Color 
 layout(location = 2) in vec3 inTexCoord; // 2D texture coordinate with array texture layer index inside the z component
-layout(location = 3) flat in uint inState; // 2 bits Blending mode (0 = No blending, 1 = Additive blending, 2 = Alpha blending), 2 bits = Rendering mode (0 = Normal, 1 = SDF font), 8 bits = object type 
+layout(location = 3) flat in ivec4 inState; // x = Blending mode, y = Rendering mode, z = object type, w = not used yet
 layout(location = 4) in vec4 inClipRect; // xy = Left Top, zw = Right Bottom
 layout(location = 5) in vec4 inMetaInfo; // Various stuff
 
@@ -20,7 +20,7 @@ void main(void){
 #ifdef NO_TEXTURE
   color = inColor;
 #else 
-  switch(int((inState >> 2u) & 0x3u)){ 
+  switch(inState.y){ 
     case 1:{
       const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), ONE_BY_THREE = 1.0 / 3.0;     
 #if defined(ATLAS_TEXTURE)
@@ -55,10 +55,9 @@ void main(void){
   }
   color *= inColor;
 #endif
-  int objectMode = int((inState >> 4u) & 0xffu);
-  if(objectMode != 0){
+  if(inState.z != 0){
     float threshold = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy)));
-    switch(objectMode){
+    switch(inState.z){
       case 0x01:{
         // Distance to line edge
         color.a *= min(smoothstep(0.0, -threshold, -(inMetaInfo.z - abs(inMetaInfo.x))),  // To the line edges left and right
@@ -72,11 +71,7 @@ void main(void){
       }
     }
   }
-#if 0
-  int blendingMode = int((inState >> 0u) & 0x3u);
-  color = vec4(color.rgb, float(blendingMode < 2)) * mix(color.a, clamp(floor(color.a + 0.5), 0.0, 1.0), float(blendingMode >= 2));
-#else
-  switch(int((inState >> 0u) & 0x3u)){
+  switch(inState.x){
     case 1:{
       // Alpha blending
       color = vec4(color.rgb, 1.0) * color.a;
@@ -93,7 +88,6 @@ void main(void){
       break;
     }
   }
-#endif
   outFragColor = color * 
                  (step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w));
 }

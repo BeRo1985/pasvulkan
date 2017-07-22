@@ -10,7 +10,7 @@ layout(location = 5) in vec4 inMetaInfo;
 layout(location = 0) out vec2 outPosition;
 layout(location = 1) out vec4 outColor;
 layout(location = 2) out vec3 outTexCoord;
-layout(location = 3) flat out uint outState;    
+layout(location = 3) flat out ivec4 outState;    
 layout(location = 4) out vec4 outClipRect; 
 layout(location = 5) out vec4 outMetaInfo; 
 
@@ -26,7 +26,10 @@ void main(void){
   outPosition = inPosition;
   outColor = inColor;
   outTexCoord = inTexCoord;
-  outState = inState;
+  outState = ivec4(uvec4((inState >> 0u) & 0x3u,
+                         (inState >> 2u) & 0x3u,
+                         (inState >> 4u) & 0xffu,                         
+                         0u));
   outClipRect = inClipRect;
   outMetaInfo = inMetaInfo;
   gl_Position = pushConstants.matrix * vec4(inPosition, 0.0, 1.0);
