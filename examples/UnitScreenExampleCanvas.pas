@@ -541,7 +541,6 @@ begin
 
  fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
-
  rbs:='This is an example text';
 
  fVulkanCanvas.Color:=TpvVector4.Create((sin((fTime*0.43)*pi*2.0)*0.5)+0.5,

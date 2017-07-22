@@ -383,6 +383,14 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasVulkanGraphicsPipelines=array[boolean] of TpvVulkanGraphicsPipeline;
 
+     PpvCanvasCacheLinePoint=^TpvCanvasCacheLinePoint;
+     TpvCanvasCacheLinePoint=record
+      Position:TpvVector2;
+      Middle:TpvVector2;
+     end;
+
+     TpvCanvasCacheLinePoints=array of TpvCanvasCacheLinePoint;
+
      TpvCanvas=class
       private
        fDevice:TpvVulkanDevice;
@@ -419,9 +427,11 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCurrentDestinationIndexBufferPointer:PpvCanvasIndexBuffer;
        fInternalRenderingMode:TpvCanvasRenderingMode;
        fInternalTexture:TObject;
+       fCacheLinePoints:TpvCanvasCacheLinePoints;
+       fCountCacheLinePoints:TpvInt32;
        fState:TpvCanvasState;
        fStateStack:TpvCanvasStateStack;
-       procedure SetInternalArrayTexture(const aArrayTexture:TpvSpriteAtlasArrayTexture);
+       procedure SetIntemalTexture(const aTexture:TpvSpriteAtlasArrayTexture);
        function GetBlendingMode:TpvCanvasBlendingMode; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
        function GetLineWidth:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -890,6 +900,9 @@ begin
 
  fInternalTexture:=nil;
 
+ fCacheLinePoints:=nil;
+ fCountCacheLinePoints:=0;
+
  fState:=TpvCanvasState.Create;
 
  fStateStack:=TpvCanvasStateStack.Create(true);
@@ -1058,6 +1071,8 @@ begin
 
  FreeAndNil(fState);
 
+ fCacheLinePoints:=nil;
+
  for TextureModeIndex:=false to true do begin
   FreeAndNil(fVulkanGraphicsPipelines[TextureModeIndex]);
  end;
@@ -1108,11 +1123,11 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvCanvas.SetInternalArrayTexture(const aArrayTexture:TpvSpriteAtlasArrayTexture);
+procedure TpvCanvas.SetIntemalTexture(const aTexture:TpvSpriteAtlasArrayTexture);
 begin
- if fInternalTexture<>aArrayTexture then begin
+ if fInternalTexture<>aTexture then begin
   Flush;
-  fInternalTexture:=aArrayTexture;
+  fInternalTexture:=aTexture;
  end;
 end;
 
@@ -1766,7 +1781,7 @@ begin
   VertexColor.b:=fState.fColor.b;
   VertexColor.a:=fState.fColor.a;
   VertexState:=GetVertexState;
-  SetInternalArrayTexture(aSprite.ArrayTexture);
+  SetIntemalTexture(aSprite.ArrayTexture);
   FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
   if aSprite.Rotated then begin
    tx1:=Max(aSprite.TrimmedX,aSrc.Left);
@@ -2131,7 +2146,491 @@ begin
 end;
 
 function TpvCanvas.Stroke:TpvCanvas;
+var StartPoint,LastPoint:TpvVector2;
+ procedure StrokeAddPoint(const aP0:TpvVector2);
+ var Index:TpvInt32;
+     CacheLinePoint:PpvCanvasCacheLinePoint;
+ begin
+  if (fCountCacheLinePoints=0) or
+     (fCacheLinePoints[fCountCacheLinePoints-1].Position<>aP0) then begin
+   Index:=fCountCacheLinePoints;
+   inc(fCountCacheLinePoints);
+   if length(fCacheLinePoints)<fCountCacheLinePoints then begin
+    SetLength(fCacheLinePoints,fCountCacheLinePoints*2);
+   end;
+   CacheLinePoint:=@fCacheLinePoints[Index];
+   CacheLinePoint^.Position:=aP0;
+  end;
+ end;
+ procedure StrokeFlush;
+ var VertexColor:TpvHalfFloatVector4;
+     VertexState:TpvHalfFloatVector2;
+     Closed:boolean;
+     Width:TpvFloat;
+     v0,v1,v2,v3:TpvVector2;
+     First:boolean;
+  function AddVertex(const Position:TpvVector2;const MetaInfo:TpvVector4):TpvInt32;
+  var v:PpvCanvasVertex;
+  begin
+   result:=fCurrentCountVertices;
+   v:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices];
+   inc(fCurrentCountVertices);
+   v^.Position:=Position;
+   v^.Color:=VertexColor;
+   v^.TextureCoord:=Vector3Origin;
+   v^.State:=VertexState;
+   v^.ClipRect:=fState.fClipRect;
+   v^.MetaInfo:=MetaInfo;
+  end;
+  function AddIndex(const VertexIndex:TpvInt32):TpvInt32;
+  begin
+   result:=fCurrentCountIndices;
+   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices]:=VertexIndex;
+   inc(fCurrentCountIndices);
+  end;
+{-$define FasterRoundCap}
+{$ifdef FasterRoundCap}
+  procedure CreateRoundCap(const Center,p0,p1,NextPointInLine:TpvVector2); // On the CPU faster but with more overdraw on the GPU
+  const Offsets:array[0..2] of TpvVector2=
+         ((x:1.414213562373095;y:0.0),
+          (x:-1.414213562373095;y:-2.82842712474619),
+          (x:-1.414213562373095;y:2.82842712474619));
+{ const Offsets:array[0..2] of TpvVector2=
+         ((x:-1.0;y:-1.0),
+          (x:-1.0;y:3.0),
+          (x:3.0;y:-1.0)); }
+  var Radius:TpvFloat;
+      MetaInfo:TpvVector4;
+      Normal:TpvVector2;
+      Matrix:TpvMatrix2x2;
+  begin
+   Radius:=p0.DistanceTo(Center);
+   MetaInfo:=TpvVector4.Create(Center.x,Center.y,Radius,-1.0);
+   FlushAndGetNewDestinationVertexBufferIfNeeded(3,3);
+   Normal:=(Center-NextPointInLine).Normalize;
+   Matrix:=TpvMatrix2x2.Create(Normal,TpvVector2.Create(-Normal.y,Normal.x));
+   AddIndex(AddVertex(Center+((Matrix*Offsets[0])*Radius),MetaInfo));
+   AddIndex(AddVertex(Center+((Matrix*Offsets[1])*Radius),MetaInfo));
+   AddIndex(AddVertex(Center+((Matrix*Offsets[2])*Radius),MetaInfo));
+ end;
+{$else}
+  procedure CreateRoundCap(const Center,p0,p1,NextPointInLine:TpvVector2); // On the CPU slower but with less overdraw on the GPU
+  var Radius,Angle0,Angle1,AngleDifference,AngleIncrement,Phase:TpvFloat;
+      Segments,iCenter,iLast,iCurrent,i:TpvInt32;
+      MetaInfo:TpvVector4;
+  begin
+   Radius:=Center.DistanceTo(p0);
+   Angle0:=AngleClamp(ArcTan2(p1.y-Center.y,p1.x-Center.x));
+   Angle1:=AngleClamp(ArcTan2(p0.y-Center.y,p0.x-Center.x));
+   AngleDifference:=AngleDiff(Angle0,Angle1);{}
+{  Angle0:=ModuloPos(ModuloPos(ArcTan2(p1.y-Center.y,p1.x-Center.x)+pi,pi2)+pi2,pi2)-pi;
+   Angle1:=ModuloPos(ModuloPos(ArcTan2(p0.y-Center.y,p0.x-Center.x)+pi,pi2)+pi2,pi2)-pi;
+   AngleDifference:=ModuloPos((Angle1-Angle0)+pi,pi2)-pi;{}
+{  if (abs(pi-abs(AngleDifference))<1e-4) and
+      (Vector2Dot(Vector2Norm(Vector2Sub(Center,NextPointInLine)),Vector2AngleDirection(Angle0+(AngleDifference*0.5)))<0.0) then begin
+    AngleDifference:=-AngleDifference;
+   end;}
+   if (abs(pi-abs(AngleDifference))<1e-4) then begin
+    Angle0:=ArcTan2(NextPointInLine.x-Center.x,Center.y-NextPointInLine.y);
+    AngleDifference:=pi;
+   end;
+   Segments:=Max(4,trunc(ceil((abs(AngleDifference)*Radius)/8.0)));
+   AngleIncrement:=AngleDifference/Segments;
+   MetaInfo:=TpvVector4.Create(Center.x,Center.y,Radius,-1.0);
+   Radius:=ceil(Radius);
+   if Segments<1024 then begin
+    FlushAndGetNewDestinationVertexBufferIfNeeded(2+Segments,Segments*3);
+    iCenter:=AddVertex(Center,MetaInfo);
+    Phase:=Angle0;
+    iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),MetaInfo);
+    for i:=0 to Segments-1 do begin
+     iLast:=iCurrent;
+     Phase:=Phase+AngleIncrement;
+     iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),MetaInfo);
+     AddIndex(iCenter);
+     AddIndex(iLast);
+     AddIndex(iCurrent);
+    end;
+   end else begin
+    Phase:=Angle0;
+    for i:=0 to Segments-1 do begin
+     FlushAndGetNewDestinationVertexBufferIfNeeded(3,3);
+     iCenter:=AddVertex(Center,MetaInfo);
+     iLast:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),MetaInfo);
+     Phase:=Phase+AngleIncrement;
+     iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),MetaInfo);
+     AddIndex(iCenter);
+     AddIndex(iLast);
+     AddIndex(iCurrent);
+    end;
+   end;
+  end;
+{$endif}
+  function LineIntersection(out p:TpvVector2;const v0,v1,v2,v3:TpvVector2):boolean;
+  const EPSILON=1e-8;
+  var a0,a1,b0,b1,c0,c1,Determinant:TpvFloat;
+  begin
+   a0:=v1.y-v0.y;
+   b0:=v0.x-v1.x;
+   a1:=v3.y-v2.y;
+   b1:=v2.x-v3.x;
+   Determinant:=(a0*b1)-(a1*b0);
+   result:=abs(Determinant)>EPSILON;
+   if result then begin
+    c0:=(a0*v0.x)+(b0*v0.y);
+    c1:=(a1*v2.x)+(b1*v2.y);
+    p.x:=((b1*c0)-(b0*c1))/Determinant;
+    p.y:=((a0*c1)-(a1*c0))/Determinant;
+   end;
+  end;
+  function SignedArea(const v1,v2,v3:TpvVector2):TpvFloat;
+  begin
+   result:=((v2.x-v1.x)*(v3.y-v1.y))-((v3.x-v1.x)*(v2.y-v1.y));
+  end;
+  procedure CreateSquareCap(const p0,p1,d:TpvVector2);
+  var ip0,ip0d,ip1d,ip1:TpvInt32;
+  begin
+   FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
+   ip0:=AddVertex(p0,TpvVector4.Create(-Width,0.0,Width,Width));
+   ip0d:=AddVertex(p0+d,TpvVector4.Create(-Width,Width,Width,Width));
+   ip1d:=AddVertex(p1+d,TpvVector4.Create(Width,Width,Width,Width));
+   ip1:=AddVertex(p1,TpvVector4.Create(Width,0.0,Width,Width));
+   AddIndex(ip0);
+   AddIndex(ip0d);
+   AddIndex(ip1d);
+   AddIndex(ip1);
+   AddIndex(ip1d);
+   AddIndex(ip0);
+  end;
+  procedure CreateTriangles(const p0,p1,p2:TpvVector2;const LineJoin:TpvCanvasLineJoin;MiterLimit:TpvFloat;const IsFirst,IsLast:boolean);
+  var CountVerticesToAdd,CountIndicesToAdd,LineJoinCase,
+      ip0at0,ip0st0,ip1sAnchor,ip1at0,ip1st0,ip2at2,ip1st2,ip1at2,ip2st2,ip1,iIntersectionPoint,iCenter:TpvInt32;
+      t0,t2,IntersectionPoint,Anchor,p0p1,p1p2:TpvVector2;
+      AnchorLength,dd,p0p1Length,p1p2Length,l0,l2,s0,s2:TpvFloat;
+      DoIntersect:boolean;
+  begin
+   t0:=(p1-p0).Perpendicular.Normalize*Width;
+   t2:=(p2-p1).Perpendicular.Normalize*Width;
+   if SignedArea(p0,p1,p2)>0.0 then begin
+    t0:=-t0;
+    t2:=-t2;
+   end;
+   DoIntersect:=LineIntersection(IntersectionPoint,p0+t0,p1+t0,p2+t2,p1+t2);
+   if DoIntersect and not (IsFirst and IsLast) then begin
+    Anchor:=IntersectionPoint-p1;
+    AnchorLength:=Anchor.Length;
+    dd:=AnchorLength/Width;
+   end else begin
+    Anchor:=Vector2Origin;
+    AnchorLength:=3.4e+28;
+    dd:=0.0;
+   end;
+   p0p1:=p0-p1;
+   p1p2:=p1-p2;
+   p0p1Length:=p0p1.Length;
+   p1p2Length:=p1p2.Length;
+   if First then begin
+    v0:=p0+t0;
+    v1:=p0-t0;
+   end;
+   v2:=p2-t2;
+   v3:=p2+t2;
+   if Closed or (fState.fLineCap<>pvclcButt) then begin
+    l0:=0.0;
+    l2:=0.0;
+    s0:=Width;
+    s2:=Width;
+   end else begin
+    if IsFirst then begin
+     l0:=p0.DistanceTo(p1);
+     s0:=l0;
+    end else begin
+     l0:=0.0;
+     s0:=Width;
+    end;
+    if IsLast then begin
+     l2:=p1.DistanceTo(p2);
+     s2:=l2;
+    end else begin
+     l2:=0.0;
+     s2:=Width;
+    end;
+   end;
+   if (AnchorLength>p0p1Length) or (AnchorLength>p1p2Length) then begin
+    // The cross point exceeds any of the segments dimension.
+    // Do not use cross point as reference.
+    // This case deserves more attention to avoid redraw, currently works by overdrawing large parts.
+    CountVerticesToAdd:=8;
+    CountIndicesToAdd:=12;
+    if LineJoin=pvcljRound then begin
+     LineJoinCase:=0;
+    end else if (LineJoin=pvcljBevel) or ((LineJoin=pvcljMiter) and (dd>=MiterLimit)) then begin
+     LineJoinCase:=1;
+     inc(CountVerticesToAdd,3);
+     inc(CountIndicesToAdd,3);
+    end else if (LineJoin=pvcljMiter) and (dd<MiterLimit) and DoIntersect then begin
+     LineJoinCase:=2;
+     inc(CountVerticesToAdd,4);
+     inc(CountIndicesToAdd,6);
+    end else begin
+     LineJoinCase:=3;
+    end;
+    FlushAndGetNewDestinationVertexBufferIfNeeded(CountVerticesToAdd,CountIndicesToAdd);
+    ip0at0:=AddVertex(p0+t0,TpvVector4.Create(Width,l0,Width,s0));
+    ip0st0:=AddVertex(p0-t0,TpvVector4.Create(-Width,l0,Width,s0));
+    ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,s0));
+    ip1st0:=AddVertex(p1-t0,TpvVector4.Create(-Width,0.0,Width,s0));
+    AddIndex(ip0at0);
+    AddIndex(ip0st0);
+    AddIndex(ip1at0);
+    AddIndex(ip0st0);
+    AddIndex(ip1at0);
+    AddIndex(ip1st0);
+    ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,s2));
+    ip2at2:=AddVertex(p2+t2,TpvVector4.Create(Width,l2,Width,s2));
+    ip1st2:=AddVertex(p1-t2,TpvVector4.Create(-Width,0.0,Width,s2));
+    ip2st2:=AddVertex(p2-t2,TpvVector4.Create(-Width,l2,Width,s2));
+    AddIndex(ip2at2);
+    AddIndex(ip1st2);
+    AddIndex(ip1at2);
+    AddIndex(ip2at2);
+    AddIndex(ip1st2);
+    AddIndex(ip2st2);
+    case LineJoinCase of
+     0:begin
+      // Round join
+      CreateRoundCap(p1,p1+t0,p1+t2,p2);
+     end;
+     1:begin
+      // Bevel join
+      ip1:=AddVertex(p1,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,Width));
+      AddIndex(ip1);
+      AddIndex(ip1at0);
+      AddIndex(ip1at2);
+     end;
+     2:begin
+      // Miter join
+      ip1:=AddVertex(p1,TpvVector4.Create(0.0,0.0,Width,Width));
+      iIntersectionPoint:=AddVertex(IntersectionPoint,TpvVector4.Create(AnchorLength,0.0,AnchorLength,Width));
+      ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,Width));
+      AddIndex(ip1at0);
+      AddIndex(ip1);
+      AddIndex(iIntersectionPoint);
+      AddIndex(ip1at2);
+      AddIndex(ip1);
+      AddIndex(iIntersectionPoint);
+     end;
+     else begin
+      // Nothing
+     end;
+    end;
+   end else begin
+    CountVerticesToAdd:=8;
+    CountIndicesToAdd:=12;
+    if LineJoin=pvcljRound then begin
+     LineJoinCase:=0;
+     inc(CountVerticesToAdd,4);
+     inc(CountIndicesToAdd,6);
+    end else if (LineJoin=pvcljBevel) or ((LineJoin=pvcljMiter) and (dd>=MiterLimit)) then begin
+     LineJoinCase:=1;
+     inc(CountVerticesToAdd,3);
+     inc(CountIndicesToAdd,3);
+    end else if (LineJoin=pvcljMiter) and (dd<MiterLimit) and DoIntersect then begin
+     LineJoinCase:=2;
+     inc(CountVerticesToAdd,4);
+     inc(CountIndicesToAdd,6);
+    end else begin
+     LineJoinCase:=3;
+    end;
+    FlushAndGetNewDestinationVertexBufferIfNeeded(CountVerticesToAdd,CountIndicesToAdd);
+    ip0at0:=AddVertex(p0+t0,TpvVector4.Create(Width,l0,Width,s0));
+    ip0st0:=AddVertex(p0-t0,TpvVector4.Create(-Width,l0,Width,s0));
+    ip1sAnchor:=AddVertex(p1-Anchor,TpvVector4.Create(-Width,0.0,Width,s0));
+    ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,s0));
+    AddIndex(ip0at0);
+    AddIndex(ip0st0);
+    AddIndex(ip1sAnchor);
+    AddIndex(ip0at0);
+    AddIndex(ip1sAnchor);
+    AddIndex(ip1at0);
+    ip1sAnchor:=AddVertex(p1-Anchor,TpvVector4.Create(-Width,0.0,Width,s2));
+    ip2at2:=AddVertex(p2+t2,TpvVector4.Create(Width,l2,Width,s2));
+    ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,s2));
+    ip2st2:=AddVertex(p2-t2,TpvVector4.Create(-Width,l2,Width,s2));
+    AddIndex(ip2at2);
+    AddIndex(ip1sAnchor);
+    AddIndex(ip1at2);
+    AddIndex(ip2at2);
+    AddIndex(ip1sAnchor);
+    AddIndex(ip2st2);
+    case LineJoinCase of
+     0:begin
+      // Round join
+      ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1:=AddVertex(p1,TpvVector4.Create(0.0,0.0,Width,Width));
+      ip1sAnchor:=AddVertex(p1-Anchor,TpvVector4.Create(-Width,0.0,Width,Width));
+      ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,Width));
+      AddIndex(ip1at0);
+      AddIndex(ip1);
+      AddIndex(ip1sAnchor);
+      AddIndex(ip1);
+      AddIndex(ip1at2);
+      AddIndex(ip1sAnchor);
+      CreateRoundCap(p1,p1+t0,p1+t2,p1-Anchor);
+     end;
+     1:begin
+      // Bevel join
+      ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1sAnchor:=AddVertex(p1-Anchor,TpvVector4.Create(-AnchorLength,0.0,AnchorLength,Width));
+      AddIndex(ip1at0);
+      AddIndex(ip1at2);
+      AddIndex(ip1sAnchor);
+     end;
+     2:begin
+      // Miter join
+      ip1at0:=AddVertex(p1+t0,TpvVector4.Create(Width,0.0,Width,Width));
+      ip1at2:=AddVertex(p1+t2,TpvVector4.Create(Width,0.0,Width,Width));
+      iCenter:=AddVertex(p1-Anchor,TpvVector4.Create(-AnchorLength,0.0,AnchorLength,Width));
+      iIntersectionPoint:=AddVertex(IntersectionPoint,TpvVector4.Create(AnchorLength,0.0,AnchorLength,Width));
+      AddIndex(ip1at0);
+      AddIndex(iCenter);
+      AddIndex(iIntersectionPoint);
+      AddIndex(iCenter);
+      AddIndex(ip1at2);
+      AddIndex(iIntersectionPoint);
+     end;
+    end;
+   end;
+   First:=false;
+  end;
+ var i:TpvInt32;
+ begin
+  if fCountCacheLinePoints>2 then begin
+   for i:=fCountCacheLinePoints-2 downto 0 do begin
+    if fCacheLinePoints[i].Position<>fCacheLinePoints[i+1].Position then begin
+     dec(fCountCacheLinePoints);
+     Move(fCacheLinePoints[i-1],fCacheLinePoints[i],fCountCacheLinePoints*SizeOf(TpvCanvasCacheLinePoint));
+    end;
+   end;
+   if fCountCacheLinePoints>2 then begin
+    VertexColor.r:=fState.fColor.r;
+    VertexColor.g:=fState.fColor.g;
+    VertexColor.b:=fState.fColor.b;
+    VertexColor.a:=fState.fColor.a;
+    VertexState:=GetVertexState;
+    Width:=abs(fState.fLineWidth)*0.5;
+    First:=true;
+    if fCountCacheLinePoints=2 then begin
+     Closed:=false;
+     CreateTriangles(fCacheLinePoints[0].Position,
+                     fCacheLinePoints[0].Position.Lerp(fCacheLinePoints[1].Position,0.5),
+                     fCacheLinePoints[1].Position,
+                     pvcljBevel,
+                     fState.fMiterLimit,
+                     true,
+                     true);
+    end else if fCountCacheLinePoints>2 then begin
+     Closed:=fCacheLinePoints[0].Position.DistanceTo(fCacheLinePoints[fCountCacheLinePoints-1].Position)<EPSILON;
+     if Closed then begin
+      fCacheLinePoints[0].Position:=(fCacheLinePoints[0].Position+fCacheLinePoints[1].Position)*0.5;
+      inc(fCountCacheLinePoints);
+      if fCountCacheLinePoints>length(fCacheLinePoints) then begin
+       SetLength(fCacheLinePoints,fCountCacheLinePoints*2);
+      end;
+      fCacheLinePoints[fCountCacheLinePoints-1]:=fCacheLinePoints[0];
+     end;
+     fCacheLinePoints[0].Middle:=fCacheLinePoints[0].Position;
+     for i:=1 to fCountCacheLinePoints-3 do begin
+      fCacheLinePoints[i].Middle:=(fCacheLinePoints[i].Position+fCacheLinePoints[i+1].Position)*0.5;
+     end;
+     fCacheLinePoints[fCountCacheLinePoints-2].Middle:=fCacheLinePoints[fCountCacheLinePoints-1].Position;
+     for i:=1 to fCountCacheLinePoints-2 do begin
+      CreateTriangles(fCacheLinePoints[i-1].Middle,
+                      fCacheLinePoints[i].Position,
+                      fCacheLinePoints[i].Middle,
+                      fState.fLineJoin,
+                      fState.fMiterLimit,
+                      i=1,
+                      i=(fCountCacheLinePoints-2));
+     end;
+    end;
+    if not Closed then begin
+     case fState.fLineCap of
+      pvclcRound:begin
+       CreateRoundCap(fCacheLinePoints[0].Position,v0,v1,fCacheLinePoints[1].Position);
+       CreateRoundCap(fCacheLinePoints[fCountCacheLinePoints-1].Position,v2,v3,fCacheLinePoints[fCountCacheLinePoints-2].Position);
+      end;
+      pvclcSquare:begin
+       CreateSquareCap(v0,
+                       v1,
+                       (fCacheLinePoints[0].Position-fCacheLinePoints[1].Position).Normalize*fCacheLinePoints[0].Position.DistanceTo(v0));
+       CreateSquareCap(v2,
+                       v3,
+                       (fCacheLinePoints[fCountCacheLinePoints-1].Position-fCacheLinePoints[fCountCacheLinePoints-2].Position).Normalize*fCacheLinePoints[fCountCacheLinePoints-1].Position.DistanceTo(v3));
+      end;
+     end;
+    end;
+   end;
+  end;
+  fCountCacheLinePoints:=0;
+ end;
+ procedure StrokeMoveTo(const aP0:TpvVector2);
+ begin
+  StrokeFlush;
+  StrokeAddPoint(aP0);
+  StartPoint:=aP0;
+  LastPoint:=aP0;
+ end;
+ procedure StrokeLineTo(const aP0:TpvVector2);
+ begin
+  StrokeAddPoint(aP0);
+  LastPoint:=aP0;
+ end;
+ procedure StrokeQuadraticCurveTo(const aC0,aA0:TpvVector2);
+ begin
+  LastPoint:=aA0;
+ end;
+ procedure StrokeCubicCurveTo(const aC0,aC1,aA0:TpvVector2);
+ begin
+  LastPoint:=aA0;
+ end;
+ procedure StrokeClose;
+ begin
+  if fCountCacheLinePoints>0 then begin
+   StrokeAddPoint(StartPoint);
+   StrokeFlush;
+  end;
+ end;
+var CommandIndex:TpvInt32;
+    Command:PpvCanvasPathCommand;
 begin
+ fInternalRenderingMode:=pvcrmNormal;
+ SetIntemalTexture(nil);
+ fCountCacheLinePoints:=0;
+ for CommandIndex:=0 to fState.fPath.fCountCommands-1 do begin
+  Command:=@fState.fPath.fCommands[CommandIndex];
+  case Command^.CommandType of
+   pcpctMoveTo:begin
+    StrokeMoveTo(Command.Points[0]);
+   end;
+   pcpctLineTo:begin
+    StrokeLineTo(Command.Points[0]);
+   end;
+   pcpctQuadraticCurveTo:begin
+    StrokeQuadraticCurveTo(Command.Points[0],Command.Points[1]);
+   end;
+   pcpctCubicCurveTo:begin
+    StrokeCubicCurveTo(Command.Points[0],Command.Points[1],Command.Points[2]);
+   end;
+   pcpctClose:begin
+    StrokeClose;
+   end;
+  end;
+ end;
  result:=self;
 end;
 
