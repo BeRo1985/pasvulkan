@@ -455,7 +455,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function GetTextVerticalAlignment:TpvCanvasTextVerticalAlignment; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetTextVerticalAlignment(aTextVerticalAlignment:TpvCanvasTextVerticalAlignment); {$ifdef CAN_INLINE}inline;{$endif}
        procedure GetNextDestinationVertexBuffer;
-       procedure FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
+       procedure FlushAndGetNewDestinationBuffersIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
        function ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
        function GetVertexState:TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
       public
@@ -2089,7 +2089,7 @@ begin
 
 end;
 
-procedure TpvCanvas.FlushAndGetNewDestinationVertexBufferIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
+procedure TpvCanvas.FlushAndGetNewDestinationBuffersIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
 const UntilCountVertices=SizeOf(TpvCanvasVertexBuffer) div SizeOf(TpvCanvasVertex);
       UntilCountIndices=SizeOf(TpvCanvasIndexBuffer) div SizeOf(TpvUInt32);
 begin
@@ -2355,7 +2355,7 @@ begin
   VertexColor.a:=fState.fColor.a;
   VertexState:=GetVertexState;
   SetInternalTexture(aSprite.ArrayTexture);
-  FlushAndGetNewDestinationVertexBufferIfNeeded(4,6);
+  FlushAndGetNewDestinationBuffersIfNeeded(4,6);
   if aSprite.Rotated then begin
    tx1:=Max(aSprite.TrimmedX,aSrc.Left);
    ty1:=Max(aSprite.TrimmedY,aSrc.Top);
@@ -2677,7 +2677,7 @@ begin
  ModelMatrixIsIdentity:=fState.fModelMatrix=TpvMatrix3x3.Identity;
  for CachePartIndex:=0 to aShape.fCountCacheParts-1 do begin
   CachePart:=@aShape.fCacheParts[CachePartIndex];
-  FlushAndGetNewDestinationVertexBufferIfNeeded(CachePart^.CountVertices,CachePart^.CountIndices);
+  FlushAndGetNewDestinationBuffersIfNeeded(CachePart^.CountVertices,CachePart^.CountIndices);
   if ModelMatrixIsIdentity then begin
    for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
     CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
