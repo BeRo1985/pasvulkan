@@ -57,6 +57,8 @@ type TScreenExit=class(TScreenBlank)
 
        function Scrolled(const aAmount:TpvInt32):boolean; override;
 
+       function CanBeParallelProcessed:boolean; override;
+
        procedure Update(const aDeltaTime:TpvDouble); override;
 
      end;
@@ -210,6 +212,11 @@ end;
 function TScreenExit.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  result:=false;
+end;
+
+function TScreenExit.CanBeParallelProcessed:boolean;
+begin
+ result:=true;
 end;
 
 procedure TScreenExit.Update(const aDeltaTime:TpvDouble);

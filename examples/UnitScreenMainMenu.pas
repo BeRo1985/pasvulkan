@@ -57,6 +57,8 @@ type TScreenMainMenu=class(TScreenBlank)
 
        function Scrolled(const aAmount:TpvInt32):boolean; override;
 
+       function CanBeParallelProcessed:boolean; override;
+
        procedure Update(const aDeltaTime:double); override;
 
      end;
@@ -210,6 +212,11 @@ end;
 function TScreenMainMenu.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  result:=false;
+end;
+
+function TScreenMainMenu.CanBeParallelProcessed:boolean;
+begin
+ result:=true;
 end;
 
 procedure TScreenMainMenu.Update(const aDeltaTime:double);

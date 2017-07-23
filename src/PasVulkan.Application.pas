@@ -5840,7 +5840,7 @@ begin
     end;
    end;
    if CanBeParallelProcessed then begin
-    // At parallel processing, skip the next first screen frame, due to TpvDouble buffering at the parallel processing approach
+    // At parallel processing, skip the next first screen frame, due to double buffering at the parallel processing approach
     fSkipNextDrawFrame:=true;
    end;
   end;

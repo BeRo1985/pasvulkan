@@ -74,6 +74,8 @@ type TScreenExampleEmpty=class(TpvApplicationScreen)
 
        function Scrolled(const aAmount:TpvInt32):boolean; override;
 
+       function CanBeParallelProcessed:boolean; override;
+
        procedure Update(const aDeltaTime:TpvDouble); override;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
@@ -369,6 +371,11 @@ end;
 function TScreenExampleEmpty.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  result:=false;
+end;
+
+function TScreenExampleEmpty.CanBeParallelProcessed:boolean;
+begin
+ result:=true;
 end;
 
 procedure TScreenExampleEmpty.Update(const aDeltaTime:TpvDouble);

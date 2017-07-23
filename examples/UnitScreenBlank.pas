@@ -59,6 +59,8 @@ type TScreenBlank=class(TpvApplicationScreen)
 
        procedure BeforeDestroySwapChain; override;
 
+       function CanBeParallelProcessed:boolean; override;
+
        procedure Update(const aDeltaTime:TpvDouble); override;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
@@ -236,6 +238,11 @@ procedure TScreenBlank.BeforeDestroySwapChain;
 begin
  FreeAndNil(fVulkanRenderPass);
  inherited BeforeDestroySwapChain;
+end;
+
+function TScreenBlank.CanBeParallelProcessed:boolean;
+begin
+ result:=true;
 end;
 
 procedure TScreenBlank.Update(const aDeltaTime:TpvDouble);

@@ -105,6 +105,8 @@ type PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
 
        function Scrolled(const aAmount:TpvInt32):boolean; override;
 
+       function CanBeParallelProcessed:boolean; override;
+
        procedure Update(const aDeltaTime:TpvDouble); override;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
@@ -734,6 +736,11 @@ end;
 function TScreenExampleCube.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  result:=false;
+end;
+
+function TScreenExampleCube.CanBeParallelProcessed:boolean;
+begin
+ result:=true;
 end;
 
 procedure TScreenExampleCube.Update(const aDeltaTime:TpvDouble);

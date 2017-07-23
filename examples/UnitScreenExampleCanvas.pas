@@ -87,6 +87,8 @@ type TScreenExampleCanvas=class(TpvApplicationScreen)
 
        function Scrolled(const aAmount:TpvInt32):boolean; override;
 
+       function CanBeParallelProcessed:boolean; override;
+
        procedure Update(const aDeltaTime:TpvDouble); override;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
@@ -469,6 +471,11 @@ end;
 function TScreenExampleCanvas.Scrolled(const aAmount:TpvInt32):boolean;
 begin
  result:=false;
+end;
+
+function TScreenExampleCanvas.CanBeParallelProcessed:boolean;
+begin
+ result:=true;
 end;
 
 procedure TScreenExampleCanvas.Update(const aDeltaTime:TpvDouble);
