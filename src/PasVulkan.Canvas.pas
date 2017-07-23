@@ -245,6 +245,11 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasShapeCacheLinePoints=array of TpvCanvasShapeCacheLinePoint;
 
+     PpvCanvasShapeCacheSegment=^TpvCanvasShapeCacheSegment;
+     TpvCanvasShapeCacheSegment=array[0..1] of TpvVector2;
+
+     TpvCanvasShapeCacheSegments=array of TpvCanvasShapeCacheSegment;
+
      PpvCanvasShapeCacheVertices=^TpvCanvasShapeCacheVertices;
      TpvCanvasShapeCacheVertices=array of TpvCanvasShapeCacheVertex;
 
@@ -263,10 +268,12 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasShape=class
       private
        fCacheLinePoints:TpvCanvasShapeCacheLinePoints;
+       fCacheSegments:TpvCanvasShapeCacheSegments;
        fCacheVertices:TpvCanvasShapeCacheVertices;
        fCacheIndices:TpvCanvasShapeCacheIndices;
        fCacheParts:TpvCanvasShapeCacheParts;
        fCountCacheLinePoints:TpvInt32;
+       fCountCacheSegments:TpvInt32;
        fCountCacheVertices:TpvInt32;
        fCountCacheIndices:TpvInt32;
        fCountCacheParts:TpvInt32;
@@ -722,10 +729,12 @@ constructor TpvCanvasShape.Create;
 begin
  inherited Create;
  fCacheLinePoints:=nil;
+ fCacheSegments:=nil;
  fCacheVertices:=nil;
  fCacheIndices:=nil;
  fCacheParts:=nil;
  fCountCacheLinePoints:=0;
+ fCountCacheSegments:=0;
  fCountCacheVertices:=0;
  fCountCacheIndices:=0;
  fCountCacheParts:=0;
@@ -734,6 +743,7 @@ end;
 destructor TpvCanvasShape.Destroy;
 begin
  fCacheLinePoints:=nil;
+ fCacheSegments:=nil;
  fCacheVertices:=nil;
  fCacheIndices:=nil;
  fCacheParts:=nil;
@@ -743,6 +753,7 @@ end;
 procedure TpvCanvasShape.Reset;
 begin
  fCountCacheLinePoints:=0;
+ fCountCacheSegments:=0;
  fCountCacheVertices:=0;
  fCountCacheIndices:=0;
  fCountCacheParts:=0;
@@ -1211,7 +1222,7 @@ var StartPoint,LastPoint:TpvVector2;
    if (Level>MaxLevel) or (d<Tolerance) then begin
     Point.x:=x123;
     Point.y:=y123;
-    StrokeAddPoint(Point);
+    StrokeLineTo(Point);
    end else begin
     Recursive(x1,y1,x12,y12,x123,y123,level+1);
     Recursive(x123,y123,x23,y23,x3,y3,level+1);
@@ -1219,7 +1230,7 @@ var StartPoint,LastPoint:TpvVector2;
   end;
  begin
   Recursive(LastPoint.x,LastPoint.y,aC0.x,aC0.y,aA0.x,aA0.y,0);
-  StrokeAddPoint(aA0);
+  StrokeLineTo(aA0);
  end;
  procedure StrokeCubicCurveTo(const aC0,aC1,aA0:TpvVector2;const Tolerance:TpvDouble=1.0/256.0;const MaxLevel:TpvInt32=32);
   procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;const Level:TpvInt32);
@@ -1244,7 +1255,7 @@ var StartPoint,LastPoint:TpvVector2;
    if (Level>MaxLevel) or (d<Tolerance) then begin
     Point.x:=x1234;
     Point.y:=y1234;
-    StrokeAddPoint(Point);
+    StrokeLineTo(Point);
    end else begin
     Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
     Recursive(x1234,y1234,x234,y234,x34,y34,x4,y4,Level+1);
@@ -1252,12 +1263,12 @@ var StartPoint,LastPoint:TpvVector2;
   end;
  begin
   Recursive(LastPoint.x,LastPoint.y,aC0.x,aC0.y,aC1.x,aC1.y,aA0.x,aA0.y,0);
-  StrokeAddPoint(aA0);
+  StrokeLineTo(aA0);
  end;
  procedure StrokeClose;
  begin
   if fCountCacheLinePoints>0 then begin
-   StrokeAddPoint(StartPoint);
+   StrokeLineTo(StartPoint);
    StrokeFlush;
   end;
  end;
@@ -1289,8 +1300,129 @@ begin
 end;
 
 procedure TpvCanvasShape.FillFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState);
+var StartPoint,LastPoint:TpvVector2;
+var CommandIndex:TpvInt32;
+    Command:PpvCanvasPathCommand;
+ procedure FillAddSegment(const aP0,aP1:TpvVector2);
+ var Index:TpvInt32;
+     ShapeCacheSegment:PpvCanvasShapeCacheSegment;
+ begin
+  if ((fCountCacheSegments=0) or
+      (fCacheSegments[fCountCacheSegments-1,1]<>aP1)) and
+     (aP0<>aP1) then begin
+   Index:=fCountCacheSegments;
+   inc(fCountCacheSegments);
+   if length(fCacheSegments)<fCountCacheSegments then begin
+    SetLength(fCacheSegments,fCountCacheSegments*2);
+   end;
+   ShapeCacheSegment:=@fCacheSegments[Index];
+   ShapeCacheSegment^[0]:=aP0;
+   ShapeCacheSegment^[1]:=aP1;
+  end;
+ end;
+ procedure FillMoveTo(const aP0:TpvVector2);
+ begin
+  StartPoint:=aP0;
+  LastPoint:=aP0;
+ end;
+ procedure FillLineTo(const aP0:TpvVector2);
+ begin
+  FillAddSegment(LastPoint,aP0);
+  LastPoint:=aP0;
+ end;
+ procedure FillQuadraticCurveTo(const aC0,aA0:TpvVector2;const Tolerance:TpvDouble=1.0/256.0;const MaxLevel:TpvInt32=32);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvFloat;const Level:TpvInt32);
+  var x12,y12,x23,y23,x123,y123,mx,my,d:TpvFloat;
+      Point:TpvVector2;
+  begin
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   mx:=(x1+x3)*0.5;
+   my:=(y1+y3)*0.5;
+   d:=abs(mx-x123)+abs(my-y123);
+   if (Level>MaxLevel) or (d<Tolerance) then begin
+    Point.x:=x123;
+    Point.y:=y123;
+    FillLineTo(Point);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,level+1);
+    Recursive(x123,y123,x23,y23,x3,y3,level+1);
+   end;
+  end;
+ begin
+  Recursive(LastPoint.x,LastPoint.y,aC0.x,aC0.y,aA0.x,aA0.y,0);
+  FillLineTo(aA0);
+ end;
+ procedure FillCubicCurveTo(const aC0,aC1,aA0:TpvVector2;const Tolerance:TpvDouble=1.0/256.0;const MaxLevel:TpvInt32=32);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;const Level:TpvInt32);
+  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,mx,my,d:TpvDouble;
+      Point:TpvVector2;
+  begin
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x34:=(x3+x4)*0.5;
+   y34:=(y3+y4)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   x234:=(x23+x34)*0.5;
+   y234:=(y23+y34)*0.5;
+   x1234:=(x123+x234)*0.5;
+   y1234:=(y123+y234)*0.5;
+   mx:=(x1+x4)*0.5;
+   my:=(y1+y4)*0.5;
+   d:=abs(mx-x1234)+abs(my-y1234);
+   if (Level>MaxLevel) or (d<Tolerance) then begin
+    Point.x:=x1234;
+    Point.y:=y1234;
+    FillLineTo(Point);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
+    Recursive(x1234,y1234,x234,y234,x34,y34,x4,y4,Level+1);
+   end;
+  end;
+ begin
+  Recursive(LastPoint.x,LastPoint.y,aC0.x,aC0.y,aC1.x,aC1.y,aA0.x,aA0.y,0);
+  FillLineTo(aA0);
+ end;
+ procedure FillClose;
+ begin
+  if fCountCacheSegments>0 then begin
+   FillLineTo(StartPoint);
+  end;
+ end;
+ procedure FillFlush;
+ begin
+  // TODO
+ end;
 begin
  Reset;
+ for CommandIndex:=0 to aPath.fCountCommands-1 do begin
+  Command:=@aPath.fCommands[CommandIndex];
+  case Command^.CommandType of
+   pcpctMoveTo:begin
+    FillMoveTo(Command.Points[0]);
+   end;
+   pcpctLineTo:begin
+    FillLineTo(Command.Points[0]);
+   end;
+   pcpctQuadraticCurveTo:begin
+    FillQuadraticCurveTo(Command.Points[0],Command.Points[1]);
+   end;
+   pcpctCubicCurveTo:begin
+    FillCubicCurveTo(Command.Points[0],Command.Points[1],Command.Points[2]);
+   end;
+   pcpctClose:begin
+    FillClose;
+   end;
+  end;
+ end;
+ FillFlush;
 end;
 
 constructor TpvCanvasCommon.Create(const aDevice:TpvVulkanDevice);
