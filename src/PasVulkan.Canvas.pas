@@ -819,118 +819,56 @@ var StartPoint,LastPoint:TpvVector2;
    end;
    fCacheIndices[result]:=VertexIndex;
   end;
-{-$define FasterRoundCap}
-{$ifdef FasterRoundCap}
-  procedure CreateRoundCap(const Center,p0,p1,NextPointInLine:TpvVector2); // On the CPU faster but with more overdraw on the GPU
-  const Offsets:array[0..2] of TpvVector2=
-         ((x:1.414213562373095;y:0.0),
-          (x:-1.414213562373095;y:-2.82842712474619),
-          (x:-1.414213562373095;y:2.82842712474619));
-{ const Offsets:array[0..2] of TpvVector2=
-         ((x:-1.0;y:-1.0),
-          (x:-1.0;y:3.0),
-          (x:3.0;y:-1.0)); }
-  var Radius:TpvFloat;
-      MetaInfo:TpvVector4;
-      Normal:TpvVector2;
-      Matrix:TpvMatrix2x2;
-  begin
-   Radius:=p0.DistanceTo(Center);
-   MetaInfo:=TpvVector4.Create(Center.x,Center.y,Radius,-1.0);
-   Normal:=(Center-NextPointInLine).Normalize;
-   Matrix:=TpvMatrix2x2.Create(Normal,TpvVector2.Create(-Normal.y,Normal.x));
-   BeginPart(3,3);
-   AddIndex(AddVertex(Center+((Matrix*Offsets[0])*Radius),pcvvaomRoundLineCapCircle,MetaInfo));
-   AddIndex(AddVertex(Center+((Matrix*Offsets[1])*Radius),pcvvaomRoundLineCapCircle,MetaInfo));
-   AddIndex(AddVertex(Center+((Matrix*Offsets[2])*Radius),pcvvaomRoundLineCapCircle,MetaInfo));
-   EndPart;
- end;
-{$else}
-  procedure CreateRoundCap(const Center,p0,p1,NextPointInLine:TpvVector2); // On the CPU slower but with less overdraw on the GPU
-  var Radius,Angle0,Angle1,AngleDifference,AngleIncrement,Phase:TpvFloat;
-      Segments,iCenter,iLast,iCurrent,i:TpvInt32;
-      MetaInfo:TpvVector4;
-  begin
-   Radius:=Center.DistanceTo(p0);
-   Angle0:=AngleClamp(ArcTan2(p1.y-Center.y,p1.x-Center.x));
-   Angle1:=AngleClamp(ArcTan2(p0.y-Center.y,p0.x-Center.x));
-   AngleDifference:=AngleDiff(Angle0,Angle1);
-   if abs(PI-abs(AngleDifference))<1e-4 then begin
-    Angle0:=ArcTan2(NextPointInLine.x-Center.x,Center.y-NextPointInLine.y);
-    AngleDifference:=PI;
+  procedure TriangulateSegment(const p0,p1,p2:TpvVector2;const LineJoin:TpvCanvasLineJoin;MiterLimit:TpvFloat;const IsFirst,IsLast:boolean);
+   function LineIntersection(out p:TpvVector2;const v0,v1,v2,v3:TpvVector2):boolean;
+   const EPSILON=1e-8;
+   var a0,a1,b0,b1,c0,c1,Determinant:TpvFloat;
+   begin
+    a0:=v1.y-v0.y;
+    b0:=v0.x-v1.x;
+    a1:=v3.y-v2.y;
+    b1:=v2.x-v3.x;
+    Determinant:=(a0*b1)-(a1*b0);
+    result:=abs(Determinant)>EPSILON;
+    if result then begin
+     c0:=(a0*v0.x)+(b0*v0.y);
+     c1:=(a1*v2.x)+(b1*v2.y);
+     p.x:=((b1*c0)-(b0*c1))/Determinant;
+     p.y:=((a0*c1)-(a1*c0))/Determinant;
+    end;
    end;
-   Segments:=Max(8,trunc(ceil((abs(AngleDifference)*Radius)/8.0)));
-   AngleIncrement:=AngleDifference/Segments;
-   MetaInfo:=TpvVector4.Create(Center.x,Center.y,Radius,-1.0);
-   Radius:=ceil(Radius)+1.0;
-   if Segments<1024 then begin
-    BeginPart(2+Segments,Segments*3);
+   function SignedArea(const v1,v2,v3:TpvVector2):TpvFloat;
+   begin
+    result:=((v2.x-v1.x)*(v3.y-v1.y))-((v3.x-v1.x)*(v2.y-v1.y));
+   end;
+   procedure AddRoundJoin(const Center,p0,p1,NextPointInLine:TpvVector2);
+   var iP0,iP1,iCenter,iP0Normal,iP1Normal:TPvInt32;
+       Radius:TpvFloat;
+       MetaInfo:TpvVector4;
+       Normal:TpvVector2;
+   begin
+    // An arc inside three triangles
+    Radius:=p0.DistanceTo(Center);
+    MetaInfo:=TpvVector4.Create(Center.x,Center.y,Radius,-1.0);
+    Radius:=Radius+1.0; // Add some headroom to the radius
+    Normal:=(Center-NextPointInLine).Normalize*Radius;
+    BeginPart(5,9);
+    iP0:=AddVertex(p0,pcvvaomRoundLineCapCircle,MetaInfo);
+    iP1:=AddVertex(p1,pcvvaomRoundLineCapCircle,MetaInfo);
+    iP0Normal:=AddVertex(p0+Normal,pcvvaomRoundLineCapCircle,MetaInfo);
+    iP1Normal:=AddVertex(p1+Normal,pcvvaomRoundLineCapCircle,MetaInfo);
     iCenter:=AddVertex(Center,pcvvaomRoundLineCapCircle,MetaInfo);
-    Phase:=Angle0;
-    iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),pcvvaomRoundLineCapCircle,MetaInfo);
-    for i:=0 to Segments-1 do begin
-     iLast:=iCurrent;
-     Phase:=Phase+AngleIncrement;
-     iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),pcvvaomRoundLineCapCircle,MetaInfo);
-     AddIndex(iCenter);
-     AddIndex(iLast);
-     AddIndex(iCurrent);
-    end;
+    AddIndex(iP0Normal);
+    AddIndex(iP0);
+    AddIndex(iCenter);
+    AddIndex(iCenter);
+    AddIndex(iP1);
+    AddIndex(iP1Normal);
+    AddIndex(iP0Normal);
+    AddIndex(iCenter);
+    AddIndex(iP1Normal);
     EndPart;
-   end else begin
-    Phase:=Angle0;
-    for i:=0 to Segments-1 do begin
-     BeginPart(3,3);
-     iCenter:=AddVertex(Center,pcvvaomRoundLineCapCircle,MetaInfo);
-     iLast:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),pcvvaomRoundLineCapCircle,MetaInfo);
-     Phase:=Phase+AngleIncrement;
-     iCurrent:=AddVertex(Center+(TpvVector2.Create(cos(Phase),sin(Phase))*Radius),pcvvaomRoundLineCapCircle,MetaInfo);
-     AddIndex(iCenter);
-     AddIndex(iLast);
-     AddIndex(iCurrent);
-     EndPart;
-    end;
    end;
-  end;
-{$endif}
-  function LineIntersection(out p:TpvVector2;const v0,v1,v2,v3:TpvVector2):boolean;
-  const EPSILON=1e-8;
-  var a0,a1,b0,b1,c0,c1,Determinant:TpvFloat;
-  begin
-   a0:=v1.y-v0.y;
-   b0:=v0.x-v1.x;
-   a1:=v3.y-v2.y;
-   b1:=v2.x-v3.x;
-   Determinant:=(a0*b1)-(a1*b0);
-   result:=abs(Determinant)>EPSILON;
-   if result then begin
-    c0:=(a0*v0.x)+(b0*v0.y);
-    c1:=(a1*v2.x)+(b1*v2.y);
-    p.x:=((b1*c0)-(b0*c1))/Determinant;
-    p.y:=((a0*c1)-(a1*c0))/Determinant;
-   end;
-  end;
-  function SignedArea(const v1,v2,v3:TpvVector2):TpvFloat;
-  begin
-   result:=((v2.x-v1.x)*(v3.y-v1.y))-((v3.x-v1.x)*(v2.y-v1.y));
-  end;
-  procedure CreateSquareCap(const p0,p1,d:TpvVector2);
-  var ip0,ip0d,ip1d,ip1:TpvInt32;
-  begin
-   ip0:=AddVertex(p0,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width));
-   ip0d:=AddVertex(p0+d,pcvvaomLineEdge,TpvVector4.Create(-Width,Width,Width,Width));
-   ip1d:=AddVertex(p1+d,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
-   ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
-   BeginPart(4,6);
-   AddIndex(ip0);
-   AddIndex(ip0d);
-   AddIndex(ip1d);
-   AddIndex(ip1);
-   AddIndex(ip1d);
-   AddIndex(ip0);
-   EndPart;
-  end;
-  procedure CreateTriangles(const p0,p1,p2:TpvVector2;const LineJoin:TpvCanvasLineJoin;MiterLimit:TpvFloat;const IsFirst,IsLast:boolean);
   var CountVerticesToAdd,CountIndicesToAdd,LineJoinCase,
       ip0at0,ip0st0,ip1sAnchor,ip1at0,ip1st0,ip2at2,ip1st2,ip1at2,ip2st2,ip1,iIntersectionPoint,iCenter:TpvInt32;
       t0,t2,IntersectionPoint,Anchor,p0p1,p1p2:TpvVector2;
@@ -1059,7 +997,7 @@ var StartPoint,LastPoint:TpvVector2;
     EndPart;
     if LineJoinCase=0 then begin
      // Round join
-     CreateRoundCap(p1,p1+t0,p1+t2,p2);
+     AddRoundJoin(p1,p1+t0,p1+t2,p2);
     end;
    end else begin
     CountVerticesToAdd:=8;
@@ -1142,10 +1080,41 @@ var StartPoint,LastPoint:TpvVector2;
     EndPart;
     if LineJoinCase=0 then begin
      // Round join
-     CreateRoundCap(p1,p1+t0,p1+t2,p1-Anchor);
+     AddRoundJoin(p1,p1+t0,p1+t2,p1-Anchor);
     end;
    end;
    First:=false;
+  end;
+  procedure AddSquareCap(const p0,p1,d:TpvVector2);
+  var ip0,ip0d,ip1d,ip1:TpvInt32;
+  begin
+   BeginPart(4,6);
+   ip0:=AddVertex(p0,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width));
+   ip0d:=AddVertex(p0+d,pcvvaomLineEdge,TpvVector4.Create(-Width,Width,Width,Width));
+   ip1d:=AddVertex(p1+d,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
+   ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+   AddIndex(ip0);
+   AddIndex(ip0d);
+   AddIndex(ip1d);
+   AddIndex(ip1);
+   AddIndex(ip1d);
+   AddIndex(ip0);
+   EndPart;
+  end;
+  procedure AddRoundCap(const Center,p0,p1,NextPointInLine:TpvVector2);
+  const Sqrt2=1.414213562373095;
+  var Radius:TpvFloat;
+      MetaInfo:TpvVector4;
+  begin
+   // An "inhalfcircle" inside an one single triangle
+   Radius:=p0.DistanceTo(Center);
+   MetaInfo:=TpvVector4.Create(Center.x,Center.y,Radius,-1.0);
+   Radius:=Radius+1.0; // Add some headroom to the radius
+   BeginPart(3,3);
+   AddIndex(AddVertex(Center+((p0-Center).Normalize*Radius*Sqrt2),pcvvaomRoundLineCapCircle,MetaInfo));
+   AddIndex(AddVertex(Center+((p1-Center).Normalize*Radius*Sqrt2),pcvvaomRoundLineCapCircle,MetaInfo));
+   AddIndex(AddVertex(Center+((Center-NextPointInLine).Normalize*Radius*Sqrt2),pcvvaomRoundLineCapCircle,MetaInfo));
+   EndPart;
   end;
  var i:TpvInt32;
  begin
@@ -1161,13 +1130,13 @@ var StartPoint,LastPoint:TpvVector2;
     First:=true;
     if fCountCacheLinePoints=2 then begin
      Closed:=false;
-     CreateTriangles(fCacheLinePoints[0].Position,
-                     fCacheLinePoints[0].Position.Lerp(fCacheLinePoints[1].Position,0.5),
-                     fCacheLinePoints[1].Position,
-                     pvcljBevel,
-                     aState.fMiterLimit,
-                     true,
-                     true);
+     TriangulateSegment(fCacheLinePoints[0].Position,
+                        fCacheLinePoints[0].Position.Lerp(fCacheLinePoints[1].Position,0.5),
+                        fCacheLinePoints[1].Position,
+                        pvcljBevel,
+                        aState.fMiterLimit,
+                        true,
+                        true);
     end else if fCountCacheLinePoints>2 then begin
      Closed:=fCacheLinePoints[0].Position.DistanceTo(fCacheLinePoints[fCountCacheLinePoints-1].Position)<EPSILON;
      if Closed then begin
@@ -1184,28 +1153,28 @@ var StartPoint,LastPoint:TpvVector2;
      end;
      fCacheLinePoints[fCountCacheLinePoints-2].Middle:=fCacheLinePoints[fCountCacheLinePoints-1].Position;
      for i:=1 to fCountCacheLinePoints-2 do begin
-      CreateTriangles(fCacheLinePoints[i-1].Middle,
-                      fCacheLinePoints[i].Position,
-                      fCacheLinePoints[i].Middle,
-                      aState.fLineJoin,
-                      aState.fMiterLimit,
-                      i=1,
-                      i=(fCountCacheLinePoints-2));
+      TriangulateSegment(fCacheLinePoints[i-1].Middle,
+                         fCacheLinePoints[i].Position,
+                         fCacheLinePoints[i].Middle,
+                         aState.fLineJoin,
+                         aState.fMiterLimit,
+                         i=1,
+                         i=(fCountCacheLinePoints-2));
      end;
     end;
     if not Closed then begin
      case aState.fLineCap of
       pvclcRound:begin
-       CreateRoundCap(fCacheLinePoints[0].Position,v0,v1,fCacheLinePoints[1].Position);
-       CreateRoundCap(fCacheLinePoints[fCountCacheLinePoints-1].Position,v2,v3,fCacheLinePoints[fCountCacheLinePoints-2].Position);
+       AddRoundCap(fCacheLinePoints[0].Position,v0,v1,fCacheLinePoints[1].Position);
+       AddRoundCap(fCacheLinePoints[fCountCacheLinePoints-1].Position,v2,v3,fCacheLinePoints[fCountCacheLinePoints-2].Position);
       end;
       pvclcSquare:begin
-       CreateSquareCap(v0,
-                       v1,
-                       (fCacheLinePoints[0].Position-fCacheLinePoints[1].Position).Normalize*fCacheLinePoints[0].Position.DistanceTo(v0));
-       CreateSquareCap(v2,
-                       v3,
-                       (fCacheLinePoints[fCountCacheLinePoints-1].Position-fCacheLinePoints[fCountCacheLinePoints-2].Position).Normalize*fCacheLinePoints[fCountCacheLinePoints-1].Position.DistanceTo(v3));
+       AddSquareCap(v0,
+                    v1,
+                    (fCacheLinePoints[0].Position-fCacheLinePoints[1].Position).Normalize*fCacheLinePoints[0].Position.DistanceTo(v0));
+       AddSquareCap(v2,
+                    v3,
+                    (fCacheLinePoints[fCountCacheLinePoints-1].Position-fCacheLinePoints[fCountCacheLinePoints-2].Position).Normalize*fCacheLinePoints[fCountCacheLinePoints-1].Position.DistanceTo(v3));
       end;
      end;
     end;
