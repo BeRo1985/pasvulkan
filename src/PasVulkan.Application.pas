@@ -886,6 +886,8 @@ type EpvApplication=class(Exception)
 
        fPasMPInstance:TPasMP;
 
+       fDoDestroyGlobalPasMPInstance:TPasMPBool32;
+
        fHighResolutionTimer:TpvApplicationHighResolutionTimer;
 
        fAssets:TpvApplicationAssets;
@@ -4856,9 +4858,19 @@ begin
 
  fExternalStoragePath:='';
 
- fPasMPInstance:=TPasMP.Create(-1,0,false,true,false,false);
-
- VulkanSetPasMP(fPasMPInstance);
+ if assigned(GlobalPasMP) then begin
+  fPasMPInstance:=GlobalPasMP;
+  fDoDestroyGlobalPasMPInstance:=false;
+ end else begin
+  GlobalPasMPMaximalThreads:=-1;
+  GlobalPasMPThreadHeadRoomForForeignTasks:=0;
+  GlobalPasMPDoCPUCorePinning:=false;
+  GlobalPasMPSleepingOnIdle:=true;
+  GlobalPasMPAllWorkerThreadsHaveOwnSystemThreads:=false;
+  GlobalPasMPProfiling:=false;
+  fPasMPInstance:=TPasMP.GetGlobalInstance;
+  fDoDestroyGlobalPasMPInstance:=true;
+ end;
 
  fHighResolutionTimer:=TpvApplicationHighResolutionTimer.Create;
 
@@ -5018,9 +5030,11 @@ begin
 
  FreeAndNil(fHighResolutionTimer);
 
- FreeAndNil(fPasMPInstance);
+ if fDoDestroyGlobalPasMPInstance then begin
+  TPasMP.DestroyGlobalInstance;
+ end;
 
- VulkanSetPasMP(nil);
+ fPasMPInstance:=nil;
 
  pvApplication:=nil;
  
