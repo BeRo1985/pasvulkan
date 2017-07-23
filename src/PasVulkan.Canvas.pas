@@ -819,7 +819,7 @@ var StartPoint,LastPoint:TpvVector2;
    end;
    fCacheIndices[result]:=VertexIndex;
   end;
-{$define FasterRoundCap}
+{-$define FasterRoundCap}
 {$ifdef FasterRoundCap}
   procedure CreateRoundCap(const Center,p0,p1,NextPointInLine:TpvVector2); // On the CPU faster but with more overdraw on the GPU
   const Offsets:array[0..2] of TpvVector2=
@@ -869,7 +869,7 @@ var StartPoint,LastPoint:TpvVector2;
    Segments:=Max(4,trunc(ceil((abs(AngleDifference)*Radius)/8.0)));
    AngleIncrement:=AngleDifference/Segments;
    MetaInfo:=TpvVector4.Create(Center.x,Center.y,Radius,-1.0);
-   Radius:=ceil(Radius);
+   //Radius:=ceil(Radius);
    if Segments<1024 then begin
     BeginPart(2+Segments,Segments*3);
     iCenter:=AddVertex(Center,pcvvaomRoundLineCapCircle,MetaInfo);
