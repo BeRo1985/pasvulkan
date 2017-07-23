@@ -1397,6 +1397,43 @@ var CommandIndex:TpvInt32;
   end;
  end;
  procedure FillFlush;
+  function GetWindingNumberAtPointInPolygon(const Point:TpvVector2):TpvInt32;
+  var Index,CaseIndex:TpvInt32;
+      ShapeCacheSegment:PpvCanvasShapeCacheSegment;
+      x0,y0,x1,y1:TpvFloat;
+  begin
+   result:=0;
+   for Index:=0 to fCountCacheSegments-1 do begin
+    ShapeCacheSegment:=@fCacheSegments[Index];
+    y0:=ShapeCacheSegment^[0].y-Point.y;
+    y1:=ShapeCacheSegment^[1].y-Point.y;
+    if y0<0.0 then begin
+     CaseIndex:=0;
+    end else if y0>0.0 then begin
+     CaseIndex:=2;
+    end else begin
+     CaseIndex:=1;
+    end;
+    if y1<0.0 then begin
+     inc(CaseIndex,0);
+    end else if y1>0.0 then begin
+     inc(CaseIndex,6);
+    end else begin
+     inc(CaseIndex,3);
+    end;
+    if CaseIndex in [1,2,3,6] then begin
+     x0:=ShapeCacheSegment^[0].x-Point.x;
+     x1:=ShapeCacheSegment^[1].x-Point.x;
+     if not (((x0>0.0) and (x1>0.0)) or ((not ((x0<=0.0) and (x1<=0.0))) and ((x0-(y0*((x1-x0)/(y1-y0))))>0.0))) then begin
+      if CaseIndex in [1,2] then begin
+       inc(result);
+      end else begin
+       dec(result);
+      end;
+     end;
+    end;
+   end;
+  end;
  begin
   // TODO
  end;
