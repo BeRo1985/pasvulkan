@@ -813,6 +813,8 @@ type EpvApplication=class(Exception)
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
+       procedure UpdateAudio; virtual;
+
      end;
 
      TpvApplicationScreenClass=class of TpvApplicationScreen;
@@ -1137,6 +1139,8 @@ type EpvApplication=class(Exception)
        procedure UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
        procedure DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 
+       procedure UpdateAudioHook;
+
        function IsVisibleToUser:boolean;
 
       public
@@ -1205,6 +1209,8 @@ type EpvApplication=class(Exception)
        procedure Update(const aDeltaTime:TpvDouble); virtual;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
+
+       procedure UpdateAudio; virtual;
 
        class procedure Main; virtual;
 
@@ -4606,6 +4612,10 @@ procedure TpvApplicationScreen.Draw(const aSwapChainImageIndex:TpvInt32;var aWai
 begin
 end;
 
+procedure TpvApplicationScreen.UpdateAudio;
+begin
+end;
+
 constructor TpvApplicationAssets.Create(const aVulkanApplication:TpvApplication);
 begin
  inherited Create;
@@ -6251,7 +6261,7 @@ begin
   fSDLWaveFormat.Size:=fSDLWaveFormat.Samples*2*2;
   fAudio:=TpvAudio.Create(44100,2,16,fSDLWaveFormat.Samples);
   fAudio.SetMixerAGC(true);
-  //fAudio.UpdateHook:=AApplication.AudioUpdateHook;
+  fAudio.UpdateHook:=UpdateAudioHook;
   fSDLWaveFormat.userdata:=fAudio;
   if SDL_OpenAudio(@fSDLWaveFormat,nil)<0 then begin
    raise EpvApplication.Create('SDL','Unable to initialize SDL audio: '+SDL_GetError,LOG_ERROR);
@@ -6329,6 +6339,11 @@ end;
 procedure TpvApplication.DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
  Draw(fRealUsedDrawSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+end;
+
+procedure TpvApplication.UpdateAudioHook;
+begin
+ UpdateAudio;
 end;
 
 procedure TpvApplication.ProcessRunnables;
@@ -7213,6 +7228,13 @@ procedure TpvApplication.Update(const aDeltaTime:TpvDouble);
 begin
  if assigned(fScreen) then begin
   fScreen.Update(aDeltaTime);
+ end;
+end;
+
+procedure TpvApplication.UpdateAudio;
+begin
+ if assigned(fScreen) then begin
+  fScreen.UpdateAudio;
  end;
 end;
 
