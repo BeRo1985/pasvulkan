@@ -2777,6 +2777,7 @@ type EpvVulkanException=class(Exception);
 
 var pvPasMP:TPasMP=nil;
     pvPasMPLock:TPasMPSpinLock=nil;
+    pvPasMPExternal:TPasMPBool32=false;
 
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
        (
@@ -2789,7 +2790,9 @@ const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling
         VK_IMAGE_TILING_LINEAR   // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
        );
 
-function GetPasMP:TPasMP;
+procedure VulkanSetPasMP(const APasMPInstance:TPasMP);
+
+function VulkanGetPasMP:TPasMP;
 
 function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TpvUInt32):TVkFormat;
 function VulkanGetFormatFromOpenGLType(const aType,aNumComponents:TpvUInt32;const aNormalized:boolean):TVkFormat;
@@ -3154,7 +3157,24 @@ const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
 type PUInt32Array=^TUInt32Array;
      TUInt32Array=array[0..65535] of TpvUInt32;
 
-function GetPasMP:TPasMP;
+procedure VulkanSetPasMP(const APasMPInstance:TPasMP);
+var OldPasMPInstance:TPasMP;
+begin
+ pvPasMPLock.Acquire;
+ try
+  if pvPasMPExternal then begin
+   TPasMPInterlocked.Write(TpvPointer(pvPasMP),TpvPointer(APasMPInstance));
+  end else begin
+   OldPasMPInstance:=TPasMPInterlocked.Exchange(TpvPointer(pvPasMP),TpvPointer(APasMPInstance));
+   OldPasMPInstance.Free;
+  end;
+  TPasMPInterlocked.Write(pvPasMPExternal,assigned(APasMPInstance));
+ finally
+  pvPasMPLock.Release;
+ end;
+end;
+
+function VulkanGetPasMP:TPasMP;
 begin
  result:=TpvPointer(TPasMPInterlocked.Read(TpvPointer(pvPasMP)));
  if not assigned(result) then begin
@@ -3164,6 +3184,7 @@ begin
    if not assigned(result) then begin
     result:=TPasMP.GetGlobalInstance;
     TPasMPInterlocked.Write(TpvPointer(pvPasMP),TpvPointer(result));
+    TPasMPInterlocked.Write(pvPasMPExternal,false);
    end;
   finally
    pvPasMPLock.Release;

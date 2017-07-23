@@ -4858,6 +4858,8 @@ begin
 
  fPasMPInstance:=TPasMP.Create(-1,0,false,true,false,false);
 
+ VulkanSetPasMP(fPasMPInstance);
+
  fHighResolutionTimer:=TpvApplicationHighResolutionTimer.Create;
 
  fAssets:=TpvApplicationAssets.Create(self);
@@ -5017,6 +5019,8 @@ begin
  FreeAndNil(fHighResolutionTimer);
 
  FreeAndNil(fPasMPInstance);
+
+ VulkanSetPasMP(nil);
 
  pvApplication:=nil;
  
