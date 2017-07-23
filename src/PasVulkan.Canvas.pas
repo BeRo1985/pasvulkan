@@ -854,22 +854,15 @@ var StartPoint,LastPoint:TpvVector2;
    Radius:=Center.DistanceTo(p0);
    Angle0:=AngleClamp(ArcTan2(p1.y-Center.y,p1.x-Center.x));
    Angle1:=AngleClamp(ArcTan2(p0.y-Center.y,p0.x-Center.x));
-   AngleDifference:=AngleDiff(Angle0,Angle1);{}
-{  Angle0:=ModuloPos(ModuloPos(ArcTan2(p1.y-Center.y,p1.x-Center.x)+pi,pi2)+pi2,pi2)-pi;
-   Angle1:=ModuloPos(ModuloPos(ArcTan2(p0.y-Center.y,p0.x-Center.x)+pi,pi2)+pi2,pi2)-pi;
-   AngleDifference:=ModuloPos((Angle1-Angle0)+pi,pi2)-pi;{}
-{  if (abs(pi-abs(AngleDifference))<1e-4) and
-      (Vector2Dot(Vector2Norm(Vector2Sub(Center,NextPointInLine)),Vector2AngleDirection(Angle0+(AngleDifference*0.5)))<0.0) then begin
-    AngleDifference:=-AngleDifference;
-   end;}
-   if (abs(pi-abs(AngleDifference))<1e-4) then begin
+   AngleDifference:=AngleDiff(Angle0,Angle1);
+   if abs(PI-abs(AngleDifference))<1e-4 then begin
     Angle0:=ArcTan2(NextPointInLine.x-Center.x,Center.y-NextPointInLine.y);
-    AngleDifference:=pi;
+    AngleDifference:=PI;
    end;
-   Segments:=Max(4,trunc(ceil((abs(AngleDifference)*Radius)/8.0)));
+   Segments:=Max(8,trunc(ceil((abs(AngleDifference)*Radius)/8.0)));
    AngleIncrement:=AngleDifference/Segments;
    MetaInfo:=TpvVector4.Create(Center.x,Center.y,Radius,-1.0);
-   //Radius:=ceil(Radius);
+   Radius:=ceil(Radius)+1.0;
    if Segments<1024 then begin
     BeginPart(2+Segments,Segments*3);
     iCenter:=AddVertex(Center,pcvvaomRoundLineCapCircle,MetaInfo);

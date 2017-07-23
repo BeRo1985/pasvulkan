@@ -98,10 +98,14 @@ const EPSILON={$ifdef UseDouble}1e-14{$else}1e-5{$endif}; // actually {$ifdef Us
 
       MAX_SCALAR={$ifdef UseDouble}1.7e+308{$else}3.4e+28{$endif};
 
-      DEG2RAD=pi/180.0;
-      RAD2DEG=180.0/pi;
+      DEG2RAD=PI/180.0;
+      RAD2DEG=180.0/PI;
 
-      HalfPI=pi*0.5;
+      OnePI=PI;
+
+      HalfPI=PI*0.5;
+
+      TwoPI=PI*2.0;
 
       SupraEngineFPUPrecisionMode:TFPUPrecisionMode={$ifdef cpu386}pmExtended{$else}{$ifdef cpux64}pmExtended{$else}pmDouble{$endif}{$endif};
 
@@ -6438,15 +6442,15 @@ var v0,v1:TpvVector3;
 begin
  if abs((-1.0)-RawComponents[0,2])<EPSILON then begin
   result.x:=0.0;
-  result.y:=pi*0.5;
+  result.y:=HalfPI;
   result.z:=ArcTan2(RawComponents[1,0],RawComponents[2,0]);
  end else if abs(1.0-RawComponents[0,2])<EPSILON then begin
   result.x:=0.0;
-  result.y:=-(pi*0.5);
+  result.y:=-HalfPI;
   result.z:=ArcTan2(-RawComponents[1,0],-RawComponents[2,0]);
  end else begin
   v0.x:=-ArcSin(RawComponents[0,2]);
-  v1.x:=pi-v0.x;
+  v1.x:=PI-v0.x;
   v0.y:=ArcTan2(RawComponents[1,2]/cos(v0.x),RawComponents[2,2]/cos(v0.x));
   v1.y:=ArcTan2(RawComponents[1,2]/cos(v1.x),RawComponents[2,2]/cos(v1.x));
   v0.z:=ArcTan2(RawComponents[0,1]/cos(v0.x),RawComponents[0,0]/cos(v0.x));
@@ -9784,15 +9788,15 @@ var v0,v1:TpvVector3;
 begin
  if abs((-1.0)-RawComponents[0,2])<EPSILON then begin
   result.x:=0.0;
-  result.y:=pi*0.5;
+  result.y:=HalfPI;
   result.z:=ArcTan2(RawComponents[1,0],RawComponents[2,0]);
  end else if abs(1.0-RawComponents[0,2])<EPSILON then begin
   result.x:=0.0;
-  result.y:=-(pi*0.5);
+  result.y:=-HalfPI;
   result.z:=ArcTan2(-RawComponents[1,0],-RawComponents[2,0]);
  end else begin
   v0.x:=-ArcSin(RawComponents[0,2]);
-  v1.x:=pi-v0.x;
+  v1.x:=PI-v0.x;
   v0.y:=ArcTan2(RawComponents[1,2]/cos(v0.x),RawComponents[2,2]/cos(v0.x));
   v1.y:=ArcTan2(RawComponents[1,2]/cos(v1.x),RawComponents[2,2]/cos(v1.x));
   v0.z:=ArcTan2(RawComponents[0,1]/cos(v0.x),RawComponents[0,0]/cos(v0.x));
@@ -14983,24 +14987,24 @@ begin
  if (v.x=0.0) and (v.y=0.0) then begin
   Yaw:=0.0;
   if v.z>0.0 then begin
-   Pitch:=pi*0.5;
+   Pitch:=HalfPI;
   end else begin
-   Pitch:=pi*1.5;
+   Pitch:=PI*1.5;
   end;
  end else begin
   if v.x<>0.0 then begin
    Yaw:=arctan2(v.y,v.x);
   end else if v.y>0.0 then begin
-   Yaw:=pi*0.5;
+   Yaw:=HalfPI;
   end else begin
-   Yaw:=pi;
+   Yaw:=PI;
   end;
   if Yaw<0.0 then begin
-   Yaw:=Yaw+(2.0*pi);
+   Yaw:=Yaw+TwoPI;
   end;
-  Pitch:=arctan2(v.z,sqrt(sqr(v.x)+sqr(v.y)));
+  Pitch:=ArcTan2(v.z,sqrt(sqr(v.x)+sqr(v.y)));
   if Pitch<0.0 then begin
-   Pitch:=Pitch+(2.0*pi);
+   Pitch:=Pitch+TwoPI;
   end;
  end;
  result.Pitch:=-Pitch;
@@ -15029,7 +15033,7 @@ begin
  if IsNaN(result) or IsInfinite(result) or (abs(result)<1e-12) then begin
   result:=0.0;
  end else begin
-  result:=ModuloPos(result,pi*2.0);
+  result:=ModuloPos(result,TwoPI);
  end;
 end;
 
@@ -15052,12 +15056,12 @@ end;
 
 function AngleClamp(a:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
- a:=ModuloPos(ModuloPos(a+pi,pi*2.0)+(pi*2.0),pi*2.0)-pi;
- while a<(-pi) do begin
-  a:=a+(pi*2.0);
+ a:=ModuloPos(ModuloPos(a+PI,TwoPI)+TwoPI,TwoPI)-PI;
+ while a<(-OnePI) do begin
+  a:=a+TwoPI;
  end;
- while a>pi do begin
-  a:=a-(pi*2.0);
+ while a>OnePI do begin
+  a:=a-TwoPI;
  end;
  result:=a;
 end;
@@ -15069,11 +15073,11 @@ end;
 
 function AngleLerp(a,b,x:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
-{if (b-a)>pi then begin
-  b:=b-(pi*2);
+{if (b-a)>PI then begin
+  b:=b-TwoPI;
  end;
- if (b-a)<(-pi) then begin
-  b:=b+(pi*2);
+ if (b-a)<(-PI) then begin
+  b:=b+TwoPI;
  end;
  result:=a+((b-a)*x);}
  result:=a+(AngleDiff(a,b)*x);
@@ -15519,10 +15523,10 @@ begin
 end;
 {
 begin
-result.x:=Min(Max((round((ArcSin(Normal.z)/pi)*127)+128),0),255);
- result.y:=Min(Max((round((ArcTan2(Normal.y,Normal.x)/pi)*127)+128),0),255);
- result.z:=Min(Max((round((ArcSin(Tangent.z)/pi)*127)+128),0),255);
- result.w:=Min(Max((round((ArcTan2(Tangent.y,Tangent.x)/pi)*127)+128),0),255);
+result.x:=Min(Max((round((ArcSin(Normal.z)/PI)*127)+128),0),255);
+ result.y:=Min(Max((round((ArcTan2(Normal.y,Normal.x)/PI)*127)+128),0),255);
+ result.z:=Min(Max((round((ArcSin(Tangent.z)/PI)*127)+128),0),255);
+ result.w:=Min(Max((round((ArcTan2(Tangent.y,Tangent.x)/PI)*127)+128),0),255);
 end;{}
 
 procedure UnpackTangentSpace(var PackedTangentSpace:TpvPackedTangentSpace;var Tangent,Bitangent,Normal:TpvVector3);
@@ -15546,13 +15550,13 @@ begin
 end;
 {var Latitude,Longitude:single;
 begin
- Latitude:=((PackedTangentSpace.x-128)/127)*pi;
- Longitude:=((PackedTangentSpace.y-128)/127)*pi;
+ Latitude:=((PackedTangentSpace.x-128)/127)*PI;
+ Longitude:=((PackedTangentSpace.y-128)/127)*PI;
  Normal.x:=cos(Latitude)*cos(Longitude);
  Normal.y:=cos(Latitude)*sin(Longitude);
  Normal.z:=sin(Latitude);
- Latitude:=((PackedTangentSpace.z-128)/127)*pi;
- Longitude:=((PackedTangentSpace.w-128)/127)*pi;
+ Latitude:=((PackedTangentSpace.z-128)/127)*PI;
+ Longitude:=((PackedTangentSpace.w-128)/127)*PI;
  Tangent.x:=cos(Latitude)*cos(Longitude);
  Tangent.y:=cos(Latitude)*sin(Longitude);
  Tangent.z:=sin(Latitude);
