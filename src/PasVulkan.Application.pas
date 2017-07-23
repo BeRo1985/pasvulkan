@@ -6258,8 +6258,11 @@ begin
   fSDLWaveFormat.Callback:=@SDLFillBuffer;
   fSDLWaveFormat.silence:=0;
   fSDLWaveFormat.Samples:=1024;
-  fSDLWaveFormat.Size:=fSDLWaveFormat.Samples*2*2;
-  fAudio:=TpvAudio.Create(44100,2,16,fSDLWaveFormat.Samples);
+  fSDLWaveFormat.Size:=((fSDLWaveFormat.Samples*fSDLWaveFormat.Channels*(fSDLWaveFormat.Format and $ff))+7) shr 3;
+  fAudio:=TpvAudio.Create(fSDLWaveFormat.Freq,
+                          fSDLWaveFormat.Channels,
+                          fSDLWaveFormat.Format and $ff,
+                          fSDLWaveFormat.Samples);
   fAudio.SetMixerAGC(true);
   fAudio.UpdateHook:=UpdateAudioHook;
   fSDLWaveFormat.userdata:=fAudio;
