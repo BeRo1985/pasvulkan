@@ -269,6 +269,24 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasShapeCacheSegmentPointHashMap=class(TpvHashMap<TpvVector2,TpvInt32>);
 
+     PpvCanvasShapeCacheDelaunayTriangulationNode=^TpvCanvasShapeCacheDelaunayTriangulationNode;
+     TpvCanvasShapeCacheDelaunayTriangulationNode=record
+      Previous:TpvInt32;
+      Next:TpvInt32;
+      Index:TpvInt32;
+      TriangleIndex:TpvInt32;
+      Point:TpvVector2;
+      Removed:boolean;
+     end;
+
+     TpvCanvasShapeCacheDelaunayTriangulationNodes=array of TpvCanvasShapeCacheDelaunayTriangulationNode;
+
+     TpvCanvasShapeCacheDelaunayTriangulationTriangleSegmentPoints=array of TpvInt32;
+
+     TpvCanvasShapeCacheDelaunayTriangulationHashEdges=array of TpvInt32;
+
+     TpvCanvasShapeCacheDelaunayTriangulationHashItems=array of TpvInt32;
+
      EpvCanvasShape=class(Exception);
 
      TpvCanvasShape=class
@@ -279,12 +297,20 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCacheVertices:TpvCanvasShapeCacheVertices;
        fCacheIndices:TpvCanvasShapeCacheIndices;
        fCacheParts:TpvCanvasShapeCacheParts;
+       fCacheDelaunayTriangulationNodes:TpvCanvasShapeCacheDelaunayTriangulationNodes;
+       fCacheDelaunayTriangulationTriangleSegmentPoints:TpvCanvasShapeCacheDelaunayTriangulationTriangleSegmentPoints;
+       fCacheDelaunayTriangulationHashEdges:TpvCanvasShapeCacheDelaunayTriangulationHashEdges;
+       fCacheDelaunayTriangulationHashItems:TpvCanvasShapeCacheDelaunayTriangulationHashItems;
        fCountCacheLinePoints:TpvInt32;
        fCountCacheSegments:TpvInt32;
        fCountCacheSegmentPoints:TpvInt32;
        fCountCacheVertices:TpvInt32;
        fCountCacheIndices:TpvInt32;
        fCountCacheParts:TpvInt32;
+       fCountCacheDelaunayTriangulationNodes:TpvInt32;
+       fCountCacheDelaunayTriangulationTriangleSegmentPoints:TpvInt32;
+       fCountCacheDelaunayTriangulationHashEdges:TpvInt32;
+       fCountCacheDelaunayTriangulationHashItems:TpvInt32;
        fCacheSegmentPointHashMap:TpvCanvasShapeCacheSegmentPointHashMap;
        procedure SortSegmentPointsRelativeToCenter(const aCenter:TpvVector2);
       public
@@ -745,6 +771,10 @@ begin
  fCacheVertices:=nil;
  fCacheIndices:=nil;
  fCacheParts:=nil;
+ fCacheDelaunayTriangulationNodes:=nil;
+ fCacheDelaunayTriangulationTriangleSegmentPoints:=nil;
+ fCacheDelaunayTriangulationHashEdges:=nil;
+ fCacheDelaunayTriangulationHashItems:=nil;
 
  fCountCacheLinePoints:=0;
  fCountCacheSegments:=0;
@@ -752,6 +782,10 @@ begin
  fCountCacheVertices:=0;
  fCountCacheIndices:=0;
  fCountCacheParts:=0;
+ fCountCacheDelaunayTriangulationNodes:=0;
+ fCountCacheDelaunayTriangulationTriangleSegmentPoints:=0;
+ fCountCacheDelaunayTriangulationHashEdges:=0;
+ fCountCacheDelaunayTriangulationHashItems:=0;
 
  fCacheSegmentPointHashMap:=nil;
 
@@ -768,6 +802,10 @@ begin
  fCacheVertices:=nil;
  fCacheIndices:=nil;
  fCacheParts:=nil;
+ fCacheDelaunayTriangulationNodes:=nil;
+ fCacheDelaunayTriangulationTriangleSegmentPoints:=nil;
+ fCacheDelaunayTriangulationHashEdges:=nil;
+ fCacheDelaunayTriangulationHashItems:=nil;
 
  inherited Destroy;
 end;
@@ -931,6 +969,10 @@ begin
  fCountCacheVertices:=0;
  fCountCacheIndices:=0;
  fCountCacheParts:=0;
+ fCountCacheDelaunayTriangulationNodes:=0;
+ fCountCacheDelaunayTriangulationTriangleSegmentPoints:=0;
+ fCountCacheDelaunayTriangulationHashEdges:=0;
+ fCountCacheDelaunayTriangulationHashItems:=0;
 
  if assigned(fCacheSegmentPointHashMap) then begin
   fCacheSegmentPointHashMap.Clear;
@@ -1577,6 +1619,7 @@ var CommandIndex:TpvInt32;
  end;
  procedure FillFlush;
   procedure DelaunayTriangulation;
+  var Center:TpvVector2;
    function InCircle(const aA,aB,aC,aP:TpvVector2):boolean;
    var a,b,c:TpvVector2;
        bsl,csl:TpvFloat;
@@ -1621,11 +1664,91 @@ var CommandIndex:TpvInt32;
    begin
     result:=((aQ.y-aP.y)*(aR.x-aQ.x))-((aQ.x-aP.x)*(aR.y-aQ.y));
    end;
+   function AddNode(const aPoint:TpvVector2;const aIndex,aPrevious:TpvInt32):TpvInt32;
+   var Node,PreviousNode:PpvCanvasShapeCacheDelaunayTriangulationNode;
+   begin
+    result:=fCountCacheDelaunayTriangulationNodes;
+    inc(fCountCacheDelaunayTriangulationNodes);
+    if length(fCacheDelaunayTriangulationNodes)<fCountCacheDelaunayTriangulationNodes then begin
+     SetLength(fCacheDelaunayTriangulationNodes,fCountCacheDelaunayTriangulationNodes*2);
+    end;
+    Node:=@fCacheDelaunayTriangulationNodes[result];
+    if aPrevious<0 then begin
+     Node^.Previous:=result;
+     Node^.Next:=result;
+    end else begin
+     PreviousNode:=@fCacheDelaunayTriangulationNodes[aPrevious];
+     Node^.Next:=PreviousNode^.Next;
+     Node^.Previous:=aPrevious;
+     fCacheDelaunayTriangulationNodes[PreviousNode^.Next].Previous:=result;
+     PreviousNode^.Next:=result;
+    end;
+    Node^.Index:=aIndex;
+    Node^.TriangleIndex:=0;
+    Node^.Point:=aPoint;
+    Node^.Removed:=false;
+   end;
+   procedure RemoveNode(const aNodeIndex:TpvInt32);
+   var Node:PpvCanvasShapeCacheDelaunayTriangulationNode;
+   begin
+    Node:=@fCacheDelaunayTriangulationNodes[aNodeIndex];
+    fCacheDelaunayTriangulationNodes[Node^.Previous].Next:=Node^.Next;
+    fCacheDelaunayTriangulationNodes[Node^.Next].Previous:=Node^.Previous;
+    Node^.Removed:=true;
+   end;
+   procedure Link(const a,b:TpvInt32);
+   var OldCount:TpvInt32;
+   begin
+    OldCount:=fCountCacheDelaunayTriangulationHashEdges;
+    fCountCacheDelaunayTriangulationHashEdges:=Max(fCountCacheDelaunayTriangulationHashEdges,Max(0,Max(a,b))+1);
+    if length(fCacheDelaunayTriangulationHashEdges)<fCountCacheDelaunayTriangulationHashEdges then begin
+     SetLength(fCacheDelaunayTriangulationHashEdges,fCountCacheDelaunayTriangulationHashEdges*2);
+    end;
+    if OldCount<fCountCacheDelaunayTriangulationHashEdges then begin
+     FillChar(fCacheDelaunayTriangulationHashEdges[OldCount],(fCountCacheDelaunayTriangulationHashEdges-OldCount)*SizeOf(TpvInt32),$ff);
+    end;
+    if a>=0 then begin
+     fCacheDelaunayTriangulationHashEdges[a]:=b;
+    end;
+    if b>=0 then begin
+     fCacheDelaunayTriangulationHashEdges[b]:=a;
+    end;
+   end;
+   function AddTriangle(const i0,i1,i2,a,b,c:TpvInt32):TpvInt32;
+   begin
+    result:=fCountCacheDelaunayTriangulationTriangleSegmentPoints;
+    inc(fCountCacheDelaunayTriangulationTriangleSegmentPoints,3);
+    if length(fCacheDelaunayTriangulationTriangleSegmentPoints)<fCountCacheDelaunayTriangulationTriangleSegmentPoints then begin
+     SetLength(fCacheDelaunayTriangulationTriangleSegmentPoints,fCountCacheDelaunayTriangulationTriangleSegmentPoints*2);
+    end;
+    fCacheDelaunayTriangulationTriangleSegmentPoints[result+0]:=i0;
+    fCacheDelaunayTriangulationTriangleSegmentPoints[result+1]:=i1;
+    fCacheDelaunayTriangulationTriangleSegmentPoints[result+2]:=i2;
+    Link(result+0,a);
+    Link(result+1,b);
+    Link(result+2,c);
+   end;
+   function HashKey(const aKey:TpvVector2):TpvInt32;
+   var d:TpvVector2;
+       p:TpvFloat;
+   begin
+    d:=aKey-Center;
+    p:=1.0-(d.x/(abs(d.x)+abs(d.y)));
+    if d.y<0.0 then begin
+     p:=-p;
+    end;
+    result:=Floor((p+2.0)/(4.0*fCountCacheDelaunayTriangulationHashItems));
+   end;
+   procedure HashEdge(const aEdgeNodeIndex:TpvInt32);
+   begin
+    fCacheDelaunayTriangulationHashItems[HashKey(fCacheDelaunayTriangulationNodes[aEdgeNodeIndex].Point)]:=aEdgeNodeIndex;
+   end;
   var SegmentIndex,PointIndex,SegmentPointIndex,
-      SegmentPointIndex0,SegmentPointIndex1,SegmentPointIndex2:TpvInt32;
+      SegmentPointIndex0,SegmentPointIndex1,SegmentPointIndex2,
+      EdgeNodeIndex:TpvInt32;
       MinMax:TpvAABB2D;
       CurrentSegmentPoint:PpvVector2;
-      Center,SegmentPoint0,SegmentPoint1,SegmentPoint2:TpvVector2;
+      SegmentPoint0,SegmentPoint1,SegmentPoint2:TpvVector2;
       MinDistance,Distance,MinRadius,Radius:TpvFloat;
   begin
 
@@ -1713,6 +1836,35 @@ var CommandIndex:TpvInt32;
    SegmentPoint2:=fCacheSegmentPoints[SegmentPointIndex2];
 
    SortSegmentPointsRelativeToCenter(Center);
+
+   fCountCacheDelaunayTriangulationNodes:=0;
+
+   fCountCacheDelaunayTriangulationTriangleSegmentPoints:=0;
+
+   fCountCacheDelaunayTriangulationHashEdges:=0;
+
+   fCountCacheDelaunayTriangulationHashItems:=Max(1,Ceil(sqrt(Max(1,fCountCacheSegmentPoints))));
+
+   if length(fCacheDelaunayTriangulationHashItems)<fCountCacheDelaunayTriangulationHashItems then begin
+    SetLength(fCacheDelaunayTriangulationHashItems,fCountCacheDelaunayTriangulationHashItems*2);
+   end;
+
+   FillChar(fCacheDelaunayTriangulationHashItems[0],fCountCacheDelaunayTriangulationHashItems*SizeOf(TVkInt32),$ff);
+
+   EdgeNodeIndex:=AddNode(fCacheSegmentPoints[SegmentPointIndex0],SegmentPointIndex0,-1);
+   HashEdge(EdgeNodeIndex);
+   fCacheDelaunayTriangulationNodes[EdgeNodeIndex].TriangleIndex:=0;
+
+   EdgeNodeIndex:=AddNode(fCacheSegmentPoints[SegmentPointIndex1],SegmentPointIndex1,EdgeNodeIndex);
+   HashEdge(EdgeNodeIndex);
+   fCacheDelaunayTriangulationNodes[EdgeNodeIndex].TriangleIndex:=1;
+
+   EdgeNodeIndex:=AddNode(fCacheSegmentPoints[SegmentPointIndex2],SegmentPointIndex2,EdgeNodeIndex);
+   HashEdge(EdgeNodeIndex);
+   fCacheDelaunayTriangulationNodes[EdgeNodeIndex].TriangleIndex:=2;
+
+   AddTriangle(SegmentPointIndex0,SegmentPointIndex1,SegmentPointIndex1,-1,-1,-1);
+
 
   end;
   function GetWindingNumberAtPointInPolygon(const Point:TpvVector2):TpvInt32;
