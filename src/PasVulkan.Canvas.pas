@@ -1717,14 +1717,14 @@ var CommandIndex:TpvInt32;
     c:=aC-aA;
     bsl:=b.SquaredLength;
     csl:=c.SquaredLength;
-    result:=TpvVector2.Create((c.y*bsl)-(b.y*csl),(b.x*csl)-(c.x*bsl))/(((b.x*c.y)-(c.x*b.y))*2.0);
+    result:=aA+TpvVector2.Create((c.y*bsl)-(b.y*csl),(b.x*csl)-(c.x*bsl))/(((b.x*c.y)-(c.x*b.y))*2.0);
    end;
    function Area(const aP,aQ,aR:TpvVector2):TpvFloat;
    begin
     result:=((aQ.y-aP.y)*(aR.x-aQ.x))-((aQ.x-aP.x)*(aR.y-aQ.y));
    end;
    function AddNode(const aPoint:TpvVector2;const aIndex,aPrevious:TpvInt32):TpvInt32;
-   var Node,PreviousNode:PpvCanvasShapeCacheDelaunayTriangulationNode;
+   var Node:PpvCanvasShapeCacheDelaunayTriangulationNode;
    begin
     result:=fCountCacheDelaunayTriangulationNodes;
     inc(fCountCacheDelaunayTriangulationNodes);
@@ -1733,11 +1733,10 @@ var CommandIndex:TpvInt32;
      Node^.Previous:=result;
      Node^.Next:=result;
     end else begin
-     PreviousNode:=@fCacheDelaunayTriangulationNodes[aPrevious];
-     Node^.Next:=PreviousNode^.Next;
+     Node^.Next:=fCacheDelaunayTriangulationNodes[aPrevious].Next;
      Node^.Previous:=aPrevious;
-     fCacheDelaunayTriangulationNodes[PreviousNode^.Next].Previous:=result;
-     PreviousNode^.Next:=result;
+     fCacheDelaunayTriangulationNodes[fCacheDelaunayTriangulationNodes[aPrevious].Next].Previous:=result;
+     fCacheDelaunayTriangulationNodes[aPrevious].Next:=result;
     end;
     Node^.Index:=aIndex;
     Node^.TriangleSegmentPointIndex:=0;
@@ -1745,13 +1744,11 @@ var CommandIndex:TpvInt32;
     Node^.Removed:=false;
    end;
    function RemoveNode(const aNodeIndex:TpvInt32):TpvInt32;
-   var Node:PpvCanvasShapeCacheDelaunayTriangulationNode;
    begin
-    Node:=@fCacheDelaunayTriangulationNodes[aNodeIndex];
-    fCacheDelaunayTriangulationNodes[Node^.Previous].Next:=Node^.Next;
-    fCacheDelaunayTriangulationNodes[Node^.Next].Previous:=Node^.Previous;
-    Node^.Removed:=true;
-    result:=Node^.Previous;
+    fCacheDelaunayTriangulationNodes[fCacheDelaunayTriangulationNodes[aNodeIndex].Previous].Next:=fCacheDelaunayTriangulationNodes[aNodeIndex].Next;
+    fCacheDelaunayTriangulationNodes[fCacheDelaunayTriangulationNodes[aNodeIndex].Next].Previous:=fCacheDelaunayTriangulationNodes[aNodeIndex].Previous;
+    fCacheDelaunayTriangulationNodes[aNodeIndex].Removed:=true;
+    result:=fCacheDelaunayTriangulationNodes[aNodeIndex].Previous;
    end;
    procedure Link(const a,b:TpvInt32);
    begin
@@ -1766,9 +1763,6 @@ var CommandIndex:TpvInt32;
    begin
     result:=fCountCacheDelaunayTriangulationTriangleSegmentPoints;
     inc(fCountCacheDelaunayTriangulationTriangleSegmentPoints,3);
-    if length(fCacheDelaunayTriangulationTriangleSegmentPoints)<fCountCacheDelaunayTriangulationTriangleSegmentPoints then begin
-     SetLength(fCacheDelaunayTriangulationTriangleSegmentPoints,fCountCacheDelaunayTriangulationTriangleSegmentPoints*2);
-    end;
     fCacheDelaunayTriangulationTriangleSegmentPoints[result+0]:=i0;
     fCacheDelaunayTriangulationTriangleSegmentPoints[result+1]:=i1;
     fCacheDelaunayTriangulationTriangleSegmentPoints[result+2]:=i2;
@@ -1785,7 +1779,7 @@ var CommandIndex:TpvInt32;
     if d.y<0.0 then begin
      p:=-p;
     end;
-    result:=Floor((p+2.0)/(4.0*fCountCacheDelaunayTriangulationHashItems));
+    result:=Floor(((p+2.0)*0.25)*fCountCacheDelaunayTriangulationHashItems);
    end;
    procedure HashEdge(const aEdgeNodeIndex:TpvInt32);
    begin
@@ -1831,7 +1825,6 @@ var CommandIndex:TpvInt32;
       WalkBack:boolean;
   begin
 
-
    MinMax:=TpvAABB2D.Create(Infinity,Infinity,-Infinity,-Infinity);
 
    fCountCacheSegmentPoints:=0;
@@ -1860,7 +1853,7 @@ var CommandIndex:TpvInt32;
    MinDistance:=Infinity;
    SegmentPointIndex0:=-1;
    for SegmentPointIndex:=0 to fCountCacheSegmentPoints-1 do begin
-    Distance:=Center.DistanceTo(fCacheSegmentPoints[SegmentPointIndex]);
+    Distance:=(Center-fCacheSegmentPoints[SegmentPointIndex]).SquaredLength;
     if MinDistance>Distance then begin
      MinDistance:=Distance;
      SegmentPointIndex0:=SegmentPointIndex;
@@ -1875,7 +1868,7 @@ var CommandIndex:TpvInt32;
    for SegmentPointIndex:=0 to fCountCacheSegmentPoints-1 do begin
     if (SegmentPointIndex<>SegmentPointIndex0) and
        (fCacheSegmentPoints[SegmentPointIndex0]<>fCacheSegmentPoints[SegmentPointIndex]) then begin
-     Distance:=fCacheSegmentPoints[SegmentPointIndex0].DistanceTo(fCacheSegmentPoints[SegmentPointIndex]);
+     Distance:=(fCacheSegmentPoints[SegmentPointIndex0]-fCacheSegmentPoints[SegmentPointIndex]).SquaredLength;
      if MinDistance>Distance then begin
       MinDistance:=Distance;
       SegmentPointIndex1:=SegmentPointIndex;
@@ -1918,16 +1911,32 @@ var CommandIndex:TpvInt32;
    SegmentPoint1:=@fCacheSegmentPoints[SegmentPointIndex1];
    SegmentPoint2:=@fCacheSegmentPoints[SegmentPointIndex2];
 
+   Center:=CircumcircleCenter(SegmentPoint0^,
+                              SegmentPoint1^,
+                              SegmentPoint2^);
+
    SortSegmentPointsRelativeToCenter(Center);
+
+{  fCacheSegmentPointIndices[0]:=2;
+   fCacheSegmentPointIndices[1]:=3;
+   fCacheSegmentPointIndices[2]:=0;
+   fCacheSegmentPointIndices[3]:=6;
+   fCacheSegmentPointIndices[4]:=5;
+   fCacheSegmentPointIndices[5]:=4;
+   fCacheSegmentPointIndices[6]:=1; }
 
    fCountCacheDelaunayTriangulationNodes:=0;
 
-   fCountCacheDelaunayTriangulationTriangleSegmentPoints:=0;
-
    fCountCacheDelaunayTriangulationHalfEdges:=0;
 
-   fCountCacheDelaunayTriangulationHashItems:=Max(1,Ceil(sqrt(Max(1,fCountCacheSegmentPoints))));
+   fCountCacheDelaunayTriangulationTriangleSegmentPoints:=fCountCacheSegmentPoints*3;
+   if length(fCacheDelaunayTriangulationTriangleSegmentPoints)<fCountCacheDelaunayTriangulationTriangleSegmentPoints then begin
+    SetLength(fCacheDelaunayTriangulationTriangleSegmentPoints,fCountCacheDelaunayTriangulationTriangleSegmentPoints*2);
+   end;
 
+   fCountCacheDelaunayTriangulationTriangleSegmentPoints:=0;
+
+   fCountCacheDelaunayTriangulationHashItems:=Max(1,Ceil(sqrt(Max(1,fCountCacheSegmentPoints))));
    if length(fCacheDelaunayTriangulationHashItems)<fCountCacheDelaunayTriangulationHashItems then begin
     SetLength(fCacheDelaunayTriangulationHashItems,fCountCacheDelaunayTriangulationHashItems*2);
    end;
@@ -2024,7 +2033,7 @@ var CommandIndex:TpvInt32;
                                               -1,
                                               fCacheDelaunayTriangulationNodes[OtherEdgeNodeIndex].TriangleSegmentPointIndex);
 
-       fCacheDelaunayTriangulationNodes[OtherEdgeNodeIndex].TriangleSegmentPointIndex:=Legalize(TriangleSegmentPointIndex+2);
+       fCacheDelaunayTriangulationNodes[fCacheDelaunayTriangulationNodes[OtherEdgeNodeIndex].Previous].TriangleSegmentPointIndex:=Legalize(TriangleSegmentPointIndex+2);
 
        Hull:=RemoveNode(OtherEdgeNodeIndex);
 
