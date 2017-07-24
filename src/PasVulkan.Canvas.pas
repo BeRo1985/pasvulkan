@@ -252,6 +252,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasShapeCacheSegmentPoints=array of TpvVector2;
 
+     TpvCanvasShapeCacheSegmentPointIndices=array of TpvInt32;
+
      PpvCanvasShapeCacheVertices=^TpvCanvasShapeCacheVertices;
      TpvCanvasShapeCacheVertices=array of TpvCanvasShapeCacheVertex;
 
@@ -294,6 +296,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCacheLinePoints:TpvCanvasShapeCacheLinePoints;
        fCacheSegments:TpvCanvasShapeCacheSegments;
        fCacheSegmentPoints:TpvCanvasShapeCacheSegmentPoints;
+       fCacheSegmentPointIndices:TpvCanvasShapeCacheSegmentPointIndices;
        fCacheVertices:TpvCanvasShapeCacheVertices;
        fCacheIndices:TpvCanvasShapeCacheIndices;
        fCacheParts:TpvCanvasShapeCacheParts;
@@ -768,6 +771,7 @@ begin
  fCacheLinePoints:=nil;
  fCacheSegments:=nil;
  fCacheSegmentPoints:=nil;
+ fCacheSegmentPointIndices:=nil;
  fCacheVertices:=nil;
  fCacheIndices:=nil;
  fCacheParts:=nil;
@@ -799,6 +803,7 @@ begin
  fCacheLinePoints:=nil;
  fCacheSegments:=nil;
  fCacheSegmentPoints:=nil;
+ fCacheSegmentPointIndices:=nil;
  fCacheVertices:=nil;
  fCacheIndices:=nil;
  fCacheParts:=nil;
@@ -825,10 +830,9 @@ type PStackItem=^TStackItem;
      TStackItem=record
       Left,Right,Depth:TpvInt32;
      end;
-var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvInt32;
+var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC,Temp:TpvInt32;
     StackItem:PStackItem;
     Stack:array[0..31] of TStackItem;
-    Temp:TpvVector2;
 begin
  if fCountCacheSegmentPoints>1 then begin
   StackItem:=@Stack[0];
@@ -850,10 +854,10 @@ begin
      iC:=iB;
      while (iA>=Left) and
            (iC>=Left) and
-           (Compare(fCacheSegmentPoints[iA],fCacheSegmentPoints[iC])>0) do begin
-      Temp:=fCacheSegmentPoints[iA];
-      fCacheSegmentPoints[iA]:=fCacheSegmentPoints[iC];
-      fCacheSegmentPoints[iC]:=Temp;
+           (Compare(fCacheSegmentPoints[fCacheSegmentPointIndices[iA]],fCacheSegmentPoints[fCacheSegmentPointIndices[iC]])>0) do begin
+      Temp:=fCacheSegmentPointIndices[iA];
+      fCacheSegmentPointIndices[iA]:=fCacheSegmentPointIndices[iC];
+      fCacheSegmentPointIndices[iC]:=Temp;
       dec(iA);
       dec(iC);
      end;
@@ -870,9 +874,9 @@ begin
       end else begin
        dec(Size);
        if Size>0 then begin
-        Temp:=fCacheSegmentPoints[Left+Size];
-        fCacheSegmentPoints[Left+Size]:=fCacheSegmentPoints[Left];
-        fCacheSegmentPoints[Left]:=Temp;
+        Temp:=fCacheSegmentPointIndices[Left+Size];
+        fCacheSegmentPointIndices[Left+Size]:=fCacheSegmentPointIndices[Left];
+        fCacheSegmentPointIndices[Left]:=Temp;
        end else begin
         break;
        end;
@@ -881,13 +885,13 @@ begin
       repeat
        Child:=(Parent*2)+1;
        if Child<Size then begin
-        if (Child<(Size-1)) and (Compare(fCacheSegmentPoints[Left+Child],fCacheSegmentPoints[Left+Child+1])<0) then begin
+        if (Child<(Size-1)) and (Compare(fCacheSegmentPoints[fCacheSegmentPointIndices[Left+Child]],fCacheSegmentPoints[fCacheSegmentPointIndices[Left+Child+1]])<0) then begin
          inc(Child);
         end;
-        if Compare(fCacheSegmentPoints[Left+Parent],fCacheSegmentPoints[Left+Child])<0 then begin
-         Temp:=fCacheSegmentPoints[Left+Parent];
-         fCacheSegmentPoints[Left+Parent]:=fCacheSegmentPoints[Left+Child];
-         fCacheSegmentPoints[Left+Child]:=Temp;
+        if Compare(fCacheSegmentPoints[fCacheSegmentPointIndices[Left+Parent]],fCacheSegmentPoints[fCacheSegmentPointIndices[Left+Child]])<0 then begin
+         Temp:=fCacheSegmentPointIndices[Left+Parent];
+         fCacheSegmentPointIndices[Left+Parent]:=fCacheSegmentPointIndices[Left+Child];
+         fCacheSegmentPointIndices[Left+Child]:=Temp;
          Parent:=Child;
          continue;
         end;
@@ -899,39 +903,39 @@ begin
      // Quick sort width median-of-three optimization
      Middle:=Left+((Right-Left) shr 1);
      if (Right-Left)>3 then begin
-      if Compare(fCacheSegmentPoints[Left],fCacheSegmentPoints[Middle])>0 then begin
-       Temp:=fCacheSegmentPoints[Left];
-       fCacheSegmentPoints[Left]:=fCacheSegmentPoints[Middle];
-       fCacheSegmentPoints[Middle]:=Temp;
+      if Compare(fCacheSegmentPoints[fCacheSegmentPointIndices[Left]],fCacheSegmentPoints[fCacheSegmentPointIndices[Middle]])>0 then begin
+       Temp:=fCacheSegmentPointIndices[Left];
+       fCacheSegmentPointIndices[Left]:=fCacheSegmentPointIndices[Middle];
+       fCacheSegmentPointIndices[Middle]:=Temp;
       end;
-      if Compare(fCacheSegmentPoints[Left],fCacheSegmentPoints[Right])>0 then begin
-       Temp:=fCacheSegmentPoints[Left];
-       fCacheSegmentPoints[Left]:=fCacheSegmentPoints[Right];
-       fCacheSegmentPoints[Right]:=Temp;
+      if Compare(fCacheSegmentPoints[fCacheSegmentPointIndices[Left]],fCacheSegmentPoints[fCacheSegmentPointIndices[Right]])>0 then begin
+       Temp:=fCacheSegmentPointIndices[Left];
+       fCacheSegmentPointIndices[Left]:=fCacheSegmentPointIndices[Right];
+       fCacheSegmentPointIndices[Right]:=Temp;
       end;
-      if Compare(fCacheSegmentPoints[Middle],fCacheSegmentPoints[Right])>0 then begin
-       Temp:=fCacheSegmentPoints[Middle];
-       fCacheSegmentPoints[Middle]:=fCacheSegmentPoints[Right];
-       fCacheSegmentPoints[Right]:=Temp;
+      if Compare(fCacheSegmentPoints[fCacheSegmentPointIndices[Middle]],fCacheSegmentPoints[fCacheSegmentPointIndices[Right]])>0 then begin
+       Temp:=fCacheSegmentPointIndices[Middle];
+       fCacheSegmentPointIndices[Middle]:=fCacheSegmentPointIndices[Right];
+       fCacheSegmentPointIndices[Right]:=Temp;
       end;
      end;
      Pivot:=Middle;
      i:=Left;
      j:=Right;
      repeat
-      while (i<Right) and (Compare(fCacheSegmentPoints[i],fCacheSegmentPoints[Pivot])<0) do begin
+      while (i<Right) and (Compare(fCacheSegmentPoints[fCacheSegmentPointIndices[i]],fCacheSegmentPoints[fCacheSegmentPointIndices[Pivot]])<0) do begin
        inc(i);
       end;
-      while (j>=i) and (Compare(fCacheSegmentPoints[j],fCacheSegmentPoints[Pivot])>0) do begin
+      while (j>=i) and (Compare(fCacheSegmentPoints[fCacheSegmentPointIndices[j]],fCacheSegmentPoints[fCacheSegmentPointIndices[Pivot]])>0) do begin
        dec(j);
       end;
       if i>j then begin
        break;
       end else begin
        if i<>j then begin
-        Temp:=fCacheSegmentPoints[i];
-        fCacheSegmentPoints[i]:=fCacheSegmentPoints[j];
-        fCacheSegmentPoints[j]:=Temp;
+        Temp:=fCacheSegmentPointIndices[i];
+        fCacheSegmentPointIndices[i]:=fCacheSegmentPointIndices[j];
+        fCacheSegmentPointIndices[j]:=Temp;
         if Pivot=i then begin
          Pivot:=j;
         end else if Pivot=j then begin
@@ -1769,7 +1773,11 @@ var CommandIndex:TpvInt32;
       if length(fCacheSegmentPoints)<fCountCacheSegmentPoints then begin
        SetLength(fCacheSegmentPoints,fCountCacheSegmentPoints*2);
       end;
+      if length(fCacheSegmentPointIndices)<fCountCacheSegmentPoints then begin
+       SetLength(fCacheSegmentPointIndices,fCountCacheSegmentPoints*2);
+      end;
       fCacheSegmentPoints[SegmentPointIndex]:=CurrentSegmentPoint^;
+      fCacheSegmentPointIndices[SegmentPointIndex]:=SegmentPointIndex;
       fCacheSegmentPointHashMap.Add(CurrentSegmentPoint^,SegmentPointIndex);
      end;
     end;
