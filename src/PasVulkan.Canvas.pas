@@ -1677,6 +1677,31 @@ var CommandIndex:TpvInt32;
   end;
  end;
  procedure FillFlush;
+  procedure AddEdges;
+  begin
+   // TODO
+  end;
+  procedure SortEdges;
+  begin
+   // Sort for from top to bottom and from left to right
+   // TODO
+  end;
+  procedure SplitEdgesAtIntersections;
+  begin
+   // TODO
+  end;
+  procedure SplitEdgesAtYCoordinates;
+   // TODO
+  begin
+  end;
+  procedure SweepVertical;
+  begin
+   // TODO
+  end;
+  procedure TriangulateQuads;
+  begin
+   // TODO
+  end;
   procedure DelaunayTriangulation;
   var Center:TpvVector2;
    function InCircle(const aA,aB,aC,aP:TpvVector2):boolean;
@@ -1917,14 +1942,6 @@ var CommandIndex:TpvInt32;
 
    SortSegmentPointsRelativeToCenter(Center);
 
-{  fCacheSegmentPointIndices[0]:=2;
-   fCacheSegmentPointIndices[1]:=3;
-   fCacheSegmentPointIndices[2]:=0;
-   fCacheSegmentPointIndices[3]:=6;
-   fCacheSegmentPointIndices[4]:=5;
-   fCacheSegmentPointIndices[5]:=4;
-   fCacheSegmentPointIndices[6]:=1; }
-
    fCountCacheDelaunayTriangulationNodes:=0;
 
    fCountCacheDelaunayTriangulationHalfEdges:=0;
@@ -2091,7 +2108,7 @@ var CommandIndex:TpvInt32;
     if aState.fFillRule=pvcfrEvenOdd then begin
      WindingNumber:=WindingNumber and 1;
     end;
-    {if WindingNumber<>0 then} begin
+    if WindingNumber<>0 then begin
      BeginPart(3,3);
      AddIndex(AddVertex(v0,pcvvaomTriangleEdge,Vector4Origin));
      AddIndex(AddVertex(v1,pcvvaomTriangleEdge,Vector4Origin));
@@ -2103,8 +2120,17 @@ var CommandIndex:TpvInt32;
   end;
  begin
   try
-   DelaunayTriangulation;
-   PostProcessDelaunayTriangulationResult;
+   AddEdges;
+   SortEdges;
+   SplitEdgesAtIntersections;
+   SplitEdgesAtYCoordinates;
+   if false then begin
+    SweepVertical;
+    TriangulateQuads;
+   end else begin
+    DelaunayTriangulation;
+    PostProcessDelaunayTriangulationResult;
+   end;
   except
    on e:EpvCanvasShape do begin
    end;
